@@ -49,6 +49,9 @@ namespace common
     binary_path(std::string const& name,
                 bool ensure = true);
 
+    /// Returns the default path of every director.
+    std::string
+    networks_directory(std::string const& user_id);
 
     /// Returns network directory path.
     std::string

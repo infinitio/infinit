@@ -179,13 +179,18 @@ namespace common
     }
 
     std::string
+    networks_directory(std::string const& user_id)
+    {
+      return path::join(user_directory(user_id), "networks");
+    }
+
+    std::string
     network_directory(std::string const& user_id,
                       std::string const& network_id)
     {
       return path::join(
-          user_directory(user_id),
-          "networks",
-          network_id
+        networks_directory(user_id),
+        network_id
       );
     }
 
@@ -208,7 +213,7 @@ namespace common
              std::string const& network_id)
     {
       return path::join(
-        user_directory(user_id), network_id + ".log");
+        networks_directory(user_id), network_id + ".log");
     }
 
     std::string
