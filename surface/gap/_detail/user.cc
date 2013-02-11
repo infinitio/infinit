@@ -14,6 +14,8 @@
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
+#include "impl.hh"
+
 namespace surface
 {
   namespace gap
@@ -39,7 +41,7 @@ namespace surface
         {
           throw Exception{gap_error, "Couldn't connect to trophonius"};
         }
-      this->_trophonius->connect(this->_me._id,
+      this->_trophonius->connect(this->_self->_me.id(),
                                  this->_meta->token());
 
       ELLE_DEBUG("Connect to trophonius with 'id': %s and 'token':  %s",
@@ -61,7 +63,7 @@ namespace surface
                         std::string const& message)
     {
       this->_meta->send_message(recipient_id,
-                                this->_me._id,
+                                this->_self->_me.id(),
                                 message);
     }
 
@@ -120,15 +122,15 @@ namespace surface
 
       ELLE_DEBUG("Logged in as %s token = %s", email, res.token);
 
-      this->_me._id = res._id;
-      this->_me.fullname = res.fullname;
-      this->_me.email = res.email;
-      this->_me.public_key = "";
+      this->_self->_me.id(res._id);
+      this->_self->_me.fullname(res.fullname);
+      this->_self->_me.email(res.email);
+      this->_self->_me.public_key("");
 
       ELLE_DEBUG("id: '%s' - fullname: '%s' - lower_email: '%s'.",
-                 this->_me._id,
-                 this->_me.fullname,
-                 this->_me.email);
+                 this->_self->_me.id(),
+                 this->_self->_me.fullname(),
+                 this->_self->_me.email());
 
       std::string identity_clear;
 
@@ -299,10 +301,10 @@ namespace surface
       return this->_meta->user_icon(id);
     }
 
-    User const&
+    User
     State::get_me()
     {
-      return this->_me;
+      return this->_self->me();
     }
 
     void
@@ -316,7 +318,7 @@ namespace surface
         throw Exception(gap_error,
                         "not a directroy.");
 
-      this->_output_dir = dir;
+      this->_self->output_dir(dir);
     }
 
     std::string
@@ -327,10 +329,10 @@ namespace surface
       return response._id;
     }
 
-    std::string const&
+    std::string
     State::output_dir() const
     {
-      return this->_output_dir;
+      return this->_self->output_dir();
     }
 
   }

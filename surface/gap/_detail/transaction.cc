@@ -14,6 +14,8 @@
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
+#include "impl.hh"
+
 namespace surface
 {
   namespace gap
@@ -90,7 +92,7 @@ namespace surface
                 QStringList arguments;
 
                 arguments << "-n" << network_id.c_str()
-                          << "-u" << this->_me._id.c_str()
+                          << "-u" << this->_self->_me.id().c_str()
                           << "--path" << file.c_str()
                           << "--to";
 
@@ -156,7 +158,7 @@ namespace surface
       std::string const& progress_binary = common::infinit::binary_path("8progress");
       QStringList arguments;
       arguments << "-n" << tr.network_id.c_str()
-                << "-u" << this->_me._id.c_str()
+                << "-u" << this->_self->_me.id().c_str()
       ;
       ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
                  arguments.join(" ").toStdString());
@@ -205,8 +207,8 @@ namespace surface
 
       QStringList arguments;
       arguments << "-n" << trans.network_id.c_str()
-                << "-u" << this->_me._id.c_str()
-                << "--path" << this->_output_dir.c_str()
+                << "-u" << this->_self->_me.id().c_str()
+                << "--path" << this->_self->output_dir().c_str()
                 << "--from";
 
       ELLE_DEBUG("LAUNCH: %s %s",
@@ -223,7 +225,7 @@ namespace surface
           throw Exception(gap_internal_error, "8transfer binary exited with errors");
 
         ELLE_WARN("Download complete. Your file is at '%s'.",
-                  this->_output_dir.c_str());
+                  this->_self->output_dir().c_str());
 
         update_transaction(transaction_id,
                          gap_TransactionStatus::gap_transaction_status_finished);
@@ -327,7 +329,7 @@ namespace surface
 
       Transaction const& transaction = pair->second;
 
-      if (!_check_action_is_available(this->_me._id, transaction, status))
+      if (!_check_action_is_available(this->_self->_me.id(), transaction, status))
         return;
 
       switch (status)
@@ -361,7 +363,7 @@ namespace surface
     {
       ELLE_DEBUG("Accept transaction '%s'", transaction.transaction_id);
 
-      if (transaction.recipient_id != this->_me._id)
+      if (transaction.recipient_id != this->_self->_me.id())
       {
         throw Exception{gap_error, "Only recipient can accept transaction."};
       }
@@ -577,7 +579,7 @@ namespace surface
       ELLE_DEBUG("Cancel transaction '%s'", transaction.transaction_id);
 
       //XXX: If download has started, cancel it, delete files, ...
-      if (transaction.sender_id == this->_me._id)
+      if (transaction.sender_id == this->_self->_me.id())
       {
         metrics::google::server().store("transaction:cancel:sender:attempt",
                                         {{"cd1", std::to_string(transaction.status)},

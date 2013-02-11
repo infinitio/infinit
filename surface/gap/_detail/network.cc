@@ -24,6 +24,7 @@
 #include <elle/Passport.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
+#include <elle/memory.hh>
 
 #include <QString>
 #include <QByteArray>
@@ -31,6 +32,8 @@
 #include <QProcess>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+
+#include "impl.hh"
 
 namespace surface
 {
@@ -44,7 +47,7 @@ namespace surface
       ELLE_TRACE("_wait_portal for network %s", network_id);
 
       ELLE_DEBUG("retrieving portal path");
-      auto portal_path = common::infinit::portal_path(this->_me._id, network_id);
+      auto portal_path = common::infinit::portal_path(this->_self->_me.id(), network_id);
 
       ELLE_DEBUG("portal path is %s", portal_path);
 
@@ -74,7 +77,7 @@ namespace surface
                 "Cannot use an infinit instances manager if not logged in"
             };
           _infinit_instance_manager.reset(new InfinitInstanceManager{
-              this->_me._id
+              this->_self->_me.id()
           });
         }
       return *_infinit_instance_manager;
@@ -114,7 +117,7 @@ namespace surface
     State::prepare_network(std::string const& network_id)
     {
       std::string const network_dir = common::infinit::network_directory(
-          this->_me._id,
+          this->_self->_me.id(),
           network_id
       );
       if (!elle::os::path::exists(network_dir))
@@ -256,11 +259,11 @@ namespace surface
       using elle::serialize::from_string;
       using elle::serialize::InputBase64Archive;
 
-      auto& network = this->network(network_id);
+      auto network = this->network(network_id);
 
       elle::io::Path shelter_path(lune::Lune::Shelter);
       shelter_path.Complete(
-          elle::io::Piece{"%USER%", this->_me._id},
+          elle::io::Piece{"%USER%", this->_self->_me.id()},
           elle::io::Piece{"%NETWORK%", network_id}
       );
       ELLE_DEBUG("Shelter path == %s", shelter_path.string());
@@ -303,7 +306,7 @@ namespace surface
         identity.Restore(this->_meta->identity());
 
         ELLE_DEBUG("Storing the descriptor of %s for user %s",
-            network_id, this->_me._id);
+            network_id, this->_self->_me.id());
         descriptor.store(identity);
 
         nucleus::neutron::Object directory{
@@ -359,7 +362,7 @@ namespace surface
         }
 
       std::string network_path = common::infinit::network_directory(
-        this->_me._id, network_id);
+        this->_self->_me.id(), network_id);
 
       if (elle::os::path::exists(network_path))
         elle::os::path::remove_directory(network_path);
@@ -423,7 +426,7 @@ namespace surface
         std::string const& group_binary = common::infinit::binary_path("8group");
 
         QStringList arguments;
-        arguments << "--user" << this->_me._id.c_str()
+        arguments << "--user" << this->_self->_me.id().c_str()
                   << "--type" << "user"
                   << "--add"
                   << "--network" << network._id.c_str()

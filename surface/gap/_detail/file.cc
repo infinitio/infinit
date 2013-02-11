@@ -13,6 +13,8 @@
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
+#include "impl.hh"
+
 namespace surface
 {
   namespace gap
@@ -59,7 +61,7 @@ namespace surface
       std::string const& access_binary = common::infinit::binary_path("8access");
 
       QStringList arguments;
-      arguments << "--user" << this->_me._id.c_str()
+      arguments << "--user" << this->_self->_me.id().c_str()
                 << "--type" << "user"
                 << "--network" << this->network(infos->network_id)._id.c_str()
                 << "--path" << ("/" + infos->relative_path).c_str()
@@ -111,7 +113,7 @@ namespace surface
       std::string const& access_binary = common::infinit::binary_path("8access");
 
       QStringList arguments;
-      arguments << "--user" << this->_me._id.c_str()
+      arguments << "--user" << this->_self->_me.id().c_str()
                 << "--type" << "user"
                 << "--grant"
                 << "--network" << network._id.c_str()
@@ -163,7 +165,7 @@ namespace surface
       std::string const& access_binary = common::infinit::binary_path("8access");
 
       QStringList arguments;
-      arguments << "--user" << this->_me._id.c_str()
+      arguments << "--user" << this->_self->_me.id().c_str()
                 << "--type" << "user"
                 << "--grant"
                 << "--network" << network_id.c_str()

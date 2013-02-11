@@ -33,13 +33,13 @@
 //#include <lune/Phrase.hh>
 //
 //#include <nucleus/neutron/Permissions.hh>
-
-#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 
 #include <fstream>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+
+#include "_detail/impl.hh"
 
 namespace surface
 {
@@ -59,17 +59,38 @@ namespace surface
           common::meta::host(), common::meta::port(), true,
         }}
       , _trophonius{nullptr}
+      , _shm{nullptr}
       , _users{}
-      , _logged{false}
       , _swaggers_dirty{true}
-      , _output_dir{common::system::download_directory()}
       , _files_infos{}
-      , _networks{}
-      , _networks_dirty{true}
       , _infinit_instance_manager{}
     {
       // XXX degeu !
       ELLE_LOG("Creating a new State");
+      using namespace boost::interprocess;
+
+      char const *shared_name = "infinit_State_shm";
+
+      this->_shm.reset(new SharedStateManager(
+          open_or_create,
+          shared_name,
+          (1 << 16) - 1
+      ));
+
+      ELLE_DEBUG("Accessing to shared memory %s (open_or_create/read_write)",
+                     shared_name);
+
+      auto const& sfactory =
+          this->_shm->find_or_construct<SharedStates>("infinit_SharedState");
+      this->_self = sfactory(*this->_shm.get());
+
+      ELLE_ASSERT(this->_self != nullptr);
+
+      if (_self->output_dir().empty() == true)
+      {
+          auto &dir = common::system::download_directory();
+          this->_self->output_dir(dir);
+      }
 
       this->transaction_callback(
           [&] (TransactionNotification const &n, bool is_new) -> void {
@@ -87,39 +108,47 @@ namespace surface
           }
       );
 
-      std::string user = elle::os::getenv("INFINIT_USER", "");
-
-      if (user.length() > 0)
+      if (_self->_me.id().empty() == false)
       {
-        std::string identity_path = common::infinit::identity_path(user);
+          ELLE_DEBUG("user is available in shared memory id:%s", _self->_me.id());
+      }
+      else
+      {
+        std::string user = elle::os::getenv("INFINIT_USER", "");
 
-        if (identity_path.length() > 0 && fs::exists(identity_path))
-        {
-          std::ifstream identity;
-          identity.open(identity_path);
+        if (user.empty() == false)
+          {
+            std::string identity_path = common::infinit::identity_path(user);
+            ELLE_DEBUG("load identity path: %s", identity_path);
 
-          if (!identity.good())
-            return;
+            if (identity_path.length() > 0 && fs::exists(identity_path))
+              {
+                std::ifstream identity;
+                identity.open(identity_path);
 
-          std::string token;
-          std::getline(identity, token);
+                if (!identity.good())
+                  return;
 
-          std::string ident;
-          std::getline(identity, ident);
+                std::string token;
+                std::getline(identity, token);
 
-          std::string mail;
-          std::getline(identity, mail);
+                std::string ident;
+                std::getline(identity, ident);
 
-          std::string id;
-          std::getline(identity, id);
+                std::string mail;
+                std::getline(identity, mail);
 
-          this->_meta->token(token);
-          this->_meta->identity(ident);
-          this->_meta->email(mail);
+                std::string id;
+                std::getline(identity, id);
 
-          this->_me = static_cast<User const&>(this->_meta->self());
-        }
-        this->output_log_file("/tmp/state.log");
+                this->_meta->token(token);
+                this->_meta->identity(ident);
+                this->_meta->email(mail);
+
+                _self->_me.construct_from(static_cast<User const&>(this->_meta->self()));
+              }
+            this->output_log_file("/tmp/state.log");
+          }
       }
 
       // Initialize server.
@@ -151,7 +180,7 @@ namespace surface
       this->_meta->identity(res.identity);
       this->_meta->email(res.email);
       //XXX factorize that shit
-      this->_me = static_cast<User const&>(res);
+      _self->_me.construct_from(static_cast<User const&>(res));
     }
 
 
@@ -213,7 +242,7 @@ namespace surface
         if (this->_wait_portal(network_id) == false)
           throw Exception{gap_error, "Couldn't find portal to infinit instance"};
 
-        phrase.load(this->_me._id, network_id, "portal");
+        phrase.load(_self->_me.id(), network_id, "portal");
 
         ELLE_DEBUG("Connect to the local 8infint instance (%s:%d)",
                    elle::String{"127.0.0.1"},

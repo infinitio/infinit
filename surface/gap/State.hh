@@ -17,6 +17,7 @@
 # include <map>
 # include <string>
 # include <unordered_set>
+# include <memory>
 
 # define CATCH_FAILURE_TO_METRICS(prefix)                               \
   catch (elle::HTTPException const& e)                                  \
@@ -43,6 +44,8 @@ namespace surface
 {
   namespace gap
   {
+    struct SharedStateManager;
+
     struct FileInfos
     {
       std::string                 mount_point;
@@ -53,11 +56,10 @@ namespace surface
     };
 
     // Used to represent all users in the state class.
-    using User = ::plasma::meta::User;
-    using Nodes = ::plasma::meta::NetworkNodesResponse;
-    using Network = ::plasma::meta::NetworkResponse;
-    using Endpoint = ::plasma::meta::EndpointNodeResponse;
-
+    using User      = ::plasma::meta::User;
+    using Nodes     = ::plasma::meta::NetworkNodesResponse;
+    using Network   = ::plasma::meta::NetworkResponse;
+    using Endpoint  = ::plasma::meta::EndpointNodeResponse;
 
     class Exception
       : public std::runtime_error
@@ -78,11 +80,18 @@ namespace surface
     using ::plasma::trophonius::NetworkUpdateNotification;
     using ::plasma::trophonius::NotificationType;
 
+    struct SharedStates;
+
     class State
     {
     private:
       std::unique_ptr<plasma::meta::Client>       _meta;
-      std::unique_ptr<plasma::trophonius::Client> _trophonius;
+      std::unique_ptr<plasma::trophonius::Client> _trophonius; // shm
+
+    public:
+    //- Shared memory
+      std::unique_ptr<SharedStateManager>  _shm;
+      SharedStates *                       _self;
 
     public:
       State();
@@ -98,8 +107,7 @@ namespace surface
 
     //- Login & register ------------------------------------------------------
     private:
-      std::map<std::string, User*> _users;
-      User _me;
+      std::map<std::string, User*> _users; // shm
     public:
       /// Login to meta.
       void
@@ -107,9 +115,6 @@ namespace surface
             std::string const& password);
 
 
-    private:
-      bool
-      _logged;
     public:
       bool
       logged_in() const
@@ -141,7 +146,7 @@ namespace surface
 
 
       /// Retrieve current user data.
-      User const&
+      User
       get_me();
 
       /// Retrieve current user token.
@@ -160,8 +165,8 @@ namespace surface
 
     private:
       typedef std::map<std::string, User const*> SwaggersMap;
-      SwaggersMap _swaggers;
-      bool _swaggers_dirty;
+      SwaggersMap _swaggers; // shm
+      bool _swaggers_dirty; // shm
 
     public:
       SwaggersMap const&
@@ -191,7 +196,7 @@ namespace surface
 
     private:
       typedef std::map<std::string, plasma::Transaction> TransactionsMap;
-      std::unique_ptr<TransactionsMap> _transactions;
+      std::unique_ptr<TransactionsMap> _transactions; //shm
 
     public:
       /// @brief Pull transactions from serveur.
@@ -221,7 +226,7 @@ namespace surface
       struct Process;
       typedef std::unique_ptr<Process> ProcessPtr;
       typedef std::unordered_map<ProcessId, ProcessPtr> ProcessMap;
-      ProcessMap _processes;
+      ProcessMap _processes; // no shm at first
 
     public:
       /// Retreive the status of an existing process.
@@ -264,14 +269,11 @@ namespace surface
       void
       _download_files(std::string const& transaction_id);
 
-    private:
-      std::string _output_dir;
-
     public:
       void
       output_dir(std::string const& dir);
 
-      std::string const&
+      std::string
       output_dir() const;
 
     private:
@@ -327,15 +329,10 @@ namespace surface
       void
       _on_transaction_closed(Transaction const& transaction);
 
-
-    private:
-      std::string _device_id;
-      std::string _device_name;
-
     public:
-      std::string const&
+      std::string
       device_id();
-      std::string const&
+      std::string
       device_name();
 
     ///
@@ -354,6 +351,7 @@ namespace surface
     /// File infos
     ///
     private:
+      /// This map bind a mountpoint name to a fileinfo struct
       std::map<std::string, FileInfos*> _files_infos;
     public:
       /// Retrieve files infos.

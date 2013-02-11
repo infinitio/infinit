@@ -4,6 +4,8 @@
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
+#include "impl.hh"
+
 namespace surface
 {
   namespace gap
