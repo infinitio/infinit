@@ -207,6 +207,22 @@ SERIALIZE_RESPONSE(plasma::meta::DeleteNetworkResponse, ar, res)
 SERIALIZE_RESPONSE(plasma::meta::UpdateNetworkResponse, ar, res)
 {
   ar & named("updated_network_id", res.updated_network_id);
+  ar & named("updated_network_descriptor", res.updated_network_descriptor);
+}
+
+SERIALIZE_RESPONSE(plasma::meta::NetworkAddUserResponse, ar, res)
+{
+  ar & named("updated_network_id", res.updated_network_id);
+}
+
+SERIALIZE_RESPONSE(plasma::meta::NetworkConnectDeviceResponse, ar, res)
+{
+  ar & named("updated_network_id", res.updated_network_id);
+}
+
+SERIALIZE_RESPONSE(plasma::meta::NetworkAddDeviceResponse, ar, res)
+{
+  ar & named("updated_network_id", res.updated_network_id);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::NetworkResponse, ar, res)

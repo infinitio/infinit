@@ -173,6 +173,7 @@ namespace plasma
     struct UpdateNetworkResponse : Response
     {
       string             updated_network_id;
+      string             updated_network_descriptor;
     };
 
     struct NetworkNodesResponse : Response
@@ -187,9 +188,20 @@ namespace plasma
       list<string>      locals;
     };
 
-    typedef UpdateNetworkResponse NetworkAddUserResponse;
-    typedef UpdateNetworkResponse NetworkAddDeviceResponse;
-    typedef UpdateNetworkResponse NetworkConnectDeviceResponse;
+    struct NetworkAddUserResponse : Response
+    {
+      string             updated_network_id;
+    };
+
+    struct NetworkAddDeviceResponse : Response
+    {
+      string             updated_network_id;
+    };
+
+    struct NetworkConnectDeviceResponse : Response
+    {
+      string             updated_network_id;
+    };
 
     struct CreateDeviceResponse : Response
     {

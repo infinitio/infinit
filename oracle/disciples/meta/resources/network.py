@@ -384,7 +384,8 @@ class Update(_Page):
             store = False);
 
         return self.success({
-            'updated_network_id': _id
+            'updated_network_id': _id,
+            'updated_network_descriptor' : to_save['descriptor']
         })
 
 
