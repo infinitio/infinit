@@ -5,6 +5,8 @@
 
 # include <elle/HttpClient.hh>
 # include <elle/serialize/JSONArchive.hh>
+# include <elle/serialize/Serializer.hh>
+
 
 # include <boost/system/error_code.hpp>
 
@@ -31,7 +33,6 @@ namespace plasma
 # undef NETWORK_UPDATE
     };
 
-    /// Base class for all notifications.
     struct Notification
     {
       NotificationType notification_type;
@@ -116,9 +117,10 @@ namespace plasma
     std::ostream&
     operator <<(std::ostream& out,
                 NetworkUpdate n);
+
   }
 }
 
-#undef _PLASMA_TROPHONIUS_GENERATE_HANDLERS
+# include "Client.hxx"
 
 #endif
