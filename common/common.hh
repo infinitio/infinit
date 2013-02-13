@@ -11,8 +11,6 @@
 # define COMMON_DEFAULT_TROPHONIUS_HOST "development.infinit.io"
 # define COMMON_DEFAULT_TROPHONIUS_PORT 23456
 # define COMMON_DEFAULT_RESOURCES_ROOT_URL "http://download.infinit.io"
-# define COMMON_DEFAULT_LONGINUS_HOST "development.infinit.io"
-# define COMMON_DEFAULT_LONGINUS_PORT 9999
 
 # define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
 # define COMMON_PRODUCTION_META_PROTOCOL "http"
@@ -192,16 +190,6 @@ namespace common
     /// The path to the log file.
     std::string
     log_path(std::string const& user_id);
-  }
-
-  namespace longinus
-  {
-
-    std::string const&
-    host();
-
-    int
-    port();
   }
 
   namespace metrics

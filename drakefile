@@ -44,20 +44,19 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
     raise Exception("unsupported os")
 
   # Includes
-  # XXX[should not be here since reactor should not depend on cryptography]
-  cxx_config.add_local_include_path('cryptography/sources')
-  cxx_config.add_local_include_path('.')
-  reactor = drake.include('elle/reactor', cxx_toolkit, cxx_config)
+
+  # Elle
+  cxx_config.add_local_include_path('elle/reactor/src') # FIXME: circular dependency with reactor
+  cxx_config.add_local_include_path('cryptography/sources') # FIXME: circular dependency with crypto
+  elle = drake.include('elle', cxx_toolkit, cxx_config)
+  elle_lib = drake.copy(elle.lib_dynamic, 'lib', 'elle/lib')
+  cxx_config += elle.config
+
+  reactor = drake.include('elle/reactor', cxx_toolkit, cxx_config, elle.config)
   reactor_lib = drake.copy(reactor.lib_dynamic, '', 'elle/reactor')
   cxx_config += reactor.config
 
-  # Elle
-  elle = drake.include('elle', cxx_toolkit, cxx_config)
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib', 'elle/lib')
-  elle.config
-
-  # Platform
-  cxx_config += elle.config
+  cxx_config.add_local_include_path('.')
 
   # Cryptography
   cryptography = drake.include('cryptography', cxx_toolkit, openssl.config(), reactor.config, elle.config, boost = boost)

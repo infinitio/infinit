@@ -435,30 +435,6 @@ namespace common
     }
   }
 
-  namespace longinus
-  {
-    std::string const&
-    host()
-    {
-      static std::string const host_string = elle::os::getenv(
-          "INFINIT_LONGINUS_HOST",
-          elle::sprint(COMMON_LONGINUS_HOST)
-      );
-
-      return host_string;
-    }
-
-    int
-    port()
-    {
-      static std::string const port_string = elle::os::getenv(
-          "INFINIT_LONGINUS_PORT",
-          elle::sprint(COMMON_LONGINUS_PORT)
-      );
-      return std::stoi(port_string);
-    }
-  }
-
   namespace metrics
   {
     std::string const&

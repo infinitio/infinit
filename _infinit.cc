@@ -53,7 +53,9 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
      (new elle::log::TextLogger(log_destination())));
 
   // set up the program.
-  if (elle::concurrency::Program::Setup("Infinit") == elle::Status::Error)
+  if (elle::concurrency::Program::Setup
+      ("Infinit", common::meta::host(), common::meta::port())
+      == elle::Status::Error)
     throw reactor::Exception("unable to set up the program");
 
   // allocate a new parser.
@@ -317,7 +319,8 @@ Main(elle::Natural32 argc, elle::Character* argv[])
           dynamic_cast<reactor::Exception const*>(&e))
         std::cerr << re->backtrace() << std::endl;
 
-      elle::crash::report("8infinit", e.what(), reactor::Backtrace::current());
+      elle::crash::report(common::meta::host(), common::meta::port(),
+                          "8infinit", e.what(), reactor::Backtrace::current());
       elle::concurrency::scheduler().terminate();
       return elle::Status::Error;
     }
