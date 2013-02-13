@@ -53,7 +53,7 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
 
   # Elle
   elle = drake.include('elle', cxx_toolkit, cxx_config)
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib', 'elle')
+  elle_lib = drake.copy(elle.lib_dynamic, 'lib', 'elle/lib')
   elle.config.add_local_include_path('.')
 
   # Platform
