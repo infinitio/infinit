@@ -1,6 +1,7 @@
 #include "../State.hh"
 
 #include <elle/format/json.hh>
+#include <elle/serialize/Serializer.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
@@ -16,20 +17,38 @@ namespace surface
     size_t
     State::poll(size_t max)
     {
-      if (!this->_trophonius)
+      if (!this->_trophonius && _self->_tropho._connected == false)
         throw Exception{gap_error, "Trophonius is not connected"};
+
+      if (this->_trophonius)
+      {
+        ELLE_DEBUG("Fetch the notification from the network");
+        // the current state is connected. We have to fetch the notifications
+        // and share it with everybody else.
+        //
+        std::unique_ptr<Notification> notif{
+            this->_trophonius->poll()
+        };
+
+        if (notif)
+        {
+            ELLE_DEBUG("push into list")
+            _self->_tropho.push(*notif.release(), *this->_shm);
+        }
+      }
 
       size_t count = 0;
       while (count < max)
         {
           std::unique_ptr<Notification> notif{
-              this->_trophonius->poll()
+              _self->_tropho.pop()
           };
 
           if (!notif)
             break;
           try
             {
+              ELLE_DEBUG("HAVE SHARED NOTIF");
               this->_handle_notification(*notif);
             }
           catch (reactor::Exception const& e)
@@ -50,7 +69,6 @@ namespace surface
       return count;
     }
 
-
     static
     std::unique_ptr<Notification>
     _xxx_dict_to_notification(json::Dictionary const& d)
@@ -61,7 +79,6 @@ namespace surface
       std::unique_ptr<UserStatusNotification> user_status{
           new UserStatusNotification
       };
-
       std::unique_ptr<TransactionNotification> transaction{
           new TransactionNotification
       };

@@ -67,30 +67,12 @@ namespace surface
     {
       // XXX degeu !
       ELLE_LOG("Creating a new State");
-      using namespace boost::interprocess;
 
-      char const *shared_name = "infinit_State_shm";
-
-      this->_shm.reset(new SharedStateManager(
-          open_or_create,
-          shared_name,
-          (1 << 16) - 1
-      ));
-
-      ELLE_DEBUG("Accessing to shared memory %s (open_or_create/read_write)",
-                     shared_name);
-
-      auto const& sfactory =
-          this->_shm->find_or_construct<SharedStates>("infinit_SharedState");
-      this->_self = sfactory(*this->_shm.get());
-
-      ELLE_ASSERT(this->_self != nullptr);
-
-      if (_self->output_dir().empty() == true)
-      {
-          auto &dir = common::system::download_directory();
-          this->_self->output_dir(dir);
-      }
+      //if (_self->output_dir().empty() == true)
+      //{
+      //    auto &dir = common::system::download_directory();
+      //    this->_self->output_dir(dir);
+      //}
 
       this->transaction_callback(
           [&] (TransactionNotification const &n, bool is_new) -> void {
@@ -108,48 +90,7 @@ namespace surface
           }
       );
 
-      if (_self->_me.id().empty() == false)
-      {
-          ELLE_DEBUG("user is available in shared memory id:%s", _self->_me.id());
-      }
-      else
-      {
-        std::string user = elle::os::getenv("INFINIT_USER", "");
-
-        if (user.empty() == false)
-          {
-            std::string identity_path = common::infinit::identity_path(user);
-            ELLE_DEBUG("load identity path: %s", identity_path);
-
-            if (identity_path.length() > 0 && fs::exists(identity_path))
-              {
-                std::ifstream identity;
-                identity.open(identity_path);
-
-                if (!identity.good())
-                  return;
-
-                std::string token;
-                std::getline(identity, token);
-
-                std::string ident;
-                std::getline(identity, ident);
-
-                std::string mail;
-                std::getline(identity, mail);
-
-                std::string id;
-                std::getline(identity, id);
-
-                this->_meta->token(token);
-                this->_meta->identity(ident);
-                this->_meta->email(mail);
-
-                _self->_me.construct_from(static_cast<User const&>(this->_meta->self()));
-              }
-            this->output_log_file("/tmp/state.log");
-          }
-      }
+      std::string user = elle::os::getenv("INFINIT_USER", "");
 
       // Initialize server.
       metrics::google::server(common::metrics::google_server(),
@@ -187,7 +128,8 @@ namespace surface
     State::~State()
     {
       ELLE_WARN("Destroying state.");
-      this->logout();
+      //this->logout();
+      boost::interprocess::shared_memory_object::remove(this->_shm_name.c_str());
     }
 
     void

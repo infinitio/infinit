@@ -29,6 +29,13 @@ namespace surface
       if (this->_trophonius)
         throw Exception{gap_error, "trophonius is already connected"};
 
+      if (_self->_tropho._connected == true)
+      {
+        ELLE_DEBUG("A shared instance of state is already connected");
+        // A shared instance of State is already connected.
+        return ;
+      }
+
       try
         {
           this->_trophonius.reset(new plasma::trophonius::Client{
@@ -40,12 +47,14 @@ namespace surface
       catch (std::runtime_error const& err)
         {
           throw Exception{gap_error, "Couldn't connect to trophonius"};
+          _self->_tropho._connected = false;
         }
       this->_trophonius->connect(this->_self->_me.id(),
                                  this->_meta->token());
 
       ELLE_DEBUG("Connect to trophonius with 'id': %s and 'token':  %s",
                  this->_meta->identity(), this->_meta->token());
+      _self->_tropho._connected = true;
     }
 
     void
@@ -121,6 +130,35 @@ namespace surface
 
 
       ELLE_DEBUG("Logged in as %s token = %s", email, res.token);
+
+      // Init the shared memory
+      {
+        using namespace boost::interprocess;
+        std::string shm_name("infinit_State_shm");
+
+        // Make the shm name unique for each user
+        shm_name.append(res._id);
+
+        this->_shm.reset(
+            new SharedStateManager(
+              open_or_create,
+              shm_name.c_str(),
+              (1 << 16) - 1
+            )
+        );
+
+        ELLE_DEBUG("Accessing to shared memory %s (open_or_create/read_write)",
+            shm_name);
+
+        // Get the factory of SharedStates, the id doesn't need to be unique as
+        // we are already a unique shm.
+        auto const& sfactory =
+          this->_shm->find_or_construct<SharedStates>("infinit_SharedState");
+        this->_self = sfactory(*this->_shm.get());
+        this->_self->rejoin();
+
+        ELLE_ASSERT(this->_self != nullptr);
+      }
 
       this->_self->_me.id(res._id);
       this->_self->_me.fullname(res.fullname);
@@ -310,6 +348,16 @@ namespace surface
     void
     State::output_dir(std::string const& dir)
     {
+      if (_self == nullptr)
+        throw Exception(gap_error,
+                        "output_dir: try to access uninitialized shared memory");
+
+      if (_self->output_dir().empty() == true)
+      {
+          auto &dir = common::system::download_directory();
+          this->_self->output_dir(dir);
+      }
+
       if (!fs::exists(dir))
         throw Exception(gap_error,
                         "directory doesn't exist.");

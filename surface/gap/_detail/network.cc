@@ -98,7 +98,7 @@ namespace surface
       CATCH_FAILURE_TO_METRICS("network:create");
       metrics::google::server().store("network:create:succeed");
 
-      this->_networks_dirty = true; // XXX insert response in _networks
+      _self->networks_dirty(true); // XXX insert response in _networks
 
       this->_meta->network_add_device(
           response.created_network_id,
@@ -239,7 +239,7 @@ namespace surface
         ELLE_DEBUG("group block %s", group_block_);
         ELLE_DEBUG("group address %s", group_address_);
 
-        this->_meta->update_network(
+        auto res = this->_meta->update_network(
           id,
           nullptr,
           &root_block_,
@@ -247,9 +247,24 @@ namespace surface
           &group_block_,
           &group_address_
         );
+
+        auto it = std::find_if(
+            begin(_self->_networks), end(_self->_networks),
+            [&] (std::pair<shared_string const, SharedNetworkPtr> const &p) {
+              return id == to_string(p.first);
+            }
+        );
+        if (it != end(_self->_networks))
+          {
+            it->second->_root_block   = to_shared_string(root_block_, *this->_shm);
+            it->second->_root_address = to_shared_string(root_address_, *this->_shm);
+            it->second->_group_block  = to_shared_string(group_block_, *this->_shm);
+            it->second->_group_address= to_shared_string(group_address_, *this->_shm);
+            it->second->_descriptor   = to_shared_string(res.updated_network_descriptor, *this->_shm);
+          }
       }
 
-      this->_networks_dirty = true; // XXX set root_block
+      _self->networks_dirty(true); // XXX set root_block
     }
 
     void
@@ -340,7 +355,9 @@ namespace surface
     {
       ELLE_TRACE("deleting network %s", network_id);
 
-      this->_networks[network_id].reset();
+      this->_self->lock_networks();
+      this->_self->_networks.erase(to_shared_string(network_id, *this->_shm));
+      this->_self->unlock_networks();
 
       metrics::google::server().store("network:delete:attempt");
 
@@ -353,7 +370,7 @@ namespace surface
 
       metrics::google::server().store("network:delete:succeed");
 
-      this->_networks_dirty = true; // XXX remove from _networks instead
+      _self->networks_dirty(true); // XXX remove from _networks instead
       if (this->infinit_instance_manager().has_network(response.deleted_network_id))
         {
           this->infinit_instance_manager().stop_network(
@@ -370,40 +387,57 @@ namespace surface
       return response.deleted_network_id;
     }
 
-    std::map<std::string, State::NetworkPtr> const&
+    std::map<std::string, Network> const&
     State::networks()
     {
-      if (this->_networks_dirty)
+      if (_self->networks_dirty())
         {
           auto response = this->_meta->networks();
           for (auto const& network_id: response.networks)
             {
               auto response = this->_meta->network(network_id);
-              this->_networks[network_id].reset(new Network{response});
+              this->_self->lock_networks();
+              *_self->_networks[to_shared_string(network_id, *this->_shm)] = Network{response};
+              this->_self->unlock_networks();
             }
-          this->_networks_dirty = false;
+          _self->networks_dirty(false);
         }
-      return this->_networks;
+      std::map<std::string, Network> m;
+      _self->lock_networks();
+      for (auto const &p : _self->_networks)
+      {
+          m[to_string(p.first)] = static_cast<Network>(*p.second);
+      }
+      _self->unlock_networks();
+      return std::move(m);
     }
 
-    Network&
+    Network
     State::network(std::string const& id)
     {
-      auto it = this->networks().find(id);
-      if (it == this->networks().end() || it->second == nullptr)
+      auto it = std::find_if(
+          begin(_self->_networks), end(_self->_networks),
+          [&] (std::pair<shared_string const, SharedNetworkPtr> const &p) -> bool
+          {
+            return id == to_string(p.first);
+          }
+      );
+      if (it == end(_self->_networks))
         {
           try
             {
               auto response = this->_meta->network(id);
-              this->_networks[id].reset(new Network{response});
-              return *(this->_networks[id]);
+              _self->_networks[to_shared_string(id, *this->_shm)].reset(
+                  new SharedNetwork{Network{response}, *this->_shm}
+              );
+              return static_cast<Network>(*_self->_networks[to_shared_string(id, *this->_shm)]);
             }
           catch (std::runtime_error const& e)
             {
               throw Exception{gap_network_not_found, e.what()};
             }
         }
-      return *(it->second);
+      return static_cast<Network>(*it->second);
     }
 
     void
@@ -420,7 +454,7 @@ namespace surface
 
         ELLE_DEBUG("adding user '%s'", user);
 
-        Network& network = this->network(network_id);
+        Network network = this->network(network_id);
 
         ELLE_DEBUG("locating 8 group");
         std::string const& group_binary = common::infinit::binary_path("8group");
@@ -448,7 +482,10 @@ namespace surface
         if (std::find(network.users.begin(),
                       network.users.end(),
                       user_id) == network.users.end())
-          network.users.push_back(user_id);
+        {
+          auto &shared_network = _self->_networks[to_shared_string(network_id, *this->_shm)];
+          shared_network->_users.push_back(to_shared_string(user_id, *this->_shm));
+        }
       }
       CATCH_FAILURE_TO_METRICS("network:user:add");
 

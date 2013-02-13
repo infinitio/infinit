@@ -399,7 +399,7 @@ namespace surface
                 transaction.recipient_id,
                 transaction.network_id);
 
-      this->_networks_dirty = true;
+      _self->networks_dirty(true);
       this->network_add_user(transaction.network_id,
                              transaction.recipient_id);
 
@@ -457,7 +457,7 @@ namespace surface
         return;
       }
 
-      this->_networks_dirty = true;
+      _self->networks_dirty(true);
       this->prepare_network(transaction.network_id);
       this->_meta->network_add_device(
           transaction.network_id,

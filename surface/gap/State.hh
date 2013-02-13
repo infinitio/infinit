@@ -89,9 +89,12 @@ namespace surface
       std::unique_ptr<plasma::trophonius::Client> _trophonius; // shm
 
     public:
-    //- Shared memory
+      //- Shared memory
       std::unique_ptr<SharedStateManager>  _shm;
       SharedStates *                       _self;
+      //- This variable is not of much use, except when you want to upgrade or
+      //  remove the shared memory
+      std::string                          _shm_name;
 
     public:
       State();
@@ -383,10 +386,11 @@ namespace surface
     ///
     private:
       typedef std::unique_ptr<Network> NetworkPtr;
-      std::map<std::string, NetworkPtr>     _networks;
-      bool                                  _networks_dirty;
+      // This map bind a network id to its metadata
+      //std::map<std::string, NetworkPtr>     _networks; // shm
+      //bool                                  _networks_dirty; //shm
       typedef std::unique_ptr<InfinitInstanceManager> InfinitInstanceManagerPtr;
-      InfinitInstanceManagerPtr             _infinit_instance_manager;
+      InfinitInstanceManagerPtr             _infinit_instance_manager; //shm
 
     public:
       InfinitInstanceManager&
@@ -398,11 +402,11 @@ namespace surface
 
     public:
       /// Retrieve all networks.
-      std::map<std::string, NetworkPtr> const&
+      std::map<std::string, Network> const&
       networks();
 
       /// Retrieve a network.
-      Network&
+      Network
       network(std::string const& id);
 
       /// Create a new network.
