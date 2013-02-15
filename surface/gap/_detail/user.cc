@@ -29,12 +29,12 @@ namespace surface
       if (this->_trophonius)
         throw Exception{gap_error, "trophonius is already connected"};
 
-      if (_self->_tropho._connected == true)
-      {
-        ELLE_DEBUG("A shared instance of state is already connected");
-        // A shared instance of State is already connected.
-        return ;
-      }
+      //if (_self->_tropho._connected == true)
+      //{
+      //  ELLE_DEBUG("A shared instance of state is already connected");
+      //  // A shared instance of State is already connected.
+      //  return ;
+      //}
 
       try
         {
@@ -47,14 +47,14 @@ namespace surface
       catch (std::runtime_error const& err)
         {
           throw Exception{gap_error, "Couldn't connect to trophonius"};
-          _self->_tropho._connected = false;
+          //_self->_tropho._connected = false;
         }
       this->_trophonius->connect(this->_self->_me.id(),
                                  this->_meta->token());
 
       ELLE_DEBUG("Connect to trophonius with 'id': %s and 'token':  %s",
                  this->_meta->identity(), this->_meta->token());
-      _self->_tropho._connected = true;
+      //_self->_tropho._connected = true;
     }
 
     void

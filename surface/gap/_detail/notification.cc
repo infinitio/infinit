@@ -17,31 +17,14 @@ namespace surface
     size_t
     State::poll(size_t max)
     {
-      if (!this->_trophonius && _self->_tropho._connected == false)
+      if (!this->_trophonius)
         throw Exception{gap_error, "Trophonius is not connected"};
-
-      if (this->_trophonius)
-      {
-        ELLE_DEBUG("Fetch the notification from the network");
-        // the current state is connected. We have to fetch the notifications
-        // and share it with everybody else.
-        //
-        std::unique_ptr<Notification> notif{
-            this->_trophonius->poll()
-        };
-
-        if (notif)
-        {
-            ELLE_DEBUG("push into list")
-            _self->_tropho.push(*notif.release(), *this->_shm);
-        }
-      }
 
       size_t count = 0;
       while (count < max)
         {
           std::unique_ptr<Notification> notif{
-              _self->_tropho.pop()
+              this->_trophonius->poll()
           };
 
           if (!notif)
