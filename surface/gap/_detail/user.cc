@@ -1,4 +1,5 @@
 #include "../State.hh"
+#include "TransactionGroup.hh"
 #include "../MetricReporter.hh"
 
 #include <common/common.hh>
@@ -154,8 +155,9 @@ namespace surface
         // we are already a unique shm.
         auto const& sfactory =
           this->_shm->find_or_construct<SharedStates>("infinit_SharedState");
-        this->_self = sfactory(*this->_shm.get());
+        this->_self = sfactory(*this->_shm);
         this->_self->rejoin();
+        this->_transactions.reset(new TransactionGroup{*this->_shm});
 
         ELLE_ASSERT(this->_self != nullptr);
       }

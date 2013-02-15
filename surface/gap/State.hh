@@ -44,7 +44,8 @@ namespace surface
 {
   namespace gap
   {
-    struct SharedStateManager;
+    class SharedStateManager;
+    class TransactionGroup;
 
     struct FileInfos
     {
@@ -199,19 +200,15 @@ namespace surface
 
     private:
       typedef std::map<std::string, plasma::Transaction> TransactionsMap;
-      std::unique_ptr<TransactionsMap> _transactions; //shm
+      std::unique_ptr<TransactionGroup>                  _transactions; //shm
 
     public:
-      /// @brief Pull transactions from serveur.
-      TransactionsMap const&
-      transactions();
-
       /// @brief Get data from a specific transaction.
       Transaction const&
       transaction(std::string const& transaction_id);
 
       /// @brief Fetch transaction from server (and update it).
-      Transaction const&
+      Transaction
       transaction_sync(std::string const& id);
 
       /// @brief Returns a floating number in [0.0f, 1.0f]
@@ -387,8 +384,6 @@ namespace surface
     private:
       typedef std::unique_ptr<Network> NetworkPtr;
       // This map bind a network id to its metadata
-      //std::map<std::string, NetworkPtr>     _networks; // shm
-      //bool                                  _networks_dirty; //shm
       typedef std::unique_ptr<InfinitInstanceManager> InfinitInstanceManagerPtr;
       InfinitInstanceManagerPtr             _infinit_instance_manager; //shm
 

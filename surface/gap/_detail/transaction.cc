@@ -1,4 +1,5 @@
 #include "../State.hh"
+#include "TransactionGroup.hh"
 #include "../MetricReporter.hh"
 
 #include <common/common.hh>
@@ -194,19 +195,16 @@ namespace surface
     void
     State::_download_files(std::string const& transaction_id)
     {
-      auto pair = State::transactions().find(transaction_id);
+      boost::optional<Transaction> const& trans =
+          this->_transactions->get(transaction_id);
 
-      ELLE_ASSERT(pair != State::transactions().end());
-
-      if (pair == State::transactions().end())
-        return;
-
-      Transaction const& trans = pair->second;
+      if (static_cast<bool>(trans) == false)
+          return;
 
       std::string const& transfer_binary = common::infinit::binary_path("8transfer");
 
       QStringList arguments;
-      arguments << "-n" << trans.network_id.c_str()
+      arguments << "-n" << trans->network_id.c_str()
                 << "-u" << this->_self->_me.id().c_str()
                 << "--path" << this->_self->output_dir().c_str()
                 << "--from";
@@ -320,14 +318,13 @@ namespace surface
       ELLE_DEBUG("Update transaction '%s': '%s'",
                  transaction_id, status);
 
-      auto pair = State::transactions().find(transaction_id);
+      boost::optional<Transaction> const& trans = this->_transactions->get
+          (transaction_id);
 
-      ELLE_ASSERT(pair != State::transactions().end());
+      if (static_cast<bool>(trans) == false)
+        throw Exception{gap_error, "This transaction does not exists locally"};
 
-      if (pair == State::transactions().end())
-        return;
-
-      Transaction const& transaction = pair->second;
+      auto const& transaction = trans.get();
 
       if (!_check_action_is_available(this->_self->_me.id(), transaction, status))
         return;
@@ -626,43 +623,29 @@ namespace surface
       this->delete_network(transaction.network_id, true);
     }
 
-    State::TransactionsMap const&
-    State::transactions()
-    {
-      if (_transactions != nullptr)
-        return *_transactions;
-
-      _transactions.reset(new TransactionsMap{});
-
-      auto response = this->_meta->transactions();
-      for (auto const& transaction_id: response.transactions)
-        {
-          auto transaction = this->_meta->transaction(transaction_id);
-          (*this->_transactions)[transaction_id] = transaction;
-        }
-
-      return *(this->_transactions);
-    }
-
     Transaction const&
     State::transaction(std::string const& id)
     {
-      auto it = this->transactions().find(id);
-      if (it != this->transactions().end())
-        return it->second;
-      return this->transaction_sync(id);
+      boost::optional<Transaction> const &trans = this->_transactions->get(id);
+
+      if (bool(trans) == false)
+        {}
+      return trans.get();
     }
 
-    Transaction const&
+    Transaction
     State::transaction_sync(std::string const& id)
     {
       ELLE_TRACE("Synching transaction %s from meta", id);
       try
         {
           auto transaction = this->_meta->transaction(id);
+
           ELLE_DEBUG("Synched transaction %s has status %d",
                      id, transaction.status);
-          return ((*this->_transactions)[id] = transaction);
+
+          this->_transactions->add(transaction);
+          return static_cast<Transaction>(*this->_transactions->get(id));
         }
       catch (std::runtime_error const& e)
         {
@@ -712,16 +695,17 @@ namespace surface
       if (!is_new) // XXX Why ?
         return;
 
-      auto it = this->transactions().find(notif.transaction.transaction_id);
+      boost::optional<Transaction> T =
+        this->_transactions->get(notif.transaction.transaction_id);
 
-      if (it != this->transactions().end())
+      if (T)
       {
         ELLE_WARN("you already have this transaction");
+        this->_transactions->del(T->transaction_id);
         return; // XXX really ?
       }
 
-      // Normal case, this is a new transaction, store it to match server.
-      (*this->_transactions)[notif.transaction.transaction_id] = notif.transaction;
+      this->_transactions->add(notif.transaction);
     }
 
     void
@@ -729,17 +713,23 @@ namespace surface
     {
       ELLE_TRACE("_on_notification: gap_TransactionStatusNotification");
 
-      auto const pair = State::transactions().find(notif.transaction_id);
+      // Not sure if we still need this.
+      //auto const pair = State::transactions().find(notif.transaction_id);
+      //
+      //if (pair == State::transactions().end())
+      //{
+      //  // Something went wrong.
+      //  auto transaction = this->_meta->transaction(notif.transaction_id);
 
-      if (pair == State::transactions().end())
+      //  (*this->_transactions)[notif.transaction_id] = transaction;
+      //}
+
+      // update status notification in shared memory
       {
-        // Something went wrong.
-        auto transaction = this->_meta->transaction(notif.transaction_id);
+        std::string const &id = notif.transaction_id;
 
-        (*this->_transactions)[notif.transaction_id] = transaction;
+        this->_transactions->update(id, notif.status);
       }
-
-      (*this->_transactions)[notif.transaction_id].status = notif.status;
 
       auto const& transaction = this->transaction(notif.transaction_id);
 
@@ -747,9 +737,9 @@ namespace surface
       {
         case plasma::TransactionStatus::accepted:
           // We update the transaction from meta.
-          (*_transactions)[notif.transaction_id] = this->_meta->transaction(
+          this->_transactions->update(notif.transaction_id, this->_meta->transaction(
               notif.transaction_id
-          );
+          ));
           this->_on_transaction_accepted(transaction);
           break;
         case plasma::TransactionStatus::prepared:

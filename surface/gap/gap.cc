@@ -1023,6 +1023,7 @@ extern "C"
  char** gap_transactions(gap_State* state)
   {
     assert(state != nullptr);
+#if 0
     gap_Status ret = gap_ok;
     try
       {
@@ -1038,6 +1039,7 @@ extern "C"
     CATCH_ALL(transactions);
 
     (void) ret;
+#endif
     return nullptr;
   }
 

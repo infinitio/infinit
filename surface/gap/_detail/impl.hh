@@ -27,6 +27,7 @@
 
 # include <plasma/meta/Client.hh>
 # include <plasma/trophonius/Client.hh>
+# include <plasma/plasma.hh>
 
 namespace surface {
 namespace gap {
@@ -34,10 +35,12 @@ namespace gap {
 #define SHARED
     namespace ipc = boost::interprocess;
 
-    class SharedNetwork;
+    struct SharedNetwork;
+    struct SharedTransaction;
 
-    using Networks          = ::plasma::meta::NetworksResponse;
-    using SharedNetworkPtr  = std::unique_ptr<SharedNetwork>;
+    using Networks              = ::plasma::meta::NetworksResponse;
+    using SharedNetworkPtr      = std::unique_ptr<SharedNetwork>;
+    using SharedTransactionPtr  = SharedTransaction*;
 
     // {{{ Containers
     using segment_manager = ipc::managed_shared_memory::segment_manager;
@@ -59,8 +62,10 @@ namespace gap {
 
     std::string
     to_string(shared_string const &str);
+
     shared_string
     to_shared_string(std::string const &str, SharedStateManager &shm);
+
     template <typename Alloc>
     shared_string
     to_shared_string(std::string const &str, Alloc &alloc);
@@ -398,6 +403,100 @@ namespace gap {
     };
     // }}}
 
+    // {{{ SharedTransaction
+    struct SharedTransaction
+    {
+      SharedTransaction() = delete;
+      SharedTransaction(SharedTransaction const &rhs) = default;
+      SharedTransaction(Transaction const &n, SharedStateManager &shm)
+        : _transaction_id{to_shared_string(n.transaction_id, shm),  shm.get_segment_manager()}
+        , _sender_id{to_shared_string(n.sender_id, shm),  shm.get_segment_manager()}
+        , _sender_fullname{to_shared_string(n.sender_fullname, shm),  shm.get_segment_manager()}
+        , _sender_device_id{to_shared_string(n.sender_device_id, shm),  shm.get_segment_manager()}
+        , _recipient_id{to_shared_string(n.recipient_id, shm),  shm.get_segment_manager()}
+        , _recipient_fullname{to_shared_string(n.recipient_fullname, shm),  shm.get_segment_manager()}
+        , _recipient_device_id{to_shared_string(n.recipient_device_id, shm),  shm.get_segment_manager()}
+        , _recipient_device_name{to_shared_string(n.recipient_device_name, shm),  shm.get_segment_manager()}
+        , _network_id{to_shared_string(n.network_id, shm),  shm.get_segment_manager()}
+        , _message{to_shared_string(n.message, shm),  shm.get_segment_manager()}
+        , _first_filename{to_shared_string(n.first_filename, shm),  shm.get_segment_manager()}
+        , _files_count{n.files_count}
+        , _total_size{n.total_size}
+        , _is_directory{n.is_directory}
+        , _status{n.status}
+      {
+      }
+
+      explicit
+      operator Transaction() const
+      {
+        Transaction n;
+
+        n.transaction_id        = to_string(this->_transaction_id);
+        n.sender_id             = to_string(this->_sender_id);
+        n.sender_fullname       = to_string(this->_sender_fullname);
+        n.sender_device_id      = to_string(this->_sender_device_id);
+        n.recipient_id          = to_string(this->_recipient_id);
+        n.recipient_fullname    = to_string(this->_recipient_fullname);
+        n.recipient_device_id   = to_string(this->_recipient_device_id);
+        n.recipient_device_name = to_string(this->_recipient_device_name);
+        n.network_id            = to_string(this->_network_id);
+        n.message               = to_string(this->_message);
+        n.first_filename        = to_string(this->_first_filename);
+
+        n.files_count           = this->_files_count;
+        n.total_size            = this->_total_size;
+        n.is_directory          = this->_is_directory;
+        n.status                = this->_status;
+        return n;
+      }
+
+      SharedTransaction &
+      operator = (Transaction const &n)
+        {
+          auto allocator = this->_transaction_id.get_allocator();
+
+          _transaction_id         = to_shared_string(n.transaction_id, allocator);
+          _sender_id              = to_shared_string(n.sender_id, allocator);
+          _sender_fullname        = to_shared_string(n.sender_fullname, allocator);
+          _sender_device_id       = to_shared_string(n.sender_device_id, allocator);
+          _recipient_id           = to_shared_string(n.recipient_id, allocator);
+          _recipient_fullname     = to_shared_string(n.recipient_fullname, allocator);
+          _recipient_device_id    = to_shared_string(n.recipient_device_id, allocator);
+          _recipient_device_name  = to_shared_string(n.recipient_device_name, allocator);
+          _network_id             = to_shared_string(n.network_id, allocator);
+          _message                = to_shared_string(n.message, allocator);
+          _first_filename         = to_shared_string(n.first_filename, allocator);
+
+          _files_count            = n.files_count;
+          _total_size             = n.total_size;
+          _is_directory           = n.is_directory;
+          _status                 = n.status;
+
+          return *this;
+        }
+
+      ipc::interprocess_sharable_mutex mutable    _mutex;
+
+    public:
+      shared_string   _transaction_id;
+      shared_string   _sender_id;
+      shared_string   _sender_fullname;
+      shared_string   _sender_device_id;
+      shared_string   _recipient_id;
+      shared_string   _recipient_fullname;
+      shared_string   _recipient_device_id;
+      shared_string   _recipient_device_name;
+      shared_string   _network_id;
+      shared_string   _message;
+      shared_string   _first_filename;
+      int             _files_count;
+      int             _total_size;
+      int             _is_directory;
+      int             _status;
+    };
+    // }}}
+
     // {{{ SharedStates
     struct SharedStates
     {
@@ -413,7 +512,7 @@ namespace gap {
             , _device_mutex{}
             , _device_id{shm.get_segment_manager()}
             , _device_name{shm.get_segment_manager()}
-            , _tropho{this->_refcnt, shm}
+            //, _tropho{this->_refcnt, shm}
                         
         {
         }
@@ -528,26 +627,27 @@ namespace gap {
         }
 
         //Other info
-        ipc::interprocess_sharable_mutex mutable    _mutex;
-        shared_string                               _output_dir;
-        unsigned int                                _refcnt;
+        ipc::interprocess_sharable_mutex mutable        _mutex;
+        shared_string                                   _output_dir;
+        unsigned int                                    _refcnt;
 
         // User info
-        ipc::interprocess_sharable_mutex mutable    _user_mutex;
-        SharedUser                                  _me;
+        ipc::interprocess_sharable_mutex mutable        _user_mutex;
+        SharedUser                                      _me;
 
         // Network info
-        ipc::interprocess_sharable_mutex mutable    _networks_mutex;
-        shared_map<shared_string, SharedNetworkPtr> _networks;
-        bool                                        _networks_dirty;
+        ipc::interprocess_sharable_mutex mutable        _networks_mutex;
+        shared_map<shared_string, SharedNetworkPtr>     _networks;
+        bool                                            _networks_dirty;
 
         // Device info
-        ipc::interprocess_sharable_mutex mutable    _device_mutex;
-        shared_string                               _device_id;
-        shared_string                               _device_name;
+        ipc::interprocess_sharable_mutex mutable        _device_mutex;
+        shared_string                                   _device_id;
+        shared_string                                   _device_name;
 
         // Notifications info
-        SharedTrophonius                            _tropho;
+        // Trophonius sharing is troublesome, so I'll make it later
+        // SharedTrophonius                             _tropho;
 
     };
     // }}}
@@ -585,6 +685,7 @@ namespace gap {
                    end(str));
         return move(tmp);
     }
+
     // }}}
 
 #undef SHARED

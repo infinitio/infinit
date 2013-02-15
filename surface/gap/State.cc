@@ -1,7 +1,3 @@
-#include "State.hh"
-#include "_detail/Process.hh"
-#include "MetricReporter.hh"
-
 #include <common/common.hh>
 
 #include <protocol/Serializer.hh>
@@ -16,6 +12,12 @@
 #include <elle/log/TextLogger.hh>
 #include <elle/os/path.hh>
 #include <elle/os/getenv.hh>
+
+#include "_detail/TransactionGroup.hh"
+#include "_detail/Process.hh"
+#include "MetricReporter.hh"
+#include "State.hh"
+
 
 // XXX[WTF?]
 //#include <elle/serialize/HexadecimalArchive.hh>
@@ -62,6 +64,7 @@ namespace surface
       , _shm{nullptr}
       , _users{}
       , _swaggers_dirty{true}
+      , _transactions{nullptr}
       , _files_infos{}
       , _infinit_instance_manager{}
     {
@@ -128,7 +131,7 @@ namespace surface
     State::~State()
     {
       ELLE_WARN("Destroying state.");
-      //this->logout();
+      this->logout();
       boost::interprocess::shared_memory_object::remove(this->_shm_name.c_str());
     }
 
