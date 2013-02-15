@@ -1,6 +1,13 @@
+#include <elle/io/Path.hh>
+#include <elle/io/Piece.hh>
+#include <elle/system/system.hh>
+
+#include <common/common.hh>
+
+#include <hole/Authority.hh>
+#include <hole/Passport.hh>
+
 #include <lune/Lune.hh>
-#include <elle/Authority.hh>
-#include <elle/Passport.hh>
 #include <lune/Configuration.hh>
 #include <lune/Identity.hh>
 #include <lune/Dictionary.hh>
@@ -10,12 +17,6 @@
 
 #include <nucleus/proton/History.hh>
 #include <nucleus/proton/Block.hh>
-
-#include <elle/io/Path.hh>
-#include <elle/io/Piece.hh>
-#include <elle/system/system.hh>
-
-#include <common/common.hh>
 
 #include <Infinit.hh>
 

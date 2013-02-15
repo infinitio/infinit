@@ -1,4 +1,3 @@
-#include <elle/Authority.hh>
 #include <elle/log.hh>
 #include <elle/serialize/TupleSerializer.hxx>
 #include <elle/io/File.hh>
@@ -8,6 +7,8 @@
 #include <cryptography/KeyPair.hh>
 #include <cryptography/Code.hh>
 #include <cryptography/SecretKey.hh>
+
+#include <hole/Authority.hh>
 
 ELLE_LOG_COMPONENT("infinit.lune.Authority")
 

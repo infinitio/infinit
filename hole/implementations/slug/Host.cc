@@ -5,7 +5,7 @@
 
 #include <reactor/network/exception.hh>
 
-#include <elle/Passport.hh>
+#include <hole/Passport.hh>
 
 #include <nucleus/Derivable.hh>
 #include <nucleus/neutron/Access.hh>

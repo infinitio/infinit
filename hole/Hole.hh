@@ -8,7 +8,7 @@
 
 # include <nucleus/proton/fwd.hh>
 
-# include <elle/Passport.hh>
+# include <hole/Passport.hh>
 
 # include <hole/fwd.hh>
 # include <hole/storage/Storage.hh>

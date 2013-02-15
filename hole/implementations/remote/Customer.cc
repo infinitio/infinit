@@ -1,7 +1,7 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 
-#include <elle/Passport.hh>
+#include <hole/Passport.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Revision.hh>

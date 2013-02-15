@@ -47,7 +47,6 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
 
   # Elle
   cxx_config.add_local_include_path('elle/reactor/src') # FIXME: circular dependency with reactor
-  cxx_config.add_local_include_path('cryptography/sources') # FIXME: circular dependency with crypto
   elle = drake.include('elle', cxx_toolkit, cxx_config)
   elle_lib = drake.copy(elle.lib_dynamic, 'lib', 'elle/lib')
   cxx_config += elle.config
@@ -61,6 +60,7 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   # Cryptography
   cryptography = drake.include('cryptography', cxx_toolkit, openssl.config(), reactor.config, elle.config, boost = boost)
   cryptography_lib = drake.copy(cryptography.lib_dynamic, 'lib', 'cryptography/lib')
+  cxx_config += cryptography.config
 
   # Qt
   qt = qt or drake.cxx.qt.Qt()
@@ -383,6 +383,12 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
 
   # Hole
   hole_sources = drake.nodes(
+    'hole/Authority.cc',
+    'hole/Authority.hh',
+    'hole/Authority.hxx',
+    'hole/Passport.cc',
+    'hole/Passport.hh',
+    'hole/Passport.hxx',
     'hole/Hole.cc',
     'hole/Hole.hh',
     'hole/Label.cc',

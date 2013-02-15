@@ -1,14 +1,13 @@
 #include <memory>
 
-#include <elle/Authority.hh>
-#include <elle/Passport.hh>
-
 #include <lune/Descriptor.hh>
 #include <lune/Set.hh>
 
 #include <hole/implementations/local/Implementation.hh>
 #include <hole/implementations/remote/Implementation.hh>
 #include <hole/implementations/slug/Implementation.hh>
+#include <hole/Authority.hh>
+#include <hole/Passport.hh>
 
 #include <HoleFactory.hh>
 #include <Infinit.hh>

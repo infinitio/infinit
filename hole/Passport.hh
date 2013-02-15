@@ -2,12 +2,13 @@
 # define ELLE_PASSPORT_HH
 
 # include <elle/attribute.hh>
-# include <elle/Authority.hh>
 # include <elle/concept/Fileable.hh>
 # include <elle/concept/Uniquable.hh>
 # include <elle/serialize/construct.hh>
 
 # include <cryptography/Signature.hh>
+
+# include <hole/Authority.hh>
 
 // XXX[temporary: for cryptography]
 using namespace infinit;
@@ -58,6 +59,6 @@ namespace elle
 
 }
 
-# include <elle/Passport.hxx>
+# include <hole/Passport.hxx>
 
 #endif

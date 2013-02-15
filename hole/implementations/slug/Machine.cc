@@ -1,29 +1,27 @@
-#include <reactor/network/exception.hh>
-#include <reactor/network/udt-server.hh>
-
-// FIXME
-#include <common/common.hh>
-#include <elle/io/Piece.hh>
-#include <lune/Lune.hh>
-#include <lune/Descriptor.hh>
-#include <plasma/meta/Client.hh>
-
 #include <elle/cast.hh>
 #include <elle/Exception.hh>
+#include <elle/io/Piece.hh>
 #include <elle/log.hh>
 #include <elle/network/Interface.hh>
 #include <elle/utility/Time.hh>
 #include <elle/utility/Duration.hh>
 
+#include <reactor/network/exception.hh>
+#include <reactor/network/udt-server.hh>
+
 #include <agent/Agent.hh>
 
+#include <common/common.hh>
+
 #include <hole/Hole.hh>
+#include <hole/Passport.hh>
 #include <hole/implementations/slug/Host.hh>
 #include <hole/implementations/slug/Implementation.hh>
 #include <hole/implementations/slug/Machine.hh>
 #include <hole/implementations/slug/Manifest.hh>
 
-#include <elle/Passport.hh>
+#include <lune/Descriptor.hh>
+#include <lune/Lune.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>
@@ -33,6 +31,8 @@
 #include <nucleus/neutron/Object.hh>
 #include <nucleus/neutron/Access.hh>
 #include <nucleus/Derivable.hh>
+
+#include <plasma/meta/Client.hh>
 
 #include <Infinit.hh>
 

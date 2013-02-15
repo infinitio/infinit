@@ -89,6 +89,6 @@ namespace elle
 
 }
 
-#include <elle/Authority.hxx>
+#include <hole/Authority.hxx>
 
 #endif

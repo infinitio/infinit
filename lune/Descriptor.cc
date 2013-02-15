@@ -1,23 +1,24 @@
 #include <Infinit.hh>
 
-#include <lune/Descriptor.hh>
-#include <lune/Lune.hh>
-#include <lune/Identity.hh>
-#include <elle/Authority.hh>
-
-#include <common/common.hh>
-
 #include <elle/io/File.hh>
 #include <elle/io/Piece.hh>
 #include <elle/concurrency/Scheduler.hh>
-#include <cryptography/PrivateKey.hh>
 #include <elle/os/path.hh>
 #include <elle/log.hh>
 
+#include <common/common.hh>
+
+#include <cryptography/PrivateKey.hh>
+
+#include <hole/Authority.hh>
+#include <hole/Openness.hh>
+
+#include <lune/Descriptor.hh>
+#include <lune/Lune.hh>
+#include <lune/Identity.hh>
+
 #include <nucleus/proton/Address.hh>
 #include <nucleus/neutron/Subject.hh>
-
-#include <hole/Openness.hh>
 
 namespace lune
 {

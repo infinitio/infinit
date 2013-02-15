@@ -1,17 +1,20 @@
 #ifndef NUCLEUS_PROTON_HH
 # define NUCLEUS_PROTON_HH
 
-# include <elle/Authority.hh>
 # include <elle/types.hh>
 # include <elle/operator.hh>
 # include <elle/Printable.hh>
 
 # include <cryptography/fwd.hh>
 # include <cryptography/Signature.hh>
+
+# include <hole/Authority.hh>
+
+# include <nucleus/proton/Location.hh>
+
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-# include <nucleus/proton/Location.hh>
 
 namespace nucleus
 {

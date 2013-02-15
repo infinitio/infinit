@@ -1,9 +1,10 @@
 #include <elle/io/File.hh>
 #include <elle/serialize/TupleSerializer.hxx>
-#include <elle/Passport.hh>
-#include <elle/Authority.hh>
 
 #include <cryptography/PrivateKey.hh>
+
+#include <hole/Passport.hh>
+#include <hole/Authority.hh>
 
 namespace elle
 {

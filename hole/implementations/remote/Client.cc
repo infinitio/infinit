@@ -4,15 +4,14 @@
 #include <elle/log.hh>
 #include <elle/network/Locus.hh>
 
-#include <elle/Passport.hh>
+#include <hole/Hole.hh>
+#include <hole/Passport.hh>
 
 #include <nucleus/Derivable.hh>
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Revision.hh>
 #include <nucleus/proton/ImmutableBlock.hh>
 #include <nucleus/proton/MutableBlock.hh>
-
-#include <hole/Hole.hh>
 
 #include <Infinit.hh>
 

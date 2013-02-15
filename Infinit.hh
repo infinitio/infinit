@@ -5,7 +5,7 @@
 #include <elle/types.hh>
 #include <elle/utility/fwd.hh>
 
-#include <elle/Authority.hh>
+#include <hole/Authority.hh>
 #include <lune/Configuration.hh>
 
 class Infinit
