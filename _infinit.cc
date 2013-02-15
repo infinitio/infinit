@@ -320,7 +320,7 @@ Main(elle::Natural32 argc, elle::Character* argv[])
         std::cerr << re->backtrace() << std::endl;
 
       elle::crash::report(common::meta::host(), common::meta::port(),
-                          "8infinit", e.what(), reactor::Backtrace::current());
+                          "8infinit", e.what(), elle::Backtrace::current());
       elle::concurrency::scheduler().terminate();
       return elle::Status::Error;
     }

@@ -4,10 +4,10 @@
 # include <type_traits>
 
 # include <elle/concurrency/Scheduler.hh>
+# include <elle/Backtrace.hh>
 # include <elle/log.hh>
 # include <elle/printf.hh>
 
-# include <reactor/backtrace.hh>
 # include <reactor/exception.hh>
 # include <reactor/network/exception.hh>
 
@@ -186,10 +186,10 @@ namespace infinit
                              _owner, error);
             uint16_t bt_size;
             input >> bt_size;
-            reactor::Backtrace bt;
+            elle::Backtrace bt;
             for (int i = 0; i < bt_size; ++i)
               {
-                reactor::StackFrame frame;
+                elle::StackFrame frame;
                 input >> frame.symbol;
                 input >> frame.symbol_mangled;
                 input >> frame.symbol_demangled;
