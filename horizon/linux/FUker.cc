@@ -86,7 +86,7 @@ namespace horizon
                      BOOST_PP_STRINGIZE(Name), res);                    \
           return res;                                                   \
         }                                                               \
-      catch (reactor::Exception const& e)                               \
+      catch (elle::Exception const& e)                               \
         {                                                               \
           ELLE_ERR("%s killed by exception: %s",                        \
                    BOOST_PP_STRINGIZE(Name), e);                        \
@@ -273,7 +273,7 @@ namespace horizon
                            nullptr,
                            &FUker::Setup,
                            nullptr) != 0)
-        throw reactor::Exception("unable to create the FUSE-specific thread");
+        throw elle::Exception("unable to create the FUSE-specific thread");
     }
 
     ///

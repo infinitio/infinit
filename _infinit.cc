@@ -56,14 +56,14 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   if (elle::concurrency::Program::Setup
       ("Infinit", common::meta::host(), common::meta::port())
       == elle::Status::Error)
-    throw reactor::Exception("unable to set up the program");
+    throw elle::Exception("unable to set up the program");
 
   // allocate a new parser.
   Infinit::Parser = new elle::utility::Parser(argc, argv);
 
   // specify a program description.
   if (Infinit::Parser->Description(Infinit::Copyright) == elle::Status::Error)
-    throw reactor::Exception("unable to set the description");
+    throw elle::Exception("unable to set the description");
 
   // register the options.
   if (Infinit::Parser->Register(
@@ -72,7 +72,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
         "help",
         "display the help",
         elle::utility::Parser::KindNone) == elle::Status::Error)
-    throw reactor::Exception("unable to register the option");
+    throw elle::Exception("unable to register the option");
 
   // register the option.
   if (Infinit::Parser->Register(
@@ -81,7 +81,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
         "user",
         "specifies the name of the user",
         elle::utility::Parser::KindRequired) == elle::Status::Error)
-    throw reactor::Exception("unable to register the option");
+    throw elle::Exception("unable to register the option");
 
   // register the option.
   if (Infinit::Parser->Register(
@@ -90,7 +90,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
         "network",
         "specifies the name of the network",
         elle::utility::Parser::KindRequired) == elle::Status::Error)
-    throw reactor::Exception("unable to register the option");
+    throw elle::Exception("unable to register the option");
 
   // register the option.
   if (Infinit::Parser->Register(
@@ -99,11 +99,11 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
         "mountpoint",
         "specifies the mount point",
         elle::utility::Parser::KindRequired) == elle::Status::Error)
-    throw reactor::Exception("unable to register the option");
+    throw elle::Exception("unable to register the option");
 
   // parse.
   if (Infinit::Parser->Parse() == elle::Status::Error)
-    throw reactor::Exception("unable to parse the command line");
+    throw elle::Exception("unable to parse the command line");
 
   // test the option.
   if (Infinit::Parser->Test("Help") == true)
@@ -122,7 +122,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
       // display the usage.
       Infinit::Parser->Usage();
 
-      throw reactor::Exception("unable to retrieve the user name");
+      throw elle::Exception("unable to retrieve the user name");
     }
 
   // retrieve the network name.
@@ -132,7 +132,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
       // display the usage.
       Infinit::Parser->Usage();
 
-      throw reactor::Exception("unable to retrieve the network name");
+      throw elle::Exception("unable to retrieve the network name");
     }
 
   // Retrieve the mount point.
@@ -140,7 +140,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
     {
       if (Infinit::Parser->Value("Mountpoint",
                                  Infinit::Mountpoint) == elle::Status::Error)
-        throw reactor::Exception("unable to retrieve the mountpoint");
+        throw elle::Exception("unable to retrieve the mountpoint");
     }
   else
     {
@@ -150,15 +150,15 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
 
   // initialize the Lune library.
   if (lune::Lune::Initialize() == elle::Status::Error)
-    throw reactor::Exception("unable to initialize Lune");
+    throw elle::Exception("unable to initialize Lune");
 
   // initialize Infinit.
   if (Infinit::Initialize() == elle::Status::Error)
-    throw reactor::Exception("unable to initialize Infinit");
+    throw elle::Exception("unable to initialize Infinit");
 
   // initialize the Agent library.
   if (agent::Agent::Initialize() == elle::Status::Error)
-    throw reactor::Exception("unable to initialize Agent");
+    throw elle::Exception("unable to initialize Agent");
 
   // // Create the NAT Manipulation class
   // elle::nat::NAT NAT(elle::concurrency::scheduler());
@@ -254,15 +254,15 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
 
   // initialize the Etoile library.
   if (etoile::Etoile::Initialize() == elle::Status::Error)
-    throw reactor::Exception("unable to initialize Etoile");
+    throw elle::Exception("unable to initialize Etoile");
 
   // initialize the horizon.
   if (!Infinit::Mountpoint.empty())
 #ifdef INFINIT_HORIZON
     if (horizon::Horizon::Initialize() == elle::Status::Error)
-      throw reactor::Exception("unable to initialize the horizon");
+      throw elle::Exception("unable to initialize the horizon");
 #else
-  throw reactor::Exception("horizon was disabled at compilation time "
+  throw elle::Exception("horizon was disabled at compilation time "
                            "but a mountpoint was given on the command line");
 #endif
 
@@ -277,27 +277,27 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   // clean the horizon.
   if (!Infinit::Mountpoint.empty())
     if (horizon::Horizon::Clean() == elle::Status::Error)
-      throw reactor::Exception("unable to clean the horizon");
+      throw elle::Exception("unable to clean the horizon");
 #endif
 
   // clean the Etoile library.
   if (etoile::Etoile::Clean() == elle::Status::Error)
-    throw reactor::Exception("unable to clean Etoile");
+    throw elle::Exception("unable to clean Etoile");
 
   // clean the Agent library.
   if (agent::Agent::Clean() == elle::Status::Error)
-    throw reactor::Exception("unable to clean Agent");
+    throw elle::Exception("unable to clean Agent");
 
   hole->leave();
   delete hole.release();
 
   // clean Infinit.
   if (Infinit::Clean() == elle::Status::Error)
-    throw reactor::Exception("unable to clean Infinit");
+    throw elle::Exception("unable to clean Infinit");
 
   // clean Lune
   if (lune::Lune::Clean() == elle::Status::Error)
-    throw reactor::Exception("unable to clean Lune");
+    throw elle::Exception("unable to clean Lune");
 }
 
 elle::Status

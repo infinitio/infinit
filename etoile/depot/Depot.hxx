@@ -23,7 +23,7 @@ namespace etoile
       // a block of type Group, the block's address must embed
       // a component 'group'.
       if (address.component() != T::Constants::component)
-        throw reactor::Exception
+        throw elle::Exception
           (elle::sprintf("the address' component '%s' does not "
                          "match the type's '%s'",
                          address.component(), T::Constants::component));
@@ -43,7 +43,7 @@ namespace etoile
       std::unique_ptr<T> _block(dynamic_cast<T*>(block.release()));
 
       if (_block.get() == nullptr)
-        throw reactor::Exception
+        throw elle::Exception
           ("the retrieved block type does not match the requested one");
 
       return (_block);

@@ -8,7 +8,6 @@
 # include <elle/log.hh>
 # include <elle/printf.hh>
 
-# include <reactor/exception.hh>
 # include <reactor/network/exception.hh>
 
 # include <protocol/Channel.hh>
@@ -199,7 +198,7 @@ namespace infinit
               }
             elle::Exception* inner =
               new elle::Exception(bt, error);
-            elle::Exception e
+            reactor::network::Exception e
               (elle::sprintf("remote procedure '%s' failed", this->_name));
             e.inner_exception(inner);
             throw e;
