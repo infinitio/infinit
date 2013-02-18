@@ -278,8 +278,9 @@ namespace nucleus
 
           // Compare this address with the one recorded as reference.
           if (this->_root->address() != address)
-            throw Exception("invalid address: root(%s) versus bind(%s)",
-                            this->_root->address(), address);
+            throw Exception
+              (elle::sprintf("invalid address: root(%s) versus bind(%s)",
+                             this->_root->address(), address));
         }
 
       // Check the capacity.
@@ -288,8 +289,9 @@ namespace nucleus
           ELLE_TRACE_SCOPE("checking capacities");
 
           if (this->_capacity != root().capacity())
-            throw Exception("invalid capacity: this(%s) versus root(%s)",
-                            this->_capacity, root().capacity());
+            throw Exception
+              (elle::sprintf("invalid capacity: this(%s) versus root(%s)",
+                             this->_capacity, root().capacity()));
         }
 
       // Check the footprint.
@@ -301,15 +303,17 @@ namespace nucleus
             throw Exception("the footprint is null");
 
           if (root().footprint() != elle::serialize::footprint(root()))
-            throw Exception("the recorded footprint does not match the "
-                            "instance's: root(%s) versus footprint(%s)",
-                            root().footprint(),
-                            elle::serialize::footprint(root()));
+            throw Exception
+              (elle::sprintf("the recorded footprint does not match the "
+                             "instance's: root(%s) versus footprint(%s)",
+                             root().footprint(),
+                             elle::serialize::footprint(root())));
 
           if (root().footprint() > this->_nest.limits().extent())
-            throw Exception("the footprint '%s' exceeds the extent '%s'",
-                            root().footprint(),
-                            this->_nest.limits().extent());
+            throw Exception
+              (elle::sprintf("the footprint '%s' exceeds the extent '%s'",
+                             root().footprint(),
+                             this->_nest.limits().extent()));
         }
 
       // Check the state.
@@ -318,8 +322,9 @@ namespace nucleus
           ELLE_TRACE_SCOPE("checking states");
 
           if (this->_state != root().state())
-            throw Exception("invalid state: this(%s) versus root(%s)",
-                            this->_state, root().state());
+            throw Exception
+              (elle::sprintf("invalid state: this(%s) versus root(%s)",
+                             this->_state, root().state()));
         }
 
       root.unload();
@@ -421,8 +426,8 @@ namespace nucleus
         case State::consistent:
           throw Exception("unable to seal a consistent porcupine");
         default:
-          throw Exception("unknown state: '%s'",
-                          static_cast<int>(this->_state));
+          throw Exception(elle::sprintf("unknown state: '%s'",
+                                        static_cast<int>(this->_state)));
         }
     }
 

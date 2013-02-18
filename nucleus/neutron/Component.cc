@@ -39,7 +39,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown component: '%s'", component);
+            throw Exception(elle::sprintf("unknown component: '%s'",
+                                          component));
           }
         }
 

@@ -126,8 +126,9 @@ namespace etoile
                       break;
                     }
                   default:
-                    throw elle::Exception("unknown block state '%s'",
-                                          pod->egg()->block()->state());
+                    throw elle::Exception
+                      (elle::sprintf("unknown block state '%s'",
+                                     pod->egg()->block()->state()));
                   }
 
                 break;
@@ -156,14 +157,15 @@ namespace etoile
                       break;
                     }
                   default:
-                    throw elle::Exception("unknown egg type '%s'",
-                                          pod->egg()->type());
+                    throw elle::Exception(elle::sprintf("unknown egg type '%s'",
+                                                        pod->egg()->type()));
                   }
 
                 break;
               }
             default:
-              throw elle::Exception("unknown pod state '%s'", pod->state());
+              throw elle::Exception(elle::sprintf("unknown pod state '%s'",
+                                                  pod->state()));
             }
         }
 
@@ -206,8 +208,9 @@ namespace etoile
       auto scoutor = this->_pods.find(egg.get());
 
       if (scoutor == this->_pods.end())
-        throw elle::Exception("unable to locate the pod associated with the "
-                              "given egg '%s'", *egg);
+        throw elle::Exception(elle::sprintf("unable to locate the pod "
+                                            "associated with the "
+                                            "given egg '%s'", *egg));
 
       auto pod = scoutor->second;
 
@@ -220,8 +223,9 @@ namespace etoile
       auto scoutor = this->_addresses.find(address);
 
       if (scoutor == this->_addresses.end())
-        throw elle::Exception("unable to locate the pod associated with the "
-                              "given address '%s'", address);
+        throw elle::Exception(elle::sprintf("unable to locate the pod "
+                                            "associated with the "
+                                            "given address '%s'", address));
 
       auto pod = scoutor->second;
 
@@ -455,7 +459,8 @@ namespace etoile
             break;
           }
         default:
-          throw elle::Exception("unknown handle state '%s'", handle.state());
+          throw elle::Exception(elle::sprintf("unknown handle state '%s'",
+                                              handle.state()));
         }
 
       // Try to optimize the nest.
@@ -534,7 +539,8 @@ namespace etoile
             break;
           }
         default:
-          throw elle::Exception("unknown handle state '%s'", handle.state());
+          throw elle::Exception(elle::sprintf("unknown handle state '%s'",
+                                              handle.state()));
         }
 
       // Lock the egg so as to make sure nobody else unloads it on the storage
@@ -556,8 +562,9 @@ namespace etoile
       switch (handle.state())
         {
         case nucleus::proton::Handle::State::unnested:
-          throw elle::Exception("unable to unload an unested --- i.e "
-                                "non-loaded --- handle '%s'", handle);
+          throw elle::Exception(elle::sprintf("unable to unload an unested --- "
+                                              "i.e non-loaded --- handle '%s'",
+                                              handle));
         case nucleus::proton::Handle::State::nested:
           {
             // Unlock the egg.
@@ -572,7 +579,8 @@ namespace etoile
             break;
           }
         default:
-          throw elle::Exception("unknown handle state '%s'", handle.state());
+          throw elle::Exception(elle::sprintf("unknown handle state '%s'",
+                                              handle.state()));
         }
 
       // Try to optimize the nest.

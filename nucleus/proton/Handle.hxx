@@ -42,7 +42,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(nucleus::proton::Handle,
         break;
       }
     default:
-      throw Exception("unknown state '%s'", value._state);
+      throw Exception(elle::sprintf("unknown state '%s'", value._state));
     }
 }
 

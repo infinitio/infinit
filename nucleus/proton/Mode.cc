@@ -1,3 +1,5 @@
+#include <elle/printf.hh>
+
 #include <nucleus/proton/Mode.hh>
 #include <nucleus/Exception.hh>
 
@@ -27,7 +29,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown mode: '%s'", static_cast<int>(mode));
+            throw Exception(elle::sprintf("unknown mode: '%s'",
+                                          static_cast<int>(mode)));
           }
         }
 

@@ -63,8 +63,8 @@ namespace nucleus
 
       // check if this key has already been recorded.
       if (this->_container.find(inlet->key()) != this->_container.end())
-        throw Exception("this key '%s' seems to have already been recorded",
-                        inlet->key());
+        throw Exception(elle::sprintf("this key '%s' seems to have already been recorded",
+                                      inlet->key()));
 
       // insert the inlet in the container.
       result = this->_container.insert(
@@ -218,8 +218,8 @@ namespace nucleus
             return (scoutor);
         }
 
-      throw Exception("unable to look up the entry responsible for "
-                      "the given key: '%s'", k);
+      throw Exception(elle::sprintf("unable to look up the entry responsible for "
+                                    "the given key: '%s'", k));
     }
 
     template <typename T>
@@ -241,8 +241,8 @@ namespace nucleus
             return (iterator);
         }
 
-      throw Exception("unable to look up the entry responsible "
-                      "for the given key: '%s'", k);
+      throw Exception(elle::sprintf("unable to look up the entry responsible "
+                                    "for the given key: '%s'", k));
     }
 
     template <typename T>
@@ -271,7 +271,7 @@ namespace nucleus
 
       // locate the given key.
       if ((scoutor = this->_container.find(k)) == this->_container.end())
-        throw Exception("unable to locate the given key: '%s'", k);
+        throw Exception(elle::sprintf("unable to locate the given key: '%s'", k));
 
       return (scoutor);
     }
@@ -284,7 +284,7 @@ namespace nucleus
 
       // locate the given key.
       if ((iterator = this->_container.find(k)) == this->_container.end())
-        throw Exception("unable to locate the given key: '%s'", k);
+        throw Exception(elle::sprintf("unable to locate the given key: '%s'", k));
 
       return (iterator);
     }
@@ -781,8 +781,8 @@ namespace nucleus
 
               // compare the addresses.
               if (inlet->value().address() != address)
-                throw Exception("invalid address: inlet(%s) versus bind(%s)",
-                                inlet->value().address(), address);
+                throw Exception(elle::sprintf("invalid address: inlet(%s) versus bind(%s)",
+                                              inlet->value().address(), address));
             }
 
           // check the keys, if required.
@@ -792,14 +792,14 @@ namespace nucleus
 
               // check the key.
               if (inlet->key() != scoutor->first)
-                throw Exception("invalid key: inlet(%s) versus container(%s)",
-                                inlet->key(), scoutor->first);
+                throw Exception(elle::sprintf("invalid key: inlet(%s) versus container(%s)",
+                                              inlet->key(), scoutor->first));
 
               // compare the mayor key with the inlet's reference.
               if (inlet->key() != current().mayor())
-                throw Exception("the current nodule's mayor key differs from"
-                                "its reference: inlet(%s) versus nodule(%s)",
-                                inlet->key(), current().mayor());
+                throw Exception(elle::sprintf("the current nodule's mayor key differs from"
+                                              "its reference: inlet(%s) versus nodule(%s)",
+                                              inlet->key(), current().mayor()));
             }
 
           // trigger the check on the current nodule.
@@ -812,9 +812,9 @@ namespace nucleus
               ELLE_TRACE_SCOPE("checking capacities");
 
               if (inlet->capacity() != current().capacity())
-                throw Exception("invalid inlet capacity: inlet(%s) "
-                                "versus nodule(%s)",
-                                inlet->capacity(), current().capacity());
+                throw Exception(elle::sprintf("invalid inlet capacity: inlet(%s) "
+                                              "versus nodule(%s)",
+                                              inlet->capacity(), current().capacity()));
 
               capacity += inlet->capacity();
             }
@@ -829,15 +829,15 @@ namespace nucleus
 
               if (current().footprint() !=
                   elle::serialize::footprint(current()))
-                throw Exception("the recorded footprint does not match the "
-                                "instance's: nodule(%s) versus footprint(%s)",
-                                current().footprint(),
-                                elle::serialize::footprint(current()));
+                throw Exception(elle::sprintf("the recorded footprint does not match the "
+                                              "instance's: nodule(%s) versus footprint(%s)",
+                                              current().footprint(),
+                                              elle::serialize::footprint(current())));
 
               if (current().footprint() > this->nest().limits().extent())
-                throw Exception("the footprint '%s' exceeds the extent '%s",
-                                current().footprint(),
-                                this->nest().limits().extent());
+                throw Exception(elle::sprintf("the footprint '%s' exceeds the extent '%s",
+                                              current().footprint(),
+                                              this->nest().limits().extent()));
             }
 
           // check the state.
@@ -846,16 +846,16 @@ namespace nucleus
               ELLE_TRACE_SCOPE("checking states");
 
               if (inlet->state() != current().state())
-                throw Exception("invalid state: inlet(%s) versus nodule(%s)",
-                                inlet->state(), current().state());
+                throw Exception(elle::sprintf("invalid state: inlet(%s) versus nodule(%s)",
+                                              inlet->state(), current().state()));
 
               switch (this->state())
                 {
                 case State::clean:
                   {
                     if (inlet->state() != State::clean)
-                      throw Exception("the inlet's state '%s' should "
-                                      "be clean", inlet->state());
+                      throw Exception(elle::sprintf("the inlet's state '%s' should "
+                                                    "be clean", inlet->state()));
 
                     break;
                   }
@@ -870,9 +870,9 @@ namespace nucleus
                   {
                     if ((inlet->state() != State::clean) &&
                         (inlet->state() != State::consistent))
-                      throw Exception("the inlet's state '%s' should "
-                                      "be either clean or consistent",
-                                      inlet->state());
+                      throw Exception(elle::sprintf("the inlet's state '%s' should "
+                                                    "be either clean or consistent",
+                                                    inlet->state()));
 
                     break;
                   }
@@ -889,8 +889,8 @@ namespace nucleus
           ELLE_TRACE_SCOPE("checking capacities");
 
           if (this->capacity() != capacity)
-            throw Exception("invalid capacity: this(%s) versus inlets(%s)",
-                            this->capacity(), capacity);
+            throw Exception(elle::sprintf("invalid capacity: this(%s) versus inlets(%s)",
+                                          this->capacity(), capacity));
         }
 
       // Should the quill be dirty, verify that at least on of its
@@ -964,8 +964,8 @@ namespace nucleus
               {
                 ELLE_TRACE_SCOPE("State::consistent");
 
-                throw Exception("unexpected state '%s'",
-                                current().state());
+                throw Exception(elle::sprintf("unexpected state '%s'",
+                                              current().state()));
               }
             }
 
@@ -1201,8 +1201,8 @@ ELLE_SERIALIZE_SPLIT_T1_LOAD(nucleus::proton::Seam,
                 elle::Boolean> result;
 
       if (value._container.find(inlet->key()) != value._container.end())
-        throw nucleus::Exception("this key '%s' seems to have already "
-                                 "been recorded", inlet->key());
+        throw nucleus::Exception(elle::sprintf("this key '%s' seems to have already "
+                                               "been recorded", inlet->key()));
 
       result =
         value._container.insert(

@@ -340,7 +340,7 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown subject '%s'", this->_type);
+            throw Exception(elle::sprintf("unknown subject '%s'", this->_type));
           }
         }
     }

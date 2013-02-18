@@ -2,6 +2,7 @@
 # define NUCLEUS_NEUTRON_RANGE_HXX
 
 # include <elle/io/Dumpable.hh>
+# include <elle/printf.hh>
 
 # include <nucleus/neutron/Size.hh>
 # include <nucleus/Exception.hh>
@@ -29,8 +30,8 @@ namespace nucleus
     {
       // Check if another item exists with this symbol.
       if (this->exist(item->symbol()) == true)
-        throw Exception("an item with the symbol '%s' already exist",
-                        item->symbol());
+        throw Exception(elle::sprintf("an item with the symbol '%s' already exist",
+                                      item->symbol()));
 
       // Insert the item to the container.
       this->_container.push_back(item);

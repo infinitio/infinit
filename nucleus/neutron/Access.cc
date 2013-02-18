@@ -299,7 +299,8 @@ namespace nucleus
           index++;
         }
 
-      throw Exception("unable to locate the given subject '%s'", subject);
+      throw Exception(elle::sprintf("unable to locate the given subject '%s'",
+                                    subject));
     }
 
     Record const&
@@ -317,8 +318,8 @@ namespace nucleus
             return (*record);
         }
 
-      throw Exception("unable to locate the record at the given index '%s'",
-                      index);
+      throw Exception(elle::sprintf("unable to locate the record at the given index '%s'",
+                                    index));
     }
 
     Range<Record>
@@ -393,8 +394,8 @@ namespace nucleus
 
       // Check that the record's subject does not already exist.
       if (this->_container.find(record->subject()) != this->_container.end())
-        throw Exception("the subject '%s' seems to already exist",
-                        record->subject());
+        throw Exception(elle::sprintf("the subject '%s' seems to already exist",
+                                      record->subject()));
 
       // Insert the record to the container.
       auto result =
@@ -417,7 +418,8 @@ namespace nucleus
       Scoutor scoutor;
 
       if ((scoutor = this->_container.find(subject)) == this->_container.end())
-        throw Exception("unable to locate the given subject: '%s'", subject);
+        throw Exception(elle::sprintf("unable to locate the given subject: '%s'",
+                                      subject));
 
       return (scoutor);
     }
@@ -428,7 +430,8 @@ namespace nucleus
       Iterator iterator;
 
       if ((iterator = this->_container.find(subject)) == this->_container.end())
-        throw Exception("unable to locate the given subject: '%s'", subject);
+        throw Exception(elle::sprintf("unable to locate the given subject: '%s'",
+                                      subject));
 
       return (iterator);
     }

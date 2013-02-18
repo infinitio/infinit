@@ -57,7 +57,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown location '%s'", this->_location);
+          throw Exception(elle::sprintf("unknown location '%s'", this->_location));
         }
     }
 
@@ -77,7 +77,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown location '%s'", this->_location);
+          throw Exception(elle::sprintf("unknown location '%s'", this->_location));
         }
     }
 
@@ -107,7 +107,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown location '%s'", this->_location);
+          throw Exception(elle::sprintf("unknown location '%s'", this->_location));
         }
     }
 
@@ -133,7 +133,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown location '%s'", this->_location);
+          throw Exception(elle::sprintf("unknown location '%s'", this->_location));
         }
     }
 
@@ -170,7 +170,7 @@ namespace nucleus
             return (this->_block->handle() == other._block->handle());
           }
         default:
-          throw Exception("unknown location '%s'", this->_location);
+          throw Exception(elle::sprintf("unknown location '%s'", this->_location));
         }
 
       elle::unreachable();
@@ -195,7 +195,7 @@ namespace nucleus
             return (this->_block->access());
           }
         default:
-          throw Exception("unknown location '%s'", this->_location);
+          throw Exception(elle::sprintf("unknown location '%s'", this->_location));
         }
 
       elle::unreachable();
@@ -220,7 +220,7 @@ namespace nucleus
             return (this->_block->access());
           }
         default:
-          throw Exception("unknown location '%s'", this->_location);
+          throw Exception(elle::sprintf("unknown location '%s'", this->_location));
         }
 
       elle::unreachable();
@@ -264,7 +264,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown location '%s'", this->_location);
+          throw Exception(elle::sprintf("unknown location '%s'", this->_location));
         }
 
       return elle::Status::Ok;
@@ -301,7 +301,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown location '%s'", this->_location);
+          throw Exception(elle::sprintf("unknown location '%s'", this->_location));
         }
 
       stream << ")";

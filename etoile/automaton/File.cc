@@ -482,8 +482,9 @@ namespace etoile
             break;
           }
         default:
-          throw elle::Exception("unknown strategy '%s'",
-                                context.contents_porcupine->strategy());
+          throw elle::Exception(elle::sprintf
+                                ("unknown strategy '%s'",
+                                 context.contents_porcupine->strategy()));
         }
 
       // update the object.
@@ -535,8 +536,8 @@ namespace etoile
 
       // check if the current user is the object owner.
       if (context.rights.role != nucleus::neutron::Object::RoleOwner)
-        throw elle::Exception("the user does not seem to have the permission to destroy "
-               "this file");
+        throw elle::Exception("the user does not seem to have the permission "
+                              "to destroy this file");
 
       // destroy the contents.
       if (Contents::Destroy(context) == elle::Status::Error)

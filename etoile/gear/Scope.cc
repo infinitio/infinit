@@ -793,8 +793,9 @@ namespace etoile
           }
         case OperationUnknown:
           {
-            throw elle::Exception("unable to process the closing operation '%u'\n",
-                   operation);
+            throw elle::Exception
+              (elle::sprintf("unable to process the closing operation '%u'\n",
+                             operation));
           }
         }
 
@@ -827,8 +828,8 @@ namespace etoile
         break;
       case OperationUnknown:
       default:
-        throw elle::Exception("unknown operation '%u'\n",
-                              this->context->operation);
+        throw elle::Exception(elle::sprintf("unknown operation '%u'\n",
+                                            this->context->operation));
       }
       return elle::Status::Ok;
     }
@@ -884,7 +885,8 @@ namespace etoile
             return this->_shutdown<gear::Group>();
           case NatureUnknown:
           default:
-            throw elle::Exception("unknown context nature '%u'", this->context->nature);
+            throw elle::Exception(elle::sprintf("unknown context nature '%u'",
+                                                this->context->nature));
           }
         }
       catch (std::exception const& err)
@@ -896,7 +898,8 @@ namespace etoile
                 throw elle::Exception("unable to relinquish the scope");
             }
           std::string what{err.what()};
-          throw elle::Exception("the shutdown process failed: %s", what);
+          throw elle::Exception(elle::sprintf("the shutdown process failed: %s",
+                                              what));
         }
 
       return elle::Status::Ok;
@@ -1108,8 +1111,8 @@ namespace etoile
         {
         case Context::StateUnknown:
           {
-            throw elle::Exception("unexpected state '%u'",
-                   this->context->state);
+            throw elle::Exception(elle::sprintf("unexpected state '%u'",
+                                                this->context->state));
           }
         case Context::StateJournaled:
           {

@@ -60,7 +60,8 @@ namespace nucleus
                             "constructor");
           }
         default:
-          throw Exception("unknown address type '%s'", this->_type);
+          throw Exception(elle::sprintf("unknown address type '%s'",
+                                        this->_type));
         }
     }
 
@@ -243,7 +244,8 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown address type '%s'", this->_type);
+          throw Exception(elle::sprintf("unknown address type '%s'",
+                                        this->_type));
         }
 
       return elle::Status::Ok;
@@ -279,7 +281,8 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown address type '%s'", this->_type);
+          throw Exception(elle::sprintf("unknown address type '%s'",
+                                        this->_type));
         }
     }
 
@@ -328,8 +331,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown address type: '%s'",
-                            static_cast<int>(type));
+            throw Exception(elle::sprintf("unknown address type: '%s'",
+                                          static_cast<int>(type)));
           }
         }
 

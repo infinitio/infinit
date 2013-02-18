@@ -62,7 +62,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown state '%s'", this->_state);
+          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
         }
     }
 
@@ -81,7 +81,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown state '%s'", this->_state);
+          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
         }
     }
 
@@ -108,7 +108,7 @@ namespace nucleus
             return ((*this->_egg)->address());
           }
         default:
-          throw Exception("unknown state '%s'", this->_state);
+          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
         }
     }
 
@@ -131,7 +131,7 @@ namespace nucleus
             return ((*this->_egg)->secret());
           }
         default:
-          throw Exception("unknown state '%s'", this->_state);
+          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
         }
     }
 
@@ -217,7 +217,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown state '%s'", this->_state);
+          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
         }
     }
 
@@ -312,7 +312,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown state '%s'", this->_state);
+          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
         }
 
       return elle::Status::Ok;
@@ -347,7 +347,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown state '%s'", this->_state);
+          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
         }
 
       stream << ")";
@@ -375,7 +375,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown state: '%s'", static_cast<int>(state));
+            throw Exception(elle::sprintf("unknown state: '%s'",
+                                          static_cast<int>(state)));
           }
         }
 

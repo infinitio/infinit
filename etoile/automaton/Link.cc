@@ -200,8 +200,8 @@ namespace etoile
 
       // check if the current user is the object owner.
       if (context.rights.role != nucleus::neutron::Object::RoleOwner)
-        throw elle::Exception("the user does not seem to have the permission to destroy "
-               "this link");
+        throw elle::Exception("the user does not seem to have the permission "
+                              "to destroy this link");
 
       // destroy the contents.
       if (Contents::Destroy(context) == elle::Status::Error)

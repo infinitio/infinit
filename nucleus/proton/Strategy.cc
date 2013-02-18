@@ -1,7 +1,9 @@
+#include <iostream>
+
+#include <elle/printf.hh>
+
 #include <nucleus/proton/Strategy.hh>
 #include <nucleus/Exception.hh>
-
-#include <iostream>
 
 namespace nucleus
 {
@@ -39,8 +41,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown strategy: '%s'",
-                            static_cast<int>(strategy));
+            throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                          static_cast<int>(strategy)));
           }
         }
 

@@ -49,7 +49,7 @@ namespace elle
     code(0)
   {
     if (!elle::Authority::exists(path))
-      throw reactor::Exception
+      throw elle::Exception
         (elle::sprintf("unable to locate the authority file %s", path));
     this->load(path);
   }

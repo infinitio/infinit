@@ -1,7 +1,9 @@
+#include <iostream>
+
+#include <elle/printf.hh>
+
 #include <nucleus/proton/Nature.hh>
 #include <nucleus/Exception.hh>
-
-#include <iostream>
 
 namespace nucleus
 {
@@ -109,7 +111,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown nature: '%s'", static_cast<int>(nature));
+            throw Exception(elle::sprintf("unknown nature: '%s'",
+                                          static_cast<int>(nature)));
           }
         }
 

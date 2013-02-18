@@ -44,7 +44,8 @@ ELLE_SERIALIZE_SIMPLE(nucleus::proton::Radix,
         break;
       }
     default:
-      throw Exception("unknown radix strategy '%s'", value._strategy);
+      throw Exception(elle::sprintf("unknown radix strategy '%s'",
+                                    value._strategy));
     }
 }
 

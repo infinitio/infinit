@@ -234,8 +234,9 @@ namespace etoile
                         break;
                       }
                     default:
-                      throw elle::Exception("invalid subject type '%u'",
-                                            subject.type());
+                      throw elle::Exception
+                        (elle::sprintf("invalid subject type '%u'",
+                                       subject.type()));
                     }
                 }
             }
@@ -296,8 +297,9 @@ namespace etoile
                     break;
                   }
                 default:
-                  throw elle::Exception("invalid subject type '%u'",
-                                        subject.type());
+                  throw elle::Exception
+                    (elle::sprintf("invalid subject type '%u'",
+                                   subject.type()));
                 }
 
               ELLE_ASSERT(record != nullptr);
@@ -877,8 +879,9 @@ namespace etoile
                 break;
               }
             default:
-              throw elle::Exception("unknown strategy '%s'",
-                                    context.object->access().strategy());
+              throw elle::Exception
+                (elle::sprintf("unknown strategy '%s'",
+                               context.object->access().strategy()));
             }
         }
 
@@ -1099,7 +1102,8 @@ namespace etoile
         case nucleus::neutron::Object::RoleNone:
         default:
           {
-            throw elle::Exception("invalid role '%u'", context.object->author().role);
+            throw elle::Exception(elle::sprintf("invalid role '%u'",
+                                                context.object->author().role));
           }
         }
 

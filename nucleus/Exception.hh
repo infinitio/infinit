@@ -6,21 +6,12 @@
 
 namespace nucleus
 {
-
   class Exception:
     public elle::Exception
   {
-    //
-    // construction
-    //
   public:
-    template <typename... A>
-    Exception(elle::String const& format,
-              A&&... arguments);
+    Exception(elle::String const& message);
   };
-
 }
-
-# include <nucleus/Exception.hxx>
 
 #endif

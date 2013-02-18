@@ -1,6 +1,8 @@
 #ifndef LUNE_MAP_HH
 # define LUNE_MAP_HH
 
+# include <list>
+
 # include <elle/types.hh>
 # include <elle/operator.hh>
 

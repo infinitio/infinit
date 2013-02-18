@@ -88,8 +88,8 @@ namespace nucleus
       if ((this->network() != address.network()) ||
           (this->family() != address.family()) ||
           (this->component() != address.component()))
-        throw Exception("the address %s does not seem to represent the given "
-                        "block", address);
+        throw Exception(elle::sprintf("the address %s does not seem to "
+                                      "represent the given block", address));
 
       //
       // make sure the address has not be tampered and correspond to the
@@ -100,9 +100,9 @@ namespace nucleus
 
       // verify with the recorded address.
       if (address != self)
-        throw Exception("the recorded address does not correspond "
-                        "to this block: given(%s) versus self(%s)",
-                        address, self);
+        throw Exception(elle::sprintf("the recorded address does not correspond"
+                                      " to this block: given(%s) versus "
+                                      "self(%s)", address, self));
 
       // verify the owner's key signature with the block's public key.
       if (this->_block_K.verify(this->_owner_signature,

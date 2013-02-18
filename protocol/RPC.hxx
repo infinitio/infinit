@@ -197,9 +197,9 @@ namespace infinit
                 input >> frame.offset;
                 bt.push_back(frame);
               }
-            reactor::Exception* inner =
-              new reactor::Exception(error, bt);
-            reactor::Exception e
+            elle::Exception* inner =
+              new elle::Exception(bt, error);
+            elle::Exception e
               (elle::sprintf("remote procedure '%s' failed", this->_name));
             e.inner_exception(inner);
             throw e;
@@ -357,7 +357,7 @@ namespace infinit
       ELLE_LOG_COMPONENT("infinit.protocol.RPC");
 
       using elle::sprintf;
-      using reactor::Exception;
+      using elle::Exception;
       try
         {
           while (true)
@@ -387,7 +387,7 @@ namespace infinit
                                *this, procedure->second.first)
                       procedure->second.second->_call(input, output);
                 }
-              catch (reactor::Exception& e)
+              catch (elle::Exception& e)
                 {
                   ELLE_TRACE("%s: procedure failed: %s", *this, e.what());
                   output << false;

@@ -71,7 +71,7 @@ namespace infinit
             protocol = reactor::network::Protocol::udt;
           else
             throw elle::Exception
-              ("invalid transport protocol: %s", protocol_str);
+              (elle::sprintf("invalid transport protocol: %s", protocol_str));
           return std::unique_ptr<hole::Hole>(
             new hole::implementations::slug::Implementation(
               storage, passport, authority,

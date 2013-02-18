@@ -315,8 +315,7 @@ Main(elle::Natural32 argc, elle::Character* argv[])
   catch (std::exception const& e)
     {
       std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-      if (reactor::Exception const* re =
-          dynamic_cast<reactor::Exception const*>(&e))
+      if (elle::Exception const* re = dynamic_cast<elle::Exception const*>(&e))
         std::cerr << re->backtrace() << std::endl;
 
       elle::crash::report(common::meta::host(), common::meta::port(),

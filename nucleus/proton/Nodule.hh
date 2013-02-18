@@ -221,7 +221,8 @@ namespace nucleus
             }
           default:
             {
-              throw Exception("unknown type: '%s'", static_cast<int>(type));
+              throw Exception(elle::sprintf("unknown type: '%s'",
+                                            static_cast<int>(type)));
             }
           }
 

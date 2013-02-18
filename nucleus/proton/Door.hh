@@ -171,8 +171,8 @@ namespace nucleus
             }
           default:
             {
-              throw Exception("unknown location: '%s'",
-                              static_cast<int>(location));
+              throw Exception(elle::sprintf("unknown location: '%s'",
+                                            static_cast<int>(location)));
             }
           }
 

@@ -71,7 +71,7 @@ ELLE_SERIALIZE_SIMPLE(nucleus::neutron::Token,
         break;
       }
     default:
-      throw Exception("unknown token type '%s'", value._type);
+      throw Exception(elle::sprintf("unknown token type '%s'", value._type));
     }
 }
 

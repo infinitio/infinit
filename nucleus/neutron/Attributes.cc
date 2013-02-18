@@ -211,8 +211,8 @@ namespace nucleus
 
       // Check if this name has already been recorded.
       if (this->_container.find(to) != this->_container.end())
-        throw Exception("the name '%s' seems to have already been recorded",
-                        to);
+        throw Exception(elle::sprintf("the name '%s' seems to have already been recorded",
+                                      to));
 
       // Locate the trait for the _from_ name.
       auto iterator = this->_iterator(from);
@@ -239,7 +239,7 @@ namespace nucleus
 
       // Check if the insertion was successful.
       if (result.second == false)
-        throw Exception("unable to re-insert the trait in the container");
+        throw Exception(elle::sprintf("unable to re-insert the trait in the container"));
 
       // Add the trait's new footprint.
       ELLE_ASSERT(trait->footprint() != 0);
@@ -371,8 +371,8 @@ namespace nucleus
 
       // Check if this name has already been recorded.
       if (this->_container.find(trait->name()) != this->_container.end())
-        throw Exception("the name '%s' seems to have already been recorded",
-                        trait->name());
+        throw Exception(elle::sprintf("the name '%s' seems to have already been recorded",
+                                      trait->name()));
 
       // Insert the trait in the container.
       auto result =
@@ -395,7 +395,7 @@ namespace nucleus
       Scoutor scoutor;
 
       if ((scoutor = this->_container.find(name)) == this->_container.end())
-        throw Exception("unable to locate the given name: '%s'", name);
+        throw Exception(elle::sprintf("unable to locate the given name: '%s'", name));
 
       return (scoutor);
     }
@@ -406,7 +406,7 @@ namespace nucleus
       Iterator iterator;
 
       if ((iterator = this->_container.find(name)) == this->_container.end())
-        throw Exception("unable to locate the given name: '%s'", name);
+        throw Exception(elle::sprintf("unable to locate the given name: '%s'", name));
 
       return (iterator);
     }

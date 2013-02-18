@@ -26,7 +26,7 @@ ELLE_SERIALIZE_SIMPLE(nucleus::neutron::Trait,
         break;
       }
     default:
-      throw Exception("unknown trait type '%s'", value._type);
+      throw Exception(elle::sprintf("unknown trait type '%s'", value._type));
     }
 }
 

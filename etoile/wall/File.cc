@@ -594,8 +594,8 @@ namespace etoile
       stream.seekp(offset, std::ios_base::beg);
 
       if (!stream.good())
-        throw elle::Exception("unable to seek at %s in the output file",
-                              offset);
+        throw elle::Exception(elle::sprintf("unable to seek at %s in the output file",
+                                            offset));
 
       ELLE_TRACE("reading %s bytes at offset %s",
                  size, offset);

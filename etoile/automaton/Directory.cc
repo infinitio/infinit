@@ -149,9 +149,10 @@ namespace etoile
       // check if the current user has the right the read the catalog.
       if ((context.rights.permissions & nucleus::neutron::permissions::read) !=
           nucleus::neutron::permissions::read)
-        throw elle::Exception("the user does not seem to have the permission "
-                              "(%s) to read this directory",
-                              context.rights.permissions);
+        throw elle::Exception
+          (elle::sprintf("the user does not seem to have the permission "
+                         "(%s) to read this directory",
+                         context.rights.permissions));
 
       // open the contents.
       if (Contents::Open(context) == elle::Status::Error)
@@ -160,8 +161,8 @@ namespace etoile
       // check that the content exists: the subject may have lost the
       // read permission between the previous check and the Contents::Open().
       if (context.contents_porcupine == nullptr)
-        throw elle::Exception("the user does not seem to be able to operate on this "
-               "directory");
+        throw elle::Exception("the user does not seem to be able to operate "
+                              "on this directory");
 
       // Retrieve a door on the catalog.
       nucleus::proton::Door<nucleus::neutron::Catalog> door{
@@ -379,8 +380,9 @@ namespace etoile
             break;
           }
         default:
-          throw elle::Exception("unknown strategy '%s'",
-                                context.contents_porcupine->strategy());
+          throw elle::Exception
+            (elle::sprintf("unknown strategy '%s'",
+                           context.contents_porcupine->strategy()));
         }
 
       // update the object though renaming an entry may not impact

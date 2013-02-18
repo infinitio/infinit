@@ -1,8 +1,10 @@
-#include <nucleus/proton/State.hh>
-#include <nucleus/Exception.hh>
-
 #include <iostream>
 #include <stdexcept>
+
+#include <elle/printf.hh>
+
+#include <nucleus/proton/State.hh>
+#include <nucleus/Exception.hh>
 
 namespace nucleus
 {
@@ -35,7 +37,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown state: '%s'", static_cast<int>(state));
+            throw Exception(elle::sprintf("unknown state: '%s'",
+                                          static_cast<int>(state)));
           }
         }
 

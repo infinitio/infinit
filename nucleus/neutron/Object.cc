@@ -532,8 +532,8 @@ namespace nucleus
             }
           default:
             {
-              throw Exception("unexpected author's role '%u'",
-                              this->_author->role);
+              throw Exception(elle::sprintf("unexpected author's role '%u'",
+                                            this->_author->role));
             }
           }
       }
@@ -721,7 +721,7 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown object roel '%s'", role);
+            throw Exception(elle::sprintf("unknown object roel '%s'", role));
           }
         }
 

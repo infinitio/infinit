@@ -1,8 +1,10 @@
-#include <nucleus/proton/Family.hh>
-#include <nucleus/Exception.hh>
-
 #include <iostream>
 #include <stdexcept>
+
+#include <elle/printf.hh>
+
+#include <nucleus/proton/Family.hh>
+#include <nucleus/Exception.hh>
 
 namespace nucleus
 {
@@ -40,7 +42,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown family: '%s'", static_cast<int>(family));
+            throw Exception(elle::sprintf("unknown family: '%s'",
+                                          static_cast<int>(family)));
           }
         }
 

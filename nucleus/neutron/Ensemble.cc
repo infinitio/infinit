@@ -269,7 +269,8 @@ namespace nucleus
           index++;
         }
 
-      throw Exception("unable to locate the given subject '%s'", subject);
+      throw Exception(elle::sprintf("unable to locate the given subject '%s'",
+                                    subject));
     }
 
     Fellow const&
@@ -287,8 +288,9 @@ namespace nucleus
             return (*fellow);
         }
 
-      throw Exception("unable to locate the fellow at the given index '%s'",
-                      index);
+      throw Exception(
+        elle::sprintf("unable to locate the fellow at the given index '%s'",
+                      index));
     }
 
     Range<Fellow>
@@ -363,8 +365,8 @@ namespace nucleus
 
       // Check that the fellow's subject does not already exist.
       if (this->_container.find(fellow->subject()) != this->_container.end())
-        throw Exception("the subject '%s' seems to already exist",
-                        fellow->subject());
+        throw Exception(elle::sprintf("the subject '%s' seems to already exist",
+                                      fellow->subject()));
 
       // Insert the fellow to the container.
       auto result =
@@ -374,7 +376,7 @@ namespace nucleus
 
       // Check if the insertion was successful.
       if (result.second == false)
-        throw Exception("unable to insert the fellow the container");
+        throw Exception(elle::sprintf("unable to insert the fellow the container"));
 
       // Update the footprint.
       ELLE_ASSERT(fellow->footprint() != 0);
@@ -387,7 +389,7 @@ namespace nucleus
       Scoutor scoutor;
 
       if ((scoutor = this->_container.find(subject)) == this->_container.end())
-        throw Exception("unable to locate the given subject: '%s'", subject);
+        throw Exception(elle::sprintf("unable to locate the given subject: '%s'", subject));
 
       return (scoutor);
     }
@@ -398,7 +400,7 @@ namespace nucleus
       Iterator iterator;
 
       if ((iterator = this->_container.find(subject)) == this->_container.end())
-        throw Exception("unable to locate the given subject: '%s'", subject);
+        throw Exception(elle::sprintf("unable to locate the given subject: '%s'", subject));
 
       return (iterator);
     }
@@ -416,7 +418,7 @@ namespace nucleus
                 << this->_container.size() << std::endl;
 
       if (Value::Dump(margin + 2) == elle::Status::Error)
-        throw Exception("unable to dump the underlying value");
+        throw Exception(elle::sprintf("unable to dump the underlying value"));
 
       std::cout << alignment << elle::io::Dumpable::Shift
                 << "[Fellows]" << std::endl;
@@ -426,7 +428,7 @@ namespace nucleus
           auto& fellow = pair.second;
 
           if (fellow->Dump(margin + 4) == elle::Status::Error)
-            throw Exception("unable to dump the fellow");
+            throw Exception(elle::sprintf("unable to dump the fellow"));
         }
 
       return (elle::Status::Ok);
@@ -616,8 +618,8 @@ namespace nucleus
                       break;
                     }
                   default:
-                    throw Exception("unknown subject type '%s'",
-                                    fellow->subject().type());
+                    throw Exception(elle::sprintf("unknown subject type '%s'",
+                                                  fellow->subject().type()));
                   }
               }
 

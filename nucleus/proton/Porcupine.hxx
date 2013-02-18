@@ -73,8 +73,8 @@ namespace nucleus
             return;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
     }
 
@@ -106,8 +106,8 @@ namespace nucleus
             return;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
     }
 
@@ -168,8 +168,8 @@ namespace nucleus
             return (this->_tree->exist(k));
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -217,8 +217,8 @@ namespace nucleus
             return (Door<T>(this->_tree->lookup(k), this->_nest));
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -286,8 +286,8 @@ namespace nucleus
             return (std::pair<Door<T>, Capacity>{std::move(door), pair.second});
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -323,9 +323,9 @@ namespace nucleus
             // XXX[si le test chier sur >= bien y reflechir car head()/tail()
             //     utilise ca]
             if (target >= this->_value->capacity())
-              throw Exception("the given target index '%s' exceeds the "
-                              "capacity '%s' of the value",
-                              target, this->_value->capacity());
+              throw Exception(elle::sprintf("the given target index '%s' exceeds the "
+                                            "capacity '%s' of the value",
+                                            target, this->_value->capacity()));
 
             // Return a door to the value along with a capacity index of
             // zero since this is the first and only value.
@@ -345,9 +345,9 @@ namespace nucleus
             // XXX[si le test chier sur >= bien y reflechir car head()/tail()
             //     utilise ca]
             if (target >= value().capacity())
-              throw Exception("the given target index '%s' exceeds the "
-                              "capacity '%s' of the value",
-                              target, value().capacity());
+              throw Exception(elle::sprintf("the given target index '%s' exceeds the "
+                                            "capacity '%s' of the value",
+                                            target, value().capacity()));
 
             value.unload();
 
@@ -371,8 +371,8 @@ namespace nucleus
             return (std::pair<Door<T>, Capacity>{std::move(door), pair.second});
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -464,8 +464,8 @@ namespace nucleus
             return;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -483,8 +483,8 @@ namespace nucleus
       switch (this->_strategy)
         {
         case Strategy::none:
-          throw Exception("unable to erase the '%s' element from an empty "
-                          "porcupine", k);
+          throw Exception(elle::sprintf("unable to erase the '%s' element from an empty "
+                                        "porcupine", k));
         case Strategy::value:
           {
             ELLE_ASSERT(this->_value != nullptr);
@@ -548,8 +548,8 @@ namespace nucleus
             return;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -567,7 +567,7 @@ namespace nucleus
       switch (this->_strategy)
         {
         case Strategy::none:
-          throw Exception("unable to update an empty porcupine");
+          throw Exception(elle::sprintf("unable to update an empty porcupine"));
         case Strategy::value:
           {
             ELLE_ASSERT(this->_value != nullptr);
@@ -614,8 +614,8 @@ namespace nucleus
             return;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                          static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -662,8 +662,8 @@ namespace nucleus
             return (Door<T>{this->_tree->head(), this->_nest});
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                          static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -710,8 +710,8 @@ namespace nucleus
             return (Door<T>{this->_tree->tail(), this->_nest});
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                          static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -761,8 +761,8 @@ namespace nucleus
             return (size);
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                          static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -793,28 +793,28 @@ namespace nucleus
                 ELLE_DEBUG_SCOPE("checking footprints");
 
                 if (this->_value->footprint() == 0)
-                  throw Exception("the footprint is null");
+                  throw Exception(elle::sprintf("the footprint is null"));
 
                 if (this->_value->footprint() !=
                     elle::serialize::footprint(*this->_value))
-                  throw Exception("the recorded footprint does not match the "
+                  throw Exception(elle::sprintf("the recorded footprint does not match the "
                                   "instance's: value(%s) versus footprint(%s)",
                                   this->_value->footprint(),
-                                  elle::serialize::footprint(*this->_value));
+                                  elle::serialize::footprint(*this->_value)));
 
                 if (this->_value->footprint() > this->_nest.limits().extent())
-                  throw Exception("the footprint '%s' exceeds the extent '%s'",
+                  throw Exception(elle::sprintf("the footprint '%s' exceeds the extent '%s'",
                                   this->_value->footprint(),
-                                  this->_nest.limits().extent());
+                                  this->_nest.limits().extent()));
               }
 
             // Check the state.
             if (flags & flags::state)
               {
                 if (this->_state != this->_value->state())
-                  throw Exception("the porcupine state does not match the "
+                  throw Exception(elle::sprintf("the porcupine state does not match the "
                                   "value's: porcupine(%s) versus value(%s)",
-                                  this->_state, this->_value->state());
+                                  this->_state, this->_value->state()));
               }
 
             return;
@@ -837,8 +837,8 @@ namespace nucleus
 
                 // Compare it with the one used as a reference.
                 if (this->_handle->address() != address)
-                  throw Exception("invalid address: root(%s) versus bind(%s)",
-                                  this->_handle->address(), address);
+                  throw Exception(elle::sprintf("invalid address: root(%s) versus bind(%s)",
+                                                this->_handle->address(), address));
               }
 
             // Check the footprint.
@@ -847,28 +847,28 @@ namespace nucleus
                 ELLE_DEBUG_SCOPE("checking footprints");
 
                 if (value().footprint() == 0)
-                  throw Exception("the footprint is null");
+                  throw Exception(elle::sprintf("the footprint is null"));
 
                 if (value().footprint() != elle::serialize::footprint(value()))
-                  throw Exception("the recorded footprint does not match the "
-                                  "instance's: value(%s) versus footprint(%s)",
-                                  value().footprint(),
-                                  elle::serialize::footprint(value()));
+                  throw Exception(elle::sprintf("the recorded footprint does not match the "
+                                                "instance's: value(%s) versus footprint(%s)",
+                                                value().footprint(),
+                                                elle::serialize::footprint(value())));
 
                 if (value().footprint() > this->_nest.limits().extent())
-                  throw Exception("the footprint '%s' exceeds the extent '%s'",
-                                  value().footprint(),
-                                  this->_nest.limits().extent());
+                  throw Exception(elle::sprintf("the footprint '%s' exceeds the extent '%s'",
+                                                value().footprint(),
+                                                this->_nest.limits().extent()));
               }
 
             // Check the state.
             if (flags & flags::state)
               {
                 if (this->_state != value().state())
-                  throw Exception("the porcupine state does not match the "
-                                  "value block's: porcupine(%s) versus "
-                                  "block(%s)",
-                                  this->_state, value().state());
+                  throw Exception(elle::sprintf("the porcupine state does not match the "
+                                                "value block's: porcupine(%s) versus "
+                                                "block(%s)",
+                                                this->_state, value().state()));
               }
 
             value.unload();
@@ -886,16 +886,16 @@ namespace nucleus
             if (flags & flags::state)
               {
                 if (this->_state != this->_tree->state())
-                  throw Exception("the porcupine state does not match the "
-                                  "tree: porcupine(%s) versus tree(%s)",
-                                  this->_state, this->_tree->state());
+                  throw Exception(elle::sprintf("the porcupine state does not match the "
+                                                "tree: porcupine(%s) versus tree(%s)",
+                                                this->_state, this->_tree->state()));
               }
 
             return;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -1017,8 +1017,8 @@ namespace nucleus
                   break;
                 }
               default:
-                throw Exception("unknown state: '%s'",
-                                static_cast<int>(value().state()));
+                throw Exception(elle::sprintf("unknown state: '%s'",
+                                              static_cast<int>(value().state())));
               }
 
             value.unload();
@@ -1032,8 +1032,8 @@ namespace nucleus
             return (this->_tree->statistics());
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -1091,8 +1091,8 @@ namespace nucleus
             return;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -1110,7 +1110,7 @@ namespace nucleus
       switch (this->_state)
         {
         case State::clean:
-          throw Exception("unable to seal a clean porcupine");
+          throw Exception(elle::sprintf("unable to seal a clean porcupine"));
         case State::dirty:
           {
             ELLE_TRACE("strategy: %s", this->_strategy);
@@ -1118,7 +1118,7 @@ namespace nucleus
             switch (this->_strategy)
               {
               case Strategy::none:
-                throw Exception("unable to seal an empty porcupine");
+                throw Exception(elle::sprintf("unable to seal an empty porcupine"));
               case Strategy::value:
                 {
                   ELLE_ASSERT(this->_value != nullptr);
@@ -1174,17 +1174,17 @@ namespace nucleus
                   return (radix);
                 }
               default:
-                throw Exception("unknown strategy: '%s'",
-                                static_cast<int>(this->_strategy));
+                throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                              static_cast<int>(this->_strategy)));
               }
 
             elle::unreachable();
           }
         case State::consistent:
-          throw Exception("unable to seal a consistent porcupine");
+          throw Exception(elle::sprintf("unable to seal a consistent porcupine"));
         default:
-          throw Exception("unknown state: '%s'",
-                          static_cast<int>(this->_state));
+          throw Exception(elle::sprintf("unknown state: '%s'",
+                                        static_cast<int>(this->_state)));
         }
 
       elle::unreachable();
@@ -1236,8 +1236,8 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       // Set the strategy to none.
@@ -1325,7 +1325,7 @@ namespace nucleus
       switch (this->_strategy)
         {
         case Strategy::none:
-          throw Exception("unable to optimize an empty porcupine");
+          throw Exception(elle::sprintf("unable to optimize an empty porcupine"));
         case Strategy::value:
           {
             ELLE_ASSERT(this->_value != nullptr);
@@ -1584,8 +1584,8 @@ namespace nucleus
             return;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();
@@ -1632,8 +1632,8 @@ namespace nucleus
             return;
           }
         default:
-          throw Exception("unknown strategy: '%s'",
-                          static_cast<int>(this->_strategy));
+          throw Exception(elle::sprintf("unknown strategy: '%s'",
+                                        static_cast<int>(this->_strategy)));
         }
 
       elle::unreachable();

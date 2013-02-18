@@ -148,7 +148,8 @@ namespace nucleus
             }
           default:
             {
-              throw Exception("unknown mode: '%s'", static_cast<int>(mode));
+              throw Exception(elle::sprintf("unknown mode: '%s'",
+                                            static_cast<int>(mode)));
             }
           }
 
@@ -174,7 +175,8 @@ namespace nucleus
             }
           default:
             {
-              throw Exception("unknown state: '%s'", static_cast<int>(state));
+              throw Exception(elle::sprintf("unknown state: '%s'",
+                                            static_cast<int>(state)));
             }
           }
 

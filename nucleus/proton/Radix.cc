@@ -80,7 +80,8 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown radix strategy '%s'", this->_strategy);
+          throw Exception(elle::sprintf("unknown radix strategy '%s'",
+                                        this->_strategy));
         }
     }
 
@@ -111,7 +112,8 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown radix strategy '%s'", this->_strategy);
+          throw Exception(elle::sprintf("unknown radix strategy '%s'",
+                                        this->_strategy));
         }
     }
 
@@ -192,7 +194,8 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown radix strategy '%s'", this->_strategy);
+          throw Exception(elle::sprintf("unknown radix strategy '%s'",
+                                        this->_strategy));
         }
     }
   }

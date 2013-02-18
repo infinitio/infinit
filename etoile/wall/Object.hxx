@@ -30,8 +30,8 @@ namespace etoile
         path::Venue venue;
         if (path::Path::Resolve(scope.chemin.route,
                                 venue) == elle::Status::Error)
-          throw elle::Exception("unable to resolve the route %s",
-                                scope.chemin.route);
+          throw elle::Exception(elle::sprintf("unable to resolve the route %s",
+                                              scope.chemin.route));
         scope.chemin = path::Chemin(scope.chemin.route, venue);
 
         ELLE_DEBUG("route was successfully resolved into %s",

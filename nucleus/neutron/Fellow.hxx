@@ -29,7 +29,7 @@ ELLE_SERIALIZE_SIMPLE(nucleus::neutron::Fellow,
         break;
       }
     default:
-      throw Exception("unknown fellow type '%s'", value._type);
+      throw Exception(elle::sprintf("unknown fellow type '%s'", value._type));
     }
 }
 

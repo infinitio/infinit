@@ -1,7 +1,9 @@
+#include <iostream>
+
+#include <elle/printf.hh>
+
 #include <nucleus/neutron/Genre.hh>
 #include <nucleus/Exception.hh>
-
-#include <iostream>
 
 namespace nucleus
 {
@@ -34,7 +36,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown genre '%s'", static_cast<int>(genre));
+            throw Exception(elle::sprintf("unknown genre '%s'",
+                                          static_cast<int>(genre)));
           }
         }
 

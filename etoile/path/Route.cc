@@ -98,8 +98,9 @@ namespace etoile
 
       // check that the way starts with a leading '/'
       if (way.path[0] != elle::system::path::separator)
-        throw elle::Exception("the path must contain the leading path separator '%c'",
-               elle::system::path::separator);
+        throw elle::Exception
+          (elle::sprintf("the path must contain the leading path separator '%c'",
+                         elle::system::path::separator));
 
       // clear the elements.
       this->elements.clear();

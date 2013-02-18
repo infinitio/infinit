@@ -1,3 +1,5 @@
+#include <reactor/scheduler.hh>
+
 #include <nucleus/proton/Egg.hh>
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Contents.hh>
@@ -88,7 +90,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown egg type '%s'", this->_type);
+          throw Exception(elle::sprintf("unknown egg type '%s'", this->_type));
         }
 
       // Regenerate the clef with the new address and secret.
@@ -103,7 +105,7 @@ namespace nucleus
         case Reason::access:
           {
             // Lock in reading.
-            elle::concurrency::scheduler().current()->wait(
+            reactor::Scheduler::scheduler()->current()->wait(
               this->_mutex);
 
             break;
@@ -111,7 +113,7 @@ namespace nucleus
         case Reason::move:
           {
             // Lock in writing.
-            elle::concurrency::scheduler().current()->wait(
+            reactor::Scheduler::scheduler()->current()->wait(
               this->_mutex.write());
 
             break;
@@ -176,7 +178,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown egg type: '%s'", static_cast<int>(type));
+            throw Exception(elle::sprintf("unknown egg type: '%s'",
+                                          static_cast<int>(type)));
           }
         }
 

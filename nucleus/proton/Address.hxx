@@ -65,7 +65,7 @@ ELLE_SERIALIZE_SIMPLE(nucleus::proton::Address,
         break;
       }
     default:
-      throw Exception("unknown address type '%s'", value._type);
+      throw Exception(elle::sprintf("unknown address type '%s'", value._type));
     }
 }
 

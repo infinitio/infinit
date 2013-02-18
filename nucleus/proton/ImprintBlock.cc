@@ -87,8 +87,8 @@ namespace nucleus
       if ((this->network() != address.network()) ||
           (this->family() != address.family()) ||
           (this->component() != address.component()))
-        throw Exception("the address %s does not seem to represent the given "
-                        "block", address);
+        throw Exception(elle::sprintf("the address %s does not seem to represent the given "
+                                      "block", address));
 
       // Make sure the block has not be tampered and correspond to the
       // given original address. In order to do that, the address is
@@ -100,9 +100,9 @@ namespace nucleus
       // Finally, compare the recomputed address with the theoretical address
       // of the block.
       if (address != self)
-        throw Exception("the recorded address does not correspond "
-                        "to this block: given(%s) versus self(%s)",
-                        address, self);
+        throw Exception(elle::sprintf("the recorded address does not correspond "
+                                      "to this block: given(%s) versus self(%s)",
+                                      address, self));
     }
 
     void

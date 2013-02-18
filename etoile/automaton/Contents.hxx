@@ -144,8 +144,9 @@ namespace etoile
                 break;
               }
             default:
-              throw elle::Exception("unknown strategy '%s'",
-                                    context.object->contents().strategy());
+              throw elle::Exception
+                (elle::sprintf("unknown strategy '%s'",
+                               context.object->contents().strategy()));
             }
         }
 

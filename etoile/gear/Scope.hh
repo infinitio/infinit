@@ -1,6 +1,8 @@
 #ifndef ETOILE_GEAR_SCOPE_HH
 # define ETOILE_GEAR_SCOPE_HH
 
+# include <list>
+
 # include <elle/types.hh>
 # include <elle/Printable.hh>
 

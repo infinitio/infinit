@@ -1289,10 +1289,10 @@ namespace hole
         // Check the machine is connected and has been authenticated
         // as a valid node of the network.
         if (this->_state != State::attached)
-          throw elle::Exception{
-              "the machine's state '%u' does not allow one "
-              "to request operations on the storage layer",
-              this->_state};
+          throw elle::Exception(elle::sprintf(
+                                  "the machine's state '%u' does not allow one "
+                                  "to request operations on the storage layer",
+                                  this->_state));
 
         if (revision == nucleus::proton::Revision::Last)
           return _get_latest(address);
@@ -1343,8 +1343,8 @@ namespace hole
                     }
                   default:
                     {
-                      throw elle::Exception("unknown block family %s",
-                                            address.family());
+                      throw elle::Exception(elle::sprintf("unknown block family %s",
+                                                          address.family()));
                     }
                   }
               }
@@ -1383,11 +1383,11 @@ namespace hole
             }
           default:
             {
-              throw elle::Exception{
+              throw elle::Exception
+                (elle::sprintf(
                   "the machine's state '%s' does not allow one to "
                   "request operations on the storage layer",
-                  this->_state
-              };
+                  this->_state));
             }
           }
       }

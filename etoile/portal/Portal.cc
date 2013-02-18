@@ -132,8 +132,8 @@ namespace etoile
         }
       catch (std::runtime_error& e)
         {
-          throw elle::Exception("unable to set up the portal server: %s",
-                 e.what());
+          throw elle::Exception
+            (elle::sprintf("unable to set up the portal server: %s", e.what()));
         }
 
       // generate a phrase randomly which will be used by applications to

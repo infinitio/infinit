@@ -70,7 +70,8 @@ namespace nucleus
                             "constructor");
           }
         default:
-          throw Exception("unknown record type '%s'", this->_type);
+          throw Exception(elle::sprintf("unknown record type '%s'",
+                                        this->_type));
         }
 
       // Compute the initial footprint.
@@ -211,7 +212,8 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown record type '%s'", this->_type);
+          throw Exception(elle::sprintf("unknown record type '%s'",
+                                        this->_type));
         }
 
       return elle::Status::Ok;
@@ -242,7 +244,8 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown record type '%s'", this->_type);
+          throw Exception(elle::sprintf("unknown record type '%s'",
+                                        this->_type));
         }
     }
 
@@ -354,8 +357,8 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown record type: '%s'",
-                            static_cast<int>(type));
+            throw Exception(elle::sprintf("unknown record type: '%s'",
+                                          static_cast<int>(type)));
           }
         }
 

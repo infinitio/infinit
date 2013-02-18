@@ -55,8 +55,8 @@ namespace nucleus
       if ((this->network() != address.network()) ||
           (this->family() != address.family()) ||
           (this->component() != address.component()))
-        throw Exception("the address %s does not seem to represent the given "
-                        "block", address);
+        throw Exception(elle::sprintf("the address %s does not seem to "
+                                      "represent the given block", address));
 
       // Compute the address of this object.
       //
@@ -77,9 +77,9 @@ namespace nucleus
 
       // Compare the address with the given one.
       if (address != self)
-        throw Exception("the recorded address does not correspond "
-                        "to this block: given(%s) versus self(%s)",
-                        address, self);
+        throw Exception(elle::sprintf("the recorded address does not correspond"
+                                      "to this block: given(%s) versus "
+                                      "self(%s)", address, self));
     }
 
     elle::Status
@@ -101,6 +101,5 @@ namespace nucleus
     {
       stream << "content hash block";
     }
-
   }
 }

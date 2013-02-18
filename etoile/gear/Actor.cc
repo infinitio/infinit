@@ -279,8 +279,9 @@ namespace etoile
           }
         case OperationUnknown:
           {
-            throw elle::Exception("unable to process the closing operation '%u'\n",
-                   operation);
+            throw elle::Exception
+              (elle::sprintf("unable to process the closing operation '%u'\n",
+                             operation));
           }
         }
 

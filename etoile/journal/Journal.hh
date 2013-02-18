@@ -1,6 +1,8 @@
 #ifndef ETOILE_JOURNAL_JOURNAL_HH
 # define ETOILE_JOURNAL_JOURNAL_HH
 
+# include <set>
+
 # include <elle/types.hh>
 
 # include <etoile/gear/fwd.hh>

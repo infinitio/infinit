@@ -59,8 +59,8 @@ namespace etoile
           }
         default:
           {
-            throw elle::Exception("unknown state: '%s'",
-                                  static_cast<int>(state));
+            throw elle::Exception(elle::sprintf("unknown state: '%s'",
+                                                static_cast<int>(state)));
           }
         }
 

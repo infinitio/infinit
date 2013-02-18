@@ -29,7 +29,7 @@ ELLE_SERIALIZE_SIMPLE(nucleus::neutron::Record,
         break;
       }
     default:
-      throw Exception("unknown record type '%s'", value._type);
+      throw Exception(elle::sprintf("unknown record type '%s'", value._type));
     }
 }
 

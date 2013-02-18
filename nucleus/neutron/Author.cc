@@ -130,7 +130,7 @@ namespace nucleus
           }
         default:
           {
-            throw Exception("unknown role '%u'", this->role);
+            throw Exception(elle::sprintf("unknown role '%u'", this->role));
           }
         }
 

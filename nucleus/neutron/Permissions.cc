@@ -1,8 +1,10 @@
-#include <nucleus/neutron/Permissions.hh>
-#include <nucleus/Exception.hh>
-
 #include <iostream>
 #include <stdexcept>
+
+#include <elle/printf.hh>
+
+#include <nucleus/neutron/Permissions.hh>
+#include <nucleus/Exception.hh>
 
 namespace nucleus
 {
@@ -45,8 +47,8 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception("unknown permissions '%s'",
-                          static_cast<int>(permissions));
+          throw Exception(elle::sprintf("unknown permissions '%s'",
+                                        static_cast<int>(permissions)));
         }
 
       return (stream);
