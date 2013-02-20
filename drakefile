@@ -374,12 +374,15 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
 
   # Infinit
   infinit_sources = drake.nodes(
-    'Infinit.cc',
+    'CrashReporter.cc',
+    'CrashReporter.hh',
     'HoleFactory.cc',
-    'common/common.cc',
+    'Infinit.cc',
+    'Program.cc',
+    'Program.hh',
     'Scheduler.cc',
     'Scheduler.hh',
-
+    'common/common.cc',
     )
   infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources,
                                  cxx_toolkit, cxx_config)

@@ -1,10 +1,6 @@
-#include <Infinit.hh>
-
 #include <common/common.hh>
 
-#include <elle/CrashReporter.hh>
 #include <elle/cast.hh>
-#include <elle/concurrency/Program.hh>
 #include <elle/io/Piece.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
@@ -28,9 +24,11 @@
 
 #include <plasma/meta/Client.hh>
 
+#include <CrashReporter.hh>
 #include <HoleFactory.hh>
+#include <Infinit.hh>
+#include <Program.hh>
 #include <Scheduler.hh>
-
 
 ELLE_LOG_COMPONENT("infinit");
 

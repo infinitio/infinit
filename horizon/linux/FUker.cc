@@ -1,5 +1,3 @@
-#include <elle/concurrency/Program.hh>
-
 #include <reactor/scheduler.hh>
 #include <reactor/thread.hh>
 
@@ -10,9 +8,6 @@
 
 #include <hole/Hole.hh>
 
-#include <Infinit.hh>
-#include <Scheduler.hh>
-
 #include <boost/function.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/seq/for_each_i.hpp>
@@ -21,6 +16,10 @@
 #include <sys/param.h>
 #include <sys/statfs.h>
 #include <fuse/fuse_lowlevel.h>
+
+#include <Infinit.hh>
+#include <Program.hh>
+#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.horizon.FUker");
 

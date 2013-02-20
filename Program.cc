@@ -1,14 +1,14 @@
 #include <elle/system/platform.hh>
 
-#include <elle/concurrency/Program.hh>
-
 #include <reactor/scheduler.hh>
 #include <reactor/signal.hh>
 #include <reactor/thread.hh>
 #include <signal.h>
 
 #include <elle/log.hh>
-#include <elle/CrashReporter.hh>
+
+#include <CrashReporter.hh>
+#include <Program.hh>
 
 ELLE_LOG_COMPONENT("elle.concurrency.Program");
 
