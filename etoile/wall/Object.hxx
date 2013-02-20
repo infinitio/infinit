@@ -6,8 +6,6 @@
 # include <etoile/path/Path.hh>
 # include <etoile/path/Chemin.hh>
 
-# include <elle/concurrency/Scheduler.hh>
-
 namespace etoile
 {
   namespace wall

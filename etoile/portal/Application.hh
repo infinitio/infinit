@@ -3,6 +3,7 @@
 
 # include <elle/types.hh>
 
+# include <reactor/duration.hh>
 # include <reactor/network/fwd.hh>
 
 # include <etoile/portal/Manifest.hh>
@@ -26,7 +27,7 @@ namespace etoile
       //
       // constants
       //
-      static const reactor::Duration              Timeout;
+      static const reactor::Duration Timeout;
 
       //
       // enumerations

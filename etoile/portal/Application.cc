@@ -1,5 +1,3 @@
-#include <Infinit.hh>
-
 #include <elle/serialize/PairSerializer.hxx>
 
 #include <reactor/network/tcp-socket.hh>
@@ -19,6 +17,9 @@
 #include <etoile/wall/Attributes.hh>
 
 #include <hole/implementations/slug/Machine.hh> // FIXME
+
+#include <Infinit.hh>
+#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.portal.Application");
 
@@ -73,9 +74,9 @@ namespace etoile
       // set the socket.
       this->socket = socket;
       this->serializer =
-        new infinit::protocol::Serializer(elle::concurrency::scheduler(), *this->socket);
+        new infinit::protocol::Serializer(infinit::scheduler(), *this->socket);
       this->channels =
-        new infinit::protocol::ChanneledStream(elle::concurrency::scheduler(),
+        new infinit::protocol::ChanneledStream(infinit::scheduler(),
                                                *this->serializer);
 
       // Setup RPCs.
@@ -130,14 +131,14 @@ namespace etoile
       this->rpcs->transferto = &wall::File::transferto;
       this->rpcs->transferfrom = &wall::File::transferfrom;
 
-      new reactor::Thread(elle::concurrency::scheduler(),
+      new reactor::Thread(infinit::scheduler(),
                           elle::sprintf("RPC %s", *this),
                           std::bind(&Application::_run, this), true);
 
       // set the state.
       this->state = Application::StateConnected;
 
-      elle::concurrency::scheduler().CallLater
+      infinit::scheduler().CallLater
         (boost::bind(&Application::Abort, this),
          "Application abort", Application::Timeout);
 

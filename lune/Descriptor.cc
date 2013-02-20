@@ -1,8 +1,5 @@
-#include <Infinit.hh>
-
 #include <elle/io/File.hh>
 #include <elle/io/Piece.hh>
-#include <elle/concurrency/Scheduler.hh>
 #include <elle/os/path.hh>
 #include <elle/log.hh>
 
@@ -19,6 +16,8 @@
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/neutron/Subject.hh>
+
+#include <Infinit.hh>
 
 namespace lune
 {

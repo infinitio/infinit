@@ -2,15 +2,16 @@
 
 #include <common/common.hh>
 
+#include <elle/CrashReporter.hh>
+#include <elle/cast.hh>
 #include <elle/concurrency/Program.hh>
 #include <elle/io/Piece.hh>
-#include <elle/serialize/extract.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
-#include <elle/network/Interface.hh>
-#include <elle/utility/Parser.hh>
-#include <elle/cast.hh>
 #include <elle/nat/Nat.hh>
+#include <elle/network/Interface.hh>
+#include <elle/serialize/extract.hh>
+#include <elle/utility/Parser.hh>
 
 #include <agent/Agent.hh>
 
@@ -26,9 +27,10 @@
 #include <lune/Lune.hh>
 
 #include <plasma/meta/Client.hh>
-#include <HoleFactory.hh>
 
-#include <elle/CrashReporter.hh>
+#include <HoleFactory.hh>
+#include <Scheduler.hh>
+
 
 ELLE_LOG_COMPONENT("infinit");
 
@@ -320,17 +322,17 @@ Main(elle::Natural32 argc, elle::Character* argv[])
 
       elle::crash::report(common::meta::host(), common::meta::port(),
                           "8infinit", e.what(), elle::Backtrace::current());
-      elle::concurrency::scheduler().terminate();
+      infinit::scheduler().terminate();
       return elle::Status::Error;
     }
-  elle::concurrency::scheduler().terminate();
+  infinit::scheduler().terminate();
   return elle::Status::Ok;
 }
 
 int
 main(int argc, char* argv[])
 {
-  reactor::Scheduler& sched = elle::concurrency::scheduler();
+  reactor::Scheduler& sched = infinit::scheduler();
   reactor::VThread<elle::Status> main(sched,
                                       "Infinit main",
                                       [&argc, &argv] () -> elle::Status {

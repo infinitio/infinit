@@ -1,13 +1,11 @@
 #ifndef ETOILE_DEPOT_DEPOT_HXX
 # define ETOILE_DEPOT_DEPOT_HXX
 
+# include <reactor/exception.hh>
+
 # include <etoile/journal/Journal.hh>
 
 # include <hole/Hole.hh>
-
-# include <reactor/exception.hh>
-
-# include <elle/concurrency/Scheduler.hh>
 
 namespace etoile
 {

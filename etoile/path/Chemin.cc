@@ -1,7 +1,6 @@
-#include <etoile/path/Chemin.hh>
-#include <elle/concurrency/Scheduler.hh>
-
 #include <reactor/exception.hh>
+
+#include <etoile/path/Chemin.hh>
 
 namespace etoile
 {

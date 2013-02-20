@@ -39,6 +39,7 @@ using namespace infinit;
 #include <hole/Hole.hh>
 
 #include <Infinit.hh>
+#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.portal.Portal");
 
@@ -118,9 +119,9 @@ namespace etoile
 
           // allocate the server and acceptor for handling incoming connections.
           Portal::server =
-            new reactor::network::TCPServer(elle::concurrency::scheduler());
+            new reactor::network::TCPServer(infinit::scheduler());
           Portal::acceptor =
-            new reactor::Thread(elle::concurrency::scheduler(),
+            new reactor::Thread(infinit::scheduler(),
                                 "Portal Server accept",
                                 boost::bind(&Portal::accept));
 

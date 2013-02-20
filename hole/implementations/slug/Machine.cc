@@ -35,6 +35,7 @@
 #include <plasma/meta/Client.hh>
 
 #include <Infinit.hh>
+#include <Scheduler.hh>
 
 #include <algorithm>
 
@@ -98,7 +99,7 @@ namespace hole
                        *_locus);
 
             // Wait for a new host to be authenticated.
-            elle::concurrency::scheduler().current()->wait(
+            infinit::scheduler().current()->wait(
               _host_wait,
               boost::posix_time::seconds(10));
           }
@@ -116,7 +117,7 @@ namespace hole
                        *_locus);
 
             // Wait for the machine to be authenticated by the host as well.
-            elle::concurrency::scheduler().current()->wait(
+            infinit::scheduler().current()->wait(
               _machine_wait,
               boost::posix_time::seconds(10));
           }
@@ -165,7 +166,7 @@ namespace hole
         std::unique_ptr<reactor::network::Socket> socket(
           reactor::network::Socket::create(
             this->hole().protocol(),
-            elle::concurrency::scheduler(),
+            infinit::scheduler(),
             hostname, locus.port, _connection_timeout));
         _connect(std::move(socket), locus, true);
       }
@@ -221,7 +222,7 @@ namespace hole
         , _state(State::detached)
         , _port(port)
         , _server(reactor::network::Server::create
-                  (hole.protocol(), elle::concurrency::scheduler()))
+                  (hole.protocol(), infinit::scheduler()))
         , _acceptor()
       {
         machine = this; // FIXME
@@ -232,7 +233,7 @@ namespace hole
         {
           // FIXME: use builtin support for subcoroutines when available.
           std::vector<reactor::Thread*> connections;
-          auto& sched = elle::concurrency::scheduler();
+          auto& sched = infinit::scheduler();
           for (elle::network::Locus const& locus: this->hole().members())
             {
               auto action = [&, locus] {this->_connect_try(locus);};
@@ -276,7 +277,7 @@ namespace hole
               this->_port = _server->port();
               ELLE_ASSERT(this->_port != 0);
               ELLE_TRACE("listening on port %s", this->_port);
-              _acceptor.reset(new reactor::Thread(elle::concurrency::scheduler(),
+              _acceptor.reset(new reactor::Thread(infinit::scheduler(),
                                                   "Slug accept",
                                                   [&] {this->_accept();}));
             }

@@ -1,4 +1,3 @@
-#include <elle/concurrency/Scheduler.hh>
 #include <elle/utility/Duration.hh>
 #include <elle/container/timeline/Bucket.hh>
 #include <elle/container/timeline/Timeline.hh>
@@ -10,6 +9,7 @@
 #include <etoile/path/Venue.hh>
 
 #include <Infinit.hh>
+#include <Scheduler.hh>
 
 namespace etoile
 {
@@ -46,7 +46,7 @@ namespace etoile
       if (Infinit::Configuration.etoile.shrub.status == false)
         return elle::Status::Ok;
 
-      elle::concurrency::scheduler().Every
+      infinit::scheduler().Every
         (&Shrub::Sweeper, "Shrub sweeper",
          boost::posix_time::milliseconds
          (Infinit::Configuration.etoile.shrub.frequency));

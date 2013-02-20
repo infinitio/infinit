@@ -1,11 +1,10 @@
-#include <hole/implementations/remote/Client.hh>
-#include <hole/implementations/remote/Manifest.hh>
-
 #include <elle/log.hh>
 #include <elle/network/Locus.hh>
 
 #include <hole/Hole.hh>
 #include <hole/Passport.hh>
+#include <hole/implementations/remote/Client.hh>
+#include <hole/implementations/remote/Manifest.hh>
 
 #include <nucleus/Derivable.hh>
 #include <nucleus/proton/Address.hh>
@@ -14,6 +13,7 @@
 #include <nucleus/proton/MutableBlock.hh>
 
 #include <Infinit.hh>
+#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.remote.Client");
 
@@ -31,9 +31,9 @@ namespace hole
                      std::string const& host,
                      int port)
         : _state(State::connected)
-        , _stream(elle::concurrency::scheduler(), host, port)
-        , _serializer(elle::concurrency::scheduler(), _stream)
-        , _channels(elle::concurrency::scheduler(), _serializer)
+        , _stream(infinit::scheduler(), host, port)
+        , _serializer(infinit::scheduler(), _stream)
+        , _channels(infinit::scheduler(), _serializer)
         , _rpc(_channels)
       {
         ELLE_TRACE("Authenticate to the server")

@@ -1,19 +1,21 @@
+#include <cassert>
+#include <stdexcept>
+
+#include <boost/foreach.hpp>
+
+#include <elle/log.hh>
+
 #include <etoile/journal/Journal.hh>
 #include <etoile/depot/Depot.hh>
 #include <etoile/gear/Scope.hh>
 #include <etoile/gear/Transcript.hh>
 #include <etoile/gear/Action.hh>
 
-#include <elle/concurrency/Scheduler.hh>
-#include <elle/log.hh>
-
 #include <nucleus/factory.hh>
 
 #include <Infinit.hh>
+#include <Scheduler.hh>
 
-#include <cassert>
-#include <stdexcept>
-#include <boost/foreach.hpp>
 
 ELLE_LOG_COMPONENT("infinit.etoile.journal.Journal");
 
@@ -60,7 +62,7 @@ namespace etoile
          // Spawn a thread and do not wait for it to complete since
          // we want the processing to occur in the background as it
          // may take some time.
-         new reactor::Thread(elle::concurrency::scheduler(),
+         new reactor::Thread(infinit::scheduler(),
                              "journal process",
                              boost::bind(&Journal::_process, transcript),
                              true);

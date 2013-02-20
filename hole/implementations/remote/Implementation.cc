@@ -4,8 +4,6 @@
 #include <hole/implementations/remote/Machine.hh>
 #include <hole/implementations/remote/Remote.hh>
 
-#include <elle/concurrency/Scheduler.hh>
-
 namespace hole
 {
   namespace implementations

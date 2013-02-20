@@ -3,7 +3,6 @@
 
 # include <type_traits>
 
-# include <elle/concurrency/Scheduler.hh>
 # include <elle/Backtrace.hh>
 # include <elle/log.hh>
 # include <elle/printf.hh>

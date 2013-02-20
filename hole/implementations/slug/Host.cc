@@ -20,6 +20,7 @@
 #include <hole/implementations/slug/Manifest.hh>
 
 #include <Infinit.hh>
+#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.slug.Host");
 
@@ -41,10 +42,10 @@ namespace hole
         , _state(State::connected)
         , _authenticated(false)
         , _socket(std::move(socket))
-        , _serializer(elle::concurrency::scheduler(), *_socket)
-        , _channels(elle::concurrency::scheduler(), _serializer)
+        , _serializer(infinit::scheduler(), *_socket)
+        , _channels(infinit::scheduler(), _serializer)
         , _rpcs(_channels)
-        , _rpcs_handler(new reactor::Thread(elle::concurrency::scheduler(),
+        , _rpcs_handler(new reactor::Thread(infinit::scheduler(),
                                             elle::sprintf("RPC %s", *this),
                                             boost::bind(&Host::_rpc_run, this),
                                             true))

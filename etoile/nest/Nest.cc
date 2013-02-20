@@ -3,8 +3,8 @@
 #include <etoile/gear/Action.hh>
 #include <etoile/depot/Depot.hh>
 
-#include <elle/concurrency/Scheduler.hh>
 #include <elle/finally.hh>
+#include <elle/log.hh>
 
 #include <cryptography/SecretKey.hh>
 
@@ -13,8 +13,6 @@
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Revision.hh>
 #include <nucleus/proton/Contents.hh>
-
-#include <elle/log.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.nest.Nest");
 
