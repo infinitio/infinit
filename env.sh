@@ -30,6 +30,9 @@ infinit_env_clean() {
 	unset ELLE_LOG_LEVEL
 	unset DISTCC_HOSTS
 
+	unset OLD_PYTHONPATH
+	unset OLD_RPROMPT
+
 	export PYTHONPATH=${OLD_PYTHONPATH}
 	export RPROMPT=${OLD_RPROMPT}
 }
