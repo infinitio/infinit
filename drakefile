@@ -46,7 +46,6 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   # Includes
 
   # Elle
-  cxx_config.add_local_include_path('elle/reactor/src') # FIXME: circular dependency with reactor
   elle = drake.include('elle', cxx_toolkit, cxx_config)
   elle_lib = drake.copy(elle.lib_dynamic, 'lib', 'elle/lib')
   cxx_config += elle.config
