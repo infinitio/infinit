@@ -1,4 +1,7 @@
-#include <surface/gap/MetricReporter.hh>
+#include <elle/metrics/Reporter.hh>
+#include <elle/metrics/_details/google.hh>
+#include <elle/metrics/_details/kissmetrics.hh>
+
 #include <common/common.hh>
 
 #include <elle/print.hh>
@@ -34,198 +37,212 @@ int main(void)
   }
 
   {
-    auto& server = surface::gap::metrics::google::server(
-      common::metrics::google_server(),
-      common::metrics::google_port(),
-      "cd",
-      surface::gap::metrics::google::retrieve_id("")); //common::metrics::id_path()));
+
+    using MKey = elle::metrics::Key;
+
+    // Initialize server.
+    auto const& g_info = common::metrics::google_info();
+    elle::metrics::google::register_service(g_info.server,
+                                            g_info.port,
+                                            g_info.id_path);
+
+    // Initialize server.
+    auto const& km_info = common::metrics::km_info();
+    elle::metrics::kissmetrics::register_service(km_info.server,
+                                                 km_info.port,
+                                                 km_info.id_path);
+
+    auto& reporter = elle::metrics::reporter();
+
 
 //  Login success.
-    server.store("test:user:login:attempt");
-    server.store("test:user:login:succeed");
-    server.update_user(users.first);
+    reporter.store("test:user:login:attempt");
+    reporter.store("test:user:login:succeed");
+    reporter.update_user(users.first);
 
-    server.store("test:ux:drop:bar");
-    server.store("test:ux:keyboard:bar:search");
-    server.store("test:ux:click:panel:search:select:user");
-    server.store("test:ux:click:bar:search:share");
-    server.store("test:transaction:create:attempt",
-                 {{"cd2", transactions[3]},{"cm1", "32402"}, {"cm2", "3"}});
-    server.store("test:transaction:create:succeed",
-                 {{"cd2", transactions[3]}, {"cm1", "32402"}, {"cm2", "3"}});
-    server.store("test:ux:click:panel:transfer:accept");
-    server.store("test:transaction:accept:attempt",  "cd2", transactions[3]);
-    server.store("test:transaction:accept:succeed",  "cd2", transactions[3]);
-    server.store("test:transaction:prepare:attempt", "cd2", transactions[3]);
-    server.store("test:transaction:prepare:succeed", "cd2", transactions[3]);
-    server.store("test:transaction:start:attempt",   "cd2", transactions[3]);
-    server.store("test:transaction:start:succeed",   "cd2", transactions[3]);
-    server.store("test:transaction:finish:attempt",  "cd2", transactions[3]);
-    server.store("test:transaction:finish:succeed",  "cd2", transactions[3]);
+    reporter.store("test:ux:drop:bar");
+    reporter.store("test:ux:keyboard:bar:search");
+    reporter.store("test:ux:click:panel:search:select:user");
+    reporter.store("test:ux:click:bar:search:share");
+    reporter.store("test:transaction:create:attempt",
+                   {{MKey::value, transactions[3]},
+                    {MKey::size, "32402"},
+                    {MKey::count, "3"}});
+    reporter.store("test:transaction:create:succeed",
+                 {{MKey::value, transactions[3]}, {MKey::size, "32402"}, {MKey::count, "3"}});
+    reporter.store("test:ux:click:panel:transfer:accept");
+    reporter.store("test:transaction:accept:attempt",  MKey::value, transactions[3]);
+    reporter.store("test:transaction:accept:succeed",  MKey::value, transactions[3]);
+    reporter.store("test:transaction:prepare:attempt", MKey::value, transactions[3]);
+    reporter.store("test:transaction:prepare:succeed", MKey::value, transactions[3]);
+    reporter.store("test:transaction:start:attempt",   MKey::value, transactions[3]);
+    reporter.store("test:transaction:start:succeed",   MKey::value, transactions[3]);
+    reporter.store("test:transaction:finish:attempt",  MKey::value, transactions[3]);
+    reporter.store("test:transaction:finish:succeed",  MKey::value, transactions[3]);
 
 
 
 // Register failure.
-    server.store("test:user:register:attempt");
-    server.store("test:user:register:fail", "cd2", "email already taken.");
+    reporter.store("test:user:register:attempt");
+    reporter.store("test:user:register:fail", MKey::value, "email already taken.");
 // Register success.
-    server.store("test:user:register:attempt");
-    server.store("test:user:register:succeed");
+    reporter.store("test:user:register:attempt");
+    reporter.store("test:user:register:succeed");
 
 // Login failure
-    server.store("test:user:login:attempt");
-    server.store("test:user:login:fail", "cd2", "login:password invalid.");
+    reporter.store("test:user:login:attempt");
+    reporter.store("test:user:login:fail", MKey::value, "login:password invalid.");
 
 // Login success.
-    server.store("test:user:login:attempt");
-    server.store("test:user:login:succeed");
-    server.update_user(users.first);
+    reporter.store("test:user:login:attempt");
+    reporter.store("test:user:login:succeed");
+    reporter.update_user(users.first);
 
 // Logout failure.
-    server.update_user(users.first);
-    server.store("test:user:logout:attempt");
-    server.store("test:user:logout:fail", "cd2", "unknown error");
+    reporter.update_user(users.first);
+    reporter.store("test:user:logout:attempt");
+    reporter.store("test:user:logout:fail", MKey::value, "unknown error");
 
 //  Login success.
-    server.store("test:user:login:attempt");
-    server.store("test:user:login:succeed");
-    server.update_user(users.first);
+    reporter.store("test:user:login:attempt");
+    reporter.store("test:user:login:succeed");
+    reporter.update_user(users.first);
 
 
 // Send file process.
-    server.store("test:transaction:create:attempt",
-                 {{"cd2", transactions[3]},{"cm1", "32402"}, {"cm2", "3"}});
-    server.store("test:transaction:create:succeed",
-                 {{"cd2", transactions[3]}, {"cm1", "32402"}, {"cm2", "3"}});
-    server.store("test:transaction:accept:attempt",  "cd2", transactions[3]);
-    server.store("test:transaction:accept:succeed",  "cd2", transactions[3]);
-    server.store("test:transaction:prepare:attempt", "cd2", transactions[3]);
-    server.store("test:transaction:prepare:succeed", "cd2", transactions[3]);
-    server.store("test:transaction:start:attempt",   "cd2", transactions[3]);
-    server.store("test:transaction:start:succeed",   "cd2", transactions[3]);
-    server.store("test:transaction:finish:attempt",  "cd2", transactions[3]);
-    server.store("test:transaction:finish:succeed",  "cd2", transactions[3]);
+    reporter.store("test:transaction:create:attempt",
+                 {{MKey::value, transactions[3]},{MKey::size, "32402"}, {MKey::count, "3"}});
+    reporter.store("test:transaction:create:succeed",
+                 {{MKey::value, transactions[3]}, {MKey::size, "32402"}, {MKey::count, "3"}});
+    reporter.store("test:transaction:accept:attempt",  MKey::value, transactions[3]);
+    reporter.store("test:transaction:accept:succeed",  MKey::value, transactions[3]);
+    reporter.store("test:transaction:prepare:attempt", MKey::value, transactions[3]);
+    reporter.store("test:transaction:prepare:succeed", MKey::value, transactions[3]);
+    reporter.store("test:transaction:start:attempt",   MKey::value, transactions[3]);
+    reporter.store("test:transaction:start:succeed",   MKey::value, transactions[3]);
+    reporter.store("test:transaction:finish:attempt",  MKey::value, transactions[3]);
+    reporter.store("test:transaction:finish:succeed",  MKey::value, transactions[3]);
 
     // Self share, cancel while downloading.
-    server.store("test:ux:drop:self");
-    server.store("test:network:create:attempt");
-    server.store("test:network:create:success");
-    server.store("test:transaction:create:attempt", {{"cd2", transactions[4]}, {"cm1", "32402"}, {"cm2", "3"}});
-    server.store("test:transaction:create:succeed", {{"cd2", transactions[4]}, {"cm1", "32402"}, {"cm2", "3"}});
-    server.store("test:ux:click:transfer:self");
-    server.store("test:ux:click:panel:transfer:accept");
-    server.store("test:transaction:accept:attempt", "cd2", transactions[4]);
-    server.store("test:transaction:accept:succeed", "cd2", transactions[4]);
-    server.store("test:ux:click:panel:transfer:close:nowhere");
-    server.store("test:ux:click:transfer:self");
-    server.store("test:ux:click:panel:transfer:close:button");
-    server.store("test:transaction:prepare:attempt", "cd2", transactions[4]);
-    server.store("test:network:user:add:attempt");
-    server.store("test:network:user:add:succeed");
-    server.store("test:transaction:prepare:succeed", "cd2", transactions[4]);
-    server.store("test:transaction:start:attempt", "cd2", transactions[4]);
-    server.store("test:transaction:start:succeed", "cd2", transactions[4]);
-    server.store("test:ux:click:transfer:self");
-    server.store("test:ux:click:panel:transfer:cancel");
-    server.store("test:transaction:cancel:attempt", "cd2", transactions[4]);
-    server.store("test:network:delete:attempt");
-    server.store("test:network:delete:succeed");
-    server.store("test:transaction:cancel:succeed", "cd2", transactions[4]);
-    server.store("test:ux:click:transfer:close:nowhere");
+    reporter.store("test:ux:drop:self");
+    reporter.store("test:network:create:attempt");
+    reporter.store("test:network:create:success");
+    reporter.store("test:transaction:create:attempt", {{MKey::value, transactions[4]}, {MKey::size, "32402"}, {MKey::count, "3"}});
+    reporter.store("test:transaction:create:succeed", {{MKey::value, transactions[4]}, {MKey::size, "32402"}, {MKey::count, "3"}});
+    reporter.store("test:ux:click:transfer:self");
+    reporter.store("test:ux:click:panel:transfer:accept");
+    reporter.store("test:transaction:accept:attempt", MKey::value, transactions[4]);
+    reporter.store("test:transaction:accept:succeed", MKey::value, transactions[4]);
+    reporter.store("test:ux:click:panel:transfer:close:nowhere");
+    reporter.store("test:ux:click:transfer:self");
+    reporter.store("test:ux:click:panel:transfer:close:button");
+    reporter.store("test:transaction:prepare:attempt", MKey::value, transactions[4]);
+    reporter.store("test:network:user:add:attempt");
+    reporter.store("test:network:user:add:succeed");
+    reporter.store("test:transaction:prepare:succeed", MKey::value, transactions[4]);
+    reporter.store("test:transaction:start:attempt", MKey::value, transactions[4]);
+    reporter.store("test:transaction:start:succeed", MKey::value, transactions[4]);
+    reporter.store("test:ux:click:transfer:self");
+    reporter.store("test:ux:click:panel:transfer:cancel");
+    reporter.store("test:transaction:cancel:attempt", MKey::value, transactions[4]);
+    reporter.store("test:network:delete:attempt");
+    reporter.store("test:network:delete:succeed");
+    reporter.store("test:transaction:cancel:succeed", MKey::value, transactions[4]);
+    reporter.store("test:ux:click:transfer:close:nowhere");
 
     // Self share.
-    server.store("test:ux:drop:self");
-    server.store("test:network:create:attempt");
-    server.store("test:network:create:success");
-    server.store("test:transaction:create:attempt", {{"cd2", transactions[4]}, {"cm1", "32402"}, {"cm2", "3"}});
-    server.store("test:transaction:create:succeed", {{"cd2", transactions[4]}, {"cm1", "32402"}, {"cm2", "3"}});
-    server.store("test:ux:click:transfer:self");
-    server.store("test:ux:click:panel:transfer:accept");
-    server.store("test:transaction:accept:attempt", "cd2", transactions[4]);
-    server.store("test:transaction:accept:succeed", "cd2", transactions[4]);
-    server.store("test:ux:click:panel:transfer:close:nowhere");
-    server.store("test:ux:click:transfer:self");
-    server.store("test:ux:click:panel:transfer:close:button");
-    server.store("test:transaction:prepare:attempt", "cd2", transactions[4]);
-    server.store("test:network:user:add:attempt");
-    server.store("test:network:user:add:succeed");
-    server.store("test:transaction:prepare:succeed", "cd2", transactions[4]);
-    server.store("test:transaction:start:attempt", "cd2", transactions[4]);
-    server.store("test:transaction:start:succeed", "cd2", transactions[4]);
-    server.store("test:transaction:finish:attempt", "cd2", transactions[4]);
-    server.store("test:transaction:finish:succeed", "cd2", transactions[4]);
-    server.store("test:network:delete:attempt");
-    server.store("test:network:delete:succeed");
+    reporter.store("test:ux:drop:self");
+    reporter.store("test:network:create:attempt");
+    reporter.store("test:network:create:success");
+    reporter.store("test:transaction:create:attempt", {{MKey::value, transactions[4]}, {MKey::size, "32402"}, {MKey::count, "3"}});
+    reporter.store("test:transaction:create:succeed", {{MKey::value, transactions[4]}, {MKey::size, "32402"}, {MKey::count, "3"}});
+    reporter.store("test:ux:click:transfer:self");
+    reporter.store("test:ux:click:panel:transfer:accept");
+    reporter.store("test:transaction:accept:attempt", MKey::value, transactions[4]);
+    reporter.store("test:transaction:accept:succeed", MKey::value, transactions[4]);
+    reporter.store("test:ux:click:panel:transfer:close:nowhere");
+    reporter.store("test:ux:click:transfer:self");
+    reporter.store("test:ux:click:panel:transfer:close:button");
+    reporter.store("test:transaction:prepare:attempt", MKey::value, transactions[4]);
+    reporter.store("test:network:user:add:attempt");
+    reporter.store("test:network:user:add:succeed");
+    reporter.store("test:transaction:prepare:succeed", MKey::value, transactions[4]);
+    reporter.store("test:transaction:start:attempt", MKey::value, transactions[4]);
+    reporter.store("test:transaction:start:succeed", MKey::value, transactions[4]);
+    reporter.store("test:transaction:finish:attempt", MKey::value, transactions[4]);
+    reporter.store("test:transaction:finish:succeed", MKey::value, transactions[4]);
+    reporter.store("test:network:delete:attempt");
+    reporter.store("test:network:delete:succeed");
 
     // P10.2:
-    server.update_user(users.first);
-    server.store("test:ux:drop:self");
-    server.store("test:network:create");
-    server.store("test:transaction:create", {{"cd2", transactions[5]}, {"cm1", "32402"}, {"cm2", "3"}});
-    server.store("test:ux:click:transfer:self");
-    server.store("test:ux:click:panel:transfer:accept");
-    server.store("test:transaction:accept", "cd2", transactions[5]);
-    server.store("test:ux:click:panel:transfer:close:nowhere");
-    server.store("test:ux:click:transfer:self");
-    server.store("test:ux:click:panel:transfer:close:button");
-    server.store("test:network:user:add");
-    server.store("test:transaction:start", "cd2", transactions[5]);
-    server.store("test:transaction:finish", "cd2", transactions[5]);
-    server.store("test:ux:click:transfer:self");
-    server.store("test:ux:click:panel:transfer:access");
-    server.store("test:network:delete");
-    server.store("test:ux:click:panel:transfer:close:nowhere");
+    reporter.update_user(users.first);
+    reporter.store("test:ux:drop:self");
+    reporter.store("test:network:create");
+    reporter.store("test:transaction:create", {{MKey::value, transactions[5]}, {MKey::size, "32402"}, {MKey::count, "3"}});
+    reporter.store("test:ux:click:transfer:self");
+    reporter.store("test:ux:click:panel:transfer:accept");
+    reporter.store("test:transaction:accept", MKey::value, transactions[5]);
+    reporter.store("test:ux:click:panel:transfer:close:nowhere");
+    reporter.store("test:ux:click:transfer:self");
+    reporter.store("test:ux:click:panel:transfer:close:button");
+    reporter.store("test:network:user:add");
+    reporter.store("test:transaction:start", MKey::value, transactions[5]);
+    reporter.store("test:transaction:finish", MKey::value, transactions[5]);
+    reporter.store("test:ux:click:transfer:self");
+    reporter.store("test:ux:click:panel:transfer:access");
+    reporter.store("test:network:delete");
+    reporter.store("test:ux:click:panel:transfer:close:nowhere");
 
 
-    server.store("test:ux:drop:favorite");
-    server.store("test:ux:drop:bar");
-    server.store("test:ux:drop:nowhere");
-    server.store("test:ux:click:self");
-    server.store("test:ux:click:favorite");
-    server.store("test:ux:click:transfer:self");
-    server.store("test:ux:click:transfer:favorite");
-    server.store("test:ux:click:transfer:user");
-    server.store("test:ux:click:transfer:social");
-    server.store("test:ux:click:transfer:email");
-    server.store("test:ux:click:nowhere");
-    server.store("test:ux:click:panel:transfer:open");
-    server.store("test:ux:click:panel:transfer:close:button");
-    server.store("test:ux:click:panel:transfer:close:nowhere");
-    server.store("test:ux:click:panel:transfer:nowhere");
-    server.store("test:ux:click:panel:transfer:accept");
-    server.store("test:ux:click:panel:transfer:deny");
-    server.store("test:ux:click:panel:transfer:cancel");
-    server.store("test:ux:click:panel:transfer:access");
-    server.store("test:ux:click:bar:search:field");
-    server.store("test:ux:click:bar:search:dropzone:empty");
-    server.store("test:ux:click:bar:search:dropzone:open");
-    server.store("test:ux:click:bar:search:dropzone:close:nowhere");
-    server.store("test:ux:click:bar:search:dropzone:close:button");
-    server.store("test:ux:click:bar:search:dropzone:nowhere");
-    server.store("test:ux:click:bar:search:dropzone:remove:item");
-    server.store("test:ux:click:bar:search:dropzone:remove:all");
-    server.store("test:ux:keyboard:bar:search");
-    server.store("test:ux:click:bar:search:invite");
-    server.store("test:ux:click:bar:search:share");
-    server.store("test:ux:keyboard:bar:search:invite");
-    server.store("test:ux:keyboard:bar:search:share");
-    server.store("test:ux:click:panel:search:open");
-    server.store("test:ux:click:panel:search:close:nowhere");
-    server.store("test:ux:keyboard:panel:search:close:empty");
-    server.store("test:ux:click:panel:search:select:user");
-    server.store("test:ux:click:panel:search:select:social");
-    server.store("test:ux:click:panel:search:select:other");
-    server.store("test:ux:keyboard:panel:search:select:user");
-    server.store("test:ux:keyboard:panel:search:select:social");
-    server.store("test:ux:keyboard:panel:search:select:other");
-    server.store("test:ux:click:panel:notifications:open");
-    server.store("test:ux:click:panel:notifications:close:icon");
-    server.store("test:ux:click:panel:notifications:close:nowhere");
-    server.store("test:ux:click:panel:notifications:nowhere");
-    server.store("test:ux:click:panel:notifications:accept");
-    server.store("test:ux:click:panel:notifications:deny");
-    server.store("test:ux:click:panel:notifications:cancel");
-    server.store("test:ux:click:panel:notifications:access");
+    reporter.store("test:ux:drop:favorite");
+    reporter.store("test:ux:drop:bar");
+    reporter.store("test:ux:drop:nowhere");
+    reporter.store("test:ux:click:self");
+    reporter.store("test:ux:click:favorite");
+    reporter.store("test:ux:click:transfer:self");
+    reporter.store("test:ux:click:transfer:favorite");
+    reporter.store("test:ux:click:transfer:user");
+    reporter.store("test:ux:click:transfer:social");
+    reporter.store("test:ux:click:transfer:email");
+    reporter.store("test:ux:click:nowhere");
+    reporter.store("test:ux:click:panel:transfer:open");
+    reporter.store("test:ux:click:panel:transfer:close:button");
+    reporter.store("test:ux:click:panel:transfer:close:nowhere");
+    reporter.store("test:ux:click:panel:transfer:nowhere");
+    reporter.store("test:ux:click:panel:transfer:accept");
+    reporter.store("test:ux:click:panel:transfer:deny");
+    reporter.store("test:ux:click:panel:transfer:cancel");
+    reporter.store("test:ux:click:panel:transfer:access");
+    reporter.store("test:ux:click:bar:search:field");
+    reporter.store("test:ux:click:bar:search:dropzone:empty");
+    reporter.store("test:ux:click:bar:search:dropzone:open");
+    reporter.store("test:ux:click:bar:search:dropzone:close:nowhere");
+    reporter.store("test:ux:click:bar:search:dropzone:close:button");
+    reporter.store("test:ux:click:bar:search:dropzone:nowhere");
+    reporter.store("test:ux:click:bar:search:dropzone:remove:item");
+    reporter.store("test:ux:click:bar:search:dropzone:remove:all");
+    reporter.store("test:ux:keyboard:bar:search");
+    reporter.store("test:ux:click:bar:search:invite");
+    reporter.store("test:ux:click:bar:search:share");
+    reporter.store("test:ux:keyboard:bar:search:invite");
+    reporter.store("test:ux:keyboard:bar:search:share");
+    reporter.store("test:ux:click:panel:search:open");
+    reporter.store("test:ux:click:panel:search:close:nowhere");
+    reporter.store("test:ux:keyboard:panel:search:close:empty");
+    reporter.store("test:ux:click:panel:search:select:user");
+    reporter.store("test:ux:click:panel:search:select:social");
+    reporter.store("test:ux:click:panel:search:select:other");
+    reporter.store("test:ux:keyboard:panel:search:select:user");
+    reporter.store("test:ux:keyboard:panel:search:select:social");
+    reporter.store("test:ux:keyboard:panel:search:select:other");
+    reporter.store("test:ux:click:panel:notifications:open");
+    reporter.store("test:ux:click:panel:notifications:close:icon");
+    reporter.store("test:ux:click:panel:notifications:close:nowhere");
+    reporter.store("test:ux:click:panel:notifications:nowhere");
+    reporter.store("test:ux:click:panel:notifications:accept");
+    reporter.store("test:ux:click:panel:notifications:deny");
+    reporter.store("test:ux:click:panel:notifications:cancel");
+    reporter.store("test:ux:click:panel:notifications:access");
   }
   elle::printf("Test done.\n");
 

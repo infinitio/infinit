@@ -1,5 +1,4 @@
 #include "../State.hh"
-#include "../MetricReporter.hh"
 
 #include <common/common.hh>
 
@@ -21,9 +20,11 @@
 
 #include <elle/format/json.hh>
 #include <elle/io/Piece.hh>
-#include <elle/os/path.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
+#include <elle/os/path.hh>
+
+#include <metrics/Reporter.hh>
 
 #include <QString>
 #include <QByteArray>
@@ -85,7 +86,7 @@ namespace surface
     {
       ELLE_TRACE("creating network %s", name);
 
-      metrics::google::server().store("network:create:attempt");
+      elle::metrics::reporter().store("network:create:attempt");
 
       plasma::meta::CreateNetworkResponse response;
       try
@@ -93,7 +94,7 @@ namespace surface
         response = this->_meta->create_network(name);
       }
       CATCH_FAILURE_TO_METRICS("network:create");
-      metrics::google::server().store("network:create:succeed");
+      elle::metrics::reporter().store("network:create:succeed");
 
       this->_networks_dirty = true; // XXX insert response in _networks
 
@@ -339,7 +340,7 @@ namespace surface
 
       this->_networks[network_id].reset();
 
-      metrics::google::server().store("network:delete:attempt");
+      elle::metrics::reporter().store("network:delete:attempt");
 
       plasma::meta::DeleteNetworkResponse response;
       try
@@ -348,7 +349,7 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("network:delete");
 
-      metrics::google::server().store("network:delete:succeed");
+      elle::metrics::reporter().store("network:delete:succeed");
 
       this->_networks_dirty = true; // XXX remove from _networks instead
       if (this->infinit_instance_manager().has_network(response.deleted_network_id))
@@ -409,7 +410,7 @@ namespace surface
     {
       ELLE_TRACE("adding user '%s' to network '%s'", user, network_id);
 
-      metrics::google::server().store("network:user:add:attempt");
+      elle::metrics::reporter().store("network:user:add:attempt");
       try
       {
         // Retrieve user, ensuring he is on the user list.
@@ -449,7 +450,7 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("network:user:add");
 
-      metrics::google::server().store("network:user:add:succeed");;
+      elle::metrics::reporter().store("network:user:add:succeed");;
     }
 
     //std::map<std::string, NetworkStatus*> const&

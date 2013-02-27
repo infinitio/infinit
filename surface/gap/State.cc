@@ -1,6 +1,5 @@
 #include "State.hh"
 #include "_detail/Process.hh"
-#include "MetricReporter.hh"
 
 #include <common/common.hh>
 
@@ -16,6 +15,8 @@
 #include <elle/log/TextLogger.hh>
 #include <elle/os/path.hh>
 #include <elle/os/getenv.hh>
+#include <metrics/_details/google.hh>
+#include <metrics/_details/kissmetrics.hh>
 
 // XXX[WTF?]
 //#include <elle/serialize/HexadecimalArchive.hh>
@@ -123,12 +124,18 @@ namespace surface
           this->_me = this->_meta->self();
         }
       }
+
       // Initialize server.
-      metrics::google::server(common::metrics::google_server(),
-                              common::metrics::google_port(),
-                              "cd",
-                              metrics::google::retrieve_id(
-                                common::metrics::id_path()));
+      auto const& g_info = common::metrics::google_info();
+      elle::metrics::google::register_service(g_info.server,
+                                              g_info.port,
+                                              g_info.id_path);
+
+      // Initialize server.
+      auto const& km_info = common::metrics::km_info();
+      elle::metrics::kissmetrics::register_service(km_info.server,
+                                                   km_info.port,
+                                                   km_info.id_path);
     }
 
     void

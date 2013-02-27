@@ -16,13 +16,27 @@ namespace elle
 {
   namespace metrics
   {
+
+    //XXX lake of genericity here.
+    enum class Key: int
+    {
+      tag,
+      session,
+      status,
+      value,
+      count,
+      height,
+      size,
+      width,
+    };
+
     class Reporter
     {
       /*------.
       | Types |
       `------*/
     public:
-      typedef std::unordered_map<std::string, std::string> Metric;
+      typedef std::unordered_map<Key, std::string> Metric;
       typedef std::pair<elle::utility::Time, Metric> TimeMetricPair;
 
     public:
@@ -31,7 +45,6 @@ namespace elle
       public:
         Service(std::string const& host,
                 uint16_t port,
-                std::string const& tag,
                 std::string const& user,
                 std::string const& pretty_name);
 
@@ -43,7 +56,7 @@ namespace elle
       public:
         virtual
         void
-        update_user(std::string const& user) = 0;
+        update_user(std::string const& user);
 
       protected:
         elle::utility::Time _last_sent;
@@ -82,7 +95,7 @@ namespace elle
       /// Sugar: Store(name, {key, value})
       void
       store(std::string const& name,
-            std::string const& key,
+            Key const& key,
             std::string const& value);
 
       void
@@ -93,6 +106,9 @@ namespace elle
 
       Reporter::Service&
       service(std::string const& name);
+
+      void
+      update_user(std::string const& user);
 
     protected:
       virtual
@@ -114,10 +130,30 @@ namespace elle
 
     Reporter&
     reporter();
-
-    Reporter::Service&
-    service(std::string const& name);
   }
+}
+
+namespace std
+{
+  template<>
+  struct hash<elle::metrics::Key>
+  {
+  public:
+    size_t operator()(const elle::metrics::Key &k) const
+    {
+      return static_cast<int>(k);
+    }
+  };
+
+  // template<>
+  // struct equal_to<elle::metrics::Key>
+  // {
+  // public:
+  //   bool operator()(const elle::metrics::Key &k) const
+  //   {
+  //     return static_cast<int>k;
+  //   }
+  // };
 }
 
 #endif

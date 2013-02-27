@@ -1,5 +1,5 @@
 #include "../State.hh"
-#include "../MetricReporter.hh"
+#include <metrics/Reporter.hh>
 
 #include <common/common.hh>
 
@@ -21,6 +21,7 @@ namespace surface
   namespace gap
   {
 
+    using MKey = elle::metrics::Key;
     namespace fs = boost::filesystem;
 
     State::ProcessId
@@ -79,9 +80,10 @@ namespace surface
       auto transfer_binary = common::infinit::binary_path("8transfer");
       ELLE_DEBUG("Using 8transfert binary '%s'", transfer_binary);
 
-      metrics::google::server().store("transaction:create:attempt",
-                                    {{"cm1", std::to_string(files.size())},
-                                     {"cm2", std::to_string(size)}});
+      elle::metrics::reporter().store(
+        "transaction:create:attempt",
+        {{MKey::count, std::to_string(files.size())},
+         {MKey::size, std::to_string(size)}});
 
       try
         {
@@ -134,10 +136,11 @@ namespace surface
                                                 network_id,
                                                 this->device_id());
 
-          metrics::google::server().store("transaction:create:succeed",
-                                          {{"cd2", res.created_transaction_id},
-                                           {"cm1", std::to_string(files.size())},
-                                           {"cm2", std::to_string(size)}});
+          elle::metrics::reporter().store(
+            "transaction:create:succeed",
+            {{MKey::value, res.created_transaction_id},
+             {MKey::count, std::to_string(files.size())},
+             {MKey::size, std::to_string(size)}});
 
         }
       CATCH_FAILURE_TO_METRICS("transaction:create");
@@ -405,8 +408,8 @@ namespace surface
         throw Exception{gap_error, "Only recipient can accept transaction."};
       }
 
-      metrics::google::server().store("transaction:accept:attempt",
-                                      {{"cd2", transaction.transaction_id}});
+      elle::metrics::reporter().store(
+        "transaction:accept:attempt", MKey::value, transaction.transaction_id);
 
       try
       {
@@ -417,8 +420,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction:accept");
 
-      metrics::google::server().store("transaction:accept:succeed",
-                                      {{"cd2", transaction.transaction_id}});
+      elle::metrics::reporter().store(
+        "transaction:accept:succeed", MKey::value, transaction.transaction_id);
 
       // Could be improve.
       _swaggers_dirty = true;
@@ -468,8 +471,8 @@ namespace surface
         throw Exception{gap_error, "Only sender can prepare his network."};
       }
 
-      metrics::google::server().store("transaction:prepare:attempt",
-                                      {{"cd2", transaction.transaction_id}});
+      elle::metrics::reporter().store(
+        "transaction:prepare:attempt", MKey::value, transaction.transaction_id);
 
       try
       {
@@ -478,8 +481,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction:prepare");
 
-      metrics::google::server().store("transaction:prepare:succeed",
-                                      {{"cd2", transaction.transaction_id}});
+      elle::metrics::reporter().store(
+        "transaction:prepare:succeed", MKey::value, transaction.transaction_id);
     }
 
     void
@@ -518,8 +521,8 @@ namespace surface
         throw Exception{gap_error, "Only recipient can start transaction."};
       }
 
-      metrics::google::server().store("transaction:start:attempt",
-                                      {{"cd2", transaction.transaction_id}});
+      elle::metrics::reporter().store(
+        "transaction:start:attempt", MKey::value, transaction.transaction_id);
 
       try
       {
@@ -528,8 +531,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction:start");
 
-      metrics::google::server().store("transaction:start:succeed",
-                                      {{"cd2", transaction.transaction_id}});
+      elle::metrics::reporter().store(
+        "transaction:start:succeed", MKey::value, transaction.transaction_id);
     }
 
     void
@@ -586,8 +589,8 @@ namespace surface
             "Only recipient can close transaction."};
       }
 
-      metrics::google::server().store("transaction:finish:attempt",
-                                      {{"cd2", transaction.transaction_id}});
+      elle::metrics::reporter().store(
+        "transaction:finish:attempt", MKey::value, transaction.transaction_id);
 
       try
       {
@@ -596,9 +599,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction:finish");
 
-      metrics::google::server().store("transaction:finish:succeed",
-                                      {{"cd2", transaction.transaction_id}});
-
+      elle::metrics::reporter().store(
+        "transaction:finish:succeed", MKey::value, transaction.transaction_id);
     }
 
     void
@@ -618,9 +620,10 @@ namespace surface
       //XXX: If download has started, cancel it, delete files, ...
       if (transaction.sender_id == this->_me._id)
       {
-        metrics::google::server().store("transaction:cancel:sender:attempt",
-                                        {{"cd1", std::to_string(transaction.status)},
-                                         {"cd2", transaction.transaction_id}});
+        elle::metrics::reporter().store(
+          "transaction:cancel:sender:attempt",
+          {{MKey::status, std::to_string(transaction.status)},
+           {MKey::value, transaction.transaction_id}});
 
         try
         {
@@ -629,15 +632,18 @@ namespace surface
         }
         CATCH_FAILURE_TO_METRICS("transaction:cancel:sender");
 
-        metrics::google::server().store("transaction:cancel:sender:succeed",
-                                        {{"cd1", std::to_string(transaction.status)},
-                                          {"cd2", transaction.transaction_id}});
+        elle::metrics::reporter().store(
+          "transaction:cancel:sender:succeed",
+          {{MKey::status, std::to_string(transaction.status)},
+           {MKey::value, transaction.transaction_id}});
       }
       else
       {
-        metrics::google::server().store("transaction:cancel:recipient:attempt",
-                                        {{"cd1", std::to_string(transaction.status)},
-                                         {"cd2", transaction.transaction_id}});
+        elle::metrics::reporter().store(
+          "transaction:cancel:recipient:attempt",
+          {{MKey::status, std::to_string(transaction.status)},
+           {MKey::value, transaction.transaction_id}});
+
         try
         {
           this->_meta->update_transaction(transaction.transaction_id,
@@ -645,9 +651,10 @@ namespace surface
         }
         CATCH_FAILURE_TO_METRICS("transaction:cancel:recipient");
 
-        metrics::google::server().store("transaction:cancel:recipient:succeed",
-                                        {{"cd1", std::to_string(transaction.status)},
-                                         {"cd2", transaction.transaction_id}});
+        elle::metrics::reporter().store(
+          "transaction:cancel:recipient:succeed",
+          {{MKey::status, std::to_string(transaction.status)},
+           {MKey::value, transaction.transaction_id}});
       }
     }
 

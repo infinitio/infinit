@@ -199,21 +199,23 @@ namespace common
 
   namespace metrics
   {
-    /// Path to the file storing user id.
-    std::string const&
-    id_path();
+    struct Info
+    {
+      std::string server;
+      uint16_t port;
+      std::string id_path;
+    };
+
+    Info const&
+    google_info();
+
+    Info const&
+    km_info();
 
     /// Path to the file storing fallbacked metrics.
     std::string const&
     fallback_path();
 
-    /// Google host address.
-    std::string const&
-    google_server();
-
-    /// Google port.
-    uint16_t
-    google_port();
   }
 
 } // !common

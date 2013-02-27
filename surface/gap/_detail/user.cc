@@ -1,14 +1,13 @@
 #include "../State.hh"
-#include "../MetricReporter.hh"
 
 #include <elle/os/path.hh>
+#include <metrics/_details/google.hh>
+#include <elle/serialize/HexadecimalArchive.hh>
 
 #include <common/common.hh>
 
 #include <lune/Dictionary.hh>
 #include <lune/Identity.hh>
-
-#include <elle/serialize/HexadecimalArchive.hh>
 
 #include <boost/filesystem.hpp>
 
@@ -21,6 +20,7 @@ namespace surface
   namespace gap
   {
 
+    using MKey = elle::metrics::Key;
     namespace fs = boost::filesystem;
     namespace path = elle::os::path;
 
@@ -154,7 +154,7 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
 
-      metrics::google::server().store("user:login:attempt");
+      elle::metrics::reporter().store("user:login:attempt");
 
       plasma::meta::LoginResponse res;
       try
@@ -162,8 +162,9 @@ namespace surface
         res = this->_meta->login(lower_email, password);
       }
       CATCH_FAILURE_TO_METRICS("user:login");
-      metrics::google::update_id(res._id);
-      metrics::google::server().store("user:login:succeed", "cs", "start");
+      elle::metrics::reporter().update_user(res._id);
+      elle::metrics::reporter().store("user:login:succeed",
+                                      MKey::session, "start");
 
 
       ELLE_DEBUG("Logged in as %s token = %s", email, res.token);
@@ -233,7 +234,8 @@ namespace surface
         return;
 
       // End session the session.
-      metrics::google::server().store("user:logout:attempt", "cs", "end");
+      elle::metrics::reporter().store("user:logout:attempt",
+                                      MKey::session, "end");
 
       try
       {
@@ -242,7 +244,7 @@ namespace surface
       CATCH_FAILURE_TO_METRICS("user:logout");
 
       // End session the session.
-      metrics::google::server().store("user:logout:succeed");
+      elle::metrics::reporter().store("user:logout:succeed");
     }
 
     void
@@ -252,7 +254,7 @@ namespace surface
                      std::string const& activation_code)
     {
       // Send file request successful.
-      metrics::google::server().store("user:register:attempt");
+      elle::metrics::reporter().store("user:register:attempt");
 
       std::string lower_email = email;
 
@@ -271,7 +273,7 @@ namespace surface
       CATCH_FAILURE_TO_METRICS("user:register");
 
       // Send file request successful.
-      metrics::google::server().store("user:register:succeed");
+      elle::metrics::reporter().store("user:register:succeed");
 
       ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);
       this->login(lower_email, password);

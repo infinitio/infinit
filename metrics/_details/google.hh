@@ -17,32 +17,30 @@ namespace elle
       {
       public:
         Service(std::string const& host,
-                 uint16_t  port,
-                 std::string const& tag,
-                 std::string const& id);
+                uint16_t  port,
+                std::string const& id,
+                std::string const& id_file_path);
       private:
         virtual
         void
         _send(elle::metrics::Reporter::TimeMetricPair const& metric) override;
 
-      public:
         virtual
         void
         update_user(std::string const& user) override;
+
+      private:
+        std::string _id_file_path;
       };
 
       std::string
       retrieve_id(std::string const& path);
 
-      void
-      update_id(std::string const& id);
-
       // Create a static Reporter with google analytics server.
       void
-      service(std::string const& host,
-              uint16_t port,
-              std::string const& tag,
-              std::string const& id);
+      register_service(std::string const& host,
+                       uint16_t port,
+                       std::string const& id);
     }
   }
 }

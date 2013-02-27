@@ -17,12 +17,26 @@ namespace elle
     namespace google
     {
       static std::string pretty_name = "Google";
+      static const std::map<elle::metrics::Key, std::string> keymap
+      {
+        {elle::metrics::Key::tag,     "cd"},
+        {elle::metrics::Key::session, "cs"},
+        {elle::metrics::Key::status,  "cd1"},
+        {elle::metrics::Key::value,   "cd2"},
+        {elle::metrics::Key::count,   "cm2"},
+        {elle::metrics::Key::height,  "cm4"},
+        {elle::metrics::Key::size,    "cm1"},
+        {elle::metrics::Key::width,   "cm3"},
+      };
+
+
       //- Service --------------------------------------------------------------
       Service::Service(std::string const& host,
                        uint16_t  port,
-                       std::string const& tag,
-                       std::string const& id)
-        : elle::metrics::Reporter::Service{host, port, tag, id, pretty_name}
+                       std::string const& id,
+                       std::string const& id_file_path)
+        : elle::metrics::Reporter::Service{host, port, id, pretty_name}
+        , _id_file_path{id_file_path}
       {}
 
       void
@@ -46,12 +60,12 @@ namespace elle
 
         typedef Reporter::Metric::value_type Field;
 
-        request.post_field(this->_tag, metric.second.at(elle::metrics::Reporter::tag_placeholder));
+        request.post_field(keymap.at(Key::tag), metric.second.at(Key::tag));
 
         for (Field f: metric.second)
         {
-          if (f.first != elle::metrics::Reporter::tag_placeholder)
-            request.post_field(f.first, f.second);
+          if (f.first != Key::tag)
+            request.post_field(keymap.at(f.first), f.second);
         };
 
         _last_sent.Current();
@@ -61,41 +75,8 @@ namespace elle
         request.fire();
       }
 
-      //- Helper ---------------------------------------------------------------
       void
-      service(std::string const& host,
-              uint16_t port,
-              std::string const& tag,
-              std::string const& id)
-      {
-        elle::metrics::reporter().add_service(
-          std::unique_ptr<Service>{new Service{host, port, tag, id}});
-      }
-
-      std::string
-      retrieve_id(std::string const& path)
-      {
-        std::string id = "66666666-6666-6666-6666-66666666";
-
-        if (elle::os::path::exists(path))
-        {
-          std::ifstream id_file(path);
-
-          if(!id_file.good())
-            return id;
-
-          std::getline(id_file, id);
-
-          id_file.close();
-          // should be checked by regex but std regex suxx.
-        }
-
-        return id;
-      }
-
-      void
-      update_id(std::string const& id,
-                std::string const& path)
+      Service::update_user(std::string const& id)
       {
         elle::Buffer id_buffer(reinterpret_cast<elle::Byte const*>(id.data()), id.length());
 
@@ -125,7 +106,7 @@ namespace elle
 
         ELLE_DEBUG("hashed id: %s", hashed_id);
 
-        std::ofstream id_file(path);
+        std::ofstream id_file(this->_id_file_path);
 
         if (id_file.good())
         {
@@ -133,7 +114,39 @@ namespace elle
           id_file.close();
         }
 
-        elle::metrics::service(pretty_name).update_user(hashed_id);
+        this->_user_id = hashed_id;
+      }
+
+      //- Helper ---------------------------------------------------------------
+      void
+      register_service(std::string const& host,
+                       uint16_t port,
+                       std::string const& id_file_path)
+      {
+        elle::metrics::reporter().add_service(
+          std::unique_ptr<Service>{
+            new Service{host, port, retrieve_id(id_file_path), id_file_path}});
+      }
+
+      std::string
+      retrieve_id(std::string const& path)
+      {
+        std::string id = "66666666-6666-6666-6666-66666666";
+
+        if (elle::os::path::exists(path))
+        {
+          std::ifstream id_file(path);
+
+          if(!id_file.good())
+            return id;
+
+          std::getline(id_file, id);
+
+          id_file.close();
+          // should be checked by regex but std regex suxx.
+        }
+
+        return id;
       }
     } // End of google
   } // End of metrics

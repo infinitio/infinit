@@ -443,34 +443,31 @@ namespace common
   namespace metrics
   {
     std::string const&
-    id_path()
-    {
-      static std::string const id_path = path::join(common::infinit::home(),
-                                                    "ga.id");
-      return id_path;
-    }
-
-    std::string const&
     fallback_path()
     {
       static std::string const fb_path = path::join(common::infinit::home(),
-                                                    "ga.fb");
+                                                    "analytics.fallback");
       return fb_path;
     }
 
-    std::string const&
-    google_server()
+    Info const&
+    google_info()
     {
-      static std::string const analytics = "www.google-analytics.com";
+      static Info google{"www.google-analytics.com",
+                         80,
+                         path::join(common::infinit::home(), "ga.id")};
 
-      return analytics;
+      return google;
     }
 
-    uint16_t
-    google_port()
+    Info const&
+    km_info()
     {
-      return 80;
-    }
+      static Info km{"trk.kissmetrics.com",
+                     80,
+                     path::join(common::infinit::home(), "km.id")};
 
+      return km;
+    }
   }
 }

@@ -30,7 +30,6 @@ namespace elle
 {
   namespace metrics
   {
-    std::string Reporter::tag_placeholder{"_tag"};
     std::string Reporter::version =
       elle::sprintf("%s.%s", INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
     std::string Reporter::user_agent = elle::sprintf("Infinit/%s (%s)",
@@ -47,14 +46,19 @@ namespace elle
     //- Service ----------------------------------------------------------------
     Reporter::Service::Service(std::string const& host,
                                uint16_t port,
-                               std::string const& tag,
                                std::string const& user,
                                std::string const& pretty_name)
-      : _tag{tag}
-      , _user_id{user}
+      : _user_id{user}
       , _server{new elle::HTTPClient{host, port, Reporter::user_agent}}
       , name{pretty_name}
     {}
+
+    void
+    Reporter::Service::update_user(std::string const& user)
+    {
+      this->_user_id = user;
+    }
+
 
     //- Reporter ---------------------------------------------------------------
     Reporter::Reporter()
@@ -81,7 +85,7 @@ namespace elle
       // Note that if we want the ability to use initializer list for metric,
       // we can't declare it as non const..
       Metric& m = const_cast<Metric &>(metric);
-      m.emplace(tag_placeholder, caller);
+      m.emplace(Key::tag, caller);
 
       this->store(TimeMetricPair(elle::utility::Time::current(), m));
     }
@@ -94,8 +98,8 @@ namespace elle
 
     void
     Reporter::store(std::string const& name,
-                          std::string const& key,
-                          std::string const& value)
+                    Key const& key,
+                    std::string const& value)
     {
       Metric metric;
       metric.emplace(key, value);
@@ -105,7 +109,7 @@ namespace elle
     void
     Reporter::store(TimeMetricPair const& metric)
     {
-      for (auto& serv: _services)
+      for (auto& serv: this->_services)
       {
         try
         {
@@ -137,6 +141,13 @@ namespace elle
       ELLE_ASSERT(service != nullptr);
 
       return *service;
+    }
+
+    void
+    Reporter::update_user(std::string const& user)
+    {
+      for (auto& serv: this->_services)
+        serv.second->update_user(user);
     }
 
     Reporter&
