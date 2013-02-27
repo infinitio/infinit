@@ -411,8 +411,27 @@ namespace satellite
   }
 }
 
+static
 int
-main(int argc, char** argv)
+_satellite_wrapper(std::string const& name,
+                   std::function<void ()> const& action)
+{
+  try
+    {
+      action();
+      return 0;
+    }
+  catch (std::runtime_error const& e)
+    {
+      std::cerr << name << ": fatal error: " << e.what() << std::endl;
+      elle::crash::report(common::meta::host(), common::meta::port(),
+                          name, e.what());
+      return 1;
+    }
+}
+
+int
+satellite_main(std::string const& name, std::function<void ()> const& action)
 {
   reactor::Scheduler sched;
 
@@ -422,7 +441,7 @@ main(int argc, char** argv)
      {SIGINT, SIGABRT, SIGPIPE},
      elle::crash::Handler(common::meta::host(),
                           common::meta::port(),
-                          "8user", false));
+                          name, false));
 
   // Capture signal and send email exiting.
   elle::signal::ScopedGuard exit_guard
@@ -430,20 +449,25 @@ main(int argc, char** argv)
      {SIGILL, SIGSEGV},
      elle::crash::Handler(common::meta::host(),
                           common::meta::port(),
-                          "8user", true));
-
+                          name, true));
   try
     {
-      reactor::Thread main(sched, "8user",
-                           std::bind(satellite::User, argc, argv));
+      reactor::VThread<int> main(sched, name, std::bind(_satellite_wrapper,
+                                                        name, action));
       sched.run();
+      return main.result();
     }
   catch (std::runtime_error const& e)
     {
-      std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
+      std::cerr << name << ": fatal error: " << e.what() << std::endl;
       elle::crash::report(common::meta::host(), common::meta::port(),
-                          "8user", e.what());
+                          name, e.what());
       return 1;
     }
-  return 0;
+}
+
+int
+main(int argc, char** argv)
+{
+  return satellite_main("8user", std::bind(satellite::User, argc, argv));
 }
