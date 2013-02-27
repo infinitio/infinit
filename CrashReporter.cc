@@ -34,12 +34,12 @@ namespace elle
                     [&](int sig) { ELLE_DEBUG("handling %s", sig);
                                    this->_signals.add(sig); });
 
-      //XXX: this->_launch();
+      this->_launch();
     }
 
     ScopedGuard::~ScopedGuard()
     {
-      //XXX: this->_release();
+      this->_release();
     }
 
     void

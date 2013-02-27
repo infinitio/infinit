@@ -418,6 +418,22 @@ _satellite_wrapper(std::string const& name,
 {
   try
     {
+      // Capture signal and send email without exiting.
+      elle::signal::ScopedGuard guard
+        (*reactor::Scheduler::scheduler(),
+         {SIGINT, SIGABRT, SIGPIPE, SIGTERM},
+         elle::crash::Handler(common::meta::host(),
+                              common::meta::port(),
+                              name, false));
+
+      // Capture signal and send email exiting.
+      elle::signal::ScopedGuard exit_guard
+        (*reactor::Scheduler::scheduler(),
+         {SIGILL, SIGSEGV},
+         elle::crash::Handler(common::meta::host(),
+                              common::meta::port(),
+                              name, true));
+
       action();
       return 0;
     }
@@ -435,21 +451,6 @@ satellite_main(std::string const& name, std::function<void ()> const& action)
 {
   reactor::Scheduler sched;
 
-  // Capture signal and send email without exiting.
-  elle::signal::ScopedGuard guard
-    (sched,
-     {SIGINT, SIGABRT, SIGPIPE},
-     elle::crash::Handler(common::meta::host(),
-                          common::meta::port(),
-                          name, false));
-
-  // Capture signal and send email exiting.
-  elle::signal::ScopedGuard exit_guard
-    (sched,
-     {SIGILL, SIGSEGV},
-     elle::crash::Handler(common::meta::host(),
-                          common::meta::port(),
-                          name, true));
   try
     {
       reactor::VThread<int> main(sched, name, std::bind(_satellite_wrapper,
