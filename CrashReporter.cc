@@ -94,18 +94,23 @@ namespace elle
   namespace crash
   {
 
-    Handler::Handler(std::string const& name,
+    Handler::Handler(std::string const& host,
+                     int port,
+                     std::string const& name,
                      bool quit):
+      _host(host),
+      _port(port),
       _name{name},
       _quit{quit}
     {}
 
-    Handler::Handler(std::string const& name,
+    Handler::Handler(std::string const& host,
+                     int port,
+                     std::string const& name,
                      bool quit,
                      int argc,
                      char** argv):
-      _name{name},
-      _quit{quit}
+      Handler(host, port, name, quit)
     {
       for (int i = 1; i < argc; ++i)
       {
@@ -121,8 +126,7 @@ namespace elle
     {}
 
     void
-    Handler::operator() (std::string const& host, int port,
-                         boost::system::error_code const& error,
+    Handler::operator() (boost::system::error_code const& error,
                          int sig)
     {
       if (!error)
@@ -130,7 +134,7 @@ namespace elle
         ELLE_DEBUG("signal caught: %s.", elle::signal::strsignal(sig));
 
         elle::crash::report
-          (host, port, this->_name, elle::signal::strsignal(sig));
+          (this->_host, this->_port, this->_name, elle::signal::strsignal(sig));
 
         if (this->_quit)
           exit(sig);

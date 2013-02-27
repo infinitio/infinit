@@ -67,10 +67,14 @@ namespace elle
     class Handler
     {
     public:
-      Handler(std::string const& name,
+      Handler(std::string const& host,
+              int port,
+              std::string const& name,
               bool quit);
 
-      Handler(std::string const& name,
+      Handler(std::string const& host,
+              int port,
+              std::string const& name,
               bool quit,
               int argc,
               char** argv);
@@ -79,10 +83,11 @@ namespace elle
 
       virtual
       void
-      operator() (std::string const& host, int port,
-                  boost::system::error_code const& error, int sig);
+      operator() (boost::system::error_code const& error, int sig);
 
     private:
+      std::string _host;
+      int _port;
       std::string _name;
       bool _quit;
     };

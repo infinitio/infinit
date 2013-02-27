@@ -1,25 +1,27 @@
-#include <satellites/user/User.hh>
-
-#include <Infinit.hh>
-
-#include <lune/Lune.hh>
-
-#include <etoile/Etoile.hh>
-
 #include <elle/io/Console.hh>
-#include <elle/io/Piece.hh>
 #include <elle/io/Directory.hh>
+#include <elle/io/Piece.hh>
 #include <elle/utility/Parser.hh>
-#include <elle/concurrency/Program.hh>
-#include <elle/CrashReporter.hh>
+
+#include <reactor/scheduler.hh>
 
 #include <cryptography/PublicKey.hh>
+
+#include <common/common.hh>
+#include <etoile/Etoile.hh>
+#include <hole/Authority.hh>
+#include <lune/Dictionary.hh>
+#include <lune/Identity.hh>
+#include <lune/Lune.hh>
+#include <satellites/user/User.hh>
+
+#include <CrashReporter.hh>
+#include <Infinit.hh>
+#include <Program.hh>
+
+
 // XXX[temporary: for cryptography]
 using namespace infinit;
-
-#include <lune/Identity.hh>
-#include <elle/Authority.hh>
-#include <lune/Dictionary.hh>
 
 namespace satellite
 {
@@ -213,7 +215,10 @@ namespace satellite
     User::Operation     operation;
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("User") == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("User",
+                                          common::meta::host(),
+                                          common::meta::port())
+        == elle::Status::Error)
       throw std::runtime_error("unable to set up the program");
 
     // initialize the Lune library.
@@ -409,29 +414,35 @@ namespace satellite
 int
 main(int argc, char** argv)
 {
+  reactor::Scheduler sched;
+
   // Capture signal and send email without exiting.
-  elle::signal::ScopedGuard guard{
-    elle::concurrency::scheduler(),
-    {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler("8user", false)};
+  elle::signal::ScopedGuard guard
+    (sched,
+     {SIGINT, SIGABRT, SIGPIPE},
+     elle::crash::Handler(common::meta::host(),
+                          common::meta::port(),
+                          "8user", false));
 
   // Capture signal and send email exiting.
-  elle::signal::ScopedGuard exit_guard{
-    elle::concurrency::scheduler(),
-    {SIGILL, SIGSEGV},
-    elle::crash::Handler("8user", true)};
+  elle::signal::ScopedGuard exit_guard
+    (sched,
+     {SIGILL, SIGSEGV},
+     elle::crash::Handler(common::meta::host(),
+                          common::meta::port(),
+                          "8user", true));
 
   try
     {
-      satellite::User(argc, argv);
+      reactor::Thread main(sched, "8user",
+                           std::bind(satellite::User, argc, argv));
+      sched.run();
     }
   catch (std::runtime_error const& e)
     {
       std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-
-      elle::crash::report("8user", e.what());
-
-      elle::concurrency::scheduler().terminate();
+      elle::crash::report(common::meta::host(), common::meta::port(),
+                          "8user", e.what());
       return 1;
     }
   return 0;
