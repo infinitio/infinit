@@ -139,7 +139,7 @@ namespace elle
         if (this->_quit)
           exit(sig);
       }
-      else
+      else if (error != boost::system::errc::operation_canceled)
       {
         ELLE_WARN("Error: %d - Sig: %d", error, sig);
       }
