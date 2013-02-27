@@ -32,23 +32,9 @@ namespace elle
     Status
     Program::Setup(std::string const& name, std::string const& host, int port)
     {
-#if defined(INFINIT_LINUX) || defined(INFINIT_MACOSX)
-      // set the signal handlers.
-      ::signal(SIGINT,  &Program::Exception);
-      ::signal(SIGQUIT, &Program::Exception);
-      ::signal(SIGABRT, &Program::Exception);
-      ::signal(SIGTERM, &Program::Exception);
-      ::signal(SIGSEGV, &Program::Exception);
-#elif defined(INFINIT_WINDOWS)
-      // XXX to implement
-#else
-# error "unsupported platform"
-#endif
-
       Program::_name = name;
       Program::_host = host;
       Program::_port = port;
-
       return Status::Ok;
     }
 
@@ -65,48 +51,6 @@ namespace elle
       ELLE_TRACE_SCOPE("Launch");
 
       reactor::Scheduler::scheduler()->current()->wait(_exit);
-    }
-
-    ///
-    /// this method is triggered whenever a POSIX signal is received.
-    ///
-    Void
-    Program::Exception(int signal)
-    {
-      ELLE_TRACE_SCOPE("Exception");
-
-      // stop the program depending on the signal.
-      switch (signal)
-        {
-#if defined(INFINIT_LINUX) || defined(INFINIT_MACOSX)
-        case SIGQUIT:
-#elif defined(INFINIT_WINDOWS)
-	// nothing
-#else
-# error "unsupported platform"
-#endif
-        case SIGINT:
-        case SIGABRT:
-        case SIGTERM:
-          {
-            // exit properly by finishing processing the last events.
-            Program::Exit();
-
-            break;
-          }
-        case SIGSEGV: // Probability to send succesfully data is small but try.
-          {
-            // XXX: Backtrace is fucked by signal.
-            // Maybe this should be improved?
-            elle::crash::report(_host, _port,
-                                Program::_name, "SIGSEGV",
-                                elle::Backtrace::current());
-
-            ::exit(EXIT_FAILURE);
-
-            break;
-          }
-        }
     }
 
 //

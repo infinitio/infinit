@@ -33,10 +33,6 @@ namespace elle
 
       static
       void
-      Exception(int signal);
-
-      static
-      void
       Exit();
 
       //
