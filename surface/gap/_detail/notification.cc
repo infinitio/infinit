@@ -1,6 +1,8 @@
 #include "../State.hh"
 
+#include <elle/printf.hh>
 #include <elle/format/json.hh>
+#include <reactor/exception.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
@@ -124,7 +126,7 @@ namespace surface
 
         default:
           throw elle::Exception{
-              "Unknown notification type %s", notification_type
+              elle::sprintf("Unknown notification type %s", notification_type)
           };
         }
       res->notification_type = notification_type;

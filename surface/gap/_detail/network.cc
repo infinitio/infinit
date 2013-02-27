@@ -17,11 +17,11 @@
 #include <nucleus/neutron/Access.hh>
 
 #include <hole/storage/Directory.hh>
+#include <hole/Passport.hh>
 
 #include <elle/format/json.hh>
 #include <elle/io/Piece.hh>
 #include <elle/os/path.hh>
-#include <elle/Passport.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
 

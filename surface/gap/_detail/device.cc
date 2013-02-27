@@ -3,7 +3,7 @@
 #include <common/common.hh>
 
 #include <elle/os/path.hh>
-#include <elle/Passport.hh>
+#include <hole/Passport.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
