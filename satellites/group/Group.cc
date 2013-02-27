@@ -1,15 +1,14 @@
 #include <satellites/group/Group.hh>
 
 #include <elle/utility/Parser.hh>
-#include <elle/concurrency/Program.hh>
 #include <elle/io/Piece.hh>
 #include <elle/io/Path.hh>
 #include <elle/io/Unique.hh>
 #include <elle/finally.hh>
-#include <elle/CrashReporter.hh>
 
 #include <reactor/exception.hh>
 #include <reactor/network/tcp-socket.hh>
+#include <reactor/scheduler.hh>
 
 #include <protocol/Serializer.hh>
 
@@ -32,6 +31,11 @@
 
 #include <boost/foreach.hpp>
 #include <limits>
+
+#include <common/common.hh>
+
+#include <Program.hh>
+#include <CrashReporter.hh>
 
 #include <HoleFactory.hh>
 
@@ -104,13 +108,13 @@ namespace satellite
     phrase.load(Infinit::User, Infinit::Network, "portal");
 
     Group::socket =
-      new reactor::network::TCPSocket(elle::concurrency::scheduler(),
+      new reactor::network::TCPSocket(*reactor::Scheduler::scheduler(),
                                       elle::String("127.0.0.1"),
                                       phrase.port);
     Group::serializer =
-      new infinit::protocol::Serializer(elle::concurrency::scheduler(), *socket);
+      new infinit::protocol::Serializer(*reactor::Scheduler::scheduler(), *socket);
     Group::channels =
-      new infinit::protocol::ChanneledStream(elle::concurrency::scheduler(),
+      new infinit::protocol::ChanneledStream(*reactor::Scheduler::scheduler(),
                                              *serializer);
     Group::rpcs = new etoile::portal::RPC(*channels);
 
@@ -219,7 +223,10 @@ namespace satellite
     // XXX Infinit::Parser is not deleted in case of errors
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("Group") == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("Group",
+                                          common::meta::host(),
+                                          common::meta::port())
+        == elle::Status::Error)
       throw elle::Exception("unable to set up the program");
 
     // initialize the Lune library.
@@ -515,9 +522,9 @@ namespace satellite
 
           // convert the string into a subject type.
           if (nucleus::neutron::Subject::Convert(string, type) == elle::Status::Error)
-            throw elle::Exception("unable to convert the string '%s' into a "
+            throw elle::Exception(elle::sprintf("unable to convert the string '%s' into a "
                    "valid subject type",
-                   string.c_str());
+                   string.c_str()));
 
           // build a subject depending on the type.
           switch (type)
@@ -551,7 +558,8 @@ namespace satellite
               }
             default:
               {
-                throw elle::Exception("unsupported entity type '%u'", type);
+                throw elle::Exception(
+                    elle::sprintf("unsupported entity type '%u'", type));
               }
             }
 
@@ -590,9 +598,9 @@ namespace satellite
 
           // convert the string into a subject type.
           if (nucleus::neutron::Subject::Convert(string, type) == elle::Status::Error)
-            throw elle::Exception("unable to convert the string '%s' into a "
+            throw elle::Exception(elle::sprintf("unable to convert the string '%s' into a "
                    "valid subject type",
-                   string.c_str());
+                   string.c_str()));
 
           // build a subject depending on the type.
           switch (type)
@@ -626,7 +634,7 @@ namespace satellite
               }
             default:
               {
-                throw elle::Exception("unsupported entity type '%u'", type);
+                throw elle::Exception(elle::sprintf("unsupported entity type '%u'", type));
               }
             }
 
@@ -692,9 +700,9 @@ namespace satellite
 
           // convert the string into a subject type.
           if (nucleus::neutron::Subject::Convert(string, type) == elle::Status::Error)
-            throw elle::Exception("unable to convert the string '%s' into a "
+            throw elle::Exception(elle::sprintf("unable to convert the string '%s' into a "
                    "valid subject type",
-                   string.c_str());
+                   string.c_str()));
 
           // build a subject depending on the type.
           switch (type)
@@ -728,7 +736,7 @@ namespace satellite
               }
             default:
               {
-                throw elle::Exception("unsupported entity type '%u'", type);
+                throw elle::Exception(elle::sprintf("unsupported entity type '%u'", type));
               }
             }
 
@@ -806,27 +814,36 @@ _main(elle::Natural32 argc, elle::Character* argv[])
     {
       ELLE_ERR("fatal error: %s", e);
       std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-      elle::crash::report("8group", elle::sprintf("%s", e));
-      elle::concurrency::scheduler().terminate();
+      elle::crash::report(
+          common::meta::host(),
+          common::meta::port(),
+          "8group", elle::sprintf("%s", e));
+      reactor::Scheduler::scheduler()->terminate();
       return elle::Status::Error;
     }
   catch (std::runtime_error const& e)
     {
       ELLE_ERR("fatal error: %s", e.what());
       std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-      elle::crash::report("8group", e.what());
-      elle::concurrency::scheduler().terminate();
+      elle::crash::report(
+          common::meta::host(),
+          common::meta::port(),
+          "8group", e.what());
+      reactor::Scheduler::scheduler()->terminate();
       return elle::Status::Error;
     }
   catch (...)
     {
       ELLE_ERR("unkown fatal error");
       std::cerr << argv[0] << ": unknown fatal error" << std::endl;
-      elle::crash::report("8group");
-      elle::concurrency::scheduler().terminate();
+      elle::crash::report(
+          common::meta::host(),
+          common::meta::port(),
+          "8group");
+      reactor::Scheduler::scheduler()->terminate();
       return elle::Status::Error;
     }
-  elle::concurrency::scheduler().terminate();
+  reactor::Scheduler::scheduler()->terminate();
   return elle::Status::Ok;
 }
 
@@ -838,19 +855,25 @@ int                     main(int                                argc,
 {
   // Capture signal and send email without exiting.
   elle::signal::ScopedGuard guard{
-    elle::concurrency::scheduler(),
+    *reactor::Scheduler::scheduler(),
     {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler("8group", false, argc, argv)
+    elle::crash::Handler(
+        common::meta::host(),
+        common::meta::port(),
+        "8group", false, argc, argv)
   };
 
   // Capture signal and send email exiting.
   elle::signal::ScopedGuard exit_guard{
-    elle::concurrency::scheduler(),
+    *reactor::Scheduler::scheduler(),
     {SIGILL, SIGSEGV},
-    elle::crash::Handler("8group", true, argc, argv)
+    elle::crash::Handler(
+        common::meta::host(),
+        common::meta::port(),
+        "8group", true, argc, argv)
   };
 
-  reactor::Scheduler& sched = elle::concurrency::scheduler();
+  reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
   reactor::VThread<elle::Status> main(sched, "main",
                                       boost::bind(&_main, argc, argv));
   sched.run();

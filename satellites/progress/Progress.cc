@@ -1,13 +1,12 @@
 #include <satellites/progress/Progress.hh>
 
 #include <elle/utility/Parser.hh>
-#include <elle/concurrency/Program.hh>
 #include <elle/io/Piece.hh>
 #include <elle/io/Path.hh>
 #include <elle/system/system.hh>
-#include <elle/CrashReporter.hh>
 
 #include <reactor/network/tcp-socket.hh>
+#include <reactor/scheduler.hh>
 
 #include <protocol/Serializer.hh>
 
@@ -24,6 +23,10 @@
 #include <lune/Phrase.hh>
 
 #include <agent/Agent.hh>
+#include <common/common.hh>
+
+#include <Program.hh>
+#include <CrashReporter.hh>
 
 #include <boost/foreach.hpp>
 #include <limits>
@@ -69,13 +72,13 @@ namespace satellite
 
     // Connect to the server.
     Progress::socket =
-      new reactor::network::TCPSocket(elle::concurrency::scheduler(),
+      new reactor::network::TCPSocket(*reactor::Scheduler::scheduler(),
                                       elle::String("127.0.0.1"),
                                       phrase.port);
     Progress::serializer =
-      new infinit::protocol::Serializer(elle::concurrency::scheduler(), *socket);
+      new infinit::protocol::Serializer(*reactor::Scheduler::scheduler(), *socket);
     Progress::channels =
-      new infinit::protocol::ChanneledStream(elle::concurrency::scheduler(),
+      new infinit::protocol::ChanneledStream(*reactor::Scheduler::scheduler(),
                                              *serializer);
     Progress::rpcs = new etoile::portal::RPC(*channels);
 
@@ -182,7 +185,10 @@ namespace satellite
     // XXX Infinit::Parser is not deleted in case of errors
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("Progress") == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("Progress",
+                                          common::meta::host(),
+                                          common::meta::port())
+        == elle::Status::Error)
       throw elle::Exception("unable to set up the program");
 
     // initialize the Lune library.
@@ -299,7 +305,10 @@ _main(elle::Natural32 argc, elle::Character* argv[])
     }
   catch (reactor::Exception const& e)
     {
-      elle::crash::report("8progress", elle::sprintf("%s", e));
+      elle::crash::report(common::meta::host(),
+                          common::meta::port(),
+                          "8progress",
+                          elle::sprintf("%s", e));
       std::cerr << argv[0] << ": fatal error: " << e << std::endl;
       goto _error;
     }
@@ -314,11 +323,11 @@ _main(elle::Natural32 argc, elle::Character* argv[])
       goto _error;
     }
 
-  elle::concurrency::scheduler().terminate();
+  reactor::Scheduler::scheduler()->terminate();
   return (0);
 
  _error:
-  elle::concurrency::scheduler().terminate();
+  reactor::Scheduler::scheduler()->terminate();
   return (1);
 }
 
@@ -327,19 +336,29 @@ int                     main(int                                argc,
 {
   // Capture signal and send email without exiting.
   elle::signal::ScopedGuard guard{
-    elle::concurrency::scheduler(),
+    *reactor::Scheduler::scheduler(),
     {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler("8progress", false, argc, argv)
+    elle::crash::Handler(
+        common::meta::host(),
+        common::meta::port(),
+        "8progress", 
+        false,
+        argc, argv)
   };
 
   // Capture signal and send email exiting.
   elle::signal::ScopedGuard exit_guard{
-    elle::concurrency::scheduler(),
+    *reactor::Scheduler::scheduler(),
     {SIGILL, SIGSEGV},
-    elle::crash::Handler("8progress", true, argc, argv)
+    elle::crash::Handler(
+        common::meta::host(),
+        common::meta::port(),
+        "8progress", 
+        true,
+        argc, argv)
   };
 
-  reactor::Scheduler& sched = elle::concurrency::scheduler();
+  reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
   reactor::VThread<int> main(sched, "main",
                              boost::bind(&_main, argc, argv));
   sched.run();

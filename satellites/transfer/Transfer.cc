@@ -1,12 +1,11 @@
 #include <satellites/transfer/Transfer.hh>
 
 #include <elle/utility/Parser.hh>
-#include <elle/concurrency/Program.hh>
 #include <elle/io/Piece.hh>
 #include <elle/io/Path.hh>
 #include <elle/system/system.hh>
-#include <elle/CrashReporter.hh>
 
+#include <reactor/scheduler.hh>
 #include <reactor/network/tcp-socket.hh>
 
 #include <protocol/Serializer.hh>
@@ -24,6 +23,8 @@
 #include <lune/Phrase.hh>
 #include <lune/Descriptor.hh>
 
+#include <common/common.hh>
+
 #include <agent/Agent.hh>
 
 #include <elle/log.hh>
@@ -34,6 +35,9 @@
 
 #include <iostream>
 #include <fstream>
+
+#include <Program.hh>
+#include <CrashReporter.hh>
 
 ELLE_LOG_COMPONENT("infinit.satellites.transfer.Transfer");
 
@@ -98,14 +102,14 @@ namespace satellite
 
     // Connect to the server.
     Transfer::socket =
-      new reactor::network::TCPSocket(elle::concurrency::scheduler(),
+      new reactor::network::TCPSocket(*reactor::Scheduler::scheduler(),
                                       elle::String("127.0.0.1"),
                                       phrase.port);
     Transfer::serializer =
-      new infinit::protocol::Serializer(elle::concurrency::scheduler(),
+      new infinit::protocol::Serializer(*reactor::Scheduler::scheduler(),
                                         *socket);
     Transfer::channels =
-      new infinit::protocol::ChanneledStream(elle::concurrency::scheduler(),
+      new infinit::protocol::ChanneledStream(*reactor::Scheduler::scheduler(),
                                              *serializer);
     Transfer::rpcs = new etoile::portal::RPC(*channels);
 
@@ -751,7 +755,9 @@ namespace satellite
     // XXX Infinit::Parser is not deleted in case of errors
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("Transfer") == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("Transfer",
+                                          common::meta::host(),
+                                          common::meta::port()) == elle::Status::Error)
       throw elle::Exception("unable to set up the program");
 
     // initialize the Lune library.
@@ -968,27 +974,35 @@ _main(elle::Natural32 argc, elle::Character* argv[])
   catch (reactor::Exception const& e)
     {
       std::cerr << argv[0] << ": fatal error: " << e << std::endl;
-      elle::crash::report("8transfer", elle::sprintf("%s", e));
+      elle::crash::report(common::meta::host(),
+                          common::meta::port(),
+                          "8transfer",
+                          elle::sprintf("%s", e));
       goto _error;
     }
   catch (std::exception const& e)
     {
       std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-      elle::crash::report("8transfer", e.what());
+      elle::crash::report(common::meta::host(),
+                          common::meta::port(),
+                          "8transfer",
+                          e.what());
       goto _error;
     }
   catch (...)
     {
       std::cerr << argv[0] << ": unknown exception" << std::endl;
-      elle::crash::report("8transfer");
+      elle::crash::report(common::meta::host(),
+                          common::meta::port(),
+                          "8transfer");
       goto _error;
     }
 
-  elle::concurrency::scheduler().terminate();
+  reactor::Scheduler::scheduler()->terminate();
   return (0);
 
  _error:
-  elle::concurrency::scheduler().terminate();
+  reactor::Scheduler::scheduler()->terminate();
   return (1);
 }
 
@@ -997,19 +1011,25 @@ int                     main(int                                argc,
 {
   // Capture signal and send email without exiting.
   elle::signal::ScopedGuard guard{
-    elle::concurrency::scheduler(),
+    *reactor::Scheduler::scheduler(),
     {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler("8transfer", false, argc, argv)
+    elle::crash::Handler(
+        common::meta::host(),
+        common::meta::port(),
+        "8transfer", false, argc, argv)
   };
 
   // Capture signal and send email exiting.
   elle::signal::ScopedGuard exit_guard{
-    elle::concurrency::scheduler(),
+    *reactor::Scheduler::scheduler(),
     {SIGILL, SIGSEGV},
-    elle::crash::Handler("8transfer", true, argc, argv)
+    elle::crash::Handler(
+        common::meta::host(),
+        common::meta::port(),
+        "8transfer", true, argc, argv)
   };
 
-  reactor::Scheduler& sched = elle::concurrency::scheduler();
+  reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
   reactor::VThread<int> main(sched, "main",
                              boost::bind(&_main, argc, argv));
   sched.run();
