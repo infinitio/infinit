@@ -41,7 +41,7 @@ class InvalidID(Exception):
 class Trophonius(basic.LineReceiver):
 
     states = ('HELLO',
-                  'CHAT')
+              'CHAT')
 
     delimiter = "\n"
     def __init__(self, factory):
@@ -146,14 +146,6 @@ class Trophonius(basic.LineReceiver):
             self.transport.loseConnection()
 
     def lineReceived(self, line):
-        print('>>>', repr(self.state))
-        try:
-            print("####{}".format("BITE"))
-            print("####{}".format(self.state))
-
-            print("handle_{}".format(self.state))
-        except:
-            print("CANNOT FORMAT")
         hdl = getattr(self, "handle_{}".format(self.state), None)
         if hdl is not None:
             hdl(line)
