@@ -3,8 +3,9 @@ import drake.cxx.boost
 import drake.cxx.qt
 import drake
 
-def configure(cxx_toolkit, cxx_config, enable_horizon = True,
-              optimization = True, prefix = '/usr', boost = None, qt = None):
+def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
+              optimization = True, prefix = '/usr', boost = None, qt = None,
+              enable_tests = True):
 
   prefix = drake.Path(prefix)
 
@@ -46,18 +47,19 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   # Includes
 
   # Elle
-  elle = drake.include('elle', cxx_toolkit, cxx_config)
+  elle = drake.include('elle', cxx_toolkit, cxx_config, boost=boost, enable_tests = enable_tests)
   elle_lib = drake.copy(elle.lib_dynamic, 'lib', 'elle/lib')
   cxx_config += elle.config
 
-  reactor = drake.include('reactor', cxx_toolkit, cxx_config, elle.config)
+  reactor = drake.include('reactor', cxx_toolkit, cxx_config, elle.config,
+          enable_tests = enable_tests)
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib', 'reactor/lib')
   cxx_config += reactor.config
 
   cxx_config.add_local_include_path('.')
 
   # Cryptography
-  cryptography = drake.include('cryptography', cxx_toolkit, openssl.config(), reactor.config, elle.config, boost = boost)
+  cryptography = drake.include('cryptography', cxx_toolkit, openssl.config(), reactor.config, elle.config, boost = boost, enable_tests = enable_tests)
   cryptography_lib = drake.copy(cryptography.lib_dynamic, 'lib', 'cryptography/lib')
   cxx_config += cryptography.config
 
@@ -700,7 +702,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   group_bin = drake.cxx.Executable('bin/8group',
                                    group_sources + infinit_libs,
                                    cxx_toolkit, infinit_bin_config)
-  build << group_bin
+  if "group" in satellites:
+      build << group_bin
 
   # 8access
   access_sources = drake.nodes(
@@ -711,7 +714,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   access_bin = drake.cxx.Executable('bin/8access',
                                    access_sources + infinit_libs,
                                    cxx_toolkit, infinit_bin_config)
-  build << access_bin
+  if "access" in satellites:
+      build << access_bin
 
   # 8authority
   authority_sources = drake.nodes(
@@ -722,7 +726,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   authority_bin = drake.cxx.Executable('bin/8authority',
                                        authority_sources + infinit_libs,
                                        cxx_toolkit, infinit_bin_config)
-  build << authority_bin
+  if "authority" in satellites:
+      build << authority_bin
 
   # 8user
   user_sources = drake.nodes(
@@ -733,7 +738,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   user_bin = drake.cxx.Executable('bin/8user',
                                   user_sources + infinit_libs,
                                   cxx_toolkit, infinit_bin_config)
-  build << user_bin
+  if "user" in satellites:
+      build << user_bin
 
   # 8passport
   passport_sources = drake.nodes(
@@ -744,7 +750,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   passport_bin = drake.cxx.Executable('bin/8passport',
                                       passport_sources + infinit_libs,
                                       cxx_toolkit, infinit_bin_config)
-  build << passport_bin
+  if "passport" in satellites:
+      build << passport_bin
 
   # 8network
   network_sources = drake.nodes(
@@ -755,7 +762,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   network_bin = drake.cxx.Executable('bin/8network',
                                      network_sources + infinit_libs,
                                      cxx_toolkit, infinit_bin_config)
-  build << network_bin
+  if "network" in satellites:
+      build << network_bin
 
   # 8transfer
   transfer_sources = drake.nodes(
@@ -765,7 +773,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   transfer_bin = drake.cxx.Executable('bin/8transfer',
                                    transfer_sources + infinit_libs,
                                    cxx_toolkit, infinit_bin_config)
-  build << transfer_bin
+  if "transfer" in satellites:
+      build << transfer_bin
 
   # 8progress
   progress_sources = drake.nodes(
@@ -776,7 +785,35 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True,
   progress_bin = drake.cxx.Executable('bin/8progress',
                                    progress_sources + infinit_libs,
                                    cxx_toolkit, infinit_bin_config)
-  build << progress_bin
+  if "progress" in satellites:
+      build << progress_bin
+
+  # 8search
+  search_sources = drake.nodes(
+    'satellites/search/8search.py',
+    )
+  search_copy = drake.copy(search_sources, 'bin', 'satellites/search')
+
+  if "search" in satellites:
+      build << search_copy
+
+  # 8sendto
+  sendto_sources = drake.nodes(
+    'satellites/sendto/8sendto.py',
+    )
+  sendto_copy = drake.copy(sendto_sources, 'bin', 'satellites/sendto')
+
+  if "sendto" in satellites:
+      build << sendto_copy
+
+  # 8recvfrom
+  recvfrom_sources = drake.nodes(
+    'satellites/recvfrom/8recvfrom.py',
+    )
+  recvfrom_copy = drake.copy(recvfrom_sources, 'bin', 'satellites/recvfrom')
+
+  if "recvfrom" in satellites:
+      build << recvfrom_copy
 
   # Trophonius
 
