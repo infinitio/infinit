@@ -8,8 +8,8 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <elle/Passport.hh>
-#include <elle/Authority.hh>
+#include <hole/Passport.hh>
+#include <hole/Authority.hh>
 
 // XXX When Qt is out, remove this
 #ifdef slots

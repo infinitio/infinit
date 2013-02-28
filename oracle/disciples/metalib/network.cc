@@ -12,7 +12,6 @@ using namespace infinit;
 #include <hole/Model.hh>
 
 #include <lune/Identity.hh>
-#include <elle/Authority.hh>
 #include <lune/Descriptor.hh>
 
 #include <nucleus/proton/Address.hh>
@@ -21,6 +20,7 @@ using namespace infinit;
 #include <nucleus/neutron/Trait.hh>
 
 #include <hole/Openness.hh>
+#include <hole/Authority.hh>
 
 #include <horizon/Policy.hh>
 

@@ -8,7 +8,7 @@
 using namespace infinit;
 
 #include <lune/Identity.hh>
-#include <elle/Authority.hh>
+#include <hole/Authority.hh>
 
 // XXX When Qt is out, remove this
 #ifdef slots
