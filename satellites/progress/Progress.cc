@@ -299,6 +299,30 @@ namespace satellite
 int
 _main(elle::Natural32 argc, elle::Character* argv[])
 {
+  // Capture signal and send email without exiting.
+  elle::signal::ScopedGuard guard{
+    *reactor::Scheduler::scheduler(),
+    {SIGINT, SIGABRT, SIGPIPE},
+    elle::crash::Handler(
+        common::meta::host(),
+        common::meta::port(),
+        "8progress",
+        false,
+        argc, argv)
+  };
+
+  // Capture signal and send email exiting.
+  elle::signal::ScopedGuard exit_guard{
+    *reactor::Scheduler::scheduler(),
+    {SIGILL, SIGSEGV},
+    elle::crash::Handler(
+        common::meta::host(),
+        common::meta::port(),
+        "8progress",
+        true,
+        argc, argv)
+  };
+
   try
     {
       satellite::main(argc, argv);
@@ -334,31 +358,7 @@ _main(elle::Natural32 argc, elle::Character* argv[])
 int                     main(int                                argc,
                              char**                             argv)
 {
-  // Capture signal and send email without exiting.
-  elle::signal::ScopedGuard guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8progress", 
-        false,
-        argc, argv)
-  };
-
-  // Capture signal and send email exiting.
-  elle::signal::ScopedGuard exit_guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGILL, SIGSEGV},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8progress", 
-        true,
-        argc, argv)
-  };
-
-  reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
+  reactor::Scheduler sched;
   reactor::VThread<int> main(sched, "main",
                              boost::bind(&_main, argc, argv));
   sched.run();
