@@ -4,6 +4,8 @@
 #include <common/common.hh>
 
 #include <elle/utility/Time.hh>
+#include <elle/os/path.hh>
+#include <elle/os/getenv.hh>
 
 #include <boost/filesystem.hpp>
 
@@ -98,8 +100,17 @@ namespace surface
                            transfer_binary,
                            arguments.join(" ").toStdString());
 
-                QProcess p;
-                p.start(transfer_binary.c_str(), arguments);
+                QProcess p; // set the environment and start the transfer
+                {
+                  std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+                  if (!log_file.empty())
+                  {
+                    log_file += ".out.transfer.log";
+                    ::setenv("ELLE_LOG_FILE", log_file.c_str(), 1);
+                  }
+                  p.start(transfer_binary.c_str(), arguments);
+                }
                 if (!p.waitForFinished(-1))
                   throw Exception(gap_internal_error, "8transfer binary failed");
                 if (p.exitCode())
@@ -162,7 +173,16 @@ namespace surface
                  arguments.join(" ").toStdString());
 
       QProcess p;
-      p.start(progress_binary.c_str(), arguments);
+      {
+        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+        if (!log_file.empty())
+          {
+            log_file += ".progress.log";
+            ::setenv("ELLE_LOG_FILE", log_file.c_str(), 1);
+          }
+        p.start(progress_binary.c_str(), arguments);
+      }
       if (!p.waitForFinished())
         throw Exception{
             gap_internal_error, "8progress binary failed"
@@ -216,14 +236,33 @@ namespace surface
       try
       {
         QProcess p;
-        p.start(transfer_binary.c_str(), arguments);
+        {
+          std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+          if (!log_file.empty())
+            {
+              log_file += ".in.transfer.log";
+              ::setenv("ELLE_LOG_FILE", log_file.c_str(), 1);
+            }
+          p.start(transfer_binary.c_str(), arguments);
+        }
         if (!p.waitForFinished(-1))
           throw Exception(gap_internal_error, "8transfer binary failed");
         if (p.exitCode())
           throw Exception(gap_internal_error, "8transfer binary exited with errors");
 
-        ELLE_WARN("Download complete. Your file is at '%s'.",
-                  this->_output_dir.c_str());
+        if (trans.files_count == 1)
+        {
+          ELLE_WARN("Download complete. Your file is at '%s'.",
+              elle::os::path::join
+                (this->_output_dir.c_str(), trans.first_filename)
+          );
+        }
+        else
+        {
+          ELLE_WARN("Download complete. Your %d files are in '%s'.",
+              trans.files_count, this->_output_dir.c_str());
+        }
 
         update_transaction(transaction_id,
                          gap_TransactionStatus::gap_transaction_status_finished);

@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 try:
-    import Image
+    from PIL import Image
 except ImportError:
     print("Cannot import Image module, please install PIL")
     import sys
@@ -75,9 +75,9 @@ class GenerateHandle(Page):
     def GET(self, fullname):
         handle = ''
         for c in unicodedata.normalize('NFKD', fullname).encode('ascii', 'ignore'):
-            if (c >= 'a'and c <= 'z') or (c >= 'A' and c <= 'Z') or c in ['.', '-']:
+            if (c >= 'a'and c <= 'z') or (c >= 'A' and c <= 'Z') or c in '-_.':
                 handle += c
-            elif c in [' ', '\t']:
+            elif c in ' \t\r\n':
                 handle += '.'
 
         if len(handle) < 5:
@@ -85,17 +85,17 @@ class GenerateHandle(Page):
         return handle
 
     def _generate_dummy(self):
-        t1 = ['lo', 'ca', 'ki', 'po', 'pe', 'bi', 'MER']
-        t2 = ['ri', 'ze', 'te', 'SAL', 'ju', 'IL']
-        t3 = ['yo', 'gri','ARAB', 'troll', 'man', 'ET']
-        t4 = ['olo', 'ard', 'FOU', 'li']
+        t1 = ['lo', 'ca', 'ki', 'po', 'pe', 'bi', 'mer']
+        t2 = ['ri', 'ze', 'te', 'sal', 'ju', 'il']
+        t3 = ['yo', 'gri', 'ka', 'troll', 'man', 'et']
+        t4 = ['olo', 'ard', 'fou', 'li']
         h = ''
         for t in [t1, t2, t3, t4]:
             h += t[int(random.random() * len(t))]
         return h
 
     def gen_unique(self, fullname):
-        h = self.GET(fullname).lower()
+        h = self.GET(fullname)
         while database.users().find_one({'handle': h}):
             h += str(int(random.random() * 10))
         return h
@@ -132,8 +132,7 @@ class AddSwagger(Page):
     ]
 
     def POST(self):
-        import pymongo
-
+        self.requireLoggedIn()
         try:
             if "email" in self.data:
                 error_code = _validators['email'](self.data['email'])
@@ -163,10 +162,9 @@ class RemoveSwagger(Page):
     __pattern__ = "/user/remove_swagger"
 
     def POST(self):
-        import pymongo
-
+        self.requireLoggedIn()
         swagez = database.users().find_and_modify(
-            {"_id": pymongo.objectid.ObjectId(self.user["_id"])},
+            {"_id": database.ObjectId(self.user["_id"])},
             {"$pull": {"swaggers": self.data["_id"]}},
             True #upsert
         )
@@ -184,7 +182,7 @@ class FromPublicKey(Page):
             return self.error(error.UNKNOWN, "No user could be found for this public key!")
         return self.success({
             '_id': user['_id'],
-            'email': user['email'],
+            'handle': user['handle'],
             'public_key': user['public_key'],
             'fullname': user['fullname'],
         })
@@ -234,6 +232,7 @@ class Self(Page):
             -> {
                 'fullname': "My Name",
                 'email': "My email",
+                'handle': handle,
                 'devices': [device_id1, ...],
                 'networks': [network_id1, ...]
                 'identity': 'identity string',
@@ -252,6 +251,7 @@ class Self(Page):
         return self.success({
             '_id': self.user['_id'],
             'fullname': self.user['fullname'],
+            'handle': self.user['handle'],
             'email': self.user['email'],
             'devices': self.user.get('devices', []),
             'networks': self.user.get('networks', []),
@@ -273,8 +273,6 @@ class MinimumSelf(Page):
     __pattern__ = "/minimumself"
 
     def GET(self):
-        if not self.user:
-            return self.error(error.NOT_LOGGED_IN)
         self.requireLoggedIn() # scary
         return self.success({
             'email': self.user['email'],
@@ -302,9 +300,9 @@ class One(Page):
             return self.error(error.UNKNOWN_USER, "Couldn't find user for id '%s'" % str(id_or_email))
         return self.success({
             '_id': user['_id'],
-            'email': user['_id'] in self.user["swaggers"].keys() and user['email'] or '',
             'public_key': user.get('public_key', ''),
             'fullname': user.get('fullname', ''),
+            'handle': user.get('handle', ''),
             # XXX: user['connected']
             'status': 'connected' in user and user['connected'] or 0
         })
@@ -422,6 +420,7 @@ class Register(Page):
             identity = identity,
             public_key = public_key,
             handle = handle,
+            lw_handle = handle.lower(),
             swaggers = {},
             networks = [],
             devices = [],
@@ -448,6 +447,8 @@ class Login(Page):
                      'token': "generated session token",
                      'fullname': 'full name',
                      'identity': 'Full base64 identity',
+                     'handle': ...,
+                     'email': ...,
                 }
     """
     __pattern__ = "/user/login"
@@ -473,6 +474,7 @@ class Login(Page):
                 'token': self.session.session_id,
                 'fullname': self.user['fullname'],
                 'email': self.user['email'],
+                'handle': self.user['handle'],
                 'identity': self.user['identity'],
             })
         return self.error(error.EMAIL_PASSWORD_DONT_MATCH)

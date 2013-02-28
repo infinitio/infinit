@@ -59,10 +59,10 @@ extern "C"
     }                                                                          \
   catch (...)                                                                  \
     {                                                                          \
-      auto const &e = std::current_exception();                                \
+      /*auto const &e = std::current_exception();*/                                \
       ELLE_ERR(#_func_ " unknown error type");                                 \
       ret = gap_internal_error;                                                \
-      std::rethrow_exception(e);                                               \
+      /*std::rethrow_exception(e);*/                                               \
     }                                                                          \
   /**/
 
@@ -544,7 +544,7 @@ extern "C"
     return nullptr;
   }
 
-  char const* gap_user_email(gap_State* state, char const* id)
+  char const* gap_user_handle(gap_State* state, char const* id)
   {
     assert(state != nullptr);
     assert(id != nullptr);
@@ -552,7 +552,7 @@ extern "C"
     try
       {
         auto const& user = __TO_CPP(state)->user(id);
-        return user.email.c_str();
+        return user.handle.c_str();
       }
     CATCH_ALL(user_email);
 
