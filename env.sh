@@ -20,7 +20,7 @@ infinit_env_init() {
 	export OLD_RPROMPT=$RPROMPT
 
 	export PYTHONPATH=${INFINIT_BUILD_DIR}/lib/python:$PYTHONPATH
-	export RPROMPT="infinit env ${RPROMPT}"
+	export RPROMPT="Infinit ${RPROMPT}"
 }
 
 infinit_env_clean() {

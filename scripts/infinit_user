@@ -12,15 +12,7 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 # IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-infinit_clean() {
-    for mountpoint in $(sudo mount -t fuse.infinit | cut -d " " -f 3)
-    do
-        i8info unmount $mountpoint
-        fusermount -u $mountpoint
-    done
+infinit_user() {
+	export INFINIT_USER=$1
+	export RPROMPT="[$1] Infinit"
 }
-
-infinit_home_clean() {
-    rm -rf ~/.infinit/*
-}
-

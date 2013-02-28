@@ -87,9 +87,9 @@ infinit_log_search() {
 }
 
 infinit_log_disable() {
-	unset ELLE_LOG_LEVEL
+	export INFINIT_LOG_FILE=/dev/null
 }
 
 infinit_log_enable() {
-	export ELLE_LOG_LEVEL=DEBUG
+	unset INFINIT_LOG_FILE
 }
