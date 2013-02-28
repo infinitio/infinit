@@ -3,9 +3,7 @@
 #include <horizon/operations.hh>
 #include <horizon/Horizon.hh>
 
-#include <elle/concurrency/Program.hh>
-#include <elle/concurrency/Scheduler.hh>
-
+#include <Program.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/thread.hh>
 
@@ -111,7 +109,7 @@ namespace horizon
          BOOST_PP_SEQ_FOR_EACH_I(INFINIT_FUSE_FORMALS, _,               \
                                  BOOST_PP_SEQ_POP_FRONT(Args)))         \
     {                                                                   \
-      return elle::concurrency::scheduler().mt_run<int>                 \
+      return reactor::scheduler().mt_run<int>                           \
         (BOOST_PP_STRINGIZE(Name),                                      \
          boost::bind(Name, INFINIT_FUSE_EFFECTIVE(Args)));              \
     }                                                                   \
@@ -277,7 +275,7 @@ namespace horizon
 
     _leave:
       // now that FUSE has stopped, make sure the program is exiting.
-      new reactor::Thread(elle::concurrency::scheduler(), "exit",
+      new reactor::Thread(reactor::scheduler(), "exit",
                           &elle::concurrency::Program::Exit, true);
       return nullptr;
     }
