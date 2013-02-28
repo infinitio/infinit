@@ -47,7 +47,7 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
   # Includes
 
   # Elle
-  elle = drake.include('elle', cxx_toolkit, cxx_config, boost=boost, enable_tests = enable_tests)
+  elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost, enable_tests = enable_tests)
   elle_lib = drake.copy(elle.lib_dynamic, 'lib', 'elle/lib')
   cxx_config += elle.config
 
