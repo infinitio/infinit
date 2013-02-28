@@ -836,6 +836,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
     'surface/gap/State.hh',
     'surface/gap/gap.cc',
     'surface/gap/gap.h',
+    'surface/gap/MetricReporter.cc',
+    'surface/gap/MetricReporter.hh',
     'surface/gap/_detail/InfinitInstanceManager.cc',
     'surface/gap/_detail/device.cc',
     'surface/gap/_detail/file.cc',
@@ -859,8 +861,6 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
   gap_python_cxx_config.add_system_include_path('/usr/include/python3.2/')
   gap_python_sources = drake.nodes(
     'surface/gap/python/pygap.cc',
-    # FIXME: for longinus port temporarily
-    'common/common.cc',
     )
   gap_python_cxx_config += boost.config_python()
   gap_python_cxx_config.add_system_include_path('/usr/include/python3.2')
@@ -869,7 +869,15 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
                                     # FIXME: sooooo many libs ...
                                     gap_python_sources + [gap_lib, tropho_lib] + infinit_libs,
                                     cxx_toolkit, gap_python_cxx_config)
+
+  gap_python_pyfiles = drake.nodes(
+    'surface/gap/python/gap.py',
+    )
+  gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
+                                      'lib/python/',
+                                      'surface/gap/python')
   build << gap_python_lib
+  build << gap_python_pyfile_copy
 
   # Watchdog
   watchdog_sources = drake.nodes(
