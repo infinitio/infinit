@@ -1,11 +1,14 @@
 #include <Infinit.hh>
 
-#include <elle/concurrency/Program.hh>
 #include <elle/io/Piece.hh>
 #include <elle/types.hh>
 #include <elle/utility/Parser.hh>
 
+#include <common/common.hh>
+
 #include <etoile/depot/Depot.hh>
+
+#include <reactor/scheduler.hh>
 
 #include <lune/Lune.hh>
 
@@ -16,6 +19,7 @@
 # include <horizon/Horizon.hh>
 #endif
 #include <HoleFactory.hh>
+#include <Program.hh>
 
 namespace hole
 {
@@ -33,7 +37,10 @@ namespace hole
       throw reactor::Exception("unable to initialize Infinit");
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("8hole") == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("8hole",
+                                          common::meta::host(),
+                                          common::meta::port())
+        == elle::Status::Error)
       throw reactor::Exception("unable to set up the program");
 
     // allocate a new parser.
@@ -138,17 +145,17 @@ Main(elle::Natural32 argc, elle::Character* argv[])
       if (reactor::Exception const* re
           = dynamic_cast<reactor::Exception const*>(&e))
         std::cerr << re->backtrace() << std::endl;
-      elle::concurrency::scheduler().terminate();
+      reactor::Scheduler::scheduler()->terminate();
       return elle::Status::Error;
     }
-  elle::concurrency::scheduler().terminate();
+  reactor::Scheduler::scheduler()->terminate();
   return elle::Status::Ok;
 }
 
 int
 main(int argc, char* argv[])
 {
-  reactor::Scheduler& sched = elle::concurrency::scheduler();
+  reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
   reactor::VThread<elle::Status> main(sched, "Hole main",
                                       boost::bind(&Main, argc, argv));
   sched.run();

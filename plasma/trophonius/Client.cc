@@ -16,6 +16,12 @@
 #include <elle/print.hh>
 #include <elle/assert.hh>
 
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/read_until.hpp>
+#include <boost/asio/streambuf.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/write.hpp>
+
 #include <fcntl.h>
 
 ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
