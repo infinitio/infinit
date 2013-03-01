@@ -42,7 +42,8 @@ class State:
             'search_users',
             'get_swaggers',
             'user_fullname',
-            'user_email',
+            'user_handle',
+            'email',
 
             # Networks.
             'create_network',
