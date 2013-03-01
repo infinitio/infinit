@@ -213,10 +213,7 @@ namespace satellite
     User::Operation     operation;
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("User",
-                                          common::meta::host(),
-                                          common::meta::port())
-        == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("User") == elle::Status::Error)
       throw std::runtime_error("unable to set up the program");
 
     // initialize the Lune library.

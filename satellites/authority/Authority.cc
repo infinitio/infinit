@@ -1,4 +1,4 @@
-#include <elle/concurrency/Program.hh>
+#include <Program.hh>
 #include <elle/io/Console.hh>
 #include <elle/io/Unique.hh>
 #include <elle/utility/Parser.hh>
@@ -9,6 +9,7 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
+#include <satellites/satellite.hh>
 #include <satellites/authority/Authority.hh>
 
 // XXX
@@ -118,8 +119,9 @@ namespace satellite
   ///
   /// the main function.
   ///
-  elle::Status          Main(elle::Natural32                    argc,
-                             elle::Character*                   argv[])
+  elle::Status
+  Authority(elle::Natural32 argc,
+            elle::Character* argv[])
   {
     Authority::Operation        operation;
 
@@ -283,28 +285,8 @@ namespace satellite
 
 }
 
-//
-// ---------- main ------------------------------------------------------------
-//
-
-///
-/// this is the program entry point.
-///
-int                     main(int                                argc,
-                             char**                             argv)
+int main(int argc, char** argv)
 {
-  try
-    {
-      if (satellite::Main(argc, argv) == elle::Status::Error)
-        return (1);
-    }
-  catch (std::exception& e)
-    {
-      std::cout << "The program has been terminated following "
-                << "a fatal error (" << e.what() << ")." << std::endl;
-
-      return (1);
-    }
-
-  return (0);
+  return satellite_main("8authority", std::bind(satellite::Authority,
+                                                argc, argv));
 }

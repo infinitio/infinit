@@ -18,8 +18,6 @@ namespace elle
   {
 
     std::string Program::_name("");
-    std::string Program::_host("");
-    int Program::_port(0);
 
 //
 // ---------- static methods --------------------------------------------------
@@ -30,11 +28,9 @@ namespace elle
     /// this method sets up the program for startup.
     ///
     Status
-    Program::Setup(std::string const& name, std::string const& host, int port)
+    Program::Setup(std::string const& name)
     {
       Program::_name = name;
-      Program::_host = host;
-      Program::_port = port;
       return Status::Ok;
     }
 

@@ -25,7 +25,7 @@ namespace elle
 
       static
       Status
-      Setup(std::string const& name, std::string const& host, int port);
+      Setup(std::string const& name);
 
       static
       void
@@ -40,9 +40,7 @@ namespace elle
       //
     private:
       static std::string _name;
-      static std::string _host;
       static reactor::Signal _exit;
-      static int _port;
     };
 
   }

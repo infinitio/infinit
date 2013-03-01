@@ -1,4 +1,5 @@
 #include <satellites/network/Network.hh>
+#include <satellites/satellite.hh>
 
 #include <Infinit.hh>
 
@@ -6,6 +7,7 @@
 #include <etoile/nest/Nest.hh>
 #include <etoile/automaton/Access.hh>
 
+#include <hole/Authority.hh>
 #include <hole/Hole.hh>
 #include <hole/Openness.hh>
 #include <hole/storage/Directory.hh>
@@ -15,11 +17,8 @@
 #include <elle/io/Piece.hh>
 #include <elle/io/Unique.hh>
 #include <elle/utility/Parser.hh>
-#include <elle/concurrency/Program.hh>
-#include <elle/CrashReporter.hh>
 
 #include <lune/Lune.hh>
-#include <elle/Authority.hh>
 #include <lune/Descriptor.hh>
 #include <lune/Identity.hh>
 
@@ -35,7 +34,9 @@
 
 #include <horizon/Policy.hh>
 
+#include <CrashReporter.hh>
 #include <Infinit.hh>
+#include <Program.hh>
 
 namespace satellite
 {
@@ -383,8 +384,9 @@ namespace satellite
   ///
   /// the main function.
   ///
-  elle::Status          Main(elle::Natural32                    argc,
-                             elle::Character*                   argv[])
+  elle::Status
+  Network(elle::Natural32 argc,
+          elle::Character* argv[])
   {
     Network::Operation  operation;
 
@@ -652,44 +654,8 @@ namespace satellite
 
 }
 
-//
-// ---------- main ------------------------------------------------------------
-//
-
-///
-/// this is the program entry point.
-///
-int                     main(int                                argc,
-                             char**                             argv)
+int
+main(int argc, char** argv)
 {
-  // Capture signal and send email without exiting.
-  elle::signal::ScopedGuard guard{
-    elle::concurrency::scheduler(),
-    {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler("8network", false, argc, argv)
-  };
-
-  // Capture signal and send email exiting.
-  elle::signal::ScopedGuard exit_guard{
-    elle::concurrency::scheduler(),
-    {SIGILL, SIGSEGV},
-    elle::crash::Handler("8network", true, argc, argv)
-  };
-
-  try
-    {
-      if (satellite::Main(argc, argv) == elle::Status::Error)
-        return (1);
-    }
-  catch (std::exception& e)
-    {
-      std::cout << "The program has been terminated following "
-                << "a fatal error (" << e.what() << ")." << std::endl;
-
-      elle::crash::report("8network", e.what());
-
-      return (1);
-    }
-
-  return (0);
+  return satellite_main("8network", std::bind(satellite::Network, argc, argv));
 }

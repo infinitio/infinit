@@ -8,7 +8,6 @@
 #include <elle/io/Path.hh>
 #include <elle/io/Piece.hh>
 #include <elle/utility/Parser.hh>
-#include <elle/concurrency/Program.hh>
 
 #include <cryptography/random.hh>
 // XXX[temporary: for cryptography]
@@ -16,11 +15,13 @@ using namespace infinit;
 
 #include <etoile/Etoile.hh>
 
+#include <hole/Authority.hh>
 #include <hole/Hole.hh>
+#include <hole/Passport.hh>
 
 #include <lune/Lune.hh>
-#include <elle/Authority.hh>
-#include <elle/Passport.hh>
+
+#include <Program.hh>
 
 namespace satellite
 {

@@ -26,9 +26,10 @@ using namespace infinit;
 #include <lune/Lune.hh>
 #include <lune/Phrase.hh>
 
+#include <satellites/satellite.hh>
+
 #include <reactor/scheduler.hh>
 
-#include <boost/foreach.hpp>
 #include <limits>
 
 #include <Program.hh>
@@ -202,18 +203,16 @@ namespace satellite
     ward.release();
   }
 
-  elle::Status          Main(elle::Natural32                    argc,
-                             elle::Character*                   argv[])
+  elle::Status
+  Access(elle::Natural32 argc,
+         elle::Character* argv[])
   {
     Access::Operation   operation;
 
     // XXX Infinit::Parser is not deleted in case of errors
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("Access",
-                                          common::meta::host(),
-                                          common::meta::port())
-        == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("Access") == elle::Status::Error)
       throw elle::Exception("unable to set up the program");
 
     // initialize the Lune library.
@@ -664,68 +663,9 @@ namespace satellite
 
     return elle::Status::Ok;
   }
-
 }
 
-//
-// ---------- main ------------------------------------------------------------
-//
-
-elle::Status
-_main(elle::Natural32 argc, elle::Character* argv[])
+int main(int argc, char** argv)
 {
-  // Capture signal and send email without exiting.
-  elle::signal::ScopedGuard guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8access", false)
-  };
-
-  // Capture signal and send email exiting.
-  elle::signal::ScopedGuard exit_guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGILL, SIGSEGV},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8access", true)
-  };
-
-  try
-    {
-      if (satellite::Main(argc, argv) == elle::Status::Error)
-        throw reactor::Exception("XXX");
-    }
-  catch (std::exception const& e)
-    {
-      std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-      if (reactor::Exception const* re =
-          dynamic_cast<reactor::Exception const*>(&e))
-        std::cerr << re->backtrace() << std::endl;
-
-      elle::crash::report(
-          common::meta::host(),
-          common::meta::port(),
-          "8acces", e.what());
-      reactor::Scheduler::scheduler()->terminate();
-      return elle::Status::Error;
-    }
-  reactor::Scheduler::scheduler()->terminate();
-  return elle::Status::Ok;
-}
-
-///
-/// this is the program entry point.
-///
-int                     main(int                                argc,
-                             char**                             argv)
-{
-  reactor::Scheduler sched;
-  reactor::VThread<elle::Status> main(sched, "main",
-                                      boost::bind(&_main, argc, argv));
-  sched.run();
-  return main.result() == elle::Status::Ok ? 0 : 1;
+  return satellite_main("8access", std::bind(satellite::Access, argc, argv));
 }

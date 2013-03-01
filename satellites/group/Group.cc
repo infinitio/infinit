@@ -1,4 +1,5 @@
 #include <satellites/group/Group.hh>
+#include <satellites/satellite.hh>
 
 #include <elle/utility/Parser.hh>
 #include <elle/io/Piece.hh>
@@ -215,18 +216,16 @@ namespace satellite
   ///
   /// the main function.
   ///
-  elle::Status          Main(elle::Natural32                    argc,
-                             elle::Character*                   argv[])
+  elle::Status
+  Group(elle::Natural32 argc,
+        elle::Character* argv[])
   {
     Group::Operation   operation;
 
     // XXX Infinit::Parser is not deleted in case of errors
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("Group",
-                                          common::meta::host(),
-                                          common::meta::port())
-        == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("Group") == elle::Status::Error)
       throw elle::Exception("unable to set up the program");
 
     // initialize the Lune library.
@@ -798,84 +797,8 @@ namespace satellite
 
 }
 
-//
-// ---------- main ------------------------------------------------------------
-//
-
-elle::Status
-_main(elle::Natural32 argc, elle::Character* argv[])
+int main(int argc, char** argv)
 {
-  // Capture signal and send email without exiting.
-  elle::signal::ScopedGuard guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8group", false, argc, argv)
-  };
-
-  // Capture signal and send email exiting.
-  elle::signal::ScopedGuard exit_guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGILL, SIGSEGV},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8group", true, argc, argv)
-  };
-
-  try
-    {
-      if (satellite::Main(argc, argv) == elle::Status::Error)
-        throw reactor::Exception("XXX");
-    }
-  catch (reactor::Exception const& e)
-    {
-      ELLE_ERR("fatal error: %s", e);
-      std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-      elle::crash::report(
-          common::meta::host(),
-          common::meta::port(),
-          "8group", elle::sprintf("%s", e));
-      reactor::Scheduler::scheduler()->terminate();
-      return elle::Status::Error;
-    }
-  catch (std::runtime_error const& e)
-    {
-      ELLE_ERR("fatal error: %s", e.what());
-      std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-      elle::crash::report(
-          common::meta::host(),
-          common::meta::port(),
-          "8group", e.what());
-      reactor::Scheduler::scheduler()->terminate();
-      return elle::Status::Error;
-    }
-  catch (...)
-    {
-      ELLE_ERR("unkown fatal error");
-      std::cerr << argv[0] << ": unknown fatal error" << std::endl;
-      elle::crash::report(
-          common::meta::host(),
-          common::meta::port(),
-          "8group");
-      reactor::Scheduler::scheduler()->terminate();
-      return elle::Status::Error;
-    }
-  reactor::Scheduler::scheduler()->terminate();
-  return elle::Status::Ok;
-}
-
-///
-/// this is the program entry point.
-///
-int                     main(int                                argc,
-                             char**                             argv)
-{
-  reactor::Scheduler sched;
-  reactor::VThread<elle::Status> main(sched, "main",
-                                      boost::bind(&_main, argc, argv));
-  sched.run();
-  return main.result() == elle::Status::Ok ? 0 : 1;
+  return satellite_main("8group", std::bind(satellite::Group,
+                                            argc, argv));
 }

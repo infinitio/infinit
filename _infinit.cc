@@ -53,9 +53,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
      (new elle::log::TextLogger(log_destination())));
 
   // set up the program.
-  if (elle::concurrency::Program::Setup
-      ("Infinit", common::meta::host(), common::meta::port())
-      == elle::Status::Error)
+  if (elle::concurrency::Program::Setup("Infinit") == elle::Status::Error)
     throw elle::Exception("unable to set up the program");
 
   // allocate a new parser.

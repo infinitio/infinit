@@ -755,9 +755,7 @@ namespace satellite
     // XXX Infinit::Parser is not deleted in case of errors
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("Transfer",
-                                          common::meta::host(),
-                                          common::meta::port()) == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("Transfer") == elle::Status::Error)
       throw elle::Exception("unable to set up the program");
 
     // initialize the Lune library.

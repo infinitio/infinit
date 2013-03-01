@@ -37,10 +37,7 @@ namespace hole
       throw reactor::Exception("unable to initialize Infinit");
 
     // set up the program.
-    if (elle::concurrency::Program::Setup("8hole",
-                                          common::meta::host(),
-                                          common::meta::port())
-        == elle::Status::Error)
+    if (elle::concurrency::Program::Setup("8hole") == elle::Status::Error)
       throw reactor::Exception("unable to set up the program");
 
     // allocate a new parser.
