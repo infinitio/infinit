@@ -707,100 +707,32 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
                                   cxx_toolkit, hole_cxx_config)
   build << hole_bin
 
-  # 8group
-  group_sources = drake.nodes(
-    'satellites/group/Group.cc',
-    'satellites/group/Group.hh',
-    'satellites/group/Group.hxx',
-    )
-  group_bin = drake.cxx.Executable('bin/8group',
-                                   group_sources + infinit_libs,
-                                   cxx_toolkit, infinit_bin_config)
-  if "group" in satellites:
-      build << group_bin
+  def satellite(name):
+    fmt = (name, name.capitalize())
+    sources = [
+      'satellites/%s/%s.cc' % fmt,
+      'satellites/%s/%s.hh' % fmt,
+      'satellites/%s/%s.hxx' % fmt,
+      ]
+    sources = filter(lambda p: drake.path_src(p).exists(), sources)
+    sources = map(drake.node, sources)
+    bin = drake.cxx.Executable('bin/8%s' % name,
+                               list(sources) + infinit_libs,
+                               cxx_toolkit, infinit_bin_config)
+    if name in satellites:
+      build << bin
 
-  # 8access
-  access_sources = drake.nodes(
-    'satellites/access/Access.cc',
-    'satellites/access/Access.hh',
-    'satellites/access/Access.hxx',
-    )
-  access_bin = drake.cxx.Executable('bin/8access',
-                                   access_sources + infinit_libs,
-                                   cxx_toolkit, infinit_bin_config)
-  if "access" in satellites:
-      build << access_bin
-
-  # 8authority
-  authority_sources = drake.nodes(
-    'satellites/authority/Authority.cc',
-    'satellites/authority/Authority.hh',
-    'satellites/authority/Authority.hxx',
-    )
-  authority_bin = drake.cxx.Executable('bin/8authority',
-                                       authority_sources + infinit_libs,
-                                       cxx_toolkit, infinit_bin_config)
-  if "authority" in satellites:
-      build << authority_bin
-
-  # 8user
-  user_sources = drake.nodes(
-    'satellites/user/User.cc',
-    'satellites/user/User.hh',
-    'satellites/user/User.hxx',
-    )
-  user_bin = drake.cxx.Executable('bin/8user',
-                                  user_sources + infinit_libs,
-                                  cxx_toolkit, infinit_bin_config)
-  if "user" in satellites:
-      build << user_bin
-
-  # 8passport
-  passport_sources = drake.nodes(
-    'satellites/passport/Passport.cc',
-    'satellites/passport/Passport.hh',
-    'satellites/passport/Passport.hxx',
-    )
-  passport_bin = drake.cxx.Executable('bin/8passport',
-                                      passport_sources + infinit_libs,
-                                      cxx_toolkit, infinit_bin_config)
-  if "passport" in satellites:
-      build << passport_bin
-
-  # 8network
-  network_sources = drake.nodes(
-    'satellites/network/Network.cc',
-    'satellites/network/Network.hh',
-    'satellites/network/Network.hxx',
-    )
-  network_bin = drake.cxx.Executable('bin/8network',
-                                     network_sources + infinit_libs,
-                                     cxx_toolkit, infinit_bin_config)
-  if "network" in satellites:
-      build << network_bin
-
-  # 8transfer
-  transfer_sources = drake.nodes(
-    'satellites/transfer/Transfer.cc',
-    'satellites/transfer/Transfer.hh',
-    )
-  transfer_bin = drake.cxx.Executable('bin/8transfer',
-                                   transfer_sources + infinit_libs,
-                                   cxx_toolkit, infinit_bin_config)
-  if "transfer" in satellites:
-      build << transfer_bin
-
-  # 8progress
-  progress_sources = drake.nodes(
-    'satellites/progress/Progress.cc',
-    'satellites/progress/Progress.hh',
-    'satellites/progress/Progress.hxx',
-    )
-  progress_bin = drake.cxx.Executable('bin/8progress',
-                                   progress_sources + infinit_libs,
-                                   cxx_toolkit, infinit_bin_config)
-  if "progress" in satellites:
-      build << progress_bin
+  for name in [
+    'access',
+    'authority',
+    'group',
+    'network',
+    'passport',
+    'progress',
+    'transfer',
+    'user',
+    ]:
+    satellite(name)
 
   # 8search
   search_sources = drake.nodes(
