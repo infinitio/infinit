@@ -1,7 +1,7 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
-#include <elle/concurrency/Scheduler.hh>
+#include <reactor/scheduler.hh>
 #include <elle/serialize/BinaryArchive.hh>
 
 #include <reactor/network/exception.hh>
@@ -59,12 +59,12 @@ struct DummyRPC: public infinit::protocol::RPC<elle::serialize::InputBinaryArchi
   RemoteProcedure<void> raise;
 };
 
-void caller()
+void caller(reactor::Scheduler& sched)
 {
-  elle::concurrency::scheduler().current()->wait(lock);
-  reactor::network::TCPSocket socket(elle::concurrency::scheduler(), "127.0.0.1", 12345);
-  infinit::protocol::Serializer s(elle::concurrency::scheduler(), socket);
-  infinit::protocol::ChanneledStream channels(elle::concurrency::scheduler(), s);
+  sched.current()->wait(lock);
+  reactor::network::TCPSocket socket(sched, "127.0.0.1", 12345);
+  infinit::protocol::Serializer s(sched, socket);
+  infinit::protocol::ChanneledStream channels(sched, s);
 
   DummyRPC rpc(channels);
   BOOST_CHECK_EQUAL(rpc.answer(), 42);
@@ -73,14 +73,14 @@ void caller()
   BOOST_CHECK_THROW(rpc.raise(), std::runtime_error);
 }
 
-void runner()
+void runner(reactor::Scheduler& sched)
 {
-  reactor::network::TCPServer server(elle::concurrency::scheduler());
+  reactor::network::TCPServer server(sched);
   server.listen(12345);
   lock.release();
   reactor::network::TCPSocket* socket = server.accept();
-  infinit::protocol::Serializer s(elle::concurrency::scheduler(), *socket);
-  infinit::protocol::ChanneledStream channels(elle::concurrency::scheduler(), s);
+  infinit::protocol::Serializer s(sched, *socket);
+  infinit::protocol::ChanneledStream channels(sched, s);
 
   DummyRPC rpc(channels);
   rpc.answer = &answer;
@@ -97,10 +97,12 @@ void runner()
 
 int test()
 {
-  reactor::Thread r(elle::concurrency::scheduler(), "Runner", &runner);
-  reactor::Thread c(elle::concurrency::scheduler(), "Caller", &caller);
+  reactor::Scheduler sched{};
 
-  elle::concurrency::scheduler().run();
+  reactor::Thread r(sched, "Runner", std::bind(runner, std::ref(sched)));
+  reactor::Thread c(sched, "Caller", std::bind(caller, std::ref(sched)));
+
+  sched.run();
   return 0;
 }
 

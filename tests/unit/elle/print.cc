@@ -18,7 +18,7 @@ int main()
         }
     }
   assert(s == ref);
-  elle::print("tests", "done.");
+  elle::print<std::string>("tests", "done.");
   std::string pif = elle::sprint(12345);
   std::cout << elle::sprint(12345) << ' ' << pif << std::endl;
   return 0;

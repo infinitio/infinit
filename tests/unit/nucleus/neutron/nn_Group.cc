@@ -9,6 +9,8 @@ using namespace infinit;
 #include <nucleus/neutron/Ensemble.hh>
 #include <nucleus/neutron/Fellow.hh>
 
+#include <reactor/exception.hh>
+
 #include <iostream>
 
 #define CHECK(call) if (call != elle::Status::Ok) { assert(false); } else

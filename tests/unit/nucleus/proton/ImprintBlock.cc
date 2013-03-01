@@ -8,6 +8,8 @@ using namespace infinit;
 #include <nucleus/neutron/Access.hh>
 #include <nucleus/proton/ImprintBlock.hh>
 
+#include <reactor/exception.hh>
+
 #include <tests/unit/unit.hh>
 
 #include <iostream>

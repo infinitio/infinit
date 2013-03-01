@@ -30,6 +30,7 @@
 #include <hole/storage/Memory.hh>
 #include <hole/implementations/local/Implementation.hh>
 
+#include <reactor/scheduler.hh>
 #include <Infinit.hh>
 
 // XXX[temporary: for cryptography]
@@ -628,7 +629,8 @@ test_porcupine_attributes()
 
 int
 Main(elle::Natural32,
-     elle::Character* argv[])
+     elle::Character* argv[],
+     reactor::Scheduler& sched)
 {
   try
     {
@@ -706,11 +708,11 @@ Main(elle::Natural32,
       goto _error;
     }
 
-  elle::concurrency::scheduler().terminate();
+  sched.terminate();
   return (0);
 
  _error:
-  elle::concurrency::scheduler().terminate();
+  sched.terminate();
   return (1);
 }
 
@@ -718,9 +720,11 @@ int
 main(int argc,
      char* argv[])
 {
-  reactor::Scheduler& sched = elle::concurrency::scheduler();
-  reactor::VThread<int> main(sched, "main",
-                             boost::bind(&Main, argc, argv));
+  reactor::Scheduler sched{};
+
+  reactor::VThread<int> main{sched, "main", std::bind(&Main, argc, argv, std::ref(sched))};
+
   sched.run();
+
   return main.result();
 }

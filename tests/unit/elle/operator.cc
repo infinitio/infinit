@@ -2,6 +2,7 @@
 #include <elle/assert.hh>
 #include <elle/operator.hh>
 #include <elle/Exception.hh>
+#include <elle/print.hh>
 
 #include <utility>
 ELLE_OPERATOR_RELATIONALS();

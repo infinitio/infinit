@@ -4,6 +4,8 @@
 #include <elle/Buffer.hh>
 #include <elle/log.hh>
 
+#include <reactor/exception.hh>
+
 #include <nucleus/neutron/Record.hh>
 
 #define CHECK(call) if (call != elle::Status::Ok) { assert(false); } else
