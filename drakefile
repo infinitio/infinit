@@ -713,6 +713,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
       'satellites/%s/%s.cc' % fmt,
       'satellites/%s/%s.hh' % fmt,
       'satellites/%s/%s.hxx' % fmt,
+      'satellites/satellite.cc',
+      'satellites/satellite.hh',
       ]
     sources = filter(lambda p: drake.path_src(p).exists(), sources)
     sources = map(drake.node, sources)
