@@ -57,14 +57,14 @@ namespace surface
           {
             file >> port;
             ELLE_DEBUG("erginus port is %s", port);
+            this->_trophonius.reset(
+              new plasma::trophonius::Client{
+                "localhost",
+                port,
+                true
+              }
+            );
           }
-          this->_trophonius.reset(
-            new plasma::trophonius::Client{
-              "localhost",
-              port,
-              true
-            }
-          );
           ELLE_DEBUG("successfully connected to erginus");
           return ;
         }
