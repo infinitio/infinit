@@ -42,20 +42,6 @@ namespace elle
       this->_release();
     }
 
-    void
-    ScopedGuard::_launch()
-    {
-      ELLE_TRACE("launching guard");
-      this->_signals.async_wait(this->_handler);
-    }
-
-    void
-    ScopedGuard::_release()
-    {
-      ELLE_TRACE("releasing guard");
-      this->_signals.cancel();
-    }
-
     namespace
     {
       // It seems that strsignal from signal.h isn't portable on every os.
@@ -89,6 +75,41 @@ namespace elle
         return bind[signal];
       }
     } // End of anonymous namespace.
+
+    static
+    void
+    _wrap(boost::system::error_code const& error, int sig,
+          ScopedGuard::Handler const& handler)
+    {
+      if (!error)
+      {
+        ELLE_DEBUG("signal caught: %s.", elle::signal::strsignal(sig));
+        handler(sig);
+      }
+      else if (error != boost::system::errc::operation_canceled)
+      {
+        ELLE_WARN("Error: %d - Sig: %d", error, sig);
+      }
+
+    }
+
+    void
+    ScopedGuard::_launch()
+    {
+      ELLE_TRACE("launching guard");
+      this->_signals.async_wait([&](boost::system::error_code const& error,
+                                    int sig)
+                                {
+                                  _wrap(error, sig, this->_handler);
+                                });
+    }
+
+    void
+    ScopedGuard::_release()
+    {
+      ELLE_TRACE("releasing guard");
+      this->_signals.cancel();
+    }
   } // End of signal.
 
   namespace crash
@@ -126,23 +147,13 @@ namespace elle
     {}
 
     void
-    Handler::operator() (boost::system::error_code const& error,
-                         int sig)
+    Handler::operator() (int sig)
     {
-      if (!error)
-      {
-        ELLE_DEBUG("signal caught: %s.", elle::signal::strsignal(sig));
+      elle::crash::report
+        (this->_host, this->_port, this->_name, elle::signal::strsignal(sig));
 
-        elle::crash::report
-          (this->_host, this->_port, this->_name, elle::signal::strsignal(sig));
-
-        if (this->_quit)
-          exit(sig);
-      }
-      else if (error != boost::system::errc::operation_canceled)
-      {
-        ELLE_WARN("Error: %d - Sig: %d", error, sig);
-      }
+      if (this->_quit)
+        exit(sig);
     }
 
     bool

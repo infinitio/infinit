@@ -15,34 +15,21 @@ static reactor::Scheduler sched{};
 struct Increaser
 {
   static int count;
-  static int error;
 
   void
-  operator ()(boost::system::error_code const& error,
-              int)
+  operator ()(int sig)
   {
-    if (!error)
-    {
-      ++Increaser::count;
-    }
-    else if (error == boost::system::errc::operation_canceled)
-    {
-      --Increaser::error;
-    }
-    else
-    {
-      std::cerr << "ERROR" << std::endl;
-    }
+    std::cerr << sig << std::endl;
+    ++Increaser::count;
   }
 };
 
 int Increaser::count = 0;
-int Increaser::error = 0;
 
 int
  do_something()
 {
-  reactor::Sleep s(sched, boost::posix_time::seconds(3));
+  reactor::Sleep s(sched, boost::posix_time::seconds(5));
   s.run();
 
   return 1;
@@ -83,7 +70,7 @@ main(void)
 
   sched.run();
 
-  if (Increaser::count == COUNT && Increaser::error == -COUNT)
+  if (Increaser::count == COUNT)
     std::cout << "tests done." << std::endl;
 
   return 0;

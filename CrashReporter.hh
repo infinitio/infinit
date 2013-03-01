@@ -22,10 +22,10 @@ namespace elle
       /*---------.
       | Typedefs |
       `---------*/
-    private:
+    public:
       /// Handler prototype.
       typedef
-      std::function<void(boost::system::error_code const&, int)> Handler;
+      std::function<void (int)> Handler;
 
       /// Attributes.
     private:
@@ -83,7 +83,7 @@ namespace elle
 
       virtual
       void
-      operator() (boost::system::error_code const& error, int sig);
+      operator() (int sig);
 
     private:
       std::string _host;
