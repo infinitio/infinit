@@ -995,7 +995,7 @@ _main(elle::Natural32 argc, elle::Character* argv[])
     }
   catch (reactor::Exception const& e)
     {
-      std::cerr << argv[0] << ": fatal error: " << e << std::endl;
+      ELLE_ERR("%s: fatal error: %s", argv[0], e);
       elle::crash::report(common::meta::host(),
                           common::meta::port(),
                           "8transfer",
@@ -1004,7 +1004,7 @@ _main(elle::Natural32 argc, elle::Character* argv[])
     }
   catch (std::exception const& e)
     {
-      std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
+      ELLE_ERR("%s: fatal error: %s", argv[0], e.what());
       elle::crash::report(common::meta::host(),
                           common::meta::port(),
                           "8transfer",
@@ -1013,7 +1013,7 @@ _main(elle::Natural32 argc, elle::Character* argv[])
     }
   catch (...)
     {
-      std::cerr << argv[0] << ": unknown exception" << std::endl;
+      ELLE_ERR("%s: unknown exception", argv[0]);
       elle::crash::report(common::meta::host(),
                           common::meta::port(),
                           "8transfer");
