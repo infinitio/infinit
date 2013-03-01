@@ -168,7 +168,7 @@ namespace elle
       std::unique_ptr<elle::HTTPClient> server{
         new elle::HTTPClient{
           host,
-          port,
+          static_cast<uint16_t>(port),
           "InfinitDesktop", // User agent
         }
       };
