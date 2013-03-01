@@ -16,7 +16,7 @@ namespace infinit
         // Capture signal and send email without exiting.
         elle::signal::ScopedGuard guard
           (*reactor::Scheduler::scheduler(),
-           {SIGINT, SIGABRT, SIGPIPE, SIGTERM},
+           {SIGABRT, SIGPIPE, SIGTERM},
            elle::crash::Handler(common::meta::host(),
                                 common::meta::port(),
                                 name, false));
@@ -28,6 +28,16 @@ namespace infinit
            elle::crash::Handler(common::meta::host(),
                                 common::meta::port(),
                                 name, true));
+
+        // Exit on keyboard interrupt.
+        elle::signal::ScopedGuard int_guard
+          (*reactor::Scheduler::scheduler(),
+           {SIGINT},
+           [](int)
+           {
+             reactor::Scheduler::scheduler()->terminate();
+           });
+
 
         action();
         return 0;
