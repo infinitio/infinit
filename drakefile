@@ -1052,6 +1052,8 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
      [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     ('tests/unit/surface/gap/state_ctor.cc',
      [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
+    ('tests/unit/elle/signal_handler.cc',
+     infinit_libs)
   ]
   for test in tests_src_n_lib:
     bin_path = drake.Path(test[0])
