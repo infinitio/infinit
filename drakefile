@@ -5,9 +5,17 @@ import drake
 
 import os.path
 
-def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
-              optimization = True, prefix = '/usr', boost = None, qt = None,
-              enable_tests = True):
+def configure(cxx_toolkit,
+              cxx_config,
+              enable_horizon = True,
+              satellites = [],
+              optimization = True,
+              prefix = '/usr',
+              boost = None,
+              qt = None,
+              enable_tests = True,
+              python2 = None,
+              python3 = None):
 
   prefix = drake.Path(prefix)
 
@@ -45,6 +53,14 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
                                              prefix = 'dependencies/platforms/macosx64/work/')
   else:
     raise Exception("unsupported os")
+
+  # Python
+  python2 = drake.cxx.find_library('pyconfig.h', python2,
+                                   include_dir = ['include/python2.7',
+                                                  'include/python2.7m'])
+  python3 = drake.cxx.find_library('pyconfig.h', python3,
+                                   include_dir = ['include/python3.2',
+                                                  'include/python3.2m'])
 
   # Includes
 
@@ -776,8 +792,7 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
 
   # GAP
 
-  gap_cxx_config = drake.cxx.Config(cxx_config)
-  gap_cxx_config.add_system_include_path('/usr/include/python3.2/')
+  gap_cxx_config = cxx_config + python3
   gap_cxx_config.lib_path_runtime('.')
   gap_sources = drake.nodes(
     'surface/gap/State.cc',
@@ -803,14 +818,12 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
 
   # GAP python
 
-  gap_python_cxx_config = drake.cxx.Config(cxx_config)
-  gap_python_cxx_config.add_system_include_path('/usr/include/python3.2/')
+  gap_python_cxx_config = cxx_config + python3
+  gap_python_cxx_config += boost.config_python()
+  gap_python_cxx_config.lib_path_runtime('..')
   gap_python_sources = drake.nodes(
     'surface/gap/python/pygap.cc',
     )
-  gap_python_cxx_config += boost.config_python()
-  gap_python_cxx_config.add_system_include_path('/usr/include/python3.2')
-  gap_python_cxx_config.lib_path_runtime('..')
   gap_python_lib = drake.cxx.Module('lib/python/_gap',
                                     # FIXME: sooooo many libs ...
                                     gap_python_sources + [gap_lib, tropho_lib] + infinit_libs,
@@ -930,8 +943,7 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
 
   # Oracle/metalib
 
-  metalib_config = drake.cxx.Config(qt_cxx_config)
-  metalib_config.add_system_include_path("/usr/include/python2.7/")
+  metalib_config = cxx_config + python2
   metalib_config.lib_path_runtime('.')
 
   metalib_sources = drake.nodes(
