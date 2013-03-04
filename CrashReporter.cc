@@ -3,6 +3,10 @@
 #include <elle/log.hh>
 #include <elle/HttpClient.hh>
 #include <elle/system/platform.hh>
+#include <elle/system/platform.hh>
+#if defined(INFINIT_MACOSX)
+extern char** environ;
+#endif
 
 #include <reactor/scheduler.hh>
 
@@ -12,10 +16,7 @@
 #include <map>
 #include <signal.h>
 
-#include <elle/system/platform.hh>
-#if defined(INFINIT_MACOSX)
-extern char** environ;
-#endif
+#include <boost/asio/io_service.hpp>
 
 ELLE_LOG_COMPONENT("elle.CrashReporter");
 
@@ -23,25 +24,6 @@ namespace elle
 {
   namespace signal
   {
-    ScopedGuard::ScopedGuard(reactor::Scheduler& sched,
-                             std::vector<int> const& sig,
-                             Handler const& handler):
-      _signals{sched.io_service()},
-      _handler{handler}
-    {
-      // Each guard manager a specific handler but any signals.
-      std::for_each(sig.begin(), sig.end(),
-                    [&](int sig) { ELLE_DEBUG("handling %s", sig);
-                                   this->_signals.add(sig); });
-
-      this->_launch();
-    }
-
-    ScopedGuard::~ScopedGuard()
-    {
-      this->_release();
-    }
-
     namespace
     {
       // It seems that strsignal from signal.h isn't portable on every os.
@@ -50,7 +32,7 @@ namespace elle
       std::string const&
       strsignal(int signal)
       {
-        static std::map<int, std::string> bind(
+        static const std::unordered_map<int, std::string> bind{
           {
             {SIGHUP,  "SIGHUP"},  // Hangup detected on controlling terminal or death of controlling process
             {SIGINT,  "SIGINT"},  // Interrupt from keyboard
@@ -70,15 +52,38 @@ namespace elle
             {SIGTTIN, "SIGTTIN"}, // tty input for background process
             {SIGTTOU, "SIGTTOU"}, // tty output for background process
           }
-        );
+        };
 
-        return bind[signal];
+        return bind.at(signal);
       }
     } // End of anonymous namespace.
 
+    class ScopedGuard::Impl
+    {
+      /*---------------.
+      | Initialization |
+      `---------------*/
+    public:
+      virtual ~Impl()
+      {}
+
+      virtual
+      void
+      launch(std::vector<int> const& sigs) = 0;
+
+      /*------------.
+      | Destruction |
+      `------------*/
+      virtual
+      void
+      release() = 0;
+    };
+
+    //- Async impl -------------------------------------------------------------
     static
     void
-    _wrap(boost::system::error_code const& error, int sig,
+    _wrap(boost::system::error_code const& error,
+          int sig,
           ScopedGuard::Handler const& handler)
     {
       if (!error)
@@ -90,25 +95,114 @@ namespace elle
       {
         ELLE_WARN("Error: %d - Sig: %d", error, sig);
       }
-
     }
 
-    void
-    ScopedGuard::_launch()
+    // XXX: Should be templated on Handler maybe.
+    class AsyncImpl:
+      public ScopedGuard::Impl
     {
-      ELLE_TRACE("launching guard");
-      this->_signals.async_wait([&](boost::system::error_code const& error,
-                                    int sig)
-                                {
-                                  _wrap(error, sig, this->_handler);
-                                });
+      typedef ScopedGuard::Handler Handler;
+
+      Handler _handler;
+      boost::asio::signal_set _signals;
+
+    public:
+      AsyncImpl(reactor::Scheduler& sched,
+                Handler const& handler):
+        _handler{handler},
+        _signals{sched.io_service()}
+      {}
+
+    public:
+      virtual
+      void
+      launch(std::vector<int> const& sigs) override
+      {
+        ELLE_TRACE("launching guard");
+        for (int sig: sigs)
+        {
+          ELLE_DEBUG("handling %s (%s) asynchronously.", strsignal(sig), sig);
+          this->_signals.add(sig);
+        }
+
+        ELLE_DEBUG("now waiting for signals...");
+        this->_signals.async_wait(
+          [&](boost::system::error_code const& error,
+              int sig)
+          {
+            if (error != boost::system::errc::operation_canceled)
+              _wrap(error, sig, this->_handler);
+          });
+      }
+
+      virtual
+      void
+      release() override
+      {
+        ELLE_TRACE("releasing guard");
+        //XXX We should check errors.
+        this->_signals.cancel();
+      }
+    };
+
+    class SyncImpl:
+      public ScopedGuard::Impl
+    {
+      typedef sighandler_t Handler;
+
+      Handler _handler;
+      std::vector<int> _sigs;
+    public:
+      SyncImpl(Handler const& handler):
+        _handler{handler}
+      {}
+
+    public:
+      virtual
+      void
+      launch(std::vector<int> const& sigs) override
+      {
+        this->_sigs = sigs;
+
+        for (int sig: this->_sigs)
+        {
+          ELLE_DEBUG("handling %s synchronously", strsignal(sig));
+          // To avoid handler to be override.
+          ELLE_ASSERT(::signal(sig, this->_handler) == SIG_DFL);
+        }
+      }
+
+      virtual
+      void
+      release() override
+      {
+        for (int sig: this->_sigs)
+        {
+          ELLE_DEBUG("releasing %s (sync).", strsignal(sig));
+          // Restore handler, according to the hypothesis that nobody erased it.
+          ELLE_ASSERT(::signal(sig, SIG_DFL) == this->_handler);
+        }
+      }
+    };
+
+    ScopedGuard::ScopedGuard(reactor::Scheduler& sched,
+                             std::vector<int> const& sigs,
+                             Handler const& handler):
+      _impl{new AsyncImpl{sched, handler}}
+    {
+      this->_impl->launch(sigs);
     }
 
-    void
-    ScopedGuard::_release()
+    ScopedGuard::ScopedGuard(std::vector<int> const& sigs,
+                             sighandler_t const& handler):
+      _impl{new SyncImpl{handler}}
     {
-      ELLE_TRACE("releasing guard");
-      this->_signals.cancel();
+      this->_impl->launch(sigs);
+    }
+
+    ScopedGuard::~ScopedGuard()
+    {
+      this->_impl->release();
     }
   } // End of signal.
 
@@ -158,7 +252,7 @@ namespace elle
 
     bool
     report(std::string const& host,
-           int port,
+           uint16_t port,
            std::string const& module,
            std::string const& signal,
            elle::Backtrace const& bt)

@@ -29,35 +29,25 @@ namespace elle
 
       /// Attributes.
     private:
-      boost::asio::signal_set _signals;
+
       Handler _handler;
 
       /*-------------.
       | Construction |
       `-------------*/
     public:
-      /// Initialize with signal list and handler.
+      /// Initialize with signal list and handler (async).
       ScopedGuard(reactor::Scheduler& sched,
-                  std::vector<int> const& sig,
+                  std::vector<int> const& sigs,
                   Handler const& handler);
+      /// Initialize with signal list and handler (sync).
+      ScopedGuard(std::vector<int> const& sigs,
+                  sighandler_t const& handler);
       /// Destroy current handlers.
       ~ScopedGuard();
 
-      /*---------------.
-      | Initialization |
-      `---------------*/
-      /// Launch thread;
-    private:
-      void
-      _launch();
-
-      /*------------.
-      | Destruction |
-      `------------*/
-    private:
-      /// Clear handler list.
-      void
-      _release();
+      class Impl;
+      std::unique_ptr<Impl> _impl;
     };
   } // End of signal.
 
@@ -87,14 +77,14 @@ namespace elle
 
     private:
       std::string _host;
-      int _port;
+      uint16_t _port;
       std::string _name;
       bool _quit;
     };
 
     bool
     report(std::string const& host,
-           int port,
+           uint16_t port,
            std::string const& module,
            std::string const& signal = "",
            elle::Backtrace const& b = elle::Backtrace::current());
