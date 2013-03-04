@@ -1,5 +1,7 @@
 #include "../State.hh"
 
+#include <boost/algorithm/string/join.hpp>
+
 #include <common/common.hh>
 
 #include <lune/Descriptor.hh>
@@ -18,18 +20,14 @@
 #include <hole/storage/Directory.hh>
 #include <hole/Passport.hh>
 
+#include <metrics/Reporter.hh>
+
 #include <elle/format/json.hh>
 #include <elle/io/Piece.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/os/path.hh>
-
-#include <metrics/Reporter.hh>
-
-#include <QString>
-#include <QByteArray>
-#include <QLocalSocket>
-#include <QProcess>
+#include <elle/system/Process.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
@@ -423,22 +421,24 @@ namespace surface
         ELLE_DEBUG("locating 8 group");
         std::string const& group_binary = common::infinit::binary_path("8group");
 
-        QStringList arguments;
-        arguments << "--user" << this->_me._id.c_str()
-                  << "--type" << "user"
-                  << "--add"
-                  << "--network" << network._id.c_str()
-                  << "--identity" << this->user(user_id).public_key.c_str()
-          ;
+        std::list<std::string> arguments{
+                                    "--user",
+                                    this->_me._id,
+                                    "--type",
+                                    "user",
+                                    "--add",
+                                    "--network",
+                                    network._id,
+                                    "--identity",
+                                    this->user(user_id).public_key
+                                };
+
         ELLE_DEBUG("LAUNCH: %s %s",
                    group_binary,
-                   arguments.join(" ").toStdString());
-        QProcess p;
-        p.start(group_binary.c_str(), arguments);
-        if (!p.waitForFinished())
+                   boost::algorithm::join(arguments, " "));
+        elle::system::Process p{group_binary, arguments};
+        if (p.wait_status() != 0)
           throw Exception(gap_internal_error, "8group binary failed");
-        if (p.exitCode())
-          throw Exception(gap_internal_error, "8group binary exited with errors");
 
         ELLE_DEBUG("set user in network in meta.");
 
