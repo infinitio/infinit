@@ -776,7 +776,7 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
 
   # GAP
 
-  gap_cxx_config = drake.cxx.Config(qt_cxx_config)
+  gap_cxx_config = drake.cxx.Config(cxx_config)
   gap_cxx_config.add_system_include_path('/usr/include/python3.2/')
   gap_cxx_config.lib_path_runtime('.')
   gap_sources = drake.nodes(
@@ -803,7 +803,7 @@ def configure(cxx_toolkit, cxx_config, enable_horizon = True, satellites = [],
 
   # GAP python
 
-  gap_python_cxx_config = drake.cxx.Config(qt_cxx_config)
+  gap_python_cxx_config = drake.cxx.Config(cxx_config)
   gap_python_cxx_config.add_system_include_path('/usr/include/python3.2/')
   gap_python_sources = drake.nodes(
     'surface/gap/python/pygap.cc',
