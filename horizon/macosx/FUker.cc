@@ -10,6 +10,7 @@
 #include <hole/Hole.hh>
 
 #include <Infinit.hh>
+#include <Scheduler.hh>
 
 #include <boost/function.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
@@ -84,7 +85,7 @@ namespace horizon
                      BOOST_PP_STRINGIZE(Name), res);                    \
           return res;                                                   \
         }                                                               \
-      catch (reactor::Exception const& e)                               \
+      catch (elle::Exception const& e)                                  \
         {                                                               \
           ELLE_ERR("%s killed by exception: %s",                        \
                    BOOST_PP_STRINGIZE(Name), e);                        \
@@ -109,7 +110,7 @@ namespace horizon
          BOOST_PP_SEQ_FOR_EACH_I(INFINIT_FUSE_FORMALS, _,               \
                                  BOOST_PP_SEQ_POP_FRONT(Args)))         \
     {                                                                   \
-      return reactor::scheduler().mt_run<int>                           \
+      return infinit::scheduler().mt_run<int>                           \
         (BOOST_PP_STRINGIZE(Name),                                      \
          boost::bind(Name, INFINIT_FUSE_EFFECTIVE(Args)));              \
     }                                                                   \
@@ -275,7 +276,7 @@ namespace horizon
 
     _leave:
       // now that FUSE has stopped, make sure the program is exiting.
-      new reactor::Thread(reactor::scheduler(), "exit",
+      new reactor::Thread(infinit::scheduler(), "exit",
                           &elle::concurrency::Program::Exit, true);
       return nullptr;
     }
@@ -294,7 +295,7 @@ namespace horizon
                            nullptr,
                            &FUker::Setup,
                            nullptr) != 0)
-        throw reactor::Exception("unable to create the FUSE-specific thread");
+        throw elle::Exception("unable to create the FUSE-specific thread");
     }
 
     ///
