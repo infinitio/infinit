@@ -28,7 +28,22 @@ namespace elle
           {
             // retrieve the input and assign it.
             std::cout << prompt << std::endl;
-            std::getline(std::cin, text);
+            if (!std::getline(std::cin, text))
+            {
+              if (std::cin.bad()) // IO error.
+              {
+                return elle::Status::Error;
+              }
+              else if (!std::cin.eof()) // Format error.
+              {
+                return elle::Status::Error;
+              }
+              else // Signal or EOF.
+              {
+                return elle::Status::Error;
+              }
+            }
+
             break;
           }
         case OptionNone:
@@ -36,7 +51,22 @@ namespace elle
           {
             // retrieve the input and assign it.
             std::cout << prompt << std::endl;
-            std::getline(std::cin, text);
+            if (!std::getline(std::cin, text))
+            {
+              if (std::cin.bad()) // IO error.
+              {
+                return elle::Status::Error;
+              }
+              else if (!std::cin.eof()) // Format error.
+              {
+                return elle::Status::Error;
+              }
+              else // Signal or EOF.
+              {
+                return elle::Status::Error;
+              }
+            }
+
             break;
           }
         }
