@@ -1,6 +1,5 @@
 import drake.cxx
 import drake.cxx.boost
-import drake.cxx.qt
 import drake
 
 import os.path
@@ -81,17 +80,12 @@ def configure(cxx_toolkit,
   cryptography_lib = drake.copy(cryptography.lib_dynamic, 'lib', 'cryptography/lib')
   cxx_config += cryptography.config
 
-  # Qt
-  qt = qt or drake.cxx.qt.Qt()
-  qt_cxx_config = drake.cxx.Config(cxx_config)
-  qt_cxx_config.define('QT_NO_KEYWORDS')
-  qt.plug(cxx_toolkit)
-
   # Fuse
   if enable_horizon:
     cxx_config.define('_FILE_OFFSET_BITS', 64) # FIXME: only needed for horizon
     cxx_config.define('INFINIT_HORIZON')
   cxx_config.define('BOOST_PP_VARIADICS')
+
 
   # Lune
   lune_sources = drake.nodes(
@@ -347,31 +341,13 @@ def configure(cxx_toolkit,
 
   # Plasma
   plasma_sources = drake.nodes(
-    # 'plasma/watchdog/Application.hh',
-    # 'plasma/watchdog/NetworkManager.hh',
-    # 'plasma/watchdog/Client.cc',
-    # 'plasma/watchdog/WatchdogInterface.cc',
-    # 'plasma/watchdog/Manager.hh',
-    # 'plasma/watchdog/Client.hh',
-    # 'plasma/watchdog/LocalServer.hh',
-    # 'plasma/watchdog/WatchdogInterface.hh',
-    # 'plasma/watchdog/Connection.cc',
-    # 'plasma/watchdog/InfinitNetwork.cc',
-    # 'plasma/watchdog/LocalServer.cc',
-    # 'plasma/watchdog/Application.cc',
-    # 'plasma/watchdog/main.cc',
-    # 'plasma/watchdog/InfinitNetwork.hh',
-    # 'plasma/watchdog/Manager.cc',
-    # 'plasma/watchdog/Connection.hh',
-    # 'plasma/watchdog/NetworkManager.cc',
-    # 'plasma/watchdog/ClientActions.cc',
     'plasma/meta/Client.cc',
     'plasma/meta/Client.hh',
     'plasma/meta/Client.hxx',
     'plasma/trophonius/Client.cc',
     'plasma/trophonius/Client.hh',
     'plasma/plasma.cc',
-    'plasma/watchdog/ClientActions.hh',
+    # 'plasma/watchdog/ClientActions.hh',
     )
   plasma_lib = drake.cxx.DynLib('lib/plasma', plasma_sources,
                                 cxx_toolkit, cxx_config)
@@ -698,6 +674,7 @@ def configure(cxx_toolkit,
     protocol_lib,
     reactor_lib,
     elle_lib,
+    metrics_lib,
     ]
   if enable_horizon:
     infinit_libs.append(horizon_slib)
@@ -721,7 +698,7 @@ def configure(cxx_toolkit,
   hole_bin = drake.cxx.Executable('bin/8hole',
                                   drake.nodes('hole/_hole.cc') + infinit_libs,
                                   cxx_toolkit, hole_cxx_config)
-  build << hole_bin
+  # build << hole_bin
 
   def satellite(name):
     fmt = (name, name.capitalize())
@@ -809,11 +786,9 @@ def configure(cxx_toolkit,
     'surface/gap/_detail/transaction.cc',
     'surface/gap/_detail/user.cc',
     )
-  gap_cxx_config += qt.config()
-  gap_cxx_config += qt.cfg_network
   gap_lib = drake.cxx.DynLib('lib/gap',
                              gap_sources + infinit_libs,
-                             cxx_toolkit, gap_cxx_config)
+                             cxx_toolkit, cxx_config)
   build << gap_lib
 
   # GAP python
@@ -835,40 +810,9 @@ def configure(cxx_toolkit,
   gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
                                       'lib/python',
                                       'surface/gap/python')
+
   build << gap_python_lib
   build << gap_python_pyfile_copy
-
-  # Watchdog
-  watchdog_sources = drake.nodes(
-    'plasma/watchdog/Application.cc',
-    'plasma/watchdog/Application.hh',
-    'plasma/watchdog/Client.cc',
-    'plasma/watchdog/Client.hh',
-    'plasma/watchdog/ClientActions.cc',
-    'plasma/watchdog/ClientActions.hh',
-    'plasma/watchdog/Connection.cc',
-    'plasma/watchdog/Connection.hh',
-    'plasma/watchdog/InfinitNetwork.cc',
-    'plasma/watchdog/InfinitNetwork.hh',
-    'plasma/watchdog/LocalServer.cc',
-    'plasma/watchdog/LocalServer.hh',
-    'plasma/watchdog/Manager.cc',
-    'plasma/watchdog/Manager.hh',
-    'plasma/watchdog/NetworkManager.cc',
-    'plasma/watchdog/NetworkManager.hh',
-    'plasma/watchdog/WatchdogInterface.cc',
-    'plasma/watchdog/WatchdogInterface.hh',
-    'plasma/watchdog/main.cc',
-    )
-  watchdog_cxx_config = drake.cxx.Config(qt_cxx_config)
-  # watchdog_cxx_config += boost.config_python()
-  watchdog_cxx_config += qt.config()
-  watchdog_cxx_config += qt.cfg_network
-  watchdog_cxx_config += elle.config
-  watchdog_cxx_config.lib_path_runtime('../lib')
-  watchdog_bin = drake.cxx.Executable('bin/8watchdog',
-                                      watchdog_sources + [tropho_lib] + infinit_libs,
-                                      cxx_toolkit, watchdog_cxx_config)
 
   # Oracles
 

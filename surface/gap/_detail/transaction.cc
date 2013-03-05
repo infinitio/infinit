@@ -6,13 +6,10 @@
 #include <elle/utility/Time.hh>
 #include <elle/os/path.hh>
 #include <elle/os/getenv.hh>
+#include <elle/system/Process.hh>
 
+#include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
-
-#include <QString>
-#include <QByteArray>
-#include <QLocalSocket>
-#include <QProcess>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
@@ -91,18 +88,21 @@ namespace surface
             {
               for (auto& file: files)
               {
-                QStringList arguments;
-
-                arguments << "-n" << network_id.c_str()
-                          << "-u" << this->_me._id.c_str()
-                          << "--path" << file.c_str()
-                          << "--to";
+                std::list<std::string> arguments{
+                                            "-n",
+                                            network_id,
+                                            "-u",
+                                            this->_me._id,
+                                            "--path",
+                                            file,
+                                            "--to"
+                                        };
 
                 ELLE_DEBUG("LAUNCH: %s %s",
                            transfer_binary,
-                           arguments.join(" ").toStdString());
+                           boost::algorithm::join(arguments, " "));
 
-                QProcess p; // set the environment and start the transfer
+                elle::system::Process p{transfer_binary, arguments}; // set the environment and start the transfer
                 {
                   std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
@@ -111,12 +111,9 @@ namespace surface
                     log_file += ".out.transfer.log";
                     ::setenv("ELLE_LOG_FILE", log_file.c_str(), 1);
                   }
-                  p.start(transfer_binary.c_str(), arguments);
                 }
-                if (!p.waitForFinished(-1))
+                if (p.wait_status() != 0)
                   throw Exception(gap_internal_error, "8transfer binary failed");
-                if (p.exitCode())
-                  throw Exception(gap_internal_error, "8transfer binary exited with errors");
               }
             }
           catch (...)
@@ -168,14 +165,17 @@ namespace surface
         }
 
       std::string const& progress_binary = common::infinit::binary_path("8progress");
-      QStringList arguments;
-      arguments << "-n" << tr.network_id.c_str()
-                << "-u" << this->_me._id.c_str()
-      ;
-      ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
-                 arguments.join(" ").toStdString());
+      std::list<std::string> arguments {
+                                    "-n",
+                                    tr.network_id,
+                                    "-u",
+                                    this->_me._id
+                                };
 
-      QProcess p;
+      ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
+                 boost::algorithm::join(arguments, " "));
+
+      elle::system::Process p{progress_binary, arguments};
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
@@ -184,19 +184,15 @@ namespace surface
             log_file += ".progress.log";
             ::setenv("ELLE_LOG_FILE", log_file.c_str(), 1);
           }
-        p.start(progress_binary.c_str(), arguments);
       }
-      if (!p.waitForFinished())
+      if (p.wait_status() != 0)
         throw Exception{
             gap_internal_error, "8progress binary failed"
         };
-      if (p.exitCode())
-        throw Exception{
-            gap_internal_error, "8progress binary exited with errors"
-        };
 
       int progress = 0;
-      std::stringstream ss{p.readAllStandardOutput().data()};
+      std::stringstream ss;
+      ss << p.read();
       ss >> progress;
 
       if (progress < 0)
@@ -226,19 +222,23 @@ namespace surface
 
       std::string const& transfer_binary = common::infinit::binary_path("8transfer");
 
-      QStringList arguments;
-      arguments << "-n" << trans.network_id.c_str()
-                << "-u" << this->_me._id.c_str()
-                << "--path" << this->_output_dir.c_str()
-                << "--from";
+      std::list<std::string> arguments{
+                                    "-n",
+                                    trans.network_id,
+                                    "-u",
+                                    this->_me._id,
+                                    "--path",
+                                    this->_output_dir,
+                                    "--from"
+                                };
 
       ELLE_DEBUG("LAUNCH: %s %s",
                  transfer_binary,
-                 arguments.join(" ").toStdString());
+                 boost::algorithm::join(arguments, " "));
 
       try
       {
-        QProcess p;
+        elle::system::Process p{transfer_binary, arguments};
         {
           std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
@@ -247,12 +247,9 @@ namespace surface
               log_file += ".in.transfer.log";
               ::setenv("ELLE_LOG_FILE", log_file.c_str(), 1);
             }
-          p.start(transfer_binary.c_str(), arguments);
         }
-        if (!p.waitForFinished(-1))
+        if (p.wait_status() != 0)
           throw Exception(gap_internal_error, "8transfer binary failed");
-        if (p.exitCode())
-          throw Exception(gap_internal_error, "8transfer binary exited with errors");
 
         if (trans.files_count == 1)
         {
