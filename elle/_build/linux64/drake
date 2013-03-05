@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
 import drake
+import drake.cxx.boost
 
-drake.run('../..')
+boost = drake.cxx.boost.Boost(prefix = '/opt/local')
+
+drake.run('../..', boost = boost)
