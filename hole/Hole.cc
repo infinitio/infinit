@@ -57,7 +57,7 @@ namespace hole
   void
   Hole::ready()
   {
-    ELLE_LOG_SCOPE("ready");
+    ELLE_DEBUG_SCOPE("ready");
     if (this->_state != State::online)
       {
         this->_ready();
