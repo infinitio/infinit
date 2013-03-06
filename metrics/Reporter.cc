@@ -53,6 +53,9 @@ namespace elle
       , name{pretty_name}
     {}
 
+    Reporter::Service::~Service()
+    {}
+
     void
     Reporter::Service::update_user(std::string const& user)
     {

@@ -48,6 +48,9 @@ namespace elle
                 std::string const& user,
                 std::string const& pretty_name);
 
+        virtual
+        ~Service();
+
       private:
         virtual
         void
