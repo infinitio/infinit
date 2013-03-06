@@ -13,7 +13,14 @@
     Name actual(*this);                         \
     delete this;                                \
     throw actual;                               \
-  }
+  }                                             \
+                                                \
+  virtual                                       \
+  std::unique_ptr<Name>                         \
+  clone() const                                 \
+  {                                             \
+    return new Name(*this);                     \
+  }                                             \
 
 namespace elle
 {
