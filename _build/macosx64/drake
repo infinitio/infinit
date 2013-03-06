@@ -21,3 +21,10 @@ boost = drake.cxx.boost.Boost(prefix = '/opt/local')
 #qt = drake.cxx.qt.Qt(prefix = '/opt/local')
 
 drake.run('../..', cxx_toolkit, cxx_config, boost = boost, qt = None, enable_horizon = False, satellites = ("access", "group", "transfer", "sendto", "recvfrom", "progress"), python3 = '/opt/local/Library/Frameworks/Python.framework/Versions/3.2')
+#drake.run(
+#    '../..',
+#    cxx_toolkit, cxx_config, boost = boost, qt = qt,
+#    enable_horizon = False,
+#    enable_tests = True,
+#    satellites = ['transfer', 'group', 'access', 'progress', 'sendto', 'recvfrom']
+#)
