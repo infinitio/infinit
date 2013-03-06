@@ -698,7 +698,7 @@ def configure(cxx_toolkit,
   hole_bin = drake.cxx.Executable('bin/8hole',
                                   drake.nodes('hole/_hole.cc') + infinit_libs,
                                   cxx_toolkit, hole_cxx_config)
-  # build << hole_bin
+  # build << hole_bin
 
   def satellite(name):
     fmt = (name, name.capitalize())
