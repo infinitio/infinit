@@ -36,14 +36,14 @@ int execvpe(char const* binary,
     return -1;
   }
 
-  // absolute or relative path
+  // Absolute or relative path.
   if (binary[0] == '.' or binary[0] == '/')
   {
     (void) ::execve(binary, argv, env);
     return -1;
   }
 
-  // search IN PATH lol
+  // Search in PATH.
   std::vector<std::string> paths;
   {
     std::string path = elle::os::getenv("PATH", "/bin:/usr/bin");
@@ -667,4 +667,3 @@ namespace elle
 
   }
 }
-
