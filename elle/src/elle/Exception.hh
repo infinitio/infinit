@@ -8,21 +8,20 @@
 # include <elle/Backtrace.hh>
 # include <elle/types.hh>
 
-#define ELLE_EXCEPTION(Name)                    \
-  virtual void raise_and_delete() const         \
-  {                                             \
-    Name actual(*this);                         \
-    delete this;                                \
-    throw actual;                               \
-  }                                             \
-                                                \
-  virtual                                       \
-  std::unique_ptr< ::elle::Exception>           \
-  clone() const                                 \
-  {                                             \
-    return std::unique_ptr< ::elle::Exception>  \
-      (new Name(*this));                        \
-  }                                             \
+#define ELLE_EXCEPTION(Name)                                                  \
+  virtual void raise_and_delete() const                                       \
+  {                                                                           \
+    Name actual(*this);                                                       \
+    delete this;                                                              \
+    throw actual;                                                             \
+  }                                                                           \
+                                                                              \
+  virtual                                                                     \
+  std::unique_ptr< ::elle::Exception>                                         \
+  clone() const                                                               \
+  {                                                                           \
+    return std::unique_ptr< ::elle::Exception>{new Name{*this}};              \
+  }                                                                           \
 
 namespace elle
 {
