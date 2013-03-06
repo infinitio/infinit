@@ -1,6 +1,7 @@
 #ifndef ELLE_EXCEPTION_HH
 # define ELLE_EXCEPTION_HH
 
+# include <memory>
 # include <stdexcept>
 
 # include <elle/attribute.hh>
@@ -16,10 +17,11 @@
   }                                             \
                                                 \
   virtual                                       \
-  std::unique_ptr<Name>                         \
+  std::unique_ptr< ::elle::Exception>           \
   clone() const                                 \
   {                                             \
-    return new Name(*this);                     \
+    return std::unique_ptr< ::elle::Exception>  \
+      (new Name(*this));                        \
   }                                             \
 
 namespace elle
