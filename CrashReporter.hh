@@ -11,6 +11,10 @@
 
 # include <reactor/fwd.hh>
 
+# ifdef __APPLE__
+  typedef void(*sighandler_t)(int);
+# endif
+
 namespace elle
 {
   namespace signal
