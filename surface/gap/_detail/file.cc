@@ -3,13 +3,10 @@
 #include <common/common.hh>
 
 #include <elle/os/path.hh>
+#include <elle/system/Process.hh>
 
+#include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
-
-#include <QString>
-#include <QByteArray>
-#include <QLocalSocket>
-#include <QProcess>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
@@ -58,20 +55,24 @@ namespace surface
 
       std::string const& access_binary = common::infinit::binary_path("8access");
 
-      QStringList arguments;
-      arguments << "--user" << this->_me._id.c_str()
-                << "--type" << "user"
-                << "--network" << this->network(infos->network_id)._id.c_str()
-                << "--path" << ("/" + infos->relative_path).c_str()
-                << "--consult"
-                ;
+      std::list<std::string> arguments{
+                                    "--user",
+                                    this->_me._id,
+                                    "--type",
+                                    "user",
+                                    "--network",
+                                    this->network(infos->network_id)._id,
+                                    "--path",
+                                    ("/" + infos->relative_path),
+                                    "--consult"
+                                };
 
-      QProcess p;
-      ELLE_DEBUG("LAUNCH: %s %s", access_binary, arguments.join(" ").toStdString());
-      p.start(access_binary.c_str(), arguments);
-      if (!p.waitForFinished()) // .8 sec
+      elle::system::Process p{access_binary, arguments};
+      ELLE_DEBUG("LAUNCH: %s %s", access_binary, boost::algorithm::join(arguments, " "));
+      if (p.wait_status() != 0) // .8 sec
         throw Exception(gap_internal_error, "8access binary failed");
-      std::stringstream ss{p.readAllStandardOutput().constData()};
+      std::stringstream ss;
+      ss << p.read();
 
       std::string line;
       while(std::getline(ss, line))
@@ -110,29 +111,34 @@ namespace surface
 
       std::string const& access_binary = common::infinit::binary_path("8access");
 
-      QStringList arguments;
-      arguments << "--user" << this->_me._id.c_str()
-                << "--type" << "user"
-                << "--grant"
-                << "--network" << network._id.c_str()
-                << "--path" << ("/" + infos.relative_path).c_str()
-                << "--identity" << this->user(user_id).public_key.c_str()
-                ;
-      if (permissions & nucleus::neutron::permissions::read)
-        arguments << "--read";
-      if (permissions & nucleus::neutron::permissions::write)
-        arguments << "--write";
+      std::list<std::string> arguments{
+                                    "--user",
+                                    this->_me._id,
+                                    "--type",
+                                    "user",
+                                    "--grant",
+                                    "--network",
+                                    network._id,
+                                    "--path",
+                                    ("/" + infos.relative_path),
+                                    "--identity",
+                                    this->user(user_id).public_key
+                                };
 
-      ELLE_DEBUG("LAUNCH: %s %s", access_binary, arguments.join(" ").toStdString());
+      if (permissions & nucleus::neutron::permissions::read)
+        arguments.push_back("--read");
+      if (permissions & nucleus::neutron::permissions::write)
+        arguments.push_back("--write");
+
+      ELLE_DEBUG("LAUNCH: %s %s", access_binary, boost::algorithm::join(arguments, " "));
 
       if (permissions & gap_exec)
         {
           ELLE_WARN("XXX: setting executable permissions not yet implemented");
         }
 
-      QProcess p;
-      p.start(access_binary.c_str(), arguments);
-      if (!p.waitForFinished())
+      elle::system::Process p{access_binary, arguments};
+      if (p.wait_status() != 0)
         throw Exception(gap_internal_error, "8access binary failed");
 
       if (recursive && elle::os::path::is_directory(abspath))
@@ -162,32 +168,35 @@ namespace surface
 
       std::string const& access_binary = common::infinit::binary_path("8access");
 
-      QStringList arguments;
-      arguments << "--user" << this->_me._id.c_str()
-                << "--type" << "user"
-                << "--grant"
-                << "--network" << network_id.c_str()
-                << "--path" << "/"
-                << "--identity" << this->user(user_id).public_key.c_str()
-        ;
-      if (permissions & nucleus::neutron::permissions::read)
-        arguments << "--read";
-      if (permissions & nucleus::neutron::permissions::write)
-        arguments << "--write";
+      std::list<std::string> arguments{
+                                  "--user",
+                                  this->_me._id,
+                                  "--type",
+                                  "user",
+                                  "--grant",
+                                  "--network",
+                                  network_id,
+                                  "--path",
+                                  "/",
+                                  "--identity",
+                                  this->user(user_id).public_key
+                                };
 
-      ELLE_DEBUG("LAUNCH: %s %s", access_binary, arguments.join(" ").toStdString());
+      if (permissions & nucleus::neutron::permissions::read)
+        arguments.push_back("--read");
+      if (permissions & nucleus::neutron::permissions::write)
+        arguments.push_back("--write");
+
+      ELLE_DEBUG("LAUNCH: %s %s", access_binary, boost::algorithm::join(arguments, " "));
 
       if (permissions & gap_exec)
       {
         ELLE_WARN("XXX: setting executable permissions not yet implemented");
       }
 
-      QProcess p;
-      p.start(access_binary.c_str(), arguments);
-      if (!p.waitForFinished())
+      elle::system::Process p{access_binary, arguments};
+      if (p.wait_status() != 0)
         throw Exception(gap_internal_error, "8access binary failed");
-      if (p.exitCode())
-        throw Exception(gap_internal_error, "8access binary exited with errors");
     }
 
     size_t

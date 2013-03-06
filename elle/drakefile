@@ -244,9 +244,11 @@ def configure(cxx_toolkit = None, cxx_config = None, boost = None, curl = None, 
   check = drake.Rule('check')
 
   tests = [
+    'finally',
     'IOStream',
     'Printable',
     'printf',
+    'Version',
     'system/Process',
     ]
 

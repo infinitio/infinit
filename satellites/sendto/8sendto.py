@@ -26,6 +26,8 @@ def login(state, email = None):
 
     password = getpass("password: ")
     state.login(sender_id, password)
+    import socket
+    state.set_device_name(socket.gethostname().strip())
     state.connect()
 
 def on_canceled(state, transaction, new):
