@@ -12,11 +12,12 @@
 # define ORACLE_DISCIPLES_METALIB_HH
 
 # include <Python.h>
+# if PY_MAJOR_VERSION != 2
+#  error "need python2"
+# endif
 
-# define METALIB_MOD_NAME "_metalib"
+# define METALIB_MOD_NAME "metalib"
 
 extern PyObject* metalib_MetaError;
 
 #endif /* ! METALIB_HH */
-
-

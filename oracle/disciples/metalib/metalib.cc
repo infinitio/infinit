@@ -86,7 +86,7 @@ char const* const _metalib_doc =
   "User friendly interface for infinit files\n"
 ;
 
-PyMODINIT_FUNC init_metalib(void)
+PyMODINIT_FUNC initmetalib(void)
 {
   fprintf(stderr, "init module\n");
 

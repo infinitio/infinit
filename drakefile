@@ -768,9 +768,6 @@ def configure(cxx_toolkit,
                              cxx_toolkit, cxx_config)
 
   # GAP
-
-  gap_cxx_config = cxx_config + python3
-  gap_cxx_config.lib_path_runtime('.')
   gap_sources = drake.nodes(
     'surface/gap/State.cc',
     'surface/gap/State.hh',
@@ -888,7 +885,7 @@ def configure(cxx_toolkit,
   # Oracle/metalib
 
   metalib_config = cxx_config + python2
-  metalib_config.lib_path_runtime('.')
+  metalib_config.lib_path_runtime('..')
 
   metalib_sources = drake.nodes(
     'oracle/disciples/metalib/identity.cc',
@@ -902,9 +899,10 @@ def configure(cxx_toolkit,
     'oracle/disciples/metalib/passport.hh',
     )
 
-  metalib_lib = drake.cxx.DynLib('lib/metal',
+  metalib_lib = drake.cxx.DynLib('lib/python/metalib.so',
                                  metalib_sources + infinit_libs,
-                                 cxx_toolkit, metalib_config)
+                                 cxx_toolkit, metalib_config,
+                                 preserve_filename = True)
   oracles << metalib_lib
 
   build << oracles
