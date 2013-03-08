@@ -227,7 +227,6 @@ class Invite(Page):
         hash_.update(mail.encode('utf8') + str(time.time()))
         return hash_.hexdigest()
 
-
 class Self(Page):
     """
     Get self infos
@@ -261,6 +260,23 @@ class Self(Page):
             'identity': self.user['identity'],
             'public_key': self.user['public_key'],
             'accounts': self.user['accounts'],
+            'remaining_invitations': self.user['remaining_invitations'],
+        })
+
+class Invitations(Page):
+    """
+    Get the remaining number of invitation.
+        GET
+            -> {
+                   'remaining_invitations': 3,
+               }
+    """
+    __pattern__ = "/user/remaining_invitations"
+
+    def GET(self):
+        self.requireLoggedIn()
+        return self.success({
+                'remaining_invitations': self.user['remaining_invitations']
         })
 
 class MinimumSelf(Page):
@@ -412,8 +428,6 @@ class Register(Page):
         handle = GenerateHandle().gen_unique(user['fullname'])
         assert len(handle) >= 5
 
-
-
         user_id = self.registerUser(
             _id = user["_id"],
             register_status = 'ok',
@@ -431,7 +445,8 @@ class Register(Page):
             old_notifications = [],
             accounts = [
                 {'type':'email', 'id': user['email']}
-            ]
+            ],
+            remaining_invitations = 3, #XXX
         )
         if user['activation_code'] != 'bitebite': #XXX
             invitation['status'] = 'activated'
