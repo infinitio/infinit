@@ -27,6 +27,7 @@
 #include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/os/path.hh>
+#include <elle/os/getenv.hh>
 #include <elle/system/Process.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
@@ -436,7 +437,19 @@ namespace surface
         ELLE_DEBUG("LAUNCH: %s %s",
                    group_binary,
                    boost::algorithm::join(arguments, " "));
-        elle::system::Process p{group_binary, arguments};
+        elle::system::ProcessConfig pc;
+        {
+          std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+          if (!log_file.empty())
+          {
+            log_file += ".group.log";
+
+            pc.inherit_current_environment();
+            pc.setenv("ELLE_LOG_FILE", log_file);
+          }
+        }
+        elle::system::Process p{std::move(pc), group_binary, arguments};
         if (p.wait_status() != 0)
           throw Exception(gap_internal_error, "8group binary failed");
 

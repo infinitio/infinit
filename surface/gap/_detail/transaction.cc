@@ -102,16 +102,20 @@ namespace surface
                            transfer_binary,
                            boost::algorithm::join(arguments, " "));
 
-                elle::system::Process p{transfer_binary, arguments}; // set the environment and start the transfer
+                elle::system::ProcessConfig pc;
                 {
                   std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
                   if (!log_file.empty())
                   {
-                    log_file += ".out.transfer.log";
-                    ::setenv("ELLE_LOG_FILE", log_file.c_str(), 1);
+                    log_file += ".to.transfer.log";
+
+                    pc.inherit_current_environment();
+                    pc.setenv("ELLE_LOG_FILE", log_file);
                   }
                 }
+                // set the environment and start the transfer
+                elle::system::Process p{std::move(pc), transfer_binary, arguments};
                 if (p.wait_status() != 0)
                   throw Exception(gap_internal_error, "8transfer binary failed");
               }
@@ -238,16 +242,19 @@ namespace surface
 
       try
       {
-        elle::system::Process p{transfer_binary, arguments};
+        elle::system::ProcessConfig pc;
         {
           std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
           if (!log_file.empty())
-            {
-              log_file += ".in.transfer.log";
-              ::setenv("ELLE_LOG_FILE", log_file.c_str(), 1);
-            }
+          {
+            log_file += ".from.transfer.log";
+
+            pc.inherit_current_environment();
+            pc.setenv("ELLE_LOG_FILE", log_file);
+          }
         }
+        elle::system::Process p{std::move(pc), transfer_binary, arguments};
         if (p.wait_status() != 0)
           throw Exception(gap_internal_error, "8transfer binary failed");
 

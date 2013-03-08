@@ -3,6 +3,7 @@
 #include <common/common.hh>
 
 #include <elle/os/path.hh>
+#include <elle/os/getenv.hh>
 #include <elle/system/Process.hh>
 
 #include <boost/algorithm/string/join.hpp>
@@ -67,7 +68,19 @@ namespace surface
                                     "--consult"
                                 };
 
-      elle::system::Process p{access_binary, arguments};
+      elle::system::ProcessConfig pc;
+      {
+        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+        if (!log_file.empty())
+        {
+          log_file += ".access.log";
+
+          pc.inherit_current_environment();
+          pc.setenv("ELLE_LOG_FILE", log_file);
+        }
+      }
+      elle::system::Process p{std::move(pc), access_binary, arguments};
       ELLE_DEBUG("LAUNCH: %s %s", access_binary, boost::algorithm::join(arguments, " "));
       if (p.wait_status() != 0) // .8 sec
         throw Exception(gap_internal_error, "8access binary failed");
@@ -137,7 +150,19 @@ namespace surface
           ELLE_WARN("XXX: setting executable permissions not yet implemented");
         }
 
-      elle::system::Process p{access_binary, arguments};
+      elle::system::ProcessConfig pc;
+      {
+        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+        if (!log_file.empty())
+        {
+          log_file += ".access.log";
+
+          pc.inherit_current_environment();
+          pc.setenv("ELLE_LOG_FILE", log_file);
+        }
+      }
+      elle::system::Process p{std::move(pc), access_binary, arguments};
       if (p.wait_status() != 0)
         throw Exception(gap_internal_error, "8access binary failed");
 
@@ -194,7 +219,19 @@ namespace surface
         ELLE_WARN("XXX: setting executable permissions not yet implemented");
       }
 
-      elle::system::Process p{access_binary, arguments};
+      elle::system::ProcessConfig pc;
+      {
+        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+        if (!log_file.empty())
+        {
+          log_file += ".access.log";
+
+          pc.inherit_current_environment();
+          pc.setenv("ELLE_LOG_FILE", log_file);
+        }
+      }
+      elle::system::Process p{std::move(pc), access_binary, arguments};
       if (p.wait_status() != 0)
         throw Exception(gap_internal_error, "8access binary failed");
     }
