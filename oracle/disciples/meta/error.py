@@ -9,7 +9,7 @@ def replacer(match):
     return match.group(1) + "'" + field + "'" + match.group(3)
 
 def ERR_CODE(name, value, comment):
-    globals()[name.upper()] = [value, comment]
+    globals()[name.upper()] = (value, comment)
 
 filepath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'error_code.hh.inc'))
 

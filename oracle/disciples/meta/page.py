@@ -71,7 +71,7 @@ class Page(object):
             else:
                 error_code = validator(self.data[field])
                 if error_code:
-                    return (error_code, str())
+                    return error_code
         for (field, type_) in self._mendatory_fields:
             if not field in self.data.keys() or not isinstance(self.data[field], type_):
                 return (error.BAD_REQUEST[0], "Field %s is mandatory and must be an %s" % (field, type_))
@@ -142,11 +142,10 @@ class Page(object):
 				  store = False)
 
     def error(self, err=error.UNKNOWN, msg=""):
-        assert isinstance(err, (list, tuple))
+        assert isinstance(err, tuple)
         assert isinstance(msg, str)
         if not msg:
             msg = err[1]
-        print("GOT ERROR", err[0], msg)
         return json.dumps({
             'success': False,
             'error_code': err[0],
