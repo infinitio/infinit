@@ -899,10 +899,10 @@ def configure(cxx_toolkit,
     'oracle/disciples/metalib/passport.hh',
     )
 
-  metalib_lib = drake.cxx.DynLib('lib/python/metalib.so',
+  metalib_lib = drake.cxx.Module('lib/python/metalib',
                                  metalib_sources + infinit_libs,
-                                 cxx_toolkit, metalib_config,
-                                 preserve_filename = True)
+                                 cxx_toolkit, metalib_config)
+
   oracles << metalib_lib
 
   build << oracles
