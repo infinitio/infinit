@@ -38,13 +38,13 @@ namespace common
     std::string const&
     home();
 
-    /// Returns binary path from its name.
-    /// Default is ${INFINIT_HOME}/bin/binary_name but if INFINIT_BUILD_DIR or
-    /// INFINIT_BINARY_DIR with INFINIT_BUILD_DIR > INFINIT_BINARY_DIR is
-    /// exported, it will return the accurate binary path inside the build
-    /// directory.
-    /// Raises an exception when ensure is true and the path does not refer to a
-    /// valid binary.
+    /// @brief Returns binary path from its name.
+    ///
+    /// if the environment variable INFINIT_BINARY_DIR is present, it will
+    /// return ${INFINIT_BINARY_DIR}/name. Otherwise, if INFINIT_BUILD_DIR is
+    /// set, it will return ${INFINIT_BUILD_DIR}/bin/binary_name.  If none of
+    /// them has been set, it throws an exception.  Raises an exception when
+    /// ensure is true and the path does not refer to a valid binary.
     std::string const&
     binary_path(std::string const& name,
                 bool ensure = true);
