@@ -18,23 +18,6 @@
 #include <metrics/_details/google.hh>
 #include <metrics/_details/kissmetrics.hh>
 
-// XXX[WTF?]
-//#include <elle/serialize/HexadecimalArchive.hh>
-//#include <elle/utility/Time.hh>
-//#include <elle/io/Path.hh>
-//#include <elle/io/Piece.hh>
-//#include <elle/HttpClient.hh>
-//#include <elle/CrashReporter.hh>
-//
-//
-//
-//#include <lune/Dictionary.hh>
-//#include <lune/Identity.hh>
-//#include <lune/Lune.hh>
-//#include <lune/Phrase.hh>
-//
-//#include <nucleus/neutron/Permissions.hh>
-
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 
@@ -70,7 +53,7 @@ namespace surface
       , _infinit_instance_manager{}
     {
       std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-      if (log_file.size() > 0)
+      if (!log_file.empty())
         this->output_log_file(log_file);
 
       ELLE_LOG("Creating a new State");
@@ -145,6 +128,7 @@ namespace surface
           path,
           std::fstream::app | std::fstream::out
       };
+
       elle::log::logger(
           std::unique_ptr<elle::log::Logger>{new elle::log::TextLogger(out)}
       );
