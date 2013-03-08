@@ -154,6 +154,23 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         ]
     )
 
+    _update_invitations_argument_parser = make_simple_argument_parser(
+        prog="update_invations",
+        description="Set the number of invitation of every"
+                    "users to the given count",
+        args=[
+            {
+                'flags': 'count',
+                'help': "the number of invitations",
+            },
+            {
+                'flags': 'users',
+                'help': "the users to update",
+                'nargs': "*",
+            },
+        ]
+    )
+
     def __init__(self, args):
         self._connect(args.db_host, args.db_port)
         super(AdminShell, self).__init__()
@@ -237,6 +254,25 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
             print("ERROR:", res['error'])
 
     def help_invite(self):
+        self._invite_argument_parser.print_help()
+
+    def do_update_invitations(self, line):
+        """usage: update_invitations count user1@email.com user2@email.com
+
+
+        Update the users (all if nothing in users) invitation counter.
+        """
+        args = self._get_args(self._update_invitations_argument_parser, line)
+        if not args:
+            return
+        print(args)
+        count = int(args.count)
+        users = 'users' in args and args.users or []
+
+        meta.database.users().update(users and {'email': {'$in': users}} or {},
+                                     {'$set': {'remaining_invitations': count}}, multi=True)
+
+    def help_update_invitations(self):
         self._invite_argument_parser.print_help()
 
     def default(self, line):
