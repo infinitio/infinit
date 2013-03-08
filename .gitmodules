@@ -7,3 +7,6 @@
 [submodule "asio-udt"]
 	path = asio-udt
 	url = git@development.infinit.io:asio-udt
+[submodule "elle"]
+	path = elle
+	url = git@development.infinit.io:elle
