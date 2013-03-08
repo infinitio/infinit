@@ -3,9 +3,12 @@
 try:
     from PIL import Image
 except ImportError:
-    print("Cannot import Image module, please install PIL")
-    import sys
-    sys.exit(1)
+    try:
+        import Image
+    except ImportError:
+        print("Cannot import Image module, please install PIL")
+        import sys
+        sys.exit(1)
 
 import json
 import os
