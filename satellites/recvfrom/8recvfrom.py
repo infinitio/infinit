@@ -20,11 +20,14 @@ You have to specify your user name in the INFINIT_USER env variable.
 
 def auto_accept(state, transaction, new):
     state.update_transaction(transaction._id, state.TransactionStatus.accepted)
+    state.current_transaction_id = transaction
 
 def on_canceled(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.canceled:
         print("Transaction canceled, check your log")
-        state.running = False
+        state.number_of_transactions -= 1
+        if state.number_of_transactions == 0:
+            state.running = False
 
 def on_finished(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.finished:
@@ -117,13 +120,15 @@ def main(state, sender):
     else:
         to_handle = transactions
 
-    print(to_handle)
-
     if not to_handle:
         raise Exception("you must select a transaction to accept")
 
+    num = 0
     for t_ids in to_handle:
+        print("accept transaction {}".format(t_ids))
         state.update_transaction(t_ids, state.TransactionStatus.accepted)
+        num += 1
+    state.number_of_transactions = num
 
     while state.running:
         time.sleep(0.5)
@@ -145,7 +150,19 @@ if __name__ == "__main__":
     import gap
     state = gap.State()
 
-
-    main(state, args.sender)
+    try:
+        main(state, args.sender)
+    except KeyboardInterrupt as e:
+        if getattr(state, "current_transaction_id", None):
+            tid = state.current_transaction_id
+            print("Interupted.")
+            print("Cancel the outgoing transaction ({})".format(tid))
+            state.update_transaction(tid, state.TransactionStatus.canceled)
+    except Exception as e:
+        if getattr(state, "current_transaction_id", None):
+            tid = state.current_transaction_id
+            print("Interupted. Cancel the outgoing transaction ({})".format(tid))
+            state.update_transaction(tid, state.TransactionStatus.canceled)
+        raise e
 
     del state

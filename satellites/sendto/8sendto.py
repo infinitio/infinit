@@ -30,6 +30,12 @@ def login(state, email = None):
     state.set_device_name(socket.gethostname().strip())
     state.connect()
 
+def debug_status(state, transaction, new):
+    print("trasaction status changed to", state.transaction_status(transaction))
+
+def on_started(state, transaction, new):
+    state.current_transaction_id = transaction
+
 def on_canceled(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.canceled:
         print("Transaction canceled, check your log")
@@ -44,8 +50,10 @@ def main(state, user, filepath):
     login(state)
 
     id = state.send_files(user, [filepath,])
+    state.transaction_callback(partial(on_started, state))
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_canceled, state))
+    state.transaction_status_callback(partial(debug_status, state))
     state.running = True
 
     while True:
@@ -78,6 +86,18 @@ if __name__ == "__main__":
     import gap
     state = gap.State()
 
-    main(state, args.user, args.file)
-
+    try:
+        main(state, args.user, args.file)
+    except KeyboardInterrupt as e:
+        if getattr(state, "current_transaction_id", None):
+            tid = state.current_transaction_id
+            print("Interupted.")
+            print("Cancel the outgoing transaction ({})".format(tid))
+            state.update_transaction(tid, state.TransactionStatus.canceled)
+    except Exception as e:
+        if getattr(state, "current_transaction_id", None):
+            tid = state.current_transaction_id
+            print("Interupted. Cancel the outgoing transaction ({})".format(tid))
+            state.update_transaction(tid, state.TransactionStatus.canceled)
+        raise e
     del state
