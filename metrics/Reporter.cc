@@ -96,7 +96,7 @@ namespace elle
     void
     Reporter::store(std::string const& caller)
     {
-      this->store(caller, {});
+      this->store(caller, Metric{});
     }
 
     void
