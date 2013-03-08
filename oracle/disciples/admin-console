@@ -51,14 +51,28 @@ class DatabaseCommands(type):
             add_help=False,
         )
         parser.add_argument(
-            'skip',
+            'field',
+            help="The field you want to check",
+            default="_id",
+            type=str,
+            nargs='?',
+        )
+        parser.add_argument(
+            'reg',
+            help="The matching pattern",
+            default="",
+            type=str,
+            nargs='?',
+        )
+        parser.add_argument(
+            '--skip',
             help="Skip N records",
             default=0,
             type=int,
             nargs='?',
         )
         parser.add_argument(
-            'limit',
+            '--limit',
             help="Limit result to N records",
             default=100,
             type=int,
@@ -90,9 +104,11 @@ class DatabaseCommands(type):
                 return
 
             records = getattr(meta.database, collection)(self._db_connection).find(
+                args.reg and {args.field: {'$regex': args.reg}} or {},
                 skip=args.skip,
-                limit=args.limit
+                limit=args.limit,
             )
+
             print(records.count(), "%s found" % collection)
             for record in records:
                 getattr(self, '_' + collection + '_printer')(record)
@@ -243,4 +259,3 @@ def main(args):
 if __name__ == '__main__':
     args = ARGUMENT_PARSER.parse_args()
     sys.exit(main(args))
-
