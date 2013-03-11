@@ -1,4 +1,5 @@
 #include <satellites/transfer/Transfer.hh>
+#include <satellites/satellite.hh>
 
 #include <elle/utility/Parser.hh>
 #include <elle/io/Piece.hh>
@@ -747,7 +748,7 @@ namespace satellite
   }
 
   void
-  main(elle::Natural32 argc,
+  Transfer(elle::Natural32 argc,
        elle::Character* argv[])
   {
     Transfer::Operation operation;
@@ -958,80 +959,10 @@ namespace satellite
 
 }
 
-//
-// ---------- main ------------------------------------------------------------
-//
-
-int
-_main(elle::Natural32 argc, elle::Character* argv[])
-{
-  // Capture signal and send email without exiting.
-  elle::signal::ScopedGuard guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8transfer", false, argc, argv)
-  };
-
-  // Capture signal and send email exiting.
-  elle::signal::ScopedGuard exit_guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGILL, SIGSEGV},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8transfer", true, argc, argv)
-  };
-
-  ELLE_DEBUG("Starting 8transfer");
-
-  try
-    {
-      satellite::main(argc, argv);
-    }
-  catch (reactor::Exception const& e)
-    {
-      ELLE_ERR("%s: fatal error: %s", argv[0], e);
-      elle::crash::report(common::meta::host(),
-                          common::meta::port(),
-                          "8transfer",
-                          elle::sprintf("%s", e));
-      goto _error;
-    }
-  catch (std::exception const& e)
-    {
-      ELLE_ERR("%s: fatal error: %s", argv[0], e.what());
-      elle::crash::report(common::meta::host(),
-                          common::meta::port(),
-                          "8transfer",
-                          e.what());
-      goto _error;
-    }
-  catch (...)
-    {
-      ELLE_ERR("%s: unknown exception", argv[0]);
-      elle::crash::report(common::meta::host(),
-                          common::meta::port(),
-                          "8transfer");
-      goto _error;
-    }
-
-  reactor::Scheduler::scheduler()->terminate();
-  return (0);
-
- _error:
-  reactor::Scheduler::scheduler()->terminate();
-  return (1);
-}
-
 int                     main(int                                argc,
                              char**                             argv)
 {
-  reactor::Scheduler sched;
-  reactor::VThread<int> main(sched, "main",
-                             boost::bind(&_main, argc, argv));
-  sched.run();
-  return (main.result());
+  return satellite_main("8transfer", [&] {
+                          satellite::Transfer(argc, argv);
+                        });
 }
