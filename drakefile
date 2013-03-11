@@ -69,7 +69,7 @@ def configure(cxx_toolkit,
   cxx_config += elle.config
 
   reactor = drake.include('reactor', cxx_toolkit, cxx_config, elle.config,
-          enable_tests = enable_tests)
+          boost = boost, enable_tests = enable_tests)
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib', 'reactor/lib')
   cxx_config += reactor.config
 
