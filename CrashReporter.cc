@@ -1,22 +1,21 @@
+#include "CrashReporter.hh"
+
 #include <elle/format/json.hh>
 #include <elle/os/path.hh>
+#include <elle/os/environ.hh>
 #include <elle/log.hh>
 #include <elle/HttpClient.hh>
 #include <elle/system/platform.hh>
-#include <elle/system/platform.hh>
-#if defined(INFINIT_MACOSX)
-extern char** environ;
-#endif
 
 #include <reactor/scheduler.hh>
 
-#include "CrashReporter.hh"
+#include <boost/asio/io_service.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <fstream>
 #include <map>
-#include <signal.h>
 
-#include <boost/asio/io_service.hpp>
+#include <signal.h>
 
 ELLE_LOG_COMPONENT("elle.CrashReporter");
 
@@ -271,8 +270,10 @@ namespace elle
       for (auto const& t: bt)
         bt_arr.push_back(static_cast<std::string>(t));
 
-      for (char **env = environ; *env; ++env)
-        env_arr.push_back(std::string(*env));
+      for (auto const& pair: elle::os::environ())
+        if (boost::starts_with(pair.first, "ELLE_") or
+            boost::starts_with(pair.first, "INFINIT_"))
+          env_arr.push_back(pair.first + " = " + pair.second);
 
       elle::format::json::Dictionary request;
 
