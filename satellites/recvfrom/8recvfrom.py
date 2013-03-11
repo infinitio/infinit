@@ -3,12 +3,14 @@
 
 from functools import partial
 
-import threading
 import argparse
-import time
-import os
-
 from getpass import getpass
+import os
+import sys
+import threading
+import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../lib/python'))
 
 """
 

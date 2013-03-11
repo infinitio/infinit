@@ -9,6 +9,8 @@ import os
 from functools import partial
 from getpass import getpass
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../lib/python'))
+
 """
 
 This script let you send files through infinit.
