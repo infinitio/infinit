@@ -25,10 +25,10 @@ test_represent()
     ::BN_init(&bn);
 
     if (::BN_pseudo_rand(&bn, 1024, -1, 0) == 0)
-      throw infinit::cryptography::Exception("unable to randomly generate a "
-                                             "big number: %s",
-                                             ::ERR_error_string(ERR_get_error(),
-                                                                nullptr));
+      throw infinit::cryptography::Exception(
+        elle::sprintf("unable to randomly generate a big number: %s",
+                      ::ERR_error_string(ERR_get_error(),
+                      nullptr)));
 
     elle::String archive;
     elle::serialize::to_string<
