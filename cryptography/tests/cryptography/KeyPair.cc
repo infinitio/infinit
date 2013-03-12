@@ -5,6 +5,7 @@
 #include <cryptography/PublicKey.hh>
 #include <cryptography/PrivateKey.hh>
 #include <cryptography/Exception.hh>
+#include <cryptography/random>
 
 #include <elle/types.hh>
 #include <elle/serialize/insert.hh>
