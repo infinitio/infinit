@@ -5,6 +5,7 @@
 #include <elle/Exception.hh>
 #include <elle/log.hh>
 #include <elle/memory.hh>
+#include <elle/os/getenv.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.InfinitInstanceManager");
 
@@ -26,7 +27,20 @@ namespace surface
           if (_instances[network_id]->process->running())
             throw elle::Exception{"Network " + network_id + " already launched"};
         }
+      elle::system::ProcessConfig pc;
+      {
+        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+        if (!log_file.empty())
+        {
+          log_file += ".infinit.log";
+
+          pc.inherit_current_environment();
+          pc.setenv("INFINIT_LOG_FILE", log_file);
+        }
+      }
       auto process = elle::make_unique<elle::system::Process>(
+        std::move(pc),
         common::infinit::binary_path("8infinit"),
         std::list<std::string>{"-n", network_id, "-u", _user_id}
       );

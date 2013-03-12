@@ -125,8 +125,8 @@ namespace surface
     State::output_log_file(std::string const& path)
     {
       static std::ofstream out{
-          path,
-          std::fstream::app | std::fstream::out
+          path + ".log",
+          std::fstream::trunc | std::fstream::out
       };
 
       elle::log::logger(
