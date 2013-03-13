@@ -32,7 +32,7 @@ def login(state, email = None):
     state.set_device_name(socket.gethostname().strip())
     state.connect()
 
-def debug_status(state, transaction, new):
+def show_status(state, transaction, new):
     print("trasaction status changed to", state.transaction_status(transaction))
 
 def on_started(state, transaction, new):
@@ -55,7 +55,7 @@ def main(state, user, filepath):
     state.transaction_callback(partial(on_started, state))
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_canceled, state))
-    state.transaction_status_callback(partial(debug_status, state))
+    state.transaction_status_callback(partial(show_status, state))
     state.running = True
 
     while True:

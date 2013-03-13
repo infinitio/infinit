@@ -20,6 +20,9 @@ You have to specify your user name in the INFINIT_USER env variable.
 
 """
 
+def show_status(state, transaction, new):
+    print("trasaction status changed to", state.transaction_status(transaction))
+
 def auto_accept(state, transaction, new):
     state.update_transaction(transaction._id, state.TransactionStatus.accepted)
     state.current_transaction_id = transaction
@@ -111,6 +114,7 @@ def main(state, sender):
     state.transaction_callback(partial(auto_accept, state));
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_canceled, state))
+    state.transaction_status_callback(partial(show_status, state))
 
     state.running = True
     state.set_device_name(id + "device")
