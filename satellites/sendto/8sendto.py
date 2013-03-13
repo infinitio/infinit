@@ -60,14 +60,14 @@ def main(state, user, filepath):
 
     while True:
         time.sleep(0.5)
-        status = state.process_status(id)
-        if status == state.ProcessStatus.running:
+        status = state.operation_status(id)
+        if status == state.OperationStatus.running:
             print(".", end="", file=sys.stdout)
             sys.stdout.flush()
-        if status == state.ProcessStatus.success:
+        if status == state.OperationStatus.success:
             print("Preparation finished, waiting for receiver")
             break
-        if status == state.ProcessStatus.failure:
+        if status == state.OperationStatus.failure:
             print("Failure to prepare the transfer.")
             return
 
