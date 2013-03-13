@@ -215,38 +215,38 @@ extern "C"
     WRAP_CPP(state, send_message, recipient_id, message);
   }
 
-  //- Process interface -------------------------------------------------------
+  //- Operation interface -------------------------------------------------------
 
-  gap_ProcessStatus gap_process_status_failure =
-    (gap_ProcessStatus) surface::gap::State::ProcessStatus::failure;
+  gap_OperationStatus gap_operation_status_failure =
+    (gap_OperationStatus) surface::gap::State::OperationStatus::failure;
 
-  gap_ProcessStatus gap_process_status_success =
-    (gap_ProcessStatus) surface::gap::State::ProcessStatus::success;
+  gap_OperationStatus gap_operation_status_success =
+    (gap_OperationStatus) surface::gap::State::OperationStatus::success;
 
-  gap_ProcessStatus gap_process_status_running =
-    (gap_ProcessStatus) surface::gap::State::ProcessStatus::running;
+  gap_OperationStatus gap_operation_status_running =
+    (gap_OperationStatus) surface::gap::State::OperationStatus::running;
 
-  gap_ProcessStatus
-  gap_process_status(gap_State* state,
-                     gap_ProcessId const pid)
+  gap_OperationStatus
+  gap_operation_status(gap_State* state,
+                     gap_OperationId const pid)
   {
     assert(state != nullptr);
     gap_Status ret = gap_ok;
     try
       {
-        return (gap_ProcessStatus) __TO_CPP(state)->process_status(pid);
+        return (gap_OperationStatus) __TO_CPP(state)->operation_status(pid);
       }
-    CATCH_ALL(process_status);
+    CATCH_ALL(operation_status);
     return ret;
   }
 
-  /// Try to finalize a process. Returns an error if the process
+  /// Try to finalize a operation. Returns an error if the operation
   /// does not exist, or if it's still running.
   gap_Status
-  gap_process_finalize(gap_State* state,
-                       gap_ProcessId const pid)
+  gap_operation_finalize(gap_State* state,
+                       gap_OperationId const pid)
   {
-    WRAP_CPP(state, process_finalize, pid);
+    WRAP_CPP(state, operation_finalize, pid);
   }
 
   //- Authentication ----------------------------------------------------------
@@ -1069,7 +1069,7 @@ extern "C"
     ::free(transactions);
   }
 
-  gap_ProcessStatus
+  gap_OperationStatus
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files)
@@ -1090,7 +1090,7 @@ extern "C"
             ++files;
           }
 
-        return (gap_ProcessStatus) __TO_CPP(state)->send_files(recipient_id, s);
+        return (gap_OperationStatus) __TO_CPP(state)->send_files(recipient_id, s);
       }
     CATCH_ALL(send_files);
 

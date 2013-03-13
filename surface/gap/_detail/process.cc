@@ -1,5 +1,5 @@
 #include "../State.hh"
-#include "Process.hh"
+#include "Operation.hh"
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
@@ -8,48 +8,62 @@ namespace surface
   namespace gap
   {
 
-    State::ProcessStatus
-    State::process_status(ProcessId const id) const
+    State::OperationStatus
+    State::operation_status(OperationId const id) const
     {
-      auto it = _processes.find(id);
-      if (it == _processes.end())
+      auto it = _operations.find(id);
+      if (it == _operations.end())
         throw elle::Exception{
-            "Couldn't find any process with id " + std::to_string(id)
+            "Couldn't find any operation with id " + std::to_string(id)
         };
-      if (!it->second->done)
-        return ProcessStatus::running;
-      // the process is terminated.
-      if (it->second->success)
-        return ProcessStatus::success;
-      return ProcessStatus::failure;
+      if (!it->second->done())
+        return OperationStatus::running;
+      // the operation is terminated.
+      if (it->second->succeeded())
+        return OperationStatus::success;
+      return OperationStatus::failure;
     }
 
     void
-    State::process_finalize(ProcessId const id)
+    State::operation_finalize(OperationId const id)
     {
-      auto it = _processes.find(id);
-      if (it == _processes.end())
+      auto it = _operations.find(id);
+      if (it == _operations.end())
         throw elle::Exception{
-            "Couldn't find any process with id " + std::to_string(id)
+            "Couldn't find any operation with id " + std::to_string(id)
         };
-      if (!it->second->done)
-        throw elle::Exception{"Process not finished"};
-      ProcessPtr ptr{it->second.release()};
-      _processes.erase(it);
-      if (!ptr->success)
-        std::rethrow_exception(ptr->exception); // XXX exception_ptr deleted !
+      if (!it->second->done())
+        throw elle::Exception{"Operation not finished"};
+      if (!it->second->succeeded())
+        it->second->rethrow();
     }
 
-    State::ProcessId
-    State::_add_process(std::string const& name,
-                        std::function<void(void)> const& cb)
+    State::OperationId
+    State::_add_operation(std::string const& name,
+                          std::function<void(void)> const& cb,
+                          bool auto_delete)
     {
-      ELLE_TRACE("Adding process.");
-      //auto process = elle::make_unique<Process>(*this, name, cb);
-      // XXX leak if emplace() fails.
-      static ProcessId id = 0;
-      _processes[++id].reset(new Process{name, cb});
+      ELLE_TRACE("Adding operation %s.", name);
+      static OperationId id = 0;
+      id += 1;
+      _operations[id].reset(new Operation{name, cb});
+      if (auto_delete)
+        _operations[id]->delete_later();
       return id;
     }
+
+    void
+    State::_cancel_operation(std::string const& name)
+    {
+      for (auto& pair: _operations)
+      {
+        if (pair.second != nullptr && pair.second->name() == name)
+        {
+          pair.second->cancel();
+          return;
+        }
+      }
+    }
+
   }
 }

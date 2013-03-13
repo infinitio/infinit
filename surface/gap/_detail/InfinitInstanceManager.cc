@@ -28,6 +28,7 @@ namespace surface
             throw elle::Exception{"Network " + network_id + " already launched"};
         }
       elle::system::ProcessConfig pc;
+      pc.inherit_current_environment();
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
@@ -35,10 +36,12 @@ namespace surface
         {
           log_file += ".infinit.log";
 
-          pc.inherit_current_environment();
           pc.setenv("INFINIT_LOG_FILE", log_file);
         }
       }
+      ELLE_DEBUG("%s %s %s %s %s", common::infinit::binary_path("8infinit"),
+                 "-n", network_id, "-u",
+                 _user_id);
       auto process = elle::make_unique<elle::system::Process>(
         std::move(pc),
         common::infinit::binary_path("8infinit"),

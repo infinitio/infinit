@@ -211,37 +211,41 @@ namespace surface
 
     public:
       /// A process is indexed with a unique identifier.
-      typedef size_t ProcessId;
+      typedef size_t OperationId;
 
       /// The status of a process. failure or success implies that the process
       /// is terminated.
-      enum class ProcessStatus : int { failure = 0, success = 1, running = 2};
+      enum class OperationStatus : int { failure = 0, success = 1, running = 2};
     private:
-      struct Process;
-      typedef std::unique_ptr<Process> ProcessPtr;
-      typedef std::unordered_map<ProcessId, ProcessPtr> ProcessMap;
-      ProcessMap _processes;
+      struct Operation;
+      typedef std::unique_ptr<Operation> OperationPtr;
+      typedef std::unordered_map<OperationId, OperationPtr> OperationMap;
+      OperationMap _operations;
 
     public:
-      /// Retreive the status of an existing process.
-      ProcessStatus
-      process_status(ProcessId const id) const;
+      /// Retreive the status of an existing operation.
+      OperationStatus
+      operation_status(OperationId const id) const;
 
-      /// @brief Remove a process and throw the exception if any.
+      /// @brief Remove a operation and throw the exception if any.
       ///
-      /// @throw if the process does not exist or if it is still running.
-      void process_finalize(ProcessId const id);
+      /// @throw if the operation does not exist or if it is still running.
+      void operation_finalize(OperationId const id);
 
     private:
-      ProcessId
-      _add_process(std::string const& name,
-                   std::function<void(void)> const& cb);
+      OperationId
+      _add_operation(std::string const& name,
+                     std::function<void(void)> const& cb,
+                     bool auto_delete = false);
+
+      void
+      _cancel_operation(std::string const& name);
 
     public:
       /// @brief Send a file list to a specified user.
       ///
       /// Create a network, copy files locally, create transaction.
-      ProcessId
+      OperationId
       send_files(std::string const& recipient_id_or_email,
                  std::unordered_set<std::string> const& files);
     private:

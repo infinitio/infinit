@@ -21,12 +21,12 @@ namespace surface
     using MKey = elle::metrics::Key;
     namespace fs = boost::filesystem;
 
-    State::ProcessId
+    State::OperationId
     State::send_files(std::string const& recipient_id_or_email,
                       std::unordered_set<std::string> const& files)
     {
       ELLE_TRACE("Sending files to %s", recipient_id_or_email);
-      return this->_add_process(
+      return this->_add_operation(
         "send_files",
         std::bind(&State::_send_files, this, recipient_id_or_email, files)
       );
@@ -227,14 +227,11 @@ namespace surface
       std::string const& transfer_binary = common::infinit::binary_path("8transfer");
 
       std::list<std::string> arguments{
-                                    "-n",
-                                    trans.network_id,
-                                    "-u",
-                                    this->_me._id,
-                                    "--path",
-                                    this->_output_dir,
-                                    "--from"
-                                };
+        "-n", trans.network_id,
+        "-u", this->_me._id,
+        "--path", this->_output_dir,
+        "--from"
+      };
 
       ELLE_DEBUG("LAUNCH: %s %s",
                  transfer_binary,
@@ -243,26 +240,29 @@ namespace surface
       try
       {
         elle::system::ProcessConfig pc;
+        pc.inherit_current_environment();
         {
           std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
           if (!log_file.empty())
           {
             log_file += ".from.transfer.log";
-
-            pc.inherit_current_environment();
             pc.setenv("ELLE_LOG_FILE", log_file);
           }
         }
-        elle::system::Process p{std::move(pc), transfer_binary, arguments};
-        if (p.wait_status() != 0)
-          throw Exception(gap_internal_error, "8transfer binary failed");
+
+        {
+          elle::system::Process p{std::move(pc), transfer_binary, arguments};
+          ELLE_DEBUG("Waiting transfert process to finish");
+          p.wait();
+        }
 
         if (trans.files_count == 1)
         {
           ELLE_WARN("Download complete. Your file is at '%s'.",
-              elle::os::path::join
-                (this->_output_dir.c_str(), trans.first_filename)
+              elle::os::path::join(
+                this->_output_dir.c_str(), trans.first_filename
+              )
           );
         }
         else
@@ -271,13 +271,20 @@ namespace surface
               trans.files_count, this->_output_dir.c_str());
         }
 
-        update_transaction(transaction_id,
-                         gap_TransactionStatus::gap_transaction_status_finished);
+        update_transaction(
+            transaction_id,
+            gap_TransactionStatus::gap_transaction_status_finished
+        );
       }
-      catch (...)
+      catch (std::exception const& err)
       {
-        update_transaction(transaction_id,
-                         gap_TransactionStatus::gap_transaction_status_canceled);
+        ELLE_WARN("couldn't receive file %s: %s", trans.first_filename,
+                                                  err.what());
+        this->update_transaction(
+            transaction_id,
+            gap_TransactionStatus::gap_transaction_status_canceled
+        );
+        this->_cancel_operation("download_files_for_" + transaction_id);
       }
     }
 
@@ -579,7 +586,13 @@ namespace surface
         std::rethrow_exception(exception); // XXX SCOPE OF EXCEPTION PTR
       }
       if (transaction.recipient_device_id == this->device_id())
-        _download_files(transaction.transaction_id);
+      {
+        this->_add_operation(
+          "download_files_for_" + transaction.transaction_id,
+          std::bind(&State::_download_files, this, transaction.transaction_id),
+          true
+        );
+      }
     }
 
     void
@@ -667,7 +680,7 @@ namespace surface
     {
       ELLE_DEBUG("Canceled transaction '%s'", transaction.transaction_id);
 
-      // XXX: If some process are launch, such as 8transfer, 8progess for the
+      // XXX: If some operation are launched, such as 8transfer, 8progess for the
       // current transaction, cancel them.
 
       // Delete networks.

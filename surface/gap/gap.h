@@ -69,33 +69,33 @@ extern "C" {
   gap_Status
   gap_notifications_read(gap_State*);
 
-  //- Process interface -------------------------------------------------------
+  //- Operation interface -------------------------------------------------------
 
-  /// Identifier for a process launch by gap.
-  typedef int gap_ProcessId;
+  /// Identifier for an operation launched by gap.
+  typedef int gap_OperationId;
 
-  /// Status of a process.
-  typedef int gap_ProcessStatus;
+  /// Status of an operation.
+  typedef int gap_OperationStatus;
 
-  /// The process ended with an error.
-  extern gap_ProcessStatus gap_process_status_failure;
+  /// The operation ended with an error.
+  extern gap_OperationStatus gap_operation_status_failure;
 
-  /// The process successfully ended.
-  extern gap_ProcessStatus gap_process_status_success;
+  /// The operation successfully ended.
+  extern gap_OperationStatus gap_operation_status_success;
 
-  /// The process is still running.
-  extern gap_ProcessStatus gap_process_status_running;
+  /// The operation is still running.
+  extern gap_OperationStatus gap_operation_status_running;
 
-  /// Returns the process status.
-  gap_ProcessStatus
-  gap_process_status(gap_State* state,
-                     gap_ProcessId const pid);
+  /// Returns the operation status.
+  gap_OperationStatus
+  gap_operation_status(gap_State* state,
+                     gap_OperationId const pid);
 
-  /// Try to finalize a process. Returns an error if the process
-  /// does not exist, or if it's still running.
+  /// Try to finalize an operation. Returns an error if the operation does not
+  /// exist, or if it's still running.
   gap_Status
-  gap_process_finalize(gap_State* state,
-                       gap_ProcessId const pid);
+  gap_operation_finalize(gap_State* state,
+                       gap_OperationId const pid);
 
   //- Authentication & registration -------------------------------------------
 
@@ -399,7 +399,7 @@ extern "C" {
   /// Send files to a specific user.
   ///
   /// @returns a unique identifier or -1 on error.
-  gap_ProcessId
+  gap_OperationId
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files);
