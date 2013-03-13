@@ -24,3 +24,14 @@ infinit_home_clean() {
     rm -rf ~/.infinit/*
 }
 
+infinit_switch_dev() {
+	export INFINIT_META_HOST=development.infinit.io
+	export INFINIT_LONGINUS_HOST=development.infinit.io
+	export INFINIT_TROPHONIUS_HOST=development.infinit.io
+}
+
+infinit_switch_prod() {
+	export INFINIT_META_HOST=production.infinit.io
+	export INFINIT_LONGINUS_HOST=production.infinit.io
+	export INFINIT_TROPHONIUS_HOST=production.infinit.io
+}
