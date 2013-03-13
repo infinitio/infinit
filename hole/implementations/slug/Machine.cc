@@ -308,13 +308,14 @@ namespace hole
                 | elle::network::Interface::Filter::no_loopback
                 | elle::network::Interface::Filter::no_autoip
                 );
+              ELLE_DEBUG("local addresses:")
               for (auto const& pair: interfaces)
                 if (pair.second.ipv4_address.size() > 0 &&
                     pair.second.mac_address.size() > 0)
                   {
                     auto const &ipv4   = pair.second.ipv4_address;
 
-                    ELLE_DEBUG("local address: %s:%s", ipv4, _server->port());
+                    ELLE_DEBUG("%s:%s", ipv4, _server->port());
 
                     addresses.emplace_back(pair.second.ipv4_address,
                                            _server->port());
@@ -330,12 +331,12 @@ namespace hole
                                           ep.port()));
               client.token(agent::Agent::meta_token);
 
-              ELLE_DEBUG("addresses");
+              ELLE_DEBUG("addresses:")
               std::for_each(addresses.begin(), addresses.end(),
                             [](std::pair<std::string, uint16_t> const& e)
                             { ELLE_DEBUG("%s:%s", e.first, e.second); });
 
-              ELLE_DEBUG("public_addresses");
+              ELLE_DEBUG("public_addresses")
               std::for_each(public_addresses.begin(), public_addresses.end(),
                             [](std::pair<std::string, uint16_t> const& e)
                             { ELLE_DEBUG("%s:%s", e.first, e.second); });
