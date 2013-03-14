@@ -113,10 +113,14 @@ namespace surface
     void
     State::prepare_network(std::string const& network_id)
     {
+      ELLE_TRACE("preparing network %s directory", network_id);
       std::string const network_dir = common::infinit::network_directory(
           this->_me._id,
           network_id
       );
+
+      ELLE_DEBUG("network directory: %s", network_dir);
+
       if (!elle::os::path::exists(network_dir))
         elle::os::path::make_path(network_dir);
 
@@ -125,18 +129,24 @@ namespace surface
           network_id + ".dsc"
       );
 
+      ELLE_DEBUG("descriptor path: %s", description_filename);
+
       if (!elle::os::path::exists(description_filename))
         {
           if (!this->network(network_id).descriptor.size())
             this->_create_network_root_block(network_id);
            this->_prepare_network_directory(network_id);
         }
+      else
+      {
+        ELLE_DEBUG("network %s already prepared", network_id);
+      }
     }
 
     void
     State::_create_network_root_block(std::string const& id)
     {
-      ELLE_DEBUG("Creating the network descriptor.");
+      ELLE_DEBUG("Creating the network descriptor for network %s.", id);
       // XXX this value depends on the network policy and openness.
       static nucleus::neutron::Permissions permissions =
         nucleus::neutron::permissions::read;
@@ -252,7 +262,7 @@ namespace surface
     void
     State::_prepare_network_directory(std::string const& network_id)
     {
-      ELLE_DEBUG("Prepare network directory.");
+      ELLE_DEBUG("Prepare network %s directory.", network_id);
       using elle::serialize::from_string;
       using elle::serialize::InputBase64Archive;
 

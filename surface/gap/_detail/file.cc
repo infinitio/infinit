@@ -33,7 +33,7 @@ namespace surface
 
       if (instance == nullptr)
         throw Exception{
-            gap_error, "Cannot find network for path '" + abspath + "'"
+          gap_error, "Cannot find network for path '" + abspath + "'"
         };
 
       std::unique_ptr<FileInfos> infos;
