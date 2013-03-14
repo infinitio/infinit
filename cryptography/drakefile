@@ -96,29 +96,18 @@ def configure(cxx_toolkit, openssl_config, reactor_config, elle_config,
 
   check = drake.Rule('check')
 
-  tests = ['cryptography/Input',
-           'cryptography/KeyPair',
-           'cryptography/Output',
-           'cryptography/PrivateKey',
-           'cryptography/PublicKey',
-           'cryptography/SecretKey',
-           'cryptography/Seed',
-           'cryptography/bn',
-           'cryptography/oneway',
-           'cryptography/random',
-           ]
-
-  tests_cxx_config = drake.cxx.Config(cxx_config)
-  tests_cxx_config += config
-  tests_cxx_config += boost.cfg
-  tests_cxx_config += boost.config_test()
-  tests_cxx_config += openssl_config
-  tests_cxx_config += reactor_config
-  tests_cxx_config += elle_config
-  tests_cxx_config.lib('crypto')
-  tests_cxx_config.lib('ssl')
-  tests_cxx_config.lib('reactor')
-  tests_cxx_config.lib('elle')
+  tests = [
+    'cryptography/Input',
+    'cryptography/KeyPair',
+    'cryptography/Output',
+    'cryptography/PrivateKey',
+    'cryptography/PublicKey',
+    'cryptography/SecretKey',
+    'cryptography/Seed',
+    'cryptography/bn',
+    'cryptography/oneway',
+    'cryptography/random',
+    ]
 
   class TestRunner(drake.Builder):
 
