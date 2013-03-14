@@ -3,6 +3,7 @@
 #include <elle/format/json.hh>
 #include <elle/os/path.hh>
 #include <elle/os/environ.hh>
+#include <elle/os/getenv.hh>
 #include <elle/log.hh>
 #include <elle/HttpClient.hh>
 #include <elle/system/platform.hh>
@@ -246,7 +247,7 @@ namespace elle
         (this->_host, this->_port, this->_name, elle::signal::strsignal(sig));
 
       if (this->_quit)
-        exit(sig);
+        ::exit(sig);
     }
 
     bool
@@ -281,6 +282,13 @@ namespace elle
       request["signal"] = signal;
       request["backtrace"] = bt_arr;
       request["env"] = env_arr;
+
+      request["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
+#ifdef INFINIT_PRODUCTION_BUILD
+      request["send"] = true;
+#else
+      request["send"] = !request["email"].as<std::string>().empty();
+#endif
 
       try
         {
