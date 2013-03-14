@@ -46,7 +46,9 @@ namespace lune
     ELLE_TRACE("Creating descriptor of network %s in %s",
                network, this->_path(user, network));
     if (Descriptor::exists(user, network) == false)
-      throw elle::Exception("this network does not seem to exist");
+      throw elle::Exception(elle::sprintf(
+                              "network %s does not seem to exist for user %s",
+                              network, user));
     this->load(user, network);
     this->validate(Infinit::authority());
   }
@@ -106,6 +108,7 @@ namespace lune
   Descriptor::_path(elle::String const& user_id,
                     elle::String const& network_id)
   {
+    ELLE_TRACE("retrieving path for user %s in network %s", user_id, network_id);
     return elle::os::path::join(
       common::infinit::network_directory(user_id, network_id),
       network_id + ".dsc"
@@ -132,6 +135,7 @@ namespace lune
   Descriptor::load(elle::String const& user,
                    elle::String const& network)
   {
+    ELLE_TRACE("load descriptor for user %s in network %s", user, network);
     this->load(elle::io::Path{Descriptor::_path(user, network)});
   }
 
@@ -147,6 +151,7 @@ namespace lune
   Descriptor::erase(elle::String const& user,
                     elle::String const& network)
   {
+    ELLE_TRACE("erase descriptor for user %s in network %s", user, network);
     elle::concept::Fileable<>::erase(
       elle::io::Path{Descriptor::_path(user, network)});
   }
@@ -155,9 +160,7 @@ namespace lune
   Descriptor::exists(elle::String const& user,
                      elle::String const& network)
   {
-    return elle::os::path::exists(
-      Descriptor::_path(user, network)
-    );
+    return elle::os::path::exists(Descriptor::_path(user, network));
   }
 
 //
