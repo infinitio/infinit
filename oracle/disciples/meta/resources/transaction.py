@@ -430,6 +430,20 @@ class Start(Page):
 
         updated_transaction_id = database.transactions().save(transaction)
 
+        network = database.networks().find_one({
+            '_id': database.ObjectId(transaction["network_id"]),
+        })
+        if not network:
+            return self.forbidden("Couldn't find any network with this id")
+        if network['owner'] != self.user['_id'] and \
+           self.user['_id'] not in network['users']:
+            return self.forbidden("This network does not belong to you")
+
+        send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
+        recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
+
+        self.apertus.add_link(send_endpoints["externals"],
+                              recv_endpoints["externals"])
         self.notifier.notify_some(
             notifier.TRANSACTION_STATUS,
             [transaction['sender_id'], transaction['recipient_id']],

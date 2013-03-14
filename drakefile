@@ -56,6 +56,7 @@ def configure(cxx_toolkit,
   cxx_config.define('INFINIT_VERSION_MAJOR', version_major)
   cxx_config.define('INFINIT_VERSION_MINOR', version_minor)
   cxx_config.define('INFINIT_VERSION', '%s.%s' % (version_major, version_minor))
+  cxx_config.define('BOOST_PP_VARIADICS')
 
   # UDT
   asio_udt = drake.include('asio-udt', cxx_toolkit, cxx_config, boost = boost)
@@ -107,7 +108,7 @@ def configure(cxx_toolkit,
   cxx_config.add_local_include_path('.')
 
   # Cryptography
-  cryptography = drake.include('cryptography', cxx_toolkit, openssl.config(), reactor.config, elle.config, boost = boost, enable_tests = enable_tests)
+  cryptography = drake.include('cryptography', cxx_toolkit, cxx_config + openssl.config(), reactor.config, elle.config, boost = boost, enable_tests = enable_tests)
   cryptography_lib = drake.copy(cryptography.lib_dynamic, 'lib', 'cryptography/lib')
   cxx_config += cryptography.config
 
@@ -835,9 +836,18 @@ def configure(cxx_toolkit,
   gap_python_pyfiles = drake.nodes(
     'surface/gap/python/gap.py',
     )
+
   gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
                                       'lib/python',
                                       'surface/gap/python')
+
+  infinit_cli_sources = drake.nodes(
+    'surface/cli/infinit-cli'
+    )
+
+  infinit_cli_copy = drake.copy(infinit_cli_sources,
+                                'bin',
+                                'surface/cli')
 
   build << gap_python_lib
   build << gap_python_pyfile_copy
@@ -845,6 +855,7 @@ def configure(cxx_toolkit,
   # Oracles
 
   oracles = drake.Rule('oracle')
+
   oracle_sources = drake.nodes(
     'oracle/disciples/creosus-server',
     'oracle/disciples/erginus-server',
@@ -852,6 +863,7 @@ def configure(cxx_toolkit,
     'oracle/disciples/meta-server',
     'oracle/disciples/trophonius-server',
     'oracle/disciples/admin-console',
+    'oracle/disciples/apertus-server',
     )
 
   oracle_source_copy = drake.copy(oracle_sources,
@@ -864,9 +876,17 @@ def configure(cxx_toolkit,
     )
 
   oracle_lib += drake.nodes(
+    'oracle/disciples/apertus/__init__.py',
+    'oracle/disciples/apertus/apertus.py',
+    'oracle/disciples/apertus/application.py',
+    'oracle/disciples/apertus/conf.py',
+    )
+
+  oracle_lib += drake.nodes(
     'oracle/disciples/meta/application.py',
     'oracle/disciples/meta/conf.py',
     'oracle/disciples/meta/database.py',
+    'oracle/disciples/meta/apertus.py',
     'oracle/disciples/meta/error_code.hh.inc',
     'oracle/disciples/meta/error.py',
     'oracle/disciples/meta/__init__.py',
