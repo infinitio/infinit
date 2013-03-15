@@ -126,15 +126,15 @@ def main(state, sender):
         raise Exception("you must select a transaction to accept")
 
     num = 0
-    for t_ids in to_handle:
-        print("accept transaction {}".format(t_ids))
-        state.update_transaction(t_ids, state.TransactionStatus.accepted)
-        num += 1
-    state.number_of_transactions = num
+    for transaction_id in to_handle:
+        print("accept transaction {}".format(transaction_id))
+        state.current_transaction_id = transaction_id
+        state.update_transaction(transaction_id, state.TransactionStatus.accepted)
 
-    while state.running:
-        time.sleep(0.5)
-        state.poll()
+        while state.running:
+            print("Progress: " + str(state.transaction_progress(transaction_id)*100) + " %")
+            time.sleep(0.5)
+            state.poll()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -72,6 +72,9 @@ def main(state, user, filepath):
             return
 
     while state.running:
+        if getattr(state, "current_transaction_id", None):
+            tid = state.current_transaction_id
+            print("Progress: " + str(state.transaction_progress(tid)*100) + " %")
         time.sleep(0.5)
         state.poll()
 

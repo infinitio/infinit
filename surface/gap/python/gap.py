@@ -58,6 +58,7 @@ class State:
             'get_output_dir',
             'update_transaction',
             'transactions',
+            'transaction_progress',
             'transaction_sender_id',
             'transaction_sender_fullname',
             'transaction_sender_device_id',
