@@ -239,7 +239,7 @@ namespace surface
         etoile::portal::RPC rpcs{channels};
 
         bool ok = false;
-        auto send_to_slug = [&] (std::string const& endpoint) -> void {
+        auto slug_connect = [&] (std::string const& endpoint) {
           if (!ok)
           {
             std::vector<std::string> result;
@@ -258,12 +258,11 @@ namespace surface
               ELLE_DEBUG("ignore endpoint %s", endpoint);
         };
 
+        ELLE_DEBUG("Connecting...")
         try
           {
-            ELLE_DEBUG("found endpoints: %s locals, %s externals",
-                       locals.size(), externals.size());
-            std::for_each(std::begin(externals), std::end(externals), send_to_slug);
-            std::for_each(std::begin(locals), std::end(locals), send_to_slug);
+            std::for_each(std::begin(locals), std::end(locals), slug_connect);
+            std::for_each(std::begin(externals), std::end(externals), slug_connect);
           }
         catch (elle::Exception const& e)
           {
