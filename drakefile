@@ -3,6 +3,7 @@ import drake.cxx.boost
 import drake
 
 import os.path
+import sys
 
 def configure(cxx_toolkit,
               cxx_config,
@@ -14,9 +15,39 @@ def configure(cxx_toolkit,
               qt = None,
               enable_tests = True,
               python2 = None,
-              python3 = None):
+              python3 = None,
+              build_type = "Debug"):
 
   prefix = drake.Path(prefix)
+
+  build_types = {'Debug': (),
+                 'Prod': ("INFINIT_PRODUCTION_BUILD",)}
+
+  if not build_type in build_types.keys():
+    raise Exception("build type {} is unknown. candidates are {}.".format(
+        build_type, ", ".join("{}".format(t) for t in build_types.keys())))
+
+  for flag in build_types[build_type]:
+    print(flag)
+    if isinstance(flag, str):
+      cxx_config.define(flag, 1)
+    else:
+      cxx_config.define(flag[0], flag[1])
+
+  platform = sys.platform
+  platform_flags = ()
+  if platform == 'linux2':
+    platform_flags = ("INFINIT_LINUX",)
+  elif platform == 'win32' or platform == 'cygwin':
+    platform_flags = ("INFINIT_WINDOWS",)
+  elif platform == 'darwin':
+    platform_flags = ("INFINIT_MACOSX", "HAVE_STATFS")
+  else:
+    raise Exception("platform {} not supported".format(platform))
+  for flag in platform_flags:
+    cxx_config.define(flag)
+
+  cxx_config.define("HAVE_SETXATTR")
 
   # Version
   version_major = '0'
