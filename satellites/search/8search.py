@@ -82,7 +82,11 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--me",
             help="get my info",
             action="store_true")
+    parser.add_argument("-l", "--logfile", help="path to the log file")
     args = parser.parse_args()
+
+    if args.logfile:
+        os.environ["INFINIT_LOG_FILE"] = args.logfile
 
     import gap
     state = gap.State()
