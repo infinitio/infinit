@@ -198,6 +198,14 @@ namespace surface
         locals = std::move(e.locals);
       }
 
+      auto _print = [&] (std::string const &s) {
+          ELLE_DEBUG("%s", s);
+      };
+      ELLE_DEBUG("externals")
+          std::for_each(begin(externals), end(externals), _print);
+      ELLE_DEBUG("locals")
+          std::for_each(begin(locals), end(locals), _print);
+
       // Finish by calling the RPC to notify 8infinit of all the IPs of the peer
       {
         lune::Phrase phrase;
