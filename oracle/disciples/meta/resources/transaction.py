@@ -424,12 +424,6 @@ class Start(Page):
                               % (_status_to_string[STARTED], _status_to_string[transaction['status']])
             )
 
-        transaction.update({
-            'status': STARTED, # started.
-        })
-
-        updated_transaction_id = database.transactions().save(transaction)
-
         network = database.networks().find_one({
             '_id': database.ObjectId(transaction["network_id"]),
         })
@@ -444,6 +438,20 @@ class Start(Page):
 
         self.apertus.add_link(send_endpoints["externals"],
                               recv_endpoints["externals"])
+
+        # Add the current apertus endpoint to the externals adddresses of the
+        # devices.
+        ip, port = self.apertus.get_endpoint().split(":")
+        send_endpoints["externals"].append({"ip" : ip, "port" : port})
+        recv_endpoints["externals"].append({"ip" : ip, "port" : port})
+
+        updated_network_id = database.networks().save(network)
+
+        transaction.update({
+            'status': STARTED, # started.
+        })
+        updated_transaction_id = database.transactions().save(transaction)
+
         self.notifier.notify_some(
             notifier.TRANSACTION_STATUS,
             [transaction['sender_id'], transaction['recipient_id']],

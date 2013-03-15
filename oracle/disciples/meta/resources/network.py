@@ -266,20 +266,12 @@ class Endpoints(_Page):
                 continue
             for a in user_node[addr_kind]:
                 if a and a["ip"] and a["port"]:
-                    print(addr_kind, a["ip"], a["port"])
                     addrs[addr_kind].append(
                         (a["ip"], str(a["port"])))
 
-        self_externals = []
-        for node in network['nodes'][self_device_id]['externals']:
-            self_externals.append(node['ip'])
-        print("self", self_externals);
-        exts = addrs['externals']
-        print("dst", exts)
-        exts = [p for p in exts if p[0] not in self_externals]
-        print("dst", exts)
+        print("addrs is: ", addrs)
 
-        res['externals'] = ["{}:{}".format(*a) for a in exts]
+        res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
         res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
 
         return self.success(res)
