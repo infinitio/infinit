@@ -15,7 +15,7 @@ _platform_reactor.install()
 
 from OpenSSL import SSL, crypto
 
-from twisted.internet.protocol import Factory, Protocol
+from twisted.internet.protocol import Protocol
 from twisted.internet import reactor, ssl
 from twisted.python import log
 
@@ -29,6 +29,7 @@ except:
 import os
 import conf
 import apertus
+import netifaces
 
 def create_self_signed_cert(cert_dir = "."):
     """
@@ -87,12 +88,18 @@ class Application(object):
         pass
 
     def run(self):
-        factory = Factory()
-        factory.protocol = apertus.ApertusControl
-        factory.slave = apertus.Apertus()
         log.startLogging(sys.stderr)
-        reactor.listenUDP(self.port, factory.slave)
+
+        iface = netifaces.ifaddresses('eth0')
+        l_addr4 = iface[netifaces.AF_INET]
+        l_addr6 = iface[netifaces.AF_INET6]
+
+        factory = apertus.Factory()
+        factory.slave = apertus.Apertus()
+
+        reactor.listenUDP(self.port, factory.slave, interface=l_addr4[0]['addr'])
         reactor.listenTCP(self.port + 1, factory, interface="localhost")
+
         if HAVE_SETPROCTITLE:
             setproctitle("apertus-server")
         reactor.run()
