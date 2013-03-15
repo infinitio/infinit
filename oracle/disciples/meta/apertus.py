@@ -22,17 +22,15 @@ class Apertus(object):
 
     def __init__(self):
         self.conn = socket.socket()
-        try:
-            self.conn.connect((conf.APERTUS_HOST, int(conf.APERTUS_PORT)))
-        except socket.error:
-            print("apertus-server is not lanched")
-            call(shlex.split("bin/apertus-server"))
-        pass
+        self.conn.connect((conf.APERTUS_HOST, int(conf.APERTUS_PORT)))
 
-    def add_link(self, *endpoints):
+    def add_link(self, endpointsA, endpointsB):
         request = {
                 "request" : "add_link",
-                "endpoints" : endpoints,
+                "endpoints" : [
+                        endpointsA,
+                        endpointsB
+                    ],
         }
         msg = json.dumps(request, default = str)
         self.conn.send("{}\n".format(msg))
@@ -54,6 +52,6 @@ class Apertus(object):
         bresp = self.conn.recv(4096)
         try:
             resp = json.loads(bresp)
-            return  resp
+            return  resp["endpoints"]
         except TypeError:
             print("invalid response")
