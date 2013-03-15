@@ -3,7 +3,7 @@
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
 # copyright notice and this permission notice appear in all copies.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 # WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 # MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
@@ -11,6 +11,13 @@
 # WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 # IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+infinit_env_show() {
+  for i in $(env | egrep '(INFINIT|ELLE)')
+  do
+    i8info $i
+  done
+}
 
 infinit_clean() {
     for mountpoint in $(sudo mount -t fuse.infinit | cut -d " " -f 3)
@@ -34,4 +41,45 @@ infinit_switch_prod() {
 	export INFINIT_META_HOST=production.infinit.io
 	export INFINIT_LONGINUS_HOST=production.infinit.io
 	export INFINIT_TROPHONIUS_HOST=production.infinit.io
+}
+
+infinit_longinus() {
+  case $1 in
+    host)
+      export INFINIT_META_HOST=$2
+      ;;
+    port)
+      export INFINIT_META_PORT=$2
+      ;;
+    *)
+      i8error invalid argument $1
+      ;;
+   esac
+}
+
+infinit_trophonius() {
+  case $1 in
+    host)
+      export INFINIT_META_HOST=$2
+      ;;
+    port)
+      export INFINIT_META_PORT=$2
+      ;;
+    *)
+      i8error invalid argument $1
+      ;;
+   esac
+}
+infinit_meta() {
+  case $1 in
+    host)
+      export INFINIT_META_HOST=$2
+      ;;
+    port)
+      export INFINIT_META_PORT=$2
+      ;;
+    *)
+      i8error invalid argument $1
+      ;;
+   esac
 }
