@@ -40,8 +40,6 @@
 
 #include <HoleFactory.hh>
 
-ELLE_LOG_COMPONENT("infinit.8group");
-
 # define GROUP_FINALLY_ACTION_DISCARD(_variable_)                       \
   ELLE_FINALLY_LAMBDA(                                                  \
     _variable_,                                                         \
