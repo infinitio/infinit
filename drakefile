@@ -849,6 +849,7 @@ def configure(cxx_toolkit,
 
   build << gap_python_lib
   build << gap_python_pyfile_copy
+  build << infinit_cli_copy
 
   # Oracles
 
