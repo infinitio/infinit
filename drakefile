@@ -13,7 +13,6 @@ def configure(cxx_toolkit,
               prefix = '/usr',
               boost = None,
               qt = None,
-              enable_tests = True,
               python2 = None,
               python3 = None,
               build_type = "Debug"):
@@ -93,24 +92,23 @@ def configure(cxx_toolkit,
                                    include_dir = ['include/python3.2',
                                                   'include/python3.2m'])
 
-  # Includes
-
   # Elle
-  elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost, enable_tests = enable_tests)
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib', 'elle/lib')
+  elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost)
+  elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
+  cryptography_lib = drake.copy(elle.cryptography_dynamic, 'lib', elle.cryptography_dynamic.path().dirname())
   cxx_config += elle.config
 
-  reactor = drake.include('reactor', cxx_toolkit, cxx_config, elle.config,
-          boost = boost, enable_tests = enable_tests)
+
+  # Reactor
+  reactor = drake.include('reactor',
+                          cxx_toolkit,
+                          cxx_config,
+                          elle.config,
+                          boost = boost)
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib', 'reactor/lib')
   cxx_config += reactor.config
 
   cxx_config.add_local_include_path('.')
-
-  # Cryptography
-  cryptography = drake.include('cryptography', cxx_toolkit, cxx_config + openssl.config(), reactor.config, elle.config, boost = boost, enable_tests = enable_tests)
-  cryptography_lib = drake.copy(cryptography.lib_dynamic, 'lib', 'cryptography/lib')
-  cxx_config += cryptography.config
 
   # Fuse
   if enable_horizon:
