@@ -1,4 +1,5 @@
 #include <satellites/progress/Progress.hh>
+#include <satellites/satellite.hh>
 
 #include <elle/utility/Parser.hh>
 #include <elle/io/Piece.hh>
@@ -179,8 +180,8 @@ namespace satellite
   }
 
   void
-  main(elle::Natural32 argc,
-       elle::Character* argv[])
+  Progress(elle::Natural32 argc,
+           elle::Character* argv[])
   {
     // XXX Infinit::Parser is not deleted in case of errors
 
@@ -293,71 +294,10 @@ namespace satellite
 // ---------- main ------------------------------------------------------------
 //
 
-int
-_main(elle::Natural32 argc, elle::Character* argv[])
-{
-  // Capture signal and send email without exiting.
-  elle::signal::ScopedGuard guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGINT, SIGABRT, SIGPIPE},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8progress",
-        false,
-        argc, argv)
-  };
-
-  // Capture signal and send email exiting.
-  elle::signal::ScopedGuard exit_guard{
-    *reactor::Scheduler::scheduler(),
-    {SIGILL, SIGSEGV},
-    elle::crash::Handler(
-        common::meta::host(),
-        common::meta::port(),
-        "8progress",
-        true,
-        argc, argv)
-  };
-
-  try
-    {
-      satellite::main(argc, argv);
-    }
-  catch (reactor::Exception const& e)
-    {
-      elle::crash::report(common::meta::host(),
-                          common::meta::port(),
-                          "8progress",
-                          elle::sprintf("%s", e));
-      std::cerr << argv[0] << ": fatal error: " << e << std::endl;
-      goto _error;
-    }
-  catch (std::exception const& e)
-    {
-      std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-      goto _error;
-    }
-  catch (...)
-    {
-      std::cerr << argv[0] << ": unknown exception" << std::endl;
-      goto _error;
-    }
-
-  reactor::Scheduler::scheduler()->terminate();
-  return (0);
-
- _error:
-  reactor::Scheduler::scheduler()->terminate();
-  return (1);
-}
-
 int                     main(int                                argc,
                              char**                             argv)
 {
-  reactor::Scheduler sched;
-  reactor::VThread<int> main(sched, "main",
-                             boost::bind(&_main, argc, argv));
-  sched.run();
-  return (main.result());
+  return satellite_main("8progress", [&] {
+                          satellite::Progress(argc, argv);
+                        });
 }
