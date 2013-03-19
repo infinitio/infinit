@@ -213,7 +213,9 @@ namespace surface
           ELLE_WARN("8progress returned an integer greater than 100: %s", progress);
           progress = 100;
         }
-      return ((float) progress) / 100.0f;
+      float fprogress = float(progress) / 100.0f;
+      ELLE_DEBUG("transaction_progress(%s) -> %f", transaction_id, fprogress);
+      return fprogress;
     }
 
     void
