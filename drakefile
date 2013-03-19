@@ -2,17 +2,22 @@ import drake.cxx
 import drake.cxx.boost
 import drake
 
-import os.path
+import os
 import sys
+
+satellite_path = str(drake.path_src("satellites"))
+satellite_default = [s for s in os.listdir(satellite_path) \
+                     if os.path.isdir(os.path.join(satellite_path, s))]
 
 def configure(cxx_toolkit,
               cxx_config,
               enable_horizon = True,
-              satellites = [],
+              satellites = satellite_default,
               optimization = True,
               prefix = '/usr',
               boost = None,
               qt = None,
+              enable_tests = True,
               python2 = None,
               python3 = None,
               build_type = "Debug"):
@@ -686,6 +691,7 @@ def configure(cxx_toolkit,
   ## ----- ##
 
   build = drake.Rule('build')
+  drake.add_default_node(build)
 
   ## -------- ##
   ## Programs ##
@@ -954,6 +960,30 @@ def configure(cxx_toolkit,
                                  cxx_toolkit, metalib_config)
 
   oracles << metalib_lib
+
+  # Longinus
+  longinus_config = drake.cxx.Config(cxx_config)
+  longinus_config.lib_path_runtime('../lib')
+  longinus_config.add_local_include_path("oracle/disciples")
+
+  nicodemus_sources = drake.nodes(
+    'oracle/disciples/nicodemus/nicodemus.cc',
+    'oracle/disciples/nicodemus/exception.cc',
+    'oracle/disciples/nicodemus/protocol.cc',
+    'oracle/disciples/nicodemus/udt.cc',
+    )
+
+  longinus_libs = [
+    reactor_lib,
+    elle_lib
+  ]
+  longinus_libs += udt_libs;
+
+  nicodemus_bin = drake.cxx.Executable('bin/nicodemus-server',
+                                     nicodemus_sources + longinus_libs,
+                                      cxx_toolkit, longinus_config)
+
+  build << nicodemus_bin
 
   build << oracles
 
