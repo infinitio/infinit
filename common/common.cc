@@ -102,7 +102,7 @@ namespace
       {"8infinit",  "bin/8infinit"},
       {"8watchdog", "bin/8watchdog"},
       {"8transfer", "bin/8transfer"},
-      {"8progess",  "bin/8progress"},
+      {"8progress", "bin/8progress"},
     };
     auto it = paths.find(name);
     if (it == paths.end())

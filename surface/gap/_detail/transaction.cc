@@ -179,7 +179,8 @@ namespace surface
       ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
                  boost::algorithm::join(arguments, " "));
 
-      elle::system::Process p{progress_binary, arguments};
+      auto pc = elle::system::process_config(elle::system::check_output_config);
+      elle::system::Process p{std::move(pc), progress_binary, arguments};
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
@@ -239,8 +240,7 @@ namespace surface
 
       try
       {
-        elle::system::ProcessConfig pc;
-        pc.inherit_current_environment();
+        auto pc = elle::system::process_config(elle::system::normal_config);
         {
           std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
