@@ -43,7 +43,7 @@ class HeartbeatFailed : public elle::Exception
   HeartbeatFailed(elle::String const& message)
     : Exception(elle::sprintf("heartbeat failed: %s", message))
   {}
-  HeartbeatFailed(elle::Exception const &e)
+  HeartbeatFailed(elle::Exception const& e)
     : HeartbeatFailed(e.what())
   {}
 };
@@ -54,7 +54,7 @@ class PunchTimeout : public PunchException
   PunchTimeout(elle::String const& message)
     : PunchException(elle::sprintf("timed out: %s", message))
   {}
-  PunchTimeout(elle::Exception const &e)
+  PunchTimeout(elle::Exception const& e)
     : PunchTimeout(e.what())
   {}
 };
@@ -65,7 +65,7 @@ class PunchFormat : public PunchException
   PunchFormat(elle::String const& message)
     : PunchException(elle::sprintf("format error: %s", message))
   {}
-  PunchFormat(elle::Exception const &e)
+  PunchFormat(elle::Exception const& e)
     : PunchFormat(e.what())
   {}
 };
@@ -316,17 +316,17 @@ namespace reactor
         auto endpoint = this->_punch(port, this->_udp_socket);
         if (endpoint.port() != port)
         {
-            ELLE_WARN("NAT punching was lost");
-            // FIXME: we lost the NAT, do something.
-            return false;
+          ELLE_WARN("NAT punching was lost");
+          // FIXME: we lost the NAT, do something.
+          return false;
         }
         else
         {
-            ELLE_DEBUG("NAT punching still up");
-            return true;
+          ELLE_DEBUG("NAT punching still up");
+          return true;
         }
       }
-      catch (PunchException const &e)
+      catch (PunchException const& e)
       {
         // Throw a Heartbeat Failed here
         throw HeartbeatFailed(e);
@@ -391,14 +391,14 @@ namespace reactor
                 {
                   while (true)
                   {
-                    auto *current_thread = this->scheduler().current();
+                    auto* current_thread = this->scheduler().current();
 
                     current_thread->sleep(boost::posix_time::seconds(15));
                     try
                     {
                       this->_punch_heartbeat();
                     }
-                    catch (HeartbeatFailed const &e)
+                    catch (HeartbeatFailed const& e)
                     {
                       ELLE_WARN("XXX %s", e.what());
                     }
