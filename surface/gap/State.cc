@@ -17,6 +17,7 @@
 #include <elle/os/getenv.hh>
 #include <metrics/_details/google.hh>
 #include <metrics/_details/kissmetrics.hh>
+#include <elle/memory.hh>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -257,10 +258,13 @@ namespace surface
           else
               ELLE_DEBUG("ignore endpoint %s", endpoint);
         };
-        std::vector<std::pair<reactor::VThread<bool> *, std::string>> v;
+        std::vector
+          <std::pair
+            <std::unique_ptr<reactor::VThread<bool>>,
+             std::string>> v;
 
         auto start_thread = [&] (std::string const &endpoint) {
-          v.push_back(std::make_pair(new reactor::VThread<bool>{
+          v.push_back(std::make_pair(elle::make_unique<reactor::VThread<bool>>(
             sched,
             elle::sprintf("slug_connect(%s)", endpoint),
             [&] () -> int {
@@ -273,7 +277,7 @@ namespace surface
               }
               return true;
             }
-          }, endpoint));
+          ), endpoint));
         };
 
         ELLE_DEBUG("Connecting...")
