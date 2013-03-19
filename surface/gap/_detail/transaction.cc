@@ -180,16 +180,19 @@ namespace surface
                  boost::algorithm::join(arguments, " "));
 
       auto pc = elle::system::process_config(elle::system::check_output_config);
-      elle::system::Process p{std::move(pc), progress_binary, arguments};
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
         if (!log_file.empty())
           {
             log_file += ".progress.log";
-            ::setenv("ELLE_LOG_FILE", log_file.c_str(), 1);
+
+            pc.inherit_current_environment();
+            pc.setenv("ELLE_LOG_FILE", log_file);
           }
       }
+      elle::system::Process p{std::move(pc), progress_binary, arguments};
+
       if (p.wait_status() != 0)
         throw Exception{
             gap_internal_error, "8progress binary failed"
