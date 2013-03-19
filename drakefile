@@ -28,7 +28,7 @@ def configure(cxx_toolkit,
                  'Prod': ("INFINIT_PRODUCTION_BUILD",)}
 
   if not build_type in build_types.keys():
-    raise Exception("build type {} is unknown. candidates are {}.".format(
+    raise Exception("build type {} is unknown. Candidates are {}.".format(
         build_type, ", ".join("{}".format(t) for t in build_types.keys())))
 
   for flag in build_types[build_type]:
