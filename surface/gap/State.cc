@@ -257,18 +257,49 @@ namespace surface
           else
               ELLE_DEBUG("ignore endpoint %s", endpoint);
         };
+        std::vector<std::pair<reactor::VThread<bool> *, std::string>> v;
+
+        auto start_thread = [&] (std::string const &endpoint) {
+          v.push_back(std::make_pair(new reactor::VThread<bool>{
+            sched,
+            elle::sprintf("slug_connect(%s)", endpoint),
+            [&] () -> int {
+              try {
+                slug_connect(endpoint);
+              }
+              catch (elle::Exception const &e) {
+                ELLE_WARN("connection to %s failed", endpoint);
+                return false;
+              }
+              return true;
+            }
+          }, endpoint));
+        };
 
         ELLE_DEBUG("Connecting...")
         try
-          {
-            std::for_each(std::begin(locals), std::end(locals), slug_connect);
-            std::for_each(std::begin(externals), std::end(externals), slug_connect);
-          }
+        {
+          std::for_each(std::begin(externals), std::end(externals), start_thread);
+          std::for_each(std::begin(locals), std::end(locals), start_thread);
+        }
         catch (elle::Exception const& e)
+        {
+          ELLE_TRACE("caught exception %s", e.what());
+          throw e;
+        }
+        for (auto &t : v)
+        {
+          reactor::VThread<bool> &vt = *t.first;
+          sched.current()->wait(vt);
+          if (vt.result() == true)
           {
-            ELLE_TRACE("caught exception %s", e.what());
-            throw e;
+            ELLE_WARN("connection to %s succeed", t.second);
           }
+          else
+          {
+            ELLE_WARN("connection to %s failed", t.second);
+          }
+        }
       }
     }
 
