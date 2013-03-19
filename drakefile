@@ -4,6 +4,7 @@ import drake
 
 import os
 import sys
+import platform
 
 satellite_path = str(drake.path_src("satellites"))
 satellite_default = [s for s in os.listdir(satellite_path) \
@@ -37,16 +38,15 @@ def configure(cxx_toolkit,
     else:
       cxx_config.define(flag[0], flag[1])
 
-  platform = sys.platform
   platform_flags = ()
-  if platform == 'linux2':
+  if sys.platform.startswith('linux'):
     platform_flags = ("INFINIT_LINUX",)
-  elif platform == 'win32' or platform == 'cygwin':
+  elif sys.platform == 'win32' or sys.platform == 'cygwin':
     platform_flags = ("INFINIT_WINDOWS",)
-  elif platform == 'darwin':
+  elif sys.platform == 'darwin':
     platform_flags = ("INFINIT_MACOSX", "HAVE_STATFS")
   else:
-    raise Exception("platform {} not supported".format(platform))
+    raise Exception("platform {} not supported".format(sys.platform))
   for flag in platform_flags:
     cxx_config.define(flag)
 
@@ -79,14 +79,35 @@ def configure(cxx_toolkit,
 
   # OpenSSL
   openssl = None
-  if cxx_toolkit.os == drake.os.linux:
-    openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
-                                             prefix = 'dependencies/platforms/linux64/work/')
-  elif cxx_toolkit.os == drake.os.macos:
-    openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
-                                             prefix = 'dependencies/platforms/macosx64/work/')
+
+  architecture = platform.architecture()[0]
+  if architecture == "32bit":
+    architecture_wordsize = 32
+  elif architecture == "64bit":
+    architecture_wordsize = 64
   else:
-    raise Exception("unsupported os")
+    raise Exception("architecture {} not supported".format(architecture))
+
+  if cxx_toolkit.os == drake.os.linux:
+    if architecture_wordsize == 32:
+      openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
+                                               prefix = 'dependencies/platforms/linux32/work/')
+    elif architecture_wordsize == 64:
+      openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
+                                               prefix = 'dependencies/platforms/linux64/work/')
+    else:
+      raise Exception("architecture {} not supported".format(architecture))
+  elif cxx_toolkit.os == drake.os.macos:
+    if architecture_wordsize == 32:
+      openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
+                                               prefix = 'dependencies/platforms/macosx32/work/')
+    elif architecture_wordsize == 64:
+      openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
+                                               prefix = 'dependencies/platforms/macosx64/work/')
+    else:
+      raise Exception("architecture {} not supported".format(architecture))
+  else:
+    raise Exception("operating system {} not supported".format(cxx_toolkit.os))
 
   # Python
   python2 = drake.cxx.find_library('pyconfig.h', python2,
@@ -94,7 +115,8 @@ def configure(cxx_toolkit,
                                                   'include/python2.7m'])
   python3 = drake.cxx.find_library('pyconfig.h', python3,
                                    include_dir = ['include/python3.2',
-                                                  'include/python3.2m'])
+                                                  'include/python3.2m',
+                                                  'include/python3.3m'])
 
   # Elle
   elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost)
@@ -721,6 +743,7 @@ def configure(cxx_toolkit,
   infinit_bin_config.lib_path_runtime('../lib')
   if enable_horizon:
     infinit_bin_config.lib('fuse')
+    infinit_bin_config.lib('pthread')
   infinit_bin = drake.cxx.Executable('bin/8infinit',
                                      drake.nodes('_infinit.cc') + infinit_libs,
                                      cxx_toolkit, infinit_bin_config)
