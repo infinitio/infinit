@@ -29,10 +29,10 @@ class PunchException : public elle::Exception
 {
  public:
   PunchException(elle::String const& message)
-      : Exception(elle::sprintf("punch failed: %s", message))
+    : Exception(elle::sprintf("punch failed: %s", message))
   {}
   PunchException(elle::Exception const& e)
-      : PunchException(e.what())
+    : PunchException(e.what())
   {}
 };
 
@@ -41,36 +41,33 @@ class HeartbeatFailed : public elle::Exception
 {
  public:
   HeartbeatFailed(elle::String const& message)
-      : Exception(elle::sprintf("heartbeat failed: %s", message))
+    : Exception(elle::sprintf("heartbeat failed: %s", message))
   {}
   HeartbeatFailed(elle::Exception const &e)
     : HeartbeatFailed(e.what())
-  {
-  }
+  {}
 };
 
 class PunchTimeout : public PunchException
 {
  public:
   PunchTimeout(elle::String const& message)
-      : PunchException(elle::sprintf("timed out: %s", message))
+    : PunchException(elle::sprintf("timed out: %s", message))
   {}
   PunchTimeout(elle::Exception const &e)
     : PunchTimeout(e.what())
-  {
-  }
+  {}
 };
 
 class PunchFormat : public PunchException
 {
  public:
   PunchFormat(elle::String const& message)
-      : PunchException(elle::sprintf("format error: %s", message))
+    : PunchException(elle::sprintf("format error: %s", message))
   {}
   PunchFormat(elle::Exception const &e)
     : PunchFormat(e.what())
-  {
-  }
+  {}
 };
 
 } /*annon*/
@@ -184,28 +181,38 @@ namespace reactor
     static std::string escape(std::string const& str)
     {
       std::string res("\"");
-      std::for_each(str.begin(), str.end(),
-                     [&res](char c)
-                     {
-                       if (isspace(c))
-                       {
-                         res += '\\';
-                         switch (c)
-                         {
-                           case '\f': res += 'f';  break;
-                           case '\n': res += 'n';  break;
-                           case '\r': res += 'r';  break;
-                           case '\t': res += 't';  break;
-                           case '\v': res += 'v';  break;
-                         }
-                       }
-                       else if (!isgraph(c))
-                       {
-                         res += elle::sprintf("\\x%02x", static_cast<int>(c));
-                       }
-                       else
-                         res += c;
-                     });
+      auto _escape = [&] (char c)
+      {
+        if (isspace(c))
+        {
+          res += '\\';
+          switch (c)
+          {
+          case '\f':
+            res += 'f';
+            break;
+          case '\n':
+            res += 'n';
+            break;
+          case '\r':
+            res += 'r';
+            break;
+          case '\t':
+            res += 't';
+            break;
+          case '\v':
+            res += 'v';
+            break;
+          }
+        }
+        else if (!isgraph(c))
+        {
+          res += elle::sprintf("\\x%02x", static_cast<unsigned char>(c));
+        }
+        else
+          res += c;
+      };
+      std::for_each(str.begin(), str.end(), _escape);
       return res + "\"";
     }
 
@@ -305,19 +312,19 @@ namespace reactor
       ELLE_TRACE("Heartbeating the NAT punching");
       try
       {
-          auto port = this->_public_endpoint.port();
-          auto endpoint = this->_punch(port, this->_udp_socket);
-          if (endpoint.port() != port)
-          {
-              ELLE_WARN("NAT punching was lost");
-              // FIXME: we lost the NAT, do something.
-              return false;
-          }
-          else
-          {
-              ELLE_DEBUG("NAT punching still up");
-              return true;
-          }
+        auto port = this->_public_endpoint.port();
+        auto endpoint = this->_punch(port, this->_udp_socket);
+        if (endpoint.port() != port)
+        {
+            ELLE_WARN("NAT punching was lost");
+            // FIXME: we lost the NAT, do something.
+            return false;
+        }
+        else
+        {
+            ELLE_DEBUG("NAT punching still up");
+            return true;
+        }
       }
       catch (PunchException const &e)
       {
@@ -376,24 +383,29 @@ namespace reactor
               }
             this->_udp_socket = std::move(socket);
             this->_public_endpoint = public_endpoint;
-            this->_heartbeat.reset
-              (new reactor::Thread
-               (this->scheduler(),
+            this->_heartbeat.reset(
+              new reactor::Thread(
+                this->scheduler(),
                 elle::sprintf("%s punch heartbeat", *this),
                 [this] ()
                 {
                   while (true)
+                  {
+                    auto *current_thread = this->scheduler().current();
+
+                    current_thread->sleep(boost::posix_time::seconds(15));
+                    try
                     {
-                      this->scheduler().current()->sleep
-                        (boost::posix_time::seconds(15));
-                      try {
-                        this->_punch_heartbeat();
-                      } catch (HeartbeatFailed const &e)
-                      {
-                        ELLE_WARN("XXX %s", e.what());
-                      }
+                      this->_punch_heartbeat();
                     }
-                }));
+                    catch (HeartbeatFailed const &e)
+                    {
+                      ELLE_WARN("XXX %s", e.what());
+                    }
+                  }
+                }
+              )
+            );
             ELLE_TRACE("checking NAT punching with second longinus")
               {
                 static auto longinus_2 = resolve_udp(this->scheduler(),
