@@ -2,13 +2,17 @@ import drake.cxx
 import drake.cxx.boost
 import drake
 
-import os.path
+import os
 import sys
+
+satellite_path = str(drake.path_src("satellites"))
+satellite_default = [s for s in os.listdir(satellite_path) \
+                     if os.path.isdir(os.path.join(satellite_path, s))]
 
 def configure(cxx_toolkit,
               cxx_config,
               enable_horizon = True,
-              satellites = [],
+              satellites = satellite_default,
               optimization = True,
               prefix = '/usr',
               boost = None,
