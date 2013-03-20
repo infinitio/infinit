@@ -44,6 +44,12 @@ namespace surface
                         e.what(), notif->notification_type);
               continue;
             }
+          catch (...)
+            {
+              ELLE_ERR("Something went really wrong while handling %s",
+                       notif->notification_type);
+              throw;
+            }
           ++count;
         }
 
