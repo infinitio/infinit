@@ -7,3 +7,6 @@
 [submodule "elle"]
 	path = elle
 	url = git@development.infinit.io:elle
+[submodule "documentation/finder-injection/FinderMenu"]
+	path = documentation/finder-injection/FinderMenu
+	url = https://github.com/infinitelabs/FinderMenu.git
