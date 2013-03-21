@@ -65,7 +65,9 @@ class GetBacktrace(Page):
         backtrace = 'backtrace' in self.data and self.data['backtrace'] or []
         env = 'env' in self.data and self.data['env'] or []
         spec = 'spec' in self.data and self.data['spec'] or []
-        more = 'more' in self.data and self.data['more'] or []
+        more = self.data.get('more', [])
+        if not isinstance(more, list):
+            more = [more]
 
         backtrace.reverse()
 
