@@ -8,11 +8,13 @@
 #include <elle/log.hh>
 #include <elle/elle.hh>
 #include <elle/HttpClient.hh>
+#include <CrashReporter.hh>
 
 #include <plasma/meta/Client.hh>
 
 #include <cassert>
 #include <cstdlib>
+#include <fstream>
 #include <string.h>
 #include <unordered_set>
 
@@ -1145,6 +1147,32 @@ extern "C"
 
     (void) ret;
     return nullptr;
+  }
+
+
+  void
+  gap_send_file_crash_report(char const* module,
+                             char const* filename)
+  {
+    std::string file_content = ">>>\n";
+    if (filename != nullptr)
+    {
+      std::ifstream f(filename);
+      std::string line;
+      while (f.good() && !std::getline(f, line).eof())
+        file_content += line + "\n";
+      file_content += "<<< " + std::string{filename} + "\n";
+    }
+    else
+      file_content = "<<< No file was specified!";
+
+
+    elle::crash::report(common::meta::host(),
+                        common::meta::port(),
+                        (module != nullptr ? module : "(nil)"),
+                        "Crash",
+                        elle::Backtrace::current(),
+                        file_content);
   }
 
 } // ! extern "C"

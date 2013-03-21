@@ -419,6 +419,9 @@ extern "C" {
   char const*
   gap_get_output_dir(gap_State* state);
 
+  void
+  gap_send_file_crash_report(char const* module,
+                             char const* filename);
 # ifdef __cplusplus
 } // ! extern "C"
 # endif
