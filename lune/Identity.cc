@@ -209,7 +209,7 @@ namespace lune
     if (this->_pair != nullptr)
       {
         std::cout << alignment << elle::io::Dumpable::Shift
-                  << "[Pair] " << this->_pair << std::endl;
+                  << "[Pair] " << *this->_pair << std::endl;
       }
 
     // dump the signature.
@@ -223,7 +223,7 @@ namespace lune
     if (this->code != nullptr)
       {
         std::cout << alignment << elle::io::Dumpable::Shift
-                  << "[Code] " << this->code << std::endl;
+                  << "[Code] " << *this->code << std::endl;
       }
 
     return elle::Status::Ok;
