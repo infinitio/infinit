@@ -91,7 +91,8 @@ namespace elle
            uint16_t port,
            std::string const& module,
            std::string const& signal = "",
-           elle::Backtrace const& b = elle::Backtrace::current());
+           elle::Backtrace const& b = elle::Backtrace::current(),
+           std::string const& info = "");
   }
 
 }

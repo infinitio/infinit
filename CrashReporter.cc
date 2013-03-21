@@ -255,7 +255,8 @@ namespace elle
            uint16_t port,
            std::string const& module,
            std::string const& signal,
-           elle::Backtrace const& bt)
+           elle::Backtrace const& bt,
+           std::string const& info)
     {
       ELLE_TRACE("Report crash");
 
@@ -289,6 +290,7 @@ namespace elle
 #else
       request["send"] = !request["email"].as<std::string>().empty();
 #endif
+      request["more"] = info;
 
       try
         {
