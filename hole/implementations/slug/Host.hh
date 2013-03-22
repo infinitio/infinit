@@ -48,6 +48,7 @@ namespace hole
         Machine& _machine;
         /// The remote locus.
         ELLE_ATTRIBUTE_R(elle::network::Locus, locus);
+        /// Our own state.
         ELLE_ATTRIBUTE_R(State, state);
         /// Whether the remote host is authenticated.
         ELLE_ATTRIBUTE_R(elle::Boolean, authenticated);
