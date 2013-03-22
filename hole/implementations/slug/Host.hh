@@ -44,14 +44,10 @@ namespace hole
       /*-----------.
       | Attributes |
       `-----------*/
-
-      public:
-        elle::network::Locus locus() const;
-      private:
-        elle::network::Locus _locus;
-
       private:
         Machine& _machine;
+        /// The remote locus.
+        ELLE_ATTRIBUTE_R(elle::network::Locus, locus);
         ELLE_ATTRIBUTE_R(State, state);
         /// Whether the machine itself has been able to authenticated to
         /// the host.

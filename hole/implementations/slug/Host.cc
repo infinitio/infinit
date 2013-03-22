@@ -62,16 +62,6 @@ namespace hole
         _rpcs_handler->terminate_now();
       }
 
-      /*-----------.
-      | Attributes |
-      `-----------*/
-
-      elle::network::Locus
-      Host::locus() const
-      {
-        return this->_locus;
-      }
-
       /*-----.
       | RPCs |
       `-----*/
