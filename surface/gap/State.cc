@@ -250,6 +250,7 @@ namespace surface
 
             rpcs.slug_connect(result[0], std::stoi(result[1]));
 
+            ELLE_DEBUG("slug_wait(%s, %s)", result[0], result[1])
             if (!rpcs.slug_wait(result[0], std::stoi(result[1])))
               throw elle::Exception("unable to connect or authenticate both "
                                     "nodes.");
@@ -272,7 +273,7 @@ namespace surface
                 slug_connect(endpoint);
               }
               catch (elle::Exception const &e) {
-                ELLE_WARN("connection to %s failed", endpoint);
+                ELLE_WARN("slug_connect failed: %s", e.what());
                 return false;
               }
               return true;
