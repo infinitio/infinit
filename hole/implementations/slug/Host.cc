@@ -37,10 +37,11 @@ namespace hole
       Host::Host(Machine& machine,
                  elle::network::Locus const& locus,
                  std::unique_ptr<reactor::network::Socket> socket)
-        : _locus(locus)
-        , _machine(machine)
+        : _machine(machine)
+        , _locus(locus)
         , _state(State::connected)
         , _authenticated(false)
+        , _remote_passport(nullptr)
         , _socket(std::move(socket))
         , _serializer(infinit::scheduler(), *_socket)
         , _channels(infinit::scheduler(), _serializer)
@@ -140,7 +141,10 @@ namespace hole
           this->authenticate(this->_machine.hole().passport());
         // If we're authenticated, validate this host.
         if (this->_state == State::authenticated)
+        {
+          this->_remote_passport.reset(new elle::Passport{passport});
           this->_machine._host_register(this);
+        }
         portal_host_authenticated(this->_locus);
         // Send back all the hosts we know.
         return this->_machine.loci();

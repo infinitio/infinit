@@ -52,9 +52,15 @@ namespace hole
         ELLE_ATTRIBUTE_R(State, state);
         /// Whether the remote host is authenticated.
         ELLE_ATTRIBUTE_R(elle::Boolean, authenticated);
+        std::unique_ptr<elle::Passport> _remote_passport;
         std::unique_ptr<reactor::network::Socket> _socket;
         infinit::protocol::Serializer _serializer;
         infinit::protocol::ChanneledStream _channels;
+
+      public:
+        inline
+        elle::Passport const &
+        remote_passport() const;
       /*----.
       | RPC |
       `----*/
@@ -107,5 +113,7 @@ namespace hole
     }
   }
 }
+
+#include <hole/implementations/slug/Host.hxx>
 
 #endif
