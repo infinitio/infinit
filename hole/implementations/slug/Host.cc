@@ -114,10 +114,11 @@ namespace hole
       std::vector<elle::network::Locus>
       Host::authenticate(elle::Passport const& passport)
       {
+        assert(this->state() == State::connected);
         ELLE_TRACE_SCOPE("%s: authenticate with %s", *this, passport);
-        _state = State::authenticating;
+        this->_state = State::authenticating;
         auto res = _rpcs.authenticate(passport);
-        this->_authenticated = true;
+        this->_state = State::authenticated;
         portal_machine_authenticated(this->_locus);
         return (res);
       }
@@ -133,16 +134,16 @@ namespace hole
         if (!passport.validate(this->_machine.hole().authority()))
           throw reactor::Exception("unable to validate the passport");
         else
-          _state = State::authenticated;
-
-        portal_host_authenticated(this->_locus);
-
+          this->_authenticated = true;
         // Also authenticate to this host if we're not already doing so.
         if (this->_state == State::connected)
-          authenticate(this->_machine.hole().passport());
-
+          this->authenticate(this->_machine.hole().passport());
+        // If we're authenticated, validate this host.
+        if (this->_state == State::authenticated)
+          this->_machine._host_register(this);
+        portal_host_authenticated(this->_locus);
         // Send back all the hosts we know.
-        return _machine.loci();
+        return this->_machine.loci();
       }
 
       void

@@ -175,6 +175,8 @@ namespace hole
       Machine::_connect(std::unique_ptr<reactor::network::Socket> socket,
                         elle::network::Locus const& locus, bool opener)
       {
+        // Beware: do not yield between the host creation and the
+        // authentication, or we might face a race condition.
         std::unique_ptr<Host> host(new Host(*this, locus, std::move(socket)));
         ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
         auto loci = host->authenticate(this->_hole.passport());
@@ -187,8 +189,16 @@ namespace hole
         // for (auto locus: loci)
         //   if (_hosts.find(locus) == _hosts.end())
         //     _connect_try(locus);
+        if (host->authenticated())
+          // If the remote machine has authenticated, validate this host.
+          this->_host_register(host.release());
+      }
+
+      void
+      Machine::_host_register(Host* host)
+      {
         ELLE_LOG("%s: add host: %s", *this, *host);
-        _hosts[locus] = host.release();
+        _hosts[host->locus()] = host;
       }
 
       void

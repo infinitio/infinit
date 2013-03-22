@@ -76,13 +76,17 @@ namespace hole
       private:
         friend class Host;
         typedef std::unordered_map<elle::network::Locus, Host*> Hosts;
-        Hosts _hosts;
-        void _connect(elle::network::Locus const& locus);
-        void _connect(std::unique_ptr<reactor::network::Socket> socket,
-                      elle::network::Locus const& locus, bool opener);
+        void
+        _host_register(Host* host);
+        void
+        _connect(elle::network::Locus const& locus);
+        void
+        _connect(std::unique_ptr<reactor::network::Socket> socket,
+                 elle::network::Locus const& locus, bool opener);
         void
         _connect_try(elle::network::Locus const& locus);
         void _remove(Host* host);
+        Hosts _hosts;
 
       /*-------.
       | Server |
