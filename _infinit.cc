@@ -38,7 +38,7 @@ log_destination()
 {
   if (auto env = ::getenv("INFINIT_LOG_FILE"))
     {
-      static std::ofstream res(env, std::fstream::app | std::fstream::out);
+      static std::ofstream res(env, std::fstream::trunc | std::fstream::out);
       return res;
     }
   else
