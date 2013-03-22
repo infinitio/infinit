@@ -47,7 +47,7 @@ class Search(Page):
                 {
                     '$or' : [
                         {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
-#                        {'email' : {'$regex' : '^%s' % text, '$options': 'i'}},
+                       {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
                         ],
                     'register_status':'ok',
                 },
@@ -394,6 +394,8 @@ class Register(Page):
 
         user = self.data
 
+        user['email'] = user['email'].lower()
+
         if database.users().find_one({
             'accounts': [{ 'type': 'email', 'id':user['email']}],
             'register_status': 'ok',
@@ -485,6 +487,7 @@ class Login(Page):
             return self.error(status)
 
         loggin_info = self.data
+        loggin_info['email']= loggin_info['email'].lower()
 
         if self.authenticate(loggin_info['email'], loggin_info['password']):
             return self.success({

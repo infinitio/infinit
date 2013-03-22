@@ -86,7 +86,7 @@ class Create(Page):
 
         message = 'message' in self.data and self.data['message'] or ""
 
-        id_or_email = self.data['recipient_id_or_email'].strip()
+        id_or_email = self.data['recipient_id_or_email'].strip().lower()
         first_filename = self.data['first_filename'].strip()
         network_id = self.data['network_id'].strip()
         device_id = self.data['device_id'].strip()
