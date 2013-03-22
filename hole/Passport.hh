@@ -53,6 +53,8 @@ namespace elle
     /// Passport is fileable.
     ELLE_CONCEPT_FILEABLE_METHODS();
 
+    bool operator == (Passport const&) const;
+
   private:
     ELLE_SERIALIZE_FRIEND_FOR(Passport);
   };
