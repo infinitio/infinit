@@ -77,69 +77,73 @@ namespace hole
       reactor::Signal _host_wait("host wait");
 
       // XXX[very simple version where we assume there is a single node to
-      //     which we will connect. otherwise, one would need to loop until...]
-      elle::network::Locus* _locus = nullptr;
+      //     which we will connect. Otherwise, one would need to loop until...]
+      std::set<elle::network::Locus>       _loci;
       bool
       Machine::portal_wait(std::string const& host, int port)
       {
         ELLE_TRACE_FUNCTION(host, port);
 
-        _locus = new elle::network::Locus(host, port);
+        bool inserted;
+        auto locus = end(_loci);
+        std::tie(locus, inserted) =
+          _loci.insert(elle::network::Locus{host, port});
 
         ELLE_TRACE("checking if the host '%s' is present and has been "
-                   "authenticated", *_locus);
+                   "authenticated", *locus);
 
         // Look for the given host in the list of hosts and
         // make sure it has been authenticated.
-        auto i = this->_hosts.find(*_locus);
+        auto i = this->_hosts.find(*locus);
         if ((i == this->_hosts.end()) ||
             (i->second->state() != Host::State::authenticated))
-          {
-            ELLE_TRACE("waiting for the host '%s' to authenticate",
-                       *_locus);
+        {
+          ELLE_TRACE("waiting for the host '%s' to authenticate",
+                     *locus);
 
-            // Wait for a new host to be authenticated.
-            infinit::scheduler().current()->wait(
-              _host_wait,
-              boost::posix_time::seconds(10));
-          }
+          // Wait for a new host to be authenticated.
+          infinit::scheduler().current()->wait(_host_wait,
+                                               boost::posix_time::seconds(10));
+        }
 
         ELLE_TRACE("now checking if the machine has also been authenticated "
                    "by the host");
 
         // Look for the given host in the list of hosts and
         // make sure the machine has been able to authenticate to the host.
-        auto j = this->_hosts.find(*_locus);
+        auto j = this->_hosts.find(*locus);
         if ((j == this->_hosts.end()) ||
             (j->second->authenticated() == false))
-          {
-            ELLE_TRACE("waiting for the machine to authenticate to host '%s'",
-                       *_locus);
+        {
+          ELLE_TRACE("waiting for the machine to authenticate to host '%s'",
+                     *locus);
 
-            // Wait for the machine to be authenticated by the host as well.
-            infinit::scheduler().current()->wait(
-              _machine_wait,
-              boost::posix_time::seconds(10));
-          }
+          // Wait for the machine to be authenticated by the host as well.
+          infinit::scheduler().current()->wait(_machine_wait,
+                                               boost::posix_time::seconds(10));
+        }
 
         ELLE_TRACE("both the machine and the host have been authenticated");
 
+        _loci.erase(locus);
         return (true);
       }
 
       void
       portal_machine_authenticated(elle::network::Locus const& locus)
       {
-        if ((_locus != nullptr) &&
-            (*_locus == locus))
+        int n = _loci.count(locus);
+
+        if (n != 0)
           _machine_wait.signal();
       }
 
       void
       portal_host_authenticated(elle::network::Locus const& locus)
       {
-        if ((_locus != nullptr) &&
-            (*_locus == locus))
+        int n = _loci.count(locus);
+
+        if (n != 0)
           _host_wait.signal();
       }
 
@@ -181,11 +185,11 @@ namespace hole
         ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
         auto loci = host->authenticate(this->_hole.passport());
         if (this->_state == State::detached)
-          {
-            this->_state = State::attached;
-            this->_hole.ready();
-          }
-        // XXX Progation disabled.
+        {
+          this->_state = State::attached;
+          this->_hole.ready();
+        }
+        // XXX Propagation disabled.
         // for (auto locus: loci)
         //   if (_hosts.find(locus) == _hosts.end())
         //     _connect_try(locus);
@@ -197,6 +201,19 @@ namespace hole
       void
       Machine::_host_register(Host* host)
       {
+        auto select_host = [&] (std::pair<elle::network::Locus, Host*> const& p)
+        {
+          Host const* h = p.second;
+          elle::Passport const &p1 = h->remote_passport();
+          elle::Passport const &p2 = host->remote_passport();
+
+          return p1 == p2;
+        };
+
+        auto it = std::find_if(begin(_hosts), end(_hosts), select_host);
+        if (it != end(_hosts))
+          ELLE_WARN("ALREADY SOMEONE");
+
         ELLE_LOG("%s: add host: %s", *this, *host);
         _hosts[host->locus()] = host;
       }
