@@ -11,6 +11,7 @@
 # include <elle/Printable.hh>
 
 # include <protocol/fwd.hh>
+# include <reactor/thread.hh>
 
 namespace infinit
 {
@@ -109,6 +110,9 @@ namespace infinit
       typedef std::unordered_map<uint32_t, NamedProcedure> Procedures;
       Procedures _procedures;
       std::vector<BaseRPC*> _rpcs;
+      typedef std::unique_ptr<reactor::Thread> ThreadPtr;
+      typedef std::pair<ThreadPtr, std::exception_ptr> RunningCall;
+      std::vector<std::shared_ptr<RunningCall>> _threads;
 
     /*----------.
     | Printable |
