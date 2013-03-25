@@ -169,10 +169,7 @@ namespace surface
 
       ELLE_DEBUG("Logged in as %s token = %s", email, res.token);
 
-      this->_me._id = res._id;
-      this->_me.fullname = res.fullname;
-      this->_me.email = res.email;
-      this->_me.public_key = "";
+      this->_me = this->_meta->self();
 
       ELLE_DEBUG("id: '%s' - fullname: '%s' - lower_email: '%s'.",
                  this->_me._id,
