@@ -36,7 +36,8 @@ def show_status(state, transaction, new):
     print("trasaction status changed to", state.transaction_status(transaction))
 
 def on_started(state, transaction, new):
-    state.current_transaction_id = transaction
+    if state.transaction_status(transaction) == state.TransactionStatus.started:
+        state.current_transaction_id = transaction
 
 def on_canceled(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.canceled:
