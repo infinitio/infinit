@@ -317,8 +317,7 @@ namespace infinit
     template <typename R,
               typename ... Args>
     RPC<IS, OS>::RemoteProcedure<R, Args...>
-    RPC<IS, OS>::
-    add(boost::function<R (Args...)> const& f)
+    RPC<IS, OS>::add(boost::function<R (Args...)> const& f)
     {
       uint32_t id = _id++;
       typedef Procedure<IS, OS, R, Args...> Proc;
@@ -341,16 +340,14 @@ namespace infinit
 
     template <typename IS,
               typename OS>
-    RPC<IS, OS>::
-    RPC(ChanneledStream& channels):
+    RPC<IS, OS>::RPC(ChanneledStream& channels):
       BaseRPC(channels)
     {}
 
     template <typename IS,
               typename OS>
     void
-    RPC<IS, OS>::
-    run()
+    RPC<IS, OS>::run()
     {
       ELLE_LOG_COMPONENT("infinit.protocol.RPC");
 
@@ -427,8 +424,7 @@ namespace infinit
     template <typename IS,
               typename OS>
     void
-    RPC<IS, OS>::
-    add(BaseRPC& rpc)
+    RPC<IS, OS>::add(BaseRPC& rpc)
     {
       _rpcs.push_back(&rpc);
     }
@@ -436,8 +432,7 @@ namespace infinit
     template <typename IS,
               typename OS>
     void
-    RPC<IS, OS>::
-    print(std::ostream& stream) const
+    RPC<IS, OS>::print(std::ostream& stream) const
     {
       // FIXME: mitigate
       stream << "RPC pool";
