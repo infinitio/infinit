@@ -128,8 +128,13 @@ namespace hole
       {
         ELLE_TRACE_SCOPE("%s: peer authenticates with %s", *this, passport);
 
-        assert(this->_state == State::connected
-               || this->_state == State::authenticating);
+        if (this->_state == State::authenticated)
+        {
+            ELLE_DEBUG("already authenticated");
+            // XXX is this required ?
+            this->_machine._host_register(this);
+            return this->_machine.loci();
+        }
 
         if (!passport.validate(this->_machine.hole().authority()))
           throw reactor::Exception("unable to validate the passport");

@@ -85,6 +85,7 @@ namespace hole
         _connect_try(elle::network::Locus const& locus);
         void _remove(Host* host);
         Hosts _hosts;
+        Hosts _pending;
 
         reactor::Signal _new_host{"new host"};
 

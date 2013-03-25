@@ -98,23 +98,23 @@ namespace hole
           auto it = _hosts.find(locus);
           if (it != end(_hosts))
           {
-            //// Check if this is the second host with the same passport
-            //elle::Passport const& pass = it->second->remote_passport();
+            // Check if this is the second host with the same passport
+            elle::Passport const& pass = it->second->remote_passport();
 
-            //ELLE_DEBUG("passport: %s", pass);
+            ELLE_DEBUG("passport: %s", pass);
 
-            //// We compare each passport with the one of the host.
-            //// If there is only one host with this passport, n shall be 1
-            //int n = 0;
-            //for (auto const& p: _hosts)
-            //{
-            //  ELLE_DEBUG("value of n: %d", n);
-            //  if (p.second->remote_passport() == pass)
-            //    n++;
-            //  // Stop iteration if we know that the host is forbidden.
-            //  if (n > 1)
-            //    return false;
-            //}
+            // We compare each passport with the one of the host.
+            // If there is only one host with this passport, n shall be 1
+            int n = 0;
+            for (auto const& p: _hosts)
+            {
+              ELLE_DEBUG("value of n: %d", n);
+              if (p.second->remote_passport() == pass)
+                n++;
+              // Stop iteration if we know that the host is forbidden.
+              if (n > 1)
+                return false;
+            }
             ELLE_DEBUG("%s found", locus);
             return true;
           }
@@ -159,7 +159,8 @@ namespace hole
       {
         // Beware: do not yield between the host creation and the
         // authentication, or we might face a race condition.
-        std::unique_ptr<Host> host(new Host(*this, locus, std::move(socket)));
+        Host* host = new Host(*this, locus, std::move(socket));
+        // XXX: leak
         ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
         auto loci = host->authenticate(this->_hole.passport());
         if (this->_state == State::detached)
@@ -173,13 +174,14 @@ namespace hole
         //     _connect_try(locus);
         if (host->authenticated())
           // If the remote machine has authenticated, validate this host.
-          this->_host_register(host.release());
+          this->_host_register(host);
       }
 
       void
       Machine::_host_register(Host* host)
       {
         ELLE_LOG("%s: add host: %s", *this, *host);
+        // the next line is broken
         host->remote_passport(this->_hole.passport());
         _hosts[host->locus()] = host;
         this->_new_host.signal();
@@ -396,53 +398,65 @@ namespace hole
       Machine::_accept()
       {
         while (true)
-          {
-            std::unique_ptr<reactor::network::Socket> socket(_server->accept());
+        {
+          std::unique_ptr<reactor::network::Socket> socket(_server->accept());
 
-            ELLE_TRACE_SCOPE("accept connection from %s",
-                             socket->remote_locus());
+          ELLE_TRACE_SCOPE("accept connection from %s",
+                           socket->remote_locus());
 
 #ifdef CACHE
-            {
-              // We need to clear cached blocks whenever a node joins the
-              // network.
-              //
-              // Indeed, assuming the block B is in cache at revision 4
-              // and considering the new node actually as a newer revision
-              // of the block, say 5.
-              //
-              // By clearing the cache, the system will make sure to ask
-              // the peers for the latest revision of the block. Without it,
-              // the block revision 5 would still be used.
-              //
-              // @see hole::backends::fs::MutableBlock::derives()
-              // XXX this should be done once the host is authenticated.
-              ELLE_LOG_COMPONENT("infinit.hole.slug.cache");
-              ELLE_TRACE("cleaning the cache");
-              cache.clear();
-            }
+          {
+            // We need to clear cached blocks whenever a node joins the
+            // network.
+            //
+            // Indeed, assuming the block B is in cache at revision 4
+            // and considering the new node actually as a newer revision
+            // of the block, say 5.
+            //
+            // By clearing the cache, the system will make sure to ask
+            // the peers for the latest revision of the block. Without it,
+            // the block revision 5 would still be used.
+            //
+            // @see hole::backends::fs::MutableBlock::derives()
+            // XXX this should be done once the host is authenticated.
+            ELLE_LOG_COMPONENT("infinit.hole.slug.cache");
+            ELLE_TRACE("cleaning the cache");
+            cache.clear();
+          }
 #endif
 
-            // Depending on the machine's state.
-            switch (this->_state)
+          // Depending on the machine's state.
+          switch (this->_state)
+          {
+            case State::attached:
               {
-                case State::attached:
-                {
-                  // FIXME: handling via loci is very wrong. IPs are
-                  // not uniques, and this reconstruction is lame and
-                  // non-injective.
-                  auto locus = socket->remote_locus();
-                  _connect(std::move(socket), locus, false);
-                  break;
-                }
-                default:
-                {
-                  // FIXME: Why not listening only when we're attached ?
-                  ELLE_TRACE("not attached, ignore %s", socket->remote_locus());
-                  break;
-                }
+                // FIXME: handling via loci is very wrong. IPs are
+                // not uniques, and this reconstruction is lame and
+                // non-injective.
+                auto locus = socket->remote_locus();
+                reactor::network::Socket* s = socket.release();
+                reactor::Thread *t =
+                  new reactor::Thread(
+                    *reactor::Scheduler::scheduler(),
+                     elle::sprintf("connect"),
+                     [this, s, locus] {
+                       _connect(
+                         std::move(std::unique_ptr<reactor::network::Socket>(s)),
+                         locus,
+                         false
+                       );
+                     }
+                  );
+                break;
+              }
+            default:
+              {
+                // FIXME: Why not listening only when we're attached ?
+                ELLE_TRACE("not attached, ignore %s", socket->remote_locus());
+                break;
               }
           }
+        }
       }
 
       /*----.
