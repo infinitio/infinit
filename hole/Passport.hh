@@ -2,6 +2,7 @@
 # define ELLE_PASSPORT_HH
 
 # include <elle/attribute.hh>
+# include <elle/Printable.hh>
 # include <elle/concept/Fileable.hh>
 # include <elle/concept/Uniquable.hh>
 # include <elle/serialize/construct.hh>
@@ -22,7 +23,8 @@ namespace elle
   ///
   class Passport:
     public elle::concept::MakeFileable<Passport>,
-    public elle::concept::MakeUniquable<Passport>
+    public elle::concept::MakeUniquable<Passport>,
+    public elle::Printable
   {
   private:
     ELLE_ATTRIBUTE_R(elle::String, id);
@@ -52,6 +54,9 @@ namespace elle
 
     /// Passport is fileable.
     ELLE_CONCEPT_FILEABLE_METHODS();
+
+    void
+    print(std::ostream& stream) const;
 
     bool operator == (Passport const&) const;
 

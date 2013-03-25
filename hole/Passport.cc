@@ -66,6 +66,17 @@ namespace elle
     std::cout << alignment << elle::io::Dumpable::Shift
               << "[Signature] " << this->_signature << std::endl;
   }
+
+
+  void
+  Passport::print(std::ostream& stream) const
+  {
+      elle::io::Unique u;
+
+      this->Save(u);
+      stream << u;
+  }
+
   bool
   Passport::operator ==(Passport const& passport) const
   {
