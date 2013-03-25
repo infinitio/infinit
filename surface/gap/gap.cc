@@ -528,6 +528,22 @@ extern "C"
     return nullptr;
   }
 
+  /// Get current user remaining invitations.
+  int
+  gap_self_remaining_invitations(gap_State* state)
+  {
+    assert(state != nullptr);
+    gap_Status ret;
+    try
+      {
+        return __TO_CPP(state)->me().remaining_invitations;
+      }
+    CATCH_ALL(user_remaining_invitations);
+
+    (void) ret;
+    return 0;
+  }
+
   /// - User ----------------------------------------------------------------
 
   char const* gap_user_fullname(gap_State* state, char const* id)

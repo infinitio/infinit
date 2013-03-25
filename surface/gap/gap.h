@@ -314,6 +314,10 @@ extern "C" {
   char const*
   gap_self_id(gap_State* state);
 
+  /// Get current user remaining invitations.
+  int
+  gap_self_remaining_invitations(gap_State* state);
+
   /// - User ------------------------------------------------------------------
 
   /// Retrieve user fullname.

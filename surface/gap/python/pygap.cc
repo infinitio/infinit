@@ -295,6 +295,7 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("user_handle", &gap_user_handle, by_value());
   py::def("_id", &gap_self_id, by_value());
   py::def("email", &gap_self_email, by_value());
+  py::def("remaining_invitations", &gap_self_remaining_invitations);
   py::def("search_users", &_search_users);
   py::def("get_swaggers", &_get_swaggers);
 

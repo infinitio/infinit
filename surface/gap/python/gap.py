@@ -44,6 +44,7 @@ class State:
             'user_fullname',
             'user_handle',
             'email',
+            'remaining_invitations',
 
             # Networks.
             'create_network',
