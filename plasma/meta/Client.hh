@@ -116,6 +116,7 @@ namespace plasma
     {
       string identity;
       string email;
+      int remaining_invitations;
     };
 
     struct InviteUserResponse : Response
@@ -147,6 +148,7 @@ namespace plasma
     struct CreateTransactionResponse : Response
     {
       string created_transaction_id;
+      int remaining_invitations;
     };
 
     struct UpdateTransactionResponse : Response

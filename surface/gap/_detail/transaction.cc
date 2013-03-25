@@ -136,6 +136,7 @@ namespace surface
                                                 fs::is_directory(first_filename),
                                                 network_id,
                                                 this->device_id());
+          this->_me.remaining_invitations = res.remaining_invitations;
 
           elle::metrics::reporter().store(
             "transaction:create:succeed",

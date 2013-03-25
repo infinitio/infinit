@@ -102,6 +102,7 @@ SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
   ar & named("email", res.email);
   ar & named("public_key", res.public_key);
   ar & named("identity", res.identity);
+  ar & named("remaining_invitations",  res.remaining_invitations);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UsersResponse, ar, res)
@@ -159,6 +160,7 @@ SERIALIZE_RESPONSE(plasma::meta::TransactionsResponse, ar, res)
 SERIALIZE_RESPONSE(plasma::meta::CreateTransactionResponse, ar, res)
 {
   ar & named("created_transaction_id", res.created_transaction_id);
+  ar & named("remaining_invitations",  res.remaining_invitations);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UpdateTransactionResponse, ar, res)
