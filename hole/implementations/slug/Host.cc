@@ -120,7 +120,6 @@ namespace hole
         this->_state = State::authenticating;
         auto res = _rpcs.authenticate(passport);
         this->_state = State::authenticated;
-        portal_machine_authenticated(this->_locus);
         return (res);
       }
 
@@ -141,11 +140,7 @@ namespace hole
           this->authenticate(this->_machine.hole().passport());
         // If we're authenticated, validate this host.
         if (this->_state == State::authenticated)
-        {
-          this->_remote_passport.reset(new elle::Passport{passport});
           this->_machine._host_register(this);
-        }
-        portal_host_authenticated(this->_locus);
         // Send back all the hosts we know.
         return this->_machine.loci();
       }

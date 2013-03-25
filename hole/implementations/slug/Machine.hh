@@ -31,8 +31,6 @@ namespace hole
     {
       void portal_connect(std::string const& host, int port);
       bool portal_wait(std::string const& host, int port);
-      void portal_host_authenticated(elle::network::Locus const& locus);
-      void portal_machine_authenticated(elle::network::Locus const& locus);
 
       ///
       /// XXX represents the current host
@@ -87,6 +85,8 @@ namespace hole
         _connect_try(elle::network::Locus const& locus);
         void _remove(Host* host);
         Hosts _hosts;
+
+        reactor::Signal _new_host{"new host"};
 
       /*-------.
       | Server |

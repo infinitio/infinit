@@ -73,81 +73,59 @@ namespace hole
         return (machine->portal_wait(host, port));
       }
 
-      reactor::Signal _machine_wait("machine wait");
-      reactor::Signal _host_wait("host wait");
-
-      // XXX[very simple version where we assume there is a single node to
-      //     which we will connect. Otherwise, one would need to loop until...]
-      std::set<elle::network::Locus>       _loci;
       bool
       Machine::portal_wait(std::string const& host, int port)
       {
         ELLE_TRACE_FUNCTION(host, port);
 
-        bool inserted;
-        auto locus = end(_loci);
-        std::tie(locus, inserted) =
-          _loci.insert(elle::network::Locus{host, port});
-
+        elle::network::Locus locus{host, port};
         ELLE_TRACE("checking if the host '%s' is present and has been "
-                   "authenticated", *locus);
+                   "authenticated", locus);
 
-        // Look for the given host in the list of hosts and
-        // make sure it has been authenticated.
-        auto i = this->_hosts.find(*locus);
-        if ((i == this->_hosts.end()) ||
-            (i->second->state() != Host::State::authenticated))
+        // Wait for host to be in the list
+        ELLE_DEBUG("active wait for %s", locus)
+        for (unsigned int max_tries = 10;
+             max_tries != 0;
+             max_tries--)
         {
-          ELLE_TRACE("waiting for the host '%s' to authenticate",
-                     *locus);
+          infinit::scheduler().current()->wait(this->_new_host,
+                                               boost::posix_time::seconds(1));
+          ELLE_DEBUG("(%s) resume from wait. number of hosts: %d ", locus, _hosts.size())
+          for (auto const &p: _hosts)
+          {
+            ELLE_DEBUG("-- %s:%s", p.first, p.second);
+          }
+          auto it = _hosts.find(locus);
+          if (it != end(_hosts))
+          {
+            //// Check if this is the second host with the same passport
+            //elle::Passport const& pass = it->second->remote_passport();
 
-          // Wait for a new host to be authenticated.
-          infinit::scheduler().current()->wait(_host_wait,
-                                               boost::posix_time::seconds(10));
+            //ELLE_DEBUG("passport: %s", pass);
+
+            //// We compare each passport with the one of the host.
+            //// If there is only one host with this passport, n shall be 1
+            //int n = 0;
+            //for (auto const& p: _hosts)
+            //{
+            //  ELLE_DEBUG("value of n: %d", n);
+            //  if (p.second->remote_passport() == pass)
+            //    n++;
+            //  // Stop iteration if we know that the host is forbidden.
+            //  if (n > 1)
+            //    return false;
+            //}
+            ELLE_DEBUG("%s found", locus);
+            return true;
+          }
+          else
+          {
+            ELLE_DEBUG("not yet..");
+          }
         }
 
-        ELLE_TRACE("now checking if the machine has also been authenticated "
-                   "by the host");
-
-        // Look for the given host in the list of hosts and
-        // make sure the machine has been able to authenticate to the host.
-        auto j = this->_hosts.find(*locus);
-        if ((j == this->_hosts.end()) ||
-            (j->second->authenticated() == false))
-        {
-          ELLE_TRACE("waiting for the machine to authenticate to host '%s'",
-                     *locus);
-
-          // Wait for the machine to be authenticated by the host as well.
-          infinit::scheduler().current()->wait(_machine_wait,
-                                               boost::posix_time::seconds(10));
-        }
-
-        ELLE_TRACE("both the machine and the host have been authenticated");
-
-        _loci.erase(locus);
-        return (true);
+        return false;
       }
-
-      void
-      portal_machine_authenticated(elle::network::Locus const& locus)
-      {
-        int n = _loci.count(locus);
-
-        if (n != 0)
-          _machine_wait.signal();
-      }
-
-      void
-      portal_host_authenticated(elle::network::Locus const& locus)
-      {
-        int n = _loci.count(locus);
-
-        if (n != 0)
-          _host_wait.signal();
-      }
-
-      // FIXME
 
       /*----------.
       | Variables |
@@ -201,21 +179,10 @@ namespace hole
       void
       Machine::_host_register(Host* host)
       {
-        auto select_host = [&] (std::pair<elle::network::Locus, Host*> const& p)
-        {
-          Host const* h = p.second;
-          elle::Passport const &p1 = h->remote_passport();
-          elle::Passport const &p2 = host->remote_passport();
-
-          return p1 == p2;
-        };
-
-        auto it = std::find_if(begin(_hosts), end(_hosts), select_host);
-        if (it != end(_hosts))
-          ELLE_WARN("ALREADY SOMEONE");
-
         ELLE_LOG("%s: add host: %s", *this, *host);
+        host->remote_passport(this->_hole.passport());
         _hosts[host->locus()] = host;
+        this->_new_host.signal();
       }
 
       void
