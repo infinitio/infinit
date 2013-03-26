@@ -101,6 +101,7 @@ def configure(cxx_toolkit,
   else:
     raise Exception("operating system {} not supported".format(cxx_toolkit.os))
 
+  cxx_config += openssl.config()
 
   openssl_lib = drake.copy(
     drake.nodes(
@@ -110,6 +111,8 @@ def configure(cxx_toolkit,
     "lib",
     openssl.libraries_path
   )
+
+
 
   # Python
   python2 = drake.cxx.find_library('pyconfig.h', python2,
@@ -1023,3 +1026,7 @@ def configure(cxx_toolkit,
                                     cxx_toolkit, tests_cxx_config)
 
     tests << test_bin
+
+
+
+# vim: set sw=2 ts=2 sts=2 expandtab:
