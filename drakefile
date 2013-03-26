@@ -101,6 +101,16 @@ def configure(cxx_toolkit,
   else:
     raise Exception("operating system {} not supported".format(cxx_toolkit.os))
 
+
+  openssl_lib = drake.copy(
+    drake.nodes(
+      openssl.libraries_path / "libssl.so",
+      openssl.libraries_path / "libcrypto.so",
+    ),
+    "lib",
+    openssl.libraries_path
+  )
+
   # Python
   python2 = drake.cxx.find_library('pyconfig.h', python2,
                                    include_dir = ['include/python2.7',
@@ -715,7 +725,8 @@ def configure(cxx_toolkit,
     reactor_lib,
     elle_lib,
     metrics_lib,
-    ]
+  ] + openssl_lib
+
   if enable_horizon:
     infinit_libs.append(horizon_slib)
   udt_libs = [asio_udt_lib, udt_lib]
