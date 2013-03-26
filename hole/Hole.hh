@@ -55,15 +55,6 @@ namespace hole
     void
     _leave() = 0;
 
-  /*----------.
-  | Utilities |
-  `----------*/
-  public:
-    /// Whether the given block conflicts with the one stored locally.
-    bool
-    conflict(nucleus::proton::Address const& address,
-             nucleus::proton::MutableBlock const& block) const;
-
   /*--------.
   | Storage |
   `--------*/
