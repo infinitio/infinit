@@ -109,6 +109,12 @@ def to_add(lib):
             "libunwind",
             "libxpc",
             "libfuse4x",
+            "libcurl",
+            "libidn",
+            "libssh2",
+            "liblber",
+            "libldap_r",
+            "libgssapi",
         ]
     }
     if 'linux' in sys.platform.lower():
@@ -118,6 +124,7 @@ def to_add(lib):
 
     patterns_include = {
         'startswith': [
+            "/root/infinit/",
         ],
         'contains': [
             "libetoile.",
@@ -233,7 +240,10 @@ def fill_dependencies(dependencies, binary_path, kind, indent=1):
     node['is_binary'] = is_binary(binary_path)
     if not node['is_binary']:
         return
-    for dependency in get_binary_dependencies(binary_path):
+    from pprint import pprint
+    l_dep = list(get_binary_dependencies(binary_path))
+    pprint(l_dep)
+    for dependency in l_dep:
         if '@executable_path' in dependency:
             continue
         print('-'*indent + '> dep', dependency)
@@ -250,95 +260,50 @@ infinit_files = [
     ("bin/8infinit", "bin"),
     ("bin/8access", "bin"),
     ("bin/8group", "bin"),
-    ("bin/8chmod", "bin"),
     ("bin/infinit-cli", "bin"),
     ("lib/libgap." + LIBRARY_EXT, "lib"),
     ("lib/python/_gap.so", "python"),
     ("lib/python/gap.py", "python"),
 ]
 
-dependencies = {}
-for src_rel, kind in infinit_files:
-    src = os.path.join(DIR_BUILD, src_rel)
-    fill_dependencies(dependencies, src, kind)
-
-for src, node in dependencies.items():
-    dst_dir = os.path.join(DIR_INSTALL_CLIENT, node['kind'])
-    if not os.path.exists(dst_dir):
-        os.makedirs(dst_dir)
-    dst = os.path.join(DIR_INSTALL_CLIENT, node['kind'], os.path.basename(src))
-    shutil.copy(src, dst)
-    if not node['is_binary']:
-        continue
-    os.chmod(dst, stat.S_IRWXU)
-    if not DEBUG:
-        print("Strip", dst)
-        cmd('strip', '-S', dst)
-    else:
-        print("DO NOT STRIP", dst)
-    patch_binary(dst, DIR_INSTALL_CLIENT_LIB)
-    for child in node['childs']:
-        patch_binary_for(
-            dst,
-            child,
-            real_dependency_path=os.path.join(
-                DIR_INSTALL_CLIENT_LIB,
-                os.path.basename(child)
-            )
-        )
-
-infinit_app = os.path.join(DIR_BUILD, "surface/macosx/Infinit.app")
-if os.path.exists(infinit_app):
-    #shutil.copytree(
-    #    "/Library/Extensions/fuse4x.kext",
-    #    os.path.join(DIR_INSTALL_CLIENT_LIB, "fuse4x.kext")
-    #)
-    patch_binary_for(os.path.join(DIR_INSTALL_CLIENT_LIB, "libgap.dylib"), "/opt/local/lib/libfuse4x.2.dylib")
-    dst_app = os.path.join(DIR_INSTALL_CLIENT, os.path.basename(infinit_app))
-
-    shutil.copytree(infinit_app, dst_app, symlinks=True)
-
-    phone_lib = os.path.join(
-        dst_app,
-        "Contents/Frameworks/Phone.framework/Versions/A/Phone",
-    )
-    rel_gap_lib = os.path.join(DIR_INSTALL_CLIENT, "Infinit.app/Contents/Resources/lib", "libgap.dylib")
-    gap_lib = os.path.join(DIR_BUILD, "surface/gap/libgap.dylib")
-    patch_binary_for(phone_lib, gap_lib, real_dependency_path=rel_gap_lib)
-
-
-print("Prepare the manifest")
-cmd(os.path.join(DIR_SOURCE,'farm/make_manifest'), DIR_INSTALL_CLIENT, major, minor, rev)
+#dependencies = {}
+#for src_rel, kind in infinit_files:
+#    src = os.path.join(DIR_BUILD, src_rel)
+#    fill_dependencies(dependencies, src, kind)
+#
+#for src, node in dependencies.items():
+#    dst_dir = os.path.join(DIR_INSTALL_CLIENT, node['kind'])
+#    if not os.path.exists(dst_dir):
+#        os.makedirs(dst_dir)
+#    dst = os.path.join(DIR_INSTALL_CLIENT, node['kind'], os.path.basename(src))
+#    shutil.copy(src, dst)
+#    if not node['is_binary']:
+#        continue
+#    os.chmod(dst, stat.S_IRWXU)
+#    if not DEBUG:
+#        print("Strip", dst)
+#        cmd('strip', '-S', dst)
+#    else:
+#        print("DO NOT STRIP", dst)
+#    patch_binary(dst, DIR_INSTALL_CLIENT_LIB)
+#    for child in node['childs']:
+#        patch_binary_for(
+#            dst,
+#            child,
+#            real_dependency_path=os.path.join(
+#                DIR_INSTALL_CLIENT_LIB,
+#                os.path.basename(child)
+#            )
+#        )
+#
+#print("Prepare the manifest")
+#cmd(os.path.join(DIR_SOURCE,'farm/make_manifest'), DIR_INSTALL_CLIENT, major, minor, rev)
 
 DIR_INSTALL_SERVER = os.path.join(DIR_INSTALL, "server")
 shutil.rmtree(DIR_INSTALL_SERVER, True)
 os.makedirs(DIR_INSTALL_SERVER)
 
-server_scripts = [
-    "metalib/__init__.py",
-    "metalib/_metalib.so",
-    "pythia",
-    "meta",
-    "creosus",
-    "troll",
-    "static",
-    "meta-server",
-    "meta-tests",
-    "creosus-server",
-    "trophonius-server",
-    "trophonius",
-    "longinus-server.py",
-    "longinus",
-    "erginus-server"
-]
-
-if os.path.isdir(os.path.join(DIR_BUILD, "oracle")): # oracle is built
-    for f in server_scripts:
-        src = os.path.join(DIR_BUILD, "lib/python", f)
-        dst = os.path.join(DIR_INSTALL_SERVER, f)
-        if os.path.isdir(src):
-            shutil.copytree(src, dst)
-        else:
-            if not os.path.isdir(os.path.dirname(dst)):
-                os.makedirs(os.path.dirname(dst))
-            shutil.copy(src, dst)
+for d in ['bin', 'lib']:
+    src = os.path.join(DIR_BUILD, d)
+    dst = os.path.join(DIR_INSTALL_SERVER, d)
+    shutil.copytree(src, dst)
