@@ -48,7 +48,7 @@ ELLE_LOG_COMPONENT("infinit.satellites.transfer.Transfer");
 //
 // XXX[to remove as soon as possible, especially when etoile will be
 //     instantiable]
-#define TRANSFER_UGLY_PERFORMANCE_HACK
+#undef TRANSFER_UGLY_PERFORMANCE_HACK
 
 namespace satellite
 {
@@ -346,6 +346,12 @@ namespace satellite
   {
     ELLE_TRACE_FUNCTION(source, target);
 
+    // Before everything else, force the creation of the progress file.
+    //
+    // XXX[note that this call could be removed if etoile auto-publish
+    //     blocks which have remained for quite some time main memory]
+    Transfer::from_progress(0);
+
     // Resolve the directory.
     etoile::path::Chemin chemin(Transfer::rpcs->pathresolve(source));
 
@@ -566,14 +572,12 @@ namespace satellite
 
         buffer.size(stream.gcount());
 
-        Transfer::rpcs->filewrite(file, offset, elle::WeakBuffer{data});
+        Transfer::rpcs->filewrite(file, offset, buffer);
 
-        offset += data.size();
+        offset += buffer.size();
       }
 
     stream.close();
-
-    delete[] buffer;
 #endif
 
     // Store file.
