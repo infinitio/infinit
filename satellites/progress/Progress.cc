@@ -5,6 +5,7 @@
 #include <elle/io/Piece.hh>
 #include <elle/io/Path.hh>
 #include <elle/system/system.hh>
+#include <elle/log.hh>
 
 #include <reactor/network/tcp-socket.hh>
 #include <reactor/scheduler.hh>
@@ -31,6 +32,8 @@
 
 #include <boost/foreach.hpp>
 #include <limits>
+
+ELLE_LOG_COMPONENT("infinit.satellites.progress.Progress");
 
 namespace satellite
 {
@@ -115,7 +118,13 @@ namespace satellite
                                       "infinit:transfer:size"));
 
       if (size == nucleus::neutron::Trait::null())
+      {
+        ELLE_DEBUG("no 'size' attribute present");
+
         throw std::runtime_error("no transfer size attribute present");
+      }
+
+      ELLE_DEBUG("'size' attribute retrieved: %s", size.value());
 
       // Set the size variable.
       _size = boost::lexical_cast<elle::Natural64>(size.value());
@@ -142,6 +151,8 @@ namespace satellite
         }
       catch (...)
         {
+          ELLE_DEBUG("no '.progress' file present");
+
           std::cout << "0" << std::endl;
           return;
         }
@@ -160,9 +171,13 @@ namespace satellite
 
       if (progress == nucleus::neutron::Trait::null())
         {
+          ELLE_DEBUG("no 'progress' attribute retrieved");
+
           std::cout << "0" << std::endl;
           return;
         }
+
+      ELLE_DEBUG("'progress' attribute retrieved: %s", progress.value());
 
       // Set the progress variable.
       _progress = boost::lexical_cast<elle::Natural64>(progress.value());
