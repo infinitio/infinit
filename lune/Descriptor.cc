@@ -318,10 +318,7 @@ namespace lune
       throw elle::Exception("unable to dump the model");
 
     std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Root] " << std::endl;
-
-    if (this->_root.Dump(margin + 4) == elle::Status::Error)
-      throw elle::Exception("unable to dump the address");
+              << "[Root] " << this->_root << std::endl;
 
     if (this->_everybody.identity.Save(unique) == elle::Status::Error)
       throw elle::Exception("unable to save the address");
