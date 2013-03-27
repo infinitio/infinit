@@ -103,14 +103,17 @@ def configure(cxx_toolkit,
 
   cxx_config += openssl.config()
 
+  openssl_ssl_libname = cxx_toolkit.libname_dyn(cxx_config, "ssl")
+  openssl_crypto_libname = cxx_toolkit.libname_dyn(cxx_config, "crypto")
   openssl_lib = drake.copy(
     drake.nodes(
-      openssl.libraries_path / "libssl.so",
-      openssl.libraries_path / "libcrypto.so",
+      openssl.libraries_path / openssl_ssl_libname,
+      openssl.libraries_path / openssl_crypto_libname
     ),
     "lib",
     openssl.libraries_path
   )
+  cxx_config += openssl.config()
 
 
 
@@ -729,7 +732,6 @@ def configure(cxx_toolkit,
     elle_lib,
     metrics_lib,
   ] + openssl_lib
-
   if enable_horizon:
     infinit_libs.append(horizon_slib)
   udt_libs = [asio_udt_lib, udt_lib]
