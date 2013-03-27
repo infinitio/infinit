@@ -19,7 +19,7 @@ infinit_env_init() {
 	export OLD_PYTHONPATH=$PYTHONPATH
 	export OLD_RPROMPT=$RPROMPT
 
-	export PYTHONPATH=${INFINIT_BUILD_DIR}/lib/python:$PYTHONPATH
+	export PYTHONPATH=${INFINIT_SOURCE_DIR}/drake/src/:${INFINIT_BUILD_DIR}/lib/python:$PYTHONPATH
 	export RPROMPT="Infinit ${RPROMPT}"
 }
 
