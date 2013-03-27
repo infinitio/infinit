@@ -120,7 +120,8 @@ def configure(cxx_toolkit,
     openssl.libraries_path
   )
   cxx_config += openssl.config()
-
+  cxx_config.lib('ssl')
+  cxx_config.lib('crypto')
 
 
   # Python
@@ -737,7 +738,7 @@ def configure(cxx_toolkit,
     reactor_lib,
     elle_lib,
     metrics_lib,
-  ] + openssl_lib
+  ]
   if enable_horizon:
     infinit_libs.append(horizon_slib)
   udt_libs = [asio_udt_lib, udt_lib]
