@@ -32,7 +32,6 @@ def configure(cxx_toolkit,
         build_type, ", ".join("{}".format(t) for t in build_types.keys())))
 
   for flag in build_types[build_type]:
-    print(flag)
     if isinstance(flag, str):
       cxx_config.define(flag, 1)
     else:
@@ -109,20 +108,22 @@ def configure(cxx_toolkit,
     prefix = openssl_prefix,
   )
 
-  openssl_ssl_libname = cxx_toolkit.libname_dyn(cxx_config, "ssl")
-  openssl_crypto_libname = cxx_toolkit.libname_dyn(cxx_config, "crypto")
+  if cxx_toolkit.os == drake.os.macos:
+    suffix = '.1.0.0.dylib'
+  elif cxx_toolkit.os == drake.os.windows:
+    suffix = '.dll'
+  else:
+    suffix = '.so.1.0.0'
+
   openssl_lib = drake.copy(
     drake.nodes(
-      openssl.libraries_path / openssl_ssl_libname,
-      openssl.libraries_path / openssl_crypto_libname
+      openssl.libraries_path / ('libssl%s' % suffix),
+      openssl.libraries_path / ('libcrypto%s' % suffix),
     ),
-    "lib",
+    'lib',
     openssl.libraries_path
   )
   cxx_config += openssl.config()
-  cxx_config.lib('ssl')
-  cxx_config.lib('crypto')
-
 
   # Python
   python2 = drake.cxx.find_library('pyconfig.h', python2,
@@ -719,6 +720,7 @@ def configure(cxx_toolkit,
   ## ----- ##
 
   build = drake.Rule('build')
+  build << openssl_lib
 
   ## -------- ##
   ## Programs ##
