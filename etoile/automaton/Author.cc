@@ -2,6 +2,7 @@
 #include <etoile/automaton/Rights.hh>
 #include <etoile/automaton/Access.hh>
 #include <etoile/gear/Object.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/proton/Porcupine.hh>
 #include <nucleus/neutron/Author.hh>
@@ -38,7 +39,7 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // build the author object according to the subject's role.
       switch (context.rights.role)
@@ -54,7 +55,7 @@ namespace etoile
           {
             // open the access.
             if (Access::Open(context) == elle::Status::Error)
-              throw elle::Exception("unable to open the access");
+              throw Exception("unable to open the access");
 
             auto pair = context.access_porcupine->find(agent::Agent::Subject);
             auto& door = pair.first;

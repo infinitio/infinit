@@ -1,4 +1,5 @@
 #include <etoile/nest/Pod.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/proton/Egg.hh>
 
@@ -59,7 +60,7 @@ namespace etoile
           }
         default:
           {
-            throw elle::Exception(elle::sprintf("unknown state: '%s'",
+            throw Exception(elle::sprintf("unknown state: '%s'",
                                                 static_cast<int>(state)));
           }
         }

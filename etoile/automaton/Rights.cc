@@ -5,6 +5,7 @@
 #include <etoile/gear/Group.hh>
 #include <etoile/depot/Depot.hh>
 #include <etoile/nest/Nest.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/proton/Revision.hh>
 #include <nucleus/proton/Porcupine.hh>
@@ -99,7 +100,7 @@ namespace etoile
 
           // open the access.
           if (Access::Open(context) == elle::Status::Error)
-            throw elle::Exception("unable to open the access block");
+            throw Exception("unable to open the access block");
 
           // Retrieve a door on the access.
           nucleus::proton::Door<nucleus::neutron::Access> door =

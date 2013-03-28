@@ -4,6 +4,8 @@
 #include <etoile/gear/Group.hh>
 #include <etoile/depot/Depot.hh>
 #include <etoile/abstract/Group.hh>
+#include <etoile/Exception.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/proton/Door.hh>
 #include <nucleus/proton/Porcupine.hh>
@@ -95,7 +97,7 @@ namespace etoile
 
       // generate the abstract based on the group.
       if (abstract.Create(*context.group) == elle::Status::Error)
-        throw elle::Exception("unable to generate the abstract");
+        throw Exception("unable to generate the abstract");
 
       return elle::Status::Ok;
     }
@@ -108,11 +110,11 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user is the manager of the group.
       if (context.rights.role != nucleus::neutron::Group::RoleManager)
-        throw elle::Exception("the user does not seem to be the group manager");
+        throw Exception("the user does not seem to be the group manager");
 
       // update the group depending on the subject.
       if (subject == context.group->manager_subject())
@@ -121,7 +123,7 @@ namespace etoile
           // in this case, the subject represents the group's manager.
           //
 
-          throw elle::Exception("unable to add the group's manager to the group");
+          throw Exception("unable to add the group's manager to the group");
         }
       else
         {
@@ -131,7 +133,7 @@ namespace etoile
 
           // open the ensemble.
           if (Ensemble::Open(context) == elle::Status::Error)
-            throw elle::Exception("unable to open the ensemble block");
+            throw Exception("unable to open the ensemble block");
 
           // Retrieve a door on the ensemble.
           nucleus::proton::Door<nucleus::neutron::Ensemble> door{
@@ -140,7 +142,7 @@ namespace etoile
           door.open();
 
           if (door().exist(subject) == true)
-            throw elle::Exception("this subject already exist");
+            throw Exception("this subject already exist");
 
           /// Deliberately provide a null token because the right token
           /// will be generated when the group is closed. This improves
@@ -160,7 +162,7 @@ namespace etoile
         {
           // recompute the context rights.
           if (Rights::Recompute(context) == elle::Status::Error)
-            throw elle::Exception("unable to recompute the rights");
+            throw Exception("unable to recompute the rights");
         }
 
       // set the context's state.
@@ -185,7 +187,7 @@ namespace etoile
           ELLE_TRACE("The target subject is the current user");
 
           if (Rights::Determine(context) == elle::Status::Error)
-            throw elle::Exception("unable to determine the user's rights");
+            throw Exception("unable to determine the user's rights");
 
           fellow = &context.group->manager_fellow();
         }
@@ -216,7 +218,7 @@ namespace etoile
                              "to look in the ensemble");
 
               if (Ensemble::Open(context) == elle::Status::Error)
-                throw elle::Exception("unable to open the ensemble block");
+                throw Exception("unable to open the ensemble block");
 
               // Retrieve a door on the ensemble.
               nucleus::proton::Door<nucleus::neutron::Ensemble> door{
@@ -254,7 +256,7 @@ namespace etoile
       nucleus::neutron::Index _index = index;
 
       if (Ensemble::Open(context) == elle::Status::Error)
-        throw elle::Exception("unable to open the ensemble");
+        throw Exception("unable to open the ensemble");
 
       // if the index starts with 0, include the manager by creating
       // a fellow for him.
@@ -315,11 +317,11 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user is the manager of the group.
       if (context.rights.role != nucleus::neutron::Group::RoleManager)
-        throw elle::Exception("the user does not seem to be the group manager");
+        throw Exception("the user does not seem to be the group manager");
 
       // update the group depending on the subject.
       if (subject == context.group->manager_subject())
@@ -328,7 +330,7 @@ namespace etoile
           // in this case, the subject represents the group's manager.
           //
 
-          throw elle::Exception("unable to remove the group's manager from the group");
+          throw Exception("unable to remove the group's manager from the group");
         }
       else
         {
@@ -338,7 +340,7 @@ namespace etoile
 
           // open the ensemble.
           if (Ensemble::Open(context) == elle::Status::Error)
-            throw elle::Exception("unable to open the ensemble block");
+            throw Exception("unable to open the ensemble block");
 
           // Retrieve a door on the ensemble.
           nucleus::proton::Door<nucleus::neutron::Ensemble> door{
@@ -360,7 +362,7 @@ namespace etoile
         {
           // recompute the context rights.
           if (Rights::Recompute(context) == elle::Status::Error)
-            throw elle::Exception("unable to recompute the rights");
+            throw Exception("unable to recompute the rights");
         }
 
       // set the context's state.
@@ -387,15 +389,15 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user is the group manager.
       if (context.rights.role != nucleus::neutron::Group::RoleManager)
-        throw elle::Exception("the user does not seem to be the group manager");
+        throw Exception("the user does not seem to be the group manager");
 
       // destroy the ensemble.
       if (Ensemble::Destroy(context) == elle::Status::Error)
-        throw elle::Exception("unable to destroy the ensemble");
+        throw Exception("unable to destroy the ensemble");
 
       // mark the group as needing to be removed.
       context.transcript().record(
@@ -414,15 +416,15 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user is the group manager.
       if (context.rights.role != nucleus::neutron::Group::RoleManager)
-        throw elle::Exception("the user does not seem to be the group manager");
+        throw Exception("the user does not seem to be the group manager");
 
       // close the ensemble.
       if (Ensemble::Close(context) == elle::Status::Error)
-        throw elle::Exception("unable to close the ensemble");
+        throw Exception("unable to close the ensemble");
 
       // if the group has been modified i.e is dirty.
       if (context.group->state() == nucleus::proton::State::dirty)

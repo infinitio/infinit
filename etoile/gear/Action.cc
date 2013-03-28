@@ -1,4 +1,5 @@
 #include <etoile/gear/Action.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>
@@ -66,10 +67,10 @@ namespace etoile
         std::cout << alignment << "[Push]" << std::endl;
 
         if (this->_address.Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the address");
+          throw Exception("unable to dump the address");
 
         if (this->_block->Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the block");
+          throw Exception("unable to dump the block");
 
         return elle::Status::Ok;
       }
@@ -113,7 +114,7 @@ namespace etoile
         std::cout << alignment << "[Wipe]" << std::endl;
 
         if (this->_address.Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the address");
+          throw Exception("unable to dump the address");
 
         return elle::Status::Ok;
       }

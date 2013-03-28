@@ -1,4 +1,6 @@
 #include <etoile/abstract/Object.hh>
+#include <etoile/Exception.hh>
+
 #include <nucleus/neutron/Object.hh>
 
 namespace etoile
@@ -133,7 +135,7 @@ namespace etoile
                   << "[Creation]" << std::endl;
 
         if (this->timestamps.creation.Dump(margin + 6) == elle::Status::Error)
-          throw elle::Exception("unable to dump the creation time");
+          throw Exception("unable to dump the creation time");
 
         // dump the modification time.
         std::cout << alignment << elle::io::Dumpable::Shift
@@ -141,7 +143,7 @@ namespace etoile
                   << "[Modification]" << std::endl;
 
         if (this->timestamps.modification.Dump(margin + 6) == elle::Status::Error)
-          throw elle::Exception("unable to dump the modification time");
+          throw Exception("unable to dump the modification time");
       }
 
       // dump the size.

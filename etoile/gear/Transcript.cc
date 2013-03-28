@@ -1,4 +1,5 @@
 #include <etoile/gear/Transcript.hh>
+#include <etoile/Exception.hh>
 
 #include <elle/finally.hh>
 
@@ -75,7 +76,7 @@ namespace etoile
 
       for (auto action: this->_container)
         if (action->Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the action");
+          throw Exception("unable to dump the action");
 
       return elle::Status::Ok;
     }

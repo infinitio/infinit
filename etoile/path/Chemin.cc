@@ -1,6 +1,5 @@
-#include <reactor/exception.hh>
-
 #include <etoile/path/Chemin.hh>
+#include <etoile/Exception.hh>
 
 namespace etoile
 {
@@ -31,7 +30,7 @@ namespace etoile
                    Venue const& venue)
     {
       if (this->Create(route, venue) == elle::Status::Error)
-        throw reactor::Exception("Cannot create the chemin");
+        throw Exception("Cannot create the chemin");
     }
 //
 // ---------- methods ---------------------------------------------------------
@@ -47,11 +46,11 @@ namespace etoile
       // clear the route because the chemin may have been used for
       // something else before.
       if (this->route.Clear() == elle::Status::Error)
-        throw elle::Exception("unable to clear the route");
+        throw Exception("unable to clear the route");
 
       // do the same for the venue.
       if (this->venue.Clear() == elle::Status::Error)
-        throw elle::Exception("unable to clear the venue");
+        throw Exception("unable to clear the venue");
 
       //
       // import the route.
@@ -115,7 +114,7 @@ namespace etoile
     {
       // check the size of the venue.
       if (this->venue.elements.size() == 0)
-        throw elle::Exception("the venue seems to be empty");
+        throw Exception("the venue seems to be empty");
 
       // set the location's attributes according to the venue last element.
       location = this->venue.elements[this->venue.elements.size() - 1];
@@ -175,11 +174,11 @@ namespace etoile
 
       // dump the route.
       if (this->route.Dump(margin + 2) == elle::Status::Error)
-        throw elle::Exception("unable to dump the route");
+        throw Exception("unable to dump the route");
 
       // dump the venue.
       if (this->venue.Dump(margin + 2) == elle::Status::Error)
-        throw elle::Exception("unable to dump the venue");
+        throw Exception("unable to dump the venue");
 
       return elle::Status::Ok;
     }

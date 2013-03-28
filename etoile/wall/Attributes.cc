@@ -6,6 +6,7 @@
 #include <etoile/gear/Object.hh>
 #include <etoile/gear/Gear.hh>
 #include <etoile/automaton/Attributes.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/neutron/Trait.hh>
 #include <nucleus/neutron/Range.hh>
@@ -37,7 +38,7 @@ namespace etoile
 
       // select the actor.
       if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw elle::Exception("unable to select the actor");
+        throw Exception("unable to select the actor");
 
       // retrieve the scope.
       scope = actor->scope;
@@ -49,13 +50,13 @@ namespace etoile
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to retrieve the context");
+          throw Exception("unable to retrieve the context");
 
         // apply the set automaton on the context.
         if (automaton::Attributes::Set(*context,
                                        name,
                                        value) == elle::Status::Error)
-          throw elle::Exception("unable to set the attribute");
+          throw Exception("unable to set the attribute");
 
         // set the actor's state.
         actor->state = gear::Actor::StateUpdated;
@@ -74,7 +75,7 @@ namespace etoile
 
       // select the actor.
       if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw elle::Exception("unable to select the actor");
+        throw Exception("unable to select the actor");
 
       // retrieve the scope.
       scope = actor->scope;
@@ -87,13 +88,13 @@ namespace etoile
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to retrieve the context");
+          throw Exception("unable to retrieve the context");
 
         // apply the get automaton on the context.
         if (automaton::Attributes::Get(*context,
                                        name,
                                        trait) == elle::Status::Error)
-          throw elle::Exception("unable to get the attribute");
+          throw Exception("unable to get the attribute");
       }
 
       // Return the trait according to the automaton's result.
@@ -114,7 +115,7 @@ namespace etoile
 
       // select the actor.
       if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw elle::Exception("unable to select the actor");
+        throw Exception("unable to select the actor");
 
       // retrieve the scope.
       scope = actor->scope;
@@ -127,12 +128,12 @@ namespace etoile
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to retrieve the context");
+          throw Exception("unable to retrieve the context");
 
         // apply the fetch automaton on the context.
         if (automaton::Attributes::Fetch(*context,
                                          range) == elle::Status::Error)
-          throw elle::Exception("unable to fetch the attribute");
+          throw Exception("unable to fetch the attribute");
       }
 
       return (range);
@@ -153,7 +154,7 @@ namespace etoile
 
       // select the actor.
       if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw elle::Exception("unable to select the actor");
+        throw Exception("unable to select the actor");
 
       // retrieve the scope.
       scope = actor->scope;
@@ -164,12 +165,12 @@ namespace etoile
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to retrieve the context");
+          throw Exception("unable to retrieve the context");
 
         // apply the omit automaton on the context.
         if (automaton::Attributes::Omit(*context,
                                         name) == elle::Status::Error)
-          throw elle::Exception("unable to omit the attribute");
+          throw Exception("unable to omit the attribute");
 
         // set the actor's state.
         actor->state = gear::Actor::StateUpdated;

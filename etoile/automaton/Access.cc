@@ -6,6 +6,7 @@
 #include <etoile/gear/Object.hh>
 #include <etoile/gear/Action.hh>
 #include <etoile/nest/Nest.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Revision.hh>
@@ -100,11 +101,11 @@ namespace etoile
 
       // determine the rights over the object.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // verify that the user can modify the accesses.
       if (context.rights.role != nucleus::neutron::Object::RoleOwner)
-        throw elle::Exception("the user does not seem to have the permission to modify "
+        throw Exception("the user does not seem to have the permission to modify "
                "the access permissions");
 
       // update the accesses depending on the subject.
@@ -120,7 +121,7 @@ namespace etoile
           if (context.object->Administrate(
                 context.object->attributes(),
                 permissions) == elle::Status::Error)
-            throw elle::Exception("unable to administrate the object");
+            throw Exception("unable to administrate the object");
         }
       else
         {
@@ -132,7 +133,7 @@ namespace etoile
 
           // open the access block.
           if (Access::Open(context) == elle::Status::Error)
-            throw elle::Exception("unable to open the access block");
+            throw Exception("unable to open the access block");
 
           // Retrieve a door on the access.
           nucleus::proton::Door<nucleus::neutron::Access> door{
@@ -172,7 +173,7 @@ namespace etoile
                   if (context.object->Administrate(
                         context.object->attributes(),
                         context.object->owner_permissions()) == elle::Status::Error)
-                    throw elle::Exception("unable to administrate the object");
+                    throw Exception("unable to administrate the object");
                 }
               else
                 {
@@ -234,7 +235,7 @@ namespace etoile
                         break;
                       }
                     default:
-                      throw elle::Exception
+                      throw Exception
                         (elle::sprintf("invalid subject type '%u'",
                                        subject.type()));
                     }
@@ -297,7 +298,7 @@ namespace etoile
                     break;
                   }
                 default:
-                  throw elle::Exception
+                  throw Exception
                     (elle::sprintf("invalid subject type '%u'",
                                    subject.type()));
                 }
@@ -325,7 +326,7 @@ namespace etoile
           if (context.object->Administrate(
                 context.object->attributes(),
                 context.object->owner_permissions()) == elle::Status::Error)
-            throw elle::Exception("unable to administrate the object");
+            throw Exception("unable to administrate the object");
         }
 
       ELLE_TRACE("audit the Object");
@@ -333,14 +334,14 @@ namespace etoile
       // try to audit the object because the current author may have
       // lost its write permission in the process.
       if (Access::Audit(context, subject) == elle::Status::Error)
-        throw elle::Exception("unable to audit the object");
+        throw Exception("unable to audit the object");
 
       // is the target subject the user i.e the object owner in this case.
       if (agent::Agent::Subject == subject)
         {
           // update the context rights.
           if (Rights::Update(context, permissions) == elle::Status::Error)
-            throw elle::Exception("unable to update the rigths");
+            throw Exception("unable to update the rigths");
         }
 
       // set the context's state.
@@ -372,7 +373,7 @@ namespace etoile
 
           // determine the user's rights on the object.
           if (Rights::Determine(context) == elle::Status::Error)
-            throw elle::Exception("unable to determine the user's rights");
+            throw Exception("unable to determine the user's rights");
 
           // return the record, if present.
           if (context.rights.role != nucleus::neutron::Object::RoleNone)
@@ -418,7 +419,7 @@ namespace etoile
 
               // open the access.
               if (Access::Open(context) == elle::Status::Error)
-                throw elle::Exception("unable to open the access block");
+                throw Exception("unable to open the access block");
 
               // Retrieve a door on the access.
               nucleus::proton::Door<nucleus::neutron::Access> door{
@@ -460,7 +461,7 @@ namespace etoile
       nucleus::neutron::Index _index = index;
 
       if (Access::Open(context) == elle::Status::Error)
-        throw elle::Exception("unable to open the access block");
+        throw Exception("unable to open the access block");
 
       // if the index starts with 0, include the owner by creating
       // a record for him.
@@ -524,11 +525,11 @@ namespace etoile
 
       // determine the rights over the object.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // verify that the user can modify the accesses.
       if (context.rights.role != nucleus::neutron::Object::RoleOwner)
-        throw elle::Exception("the user does not seem to have the permission to revoke "
+        throw Exception("the user does not seem to have the permission to revoke "
                "access permissions");
 
       // update the access block or object according to the subject.
@@ -542,7 +543,7 @@ namespace etoile
           if (context.object->Administrate(
                 context.object->attributes(),
                 nucleus::neutron::permissions::none) == elle::Status::Error)
-            throw elle::Exception("unable to administrate the object");
+            throw Exception("unable to administrate the object");
         }
       else
         {
@@ -552,7 +553,7 @@ namespace etoile
 
           // open the access.
           if (Access::Open(context) == elle::Status::Error)
-            throw elle::Exception("unable to open the access block");
+            throw Exception("unable to open the access block");
 
           // Retrieve a door on the access.
           nucleus::proton::Door<nucleus::neutron::Access> door{
@@ -576,13 +577,13 @@ namespace etoile
           if (context.object->Administrate(
                 context.object->attributes(),
                 context.object->owner_permissions()) == elle::Status::Error)
-            throw elle::Exception("unable to administrate the object");
+            throw Exception("unable to administrate the object");
         }
 
       // try to audit the object because the current author may have
       // lost its write permission in the process.
       if (Access::Audit(context, subject) == elle::Status::Error)
-        throw elle::Exception("unable to audit the object");
+        throw Exception("unable to audit the object");
 
       // is the target subject the user i.e the object owner in this case.
       if (agent::Agent::Subject == subject)
@@ -590,7 +591,7 @@ namespace etoile
           // update the context rights.
           if (Rights::Update(context,
                              nucleus::neutron::permissions::none) == elle::Status::Error)
-            throw elle::Exception("unable to update the rigths");
+            throw Exception("unable to update the rigths");
         }
 
       // set the context's state.
@@ -616,7 +617,7 @@ namespace etoile
 
       // open the access.
       if (Access::Open(context) == elle::Status::Error)
-        throw elle::Exception("unable to open the access");
+        throw Exception("unable to open the access");
 
       // XXX[all this loop was originally part of the Access class. it has
       //     however been extracted because, in order to encrypt the key
@@ -697,7 +698,7 @@ namespace etoile
                   }
                 default:
                   {
-                    throw elle::Exception("the access block contains unknown entries");
+                    throw Exception("the access block contains unknown entries");
                   }
                 }
 
@@ -724,11 +725,11 @@ namespace etoile
             context.object->size(),
             context.object->access(),
             token) == elle::Status::Error)
-        throw elle::Exception("unable to update the object");
+        throw Exception("unable to update the object");
 
       // determine the rights over the object.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // finally, if the user has the permission to read, update its rights.
       if ((context.rights.permissions & nucleus::neutron::permissions::read) ==
@@ -736,7 +737,7 @@ namespace etoile
         {
           // recompute the rights with the new key.
           if (Rights::Recompute(context) == elle::Status::Error)
-            throw elle::Exception("unable to recompute the rights");
+            throw Exception("unable to recompute the rights");
         }
 
       // set the context's state.
@@ -761,7 +762,7 @@ namespace etoile
 
       // open the access.
       if (Access::Open(context) == elle::Status::Error)
-        throw elle::Exception("unable to open the access");
+        throw Exception("unable to open the access");
 
       ELLE_TRACE("set the Access #%s records with a null token",
                  context.access_porcupine->size());
@@ -813,11 +814,11 @@ namespace etoile
             context.object->size(),
             context.object->access(),
             nucleus::neutron::Token::null()) == elle::Status::Error)
-        throw elle::Exception("unable to update the object");
+        throw Exception("unable to update the object");
 
       // determine the rights over the object.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // finally, if the user has the permission to read, update its rights.
       if ((context.rights.permissions & nucleus::neutron::permissions::read) ==
@@ -825,7 +826,7 @@ namespace etoile
         {
           // recompute the rights.
           if (Rights::Recompute(context) == elle::Status::Error)
-            throw elle::Exception("unable to recompute the rights");
+            throw Exception("unable to recompute the rights");
         }
 
       // set the context's state.
@@ -851,7 +852,7 @@ namespace etoile
           switch (context.object->access().strategy())
             {
             case nucleus::proton::Strategy::none:
-              throw elle::Exception("unable to destroy an empty content");
+              throw Exception("unable to destroy an empty content");
             case nucleus::proton::Strategy::value:
               {
                 // Nothing to do in this case since there is no block for
@@ -879,7 +880,7 @@ namespace etoile
                 break;
               }
             default:
-              throw elle::Exception
+              throw Exception
                 (elle::sprintf("unknown strategy '%s'",
                                context.object->access().strategy()));
             }
@@ -951,7 +952,7 @@ namespace etoile
             {
               // destroy the access block.
               if (Access::Destroy(context) == elle::Status::Error)
-                throw elle::Exception("unable to destroy the access block");
+                throw Exception("unable to destroy the access block");
             }
 
           // update the object with the null access address.
@@ -961,7 +962,7 @@ namespace etoile
                 context.object->size(),
                 nucleus::proton::Radix{},
                 context.object->owner_token()) == elle::Status::Error)
-            throw elle::Exception("unable to update the object");
+            throw Exception("unable to update the object");
         }
       else
         {
@@ -983,7 +984,7 @@ namespace etoile
             {
               // destroy the access block.
               if (Access::Destroy(context) == elle::Status::Error)
-                throw elle::Exception("unable to destroy the access block");
+                throw Exception("unable to destroy the access block");
             }
           */
 
@@ -998,7 +999,7 @@ namespace etoile
                 context.object->size(),
                 context.access_porcupine->seal(secret_key),
                 context.object->owner_token()) == elle::Status::Error)
-            throw elle::Exception("unable to update the object");
+            throw Exception("unable to update the object");
 
           // XXX[too slow without a nest optimization: to activate later]
           ELLE_STATEMENT(context.access_porcupine->check(nucleus::proton::flags::all));
@@ -1063,7 +1064,7 @@ namespace etoile
 
             // open the access block.
             if (Access::Open(context) == elle::Status::Error)
-              throw elle::Exception("unable to open the access block");
+              throw Exception("unable to open the access block");
 
             // check whether a record exist for the subject as it
             // could very well have been removed.
@@ -1086,7 +1087,7 @@ namespace etoile
             // write permission, in which case the object's access
             // control mechanism is regulated.
             if (Access::Regulate(context) == elle::Status::Error)
-              throw elle::Exception("unable to regulate the object");
+              throw Exception("unable to regulate the object");
             */
 
             break;
@@ -1102,7 +1103,7 @@ namespace etoile
         case nucleus::neutron::Object::RoleNone:
         default:
           {
-            throw elle::Exception(elle::sprintf("invalid role '%u'",
+            throw Exception(elle::sprintf("invalid role '%u'",
                                                 context.object->author().role));
           }
         }
@@ -1130,7 +1131,7 @@ namespace etoile
             context.object->size(),
             context.object->access(),
             context.object->owner_token()) == elle::Status::Error)
-        throw elle::Exception("unable to update the object");
+        throw Exception("unable to update the object");
 
       return elle::Status::Ok;
     }

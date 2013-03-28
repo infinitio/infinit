@@ -2,6 +2,7 @@
 # define ETOILE_GEAR_SCOPE_HXX
 
 # include <etoile/gear/Context.hh>
+# include <etoile/Exception.hh>
 
 namespace etoile
 {
@@ -29,7 +30,7 @@ namespace etoile
       // Return the context by dynamically casting it; this is required in order
       // to make sure nobody can perform file operations on a directory scope.
       if ((context = dynamic_cast<T*>(this->context)) == nullptr)
-        throw std::runtime_error("unable to use this scope's context as such");
+        throw Exception("unable to use this scope's context as such");
 
       return elle::Status::Ok;
     }
