@@ -24,6 +24,7 @@
 #include <hole/implementations/slug/Manifest.hh>
 
 #include <fstream>
+#include <iterator>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
@@ -163,6 +164,113 @@ namespace surface
 
     // - TROPHONIUS ----------------------------------------------------
     /// Connect to trophonius
+    ///
+
+    auto _print = [] (std::string const &s) { ELLE_DEBUG("-- %s", s); };
+
+    static
+    std::vector<std::string>
+    _find_commond_addr(std::list<std::string> const &externals,
+                       std::list<std::string> const &my_externals)
+    {
+      std::vector<std::string> theirs_addr;
+      std::vector<std::string> ours_addr;
+      std::vector<std::string> common_addr;
+
+      // XXX[refactor this]
+      for (auto const& i: externals)
+      {
+        std::vector<std::string> res;
+        boost::split(res, i, boost::is_any_of(":"));
+        // XXX filter backup
+        if (res[1] == "9898")
+          continue;
+        theirs_addr.push_back(res[0]);
+      }
+      // XXX[refactor this]
+      for (auto const& i: my_externals)
+      {
+        std::vector<std::string> res;
+        boost::split(res, i, boost::is_any_of(":"));
+        // XXX filter backup
+        if (res[1] == "9898")
+          continue;
+        ours_addr.push_back(res[0]);
+      }
+
+      std::set_intersection(begin(theirs_addr), end(theirs_addr),
+                            begin(ours_addr), end(ours_addr),
+                            std::back_inserter(common_addr));
+      ELLE_DEBUG("common addresses:")
+        std::for_each(begin(common_addr), end(common_addr), _print);
+      return common_addr;
+    }
+
+    static
+    int
+    _connect_try(reactor::Scheduler& sched,
+                 hole::implementations::slug::control::RPC& rpcs,
+                 std::vector<std::string> const& addresses)
+    {
+      std::vector<
+        std::pair<
+          std::unique_ptr<reactor::VThread<bool>>, std::string
+        >
+      > v;
+
+      auto slug_connect = [&] (std::string const& endpoint) {
+        std::vector<std::string> result;
+        boost::split(result, endpoint, boost::is_any_of(":"));
+
+        auto const &ip = result[0];
+        auto const &port = result[1];
+        ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
+          rpcs.slug_connect(ip, std::stoi(port));
+
+        ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
+          if (!rpcs.slug_wait(ip, std::stoi(port)))
+            throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
+                                                ip, port));
+      };
+
+      auto start_thread = [&] (std::string const &endpoint) {
+        v.push_back(std::make_pair(elle::make_unique<reactor::VThread<bool>>(
+          sched,
+          elle::sprintf("slug_connect(%s)", endpoint),
+          [&] () -> int {
+            try {
+              slug_connect(endpoint);
+            }
+            catch (elle::Exception const &e) {
+              ELLE_WARN("slug_connect failed: %s", e.what());
+              return false;
+            }
+            return true;
+          }
+        ), endpoint));
+      };
+
+      ELLE_DEBUG("Connecting...")
+        std::for_each(std::begin(addresses), std::end(addresses), start_thread);
+
+      int i = 0;
+      for (auto &t : v)
+      {
+        reactor::VThread<bool> &vt = *t.first;
+        sched.current()->wait(vt);
+        if (vt.result() == true)
+        {
+          i++;
+          ELLE_WARN("connection to %s succeed", t.second);
+        }
+        else
+        {
+          ELLE_WARN("connection to %s failed", t.second);
+        }
+      }
+      ELLE_TRACE("finish connecting to %d node%s", i, i > 0 ? "s" : "");
+      return i;
+    }
 
     void
     State::_notify_8infinit(Transaction const& trans, reactor::Scheduler& sched)
@@ -184,29 +292,90 @@ namespace surface
       // Fetch Nodes and find the correct one to contact
       std::list<std::string> externals;
       std::list<std::string> locals;
+      std::list<std::string> my_externals;
+      std::list<std::string> my_locals;
       {
-        std::string target_device{};
+        std::string theirs_device;
+        std::string ours_device;
 
         if (trans.recipient_device_id == this->device_id())
-          target_device = trans.sender_device_id;
+        {
+          theirs_device = trans.sender_device_id;
+          ours_device = trans.recipient_device_id;
+        }
         else
-          target_device = trans.recipient_device_id;
+        {
+          theirs_device = trans.recipient_device_id;
+          ours_device = trans.sender_device_id;
+        }
 
-        Endpoint e = this->_meta->device_endpoints(network_id,
-                                                   this->device_id(),
-                                                   target_device);
+        // theirs
+        {
+          Endpoint e = this->_meta->device_endpoints(network_id,
+                                                     ours_device,
+                                                     theirs_device);
 
-        externals = std::move(e.externals);
-        locals = std::move(e.locals);
+          externals = std::move(e.externals);
+          locals = std::move(e.locals);
+        }
+        //ours
+        {
+          Endpoint e = this->_meta->device_endpoints(network_id,
+                                                     theirs_device,
+                                                     ours_device);
+
+          my_externals = std::move(e.externals);
+          my_locals = std::move(e.locals);
+        }
       }
 
-      auto _print = [&] (std::string const &s) {
-          ELLE_DEBUG("%s", s);
-      };
       ELLE_DEBUG("externals")
           std::for_each(begin(externals), end(externals), _print);
       ELLE_DEBUG("locals")
           std::for_each(begin(locals), end(locals), _print);
+
+      // Very sophisticated heuristic to deduce the addresses to try first.
+      std::vector<std::string> first_round;
+      std::vector<std::string> second_round;
+      {
+        std::vector<std::string> common = _find_commond_addr(externals,
+                                                             my_externals);
+
+        if (common.empty())
+        {
+          // if there is no common external address, then we can try them first.
+          for (auto const& s: externals)
+            first_round.push_back(s);
+          for (auto const& s: locals)
+            second_round.push_back(s);
+        }
+        else
+        {
+          // if there is a common external address, we can try to connect to
+          // local endpoints
+          std::vector<std::string> addr = _find_commond_addr(locals,
+                                                             my_locals);
+
+          if (!addr.empty())
+          {
+            // wtf, you are trying to do a local exchange, this is stupid, but
+            // let it be.
+            std::vector<std::string> l;
+            boost::split(l, locals.front(), boost::is_any_of(":"));
+            locals.sort();
+            first_round.push_back(elle::sprintf("127.0.0.1:%s", l[1]));
+            if (addr.size() > 1)
+              second_round.push_back(locals.back());
+          }
+          else
+          {
+            for (auto const &s: locals)
+              first_round.push_back(s);
+            for (auto const& s: externals)
+              second_round.push_back(s);
+          }
+        }
+      }
 
       // Finish by calling the RPC to notify 8infinit of all the IPs of the peer
       {
@@ -238,74 +407,22 @@ namespace surface
             serializer
         };
 
-        etoile::portal::RPC rpcs{channels};
+        hole::implementations::slug::control::RPC rpcs{channels};
 
-        bool ok = false;
-        auto slug_connect = [&] (std::string const& endpoint) {
-          if (!ok)
-          {
-            std::vector<std::string> result;
-
-            boost::split(result, endpoint, boost::is_any_of(":"));
-            ELLE_DEBUG("slug_connect(%s, %s)", result[0], result[1]);
-
-            rpcs.slug_connect(result[0], std::stoi(result[1]));
-
-            ELLE_DEBUG("slug_wait(%s, %s)", result[0], result[1])
-            if (!rpcs.slug_wait(result[0], std::stoi(result[1])))
-              throw elle::Exception("unable to connect or authenticate both "
-                                    "nodes.");
-            ok = true;
-          }
-          else
-              ELLE_DEBUG("ignore endpoint %s", endpoint);
-        };
-        std::vector
-          <std::pair
-            <std::unique_ptr<reactor::VThread<bool>>,
-             std::string>> v;
-
-        auto start_thread = [&] (std::string const &endpoint) {
-          v.push_back(std::make_pair(elle::make_unique<reactor::VThread<bool>>(
-            sched,
-            elle::sprintf("slug_connect(%s)", endpoint),
-            [&] () -> int {
-              try {
-                slug_connect(endpoint);
-              }
-              catch (elle::Exception const &e) {
-                ELLE_WARN("slug_connect failed: %s", e.what());
-                return false;
-              }
-              return true;
-            }
-          ), endpoint));
-        };
-
-        ELLE_DEBUG("Connecting...")
-        try
+        ELLE_DEBUG("FIRST:")
+          for (auto const&s : first_round)
+            ELLE_DEBUG("-- %s", s);
+        int n = _connect_try(sched, rpcs, first_round);
+        if (n == 0) // no connections succeeded
         {
-          std::for_each(std::begin(externals), std::end(externals), start_thread);
-          std::for_each(std::begin(locals), std::end(locals), start_thread);
+          ELLE_DEBUG("SECOND:")
+            for (auto const&s : second_round)
+              ELLE_DEBUG("-- %s", s);
+          n = _connect_try(sched, rpcs, second_round);
+          if (n == 0) // still nothing
+            ;// do fallback
         }
-        catch (elle::Exception const& e)
-        {
-          ELLE_TRACE("caught exception %s", e.what());
-          throw e;
-        }
-        for (auto &t : v)
-        {
-          reactor::VThread<bool> &vt = *t.first;
-          sched.current()->wait(vt);
-          if (vt.result() == true)
-          {
-            ELLE_WARN("connection to %s succeed", t.second);
-          }
-          else
-          {
-            ELLE_WARN("connection to %s failed", t.second);
-          }
-        }
+
       }
     }
 
