@@ -45,18 +45,9 @@ log_destination()
     return std::cerr;
 }
 
-// XXX
-#include <signal.h>
-
 void
 Infinit(elle::Natural32 argc, elle::Character* argv[])
 {
-  // XXX
-  printf("SLEEPING: %d\n", getpid());
-  //sleep(5);
-  //kill(getpid(), SIGTRAP);
-  // XXX
-
   elle::log::logger
     (std::unique_ptr<elle::log::Logger>
      (new elle::log::TextLogger(log_destination())));
