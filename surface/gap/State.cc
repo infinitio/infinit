@@ -360,10 +360,8 @@ namespace surface
           {
             // wtf, you are trying to do a local exchange, this is stupid, but
             // let it be.
-            std::vector<std::string> l;
-            boost::split(l, locals.front(), boost::is_any_of(":"));
             locals.sort();
-            first_round.push_back(elle::sprintf("127.0.0.1:%s", l[1]));
+            first_round.push_back(locals.front());
             if (addr.size() > 1)
               second_round.push_back(locals.back());
           }
