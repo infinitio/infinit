@@ -53,7 +53,7 @@ def main(state, user, filepath):
     login(state)
 
     id = state.send_files(user, [filepath,])
-    state.transaction_callback(partial(on_started, state))
+    state.transaction_status_callback(partial(on_started, state))
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_canceled, state))
     state.transaction_status_callback(partial(show_status, state))
@@ -75,7 +75,7 @@ def main(state, user, filepath):
     while state.running:
         if getattr(state, "current_transaction_id", None):
             tid = state.current_transaction_id
-            print("Progress: " + str(state.transaction_progress(tid)*100) + " %")
+            print("Progress: {:.2%}".format(state.transaction_progress(tid)), end="\r")
         time.sleep(0.5)
         state.poll()
 
