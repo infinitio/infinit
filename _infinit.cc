@@ -202,54 +202,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   ELLE_DEBUG("joining hole");
   hole->join();
 
-  // // FIXME
-  // if (std::unique_ptr<hole::implementations::slug::Implementation> slug =
-  //     elle::cast<hole::implementations::slug::Implementation>::runtime(hole))
-  //   {
-  //     lune::Descriptor descriptor(Infinit::User, Infinit::Network);
-  //     plasma::meta::Client client(common::meta::host(), common::meta::port());
-  //     try
-  //       {
-  //         std::vector<std::pair<std::string, uint16_t>> addresses;
-
-  //         auto interfaces = elle::network::Interface::get_map(
-  //           elle::network::Interface::Filter::only_up
-  //           | elle::network::Interface::Filter::no_loopback
-  //           );
-  //         for (auto const& pair: interfaces)
-  //           if (pair.second.ipv4_address.size() > 0 &&
-  //               pair.second.mac_address.size() > 0)
-  //             {
-  //               addresses.emplace_back(pair.second.ipv4_address, slug->port());
-  //               break;
-  //             }
-  //         if (addresses.size() == 0)
-  //           {
-  //             ELLE_ERR("Cannot find any valid ip address");
-  //           }
-  //         else
-  //           {
-  //             for (auto const &pair: addresses)
-  //             {
-  //               ELLE_LOG("Register instance address: %s:%d", pair.first,
-  //                        pair.second);
-  //             }
-
-  //             client.token(agent::Agent::meta_token);
-  //             // client.network_connect_device(descriptor.meta().id(),
-  //             //                               passport.id(),
-  //             //                               addresses,
-  //             //                               public_addresses);
-  //           }
-  //       }
-  //     catch (std::exception const& err)
-  //       {
-  //         ELLE_ERR("Cannot update device port: %s",
-  //                  err.what()); // XXX[to improve]
-  //       }
-  //     hole.reset(slug.release());
-  //   }
-
   // initialize the Etoile library.
   if (etoile::Etoile::Initialize() == elle::Status::Error)
     throw elle::Exception("unable to initialize Etoile");
@@ -318,17 +270,17 @@ Main(elle::Natural32 argc, elle::Character* argv[])
 
       elle::crash::report(common::meta::host(), common::meta::port(),
                           "8infinit", e.what(), elle::Backtrace::current());
-      infinit::scheduler().terminate();
+      reactor::Scheduler::scheduler()->terminate();
       return elle::Status::Error;
     }
-  infinit::scheduler().terminate();
+  reactor::Scheduler::scheduler()->terminate();
   return elle::Status::Ok;
 }
 
 int
 main(int argc, char* argv[])
 {
-  reactor::Scheduler& sched = infinit::scheduler();
+  reactor::Scheduler sched;
   reactor::VThread<elle::Status> main(sched,
                                       "Infinit main",
                                       [&argc, &argv] () -> elle::Status {
