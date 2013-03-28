@@ -202,14 +202,6 @@ namespace etoile
       RemoteProcedure<void,
                       etoile::gear::Identifier const&> groupdestroy;
 
-      /*-------------.
-      | Hole (FIXME) |
-      `-------------*/
-      RemoteProcedure<void,
-                      std::string const&, int> slug_connect;
-      RemoteProcedure<bool,
-                      std::string const&, int> slug_wait;
-
       /*---------.
       | Transfer |
       `---------*/

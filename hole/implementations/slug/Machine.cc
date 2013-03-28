@@ -8,6 +8,8 @@
 
 #include <reactor/network/exception.hh>
 #include <reactor/network/udt-server.hh>
+#include <reactor/network/tcp-server.hh>
+#include <reactor/network/tcp-socket.hh>
 
 #include <agent/Agent.hh>
 
@@ -22,6 +24,7 @@
 
 #include <lune/Descriptor.hh>
 #include <lune/Lune.hh>
+#include <lune/Phrase.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>
@@ -31,6 +34,8 @@
 #include <nucleus/neutron/Object.hh>
 #include <nucleus/neutron/Access.hh>
 #include <nucleus/Derivable.hh>
+
+#include <cryptography/random.hh>
 
 #include <plasma/meta/Client.hh>
 
@@ -210,6 +215,49 @@ namespace hole
         delete host;
       }
 
+      void
+      Machine::_rpc_accept()
+      {
+        int i = 0;
+        while (true)
+        {
+          std::shared_ptr<reactor::network::TCPSocket> socket(
+            this->_rpc_server->accept());
+
+          i++;
+          auto run = [&, socket]
+          {
+            ELLE_LOG_COMPONENT("infinit.hole.slug.Machine");
+            try
+            {
+              infinit::protocol::Serializer serializer{
+                *reactor::Scheduler::scheduler(),
+                *socket
+              };
+              infinit::protocol::ChanneledStream channels{
+                *reactor::Scheduler::scheduler(),
+                serializer
+              };
+              control::RPC rpcs{channels};
+
+              rpcs.slug_connect = &hole::implementations::slug::portal_connect;
+              rpcs.slug_wait = &hole::implementations::slug::portal_wait;
+
+              rpcs.parallel_run();
+            }
+            catch (elle::Exception const& e)
+            {
+              ELLE_WARN("slug control: %s", e.what());
+            }
+          };
+          this->_controlers.push_back(std::make_shared<reactor::Thread>(
+                                      *reactor::Scheduler::scheduler(),
+                                      elle::sprintf("SLUG RPC %s", i),
+                                      run));
+          ELLE_TRACE("new connection accepted");
+        }
+      }
+
       Machine::Machine(Implementation& hole,
                        int port,
                        reactor::Duration connection_timeout)
@@ -220,10 +268,19 @@ namespace hole
         , _server(reactor::network::Server::create
                   (hole.protocol(), infinit::scheduler()))
         , _acceptor()
+        , _phrase()
+        , _rpc_server(new reactor::network::TCPServer(*reactor::Scheduler::scheduler()))
+        , _rpc_acceptor(new reactor::Thread(*reactor::Scheduler::scheduler(),
+                                            elle::sprintf("RPC %s", *this),
+                                            [&] { this->_rpc_accept(); },
+                                            true))
       {
         machine = this; // FIXME
         elle::network::Locus     locus;
         ELLE_TRACE_SCOPE("launch");
+        this->_rpc_server->listen(0);
+        int rpc_port = this->_rpc_server->local_endpoint().port();
+        ELLE_DEBUG("listen to port: %s", rpc_port);
 
         // Connect to hosts from the descriptor.
         {
@@ -242,6 +299,10 @@ namespace hole
               sched.current()->wait(*t);
               delete t;
             }
+
+          elle::String pass(cryptography::random::generate<elle::String>(4096));
+          this->_phrase.Create(rpc_port, pass);
+          this->_phrase.store(Infinit::User, Infinit::Network, "slug");
         }
 
         ELLE_DEBUG("having tried to connect to peers");

@@ -104,6 +104,7 @@ namespace infinit
       add(boost::function<R (Args...)> const& f);
       void add(BaseRPC& rpc);
       virtual void run();
+      virtual void parallel_run();
     protected:
       typedef BaseProcedure<ISerializer, OSerializer> LocalProcedure;
       typedef std::pair<std::string, LocalProcedure*> NamedProcedure;

@@ -21,6 +21,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
+#include <hole/implementations/slug/Manifest.hh>
 
 #include <fstream>
 
@@ -214,7 +215,7 @@ namespace surface
         if (this->_wait_portal(network_id) == false)
           throw Exception{gap_error, "Couldn't find portal to infinit instance"};
 
-        phrase.load(this->_me._id, network_id, "portal");
+        phrase.load(this->_me._id, network_id, "slug");
 
         ELLE_DEBUG("Connect to the local 8infint instance (%s:%d)",
                    elle::String{"127.0.0.1"},

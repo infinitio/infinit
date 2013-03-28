@@ -357,6 +357,84 @@ namespace infinit
       using elle::Exception;
       try
       {
+        while (true)
+        {
+          Channel c(_channels.accept());
+          Packet question(c.read());
+          IS input(question);
+          uint32_t id;
+          input >> id;
+          auto procedure = _procedures.find(id);
+
+          Packet answer;
+          OS output(answer);
+          try
+          {
+            if (procedure == _procedures.end())
+              throw Exception(sprintf("call to unknown procedure: %s", id));
+            else if (procedure->second.second == nullptr)
+            {
+              throw Exception(sprintf("remote call to non-local procedure: %s",
+                                      procedure->second.first));
+            }
+            else
+            {
+              auto const &name = procedure->second.first;
+
+              ELLE_TRACE("%s: remote procedure called: %s", *this, name)
+                procedure->second.second->_call(input, output);
+            }
+          }
+          catch (elle::Exception& e)
+          {
+            ELLE_TRACE("%s: procedure failed: %s", *this, e.what());
+            output << false;
+            output << std::string(e.what());
+            output << uint16_t(e.backtrace().size());
+            for (auto const& frame: e.backtrace())
+            {
+              output << frame.symbol;
+              output << frame.symbol_mangled;
+              output << frame.symbol_demangled;
+              output << frame.address;
+              output << frame.offset;
+            }
+          }
+          catch (std::exception& e)
+          {
+            ELLE_TRACE("%s: procedure failed: %s", *this, e.what());
+            output << false;
+            output << std::string(e.what());
+            output << uint16_t(0);
+          }
+          catch (...)
+          {
+            ELLE_TRACE("%s: procedure failed: unknown error", *this);
+            output << false;
+            output << std::string("unknown error");
+            output << uint16_t(0);
+          }
+          c.write(answer);
+        }
+      }
+      catch (reactor::network::ConnectionClosed const& e)
+      {
+        ELLE_TRACE("%s: end of RPCs: connection closed", *this);
+        return;
+      }
+    }
+
+    template <typename IS,
+              typename OS>
+    void
+    RPC<IS, OS>::parallel_run()
+    {
+      ELLE_LOG_COMPONENT("infinit.protocol.RPC");
+
+      using elle::sprintf;
+      using elle::Exception;
+      try
+      {
         int i = 0;
         while (true)
         {

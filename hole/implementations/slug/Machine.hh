@@ -18,6 +18,7 @@
 # include <nucleus/fwd.hh>
 
 # include <lune/fwd.hh>
+# include <lune/Phrase.hh>
 
 # include <hole/implementations/slug/fwd.hh>
 
@@ -136,6 +137,21 @@ namespace hole
       `----------*/
       public:
         virtual void print(std::ostream& s) const;
+
+      /*------------.
+      | RPC Control |
+      `------------*/
+      private:
+        //control::RPC    _rpcs;
+        lune::Phrase _phrase;
+        std::unique_ptr<reactor::network::TCPServer> _rpc_server;
+        std::unique_ptr<reactor::Thread> _rpc_acceptor;
+        std::vector<std::shared_ptr<reactor::Thread>> _controlers;
+
+        void
+        _rpc_accept();
+
+
 
       /*---------.
       | Dumpable |
