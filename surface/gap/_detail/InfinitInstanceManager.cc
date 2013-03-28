@@ -6,6 +6,11 @@
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/os/getenv.hh>
+#include <elle/system/signal.hh>
+
+#include <signal.h>
+
+#include <stdlib.h>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.InfinitInstanceManager");
 
@@ -47,6 +52,7 @@ namespace surface
         common::infinit::binary_path("8infinit"),
         std::list<std::string>{"-n", network_id, "-u", _user_id}
       );
+
       _instances[network_id].reset(new InfinitInstance{
           network_id,
           "",
@@ -70,8 +76,38 @@ namespace surface
         ELLE_DEBUG("no network found, no infinit to kill");
       }
 
-      if (this->_instances.find(network_id) != this->_instances.end())
+      auto it_proc = this->_instances.find(network_id);
+      if (it_proc != this->_instances.end())
+      {
+        auto& proc = it_proc->second->process;
+
+        if (proc->running())
+        {
+          proc->terminate();
+          proc->wait();
+        }
+        else
+        {
+          if (proc->status() != 0)
+          {
+            elle::system::Process::StatusCode status_code = proc->status();
+            if (status_code < 0)
+            {
+              if (-status_code == SIGTERM)
+                  ELLE_WARN("8infinit stopped with signal %s(%s)",
+                           -status_code,
+                           elle::system::strsignal(-status_code));
+              else
+                  ELLE_ERR("8infinit stopped with signal %s(%s)",
+                           -status_code,
+                           elle::system::strsignal(-status_code));
+            }
+            else
+              ELLE_ERR("8infinit exited with status %s", status_code);
+          }
+        }
         _instances.erase(network_id);
+      }
     }
 
     bool
