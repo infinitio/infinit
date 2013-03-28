@@ -528,6 +528,8 @@ def configure(cxx_toolkit,
   etoile_sources = drake.nodes(
     'etoile/Etoile.cc',
     'etoile/Etoile.hh',
+    'etoile/Exception.hh',
+    'etoile/Exception.cc',
     'etoile/abstract/Group.cc',
     'etoile/abstract/Group.hh',
     'etoile/abstract/Group.hxx',
