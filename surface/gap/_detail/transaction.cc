@@ -83,68 +83,66 @@ namespace surface
          {MKey::size, std::to_string(size)}});
 
       try
+      {
+        try
         {
-          try
+          for (auto& file: files)
+          {
+            std::list<std::string> arguments{
+              "-n",
+                network_id,
+                "-u",
+                this->_me._id,
+                "--path",
+                file,
+                "--to"
+                };
+
+            ELLE_DEBUG("LAUNCH: %s %s",
+                       transfer_binary,
+                       boost::algorithm::join(arguments, " "));
+
+            auto pc = elle::system::process_config(elle::system::normal_config);
             {
-              for (auto& file: files)
+              std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+              if (!log_file.empty())
               {
-                std::list<std::string> arguments{
-                                            "-n",
-                                            network_id,
-                                            "-u",
-                                            this->_me._id,
-                                            "--path",
-                                            file,
-                                            "--to"
-                                        };
-
-                ELLE_DEBUG("LAUNCH: %s %s",
-                           transfer_binary,
-                           boost::algorithm::join(arguments, " "));
-
-                elle::system::ProcessConfig pc;
-                {
-                  std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-
-                  if (!log_file.empty())
-                  {
-                    log_file += ".to.transfer.log";
-
-                    pc.inherit_current_environment();
-                    pc.setenv("ELLE_LOG_FILE", log_file);
-                  }
-                }
-                // set the environment and start the transfer
-                elle::system::Process p{std::move(pc), transfer_binary, arguments};
-                if (p.wait_status() != 0)
-                  throw Exception(gap_internal_error, "8transfer binary failed");
+                log_file += ".to.transfer.log";
+                pc.setenv("ELLE_LOG_FILE", log_file);
               }
             }
-          catch (...)
-            {
-              // Something went wrong, we need to destroy the network.
-              this->delete_network(network_id, false);
-              throw;
-            }
-
-          plasma::meta::CreateTransactionResponse res;
-
-          res = this->_meta->create_transaction(recipient_id_or_email,
-                                                first_filename,
-                                                files.size(),
-                                                size,
-                                                fs::is_directory(first_filename),
-                                                network_id,
-                                                this->device_id());
-          this->_me.remaining_invitations = res.remaining_invitations;
-
-          elle::metrics::reporter().store(
-            "transaction:create:succeed",
-            {{MKey::value, res.created_transaction_id},
-             {MKey::count, std::to_string(files.size())},
-             {MKey::size, std::to_string(size)}});
-
+            // set the environment and start the transfer
+            elle::system::Process p{std::move(pc), transfer_binary, arguments};
+            if (p.wait_status() != 0)
+              throw Exception(gap_internal_error, "8transfer binary failed");
+          }
         }
+        catch (...)
+        {
+          ELLE_DEBUG("detroying network");
+          // Something went wrong, we need to destroy the network.
+          this->delete_network(network_id, false);
+          throw;
+        }
+
+        plasma::meta::CreateTransactionResponse res;
+
+        res = this->_meta->create_transaction(recipient_id_or_email,
+                                              first_filename,
+                                              files.size(),
+                                              size,
+                                              fs::is_directory(first_filename),
+                                              network_id,
+                                              this->device_id());
+        this->_me.remaining_invitations = res.remaining_invitations;
+
+        elle::metrics::reporter().store(
+          "transaction:create:succeed",
+          {{MKey::value, res.created_transaction_id},
+            {MKey::count, std::to_string(files.size())},
+            {MKey::size, std::to_string(size)}});
+
+      }
       CATCH_FAILURE_TO_METRICS("transaction:create");
     }
 
@@ -187,8 +185,6 @@ namespace surface
         if (!log_file.empty())
           {
             log_file += ".progress.log";
-
-            pc.inherit_current_environment();
             pc.setenv("ELLE_LOG_FILE", log_file);
           }
       }
@@ -574,30 +570,34 @@ namespace surface
             sched,
             "notify_8infinit",
             [&] () -> void {
-                try {
+                try
+                {
                   this->_notify_8infinit(transaction, sched);
-                } catch (std::runtime_error const&) {
-                    exception = std::current_exception();
+                }
+                catch (std::runtime_error const&)
+                {
+                  exception = std::current_exception();
                 }
             }
         };
 
         sched.run();
+        ELLE_DEBUG("notify finished");
       }
-
 
       if (exception != std::exception_ptr{})
       {
+        ELLE_ERR("exception caugth while connecting Infinits. Deleting network");
         this->delete_network(transaction.network_id, true);
         std::rethrow_exception(exception); // XXX SCOPE OF EXCEPTION PTR
       }
       if (transaction.recipient_device_id == this->device_id())
       {
-        this->_add_operation(
-          "download_files_for_" + transaction.transaction_id,
-          std::bind(&State::_download_files, this, transaction.transaction_id),
-          true
-        );
+        this->_add_operation("download_files_for_" + transaction.transaction_id,
+                             std::bind(&State::_download_files,
+                                       this,
+                                       transaction.transaction_id),
+                             true);
       }
     }
 

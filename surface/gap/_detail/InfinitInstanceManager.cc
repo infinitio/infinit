@@ -32,8 +32,7 @@ namespace surface
           if (_instances[network_id]->process->running())
             throw elle::Exception{"Network " + network_id + " already launched"};
         }
-      elle::system::ProcessConfig pc;
-      pc.inherit_current_environment();
+      auto pc = elle::system::process_config(elle::system::normal_config);
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
