@@ -33,6 +33,7 @@ using namespace infinit;
 #include <etoile/wall/Attributes.hh>
 #include <etoile/wall/Path.hh>
 #include <etoile/wall/Group.hh>
+#include <etoile/Exception.hh>
 
 #include <lune/Lune.hh>
 
@@ -133,7 +134,7 @@ namespace etoile
         }
       catch (std::runtime_error& e)
         {
-          throw elle::Exception
+          throw Exception
             (elle::sprintf("unable to set up the portal server: %s", e.what()));
         }
 
@@ -148,7 +149,7 @@ namespace etoile
 
       if (Portal::phrase.Create(port,
                                 pass) == elle::Status::Error)
-        throw elle::Exception("unable to create the phrase");
+        throw Exception("unable to create the phrase");
 
       Portal::phrase.store(Infinit::User, Infinit::Network, "portal");
     }
@@ -201,7 +202,7 @@ namespace etoile
       // check if this application has already been registered.
       if (Portal::applications.find(application->socket) !=
           Portal::applications.end())
-        throw elle::Exception("this application seems to have already been registered");
+        throw Exception("this application seems to have already been registered");
 
       // insert the application in the container.
       result =
@@ -210,7 +211,7 @@ namespace etoile
 
       // check if the insertion was successful.
       if (result.second == false)
-        throw elle::Exception("unable to insert the application in the container");
+        throw Exception("unable to insert the application in the container");
 
       return elle::Status::Ok;
     }
@@ -225,7 +226,7 @@ namespace etoile
       // locate the entry.
       if ((iterator =
            Portal::applications.find(socket)) == Portal::applications.end())
-        throw elle::Exception("unable to locate the given socket");
+        throw Exception("unable to locate the given socket");
 
       // erase the entry.
       Portal::applications.erase(iterator);
@@ -256,7 +257,7 @@ namespace etoile
 
           // dump the application.
           if (application->Dump(margin + 4) == elle::Status::Error)
-            throw elle::Exception("unable to dump the application");
+            throw Exception("unable to dump the application");
         }
 
       return elle::Status::Ok;

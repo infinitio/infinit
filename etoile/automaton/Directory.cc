@@ -6,6 +6,7 @@
 #include <etoile/automaton/Contents.hh>
 #include <etoile/automaton/Rights.hh>
 #include <etoile/gear/Directory.hh>
+#include <etoile/Exception.hh>
 
 #include <agent/Agent.hh>
 
@@ -60,11 +61,11 @@ namespace etoile
 
       // load the object.
       if (Object::Load(context) == elle::Status::Error)
-        throw elle::Exception("unable to fetch the object");
+        throw Exception("unable to fetch the object");
 
       // check that the object is a directory.
       if (context.object->genre() != nucleus::neutron::Genre::directory)
-        throw elle::Exception("this object does not seem to be a directory");
+        throw Exception("this object does not seem to be a directory");
 
       // set the context's state.
       context.state = gear::Context::StateLoaded;
@@ -84,22 +85,22 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user has the right the write the catalog.
       if ((context.rights.permissions & nucleus::neutron::permissions::write) !=
           nucleus::neutron::permissions::write)
-        throw elle::Exception("the user does not seem to have the permission to write "
+        throw Exception("the user does not seem to have the permission to write "
                "this directory");
 
       // open the contents.
       if (Contents::Open(context) == elle::Status::Error)
-        throw elle::Exception("unable to open the contents");
+        throw Exception("unable to open the contents");
 
       // check that the content exists: the subject may have lost the
       // read permission between the previous check and the Contents::Open().
       if (context.contents_porcupine == nullptr)
-        throw elle::Exception("the user does not seem to be able to operate on this "
+        throw Exception("the user does not seem to be able to operate on this "
                "directory");
 
       // Retrieve a door on the catalog.
@@ -123,7 +124,7 @@ namespace etoile
             context.contents_porcupine->size(),
             context.object->access(),
             context.object->owner_token()) == elle::Status::Error)
-        throw elle::Exception("unable to update the object");
+        throw Exception("unable to update the object");
 
       // set the context's state.
       context.state = gear::Context::StateModified;
@@ -144,24 +145,24 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user has the right the read the catalog.
       if ((context.rights.permissions & nucleus::neutron::permissions::read) !=
           nucleus::neutron::permissions::read)
-        throw elle::Exception
+        throw Exception
           (elle::sprintf("the user does not seem to have the permission "
                          "(%s) to read this directory",
                          context.rights.permissions));
 
       // open the contents.
       if (Contents::Open(context) == elle::Status::Error)
-        throw elle::Exception("unable to open the contents");
+        throw Exception("unable to open the contents");
 
       // check that the content exists: the subject may have lost the
       // read permission between the previous check and the Contents::Open().
       if (context.contents_porcupine == nullptr)
-        throw elle::Exception("the user does not seem to be able to operate "
+        throw Exception("the user does not seem to be able to operate "
                               "on this directory");
 
       // Retrieve a door on the catalog.
@@ -203,22 +204,22 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user has the right the read the catalog.
       if ((context.rights.permissions & nucleus::neutron::permissions::read) !=
           nucleus::neutron::permissions::read)
-        throw elle::Exception("the user does not seem to have the permission to read "
+        throw Exception("the user does not seem to have the permission to read "
                "this directory");
 
       // open the contents.
       if (Contents::Open(context) == elle::Status::Error)
-        throw elle::Exception("unable to open the contents");
+        throw Exception("unable to open the contents");
 
       // check that the content exists: the subject may have lost the
       // read permission between the previous check and the Contents::Open().
       if (context.contents_porcupine == nullptr)
-        throw elle::Exception("the user does not seem to be able to operate on this "
+        throw Exception("the user does not seem to be able to operate on this "
                "directory");
 
       // Check if the index is out of range.
@@ -274,22 +275,22 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user has the right the read the catalog.
       if ((context.rights.permissions & nucleus::neutron::permissions::write) !=
           nucleus::neutron::permissions::write)
-        throw elle::Exception("the user does not seem to have the permission to write "
+        throw Exception("the user does not seem to have the permission to write "
                "this directory");
 
       // open the contents.
       if (Contents::Open(context) == elle::Status::Error)
-        throw elle::Exception("unable to open the contents");
+        throw Exception("unable to open the contents");
 
       // check that the content exists: the subject may have lost the
       // read permission between the previous check and the Contents::Open().
       if (context.contents_porcupine == nullptr)
-        throw elle::Exception("the user does not seem to be able to operate on this "
+        throw Exception("the user does not seem to be able to operate on this "
                "directory");
 
       // Perform an optimization here: if the porcupine is evolving in the value
@@ -300,7 +301,7 @@ namespace etoile
       switch (context.contents_porcupine->strategy())
         {
         case nucleus::proton::Strategy::none:
-          throw elle::Exception("invalid 'none' strategy");
+          throw Exception("invalid 'none' strategy");
         case nucleus::proton::Strategy::value:
         case nucleus::proton::Strategy::block:
           {
@@ -380,7 +381,7 @@ namespace etoile
             break;
           }
         default:
-          throw elle::Exception
+          throw Exception
             (elle::sprintf("unknown strategy '%s'",
                            context.contents_porcupine->strategy()));
         }
@@ -393,7 +394,7 @@ namespace etoile
             context.contents_porcupine->size(),
             context.object->access(),
             context.object->owner_token()) == elle::Status::Error)
-        throw elle::Exception("unable to update the object");
+        throw Exception("unable to update the object");
 
       // set the context's state.
       context.state = gear::Context::StateModified;
@@ -412,22 +413,22 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user has the right the read the catalog.
       if ((context.rights.permissions & nucleus::neutron::permissions::write) !=
           nucleus::neutron::permissions::write)
-        throw elle::Exception("the user does not seem to have the permission to write "
+        throw Exception("the user does not seem to have the permission to write "
                "this directory");
 
       // open the contents.
       if (Contents::Open(context) == elle::Status::Error)
-        throw elle::Exception("unable to open the contents");
+        throw Exception("unable to open the contents");
 
       // check that the content exists: the subject may have lost the
       // read permission between the previous check and the Contents::Open().
       if (context.contents_porcupine == nullptr)
-        throw elle::Exception("the user does not seem to be able to operate on this "
+        throw Exception("the user does not seem to be able to operate on this "
                "directory");
 
       // Retrieve a door on the catalog.
@@ -451,7 +452,7 @@ namespace etoile
             context.contents_porcupine->size(),
             context.object->access(),
             context.object->owner_token()) == elle::Status::Error)
-        throw elle::Exception("unable to update the object");
+        throw Exception("unable to update the object");
 
       // set the context's state.
       context.state = gear::Context::StateModified;
@@ -470,7 +471,7 @@ namespace etoile
 
       // discard the object-related information.
       if (Object::Discard(context) == elle::Status::Error)
-        throw elle::Exception("unable to discard the object");
+        throw Exception("unable to discard the object");
 
       // set the context's state.
       context.state = gear::Context::StateDiscarded;
@@ -489,20 +490,20 @@ namespace etoile
 
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // check if the current user is the object owner.
       if (context.rights.role != nucleus::neutron::Object::RoleOwner)
-        throw elle::Exception("the user does not seem to have the permission to destroy "
+        throw Exception("the user does not seem to have the permission to destroy "
                "this directory");
 
       // destroy the contents.
       if (Contents::Destroy(context) == elle::Status::Error)
-        throw elle::Exception("unable to destroy the contents");
+        throw Exception("unable to destroy the contents");
 
       // destroy the object-related information.
       if (Object::Destroy(context) == elle::Status::Error)
-        throw elle::Exception("unable to destroy the object");
+        throw Exception("unable to destroy the object");
 
       // set the context's state.
       context.state = gear::Context::StateDestroyed;
@@ -521,11 +522,11 @@ namespace etoile
 
       // close the contents.
       if (Contents::Close(context) == elle::Status::Error)
-        throw elle::Exception("unable to close the contents");
+        throw Exception("unable to close the contents");
 
       // store the object-related information.
       if (Object::Store(context) == elle::Status::Error)
-        throw elle::Exception("unable to store the object");
+        throw Exception("unable to store the object");
 
       // set the context's state.
       context.state = gear::Context::StateStored;

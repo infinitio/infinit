@@ -15,6 +15,7 @@
 #include <etoile/wall/Directory.hh>
 #include <etoile/wall/Path.hh>
 #include <etoile/wall/Attributes.hh>
+#include <etoile/Exception.hh>
 
 #include <hole/implementations/slug/Machine.hh> // FIXME
 
@@ -228,7 +229,7 @@ namespace etoile
       : _app(app)
       {
         if (_app->state != Application::StateAuthenticated)
-          throw reactor::Exception("the application has not been authenticated");
+          throw Exception("the application has not been authenticated");
         _app->processing = Application::ProcessingOn;
       }
 
