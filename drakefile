@@ -126,7 +126,6 @@ def configure(cxx_toolkit,
     cxx_config.define('INFINIT_HORIZON')
   cxx_config.define('BOOST_PP_VARIADICS')
 
-
   # Lune
   lune_sources = drake.nodes(
     'lune/Configuration.cc',
@@ -341,14 +340,15 @@ def configure(cxx_toolkit,
                                  cxx_toolkit, cxx_config)
 
   # Comet
+  cxx_config.add_local_include_path('comet/sources/')
   comet_sources = drake.nodes(
-    'comet/RSA.hh',
-    'comet/RSA.cc',
-    'comet/BN.hh',
-    'comet/Comet.hh',
-    'comet/RAND.cc',
-    'comet/BN.cc',
-    'comet/RAND.hh',
+    'comet/sources/comet/RSA.hh',
+    'comet/sources/comet/RSA.cc',
+    'comet/sources/comet/BN.hh',
+    'comet/sources/comet/Comet.hh',
+    'comet/sources/comet/RAND.cc',
+    'comet/sources/comet/BN.cc',
+    'comet/sources/comet/RAND.hh',
     )
   comet_lib = drake.cxx.DynLib('lib/comet', comet_sources,
                                cxx_toolkit, cxx_config)
