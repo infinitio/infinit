@@ -417,12 +417,10 @@ namespace surface
             for (auto const&s : second_round)
               ELLE_DEBUG("-- %s", s);
           n = _connect_try(sched, rpcs, second_round);
-          if (n == 0) // still nothing
-            ;// do fallback
+          if (n == 0) // Still nothing.
+            elle::Exception("no connection succeed"); // Do fallback.
         }
-
       }
     }
-
   }
 }
