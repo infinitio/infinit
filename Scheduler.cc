@@ -10,8 +10,8 @@ namespace infinit
   {
     auto* ptr = reactor::Scheduler::scheduler();
     if (ptr != nullptr)
-        return *ptr;
+      return *ptr;
     else
-        throw elle::Exception{"not running in a scheduler"};
+      throw elle::Exception{"not running in a scheduler"};
   }
 }
