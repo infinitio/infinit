@@ -17,6 +17,14 @@
 namespace horizon
 {
 
+  /*-----------------------------.
+  | Global Hole instance (FIXME) |
+  `-----------------------------*/
+  hole::Hole&
+  hole();
+  void
+  hole(hole::Hole* hole);
+
   ///
   /// this class contains general-purpose methods for initializing and
   /// cleaning the horizon component.
