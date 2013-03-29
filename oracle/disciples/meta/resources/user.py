@@ -345,7 +345,7 @@ class Avatar(Page):
         if image:
             yield str(image)
 
-        with open(os.path.join(os.path.dirname(__file__), "pif.png"), 'rb') as f:
+        with open(os.path.join(os.path.dirname(__file__), "place_holder_avatar.png"), 'rb') as f:
             while 1:
                 data = f.read(4096)
                 if data:
