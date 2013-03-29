@@ -21,6 +21,7 @@
 #include <hole/implementations/slug/Implementation.hh>
 #include <hole/implementations/slug/Machine.hh>
 #include <hole/implementations/slug/Manifest.hh>
+#include <hole/Exception.hh>
 
 #include <lune/Descriptor.hh>
 #include <lune/Lune.hh>
@@ -573,7 +574,7 @@ namespace hole
             {
               auto fmt = "the machine's state '%u' does not allow one "
                 "to request operations on the storage layer";
-              throw reactor::Exception(elle::sprintf(fmt, this->_state));
+              throw Exception(elle::sprintf(fmt, this->_state));
             }
           }
       }
@@ -630,7 +631,7 @@ namespace hole
                             dynamic_cast<nucleus::neutron::Access *>(addressBlock.get());
 
                           if (access == nullptr)
-                            throw reactor::Exception("expected an access block");
+                            throw Exception("expected an access block");
 
                           // validate the object, providing the
                           object->validate(address, access);
@@ -653,7 +654,7 @@ namespace hole
                     }
                   case nucleus::neutron::ComponentUnknown:
                     {
-                      throw reactor::Exception(elle::sprintf("unknown component '%u'",
+                      throw Exception(elle::sprintf("unknown component '%u'",
                                                              address.component()));
                     }
                   }
@@ -686,7 +687,7 @@ namespace hole
             {
               auto fmt = "the machine's state '%u' does not allow one "
                 "to request operations on the storage layer";
-              throw reactor::Exception(elle::sprintf(fmt, this->_state));
+              throw Exception(elle::sprintf(fmt, this->_state));
             }
          }
 
@@ -711,14 +712,14 @@ namespace hole
               elle::utility::Time current;
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               auto result =
                 cache.insert(std::pair<elle::String,
                                        elle::utility::Time>(unique, current));
 
               if (result.second == false)
-                throw reactor::Exception(
+                throw Exception(
                   elle::sprintf("unable to insert the address '%s' in the cache",
                                 unique));
             }
@@ -729,7 +730,7 @@ namespace hole
               ELLE_TRACE("%s: update %s", *this, unique);
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               iterator->second = current;
             }
@@ -809,7 +810,7 @@ namespace hole
 
                   // Check if none if the neighbour has the block.
                   if (!found)
-                    throw reactor::Exception(
+                    throw Exception(
                       "unable to retrieve the block associated with "
                       "the given address from the other peers");
                 }
@@ -833,7 +834,7 @@ namespace hole
             {
               auto fmt = "the machine's state '%u' does not allow one "
                 "to request operations on the storage layer";
-              throw reactor::Exception(elle::sprintf(fmt, this->_state));
+              throw Exception(elle::sprintf(fmt, this->_state));
             }
           }
       }
@@ -880,7 +881,7 @@ namespace hole
               elle::utility::Time current;
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               if (current < deadline)
                 {
@@ -1016,7 +1017,7 @@ namespace hole
                 }
               case nucleus::neutron::ComponentUnknown:
                 {
-                  throw reactor::Exception(elle::sprintf("unknown component '%u'",
+                  throw Exception(elle::sprintf("unknown component '%u'",
                                                          address.component()));
                 }
               }
@@ -1038,7 +1039,7 @@ namespace hole
         // of the mutable block but we do not have any guarantee.
 
         if (!this->_hole.storage().exist(address))
-          throw reactor::Exception("unable to retrieve the mutable block");
+          throw Exception("unable to retrieve the mutable block");
 
         Ptr<MutableBlock> block;
 
@@ -1078,7 +1079,7 @@ namespace hole
                   Ptr<nucleus::neutron::Access> access
                     (dynamic_cast<nucleus::neutron::Access*>(block.release()));
                   if (access == nullptr)
-                    throw reactor::Exception("expected an access block");
+                    throw Exception("expected an access block");
                   // Validate the object, providing the
                   object->validate(address, access.get());
                 }
@@ -1100,7 +1101,7 @@ namespace hole
             }
           case nucleus::neutron::ComponentUnknown:
             {
-              throw reactor::Exception(elle::sprintf("unknown component '%u'",
+              throw Exception(elle::sprintf("unknown component '%u'",
                                                      address.component()));
             }
           }
@@ -1125,14 +1126,14 @@ namespace hole
               elle::utility::Time current;
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               auto result =
                 cache.insert(std::pair<elle::String,
                                        elle::utility::Time>(unique, current));
 
               if (result.second == false)
-                throw reactor::Exception(
+                throw Exception(
                   elle::sprintf("unable to insert the address '%s' in the cache",
                                 unique));
             }
@@ -1143,7 +1144,7 @@ namespace hole
               ELLE_DEBUG("%s: update %s", *this, unique);
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               iterator->second = current;
             }
@@ -1269,7 +1270,7 @@ namespace hole
                     }
                   case nucleus::neutron::ComponentUnknown:
                     {
-                      throw reactor::Exception(elle::sprintf("unknown component '%u'",
+                      throw Exception(elle::sprintf("unknown component '%u'",
                                                              address.component()));
                     }
                   }
@@ -1283,7 +1284,7 @@ namespace hole
 
             // check if none if the neighbour has the block.
             if (!found)
-              throw reactor::Exception("unable to retrieve the block associated with "
+              throw Exception("unable to retrieve the block associated with "
                                        "the given address from the other peers");
           }
 
@@ -1320,7 +1321,7 @@ namespace hole
                   Ptr<nucleus::neutron::Access> access
                     (dynamic_cast<nucleus::neutron::Access*>(block.release()));
                   if (access == nullptr)
-                    throw reactor::Exception("expected an access block");
+                    throw Exception("expected an access block");
 
                   // Validate the object.
                   object->validate(address, access.get());
@@ -1343,7 +1344,7 @@ namespace hole
             }
           case nucleus::neutron::ComponentUnknown:
             {
-              throw reactor::Exception(elle::sprintf("unknown component '%u'",
+              throw Exception(elle::sprintf("unknown component '%u'",
                                                      address.component()));
             }
           }
@@ -1360,7 +1361,7 @@ namespace hole
         // Check the machine is connected and has been authenticated
         // as a valid node of the network.
         if (this->_state != State::attached)
-          throw elle::Exception(elle::sprintf(
+          throw Exception(elle::sprintf(
                                   "the machine's state '%u' does not allow one "
                                   "to request operations on the storage layer",
                                   this->_state));
@@ -1414,7 +1415,7 @@ namespace hole
                     }
                   default:
                     {
-                      throw elle::Exception(elle::sprintf("unknown block family %s",
+                      throw Exception(elle::sprintf("unknown block family %s",
                                                           address.family()));
                     }
                   }
@@ -1454,7 +1455,7 @@ namespace hole
             }
           default:
             {
-              throw elle::Exception
+              throw Exception
                 (elle::sprintf(
                   "the machine's state '%s' does not allow one to "
                   "request operations on the storage layer",

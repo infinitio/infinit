@@ -2,6 +2,7 @@
 #include <hole/implementations/local/Local.hh>
 #include <hole/implementations/local/Machine.hh>
 #include <hole/Hole.hh>
+#include <hole/Exception.hh>
 
 #include <nucleus/proton/fwd.hh>
 #include <nucleus/proton/Block.hh>
@@ -107,7 +108,7 @@ namespace hole
 
         // dump the machine.
         if (Local::Computer->Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the machine");
+          throw Exception("unable to dump the machine");
 
         return elle::Status::Ok;
       }

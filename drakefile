@@ -441,6 +441,8 @@ def configure(cxx_toolkit,
 
   # Hole
   hole_sources = drake.nodes(
+    'hole/Exception.cc',
+    'hole/Exception.hh',
     'hole/Authority.cc',
     'hole/Authority.hh',
     'hole/Authority.hxx',

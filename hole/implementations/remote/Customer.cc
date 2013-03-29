@@ -2,6 +2,7 @@
 #include <boost/function.hpp>
 
 #include <hole/Passport.hh>
+#include <hole/Exception.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Revision.hh>
@@ -169,7 +170,7 @@ namespace hole
             }
           default:
             {
-              throw reactor::Exception("unknown block family");
+              throw Exception("unknown block family");
             }
           }
 
@@ -192,7 +193,7 @@ namespace hole
       Customer::_state_check_authenticated() const
       {
         if (_state != State::authenticated)
-          throw reactor::Exception(elle::sprintf("%s has not been authenticated", *this));
+          throw Exception(elle::sprintf("%s has not been authenticated", *this));
       }
 
       /*---------.

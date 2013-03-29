@@ -1,5 +1,6 @@
 #include <hole/implementations/local/Machine.hh>
 #include <hole/Hole.hh>
+#include <hole/Exception.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/ImmutableBlock.hh>
@@ -70,7 +71,7 @@ namespace hole
                       std::unique_ptr<nucleus::neutron::Access> access
                       (dynamic_cast<nucleus::neutron::Access*>(block.release()));
                     if (access == nullptr)
-                      throw elle::Exception("Expected an access block.");
+                      throw Exception("Expected an access block.");
 
                     object->validate(address, access.get());
                   }
@@ -102,7 +103,7 @@ namespace hole
             }
           case nucleus::neutron::ComponentUnknown:
             {
-              throw elle::Exception(
+              throw Exception(
                 elle::sprintf("Unknown component '%u'.", address.component())
                 );
             }
@@ -159,7 +160,7 @@ namespace hole
                   std::unique_ptr<nucleus::neutron::Access> access
                     (dynamic_cast<nucleus::neutron::Access*>(accesBlock.release()));
                   if (access == nullptr)
-                    throw elle::Exception("Expected an access block.");
+                    throw Exception("Expected an access block.");
 
                   // Validate the object.
                   object->validate(address, access.get());
@@ -175,7 +176,7 @@ namespace hole
             }
           case nucleus::neutron::ComponentUnknown:
             {
-              throw elle::Exception(elle::sprintf("unknown component '%u'.",
+              throw Exception(elle::sprintf("unknown component '%u'.",
                                                   address.component()));
             }
           default:
@@ -218,7 +219,7 @@ namespace hole
             }
           default:
             {
-              throw elle::Exception("Unknown block family.");
+              throw Exception("Unknown block family.");
             }
           }
       }
