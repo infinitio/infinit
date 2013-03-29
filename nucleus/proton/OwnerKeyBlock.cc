@@ -100,9 +100,10 @@ namespace nucleus
 
       // verify with the recorded address.
       if (address != self)
-        throw Exception(elle::sprintf("the recorded address does not correspond"
-                                      " to this block: given(%s) versus "
-                                      "self(%s)", address, self));
+        throw Exception(
+          elle::sprintf("the recorded address does not correspond "
+                        "to this block: given(%s) versus "
+                        "self(%s)", address, self));
 
       // verify the owner's key signature with the block's public key.
       if (this->_block_K.verify(this->_owner_signature,
