@@ -125,10 +125,6 @@ namespace etoile
       this->rpcs->attributesget = &wall::Attributes::get;
       this->rpcs->attributesfetch = &wall::Attributes::fetch;
 
-      // XXX[temporary]
-      this->rpcs->transferto = &wall::File::transferto;
-      this->rpcs->transferfrom = &wall::File::transferfrom;
-
       new reactor::Thread(infinit::scheduler(),
                           elle::sprintf("RPC %s", *this),
                           std::bind(&Application::_run, this), true);
