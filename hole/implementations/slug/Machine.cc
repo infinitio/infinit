@@ -34,7 +34,6 @@
 #include <nucleus/proton/MutableBlock.hh>
 #include <nucleus/neutron/Object.hh>
 #include <nucleus/neutron/Access.hh>
-#include <nucleus/Derivable.hh>
 
 #include <cryptography/random.hh>
 
@@ -1174,7 +1173,6 @@ namespace hole
             for (auto neighbour: this->_hosts)
               {
                 Host* host = neighbour.second;
-                nucleus::Derivable derivable;
                 std::unique_ptr<MutableBlock> block;
 
                 try
@@ -1259,7 +1257,7 @@ namespace hole
                       // interface.
                       try
                         {
-                          derivable.block().validate(address);
+                          block->validate(address);
                         }
                       catch (nucleus::Exception const& e)
                         {

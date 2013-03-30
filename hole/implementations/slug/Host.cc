@@ -362,7 +362,10 @@ namespace hole
             }
           }
 
-        return nucleus::Derivable(address.component(), *block.release());
+        return nucleus::Derivable(address.component(),
+                                  *block.release(),
+                                  nucleus::Derivable::Kind::input,
+                                  true);
       }
 
       void
