@@ -11,6 +11,8 @@
 
 #include <hole/Hole.hh>
 
+#include <elle/assert.hh>
+
 #include <Infinit.hh>
 
 namespace etoile
@@ -31,14 +33,14 @@ namespace etoile
     hole::Hole&
     hole()
     {
-      assert(_hole());
+      ELLE_ASSERT(_hole());
       return *_hole();
     }
 
     void
     hole(hole::Hole* hole)
     {
-      assert(!_hole() || !hole);
+      ELLE_ASSERT(!_hole() || !hole);
       _hole() = hole;
     }
 
