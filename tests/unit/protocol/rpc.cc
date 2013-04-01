@@ -14,8 +14,6 @@
 #include <protocol/Serializer.hh>
 #include <protocol/RPC.hh>
 
-reactor::Semaphore lock;
-
 int answer()
 {
   return 42;
@@ -59,7 +57,11 @@ struct DummyRPC: public infinit::protocol::RPC<elle::serialize::InputBinaryArchi
   RemoteProcedure<void> raise;
 };
 
-void caller()
+/*------.
+| Basic |
+`------*/
+
+void caller(reactor::Semaphore& lock)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   sched.current()->wait(lock);
@@ -74,7 +76,7 @@ void caller()
   BOOST_CHECK_THROW(rpc.raise(), std::runtime_error);
 }
 
-void runner(bool sync)
+void runner(reactor::Semaphore& lock, bool sync)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   reactor::network::TCPServer server(sched);
@@ -90,22 +92,23 @@ void runner(bool sync)
   rpc.concat = &concat;
   rpc.raise  = &except;
   try
-    {
-      if (sync)
-        rpc.run();
-      else
-        rpc.parallel_run();
-    }
+  {
+    if (sync)
+      rpc.run();
+    else
+      rpc.parallel_run();
+  }
   catch (reactor::network::ConnectionClosed&)
-    {}
+  {}
 }
 
 int test(bool sync)
 {
-  reactor::Scheduler sched{};
+  reactor::Scheduler sched;
+  reactor::Semaphore lock;
 
-  reactor::Thread r(sched, "Runner", std::bind(runner, sync));
-  reactor::Thread c(sched, "Caller", std::bind(caller));
+  reactor::Thread r(sched, "Runner", std::bind(runner, std::ref(lock), sync));
+  reactor::Thread c(sched, "Caller", std::bind(caller, std::ref(lock)));
 
   sched.run();
   return 0;
