@@ -328,29 +328,27 @@ namespace surface
         }
         // fallback
         {
-            // the only exact match ip:port is the fallback server.
-            std::set_intersection(begin(my_externals), end(my_externals),
-                                  begin(externals), end(externals),
-                                  std::back_inserter(fallback));
-            for (auto const& s: fallback)
-            {
-                externals.remove(s);
-                my_externals.remove(s);
-            }
+          // the only exact match ip:port is the fallback server.
+          std::set_intersection(begin(my_externals), end(my_externals),
+                                begin(externals), end(externals),
+                                std::back_inserter(fallback));
+          for (auto const& s: fallback)
+          {
+            externals.remove(s);
+            my_externals.remove(s);
+          }
         }
       }
 
       ELLE_DEBUG("externals")
-          std::for_each(begin(externals), end(externals), _print);
+        std::for_each(begin(externals), end(externals), _print);
       ELLE_DEBUG("locals")
-          std::for_each(begin(locals), end(locals), _print);
+        std::for_each(begin(locals), end(locals), _print);
       ELLE_DEBUG("fallback")
-          std::for_each(begin(fallback), end(fallback), _print);
+        std::for_each(begin(fallback), end(fallback), _print);
 
       // Very sophisticated heuristic to deduce the addresses to try first.
-      std::vector<
-          std::vector<std::string>
-      > rounds;
+      std::vector<std::vector<std::string>> rounds;
       {
         std::vector<std::string> common = _find_commond_addr(externals,
                                                              my_externals);
@@ -427,19 +425,19 @@ namespace surface
 
         // Connect to the server.
         reactor::network::TCPSocket socket{
-            sched,
-            elle::String("127.0.0.1"),
-            phrase.port,
+          sched,
+          elle::String("127.0.0.1"),
+          phrase.port,
         };
 
         proto::Serializer serializer{
-            sched,
-            socket
+          sched,
+          socket
         };
 
         proto::ChanneledStream channels{
-            sched,
-            serializer
+          sched,
+          serializer
         };
 
         hole::implementations::slug::control::RPC rpcs{channels};
