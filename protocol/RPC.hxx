@@ -511,7 +511,26 @@ namespace infinit
       catch (reactor::network::ConnectionClosed const& e)
       {
         ELLE_TRACE("%s: end of RPCs: connection closed", *this);
+        this->_terminate_rpcs();
         return;
+      }
+      catch (elle::Exception& e)
+      {
+        ELLE_WARN("%s: end of RPCs: %s", *this, e);
+        this->_terminate_rpcs();
+        throw;
+      }
+      catch (std::exception& e)
+      {
+        ELLE_WARN("%s: end of RPCs: %s", *this, e.what());
+        this->_terminate_rpcs();
+        throw;
+      }
+      catch (...)
+      {
+        ELLE_WARN("%s: end of RPCs: unkown error", *this);
+        this->_terminate_rpcs();
+        throw;
       }
     }
 
