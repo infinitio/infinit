@@ -11,6 +11,7 @@
 # include <elle/Printable.hh>
 
 # include <protocol/fwd.hh>
+# include <reactor/thread.hh>
 
 namespace infinit
 {
@@ -58,6 +59,8 @@ namespace infinit
       BaseRPC(ChanneledStream& channels);
       virtual void run() = 0;
     protected:
+      void
+      _terminate_rpcs();
       template <typename ISerializer,
                 typename OSerializer,
                 typename R,
@@ -65,6 +68,9 @@ namespace infinit
       friend class Procedure;
       ChanneledStream& _channels;
       uint32_t _id;
+      typedef std::unique_ptr<reactor::Thread> ThreadPtr;
+      typedef std::pair<ThreadPtr, std::exception_ptr> RunningCall;
+      std::vector<std::shared_ptr<RunningCall>> _threads;
     };
 
     template <typename ISerializer, typename OSerializer>
@@ -103,6 +109,7 @@ namespace infinit
       add(boost::function<R (Args...)> const& f);
       void add(BaseRPC& rpc);
       virtual void run();
+      virtual void parallel_run();
     protected:
       typedef BaseProcedure<ISerializer, OSerializer> LocalProcedure;
       typedef std::pair<std::string, LocalProcedure*> NamedProcedure;

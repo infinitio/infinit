@@ -4,6 +4,7 @@
 #include <boost/format.hpp>
 
 #include <hole/storage/Storage.hh>
+#include <hole/Exception.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.storage.Storage");
 
@@ -61,7 +62,7 @@ namespace hole
       ELLE_ASSERT(address.network() == this->_network);
 
       if (this->_exist(this->_identifier(address)))
-        throw elle::Exception("this block seems to already exists.");
+        throw Exception("this block seems to already exists.");
 
       this->_store(address, block);
     }
@@ -75,7 +76,7 @@ namespace hole
       ELLE_ASSERT(address.network() == this->_network);
 
       if (conflict(address, block))
-        throw elle::Exception("the block does not derive the local one.");
+        throw Exception("the block does not derive the local one.");
 
       this->_store(address, block);
     }
@@ -88,7 +89,7 @@ namespace hole
       ELLE_ASSERT(address.network() == this->_network);
 
       if (!this->_exist(this->_identifier(address)))
-        throw elle::Exception("the block does not seem to exist.");
+        throw Exception("the block does not seem to exist.");
 
       return this->_load(address);
     }
@@ -105,7 +106,7 @@ namespace hole
       ELLE_ASSERT(revision == nucleus::proton::Revision::Last);
 
       if (!this->_exist(this->_identifier(address, revision)))
-        throw elle::Exception("the block does not seem to exist.");
+        throw Exception("the block does not seem to exist.");
 
       return this->_load(address, revision);
     }
@@ -119,7 +120,7 @@ namespace hole
 
       // Check block existence before trying to delete it.
       if(!this->_exist(this->_identifier(address)))
-        throw elle::Exception("the block you tried to erase doesn't exist.");
+        throw Exception("the block you tried to erase doesn't exist.");
 
       this->_erase(address);
     }

@@ -87,9 +87,9 @@ infinit_log_search() {
 }
 
 infinit_log_disable() {
-	export INFINIT_LOG_FILE=/dev/null
+	export ELLE_LOG_FILE=/dev/null
 }
 
 infinit_log_enable() {
-	unset INFINIT_LOG_FILE
+	unset ELLE_LOG_FILE
 }

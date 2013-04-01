@@ -8,6 +8,7 @@
 #include <elle/serialize/extract.hh>
 
 #include <hole/storage/Directory.hh>
+#include <hole/Exception.hh>
 
 #include <nucleus/factory.hh>
 #include <nucleus/fwd.hh>
@@ -70,7 +71,7 @@ namespace hole
       elle::io::Path path(this->path(address));
 
       if (elle::io::File::Dig(path) == elle::Status::Error)
-        throw std::runtime_error(
+        throw Exception(
           elle::sprintf("Unable to dig the path '%s'.", path));
 
       // Serialize the block.
@@ -87,7 +88,7 @@ namespace hole
 
       // Check path status.
       if (elle::io::File::Dig(path) == elle::Status::Error)
-        throw std::runtime_error(
+        throw Exception(
           elle::sprintf("Unable to dig the path '%s'.", path));
 
       // Serialize the block.
@@ -145,7 +146,7 @@ namespace hole
 
       // Delete block.
       if (elle::io::File::Erase(path) == elle::Status::Error)
-        throw std::runtime_error(
+        throw Exception(
           elle::sprintf("Unable to erase the file '%s'.", path));
     }
 

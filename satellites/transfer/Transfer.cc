@@ -42,14 +42,6 @@
 
 ELLE_LOG_COMPONENT("infinit.satellites.transfer.Transfer");
 
-// Through this hack, the etoile's portal API is used for triggering
-// specific RPCs for reading/writing files without having to transfer
-// the content through a socket.
-//
-// XXX[to remove as soon as possible, especially when etoile will be
-//     instantiable]
-#undef TRANSFER_UGLY_PERFORMANCE_HACK
-
 namespace satellite
 {
   reactor::network::TCPSocket* Transfer::socket = nullptr;
@@ -398,22 +390,6 @@ namespace satellite
               std::streamsize N = 1048576;
               nucleus::neutron::Offset offset(0);
 
-#ifdef TRANSFER_UGLY_PERFORMANCE_HACK
-              // Transfer is too slow: this hack consists in using a specific
-              // RPC for reading a whole file.
-              while (offset < abstract.size)
-                {
-                  nucleus::neutron::Size toread =
-                    (offset + N) > abstract.size ? (abstract.size - offset) : N;
-
-                  nucleus::neutron::Size read =
-                    Transfer::rpcs->transferfrom(child, path, offset, toread);
-
-                  offset += read;
-
-                  Transfer::from_progress(read);
-                }
-#else
               std::ofstream stream(path, std::ios::binary);
 
               ELLE_TRACE("file %s", path.c_str());
@@ -437,7 +413,6 @@ namespace satellite
               assert(offset == abstract.size);
 
               stream.close();
-#endif
 
               // Discard the child.
               Transfer::rpcs->objectdiscard(child);
@@ -554,11 +529,6 @@ namespace satellite
 
     nucleus::neutron::Offset offset(0);
 
-#ifdef TRANSFER_UGLY_PERFORMANCE_HACK
-    // Transfer is too slow: this hack consists in using a specific
-    // RPC for writing a whole file.
-    offset += Transfer::rpcs->transferto(source, file, 0);
-#else
     // Write the source file's content into the Infinit file freshly created.
     std::streamsize N = 5242880;
     std::ifstream stream(source, std::ios::binary);
@@ -578,7 +548,6 @@ namespace satellite
       }
 
     stream.close();
-#endif
 
     // Store file.
     Transfer::rpcs->filestore(file);

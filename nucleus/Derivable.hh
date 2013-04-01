@@ -30,11 +30,12 @@ namespace nucleus
   public:
     Derivable(nucleus::neutron::Component component,
               nucleus::proton::Block const& block,
-              Kind kind = Kind::input)
+              Kind kind = Kind::input,
+              bool dynamic_construct = false)
       : kind(kind)
       , _component(component)
       , _block(const_cast<nucleus::proton::Block*>(&block))
-      , _dynamic_construct(false)
+      , _dynamic_construct(dynamic_construct)
     {}
 
     Derivable()

@@ -201,28 +201,6 @@ namespace etoile
                       etoile::gear::Identifier const&> groupstore;
       RemoteProcedure<void,
                       etoile::gear::Identifier const&> groupdestroy;
-
-      /*-------------.
-      | Hole (FIXME) |
-      `-------------*/
-      RemoteProcedure<void,
-                      std::string const&, int> slug_connect;
-      RemoteProcedure<bool,
-                      std::string const&, int> slug_wait;
-
-      /*---------.
-      | Transfer |
-      `---------*/
-      // XXX[to remove as soon as possible i.e when etoile will be instanciable]
-      RemoteProcedure<nucleus::neutron::Size,
-                      elle::String const&,
-                      etoile::gear::Identifier const&,
-                      nucleus::neutron::Offset const&> transferto;
-      RemoteProcedure<nucleus::neutron::Size,
-                      etoile::gear::Identifier const&,
-                      elle::String const&,
-                      nucleus::neutron::Offset const&,
-                      nucleus::neutron::Size const&> transferfrom;
     };
   }
 }

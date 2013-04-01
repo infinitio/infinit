@@ -1,5 +1,6 @@
 #include <hole/implementations/slug/Implementation.hh>
 #include <hole/implementations/slug/Machine.hh>
+#include <hole/Exception.hh>
 
 #include <nucleus/proton/Block.hh>
 
@@ -95,7 +96,7 @@ namespace hole
 
         // dump the machine.
         if (this->_machine->Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the machine");
+          throw Exception("unable to dump the machine");
 
         return elle::Status::Ok;
       }

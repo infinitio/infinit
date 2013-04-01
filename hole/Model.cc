@@ -1,4 +1,5 @@
 #include <hole/Model.hh>
+#include <hole/Exception.hh>
 
 #include <iostream>
 #include <algorithm>
@@ -59,7 +60,7 @@ namespace hole
           }
       }
 
-    throw elle::Exception("unable to locate the given model name");
+    throw Exception("unable to locate the given model name");
   }
 
   ///
@@ -83,7 +84,7 @@ namespace hole
           }
       }
 
-    throw elle::Exception("unable to locate the given model type");
+    throw Exception("unable to locate the given model type");
   }
 
 //
@@ -128,7 +129,7 @@ namespace hole
   {
     // convert the name into a type.
     if (Model::Convert(name, this->type) == elle::Status::Error)
-      throw elle::Exception("unable to convert the model name into a valid type");
+      throw Exception("unable to convert the model name into a valid type");
 
     return elle::Status::Ok;
   }

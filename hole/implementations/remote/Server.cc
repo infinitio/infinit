@@ -1,6 +1,7 @@
 #include <hole/Hole.hh>
 #include <hole/implementations/remote/Manifest.hh>
 #include <hole/implementations/remote/Server.hh>
+#include <hole/Exception.hh>
 
 #include <elle/log.hh>
 
@@ -82,7 +83,7 @@ namespace hole
 
         // // does the block already exist.
         // if (this->_hole.storage().exist(address))
-        //   throw reactor::Exception("this immutable block seems to already "
+        //   throw Exception("this immutable block seems to already "
         //                            "exist");
 
         // // store the block.
@@ -141,7 +142,7 @@ namespace hole
             }
           case nucleus::neutron::ComponentUnknown:
             {
-              throw reactor::Exception(elle::sprintf("unknown component '%u'",
+              throw Exception(elle::sprintf("unknown component '%u'",
                                                      address.component()));
             }
           }
@@ -217,7 +218,7 @@ namespace hole
             }
           case nucleus::neutron::ComponentUnknown:
             {
-              throw reactor::Exception(elle::sprintf("unknown component '%u'",
+              throw Exception(elle::sprintf("unknown component '%u'",
                                                      address.component()));
             }
           }
@@ -251,7 +252,7 @@ namespace hole
             }
           default:
             {
-              throw reactor::Exception("unknown block family");
+              throw Exception("unknown block family");
             }
           }
       }
@@ -282,7 +283,7 @@ namespace hole
         // go though the customer.
         for (Customer* customer: this->_customers)
           if (customer->Dump(margin + 4) == elle::Status::Error)
-            throw reactor::Exception("unable to dump the customer");
+            throw Exception("unable to dump the customer");
 
         return elle::Status::Ok;
       }

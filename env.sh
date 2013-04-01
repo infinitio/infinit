@@ -21,6 +21,8 @@ infinit_env_init() {
 
 	export PYTHONPATH=${INFINIT_SOURCE_DIR}/drake/src/:${INFINIT_BUILD_DIR}/lib/python:$PYTHONPATH
 	export RPROMPT="Infinit ${RPROMPT}"
+
+	export ELLE_PROCESS_DEBUG_CMD="urxvt -e ./debug.sh %s &"
 }
 
 infinit_env_clean() {
@@ -35,6 +37,8 @@ infinit_env_clean() {
 
 	export PYTHONPATH=${OLD_PYTHONPATH}
 	export RPROMPT=${OLD_RPROMPT}
+
+	unset ELLE_PROCESS_DEBUG_CMD
 }
 
 infinit_env_init

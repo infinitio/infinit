@@ -47,6 +47,7 @@ namespace infinit
     void
     Stream::_uint32_put(std::ostream& s, uint32_t  i)
     {
+      elle::IOStreamClear clearer(s);
       i = htonl(i);
       s.write(reinterpret_cast<char*>(&i), sizeof(i));
     }
@@ -55,6 +56,7 @@ namespace infinit
     Stream::_uint32_get(std::istream& s)
     {
       uint32_t res;
+      elle::IOStreamClear clearer(s);
       s.read(reinterpret_cast<char*>(&res), sizeof(res));
       return ntohl(res);
     }

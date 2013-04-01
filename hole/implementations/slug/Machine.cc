@@ -8,6 +8,8 @@
 
 #include <reactor/network/exception.hh>
 #include <reactor/network/udt-server.hh>
+#include <reactor/network/tcp-server.hh>
+#include <reactor/network/tcp-socket.hh>
 
 #include <agent/Agent.hh>
 
@@ -19,9 +21,11 @@
 #include <hole/implementations/slug/Implementation.hh>
 #include <hole/implementations/slug/Machine.hh>
 #include <hole/implementations/slug/Manifest.hh>
+#include <hole/Exception.hh>
 
 #include <lune/Descriptor.hh>
 #include <lune/Lune.hh>
+#include <lune/Phrase.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>
@@ -30,7 +34,8 @@
 #include <nucleus/proton/MutableBlock.hh>
 #include <nucleus/neutron/Object.hh>
 #include <nucleus/neutron/Access.hh>
-#include <nucleus/Derivable.hh>
+
+#include <cryptography/random.hh>
 
 #include <plasma/meta/Client.hh>
 
@@ -73,77 +78,59 @@ namespace hole
         return (machine->portal_wait(host, port));
       }
 
-      reactor::Signal _machine_wait("machine wait");
-      reactor::Signal _host_wait("host wait");
-
-      // XXX[very simple version where we assume there is a single node to
-      //     which we will connect. otherwise, one would need to loop until...]
-      elle::network::Locus* _locus = nullptr;
       bool
       Machine::portal_wait(std::string const& host, int port)
       {
         ELLE_TRACE_FUNCTION(host, port);
 
-        _locus = new elle::network::Locus(host, port);
-
+        elle::network::Locus locus{host, port};
         ELLE_TRACE("checking if the host '%s' is present and has been "
-                   "authenticated", *_locus);
+                   "authenticated", locus);
 
-        // Look for the given host in the list of hosts and
-        // make sure it has been authenticated.
-        auto i = this->_hosts.find(*_locus);
-        if ((i == this->_hosts.end()) ||
-            (i->second->state() != Host::State::authenticated))
+        // Wait for host to be in the list
+        ELLE_DEBUG("active wait for %s", locus)
+        for (unsigned int max_tries = 10;
+             max_tries != 0;
+             max_tries--)
+        {
+          infinit::scheduler().current()->wait(this->_new_host,
+                                               boost::posix_time::seconds(1));
+          ELLE_DEBUG("(%s) resume from wait. number of hosts: %d ", locus, _hosts.size())
+          for (auto const &p: _hosts)
           {
-            ELLE_TRACE("waiting for the host '%s' to authenticate",
-                       *_locus);
-
-            // Wait for a new host to be authenticated.
-            infinit::scheduler().current()->wait(
-              _host_wait,
-              boost::posix_time::seconds(10));
+            ELLE_DEBUG("-- %s:%s", p.first, p.second);
           }
-
-        ELLE_TRACE("now checking if the machine has also been authenticated "
-                   "by the host");
-
-        // Look for the given host in the list of hosts and
-        // make sure the machine has been able to authenticate to the host.
-        auto j = this->_hosts.find(*_locus);
-        if ((j == this->_hosts.end()) ||
-            (j->second->authenticated() == false))
+          auto it = _hosts.find(locus);
+          if (it != end(_hosts))
           {
-            ELLE_TRACE("waiting for the machine to authenticate to host '%s'",
-                       *_locus);
+            // Check if this is the second host with the same passport
+            elle::Passport const& pass = it->second->remote_passport();
 
-            // Wait for the machine to be authenticated by the host as well.
-            infinit::scheduler().current()->wait(
-              _machine_wait,
-              boost::posix_time::seconds(10));
+            ELLE_DEBUG("passport: %s", pass);
+
+            // We compare each passport with the one of the host.
+            // If there is only one host with this passport, n shall be 1
+            int n = 0;
+            for (auto const& p: _hosts)
+            {
+              ELLE_DEBUG("value of n: %d", n);
+              if (p.second->remote_passport() == pass)
+                n++;
+              // Stop iteration if we know that the host is forbidden.
+              if (n > 1)
+                return false;
+            }
+            ELLE_DEBUG("%s found", locus);
+            return true;
           }
+          else
+          {
+            ELLE_DEBUG("not yet..");
+          }
+        }
 
-        ELLE_TRACE("both the machine and the host have been authenticated");
-
-        return (true);
+        return false;
       }
-
-      void
-      portal_machine_authenticated(elle::network::Locus const& locus)
-      {
-        if ((_locus != nullptr) &&
-            (*_locus == locus))
-          _machine_wait.signal();
-      }
-
-      void
-      portal_host_authenticated(elle::network::Locus const& locus)
-      {
-        if ((_locus != nullptr) &&
-            (*_locus == locus))
-          _host_wait.signal();
-      }
-
-      // FIXME
 
       /*----------.
       | Variables |
@@ -177,28 +164,32 @@ namespace hole
       {
         // Beware: do not yield between the host creation and the
         // authentication, or we might face a race condition.
-        std::unique_ptr<Host> host(new Host(*this, locus, std::move(socket)));
+        Host* host = new Host(*this, locus, std::move(socket));
+        // XXX: leak
         ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
         auto loci = host->authenticate(this->_hole.passport());
         if (this->_state == State::detached)
-          {
-            this->_state = State::attached;
-            this->_hole.ready();
-          }
-        // XXX Progation disabled.
+        {
+          this->_state = State::attached;
+          this->_hole.ready();
+        }
+        // XXX Propagation disabled.
         // for (auto locus: loci)
         //   if (_hosts.find(locus) == _hosts.end())
         //     _connect_try(locus);
         if (host->authenticated())
           // If the remote machine has authenticated, validate this host.
-          this->_host_register(host.release());
+          this->_host_register(host);
       }
 
       void
       Machine::_host_register(Host* host)
       {
         ELLE_LOG("%s: add host: %s", *this, *host);
+        // the next line is broken
+        host->remote_passport(this->_hole.passport());
         _hosts[host->locus()] = host;
+        this->_new_host.signal();
       }
 
       void
@@ -224,6 +215,49 @@ namespace hole
         delete host;
       }
 
+      void
+      Machine::_rpc_accept()
+      {
+        int i = 0;
+        while (true)
+        {
+          std::shared_ptr<reactor::network::TCPSocket> socket(
+            this->_rpc_server->accept());
+
+          i++;
+          auto run = [&, socket]
+          {
+            ELLE_LOG_COMPONENT("infinit.hole.slug.Machine");
+            try
+            {
+              infinit::protocol::Serializer serializer{
+                *reactor::Scheduler::scheduler(),
+                *socket
+              };
+              infinit::protocol::ChanneledStream channels{
+                *reactor::Scheduler::scheduler(),
+                serializer
+              };
+              control::RPC rpcs{channels};
+
+              rpcs.slug_connect = &hole::implementations::slug::portal_connect;
+              rpcs.slug_wait = &hole::implementations::slug::portal_wait;
+
+              rpcs.run();
+            }
+            catch (elle::Exception const& e)
+            {
+              ELLE_WARN("slug control: %s", e.what());
+            }
+          };
+          this->_controlers.push_back(std::make_shared<reactor::Thread>(
+                                      *reactor::Scheduler::scheduler(),
+                                      elle::sprintf("SLUG RPC %s", i),
+                                      run));
+          ELLE_TRACE("new connection accepted");
+        }
+      }
+
       Machine::Machine(Implementation& hole,
                        int port,
                        reactor::Duration connection_timeout)
@@ -234,10 +268,19 @@ namespace hole
         , _server(reactor::network::Server::create
                   (hole.protocol(), infinit::scheduler()))
         , _acceptor()
+        , _phrase()
+        , _rpc_server(new reactor::network::TCPServer(*reactor::Scheduler::scheduler()))
+        , _rpc_acceptor(new reactor::Thread(*reactor::Scheduler::scheduler(),
+                                            elle::sprintf("RPC %s", *this),
+                                            [&] { this->_rpc_accept(); },
+                                            true))
       {
         machine = this; // FIXME
         elle::network::Locus     locus;
         ELLE_TRACE_SCOPE("launch");
+        this->_rpc_server->listen(0);
+        int rpc_port = this->_rpc_server->local_endpoint().port();
+        ELLE_DEBUG("listen to port: %s", rpc_port);
 
         // Connect to hosts from the descriptor.
         {
@@ -256,6 +299,10 @@ namespace hole
               sched.current()->wait(*t);
               delete t;
             }
+
+          elle::String pass(cryptography::random::generate<elle::String>(4096));
+          this->_phrase.Create(rpc_port, pass);
+          this->_phrase.store(Infinit::User, Infinit::Network, "slug");
         }
 
         ELLE_DEBUG("having tried to connect to peers");
@@ -412,53 +459,65 @@ namespace hole
       Machine::_accept()
       {
         while (true)
-          {
-            std::unique_ptr<reactor::network::Socket> socket(_server->accept());
+        {
+          std::unique_ptr<reactor::network::Socket> socket(_server->accept());
 
-            ELLE_TRACE_SCOPE("accept connection from %s",
-                             socket->remote_locus());
+          ELLE_TRACE_SCOPE("accept connection from %s",
+                           socket->remote_locus());
 
 #ifdef CACHE
-            {
-              // We need to clear cached blocks whenever a node joins the
-              // network.
-              //
-              // Indeed, assuming the block B is in cache at revision 4
-              // and considering the new node actually as a newer revision
-              // of the block, say 5.
-              //
-              // By clearing the cache, the system will make sure to ask
-              // the peers for the latest revision of the block. Without it,
-              // the block revision 5 would still be used.
-              //
-              // @see hole::backends::fs::MutableBlock::derives()
-              // XXX this should be done once the host is authenticated.
-              ELLE_LOG_COMPONENT("infinit.hole.slug.cache");
-              ELLE_TRACE("cleaning the cache");
-              cache.clear();
-            }
+          {
+            // We need to clear cached blocks whenever a node joins the
+            // network.
+            //
+            // Indeed, assuming the block B is in cache at revision 4
+            // and considering the new node actually as a newer revision
+            // of the block, say 5.
+            //
+            // By clearing the cache, the system will make sure to ask
+            // the peers for the latest revision of the block. Without it,
+            // the block revision 5 would still be used.
+            //
+            // @see hole::backends::fs::MutableBlock::derives()
+            // XXX this should be done once the host is authenticated.
+            ELLE_LOG_COMPONENT("infinit.hole.slug.cache");
+            ELLE_TRACE("cleaning the cache");
+            cache.clear();
+          }
 #endif
 
-            // Depending on the machine's state.
-            switch (this->_state)
+          // Depending on the machine's state.
+          switch (this->_state)
+          {
+            case State::attached:
               {
-                case State::attached:
-                {
-                  // FIXME: handling via loci is very wrong. IPs are
-                  // not uniques, and this reconstruction is lame and
-                  // non-injective.
-                  auto locus = socket->remote_locus();
-                  _connect(std::move(socket), locus, false);
-                  break;
-                }
-                default:
-                {
-                  // FIXME: Why not listening only when we're attached ?
-                  ELLE_TRACE("not attached, ignore %s", socket->remote_locus());
-                  break;
-                }
+                // FIXME: handling via loci is very wrong. IPs are
+                // not uniques, and this reconstruction is lame and
+                // non-injective.
+                auto locus = socket->remote_locus();
+                reactor::network::Socket* s = socket.release();
+                reactor::Thread *t =
+                  new reactor::Thread(
+                    *reactor::Scheduler::scheduler(),
+                     elle::sprintf("connect"),
+                     [this, s, locus] {
+                       _connect(
+                         std::move(std::unique_ptr<reactor::network::Socket>(s)),
+                         locus,
+                         false
+                       );
+                     }
+                  );
+                break;
+              }
+            default:
+              {
+                // FIXME: Why not listening only when we're attached ?
+                ELLE_TRACE("not attached, ignore %s", socket->remote_locus());
+                break;
               }
           }
+        }
       }
 
       /*----.
@@ -514,7 +573,7 @@ namespace hole
             {
               auto fmt = "the machine's state '%u' does not allow one "
                 "to request operations on the storage layer";
-              throw reactor::Exception(elle::sprintf(fmt, this->_state));
+              throw Exception(elle::sprintf(fmt, this->_state));
             }
           }
       }
@@ -571,7 +630,7 @@ namespace hole
                             dynamic_cast<nucleus::neutron::Access *>(addressBlock.get());
 
                           if (access == nullptr)
-                            throw reactor::Exception("expected an access block");
+                            throw Exception("expected an access block");
 
                           // validate the object, providing the
                           object->validate(address, access);
@@ -594,7 +653,7 @@ namespace hole
                     }
                   case nucleus::neutron::ComponentUnknown:
                     {
-                      throw reactor::Exception(elle::sprintf("unknown component '%u'",
+                      throw Exception(elle::sprintf("unknown component '%u'",
                                                              address.component()));
                     }
                   }
@@ -627,7 +686,7 @@ namespace hole
             {
               auto fmt = "the machine's state '%u' does not allow one "
                 "to request operations on the storage layer";
-              throw reactor::Exception(elle::sprintf(fmt, this->_state));
+              throw Exception(elle::sprintf(fmt, this->_state));
             }
          }
 
@@ -652,14 +711,14 @@ namespace hole
               elle::utility::Time current;
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               auto result =
                 cache.insert(std::pair<elle::String,
                                        elle::utility::Time>(unique, current));
 
               if (result.second == false)
-                throw reactor::Exception(
+                throw Exception(
                   elle::sprintf("unable to insert the address '%s' in the cache",
                                 unique));
             }
@@ -670,7 +729,7 @@ namespace hole
               ELLE_TRACE("%s: update %s", *this, unique);
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               iterator->second = current;
             }
@@ -750,7 +809,7 @@ namespace hole
 
                   // Check if none if the neighbour has the block.
                   if (!found)
-                    throw reactor::Exception(
+                    throw Exception(
                       "unable to retrieve the block associated with "
                       "the given address from the other peers");
                 }
@@ -774,7 +833,7 @@ namespace hole
             {
               auto fmt = "the machine's state '%u' does not allow one "
                 "to request operations on the storage layer";
-              throw reactor::Exception(elle::sprintf(fmt, this->_state));
+              throw Exception(elle::sprintf(fmt, this->_state));
             }
           }
       }
@@ -821,7 +880,7 @@ namespace hole
               elle::utility::Time current;
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               if (current < deadline)
                 {
@@ -957,7 +1016,7 @@ namespace hole
                 }
               case nucleus::neutron::ComponentUnknown:
                 {
-                  throw reactor::Exception(elle::sprintf("unknown component '%u'",
+                  throw Exception(elle::sprintf("unknown component '%u'",
                                                          address.component()));
                 }
               }
@@ -979,7 +1038,7 @@ namespace hole
         // of the mutable block but we do not have any guarantee.
 
         if (!this->_hole.storage().exist(address))
-          throw reactor::Exception("unable to retrieve the mutable block");
+          throw Exception("unable to retrieve the mutable block");
 
         Ptr<MutableBlock> block;
 
@@ -1019,7 +1078,7 @@ namespace hole
                   Ptr<nucleus::neutron::Access> access
                     (dynamic_cast<nucleus::neutron::Access*>(block.release()));
                   if (access == nullptr)
-                    throw reactor::Exception("expected an access block");
+                    throw Exception("expected an access block");
                   // Validate the object, providing the
                   object->validate(address, access.get());
                 }
@@ -1041,7 +1100,7 @@ namespace hole
             }
           case nucleus::neutron::ComponentUnknown:
             {
-              throw reactor::Exception(elle::sprintf("unknown component '%u'",
+              throw Exception(elle::sprintf("unknown component '%u'",
                                                      address.component()));
             }
           }
@@ -1066,14 +1125,14 @@ namespace hole
               elle::utility::Time current;
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               auto result =
                 cache.insert(std::pair<elle::String,
                                        elle::utility::Time>(unique, current));
 
               if (result.second == false)
-                throw reactor::Exception(
+                throw Exception(
                   elle::sprintf("unable to insert the address '%s' in the cache",
                                 unique));
             }
@@ -1084,7 +1143,7 @@ namespace hole
               ELLE_DEBUG("%s: update %s", *this, unique);
 
               if (current.Current() == elle::Status::Error)
-                throw reactor::Exception("unable to retrieve the current time");
+                throw Exception("unable to retrieve the current time");
 
               iterator->second = current;
             }
@@ -1114,7 +1173,6 @@ namespace hole
             for (auto neighbour: this->_hosts)
               {
                 Host* host = neighbour.second;
-                nucleus::Derivable derivable;
                 std::unique_ptr<MutableBlock> block;
 
                 try
@@ -1199,7 +1257,7 @@ namespace hole
                       // interface.
                       try
                         {
-                          derivable.block().validate(address);
+                          block->validate(address);
                         }
                       catch (nucleus::Exception const& e)
                         {
@@ -1210,7 +1268,7 @@ namespace hole
                     }
                   case nucleus::neutron::ComponentUnknown:
                     {
-                      throw reactor::Exception(elle::sprintf("unknown component '%u'",
+                      throw Exception(elle::sprintf("unknown component '%u'",
                                                              address.component()));
                     }
                   }
@@ -1224,7 +1282,7 @@ namespace hole
 
             // check if none if the neighbour has the block.
             if (!found)
-              throw reactor::Exception("unable to retrieve the block associated with "
+              throw Exception("unable to retrieve the block associated with "
                                        "the given address from the other peers");
           }
 
@@ -1261,7 +1319,7 @@ namespace hole
                   Ptr<nucleus::neutron::Access> access
                     (dynamic_cast<nucleus::neutron::Access*>(block.release()));
                   if (access == nullptr)
-                    throw reactor::Exception("expected an access block");
+                    throw Exception("expected an access block");
 
                   // Validate the object.
                   object->validate(address, access.get());
@@ -1284,7 +1342,7 @@ namespace hole
             }
           case nucleus::neutron::ComponentUnknown:
             {
-              throw reactor::Exception(elle::sprintf("unknown component '%u'",
+              throw Exception(elle::sprintf("unknown component '%u'",
                                                      address.component()));
             }
           }
@@ -1301,7 +1359,7 @@ namespace hole
         // Check the machine is connected and has been authenticated
         // as a valid node of the network.
         if (this->_state != State::attached)
-          throw elle::Exception(elle::sprintf(
+          throw Exception(elle::sprintf(
                                   "the machine's state '%u' does not allow one "
                                   "to request operations on the storage layer",
                                   this->_state));
@@ -1355,7 +1413,7 @@ namespace hole
                     }
                   default:
                     {
-                      throw elle::Exception(elle::sprintf("unknown block family %s",
+                      throw Exception(elle::sprintf("unknown block family %s",
                                                           address.family()));
                     }
                   }
@@ -1395,7 +1453,7 @@ namespace hole
             }
           default:
             {
-              throw elle::Exception
+              throw Exception
                 (elle::sprintf(
                   "the machine's state '%s' does not allow one to "
                   "request operations on the storage layer",

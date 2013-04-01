@@ -3,6 +3,7 @@
 #include <hole/implementations/remote/Implementation.hh>
 #include <hole/implementations/remote/Machine.hh>
 #include <hole/implementations/remote/Remote.hh>
+#include <hole/Exception.hh>
 
 namespace hole
 {
@@ -44,7 +45,7 @@ namespace hole
                             const nucleus::proton::ImmutableBlock& block)
       {
         if (Remote::Computer->role != Machine::RoleClient)
-          throw reactor::Exception("the hole is not acting as a remote client as it should");
+          throw Exception("the hole is not acting as a remote client as it should");
         Remote::Computer->client->put(address, block);
       }
 
@@ -53,7 +54,7 @@ namespace hole
                           const nucleus::proton::MutableBlock& block)
       {
         if (Remote::Computer->role != Machine::RoleClient)
-          throw reactor::Exception("the hole is not acting as a remote client as it should");
+          throw Exception("the hole is not acting as a remote client as it should");
         Remote::Computer->client->put(address, block);
       }
 
@@ -61,7 +62,7 @@ namespace hole
       Implementation::_pull(const nucleus::proton::Address& address)
       {
         if (Remote::Computer->role != Machine::RoleClient)
-          throw reactor::Exception("the hole is not acting as a remote client as it should");
+          throw Exception("the hole is not acting as a remote client as it should");
         return Remote::Computer->client->get(address);
       }
 
@@ -70,7 +71,7 @@ namespace hole
                           const nucleus::proton::Revision& revision)
       {
         if (Remote::Computer->role != Machine::RoleClient)
-          throw reactor::Exception("the hole is not acting as a remote client as it should");
+          throw Exception("the hole is not acting as a remote client as it should");
         return Remote::Computer->client->get(address, revision);
       }
 
@@ -78,7 +79,7 @@ namespace hole
       Implementation::_wipe(const nucleus::proton::Address& address)
       {
         if (Remote::Computer->role != Machine::RoleClient)
-          throw reactor::Exception("the hole is not acting as a remote client as it should");
+          throw Exception("the hole is not acting as a remote client as it should");
         Remote::Computer->client->kill(address);
       }
 
@@ -95,7 +96,7 @@ namespace hole
 
         // dump the machine.
         if (Remote::Computer->Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the machine");
+          throw Exception("unable to dump the machine");
 
         return elle::Status::Ok;
       }
