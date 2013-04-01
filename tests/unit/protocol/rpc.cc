@@ -74,7 +74,7 @@ void caller()
   BOOST_CHECK_THROW(rpc.raise(), std::runtime_error);
 }
 
-void runner()
+void runner(bool sync)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   reactor::network::TCPServer server(sched);
@@ -91,17 +91,20 @@ void runner()
   rpc.raise  = &except;
   try
     {
-      rpc.run();
+      if (sync)
+        rpc.run();
+      else
+        rpc.parallel_run();
     }
   catch (reactor::network::ConnectionClosed&)
     {}
 }
 
-int test()
+int test(bool sync)
 {
   reactor::Scheduler sched{};
 
-  reactor::Thread r(sched, "Runner", std::bind(runner));
+  reactor::Thread r(sched, "Runner", std::bind(runner, sync));
   reactor::Thread c(sched, "Caller", std::bind(caller));
 
   sched.run();
@@ -112,8 +115,8 @@ bool test_suite()
 {
   boost::unit_test::test_suite* rpc = BOOST_TEST_SUITE("RPC");
   boost::unit_test::framework::master_test_suite().add(rpc);
-  rpc->add(BOOST_TEST_CASE(test));
-
+  rpc->add(BOOST_TEST_CASE(std::bind(test, true)));
+  rpc->add(BOOST_TEST_CASE(std::bind(test, false)));
   return true;
 }
 
