@@ -201,8 +201,6 @@ namespace surface
       std::set_intersection(begin(theirs_addr), end(theirs_addr),
                             begin(ours_addr), end(ours_addr),
                             std::back_inserter(common_addr));
-      ELLE_DEBUG("common addresses:")
-        std::for_each(begin(common_addr), end(common_addr), _print);
       return common_addr;
     }
 
@@ -294,6 +292,7 @@ namespace surface
       std::list<std::string> locals;
       std::list<std::string> my_externals;
       std::list<std::string> my_locals;
+      std::list<std::string> fallback;
       {
         std::string theirs_device;
         std::string ours_device;
@@ -327,27 +326,53 @@ namespace surface
           my_externals = std::move(e.externals);
           my_locals = std::move(e.locals);
         }
+        // fallback
+        {
+            // the only exact match ip:port is the fallback server.
+            std::set_intersection(begin(my_externals), end(my_externals),
+                                  begin(externals), end(externals),
+                                  std::back_inserter(fallback));
+            for (auto const& s: fallback)
+            {
+                externals.remove(s);
+                my_externals.remove(s);
+            }
+        }
       }
 
       ELLE_DEBUG("externals")
           std::for_each(begin(externals), end(externals), _print);
       ELLE_DEBUG("locals")
           std::for_each(begin(locals), end(locals), _print);
+      ELLE_DEBUG("fallback")
+          std::for_each(begin(fallback), end(fallback), _print);
 
       // Very sophisticated heuristic to deduce the addresses to try first.
-      std::vector<std::string> first_round;
-      std::vector<std::string> second_round;
+      std::vector<
+          std::vector<std::string>
+      > rounds;
       {
         std::vector<std::string> common = _find_commond_addr(externals,
                                                              my_externals);
+        std::vector<std::string> first_round;
+        std::vector<std::string> second_round;
 
+        // sort the list, in order to have a deterministic behavior
+        externals.sort();
+        locals.sort();
+        fallback.sort();
         if (common.empty())
         {
           // if there is no common external address, then we can try them first.
+          std::vector<std::string> first_round;
+          std::vector<std::string> second_round;
           for (auto const& s: externals)
             first_round.push_back(s);
-          for (auto const& s: locals)
+          rounds.push_back(first_round);
+          // then, we know we can not connect locally, so try to fallback
+          for (auto const& s: fallback)
             second_round.push_back(s);
+          rounds.push_back(second_round);
         }
         else
         {
@@ -360,17 +385,29 @@ namespace surface
           {
             // wtf, you are trying to do a local exchange, this is stupid, but
             // let it be.
-            locals.sort();
             first_round.push_back(locals.front());
+            rounds.push_back(first_round);
             if (addr.size() > 1)
+            {
               second_round.push_back(locals.back());
+              rounds.push_back(second_round);
+            }
           }
           else
           {
+            std::vector<std::string> third_round;
+            // try local first
             for (auto const &s: locals)
               first_round.push_back(s);
+            rounds.push_back(first_round);
+            // then externals
             for (auto const& s: externals)
               second_round.push_back(s);
+            rounds.push_back(second_round);
+            // then fallback
+            for (auto const& s: fallback)
+              third_round.push_back(s);
+            rounds.push_back(third_round);
           }
         }
       }
@@ -407,19 +444,31 @@ namespace surface
 
         hole::implementations::slug::control::RPC rpcs{channels};
 
-        ELLE_DEBUG("FIRST:")
-          for (auto const&s : first_round)
-            ELLE_DEBUG("-- %s", s);
-        int n = _connect_try(sched, rpcs, first_round);
-        if (n == 0) // no connections succeeded
+        int i = 1;
+        ELLE_DEBUG("DEBUG ROUNDS")
+          for (auto const& round: rounds)
+          {
+            ELLE_DEBUG("- ROUND %s", i++)
+              for (auto const& addr: round)
+              {
+                ELLE_DEBUG("-- %s", addr);
+              }
+          }
+        int round_number = 1;
+        bool success = false;
+        for (auto const& round: rounds)
         {
-          ELLE_DEBUG("SECOND:")
-            for (auto const&s : second_round)
+          ELLE_DEBUG("ROUND %s:", round_number++)
+            for (auto const&s : round)
               ELLE_DEBUG("-- %s", s);
-          n = _connect_try(sched, rpcs, second_round);
-          if (n == 0) // Still nothing.
-            elle::Exception("no connection succeed"); // Do fallback.
+          if (_connect_try(sched, rpcs, round) > 0)
+          {
+            success = true;
+            break;
+          }
         }
+        if (!success)
+          throw elle::Exception{"Unable to connect"};
       }
     }
   }
