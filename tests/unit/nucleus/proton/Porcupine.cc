@@ -43,7 +43,7 @@ ELLE_LOG_COMPONENT("infinit.tests.nucleus.proton.Porcupine");
 #undef PORCUPINE_THOROUGH_CHECK
 
 // To define to test the serialization mechanism with porcupines.
-#undef PORCUPINE_SERIALIZE_TEST
+#define PORCUPINE_SERIALIZE_TEST
 
 // To define to dump the porcupine's statistcs.
 #undef PORCUPINE_STATISTICS
