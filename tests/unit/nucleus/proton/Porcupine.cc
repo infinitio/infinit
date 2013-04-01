@@ -43,7 +43,7 @@ ELLE_LOG_COMPONENT("infinit.tests.nucleus.proton.Porcupine");
 #undef PORCUPINE_THOROUGH_CHECK
 
 // To define to test the serialization mechanism with porcupines.
-#define PORCUPINE_SERIALIZE_TEST
+#undef PORCUPINE_SERIALIZE_TEST
 
 // To define to dump the porcupine's statistcs.
 #undef PORCUPINE_STATISTICS
@@ -406,16 +406,6 @@ test_porcupine_catalog()
     new nucleus::proton::Porcupine<nucleus::neutron::Catalog>(radix2,
                                                               secret2,
                                                               nest4);
-#else
-  etoile::nest::Nest nest4(PORCUPINE_SECRET_LENGTH,
-                           nest1.limits(),
-                           *_network,
-                           _user->K());
-  nucleus::proton::Porcupine<nucleus::neutron::Catalog>* porcupine4 =
-    new nucleus::proton::Porcupine<nucleus::neutron::Catalog>(radix1,
-                                                              secret1,
-                                                              nest4);
-#endif
 
   delete porcupine1;
 
@@ -432,6 +422,7 @@ test_porcupine_catalog()
   ELLE_ASSERT(_storage->empty() == true);
 
   delete porcupine4;
+#endif
 }
 
 //
