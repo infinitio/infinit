@@ -487,6 +487,8 @@ def configure(cxx_toolkit,
     'hole/storage/Storage.hh',
     'hole/storage/Directory.cc',
     'hole/storage/Directory.hh',
+    'hole/storage/Memory.cc',
+    'hole/storage/Memory.hh',
     )
   hole_lib = drake.cxx.DynLib('lib/hole', hole_sources,
                               cxx_toolkit, cxx_config)
