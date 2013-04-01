@@ -34,6 +34,15 @@ std::string concat(std::string const& left, std::string const& right)
   return left + right;
 }
 
+reactor::Thread* suicide_thread(nullptr);
+void suicide()
+{
+  suicide_thread->terminate();
+  suicide_thread = nullptr;
+  reactor::Scheduler::scheduler()->current()->yield();
+  BOOST_CHECK(false);
+}
+
 void except()
 {
   throw std::runtime_error("blablabla");
@@ -48,13 +57,15 @@ struct DummyRPC: public infinit::protocol::RPC<elle::serialize::InputBinaryArchi
     , answer("answer", *this)
     , square("square", *this)
     , concat("concat", *this)
-    , raise ("raise", *this)
+    , raise("raise", *this)
+    , suicide("suicide", *this)
   {}
 
   RemoteProcedure<int> answer;
   RemoteProcedure<int, int> square;
   RemoteProcedure<std::string, std::string const&, std::string const&> concat;
   RemoteProcedure<void> raise;
+  RemoteProcedure<void> suicide;
 };
 
 /*------.
@@ -91,6 +102,7 @@ void runner(reactor::Semaphore& lock, bool sync)
   rpc.square = &square;
   rpc.concat = &concat;
   rpc.raise  = &except;
+  rpc.suicide  = &suicide;
   try
   {
     if (sync)
@@ -114,12 +126,47 @@ int test(bool sync)
   return 0;
 }
 
+/*----------.
+| Terminate |
+`----------*/
+
+void pacify(reactor::Semaphore& lock, reactor::Thread& t)
+{
+  auto& sched = *reactor::Scheduler::scheduler();
+  sched.current()->wait(lock);
+  reactor::network::TCPSocket socket(sched, "127.0.0.1", 12345);
+  infinit::protocol::Serializer s(sched, socket);
+  infinit::protocol::ChanneledStream channels(sched, s);
+
+  DummyRPC rpc(channels);
+  suicide_thread = &t;
+  BOOST_CHECK_THROW(rpc.suicide(), std::runtime_error);
+}
+
+int test_terminate(bool sync)
+{
+  reactor::Scheduler sched{};
+  reactor::Semaphore lock;
+
+  reactor::Thread r(sched, "Runner", std::bind(runner,
+                                               std::ref(lock),
+                                               sync));
+  reactor::Thread j(sched, "Judge dread", std::bind(pacify,
+                                                    std::ref(lock),
+                                                    std::ref(r)));
+
+  sched.run();
+  return 0;
+}
+
 bool test_suite()
 {
   boost::unit_test::test_suite* rpc = BOOST_TEST_SUITE("RPC");
   boost::unit_test::framework::master_test_suite().add(rpc);
   rpc->add(BOOST_TEST_CASE(std::bind(test, true)));
   rpc->add(BOOST_TEST_CASE(std::bind(test, false)));
+  rpc->add(BOOST_TEST_CASE(std::bind(test_terminate, true)));
+  rpc->add(BOOST_TEST_CASE(std::bind(test_terminate, false)));
   return true;
 }
 
