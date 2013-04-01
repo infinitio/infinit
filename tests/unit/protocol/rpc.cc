@@ -59,8 +59,9 @@ struct DummyRPC: public infinit::protocol::RPC<elle::serialize::InputBinaryArchi
   RemoteProcedure<void> raise;
 };
 
-void caller(reactor::Scheduler& sched)
+void caller()
 {
+  auto& sched = *reactor::Scheduler::scheduler();
   sched.current()->wait(lock);
   reactor::network::TCPSocket socket(sched, "127.0.0.1", 12345);
   infinit::protocol::Serializer s(sched, socket);
@@ -73,8 +74,9 @@ void caller(reactor::Scheduler& sched)
   BOOST_CHECK_THROW(rpc.raise(), std::runtime_error);
 }
 
-void runner(reactor::Scheduler& sched)
+void runner()
 {
+  auto& sched = *reactor::Scheduler::scheduler();
   reactor::network::TCPServer server(sched);
   server.listen(12345);
   lock.release();
@@ -99,8 +101,8 @@ int test()
 {
   reactor::Scheduler sched{};
 
-  reactor::Thread r(sched, "Runner", std::bind(runner, std::ref(sched)));
-  reactor::Thread c(sched, "Caller", std::bind(caller, std::ref(sched)));
+  reactor::Thread r(sched, "Runner", std::bind(runner));
+  reactor::Thread c(sched, "Caller", std::bind(caller));
 
   sched.run();
   return 0;
