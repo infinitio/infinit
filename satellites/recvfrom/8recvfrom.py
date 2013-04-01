@@ -136,7 +136,8 @@ def main(state, sender):
         state.update_transaction(transaction_id, state.TransactionStatus.accepted)
 
         while state.running:
-            print("Progress: {:.2%}".format(state.transaction_progress(transaction_id)), end="\r")
+            progress = state.transaction_progress(transaction_id)
+            print("Progress: [{0:50s}] {1:.1f}%".format('#' * int(progress * 50), progress * 100), end="\r"),
             time.sleep(0.5)
             state.poll()
 
