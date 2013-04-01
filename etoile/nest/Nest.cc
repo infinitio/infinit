@@ -419,6 +419,8 @@ namespace etoile
     {
       ELLE_TRACE_METHOD(handle);
 
+      ELLE_DEBUG("handle state's: %s", handle.state());
+
       switch (handle.state())
         {
         case nucleus::proton::Handle::State::unnested:
@@ -469,6 +471,8 @@ namespace etoile
     Nest::load(nucleus::proton::Handle& handle)
     {
       ELLE_TRACE_METHOD(handle);
+
+      ELLE_DEBUG("handle state's: %s", handle.state());
 
       // Act depending on the handle's state.
       switch (handle.state())
@@ -556,6 +560,8 @@ namespace etoile
     Nest::unload(nucleus::proton::Handle& handle)
     {
       ELLE_TRACE_METHOD(handle);
+
+      ELLE_DEBUG("handle state's: %s", handle.state());
 
       switch (handle.state())
         {
