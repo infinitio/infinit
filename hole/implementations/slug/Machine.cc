@@ -243,7 +243,7 @@ namespace hole
               rpcs.slug_connect = &hole::implementations::slug::portal_connect;
               rpcs.slug_wait = &hole::implementations::slug::portal_wait;
 
-              rpcs.parallel_run();
+              rpcs.run();
             }
             catch (elle::Exception const& e)
             {
