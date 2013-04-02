@@ -53,7 +53,7 @@ class TrophoniusNotify(Notifier):
         self.conn = socket.socket()
 
     def open(self):
-        self.conn.connect((conf.TROPHONIUS_HOST, int(conf.TROPHONIUS_LISTEN_SSL_PORT)))
+        self.conn.connect((conf.TROPHONIUS_HOST, int(conf.TROPHONIUS_CONTROL_PORT)))
 
     def send_notification(self, message):
         if isinstance(message, dict):

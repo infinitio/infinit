@@ -84,9 +84,13 @@ def start_ssl(port, factory):
         reactor.listenSSL(port, factory, ssl_factory)
 
 class Application(object):
-    def __init__(self, ip=meta.conf.APERTUS_HOST, port=meta.conf.APERTUS_PORT):
+    def __init__(self,
+                 ip = meta.conf.APERTUS_HOST,
+                 port = meta.conf.APERTUS_PORT,
+                 control_port = meta.conf.APERTUS_CONTROL_PORT):
         self.ip = ip
         self.port = port
+        self.control_port = control_port
         pass
 
     def run(self):
@@ -100,7 +104,7 @@ class Application(object):
         factory.slave = apertus.Apertus()
 
         reactor.listenUDP(self.port, factory.slave, interface=l_addr4[0]['addr'])
-        reactor.listenTCP(self.port + 1, factory, interface="localhost")
+        reactor.listenTCP(self.control_port, factory, interface="localhost")
 
         if HAVE_SETPROCTITLE:
             setproctitle("apertus-server")

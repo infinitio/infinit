@@ -23,9 +23,21 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    '--apertus-control-port',
+    type = int,
+    default = meta.conf.APERTUS_CONTROL_PORT,
+)
+
+parser.add_argument(
     '--trophonius-port',
     type = int,
     default = meta.conf.TROPHONIUS_PORT,
+)
+
+parser.add_argument(
+    '--trophonius-control-port',
+    type = int,
+    default = meta.conf.TROPHONIUS_CONTROL_PORT,
 )
 
 parser.add_argument(
