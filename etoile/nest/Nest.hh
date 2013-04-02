@@ -1,8 +1,6 @@
 #ifndef ETOILE_NEST_NEST_HH
 # define ETOILE_NEST_NEST_HH
 
-# include <reactor/mutex.hh>
-
 # include <elle/types.hh>
 
 # include <etoile/nest/Pod.hh>
@@ -134,8 +132,6 @@ namespace etoile
       ELLE_ATTRIBUTE_R(nucleus::proton::Extent, threshold);
       /// The extent of the currently held blocks.
       ELLE_ATTRIBUTE_R(nucleus::proton::Extent, size);
-      /// A mutex so as to lock the whole nest.
-      ELLE_ATTRIBUTE(reactor::Mutex, mutex);
     };
   }
 }

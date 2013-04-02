@@ -64,8 +64,6 @@ namespace etoile
       ELLE_TRACE_METHOD("");
 
       gear::Transcript transcript;
-      reactor::Lock lock(*reactor::Scheduler::scheduler(),
-                         this->_mutex);
 
       for (auto& pair: this->_pods)
         {
@@ -407,9 +405,6 @@ namespace etoile
     {
       ELLE_TRACE_METHOD(block);
 
-      reactor::Lock lock(*reactor::Scheduler::scheduler(),
-                         this->_mutex);
-
       ELLE_FINALLY_ACTION_DELETE(block);
 
       // Compute a static temporary address which will be the same for every
@@ -486,9 +481,6 @@ namespace etoile
     {
       ELLE_TRACE_METHOD(handle);
 
-      reactor::Lock lock(*reactor::Scheduler::scheduler(),
-                         this->_mutex);
-
       ELLE_DEBUG("handle state's: %s", handle.state());
 
       switch (handle.state())
@@ -554,9 +546,6 @@ namespace etoile
     Nest::load(nucleus::proton::Handle& handle)
     {
       ELLE_TRACE_METHOD(handle);
-
-      reactor::Lock lock(*reactor::Scheduler::scheduler(),
-                         this->_mutex);
 
       ELLE_DEBUG("handle state's: %s", handle.state());
 
@@ -695,9 +684,6 @@ namespace etoile
     Nest::unload(nucleus::proton::Handle& handle)
     {
       ELLE_TRACE_METHOD(handle);
-
-      reactor::Lock lock(*reactor::Scheduler::scheduler(),
-                         this->_mutex);
 
       ELLE_DEBUG("handle state's: %s", handle.state());
 
