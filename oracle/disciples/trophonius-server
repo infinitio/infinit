@@ -13,7 +13,8 @@ in Boeotia.
 
 import sys, os
 import argparse
-
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
+import meta.conf
 parser = argparse.ArgumentParser(description="Trophonius launcher")
 
 parser.add_argument(
@@ -30,8 +31,6 @@ parser.add_argument(
     type = int,
     default = meta.conf.TROPHONIUS_CONTROL_PORT
 )
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 
 if __name__ == '__main__':
     args = parser.parse_args()

@@ -17,7 +17,6 @@ parser = argparse.ArgumentParser(description="Meta server")
 
 parser.add_argument(
     '--meta-host',
-    type = int,
     default = "0.0.0.0",
 )
 parser.add_argument(

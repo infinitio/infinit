@@ -56,28 +56,50 @@ LONGINUS_BIN = os.path.join(DIR, 'longinus-server')
 def main(argv):
     args = parser.parse_args(argv)
 
-    meta = subprocess.Popen([META_BIN, str(args.meta_port)])
-    apertus = subprocess.Popen([APERTUS_BIN, str(args.apertus_port)])
-    trophonius = subprocess.Popen([TROPHONIUS_BIN, str(args.trophonius_port)])
-    longinus = subprocess.Popen([LONGINUS_BIN, str(args.longinus_port)])
+    processes = []
 
-    running = True
     try:
-        while running:
-            meta.poll()
-            apertus.poll()
-            trophonius.poll()
-            longinus.poll()
+        processes.append(subprocess.Popen([
+            META_BIN,
+            '--meta-port', str(args.meta_port),
+            '--trophonius-control-port', str(args.trophonius_control_port),
+            '--apertus-control-port', str(args.apertus_control_port),
+        ]))
 
-            running = meta.returncode is not None or \
-                      apertus.returncode is not None or \
-                      trophonius.returncode is not None or \
-                      longinus.returncode is not None
-    except:
-        meta.terminate()
-        apertus.terminate()
-        trophonius.terminate()
-        longinus.terminate()
+        processes.append(subprocess.Popen([LONGINUS_BIN, str(args.longinus_port)]))
+        processes.append(
+            subprocess.Popen([
+                TROPHONIUS_BIN,
+                '--port', str(args.trophonius_port),
+                '--control-port', str(args.trophonius_control_port),
+            ])
+        )
+        processes.append(
+            subprocess.Popen([
+                APERTUS_BIN,
+                '--port', str(args.apertus_port),
+                '--control-port', str(args.apertus_control_port)
+            ])
+        )
+        running = True
+        while running:
+            for p in processes:
+                p.poll()
+                if p.returncode is not None:
+                    running = False
+
+    finally:
+        for p in processes:
+            try:
+                p.terminate()
+            except: pass
+
+        for p in processes:
+            if p.returncode is None:
+                try:
+                    p.kill()
+                except:
+                    pass
 
 if __name__ == '__main__':
     import sys

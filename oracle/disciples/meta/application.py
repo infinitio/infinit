@@ -35,6 +35,5 @@ class Application(object):
         """
         Run the web server
         """
-        if len(sys.argv) <= 1:
-            sys.argv[1:] = [self.ip + ':' + str(self.port)]
+        sys.argv[1:] = [self.ip + ':' + str(self.port)]
         self.app.run()

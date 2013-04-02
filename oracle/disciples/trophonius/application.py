@@ -6,18 +6,9 @@ from __future__ import print_function
 import sys
 import conf
 
-if "bsd" in sys.platform:
-    from twisted.internet import kqreactor as _platform_reactor
-elif "linux" in sys.platform:
-    from twisted.internet import epollreactor as _platform_reactor
-elif "win32" in sys.platform:
-    from twisted.internet import iocpreactor as _platform_reactor
-else:
-    from twisted.internet import selectreactor as _platform_reactor
+from twisted.internet import reactor
 
-_platform_reactor.install()
-
-from twisted.internet import reactor, protocol, inotify
+from twisted.internet import reactor, protocol
 from twisted.python import filepath
 from twisted.python import log
 
@@ -83,9 +74,6 @@ class Application(object):
     def run(self):
         if not all(os.path.exists(file) for file in (conf.SSL_KEY, conf.SSL_CERT)):
             self.create_self_signed_cert(".")
-        notifier = inotify.INotify()
-        notifier.startReading()
-        notifier.watch(filepath.FilePath("./trophonius/"), callbacks=[mod_reload])
         log.startLogging(self.logfile)
 
         factory = trophonius.TrophoFactory(self)
@@ -93,11 +81,3 @@ class Application(object):
         reactor.listenTCP(self.port, factory)
         reactor.listenTCP(self.ssl_port, meta_factory)
         reactor.run()
-
-def mod_reload(self, filepath, mask):
-    human_masks = inotify.humanReadableMask(mask)
-    if filepath.path.endswith(".py") and "modify" in human_masks:
-        mod_name, ext = os.path.splitext(os.path.basename(filepath.path))
-        if not __name__.endswith(mod_name):
-            log.msg("Reloading {}".format(mod_name))
-            reload(globals()[mod_name])
