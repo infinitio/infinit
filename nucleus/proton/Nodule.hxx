@@ -302,15 +302,15 @@ namespace nucleus
               ELLE_ASSERT(inlet->capacity() == 0);
               ELLE_ASSERT(current().capacity() == 0);
 
+              // unload the current nodule.
+              current.unload();
+
               // finally, since the current child is now empty and unreferenced,
               // it needs to be detached from the porcupine so its memory
               // gets released.
               //
               // note that the block is unloaded at the end of this method.
               nodule.nest().detach(current.handle());
-
-              // unload the current nodule.
-              current.unload();
 
               // delete the entry from the current seam.
               //
@@ -434,15 +434,15 @@ namespace nucleus
                   il->capacity((*left)().capacity());
                   il->state((*left)().state());
 
+                  // unload the current nodule.
+                  current.unload();
+
                   // at this point, current is empty and unreferenced.
                   // therefore, detach the block from the porcupine.
                   //
                   // note that the block is finally unloaded at the end of
                   // this method.
                   nodule.nest().detach(current.handle());
-
-                  // unload the current nodule.
-                  current.unload();
 
                   // delete the entry from the current seam.
                   //
@@ -476,15 +476,15 @@ namespace nucleus
                   il->capacity((*right)().capacity());
                   il->state((*right)().state());
 
+                  // unload the current nodule.
+                  current.unload();
+
                   // at this point, current is empty and unreferenced.
                   // therefore, detach the block from the porcupine.
                   //
                   // note that the block is finally unloaded at the end of
                   // this method.
                   nodule.nest().detach(current.handle());
-
-                  // unload the current nodule.
-                  current.unload();
 
                   // delete the entry from the current seam.
                   //

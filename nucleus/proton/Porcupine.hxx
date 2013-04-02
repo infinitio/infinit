@@ -1474,11 +1474,11 @@ namespace nucleus
 
                     ELLE_FINALLY_ACTION_DELETE(_value);
 
+                    value.unload();
+
                     // Detach the value block, leading to the block's
                     // destruction.
                     this->_nest.detach(*this->_handle);
-
-                    value.unload();
 
                     // Set the embedded value along with the new strategy,
                     // taking care to delete the handle which is no longer used.

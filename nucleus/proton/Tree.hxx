@@ -447,10 +447,10 @@ namespace nucleus
       // Recursively destroy the blocks.
       root().destroy();
 
+      root.unload();
+
       // Detach the root nodule from the nest.
       this->_nest.detach(root.handle());
-
-      root.unload();
 
       delete this->_root;
       this->_root = nullptr;
@@ -688,10 +688,10 @@ namespace nucleus
                   // Retrieve the handle associated with the maiden key.
                   Handle orphan{seam().locate_handle(seam().maiden())};
 
+                  seam.unload();
+
                   // Detach the root nodule from the porcupine.
                   this->_nest.detach(*this->_root);
-
-                  seam.unload();
 
                   // Set the new tree's root handle as being the one of the
                   // block which happens to be alone.
