@@ -50,16 +50,22 @@ def main(argv):
     longinus = subprocess.Popen([LONGINUS_BIN, str(args.longinus_port)])
 
     running = True
-    while running:
-        meta.poll()
-        apertus.poll()
-        trophonius.poll()
-        longinus.poll()
+    try:
+        while running:
+            meta.poll()
+            apertus.poll()
+            trophonius.poll()
+            longinus.poll()
 
-        running = meta.returncode is not None or \
-                  apertus.returncode is not None or \
-                  trophonius.returncode is not None or \
-                  longinus.returncode is not None
+            running = meta.returncode is not None or \
+                      apertus.returncode is not None or \
+                      trophonius.returncode is not None or \
+                      longinus.returncode is not None
+    except:
+        meta.terminate()
+        apertus.terminate()
+        trophonius.terminate()
+        longinus.terminate()
 
 if __name__ == '__main__':
     import sys

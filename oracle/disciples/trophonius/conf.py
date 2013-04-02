@@ -3,8 +3,10 @@
 
 import os
 
-LISTEN_TCP_PORT = int(os.environ.get('TROPHONIUS_SERVER_PORT', 23456))
-LISTEN_SSL_PORT = int(os.environ.get('TROPHONIUS_NOTIFICATION_PORT', 23457))
+import meta.conf
+
+LISTEN_TCP_PORT = meta.conf.TROPHONIUS_PORT
+LISTEN_SSL_PORT = meta.conf.TROPHONIUS_CONTROL_PORT
 
 SSL_KEY = "pkey"
 SSL_CERT = "cert"
