@@ -3,7 +3,6 @@
 #include <elle/printf.hh>
 #include <elle/format/json.hh>
 #include <reactor/exception.hh>
-#include <boost/python.hpp>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
@@ -13,58 +12,6 @@ namespace surface
   {
 
     namespace json = elle::format::json;
-
-    static
-    std::string
-    parse_python_exception()
-    {
-      namespace py = boost::python;
-
-      PyObject* type_ptr = NULL;
-      PyObject* value_ptr = NULL;
-      PyObject* traceback_ptr = NULL;
-
-      PyErr_Fetch(&type_ptr, &value_ptr, &traceback_ptr);
-
-      std::string ret("Unfetchable Python error");
-
-      if(type_ptr != NULL)
-      {
-        py::handle<> h_type(type_ptr);
-        py::str type_pstr(h_type);
-        py::extract<std::string> e_type_pstr(type_pstr);
-        if(e_type_pstr.check())
-          ret = e_type_pstr();
-        else
-          ret = "Unknown exception type";
-      }
-
-      if(value_ptr != NULL)
-      {
-        py::handle<> h_val(value_ptr);
-        py::str a(h_val);
-        py::extract<std::string> returned(a);
-        if(returned.check())
-          ret +=  ": " + returned();
-        else
-          ret += std::string(": Unparseable Python error: ");
-      }
-
-      if(traceback_ptr != NULL)
-      {
-        py::handle<> h_tb(traceback_ptr);
-        py::object tb(py::import("traceback"));
-        py::object fmt_tb(tb.attr("format_tb"));
-        py::object tb_list(fmt_tb(h_tb));
-        py::object tb_str(py::str("\n").join(tb_list));
-        py::extract<std::string> returned(tb_str);
-        if(returned.check())
-          ret += ": " + returned();
-        else
-          ret += std::string(": Unparseable Python traceback");
-      }
-      return ret;
-    }
 
     void
     State::call_error_handlers(gap_Status status,
@@ -81,11 +28,6 @@ namespace surface
       catch (surface::gap::Exception const& e)
       {
         ELLE_WARN("error handlers: %s", e.what());
-      }
-      catch (boost::python::error_already_set const&)
-      {
-        std::string msg = parse_python_exception();
-        ELLE_WARN("error handlers python: %s", msg);
       }
       catch (elle::Exception const& e)
       {
@@ -143,16 +85,6 @@ namespace surface
                                             e.what()),
                               transaction_id);
           continue;
-        }
-        catch (boost::python::error_already_set const&)
-        {
-          std::string msg = parse_python_exception();
-          ELLE_WARN("poll python: %s: %s", notif->notification_type, msg);
-          call_error_handlers(gap_error,
-                              elle::sprintf("%s: %s",
-                                            notif->notification_type,
-                                            msg),
-                              transaction_id);
         }
         catch (elle::Exception const& e)
         {
