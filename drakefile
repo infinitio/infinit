@@ -133,7 +133,6 @@ def configure(cxx_toolkit,
                                    include_dir = ['include/python3.2',
                                                   'include/python3.2m',
                                                   'include/python3.3m'])
-
   # Elle
   elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost)
   elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
@@ -838,6 +837,10 @@ def configure(cxx_toolkit,
                              cxx_toolkit, cxx_config)
 
   # GAP
+
+  gap_python_cxx_config = cxx_config + python3
+  gap_python_cxx_config += boost.config_python()
+  gap_python_cxx_config.lib_path_runtime('..')
   gap_sources = drake.nodes(
     'surface/gap/State.cc',
     'surface/gap/State.hh',
@@ -855,14 +858,12 @@ def configure(cxx_toolkit,
     )
   gap_lib = drake.cxx.DynLib('lib/gap',
                              gap_sources + infinit_libs,
-                             cxx_toolkit, cxx_config)
+                             cxx_toolkit,
+                             gap_python_cxx_config)
   build << gap_lib
 
   # GAP python
 
-  gap_python_cxx_config = cxx_config + python3
-  gap_python_cxx_config += boost.config_python()
-  gap_python_cxx_config.lib_path_runtime('..')
   gap_python_sources = drake.nodes(
     'surface/gap/python/pygap.cc',
     )
