@@ -403,6 +403,7 @@ extern "C" {
   /// Error
 
   typedef void (*gap_on_error_callback_t)(gap_Status,
+                                          char const*,
                                           char const*);
 
   gap_Status

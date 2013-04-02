@@ -55,6 +55,12 @@ def on_finished(state, transaction, new):
                 cnt, state.get_output_dir()))
         state.running = False
 
+def on_error(state, status, message, tid):
+    if tid:
+        print("Error ({}): {}: {}: {}".format(int(status), tid, status, message))
+    else:
+        print("Error ({}): {}: {}".format(int(status), status, message))
+
 def login(state, email = None):
     receiver_id = os.getenv("INFINIT_USER", None)
     if receiver_id == None:
@@ -124,6 +130,7 @@ def main(state, sender):
     state.transaction_status_callback(partial(on_canceled, state))
     state.transaction_status_callback(partial(on_started, state))
     state.transaction_status_callback(partial(show_status, state))
+    state.on_error_callback(partial(on_error, state))
 
     state.running = True
     state.set_device_name(id + "device")
