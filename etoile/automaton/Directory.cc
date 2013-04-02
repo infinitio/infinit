@@ -201,6 +201,9 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(context, index, size);
 
+      // XXX
+      ELLE_WARN("needs to lock the whole porcupine: context.lock");
+
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
         throw elle::Exception("unable to determine the rights");

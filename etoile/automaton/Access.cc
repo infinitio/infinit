@@ -58,7 +58,8 @@ namespace etoile
             new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
                                    depot::hole().storage().network(),
-                                   agent::Agent::Subject.user());
+                                   agent::Agent::Subject.user(),
+                                   20971520);
 
           // Instanciate a porcupine.
           context.access_porcupine =
@@ -74,7 +75,8 @@ namespace etoile
             new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
                                    depot::hole().storage().network(),
-                                   agent::Agent::Subject.user());
+                                   agent::Agent::Subject.user(),
+                                   20971520);
 
           // otherwise create a new empty porcupine.
           context.access_porcupine =

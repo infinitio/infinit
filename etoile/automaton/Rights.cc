@@ -270,7 +270,8 @@ namespace etoile
                                     ENSEMBLE_SECRET_KEY_LENGTH,
                                     ensemble_limits,
                                     depot::hole().storage().network(),
-                                    agent::Agent::Subject.user()};
+                                    agent::Agent::Subject.user(),
+                                    20971520};
 
                                   nucleus::proton::Porcupine<nucleus::neutron::Ensemble> ensemble_porcupine{
                                     group->ensemble(),
