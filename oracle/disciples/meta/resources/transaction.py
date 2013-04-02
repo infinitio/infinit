@@ -53,7 +53,8 @@ class Create(Page):
               'message': 'a message to the recipient'
          }
          -> {
-                'created_transaction_id'
+                'created_transaction_id':
+                'remaining_invitations':
             }
 
 
@@ -224,7 +225,7 @@ class Create(Page):
         )
         return self.success({
             'created_transaction_id': transaction_id,
-            'remaining_invitations': self.user.get('remaining_invitations'),
+            'remaining_invitations': self.user.get('remaining_invitations', 0),
         })
 
 class Accept(Page):

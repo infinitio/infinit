@@ -1,35 +1,66 @@
 #!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 
-import os
+import os, sys
 import subprocess
 import argparse
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
+import meta.conf
 
+parser = argparse.ArgumentParser(description="Services launcher")
+
+parser.add_argument(
+    '--meta-port',
+    type = int,
+    default = meta.conf.META_PORT,
+)
+
+parser.add_argument(
+    '--apertus-port',
+    type = int,
+    default = meta.conf.APERTUS_PORT,
+)
+
+parser.add_argument(
+    '--trophonius-port',
+    type = int,
+    default = meta.conf.TROPHONIUS_PORT,
+)
+
+parser.add_argument(
+    '--longinus-port',
+    type = int,
+    default = meta.conf.LONGINUS_PORT,
+)
 
 DIR = os.path.abspath(os.path.dirname(__file__))
 
-meta_bin = os.path.join(DIR, 'meta-server')
-apertus_bin = os.path.join(DIR, 'apertus-server')
-trophonius_bin = os.path.join(DIR, 'trophonius-server')
-longinus_bin = os.path.join(DIR, 'longinus-server')
+META_BIN = os.path.join(DIR, 'meta-server')
+APERTUS_BIN = os.path.join(DIR, 'apertus-server')
+TROPHONIUS_BIN = os.path.join(DIR, 'trophonius-server')
+LONGINUS_BIN = os.path.join(DIR, 'longinus-server')
 
+def main(argv):
+    args = parser.parse_args(argv)
 
+    meta = subprocess.Popen([META_BIN, str(args.meta_port)])
+    apertus = subprocess.Popen([APERTUS_BIN, str(args.apertus_port)])
+    trophonius = subprocess.Popen([TROPHONIUS_BIN, str(args.trophonius_port)])
+    longinus = subprocess.Popen([LONGINUS_BIN, str(args.longinus_port)])
 
-meta = subprocess.Popen([meta_bin, ])
-apertus = subprocess.Popen([apertus_bin])
-trophonius = subprocess.Popen([trophonius_bin])
-longinus = subprocess.Popen([longinus_bin])
+    running = True
+    while running:
+        meta.poll()
+        apertus.poll()
+        trophonius.poll()
+        longinus.poll()
 
-running = True
-while running:
-    meta.poll()
-    apertus.poll()
-    trophonius.poll()
-    longinus.poll()
+        running = meta.returncode is not None or \
+                  apertus.returncode is not None or \
+                  trophonius.returncode is not None or \
+                  longinus.returncode is not None
 
-    running = meta.returncode is not None or \
-              apertus.returncode is not None or \
-              trophonius.returncode is not None or \
-              longinus.returncode is not None
-
+if __name__ == '__main__':
+    import sys
+    main(sys.argv[1:])

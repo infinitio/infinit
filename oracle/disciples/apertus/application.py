@@ -31,6 +31,8 @@ import conf
 import apertus
 import netifaces
 
+import meta.conf
+
 def create_self_signed_cert(cert_dir = "."):
     """
     If datacard.crt and datacard.key don't exist in cert_dir, create a new
@@ -82,7 +84,7 @@ def start_ssl(port, factory):
         reactor.listenSSL(port, factory, ssl_factory)
 
 class Application(object):
-    def __init__(self, ip, port):
+    def __init__(self, ip=meta.conf.APERTUS_HOST, port=meta.conf.APERTUS_PORT):
         self.ip = ip
         self.port = port
         pass
