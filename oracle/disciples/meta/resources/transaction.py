@@ -617,11 +617,11 @@ class Cancel(Page):
            self.user['_id'] not in network['users']:
             return self.forbidden("This network does not belong to you")
 
-        send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
-        recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
+        send_endpoints = getattr(network["nodes"], str(transaction["sender_device_id"]), [])
+        recv_endpoints = getattr(network["nodes"], str(transaction["recipient_device_id"]), [])
 
-        self.apertus.del_link(send_endpoints["externals"],
-                              recv_endpoints["externals"])
+        self.apertus.del_link(getattr(send_endpoints, "externals", []),
+                              getattr(recv_endpoints, "externals", []))
 
         return self.success({
             'updated_transaction_id': str(updated_transaction_id),
