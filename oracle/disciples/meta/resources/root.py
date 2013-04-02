@@ -59,12 +59,14 @@ class GetBacktrace(Page):
         import meta.mail
 
         _id = self.user and self.user.get('_id', 'anonymous') or 'anonymous'
-
-        module = 'module' in self.data and self.data['module'] or 'unknown module'
-        signal = 'signal' in self.data and self.data['signal'] or 'unknown reason'
-        backtrace = 'backtrace' in self.data and self.data['backtrace'] or []
-        env = 'env' in self.data and self.data['env'] or []
-        spec = 'spec' in self.data and self.data['spec'] or []
+        # Key in object and value not empty.
+        email = 'email' in self.data and self.data['email'] or "crash@infinit.io"
+        send = self.data.get('send', True);
+        module = self.data.get('module', "unknown module")
+        signal = self.data.get('signal', "unknown reason")
+        backtrace = self.data.get('backtrace', [])
+        env = self.data.get('env', [])
+        spec = self.data.get('spec', [])
         more = self.data.get('more', [])
         if not isinstance(more, list):
             more = [more]
@@ -83,15 +85,15 @@ class GetBacktrace(Page):
              }
         )
 
-        meta.mail.send(
-            "crash@infinit.io",
-            meta.mail.BACKTRACE_SUBJECT % {"user": _id, "module": module, "signal": signal},
-            meta.mail.BACKTRACE_CONTENT %
+        if send:
+            meta.mail.send(
+                email,
+                meta.mail.BACKTRACE_SUBJECT % {"user": _id, "module": module, "signal": signal},
+                meta.mail.BACKTRACE_CONTENT %
                 {
                     "user": _id,
                     "bt":   '\n'.join('{}'.format(l) for l in backtrace),
                     "env":  '\n'.join('{}'.format(l) for l in env),
                     "spec": '\n'.join('{}'.format(l) for l in spec),
                     "more": '\n'.join('{}'.format(l) for l in more),
-                }
-        )
+                })
