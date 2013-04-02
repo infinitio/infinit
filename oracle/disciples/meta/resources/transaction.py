@@ -108,7 +108,7 @@ class Create(Page):
             recipient = database.users().find_one({'email': id_or_email})
             # if the user doesn't exist, create a ghost and invite.
             if not recipient:
-                if self.user['remaining_invitations'] <= 0:
+                if self.user.get('remaining_invitations', 0) <= 0:
                     return self.error(error.NO_MORE_INVITATION)
                 self.user['remaining_invitations'] -= 1
                 database.users().save(self.user)
@@ -224,7 +224,7 @@ class Create(Page):
         )
         return self.success({
             'created_transaction_id': transaction_id,
-            'remaining_invitations': self.user['remaining_invitations'],
+            'remaining_invitations': self.user.get('remaining_invitations'),
         })
 
 class Accept(Page):
