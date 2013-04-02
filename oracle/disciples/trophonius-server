@@ -11,8 +11,9 @@ in Boeotia.
 
 """
 
-import sys
+import sys, os
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 from trophonius.application import Application
 
 if __name__ == '__main__':
