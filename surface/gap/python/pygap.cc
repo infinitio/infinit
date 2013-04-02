@@ -179,6 +179,18 @@ namespace
 
     reinterpret_cast<surface::gap::State*>(state)->message_callback(cpp_cb);
   }
+
+  void
+  _gap_on_error_callback(gap_State* state,
+                         boost::python::object cb)
+  {
+    auto cpp_cb = [cb] (gap_Status status, std::string const& str)
+    {
+      cb(status, str.c_str());
+    };
+
+    reinterpret_cast<surface::gap::State*>(state)->on_error_callback(cpp_cb);
+  }
 }
 
 extern "C"
@@ -265,6 +277,11 @@ BOOST_PYTHON_MODULE(_gap)
   py::def(
     "message_callback",
     &_gap_message_callback
+  );
+
+  py::def(
+    "on_error_callback",
+    &_gap_on_error_callback
   );
 
   py::def(

@@ -400,6 +400,15 @@ extern "C" {
   void
   gap_transactions_free(char** transactions);
 
+  /// Error
+
+  typedef void (*gap_on_error_callback_t)(gap_Status,
+                                          char const*);
+
+  gap_Status
+  gap_on_error_callback(gap_State* state,
+                        gap_on_error_callback_t cb);
+
   /// Send files to a specific user.
   ///
   /// @returns a unique identifier or -1 on error.

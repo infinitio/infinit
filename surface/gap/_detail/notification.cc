@@ -21,37 +21,51 @@ namespace surface
 
       size_t count = 0;
       while (count < max)
-        {
-          std::unique_ptr<Notification> notif{
-              this->_trophonius->poll()
-          };
+      {
+        std::unique_ptr<Notification> notif{
+          this->_trophonius->poll()
+        };
 
-          if (!notif)
-            break;
-          try
-            {
-              this->_handle_notification(*notif);
-            }
-          catch (reactor::Exception const& e)
-            {
-              ELLE_WARN("reactor exception %s while handling notification '%s'",
-                        e, notif->notification_type);
-              continue;
-            }
-          catch (std::runtime_error const& e)
-            {
-              ELLE_WARN("error %s while handling notification '%s'",
-                        e.what(), notif->notification_type);
-              continue;
-            }
-          catch (...)
-            {
-              ELLE_ERR("Something went really wrong while handling %s",
-                       notif->notification_type);
-              throw;
-            }
-          ++count;
+        if (!notif)
+          break;
+        try
+        {
+          this->_handle_notification(*notif);
         }
+        catch (surface::gap::Exception const& e)
+        {
+          ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
+          for (auto const& c: this->_error_handlers)
+          {
+            c(e.code, elle::sprintf("%s: %s",
+                                    notif->notification_type, e.what()));
+          };
+        }
+        catch (elle::Exception const& e)
+        {
+          ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
+          auto bt = e.backtrace();
+          for (auto const& f: bt)
+            ELLE_WARN("%s", f);
+          for (auto const& c: this->_error_handlers)
+          {
+            c(gap_error, elle::sprintf("%s: %s",
+                                       notif->notification_type, e.what()));
+          };
+          continue;
+        }
+        catch (...)
+        {
+          ELLE_ERR("poll: %s: unknown error", notif->notification_type);
+          for (auto const& c: this->_error_handlers)
+          {
+            c(gap_unknown, elle::sprintf("%s: unexpected error",
+                                         notif->notification_type));
+          };
+          continue;
+        }
+        ++count;
+      }
 
       return count;
     }

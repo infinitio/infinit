@@ -149,6 +149,11 @@ namespace surface
       this->_me = res;
     }
 
+    void
+    State::on_error_callback(OnErrorCallback const& cb)
+    {
+      _error_handlers.push_back(cb);
+    }
 
     State::~State()
     {
