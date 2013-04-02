@@ -10,17 +10,21 @@ namespace etoile
     | Construction |
     `-------------*/
 
-    Pod::Pod(std::shared_ptr<nucleus::proton::Egg>& egg):
+    Pod::Pod(std::shared_ptr<nucleus::proton::Egg>& egg,
+             std::list<Pod*>::iterator const& position):
       _state(State::attached),
-      _accessed(elle::utility::Time::current()),
-      _egg(egg)
+      _actors(0),
+      _egg(egg),
+      _position(position)
     {
     }
 
-    Pod::Pod(std::shared_ptr<nucleus::proton::Egg>&& egg):
+    Pod::Pod(std::shared_ptr<nucleus::proton::Egg>&& egg,
+             std::list<Pod*>::iterator const& position):
       _state(State::attached),
-      _accessed(elle::utility::Time::current()),
-      _egg(std::move(egg))
+      _actors(0),
+      _egg(std::move(egg)),
+      _position(position)
     {
     }
 
@@ -33,8 +37,8 @@ namespace etoile
     {
       ELLE_ASSERT(this->_egg != nullptr);
 
-      stream << this->_state
-             << "(" << this->_accessed << ", " << *this->_egg << ")";
+      stream << *this->_egg
+             << "(" << this->_state << ", " << this->_actors << ")";
     }
 
     /*----------.

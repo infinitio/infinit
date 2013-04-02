@@ -2,7 +2,6 @@
 # define ETOILE_NEST_NEST_HH
 
 # include <elle/types.hh>
-# include <elle/utility/Time.hh>
 
 # include <etoile/nest/Pod.hh>
 # include <etoile/gear/fwd.hh>
@@ -34,14 +33,14 @@ namespace etoile
     public:
       typedef std::map<nucleus::proton::Egg*, Pod*> Pods;
       typedef std::map<nucleus::proton::Address const, Pod*> Addresses;
-      typedef std::map<elle::utility::Time, Pod*> Queue;
+      typedef std::list<Pod*> History;
 
       /*-------------.
       | Construction |
       `-------------*/
     public:
       /// Construct a nest by providing the length of the secret key with which
-      // the modified blocks will be encrypted.
+      /// the modified blocks will be encrypted.
       Nest(elle::Natural32 const secret_length,
            nucleus::proton::Limits const& limits,
            nucleus::proton::Network const& network,
@@ -81,9 +80,17 @@ namespace etoile
       /// Try to optimize the nest according to internal limits and conditions.
       void
       _optimize();
-      /// Load the block from the depot, if necessary, and set it in the egg.
+      /// Load the block from the depot and set it in the pod's egg.
       void
-      _load(std::shared_ptr<nucleus::proton::Egg>& egg);
+      _load(Pod* pod);
+      /// Add the given pod at the end of the history queue for easing the
+      /// pre-publication process.
+      void
+      _queue(Pod* pod);
+      /// Remove the given pod from the history, probably because its block
+      /// is being used.
+      void
+      _unqueue(Pod* pod);
 
       /*-----------.
       | Interfaces |
@@ -114,8 +121,8 @@ namespace etoile
       /// Contain the addresses of the permanents blocks for which
       /// an egg exist in the nest.
       ELLE_ATTRIBUTE(Addresses, addresses);
-      /// The LRU-sorted queue of pods.
-      ELLE_ATTRIBUTE(Queue, queue);
+      /// The LRU-sorted history of pods.
+      ELLE_ATTRIBUTE(History, history);
       /// The length of the secret key with which the blocks having been
       /// created or modified will be encrypted.
       ELLE_ATTRIBUTE(elle::Natural32, secret_length);

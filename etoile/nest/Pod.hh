@@ -1,15 +1,18 @@
 #ifndef ETOILE_NEST_POD_HH
 # define ETOILE_NEST_POD_HH
 
+# include <reactor/rw-mutex.hh>
+
 # include <elle/types.hh>
 # include <elle/attribute.hh>
 # include <elle/operator.hh>
 # include <elle/Printable.hh>
-# include <elle/utility/Time.hh>
 
 # include <nucleus/proton/fwd.hh>
 
 # include <boost/noncopyable.hpp>
+
+# include <list>
 
 namespace etoile
 {
@@ -28,10 +31,10 @@ namespace etoile
     public:
       /// Define whether the block is attached to the nest.
       enum class State
-        {
-          attached,
-          detached
-        };
+      {
+        attached,
+        detached
+      };
 
       /*-------------.
       | Construction |
@@ -39,9 +42,11 @@ namespace etoile
     public:
       /// Construct a pod from the given egg whose ownership is lost
       /// in favor of the pod.
-      Pod(std::shared_ptr<nucleus::proton::Egg>& egg);
+      Pod(std::shared_ptr<nucleus::proton::Egg>& egg,
+          std::list<Pod*>::iterator const& position);
       /// Likewise but through a rvalue.
-      Pod(std::shared_ptr<nucleus::proton::Egg>&& egg);
+      Pod(std::shared_ptr<nucleus::proton::Egg>&& egg,
+          std::list<Pod*>::iterator const& position);
 
       /*----------.
       | Operators |
@@ -63,10 +68,16 @@ namespace etoile
       `-----------*/
     private:
       ELLE_ATTRIBUTE_RW(State, state);
-      /// The last time the block has been accessed..
-      ELLE_ATTRIBUTE_RW(elle::utility::Time, accessed);
+      /// The number of actors operating on the pod.
+      ELLE_ATTRIBUTE_RW(elle::Natural32, actors);
       /// The egg containing the block and its information.
       ELLE_ATTRIBUTE_RX(std::shared_ptr<nucleus::proton::Egg>, egg);
+      /// The position in the queue.
+      // XXX[should not be here]
+      ELLE_ATTRIBUTE_RW(std::list<Pod*>::iterator, position);
+      /// A mutex so as to control whether moving the block, loading it or
+      /// just accessing it does not impact the other.
+      ELLE_ATTRIBUTE_RX(reactor::RWMutex, mutex);
     };
 
     /*----------.

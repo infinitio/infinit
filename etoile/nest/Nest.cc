@@ -6,6 +6,8 @@
 #include <elle/finally.hh>
 #include <elle/log.hh>
 
+#include <reactor/scheduler.hh>
+
 #include <cryptography/SecretKey.hh>
 
 #include <nucleus/proton/Nest.hh>
@@ -45,7 +47,7 @@ namespace etoile
 
       this->_pods.clear();
       this->_addresses.clear();
-      this->_queue.clear();
+      this->_history.clear();
     }
 
     /*--------.
@@ -62,6 +64,10 @@ namespace etoile
       for (auto& pair: this->_pods)
         {
           auto pod = pair.second;
+
+          ELLE_ASSERT(pod->actors() == 0);
+          ELLE_ASSERT(pod->mutex().locked() == false);
+          ELLE_ASSERT(pod->mutex().write().locked() == false);
 
           // XXX make sure the pod's egg is no longer locked or wait for it.
           // XXX since we're going to give away the block.
@@ -296,30 +302,68 @@ namespace etoile
     }
 
     void
-    Nest::_load(std::shared_ptr<nucleus::proton::Egg>& egg)
+    Nest::_load(Pod* pod)
     {
-      ELLE_DEBUG_METHOD(egg);
+      ELLE_DEBUG_METHOD(pod);
 
-      // Nothing to do if the egg already holds the block
-      if (egg->block() != nullptr)
+      // First, let us lock the egg so that someone does not try to
+      // use/change it while we are loading it.
+      reactor::Lock lock(*reactor::Scheduler::scheduler(),
+                         pod->mutex().write());
+
+      // Nothing to do if the egg already holds the block.
+      //
+      // This check is necessary because we may have blocked for some time
+      // by someone retrieving the block so that when we wake up, the block
+      // is already here.
+      if (pod->egg()->block() != nullptr)
         return;
 
-      ELLE_ASSERT(egg->type() == nucleus::proton::Egg::Type::permanent);
+      ELLE_ASSERT(pod->egg()->type() == nucleus::proton::Egg::Type::permanent);
 
       // Otherwise, load the block from the depot.
       auto contents =
         depot::Depot::pull<nucleus::proton::Contents>(
-          egg->address(),
+          pod->egg()->address(),
           nucleus::proton::Revision::Last);
 
       // Decrypt the contents with the egg's secret.
-      contents->decrypt(egg->secret());
+      contents->decrypt(pod->egg()->secret());
 
       // Sett the block in the egg.
-      egg->block() = std::move(contents);
+      pod->egg()->block() = std::move(contents);
 
       // XXX[set the nest in the node]
-      egg->block()->node().nest(*this);
+      pod->egg()->block()->node().nest(*this);
+    }
+
+    void
+    Nest::_queue(Pod* pod)
+    {
+      ELLE_DEBUG_METHOD(pod);
+
+      ELLE_ASSERT(pod->position() == this->_history.end());
+
+      // Insert the pod in the history, at the back.
+      auto iterator = this->_history.insert(this->_history.end(), pod);
+
+      // Update the pod's position for fast removal.
+      pod->position(iterator);
+      ELLE_ASSERT(pod->position() != this->_history.end());
+    }
+
+    void
+    Nest::_unqueue(Pod* pod)
+    {
+      ELLE_DEBUG_METHOD(pod);
+
+      ELLE_ASSERT(pod == *pod->position());
+
+      // Remove the pod from the history.
+      this->_history.erase(pod->position());
+
+      // Reset the pod's position.
+      pod->position(this->_history.end());
     }
 
     /*---------.
@@ -391,7 +435,7 @@ namespace etoile
       ELLE_FINALLY_ABORT(block);
 
       // Allocate a pod for holding the egg.
-      Pod* pod = new Pod{std::move(egg)};
+      Pod* pod = new Pod{std::move(egg), this->_history.end()};
 
       ELLE_FINALLY_ACTION_DELETE(pod);
 
@@ -405,6 +449,12 @@ namespace etoile
 
       // XXX[set the nest in the node]
       pod->egg()->block()->node().nest(*this);
+
+      ELLE_ASSERT(pod->state() == Pod::State::attached);
+      ELLE_ASSERT(pod->actors() == 0);
+
+      // Queue the pod, since not yet loaded.
+      this->_queue(pod);
 
       // Try to optimize the nest.
       this->_optimize();
@@ -430,7 +480,10 @@ namespace etoile
             handle.evolve();
 
             // Create a new pod.
-            Pod* pod = new Pod{handle.egg()};
+            Pod* pod = new Pod{handle.egg(), this->_history.end()};
+
+            ELLE_ASSERT(pod->state() == Pod::State::attached);
+            ELLE_ASSERT(pod->actors() == 0);
 
             ELLE_FINALLY_ACTION_DELETE(pod);
 
@@ -452,6 +505,12 @@ namespace etoile
           {
             // Retrieve the pod associated with this handle's egg.
             Pod* pod = this->_lookup(handle.egg());
+
+            ELLE_ASSERT(handle.address() == pod->egg()->address());
+            ELLE_ASSERT(handle.secret() == pod->egg()->secret());
+
+            ELLE_ASSERT(pod->state() == Pod::State::attached);
+            ELLE_ASSERT(pod->actors() == 0);
 
             // Set the pod as detached.
             pod->state(Pod::State::detached);
@@ -496,11 +555,29 @@ namespace etoile
                 ELLE_ASSERT(handle.address() == pod->egg()->address());
                 ELLE_ASSERT(handle.secret() == pod->egg()->secret());
 
+                ELLE_ASSERT(pod->state() == Pod::State::attached);
+
                 // And make the handle track the block's existing egg.
                 handle.place(pod->egg());
 
                 // Make sure the block is loaded in the egg.
-                this->_load(pod->egg());
+                if (pod->egg()->block() == nullptr)
+                  this->_load(pod);
+
+                // Make sure the pod no longer resides in the queue since
+                // is is being used by at least one actor.
+                //
+                // In other words, remove it from the queue if nobody was
+                // using it before.
+                if (pod->actors() == 0)
+                  this->_unqueue(pod);
+
+                // Increase the number of actors on the pod.
+                pod->actors(pod->actors() + 1);
+
+                // Lock the pod so as to make sure nobody else unloads it
+                // on the storage layer while being used.
+                reactor::Scheduler::scheduler()->current()->wait(pod->mutex());
               }
             else
               {
@@ -513,7 +590,10 @@ namespace etoile
                 handle.evolve();
 
                 // Create a new pod.
-                Pod* pod = new Pod{handle.egg()};
+                Pod* pod = new Pod{handle.egg(), this->_history.end()};
+
+                ELLE_ASSERT(pod->state() == Pod::State::attached);
+                ELLE_ASSERT(pod->actors() == 0);
 
                 ELLE_FINALLY_ACTION_DELETE(pod);
 
@@ -527,16 +607,47 @@ namespace etoile
                 ELLE_FINALLY_ABORT(pod);
 
                 // Actually load the block from the storage layer.
-                this->_load(pod->egg());
+                ELLE_ASSERT(pod->egg()->block() == nullptr);
+                this->_load(pod);
+
+                // Noteworthy that there is no need to unqueue since the pod
+                // since it has just been created.
+
+                // Increase the number of actors on the pod.
+                pod->actors(pod->actors() + 1);
+
+                // Lock the pod so as to make sure nobody else unloads it
+                // on the storage layer while being used.
+                reactor::Scheduler::scheduler()->current()->wait(pod->mutex());
               }
 
             break;
           }
         case nucleus::proton::Handle::State::nested:
           {
+            // Retrieve the existing pod.
+            Pod* pod = this->_lookup(handle.egg());
+
+            ELLE_ASSERT(handle.address() == pod->egg()->address());
+            ELLE_ASSERT(handle.secret() == pod->egg()->secret());
+
+            ELLE_ASSERT(pod->state() == Pod::State::attached);
+
             // Even though the handle is nested, i.e an egg lies in the nest,
             // one must make sure the block is actually loaded.
-            this->_load(handle.egg());
+            if (pod->egg()->block() == nullptr)
+              this->_load(pod);
+
+            // Unqueue the pod, if necessary.
+            if (pod->actors() == 0)
+              this->_unqueue(pod);
+
+            // Increase the number of actors on the pod.
+            pod->actors(pod->actors() + 1);
+
+            // Lock the pod so as to make sure nobody else unloads it
+            // on the storage layer while being used.
+            reactor::Scheduler::scheduler()->current()->wait(pod->mutex());
 
             break;
           }
@@ -544,10 +655,6 @@ namespace etoile
           throw elle::Exception(elle::sprintf("unknown handle state '%s'",
                                               handle.state()));
         }
-
-      // Lock the egg so as to make sure nobody else unloads it on the storage
-      // layer while being used.
-      // XXX handle.egg()->lock(nucleus::proton::Egg::Reason::access);
 
       // Try to optimize the nest.
       this->_optimize();
@@ -571,14 +678,23 @@ namespace etoile
                                               handle));
         case nucleus::proton::Handle::State::nested:
           {
-            // Unlock the egg.
-            // XXX handle.egg()->unlock(nucleus::proton::Egg::Reason::access);
+            Pod* pod = this->_lookup(handle.egg());
 
-            // XXX update time if the last?
-            // XXX faire une methode eligible() qui retourne true si le block
-            //     n'est plus utilise.
-            // XXX ou encore mieux ne mettre dans le container queue que ceux qui sont
-            //     eligible()
+            ELLE_ASSERT(handle.address() == pod->egg()->address());
+            ELLE_ASSERT(handle.secret() == pod->egg()->secret());
+
+            ELLE_ASSERT(pod->state() == Pod::State::attached);
+
+            // Release the pod's lock.
+            pod->mutex().release();
+
+            // Decrease the number of actors on the pod.
+            ELLE_ASSERT(pod->actors() > 0);
+            pod->actors(pod->actors() - 1);
+
+            // Queue the pod, assuming it is no longer used.
+            if (pod->actors() == 0)
+              this->_queue(pod);
 
             break;
           }
