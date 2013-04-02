@@ -903,6 +903,7 @@ def configure(cxx_toolkit,
     'oracle/disciples/trophonius-server',
     'oracle/disciples/admin-console',
     'oracle/disciples/apertus-server',
+    'oracle/disciples/services',
     )
 
   oracle_source_copy = drake.copy(oracle_sources,

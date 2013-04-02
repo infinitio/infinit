@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8 -*-
+
+import os
+import subprocess
+import argparse
+
+
+
+DIR = os.path.abspath(os.path.dirname(__file__))
+
+meta_bin = os.path.join(DIR, 'meta-server')
+apertus_bin = os.path.join(DIR, 'apertus-server')
+trophonius_bin = os.path.join(DIR, 'trophonius-server')
+longinus_bin = os.path.join(DIR, 'longinus-server')
+
+
+
+meta = subprocess.Popen([meta_bin, ])
+apertus = subprocess.Popen([apertus_bin])
+trophonius = subprocess.Popen([trophonius_bin])
+longinus = subprocess.Popen([longinus_bin])
+
+running = True
+while running:
+    meta.poll()
+    apertus.poll()
+    trophonius.poll()
+    longinus.poll()
+
+    running = meta.returncode is not None or \
+              apertus.returncode is not None or \
+              trophonius.returncode is not None or \
+              longinus.returncode is not None
+
