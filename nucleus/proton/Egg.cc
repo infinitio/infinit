@@ -97,52 +97,6 @@ namespace nucleus
       this->_clef.reset(new Clef{address, secret});
     }
 
-    void
-    Egg::lock(Reason reason)
-    {
-      switch (reason)
-        {
-        case Reason::access:
-          {
-            // Lock in reading.
-            reactor::Scheduler::scheduler()->current()->wait(
-              this->_mutex);
-
-            break;
-          }
-        case Reason::move:
-          {
-            // Lock in writing.
-            reactor::Scheduler::scheduler()->current()->wait(
-              this->_mutex.write());
-
-            break;
-          }
-        }
-    }
-
-    void
-    Egg::unlock(Reason reason)
-    {
-      switch (reason)
-        {
-        case Reason::access:
-          {
-            // Unlock the read mutex.
-            this->_mutex.release();
-
-            break;
-          }
-        case Reason::move:
-          {
-            // Unload the write mutex.
-            this->_mutex.write().release();
-
-            break;
-          }
-        }
-    }
-
     /*----------.
     | Printable |
     `----------*/

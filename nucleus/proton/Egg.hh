@@ -1,8 +1,6 @@
 #ifndef NUCLEUS_PROTON_EGG_HH
 # define NUCLEUS_PROTON_EGG_HH
 
-# include <reactor/rw-mutex.hh>
-
 # include <elle/types.hh>
 # include <elle/attribute.hh>
 # include <elle/operator.hh>
@@ -51,14 +49,6 @@ namespace nucleus
           transient,
           permanent
         };
-      /// Define the reason why the egg is being locked: either to simply access
-      /// the egg's content, especially the block, or to modify the block
-      /// address.
-      enum class Reason
-        {
-          access,
-          move
-        };
 
       /*-------------.
       | Construction |
@@ -100,17 +90,6 @@ namespace nucleus
       void
       reset(Address const& address,
             cryptography::SecretKey const& secret);
-      /// Indicate the egg that someone wants to have exclusive access to the
-      /// egg's block.
-      ///
-      /// This functionality is particularly useful for preventing the nest from
-      /// prevently publishing a block onto the storage layer even though still
-      /// in use.
-      void
-      lock(Reason const reason);
-      /// Release the exclusive access.
-      void
-      unlock(Reason const reason);
 
       /*----------.
       | Operators |
@@ -143,9 +122,6 @@ namespace nucleus
       /// have the block been moved somewhere else, on the disk
       /// for example, so as to reduce the main memory consumption.
       ELLE_ATTRIBUTE_RX(std::unique_ptr<Contents>, block);
-      /// A mutex so as to control moving the block somewhere else
-      /// without impacting the other trying to access the block.
-      ELLE_ATTRIBUTE(reactor::RWMutex, mutex);
     };
 
     /*----------.
