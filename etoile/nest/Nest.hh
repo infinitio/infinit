@@ -1,6 +1,8 @@
 #ifndef ETOILE_NEST_NEST_HH
 # define ETOILE_NEST_NEST_HH
 
+# include <reactor/mutex.hh>
+
 # include <elle/types.hh>
 
 # include <etoile/nest/Pod.hh>
@@ -44,7 +46,8 @@ namespace etoile
       Nest(elle::Natural32 const secret_length,
            nucleus::proton::Limits const& limits,
            nucleus::proton::Network const& network,
-           cryptography::PublicKey const& agent_K);
+           cryptography::PublicKey const& agent_K,
+           nucleus::proton::Extent const threshold);
       virtual
       ~Nest();
 
@@ -126,6 +129,13 @@ namespace etoile
       /// The length of the secret key with which the blocks having been
       /// created or modified will be encrypted.
       ELLE_ATTRIBUTE(elle::Natural32, secret_length);
+      /// The threshold which, once reached, triggers the pre-publication of
+      /// the least-recently used blocks onto the storage layer.
+      ELLE_ATTRIBUTE_R(nucleus::proton::Extent, threshold);
+      /// The extent of the currently held blocks.
+      ELLE_ATTRIBUTE_R(nucleus::proton::Extent, size);
+      /// A mutex so as to lock the whole nest.
+      ELLE_ATTRIBUTE(reactor::Mutex, mutex);
     };
   }
 }

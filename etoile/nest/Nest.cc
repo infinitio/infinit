@@ -29,10 +29,13 @@ namespace etoile
     Nest::Nest(elle::Natural32 const secret_length,
                nucleus::proton::Limits const& limits,
                nucleus::proton::Network const& network,
-               cryptography::PublicKey const& agent_K):
+               cryptography::PublicKey const& agent_K,
+               nucleus::proton::Extent const threshold):
       nucleus::proton::Nest(limits, network, agent_K),
 
-      _secret_length(secret_length)
+      _secret_length(secret_length),
+      _threshold(threshold),
+      _size(0)
     {
     }
 
@@ -60,6 +63,8 @@ namespace etoile
       ELLE_TRACE_METHOD("");
 
       gear::Transcript transcript;
+      reactor::Lock lock(*reactor::Scheduler::scheduler(),
+                         this->_mutex);
 
       for (auto& pair: this->_pods)
         {
@@ -130,9 +135,9 @@ namespace etoile
                       break;
                     }
                   default:
-                    throw elle::Exception
-                      (elle::sprintf("unknown block state '%s'",
-                                     pod->egg()->block()->state()));
+                    throw elle::Exception(
+                      elle::sprintf("unknown block state '%s'",
+                                    pod->egg()->block()->state()));
                   }
 
                 break;
@@ -153,6 +158,8 @@ namespace etoile
                                           "deleted");
                   case nucleus::proton::Egg::Type::permanent:
                     {
+                      ELLE_ASSERT(pod->egg()->block() == nullptr);
+
                       // The block has been detached and should therefore be
                       // removed from the storage layer.
                       transcript.record(new gear::action::Wipe(
@@ -245,6 +252,8 @@ namespace etoile
     void
     Nest::_optimize()
     {
+      ELLE_DEBUG_FUNCTION("");
+
 //       // XXX[100 / 20]
 //       elle::Natural32 const limit_high = 0;
 //       elle::Natural32 const limit_low = 0;
@@ -397,6 +406,9 @@ namespace etoile
     {
       ELLE_TRACE_METHOD(block);
 
+      reactor::Lock lock(*reactor::Scheduler::scheduler(),
+                         this->_mutex);
+
       ELLE_FINALLY_ACTION_DELETE(block);
 
       // Compute a static temporary address which will be the same for every
@@ -456,8 +468,12 @@ namespace etoile
       // Queue the pod, since not yet loaded.
       this->_queue(pod);
 
+      // Increase the nest's size.
+      this->_size += pod->egg()->block()->node().footprint();
+
       // Try to optimize the nest.
-      this->_optimize();
+      if (this->_size >= this->_threshold)
+        this->_optimize();
 
       ELLE_ASSERT(handle.state() == nucleus::proton::Handle::State::nested);
 
@@ -468,6 +484,9 @@ namespace etoile
     Nest::detach(nucleus::proton::Handle& handle)
     {
       ELLE_TRACE_METHOD(handle);
+
+      reactor::Lock lock(*reactor::Scheduler::scheduler(),
+                         this->_mutex);
 
       ELLE_DEBUG("handle state's: %s", handle.state());
 
@@ -512,6 +531,9 @@ namespace etoile
             ELLE_ASSERT(pod->state() == Pod::State::attached);
             ELLE_ASSERT(pod->actors() == 0);
 
+            // Release the block since no longer used.
+            pod->egg()->block().reset();
+
             // Set the pod as detached.
             pod->state(Pod::State::detached);
 
@@ -523,13 +545,17 @@ namespace etoile
         }
 
       // Try to optimize the nest.
-      this->_optimize();
+      if (this->_size >= this->_threshold)
+        this->_optimize();
     }
 
     void
     Nest::load(nucleus::proton::Handle& handle)
     {
       ELLE_TRACE_METHOD(handle);
+
+      reactor::Lock lock(*reactor::Scheduler::scheduler(),
+                         this->_mutex);
 
       ELLE_DEBUG("handle state's: %s", handle.state());
 
@@ -657,7 +683,8 @@ namespace etoile
         }
 
       // Try to optimize the nest.
-      this->_optimize();
+      if (this->_size >= this->_threshold)
+        this->_optimize();
 
       ELLE_ASSERT(handle.state() == nucleus::proton::Handle::State::nested);
       ELLE_ASSERT(handle.egg()->block() != nullptr);
@@ -667,6 +694,9 @@ namespace etoile
     Nest::unload(nucleus::proton::Handle& handle)
     {
       ELLE_TRACE_METHOD(handle);
+
+      reactor::Lock lock(*reactor::Scheduler::scheduler(),
+                         this->_mutex);
 
       ELLE_DEBUG("handle state's: %s", handle.state());
 
@@ -704,7 +734,10 @@ namespace etoile
         }
 
       // Try to optimize the nest.
-      this->_optimize();
+      if (this->_size >= this->_threshold)
+        this->_optimize();
+
+      ELLE_ASSERT(handle.state() == nucleus::proton::Handle::State::nested);
     }
   }
 }
