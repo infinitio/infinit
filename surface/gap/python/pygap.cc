@@ -132,13 +132,100 @@ namespace
     }
   };
 
+  namespace detail {
+    static
+    std::string
+    parse_python_exception()
+    {
+      namespace py = boost::python;
+
+      PyObject* type_ptr = NULL;
+      PyObject* value_ptr = NULL;
+      PyObject* traceback_ptr = NULL;
+
+      PyErr_Fetch(&type_ptr, &value_ptr, &traceback_ptr);
+
+      std::string ret("Unfetchable Python error");
+
+      if(type_ptr != NULL)
+      {
+        py::handle<> h_type(type_ptr);
+        py::str type_pstr(h_type);
+        py::extract<std::string> e_type_pstr(type_pstr);
+        if(e_type_pstr.check())
+          ret = e_type_pstr();
+        else
+          ret = "Unknown exception type";
+      }
+
+      if(value_ptr != NULL)
+      {
+        py::handle<> h_val(value_ptr);
+        py::str a(h_val);
+        py::extract<std::string> returned(a);
+        if(returned.check())
+          ret +=  ": " + returned();
+        else
+          ret += std::string(": Unparsable Python error: ");
+      }
+
+      if(traceback_ptr != NULL)
+      {
+        py::handle<> h_tb(traceback_ptr);
+        py::object tb(py::import("traceback"));
+        py::object fmt_tb(tb.attr("format_tb"));
+        py::object tb_list(fmt_tb(h_tb));
+        py::object tb_str(py::str("\n").join(tb_list));
+        py::extract<std::string> returned(tb_str);
+        if(returned.check())
+          ret += ": " + returned();
+        else
+          ret += std::string(": Unparsable Python traceback");
+      }
+      return ret;
+    }
+
+    template <typename T>
+    struct wrapper
+    {
+      T const& _callback;
+      wrapper(T const &callback)
+        : _callback(callback)
+      {}
+      template <class ...ARGS>
+      void
+      operator() (ARGS &&... args)
+      {
+        try
+        {
+          _callback(std::forward<ARGS>(args)...);
+        }
+        catch (boost::python::error_already_set const&)
+        {
+          std::string msg = parse_python_exception();
+          throw surface::gap::Exception{
+            gap_api_error,
+            elle::sprintf("python: %s", msg),
+          };
+        }
+      }
+    };
+  } /* detail */
+
+  template <typename T>
+  detail::wrapper<T>
+  wrap_call(T const& callback)
+  {
+    return detail::wrapper<T>(callback);
+  }
+
   void
   _gap_user_status_callback(gap_State* state,
                            boost::python::object cb)
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (UserStatusNotification const& notif) {
-        cb(notif.user_id.c_str(), (gap_UserStatus) notif.status);
+        wrap_call(cb)(notif.user_id.c_str(), (gap_UserStatus) notif.status);
     };
 
     reinterpret_cast<surface::gap::State*>(state)->user_status_callback(cpp_cb);
@@ -150,7 +237,7 @@ namespace
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-        cb(notif.transaction.transaction_id.c_str(), is_new);
+        wrap_call(cb)(notif.transaction.transaction_id.c_str(), is_new);
     };
 
     reinterpret_cast<surface::gap::State*>(state)->transaction_callback(cpp_cb);
@@ -162,7 +249,7 @@ namespace
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (TransactionStatusNotification const& notif, bool is_new) {
-        cb(notif.transaction_id.c_str(), is_new);
+        wrap_call(cb)(notif.transaction_id.c_str(), is_new);
     };
 
     reinterpret_cast<surface::gap::State*>(state)->transaction_status_callback(cpp_cb);
@@ -174,7 +261,7 @@ namespace
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (MessageNotification const& notif) {
-        cb(notif.sender_id.c_str(), notif.message.c_str());
+        wrap_call(cb)(notif.sender_id.c_str(), notif.message.c_str());
     };
 
     reinterpret_cast<surface::gap::State*>(state)->message_callback(cpp_cb);
@@ -188,7 +275,7 @@ namespace
                         std::string const& str,
                         std::string const& tid)
     {
-      cb(status, str.c_str(), tid.c_str());
+      wrap_call(cb)(status, str.c_str(), tid.c_str());
     };
 
     reinterpret_cast<surface::gap::State*>(state)->on_error_callback(cpp_cb);
