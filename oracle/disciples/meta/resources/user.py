@@ -260,7 +260,7 @@ class Self(Page):
             'identity': self.user['identity'],
             'public_key': self.user['public_key'],
             'accounts': self.user['accounts'],
-            'remaining_invitations': self.user['remaining_invitations'],
+            'remaining_invitations': self.user.get('remaining_invitations', 0),
         })
 
 class Invitations(Page):
@@ -276,7 +276,7 @@ class Invitations(Page):
     def GET(self):
         self.requireLoggedIn()
         return self.success({
-                'remaining_invitations': self.user['remaining_invitations']
+                'remaining_invitations': self.user.get('remaining_invitations', 0)
         })
 
 class MinimumSelf(Page):
