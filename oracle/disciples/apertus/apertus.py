@@ -14,6 +14,15 @@ import sys
 def make_id(ip, port):
     return "{}:{}".format(ip, port)
 
+class Link(object):
+    def __init__(self, source, sink):
+        self.source = source
+        self.sink = sink
+        self.active = False
+
+    def __str__(self):
+        return "<Link({}, {}) up={}>".format(self.source, self.sink, self.active)
+
 class Apertus(DatagramProtocol):
 
     def __str__(self):
@@ -32,15 +41,19 @@ class Apertus(DatagramProtocol):
         return self.__str__()
 
     def __init__(self):
-        self.links = {}
+        self.links = []
 
     def datagramReceived(self, data, (host, port)):
         id = make_id(host, port)
-        peer = ""
-        if id in self.links.keys():
-            for peer in self.links[id]:
-                host, port = peer.split(":")
-                self.transport.write(data, (host, int(port)))
+        sender = next(l for l in self.links if l.source == id)
+        sender.active = True
+        peers = frozenset(l.sink for l in self.links if l.source == id and l.active)
+        for peer in peers:
+            receiver = next(l for l in self.links if l.source == id and l.active)
+            if not receiver.active:
+                continue
+            host, port = peer.split(":")
+            self.transport.write(data, (host, int(port)))
 
     def add_link(self, endpoints):
         """
@@ -55,16 +68,9 @@ class Apertus(DatagramProtocol):
 
         for k, v in it.product(rhs, lhs):
             # Make a 1 to 1 link k -> v, v -> k
+            self.links.append(Link(k, v))
+            self.links.append(Link(v, k))
 
-            if k not in self.links:
-                self.links[k] = [v]
-            else:
-                self.links[k].append(v)
-
-            if v not in self.links:
-                self.links[v] = [k]
-            else:
-                self.links[v].append(k)
 
     def del_link(self, endpoints):
         """
@@ -77,10 +83,11 @@ class Apertus(DatagramProtocol):
         lhs = [make_id(f["ip"], int(f["port"])) for f in lhs_]
         for k, v in it.product(rhs, lhs):
             # Remove the 1 to 1 link
-            if k in self.links:
-                del self.links[k]
-            if v in self.links:
-                del self.links[v]
+            try:
+                self.links.remove(next(l for l in self.links if l.source == k))
+                self.links.remove(next(l for l in self.links if l.source == v))
+            except:
+                pass
 
     def get_endpoint(self):
         host = self.transport.getHost()
