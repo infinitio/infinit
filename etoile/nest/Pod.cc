@@ -70,7 +70,7 @@ namespace etoile
         default:
           {
             throw Exception(elle::sprintf("unknown state: '%s'",
-                                                static_cast<int>(state)));
+                                          static_cast<int>(state)));
           }
         }
 
