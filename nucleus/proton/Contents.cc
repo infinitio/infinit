@@ -122,6 +122,17 @@ namespace nucleus
       return (node);
     }
 
+    Footprint
+    Contents::footprint() const
+    {
+      // If the node as been ceded, return 0. Otherwise, return
+      // the node's footprint.
+      if (this->_node == nullptr)
+        return (0);
+
+      return (this->_node->footprint());
+    }
+
     /*---------.
     | Dumpable |
     `---------*/

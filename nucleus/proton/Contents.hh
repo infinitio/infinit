@@ -4,6 +4,7 @@
 # include <nucleus/proton/ContentHashBlock.hh>
 # include <nucleus/proton/Node.hh>
 # include <nucleus/proton/Address.hh>
+# include <nucleus/proton/Footprint.hh>
 
 # include <cryptography/fwd.hh>
 // XXX[temporary: for cryptography]
@@ -84,6 +85,9 @@ namespace nucleus
       /// Cede the ownership on the node to the caller.
       Node*
       cede();
+      /// Return the footprint of the embedded node, should it be present.
+      Footprint
+      footprint() const;
 
       /*-----------.
       | Interfaces |
