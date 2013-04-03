@@ -9,6 +9,7 @@
 # include <elle/memory.hh>
 
 # include <reactor/network/exception.hh>
+# include <reactor/Scope.hh>
 # include <reactor/thread.hh>
 
 # include <protocol/Channel.hh>
@@ -435,14 +436,14 @@ namespace infinit
       using elle::Exception;
       try
       {
+        reactor::Scope scope;
         int i = 0;
         while (true)
         {
           auto chan = std::make_shared<Channel>(_channels.accept());
-          auto call = std::make_shared<RunningCall>();
           ++i;
 
-          auto call_procedure = [&, chan, call] {
+          auto call_procedure = [&, chan] {
             ELLE_LOG_COMPONENT("infinit.protocol.RPC");
 
             Packet question(chan->read());
@@ -501,35 +502,27 @@ namespace infinit
             }
             chan->write(answer);
           };
-          call->first =
-            elle::make_unique<reactor::Thread>(this->_channels.scheduler(),
-                                               elle::sprintf("RPC %s", i),
-                                               call_procedure);
-          this->_threads.push_back(call);
+          scope.run_background(elle::sprintf("RPC %s", i), call_procedure);
         }
       }
       catch (reactor::network::ConnectionClosed const& e)
       {
         ELLE_TRACE("%s: end of RPCs: connection closed", *this);
-        this->_terminate_rpcs();
         return;
       }
       catch (elle::Exception& e)
       {
         ELLE_WARN("%s: end of RPCs: %s", *this, e);
-        this->_terminate_rpcs();
         throw;
       }
       catch (std::exception& e)
       {
         ELLE_WARN("%s: end of RPCs: %s", *this, e.what());
-        this->_terminate_rpcs();
         throw;
       }
       catch (...)
       {
         ELLE_WARN("%s: end of RPCs: unkown error", *this);
-        this->_terminate_rpcs();
         throw;
       }
     }
