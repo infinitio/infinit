@@ -273,7 +273,7 @@ namespace surface
               trans.files_count, this->_output_dir.c_str());
         }
 
-        update_transaction(
+        this->update_transaction(
             transaction_id,
             gap_TransactionStatus::gap_transaction_status_finished
         );
@@ -587,9 +587,14 @@ namespace surface
 
       if (exception != std::exception_ptr{})
       {
-        ELLE_ERR("exception caugth while connecting Infinits. Deleting network");
-        this->delete_network(transaction.network_id, true);
-        std::rethrow_exception(exception); // XXX SCOPE OF EXCEPTION PTR
+        std::string msg;
+        try { std::rethrow_exception(exception); }
+        catch (std::exception const& err) { msg = err.what(); }
+        catch (...) { msg = "Unknown exception type"; }
+        ELLE_ERR("cannot connect infinit instances: %s", msg);
+        this->update_transaction(transaction.transaction_id,
+                                 gap_transaction_status_canceled);
+        std::rethrow_exception(exception);
       }
       if (transaction.recipient_device_id == this->device_id())
       {
