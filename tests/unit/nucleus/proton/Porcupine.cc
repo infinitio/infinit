@@ -668,8 +668,8 @@ Main(elle::Natural32,
 #endif
 
       test_porcupine_catalog();
-      //test_porcupine_data();
-      //test_porcupine_attributes();
+      test_porcupine_data();
+      test_porcupine_attributes();
 
 #ifdef PORCUPINE_SERIALIZE_TEST
       etoile::Etoile::Clean();
