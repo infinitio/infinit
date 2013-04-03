@@ -4,6 +4,8 @@
 #include <elle/finally.hh>
 #include <elle/format/hexadecimal.hh>
 
+#include <reactor/exception.hh>
+
 #include <cryptography/Digest.hh>
 #include <cryptography/oneway.hh>
 #include <cryptography/random.hh>
@@ -350,7 +352,7 @@ test_porcupine_catalog()
                             nucleus::proton::limits::Node{1024, 0.5, 0.2}),
       *_network,
       _user->K(),
-      1048576};
+      6315};
 
   nucleus::proton::Porcupine<nucleus::neutron::Catalog>* porcupine1 =
     new nucleus::proton::Porcupine<nucleus::neutron::Catalog>(nest1);
@@ -561,7 +563,7 @@ test_porcupine_data()
                             nucleus::proton::limits::Node{1024, 1.0, 0.0}),
       *_network,
       _user->K(),
-      1048576};
+      3176};
   nucleus::proton::Porcupine<nucleus::neutron::Data>* porcupine =
     new nucleus::proton::Porcupine<nucleus::neutron::Data>(nest1);
 
