@@ -128,7 +128,9 @@ namespace hole
             ELLE_DEBUG("not yet..");
           }
         }
-
+        ELLE_DEBUG("out of portal_wait(%s, %s) (%s)",
+                   host, port, this->_hosts.size())
+        this->_hosts.erase(locus);
         return false;
       }
 
@@ -216,13 +218,41 @@ namespace hole
       }
 
       void
+      Machine::_run_gc()
+      {
+        reactor::Thread& current = *reactor::Scheduler::scheduler()->current();
+        while (1)
+        {
+          current.wait(this->__del);
+          auto it = begin(this->_controlers);
+          auto ite = end(this->_controlers);
+          for (;it != ite; ++it)
+          {
+            if ((*it)->done())
+            {
+              ELLE_DEBUG("garbarge: %s", (*it)->name());
+              it = this->_controlers.erase(it); // remove it.
+            }
+            else
+              ELLE_DEBUG("continue: %s", (*it)->name());
+          }
+        }
+      }
+
+      void
       Machine::_rpc_accept()
       {
         int i = 0;
+        this->_garbarge.reset(new reactor::Thread(
+            *reactor::Scheduler::scheduler(),
+            "Machine garbage",
+            [&] {this->_run_gc();}));
         while (true)
         {
           std::shared_ptr<reactor::network::TCPSocket> socket(
             this->_rpc_server->accept());
+
+          ELLE_DEBUG("accepted new rpc control from %s", socket->remote_locus());
 
           i++;
           auto run = [&, socket]
@@ -249,10 +279,11 @@ namespace hole
             {
               ELLE_WARN("slug control: %s", e.what());
             }
+            this->__del.signal();
           };
           this->_controlers.push_back(std::make_shared<reactor::Thread>(
                                       *reactor::Scheduler::scheduler(),
-                                      elle::sprintf("SLUG RPC %s", i),
+                                      elle::sprintf("Machine RPC %s", i),
                                       run));
           ELLE_TRACE("new connection accepted");
         }

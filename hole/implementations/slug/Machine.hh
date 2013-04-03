@@ -148,6 +148,12 @@ namespace hole
         std::unique_ptr<reactor::Thread> _rpc_acceptor;
         std::vector<std::shared_ptr<reactor::Thread>> _controlers;
 
+        std::unique_ptr<reactor::Thread> _garbarge;
+        reactor::Signal __del;
+
+        void
+        _run_gc();
+
         void
         _rpc_accept();
 
