@@ -63,6 +63,51 @@ namespace etoile
     {
       ELLE_TRACE_METHOD("");
 
+#if defined(DEBUG) || !defined(NDEBUG)
+      // For debug purposes, check that the consistent blocks account
+      // for all the blocks in the history queue.
+      nucleus::proton::Footprint size = 0;
+
+      for (auto& pair: this->_pods)
+        {
+          auto pod = pair.second;
+
+          // Act depending on the pod's state.
+          switch (pod->state())
+            {
+            case Pod::State::attached:
+              {
+                // Note that only consistent blocks need to be published onto
+                // the storage layer.
+                switch (pod->egg()->block()->state())
+                  {
+                  case nucleus::proton::State::clean:
+                    break;
+                  case nucleus::proton::State::dirty:
+                    throw Exception("dirty blocks should have been "
+                                    "sealed");
+                  case nucleus::proton::State::consistent:
+                    {
+                      if (pod->egg()->block() == nullptr)
+                        continue;
+
+                      // Add the block's footprint to the total.
+                      size += pod->egg()->block()->footprint();
+
+                      break;
+                    }
+                  }
+              }
+            case Pod::State::detached:
+              {
+                break;
+              }
+            }
+        }
+
+      ELLE_ASSERT_EQ(this->_size, size);
+#endif
+
       gear::Transcript transcript;
 
       for (auto& pair: this->_pods)
@@ -77,25 +122,11 @@ namespace etoile
           ELLE_ASSERT(pod->mutex().locked() == false);
           ELLE_ASSERT(pod->mutex().write().locked() == false);
 
-          // XXX make sure the pod's egg is no longer locked or wait for it.
-          // XXX since we're going to give away the block.
-          // XXX et unlock plus bas (attention au continue).
-          // XXX utiliser un finally ou un Lock comme dans wall
-          // XXX plutot assert si on ne peut pas lock? quoi que une operation de
-          //     pre-publish pourrait etre en train de se terminer
-
           // Act depending on the pod's state.
           switch (pod->state())
             {
             case Pod::State::attached:
               {
-                // This block is still attached. However, ignore non-present
-                // blocks as these have been either unloaded from main memory
-                // because not modified or pre-published in order to lighten
-                // the nest.
-                if (pod->egg()->block() == nullptr)
-                  continue;
-
                 // Note that only consistent blocks need to be published onto
                 // the storage layer.
                 switch (pod->egg()->block()->state())
@@ -120,8 +151,15 @@ namespace etoile
                         transcript.record(
                           new gear::action::Wipe(clef->address()));
 
+                      // Although the block is attached to the nest, the
+                      // unloaded blocks must be ignored.
+                      if (pod->egg()->block() == nullptr)
+                        break;
+
                       ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                                      pod->egg()->address());
+
+                      // XXX lock since we move the block
 
                       // Finally, push the final version of the block.
                       transcript.record(
@@ -269,6 +307,7 @@ namespace etoile
         ELLE_ASSERT_EQ(pod->actors(), 0);
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
         ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
+
 
 //         // Generate a random secret.
 //         cryptography::SecretKey secret{
