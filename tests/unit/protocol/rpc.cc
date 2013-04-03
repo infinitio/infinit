@@ -88,7 +88,8 @@ void caller(reactor::Semaphore& lock)
   BOOST_CHECK_THROW(rpc.raise(), std::runtime_error);
 }
 
-void runner(reactor::Semaphore& lock, bool sync)
+void runner(reactor::Semaphore& lock,
+            bool sync)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   reactor::network::TCPServer server(sched);
