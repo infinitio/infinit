@@ -567,18 +567,19 @@ namespace surface
       {
         reactor::Scheduler sched;
         reactor::Thread sync{
-            sched,
-            "notify_8infinit",
-            [&] () -> void {
-                try
-                {
-                  this->_notify_8infinit(transaction, sched);
-                }
-                catch (std::runtime_error const&)
-                {
-                  exception = std::current_exception();
-                }
+          sched,
+          "notify_8infinit",
+          [&]
+          {
+            try
+            {
+              this->_notify_8infinit(transaction, sched);
             }
+            catch (elle::Exception const& e)
+            {
+              exception = std::make_exception_ptr(e);
+            }
+          }
         };
 
         sched.run();

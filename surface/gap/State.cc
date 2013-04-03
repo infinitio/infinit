@@ -285,11 +285,10 @@ namespace surface
 
       /// Check if network is valid
       {
-          auto network = this->networks().find(network_id);
+        auto network = this->networks().find(network_id);
 
-          if (network == this->networks().end())
-              throw gap::Exception{gap_internal_error, "Unable to find network"};
-
+        if (network == this->networks().end())
+          throw gap::Exception{gap_internal_error, "Unable to find network"};
       }
 
       // Fetch Nodes and find the correct one to contact

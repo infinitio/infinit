@@ -68,7 +68,6 @@ namespace hole
       Machine::portal_connect(std::string const& host, int port)
       {
         ELLE_TRACE_FUNCTION(host, port);
-
         _server->accept(host, port);
       }
 
@@ -531,12 +530,12 @@ namespace hole
                   new reactor::Thread(
                     *reactor::Scheduler::scheduler(),
                      elle::sprintf("connect"),
-                     [this, s, locus] {
+                     [this, s, locus]
+                     {
                        _connect(
                          std::move(std::unique_ptr<reactor::network::Socket>(s)),
                          locus,
-                         false
-                       );
+                         false);
                      }
                   );
                 break;

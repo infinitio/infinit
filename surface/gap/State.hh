@@ -446,28 +446,28 @@ namespace surface
 
     public:
       typedef
-        std::function<void(UserStatusNotification const&)>
+        std::function<void (UserStatusNotification const&)>
         UserStatusNotificationCallback;
 
       typedef
-        std::function<void(TransactionNotification const&, bool)>
+        std::function<void (TransactionNotification const&, bool)>
         TransactionNotificationCallback;
 
 
       typedef
-        std::function<void(TransactionStatusNotification const&, bool)>
+        std::function<void (TransactionStatusNotification const&, bool)>
         TransactionStatusNotificationCallback;
 
       typedef
-        std::function<void(MessageNotification const&)>
+        std::function<void (MessageNotification const&)>
         MessageNotificationCallback;
 
       typedef
-        std::function<void(NetworkUpdateNotification const&)>
+        std::function<void (NetworkUpdateNotification const&)>
         NetworkUpdateNotificationCallback;
 
       typedef
-        std::function<void(gap_Status, std::string const&, std::string const&)>
+        std::function<void (gap_Status, std::string const&, std::string const&)>
         OnErrorCallback;
 
     public:
