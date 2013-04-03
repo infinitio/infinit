@@ -45,7 +45,7 @@ namespace etoile
            nucleus::proton::Limits const& limits,
            nucleus::proton::Network const& network,
            cryptography::PublicKey const& agent_K,
-           nucleus::proton::Extent const threshold);
+           nucleus::proton::Footprint const threshold);
       virtual
       ~Nest();
 
@@ -56,6 +56,9 @@ namespace etoile
       /// Transcribe the nest's state into a transcript representing the
       /// operations to perform on the storage layer: store a block, remove
       /// another one etc.
+      ///
+      /// Note that one should be careful to call this method only if the
+      /// all the nest's blocks have been unloaded.
       gear::Transcript
       transcribe();
     private:
@@ -78,6 +81,9 @@ namespace etoile
       /// Remove the mapping for the given address.
       void
       _unmap(nucleus::proton::Address const& address);
+      /// Remove the pod from the container.
+      void
+      _erase(Pod* pod);
       /// Try to optimize the nest according to internal limits and conditions.
       void
       _optimize();
@@ -129,9 +135,9 @@ namespace etoile
       ELLE_ATTRIBUTE(elle::Natural32, secret_length);
       /// The threshold which, once reached, triggers the pre-publication of
       /// the least-recently used blocks onto the storage layer.
-      ELLE_ATTRIBUTE_R(nucleus::proton::Extent, threshold);
-      /// The extent of the currently held blocks.
-      ELLE_ATTRIBUTE_R(nucleus::proton::Extent, size);
+      ELLE_ATTRIBUTE_R(nucleus::proton::Footprint, threshold);
+      /// The footprint of the currently held blocks.
+      ELLE_ATTRIBUTE_R(nucleus::proton::Footprint, size);
     };
   }
 }
