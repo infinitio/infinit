@@ -3,6 +3,7 @@
 #include <etoile/path/Path.hh>
 #include <etoile/path/Route.hh>
 #include <etoile/path/Way.hh>
+#include <etoile/Exception.hh>
 
 #include <agent/Agent.hh>
 #include <hole/Hole.hh>
@@ -39,7 +40,7 @@ namespace etoile
 
       // create the reference root route.
       if (Route::Root.Create(root) == elle::Status::Error)
-        throw elle::Exception("unable to create the route");
+        throw Exception("unable to create the route");
 
       return elle::Status::Ok;
     }
@@ -98,7 +99,7 @@ namespace etoile
 
       // check that the way starts with a leading '/'
       if (way.path[0] != elle::system::path::separator)
-        throw elle::Exception
+        throw Exception
           (elle::sprintf("the path must contain the leading path separator '%c'",
                          elle::system::path::separator));
 

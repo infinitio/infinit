@@ -14,10 +14,8 @@
 
 #include <hole/Hole.hh>
 #include <hole/storage/Directory.hh>
+#include <hole/Exception.hh>
 
-#ifdef INFINIT_HORIZON
-# include <horizon/Horizon.hh>
-#endif
 #include <HoleFactory.hh>
 #include <Program.hh>
 
@@ -30,15 +28,15 @@ namespace hole
 
     // initialize the Lune library.
     if (lune::Lune::Initialize() == elle::Status::Error)
-      throw reactor::Exception("unable to initialize Lune");
+      throw Exception("unable to initialize Lune");
 
     // initialize Infinit.
     if (Infinit::Initialize() == elle::Status::Error)
-      throw reactor::Exception("unable to initialize Infinit");
+      throw Exception("unable to initialize Infinit");
 
     // set up the program.
     if (elle::concurrency::Program::Setup("8hole") == elle::Status::Error)
-      throw reactor::Exception("unable to set up the program");
+      throw Exception("unable to set up the program");
 
     // allocate a new parser.
     Infinit::Parser = new elle::utility::Parser(argc, argv);
@@ -49,7 +47,7 @@ namespace hole
                                      "Copyright (c) 2008, 2009, 2010, 2011, "
                                      "Julien Quintard, All rights "
                                      "reserved.\n") == elle::Status::Error)
-      throw reactor::Exception("unable to set the description");
+      throw Exception("unable to set the description");
 
     // register the options.
     if (Infinit::Parser->Register(
@@ -58,7 +56,7 @@ namespace hole
           "help",
           "display the help",
           elle::utility::Parser::KindNone) == elle::Status::Error)
-      throw reactor::Exception("unable to register the option");
+      throw Exception("unable to register the option");
 
     // register the option.
     if (Infinit::Parser->Register(
@@ -67,11 +65,11 @@ namespace hole
           "network",
           "specifies the name of the network",
           elle::utility::Parser::KindRequired) == elle::Status::Error)
-      throw reactor::Exception("unable to register the option");
+      throw Exception("unable to register the option");
 
     // parse.
     if (Infinit::Parser->Parse() == elle::Status::Error)
-      throw reactor::Exception("unable to parse the command line");
+      throw Exception("unable to parse the command line");
 
     // test the option.
     if (Infinit::Parser->Test("Help") == true)
@@ -87,7 +85,7 @@ namespace hole
         // display the usage.
         Infinit::Parser->Usage();
 
-        throw reactor::Exception("unable to retrieve the network name");
+        throw Exception("unable to retrieve the network name");
       }
 
     // initialize the Hole library.
@@ -105,9 +103,6 @@ namespace hole
     std::unique_ptr<hole::Hole> hole(
       infinit::hole_factory(storage, passport, Infinit::authority()));
     etoile::depot::hole(hole.get());
-#ifdef INFINIT_HORIZON
-    horizon::hole(hole.get());
-#endif
     hole->join();
 
     // launch the program.
@@ -121,11 +116,11 @@ namespace hole
 
     // clean Infinit.
     if (Infinit::Clean() == elle::Status::Error)
-      throw reactor::Exception("unable to clean Infinit");
+      throw Exception("unable to clean Infinit");
 
     // clean Lune
     if (lune::Lune::Clean() == elle::Status::Error)
-      throw reactor::Exception("unable to clean Lune");
+      throw Exception("unable to clean Lune");
   }
 }
 

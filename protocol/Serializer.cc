@@ -48,11 +48,14 @@ namespace infinit
     {
       reactor::Lock lock(scheduler(), _lock_write);
       ELLE_TRACE("%s: send %s", *this, packet)
-        {
-          _uint32_put(_stream, packet._data_size);
+      {
+        auto size = packet._data_size;
+        ELLE_DUMP("%s: send size %s", *this, size)
+          _uint32_put(_stream, size);
+        ELLE_DUMP("%s: send data", *this)
           _stream.write(reinterpret_cast<char*>(packet._data),
                         packet._data_size);
-        }
+      }
       _stream.flush();
     }
 

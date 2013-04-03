@@ -1,19 +1,24 @@
 #include <common/common.hh>
-#include <plasma/meta/Client.hh>
-
+#include <elle/log.hh>
 #include <elle/print.hh>
+#include <plasma/meta/Client.hh>
+#include <tests/unit/ExceptionExpector.hxx>
 
-#include <cstdlib>
-#include <iostream>
-#include <ctime>
-#include <string>
-#include <vector>
-#include <map>
-#include <functional>
-#include <utility>
+#define BOOST_TEST_DYN_LINK
+#include <boost/test/unit_test.hpp>
+
 #include <algorithm>
+#include <cstdlib>
+#include <ctime>
+#include <functional>
+#include <iostream>
+#include <list>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 
-#define USER_COUNT 4
+#define USER_COUNT 2
 
 /*==============================================================================
   Tested features
@@ -31,26 +36,39 @@
   - Network destruction
   - Network data
   - Network add user
+  - Network add device
+  - Transaction creation
+  - Transaction update
+  - Connect device
+  - Get Endpoints
 
   ==============================================================================
   XXX: Missing features
   ==============================================================================
-  - Connect device
-  - Get Endpoints
-  - Transaction creation
-  - Transaction update
   - Swaggers
-  - Network add device
   - User icon
 */
 
 #define PRETTY_THROW(str)                                               \
   throw std::runtime_error(std::string{__PRETTY_FUNCTION__} + str)
 
+typedef plasma::meta::Client MetaClient;
+typedef plasma::meta::Exception Exception;
+typedef plasma::meta::Error Error;
+
+static std::map<Error, Exception> const excep{
+# define ERR_CODE(name, value, comment)                 \
+  {Error::name, Exception(Error::name, comment)},
+# include <oracle/disciples/meta/error_code.hh.inc>
+# undef ERR_CODE
+};
+
+ELLE_LOG_COMPONENT("test.unit.surface.gap.metrics");
+
 struct UniqueUser
 {
-  std::unique_ptr<plasma::meta::Client> client;
-  plasma::meta::User user;
+  std::unique_ptr<MetaClient> client;
+  plasma::meta::SelfResponse user;
   std::string email;
   std::string network_id;
   std::string device_id;
@@ -62,53 +80,248 @@ struct UniqueUser
   int external_port;
 
   UniqueUser(std::string const& name)
-    : client{new plasma::meta::Client{
-      common::meta::host(), common::meta::port(), true}}
-    , user{"", name, "", "", 0}
-    , email{name + "@infinit.io"}
+    : client{new plasma::meta::Client{common::meta::host(),
+                                      common::meta::port(),
+                                      true}}
+    , user{}
     , network_id{"99510fbd8ae7798906b80000"}
     , device_id{"aa510fbd8ae7798906b80000"}
     , device_name{device_id + "device"}
     , transaction_id{}
     , local_ip{elle::sprintf("%s.%s.%s.%s",
-                            std::rand() % 255,
-                            std::rand() % 255,
-                            std::rand() % 255,
-                            std::rand() % 255)}
+                             std::rand() % 255,
+                             std::rand() % 255,
+                             std::rand() % 255,
+                             std::rand() % 255)}
     , local_port{std::rand() % 65535}
     , external_ip{elle::sprintf("%s.%s.%s.%s",
-                               std::rand() % 255,
-                               std::rand() % 255,
-                               std::rand() % 255,
-                               std::rand() % 255)}
+                                std::rand() % 255,
+                                std::rand() % 255,
+                                std::rand() % 255,
+                                std::rand() % 255)}
     , external_port{std::rand() % 65535}
-  {}
-
-  UniqueUser(UniqueUser&& u)
   {
-    client = std::move(u.client);
-    this->user = u.user;
-    this->network_id = u.network_id;
-    this->device_id = u.device_id;
-    this->device_name = u.device_name;
-    this->transaction_id = u.transaction_id;
-    this->local_ip = u.local_ip;
-    this->local_port = u.local_port;
-    this->external_ip = u.external_ip;
-    this->external_port = u.external_port;
+    // Initialize user.
+    this->user._id = "";
+    this->user.fullname = name;
+    this->email = name + "@infinit.io";
+    this->user.public_key = "";
+    this->user.status = 0;
+    this->user.identity = "";
   }
 };
 
 typedef std::vector<UniqueUser> Users;
 
+/// Globals for register and login.
+std::string password = std::string(64, 'c');;
+std::string activation_code = "bitebite";
+
+/// Create a list of users.
+Users init_users();
+
+//- Users ----------------------------------------------------------------------
+
+/// Meta register.
+plasma::meta::RegisterResponse
+_register(plasma::meta::Client& client,
+          std::string const& email,
+          std::string const& fullname,
+          std::string const& password,
+          std::string const& activation_code);
+auto vee_register = test::unit::build_vexception_expector<Exception>(_register);
+
+/// Meta login.
+plasma::meta::LoginResponse
+_login(plasma::meta::Client& client,
+            std::string const& email,
+            std::string const& password);
+auto vee_login = test::unit::build_vexception_expector<Exception>(_login);
+
+/// Meta logout.
+plasma::meta::LogoutResponse
+_logout(plasma::meta::Client& client);
+auto vee_logout = test::unit::build_vexception_expector<Exception>(_logout);
+
+/// Meta self.
+plasma::meta::SelfResponse
+_self(plasma::meta::Client& client);
+auto vee_self = test::unit::build_vexception_expector<Exception>(_self);
+
+/// Meta user_from_public_key.
+plasma::meta::UserResponse
+_user_from_public_key(plasma::meta::Client& client,
+                      std::string const& public_key);
+auto vee_user_from_pkey = test::unit::build_vexception_expector<Exception>(
+  _user_from_public_key);
+
+/// Meta user form id or email.
+plasma::meta::UserResponse
+_user(plasma::meta::Client& client,
+      std::string const& user_id);
+auto vee_user = test::unit::build_vexception_expector<Exception>(_user);
+
+/// Meta search users.
+plasma::meta::UsersResponse
+_search_users(plasma::meta::Client& client,
+              std::string const& text,
+              uint16_t count,
+              uint16_t offset);
+auto vee_search = test::unit::build_vexception_expector<Exception>(
+  _search_users);
+
+//- Devices --------------------------------------------------------------------
+/// Meta create_device.
+plasma::meta::CreateDeviceResponse
+_create_device(plasma::meta::Client& client,
+               std::string const& device_name);
+auto vee_create_device = test::unit::build_vexception_expector<Exception>(
+  _create_device);
+
+bool
+_is_device_connect(plasma::meta::Client& client,
+                   std::string const& network_id,
+                   std::string const& owner_id,
+                   std::string const& owner_device_id,
+                   UniqueUser const& user);
+
+/// Meta update_device.
+plasma::meta::UpdateDeviceResponse
+_update_device(plasma::meta::Client& client,
+               std::string const& device_id,
+               std::string const& device_name);
+auto vee_update_device = test::unit::build_vexception_expector<Exception>(
+  _update_device);
+
+//- Networks -------------------------------------------------------------------
+/// Meta create_network.
+plasma::meta::CreateNetworkResponse
+_create_network(plasma::meta::Client& client, std::string const& network_name);
+auto vee_create_network = test::unit::build_vexception_expector<Exception>(
+  _create_network);
+
+/// Meta delete_network.
+plasma::meta::DeleteNetworkResponse
+_delete_network(plasma::meta::Client& client,
+                std::string const& network_id,
+                bool force);
+auto vee_delete_network = test::unit::build_vexception_expector<Exception>(
+  _delete_network);
+
+plasma::meta::NetworkResponse
+_network(plasma::meta::Client& client, std::string const& network_id);
+
+int
+_count_networks(plasma::meta::Client& client);
+
+void
+_check_nodes(plasma::meta::Client& client, std::string const& network_id);
+
+bool
+_is_network_in_list(plasma::meta::Client& client, std::string const& network_id);
+
+int
+_count_users_in_network(plasma::meta::Client& client,
+                        std::string const& network_id);
+
+void
+_network_add_user(plasma::meta::Client& client,
+                  std::string const& network_id,
+                  std::string const& guest_id);
+void
+_network_add_device(plasma::meta::Client& client,
+                    std::string const& network_id,
+                    std::string const& peer_device_id);
+void
+_network_connect_device(plasma::meta::Client& client,
+                        std::string const& network_id,
+                        UniqueUser const& peer);
+
+//- Transactions ---------------------------------------------------------------
+plasma::meta::TransactionResponse
+_create_transaction(plasma::meta::Client& client,
+                    std::string const& recipient_id,
+                    std::string const& network_id,
+                    std::string const& device_id);
+
+int _count_transactions(UniqueUser const& u);
+
+void _accept_transactions(UniqueUser const& u);
+
+void _prepare_transactions(UniqueUser const& u);
+
+void _start_transactions(UniqueUser const& u);
+
+void _finish_transactions(UniqueUser const& u);
+
+/// Check known error cases of register.
+void
+_register_errors();
+
+/// Check known error cases of login.
+void _login_errors();
+
+/*----------------.
+|  Test wrappers. |
+`----------------*/
+
+//- Helpers --------------------------------------------------------------------
+/// Ensure none of field of user are empty.
+void
+_check_user(plasma::meta::User const& u);
+
+/// Compare 2 users, throw if they are different.
+void
+_compare_users(plasma::meta::User const& u1, plasma::meta::User const& u2);
+
+/// Check if none of the field of a network are empty.
+void
+_check_network_data(plasma::meta::NetworkResponse const& net, bool check=false);
+
+/// Check if a user is the owner of a network.
+void
+_check_network_data(plasma::meta::NetworkResponse const& net,
+                    UniqueUser const& u);
+
+/// Check if none of the field is empty.
+void
+_check_transaction_data(plasma::Transaction const& tr);
+
+/// Check if transaction data match sender and recipient.
+void
+_check_transaction_data(plasma::Transaction const& tr,
+                        UniqueUser const& sender,
+                        UniqueUser const& recipient);
+
+//- Tests ----------------------------------------------------------------------
+/// Try to register every users.
+void test_register(Users const& users);
+/// Try to log every users.
+void test_login(Users& users);
+/// Try to logout out every users.
+void test_logout(Users const& users);
+/// Try some searches.
+void test_search(Users const& users);
+/// Try to create and update device.
+void test_device(Users& users);
+/// Try to delete network. Force stands for "gonna fail but don't care."
+void test_delete_network(Users const& users, bool force);
+/// Try to create networks for users.
+void test_create_network(Users& users);
+/// Try to execute full transaction process.
+void test_transactions(Users& users);
+
 Users
 init_users()
 {
+  // Initialization.
+  std::srand(std::time(0));
+
   Users users;
 
   for (unsigned int i = 0; i < USER_COUNT; ++i)
   {
-    std::string fullname = "random" + std::to_string(std::rand() % 1000000);
+    std::string fullname = "_0_random" + std::to_string(std::rand() % 1000000);
 
     users.emplace_back(fullname);
   }
@@ -116,271 +329,224 @@ init_users()
   return users;
 }
 
-//XXX: This may failed, due to random.
-void
-test_register(Users const& users)
+//- Users ----------------------------------------------------------------------
+plasma::meta::RegisterResponse
+_register(plasma::meta::Client& client,
+          std::string const& email,
+          std::string const& fullname,
+          std::string const& password,
+          std::string const& activation_code)
 {
-  std::string password = std::string(64, 'c');
-  std::string activation_code = "bitebite";
+  ELLE_TRACE_FUNCTION(client, email, fullname, password, activation_code);
 
-  for(UniqueUser const& u: users)
-  {
-    auto res = u.client->register_(u.email,
-                                   u.user.fullname,
-                                   password,
-                                   activation_code);
+  auto res = client.register_(email, fullname, password, activation_code);
 
-    if (!res.success())
-      PRETTY_THROW(elle::sprintf("register failed. %s",
-                                 res.error_details));
-  }
+  return res;
+}
+
+plasma::meta::LoginResponse
+_login(plasma::meta::Client& client,
+       std::string const& email,
+       std::string const& password)
+{
+  auto const& res = client.login(email, password);
+
+  // _check_user(res);
+
+  BOOST_CHECK(!res.token.empty());
+
+  return res;
+}
+
+plasma::meta::LogoutResponse
+_logout(plasma::meta::Client& client)
+{
+  auto res = client.logout();
+
+  BOOST_CHECK(client.email().empty());
+  BOOST_CHECK(client.token().empty());
+  BOOST_CHECK(client.identity().empty());
+
+  return res;
+}
+
+plasma::meta::SelfResponse
+_self(plasma::meta::Client& client)
+{
+  auto res = client.self();
+
+  _check_user(res);
+
+  BOOST_CHECK(!res.identity.empty());
+
+  return res;
+}
+
+plasma::meta::UserResponse
+_user_from_public_key(plasma::meta::Client& client,
+                      std::string const& public_key)
+{
+  auto res = client.user_from_public_key(public_key);
+
+  _check_user(res);
+
+  return res;
+}
+
+plasma::meta::UserResponse
+_user(plasma::meta::Client& client,
+      std::string const& user_id)
+{
+  auto res = client.user(user_id);
+
+  _check_user(res);
+
+  return res;
+}
+
+plasma::meta::UsersResponse
+_search_users(plasma::meta::Client& client,
+              std::string const& text,
+              uint16_t count,
+              uint16_t offset)
+{
+  auto res = client.search_users(text, count, offset);
+
+  BOOST_CHECK(res.users.size() <= count);
+
+  return res;
+}
+
+plasma::meta::CreateDeviceResponse
+_create_device(plasma::meta::Client& client,
+               std::string const& device_name)
+{
+  auto res = client.create_device(device_name);
+
+  BOOST_CHECK(!res.created_device_id.empty());
+  BOOST_CHECK(!res.passport.empty());
+
+  return res;
+}
+
+plasma::meta::UpdateDeviceResponse
+_update_device(plasma::meta::Client& client,
+               std::string const& device_id,
+               std::string const& device_name)
+{
+  auto res = client.update_device(device_id,
+                                  device_name);
+
+  BOOST_CHECK(!res.updated_device_id.empty());
+  BOOST_CHECK(!res.passport.empty());
+
+  return res;
 }
 
 void
-test_login(Users& users)
+_register_errors()
 {
-  std::string password = std::string(64, 'c');;
-
-  for (UniqueUser& u: users)
-  {
-    // Login.
-    {
-      auto res = u.client->login(u.email,
-                                 password);
-
-      if (res.success() != true)
-        PRETTY_THROW(elle::sprintf("login failed. %s",
-                                   res.error_details));
-
-      if (res.token.empty())
-        PRETTY_THROW("token is empty");
-      if (res.fullname.empty())
-        PRETTY_THROW("fullname is empty");
-      if (res.email.empty())
-        PRETTY_THROW("email is empty");
-      if (res.identity.empty())
-        PRETTY_THROW("identity is empty");
-      if (res._id.empty())
-        PRETTY_THROW("_id is empty");
-    }
-
-    // Get data using self.
-    {
-      auto res = u.client->self();
-
-      if (res.success() != true)
-        PRETTY_THROW(elle::sprintf("self failed. %s",
-                                   res.error_details));
-
-      if (res._id.empty())
-        PRETTY_THROW("_id is empty");
-      if (res.fullname != u.user.fullname)
-        PRETTY_THROW("fullnames don't match");
-      if (res.email != u.email)
-        PRETTY_THROW("emails don't match");
-      if (res.public_key.empty())
-        PRETTY_THROW("public_keys is empty");
-
-      u.user = res;
-    }
-
-    // Get data using public key search.
-    {
-      auto res = u.client->user_from_public_key(u.user.public_key);
-
-      if (res.success() != true)
-        PRETTY_THROW(elle::sprintf("search from pkey failed. %s",
-                                   res.error_details));
-
-      if (res._id != u.user._id)
-        PRETTY_THROW("_ids don't match");
-      if (res.fullname != u.user.fullname)
-        PRETTY_THROW("fullnames don't match");
-      if (res.public_key != u.user.public_key)
-        PRETTY_THROW("public_keys don't match");
-    }
-  }
+  MetaClient serv{common::meta::host(), common::meta::port(), true};
+  vee_register(excep.at(Error::email_not_valid),
+               serv, "", "", "", "");
+  vee_register(excep.at(Error::email_not_valid),
+               serv, "no_at", "", "", "");
+  vee_register(excep.at(Error::email_not_valid),
+               serv, "a@a.a", "", "", "");
+  vee_register(excep.at(Error::handle_not_valid),
+               serv, "valid@mail.fr", "", "", "");
+  vee_register(excep.at(Error::handle_not_valid),
+               serv, "valid@mail.fr", "a", "", "");
+  vee_register(excep.at(Error::password_not_valid),
+               serv, "valid@mail.fr", "castor", "", "");
+  vee_register(excep.at(Error::password_not_valid),
+               serv, "valid@mail.fr", "castor", "aa", "");
+  vee_register(excep.at(Error::activation_code_doesnt_exist),
+               serv, "valid@mail.fr", "castor", password, "");
+  vee_register(excep.at(Error::activation_code_doesnt_exist),
+               serv, "valid@mail.fr", "castor", password, "ae392813");
 }
 
 void
-test_device(Users& users)
+_login_errors()
 {
-  for (UniqueUser& u: users)
-  {
-    // Create device.
-    {
-      u.device_name = u.user.fullname + "device";
-      auto res = u.client->create_device(u.device_name);
+  MetaClient serv{common::meta::host(), common::meta::port(), true};
+  vee_login(excep.at(Error::email_not_valid), serv, "", "");
+  vee_login(excep.at(Error::email_not_valid), serv, "no_at", "");
+  vee_login(excep.at(Error::password_not_valid),
+            serv, "valid@infinit.io", "");
+  vee_login(excep.at(Error::password_not_valid),
+            serv, "valid@infinit.io", "bisou");
+  vee_login(excep.at(Error::email_password_dont_match),
+            serv, "valid@infinit.io", std::string(64, 'e'));
 
-      if (res.success() != true)
-        PRETTY_THROW(elle::sprintf("create device failed. %s",
-                                   res.error_details));
-
-      if (res.created_device_id.empty())
-        PRETTY_THROW("device id is empty");
-      if (res.passport.empty())
-        PRETTY_THROW("passport is empty");
-
-      u.device_id = res.created_device_id;
-    }
-
-    // Update device.
-    {
-      auto device_name = std::string("device") + u.user.fullname;
-      auto res = u.client->update_device(u.device_id,
-                                         device_name);
-
-      if (res.success() != true)
-        PRETTY_THROW(elle::sprintf("update device failed. %s",
-                                   res.error_details));
-
-      if (res.updated_device_id.empty())
-        PRETTY_THROW("device id is empty");
-      if (res.passport.empty())
-        PRETTY_THROW("passport is empty");
-
-      u.device_id = res.updated_device_id;
-    }
-  }
-}
-
-void
-test_logout(Users const& users)
-{
-  // Logout every users.
-  for (UniqueUser const& u: users)
-  {
-    auto res = u.client->logout();
-
-    if (res.success() != true)
-      PRETTY_THROW(elle::sprintf("lougout failed. %s",
-                                 res.error_details));
-
-    if (!u.client->email().empty())
-      PRETTY_THROW("lougout didn't clear email");
-    if (!u.client->token().empty())
-      PRETTY_THROW("lougout didn't clear token");
-    if (!u.client->identity().empty())
-      PRETTY_THROW("lougout didn't clear identity");
-  }
-}
-
-void
-test_search(Users const& users)
-{
-  std::string password = std::string(64, 'c');;
-  std::string prefix("random");
-
-  // Search users with fullname starting by prefix.
-  for (UniqueUser const& u: users)
-  {
-    auto res = u.client->search_users(prefix, USER_COUNT, 0);
-
-    if (res.success() != true)
-      PRETTY_THROW(elle::sprintf("search failed. %s",
-                                 res.error_details));
-
-    if (res.users.size() < USER_COUNT)
-      PRETTY_THROW("too few results");
-
-    // Ensure search returned only users with the good fullname.
-    for (auto user_id: res.users)
-    {
-      auto user = u.client->user(user_id);
-
-      if (user._id != user_id)
-        PRETTY_THROW("found wrong user");
-      if (user.fullname.compare(0, prefix.size(), prefix))
-        PRETTY_THROW("found wrong user again");
-    }
-  }
 }
 
 //- Networks -------------------------------------------------------------------
-void
-_create_network(UniqueUser& u)
+plasma::meta::CreateNetworkResponse
+_create_network(plasma::meta::Client& client,
+                std::string const& network_name)
 {
-  auto res = u.client->create_network(u.user.fullname);
+  auto res = client.create_network(network_name);
 
-  if (res.success() != true)
-    PRETTY_THROW(elle::sprintf("create network failed, %s",
-                               res.error_details));
+  BOOST_CHECK(res.created_network_id.length() != 0);
 
-  if (res.created_network_id.length() == 0)
-    PRETTY_THROW("network creation data corrupted");
-
-  u.network_id = res.created_network_id;
+  return res;
 }
 
-void
-_delete_network(UniqueUser const& u, bool force)
+plasma::meta::DeleteNetworkResponse
+_delete_network(plasma::meta::Client& client,
+                std::string const& network_id,
+                bool force)
 {
-  auto res = u.client->delete_network(u.network_id, force);
+  auto res = client.delete_network(network_id, force);
 
-  if (res.success() != true)
-    PRETTY_THROW(
-      elle::sprintf("delete network failed with%s force. %s",
-                    (force ? "" : "out"), res.error_details));
-
-  if (!force && res.deleted_network_id != u.network_id)
+  if (!force && res.deleted_network_id != network_id)
     PRETTY_THROW(elle::sprintf("netorks id don't match",
                                res.error_details));
+
+  return res;
 }
 
-int
-_count_networks(UniqueUser const& u)
-{
-  auto res = u.client->networks();
 
-  if (!res.success())
-    PRETTY_THROW(elle::sprintf("getting networks failed. %s",
-                               res.error_details));
+plasma::meta::NetworkResponse
+_network(plasma::meta::Client& client, std::string const& network_id)
+{
+  auto res = client.network(network_id);
+
+  _check_network_data(res);
+
+  return res;
+}
+
+
+int
+_count_networks(plasma::meta::Client& client)
+{
+  auto res = client.networks();
 
   return res.networks.size();
 }
 
 void
-_check_network_data(UniqueUser const& u)
+_check_nodes(plasma::meta::Client& client,
+             std::string const& network_id)
 {
-  auto res = u.client->network(u.network_id);
-
-  if (!res.success())
-    PRETTY_THROW(elle::sprintf("getting network failed. %s",
-                               res.error_details));
-
-  if (res.owner != u.user._id)
-    PRETTY_THROW("owner don't match");
-  if (res._id != u.network_id)
-    PRETTY_THROW("network_id don't match");
-  if (res.name != u.user.fullname)
-    PRETTY_THROW("network names don't match");
-}
-
-void
-_check_nodes(UniqueUser const& u)
-{
-  auto res = u.client->network_nodes(u.network_id);
-
-  if (res.success() != true)
-    PRETTY_THROW(elle::sprintf("getting nodes failed. %s",
-                               res.error_details));
+  auto res = client.network_nodes(network_id);
 
   //XXX
 }
 
 bool
-_is_network_in_list(UniqueUser const& u)
+_is_network_in_list(plasma::meta::Client& client,
+                    std::string const& network_id)
 {
-  auto res = u.client->networks();
-
-  if (res.success() != true)
-    PRETTY_THROW(elle::sprintf("getting networks failed. %s",
-                               res.error_details));
+  auto res = client.networks();
 
   auto found = std::find_if(res.networks.begin(),
                             res.networks.end(),
                             [&](std::string n) -> bool
-                            { return (n == u.network_id); });
+                            { return (n == network_id); });
 
   if (found == res.networks.end())
     return false;
@@ -389,91 +555,72 @@ _is_network_in_list(UniqueUser const& u)
 }
 
 int
-_count_users_in_network(UniqueUser const& u)
+_count_users_in_network(plasma::meta::Client& client,
+                        std::string const& network_id)
 {
-  auto res = u.client->network(u.network_id);
-
-  if (res.success() != true)
-    PRETTY_THROW(elle::sprintf("getting network failed. %s",
-                               res.error_details));
+  auto res = client.network(network_id);
 
   return res.users.size();
 }
 
 void
-_network_add_user(UniqueUser& u, UniqueUser const& guest)
+_network_add_user(plasma::meta::Client& client,
+                  std::string const& network_id,
+                  std::string const& guest_id)
 {
-  if (guest.user._id == u.user._id)
-    return;
+  auto res = client.network_add_user(network_id, guest_id);
 
-  auto res = u.client->network_add_user(u.network_id, guest.user._id);
-
-  if (res.success() != true)
-    PRETTY_THROW(elle::sprintf("add user to network failed",
-                               res.error_details));
-
-  if (res.updated_network_id != u.network_id)
-    PRETTY_THROW("add user to network data corrupted");
+  BOOST_CHECK(res.updated_network_id == network_id);
 }
 
 void
-_network_add_device(UniqueUser& u, UniqueUser const& guest)
+_network_add_device(plasma::meta::Client& client,
+                    std::string const& network_id,
+                    std::string const& peer_device_id)
 {
-  // if (guest.user._id == u.user._id)
-  //   return;
+  auto res = client.network_add_device(network_id, peer_device_id);
 
-  auto res = u.client->network_add_device(u.network_id, guest.device_id);
-
-  if (res.success() != true)
-    PRETTY_THROW(elle::sprintf("add device to network failed",
-                               res.error_details));
-
-  if (res.updated_network_id != u.network_id)
-    PRETTY_THROW("add device to network data corrupted");
+  BOOST_CHECK(res.updated_network_id == network_id);
 }
 
 void
-_network_connect_device(UniqueUser const& u, UniqueUser const& guest)
+_network_connect_device(plasma::meta::Client& client,
+                        std::string const& network_id,
+                        UniqueUser const& peer)
 {
-  auto res = u.client->network_connect_device(u.network_id,
-                                              guest.device_id,
-                                              &guest.local_ip,
-                                              guest.local_port,
-                                              &guest.external_ip,
-                                              guest.external_port);
+  auto res = client.network_connect_device(network_id,
+                                           peer.device_id,
+                                           &peer.local_ip,
+                                           peer.local_port,
+                                           &peer.external_ip,
+                                           peer.external_port);
 
-  if (!res.success())
-    PRETTY_THROW(elle::sprintf("connecting device failed. %s",
-                               res.error_details));
-
-  if (res.updated_network_id != u.network_id)
-    PRETTY_THROW("network_ids don't match");
-
+  BOOST_CHECK(res.updated_network_id == network_id);
 }
 
 bool
-_is_device_connect(UniqueUser const& u, UniqueUser const& peer)
+_is_device_connect(plasma::meta::Client& client,
+                   std::string const& network_id,
+                   std::string const& owner_id,
+                   std::string const& owner_device_id,
+                   UniqueUser const& u)
 {
-  auto res = u.client->device_endpoints(u.network_id,
-                                        u.device_id,
-                                        peer.device_id);
+  auto res = client.device_endpoints(network_id,
+                                     owner_device_id,
+                                     u.device_id);
 
-  if (!res.success())
-    PRETTY_THROW(elle::sprintf("getting device endpoints failed. %s",
-                               res.error_details));
-
-  if (res.externals.empty() && peer.user._id != u.user._id)
+  if (res.externals.empty() && owner_id != u.user._id)
     return false;
   if (res.locals.empty())
     return false;
 
-  std::string peer_externals = peer.external_ip + ":" + std::to_string(peer.external_port);
+  std::string peer_ext = u.external_ip + ":" + std::to_string(u.external_port);
   auto itext = std::find(res.externals.begin(), res.externals.end(),
-                         peer_externals);
+                         peer_ext);
 
-  if (itext == res.externals.end() && peer.user._id != u.user._id)
+  if (itext == res.externals.end() && owner_id != u.user._id)
     return false;
-  std::string peer_locals = peer.local_ip + ":" + std::to_string(peer.local_port);
+  std::string peer_locals = u.local_ip + ":" + std::to_string(u.local_port);
   auto itloc = std::find(res.locals.begin(), res.locals.end(),
                          peer_locals);
 
@@ -484,17 +631,104 @@ _is_device_connect(UniqueUser const& u, UniqueUser const& peer)
 }
 
 
+//XXX: This may failed, due to random.
+void
+test_register(Users const& users)
+{
+  _register_errors();
+
+  for(UniqueUser const& u: users)
+  {
+    _register(*u.client, u.email, u.user.fullname, password, activation_code);
+
+    vee_register(excep.at(Error::email_already_registred),
+                 *u.client,
+                 u.email,
+                 u.user.fullname,
+                 password,
+                 activation_code);
+  }
+}
+
+void
+test_login(Users& users)
+{
+  _login_errors();
+
+  for (UniqueUser& u: users)
+  {
+    // Log user in.
+    _login(*u.client, u.email, password);
+
+    // Get data using self.
+    u.user = _self(*u.client);
+
+    // Get data using public key search.
+    _user_from_public_key(*u.client,
+                          u.user.public_key);
+  }
+}
+
+void
+test_device(Users& users)
+{
+  for (UniqueUser& u: users)
+  {
+    {
+      auto const& created_device = _create_device(*u.client, u.device_name);
+      u.device_id = created_device.created_device_id;
+    }
+    u.device_name += "_new";
+    {
+      auto const& device = _update_device(*u.client, u.device_id, u.device_name);
+      u.device_id = device.updated_device_id;
+    }
+  }
+}
+
+void
+test_logout(Users const& users)
+{
+  // Logout every users.
+  for (UniqueUser const& u: users)
+  {
+    _logout(*u.client);
+  }
+}
+
+void
+test_search(Users const& users)
+{
+  std::string prefix("random");
+
+  // Search users with fullname starting by prefix.
+  for (UniqueUser const& u: users)
+  {
+    auto res = _search_users(*u.client, prefix, USER_COUNT, 0);
+
+    BOOST_CHECK(res.users.size() >= USER_COUNT);
+
+    // Ensure search returned only users with the good fullname.
+    for (auto user_id: res.users)
+    {
+      auto user = _user(*u.client, user_id);
+
+      BOOST_CHECK(user._id == user_id);
+      BOOST_CHECK(!user.fullname.compare(0, prefix.size(), prefix));
+    }
+  }
+}
+
 void
 test_delete_network(Users const& users, bool force)
 {
   for (UniqueUser const& u: users)
   {
-    int count = _count_networks(u);
-    _delete_network(u, force);
-    if (!force && _count_networks(u) != (count - 1))
+    int count = _count_networks(*u.client);
+    _delete_network(*u.client, u.network_id, force);
+    if (!force && _count_networks(*u.client) != (count - 1))
       PRETTY_THROW("network count is wrong");
-    if (_is_network_in_list(u))
-      PRETTY_THROW("network not deleted");
+    BOOST_CHECK(!_is_network_in_list(*u.client, u.network_id));
   }
 }
 
@@ -504,41 +738,82 @@ test_create_network(Users& users)
   for (UniqueUser& u: users)
   {
     // count networks before creation.
-    int count = _count_networks(u);
+    int count = _count_networks(*u.client);
 
-    _create_network(u);
-    _check_network_data(u);
-    _check_nodes(u);
+    auto cnet_res = _create_network(*u.client, u.user.fullname);
+    auto net_res = _network(*u.client, cnet_res.created_network_id);
 
-    if (_count_networks(u) != (count + 1))
-      PRETTY_THROW("network count is bad");
-    if (!_is_network_in_list(u))
-      PRETTY_THROW("network not added in the list");
+    _check_network_data(net_res);
+
+    u.network_id = cnet_res.created_network_id;
+
+    _check_nodes(*u.client, u.network_id);
+
+    BOOST_CHECK(_count_networks(*u.client) == (count + 1));
+    BOOST_CHECK(_is_network_in_list(*u.client, u.network_id));
 
 
     // Check if number of user in network is 1 (the user only).
-    if (_count_users_in_network(u) != 1)
-      PRETTY_THROW("network should contain only 1 user");
+    BOOST_CHECK(_count_users_in_network(*u.client, u.network_id) == 1);
 
     // Add users in network.
     for (UniqueUser const& guest: users)
     {
-      _network_add_user(u, guest);
-      _network_add_device(u, guest);
-      _network_connect_device(u, guest);
+      if (guest.user._id != u.user._id)
+        _network_add_user(*u.client, u.network_id, guest.user._id);
+
+      _network_add_device(*u.client, u.network_id, guest.device_id);
+      _network_connect_device(*u.client,
+                              u.network_id,
+                              guest);
     }
 
     for (UniqueUser const& guest: users)
     {
-      if (!_is_device_connect(u, guest))
-        PRETTY_THROW("user is not connected in this network");
+      BOOST_CHECK(_is_device_connect(*u.client,
+                                     u.network_id,
+                                     u.user._id,
+                                     u.device_id,
+                                     guest));
     }
 
     // Count user in the network. Should be USER_COUNT.
-    if (_count_users_in_network(u) != USER_COUNT)
-      PRETTY_THROW("Wrong number of user in network");
-
+    BOOST_CHECK(_count_users_in_network(*u.client, u.network_id) == USER_COUNT);
   }
+}
+
+void
+test_transactions(Users& users)
+{
+  for (UniqueUser& u: users)
+  {
+    for (UniqueUser const& recipient: users)
+    {
+      // Can't send to your self (on the same device).
+      if (recipient.user._id == u.user._id)
+        continue;
+
+      auto transaction = _create_transaction(*u.client,
+                                             recipient.user._id,
+                                             recipient.network_id,
+                                             recipient.device_id);
+
+      _check_transaction_data(transaction);
+    }
+  }
+
+  // Accept each transaction.
+  for (UniqueUser& u: users)
+    _accept_transactions(u);
+  // Prepare each transaction.
+  for (UniqueUser& u: users)
+    _prepare_transactions(u);
+  // Start each transaction.
+  for (UniqueUser& u: users)
+    _start_transactions(u);
+  // Finish each transaction.
+  for (UniqueUser& u: users)
+    _finish_transactions(u);
 }
 
 //- Transactions ---------------------------------------------------------------
@@ -547,76 +822,25 @@ int count = 1;
 int size = 9139;
 bool is_dir = false;
 
-void
-_create_transaction(UniqueUser& u, UniqueUser const& recipient)
+plasma::meta::TransactionResponse
+_create_transaction(plasma::meta::Client& client,
+                    std::string const& recipient_id,
+                    std::string const& network_id,
+                    std::string const& device_id)
 {
-  if (recipient.user._id == u.user._id)
-    return;
+  auto res = client.create_transaction(recipient_id,
+                                       filename,
+                                       count,
+                                       size,
+                                       is_dir,
+                                       network_id,
+                                       device_id);
 
-  auto res = u.client->create_transaction(
-    recipient.user._id,
-    filename,
-    count,
-    size,
-    is_dir,
-    u.network_id,
-    u.device_id);
+  auto transaction = client.transaction(res.created_transaction_id);
 
-  if (!res.success())
-    PRETTY_THROW(
-      elle::sprintf("creating transaction failed. %s",
-                    res.error_details));
+  _check_transaction_data(transaction);
 
-  if (res.created_transaction_id.empty())
-    PRETTY_THROW("transaction_id is empty");
-
-  u.transaction_id = res.created_transaction_id;
-}
-
-void
-_check_transaction_data(UniqueUser const& u, UniqueUser const& recipient)
-{
-  auto res = u.client->transaction(u.transaction_id);
-
-  if (res.transaction_id.empty())
-    PRETTY_THROW("transaction_id is empty");
-  if (res.sender_id != u.user._id)
-    PRETTY_THROW("sender_ids don't match");
-  if (res.sender_fullname != u.user.fullname)
-    PRETTY_THROW("sender_fullname don't match");
-  if (res.sender_device_id != u.device_id)
-    PRETTY_THROW("sender_device_id don't match");
-  if (res.recipient_id != recipient.user._id)
-    PRETTY_THROW("recipient_id don't match");
-  if (res.recipient_fullname != recipient.user.fullname)
-    PRETTY_THROW("recipient_fullname don't match");
-  if (res.network_id != u.network_id)
-    PRETTY_THROW("network_id don't match");
-  if (!res.message.empty())
-    PRETTY_THROW("message should be empty");
-  if (res.first_filename != filename)
-    PRETTY_THROW("first_filenames don't match");
-  if (res.files_count != count)
-    PRETTY_THROW("files_count don't match");
-  if (res.total_size != size)
-    PRETTY_THROW("total_sizes don't match");
-  if (res.is_directory != is_dir)
-    PRETTY_THROW("is_directory don't match");
-
-  if (res.status == 1)
-  {
-    if (!res.recipient_device_id.empty())
-      PRETTY_THROW("we shouldn't know the recipient device id");
-    if (!res.recipient_device_name.empty())
-      PRETTY_THROW("we shouldn't know the recipient name");
-  }
-  else if (res.status != 5)
-  {
-    if (res.recipient_device_id != recipient.device_id)
-      PRETTY_THROW("recipient device id don't match");
-    if (res.recipient_device_name != recipient.device_name)
-      PRETTY_THROW("we shouldn't know the recipient name");
-  }
+  return transaction;
 }
 
 int
@@ -624,12 +848,7 @@ _count_transactions(UniqueUser const& u)
 {
   auto res = u.client->transactions();
 
-  if (!res.success())
-    PRETTY_THROW(elle::sprintf("getting transactions failed. %s",
-                               res.error_details));
-
   return res.transactions.size();
-
 }
 
 void
@@ -644,17 +863,9 @@ _accept_transactions(UniqueUser const& u)
 
   auto res = u.client->transactions();
 
-  if (!res.success())
-    PRETTY_THROW(elle::sprintf("getting transactions failed. %s",
-                               res.error_details));
-
   for (std::string const& transaction_id: res.transactions)
   {
     auto transaction_res = u.client->transaction(transaction_id);
-
-    if (!transaction_res.success())
-      PRETTY_THROW(elle::sprintf("getting transaction failed. %s",
-                                 transaction_res.error_details));
 
     // Only recipient can accept.
     if (transaction_res.recipient_id != u.user._id)
@@ -673,24 +884,13 @@ _prepare_transactions(UniqueUser const& u)
 {
   int count = _count_transactions(u);
   // I send to the (USER_COUNT - 1) other users and every users did the same.
-  if (count != (USER_COUNT - 1) * 2)
-    PRETTY_THROW(
-      elle::sprintf("wrong number of notif. expected %i, found %i",
-                    (USER_COUNT - 1) * 2, count));
+  BOOST_CHECK(count == (USER_COUNT - 1) * 2);
 
   auto res = u.client->transactions();
-
-  if (!res.success())
-    PRETTY_THROW(elle::sprintf("getting transactions failed. %s",
-                               res.error_details));
 
   for (std::string const& transaction_id: res.transactions)
   {
     auto transaction_res = u.client->transaction(transaction_id);
-
-    if (!transaction_res.success())
-      PRETTY_THROW(elle::sprintf("getting transaction failed. %s",
-                                 transaction_res.error_details));
 
     // Only recipient can accept.
     if (transaction_res.sender_id != u.user._id)
@@ -707,24 +907,13 @@ _start_transactions(UniqueUser const& u)
 {
   int count = _count_transactions(u);
   // I send to the (USER_COUNT - 1) other users and every users did the same.
-  if (count != (USER_COUNT - 1) * 2)
-    PRETTY_THROW(
-      elle::sprintf("wrong number of notif. expected %i, found %i",
-                    (USER_COUNT - 1) * 2, count));
+  BOOST_CHECK(count == (USER_COUNT - 1) * 2);
 
   auto res = u.client->transactions();
-
-  if (!res.success())
-    PRETTY_THROW(elle::sprintf("getting transactions failed. %s",
-                               res.error_details));
 
   for (std::string const& transaction_id: res.transactions)
   {
     auto transaction_res = u.client->transaction(transaction_id);
-
-    if (!transaction_res.success())
-      PRETTY_THROW(elle::sprintf("getting transaction failed. %s",
-                                 transaction_res.error_details));
 
     // Only recipient can prepare.
     if (transaction_res.recipient_id != u.user._id)
@@ -741,17 +930,9 @@ _finish_transactions(UniqueUser const& u)
 {
   auto res = u.client->transactions();
 
-  if (!res.success())
-    PRETTY_THROW(elle::sprintf("getting transactions failed. %s",
-                               res.error_details));
-
   for (std::string const& transaction_id: res.transactions)
   {
     auto transaction_res = u.client->transaction(transaction_id);
-
-    if (!transaction_res.success())
-      PRETTY_THROW(elle::sprintf("getting transaction failed. %s",
-                                 transaction_res.error_details));
 
     // Only recipient can finish.
     if (transaction_res.recipient_id != u.user._id)
@@ -763,61 +944,142 @@ _finish_transactions(UniqueUser const& u)
   }
 }
 
+
+//- Helpers --------------------------------------------------------------------
+/// Ensure none of field of user are empty.
 void
-test_transactions(Users& users)
+_check_user(plasma::meta::User const& u)
 {
-  for (UniqueUser& u: users)
+  BOOST_CHECK(!u._id.empty());
+  BOOST_CHECK(!u.fullname.empty());
+  BOOST_CHECK(!u.public_key.empty());
+}
+
+void
+_compare_users(plasma::meta::User const& u1,
+               plasma::meta::User const& u2)
+{
+  BOOST_CHECK_EQUAL(u1._id, u2._id);
+  BOOST_CHECK_EQUAL(u1.fullname, u2.fullname);
+  BOOST_CHECK_EQUAL(u1.public_key, u2.public_key);
+}
+
+void
+_check_network_data(plasma::meta::NetworkResponse const& net, bool check)
+{
+  BOOST_CHECK(!net._id.empty());
+  BOOST_CHECK(!net.owner.empty());
+  BOOST_CHECK(!net.name.empty());
+  BOOST_CHECK(!net.model.empty());
+  BOOST_CHECK(!net.users.empty());
+
+  if (check)
   {
-    for (UniqueUser const& recipient: users)
-    {
-      // Can't send to your self (on the same device).
-      if (recipient.user._id == u.user._id)
-        continue;
-
-      _create_transaction(u, recipient);
-      _check_transaction_data(u, recipient);
-    }
+    BOOST_CHECK(!net.root_block.empty());
+    BOOST_CHECK(!net.root_address.empty());
+    BOOST_CHECK(!net.group_block.empty());
+    BOOST_CHECK(!net.group_address.empty());
+    BOOST_CHECK(!net.descriptor.empty());
   }
+}
 
-  // Accept each transaction.
-  for (UniqueUser& u: users)
-    _accept_transactions(u);
-  // Prepare each transaction.
-  for (UniqueUser& u: users)
-    _prepare_transactions(u);
-  // Start each transaction.
-  for (UniqueUser& u: users)
-    _start_transactions(u);
-  // Finish each transaction.
-  for (UniqueUser& u: users)
-    _finish_transactions(u);
+void
+_check_network_data(plasma::meta::NetworkResponse const& net,
+                    UniqueUser const& u)
+{
+  BOOST_CHECK_EQUAL(net.owner, u.user._id);
+  BOOST_CHECK_EQUAL(net._id, u.network_id);
+}
+
+void
+_check_transaction_data(plasma::Transaction const& tr)
+{
+  BOOST_CHECK(!tr.transaction_id.empty());
+  BOOST_CHECK(!tr.sender_id.empty());
+  BOOST_CHECK(!tr.sender_fullname.empty());
+  BOOST_CHECK(!tr.sender_device_id.empty());
+  BOOST_CHECK(!tr.recipient_id.empty());
+  BOOST_CHECK(!tr.recipient_fullname.empty());
+  BOOST_CHECK(!tr.network_id.empty());
+  BOOST_CHECK(!!tr.message.empty());
+  BOOST_CHECK(!tr.first_filename.empty());
+  BOOST_CHECK_PREDICATE(std::not_equal_to<int>(), (tr.files_count)(0));
+  BOOST_CHECK_PREDICATE(std::not_equal_to<int>(), (tr.total_size)(0));
+
+  if (tr.status == 1) // Pending.
+  {
+    BOOST_CHECK(tr.recipient_device_id.empty());
+    BOOST_CHECK(tr.recipient_device_name.empty());
+  }
+  else if (tr.status != 5) // not canceled.
+  {
+    BOOST_CHECK(!tr.recipient_device_id.empty());
+    BOOST_CHECK(!tr.recipient_device_name.empty());
+  }
+}
+
+void
+_check_transaction_data(plasma::Transaction const& tr,
+                        UniqueUser const& sender,
+                        UniqueUser const& recipient)
+{
+  BOOST_CHECK(!tr.transaction_id.empty());
+  BOOST_CHECK_EQUAL(tr.sender_id, sender.user._id);
+  BOOST_CHECK_EQUAL(tr.sender_fullname, sender.user.fullname);
+  BOOST_CHECK_EQUAL(tr.sender_device_id, sender.device_id);
+  BOOST_CHECK_EQUAL(tr.recipient_id, recipient.user._id);
+  BOOST_CHECK_EQUAL(tr.recipient_fullname, recipient.user.fullname);
+  BOOST_CHECK_EQUAL(tr.network_id, sender.network_id);
+  BOOST_CHECK(tr.message.empty());
+  BOOST_CHECK_EQUAL(tr.first_filename, filename);
+  BOOST_CHECK_EQUAL(tr.files_count, count);
+  BOOST_CHECK_EQUAL(tr.total_size, size);
+  BOOST_CHECK_EQUAL(tr.is_directory, is_dir);
+
+  if (tr.status == 1)
+  {
+    BOOST_CHECK(tr.recipient_device_id.empty());
+    BOOST_CHECK(tr.recipient_device_name.empty());
+  }
+  else if (tr.status != 5)
+  {
+    BOOST_CHECK_EQUAL(tr.recipient_device_id, recipient.device_id);
+    BOOST_CHECK_EQUAL(tr.recipient_device_name, recipient.device_name);
+  }
+}
+
+Users users = init_users();
+
+bool
+test_suite()
+{
+  ELLE_DEBUG("creating test_suite");
+  boost::unit_test::test_suite* basics = BOOST_TEST_SUITE("Basics");
+  ELLE_DEBUG("add test_suite");
+  boost::unit_test::framework::master_test_suite().add(basics);
+
+  basics->add(BOOST_TEST_CASE(std::bind(test_register, std::cref(users))));
+  basics->add(BOOST_TEST_CASE(std::bind(test_login, std::ref(users))));
+  basics->add(BOOST_TEST_CASE(std::bind(test_logout, std::cref(users))));
+  basics->add(BOOST_TEST_CASE(std::bind(test_login, std::ref(users))));
+  basics->add(BOOST_TEST_CASE(std::bind(test_device, std::ref(users))));
+  basics->add(BOOST_TEST_CASE(std::bind(test_search, std::cref(users))));
+  basics->add(BOOST_TEST_CASE(std::bind(test_delete_network,
+                                        std::ref(users),
+                                        true)));
+  basics->add(BOOST_TEST_CASE(std::bind(test_create_network, std::ref(users))));
+  basics->add(BOOST_TEST_CASE(std::bind(test_transactions, std::ref(users))));
+  basics->add(BOOST_TEST_CASE(std::bind(test_delete_network,
+                                        std::ref(users),
+                                        false)));
+
+  return true;
 }
 
 int
-main()
+main(int argc, char** argv)
 {
-  // Initialization.
-  std::srand(std::time(0));
-
   assert((USER_COUNT % 2) == 0);
 
-  Users users = init_users();
-
-  test_register(users);
-  test_login(users);
-  test_logout(users);
-  test_login(users);
-  test_device(users);
-  test_search(users);
-  test_delete_network(users, true);
-
-  test_create_network(users);
-
-  test_delete_network(users, false);
-
-  test_transactions(users);
-
-  elle::print("tests done.");
-
-  return 0;
+  return ::boost::unit_test::unit_test_main(test_suite, argc, argv);
 };

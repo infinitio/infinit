@@ -22,7 +22,7 @@ def search_username(state, username):
         s = dict()
         s["identifier"] = U
         s["fullname"] = state.user_fullname(U)
-        s["email"] = state.user_email(U)
+        s["email"] = state.user_handle(U)
         pprint(s)
 
 def search_transactions(state):

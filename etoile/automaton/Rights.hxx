@@ -2,6 +2,7 @@
 # define ETOILE_AUTOMATON_RIGHTS_HXX
 
 # include <etoile/gear/Operation.hh>
+# include <etoile/Exception.hh>
 
 # include <elle/Exception.hh>
 # include <elle/log.hh>
@@ -27,7 +28,7 @@ namespace etoile
       context.rights.role = T::Role::RoleUnknown;
 
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       return elle::Status::Ok;
     }
@@ -49,7 +50,7 @@ namespace etoile
         {
         case gear::OperationUnknown:
           {
-            throw elle::Exception("unable to check the rights for a unknown operation");
+            throw Exception("unable to check the rights for a unknown operation");
           }
         case gear::OperationDiscard:
           {
@@ -84,11 +85,11 @@ namespace etoile
 
             // determine the user's rights on this context.
             if (Rights::Determine(context) == elle::Status::Error)
-              throw elle::Exception("unable to determine the rights");
+              throw Exception("unable to determine the rights");
 
             // check if the current user has the given role.
             if (context.rights.role != T::Role::RoleOwner)
-              throw elle::Exception("the user does not seem to have the permission to "
+              throw Exception("the user does not seem to have the permission to "
                      "perform the requested operation");
 
             break;

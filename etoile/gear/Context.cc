@@ -1,4 +1,5 @@
 #include <etoile/gear/Context.hh>
+#include <etoile/Exception.hh>
 
 namespace etoile
 {
@@ -86,7 +87,7 @@ namespace etoile
       // dump the transcript.
       if (this->_transcript != nullptr)
         if (this->_transcript->Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the transcript");
+          throw Exception("unable to dump the transcript");
 
       return elle::Status::Ok;
     }

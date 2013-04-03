@@ -13,7 +13,7 @@ class Application(object):
     """
     Application class wrap web.application.run method
     """
-    def __init__(self, ip='127.0.0.1', port=conf.LISTEN_TCP_PORT):
+    def __init__(self, ip='127.0.0.1', port=conf.META_PORT):
         self.ip = ip
         self.port = port
 

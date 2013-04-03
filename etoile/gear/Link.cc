@@ -1,5 +1,6 @@
 #include <etoile/gear/Link.hh>
 #include <etoile/gear/Nature.hh>
+#include <etoile/Exception.hh>
 
 #include <etoile/nest/Nest.hh>
 
@@ -53,7 +54,7 @@ namespace etoile
 
       // dump the inherited object.
       if (Object::Dump(margin + 2) == elle::Status::Error)
-        throw elle::Exception("unable to dump the inherited object");
+        throw Exception("unable to dump the inherited object");
 
       // dump the porcupine.
       if (this->contents_porcupine != nullptr)

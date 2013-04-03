@@ -22,7 +22,7 @@ class Apertus(object):
 
     def __init__(self):
         self.conn = socket.socket()
-        self.conn.connect((conf.APERTUS_HOST, int(conf.APERTUS_PORT)))
+        self.conn.connect((conf.APERTUS_HOST, int(conf.APERTUS_CONTROL_PORT)))
 
     def add_link(self, endpointsA, endpointsB):
         request = {

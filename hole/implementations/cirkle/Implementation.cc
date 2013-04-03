@@ -49,7 +49,7 @@ namespace hole
 
         // launch it.
         if (Cirkle::Computer->Launch() == elle::Status::Error)
-          throw elle::Exception("unable to launch the computer");
+          throw Exception("unable to launch the computer");
 
         return elle::Status::Ok;
       }
@@ -74,7 +74,7 @@ namespace hole
       {
         // forward the request to the machine.
         if (Cirkle::Computer->Put(address, block) == elle::Status::Error)
-          throw elle::Exception("unable to put the block");
+          throw Exception("unable to put the block");
 
         return elle::Status::Ok;
       }
@@ -88,7 +88,7 @@ namespace hole
       {
         // forward the request to the machine.
         if (Cirkle::Computer->Put(address, block) == elle::Status::Error)
-          throw elle::Exception("unable to put the block");
+          throw Exception("unable to put the block");
 
         return elle::Status::Ok;
       }
@@ -102,7 +102,7 @@ namespace hole
       {
         // forward the request to the machine.
         if (Cirkle::Computer->Get(address, block) == elle::Status::Error)
-          throw elle::Exception("unable to get the block");
+          throw Exception("unable to get the block");
 
         return elle::Status::Ok;
       }
@@ -119,7 +119,7 @@ namespace hole
         if (Cirkle::Computer->Get(address,
                                   version,
                                   block) == elle::Status::Error)
-          throw elle::Exception("unable to get the block");
+          throw Exception("unable to get the block");
 
         return elle::Status::Ok;
       }
@@ -132,7 +132,7 @@ namespace hole
       {
         // forward the request to the machine.
         if (Cirkle::Computer->Kill(address) == elle::Status::Error)
-          throw elle::Exception("unable to kill the block");
+          throw Exception("unable to kill the block");
 
         return elle::Status::Ok;
       }
@@ -153,11 +153,11 @@ namespace hole
 
         // dump the parent.
         if (Holeable::Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the holeabl");
+          throw Exception("unable to dump the holeabl");
 
         // dump the machine.
         if (Cirkle::Computer->Dump(margin + 2) == elle::Status::Error)
-          throw elle::Exception("unable to dump the machine");
+          throw Exception("unable to dump the machine");
 
         return elle::Status::Ok;
       }

@@ -46,6 +46,7 @@ namespace nucleus
       // Compute the amount of content to keep i.e not in terms of
       // footprint: the total footprint to maintain minus the initial
       // footprint.
+      ELLE_ASSERT(size >= footprint);
       Size size_left = size - footprint;
       Size size_right = left._buffer.size() - size_left;
 
@@ -68,6 +69,7 @@ namespace nucleus
 
       // Finally, shrink the left buffer.
       left._buffer.size(size_left);
+      left._buffer.shrink_to_fit();
 
       // Update the left and right footprints.
       ELLE_ASSERT(left.footprint() > size_right);
@@ -89,6 +91,7 @@ namespace nucleus
       // Compute the amount of content to keep i.e not in terms of
       // footprint: the total footprint to maintain minus the initial
       // footprint.
+      ELLE_ASSERT(size >= footprint);
       Size size_right = size - footprint;
       Size size_left = right._buffer.size() - size_right;
 
@@ -103,10 +106,15 @@ namespace nucleus
                right._buffer.contents(),
                size_left);
 
-      // Shift the right content.
-      ::memmove(right._buffer.mutable_contents(),
-                right._buffer.contents() + size_left,
-                size_right);
+      // Shift the right content, if any.
+      if (size_right != 0)
+        ::memmove(right._buffer.mutable_contents(),
+                  right._buffer.contents() + size_left,
+                  size_right);
+
+      // Finally, shrink the right buffer.
+      right._buffer.size(size_right);
+      right._buffer.shrink_to_fit();
 
       // Update the left and right footprints.
       left.footprint(left.footprint() + size_left);
@@ -224,7 +232,6 @@ namespace nucleus
 
           // Adjust the size of the buffer.
           this->_buffer.size(size);
-
           // XXX[fill with zeros]
 
           // Update the footprint and state.
@@ -235,8 +242,9 @@ namespace nucleus
           // Compute the difference between the old and new size.
           elle::Natural64 _size = this->_buffer.size() - size;
 
-          // Adjust the size of the buffer.
+          // Adjust the size of the buffer and shrink it.
           this->_buffer.size(size);
+          this->_buffer.shrink_to_fit();
 
           // Update the footprint and state.
           ELLE_ASSERT(this->footprint() >= _size);
@@ -356,6 +364,9 @@ namespace nucleus
     {
       ELLE_TRACE_METHOD(other);
 
+      static proton::Footprint const initial =
+        elle::serialize::footprint<Data>();
+
       proton::Ambit<Data> data(this->nest(), other);
 
       // Load the other data.
@@ -368,8 +379,10 @@ namespace nucleus
           // into the current's since the offsets happen to be lower.
           //
           // Note that the footprint-based number of bytes to keep in
-          // the left data is zero i.e transfer all bytes.
-          Data::transfer_right(data(), *this, 0);
+          // the left data is zero i.e transfer all bytes. For that
+          // purpose, the number of bytes to keep in the data is set
+          // to the initial value.
+          Data::transfer_right(data(), *this, initial);
 
           // Update the offset since this data received the low offset
           // bytes from its neighbour.
@@ -381,12 +394,16 @@ namespace nucleus
           // into the current's.
           //
           // Note that the footprint-based number of bytes to keep in
-          // the right data is zero i.e transfer all bytes.
-          Data::transfer_left(*this, data(), 0);
+          // the right data is zero i.e transfer all bytes. For that
+          // purpose, the number of bytes to keep in the data is set
+          // to the initial value.
+          Data::transfer_left(*this, data(), initial);
 
           // In this case the offset has not changed since the high offsets
           // bytes have been transferred.
         }
+
+      // XXX ELLE_ASSERT(data().size() == 0);
 
       // Set both values' state as dirty.
       this->state(proton::State::dirty);

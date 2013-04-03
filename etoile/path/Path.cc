@@ -8,6 +8,7 @@
 #include <etoile/wall/Directory.hh>
 #include <etoile/depot/Depot.hh>
 #include <etoile/shrub/Shrub.hh>
+#include <etoile/Exception.hh>
 
 #include <etoile/wall/Path.hh> // XXX
 
@@ -37,7 +38,7 @@ namespace etoile
     {
       // initialize the route.
       if (Route::Initialize() == elle::Status::Error)
-        throw elle::Exception("unable to initialize the route");
+        throw Exception("unable to initialize the route");
 
       return elle::Status::Ok;
     }
@@ -49,7 +50,7 @@ namespace etoile
     {
       // clean the route.
       if (Route::Clean() == elle::Status::Error)
-        throw elle::Exception("unable to clean the route");
+        throw Exception("unable to clean the route");
 
       return elle::Status::Ok;
     }
@@ -74,7 +75,7 @@ namespace etoile
 
       // first ask the shrub i.e path cache to resolve as much as it can.
       if (shrub::Shrub::Resolve(route, venue) == elle::Status::Error)
-        throw elle::Exception("unable to resolve part of the route through the shrub");
+        throw Exception("unable to resolve part of the route through the shrub");
 
       assert(venue.elements.size() <= route.elements.size());
 
@@ -89,23 +90,23 @@ namespace etoile
 
           // retrieve the root directory's address.
           if (depot::Depot::Origin(address) == elle::Status::Error)
-            throw elle::Exception("unable to retrieve the address of the root directory");
+            throw Exception("unable to retrieve the address of the root directory");
 
           // parse the very first slab i.e the root slab in order
           // to extract the revision number. note that the root slab is
           // always empty.
           if (Path::Parse(route.elements[0],
                           slice, revision) == elle::Status::Error)
-            throw elle::Exception("unable to extract the revision number from the root slab");
+            throw Exception("unable to extract the revision number from the root slab");
 
           // check that the slice is empty, as it should for the root
           // directory.
           if (slice.empty() == false)
-            throw elle::Exception("the root slice should always be empty");
+            throw Exception("the root slice should always be empty");
 
           // record the root directory in the venue.
           if (venue.Record(address, revision) == elle::Status::Error)
-            throw elle::Exception("unable to record the root directory in the venue");
+            throw Exception("unable to record the root directory in the venue");
         }
 
       // set the address/revision with the address of the last resolved element.
@@ -125,17 +126,17 @@ namespace etoile
           if (Path::Parse(*scoutor,
                           slice,
                           revision) == elle::Status::Error)
-            throw elle::Exception("unable to extract the slice/revision from the "
+            throw Exception("unable to extract the slice/revision from the "
                    "current slab");
 
           // check that the slice is not empty.
           if (slice.empty() == true)
-            throw elle::Exception("the slice should never be empty");
+            throw Exception("the slice should never be empty");
 
           // create the chemin.
           if (chemin.Create(route, venue,
                             venue.elements.size()) == elle::Status::Error)
-            throw elle::Exception("unable to create the chemin");
+            throw Exception("unable to create the chemin");
 
           // load the directory.
           gear::Identifier identifier(wall::Directory::load(chemin));
@@ -148,7 +149,7 @@ namespace etoile
               // discard the directory.
               wall::Directory::discard(identifier);
 
-              throw elle::Exception("unable to lookup the slice");
+              throw Exception("unable to lookup the slice");
             }
 
           // set the address; the revision is already set i.e it has
@@ -170,12 +171,12 @@ namespace etoile
 
           // first, record the address/revision in the venue.
           if (venue.Record(address, revision) == elle::Status::Error)
-            throw elle::Exception("unable to record the venue address");
+            throw Exception("unable to record the venue address");
         }
 
       // update the shrub with the resolved path.
       if (shrub::Shrub::Update(route, venue) == elle::Status::Error)
-        throw elle::Exception("unable to update the shrub");
+        throw Exception("unable to update the shrub");
 
       return elle::Status::Ok;
     }
@@ -251,11 +252,11 @@ namespace etoile
                 }
               catch (std::exception const& err)
                 {
-                  throw elle::Exception("unable to retreive the revision number: %s", err.what());
+                  throw Exception("unable to retreive the revision number: %s", err.what());
                 }
 
               if (revision.Create(n) == elle::Status::Error)
-                throw elle::Exception("unable to create the revision");
+                throw Exception("unable to create the revision");
             }
           else
             {

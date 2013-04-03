@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8 -*-
+
+import os, sys
+import subprocess
+import argparse
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
+import meta.conf
+
+parser = argparse.ArgumentParser(description="Services launcher")
+
+parser.add_argument(
+    '--meta-port',
+    type = int,
+    default = meta.conf.META_PORT,
+)
+
+parser.add_argument(
+    '--apertus-port',
+    type = int,
+    default = meta.conf.APERTUS_PORT,
+)
+
+parser.add_argument(
+    '--apertus-control-port',
+    type = int,
+    default = meta.conf.APERTUS_CONTROL_PORT,
+)
+
+parser.add_argument(
+    '--trophonius-port',
+    type = int,
+    default = meta.conf.TROPHONIUS_PORT,
+)
+
+parser.add_argument(
+    '--trophonius-control-port',
+    type = int,
+    default = meta.conf.TROPHONIUS_CONTROL_PORT,
+)
+
+parser.add_argument(
+    '--longinus-port',
+    type = int,
+    default = meta.conf.LONGINUS_PORT,
+)
+
+DIR = os.path.abspath(os.path.dirname(__file__))
+
+META_BIN = os.path.join(DIR, 'meta-server')
+APERTUS_BIN = os.path.join(DIR, 'apertus-server')
+TROPHONIUS_BIN = os.path.join(DIR, 'trophonius-server')
+LONGINUS_BIN = os.path.join(DIR, 'longinus-server')
+
+def main(argv):
+    args = parser.parse_args(argv)
+
+    processes = []
+
+    try:
+        processes.append(subprocess.Popen([
+            META_BIN,
+            '--meta-port', str(args.meta_port),
+            '--trophonius-control-port', str(args.trophonius_control_port),
+            '--apertus-control-port', str(args.apertus_control_port),
+        ]))
+
+        processes.append(subprocess.Popen([LONGINUS_BIN, str(args.longinus_port)]))
+        processes.append(
+            subprocess.Popen([
+                TROPHONIUS_BIN,
+                '--port', str(args.trophonius_port),
+                '--control-port', str(args.trophonius_control_port),
+            ])
+        )
+        processes.append(
+            subprocess.Popen([
+                APERTUS_BIN,
+                '--port', str(args.apertus_port),
+                '--control-port', str(args.apertus_control_port)
+            ])
+        )
+        running = True
+        while running:
+            for p in processes:
+                p.poll()
+                if p.returncode is not None:
+                    running = False
+
+    finally:
+        for p in processes:
+            try:
+                p.terminate()
+            except: pass
+
+        for p in processes:
+            if p.returncode is None:
+                try:
+                    p.kill()
+                except:
+                    pass
+
+if __name__ == '__main__':
+    import sys
+    main(sys.argv[1:])

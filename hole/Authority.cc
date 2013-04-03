@@ -9,6 +9,7 @@
 #include <cryptography/SecretKey.hh>
 
 #include <hole/Authority.hh>
+#include <hole/Exception.hh>
 
 ELLE_LOG_COMPONENT("infinit.lune.Authority")
 
@@ -49,7 +50,7 @@ namespace elle
     code(0)
   {
     if (!elle::Authority::exists(path))
-      throw elle::Exception
+      throw Exception
         (elle::sprintf("unable to locate the authority file %s", path));
     this->load(path);
   }

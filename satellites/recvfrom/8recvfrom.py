@@ -27,6 +27,14 @@ def auto_accept(state, transaction, new):
     state.update_transaction(transaction._id, state.TransactionStatus.accepted)
     state.current_transaction_id = transaction
 
+def on_started(state, transaction, new):
+    if state.transaction_status(transaction) == state.TransactionStatus.started:
+        if getattr(state, "started_transactions", None):
+            state.started_transactions.append(transaction)
+        else:
+            state.started_transactions = [transaction]
+
+
 def on_canceled(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.canceled:
         print("Transaction canceled, check your log")
@@ -46,6 +54,12 @@ def on_finished(state, transaction, new):
             print("{} files received in '{}'".format(
                 cnt, state.get_output_dir()))
         state.running = False
+
+def on_error(state, status, message, tid):
+    if tid:
+        print("Error ({}): {}: {}: {}".format(int(status), tid, status, message))
+    else:
+        print("Error ({}): {}: {}".format(int(status), status, message))
 
 def login(state, email = None):
     receiver_id = os.getenv("INFINIT_USER", None)
@@ -114,7 +128,9 @@ def main(state, sender):
     state.transaction_callback(partial(auto_accept, state));
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_canceled, state))
+    state.transaction_status_callback(partial(on_started, state))
     state.transaction_status_callback(partial(show_status, state))
+    state.on_error_callback(partial(on_error, state))
 
     state.running = True
     state.set_device_name(id + "device")
@@ -136,7 +152,11 @@ def main(state, sender):
         state.update_transaction(transaction_id, state.TransactionStatus.accepted)
 
         while state.running:
-            print("Progress: " + str(state.transaction_progress(transaction_id)*100) + " %")
+            if getattr(state, "started_transactions", None):
+                for t in state.started_transactions:
+                    progress = state.transaction_progress(t)
+                    print("Progress {2}: [{0:50s}] {1:.1f}%".format('#' * int(progress * 50), progress * 100, t), end=" "),
+                    print("\r", end="")
             time.sleep(0.5)
             state.poll()
 

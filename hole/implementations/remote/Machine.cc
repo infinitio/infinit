@@ -3,6 +3,7 @@
 #include <hole/implementations/remote/Client.hh>
 #include <hole/implementations/remote/Server.hh>
 #include <hole/Hole.hh>
+#include <hole/Exception.hh>
 
 #include <reactor/network/exception.hh>
 
@@ -95,7 +96,7 @@ namespace hole
           return;
         }
 
-        throw std::runtime_error("unable to create a client or a server");
+        throw Exception("unable to create a client or a server");
       }
 
       /*---------.
@@ -119,7 +120,7 @@ namespace hole
             {
               // dump the server.
               if (this->server->Dump(margin + 2) == elle::Status::Error)
-                throw elle::Exception("unable to dump the server");
+                throw Exception("unable to dump the server");
 
               break;
             }
@@ -127,7 +128,7 @@ namespace hole
             {
               // dump the client.
               if (this->client->Dump(margin + 2) == elle::Status::Error)
-                throw elle::Exception("unable to dump the client");
+                throw Exception("unable to dump the client");
 
               break;
             }

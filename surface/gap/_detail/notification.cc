@@ -13,6 +13,35 @@ namespace surface
 
     namespace json = elle::format::json;
 
+    void
+    State::call_error_handlers(gap_Status status,
+                               std::string const& s,
+                               std::string const& tid)
+    {
+      try
+      {
+        for (auto const& c: this->_error_handlers)
+        {
+          c(status, s, tid);
+        }
+      }
+      catch (surface::gap::Exception const& e)
+      {
+        ELLE_WARN("error handlers: %s", e.what());
+      }
+      catch (elle::Exception const& e)
+      {
+        ELLE_WARN("error handlers: %s", e.what());
+        auto bt = e.backtrace();
+        for (auto const& f: bt)
+          ELLE_WARN("%s", f);
+      }
+      catch (...)
+      {
+        ELLE_ERR("error handlers: unknown error");
+      }
+    }
+
     size_t
     State::poll(size_t max)
     {
@@ -21,41 +50,69 @@ namespace surface
 
       size_t count = 0;
       while (count < max)
-        {
-          std::unique_ptr<Notification> notif{
-              this->_trophonius->poll()
-          };
+      {
+        std::unique_ptr<Notification> notif{
+          this->_trophonius->poll()
+        };
 
-          if (!notif)
-            break;
-          try
-            {
-              this->_handle_notification(*notif);
-            }
-          catch (reactor::Exception const& e)
-            {
-              ELLE_WARN("reactor exception %s while handling notification '%s'",
-                        e, notif->notification_type);
-              continue;
-            }
-          catch (std::runtime_error const& e)
-            {
-              ELLE_WARN("error %s while handling notification '%s'",
-                        e.what(), notif->notification_type);
-              continue;
-            }
-          catch (...)
-            {
-              ELLE_ERR("Something went really wrong while handling %s",
-                       notif->notification_type);
-              throw;
-            }
-          ++count;
+        if (!notif)
+          break;
+        // Try to retrieve Transaction ID if possible
+        std::string transaction_id = "";
+        {
+          if (notif->notification_type == NotificationType::transaction_status)
+          {
+            auto ptr = static_cast<TransactionStatusNotification*>(notif.get());
+            transaction_id = ptr->transaction_id;
+          }
+          else if (notif->notification_type == NotificationType::transaction)
+          {
+            auto ptr = static_cast<TransactionNotification*>(notif.get());
+            transaction_id = ptr->transaction.transaction_id;
+          }
         }
+
+        try
+        {
+          this->_handle_notification(*notif);
+        }
+        catch (surface::gap::Exception const& e)
+        {
+          ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
+          call_error_handlers(e.code,
+                              elle::sprintf("%s: %s",
+                                            notif->notification_type,
+                                            e.what()),
+                              transaction_id);
+          continue;
+        }
+        catch (elle::Exception const& e)
+        {
+          ELLE_WARN("Poll: %s: %s", notif->notification_type, e.what());
+          auto bt = e.backtrace();
+          for (auto const& f: bt)
+            ELLE_WARN("%s", f);
+          call_error_handlers(gap_error,
+                              elle::sprintf("%s: %s",
+                                            notif->notification_type,
+                                            e.what()),
+                              transaction_id);
+          continue;
+        }
+        catch (...)
+        {
+          ELLE_ERR("poll: %s: unknown error", notif->notification_type);
+          call_error_handlers(gap_unknown,
+                              elle::sprintf("%s: unexpected error",
+                                            notif->notification_type),
+                              transaction_id);
+          continue;
+        }
+        ++count;
+      }
 
       return count;
     }
-
 
     static
     std::unique_ptr<Notification>

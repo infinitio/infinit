@@ -447,15 +447,13 @@ namespace surface
         ELLE_DEBUG("LAUNCH: %s %s",
                    group_binary,
                    boost::algorithm::join(arguments, " "));
-        elle::system::ProcessConfig pc;
+        auto pc = elle::system::process_config(elle::system::normal_config);
         {
           std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
           if (!log_file.empty())
           {
             log_file += ".group.log";
-
-            pc.inherit_current_environment();
             pc.setenv("ELLE_LOG_FILE", log_file);
           }
         }

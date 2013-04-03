@@ -801,6 +801,19 @@ extern "C"
     WRAP_CPP(state, message_callback, cpp_cb);
   }
 
+  gap_Status
+  gap_on_error_callback(gap_State* state,
+                        gap_on_error_callback_t cb)
+  {
+    auto cpp_cb = [cb] (gap_Status s,
+                        std::string const& str,
+                        std::string const& tid)
+    {
+      cb(s, str.c_str(), tid.c_str());
+    };
+    WRAP_CPP(state, on_error_callback, cpp_cb);
+  }
+
   /// Transaction getters.
   // Macroify all of this.
   char const*

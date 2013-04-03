@@ -32,7 +32,6 @@ def configure(cxx_toolkit,
         build_type, ", ".join("{}".format(t) for t in build_types.keys())))
 
   for flag in build_types[build_type]:
-    print(flag)
     if isinstance(flag, str):
       cxx_config.define(flag, 1)
     else:
@@ -82,24 +81,49 @@ def configure(cxx_toolkit,
 
   if cxx_toolkit.os == drake.os.linux:
     if architecture_wordsize == 32:
-      openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
-                                               prefix = 'dependencies/platforms/linux32/work/')
+      openssl_prefix = 'dependencies/platforms/linux32/work/'
     elif architecture_wordsize == 64:
-      openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
-                                               prefix = 'dependencies/platforms/linux64/work/')
+      openssl_prefix = 'dependencies/platforms/linux64/work/'
     else:
       raise Exception("architecture {} not supported".format(architecture))
   elif cxx_toolkit.os == drake.os.macos:
     if architecture_wordsize == 32:
-      openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
-                                               prefix = 'dependencies/platforms/macosx32/work/')
+      openssl_prefix = 'dependencies/platforms/macosx32/work/'
     elif architecture_wordsize == 64:
-      openssl = drake.cxx.LibraryConfiguration('openssl/opensslconf.h',
-                                               prefix = 'dependencies/platforms/macosx64/work/')
+      openssl_prefix = 'dependencies/platforms/macosx64/work/'
     else:
       raise Exception("architecture {} not supported".format(architecture))
   else:
     raise Exception("operating system {} not supported".format(cxx_toolkit.os))
+
+  #assert os.path.isdir(
+  #  os.path.join(
+  #    os.path.abspath(os.path.dirname(__file__)),
+  #    openssl_prefix
+  #  )
+  #)
+
+  openssl = drake.cxx.LibraryConfiguration(
+    'openssl/opensslconf.h',
+    prefix = openssl_prefix,
+  )
+
+  if cxx_toolkit.os == drake.os.macos:
+    suffix = '.1.0.0.dylib'
+  elif cxx_toolkit.os == drake.os.windows:
+    suffix = '.dll'
+  else:
+    suffix = '.so.1.0.0'
+
+  openssl_lib = drake.copy(
+    drake.nodes(
+      openssl.libraries_path / ('libssl%s' % suffix),
+      openssl.libraries_path / ('libcrypto%s' % suffix),
+    ),
+    'lib',
+    openssl.libraries_path
+  )
+  cxx_config += openssl.config()
 
   # Python
   python2 = drake.cxx.find_library('pyconfig.h', python2,
@@ -109,7 +133,6 @@ def configure(cxx_toolkit,
                                    include_dir = ['include/python3.2',
                                                   'include/python3.2m',
                                                   'include/python3.3m'])
-
   # Elle
   elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost)
   elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
@@ -417,6 +440,8 @@ def configure(cxx_toolkit,
 
   # Hole
   hole_sources = drake.nodes(
+    'hole/Exception.cc',
+    'hole/Exception.hh',
     'hole/Authority.cc',
     'hole/Authority.hh',
     'hole/Authority.hxx',
@@ -506,6 +531,8 @@ def configure(cxx_toolkit,
   etoile_sources = drake.nodes(
     'etoile/Etoile.cc',
     'etoile/Etoile.hh',
+    'etoile/Exception.hh',
+    'etoile/Exception.cc',
     'etoile/abstract/Group.cc',
     'etoile/abstract/Group.hh',
     'etoile/abstract/Group.hxx',
@@ -698,6 +725,7 @@ def configure(cxx_toolkit,
   ## ----- ##
 
   build = drake.Rule('build')
+  build << openssl_lib
 
   ## -------- ##
   ## Programs ##
@@ -717,7 +745,7 @@ def configure(cxx_toolkit,
     reactor_lib,
     elle_lib,
     metrics_lib,
-    ]
+  ]
   if enable_horizon:
     infinit_libs.append(horizon_slib)
   udt_libs = [asio_udt_lib, udt_lib]
@@ -811,6 +839,7 @@ def configure(cxx_toolkit,
                              cxx_toolkit, cxx_config)
 
   # GAP
+
   gap_sources = drake.nodes(
     'surface/gap/State.cc',
     'surface/gap/State.hh',
@@ -871,11 +900,12 @@ def configure(cxx_toolkit,
   oracle_sources = drake.nodes(
     'oracle/disciples/creosus-server',
     'oracle/disciples/erginus-server',
-    'oracle/disciples/longinus-server.py',
+    'oracle/disciples/longinus-server',
     'oracle/disciples/meta-server',
     'oracle/disciples/trophonius-server',
     'oracle/disciples/admin-console',
     'oracle/disciples/apertus-server',
+    'oracle/disciples/services',
     )
 
   oracle_source_copy = drake.copy(oracle_sources,
@@ -912,7 +942,7 @@ def configure(cxx_toolkit,
     'oracle/disciples/meta/resources/network.py',
     'oracle/disciples/meta/resources/network_update.hh.inc',
     'oracle/disciples/meta/resources/notification.py',
-    'oracle/disciples/meta/resources/pif.png',
+    'oracle/disciples/meta/resources/place_holder_avatar.png',
     'oracle/disciples/meta/resources/root.py',
     'oracle/disciples/meta/resources/transaction.py',
     'oracle/disciples/meta/resources/transaction_status.hh.inc',
@@ -1014,3 +1044,7 @@ def configure(cxx_toolkit,
                                     cxx_toolkit, tests_cxx_config)
 
     tests << test_bin
+
+
+
+# vim: set sw=2 ts=2 sts=2 expandtab:

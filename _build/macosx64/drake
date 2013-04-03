@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
+import os, sys
+sys.path.insert(
+    0,
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '../../drake/src')
+    )
+)
+
 import drake
 import drake.cxx
 import drake.cxx.boost
-#import drake.cxx.qt
-import os
 
 cxx_compiler = os.getenv('CXX', 'g++')
 
@@ -18,7 +24,6 @@ cxx_config.enable_optimization(False)
 cxx_config.add_system_include_path('.')
 
 boost = drake.cxx.boost.Boost(prefix = '/opt/local')
-#qt = drake.cxx.qt.Qt(prefix = '/opt/local')
 
 drake.run(
     '../..',
@@ -29,12 +34,5 @@ drake.run(
     enable_horizon = False,
     satellites = ("access", "group", "transfer", "sendto", "recvfrom", "progress"),
     python3 = '/opt/local/Library/Frameworks/Python.framework/Versions/3.2',
-    build_type = "Prod"
+    build_type = os.environ.get('BUILD_TYPE', 'Debug'),
 )
-#drake.run(
-#    '../..',
-#    cxx_toolkit, cxx_config, boost = boost, qt = qt,
-#    enable_horizon = False,
-#    enable_tests = True,
-#    satellites = ['transfer', 'group', 'access', 'progress', 'sendto', 'recvfrom']
-#)

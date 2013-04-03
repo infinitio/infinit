@@ -2,6 +2,7 @@
 #include <etoile/gear/Group.hh>
 #include <etoile/depot/Depot.hh>
 #include <etoile/nest/Nest.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/proton/Revision.hh>
 #include <nucleus/proton/Address.hh>
@@ -91,7 +92,7 @@ namespace etoile
           switch (context.group->ensemble().strategy())
             {
             case nucleus::proton::Strategy::none:
-              throw elle::Exception("unable to destroy an empty content");
+              throw Exception("unable to destroy an empty content");
             case nucleus::proton::Strategy::value:
               {
                 // Nothing to do in this case since there is no block for
@@ -119,7 +120,7 @@ namespace etoile
                 break;
               }
             default:
-              throw elle::Exception
+              throw Exception
                 (elle::sprintf("unknown strategy '%s'",
                                context.group->ensemble().strategy()));
             }
@@ -180,7 +181,7 @@ namespace etoile
             {
               // destroy the ensemble block.
               if (Ensemble::Destroy(context) == elle::Status::Error)
-                throw elle::Exception("unable to destroy the ensemble block");
+                throw Exception("unable to destroy the ensemble block");
             }
 
           // downgrade the group since it no longer reference an ensemble
@@ -216,7 +217,7 @@ namespace etoile
             {
               // destroy the ensemble block.
               if (Ensemble::Destroy(context) == elle::Status::Error)
-                throw elle::Exception("unable to destroy the ensemble block");
+                throw Exception("unable to destroy the ensemble block");
             }
 
           /* XXX[in theory, a new pass should be generated but for now,
@@ -224,7 +225,7 @@ namespace etoile
                  history, which is less secure, but enough for now]
           // generate the new pass.
           if (pass.Generate() == elle::Status::Error) // XXX[use specific length]
-            throw elle::Exception("unable to generate the pass");
+            throw Exception("unable to generate the pass");
           */
           /* XXX[instead the Group has been modified such that a keypair has
                  been generation at the construction. thus the group already

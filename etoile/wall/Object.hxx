@@ -5,6 +5,7 @@
 # include <etoile/shrub/Shrub.hh>
 # include <etoile/path/Path.hh>
 # include <etoile/path/Chemin.hh>
+# include <etoile/Exception.hh>
 
 namespace etoile
 {
@@ -28,7 +29,7 @@ namespace etoile
         path::Venue venue;
         if (path::Path::Resolve(scope.chemin.route,
                                 venue) == elle::Status::Error)
-          throw elle::Exception(elle::sprintf("unable to resolve the route %s",
+          throw Exception(elle::sprintf("unable to resolve the route %s",
                                               scope.chemin.route));
         scope.chemin = path::Chemin(scope.chemin.route, venue);
 
@@ -39,12 +40,12 @@ namespace etoile
 
         T* context = nullptr;
         if (scope.Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to use the context");
+          throw Exception("unable to use the context");
 
         // Reset location
         nucleus::proton::Location location;
         if (scope.chemin.Locate(location) == elle::Status::Error)
-          throw elle::Exception("unable to locate the object");
+          throw Exception("unable to locate the object");
 
         context->location = location;
         // Force the loading.
@@ -52,7 +53,7 @@ namespace etoile
         context->state = gear::Context::StateUnknown;
 
         if (T::A::Load(*context) == elle::Status::Error)
-          throw elle::Exception("unable to load the object");
+          throw Exception("unable to load the object");
       }
 
   }

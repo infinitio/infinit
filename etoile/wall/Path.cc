@@ -2,6 +2,7 @@
 #include <etoile/path/Path.hh>
 #include <etoile/path/Way.hh>
 #include <etoile/path/Chemin.hh>
+#include <etoile/Exception.hh>
 
 #include <elle/log.hh>
 
@@ -23,16 +24,16 @@ namespace etoile
 
       // Create a route from the way.
       if (route.Create(way) == elle::Status::Error)
-        throw reactor::Exception("unable to create the route");
+        throw Exception("unable to create the route");
 
       // Resolve the route.
       if (path::Path::Resolve(route, venue) == elle::Status::Error)
-        throw reactor::Exception("unable to resolve the route");
+        throw Exception("unable to resolve the route");
 
       // Create the chemin.
       path::Chemin chemin;
       if (chemin.Create(route, venue) == elle::Status::Error)
-        throw reactor::Exception("unable to create the chemin");
+        throw Exception("unable to create the chemin");
       return chemin;
     }
 

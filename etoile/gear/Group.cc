@@ -1,6 +1,7 @@
 #include <etoile/gear/Group.hh>
 #include <etoile/gear/Nature.hh>
 #include <etoile/nest/Nest.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/neutron/Group.hh>
 #include <nucleus/proton/Porcupine.hh>
@@ -50,17 +51,17 @@ namespace etoile
 
       // dump the parent context.
       if (Context::Dump(margin + 2) == elle::Status::Error)
-        throw elle::Exception("unable to dump the parent context");
+        throw Exception("unable to dump the parent context");
 
       // dump the location.
       if (this->location.Dump(margin + 2) == elle::Status::Error)
-        throw elle::Exception("unable to dump the location");
+        throw Exception("unable to dump the location");
 
       // dump the group.
       if (this->group != nullptr)
         {
           if (this->group->Dump(margin + 2) == elle::Status::Error)
-            throw elle::Exception("unable to dump the group");
+            throw Exception("unable to dump the group");
         }
       else
         {

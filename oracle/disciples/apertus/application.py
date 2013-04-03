@@ -2,16 +2,6 @@ from __future__ import print_function
 
 import sys
 
-if "bsd" in sys.platform:
-    from twisted.internet import kqreactor as _platform_reactor
-elif "linux" in sys.platform:
-    from twisted.internet import epollreactor as _platform_reactor
-elif sys.platform.startswith('win'):
-    from twisted.internet import iocpreactor as _platform_reactor
-else:
-    from twisted.internet import selectreactor as _platform_reactor
-
-_platform_reactor.install()
 
 from OpenSSL import SSL, crypto
 
@@ -30,6 +20,8 @@ import os
 import conf
 import apertus
 import netifaces
+
+import meta.conf
 
 def create_self_signed_cert(cert_dir = "."):
     """
@@ -82,9 +74,13 @@ def start_ssl(port, factory):
         reactor.listenSSL(port, factory, ssl_factory)
 
 class Application(object):
-    def __init__(self, ip, port):
+    def __init__(self,
+                 ip = meta.conf.APERTUS_HOST,
+                 port = meta.conf.APERTUS_PORT,
+                 control_port = meta.conf.APERTUS_CONTROL_PORT):
         self.ip = ip
         self.port = port
+        self.control_port = control_port
         pass
 
     def run(self):
@@ -98,7 +94,7 @@ class Application(object):
         factory.slave = apertus.Apertus()
 
         reactor.listenUDP(self.port, factory.slave, interface=l_addr4[0]['addr'])
-        reactor.listenTCP(self.port + 1, factory, interface="localhost")
+        reactor.listenTCP(self.control_port, factory, interface="localhost")
 
         if HAVE_SETPROCTITLE:
             setproctitle("apertus-server")

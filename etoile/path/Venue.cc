@@ -1,4 +1,5 @@
 #include <etoile/path/Venue.hh>
+#include <etoile/Exception.hh>
 
 namespace etoile
 {
@@ -50,7 +51,7 @@ namespace etoile
 
       // record the location.
       if (this->Record(location) == elle::Status::Error)
-        throw elle::Exception("unable to record the location");
+        throw Exception("unable to record the location");
 
       return elle::Status::Ok;
     }
@@ -141,7 +142,7 @@ namespace etoile
         {
           // dump the location.
           if (scoutor->Dump(margin + 2) == elle::Status::Error)
-            throw elle::Exception("unable to dump the address");
+            throw Exception("unable to dump the address");
         }
 
       return elle::Status::Ok;

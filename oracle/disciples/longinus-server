@@ -20,10 +20,22 @@ several other Christian communions.
 
 """
 
-import sys
+import os, sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 
 from longinus.application import Application
 
 if __name__ == '__main__':
-    application = Application("0.0.0.0", 9999)
+    kw = {}
+    if len(sys.argv) > 1:
+        args = sys.argv[1:]
+        if ':' in  args[0]:
+            kw['ip'], kw['port'] = args[0].split(':')
+        else:
+            try:
+                kw['port'] = int(args[0])
+            except:
+                kw['ip'] = args[0]
+    application = Application(**kw)
     application.run()

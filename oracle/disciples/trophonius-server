@@ -11,10 +11,33 @@ in Boeotia.
 
 """
 
-import sys
+import sys, os
+import argparse
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
+import meta.conf
+parser = argparse.ArgumentParser(description="Trophonius launcher")
 
-from trophonius.application import Application
+parser.add_argument(
+    '--port', type = int, default = meta.conf.TROPHONIUS_PORT
+)
+
+parser.add_argument(
+    '--host',
+    default = meta.conf.TROPHONIUS_HOST
+)
+
+parser.add_argument(
+    '--control-port',
+    type = int,
+    default = meta.conf.TROPHONIUS_CONTROL_PORT
+)
 
 if __name__ == '__main__':
-   application = Application("0.0.0.0")
-   application.run()
+    args = parser.parse_args()
+    from trophonius.application import Application
+    application = Application(
+        ip = args.host,
+        port = args.port,
+        ssl_port = args.control_port,
+    )
+    application.run()

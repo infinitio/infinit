@@ -2,24 +2,14 @@ from __future__ import print_function
 
 import sys
 
-if "bsd" in sys.platform:
-    from twisted.internet import kqreactor as _platform_reactor
-elif "linux" in sys.platform:
-    from twisted.internet import epollreactor as _platform_reactor
-elif sys.platform.startswith('win'):
-    from twisted.internet import iocpreactor as _platform_reactor
-else:
-    from twisted.internet import selectreactor as _platform_reactor
-
-_platform_reactor.install()
-
 from twisted.internet import reactor
 from twisted.python import log
 
 import longinus
+import meta.conf
 
 class Application(object):
-    def __init__(self, ip, port):
+    def __init__(self, ip=meta.conf.LONGINUS_HOST, port=meta.conf.LONGINUS_PORT):
         self.ip = ip
         self.port = port
         pass

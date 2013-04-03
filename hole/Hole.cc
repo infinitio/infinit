@@ -2,6 +2,7 @@
 #include <elle/log.hh>
 
 #include <hole/Hole.hh>
+#include <hole/Exception.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/ImmutableBlock.hh>
@@ -28,7 +29,7 @@ namespace hole
     _state(State::offline)
   {
     if (!_passport.validate(this->authority()))
-      throw elle::Exception("unable to validate the passport");
+      throw Exception("unable to validate the passport");
   }
 
   Hole::~Hole()
@@ -103,7 +104,7 @@ namespace hole
         }
       default:
         {
-          throw elle::Exception(elle::sprintf("unknown block family '%u'",
+          throw Exception(elle::sprintf("unknown block family '%u'",
                                               address.family()));
         }
       }
@@ -126,7 +127,7 @@ namespace hole
       case nucleus::proton::Family::imprint_block:
         return this->_pull(address, revision);
       default:
-        throw elle::Exception(elle::sprintf("unknown block family '%u'",
+        throw Exception(elle::sprintf("unknown block family '%u'",
                                             address.family()));
       }
   }

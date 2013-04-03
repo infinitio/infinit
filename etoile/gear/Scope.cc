@@ -7,6 +7,7 @@
 #include <etoile/gear/Object.hh>
 #include <etoile/gear/Group.hh>
 #include <etoile/gear/Chronicle.hh>
+#include <etoile/Exception.hh>
 
 #include <elle/log.hh>
 
@@ -127,7 +128,7 @@ namespace etoile
 
       // check the result.
       if (result.second == false)
-        throw elle::Exception("unable to insert the scope in the container");
+        throw Exception("unable to insert the scope in the container");
 
       return elle::Status::Ok;
     }
@@ -142,7 +143,7 @@ namespace etoile
 
       if ((scoutor = Scope::Scopes::Onymous.find(chemin)) ==
           Scope::Scopes::Onymous.end())
-        throw elle::Exception("unable to locate the scope associated with the given chemin");
+        throw Exception("unable to locate the scope associated with the given chemin");
 
       scope = scoutor->second;
 
@@ -159,7 +160,7 @@ namespace etoile
 
       if ((iterator = Scope::Scopes::Onymous.find(chemin)) ==
           Scope::Scopes::Onymous.end())
-        throw elle::Exception("unable to locate the scope associated with the given chemin");
+        throw Exception("unable to locate the scope associated with the given chemin");
 
       Scope::Scopes::Onymous.erase(iterator);
 
@@ -197,12 +198,12 @@ namespace etoile
       if (scope->chemin == path::Chemin::Null)
         {
           if (Scope::Add(scope) == elle::Status::Error)
-            throw elle::Exception("unable to add the anonymous scope");
+            throw Exception("unable to add the anonymous scope");
         }
       else
         {
           if (Scope::Add(scope->chemin, scope) == elle::Status::Error)
-            throw elle::Exception("unable to add the onymous scope");
+            throw Exception("unable to add the onymous scope");
         }
 
       return elle::Status::Ok;
@@ -223,11 +224,11 @@ namespace etoile
 
           // create the scope.
           if (s->Create() == elle::Status::Error)
-            throw elle::Exception("unable to create the scope");
+            throw Exception("unable to create the scope");
 
           // inclose the scope.
           if (Scope::Inclose(s.get()) == elle::Status::Error)
-            throw elle::Exception("unable to inclose the scope");
+            throw Exception("unable to inclose the scope");
 
           // return the scope.
           scope = s.release();
@@ -236,7 +237,7 @@ namespace etoile
         {
           // retrieve the existing scope.
           if (Scope::Retrieve(chemin, scope) == elle::Status::Error)
-            throw elle::Exception("unable to retrieve the existing scope");
+            throw Exception("unable to retrieve the existing scope");
         }
 
       return elle::Status::Ok;
@@ -253,11 +254,11 @@ namespace etoile
 
       // create the scope.
       if (s->Create() == elle::Status::Error)
-        throw elle::Exception("unable to create the scope");
+        throw Exception("unable to create the scope");
 
       // inclose the scope.
       if (Scope::Inclose(s.get()) == elle::Status::Error)
-        throw elle::Exception("unable to inclose the scope");
+        throw Exception("unable to inclose the scope");
 
       // return the scope.
       scope = s.release();
@@ -281,7 +282,7 @@ namespace etoile
           //
 
           if (Scope::Remove(scope) == elle::Status::Error)
-            throw elle::Exception("unable to remove the anonymous scope");
+            throw Exception("unable to remove the anonymous scope");
         }
       else
         {
@@ -290,7 +291,7 @@ namespace etoile
           //
 
           if (Scope::Remove(scope->chemin) == elle::Status::Error)
-            throw elle::Exception("unable to remove the onymous scope");
+            throw Exception("unable to remove the onymous scope");
         }
 
       return elle::Status::Ok;
@@ -308,7 +309,7 @@ namespace etoile
         {
           // relinquish the scope.
           if (Scope::Relinquish(scope) == elle::Status::Error)
-            throw elle::Exception("unable to relinquish the scope");
+            throw Exception("unable to relinquish the scope");
 
           // and finally, delete it.
           delete scope;
@@ -367,7 +368,7 @@ namespace etoile
           //
 
           if (Scope::Remove(from) == elle::Status::Error)
-            throw elle::Exception("unable to remove the scope");
+            throw Exception("unable to remove the scope");
 
           if (Scope::Add(scope->chemin, scope) == elle::Status::Error)
             {
@@ -378,7 +379,7 @@ namespace etoile
 
               delete scope;
 
-              throw elle::Exception("unable to re-insert the scope");
+              throw Exception("unable to re-insert the scope");
             }
 
           //
@@ -430,7 +431,7 @@ namespace etoile
             else
               {
                 if (scoutor->second->Dump(margin + 4) == elle::Status::Error)
-                  throw elle::Exception("unable to dump the scope");
+                  throw Exception("unable to dump the scope");
               }
           }
       }
@@ -460,7 +461,7 @@ namespace etoile
             else
               {
                 if ((*scoutor)->Dump(margin + 4) == elle::Status::Error)
-                  throw elle::Exception("unable to dump the scope");
+                  throw Exception("unable to dump the scope");
               }
           }
       }
@@ -543,7 +544,7 @@ namespace etoile
 
       // try to locate an existing actor.
       if (this->Locate(actor) == true)
-        throw elle::Exception("this actor seems to have been already registered");
+        throw Exception("this actor seems to have been already registered");
 
       // add the actor to the container.
       this->actors.push_back(actor);
@@ -589,7 +590,7 @@ namespace etoile
 
       // try to locate an existing actor.
       if (this->Locate(actor, &iterator) == false)
-        throw elle::Exception("no such actor seems to have been registered");
+        throw Exception("no such actor seems to have been registered");
 
       // remove the actor.
       this->actors.erase(iterator);
@@ -794,7 +795,7 @@ namespace etoile
           }
         case OperationUnknown:
           {
-            throw elle::Exception
+            throw Exception
               (elle::sprintf("unable to process the closing operation '%u'\n",
                              operation));
           }
@@ -815,21 +816,21 @@ namespace etoile
       case OperationDiscard:
         // call the shutdown method.
         if (T::A::Discard(*context) == elle::Status::Error)
-          throw elle::Exception("an error occured in the shutdown method");
+          throw Exception("an error occured in the shutdown method");
         break;
       case OperationStore:
         // call the shutdown method.
         if (T::A::Store(*context) == elle::Status::Error)
-          throw elle::Exception("an error occured in the shutdown method");
+          throw Exception("an error occured in the shutdown method");
         break;
       case OperationDestroy:
         // call the shutdown method.
         if (T::A::Destroy(*context) == elle::Status::Error)
-          throw elle::Exception("an error occured in the shutdown method");
+          throw Exception("an error occured in the shutdown method");
         break;
       case OperationUnknown:
       default:
-        throw elle::Exception(elle::sprintf("unknown operation '%u'\n",
+        throw Exception(elle::sprintf("unknown operation '%u'\n",
                                             this->context->operation));
       }
       return elle::Status::Ok;
@@ -886,7 +887,7 @@ namespace etoile
             return this->_shutdown<gear::Group>();
           case NatureUnknown:
           default:
-            throw elle::Exception(elle::sprintf("unknown context nature '%u'",
+            throw Exception(elle::sprintf("unknown context nature '%u'",
                                                 this->context->nature));
           }
         }
@@ -896,10 +897,10 @@ namespace etoile
             {
               ELLE_DEBUG("destroy the scope %s", *this);
               if (Scope::Relinquish(this) == elle::Status::Error)
-                throw elle::Exception("unable to relinquish the scope");
+                throw Exception("unable to relinquish the scope");
             }
           std::string what{err.what()};
-          throw elle::Exception(elle::sprintf("the shutdown process failed: %s",
+          throw Exception(elle::sprintf("the shutdown process failed: %s",
                                               what));
         }
 
@@ -934,11 +935,11 @@ namespace etoile
 
         // locate the context based on the current scope's chemin.
         if (this->chemin.Locate(context->location) == elle::Status::Error)
-          throw elle::Exception("unable to locate the scope");
+          throw Exception("unable to locate the scope");
 
         // load the object.
         if (T::A::Load(*context) == elle::Status::Error)
-          throw elle::Exception("unable to load the object");
+          throw Exception("unable to load the object");
 
         // check if the loaded object is indeed newer.
         if (context->object->revision() >
@@ -1016,12 +1017,12 @@ namespace etoile
         //
         // supply a scope i.e request a new anonymous scope.
         if (gear::Scope::Supply(scope) == elle::Status::Error)
-          throw elle::Exception("unable to supply a scope");
+          throw Exception("unable to supply a scope");
         guard.scope = scope;
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to retrieve the context");
+          throw Exception("unable to retrieve the context");
 
         // allocate an actor on the new scope, making the scope valid
         // for triggering automata.
@@ -1056,12 +1057,12 @@ namespace etoile
 
         // locate the object based on the current scope's chemin.
         if (this->chemin.Locate(context->location) == elle::Status::Error)
-          throw elle::Exception("unable to locate the file");
+          throw Exception("unable to locate the file");
 
         // load a fresh revision of the object which should happen to be
         // the one stored above.
         if (T::A::Load(*context) == elle::Status::Error)
-          throw elle::Exception("unable to load the object");
+          throw Exception("unable to load the object");
       }
 
       return elle::Status::Ok;
@@ -1112,7 +1113,7 @@ namespace etoile
         {
         case Context::StateUnknown:
           {
-            throw elle::Exception(elle::sprintf("unexpected state '%u'",
+            throw Exception(elle::sprintf("unexpected state '%u'",
                                                 this->context->state));
           }
         case Context::StateJournaled:
@@ -1135,7 +1136,7 @@ namespace etoile
                   // reset the state.
                   this->state = Scope::StateNone;
 
-                  throw elle::Exception("unknown context nature");
+                  throw Exception("unknown context nature");
                 }
               case NatureGroup:
                 {
@@ -1151,7 +1152,7 @@ namespace etoile
                       // reset the state.
                       this->state = Scope::StateNone;
 
-                      throw elle::Exception("unable to refresh the scope");
+                      throw Exception("unable to refresh the scope");
                     }
 
                   break;
@@ -1164,7 +1165,7 @@ namespace etoile
                       // reset the state.
                       this->state = Scope::StateNone;
 
-                      throw elle::Exception("unable to refresh the scope");
+                      throw Exception("unable to refresh the scope");
                     }
 
                   break;
@@ -1177,7 +1178,7 @@ namespace etoile
                       // reset the state.
                       this->state = Scope::StateNone;
 
-                      throw elle::Exception("unable to refresh the scope");
+                      throw Exception("unable to refresh the scope");
                     }
 
                   break;
@@ -1190,7 +1191,7 @@ namespace etoile
                       // reset the state.
                       this->state = Scope::StateNone;
 
-                      throw elle::Exception("unable to refresh the scope");
+                      throw Exception("unable to refresh the scope");
                     }
 
                   break;
@@ -1218,7 +1219,7 @@ namespace etoile
                   // reset the state.
                   this->state = Scope::StateNone;
 
-                  throw elle::Exception("unknown context nature");
+                  throw Exception("unknown context nature");
                 }
               case NatureGroup:
                 {
@@ -1234,7 +1235,7 @@ namespace etoile
                       // reset the state.
                       this->state = Scope::StateNone;
 
-                      throw elle::Exception("unable to disclose the scope");
+                      throw Exception("unable to disclose the scope");
                     }
 
                   break;
@@ -1247,7 +1248,7 @@ namespace etoile
                       // reset the state.
                       this->state = Scope::StateNone;
 
-                      throw elle::Exception("unable to disclose the scope");
+                      throw Exception("unable to disclose the scope");
                     }
 
                   break;
@@ -1260,7 +1261,7 @@ namespace etoile
                       // reset the state.
                       this->state = Scope::StateNone;
 
-                      throw elle::Exception("unable to disclose the scope");
+                      throw Exception("unable to disclose the scope");
                     }
 
                   break;
@@ -1273,7 +1274,7 @@ namespace etoile
                       // reset the state.
                       this->state = Scope::StateNone;
 
-                      throw elle::Exception("unable to disclose the scope");
+                      throw Exception("unable to disclose the scope");
                     }
 
                   break;
@@ -1327,13 +1328,13 @@ namespace etoile
 
       // dump the chemin.
       if (this->chemin.Dump(margin + 2) == elle::Status::Error)
-        throw elle::Exception("unable to dump the chemin");
+        throw Exception("unable to dump the chemin");
 
       // dump the context, if present.
       if (this->context != nullptr)
         {
           if (this->context->Dump(margin + 2) == elle::Status::Error)
-            throw elle::Exception("unable to dump the context");
+            throw Exception("unable to dump the context");
         }
       else
         {
@@ -1345,7 +1346,7 @@ namespace etoile
       if (this->chronicle != nullptr)
         {
           if (this->chronicle->Dump(margin + 2) == elle::Status::Error)
-            throw elle::Exception("unable to dump the chronicle");
+            throw Exception("unable to dump the chronicle");
         }
       else
         {
@@ -1363,7 +1364,7 @@ namespace etoile
         {
           // dump the actor.
           if ((*scoutor)->Dump(margin + 4) == elle::Status::Error)
-            throw elle::Exception("unable to dump the actor");
+            throw Exception("unable to dump the actor");
         }
 
       return elle::Status::Ok;

@@ -1,6 +1,3 @@
-#include <cassert>
-#include <stdexcept>
-
 #include <boost/foreach.hpp>
 
 #include <elle/log.hh>
@@ -10,12 +7,12 @@
 #include <etoile/gear/Scope.hh>
 #include <etoile/gear/Transcript.hh>
 #include <etoile/gear/Action.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/factory.hh>
 
 #include <Infinit.hh>
 #include <Scheduler.hh>
-
 
 ELLE_LOG_COMPONENT("infinit.etoile.journal.Journal");
 
@@ -75,7 +72,7 @@ namespace etoile
 
           delete transcript;
 
-          throw elle::Exception("unable to spawn a new thread: '%s'", err.what());
+          throw Exception("unable to spawn a new thread: '%s'", err.what());
         }
 #else
       Journal::_process(transcript);
@@ -161,7 +158,7 @@ namespace etoile
 
                     // If the requested block is about to be wiped,
                     // throw an error.
-                    throw elle::Exception("this block has been scheduled "
+                    throw Exception("this block has been scheduled "
                                           "for deletion");
                   }
                 }

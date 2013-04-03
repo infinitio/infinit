@@ -3,6 +3,7 @@
 #include <etoile/gear/Object.hh>
 #include <etoile/nest/Nest.hh>
 #include <etoile/depot/Depot.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/proton/Porcupine.hh>
 #include <nucleus/proton/Door.hh>
@@ -95,11 +96,11 @@ namespace etoile
 
       // determine the rights over the object.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // verify that the user can modify the attributes.
       if (context.rights.role != nucleus::neutron::Object::RoleOwner)
-        throw elle::Exception("the user does not seem to have the permission to update "
+        throw Exception("the user does not seem to have the permission to update "
                "this object's attributes");
 
       Attributes::open(context);
@@ -135,7 +136,7 @@ namespace etoile
       if (context.object->Administrate(
             context.object->attributes(),
             context.object->owner_permissions()) == elle::Status::Error)
-        throw elle::Exception("unable to administrate the object");
+        throw Exception("unable to administrate the object");
 
       // set the context's state.
       context.state = gear::Context::StateModified;
@@ -238,11 +239,11 @@ namespace etoile
 
       // determine the rights over the object.
       if (Rights::Determine(context) == elle::Status::Error)
-        throw elle::Exception("unable to determine the rights");
+        throw Exception("unable to determine the rights");
 
       // verify that the user can modify the attributes.
       if (context.rights.role != nucleus::neutron::Object::RoleOwner)
-        throw elle::Exception("the user does not seem to have the permission to update "
+        throw Exception("the user does not seem to have the permission to update "
                "this object's attributes");
 
       Attributes::open(context);
@@ -265,7 +266,7 @@ namespace etoile
       if (context.object->Administrate(
             context.object->attributes(),
             context.object->owner_permissions()) == elle::Status::Error)
-        throw elle::Exception("unable to administrate the object");
+        throw Exception("unable to administrate the object");
 
       // set the context's state.
       context.state = gear::Context::StateModified;
@@ -286,7 +287,7 @@ namespace etoile
           switch (context.object->attributes().strategy())
             {
             case nucleus::proton::Strategy::none:
-              throw elle::Exception("unable to destroy an empty content");
+              throw Exception("unable to destroy an empty content");
             case nucleus::proton::Strategy::value:
               {
                 // Nothing to do in this case since there is no block for
@@ -314,7 +315,7 @@ namespace etoile
                 break;
               }
             default:
-              throw elle::Exception
+              throw Exception
                 (elle::sprintf("unknown strategy '%s'",
                                context.object->attributes().strategy()));
             }
@@ -382,7 +383,7 @@ namespace etoile
           if (context.object->Administrate(
                     nucleus::proton::Radix{},
                     context.object->owner_permissions()) == elle::Status::Error)
-            throw elle::Exception("unable to update the object");
+            throw Exception("unable to update the object");
         }
       else
         {
@@ -404,7 +405,7 @@ namespace etoile
             {
               // destroy the attributes block.
               if (Attributes::Destroy(context) == elle::Status::Error)
-                throw elle::Exception("unable to destroy the attributes block");
+                throw Exception("unable to destroy the attributes block");
             }
           */
 
@@ -416,7 +417,7 @@ namespace etoile
           if (context.object->Administrate(
                 context.attributes_porcupine->seal(secret_key),
                 context.object->owner_permissions()) == elle::Status::Error)
-            throw elle::Exception("unable to update the object");
+            throw Exception("unable to update the object");
 
           // XXX[too slow without a nest optimization: to activate later]
           ELLE_STATEMENT(context.attributes_porcupine->check(nucleus::proton::flags::all));

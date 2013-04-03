@@ -8,11 +8,40 @@ users, networks and devices managment.
 
 import os
 import sys
+import argparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
+import meta.conf
+
+parser = argparse.ArgumentParser(description="Meta server")
+
+parser.add_argument(
+    '--meta-host',
+    default = "0.0.0.0",
+)
+parser.add_argument(
+    '--meta-port',
+    type = int,
+    default = meta.conf.META_PORT,
+)
+
+parser.add_argument(
+    '--apertus-control-port',
+    type = int,
+    default = meta.conf.APERTUS_CONTROL_PORT,
+)
+
+parser.add_argument(
+    '--trophonius-control-port',
+    type = int,
+    default = meta.conf.TROPHONIUS_CONTROL_PORT,
+)
 
 from meta.application import Application
 
 if __name__ == '__main__':
-    app = Application("0.0.0.0")
+    args = parser.parse_args()
+    meta.conf.APERTUS_CONTROL_PORT = args.apertus_control_port
+    meta.conf.TROPHONIUS_CONTROL_PORT = args.trophonius_control_port
+    app = Application(ip=args.meta_host, port=args.meta_port)
     app.run()

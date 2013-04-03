@@ -2,6 +2,7 @@
 #include <etoile/gear/Transcript.hh>
 #include <etoile/gear/Action.hh>
 #include <etoile/depot/Depot.hh>
+#include <etoile/Exception.hh>
 
 #include <elle/finally.hh>
 #include <elle/log.hh>
@@ -107,7 +108,7 @@ namespace etoile
                       break;
                     }
                   case nucleus::proton::State::dirty:
-                    throw elle::Exception("dirty blocks should have been "
+                    throw Exception("dirty blocks should have been "
                                           "sealed");
                   case nucleus::proton::State::consistent:
                     {
@@ -153,7 +154,7 @@ namespace etoile
                 switch (pod->egg()->type())
                   {
                   case nucleus::proton::Egg::Type::transient:
-                    throw elle::Exception("the pod referencing this transient "
+                    throw Exception("the pod referencing this transient "
                                           "detached block should have been "
                                           "deleted");
                   case nucleus::proton::Egg::Type::permanent:
@@ -168,14 +169,14 @@ namespace etoile
                       break;
                     }
                   default:
-                    throw elle::Exception(elle::sprintf("unknown egg type '%s'",
+                    throw Exception(elle::sprintf("unknown egg type '%s'",
                                                         pod->egg()->type()));
                   }
 
                 break;
               }
             default:
-              throw elle::Exception(elle::sprintf("unknown pod state '%s'",
+              throw Exception(elle::sprintf("unknown pod state '%s'",
                                                   pod->state()));
             }
         }
@@ -199,7 +200,7 @@ namespace etoile
 
       // Check if the insertion was successful.
       if (result.second == false)
-        throw elle::Exception("unable to insert the pod into the container");
+        throw Exception("unable to insert the pod into the container");
     }
 
     void
@@ -210,7 +211,7 @@ namespace etoile
       if (this->_addresses.insert(
             std::pair<nucleus::proton::Address const, Pod*>(
               address, pod)).second == false)
-        throw elle::Exception("unable to insert the address/pod tuple");
+        throw Exception("unable to insert the address/pod tuple");
     }
 
     Pod*
@@ -219,7 +220,7 @@ namespace etoile
       auto scoutor = this->_pods.find(egg.get());
 
       if (scoutor == this->_pods.end())
-        throw elle::Exception(elle::sprintf("unable to locate the pod "
+        throw Exception(elle::sprintf("unable to locate the pod "
                                             "associated with the "
                                             "given egg '%s'", *egg));
 
@@ -234,7 +235,7 @@ namespace etoile
       auto scoutor = this->_addresses.find(address);
 
       if (scoutor == this->_addresses.end())
-        throw elle::Exception(elle::sprintf("unable to locate the pod "
+        throw Exception(elle::sprintf("unable to locate the pod "
                                             "associated with the "
                                             "given address '%s'", address));
 
@@ -540,7 +541,7 @@ namespace etoile
             break;
           }
         default:
-          throw elle::Exception(elle::sprintf("unknown handle state '%s'",
+          throw Exception(elle::sprintf("unknown handle state '%s'",
                                               handle.state()));
         }
 
@@ -678,7 +679,7 @@ namespace etoile
             break;
           }
         default:
-          throw elle::Exception(elle::sprintf("unknown handle state '%s'",
+          throw Exception(elle::sprintf("unknown handle state '%s'",
                                               handle.state()));
         }
 
@@ -703,7 +704,7 @@ namespace etoile
       switch (handle.state())
         {
         case nucleus::proton::Handle::State::unnested:
-          throw elle::Exception(elle::sprintf("unable to unload an unested --- "
+          throw Exception(elle::sprintf("unable to unload an unested --- "
                                               "i.e non-loaded --- handle '%s'",
                                               handle));
         case nucleus::proton::Handle::State::nested:
@@ -729,7 +730,7 @@ namespace etoile
             break;
           }
         default:
-          throw elle::Exception(elle::sprintf("unknown handle state '%s'",
+          throw Exception(elle::sprintf("unknown handle state '%s'",
                                               handle.state()));
         }
 

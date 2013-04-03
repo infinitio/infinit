@@ -466,6 +466,10 @@ namespace surface
         std::function<void(NetworkUpdateNotification const&)>
         NetworkUpdateNotificationCallback;
 
+      typedef
+        std::function<void(gap_Status, std::string const&, std::string const&)>
+        OnErrorCallback;
+
     public:
       void
       user_status_callback(UserStatusNotificationCallback const& cb);
@@ -481,6 +485,11 @@ namespace surface
 
       void
       network_update_callback(NetworkUpdateNotificationCallback const& cb);
+
+      void
+      on_error_callback(OnErrorCallback const& cb);
+
+      std::vector<OnErrorCallback> _error_handlers;
 
     private:
       void
@@ -500,6 +509,11 @@ namespace surface
       void
       _notify_8infinit(Transaction const& trans,
                        reactor::Scheduler& sched);
+    private:
+      void
+      call_error_handlers(gap_Status status,
+                          std::string const& s,
+                          std::string const& tid = "");
 
     public:
       size_t

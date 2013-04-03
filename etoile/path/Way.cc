@@ -4,6 +4,7 @@
 #include <elle/utility/Unicode.hh>
 
 #include <etoile/path/Way.hh>
+#include <etoile/Exception.hh>
 
 #include <iostream>
 #include <sstream>
@@ -64,7 +65,7 @@ namespace etoile
                                   -1,
                                   &str,
                                   &str_size) == elle::Status::Error)
-        throw elle::Exception("failed to convert the path to uft8");
+        throw Exception("failed to convert the path to uft8");
 
       // assign the string.
       path.assign(str, str_size);

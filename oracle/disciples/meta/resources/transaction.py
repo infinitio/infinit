@@ -53,7 +53,8 @@ class Create(Page):
               'message': 'a message to the recipient'
          }
          -> {
-                'created_transaction_id'
+                'created_transaction_id':
+                'remaining_invitations':
             }
 
 
@@ -108,7 +109,7 @@ class Create(Page):
             recipient = database.users().find_one({'email': id_or_email})
             # if the user doesn't exist, create a ghost and invite.
             if not recipient:
-                if self.user['remaining_invitations'] <= 0:
+                if self.user.get('remaining_invitations', 0) <= 0:
                     return self.error(error.NO_MORE_INVITATION)
                 self.user['remaining_invitations'] -= 1
                 database.users().save(self.user)
@@ -224,7 +225,7 @@ class Create(Page):
         )
         return self.success({
             'created_transaction_id': transaction_id,
-            'remaining_invitations': self.user['remaining_invitations'],
+            'remaining_invitations': self.user.get('remaining_invitations', 0),
         })
 
 class Accept(Page):
@@ -586,7 +587,7 @@ class Cancel(Page):
         if self.user['_id'] not in (transaction['sender_id'], transaction['recipient_id']):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
-        if not transaction['status'] in (ACCEPTED, PENDING, STARTED) :
+        if not transaction['status'] in (ACCEPTED, PENDING, STARTED, PREPARED) :
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
                               "This transaction can't be %s. Current status : %s"
                               % (_status_to_string[CANCELED], _status_to_string[transaction['status']])
@@ -617,11 +618,11 @@ class Cancel(Page):
            self.user['_id'] not in network['users']:
             return self.forbidden("This network does not belong to you")
 
-        send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
-        recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
+        send_endpoints = getattr(network["nodes"], str(transaction["sender_device_id"]), [])
+        recv_endpoints = getattr(network["nodes"], str(transaction["recipient_device_id"]), [])
 
-        self.apertus.del_link(send_endpoints["externals"],
-                              recv_endpoints["externals"])
+        self.apertus.del_link(getattr(send_endpoints, "externals", []),
+                              getattr(recv_endpoints, "externals", []))
 
         return self.success({
             'updated_transaction_id': str(updated_transaction_id),

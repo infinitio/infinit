@@ -28,6 +28,22 @@ namespace hole
         RemoteProcedure<void, nucleus::proton::Address const&> wipe;
         RPC(infinit::protocol::ChanneledStream& channels);
       };
+
+      namespace control {
+
+        struct RPC:
+            public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
+                                                  elle::serialize::OutputBinaryArchive>
+        {
+          RPC(infinit::protocol::ChanneledStream& channels);
+
+          RemoteProcedure<void, std::string const&, int>
+          slug_connect;
+
+          RemoteProcedure<bool, std::string const&, int>
+          slug_wait;
+        };
+      } /* control */
     }
   }
 }

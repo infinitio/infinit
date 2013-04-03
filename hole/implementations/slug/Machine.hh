@@ -18,6 +18,7 @@
 # include <nucleus/fwd.hh>
 
 # include <lune/fwd.hh>
+# include <lune/Phrase.hh>
 
 # include <hole/implementations/slug/fwd.hh>
 
@@ -31,8 +32,6 @@ namespace hole
     {
       void portal_connect(std::string const& host, int port);
       bool portal_wait(std::string const& host, int port);
-      void portal_host_authenticated(elle::network::Locus const& locus);
-      void portal_machine_authenticated(elle::network::Locus const& locus);
 
       ///
       /// XXX represents the current host
@@ -87,6 +86,9 @@ namespace hole
         _connect_try(elle::network::Locus const& locus);
         void _remove(Host* host);
         Hosts _hosts;
+        Hosts _pending;
+
+        reactor::Signal _new_host{"new host"};
 
       /*-------.
       | Server |
@@ -135,6 +137,21 @@ namespace hole
       `----------*/
       public:
         virtual void print(std::ostream& s) const;
+
+      /*------------.
+      | RPC Control |
+      `------------*/
+      private:
+        //control::RPC    _rpcs;
+        lune::Phrase _phrase;
+        std::unique_ptr<reactor::network::TCPServer> _rpc_server;
+        std::unique_ptr<reactor::Thread> _rpc_acceptor;
+        std::vector<std::shared_ptr<reactor::Thread>> _controlers;
+
+        void
+        _rpc_accept();
+
+
 
       /*---------.
       | Dumpable |

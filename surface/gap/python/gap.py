@@ -85,6 +85,9 @@ class State:
 
             # Operation.
             'operation_status',
+
+            # error
+            'on_error_callback',
         ]
 
         def make_method(m):

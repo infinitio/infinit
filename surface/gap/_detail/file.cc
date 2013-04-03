@@ -68,15 +68,13 @@ namespace surface
                                     "--consult"
                                 };
 
-      elle::system::ProcessConfig pc;
+      auto pc = elle::system::process_config(elle::system::normal_config);
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
         if (!log_file.empty())
         {
           log_file += ".access.log";
-
-          pc.inherit_current_environment();
           pc.setenv("ELLE_LOG_FILE", log_file);
         }
       }
@@ -150,15 +148,13 @@ namespace surface
           ELLE_WARN("XXX: setting executable permissions not yet implemented");
         }
 
-      elle::system::ProcessConfig pc;
+      auto pc = elle::system::process_config(elle::system::normal_config);
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
         if (!log_file.empty())
         {
           log_file += ".access.log";
-
-          pc.inherit_current_environment();
           pc.setenv("ELLE_LOG_FILE", log_file);
         }
       }
@@ -219,15 +215,13 @@ namespace surface
         ELLE_WARN("XXX: setting executable permissions not yet implemented");
       }
 
-      elle::system::ProcessConfig pc;
+      auto pc = elle::system::process_config(elle::system::normal_config);
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
         if (!log_file.empty())
         {
           log_file += ".access.log";
-
-          pc.inherit_current_environment();
           pc.setenv("ELLE_LOG_FILE", log_file);
         }
       }

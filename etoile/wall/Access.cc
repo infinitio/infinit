@@ -7,6 +7,7 @@
 #include <etoile/gear/Object.hh>
 #include <etoile/gear/Gear.hh>
 #include <etoile/automaton/Access.hh>
+#include <etoile/Exception.hh>
 
 #include <nucleus/neutron/Subject.hh>
 #include <nucleus/neutron/Record.hh>
@@ -36,7 +37,7 @@ namespace etoile
 
       // Select the actor.
       if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw elle::Exception("unable to select the actor");
+        throw Exception("unable to select the actor");
 
       // retrieve the scope.
       scope = actor->scope;
@@ -44,11 +45,11 @@ namespace etoile
       {
         reactor::Lock lock(infinit::scheduler(), scope->mutex);
         if (scope->Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to retrieve the context");
+          throw Exception("unable to retrieve the context");
         nucleus::neutron::Record const* record(nullptr);
         if (automaton::Access::Lookup(*context, subject, record) ==
             elle::Status::Error)
-          throw elle::Exception("unable to lookup the record");
+          throw Exception("unable to lookup the record");
         if (record)
           return *record;
         else
@@ -69,7 +70,7 @@ namespace etoile
 
       // select the actor.
       if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw elle::Exception("unable to select the actor");
+        throw Exception("unable to select the actor");
 
       // retrieve the scope.
       scope = actor->scope;
@@ -79,7 +80,7 @@ namespace etoile
         reactor::Lock lock(infinit::scheduler(), scope->mutex);
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to retrieve the context");
+          throw Exception("unable to retrieve the context");
 
         // apply the consult automaton on the context.
         nucleus::neutron::Range<nucleus::neutron::Record> records;
@@ -87,7 +88,7 @@ namespace etoile
                                        index,
                                        size,
                                        records) == elle::Status::Error)
-          throw elle::Exception("unable to consult the access records");
+          throw Exception("unable to consult the access records");
         return records;
       }
     }
@@ -108,7 +109,7 @@ namespace etoile
 
       // select the actor.
       if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw elle::Exception("unable to select the actor");
+        throw Exception("unable to select the actor");
 
       // retrieve the scope.
       scope = actor->scope;
@@ -118,13 +119,13 @@ namespace etoile
         reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to retrieve the context");
+          throw Exception("unable to retrieve the context");
 
         // apply the grant automaton on the context.
         if (automaton::Access::Grant(*context,
                                      subject,
                                      permissions) == elle::Status::Error)
-          throw elle::Exception("unable to grant access to the subject");
+          throw Exception("unable to grant access to the subject");
 
         // set the actor's state.
         actor->state = gear::Actor::StateUpdated;
@@ -149,7 +150,7 @@ namespace etoile
 
       // select the actor.
       if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw elle::Exception("unable to select the actor");
+        throw Exception("unable to select the actor");
 
       // retrieve the scope.
       scope = actor->scope;
@@ -160,12 +161,12 @@ namespace etoile
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
-          throw elle::Exception("unable to retrieve the context");
+          throw Exception("unable to retrieve the context");
 
         // apply the revoke automaton on the context.
         if (automaton::Access::Revoke(*context,
                                       subject) == elle::Status::Error)
-          throw elle::Exception("unable to revoke the subject's access permissions");
+          throw Exception("unable to revoke the subject's access permissions");
 
         // set the actor's state.
         actor->state = gear::Actor::StateUpdated;

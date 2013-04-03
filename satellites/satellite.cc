@@ -1,8 +1,11 @@
 #include <reactor/scheduler.hh>
 
+#include <elle/log.hh>
 #include <CrashReporter.hh>
 #include <common/common.hh>
 #include <satellites/satellite.hh>
+
+ELLE_LOG_COMPONENT("infinit.Satellite");
 
 namespace infinit
 {
@@ -33,8 +36,9 @@ namespace infinit
         elle::signal::ScopedGuard int_guard
           (*reactor::Scheduler::scheduler(),
            {SIGINT},
-           [](int)
+           [&name](int)
            {
+             ELLE_DEBUG("%s siginted", name);
              reactor::Scheduler::scheduler()->terminate();
            });
 
@@ -44,6 +48,7 @@ namespace infinit
       }
     catch (std::runtime_error const& e)
       {
+        ELLE_ERR("%s: fatal error: %s", name, e.what());
         std::cerr << name << ": fatal error: " << e.what() << std::endl;
         elle::crash::report(common::meta::host(), common::meta::port(),
                             name, e.what());
@@ -65,6 +70,7 @@ namespace infinit
       }
     catch (std::runtime_error const& e)
       {
+        ELLE_ERR("%s: fatal error: %s", name, e.what());
         std::cerr << name << ": fatal error: " << e.what() << std::endl;
         elle::crash::report(common::meta::host(), common::meta::port(),
                             name, e.what());

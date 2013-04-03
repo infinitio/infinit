@@ -15,6 +15,7 @@
 #include <etoile/wall/Directory.hh>
 #include <etoile/wall/Path.hh>
 #include <etoile/wall/Attributes.hh>
+#include <etoile/Exception.hh>
 
 #include <hole/implementations/slug/Machine.hh> // FIXME
 
@@ -124,13 +125,6 @@ namespace etoile
       this->rpcs->attributesget = &wall::Attributes::get;
       this->rpcs->attributesfetch = &wall::Attributes::fetch;
 
-      this->rpcs->slug_connect.operator=(&hole::implementations::slug::portal_connect);
-      this->rpcs->slug_wait.operator=(&hole::implementations::slug::portal_wait);
-
-      // XXX[temporary]
-      this->rpcs->transferto = &wall::File::transferto;
-      this->rpcs->transferfrom = &wall::File::transferfrom;
-
       new reactor::Thread(infinit::scheduler(),
                           elle::sprintf("RPC %s", *this),
                           std::bind(&Application::_run, this), true);
@@ -228,7 +222,7 @@ namespace etoile
       : _app(app)
       {
         if (_app->state != Application::StateAuthenticated)
-          throw reactor::Exception("the application has not been authenticated");
+          throw Exception("the application has not been authenticated");
         _app->processing = Application::ProcessingOn;
       }
 

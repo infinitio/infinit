@@ -1,4 +1,5 @@
 #include <hole/storage/Memory.hh>
+#include <hole/Exception.hh>
 
 #include <elle/log.hh>
 #include <elle/finally.hh>
@@ -99,7 +100,7 @@ namespace hole
 
       // Check if the insertion was successful.
       if (result.second == false)
-        throw elle::Exception("unable to insert the pair address/block "
+        throw Exception("unable to insert the pair address/block "
                               "in the container");
     }
 
@@ -125,7 +126,7 @@ namespace hole
 
       // Check if the insertion was successful.
       if (result.second == false)
-        throw elle::Exception("unable to insert the pair address/block "
+        throw Exception("unable to insert the pair address/block "
                               "in the container");
     }
 

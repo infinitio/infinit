@@ -77,9 +77,10 @@ namespace nucleus
 
       // Compare the address with the given one.
       if (address != self)
-        throw Exception(elle::sprintf("the recorded address does not correspond"
-                                      "to this block: given(%s) versus "
-                                      "self(%s)", address, self));
+        throw Exception(
+          elle::sprintf("the recorded address does not correspond "
+                        "to this block: given(%s) versus "
+                        "self(%s)", address, self));
     }
 
     elle::Status
