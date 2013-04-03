@@ -364,22 +364,23 @@ namespace surface
         externals.sort();
         locals.sort();
         fallback.sort();
-        if (common.empty())
+      
+        if (externals.empty() || my_externals.empty())
+        {
+          for (auto const& s: locals)
+            first_round.push_back(s);
+          rounds.push_back(first_round);
+          for (auto const& s: fallback)
+            second_round.push_back(s);
+          rounds.push_back(second_round);
+        }
+        else if (common.empty())
         {
           // if there is no common external address, then we can try them first.
           for (auto const& s: externals)
             first_round.push_back(s);
           rounds.push_back(first_round);
           // then, we know we can not connect locally, so try to fallback
-          for (auto const& s: fallback)
-            second_round.push_back(s);
-          rounds.push_back(second_round);
-        }
-        else if (externals.empty() || my_externals.empty())
-        {
-          for (auto const& s: locals)
-            first_round.push_back(s);
-          rounds.push_back(first_round);
           for (auto const& s: fallback)
             second_round.push_back(s);
           rounds.push_back(second_round);
