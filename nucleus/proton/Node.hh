@@ -61,7 +61,7 @@ namespace nucleus
     public:
       // dumpable
       elle::Status
-      Dump(const elle::Natural32 margin) const;
+      Dump(const elle::Natural32 margin = 0) const;
       // printable
       virtual
       void
