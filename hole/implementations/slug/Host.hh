@@ -71,7 +71,7 @@ namespace hole
       private:
         void _rpc_run();
         RPC _rpcs;
-        reactor::Thread* _rpcs_handler;
+        std::unique_ptr<reactor::Thread> _rpcs_handler;
 
       /*----.
       | API |
