@@ -38,7 +38,8 @@ namespace elle
 
       // Create a static Reporter with google analytics server.
       void
-      register_service(std::string const& host,
+      register_service(Reporter& reporter,
+                       std::string const& host,
                        uint16_t port,
                        std::string const& id);
     }

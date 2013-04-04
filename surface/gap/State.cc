@@ -46,6 +46,8 @@ namespace surface
           common::meta::host(), common::meta::port(), true,
         }}
       , _trophonius{nullptr}
+      , _reporter{}
+      , _google_reporter{}
       , _users{}
       , _logged{false}
       , _swaggers_dirty{true}
@@ -111,15 +113,17 @@ namespace surface
         }
       }
 
-      // Initialize server.
+      // Initialize google metrics.
       auto const& g_info = common::metrics::google_info();
-      elle::metrics::google::register_service(g_info.server,
+      elle::metrics::google::register_service(this->_google_reporter,
+                                              g_info.server,
                                               g_info.port,
                                               g_info.id_path);
 
       // Initialize server.
       auto const& km_info = common::metrics::km_info();
-      elle::metrics::kissmetrics::register_service(km_info.server,
+      elle::metrics::kissmetrics::register_service(this->_reporter,
+                                                   km_info.server,
                                                    km_info.port,
                                                    km_info.id_path);
     }
@@ -363,7 +367,7 @@ namespace surface
         externals.sort();
         locals.sort();
         fallback.sort();
-      
+
         if (externals.empty() || my_externals.empty())
         {
           for (auto const& s: locals)

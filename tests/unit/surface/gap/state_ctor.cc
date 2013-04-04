@@ -129,20 +129,20 @@ main()
   {
     for (counter = 0; counter < 10; ++counter)
     {
-      auto process_id = s1.send_files(email2, {to_send});
+      auto operation_id = s1.send_files(email2, {to_send});
 
-      auto process_status = surface::gap::State::ProcessStatus::running;
+      auto operation_status = surface::gap::State::OperationStatus::running;
 
       timeout = 30;
-      while (process_status == surface::gap::State::ProcessStatus::running)
+      while (operation_status == surface::gap::State::OperationStatus::running)
       {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         if (--timeout < 0)
           throw std::runtime_error{"sending files timed out"};
 
-        process_status = s1.process_status(process_id);
+        operation_status = s1.operation_status(operation_id);
       }
-      s1.process_finalize(process_id);
+      s1.operation_finalize(operation_id);
 
       timeout = 60;
       while (!finish)

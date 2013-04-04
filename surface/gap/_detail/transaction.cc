@@ -77,10 +77,10 @@ namespace surface
       auto transfer_binary = common::infinit::binary_path("8transfer");
       ELLE_DEBUG("Using 8transfert binary '%s'", transfer_binary);
 
-      elle::metrics::reporter().store(
-        "transaction:create:attempt",
-        {{MKey::count, std::to_string(files.size())},
-         {MKey::size, std::to_string(size)}});
+      this->_reporter.store("transaction_create",
+                            {{MKey::status, "attempt"},
+                             {MKey::count, std::to_string(files.size())},
+                             {MKey::size, std::to_string(size)}});
 
       try
       {
@@ -136,14 +136,14 @@ namespace surface
                                               this->device_id());
         this->_me.remaining_invitations = res.remaining_invitations;
 
-        elle::metrics::reporter().store(
-          "transaction:create:succeed",
-          {{MKey::value, res.created_transaction_id},
-            {MKey::count, std::to_string(files.size())},
-            {MKey::size, std::to_string(size)}});
+      this->_reporter.store("transaction_create",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, res.created_transaction_id},
+                             {MKey::count, std::to_string(files.size())},
+                             {MKey::size, std::to_string(size)}});
 
       }
-      CATCH_FAILURE_TO_METRICS("transaction:create");
+      CATCH_FAILURE_TO_METRICS("transaction_create");
     }
 
     float
@@ -421,8 +421,9 @@ namespace surface
         throw Exception{gap_error, "Only recipient can accept transaction."};
       }
 
-      elle::metrics::reporter().store(
-        "transaction:accept:attempt", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_accept",
+                            {{MKey::status, "attempt"},
+                             {MKey::value, transaction.transaction_id}});
 
       try
       {
@@ -431,10 +432,11 @@ namespace surface
                                         this->device_id(),
                                         this->device_name());
       }
-      CATCH_FAILURE_TO_METRICS("transaction:accept");
+      CATCH_FAILURE_TO_METRICS("transaction_accept");
 
-      elle::metrics::reporter().store(
-        "transaction:accept:succeed", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_accept",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, transaction.transaction_id}});
 
       // Could be improve.
       _swaggers_dirty = true;
@@ -484,18 +486,20 @@ namespace surface
         throw Exception{gap_error, "Only sender can prepare his network."};
       }
 
-      elle::metrics::reporter().store(
-        "transaction:prepare:attempt", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_ready",
+                            {{MKey::status, "attempt"},
+                             {MKey::value, transaction.transaction_id}});
 
       try
       {
       this->_meta->update_transaction(transaction.transaction_id,
                                       plasma::TransactionStatus::prepared);
       }
-      CATCH_FAILURE_TO_METRICS("transaction:prepare");
+      CATCH_FAILURE_TO_METRICS("transaction_ready");
 
-      elle::metrics::reporter().store(
-        "transaction:prepare:succeed", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_ready",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, transaction.transaction_id}});
     }
 
     void
@@ -534,18 +538,20 @@ namespace surface
         throw Exception{gap_error, "Only recipient can start transaction."};
       }
 
-      elle::metrics::reporter().store(
-        "transaction:start:attempt", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_start",
+                            {{MKey::status, "attempt"},
+                              {MKey::value, transaction.transaction_id}});
 
       try
       {
         this->_meta->update_transaction(transaction.transaction_id,
                                         plasma::TransactionStatus::started);
       }
-      CATCH_FAILURE_TO_METRICS("transaction:start");
+      CATCH_FAILURE_TO_METRICS("transaction_start");
 
-      elle::metrics::reporter().store(
-        "transaction:start:succeed", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_start",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, transaction.transaction_id}});
     }
 
     void
@@ -618,18 +624,20 @@ namespace surface
             "Only recipient can close transaction."};
       }
 
-      elle::metrics::reporter().store(
-        "transaction:finish:attempt", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_finish",
+                            {{MKey::status, "attempt"},
+                              {MKey::value, transaction.transaction_id}});
 
       try
       {
         this->_meta->update_transaction(transaction.transaction_id,
                                         plasma::TransactionStatus::finished);
       }
-      CATCH_FAILURE_TO_METRICS("transaction:finish");
+      CATCH_FAILURE_TO_METRICS("transaction_finish");
 
-      elle::metrics::reporter().store(
-        "transaction:finish:succeed", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_finish",
+                            {{MKey::status, "succeed"},
+                              {MKey::value, transaction.transaction_id}});
     }
 
     void
@@ -649,41 +657,44 @@ namespace surface
       //XXX: If download has started, cancel it, delete files, ...
       if (transaction.sender_id == this->_me._id)
       {
-        elle::metrics::reporter().store(
-          "transaction:cancel:sender:attempt",
-          {{MKey::status, std::to_string(transaction.status)},
-           {MKey::value, transaction.transaction_id}});
+        this->_reporter.store("transaction_cancel",
+                              {{MKey::status, "attempt"},
+                               {MKey::author, "sender"},
+                               {MKey::step, std::to_string(transaction.status)},
+                               {MKey::value, transaction.transaction_id}});
 
         try
         {
           this->_meta->update_transaction(transaction.transaction_id,
                                           plasma::TransactionStatus::canceled);
         }
-        CATCH_FAILURE_TO_METRICS("transaction:cancel:sender");
+        CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-        elle::metrics::reporter().store(
-          "transaction:cancel:sender:succeed",
-          {{MKey::status, std::to_string(transaction.status)},
-           {MKey::value, transaction.transaction_id}});
+        this->_reporter.store("transaction_cancel",
+                              {{MKey::status, "succeed"},
+                               {MKey::author, "sender"},
+                               {MKey::step, std::to_string(transaction.status)},
+                               {MKey::value, transaction.transaction_id}});
       }
       else
       {
-        elle::metrics::reporter().store(
-          "transaction:cancel:recipient:attempt",
-          {{MKey::status, std::to_string(transaction.status)},
-           {MKey::value, transaction.transaction_id}});
-
+        this->_reporter.store("transaction_cancel",
+                              {{MKey::status, "attempt"},
+                               {MKey::author, "recipient"},
+                               {MKey::step, std::to_string(transaction.status)},
+                               {MKey::value, transaction.transaction_id}});
         try
         {
           this->_meta->update_transaction(transaction.transaction_id,
                                           plasma::TransactionStatus::canceled);
         }
-        CATCH_FAILURE_TO_METRICS("transaction:cancel:recipient");
+        CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-        elle::metrics::reporter().store(
-          "transaction:cancel:recipient:succeed",
-          {{MKey::status, std::to_string(transaction.status)},
-           {MKey::value, transaction.transaction_id}});
+        this->_reporter.store("transaction_cancel",
+                              {{MKey::status, "succeed"},
+                               {MKey::author, "recipient"},
+                               {MKey::step, std::to_string(transaction.status)},
+                               {MKey::value, transaction.transaction_id}});
       }
     }
 

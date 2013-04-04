@@ -19,14 +19,18 @@ namespace elle
       static std::string pretty_name = "Google";
       static const std::map<elle::metrics::Key, std::string> keymap
       {
-        {elle::metrics::Key::tag,     "cd"},
-        {elle::metrics::Key::session, "cs"},
-        {elle::metrics::Key::status,  "cd1"},
-        {elle::metrics::Key::value,   "cd2"},
+        {elle::metrics::Key::author,  "cm8"},
         {elle::metrics::Key::count,   "cm2"},
         {elle::metrics::Key::height,  "cm4"},
+        {elle::metrics::Key::session, "cs"},
         {elle::metrics::Key::size,    "cm1"},
+        {elle::metrics::Key::status,  "cd1"},
+        {elle::metrics::Key::step,    "cm9"},
+        {elle::metrics::Key::tag,     "cd"},
+        {elle::metrics::Key::value,   "cd2"},
         {elle::metrics::Key::width,   "cm3"},
+        {elle::metrics::Key::input,   "cm6"},
+        {elle::metrics::Key::panel,   "cm7"},
       };
 
 
@@ -119,11 +123,12 @@ namespace elle
 
       //- Helper ---------------------------------------------------------------
       void
-      register_service(std::string const& host,
+      register_service(Reporter& reporter,
+                       std::string const& host,
                        uint16_t port,
                        std::string const& id_file_path)
       {
-        elle::metrics::reporter().add_service(
+        reporter.add_service(
           std::unique_ptr<Service>{
             new Service{host, port, retrieve_id(id_file_path), id_file_path}});
       }

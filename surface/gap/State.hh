@@ -11,6 +11,8 @@
 
 # include <elle/format/json/fwd.hh>
 
+# include <metrics/Reporter.hh>
+
 # include <reactor/scheduler.hh> // XXX
 
 # include <functional>
@@ -18,24 +20,27 @@
 # include <string>
 # include <unordered_set>
 
-# define CATCH_FAILURE_TO_METRICS(prefix)                               \
-  catch (elle::HTTPException const& e)                                  \
-  {                                                                     \
-    elle::metrics::reporter().store(prefix  ":fail",                      \
-                                    elle::metrics::Key::status, "http" + std::to_string((int) e.code)); \
-    throw;                                                              \
-  }                                                                     \
-  catch (surface::gap::Exception const& e)                              \
-  {                                                                     \
-    elle::metrics::reporter().store(prefix ":fail",               \
-                                    elle::metrics::Key::status, "gap" + std::to_string((int) e.code)); \
-    throw;                                                              \
-  }                                                                     \
-  catch (...)                                                           \
-  {                                                                     \
-    elle::metrics::reporter().store(prefix ":fail",               \
-                                    elle::metrics::Key::status, "unknown");                  \
-    throw;                                                              \
+# define CATCH_FAILURE_TO_METRICS(prefix)                                       \
+  catch (elle::HTTPException const& e)                                          \
+  {                                                                             \
+    this->_reporter.store(prefix,                                               \
+                          {{elle::metrics::Key::status, "fail"},                \
+                           {elle::metrics::Key::value, "http " + std::to_string((int) e.code)}}); \
+    throw;                                                                      \
+  }                                                                             \
+  catch (surface::gap::Exception const& e)                                      \
+  {                                                                             \
+    this->_reporter.store(prefix,                                               \
+                          {{elle::metrics::Key::status, "fail"},                \
+                            {elle::metrics::Key::value, "gap " + std::to_string((int) e.code)}}); \
+    throw;                                                                      \
+  }                                                                             \
+  catch (...)                                                                   \
+  {                                                                             \
+    this->_reporter.store(prefix,                                               \
+                          {{elle::metrics::Key::status, "fail"},                \
+                            {elle::metrics::Key::value, "unknown"}});           \
+    throw;                                                                      \
   } /* */
 
 
@@ -83,6 +88,10 @@ namespace surface
     private:
       std::unique_ptr<plasma::meta::Client>       _meta;
       std::unique_ptr<plasma::trophonius::Client> _trophonius;
+      elle::metrics::Reporter _reporter;
+      // XXX: While network count is still on GA, we need to keep one reporter
+      // to GA.
+      elle::metrics::Reporter _google_reporter;
 
     public:
       State();
@@ -106,10 +115,10 @@ namespace surface
       login(std::string const& email,
             std::string const& password);
 
-
     private:
       bool
       _logged;
+
     public:
       bool
       logged_in() const
