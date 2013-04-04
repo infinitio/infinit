@@ -130,8 +130,8 @@ class Apertus(DatagramProtocol):
         for k, v in it.product(rhs, lhs):
             # Remove the 1 to 1 link
             try:
-                self.links.remove(next(l for l in self.links if l.source == k))
-                self.links.remove(next(l for l in self.links if l.source == v))
+                self.links.remove(next(l for l in self.links if l.source.ip == k.ip))
+                self.links.remove(next(l for l in self.links if l.source.ip == v.ip))
             except:
                 pass
 
