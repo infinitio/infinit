@@ -450,22 +450,6 @@ namespace surface
       if (transaction.sender_device_id != this->device_id())
         return;
 
-      ELLE_DEBUG("giving '%s' access to the network '%s'",
-                transaction.recipient_id,
-                transaction.network_id);
-
-      this->_networks_dirty = true;
-      this->network_add_user(transaction.network_id,
-                             transaction.recipient_id);
-
-      ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
-                transaction.recipient_id,
-                transaction.network_id);
-
-      this->set_permissions(transaction.recipient_id,
-                            transaction.network_id,
-                            nucleus::neutron::permissions::write);
-
       ELLE_DEBUG("update transaction");
 
       // When recipient has rights, allow him to start download.
@@ -490,10 +474,28 @@ namespace surface
                             {{MKey::status, "attempt"},
                              {MKey::value, transaction.transaction_id}});
 
+      if (this->_wait_portal(transaction.network_id) == false)
+        throw Exception{gap_network_error, "Cannot wait portal"};
+
+      ELLE_DEBUG("giving '%s' access to the network '%s'",
+                transaction.recipient_id,
+                transaction.network_id);
+
+      this->_networks_dirty = true;
+      this->network_add_user(transaction.network_id,
+                             transaction.recipient_id);
+
+      ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
+                transaction.recipient_id,
+                transaction.network_id);
+
+      this->set_permissions(transaction.recipient_id,
+                            transaction.network_id,
+                            nucleus::neutron::permissions::write);
       try
       {
-      this->_meta->update_transaction(transaction.transaction_id,
-                                      plasma::TransactionStatus::prepared);
+        this->_meta->update_transaction(transaction.transaction_id,
+                                        plasma::TransactionStatus::prepared);
       }
       CATCH_FAILURE_TO_METRICS("transaction_ready");
 
@@ -520,9 +522,9 @@ namespace surface
           transaction.network_id,
           this->device_id()
       );
-      this->infinit_instance_manager().launch_network(transaction.network_id);
       // Ensure creation.
-      this->_wait_portal(transaction.network_id);
+      if (this->_wait_portal(transaction.network_id) == false)
+        throw Exception(gap_network_error, "Cannot launch the network");
 
       this->update_transaction(transaction.transaction_id,
                                gap_transaction_status_started);

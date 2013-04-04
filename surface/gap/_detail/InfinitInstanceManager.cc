@@ -26,12 +26,17 @@ namespace surface
     void
     InfinitInstanceManager::launch_network(std::string const& network_id)
     {
-      ELLE_TRACE("Starting network process of %s", network_id);
+      ELLE_TRACE_FUNCTION(network_id);
       if (_instances.find(network_id) != _instances.end())
-        {
-          if (_instances[network_id]->process->running())
-            throw elle::Exception{"Network " + network_id + " already launched"};
-        }
+      {
+        ELLE_ASSERT(_instances[network_id] != nullptr);
+        if (_instances[network_id]->process->running())
+          throw elle::Exception{"Network " + network_id + " already launched"};
+        else
+          ELLE_DEBUG("Found staled infinit instance (%s): status = %s",
+                     _instances[network_id]->process->id(),
+                     _instances[network_id]->process->status());
+      }
       auto pc = elle::system::process_config(elle::system::normal_config);
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
@@ -93,13 +98,13 @@ namespace surface
             if (status_code < 0)
             {
               if (-status_code == SIGTERM)
-                  ELLE_WARN("8infinit stopped with signal %s(%s)",
+                ELLE_WARN("8infinit stopped with signal %s (%s)",
                            -status_code,
                            elle::system::strsignal(-status_code));
               else
-                  ELLE_ERR("8infinit stopped with signal %s(%s)",
-                           -status_code,
-                           elle::system::strsignal(-status_code));
+                ELLE_ERR("8infinit stopped with signal %s (%s)",
+                         -status_code,
+                         elle::system::strsignal(-status_code));
             }
             else
               ELLE_ERR("8infinit exited with status %s", status_code);
@@ -112,10 +117,18 @@ namespace surface
     bool
     InfinitInstanceManager::has_network(std::string const& network_id) const
     {
-      return (
-           this->_instances.find(network_id) != this->_instances.end()
-        && this->network_instance(network_id).process->running()
-      );
+      if (this->_instances.find(network_id) == this->_instances.end())
+        return false;
+
+      if (!this->network_instance(network_id).process->running())
+      {
+        ELLE_WARN("Found not running infinit instance (pid = %s): status = %s",
+                   this->network_instance(network_id).process->id(),
+                   this->network_instance(network_id).process->status());
+        //XXX this->_instances.erase(network_id);
+        return false;
+      }
+      return true;
     }
 
     InfinitInstance const&
@@ -124,6 +137,7 @@ namespace surface
       auto it = _instances.find(network_id);
       if (it == _instances.end())
         throw elle::Exception{"Cannot find any network " + network_id};
+      ELLE_ASSERT(it->second != nullptr);
       return *(it->second);
     }
 

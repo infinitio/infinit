@@ -110,11 +110,8 @@ namespace surface
           this->device_id()
       );
       this->prepare_network(response.created_network_id);
-      this->infinit_instance_manager().launch_network(
-          response.created_network_id
-      );
-
-      this->_wait_portal(response.created_network_id);
+      if (this->_wait_portal(response.created_network_id) == false)
+        throw Exception(gap_network_error, "Cannot launch infinit instance");
       return response.created_network_id;
     }
 
