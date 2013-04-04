@@ -308,6 +308,11 @@ namespace etoile
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
         ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
 
+//         XXX un block dans la queue ca veut dire quoi? qu'il n'est pas
+//         XXX loaded (used) ou juste qu'en plus que le block est present?
+
+
+//         // XXX lock since we are going to block on pushing
 
 //         // Generate a random secret.
 //         cryptography::SecretKey secret{
@@ -536,6 +541,7 @@ namespace etoile
             ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
             ELLE_ASSERT_EQ(pod->actors(), 0);
             ELLE_ASSERT(pod->mutex().locked() == false);
+            ELLE_ASSERT(pod->mutex().write().locked() == false);
 
             ELLE_FINALLY_ACTION_DELETE(pod);
 
@@ -571,17 +577,12 @@ namespace etoile
             ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
             ELLE_ASSERT_EQ(pod->actors(), 0);
 
-            // Lock the pod so as to be able to modify it safely.
-            //
-            // Note that the lock is released right after having been
-            // acquired because one does not need it for the following.
-            //
-            // Even more, the mutex must not be in used should the pod
-            // be deleted.
-            {
-              reactor::Lock lock(*reactor::Scheduler::scheduler(),
-                                 pod->mutex().write());
-            }
+            // Note that since detaching a block is a modifying operation,
+            // nobody should be concurrently accessing the nest. It is therefore
+            // safe to assume that we are the only one on it for the pod
+            // to be modified or even destroyed.
+            ELLE_ASSERT(pod->mutex().locked() == false);
+            ELLE_ASSERT(pod->mutex().write().locked() == false);
 
             // If the block is loaded.
             if (pod->egg()->block() != nullptr)
