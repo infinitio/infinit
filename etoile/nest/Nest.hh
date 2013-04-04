@@ -14,6 +14,7 @@
 # include <boost/noncopyable.hpp>
 
 # include <map>
+# include <limits>
 
 namespace etoile
 {
@@ -58,7 +59,8 @@ namespace etoile
            nucleus::proton::Limits const& limits,
            nucleus::proton::Network const& network,
            cryptography::PublicKey const& agent_K,
-           nucleus::proton::Footprint const threshold);
+           nucleus::proton::Footprint const threshold =
+             std::numeric_limits<nucleus::proton::Footprint>::max());
       virtual
       ~Nest();
 
