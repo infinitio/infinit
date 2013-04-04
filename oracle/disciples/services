@@ -81,13 +81,17 @@ def main(argv):
                 '--control-port', str(args.apertus_control_port)
             ])
         )
+        print("INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port)
+        print("INFINIT_META_PORT=%s" % args.meta_port)
+        print("INFINIT_LONGINUS_PORT=%s" % args.longinus_port)
         running = True
         while running:
             for p in processes:
                 p.poll()
                 if p.returncode is not None:
                     running = False
-
+    except KeyboardInterrupt:
+        print("Exiting")
     finally:
         for p in processes:
             try:
