@@ -23,6 +23,19 @@ namespace etoile
     ///
     /// However, should a threshold be reached, the nest would pick the least
     /// recently used blocks and pre-published them onto the storage layer.
+    ///
+    /// Blocks can be in four states, the first three being handled by the nest:
+    ///
+    ///   1) In use: one or more actors have requested load() so as to operate
+    ///      on it i.e modify it or simply consult it.
+    ///   2) In queue: nobody is accessing it but the block remains in `cache'
+    ///      so as to be quickly reloaded in the future.
+    ///   3) In pod: referenced by a pod but not loaded in main memory, either
+    ///      because nobody requested it through a load() or because the nest
+    ///      had to optimize its memory consumption by pre-publishing the
+    ///      least-recently used ones on the storage layer.
+    ///   4) In handle: blocks which have never been referenced by the nest i.e
+    ///      never loaded, attached or detached.
     class Nest:
       public nucleus::proton::Nest,
       private boost::noncopyable
