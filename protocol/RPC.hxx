@@ -442,7 +442,8 @@ namespace infinit
           auto call = std::make_shared<RunningCall>();
           ++i;
 
-          auto call_procedure = [&, chan, call] {
+          auto call_procedure = [&, chan, call]
+          {
             ELLE_LOG_COMPONENT("infinit.protocol.RPC");
 
             Packet question(chan->read());
