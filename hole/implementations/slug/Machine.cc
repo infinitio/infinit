@@ -451,6 +451,8 @@ namespace hole
         // acceptor.
         if (_acceptor)
           _acceptor->terminate_now();
+        if (_garbarge)
+          _garbarge->terminate_now();
       }
 
       /*------.
