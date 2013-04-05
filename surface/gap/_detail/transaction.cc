@@ -7,6 +7,7 @@
 #include <elle/os/path.hh>
 #include <elle/os/getenv.hh>
 #include <elle/system/Process.hh>
+#include <elle/finally.hh>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
@@ -657,47 +658,32 @@ namespace surface
       ELLE_DEBUG("Cancel transaction '%s'", transaction.transaction_id);
 
       //XXX: If download has started, cancel it, delete files, ...
-      if (transaction.sender_id == this->_me._id)
+
+      std::string author{
+        transaction.sender_id == this->_me._id ? "sender" : "recipient",};
+
+      this->_reporter.store("transaction_cancel",
+                            {{MKey::status, "attempt"},
+                             {MKey::author, author},
+                             {MKey::step, std::to_string(transaction.status)},
+                             {MKey::value, transaction.transaction_id}});
+
+      ELLE_SCOPE_EXIT(
+        [&] { this->delete_network(transaction.network_id, true); }
+      );
+
+      try
       {
-        this->_reporter.store("transaction_cancel",
-                              {{MKey::status, "attempt"},
-                               {MKey::author, "sender"},
-                               {MKey::step, std::to_string(transaction.status)},
-                               {MKey::value, transaction.transaction_id}});
-
-        try
-        {
-          this->_meta->update_transaction(transaction.transaction_id,
-                                          plasma::TransactionStatus::canceled);
-        }
-        CATCH_FAILURE_TO_METRICS("transaction_cancel");
-
-        this->_reporter.store("transaction_cancel",
-                              {{MKey::status, "succeed"},
-                               {MKey::author, "sender"},
-                               {MKey::step, std::to_string(transaction.status)},
-                               {MKey::value, transaction.transaction_id}});
+        this->_meta->update_transaction(transaction.transaction_id,
+                                        plasma::TransactionStatus::canceled);
       }
-      else
-      {
-        this->_reporter.store("transaction_cancel",
-                              {{MKey::status, "attempt"},
-                               {MKey::author, "recipient"},
-                               {MKey::step, std::to_string(transaction.status)},
-                               {MKey::value, transaction.transaction_id}});
-        try
-        {
-          this->_meta->update_transaction(transaction.transaction_id,
-                                          plasma::TransactionStatus::canceled);
-        }
-        CATCH_FAILURE_TO_METRICS("transaction_cancel");
+      CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-        this->_reporter.store("transaction_cancel",
-                              {{MKey::status, "succeed"},
-                               {MKey::author, "recipient"},
-                               {MKey::step, std::to_string(transaction.status)},
-                               {MKey::value, transaction.transaction_id}});
-      }
+      this->_reporter.store("transaction_cancel",
+                            {{MKey::status, "succeed"},
+                             {MKey::author, author},
+                             {MKey::step, std::to_string(transaction.status)},
+                             {MKey::value, transaction.transaction_id}});
     }
 
     void
