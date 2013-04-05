@@ -192,7 +192,7 @@ namespace surface
         std::vector<std::string> res;
         boost::split(res, i, boost::is_any_of(":"));
         // XXX filter backup
-        if (res[1] == "9899")
+        if (res[1] == "9898")
           continue;
         theirs_addr.push_back(res[0]);
       }
@@ -202,7 +202,7 @@ namespace surface
         std::vector<std::string> res;
         boost::split(res, i, boost::is_any_of(":"));
         // XXX filter backup
-        if (res[1] == "9899")
+        if (res[1] == "9898")
           continue;
         ours_addr.push_back(res[0]);
       }
@@ -244,7 +244,7 @@ namespace surface
         v.push_back(std::make_pair(elle::make_unique<reactor::VThread<bool>>(
           sched,
           elle::sprintf("slug_connect(%s)", endpoint),
-          [&] () -> bool {
+          [&] () -> int {
             try {
               slug_connect(endpoint);
             }
@@ -367,7 +367,6 @@ namespace surface
         externals.sort();
         locals.sort();
         fallback.sort();
-        std::sort(begin(common), end(common));
 
         if (externals.empty() || my_externals.empty())
         {
@@ -400,10 +399,12 @@ namespace surface
           {
             // wtf, you are trying to do a local exchange, this is stupid, but
             // let it be.
-            for (auto const& s: locals)
+            first_round.push_back(locals.front());
+            rounds.push_back(first_round);
+            if (addr.size() > 1)
             {
-              std::vector<std::string> tmp{s};
-              rounds.push_back(tmp);
+              second_round.push_back(locals.back());
+              rounds.push_back(second_round);
             }
           }
           else
