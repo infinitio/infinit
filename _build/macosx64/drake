@@ -32,7 +32,11 @@ drake.run(
     boost = boost,
     qt = None,
     enable_horizon = False,
-    satellites = ("access", "group", "transfer", "sendto", "recvfrom", "progress"),
+    satellites = (
+        "access", "group", "transfer",
+        "sendto", "recvfrom", "progress",
+        "d00m",
+    ),
     python3 = '/opt/local/Library/Frameworks/Python.framework/Versions/3.2',
     build_type = os.environ.get('BUILD_TYPE', 'Debug'),
 )
