@@ -30,7 +30,7 @@ namespace etoile
       `-------------*/
     public:
       /// Define whether the block is attached to the nest.
-      enum class State
+      enum class Attachment
       {
         attached,
         detached
@@ -67,7 +67,7 @@ namespace etoile
       | Attributes |
       `-----------*/
     private:
-      ELLE_ATTRIBUTE_RW(State, state);
+      ELLE_ATTRIBUTE_RW(Attachment, attachment);
       /// The number of actors operating on the pod.
       ELLE_ATTRIBUTE_RW(elle::Natural32, actors);
       /// The egg containing the block and its information.
@@ -91,7 +91,7 @@ namespace etoile
 
     std::ostream&
     operator <<(std::ostream& stream,
-                Pod::State const state);
+                Pod::Attachment const attachment);
   }
 }
 

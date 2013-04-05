@@ -1,3 +1,8 @@
+/* XXX[just to check the performance in production]
+#undef DEBUG
+#define NDEBUG
+*/
+
 #include <etoile/nest/Nest.hh>
 #include <etoile/gear/Transcript.hh>
 #include <etoile/gear/Action.hh>
@@ -72,10 +77,10 @@ namespace etoile
       {
         auto pod = pair.second;
 
-        // Act depending on the pod's state.
-        switch (pod->state())
+        // Act depending on the pod's attachment.
+        switch (pod->attachment())
         {
-          case Pod::State::attached:
+          case Pod::Attachment::attached:
           {
             // Note that only consistent blocks need to be published onto
             // the storage layer.
@@ -98,7 +103,7 @@ namespace etoile
               }
             }
           }
-          case Pod::State::detached:
+          case Pod::Attachment::detached:
           {
             break;
           }
@@ -122,10 +127,10 @@ namespace etoile
         ELLE_ASSERT(pod->mutex().locked() == false);
         ELLE_ASSERT(pod->mutex().write().locked() == false);
 
-        // Act depending on the pod's state.
-        switch (pod->state())
+        // Act depending on the pod's attachment.
+        switch (pod->attachment())
         {
-          case Pod::State::attached:
+          case Pod::Attachment::attached:
           {
             // Note that only consistent blocks need to be published onto
             // the storage layer.
@@ -175,7 +180,7 @@ namespace etoile
 
             break;
           }
-          case Pod::State::detached:
+          case Pod::Attachment::detached:
           {
             ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
 
@@ -208,8 +213,8 @@ namespace etoile
             break;
           }
           default:
-            throw Exception(elle::sprintf("unknown pod state '%s'",
-                                          pod->state()));
+            throw Exception(elle::sprintf("unknown pod attachment '%s'",
+                                          pod->attachment()));
         }
       }
 
@@ -302,14 +307,13 @@ namespace etoile
         if (this->_size < this->_threshold)
           break;
 
-        ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
+        ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
         ELLE_ASSERT_EQ(pod->actors(), 0);
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
         ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
 
-        //         XXX un block dans la queue ca veut dire quoi? qu'il n'est pas
-        //         XXX loaded (used) ou juste qu'en plus que le block est present?
-
+        // XXX un block dans la queue ca veut dire quoi? qu'il n'est pas
+        // XXX loaded (used) ou juste qu'en plus que le block est present?
 
         //         // XXX lock since we are going to block on pushing
 
@@ -499,7 +503,7 @@ namespace etoile
       // XXX[set the nest in the node]
       pod->egg()->block()->node().nest(*this);
 
-      ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
+      ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
       ELLE_ASSERT_EQ(pod->actors(), 0);
 
       // Take the block's footprint into account.
@@ -537,7 +541,7 @@ namespace etoile
           ELLE_ASSERT_NEQ(pod->egg(), nullptr);
           ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
 
-          ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
+          ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
           ELLE_ASSERT_EQ(pod->actors(), 0);
           ELLE_ASSERT(pod->mutex().locked() == false);
           ELLE_ASSERT(pod->mutex().write().locked() == false);
@@ -559,7 +563,7 @@ namespace etoile
           ELLE_FINALLY_ABORT(pod);
 
           // Finally, mark the pod as detached.
-          pod->state(Pod::State::detached);
+          pod->attachment(Pod::Attachment::detached);
 
           break;
         }
@@ -573,7 +577,7 @@ namespace etoile
           ELLE_ASSERT_EQ(handle.address(), pod->egg()->address());
           ELLE_ASSERT_EQ(handle.secret(), pod->egg()->secret());
 
-          ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
+          ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
           ELLE_ASSERT_EQ(pod->actors(), 0);
 
           // Note that since detaching a block is a modifying operation,
@@ -609,7 +613,7 @@ namespace etoile
               pod->egg()->block().reset();
 
               // Set the pod as detached.
-              pod->state(Pod::State::detached);
+              pod->attachment(Pod::Attachment::detached);
 
               ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
 
@@ -669,7 +673,7 @@ namespace etoile
             ELLE_ASSERT_EQ(handle.address(), pod->egg()->address());
             ELLE_ASSERT_EQ(handle.secret(), pod->egg()->secret());
 
-            ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
+            ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
 
             // And make the handle track the block's existing egg.
             handle.place(pod->egg());
@@ -719,7 +723,7 @@ namespace etoile
 
             ELLE_ASSERT_NEQ(pod->egg(), nullptr);
 
-            ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
+            ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
             ELLE_ASSERT_EQ(pod->actors(), 0);
 
             ELLE_FINALLY_ACTION_DELETE(pod);
@@ -769,7 +773,7 @@ namespace etoile
           ELLE_ASSERT_EQ(handle.address(), pod->egg()->address());
           ELLE_ASSERT_EQ(handle.secret(), pod->egg()->secret());
 
-          ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
+          ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
 
           // Assuming the block is not currently loaded...
           if (pod->egg()->block() == nullptr)
@@ -832,7 +836,7 @@ namespace etoile
           ELLE_ASSERT_EQ(handle.address(), pod->egg()->address());
           ELLE_ASSERT_EQ(handle.secret(), pod->egg()->secret());
 
-          ELLE_ASSERT_EQ(pod->state(), Pod::State::attached);
+          ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
 
           // Release the pod's lock.
           ELLE_ASSERT(pod->mutex().locked() == true);

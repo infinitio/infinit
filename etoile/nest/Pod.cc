@@ -13,7 +13,7 @@ namespace etoile
 
     Pod::Pod(std::shared_ptr<nucleus::proton::Egg>& egg,
              std::list<Pod*>::iterator const& position):
-      _state(State::attached),
+      _attachment(Attachment::attached),
       _actors(0),
       _egg(egg),
       _position(position),
@@ -23,7 +23,7 @@ namespace etoile
 
     Pod::Pod(std::shared_ptr<nucleus::proton::Egg>&& egg,
              std::list<Pod*>::iterator const& position):
-      _state(State::attached),
+      _attachment(Attachment::attached),
       _actors(0),
       _egg(std::move(egg)),
       _position(position),
@@ -41,7 +41,7 @@ namespace etoile
       ELLE_ASSERT(this->_egg != nullptr);
 
       stream << *this->_egg
-             << "(" << this->_state << ", " << this->_actors << ", "
+             << "(" << this->_attachment << ", " << this->_actors << ", "
              << this->_footprint << ", "
              << (this->_mutex.locked() == true ? "locked" : "unlocked")
              << ")";
@@ -53,24 +53,24 @@ namespace etoile
 
     std::ostream&
     operator <<(std::ostream& stream,
-                Pod::State const state)
+                Pod::Attachment const attachment)
     {
-      switch (state)
+      switch (attachment)
         {
-        case Pod::State::attached:
+        case Pod::Attachment::attached:
           {
             stream << "attached";
             break;
           }
-        case Pod::State::detached:
+        case Pod::Attachment::detached:
           {
             stream << "detached";
             break;
           }
         default:
           {
-            throw Exception(elle::sprintf("unknown state: '%s'",
-                                          static_cast<int>(state)));
+            throw Exception(elle::sprintf("unknown attachment: '%s'",
+                                          static_cast<int>(attachment)));
           }
         }
 
