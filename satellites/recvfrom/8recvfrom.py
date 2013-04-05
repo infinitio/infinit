@@ -21,11 +21,8 @@ You have to specify your user name in the INFINIT_USER env variable.
 """
 
 def show_status(state, transaction, new):
-    print("trasaction status changed to", state.transaction_status(transaction))
-
-def auto_accept(state, transaction, new):
-    state.update_transaction(transaction._id, state.TransactionStatus.accepted)
-    state.current_transaction_id = transaction
+    print("Transaction ({}) status changed to".format(transaction),
+          state.transaction_status(transaction))
 
 def on_started(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.started:
@@ -34,17 +31,16 @@ def on_started(state, transaction, new):
         else:
             state.started_transactions = [transaction]
 
-
 def on_canceled(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.canceled:
-        print("Transaction canceled, check your log")
+        print("Transaction ({}) canceled, check your log".format(transaction))
         state.number_of_transactions -= 1
         if state.number_of_transactions == 0:
             state.running = False
 
 def on_finished(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.finished:
-        print("Transaction succeeded")
+        print("Transaction ({}) succeeded".format(transaction))
         cnt = state.transaction_files_count(transaction)
         if cnt == 1:
             filename = state.transaction_first_filename(transaction)
@@ -125,7 +121,6 @@ def select_transactions(state, l_transactions, sender):
 def main(state, sender):
     id = login(state)
 
-    state.transaction_callback(partial(auto_accept, state));
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_canceled, state))
     state.transaction_status_callback(partial(on_started, state))
@@ -138,12 +133,13 @@ def main(state, sender):
     transactions = state.transactions()
 
     if len(transactions) > 1:
-        to_handle = select_transactions(state, transactions, sender)
+        to_handle = list(select_transactions(state, transactions, sender))
     else:
-        to_handle = transactions
+        to_handle = list(transactions)
 
     if not to_handle:
         raise Exception("you must select a transaction to accept")
+    state.number_of_transactions = len(to_handle)
 
     num = 0
     for transaction_id in to_handle:
