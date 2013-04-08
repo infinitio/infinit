@@ -31,7 +31,7 @@ namespace etoile
     ///      on it i.e modify it or simply consult it.
     ///   2) In queue: nobody is accessing it but the block remains in `cache'
     ///      so as to be quickly reloaded in the future.
-    ///   3) In pod: referenced by a pod but not loaded in main memory, either
+    ///   3) In shell: referenced by a pod but not loaded in main memory, either
     ///      because nobody requested it through a load() or because the nest
     ///      had to optimize its memory consumption by pre-publishing the
     ///      least-recently used ones on the storage layer.

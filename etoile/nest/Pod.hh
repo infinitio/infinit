@@ -37,7 +37,7 @@ namespace etoile
       };
 
       /// Define the state in which lies a block, being either:
-      ///   1) Danglingd: an internal state which indicates that the pod
+      ///   1) Dangling: an internal state which indicates that the pod
       ///      is neither in use, nor in the queue though still
       ///      embed its block.
       ///   2) Use: being accessed or modified by one or more
