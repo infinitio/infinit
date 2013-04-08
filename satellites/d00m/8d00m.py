@@ -49,7 +49,7 @@ def main(state, email):
     state.number_of_transactions = len(transactions)
 
     for transaction_id in transactions:
-        print("\U0001f63b  doomed transaction {}".format(transaction_id))
+        print("* doomed transaction {}".format(transaction_id))
         state.update_transaction(transaction_id, state.TransactionStatus.canceled)
     else:
         return
