@@ -157,8 +157,6 @@ namespace hole
         void
         _rpc_accept();
 
-
-
       /*---------.
       | Dumpable |
       `---------*/
