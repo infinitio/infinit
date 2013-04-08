@@ -51,7 +51,6 @@ namespace hole
       | Printable |
       `----------*/
     public:
-      // XXX[to remove?]
       void
       dump() const;
       virtual
