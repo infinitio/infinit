@@ -337,31 +337,18 @@ namespace surface
         throw Exception{gap_error, "You are neither recipient nor the sender."};
       }
 
-      if (user_id == transaction.recipient_id)
-      {
-        auto const& status_list = _recipient_status_update.find(
-          (gap_TransactionStatus) transaction.status);
+      auto list = (user_id == transaction.recipient_id) ? _recipient_status_update
+                                                        : _sender_status_update;
 
-        if (status_list == _recipient_status_update.end() ||
-            status_list->second.find((gap_TransactionStatus) status) == status_list->second.end())
-        {
-          ELLE_WARN("You are not allowed to change status from %s to %s",
-                    transaction.status, status);
-          return false;
-        }
-      }
-      else if (user_id == transaction.sender_id)
-      {
-         auto const& status_list = _sender_status_update.find(
-           (gap_TransactionStatus) transaction.status);
+      auto const& status_list = list.find(
+        (gap_TransactionStatus) transaction.status);
 
-        if (status_list == _sender_status_update.end() ||
-            status_list->second.find((gap_TransactionStatus)status) == status_list->second.end())
-        {
-          ELLE_WARN("You are not allowed to change status from %s to %s",
-                    transaction.status, status);
+      if (status_list == list.end() ||
+          status_list->second.find((gap_TransactionStatus) status) == status_list->second.end())
+      {
+        ELLE_WARN("You are not allowed to change status from %s to %s",
+                  transaction.status, status);
           return false;
-        }
       }
 
       return true;
@@ -384,7 +371,11 @@ namespace surface
       Transaction const& transaction = pair->second;
 
       if (!_check_action_is_available(this->_me._id, transaction, status))
-        return;
+        throw Exception(gap_api_error,
+                        elle::sprintf("you are allowed to change transaction " \
+                                      " status from %s to %s",
+                                      transaction.status, status));
+
 
       switch (status)
       {
@@ -404,8 +395,10 @@ namespace surface
           this->_close_transaction(transaction);
           break;
         default:
-          ELLE_WARN("You are not able to change transaction status to '%s'.",
-                    status);
+          ELLE_WARN("Status %s doesn't exist", status);
+          throw Exception(gap_api_error,
+                          elle::sprintf("unknow status %s", status));
+
           return;
       }
 
@@ -451,8 +444,6 @@ namespace surface
       if (transaction.sender_device_id != this->device_id())
         return;
 
-      ELLE_DEBUG("update transaction");
-
       // When recipient has rights, allow him to start download.
       this->update_transaction(transaction.transaction_id,
                                gap_transaction_status_prepared);
@@ -464,7 +455,7 @@ namespace surface
     void
     State::_prepare_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("prepare transaction '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction.transaction_id);
 
       if (transaction.sender_device_id != this->device_id())
       {
@@ -475,26 +466,28 @@ namespace surface
                             {{MKey::status, "attempt"},
                              {MKey::value, transaction.transaction_id}});
 
-      if (this->_wait_portal(transaction.network_id) == false)
-        throw Exception{gap_network_error, "Cannot wait portal"};
-
-      ELLE_DEBUG("giving '%s' access to the network '%s'",
-                transaction.recipient_id,
-                transaction.network_id);
-
-      this->_networks_dirty = true;
-      this->network_add_user(transaction.network_id,
-                             transaction.recipient_id);
-
-      ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
-                transaction.recipient_id,
-                transaction.network_id);
-
-      this->set_permissions(transaction.recipient_id,
-                            transaction.network_id,
-                            nucleus::neutron::permissions::write);
       try
       {
+        if (this->_wait_portal(transaction.network_id) == false)
+          throw Exception{gap_network_error, "Cannot wait portal"};
+
+        ELLE_DEBUG("giving '%s' access to the network '%s'",
+                   transaction.recipient_id,
+                   transaction.network_id);
+
+        this->_networks_dirty = true;
+        this->network_add_user(transaction.network_id,
+                               transaction.recipient_id);
+
+        ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
+                 transaction.recipient_id,
+                   transaction.network_id);
+
+        this->set_permissions(transaction.recipient_id,
+                              transaction.network_id,
+                              nucleus::neutron::permissions::write);
+
+
         this->_meta->update_transaction(transaction.transaction_id,
                                         plasma::TransactionStatus::prepared);
       }
@@ -513,19 +506,19 @@ namespace surface
       if (transaction.recipient_device_id != this->device_id())
       {
         ELLE_DEBUG("transaction doesn't concern your device.");
-        // grace à hanthhhony
         return;
       }
 
       this->_networks_dirty = true;
       this->prepare_network(transaction.network_id);
+
       this->_meta->network_add_device(
-          transaction.network_id,
-          this->device_id()
-      );
-      // Ensure creation.
+        transaction.network_id, this->device_id());
+
+      this->infinit_instance_manager().launch_network(transaction.network_id);
+
       if (this->_wait_portal(transaction.network_id) == false)
-        throw Exception(gap_network_error, "Cannot launch the network");
+        throw Exception{gap_network_error, "Cannot wait portal"};
 
       this->update_transaction(transaction.transaction_id,
                                gap_transaction_status_started);
@@ -555,6 +548,7 @@ namespace surface
       this->_reporter.store("transaction_start",
                             {{MKey::status, "succeed"},
                              {MKey::value, transaction.transaction_id}});
+
     }
 
     void
@@ -693,6 +687,7 @@ namespace surface
 
       // XXX: If some operation are launched, such as 8transfer, 8progess for the
       // current transaction, cancel them.
+      this->infinit_instance_manager().stop_network(transaction.network_id);
 
       // Delete networks.
       this->delete_network(transaction.network_id, true);
@@ -780,17 +775,21 @@ namespace surface
     State::_on_transaction(TransactionNotification const& notif,
                            bool is_new)
     {
-      ELLE_TRACE("New transaction");
+      ELLE_TRACE_FUNCTION(notif.transaction.transaction_id, is_new);
 
-      if (!is_new) // XXX Why ?
-        return;
+      // If it's not new, we already has it on our transactions.
+      if (!is_new) return;
 
       auto it = this->transactions().find(notif.transaction.transaction_id);
 
       if (it != this->transactions().end())
       {
+        // The evaluation of transaction is lazy, which means that if your first
+        // operation about transactions is create one, at the first evaluation,
+        // the new transaction will already be in the transactions map, causing
+        // the following warning to appear. Don't care.
         ELLE_WARN("you already have this transaction");
-        return; // XXX really ?
+        return;
       }
 
       // Normal case, this is a new transaction, store it to match server.
@@ -800,7 +799,7 @@ namespace surface
     void
     State::_on_transaction_status(TransactionStatusNotification const& notif)
     {
-      ELLE_TRACE("_on_notification: gap_TransactionStatusNotification");
+      ELLE_TRACE_FUNCTION(notif.status);
 
       auto const pair = State::transactions().find(notif.transaction_id);
 
@@ -809,10 +808,17 @@ namespace surface
         // Something went wrong.
         auto transaction = this->_meta->transaction(notif.transaction_id);
 
+        if (transaction.status == gap_transaction_status_canceled)
+        {
+          ELLE_WARN("we merged a canceled transaction, nothing to do with that.",
+                    transaction.status);
+          return;
+        }
+
         (*this->_transactions)[notif.transaction_id] = transaction;
       }
 
-      (*this->_transactions)[notif.transaction_id].status = notif.status;
+      this->_transactions->at(notif.transaction_id).status = notif.status;
 
       auto const& transaction = this->transaction(notif.transaction_id);
 
@@ -820,6 +826,7 @@ namespace surface
       {
         case plasma::TransactionStatus::accepted:
           // We update the transaction from meta.
+          // XXX: we should have it from transaction_notification.
           (*_transactions)[notif.transaction_id] = this->_meta->transaction(
               notif.transaction_id
           );
