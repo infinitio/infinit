@@ -77,31 +77,68 @@ namespace etoile
       {
         auto pod = pair.second;
 
+        ELLE_ASSERT_EQ(pod->actors(), 0);
+        ELLE_ASSERT_NEQ(pod->egg(), nullptr);
+
         // Act depending on the pod's attachment.
         switch (pod->attachment())
         {
           case Pod::Attachment::attached:
           {
-            // Note that only consistent blocks need to be published onto
-            // the storage layer.
-            switch (pod->egg()->block()->state())
+            // Depending on the pod's state.
+            switch (pod->state())
             {
-              case nucleus::proton::State::clean:
-                break;
-              case nucleus::proton::State::dirty:
-                throw Exception("dirty blocks should have been "
-                                "sealed");
-              case nucleus::proton::State::consistent:
+              case Pod::State::dangling:
+              case Pod::State::use:
+                throw Exception(
+                  elle::sprintf("unable to transcribe a pod in state '%s'",
+                                pod->state()));
+              case Pod::State::queue:
               {
-                if (pod->egg()->block() == nullptr)
-                  continue;
+                ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
+                ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
+                ELLE_ASSERT(pod->mutex().locked() == false);
+                ELLE_ASSERT(pod->mutex().write().locked() == false);
+                ELLE_ASSERT_EQ(pod->footprint(),
+                               pod->egg()->block()->footprint());
 
-                // Add the block's footprint to the total.
-                size += pod->egg()->block()->footprint();
+                // Note that only consistent blocks need to be published onto
+                // the storage layer.
+                switch (pod->egg()->block()->state())
+                {
+                  case nucleus::proton::State::clean:
+                    break;
+                  case nucleus::proton::State::dirty:
+                    throw Exception("dirty blocks should have been "
+                                    "sealed");
+                  case nucleus::proton::State::consistent:
+                  {
+                    // Add the block's footprint to the total.
+                    size += pod->egg()->block()->footprint();
+
+                    break;
+                  }
+                  default:
+                    throw Exception(
+                      elle::sprintf("unknown block state '%s'",
+                                    pod->egg()->block()->state()));
+                }
 
                 break;
               }
+              case Pod::State::shell:
+              {
+                ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
+                ELLE_ASSERT_EQ(pod->position(), this->_history.end());
+                ELLE_ASSERT(pod->mutex().locked() == false);
+                ELLE_ASSERT(pod->mutex().write().locked() == false);
+
+                // Ignore such pods because they do not embed a block.
+                continue;
+              }
             }
+
+            break;
           }
           case Pod::Attachment::detached:
           {
@@ -119,19 +156,27 @@ namespace etoile
       {
         auto pod = pair.second;
 
-        // We could lock every pod when treated but we prefer to say that
-        // one should call transcribe() when all the operations on the nest
-        // are over.
         ELLE_ASSERT_EQ(pod->actors(), 0);
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
-        ELLE_ASSERT(pod->mutex().locked() == false);
-        ELLE_ASSERT(pod->mutex().write().locked() == false);
 
-        // Act depending on the pod's attachment.
-        switch (pod->attachment())
+        // Depending on the pod's state.
+        switch (pod->state())
         {
-          case Pod::Attachment::attached:
+          case Pod::State::dangling:
+          case Pod::State::use:
+            throw Exception(
+              elle::sprintf("unable to transcribe a pod in state '%s'",
+                            pod->state()));
+          case Pod::State::queue:
           {
+            ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
+            ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
+            ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
+            ELLE_ASSERT(pod->mutex().locked() == false);
+            ELLE_ASSERT(pod->mutex().write().locked() == false);
+            ELLE_ASSERT_EQ(pod->footprint(),
+                           pod->egg()->block()->footprint());
+
             // Note that only consistent blocks need to be published onto
             // the storage layer.
             switch (pod->egg()->block()->state())
@@ -145,7 +190,6 @@ namespace etoile
                 // The address of the block has been recomputed during
                 // the sealing process so that the egg embeds the new
                 // address.
-
                 // However, the previous temporary versions of the block
                 // must first be removed from the storage layer. Indeed,
                 // should the nest have decided to pre-publish the block
@@ -155,15 +199,8 @@ namespace etoile
                   transcript.record(
                     new gear::action::Wipe(clef->address()));
 
-                // Although the block is attached to the nest, the
-                // unloaded blocks must be ignored.
-                if (pod->egg()->block() == nullptr)
-                  break;
-
                 ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                                pod->egg()->address());
-
-                // XXX lock since we move the block
 
                 // Finally, push the final version of the block.
                 transcript.record(
@@ -180,41 +217,47 @@ namespace etoile
 
             break;
           }
-          case Pod::Attachment::detached:
+          case Pod::State::shell:
           {
             ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
+            ELLE_ASSERT_EQ(pod->position(), this->_history.end());
+            ELLE_ASSERT(pod->mutex().locked() == false);
+            ELLE_ASSERT(pod->mutex().write().locked() == false);
 
-            // Take a decision based on the type of block i.e
-            // transient or permanent.
-            //
-            // Note that detached transient blocks should never lie in
-            // the nest since they could be deleted without impacting the
-            // consistency as nothing references them anymore.
-            switch (pod->egg()->type())
+            // Act depending on the pod's attachment.
+            switch (pod->attachment())
             {
-              case nucleus::proton::Egg::Type::transient:
-                throw Exception("the pod referencing this transient "
-                                "detached block should have been "
-                                "deleted");
-              case nucleus::proton::Egg::Type::permanent:
+              case Pod::Attachment::attached:
               {
+                // Ignore shell pods which are still attached since they do
+                // not embed their respective block.
+                //
+                // The system therefore assumes the block has been
+                // pre-published.
+                continue;
+              }
+              case Pod::Attachment::detached:
+              {
+                // Note that detached transient blocks should never lie in
+                // the nest since they could be deleted without impacting the
+                // consistency as nothing references them anymore.
+                ELLE_ASSERT_EQ(pod->egg()->type(),
+                               nucleus::proton::Egg::Type::permanent);
+
                 // The block has been detached and should therefore be
                 // removed from the storage layer.
-                transcript.record(new gear::action::Wipe(
-                                    pod->egg()->address()));
+                transcript.record(
+                  new gear::action::Wipe(pod->egg()->address()));
 
                 break;
               }
               default:
-                throw Exception(elle::sprintf("unknown egg type '%s'",
-                                              pod->egg()->type()));
+                throw Exception(elle::sprintf("unknown pod attachment '%s'",
+                                              pod->attachment()));
             }
 
             break;
           }
-          default:
-            throw Exception(elle::sprintf("unknown pod attachment '%s'",
-                                          pod->attachment()));
         }
       }
 
@@ -747,6 +790,10 @@ namespace etoile
 
               // Set the pod as detached.
               pod->attachment(Pod::Attachment::detached);
+
+              // Finally, set the pod's state to shell since it no longer
+              // contain the block.
+              pod->state(Pod::State::shell);
 
               ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
 
