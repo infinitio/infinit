@@ -63,6 +63,11 @@ namespace surface
 
       ELLE_LOG("Creating a new State");
 
+
+      // Start metrics after setting up the logger.
+      _reporter.start();
+      _google_reporter.start();
+
       this->transaction_callback(
           [&] (TransactionNotification const &n, bool is_new) -> void {
             this->_on_transaction(n, is_new);

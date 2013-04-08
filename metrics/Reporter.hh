@@ -90,6 +90,10 @@ namespace elle
       Reporter(Reporter&&) = delete;
 
     public:
+      /// Start publishing.
+      void
+      start();
+
       /// Enqueue data.
       virtual
       void
