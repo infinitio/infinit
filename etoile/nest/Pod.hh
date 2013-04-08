@@ -36,6 +36,25 @@ namespace etoile
         detached
       };
 
+      /// Define the state in which lies a block, being either:
+      ///   1) Danglingd: an internal state which indicates that the pod
+      ///      is neither in use, nor in the queue though still
+      ///      embed its block.
+      ///   2) Use: being accessed or modified by one or more
+      ///      actors.
+      ///   3) Queue: being accessed by nobody, ready to be
+      ///      quickly reloaded, removed from main memory or even
+      ///      pre-published onto the storage layer.
+      ///   4) Shell: the pod has been depossessed from its block
+      ///      so as to lighten the nest.
+      enum class State
+      {
+        dangling,
+        use,
+        queue,
+        shell
+      };
+
       /*-------------.
       | Construction |
       `-------------*/
@@ -68,6 +87,7 @@ namespace etoile
       `-----------*/
     private:
       ELLE_ATTRIBUTE_RW(Attachment, attachment);
+      ELLE_ATTRIBUTE_RW(State, state);
       /// The number of actors operating on the pod.
       ELLE_ATTRIBUTE_RW(elle::Natural32, actors);
       /// The egg containing the block and its information.
@@ -92,6 +112,10 @@ namespace etoile
     std::ostream&
     operator <<(std::ostream& stream,
                 Pod::Attachment const attachment);
+
+    std::ostream&
+    operator <<(std::ostream& stream,
+                Pod::State const state);
   }
 }
 

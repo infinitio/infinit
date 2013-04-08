@@ -102,9 +102,9 @@ namespace etoile
       /// Try to optimize the nest according to internal limits and conditions.
       void
       _optimize();
-      /// Load the block from the depot and set it in the pod's egg.
+      /// Pull the block from the depot and set it in the pod's egg.
       void
-      _load(Pod* pod);
+      _pull(Pod* pod);
       /// Add the given pod at the end of the history queue for easing the
       /// pre-publication process.
       void
@@ -113,6 +113,9 @@ namespace etoile
       /// is being used.
       void
       _unqueue(Pod* pod);
+      /// Update the given pod by loading its associated block.
+      void
+      _load(Pod* pod);
 
       /*-----------.
       | Interfaces |

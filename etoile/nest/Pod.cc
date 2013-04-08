@@ -14,6 +14,7 @@ namespace etoile
     Pod::Pod(std::shared_ptr<nucleus::proton::Egg>& egg,
              std::list<Pod*>::iterator const& position):
       _attachment(Attachment::attached),
+      _state(State::dangling),
       _actors(0),
       _egg(egg),
       _position(position),
@@ -24,6 +25,7 @@ namespace etoile
     Pod::Pod(std::shared_ptr<nucleus::proton::Egg>&& egg,
              std::list<Pod*>::iterator const& position):
       _attachment(Attachment::attached),
+      _state(State::dangling),
       _actors(0),
       _egg(std::move(egg)),
       _position(position),
@@ -73,6 +75,42 @@ namespace etoile
                                           static_cast<int>(attachment)));
           }
         }
+
+      return (stream);
+    }
+
+    std::ostream&
+    operator <<(std::ostream& stream,
+                Pod::State const state)
+    {
+      switch (state)
+      {
+        case Pod::State::dangling:
+        {
+          stream << "dangling";
+          break;
+        }
+        case Pod::State::use:
+        {
+          stream << "use";
+          break;
+        }
+        case Pod::State::queue:
+        {
+          stream << "queue";
+          break;
+        }
+        case Pod::State::shell:
+        {
+          stream << "shell";
+          break;
+        }
+        default:
+        {
+          throw Exception(elle::sprintf("unknown state: '%s'",
+                                        static_cast<int>(state)));
+        }
+      }
 
       return (stream);
     }

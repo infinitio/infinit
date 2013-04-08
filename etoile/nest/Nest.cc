@@ -317,6 +317,8 @@ namespace etoile
 
         //         // XXX lock since we are going to block on pushing
 
+        // XXX pas forcement dirty: attention
+
         //         // Generate a random secret.
         //         cryptography::SecretKey secret{
         //           cryptography::cipher::Algorithm::aes256,
@@ -347,9 +349,12 @@ namespace etoile
     }
 
     void
-    Nest::_load(Pod* pod)
+    Nest::_pull(Pod* pod)
     {
       ELLE_DEBUG_METHOD(pod);
+
+      ELLE_ASSERT((pod->state() == Pod::State::dangling) ||
+                  (pod->state() == Pod::State::shell));
 
       // First, let us lock the egg so that someone does not try to
       // use/change it while we are loading it.
@@ -362,7 +367,12 @@ namespace etoile
       // by someone retrieving the block so that when we wake up, the block
       // is already here.
       if (pod->egg()->block() != nullptr)
+      {
+        ELLE_ASSERT((pod->state() == Pod::State::use) ||
+                    (pod->state() == Pod::State::queue));
+
         return;
+      }
 
       ELLE_ASSERT_EQ(pod->egg()->type(), nucleus::proton::Egg::Type::permanent);
 
@@ -375,11 +385,14 @@ namespace etoile
       // Decrypt the contents with the egg's secret.
       contents->decrypt(pod->egg()->secret());
 
-      // Sett the block in the egg.
+      // Set the block in the egg.
       pod->egg()->block() = std::move(contents);
 
       // XXX[set the nest in the node]
       pod->egg()->block()->node().nest(*this);
+
+      // Update the pod's state.
+      pod->state(Pod::State::dangling);
     }
 
     void
@@ -392,8 +405,12 @@ namespace etoile
       // Insert the pod in the history, at the back.
       auto iterator = this->_history.insert(this->_history.end(), pod);
 
+      // Update the pod's state.
+      pod->state(Pod::State::queue);
+
       // Update the pod's position for fast removal.
       pod->position(iterator);
+
       ELLE_ASSERT(pod->position() != this->_history.end());
     }
 
@@ -402,6 +419,8 @@ namespace etoile
     {
       ELLE_DEBUG_METHOD(pod);
 
+      ELLE_ASSERT_EQ(pod->state(), Pod::State::queue);
+      ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
       ELLE_ASSERT_EQ(pod, *pod->position());
 
       // Remove the pod from the history.
@@ -409,6 +428,85 @@ namespace etoile
 
       // Reset the pod's position.
       pod->position(this->_history.end());
+    }
+
+    void
+    Nest::_load(Pod* pod)
+    {
+      ELLE_DEBUG_METHOD(pod);
+
+      ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
+      ELLE_ASSERT_NEQ(pod->egg(), nullptr);
+
+      // Now depending on the pod's state.
+      switch (pod->state())
+      {
+        case Pod::State::use:
+        {
+          ELLE_ASSERT_NEQ(pod->actors(), 0);
+          ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
+          ELLE_ASSERT_EQ(pod->position(), this->_history.end());
+          ELLE_ASSERT(pod->mutex().locked() == true);
+          ELLE_ASSERT(pod->mutex().write().locked() == false);
+
+          // Note that the pod's footprint is not necessarily the same as
+          // the block since someone is manipulating it right now.
+
+          break;
+        }
+        case Pod::State::queue:
+        {
+          ELLE_ASSERT_EQ(pod->actors(), 0);
+          ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
+          ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
+          ELLE_ASSERT(pod->mutex().locked() == false);
+          ELLE_ASSERT(pod->mutex().write().locked() == false);
+          ELLE_ASSERT_EQ(pod->footprint(),
+                         pod->egg()->block()->footprint());
+
+          // Remove the pod from the queue since it is going to be
+          // used by at least one actor.
+          this->_unqueue(pod);
+
+          ELLE_ASSERT_EQ(pod->footprint(), pod->egg()->block()->footprint());
+
+          break;
+        }
+        case Pod::State::shell:
+        {
+          ELLE_ASSERT_EQ(pod->actors(), 0);
+          ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
+          ELLE_ASSERT_EQ(pod->position(), this->_history.end());
+          ELLE_ASSERT(pod->mutex().locked() == false);
+
+          // Make sure the block is loaded.
+          //
+          // Note that the pod may locked in writing because someone else
+          // is trying to load it as well.
+          this->_pull(pod);
+
+          // Update the pod's footprint.
+          pod->footprint(pod->egg()->block()->footprint());
+
+          ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
+
+          break;
+        }
+        default:
+          throw Exception(
+            elle::sprintf("unsupported or unknown pod state '%s'",
+                          pod->state()));
+      }
+
+      // Increase the number of actors on the pod.
+      pod->actors(pod->actors() + 1);
+
+      // Update the pod's state.
+      pod->state(Pod::State::use);
+
+      // Lock the pod so as to make sure nobody else unloads it
+      // on the storage layer while being used.
+      reactor::Scheduler::scheduler()->current()->wait(pod->mutex());
     }
 
     /*---------.
@@ -479,15 +577,23 @@ namespace etoile
       std::shared_ptr<nucleus::proton::Egg> egg{
         new nucleus::proton::Egg{block, some, secret}};
 
+      ELLE_ASSERT_NEQ(egg->block(), nullptr);
+
       ELLE_FINALLY_ABORT(block);
 
       // Allocate a pod for holding the egg.
       Pod* pod = new Pod{std::move(egg), this->_history.end()};
 
+      ELLE_FINALLY_ACTION_DELETE(pod);
+
+      ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
+      ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
+      ELLE_ASSERT_EQ(pod->actors(), 0);
       ELLE_ASSERT_NEQ(pod->egg(), nullptr);
       ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
-
-      ELLE_FINALLY_ACTION_DELETE(pod);
+      ELLE_ASSERT_EQ(pod->position(), this->_history.end());
+      ELLE_ASSERT(pod->mutex().locked() == false);
+      ELLE_ASSERT(pod->mutex().write().locked() == false);
 
       // Insert the pod.
       this->_insert(pod);
@@ -503,14 +609,15 @@ namespace etoile
       // XXX[set the nest in the node]
       pod->egg()->block()->node().nest(*this);
 
-      ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
-      ELLE_ASSERT_EQ(pod->actors(), 0);
-
       // Take the block's footprint into account.
       this->_size += pod->egg()->block()->footprint();
 
       // Queue the pod, since not yet loaded.
       this->_queue(pod);
+
+      ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
+      ELLE_ASSERT_EQ(pod->state(), Pod::State::queue);
+      ELLE_ASSERT_EQ(pod->actors(), 0);
 
       // Try to optimize the nest.
       this->_optimize();
@@ -538,18 +645,21 @@ namespace etoile
           // Create a new pod.
           Pod* pod = new Pod{handle.egg(), this->_history.end()};
 
-          ELLE_ASSERT_NEQ(pod->egg(), nullptr);
-          ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
+          ELLE_FINALLY_ACTION_DELETE(pod);
 
           ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
+          ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
           ELLE_ASSERT_EQ(pod->actors(), 0);
+          ELLE_ASSERT_NEQ(pod->egg(), nullptr);
+          ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
+          ELLE_ASSERT_EQ(pod->position(), this->_history.end());
           ELLE_ASSERT(pod->mutex().locked() == false);
           ELLE_ASSERT(pod->mutex().write().locked() == false);
 
-          ELLE_FINALLY_ACTION_DELETE(pod);
-
           // Insert the pod in the nest.
           this->_insert(pod);
+
+          ELLE_FINALLY_ABORT(pod);
 
           // No need to map the pod since it is no longer
           // referenced i.e detached.
@@ -558,12 +668,11 @@ namespace etoile
           // Therefore there is no need to increase or decrease the
           // nest's size.
           ELLE_ASSERT_EQ(pod->footprint(), 0);
-          ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
 
-          ELLE_FINALLY_ABORT(pod);
-
-          // Finally, mark the pod as detached.
+          // Finally, mark the pod as detached and set the state to shell
+          // since the pod contains nothing i.e no block.
           pod->attachment(Pod::Attachment::detached);
+          pod->state(Pod::State::shell);
 
           break;
         }
@@ -572,13 +681,12 @@ namespace etoile
           // Retrieve the pod associated with this handle's egg.
           Pod* pod = this->_lookup(handle.egg());
 
-          ELLE_ASSERT_NEQ(pod->egg(), nullptr);
-
           ELLE_ASSERT_EQ(handle.address(), pod->egg()->address());
           ELLE_ASSERT_EQ(handle.secret(), pod->egg()->secret());
 
           ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
           ELLE_ASSERT_EQ(pod->actors(), 0);
+          ELLE_ASSERT_NEQ(pod->egg(), nullptr);
 
           // Note that since detaching a block is a modifying operation,
           // nobody should be concurrently accessing the nest. It is therefore
@@ -587,21 +695,46 @@ namespace etoile
           ELLE_ASSERT(pod->mutex().locked() == false);
           ELLE_ASSERT(pod->mutex().write().locked() == false);
 
-          // If the block is loaded.
-          if (pod->egg()->block() != nullptr)
+          // Depending on the pod's state.
+          switch (pod->state())
           {
-            // Since the block is about to get completely wiped off,
-            // decrease the nest's size.
-            ELLE_ASSERT_EQ(pod->footprint(),
-                           pod->egg()->block()->footprint());
-            ELLE_ASSERT_GTE(this->_size,
-                            pod->egg()->block()->footprint());
-            this->_size -= pod->egg()->block()->footprint();
-          }
+            case Pod::State::queue:
+            {
+              // In this case, the block is present since lying in the queue.
+              ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
+              ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
 
-          // Unqueue the pod since we are about to detach it.
-          this->_unqueue(pod);
-          ELLE_ASSERT(pod->position() == this->_history.end());
+              // Since the block is about to get completely wiped off,
+              // decrease the nest's size.
+              ELLE_ASSERT_EQ(pod->footprint(),
+                             pod->egg()->block()->footprint());
+              ELLE_ASSERT_GTE(this->_size,
+                              pod->egg()->block()->footprint());
+              this->_size -= pod->egg()->block()->footprint();
+
+              // Unqueue the pod since we are about to detach it, if necessary.
+              this->_unqueue(pod);
+
+              ELLE_ASSERT(pod->position() == this->_history.end());
+
+              break;
+            }
+            case Pod::State::shell:
+            {
+              // In this case however, the block is not present and the pod
+              // simply represent an empty shell.
+              //
+              // There is therefore nothing to do in this case.
+              ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
+              ELLE_ASSERT_EQ(pod->position(), this->_history.end());
+
+              break;
+            }
+            default:
+              throw Exception(
+                elle::sprintf("unsupported or unknown pod state '%s'",
+                              pod->state()));
+          }
 
           // Finally, should be block be transient, the whole pod referencing
           // it could be deleted since no longer referenced anywhere.
@@ -668,45 +801,15 @@ namespace etoile
             // Retrieve the existing pod.
             Pod* pod = this->_lookup(handle.address());
 
-            ELLE_ASSERT_NEQ(pod->egg(), nullptr);
-
             ELLE_ASSERT_EQ(handle.address(), pod->egg()->address());
             ELLE_ASSERT_EQ(handle.secret(), pod->egg()->secret());
-
-            ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
 
             // And make the handle track the block's existing egg.
             handle.place(pod->egg());
 
-            // If the block is not loaded...
-            if (pod->egg()->block() == nullptr)
-            {
-              // Make sure the block is loaded.
-              this->_load(pod);
-
-              // Update the pod's footprint.
-              pod->footprint(pod->egg()->block()->footprint());
-            }
-
-            ELLE_ASSERT_NEQ(pod->egg(), nullptr);
-
-            ELLE_ASSERT_EQ(pod->footprint(),
-                           pod->egg()->block()->footprint());
-
-            // Make sure the pod no longer resides in the queue since
-            // is is being used by at least one actor.
-            //
-            // In other words, remove it from the queue if nobody was
-            // using it before.
-            if (pod->actors() == 0)
-              this->_unqueue(pod);
-
-            // Increase the number of actors on the pod.
-            pod->actors(pod->actors() + 1);
-
-            // Lock the pod so as to make sure nobody else unloads it
-            // on the storage layer while being used.
-            reactor::Scheduler::scheduler()->current()->wait(pod->mutex());
+            // Actually load the handle since we know it references an
+            // existing pod.
+            this->_load(pod);
           }
           else
           {
@@ -721,12 +824,16 @@ namespace etoile
             // Create a new pod.
             Pod* pod = new Pod{handle.egg(), this->_history.end()};
 
-            ELLE_ASSERT_NEQ(pod->egg(), nullptr);
+            ELLE_FINALLY_ACTION_DELETE(pod);
 
             ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
+            ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
             ELLE_ASSERT_EQ(pod->actors(), 0);
-
-            ELLE_FINALLY_ACTION_DELETE(pod);
+            ELLE_ASSERT_NEQ(pod->egg(), nullptr);
+            ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
+            ELLE_ASSERT_EQ(pod->position(), this->_history.end());
+            ELLE_ASSERT(pod->mutex().locked() == false);
+            ELLE_ASSERT(pod->mutex().write().locked() == false);
 
             // Insert the pod in the nest.
             this->_insert(pod);
@@ -737,11 +844,8 @@ namespace etoile
 
             ELLE_FINALLY_ABORT(pod);
 
-            // Actually load the block from the storage layer.
-            ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
-            this->_load(pod);
-
-            ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
+            // Actually pull the block from the storage layer.
+            this->_pull(pod);
 
             // Set the pod's footprint.
             pod->footprint(pod->egg()->block()->footprint());
@@ -752,6 +856,9 @@ namespace etoile
             // Increase the number of actors on the pod.
             pod->actors(pod->actors() + 1);
             ELLE_ASSERT_EQ(pod->actors(), 1);
+
+            // Update the pod's state.
+            pod->state(Pod::State::use);
 
             // Take the block's footprint into account.
             this->_size += pod->egg()->block()->footprint();
@@ -768,39 +875,12 @@ namespace etoile
           // Retrieve the existing pod.
           Pod* pod = this->_lookup(handle.egg());
 
-          ELLE_ASSERT_NEQ(pod->egg(), nullptr);
-
           ELLE_ASSERT_EQ(handle.address(), pod->egg()->address());
           ELLE_ASSERT_EQ(handle.secret(), pod->egg()->secret());
 
-          ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
-
-          // Assuming the block is not currently loaded...
-          if (pod->egg()->block() == nullptr)
-          {
-            // Even though the handle is nested, i.e an egg lies in the nest,
-            // one must make sure the block is actually loaded.
-            this->_load(pod);
-
-            // Set the pod's footprint.
-            pod->footprint(pod->egg()->block()->footprint());
-          }
-
-          ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
-
-          ELLE_ASSERT_EQ(pod->footprint(),
-                         pod->egg()->block()->footprint());
-
-          // Unqueue the pod, if necessary.
-          if (pod->actors() == 0)
-            this->_unqueue(pod);
-
-          // Increase the number of actors on the pod.
-          pod->actors(pod->actors() + 1);
-
-          // Lock the pod so as to make sure nobody else unloads it
-          // on the storage layer while being used.
-          reactor::Scheduler::scheduler()->current()->wait(pod->mutex());
+          // Actually load the handle since we know it references an
+          // existing pod.
+          this->_load(pod);
 
           break;
         }
@@ -810,6 +890,7 @@ namespace etoile
       }
 
       ELLE_ASSERT_EQ(handle.state(), nucleus::proton::Handle::State::nested);
+      ELLE_ASSERT_NEQ(handle.egg(), nullptr);
       ELLE_ASSERT_NEQ(handle.egg()->block(), nullptr);
     }
 
@@ -830,20 +911,18 @@ namespace etoile
         {
           Pod* pod = this->_lookup(handle.egg());
 
+          ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
+          ELLE_ASSERT_EQ(pod->state(), Pod::State::use);
+          ELLE_ASSERT_GT(pod->actors(), 0);
           ELLE_ASSERT_NEQ(pod->egg(), nullptr);
           ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
-
-          ELLE_ASSERT_EQ(handle.address(), pod->egg()->address());
-          ELLE_ASSERT_EQ(handle.secret(), pod->egg()->secret());
-
-          ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
+          ELLE_ASSERT_EQ(pod->position(), this->_history.end());
+          ELLE_ASSERT(pod->mutex().locked() == true);
 
           // Release the pod's lock.
-          ELLE_ASSERT(pod->mutex().locked() == true);
           pod->mutex().release();
 
           // Decrease the number of actors on the pod.
-          ELLE_ASSERT_GT(pod->actors(), 0);
           pod->actors(pod->actors() - 1);
 
           // Queue the pod if no longer used.
@@ -851,7 +930,7 @@ namespace etoile
             this->_queue(pod);
 
           // Adjust the nest's size depending on the evolution of the block's
-          // footprint since the block may have grown and shrunk during its
+          // footprint since the block may have grown or shrunk during its
           // manipulation.
           ELLE_DEBUG("about to update the pod's footprint '%s' according to "
                      "the block's '%s'",
@@ -876,6 +955,9 @@ namespace etoile
 
           // Update the pod's footprint.
           pod->footprint(pod->egg()->block()->footprint());
+
+          ELLE_ASSERT((pod->state() == Pod::State::use) ||
+                      (pod->state() == Pod::State::queue));
 
           // Try to optimize the nest.
           this->_optimize();
