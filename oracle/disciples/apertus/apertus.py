@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from twisted.internet.protocol import DatagramProtocol, Factory
 from twisted.protocols.basic import LineReceiver
-from twisted.internet import task
+from twisted.internet import task, reactor
 from twisted.python import log
 from pprint import pprint
 
@@ -30,142 +30,46 @@ class Endpoint(object):
     def addr(self):
         return (self.ip, int(self.port))
 
-class Link(object):
-    def __init__(self, source, sink):
-        self.source = source
-        self.sink = sink
-        self.active = False
-        self.total_packet = 0
-        self.stream_size = 0
-        self.packet_diff =  -1
-
-    def __str__(self):
-        return "<Link({}, {}) up={}>".format(self.source, self.sink, self.active)
-
-    def __repr__(self):
-        return "<Link({}, {}) up={}>".format(self.source, self.sink, self.active)
-
-    def __cmp__(self, other):
-        return (self.source, self.sink, self.active) == (other.source, other.sink, self.active)
-
-    def is_opposite(self, other):
-        return (self.source, self.sink) == (other.sink, other.source)
-
 class Apertus(DatagramProtocol):
 
     def __str__(self):
-        attrs = []
-        if getattr(self, "local_endpoint", None):
-            attrs.append("local={}".format(self.local_endpoint))
-        if getattr(self, "public_endpoint", None):
-            attrs.append("public={}".format(self.public_endpoint))
-        if attrs:
-            repr = "<" + self.__class__.__name__ + " " + ", ".join(attrs) + ">"
+        if self.transport != None:
+            repr = "<Apertus(host={}, id={})>".format(self.get_endpoint(), self.id)
         else:
-            repr = "<" + self.__class__.__name__ + ">"
+            repr = "<Apertus(host=None, id={})>".format(self.id)
         return repr
 
     def __repr__(self):
         return self.__str__()
 
-    def __init__(self):
+    def __init__(self, iface, id):
+        self.id = id
         self.links = []
-        self.task = task.LoopingCall(self.test_timeout)
-        self.task.start(5 * 60) # check every five minutes
+        #self.task = task.LoopingCall(self.test_timeout)
+        #self.task.start(5 * 60) # check every five seconds
+        reactor.listenUDP(0, self, interface=iface)
 
-    def test_timeout(self):
-        print(self.test_timeout)
-        for link in self.links:
-            last_total = 0
-            if getattr(link, "_last_total", None):
-                last_total = link._last_total
-            link.packet_diff = link.total_packet - last_total
-            print("total({}) - last_total({}) = {}".format(
-                link.total_packet,
-                last_total,
-                link.packet_diff))
-            if link.packet_diff == 0:
-                self.del_link(link)
-            link._last_total = link.total_packet
-
-    def datagramReceived(self, data, (host, port)):
-        id = Endpoint(host, port)
-        print("->", id)
-        print(self.links)
-        try:
-            if id.ip not in (l.source.ip for l in self.links):
-                raise KeyError("Not found")
-            for p in (l for l in self.links if l.source.port == 0 and l.source.ip == id.ip):
-                # if the current is not set and if the sink is not me
-                p.source.port = port
-                p.active = True
-        except Exception as e:
-            print(e)
-            print(self.links)
-            return
-
-        try:
-            sender_link = next(l for l in self.links if l.source.ip == id.ip)
-        except StopIteration:
-            print("sender({}) link not found:".format(id), self.links)
-
-        sources = frozenset(l for l in self.links if l.source == sender_link.source and l.active)
-        sinks = frozenset(l for l in self.links if l.sink == sender_link.source and l.active)
-        peers = []
-        print(sources)
-        print(sinks)
-        for source in sources:
-            for sink in sinks:
-                if source.is_opposite(sink) and \
-                   source.active and sink.active:
-                    peers.append(source)
-        print(peers)
-        for peer in peers:
-            print(id.addr, "->", peer.sink.addr)
-            peer.stream_size += len(data)
-            peer.total_packet += 1
-            self.transport.write(data, peer.sink.addr)
-        print(self.links)
-
-    def add_link(self, endpoints):
-        """
-        endpoints is a list of lists of endpoints
-
-        and we connect each one of the list to all the other from the other
-        list
-        """
-        rhs_, lhs_ = endpoints
-        rhs = [Endpoint(f["ip"]) for f in rhs_]
-        lhs = [Endpoint(f["ip"]) for f in lhs_]
-
-        for k, v in it.product(rhs, lhs):
-            # Make a 1 to 1 link k -> v, v -> k
-            self.links.append(Link(k, v))
-            self.links.append(Link(v, k))
-
-
-    def del_link(self, endpoints):
-        """
-        endpoints is a list of lists of endpoints
-
-        we have to find each relation a<->b into the map
-        """
-        rhs_, lhs_ = endpoints
-        rhs = [Endpoint(f["ip"], int(f["port"])) for f in rhs_]
-        lhs = [Endpoint(f["ip"], int(f["port"])) for f in lhs_]
-        for k, v in it.product(rhs, lhs):
-            # Remove the 1 to 1 link
-            print(k)
-            print(v)
-            try:
-                self.links.remove(next(l for l in self.links if l.source.ip == k.ip))
-                self.links.remove(next(l for l in self.links if l.source.ip == v.ip))
-            except:
-                pass
+    def port(self):
+        host = self.transport.getHost()
+        return host.port
 
     def get_endpoint(self):
         host = self.transport.getHost()
         return "{}:{}".format(host.host, host.port)
+
+    def datagramReceived(self, data, (host, port)):
+        id = Endpoint(host, port)
+        #print(self, "->", id)
+        if id not in self.links:
+            self.links.append(id)
+
+        for peer in (l for l in self.links if l.addr != id.addr):
+            #print(self, id.addr, "->", peer.addr)
+            self.transport.write(data, peer.addr)
+
+    def die(self):
+        print("SHUTDOWN", self)
+        self.transport.stopListening()
 
     def debug():
         pprint(self.links)
@@ -177,8 +81,9 @@ class ApertusMaster(LineReceiver):
 
     delimiter = "\n"
 
-    def __init__(self, slave):
-        self.slave = slave
+    def __init__(self, addr, factory):
+        self.addr = addr
+        self.factory = factory
 
     def connectionMade(self):
         pass
@@ -186,21 +91,29 @@ class ApertusMaster(LineReceiver):
     def handle_add_link(self, data):
         """handle_add_link add a link between two peers"""
         endpoints = data["endpoints"]
-        print("add_link", endpoints)
-        self.slave.add_link(endpoints)
-        pprint(self.slave.links)
+        id = data["_id"]
+        print("add_link", endpoints, id)
+        new_apertus = Apertus(self.addr, id)
+        self.factory.slaves.append(new_apertus)
+        print("create new link at", new_apertus.get_endpoint())
+        msg = {"endpoint" : new_apertus.get_endpoint(), "_id" : id}
+        self.sendLine(json.dumps(msg))
 
     def handle_del_link(self, data):
         """handle_del_link del a link between two peers"""
         endpoints = data["endpoints"]
-        print("del_link", endpoints)
-        self.slave.del_link(endpoints)
-        pprint(self.slave.links)
-
-    def handle_get_endpoint(self, data):
-        s = {"endpoints" : self.slave.get_endpoint()}
-        msg = json.dumps(s)
-        self.sendLine(msg)
+        id = data["_id"]
+        print("del_link", endpoints, id)
+        print("slaves are:", self.factory.slaves)
+        for slave in self.factory.slaves:
+            print("slave is", slave)
+            print("slave id is:", slave.id)
+            print("id is:", id)
+            if slave.id == id:
+                print("KILL", slave)
+                slave.die()
+                self.factory.slaves.remove(slave)
+        pprint(self.factory.slaves)
 
     def lineReceived(self, line):
         print(line)
@@ -215,5 +128,9 @@ class ApertusMaster(LineReceiver):
 
 class Factory(Factory):
 
+    def __init__(self, addr):
+        self.ap_addr = addr
+        self.slaves = []
+
     def buildProtocol(self, addr):
-        return ApertusMaster(self.slave)
+        return ApertusMaster(self.ap_addr, self)

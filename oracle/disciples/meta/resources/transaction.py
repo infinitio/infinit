@@ -437,14 +437,15 @@ class Start(Page):
         send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
         recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
 
-        self.apertus.add_link(send_endpoints["externals"],
-                              recv_endpoints["externals"])
+        ap_endpoint = self.apertus.add_link(str(transaction["network_id"]),
+                send_endpoints["externals"],
+                recv_endpoints["externals"])
 
         # Add the current apertus endpoint to the externals adddresses of the
         # devices.
-        ip, port = self.apertus.get_endpoint().split(":")
-        send_endpoints["externals"].append({"ip" : ip, "port" : port})
-        recv_endpoints["externals"].append({"ip" : ip, "port" : port})
+        ip, port = ap_endpoint.split(":")
+        send_endpoints["fallback"] = [{"ip" : ip, "port" : port}]
+        recv_endpoints["fallback"] = [{"ip" : ip, "port" : port}]
 
         updated_network_id = database.networks().save(network)
 
@@ -541,9 +542,10 @@ class Finish(Page):
         send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
         recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
 
-        self.apertus.del_link(send_endpoints["externals"],
-                              recv_endpoints["externals"])
-
+        self.apertus.del_link(str(transaction["network_id"]),
+                              send_endpoints["externals"],
+                              recv_endpoints["externals"]
+                              )
 
         return self.success({
             'updated_transaction_id': str(updated_transaction_id),
@@ -621,8 +623,10 @@ class Cancel(Page):
         send_endpoints = getattr(network["nodes"], str(transaction["sender_device_id"]), [])
         recv_endpoints = getattr(network["nodes"], str(transaction["recipient_device_id"]), [])
 
-        self.apertus.del_link(getattr(send_endpoints, "externals", []),
-                              getattr(recv_endpoints, "externals", []))
+        self.apertus.del_link(str(transaction["network_id"]),
+                              getattr(send_endpoints, "externals", []),
+                              getattr(recv_endpoints, "externals", []),
+                              )
 
         return self.success({
             'updated_transaction_id': str(updated_transaction_id),

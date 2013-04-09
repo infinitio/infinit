@@ -258,10 +258,10 @@ class Endpoints(_Page):
 
         res = dict();
 
-        addrs = {'locals': list(), 'externals': list()}
+        addrs = {'locals': list(), 'externals': list(), 'fallback' : list()}
         user_node = network['nodes'][device_id];
 
-        for addr_kind in ['locals', 'externals']:
+        for addr_kind in ['locals', 'externals', 'fallback']:
             if user_node[addr_kind] is None:
                 continue
             for a in user_node[addr_kind]:
@@ -273,6 +273,7 @@ class Endpoints(_Page):
 
         res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
         res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
+        res['fallback'] = ["{}:{}".format(*a) for a in addrs['fallback']]
 
         return self.success(res)
 
