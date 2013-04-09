@@ -262,7 +262,7 @@ namespace surface
 
         if (trans.files_count == 1)
         {
-          ELLE_WARN("Download complete. Your file is at '%s'.",
+          ELLE_LOG("Download complete. Your file is at '%s'.",
               elle::os::path::join(
                 this->_output_dir.c_str(), trans.first_filename
               )
@@ -270,7 +270,7 @@ namespace surface
         }
         else
         {
-          ELLE_WARN("Download complete. Your %d files are in '%s'.",
+          ELLE_LOG("Download complete. Your %d files are in '%s'.",
               trans.files_count, this->_output_dir.c_str());
         }
 
@@ -281,8 +281,8 @@ namespace surface
       }
       catch (std::exception const& err)
       {
-        ELLE_WARN("couldn't receive file %s: %s", trans.first_filename,
-                                                  err.what());
+        ELLE_ERR("couldn't receive file %s: %s", trans.first_filename,
+                                                 err.what());
         this->update_transaction(
             transaction_id,
             gap_TransactionStatus::gap_transaction_status_canceled
@@ -810,8 +810,7 @@ namespace surface
 
         if (transaction.status == gap_transaction_status_canceled)
         {
-          ELLE_WARN("we merged a canceled transaction, nothing to do with that.",
-                    transaction.status);
+          ELLE_WARN("we merged a canceled transaction, nothing to do with that.");
           return;
         }
 
