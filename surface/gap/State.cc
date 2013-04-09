@@ -196,9 +196,6 @@ namespace surface
       {
         std::vector<std::string> res;
         boost::split(res, i, boost::is_any_of(":"));
-        // XXX filter backup
-        if (res[1] == "9898")
-          continue;
         theirs_addr.push_back(res[0]);
       }
       // XXX[refactor this]
@@ -206,9 +203,6 @@ namespace surface
       {
         std::vector<std::string> res;
         boost::split(res, i, boost::is_any_of(":"));
-        // XXX filter backup
-        if (res[1] == "9898")
-          continue;
         ours_addr.push_back(res[0]);
       }
 
@@ -338,18 +332,7 @@ namespace surface
 
           my_externals = std::move(e.externals);
           my_locals = std::move(e.locals);
-        }
-        // fallback
-        {
-          // the only exact match ip:port is the fallback server.
-          std::set_intersection(begin(my_externals), end(my_externals),
-                                begin(externals), end(externals),
-                                std::back_inserter(fallback));
-          for (auto const& s: fallback)
-          {
-            externals.remove(s);
-            my_externals.remove(s);
-          }
+          fallback = std::move(e.fallback);
         }
       }
 
