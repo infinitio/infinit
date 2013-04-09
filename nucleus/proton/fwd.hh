@@ -8,7 +8,6 @@ namespace nucleus
     class Address;
     template <typename T>
     class Ambit;
-    class Annals;
     class Base;
     class Block;
     class Clef;

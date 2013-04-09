@@ -19,13 +19,13 @@ namespace nucleus
     Egg::Egg(Address const& address,
              cryptography::SecretKey const& secret):
       _type(Type::permanent),
-      _clef(new Clef{address, secret})
+      _alive(new Clef{address, secret})
     {
     }
 
     Egg::Egg(Clef const* clef):
       _type(Type::permanent),
-      _clef(clef)
+      _alive(clef)
     {
     }
 
@@ -33,7 +33,7 @@ namespace nucleus
              Address const& address,
              cryptography::SecretKey const& secret):
       _type(Type::transient),
-      _clef(new Clef{address, secret}),
+      _alive(new Clef{address, secret}),
       _block(block)
     {
     }
@@ -42,28 +42,42 @@ namespace nucleus
     | Methods |
     `--------*/
 
+    elle::Boolean
+    Egg::has_history() const
+    {
+      return (this->_historical != nullptr);
+    }
+
     Address const&
     Egg::address() const
     {
-      ELLE_ASSERT(this->_clef != nullptr);
+      ELLE_ASSERT(this->_alive != nullptr);
 
-      return (this->_clef->address());
+      return (this->_alive->address());
     }
 
     cryptography::SecretKey const&
     Egg::secret() const
     {
-      ELLE_ASSERT(this->_clef != nullptr);
+      ELLE_ASSERT(this->_alive != nullptr);
 
-      return (this->_clef->secret());
+      return (this->_alive->secret());
     }
 
     Clef const&
-    Egg::clef() const
+    Egg::alive() const
     {
-      ELLE_ASSERT(this->_clef != nullptr);
+      ELLE_ASSERT(this->_alive != nullptr);
 
-      return (*this->_clef);
+      return (*this->_alive);
+    }
+
+    Clef const&
+    Egg::historical() const
+    {
+      ELLE_ASSERT(this->_historical != nullptr);
+
+      return (*this->_historical);
     }
 
     void
@@ -83,9 +97,10 @@ namespace nucleus
           }
         case Type::permanent:
           {
-            // In this case, the egg must keep track of the block's annals
-            // by remembering the past address/secret tuples.
-            this->_annals.record(std::move(this->_clef));
+            // In this case, the egg must keep track of the block's previous
+            // address/secret tuple so as to be able to access this version,
+            // to wipe it from the storage layer for instance.
+            this->_historical = std::move(this->_alive);
 
             break;
           }
@@ -94,7 +109,7 @@ namespace nucleus
         }
 
       // Regenerate the clef with the new address and secret.
-      this->_clef.reset(new Clef{address, secret});
+      this->_alive.reset(new Clef{address, secret});
     }
 
     /*----------.
@@ -104,9 +119,9 @@ namespace nucleus
     void
     Egg::print(std::ostream& stream) const
     {
-      ELLE_ASSERT(this->_clef != nullptr);
+      ELLE_ASSERT(this->_alive != nullptr);
 
-      stream << this->_type << "(" << *this->_clef << ", "
+      stream << this->_type << "(" << *this->_alive << ", "
              << this->_block.get() << ")";
     }
 

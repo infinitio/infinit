@@ -11,7 +11,6 @@
 using namespace infinit;
 
 # include <nucleus/proton/fwd.hh>
-# include <nucleus/proton/Annals.hh>
 
 # include <boost/noncopyable.hpp>
 
@@ -75,6 +74,10 @@ namespace nucleus
       | Methods |
       `--------*/
     public:
+      /// Return true if the tracked block has history i.e a previous version
+      /// of the block exists in the storage layer.
+      elle::Boolean
+      has_history() const;
       /// Return the address associated with the tracked block.
       Address const&
       address() const;
@@ -82,9 +85,14 @@ namespace nucleus
       /// address(), the returned value may not be final i.e temporary.
       cryptography::SecretKey const&
       secret() const;
-      /// Return the clef (i.e address/secret) of the tracked block.
+      /// Return the clef (i.e address/secret) referencing the alive version of
+      /// the tracked block.
       Clef const&
-      clef() const;
+      alive() const;
+      /// Return the clef of the historical version (in the storage layer) of
+      /// the tracked block.
+      Clef const&
+      historical() const;
       /// Reset the address/secret tuple associated with the tracked block,
       /// following a sealing process for instance.
       void
@@ -114,10 +122,14 @@ namespace nucleus
       `-----------*/
     private:
       ELLE_ATTRIBUTE_R(Type, type);
-      /// The current clef for accessing the block.
-      ELLE_ATTRIBUTE(std::unique_ptr<Clef const>, clef);
-      /// The clefs which led to previous version of the block.
-      ELLE_ATTRIBUTE_R(Annals, annals);
+      /// The clef for accessing the block currently lying in main
+      /// memory. In a way, this clef could be considered as referencing
+      /// a temporary block since the block has not yet been published
+      /// onto the storage layer.
+      ELLE_ATTRIBUTE(std::unique_ptr<Clef const>, alive);
+      /// The clef referencing the historical --- i.e existing/previous ---
+      /// version of the block which lies on the storage layer.
+      ELLE_ATTRIBUTE(std::unique_ptr<Clef const>, historical);
       /// The actual block though the pointer may be null should
       /// have the block been moved somewhere else, on the disk
       /// for example, so as to reduce the main memory consumption.

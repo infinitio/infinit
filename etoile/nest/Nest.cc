@@ -190,14 +190,11 @@ namespace etoile
                 // The address of the block has been recomputed during
                 // the sealing process so that the egg embeds the new
                 // address.
-                // However, the previous temporary versions of the block
-                // must first be removed from the storage layer. Indeed,
-                // should the nest have decided to pre-publish the block
-                // on the storage layer, this temporary version would need
-                // to be removed.
-                for (auto& clef: pod->egg()->annals())
+                // However, the previous version of the block must first
+                // be removed from the storage layer.
+                if (pod->egg()->has_history() == true)
                   transcript.record(
-                    new gear::action::Wipe(clef->address()));
+                    new gear::action::Wipe(pod->egg()->historical().address()));
 
                 ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                                pod->egg()->address());
@@ -354,40 +351,83 @@ namespace etoile
         ELLE_ASSERT_EQ(pod->actors(), 0);
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
         ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
+        ELLE_ASSERT(pod->mutex().locked() == false);
+        ELLE_ASSERT(pod->mutex().write().locked() == false);
 
-        // XXX un block dans la queue ca veut dire quoi? qu'il n'est pas
-        // XXX loaded (used) ou juste qu'en plus que le block est present?
+        continue; // XXX
 
-        //         // XXX lock since we are going to block on pushing
+        // XXX move block to something else i.e set to null
+        // XXX set to shell
+        // XXX at this point, if we block, someone could get the shell
+        //     without a problem
+        // XXX decrease the nest's size by opd->footprint()
 
-        // XXX pas forcement dirty: attention
+        // Depending on the block's state.
+        switch (pod->egg()->block()->state())
+        {
+          case nucleus::proton::State::clean:
+          {
+            // Nothing to do in this case but to release the block so as to
+            // lighten the nest.
+            pod->egg()->block().reset();
 
-        //         // Generate a random secret.
-        //         cryptography::SecretKey secret{
-        //           cryptography::cipher::Algorithm::aes256,
-        //           elle::String(static_cast<size_t>(this->_secret_length /
-        //                                            (sizeof(elle::Character) * 8)),
-        //                      static_cast<char>('*'))};
+            break;
+          }
+          case nucleus::proton::State::dirty:
+          {
+            // In this case, the block must be prepared for publishing. First
+            // a temporary secret is generated with which the block will be
+            // encrypted. Then, the block's address is computed.
 
-        //         // Seal the block.
-        //         pod->egg()->block().seal(secret);
+            /* XXX
+            // Generate a random secret.
+            cryptography::SecretKey secret =
+              cryptography::SecretKey::generate(
+                cryptography::cipher::Algorithm::aes256,
+                this->_secret_length);
 
-        //             // Encrypt and bind the root block.
-        //             root.contents().encrypt(secret);
-        //             Address address{root.contents().bind()};
+                // Seal the block.
+                pod->egg()->block().seal(secret);
 
-        //             // Update the node and block.
-        //             root().state(State::consistent);
-        //             root.contents().state(State::consistent);
+                    // Encrypt and bind the root block.
+                    root.contents().encrypt(secret);
+                    Address address{root.contents().bind()};
 
-        //             // Update the tree state.
-        //             this->_state = root().state();
+                    // Update the node and block.
+                    root().state(State::consistent);
+                    root.contents().state(State::consistent);
 
-        //             root.unload();
+                    // Update the tree state.
+                    this->_state = root().state();
 
-        //             // Reset the handle with the new address and secret.
-        //             this->_root->reset(address, secret);
+                    root.unload();
 
+                    // Reset the handle with the new address and secret.
+                    this->_root->reset(address, secret);
+            */
+            // XXX
+
+            break;
+          }
+          case nucleus::proton::State::consistent:
+          {
+            /* XXX
+            // In this case, it happens that the block has already
+            // been sealed. The block is therefore ready to be published
+            // onto the storage layer.
+
+            ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
+                           pod->egg()->address());
+
+            // Push the final version of the block.
+            transcript.record(
+              new gear::action::Push(pod->egg()->address(),
+                                     std::move(pod->egg()->block())));
+            */
+
+            break;
+          }
+        }
       }
     }
 
