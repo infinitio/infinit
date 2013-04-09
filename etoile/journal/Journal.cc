@@ -27,28 +27,26 @@ namespace etoile
     | Static Attributes |
     `------------------*/
 
-    std::set<gear::Transcript*> Journal::_queue;
+#ifdef ETOILE_JOURNAL_THREAD
+    std::set<std::unique_ptr<gear::Transcript>> Journal::_queue;
+#endif
 
     /*---------------.
     | Static Methods |
     `---------------*/
 
-    elle::Status
-    Journal::Record(gear::Scope*            scope)
+    void
+    Journal::record(std::unique_ptr<gear::Transcript>&& transcript)
     {
-      ELLE_TRACE_SCOPE("Journal::Record(%s)", *scope);
+      ELLE_TRACE_FUNCTION(transcript);
 
-      ELLE_FINALLY_ACTION_DELETE(scope);
-
-      // Ignore empty scope' transcripts.
-      if (scope->context->transcript().empty() == true)
+      // Ignore empty transcripts.
+      if ((transcript == nullptr) ||
+          (transcript->empty() == true))
         {
-          ELLE_TRACE("ignore this scope because it has an empty transcript");
-          return elle::Status::Ok;
+          ELLE_DEBUG("ignore this empty transcript");
+          return;
         }
-
-      // Retrieve the transcript from the context.
-      gear::Transcript* transcript = scope->context->cede();
 
 #ifdef ETOILE_JOURNAL_THREAD
       try
@@ -61,7 +59,8 @@ namespace etoile
          // may take some time.
          new reactor::Thread(infinit::scheduler(),
                              "journal process",
-                             boost::bind(&Journal::_process, transcript),
+                             boost::bind(&Journal::_process,
+                                         std::move(transcript)),
                              true);
 
        }
@@ -70,13 +69,32 @@ namespace etoile
           // Remove the transcript since something went wrong.
           Journal::_queue.erase(transcript);
 
-          delete transcript;
-
           throw Exception("unable to spawn a new thread: '%s'", err.what());
         }
 #else
-      Journal::_process(transcript);
+      Journal::_process(std::move(transcript));
 #endif
+    }
+
+    elle::Status
+    Journal::Record(gear::Scope*            scope)
+    {
+      ELLE_TRACE_SCOPE("Journal::Record(%s)", *scope);
+
+      ELLE_FINALLY_ACTION_DELETE(scope);
+
+      // Ignore empty scope' transcripts.
+      if (scope->context->transcript().empty() == true)
+        {
+          ELLE_DEBUG("ignore this scope because it has an empty transcript");
+          return elle::Status::Ok;
+        }
+
+      // Retrieve the transcript from the context.
+      std::unique_ptr<gear::Transcript> transcript{scope->context->cede()};
+
+      // Record the transcript for processing.
+      Journal::record(std::move(transcript));
 
       // Update the context's state.
       scope->context->state = gear::Context::StateJournaled;
@@ -98,7 +116,7 @@ namespace etoile
 #ifdef ETOILE_JOURNAL_THREAD
       for (auto transcript: Journal::_queue)
         {
-          ELLE_TRACE_SCOPE("exploring transcript");
+          ELLE_DEBUG_SCOPE("exploring transcript");
 
           for (auto action: *transcript)
             {
@@ -118,7 +136,7 @@ namespace etoile
 
                     if (revision == nucleus::proton::Revision::Any)
                       {
-                        ELLE_TRACE("cloning the block associated with the "
+                        ELLE_DEBUG("cloning the block associated with the "
                                    "action %s", *_action);
 
                         return (Journal::_clone(address.component(),
@@ -135,7 +153,7 @@ namespace etoile
                             (_block->revision() != revision))
                           continue;
 
-                        ELLE_TRACE("cloning the mutable block associated "
+                        ELLE_DEBUG("cloning the mutable block associated "
                                    "with the action %s", *_action);
 
                         return (Journal::_clone(address.component(),
@@ -166,17 +184,17 @@ namespace etoile
         }
 #endif
 
-      ELLE_TRACE("the requested block is not present in the journal");
+      ELLE_DEBUG("the requested block is not present in the journal");
 
       return (std::unique_ptr<nucleus::proton::Block>(nullptr));
     }
 
     void
-    Journal::_process(gear::Transcript* transcript)
+    Journal::_process(std::unique_ptr<gear::Transcript>&& transcript)
     {
       ELLE_TRACE_FUNCTION(transcript);
 
-      ELLE_TRACE("pushing blocks");
+      ELLE_DEBUG("pushing blocks");
 
       // XXX[to improve in the future]
       // Go through the blocks which needs to be pushed.
@@ -194,7 +212,7 @@ namespace etoile
             }
         }
 
-      ELLE_TRACE("wiping blocks");
+      ELLE_DEBUG("wiping blocks");
 
       // Then, process the blocks to wipe.
       for (auto action: *transcript)
@@ -216,9 +234,7 @@ namespace etoile
       Journal::_queue.erase(transcript);
 #endif
 
-      delete transcript;
-
-      ELLE_TRACE("transcript processed successfully");
+      ELLE_DEBUG("transcript processed successfully");
     }
 
     std::unique_ptr<nucleus::proton::Block>

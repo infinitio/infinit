@@ -341,26 +341,31 @@ namespace etoile
     {
       ELLE_DEBUG_FUNCTION("");
 
-      for (auto pod: this->_history)
+      auto iterator = this->_history.begin();
+      auto end = this->_history.end();
+
+      for (; iterator != end;)
       {
         // Stop once the threshold is no longer in sight.
         if (this->_size < this->_threshold)
           break;
 
+        std::unique_ptr<gear::Transcript> transcript;
+        Pod* pod = *iterator;
+
+        // Prepare for the next iteration.
+        ++iterator;
+
         ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
+        ELLE_ASSERT_EQ(pod->state(), Pod::State::queue);
         ELLE_ASSERT_EQ(pod->actors(), 0);
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
         ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
         ELLE_ASSERT(pod->mutex().locked() == false);
         ELLE_ASSERT(pod->mutex().write().locked() == false);
+        ELLE_ASSERT_EQ(pod->footprint(), pod->egg()->block()->footprint());
 
         continue; // XXX
-
-        // XXX move block to something else i.e set to null
-        // XXX set to shell
-        // XXX at this point, if we block, someone could get the shell
-        //     without a problem
-        // XXX decrease the nest's size by opd->footprint()
 
         // Depending on the block's state.
         switch (pod->egg()->block()->state())
@@ -369,7 +374,31 @@ namespace etoile
           {
             // Nothing to do in this case but to release the block so as to
             // lighten the nest.
-            pod->egg()->block().reset();
+            //
+            // Note however that only permanent blocks must be discarded while
+            // transient ones must be kept in main memory until they get
+            // modified so as to be eligible for pre-publishing.
+            switch (pod->egg()->type())
+            {
+              case nucleus::proton::Egg::Type::transient:
+              {
+                // Ignore this pod for now.
+                continue;
+              }
+              case nucleus::proton::Egg::Type::permanent:
+              {
+                // Decrease the nest's size.
+                ELLE_ASSERT_GTE(this->_size,
+                                pod->egg()->block()->footprint());
+                this->_size -=
+                  pod->footprint() - pod->egg()->block()->footprint();
+
+                // Discard the block.
+                pod->egg()->block().reset();
+
+                break;
+              }
+            }
 
             break;
           }
@@ -380,17 +409,26 @@ namespace etoile
             // encrypted. Then, the block's address is computed.
 
             /* XXX
+        // Decrease the nest's size.
+        ELLE_ASSERT_GTE(this->_size,
+                        pod->egg()->block()->footprint());
+        this->_size -=
+          pod->footprint() - pod->egg()->block()->footprint();
+            */
+
             // Generate a random secret.
             cryptography::SecretKey secret =
               cryptography::SecretKey::generate(
                 cryptography::cipher::Algorithm::aes256,
                 this->_secret_length);
+            /* XXX
+            // Seal the block.
+            pod->egg()->block().seal(secret);
 
-                // Seal the block.
-                pod->egg()->block().seal(secret);
+                XXX reset egg with address/secret
 
-                    // Encrypt and bind the root block.
-                    root.contents().encrypt(secret);
+            // Encrypt and bind the root block.
+            root.contents().encrypt(secret);
                     Address address{root.contents().bind()};
 
                     // Update the node and block.
@@ -404,30 +442,65 @@ namespace etoile
 
                     // Reset the handle with the new address and secret.
                     this->_root->reset(address, secret);
+
+            // However, the previous version of the block must first
+            // be removed from the storage layer.
+            if (pod->egg()->has_history() == true)
+              transcript.record(
+                new gear::action::Wipe(pod->egg()->historical().address()));
+
             */
+
             // XXX
+            continue;
 
             break;
           }
           case nucleus::proton::State::consistent:
           {
-            /* XXX
             // In this case, it happens that the block has already
             // been sealed. The block is therefore ready to be published
             // onto the storage layer.
+            transcript.reset(new gear::Transcript);
+
+            // Decrease the nest's size.
+            ELLE_ASSERT_GTE(this->_size,
+                            pod->egg()->block()->footprint());
+            this->_size -=
+              pod->footprint() - pod->egg()->block()->footprint();
+
+            // However, the previous version of the block must first
+            // be removed from the storage layer.
+            if (pod->egg()->has_history() == true)
+              transcript->record(
+                new gear::action::Wipe(pod->egg()->historical().address()));
 
             ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                            pod->egg()->address());
 
             // Push the final version of the block.
-            transcript.record(
+            transcript->record(
               new gear::action::Push(pod->egg()->address(),
                                      std::move(pod->egg()->block())));
-            */
 
             break;
           }
         }
+
+        ELLE_ASSERT(pod->egg()->block() == nullptr);
+
+        // Unqueue the pod since the block is no longer held by the pod.
+        this->_unqueue(pod);
+
+        // Update the pod state to shell.
+        pod->state(Pod::State::shell);
+
+        // At this point, if someone wishes to retrieve the pod or load its
+        // block, it would not lead to concurrent accesses. This is why none
+        // of the previous operations have been protected through a lock.
+
+        // Finally, record the transcript in the journal so as to be processed.
+        journal::Journal::record(std::move(transcript));
       }
     }
 
@@ -695,7 +768,7 @@ namespace etoile
       // Take the block's footprint into account.
       this->_size += pod->egg()->block()->footprint();
 
-      // Queue the pod, since not yet loaded.
+      // Queue the pod since not loaded yet.
       this->_queue(pod);
 
       ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
