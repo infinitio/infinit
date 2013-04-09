@@ -413,6 +413,7 @@ class Register(Page):
         ghost = database.users().find_one({
             'accounts': [{ 'type': 'email', 'id':user['email']}],
             'register_status': 'ghost',
+            'connected': False,
         })
 
         if ghost:
@@ -443,7 +444,7 @@ class Register(Page):
             swaggers = {},
             networks = [],
             devices = [],
-            notifications = (ghost and ghost['notifications'] or []),
+            notifications = ghost and ghost['notifications'] or [],
             old_notifications = [],
             accounts = [
                 {'type':'email', 'id': user['email']}
