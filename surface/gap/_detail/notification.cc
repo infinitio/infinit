@@ -88,11 +88,32 @@ namespace surface
         }
         catch (elle::Exception const& e)
         {
-          ELLE_WARN("Poll: %s: %s", notif->notification_type, e.what());
+          ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
           auto bt = e.backtrace();
           for (auto const& f: bt)
             ELLE_WARN("%s", f);
           call_error_handlers(gap_error,
+                              elle::sprintf("%s: %s",
+                                            notif->notification_type,
+                                            e.what()),
+                              transaction_id);
+          continue;
+        }
+        catch (std::runtime_error const& e)
+        {
+          ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
+          call_error_handlers(gap_unknown,
+                              elle::sprintf("%s: %s",
+                                            notif->notification_type,
+                                            e.what()),
+                              transaction_id);
+          continue;
+        }
+        catch (std::exception const& e)
+        {
+
+          ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
+          call_error_handlers(gap_unknown,
                               elle::sprintf("%s: %s",
                                             notif->notification_type,
                                             e.what()),
@@ -218,13 +239,13 @@ namespace surface
           try {
             this->_handle_notification(*_xxx_dict_to_notification(dict), false);
           } catch (std::bad_cast const&) {
-              ELLE_ERR("COULDN'T CAST: %s", dict.repr());
+              ELLE_ERR("couldn't cast: %s", dict.repr());
           } catch (std::ios_base::failure const&) {
-              ELLE_ERR(" IOS FAILURE: %s", dict.repr());
+              ELLE_ERR("ios failure: %s", dict.repr());
           } catch (std::exception const& e) {
-              ELLE_ERR(" EXCEPTIOJN: %s: %s", dict.repr(), e.what());
+              ELLE_ERR("exception: %s: %s", dict.repr(), e.what());
           } catch (...) {
-              ELLE_ERR("COULDN'T HANDle: %s", dict.repr());
+              ELLE_ERR("couldn't handle: %s", dict.repr());
           }
         }
 
@@ -234,13 +255,13 @@ namespace surface
           try {
             this->_handle_notification(*_xxx_dict_to_notification(dict), true);
           } catch (std::bad_cast const&) {
-              ELLE_ERR("COULDN'T CAST: %s", dict.repr());
+              ELLE_ERR("couldn't cast: %s", dict.repr());
           } catch (std::ios_base::failure const&) {
-              ELLE_ERR(" IOS FAILURE: %s", dict.repr());
+              ELLE_ERR("ios failure: %s", dict.repr());
           } catch (std::exception const& e) {
-              ELLE_ERR(" EXCEPTIOJN: %s: %s", dict.repr(), e.what());
+              ELLE_ERR("exception: %s: %s", dict.repr(), e.what());
           } catch (...) {
-              ELLE_ERR("COULDN'T HANDle: %s", dict.repr());
+              ELLE_ERR("could'nt handle: %s", dict.repr());
           }
 
         }
