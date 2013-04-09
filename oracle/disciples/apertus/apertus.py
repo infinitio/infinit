@@ -2,6 +2,7 @@ from __future__ import print_function
 
 from twisted.internet.protocol import DatagramProtocol, Factory
 from twisted.protocols.basic import LineReceiver
+from twisted.internet import task
 from twisted.python import log
 from pprint import pprint
 
@@ -34,6 +35,9 @@ class Link(object):
         self.source = source
         self.sink = sink
         self.active = False
+        self.total_packet = 0
+        self.stream_size = 0
+        self.packet_diff =  -1
 
     def __str__(self):
         return "<Link({}, {}) up={}>".format(self.source, self.sink, self.active)
@@ -66,25 +70,44 @@ class Apertus(DatagramProtocol):
 
     def __init__(self):
         self.links = []
+        self.task = task.LoopingCall(self.test_timeout)
+        self.task.start(5 * 60) # check every five minutes
+
+    def test_timeout(self):
+        print(self.test_timeout)
+        for link in self.links:
+            last_total = 0
+            if getattr(link, "_last_total", None):
+                last_total = link._last_total
+            link.packet_diff = link.total_packet - last_total
+            print("total({}) - last_total({}) = {}".format(
+                link.total_packet,
+                last_total,
+                link.packet_diff))
+            if link.packet_diff == 0:
+                self.del_link(link)
+            link._last_total = link.total_packet
 
     def datagramReceived(self, data, (host, port)):
         id = Endpoint(host, port)
         print("->", id)
+        print(self.links)
         try:
             if id.ip not in (l.source.ip for l in self.links):
                 raise KeyError("Not found")
-            for p in (l for l in self.links if l.source.port == 0 or l.sink.port == 0):
+            for p in (l for l in self.links if l.source.port == 0 and l.source.ip == id.ip):
                 # if the current is not set and if the sink is not me
-                if p.source.port == 0 and p.sink.port != id.port:
-                    p.source.port = port
-                    p.active = True
-                    break
+                p.source.port = port
+                p.active = True
         except Exception as e:
             print(e)
             print(self.links)
             return
 
-        sender_link = next(l for l in self.links if l.source == id)
+        try:
+            sender_link = next(l for l in self.links if l.source.ip == id.ip)
+        except StopIteration:
+            print("sender({}) link not found:".format(id), self.links)
 
         sources = frozenset(l for l in self.links if l.source == sender_link.source and l.active)
         sinks = frozenset(l for l in self.links if l.sink == sender_link.source and l.active)
@@ -99,7 +122,10 @@ class Apertus(DatagramProtocol):
         print(peers)
         for peer in peers:
             print(id.addr, "->", peer.sink.addr)
+            peer.stream_size += len(data)
+            peer.total_packet += 1
             self.transport.write(data, peer.sink.addr)
+        print(self.links)
 
     def add_link(self, endpoints):
         """
@@ -129,6 +155,8 @@ class Apertus(DatagramProtocol):
         lhs = [Endpoint(f["ip"], int(f["port"])) for f in lhs_]
         for k, v in it.product(rhs, lhs):
             # Remove the 1 to 1 link
+            print(k)
+            print(v)
             try:
                 self.links.remove(next(l for l in self.links if l.source.ip == k.ip))
                 self.links.remove(next(l for l in self.links if l.source.ip == v.ip))
