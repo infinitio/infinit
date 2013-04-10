@@ -341,8 +341,14 @@ namespace etoile
     {
       ELLE_DEBUG_FUNCTION("");
 
+      // Return right away if the threshold has not been reached.
+      if (this->_size < this->_threshold)
+        return;
+
       auto iterator = this->_history.begin();
       auto end = this->_history.end();
+
+      std::unique_ptr<gear::Transcript> transcript{new gear::Transcript};
 
       for (; iterator != end;)
       {
@@ -350,7 +356,6 @@ namespace etoile
         if (this->_size < this->_threshold)
           break;
 
-        std::unique_ptr<gear::Transcript> transcript;
         Pod* pod = *iterator;
 
         // Prepare for the next iteration.
@@ -364,8 +369,6 @@ namespace etoile
         ELLE_ASSERT(pod->mutex().locked() == false);
         ELLE_ASSERT(pod->mutex().write().locked() == false);
         ELLE_ASSERT_EQ(pod->footprint(), pod->egg()->block()->footprint());
-
-        continue; // XXX
 
         // Depending on the block's state.
         switch (pod->egg()->block()->state())
@@ -387,6 +390,7 @@ namespace etoile
               }
               case nucleus::proton::Egg::Type::permanent:
               {
+                /* XXX
                 // Decrease the nest's size.
                 ELLE_ASSERT_GTE(this->_size,
                                 pod->egg()->block()->footprint());
@@ -395,6 +399,10 @@ namespace etoile
 
                 // Discard the block.
                 pod->egg()->block().reset();
+                */
+
+                // XXX
+                continue;
 
                 break;
               }
@@ -414,14 +422,13 @@ namespace etoile
                         pod->egg()->block()->footprint());
         this->_size -=
           pod->footprint() - pod->egg()->block()->footprint();
-            */
 
             // Generate a random secret.
             cryptography::SecretKey secret =
               cryptography::SecretKey::generate(
                 cryptography::cipher::Algorithm::aes256,
                 this->_secret_length);
-            /* XXX
+
             // Seal the block.
             pod->egg()->block().seal(secret);
 
@@ -461,7 +468,9 @@ namespace etoile
             // In this case, it happens that the block has already
             // been sealed. The block is therefore ready to be published
             // onto the storage layer.
-            transcript.reset(new gear::Transcript);
+
+            // XXX
+            continue;
 
             // Decrease the nest's size.
             ELLE_ASSERT_GTE(this->_size,
@@ -471,9 +480,20 @@ namespace etoile
 
             // However, the previous version of the block must first
             // be removed from the storage layer.
+            /* XXX
             if (pod->egg()->has_history() == true)
               transcript->record(
                 new gear::action::Wipe(pod->egg()->historical().address()));
+            */
+
+            // XXX
+            if (pod->egg()->block()->bind() != pod->egg()->address())
+            {
+              elle::printf("addresses: %s versus %s\n",
+                           pod->egg()->block()->bind(),
+                           pod->egg()->address());
+              pod->egg()->block()->Dump();
+            }
 
             ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                            pod->egg()->address());
@@ -482,6 +502,11 @@ namespace etoile
             transcript->record(
               new gear::action::Push(pod->egg()->address(),
                                      std::move(pod->egg()->block())));
+
+            /* XXX
+               Saved working directory and index state WIP on develop: c31c8e0 nucleus: norm compliance.
+               HEAD is now at c31c8e0 nucleus: norm compliance.
+               XXX */
 
             break;
           }
@@ -494,14 +519,13 @@ namespace etoile
 
         // Update the pod state to shell.
         pod->state(Pod::State::shell);
-
-        // At this point, if someone wishes to retrieve the pod or load its
-        // block, it would not lead to concurrent accesses. This is why none
-        // of the previous operations have been protected through a lock.
-
-        // Finally, record the transcript in the journal so as to be processed.
-        journal::Journal::record(std::move(transcript));
       }
+
+      // Finally, record the transcript in the journal so as to be processed.
+      //
+      // Note that this operation is performed at the end so as to be sure not
+      // to block in the process of traversing the queue.
+      journal::Journal::record(std::move(transcript));
     }
 
     void
@@ -1070,6 +1094,12 @@ namespace etoile
         case nucleus::proton::Handle::State::nested:
         {
           Pod* pod = this->_lookup(handle.egg());
+
+          // XXX
+          if ((pod->egg()->block() != nullptr) &&
+              (pod->egg()->block()->state() == nucleus::proton::State::consistent))
+            ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
+                           pod->egg()->address());
 
           ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
           ELLE_ASSERT_EQ(pod->state(), Pod::State::use);
