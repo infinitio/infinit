@@ -26,6 +26,7 @@ from meta import error
 from meta import regexp
 
 import meta.mail
+import meta.invitation
 
 import metalib
 import pythia
@@ -200,32 +201,15 @@ class Invite(Page):
             return self.error(error.UNKNOWN, "You're not admin")
         email = self.data['email'].strip()
         force = self.data.get('force', False)
-        send_email = not self.data.get('dont_send_email', False)
+        send_mail = not self.data.get('dont_send_email', False)
         if database.invitations().find_one({'email': email}):
             if not force:
                 return self.error(error.UNKNOWN, "Already invited!")
             else:
                 database.invitations().remove({'email': email})
-        code = self._generate_code(email)
-        content = meta.mail.INVITATION_CONTENT % {
-            'activation_code': code,
-            'space': ' ',
-        }
-        if send_email:
-            meta.mail.send(email, meta.mail.INVITATION_SUBJECT, content)
-        database.invitations().insert({
-            'email': email,
-            'status': 'pending',
-            'code': code,
-        })
+        meta.invitation.invite_user(email, send_mail = send_mail)
         return self.success()
 
-    def _generate_code(self, mail):
-        import hashlib
-        import time
-        hash_ = hashlib.md5()
-        hash_.update(mail.encode('utf8') + str(time.time()))
-        return hash_.hexdigest()
 
 class Self(Page):
     """
@@ -409,9 +393,13 @@ class Register(Page):
             })
             if not invitation:
                 return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
+            ghost_email = invitation['email']
+            mail.move_from_invited_to_userbase(ghost_email)
+        else:
+            ghost_email = user['email']
 
         ghost = database.users().find_one({
-            'accounts': [{ 'type': 'email', 'id':user['email']}],
+            'accounts': [{ 'type': 'email', 'id':ghost_email}],
             'register_status': 'ghost',
             'connected': False,
         })

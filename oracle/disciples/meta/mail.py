@@ -7,18 +7,43 @@ from email.header import Header
 from email.Utils import formataddr
 #from email.utils import parseaddr, formataddr
 import smtplib
+import json
 
-def send(mail, subject, content,
+ALPHA_LIST = 'd8d5225ac7'
+INVITED_LIST = '385e50ea2c'
+USERBASE_LIST = ''
+
+def move_from_invited_to_userbase(mail):
+    from mailsnake import MailSnake
+    ms = MailSnake(conf.MAILCHIMP_APIKEY)
+    try:
+        ms.listUnsubscribe(id = ALPHA_LIST, email_address = mail)
+    except:
+        print("Couldn't unsubscribe", mail, "from ALPHA")
+    try:
+        ms.listUnsubscribe(id = ALPHA_LIST, email_address = mail)
+    except:
+        print("Couldn't unsubscribe", mail, "from INVITED")
+    try:
+        ms.listSubscribe(id = USERBASE_LIST, email_address = mail, check_optin=True)
+    except:
+        print("Couldn't subscribe", mail, "to USERBASE")
+
+def send(mail,
+         template_id,
+         subject,
          from_="Infinit <no-reply@infinit.io>",
          reply_to=None,
-         encoding='utf8'):
+         encoding='utf8', **kw):
     msg = MIMEText(content, _charset=encoding)
     msg['Subject'] = Header(subject, encoding)
     msg['From'] = Header(from_, encoding)
     # Got troubles with Header for recipient.
     msg['To'] = mail #formataddr(("", mail))
+    msg['X-MC-Template'] = Header(template_id, encoding)
+    msg['X-MC-MergeVars'] = Header(json.dumps(kw), encoding)
     if reply_to is not None:
-        msg['Reply-To'] = reply_to
+        msg['Reply-To'] = "Infinit <{}>".format(reply_to)
 
     smtp_server = smtplib.SMTP(conf.MANDRILL_SMTP_HOST, conf.MANDRILL_SMTP_PORT)
     try:
