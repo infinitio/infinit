@@ -117,7 +117,7 @@ namespace hole
                 n++;
               // Stop iteration if we know that the host is forbidden.
               if (n > 1)
-                return false;
+                goto error;
             }
             ELLE_DEBUG("%s found", locus);
             return true;
@@ -127,6 +127,7 @@ namespace hole
             ELLE_DEBUG("not yet..");
           }
         }
+      error:
         ELLE_DEBUG("out of portal_wait(%s, %s) (%s)",
                    host, port, this->_hosts.size())
         this->_hosts.erase(locus);
