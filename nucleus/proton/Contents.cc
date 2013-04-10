@@ -142,7 +142,7 @@ namespace nucleus
     {
       elle::String      alignment(margin, ' ');
 
-      std::cout << alignment << "[Contents]" << std::endl;
+      std::cout << alignment << "[Contents] " << this << std::endl;
 
       if (proton::ContentHashBlock::Dump(margin + 2) == elle::Status::Error)
         throw Exception("unable to dump the underlying block");
