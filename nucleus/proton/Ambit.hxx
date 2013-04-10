@@ -55,7 +55,25 @@ namespace nucleus
               {
                 ELLE_DEBUG("unloading on destruction");
 
-                this->unload();
+                try
+                {
+                  this->unload();
+                }
+                catch (elle::Exception const& e)
+                {
+                  ELLE_ERR("an error occured while unloading the block "
+                           "in the ambit's destructor: '%s'", e);
+                }
+                catch (std::exception const& e)
+                {
+                  ELLE_ERR("an error occured while unloading the block "
+                           "in the ambit's destructor: '%s'", e.what());
+                }
+                catch (...)
+                {
+                  ELLE_ERR("an error occured while unloading the block "
+                           "in the ambit's destructor");
+                }
               }
 
             break;
