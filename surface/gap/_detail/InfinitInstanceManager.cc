@@ -72,7 +72,7 @@ namespace surface
       try
       {
         auto const& instance = this->network_instance(network_id);
-        instance.process->terminate();
+        instance.process->interrupt();
         instance.process->wait();
       }
       catch (elle::Exception const& e)
@@ -87,7 +87,7 @@ namespace surface
 
         if (proc->running())
         {
-          proc->terminate();
+          proc->interrupt();
           proc->wait();
         }
         else
@@ -97,10 +97,10 @@ namespace surface
             elle::system::Process::StatusCode status_code = proc->status();
             if (status_code < 0)
             {
-              if (-status_code == SIGTERM)
-                ELLE_WARN("8infinit stopped with signal %s (%s)",
-                           -status_code,
-                           elle::system::strsignal(-status_code));
+              if (-status_code == SIGINT)
+                ELLE_LOG("8infinit stopped with signal %s (%s)",
+                         -status_code,
+                         elle::system::strsignal(-status_code));
               else
                 ELLE_ERR("8infinit stopped with signal %s (%s)",
                          -status_code,
