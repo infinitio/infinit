@@ -150,7 +150,7 @@ init_sender(std::string const& to_send, unsigned int count = 10)
 }
 
 std::tuple<surface::gap::State*, std::thread*>
-init_reciepint()
+init_recipient()
 {
   static surface::gap::State state;
 
@@ -175,7 +175,7 @@ main(int argc, char** argv)
   {
     std::string to_send{"to_send"};
 
-    auto const& rstate = init_reciepint();
+    auto const& rstate = init_recipient();
     auto const& sstate = init_sender(to_send);
 
     std::get<0>(rstate)->logout();
@@ -188,7 +188,7 @@ main(int argc, char** argv)
   }
   else if (argc == 2 && std::string{argv[1]} == "--from")
   {
-    auto const& rstate = init_reciepint();
+    auto const& rstate = init_recipient();
 
     std::get<0>(rstate)->user_status_callback(
       [&rstate] (surface::gap::UserStatusNotification const& notif)
@@ -208,7 +208,7 @@ main(int argc, char** argv)
   }
   else if (argc == 2)
   {
-    auto const& rstate = init_reciepint();
+    auto const& rstate = init_recipient();
     auto const& sstate = init_sender(argv[1]);
 
     std::get<0>(rstate)->logout();
@@ -224,9 +224,22 @@ main(int argc, char** argv)
     std::get<0>(sstate)->logout();
     std::get<1>(sstate)->join();
   }
+  else if (argc == 3 &&
+           std::string{argv[1]} == "--from" &&
+           std::string{argv[2]} == "--4ever")
+  {
+    auto const& rstate = init_recipient();
+
+    // Hack!!! Will poll 2 times faster but keep the reciepent alive.
+    // Will never stop.
+    work(*(std::get<0>(rstate)));
+
+    std::get<1>(rstate)->join();
+
+  }
   else if (argc == 3)
   {
-    auto const& rstate = init_reciepint();
+    auto const& rstate = init_recipient();
     auto const& sstate = init_sender(std::string{argv[1]}, atoi(argv[2]));
 
     std::get<0>(rstate)->logout();
