@@ -40,9 +40,10 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(transcript);
 
+      ELLE_ASSERT_NEQ(transcript, nullptr);
+
       // Ignore empty transcripts.
-      if ((transcript == nullptr) ||
-          (transcript->empty() == true))
+      if (transcript->empty() == true)
         {
           ELLE_DEBUG("ignore this empty transcript");
           return;
