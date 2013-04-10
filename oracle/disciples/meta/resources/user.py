@@ -537,7 +537,7 @@ class Disconnection(Page):
             self.notifySwaggers(
                 notifier.USER_STATUS,
                 {
-                    'status': 0, #Disconnected.
+                    'status': meta.page.DISCONNECTED, #Disconnected.
                 }
             )
 
@@ -563,7 +563,7 @@ class Logout(Page):
         self.notifySwaggers(
             notifier.USER_STATUS,
             {
-                "status" : 2,
+                "status" : meta.page.DISCONNECTED,
             }
         )
         return self.success()

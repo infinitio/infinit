@@ -6,6 +6,8 @@ import hashlib
 import json
 import traceback
 import urllib
+import re
+import os
 
 import error
 from meta import conf
@@ -14,6 +16,21 @@ from meta import notifier
 from meta import error
 from meta import regexp
 from meta import apertus
+
+_macro_matcher = re.compile(r'(.*\()(\S+)(,.*\))')
+
+def replacer(match):
+    field = match.group(2)
+    return match.group(1) + "'" + field + "'" + match.group(3)
+
+def USER_STATUS_M(name, value):
+    globals()[name.upper()] = value
+
+filepath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'user_status.hh.inc'))
+
+configfile = open(filepath, 'r')
+for line in configfile:
+    eval(_macro_matcher.sub(replacer, line))
 
 class Page(object):
     """
@@ -105,7 +122,7 @@ class Page(object):
             self.notifySwaggers(
                 notifier.USER_STATUS,
                 {
-                    'status': 1, #Connected.
+                    'status': CONNECTED,
                 }
             )
             return True
@@ -123,7 +140,7 @@ class Page(object):
         user = database.users().find_one(user_id)
         if not user:
             raise Exception("This user doesn't exist")
-        return user['connected']
+        return 'connected' in user and user['connected'] or 0
 
     def forbidden(self, msg):
         raise web.HTTPError("403 {}".format(msg))

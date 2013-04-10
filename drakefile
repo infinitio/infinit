@@ -932,20 +932,20 @@ def configure(cxx_toolkit,
     )
 
   oracle_lib += drake.nodes(
+    'oracle/disciples/meta/__init__.py',
+    'oracle/disciples/meta/apertus.py',
     'oracle/disciples/meta/application.py',
     'oracle/disciples/meta/conf.py',
     'oracle/disciples/meta/database.py',
-    'oracle/disciples/meta/apertus.py',
-    'oracle/disciples/meta/error_code.hh.inc',
     'oracle/disciples/meta/error.py',
-    'oracle/disciples/meta/__init__.py',
+    'oracle/disciples/meta/error_code.hh.inc',
     'oracle/disciples/meta/mail.py',
     'oracle/disciples/meta/notification_type.hh.inc',
     'oracle/disciples/meta/notifier.py',
     'oracle/disciples/meta/page.py',
     'oracle/disciples/meta/regexp.py',
-    'oracle/disciples/meta/resources/device.py',
     'oracle/disciples/meta/resources/__init__.py',
+    'oracle/disciples/meta/resources/device.py',
     'oracle/disciples/meta/resources/network.py',
     'oracle/disciples/meta/resources/network_update.hh.inc',
     'oracle/disciples/meta/resources/notification.py',
@@ -956,6 +956,7 @@ def configure(cxx_toolkit,
     'oracle/disciples/meta/resources/user.py',
     'oracle/disciples/meta/session.py',
     'oracle/disciples/meta/session_store.py',
+    'oracle/disciples/meta/user_status.hh.inc',
     )
 
   oracle_lib += drake.nodes(
