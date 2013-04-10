@@ -173,22 +173,15 @@ class Create(Page):
             if not invitee_email:
                 invitee_email = database.users().find_one({'_id': database.ObjectId(id_or_email)})['email']
 
-            subject = mail.USER_INVITATION_SUBJECT % {
-                'inviter_mail': self.user['email'],
-            }
+            if new_user:
+                meta.invitation.invite_user(
+                    invitee_mail,
+                    'sendfile',
+                    reply_to = self.user['email'],
+                    filename = first_filename,
+                    sendername = self.user['fullname'],
+                )
 
-            content = (new_user and mail.USER_INVITATION_CONTENT or mail.USER_NEW_FILE_CONTENT) % {
-                'inviter_mail': self.user['email'],
-                'inviter_fullname': self.user['fullname'],
-                'message': message,
-                'file_name': sent,
-                'space': ' ',
-            }
-
-            # XXX Remove invitation mail.
-            # XXX Check registration status too.
-            if not new_user:
-                mail.send(invitee_email, subject, content, reply_to=self.user['email'])
 
         self.notifier.notify_some(
             notifier.TRANSACTION,
