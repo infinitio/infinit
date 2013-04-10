@@ -88,7 +88,7 @@ namespace surface
 
       this->_reporter.store("network_create", {{MKey::status, "attempt"}});
 
-      this->_google_reporter.store("network::create::attempt");
+      this->_google_reporter.store("network:create:attempt");
 
       plasma::meta::CreateNetworkResponse response;
       try
