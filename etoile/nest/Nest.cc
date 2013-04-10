@@ -343,7 +343,14 @@ namespace etoile
 
       // Return right away if the threshold has not been reached.
       if (this->_size < this->_threshold)
+      {
+        ELLE_DEBUG("the nest has not reached its threshold yet: %s / %s",
+                   this->_size, this->_threshold);
         return;
+      }
+
+      ELLE_DEBUG("the threshold has been reached: %s / %s",
+                 this->_size, this->_threshold);
 
       auto iterator = this->_history.begin();
       auto end = this->_history.end();
@@ -354,9 +361,18 @@ namespace etoile
       {
         // Stop once the threshold is no longer in sight.
         if (this->_size < this->_threshold)
+        {
+          ELLE_DEBUG("stop optimizing given the nest's size: %s / %s",
+                     this->_size, this->_threshold);
           break;
+        }
 
         Pod* pod = *iterator;
+
+        ELLE_ASSERT_NEQ(pod, nullptr);
+
+        ELLE_DEBUG("consider pod '%s' for eviction from the nest",
+                   *pod);
 
         // Prepare for the next iteration.
         ++iterator;
@@ -370,11 +386,28 @@ namespace etoile
         ELLE_ASSERT(pod->mutex().write().locked() == false);
         ELLE_ASSERT_EQ(pod->footprint(), pod->egg()->block()->footprint());
 
+        ELLE_DEBUG("block state: '%s'", pod->egg()->block()->state());
+
         // Depending on the block's state.
         switch (pod->egg()->block()->state())
         {
           case nucleus::proton::State::clean:
           {
+            // First, let us ignore blocks whose state does not match the
+            // node's.
+            //
+            // This case is quite common. For example, one could load a block,
+            // modify its node and unload it. Until the tree is updated,
+            // the block is invalid in the sense that it does not know the node
+            // has been modified.
+            if (pod->egg()->block()->state() !=
+                pod->egg()->block()->node().state())
+            {
+              ELLE_DEBUG("ignore the pod as the block's state mismatches "
+                         "the node's");
+              continue;
+            }
+
             // Nothing to do in this case but to release the block so as to
             // lighten the nest.
             //
@@ -385,24 +418,24 @@ namespace etoile
             {
               case nucleus::proton::Egg::Type::transient:
               {
+                ELLE_DEBUG("ignore transient blocks which are still clean");
+
                 // Ignore this pod for now.
                 continue;
               }
               case nucleus::proton::Egg::Type::permanent:
               {
-                /* XXX
                 // Decrease the nest's size.
                 ELLE_ASSERT_GTE(this->_size,
                                 pod->egg()->block()->footprint());
                 this->_size -=
                   pod->footprint() - pod->egg()->block()->footprint();
 
+                ELLE_DEBUG("delete the block '%s' from the main memory",
+                           pod->egg()->block().get());
+
                 // Discard the block.
                 pod->egg()->block().reset();
-                */
-
-                // XXX
-                continue;
 
                 break;
               }
@@ -468,10 +501,7 @@ namespace etoile
             // In this case, it happens that the block has already
             // been sealed. The block is therefore ready to be published
             // onto the storage layer.
-
-            // XXX
-            continue;
-
+            /* XXX
             // Decrease the nest's size.
             ELLE_ASSERT_GTE(this->_size,
                             pod->egg()->block()->footprint());
@@ -480,11 +510,9 @@ namespace etoile
 
             // However, the previous version of the block must first
             // be removed from the storage layer.
-            /* XXX
             if (pod->egg()->has_history() == true)
               transcript->record(
                 new gear::action::Wipe(pod->egg()->historical().address()));
-            */
 
             // XXX
             if (pod->egg()->block()->bind() != pod->egg()->address())
@@ -502,11 +530,10 @@ namespace etoile
             transcript->record(
               new gear::action::Push(pod->egg()->address(),
                                      std::move(pod->egg()->block())));
+            */
 
-            /* XXX
-               Saved working directory and index state WIP on develop: c31c8e0 nucleus: norm compliance.
-               HEAD is now at c31c8e0 nucleus: norm compliance.
-               XXX */
+            // XXX
+            continue;
 
             break;
           }
@@ -520,6 +547,9 @@ namespace etoile
         // Update the pod state to shell.
         pod->state(Pod::State::shell);
       }
+
+      ELLE_DEBUG_SCOPE("record the transcript '%s' in the journal",
+                       *transcript);
 
       // Finally, record the transcript in the journal so as to be processed.
       //
