@@ -74,6 +74,11 @@ namespace surface
 
         if (!log_file.empty())
         {
+          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+          {
+            log_file += ".";
+            log_file += std::to_string(::getpid());
+          }
           log_file += ".access.log";
           pc.setenv("ELLE_LOG_FILE", log_file);
         }
@@ -154,6 +159,11 @@ namespace surface
 
         if (!log_file.empty())
         {
+          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+          {
+            log_file += ".";
+            log_file += std::to_string(::getpid());
+          }
           log_file += ".access.log";
           pc.setenv("ELLE_LOG_FILE", log_file);
         }
@@ -221,6 +231,11 @@ namespace surface
 
         if (!log_file.empty())
         {
+          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+          {
+            log_file += ".";
+            log_file += std::to_string(::getpid());
+          }
           log_file += ".access.log";
           pc.setenv("ELLE_LOG_FILE", log_file);
         }

@@ -59,7 +59,14 @@ namespace surface
     {
       std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
       if (!log_file.empty())
+      {
+        if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+        {
+          log_file += ".";
+          log_file += std::to_string(::getpid());
+        }
         this->output_log_file(log_file);
+      }
 
       ELLE_LOG("Creating a new State");
 
