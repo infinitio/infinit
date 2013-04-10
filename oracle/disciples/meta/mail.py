@@ -13,22 +13,6 @@ ALPHA_LIST = 'd8d5225ac7'
 INVITED_LIST = '385e50ea2c'
 USERBASE_LIST = ''
 
-def move_from_invited_to_userbase(mail):
-    from mailsnake import MailSnake
-    ms = MailSnake(conf.MAILCHIMP_APIKEY)
-    try:
-        ms.listUnsubscribe(id = ALPHA_LIST, email_address = mail)
-    except:
-        print("Couldn't unsubscribe", mail, "from ALPHA")
-    try:
-        ms.listUnsubscribe(id = ALPHA_LIST, email_address = mail)
-    except:
-        print("Couldn't unsubscribe", mail, "from INVITED")
-    try:
-        ms.listSubscribe(id = USERBASE_LIST, email_address = mail, check_optin=True)
-    except:
-        print("Couldn't subscribe", mail, "to USERBASE")
-
 def send(mail,
          template_id,
          subject,
