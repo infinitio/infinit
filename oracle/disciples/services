@@ -73,7 +73,8 @@ def main(argv):
                 TROPHONIUS_BIN,
                 '--port', str(args.trophonius_port),
                 '--control-port', str(args.trophonius_control_port),
-            ])
+            ],
+            env=dict(INFINIT_META_PORT=str(args.meta_port), **os.environ))
         )
         processes.append(
             subprocess.Popen([
