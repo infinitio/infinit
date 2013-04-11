@@ -35,7 +35,7 @@ drake.run(
     satellites = (
         "access", "group", "transfer",
         "sendto", "recvfrom", "progress",
-        "d00m",
+        "d00m", "dump",
     ),
     python3 = '/opt/local/Library/Frameworks/Python.framework/Versions/3.2',
     build_type = os.environ.get('BUILD_TYPE', 'Debug'),

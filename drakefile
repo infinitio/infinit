@@ -795,6 +795,7 @@ def configure(cxx_toolkit,
     'progress',
     'transfer',
     'user',
+    'dump',
     ]:
     satellite(name)
 
