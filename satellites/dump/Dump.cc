@@ -129,8 +129,8 @@ namespace satellite
     boost::filesystem::path pathed{path};
     boost::filesystem::path stemed{pathed.stem()};
 
-    elle::printf("comparing the given address '%s' (based on the path)"
-                 "with the bound one '%s'",
+    elle::printf("comparing the given address '%s' (based on the path) "
+                 "with the bound one '%s'\n",
                  stemed.string(), address.unique());
 
     if (stemed.string() != address.unique())
