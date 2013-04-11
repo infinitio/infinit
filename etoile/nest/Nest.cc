@@ -406,8 +406,10 @@ namespace etoile
             if (pod->egg()->block()->state() !=
                 pod->egg()->block()->node().state())
             {
-              ELLE_DEBUG("ignore the pod as the block's state mismatches "
-                         "the node's");
+              ELLE_DEBUG("ignore the pod as the block's state '%s' mismatches "
+                         "the node's '%s'",
+                         pod->egg()->block()->state(),
+                         pod->egg()->block()->node().state());
               continue;
             }
 
@@ -421,7 +423,8 @@ namespace etoile
             {
               case nucleus::proton::Egg::Type::transient:
               {
-                ELLE_DEBUG("ignore transient blocks which are still clean");
+                ELLE_DEBUG("ignore the pod '%s' which tracks a transient "
+                           "and clean block", *pod);
 
                 // Ignore this pod for now.
                 continue;
@@ -451,13 +454,15 @@ namespace etoile
             // In this case, the block must be prepared for publishing. First
             // a temporary secret is generated with which the block will be
             // encrypted. Then, the block's address is computed.
-
             /* XXX
-        // Decrease the nest's size.
-        ELLE_ASSERT_GTE(this->_size,
-                        pod->egg()->block()->footprint());
-        this->_size -=
-          pod->footprint() - pod->egg()->block()->footprint();
+            ELLE_ASSERT_EQ(pod->egg()->block()->state(),
+                           pod->egg()->block()->node().state());
+
+            // Decrease the nest's size.
+            ELLE_ASSERT_GTE(this->_size,
+                            pod->egg()->block()->footprint());
+            this->_size -=
+              pod->footprint() - pod->egg()->block()->footprint();
 
             // Generate a random secret.
             cryptography::SecretKey secret =
@@ -465,46 +470,63 @@ namespace etoile
                 cryptography::cipher::Algorithm::aes256,
                 this->_secret_length);
 
-            // Seal the block.
-            pod->egg()->block().seal(secret);
+            // Encrypt and bind the block.
+            pod->egg()->block()->encrypt(secret);
+            Address address{pod->egg()->block()->bind()};
 
-                XXX reset egg with address/secret
+            // Update the node and block.
+            pod->egg()->block()->node().state(
+              nucleus::proton::State::consistent);
+            pod->egg()->block()->state(
+              nucleus::proton::State::consistent);
 
-            // Encrypt and bind the root block.
-            root.contents().encrypt(secret);
-                    Address address{root.contents().bind()};
+            // Reset the egg's address/secret tuple now that we know
+            // the block's new address.
+            pod->egg()->reset(address, secret);
 
-                    // Update the node and block.
-                    root().state(State::consistent);
-                    root.contents().state(State::consistent);
+            // XXX update the block state -> consistent
+            // XXX do the same with inlet which references it! HOW?
 
-                    // Update the tree state.
-                    this->_state = root().state();
-
-                    root.unload();
-
-                    // Reset the handle with the new address and secret.
-                    this->_root->reset(address, secret);
-
-            // However, the previous version of the block must first
+            // Then, record the previous version of the block for it to
             // be removed from the storage layer.
             if (pod->egg()->has_history() == true)
               transcript.record(
                 new gear::action::Wipe(pod->egg()->historical().address()));
 
+            // Finally, record the current version so as to be published onto
+            // the storage layer.
+            transcript->record(
+              new gear::action::Push(pod->egg()->address(),
+                                     std::move(pod->egg()->block())));
+            // XXX
+            // 1) le state dans inlet permet de parcourir un node (genre
+            //    Quill) et de savoir si un Value doit etre encrypt()/bind()
+            //    sans etre loaded. TRES IMPORTANT DONC!
+            //      => pour ca, mettre le state de inlet dans Egg
+            //      => et faire que si pas d'Egg, retourner clean. pas contre
+            //         impossible d'update si pas d'Egg.
+            // 2) states clean/consistent, WHY?
+            //      => essayer avec clean/consistent ce qui aura comme effet
+            //         qu'un arbre sealed et tjs utilisable (reecrire doc du
+            //         coup).
+            // XXX
+
+            break;
             */
 
             // XXX
             continue;
-
-            break;
           }
           case nucleus::proton::State::consistent:
           {
+            /* XXX
             // In this case, it happens that the block has already
             // been sealed. The block is therefore ready to be published
             // onto the storage layer.
-            /* XXX
+
+            ELLE_ASSERT_EQ(pod->egg()->block()->state(),
+                           pod->egg()->block()->node().state());
+
             // Decrease the nest's size.
             ELLE_ASSERT_GTE(this->_size,
                             pod->egg()->block()->footprint());
@@ -517,15 +539,6 @@ namespace etoile
               transcript->record(
                 new gear::action::Wipe(pod->egg()->historical().address()));
 
-            // XXX
-            if (pod->egg()->block()->bind() != pod->egg()->address())
-            {
-              elle::printf("addresses: %s versus %s\n",
-                           pod->egg()->block()->bind(),
-                           pod->egg()->address());
-              pod->egg()->block()->Dump();
-            }
-
             ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                            pod->egg()->address());
 
@@ -533,12 +546,17 @@ namespace etoile
             transcript->record(
               new gear::action::Push(pod->egg()->address(),
                                      std::move(pod->egg()->block())));
+
+            break;
             */
 
             // XXX
-            continue;
+            // do not handle these because they are about to be
+            // publish anyway
+            // => en fait avec le state dans egg c'est bon.
 
-            break;
+            // XXX
+            continue;
           }
         }
 
@@ -832,10 +850,10 @@ namespace etoile
       ELLE_ASSERT_EQ(pod->state(), Pod::State::queue);
       ELLE_ASSERT_EQ(pod->actors(), 0);
 
+      ELLE_ASSERT_EQ(handle.state(), nucleus::proton::Handle::State::nested);
+
       // Try to optimize the nest.
       this->_optimize();
-
-      ELLE_ASSERT_EQ(handle.state(), nucleus::proton::Handle::State::nested);
 
       return (handle);
     }
@@ -1127,12 +1145,6 @@ namespace etoile
         case nucleus::proton::Handle::State::nested:
         {
           Pod* pod = this->_lookup(handle.egg());
-
-          // XXX
-          if ((pod->egg()->block() != nullptr) &&
-              (pod->egg()->block()->state() == nucleus::proton::State::consistent))
-            ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
-                           pod->egg()->address());
 
           ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
           ELLE_ASSERT_EQ(pod->state(), Pod::State::use);
