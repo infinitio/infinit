@@ -472,9 +472,8 @@ namespace surface
           {
             if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
             {
-              log_file += elle::sprintf(".%s.%s",
-                                        surface::gap::State::infinit_counter,
-                                        ::getpid());
+              log_file += ".";
+              log_file += std::to_string(::getpid());
             }
             log_file += ".group.log";
             pc.setenv("ELLE_LOG_FILE", log_file);
