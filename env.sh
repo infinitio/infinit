@@ -3,17 +3,14 @@
 INFINIT_SOURCE_DIR=$(git rev-parse --show-toplevel)
 INFINIT_BUILD_DIR=$PWD
 
-ELLE_LOG_COMPONENTS="infinit.*"
-ELLE_LOG_COMPONENTS="${ELLE_LOG_COMPONENTS},reactor.network.*"
-ELLE_LOG_COMPONENTS="${ELLE_LOG_COMPONENTS},elle.HTTPClient,elle.assert"
+ELLE_LOG_LEVEL="infinit.*:DEBUG,reactor.network.*:DEBUG"
 
 DISTCC_HOSTS="infinit.im"
 
 infinit_env_init() {
 	export INFINIT_BUILD_DIR=${INFINIT_BUILD_DIR}
 	export INFINIT_SOURCE_DIR=${INFINIT_SOURCE_DIR}
-	export ELLE_LOG_COMPONENTS="${ELLE_LOG_COMPONENTS}"
-	export ELLE_LOG_LEVEL=DEBUG
+	export ELLE_LOG_LEVEL="${ELLE_LOG_LEVEL}"
 	export DISTCC_HOSTS="${DISTCC_HOSTS}"
 
 	export OLD_PYTHONPATH=$PYTHONPATH
@@ -44,4 +41,3 @@ infinit_env_clean() {
 infinit_env_init
 
 . ${INFINIT_SOURCE_DIR}/scripts/framework.sh
-
