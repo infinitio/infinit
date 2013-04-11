@@ -2,6 +2,7 @@
 # -*- encoding: utf-8 -*-
 
 import os, sys
+import time
 import subprocess
 import argparse
 
@@ -90,6 +91,7 @@ def main(argv):
                 p.poll()
                 if p.returncode is not None:
                     running = False
+                time.sleep(0.1)
     except KeyboardInterrupt:
         print("Exiting")
     finally:

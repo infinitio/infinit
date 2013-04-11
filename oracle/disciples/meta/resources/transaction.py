@@ -9,6 +9,7 @@ from meta import database
 from meta import error
 from meta import regexp
 from meta import mail
+import meta.invitation
 
 import re
 
@@ -175,8 +176,8 @@ class Create(Page):
 
             if new_user:
                 meta.invitation.invite_user(
-                    invitee_mail,
-                    'sendfile',
+                    invitee_email,
+                    mail_template='send-file',
                     reply_to = self.user['email'],
                     filename = first_filename,
                     sendername = self.user['fullname'],
