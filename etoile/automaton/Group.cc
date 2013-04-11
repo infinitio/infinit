@@ -142,7 +142,7 @@ namespace etoile
           door.open();
 
           if (door().exist(subject) == true)
-            throw Exception("this subject already exist");
+            throw Exception("this subject '%s' already exists", subject);
 
           /// Deliberately provide a null token because the right token
           /// will be generated when the group is closed. This improves
