@@ -75,7 +75,7 @@ namespace elle
     Reporter::~Reporter()
     {
       this->_keep_alive.reset();
-      if (this->_run_thread->joinable())
+      if (this->_run_thread && this->_run_thread->joinable())
         this->_run_thread->join();
     }
 
