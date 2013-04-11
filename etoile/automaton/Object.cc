@@ -44,7 +44,10 @@ namespace etoile
       // XXX[the context should make use of unique_ptr instead
       //     of releasing here.]
 
-      ELLE_TRACE("pull the object from depot");
+      ELLE_TRACE("pull the object from depot at address '%s' and "
+                 "revision '%s'",
+                 context.location.address(),
+                 context.location.revision());
 
       ELLE_ASSERT(context.object == nullptr);
 
