@@ -114,6 +114,9 @@ namespace etoile
         if (chemin.Locate(context->location) == elle::Status::Error)
           throw Exception("unable to locate the directory");
 
+        ELLE_DEBUG("about to load the directory from the location '%s'",
+                   context->location);
+
         try
           {
             // apply the load automaton on the context.
