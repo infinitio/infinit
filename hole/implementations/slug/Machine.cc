@@ -10,6 +10,7 @@
 #include <reactor/network/udt-server.hh>
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/tcp-socket.hh>
+#include <reactor/Scope.hh>
 
 #include <agent/Agent.hh>
 
@@ -218,35 +219,11 @@ namespace hole
       }
 
       void
-      Machine::_run_gc()
-      {
-        reactor::Thread& current = *reactor::Scheduler::scheduler()->current();
-        while (1)
-        {
-          current.wait(this->__del);
-          auto it = begin(this->_controlers);
-          auto ite = end(this->_controlers);
-          for (;it != ite; ++it)
-          {
-            if ((*it)->done())
-            {
-              ELLE_DEBUG("garbarge: %s", (*it)->name());
-              it = this->_controlers.erase(it); // remove it.
-            }
-            else
-              ELLE_DEBUG("continue: %s", (*it)->name());
-          }
-        }
-      }
-
-      void
       Machine::_rpc_accept()
       {
         int i = 0;
-        this->_garbarge.reset(new reactor::Thread(
-            *reactor::Scheduler::scheduler(),
-            "Machine garbage",
-            [&] {this->_run_gc();}));
+        reactor::Scope scope;
+
         while (true)
         {
           std::shared_ptr<reactor::network::TCPSocket> socket(
@@ -279,12 +256,8 @@ namespace hole
             {
               ELLE_WARN("slug control: %s", e.what());
             }
-            this->__del.signal();
           };
-          this->_controlers.push_back(std::make_shared<reactor::Thread>(
-                                      *reactor::Scheduler::scheduler(),
-                                      elle::sprintf("Machine RPC %s", i),
-                                      run));
+          scope.run_background(elle::sprintf("Machine RPC %s", i), run);
           ELLE_TRACE("new connection accepted");
         }
       }
@@ -452,8 +425,9 @@ namespace hole
         // acceptor.
         if (_acceptor)
           _acceptor->terminate_now();
-        if (_garbarge)
-          _garbarge->terminate_now();
+
+        if (!this->_rpc_acceptor->done())
+          this->_rpc_acceptor->terminate_now();
       }
 
       /*------.

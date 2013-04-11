@@ -145,11 +145,7 @@ namespace hole
         //control::RPC    _rpcs;
         lune::Phrase _phrase;
         std::unique_ptr<reactor::network::TCPServer> _rpc_server;
-        std::unique_ptr<reactor::Thread> _rpc_acceptor;
-        std::vector<std::shared_ptr<reactor::Thread>> _controlers;
-
-        std::unique_ptr<reactor::Thread> _garbarge;
-        reactor::Signal __del;
+        reactor::Thread* _rpc_acceptor;
 
         void
         _run_gc();

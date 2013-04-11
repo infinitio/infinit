@@ -49,7 +49,8 @@ namespace hole
         , _rpcs(_channels)
         , _rpcs_handler(new reactor::Thread(infinit::scheduler(),
                                             elle::sprintf("RPC %s", *this),
-                                            boost::bind(&Host::_rpc_run, this))
+                                            boost::bind(&Host::_rpc_run, this),
+                                            true)
                         )
       {
         _rpcs.authenticate = boost::bind(&Host::_authenticate, this, _1);
@@ -61,7 +62,8 @@ namespace hole
       Host::~Host()
       {
         // Stop operations on the socket before it is deleted.
-        _rpcs_handler->terminate_now();
+        if (!_rpcs_handler->done())
+          _rpcs_handler->terminate_now();
       }
 
       /*-----.
