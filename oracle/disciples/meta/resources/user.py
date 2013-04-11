@@ -394,7 +394,7 @@ class Register(Page):
             if not invitation:
                 return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
             ghost_email = invitation['email']
-            mail.move_from_invited_to_userbase(ghost_email)
+            meta.invitation.move_from_invited_to_userbase(ghost_email)
         else:
             ghost_email = user['email']
 

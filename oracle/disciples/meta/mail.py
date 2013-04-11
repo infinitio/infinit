@@ -2,7 +2,7 @@
 
 from meta import conf
 
-from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from email.header import Header
 from email.Utils import formataddr
 #from email.utils import parseaddr, formataddr
@@ -19,7 +19,7 @@ def send(mail,
          from_="Infinit <no-reply@infinit.io>",
          reply_to=None,
          encoding='utf8', **kw):
-    msg = MIMEText(content, _charset=encoding)
+    msg = MIMEMultipart('alternative', _charset=encoding)
     msg['Subject'] = Header(subject, encoding)
     msg['From'] = Header(from_, encoding)
     # Got troubles with Header for recipient.
