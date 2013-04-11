@@ -295,6 +295,7 @@ class One(Page):
     __pattern__ = "/user/(.+)/view"
 
     def GET(self, id_or_email):
+        id_or_email = id_or_email.lower()
         if '@' in id_or_email:
             user = database.users().find_one({'email': id_or_email})
         else:
