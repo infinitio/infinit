@@ -38,7 +38,7 @@ def move_from_invited_to_userbase(mail):
     try:
         ms.listSubscribe(id = USERBASE_LIST,
                          email_address = mail,
-                         check_optin = False)
+                         double_optin = False)
     except:
         print("Couldn't subscribe", mail, "to USERBASE")
 
