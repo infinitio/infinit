@@ -30,9 +30,6 @@ namespace hole
   {
     namespace slug
     {
-      void portal_connect(std::string const& host, int port);
-      bool portal_wait(std::string const& host, int port);
-
       ///
       /// XXX represents the current host
       ///

@@ -57,25 +57,11 @@ namespace hole
   {
     namespace slug
     {
-      // FIXME
-      static Machine* machine(nullptr);
-      void
-      portal_connect(std::string const& host, int port)
-      {
-        machine->portal_connect(host, port);
-      }
-
       void
       Machine::portal_connect(std::string const& host, int port)
       {
         ELLE_TRACE_FUNCTION(host, port);
-        _server->accept(host, port);
-      }
-
-      bool
-      portal_wait(std::string const& host, int port)
-      {
-        return (machine->portal_wait(host, port));
+        this->_server->accept(host, port);
       }
 
       bool
@@ -247,8 +233,14 @@ namespace hole
               };
               control::RPC rpcs{channels};
 
-              rpcs.slug_connect = &hole::implementations::slug::portal_connect;
-              rpcs.slug_wait = &hole::implementations::slug::portal_wait;
+              rpcs.slug_connect = std::bind(&Machine::portal_connect,
+                                            this,
+                                            std::placeholders::_1,
+                                            std::placeholders::_2);
+              rpcs.slug_wait = std::bind(&Machine::portal_wait,
+                                         this,
+                                         std::placeholders::_1,
+                                         std::placeholders::_2);
 
               rpcs.parallel_run();
             }
@@ -279,7 +271,6 @@ namespace hole
                                             [&] { this->_rpc_accept(); },
                                             true))
       {
-        machine = this; // FIXME
         elle::network::Locus     locus;
         ELLE_TRACE_SCOPE("launch");
         this->_rpc_server->listen(0);
