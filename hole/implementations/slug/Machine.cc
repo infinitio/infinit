@@ -506,14 +506,14 @@ namespace hole
                 reactor::Thread *t =
                   new reactor::Thread(
                     *reactor::Scheduler::scheduler(),
-                     elle::sprintf("connect"),
-                     [this, s, locus]
-                     {
-                       _connect(
-                         std::move(std::unique_ptr<reactor::network::Socket>(s)),
-                         locus,
-                         false);
-                     }
+                    elle::sprintf("connect %s", s->remote_locus()),
+                    [this, s, locus]
+                    {
+                      _connect(
+                        std::move(std::unique_ptr<reactor::network::Socket>(s)),
+                        locus,
+                        false);
+                    }
                   );
                 break;
               }

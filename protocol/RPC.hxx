@@ -9,6 +9,7 @@
 # include <elle/memory.hh>
 
 # include <reactor/network/exception.hh>
+# include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
 
 # include <protocol/Channel.hh>
@@ -502,9 +503,11 @@ namespace infinit
             }
             chan->write(answer);
           };
+          auto name = reactor::Scheduler::scheduler()->current()->name();
           call->first =
             elle::make_unique<reactor::Thread>(this->_channels.scheduler(),
-                                               elle::sprintf("RPC %s", i),
+                                               elle::sprintf("%s: RPC %s",
+                                                             name, i),
                                                call_procedure);
           this->_threads.push_back(call);
         }
