@@ -48,10 +48,6 @@ log_destination()
 void
 Infinit(elle::Natural32 argc, elle::Character* argv[])
 {
-  elle::log::logger
-    (std::unique_ptr<elle::log::Logger>
-     (new elle::log::TextLogger(log_destination())));
-
   // set up the program.
   if (elle::concurrency::Program::Setup("Infinit") == elle::Status::Error)
     throw elle::Exception("unable to set up the program");
@@ -280,6 +276,10 @@ Main(elle::Natural32 argc, elle::Character* argv[])
 int
 main(int argc, char* argv[])
 {
+  elle::log::logger
+    (std::unique_ptr<elle::log::Logger>
+     (new elle::log::TextLogger(log_destination())));
+
   reactor::Scheduler sched;
   reactor::VThread<elle::Status> main(sched,
                                       "Infinit main",
