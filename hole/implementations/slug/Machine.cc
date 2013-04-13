@@ -249,7 +249,8 @@ namespace hole
               ELLE_WARN("slug control: %s", e.what());
             }
           };
-          scope.run_background(elle::sprintf("Machine RPC %s", i), run);
+          auto name = reactor::Scheduler::scheduler()->current()->name();
+          scope.run_background(elle::sprintf("%s: pool %s", name, i), run);
           ELLE_TRACE("new connection accepted");
         }
       }
