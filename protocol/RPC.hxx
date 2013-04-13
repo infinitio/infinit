@@ -384,6 +384,7 @@ namespace infinit
 
               ELLE_TRACE("%s: remote procedure called: %s", *this, name)
                 procedure->second.second->_call(input, output);
+              ELLE_TRACE("%s: procedure %s succeeded", *this, name);
             }
           }
           catch (elle::Exception& e)
@@ -425,6 +426,7 @@ namespace infinit
       }
     }
 
+    // XXX: factor with run().
     template <typename IS,
               typename OS>
     void
@@ -470,6 +472,7 @@ namespace infinit
 
                 ELLE_TRACE("%s: remote procedure called: %s", *this, name)
                   procedure->second.second->_call(input, output);
+                ELLE_TRACE("%s: procedure %s succeeded", *this, name);
               }
             }
             catch (elle::Exception& e)
