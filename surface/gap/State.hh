@@ -83,9 +83,19 @@ namespace surface
     using ::plasma::trophonius::NetworkUpdateNotification;
     using ::plasma::trophonius::NotificationType;
 
+    // XXX: In order to ensure the logger is initialized at the begining of
+    // state LoggerInitializer MUST be the first member of State.
+    class LoggerInitializer
+    {
+    public:
+      LoggerInitializer();
+    };
+
     class State
     {
     private:
+      // XXX: LoggerInitializer is the first member of state.
+      LoggerInitializer _logger_intializer;
       std::unique_ptr<plasma::meta::Client>       _meta;
       std::unique_ptr<plasma::trophonius::Client> _trophonius;
       elle::metrics::Reporter _reporter;
@@ -102,9 +112,6 @@ namespace surface
       void
       debug();
 
-      void
-      output_log_file(std::string const& path);
-
     //- Login & register ------------------------------------------------------
     private:
       std::map<std::string, User*>  _users;
@@ -115,14 +122,15 @@ namespace surface
       login(std::string const& email,
             std::string const& password);
 
-    private:
-      bool
-      _logged;
-
     public:
       bool
       logged_in() const
-      { return !this->_meta->token().empty(); }
+      {
+        if (!this->_meta)
+          return false;
+
+        return !this->_meta->token().empty();
+      }
 
       /// Logout from meta.
       void

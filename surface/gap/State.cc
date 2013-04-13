@@ -40,22 +40,7 @@ namespace surface
       , code(code)
     {}
 
-    // - State ----------------------------------------------------------------
-    State::State()
-      : _meta{new plasma::meta::Client{
-          common::meta::host(), common::meta::port(), true,
-        }}
-      , _trophonius{nullptr}
-      , _reporter{}
-      , _google_reporter{}
-      , _users{}
-      , _logged{false}
-      , _swaggers_dirty{true}
-      , _output_dir{common::system::download_directory()}
-      , _files_infos{}
-      , _networks{}
-      , _networks_dirty{true}
-      , _infinit_instance_manager{}
+    LoggerInitializer::LoggerInitializer()
     {
       std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
       if (!log_file.empty())
@@ -65,11 +50,36 @@ namespace surface
           log_file += ".";
           log_file += std::to_string(::getpid());
         }
-        this->output_log_file(log_file);
-      }
 
+        static std::ofstream out{
+          log_file + ".log",
+          std::fstream::trunc | std::fstream::out};
+
+        elle::log::logger(
+          std::unique_ptr<elle::log::Logger>{new elle::log::TextLogger(out)});
+      }
+    }
+
+    // - State ----------------------------------------------------------------
+    State::State()
+      : _logger_intializer{}
+      , _meta{new plasma::meta::Client{
+          common::meta::host(), common::meta::port(), true,
+        }}
+      , _trophonius{nullptr}
+      , _reporter{}
+      , _google_reporter{}
+      , _users{}
+      , _swaggers_dirty{true}
+      , _output_dir{}
+      , _files_infos{}
+      , _networks{}
+      , _networks_dirty{true}
+      , _infinit_instance_manager{}
+    {
       ELLE_LOG("Creating a new State");
 
+      this->_output_dir = common::system::download_directory();
 
       // Start metrics after setting up the logger.
       _reporter.start();
@@ -138,19 +148,6 @@ namespace surface
                                                    km_info.server,
                                                    km_info.port,
                                                    km_info.id_path);
-    }
-
-    void
-    State::output_log_file(std::string const& path)
-    {
-      static std::ofstream out{
-          path + ".log",
-          std::fstream::trunc | std::fstream::out
-      };
-
-      elle::log::logger(
-          std::unique_ptr<elle::log::Logger>{new elle::log::TextLogger(out)}
-      );
     }
 
     State::State(std::string const& token):
