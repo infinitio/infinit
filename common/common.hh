@@ -3,28 +3,6 @@
 
 # include <string>
 
-# define COMMON_DEFAULT_INFINIT_HOME ".infinit"
-# define COMMON_DEFAULT_META_PROTOCOL "http"
-# define COMMON_DEFAULT_META_HOST "meta.api.development.infinit.io"
-# define COMMON_DEFAULT_META_PORT 12345
-# define COMMON_DEFAULT_TROPHONIUS_PROTOCOL "http"
-# define COMMON_DEFAULT_TROPHONIUS_HOST "trophonius.api.development.infinit.io"
-# define COMMON_DEFAULT_TROPHONIUS_PORT 23456
-# define COMMON_DEFAULT_RESOURCES_ROOT_URL "http://download.development.infinit.io"
-# define COMMON_DEFAULT_LONGINUS_HOST "longinus.api.development.infinit.io"
-# define COMMON_DEFAULT_LONGINUS_PORT 9999
-
-# define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
-# define COMMON_PRODUCTION_META_PROTOCOL "http"
-# define COMMON_PRODUCTION_META_HOST "v014.meta.api.production.infinit.io"
-# define COMMON_PRODUCTION_META_PORT 12345
-# define COMMON_PRODUCTION_TROPHONIUS_PROTOCOL "http"
-# define COMMON_PRODUCTION_TROPHONIUS_HOST "v014.trophonius.api.production.infinit.io"
-# define COMMON_PRODUCTION_TROPHONIUS_PORT 23456
-# define COMMON_PRODUCTION_RESOURCES_ROOT_URL "http://download.production.infinit.io"
-# define COMMON_PRODUCTION_LONGINUS_HOST "v014.longinus.api.production.infinit.io"
-# define COMMON_PRODUCTION_LONGINUS_PORT 9999
-
 namespace common
 {
 
