@@ -14,8 +14,7 @@ True
 >>>
 
 """
-
-class State:
+class _State:
     """State is the interface to gap library functions
     """
     read_perm = _gap.gap_read
@@ -23,9 +22,7 @@ class State:
     exec_perm = _gap.gap_exec
 
     def __init__(self):
-        self._state = _gap.new()
-        if self._state == None:
-            raise Exception("Couldn't create state.")
+        self._state = None
         self.email = ''
 
         directly_exported_methods = [
@@ -122,6 +119,7 @@ class State:
             return False
 
     def _call(self, method, *args):
+        assert(self._state != None)
         res = getattr(_gap, method)(self._state, *args)
         if isinstance(res, _gap.Status) and res != self.Status.ok:
             raise Exception(
@@ -149,6 +147,14 @@ class State:
     @property
     def _id(self):
         return self._call('_id');
+
+class State(_State):
+    def __enter__(self):
+        self._state = _gap.new()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        _gap.free(self._state)
 
 if __name__ == "__main__":
     import doctest

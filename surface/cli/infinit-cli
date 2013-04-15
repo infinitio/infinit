@@ -837,20 +837,20 @@ def main():
     ] + sys.path
 
     import gap
-    state = gap.State()
-    if args.debug:
-        state.enable_debug()
-    print("actions", args.action)
-    if 'register' in args.action:
-        print("Registering to infinit:")
-        args.action.remove('register')
-        register(state)
-    else:
-        if state.logged != True:
-            print("Authentication required (if you don't have an account, try -r)")
-            login(state)
+    with gap.State() as state:
+        if args.debug:
+            state.enable_debug()
+        print("actions", args.action)
+        if 'register' in args.action:
+            print("Registering to infinit:")
+            args.action.remove('register')
+            register(state)
+        else:
+            if state.logged != True:
+                print("Authentication required (if you don't have an account, try -r)")
+                login(state)
 
-    start_shell(state, args)
+        start_shell(state, args)
 
 class PollThread (threading.Thread):
     def __init__(self, state):

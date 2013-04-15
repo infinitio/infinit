@@ -105,20 +105,18 @@ if __name__ == "__main__":
         os.environ["INFINIT_LOG_FILE"] = args.logfile
 
     import gap
-    state = gap.State()
-
-    try:
-        main(state, args.user, args.file)
-    except KeyboardInterrupt as e:
-        if getattr(state, "current_transaction_id", None):
-            tid = state.current_transaction_id
-            print("Interupted.")
-            print("Cancel the outgoing transaction ({})".format(tid))
-            state.update_transaction(tid, state.TransactionStatus.canceled)
-    except Exception as e:
-        if getattr(state, "current_transaction_id", None):
-            tid = state.current_transaction_id
-            print("Interupted. Cancel the outgoing transaction ({})".format(tid))
-            state.update_transaction(tid, state.TransactionStatus.canceled)
-        raise e
-    del state
+    with gap.State() as state:
+        try:
+            main(state, args.user, args.file)
+        except KeyboardInterrupt as e:
+            if getattr(state, "current_transaction_id", None):
+                tid = state.current_transaction_id
+                print("Interupted.")
+                print("Cancel the outgoing transaction ({})".format(tid))
+                state.update_transaction(tid, state.TransactionStatus.canceled)
+        except Exception as e:
+            if getattr(state, "current_transaction_id", None):
+                tid = state.current_transaction_id
+                print("Interupted. Cancel the outgoing transaction ({})".format(tid))
+                state.update_transaction(tid, state.TransactionStatus.canceled)
+                raise e

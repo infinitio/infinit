@@ -77,12 +77,10 @@ if __name__ == "__main__":
         os.environ["INFINIT_LOG_FILE"] = args.logfile
 
     import gap
-    state = gap.State()
-
-    try:
-        main(state, args.user)
-    except KeyboardInterrupt as e:
-        if getattr(state, "current_transaction_id", None):
-            tid = state.current_transaction_id
-            print("Interrupted.")
-    del state
+    with gap.State() as state:
+        try:
+            main(state, args.user)
+        except KeyboardInterrupt as e:
+            if getattr(state, "current_transaction_id", None):
+                tid = state.current_transaction_id
+                print("Interrupted.")
