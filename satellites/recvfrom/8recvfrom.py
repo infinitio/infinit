@@ -151,7 +151,7 @@ def main(state, sender):
             if getattr(state, "started_transactions", None):
                 for t in state.started_transactions:
                     progress = state.transaction_progress(t)
-                    print("Progress {2}: [{0:50s}] {1:.1f}%".format('#' * int(progress * 50), progress * 100, t), end=" "),
+                    print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, t, state.transaction_first_filename(t)), end=" "),
                     print("\r", end="")
             time.sleep(0.5)
             state.poll()
