@@ -25,10 +25,10 @@ USERBASE_LIST = 'cf5bcab5b1'
 def move_from_invited_to_userbase(ghost_mail, new_mail):
     from mailsnake import MailSnake
     ms = MailSnake(meta.conf.MAILCHIMP_APIKEY)
-    try:
-        ms.listUnsubscribe(id = ALPHA_LIST, email_address = ghost_mail)
-    except:
-        print("Couldn't unsubscribe", ghost_mail, "from ALPHA:")
+    #try:
+    #    ms.listUnsubscribe(id = ALPHA_LIST, email_address = ghost_mail)
+    #except:
+    #    print("Couldn't unsubscribe", ghost_mail, "from ALPHA:")
 
     try:
         ms.listUnsubscribe(id = INVITED_LIST, email_address = ghost_mail)
