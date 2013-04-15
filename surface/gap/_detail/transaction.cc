@@ -706,6 +706,7 @@ namespace surface
 
       // Delete networks.
       this->delete_network(transaction.network_id, true);
+      ELLE_DEBUG("Network %s successfully deleted", transaction.network_id);
     }
 
     State::TransactionsMap const&

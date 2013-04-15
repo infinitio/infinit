@@ -137,6 +137,9 @@ namespace plasma
       tcp::resolver::query query(_impl->server, elle::sprint(_impl->port));
       tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 
+      ELLE_DEBUG("connecting trophonius client to %s:%s",
+                 _impl->server, _impl->port);
+
       // Start connect operation.
       _impl->socket.connect(*endpoint_iterator);
       //_impl->socket.non_blocking(true);
