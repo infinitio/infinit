@@ -363,13 +363,13 @@ def configure(cxx_toolkit,
   # Comet
   cxx_config.add_local_include_path('comet/sources/')
   comet_sources = drake.nodes(
-    'comet/sources/comet/RSA.hh',
-    'comet/sources/comet/RSA.cc',
-    'comet/sources/comet/BN.hh',
-    'comet/sources/comet/Comet.hh',
-    'comet/sources/comet/RAND.cc',
-    'comet/sources/comet/BN.cc',
-    'comet/sources/comet/RAND.hh',
+    'comet/sources/comet/all.hh',
+    'comet/sources/comet/bn.hh',
+    'comet/sources/comet/bn.cc',
+    'comet/sources/comet/rand.cc',
+    'comet/sources/comet/rand.hh',
+    'comet/sources/comet/rsa.hh',
+    'comet/sources/comet/rsa.cc',
     )
   comet_lib = drake.cxx.DynLib('lib/comet', comet_sources,
                                cxx_toolkit, cxx_config)
