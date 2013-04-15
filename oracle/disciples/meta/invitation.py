@@ -31,7 +31,7 @@ def move_from_invited_to_userbase(ghost_mail, new_mail):
         print("Couldn't unsubscribe", ghost_mail, "from ALPHA:")
 
     try:
-        ms.listUnsubscribe(id = ALPHA_LIST, email_address = ghost_mail)
+        ms.listUnsubscribe(id = INVITED_LIST, email_address = ghost_mail)
     except:
         print("Couldn't unsubscribe", ghost_mail, "from INVITED")
 
