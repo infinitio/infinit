@@ -77,8 +77,7 @@ namespace surface
       try
       {
         auto const& instance = this->network_instance(network_id);
-        instance.process->interrupt();
-        instance.process->wait();
+        instance.process->interrupt(elle::system::ProcessTermination::dont_wait);
       }
       catch (elle::Exception const& e)
       {
@@ -92,8 +91,7 @@ namespace surface
 
         if (proc->running())
         {
-          proc->interrupt();
-          proc->wait();
+          proc->interrupt(elle::system::ProcessTermination::dont_wait);
         }
         else
         {
