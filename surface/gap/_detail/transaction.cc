@@ -206,10 +206,15 @@ namespace surface
             gap_internal_error, "8progress binary failed"
         };
 
-      int progress = 0;
+      int current_size = 0;
+      int total_size = 0;
       std::stringstream ss;
       ss << p.read();
-      ss >> progress;
+      ss >> current_size >> total_size;
+
+      if (total_size == 0)
+          return 0.f;
+      float progress = float(current_size) / float(total_size);
 
       if (progress < 0)
         {
@@ -221,9 +226,8 @@ namespace surface
           ELLE_WARN("8progress returned an integer greater than 100: %s", progress);
           progress = 100;
         }
-      float fprogress = float(progress) / 100.0f;
-      ELLE_DEBUG("transaction_progress(%s) -> %f", transaction_id, fprogress);
-      return fprogress;
+      ELLE_DEBUG("transaction_progress(%s) -> %f", transaction_id, progress);
+      return progress;
     }
 
     void

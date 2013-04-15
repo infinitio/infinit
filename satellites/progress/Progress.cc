@@ -188,10 +188,7 @@ namespace satellite
       ward.release();
     }
 
-    // (3) Display the progress.
-    elle::Natural64 pourcentage(_progress * 100 / _size);
-
-    std::cout << pourcentage << std::endl;
+    std::cout << _progress << " " << _size << std::endl;
   }
 
   void
