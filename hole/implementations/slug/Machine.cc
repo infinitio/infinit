@@ -5,6 +5,7 @@
 #include <elle/network/Interface.hh>
 #include <elle/utility/Time.hh>
 #include <elle/utility/Duration.hh>
+#include <elle/utility/Move.hh>
 
 #include <reactor/network/exception.hh>
 #include <reactor/network/udt-server.hh>
@@ -457,6 +458,8 @@ namespace hole
       void
       Machine::_accept()
       {
+        reactor::Scope scope;
+
         while (true)
         {
           std::unique_ptr<reactor::network::Socket> socket(_server->accept());
@@ -493,20 +496,15 @@ namespace hole
                 // FIXME: handling via loci is very wrong. IPs are
                 // not uniques, and this reconstruction is lame and
                 // non-injective.
+                using elle::utility::move_on_copy_wrapper;
                 auto locus = socket->remote_locus();
-                reactor::network::Socket* s = socket.release();
-                reactor::Thread *t =
-                  new reactor::Thread(
-                    *reactor::Scheduler::scheduler(),
-                    elle::sprintf("connect %s", s->remote_locus()),
-                    [this, s, locus]
-                    {
-                      _connect(
-                        std::move(std::unique_ptr<reactor::network::Socket>(s)),
-                        locus,
-                        false);
-                    }
-                  );
+                move_on_copy_wrapper<std::unique_ptr<reactor::network::Socket>>
+                  msocket(std::move(socket));
+                auto auth_fn = [&, msocket, locus]
+                {
+                  this->_connect(std::move(msocket.value), locus, false);
+                };
+                scope.run_background(elle::sprintf("auth %s", locus), auth_fn);
                 break;
               }
             default:
