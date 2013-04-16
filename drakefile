@@ -20,34 +20,40 @@ def configure(cxx_toolkit,
               qt = None,
               python2 = None,
               python3 = None,
-              build_type = "Debug"):
+              build_type = "Development",
+              enable_debug = True):
 
   prefix = drake.Path(prefix)
 
-  build_types = {'Debug': (),
-                 'Prod': ("INFINIT_PRODUCTION_BUILD",)}
+  if enable_debug:
+    cxx_config.define("DEBUG")
+  else:
+    cxx_config.define("NDEBUG")
+
+  build_types = {'Development': (),
+                 'Production': ("INFINIT_PRODUCTION_BUILD",)}
 
   if not build_type in build_types.keys():
     raise Exception("build type {} is unknown. Candidates are {}.".format(
         build_type, ", ".join("{}".format(t) for t in build_types.keys())))
 
-  for flag in build_types[build_type]:
-    if isinstance(flag, str):
-      cxx_config.define(flag, 1)
+  for define in build_types[build_type]:
+    if isinstance(define, str):
+      cxx_config.define(define, 1)
     else:
-      cxx_config.define(flag[0], flag[1])
+      cxx_config.define(define[0], define[1])
 
-  platform_flags = ()
+  platform_defines = ()
   if sys.platform.startswith('linux'):
-    platform_flags = ("INFINIT_LINUX",)
+    platform_defines = ("INFINIT_LINUX",)
   elif sys.platform == 'win32' or sys.platform == 'cygwin':
-    platform_flags = ("INFINIT_WINDOWS",)
+    platform_defines = ("INFINIT_WINDOWS",)
   elif sys.platform == 'darwin':
-    platform_flags = ("INFINIT_MACOSX", "HAVE_STATFS")
+    platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   else:
     raise Exception("platform {} not supported".format(sys.platform))
-  for flag in platform_flags:
-    cxx_config.define(flag)
+  for define in platform_defines:
+    cxx_config.define(define)
 
   cxx_config.define("HAVE_SETXATTR")
 
