@@ -496,9 +496,9 @@ namespace hole
                 // FIXME: handling via loci is very wrong. IPs are
                 // not uniques, and this reconstruction is lame and
                 // non-injective.
-                using elle::utility::move_on_copy_wrapper;
+                using elle::utility::move_on_copy;
                 auto locus = socket->remote_locus();
-                move_on_copy_wrapper<std::unique_ptr<reactor::network::Socket>>
+                move_on_copy<std::unique_ptr<reactor::network::Socket>>
                   msocket(std::move(socket));
                 auto auth_fn = [&, msocket, locus]
                 {
