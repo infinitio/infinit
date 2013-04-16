@@ -381,12 +381,8 @@ namespace surface
       std::string network_path = common::infinit::network_directory(
         this->_me._id, network_id);
 
-// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-#if 0
       if (elle::os::path::exists(network_path))
         elle::os::path::remove_directory(network_path);
-#endif
-// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
       return response.deleted_network_id;
     }
