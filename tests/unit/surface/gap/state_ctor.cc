@@ -5,6 +5,7 @@
 
 #include <lune/Lune.hh>
 #include <elle/os/path.hh>
+#include <elle/os/getenv.hh>
 #include <elle/print.hh>
 
 #include <thread>
@@ -43,19 +44,6 @@ close_on_finished_transaction_cb(TransactionStatusNotification const &tn,
     finish_test = true;
 }
 
-auto kill_all = []
-(State &s) {
-  auto &n = s.networks();
-  while (1)
-    {
-      auto it = n.begin();
-      auto ite = n.end();
-      if (it == ite)
-        break;
-      s.delete_network(std::string(it->first));
-    }
-};
-
 auto make_login = []
 (State &s, std::string user, std::string email)
 {
@@ -75,74 +63,72 @@ auto make_login = []
   s.update_device("device" + user);
 };
 
+void
+work(surface::gap::State& state)
+{
+  while (state.logged_in())
+  {
+    state.poll();
+    ::sleep(1);
+  }
+}
+
 auto make_worker = []
 (State &s) -> std::thread
 {
-    auto poll = [&] {
-        while (s.logged_in())
-        {
-            s.poll();
-            ::sleep(1);
-        }
-    };
-    return std::move(std::thread{poll});
+  return std::move(std::thread{[&] { work(s); }});
 };
 
-int
-main()
+void
+error_cb(gap_Status s, std::string const& msg, std::string const& tid)
 {
-  lune::Lune::Initialize();
+  // Ugly, but easier to see the error.
+  std::cerr << "==========================================" << std::endl;
+  std::cerr << "(" << s << "): " << msg << std::endl;
+  std::cerr << "==========================================" << std::endl;
+}
 
-  surface::gap::State s1, s2;
+std::string email1 = elle::os::getenv("INFINIT_SENDER", "_sender01@infinit.io");
+std::string email2 = elle::os::getenv("INFINIT_RECIEVER", "_rec01@infinit.io");
+
+std::tuple<surface::gap::State*, std::thread*>
+init_sender(std::string const& to_send, unsigned int count = 10)
+{
+  static surface::gap::State state;
   int timeout = 0;
   bool finish = false;
-  std::string email1 = "usertest001@infinit.io";
-  std::string email2 = "usertest002@infinit.io";
-
-
-  std::string download_dir{"infinit_download_dir"};
-  std::string to_send{"castor_dir"};
-
-  elle::os::path::make_directory(download_dir);
-  elle::os::path::make_directory(to_send);
-
-  s2.transaction_callback([&] (TransactionNotification const& t, bool)
-                          { auto_accept_transaction_cb(t, s2); });
-
-  s1.transaction_status_callback([&] (TransactionStatusNotification const& t,
-                                      bool)
-                                 {
-                                   close_on_finished_transaction_cb(
-                                     t, s1, finish);
-                                 });
-
-  make_login(s1, "Bite", email1);
-  make_login(s2, "Bite", email2);
-
-  s2.output_dir(download_dir);
-
-  std::thread t1 = make_worker(s1);
-  std::thread t2 = make_worker(s2);
-
   unsigned int counter = 0;
+
+  state.transaction_status_callback([&] (TransactionStatusNotification const& t,
+                                         bool)
+                                    {
+                                      close_on_finished_transaction_cb(
+                                        t, state, finish);
+                                    });
+
+  state.on_error_callback(error_cb);
+  make_login(state, "Bite", email1);
+  static std::thread thread = make_worker(state);
+
   try
   {
-    for (counter = 0; counter < 10; ++counter)
+    for (counter = 0; counter < count; ++counter)
     {
-      auto process_id = s1.send_files(email2, {to_send});
+      ELLE_LOG("%s send / %s", counter, count);
+      auto operation_id = state.send_files(email2, {to_send});
 
-      auto process_status = surface::gap::State::ProcessStatus::running;
+      auto operation_status = surface::gap::State::OperationStatus::running;
 
       timeout = 30;
-      while (process_status == surface::gap::State::ProcessStatus::running)
+      while (operation_status == surface::gap::State::OperationStatus::running)
       {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         if (--timeout < 0)
           throw std::runtime_error{"sending files timed out"};
 
-        process_status = s1.process_status(process_id);
+        operation_status = state.operation_status(operation_id);
       }
-      s1.process_finalize(process_id);
+      state.operation_finalize(operation_id);
 
       timeout = 60;
       while (!finish)
@@ -152,27 +138,131 @@ main()
           throw std::runtime_error{"downloading files timed out"};
       }
 
-      elle::os::path::remove_directory(download_dir);
-      elle::os::path::make_directory(download_dir);
       finish = false;
     }
   }
   catch (...)
   {
-    elle::os::path::remove_directory(download_dir);
+    ELLE_ERR("sending failed");
   }
 
-  s1.logout();
-  s2.logout();
+  return std::make_tuple(&state, &thread);
+}
 
-  if (t1.joinable())
-    t1.join();
+std::tuple<surface::gap::State*, std::thread*>
+init_recipient()
+{
+  static surface::gap::State state;
 
-  if (t2.joinable())
-    t2.join();
+  state.transaction_callback([&] (TransactionNotification const& t, bool)
+                          { auto_accept_transaction_cb(t, state); });
 
-  elle::sprint("try: %s > failed: %s", counter, fail_counter);
+  state.on_error_callback(error_cb);
 
+  make_login(state, "Bite", email2);
+
+  static std::thread thread = make_worker(state);
+
+  return std::make_tuple(&state, &thread);
+}
+
+int
+main(int argc, char** argv)
+{
+  lune::Lune::Initialize();
+
+  if (argc == 1) // No args
+  {
+    std::string to_send{"to_send"};
+
+    auto const& rstate = init_recipient();
+    auto const& sstate = init_sender(to_send);
+
+    std::get<0>(rstate)->logout();
+    std::get<0>(sstate)->logout();
+
+    std::get<1>(rstate)->join();
+    std::get<1>(sstate)->join();
+
+    elle::os::path::remove_directory(to_send);
+  }
+  else if (argc == 2 && std::string{argv[1]} == "--from")
+  {
+    auto const& rstate = init_recipient();
+
+    std::get<0>(rstate)->user_status_callback(
+      [&rstate] (surface::gap::UserStatusNotification const& notif)
+      {
+        auto id = std::get<0>(rstate)->user(email1)._id;
+
+        if (notif.user_id == id && notif.status == 0)
+        {
+          std::this_thread::sleep_for(std::chrono::seconds(3));
+          std::get<0>(rstate)->logout();
+        }
+      });
+
+    // Hack!!! Will poll 2 times faster but keep the reciepent alive.
+    work(*(std::get<0>(rstate)));
+    std::get<1>(rstate)->join();
+  }
+  else if (argc == 2)
+  {
+    auto const& rstate = init_recipient();
+    auto const& sstate = init_sender(argv[1]);
+
+    std::get<0>(rstate)->logout();
+    std::get<0>(sstate)->logout();
+
+    std::get<1>(rstate)->join();
+    std::get<1>(sstate)->join();
+  }
+  else if (argc == 3 && std::string{argv[1]} == "--to")
+  {
+    auto const& sstate = init_sender(argv[2]);
+
+    std::get<0>(sstate)->logout();
+    std::get<1>(sstate)->join();
+  }
+  else if (argc == 3 &&
+           std::string{argv[1]} == "--from" &&
+           std::string{argv[2]} == "--4ever")
+  {
+    auto const& rstate = init_recipient();
+
+    // Hack!!! Will poll 2 times faster but keep the reciepent alive.
+    // Will never stop.
+    work(*(std::get<0>(rstate)));
+
+    std::get<1>(rstate)->join();
+
+  }
+  else if (argc == 3)
+  {
+    auto const& rstate = init_recipient();
+    auto const& sstate = init_sender(std::string{argv[1]}, atoi(argv[2]));
+
+    std::get<0>(rstate)->logout();
+    std::get<0>(sstate)->logout();
+
+    std::get<1>(rstate)->join();
+    std::get<1>(sstate)->join();
+  }
+  else if (argc == 4 && std::string{argv[1]} == "--to")
+  {
+    auto const& sstate = init_sender(std::string{argv[2]}, atoi(argv[3]));
+
+    std::get<0>(sstate)->logout();
+    std::get<1>(sstate)->join();
+  }
+  else
+  {
+    ELLE_ERR("BAD COMMAND LINE, ask Antony");
+    std::cerr << "FAIL" << std::endl;
+  }
+
+
+  std::cerr << fail_counter << std::endl;
   elle::print("tests done.");
   return 0;
 }

@@ -154,17 +154,25 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
 
-      elle::metrics::reporter().store("user:login:attempt");
+      this->_reporter.store("user_login",
+                            {{MKey::status, "attempt"}});
 
       plasma::meta::LoginResponse res;
       try
       {
         res = this->_meta->login(lower_email, password);
       }
-      CATCH_FAILURE_TO_METRICS("user:login");
-      elle::metrics::reporter().update_user(res._id);
-      elle::metrics::reporter().store("user:login:succeed",
-                                      MKey::session, "start");
+      CATCH_FAILURE_TO_METRICS("user_login");
+
+      this->_reporter.update_user(res._id);
+      this->_reporter.store("user_login",
+                            {{MKey::status, "succeed"}});
+
+      // XXX: Not necessary but better.
+      this->_google_reporter.update_user(res._id);
+      this->_google_reporter.store("user:login:succeed",
+                                  {{MKey::session, "start"},
+                                   {MKey::status, "succeed"}});
 
 
       ELLE_DEBUG("Logged in as %s token = %s", email, res.token);
@@ -231,17 +239,29 @@ namespace surface
         return;
 
       // End session the session.
-      elle::metrics::reporter().store("user:logout:attempt",
-                                      MKey::session, "end");
+      this->_reporter.store("user_logout",
+                            {{MKey::status, "attempt"}});
+
+      // XXX: Not necessary but better.
+      this->_google_reporter.store("user:logout:succeed",
+                                  {{MKey::session, "end"},
+                                   {MKey::status, "attempt"}});
+
 
       try
       {
         this->_meta->logout();
       }
-      CATCH_FAILURE_TO_METRICS("user:logout");
+      CATCH_FAILURE_TO_METRICS("user_logout");
 
       // End session the session.
-      elle::metrics::reporter().store("user:logout:succeed");
+      this->_reporter.store("user_logout",
+                            {{MKey::status, "succeed"}});
+
+      // XXX: Not necessary but better.
+      this->_google_reporter.store("user:logout:succeed",
+                                  {{MKey::status, "succeed"}});
+
     }
 
     void
@@ -250,8 +270,10 @@ namespace surface
                      std::string const& password,
                      std::string const& activation_code)
     {
-      // Send file request successful.
-      elle::metrics::reporter().store("user:register:attempt");
+      // End session the session.
+      this->_reporter.store("user_register",
+                            {{MKey::status, "attempt"}});
+
 
       std::string lower_email = email;
 
@@ -267,10 +289,12 @@ namespace surface
       {
         this->_meta->register_(lower_email, fullname, password, activation_code);
       }
-      CATCH_FAILURE_TO_METRICS("user:register");
+      CATCH_FAILURE_TO_METRICS("user_register");
 
       // Send file request successful.
-      elle::metrics::reporter().store("user:register:succeed");
+      this->_reporter.store("user_register",
+                            {{MKey::status, "succeed"}});
+
 
       ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);
       this->login(lower_email, password);

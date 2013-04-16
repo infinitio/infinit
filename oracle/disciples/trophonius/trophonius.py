@@ -68,12 +68,12 @@ class Trophonius(basic.LineReceiver):
 
         print("Disconnect user: id=%s" % self.id)
 
-        status = False
         try:
             if self.devices is not None:
-                self.devices.remove(self);
+                self.devices.remove(self)
         except Exception as e:
             log.msg('self.factory.clients.remove(self) failed')
+        finally:
             pythia.Admin().post('/user/disconnected', {
                 'user_id': self.id,
                 'user_token': self.token,

@@ -37,6 +37,7 @@ namespace surface
   namespace gap
   {
     namespace json = elle::format::json;
+    using MKey = elle::metrics::Key;
 
     bool
     State::_wait_portal(std::string const& network_id)
@@ -85,15 +86,22 @@ namespace surface
     {
       ELLE_TRACE("creating network %s", name);
 
-      elle::metrics::reporter().store("network:create:attempt");
+      this->_reporter.store("network_create", {{MKey::status, "attempt"}});
+
+      this->_google_reporter.store("network:create:attempt");
 
       plasma::meta::CreateNetworkResponse response;
       try
       {
         response = this->_meta->create_network(name);
       }
-      CATCH_FAILURE_TO_METRICS("network:create");
-      elle::metrics::reporter().store("network:create:succeed");
+      CATCH_FAILURE_TO_METRICS("network_create");
+
+      this->_reporter.store("network_create",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, response.created_network_id}});
+
+      this->_google_reporter.store("network:create:succeed");
 
       this->_networks_dirty = true; // XXX insert response in _networks
 
@@ -102,11 +110,8 @@ namespace surface
           this->device_id()
       );
       this->prepare_network(response.created_network_id);
-      this->infinit_instance_manager().launch_network(
-          response.created_network_id
-      );
-
-      this->_wait_portal(response.created_network_id);
+      if (this->_wait_portal(response.created_network_id) == false)
+        throw Exception(gap_network_error, "Cannot launch infinit instance");
       return response.created_network_id;
     }
 
@@ -349,24 +354,29 @@ namespace surface
 
       this->_networks[network_id].reset();
 
-      elle::metrics::reporter().store("network:delete:attempt");
+      this->_reporter.store("network_delete",
+                            {{MKey::status, "attempt"},
+                             {MKey::value,  network_id}});
 
       plasma::meta::DeleteNetworkResponse response;
       try
       {
         response = this->_meta->delete_network(network_id, force);
       }
-      CATCH_FAILURE_TO_METRICS("network:delete");
+      CATCH_FAILURE_TO_METRICS("network_delete");
 
-      elle::metrics::reporter().store("network:delete:succeed");
+      this->_reporter.store("network_delete",
+                            {{MKey::status, "succeed"},
+                             {MKey::value,  response.deleted_network_id}});
+
 
       this->_networks_dirty = true; // XXX remove from _networks instead
       if (this->infinit_instance_manager().has_network(response.deleted_network_id))
-        {
-          this->infinit_instance_manager().stop_network(
-              response.deleted_network_id
+      {
+        this->infinit_instance_manager().stop_network(
+          response.deleted_network_id
           );
-        }
+      }
 
       std::string network_path = common::infinit::network_directory(
         this->_me._id, network_id);
@@ -419,7 +429,10 @@ namespace surface
     {
       ELLE_TRACE("adding user '%s' to network '%s'", user, network_id);
 
-      elle::metrics::reporter().store("network:user:add:attempt");
+      this->_reporter.store("network_adduser",
+                            {{MKey::status, "attempt"},
+                              {MKey::value, network_id}});
+
       try
       {
         // Retrieve user, ensuring he is on the user list.
@@ -453,6 +466,11 @@ namespace surface
 
           if (!log_file.empty())
           {
+            if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+            {
+              log_file += ".";
+              log_file += std::to_string(::getpid());
+            }
             log_file += ".group.log";
             pc.setenv("ELLE_LOG_FILE", log_file);
           }
@@ -469,9 +487,11 @@ namespace surface
                       user_id) == network.users.end())
           network.users.push_back(user_id);
       }
-      CATCH_FAILURE_TO_METRICS("network:user:add");
+      CATCH_FAILURE_TO_METRICS("network_adduser");
 
-      elle::metrics::reporter().store("network:user:add:succeed");;
+      this->_reporter.store("network_adduser",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, network_id}});
     }
 
     //std::map<std::string, NetworkStatus*> const&

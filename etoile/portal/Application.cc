@@ -132,9 +132,11 @@ namespace etoile
       // set the state.
       this->state = Application::StateConnected;
 
-      infinit::scheduler().CallLater
-        (boost::bind(&Application::Abort, this),
-         "Application abort", Application::Timeout);
+      // XXX: this SEGVs if the Application is destroyed before the
+      // timeout. Since abort does nothing for now, disabled.
+      // infinit::scheduler().CallLater
+      //   (boost::bind(&Application::Abort, this),
+      //    "Application abort", Application::Timeout);
 
       return elle::Status::Ok;
     }

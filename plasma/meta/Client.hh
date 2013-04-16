@@ -200,6 +200,7 @@ namespace plasma
     {
       list<string>      externals;
       list<string>      locals;
+      list<string>      fallback;
     };
 
     typedef UpdateNetworkResponse NetworkAddUserResponse;

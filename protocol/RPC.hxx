@@ -10,6 +10,7 @@
 
 # include <reactor/network/exception.hh>
 # include <reactor/Scope.hh>
+# include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
 
 # include <protocol/Channel.hh>
@@ -384,6 +385,7 @@ namespace infinit
 
               ELLE_TRACE("%s: remote procedure called: %s", *this, name)
                 procedure->second.second->_call(input, output);
+              ELLE_TRACE("%s: procedure %s succeeded", *this, name);
             }
           }
           catch (elle::Exception& e)
@@ -425,6 +427,7 @@ namespace infinit
       }
     }
 
+    // XXX: factor with run().
     template <typename IS,
               typename OS>
     void
@@ -443,7 +446,12 @@ namespace infinit
           auto chan = std::make_shared<Channel>(_channels.accept());
           ++i;
 
+<<<<<<< HEAD
           auto call_procedure = [&, chan] {
+=======
+          auto call_procedure = [&, chan, call]
+          {
+>>>>>>> release/0.1.4
             ELLE_LOG_COMPONENT("infinit.protocol.RPC");
 
             Packet question(chan->read());
@@ -469,6 +477,7 @@ namespace infinit
 
                 ELLE_TRACE("%s: remote procedure called: %s", *this, name)
                   procedure->second.second->_call(input, output);
+                ELLE_TRACE("%s: procedure %s succeeded", *this, name);
               }
             }
             catch (elle::Exception& e)
@@ -502,7 +511,17 @@ namespace infinit
             }
             chan->write(answer);
           };
+<<<<<<< HEAD
           scope.run_background(elle::sprintf("RPC %s", i), call_procedure);
+=======
+          auto name = reactor::Scheduler::scheduler()->current()->name();
+          call->first =
+            elle::make_unique<reactor::Thread>(this->_channels.scheduler(),
+                                               elle::sprintf("%s: RPC %s",
+                                                             name, i),
+                                               call_procedure);
+          this->_threads.push_back(call);
+>>>>>>> release/0.1.4
         }
       }
       catch (reactor::network::ConnectionClosed const& e)

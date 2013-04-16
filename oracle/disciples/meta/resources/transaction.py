@@ -9,6 +9,7 @@ from meta import database
 from meta import error
 from meta import regexp
 from meta import mail
+import meta.invitation
 
 import re
 
@@ -173,22 +174,15 @@ class Create(Page):
             if not invitee_email:
                 invitee_email = database.users().find_one({'_id': database.ObjectId(id_or_email)})['email']
 
-            subject = mail.USER_INVITATION_SUBJECT % {
-                'inviter_mail': self.user['email'],
-            }
+            if new_user:
+                meta.invitation.invite_user(
+                    invitee_email,
+                    mail_template='send-file',
+                    reply_to = self.user['email'],
+                    filename = first_filename,
+                    sendername = self.user['fullname'],
+                )
 
-            content = (new_user and mail.USER_INVITATION_CONTENT or mail.USER_NEW_FILE_CONTENT) % {
-                'inviter_mail': self.user['email'],
-                'inviter_fullname': self.user['fullname'],
-                'message': message,
-                'file_name': sent,
-                'space': ' ',
-            }
-
-            # XXX Remove invitation mail.
-            # XXX Check registration status too.
-            if not new_user:
-                mail.send(invitee_email, subject, content, reply_to=self.user['email'])
 
         self.notifier.notify_some(
             notifier.TRANSACTION,
@@ -437,14 +431,15 @@ class Start(Page):
         send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
         recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
 
-        self.apertus.add_link(send_endpoints["externals"],
-                              recv_endpoints["externals"])
+        ap_endpoint = self.apertus.add_link(str(transaction["network_id"]),
+                send_endpoints["externals"],
+                recv_endpoints["externals"])
 
         # Add the current apertus endpoint to the externals adddresses of the
         # devices.
-        ip, port = self.apertus.get_endpoint().split(":")
-        send_endpoints["externals"].append({"ip" : ip, "port" : port})
-        recv_endpoints["externals"].append({"ip" : ip, "port" : port})
+        ip, port = ap_endpoint.split(":")
+        send_endpoints["fallback"] = [{"ip" : ip, "port" : port}]
+        recv_endpoints["fallback"] = [{"ip" : ip, "port" : port}]
 
         updated_network_id = database.networks().save(network)
 
@@ -541,9 +536,10 @@ class Finish(Page):
         send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
         recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
 
-        self.apertus.del_link(send_endpoints["externals"],
-                              recv_endpoints["externals"])
-
+        self.apertus.del_link(str(transaction["network_id"]),
+                              send_endpoints["externals"],
+                              recv_endpoints["externals"]
+                              )
 
         return self.success({
             'updated_transaction_id': str(updated_transaction_id),
@@ -621,8 +617,10 @@ class Cancel(Page):
         send_endpoints = getattr(network["nodes"], str(transaction["sender_device_id"]), [])
         recv_endpoints = getattr(network["nodes"], str(transaction["recipient_device_id"]), [])
 
-        self.apertus.del_link(getattr(send_endpoints, "externals", []),
-                              getattr(recv_endpoints, "externals", []))
+        self.apertus.del_link(str(transaction["network_id"]),
+                              getattr(send_endpoints, "externals", []),
+                              getattr(recv_endpoints, "externals", []),
+                              )
 
         return self.success({
             'updated_transaction_id': str(updated_transaction_id),

@@ -21,13 +21,17 @@ namespace elle
       static std::string pretty_name = "Kissmetrics";
       static const std::map<elle::metrics::Key, std::string> keymap
       {
-        {elle::metrics::Key::tag,     "_n"},
-        {elle::metrics::Key::session, "session"},
-        {elle::metrics::Key::status,  "status"},
-        {elle::metrics::Key::value,   "value"},
+        {elle::metrics::Key::author,  "author"},
         {elle::metrics::Key::count,   "count"},
         {elle::metrics::Key::height,  "height"},
+        {elle::metrics::Key::input,   "input"},
+        {elle::metrics::Key::panel,   "panel"},
+        {elle::metrics::Key::session, "session"},
         {elle::metrics::Key::size,    "size"},
+        {elle::metrics::Key::status,  "status"},
+        {elle::metrics::Key::step,    "step"},
+        {elle::metrics::Key::tag,     "_n"},
+        {elle::metrics::Key::value,   "value"},
         {elle::metrics::Key::width,   "witdh"},
       };
 
@@ -53,7 +57,7 @@ namespace elle
           .parameter("version", elle::metrics::Reporter::version)
           .parameter("app_name", "Infinit")
           .parameter("_p", this->_user_id)
-          .parameter("_k", "19ddf38619b97f743da8326f52ade1b6ce38ae25")  // Tracking ID.
+          .parameter("_k", "0a79eca82697f0f7f0e6d5183daf8f1ebb81b39e")  // Tracking ID.
           .parameter("version", "1");
 
         typedef Reporter::Metric::value_type Field;
@@ -85,11 +89,12 @@ namespace elle
 
       //- Helper ---------------------------------------------------------------
       void
-      register_service(std::string const& host,
+      register_service(Reporter& reporter,
+                       std::string const& host,
                        uint16_t port,
                        std::string const& id_file_path)
       {
-        elle::metrics::reporter().add_service(
+        reporter.add_service(
           std::unique_ptr<Service>{
             new Service{host, port, retrieve_id(id_file_path), id_file_path}});
       }

@@ -40,26 +40,50 @@ namespace surface
       , code(code)
     {}
 
+    LoggerInitializer::LoggerInitializer()
+    {
+      std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+      if (!log_file.empty())
+      {
+        if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+        {
+          log_file += ".";
+          log_file += std::to_string(::getpid());
+        }
+
+        static std::ofstream out{
+          log_file + ".log",
+          std::fstream::trunc | std::fstream::out};
+
+        elle::log::logger(
+          std::unique_ptr<elle::log::Logger>{new elle::log::TextLogger(out)});
+      }
+    }
+
     // - State ----------------------------------------------------------------
     State::State()
-      : _meta{new plasma::meta::Client{
+      : _logger_intializer{}
+      , _meta{new plasma::meta::Client{
           common::meta::host(), common::meta::port(), true,
         }}
       , _trophonius{nullptr}
+      , _reporter{}
+      , _google_reporter{}
       , _users{}
-      , _logged{false}
       , _swaggers_dirty{true}
-      , _output_dir{common::system::download_directory()}
+      , _output_dir{}
       , _files_infos{}
       , _networks{}
       , _networks_dirty{true}
       , _infinit_instance_manager{}
     {
-      std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-      if (!log_file.empty())
-        this->output_log_file(log_file);
-
       ELLE_LOG("Creating a new State");
+
+      this->_output_dir = common::system::download_directory();
+
+      // Start metrics after setting up the logger.
+      _reporter.start();
+      _google_reporter.start();
 
       this->transaction_callback(
           [&] (TransactionNotification const &n, bool is_new) -> void {
@@ -111,30 +135,19 @@ namespace surface
         }
       }
 
-      // Initialize server.
+      // Initialize google metrics.
       auto const& g_info = common::metrics::google_info();
-      elle::metrics::google::register_service(g_info.server,
+      elle::metrics::google::register_service(this->_google_reporter,
+                                              g_info.server,
                                               g_info.port,
                                               g_info.id_path);
 
       // Initialize server.
       auto const& km_info = common::metrics::km_info();
-      elle::metrics::kissmetrics::register_service(km_info.server,
+      elle::metrics::kissmetrics::register_service(this->_reporter,
+                                                   km_info.server,
                                                    km_info.port,
                                                    km_info.id_path);
-    }
-
-    void
-    State::output_log_file(std::string const& path)
-    {
-      static std::ofstream out{
-          path + ".log",
-          std::fstream::trunc | std::fstream::out
-      };
-
-      elle::log::logger(
-          std::unique_ptr<elle::log::Logger>{new elle::log::TextLogger(out)}
-      );
     }
 
     State::State(std::string const& token):
@@ -187,9 +200,6 @@ namespace surface
       {
         std::vector<std::string> res;
         boost::split(res, i, boost::is_any_of(":"));
-        // XXX filter backup
-        if (res[1] == "9898")
-          continue;
         theirs_addr.push_back(res[0]);
       }
       // XXX[refactor this]
@@ -197,9 +207,6 @@ namespace surface
       {
         std::vector<std::string> res;
         boost::split(res, i, boost::is_any_of(":"));
-        // XXX filter backup
-        if (res[1] == "9898")
-          continue;
         ours_addr.push_back(res[0]);
       }
 
@@ -285,11 +292,10 @@ namespace surface
 
       /// Check if network is valid
       {
-          auto network = this->networks().find(network_id);
+        auto network = this->networks().find(network_id);
 
-          if (network == this->networks().end())
-              throw gap::Exception{gap_internal_error, "Unable to find network"};
-
+        if (network == this->networks().end())
+          throw gap::Exception{gap_internal_error, "Unable to find network"};
       }
 
       // Fetch Nodes and find the correct one to contact
@@ -330,18 +336,7 @@ namespace surface
 
           my_externals = std::move(e.externals);
           my_locals = std::move(e.locals);
-        }
-        // fallback
-        {
-          // the only exact match ip:port is the fallback server.
-          std::set_intersection(begin(my_externals), end(my_externals),
-                                begin(externals), end(externals),
-                                std::back_inserter(fallback));
-          for (auto const& s: fallback)
-          {
-            externals.remove(s);
-            my_externals.remove(s);
-          }
+          fallback = std::move(e.fallback);
         }
       }
 
@@ -364,22 +359,23 @@ namespace surface
         externals.sort();
         locals.sort();
         fallback.sort();
-        if (common.empty())
+
+        if (externals.empty() || my_externals.empty())
+        {
+          for (auto const& s: locals)
+            first_round.push_back(s);
+          rounds.push_back(first_round);
+          for (auto const& s: fallback)
+            second_round.push_back(s);
+          rounds.push_back(second_round);
+        }
+        else if (common.empty())
         {
           // if there is no common external address, then we can try them first.
           for (auto const& s: externals)
             first_round.push_back(s);
           rounds.push_back(first_round);
           // then, we know we can not connect locally, so try to fallback
-          for (auto const& s: fallback)
-            second_round.push_back(s);
-          rounds.push_back(second_round);
-        }
-        else if (externals.empty() || my_externals.empty())
-        {
-          for (auto const& s: locals)
-            first_round.push_back(s);
-          rounds.push_back(first_round);
           for (auto const& s: fallback)
             second_round.push_back(s);
           rounds.push_back(second_round);

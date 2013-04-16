@@ -40,7 +40,7 @@ namespace nucleus
         default:
           {
             throw Exception(elle::sprintf("unknown component: '%s'",
-                                          component));
+                                          static_cast<int>(component)));
           }
         }
 

@@ -201,6 +201,7 @@ SERIALIZE_RESPONSE(plasma::meta::EndpointNodeResponse, ar, res)
 {
   ar & named("externals", res.externals);
   ar & named("locals", res.locals);
+  ar & named("fallback", res.fallback);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::CreateNetworkResponse, ar, res)

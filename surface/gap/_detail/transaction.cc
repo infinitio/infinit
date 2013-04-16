@@ -7,6 +7,7 @@
 #include <elle/os/path.hh>
 #include <elle/os/getenv.hh>
 #include <elle/system/Process.hh>
+#include <elle/finally.hh>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
@@ -77,10 +78,10 @@ namespace surface
       auto transfer_binary = common::infinit::binary_path("8transfer");
       ELLE_DEBUG("Using 8transfert binary '%s'", transfer_binary);
 
-      elle::metrics::reporter().store(
-        "transaction:create:attempt",
-        {{MKey::count, std::to_string(files.size())},
-         {MKey::size, std::to_string(size)}});
+      this->_reporter.store("transaction_create",
+                            {{MKey::status, "attempt"},
+                             {MKey::count, std::to_string(files.size())},
+                             {MKey::size, std::to_string(size)}});
 
       try
       {
@@ -107,6 +108,11 @@ namespace surface
               std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
               if (!log_file.empty())
               {
+                if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+                {
+                  log_file += ".";
+                  log_file += std::to_string(::getpid());
+                }
                 log_file += ".to.transfer.log";
                 pc.setenv("ELLE_LOG_FILE", log_file);
               }
@@ -136,14 +142,14 @@ namespace surface
                                               this->device_id());
         this->_me.remaining_invitations = res.remaining_invitations;
 
-        elle::metrics::reporter().store(
-          "transaction:create:succeed",
-          {{MKey::value, res.created_transaction_id},
-            {MKey::count, std::to_string(files.size())},
-            {MKey::size, std::to_string(size)}});
+      this->_reporter.store("transaction_create",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, res.created_transaction_id},
+                             {MKey::count, std::to_string(files.size())},
+                             {MKey::size, std::to_string(size)}});
 
       }
-      CATCH_FAILURE_TO_METRICS("transaction:create");
+      CATCH_FAILURE_TO_METRICS("transaction_create");
     }
 
     float
@@ -183,10 +189,15 @@ namespace surface
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
         if (!log_file.empty())
+        {
+          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
           {
-            log_file += ".progress.log";
-            pc.setenv("ELLE_LOG_FILE", log_file);
+            log_file += ".";
+            log_file += std::to_string(::getpid());
           }
+          log_file += ".progress.log";
+          pc.setenv("ELLE_LOG_FILE", log_file);
+        }
       }
       elle::system::Process p{std::move(pc), progress_binary, arguments};
 
@@ -195,10 +206,15 @@ namespace surface
             gap_internal_error, "8progress binary failed"
         };
 
-      int progress = 0;
+      int current_size = 0;
+      int total_size = 0;
       std::stringstream ss;
       ss << p.read();
-      ss >> progress;
+      ss >> current_size >> total_size;
+
+      if (total_size == 0)
+          return 0.f;
+      float progress = float(current_size) / float(total_size);
 
       if (progress < 0)
         {
@@ -210,9 +226,8 @@ namespace surface
           ELLE_WARN("8progress returned an integer greater than 100: %s", progress);
           progress = 100;
         }
-      float fprogress = float(progress) / 100.0f;
-      ELLE_DEBUG("transaction_progress(%s) -> %f", transaction_id, fprogress);
-      return fprogress;
+      ELLE_DEBUG("transaction_progress(%s) -> %f", transaction_id, progress);
+      return progress;
     }
 
     void
@@ -248,6 +263,11 @@ namespace surface
 
           if (!log_file.empty())
           {
+            if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+            {
+              log_file += ".";
+              log_file += std::to_string(::getpid());
+            }
             log_file += ".from.transfer.log";
             pc.setenv("ELLE_LOG_FILE", log_file);
           }
@@ -261,7 +281,7 @@ namespace surface
 
         if (trans.files_count == 1)
         {
-          ELLE_WARN("Download complete. Your file is at '%s'.",
+          ELLE_LOG("Download complete. Your file is at '%s'.",
               elle::os::path::join(
                 this->_output_dir.c_str(), trans.first_filename
               )
@@ -269,7 +289,7 @@ namespace surface
         }
         else
         {
-          ELLE_WARN("Download complete. Your %d files are in '%s'.",
+          ELLE_LOG("Download complete. Your %d files are in '%s'.",
               trans.files_count, this->_output_dir.c_str());
         }
 
@@ -280,8 +300,8 @@ namespace surface
       }
       catch (std::exception const& err)
       {
-        ELLE_WARN("couldn't receive file %s: %s", trans.first_filename,
-                                                  err.what());
+        ELLE_ERR("couldn't receive file %s: %s", trans.first_filename,
+                                                 err.what());
         this->update_transaction(
             transaction_id,
             gap_TransactionStatus::gap_transaction_status_canceled
@@ -336,31 +356,18 @@ namespace surface
         throw Exception{gap_error, "You are neither recipient nor the sender."};
       }
 
-      if (user_id == transaction.recipient_id)
-      {
-        auto const& status_list = _recipient_status_update.find(
-          (gap_TransactionStatus) transaction.status);
+      auto list = (user_id == transaction.recipient_id) ? _recipient_status_update
+                                                        : _sender_status_update;
 
-        if (status_list == _recipient_status_update.end() ||
-            status_list->second.find((gap_TransactionStatus) status) == status_list->second.end())
-        {
-          ELLE_WARN("You are not allowed to change status from %s to %s",
-                    transaction.status, status);
-          return false;
-        }
-      }
-      else if (user_id == transaction.sender_id)
-      {
-         auto const& status_list = _sender_status_update.find(
-           (gap_TransactionStatus) transaction.status);
+      auto const& status_list = list.find(
+        (gap_TransactionStatus) transaction.status);
 
-        if (status_list == _sender_status_update.end() ||
-            status_list->second.find((gap_TransactionStatus)status) == status_list->second.end())
-        {
-          ELLE_WARN("You are not allowed to change status from %s to %s",
-                    transaction.status, status);
+      if (status_list == list.end() ||
+          status_list->second.find((gap_TransactionStatus) status) == status_list->second.end())
+      {
+        ELLE_WARN("You are not allowed to change status from %s to %s",
+                  transaction.status, status);
           return false;
-        }
       }
 
       return true;
@@ -383,7 +390,11 @@ namespace surface
       Transaction const& transaction = pair->second;
 
       if (!_check_action_is_available(this->_me._id, transaction, status))
-        return;
+        throw Exception(gap_api_error,
+                        elle::sprintf("you are allowed to change transaction " \
+                                      " status from %s to %s",
+                                      transaction.status, status));
+
 
       switch (status)
       {
@@ -403,8 +414,10 @@ namespace surface
           this->_close_transaction(transaction);
           break;
         default:
-          ELLE_WARN("You are not able to change transaction status to '%s'.",
-                    status);
+          ELLE_WARN("Status %s doesn't exist", status);
+          throw Exception(gap_api_error,
+                          elle::sprintf("unknow status %s", status));
+
           return;
       }
 
@@ -421,8 +434,9 @@ namespace surface
         throw Exception{gap_error, "Only recipient can accept transaction."};
       }
 
-      elle::metrics::reporter().store(
-        "transaction:accept:attempt", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_accept",
+                            {{MKey::status, "attempt"},
+                             {MKey::value, transaction.transaction_id}});
 
       try
       {
@@ -431,10 +445,11 @@ namespace surface
                                         this->device_id(),
                                         this->device_name());
       }
-      CATCH_FAILURE_TO_METRICS("transaction:accept");
+      CATCH_FAILURE_TO_METRICS("transaction_accept");
 
-      elle::metrics::reporter().store(
-        "transaction:accept:succeed", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_accept",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, transaction.transaction_id}});
 
       // Could be improve.
       _swaggers_dirty = true;
@@ -448,24 +463,6 @@ namespace surface
       if (transaction.sender_device_id != this->device_id())
         return;
 
-      ELLE_DEBUG("giving '%s' access to the network '%s'",
-                transaction.recipient_id,
-                transaction.network_id);
-
-      this->_networks_dirty = true;
-      this->network_add_user(transaction.network_id,
-                             transaction.recipient_id);
-
-      ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
-                transaction.recipient_id,
-                transaction.network_id);
-
-      this->set_permissions(transaction.recipient_id,
-                            transaction.network_id,
-                            nucleus::neutron::permissions::write);
-
-      ELLE_DEBUG("update transaction");
-
       // When recipient has rights, allow him to start download.
       this->update_transaction(transaction.transaction_id,
                                gap_transaction_status_prepared);
@@ -477,25 +474,47 @@ namespace surface
     void
     State::_prepare_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("prepare transaction '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction.transaction_id);
 
       if (transaction.sender_device_id != this->device_id())
       {
         throw Exception{gap_error, "Only sender can prepare his network."};
       }
 
-      elle::metrics::reporter().store(
-        "transaction:prepare:attempt", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_ready",
+                            {{MKey::status, "attempt"},
+                             {MKey::value, transaction.transaction_id}});
 
       try
       {
-      this->_meta->update_transaction(transaction.transaction_id,
-                                      plasma::TransactionStatus::prepared);
-      }
-      CATCH_FAILURE_TO_METRICS("transaction:prepare");
+        if (this->_wait_portal(transaction.network_id) == false)
+          throw Exception{gap_network_error, "Cannot wait portal"};
 
-      elle::metrics::reporter().store(
-        "transaction:prepare:succeed", MKey::value, transaction.transaction_id);
+        ELLE_DEBUG("giving '%s' access to the network '%s'",
+                   transaction.recipient_id,
+                   transaction.network_id);
+
+        this->_networks_dirty = true;
+        this->network_add_user(transaction.network_id,
+                               transaction.recipient_id);
+
+        ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
+                 transaction.recipient_id,
+                   transaction.network_id);
+
+        this->set_permissions(transaction.recipient_id,
+                              transaction.network_id,
+                              nucleus::neutron::permissions::write);
+
+
+        this->_meta->update_transaction(transaction.transaction_id,
+                                        plasma::TransactionStatus::prepared);
+      }
+      CATCH_FAILURE_TO_METRICS("transaction_ready");
+
+      this->_reporter.store("transaction_ready",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, transaction.transaction_id}});
     }
 
     void
@@ -506,19 +525,19 @@ namespace surface
       if (transaction.recipient_device_id != this->device_id())
       {
         ELLE_DEBUG("transaction doesn't concern your device.");
-        // grace à hanthhhony
         return;
       }
 
       this->_networks_dirty = true;
       this->prepare_network(transaction.network_id);
+
       this->_meta->network_add_device(
-          transaction.network_id,
-          this->device_id()
-      );
+        transaction.network_id, this->device_id());
+
       this->infinit_instance_manager().launch_network(transaction.network_id);
-      // Ensure creation.
-      this->_wait_portal(transaction.network_id);
+
+      if (this->_wait_portal(transaction.network_id) == false)
+        throw Exception{gap_network_error, "Cannot wait portal"};
 
       this->update_transaction(transaction.transaction_id,
                                gap_transaction_status_started);
@@ -534,18 +553,21 @@ namespace surface
         throw Exception{gap_error, "Only recipient can start transaction."};
       }
 
-      elle::metrics::reporter().store(
-        "transaction:start:attempt", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_start",
+                            {{MKey::status, "attempt"},
+                              {MKey::value, transaction.transaction_id}});
 
       try
       {
         this->_meta->update_transaction(transaction.transaction_id,
                                         plasma::TransactionStatus::started);
       }
-      CATCH_FAILURE_TO_METRICS("transaction:start");
+      CATCH_FAILURE_TO_METRICS("transaction_start");
 
-      elle::metrics::reporter().store(
-        "transaction:start:succeed", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_start",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, transaction.transaction_id}});
+
     }
 
     void
@@ -567,18 +589,19 @@ namespace surface
       {
         reactor::Scheduler sched;
         reactor::Thread sync{
-            sched,
-            "notify_8infinit",
-            [&] () -> void {
-                try
-                {
-                  this->_notify_8infinit(transaction, sched);
-                }
-                catch (std::runtime_error const&)
-                {
-                  exception = std::current_exception();
-                }
+          sched,
+          "notify_8infinit",
+          [&]
+          {
+            try
+            {
+              this->_notify_8infinit(transaction, sched);
             }
+            catch (elle::Exception const& e)
+            {
+              exception = std::make_exception_ptr(e);
+            }
+          }
         };
 
         sched.run();
@@ -617,18 +640,20 @@ namespace surface
             "Only recipient can close transaction."};
       }
 
-      elle::metrics::reporter().store(
-        "transaction:finish:attempt", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_finish",
+                            {{MKey::status, "attempt"},
+                              {MKey::value, transaction.transaction_id}});
 
       try
       {
         this->_meta->update_transaction(transaction.transaction_id,
                                         plasma::TransactionStatus::finished);
       }
-      CATCH_FAILURE_TO_METRICS("transaction:finish");
+      CATCH_FAILURE_TO_METRICS("transaction_finish");
 
-      elle::metrics::reporter().store(
-        "transaction:finish:succeed", MKey::value, transaction.transaction_id);
+      this->_reporter.store("transaction_finish",
+                            {{MKey::status, "succeed"},
+                              {MKey::value, transaction.transaction_id}});
     }
 
     void
@@ -646,44 +671,32 @@ namespace surface
       ELLE_DEBUG("Cancel transaction '%s'", transaction.transaction_id);
 
       //XXX: If download has started, cancel it, delete files, ...
-      if (transaction.sender_id == this->_me._id)
+
+      std::string author{
+        transaction.sender_id == this->_me._id ? "sender" : "recipient",};
+
+      this->_reporter.store("transaction_cancel",
+                            {{MKey::status, "attempt"},
+                             {MKey::author, author},
+                             {MKey::step, std::to_string(transaction.status)},
+                             {MKey::value, transaction.transaction_id}});
+
+      ELLE_SCOPE_EXIT(
+        [&] { this->delete_network(transaction.network_id, true); }
+      );
+
+      try
       {
-        elle::metrics::reporter().store(
-          "transaction:cancel:sender:attempt",
-          {{MKey::status, std::to_string(transaction.status)},
-           {MKey::value, transaction.transaction_id}});
-
-        try
-        {
-          this->_meta->update_transaction(transaction.transaction_id,
-                                          plasma::TransactionStatus::canceled);
-        }
-        CATCH_FAILURE_TO_METRICS("transaction:cancel:sender");
-
-        elle::metrics::reporter().store(
-          "transaction:cancel:sender:succeed",
-          {{MKey::status, std::to_string(transaction.status)},
-           {MKey::value, transaction.transaction_id}});
+        this->_meta->update_transaction(transaction.transaction_id,
+                                        plasma::TransactionStatus::canceled);
       }
-      else
-      {
-        elle::metrics::reporter().store(
-          "transaction:cancel:recipient:attempt",
-          {{MKey::status, std::to_string(transaction.status)},
-           {MKey::value, transaction.transaction_id}});
+      CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-        try
-        {
-          this->_meta->update_transaction(transaction.transaction_id,
-                                          plasma::TransactionStatus::canceled);
-        }
-        CATCH_FAILURE_TO_METRICS("transaction:cancel:recipient");
-
-        elle::metrics::reporter().store(
-          "transaction:cancel:recipient:succeed",
-          {{MKey::status, std::to_string(transaction.status)},
-           {MKey::value, transaction.transaction_id}});
-      }
+      this->_reporter.store("transaction_cancel",
+                            {{MKey::status, "succeed"},
+                             {MKey::author, author},
+                             {MKey::step, std::to_string(transaction.status)},
+                             {MKey::value, transaction.transaction_id}});
     }
 
     void
@@ -693,9 +706,11 @@ namespace surface
 
       // XXX: If some operation are launched, such as 8transfer, 8progess for the
       // current transaction, cancel them.
+      this->infinit_instance_manager().stop_network(transaction.network_id);
 
       // Delete networks.
       this->delete_network(transaction.network_id, true);
+      ELLE_DEBUG("Network %s successfully deleted", transaction.network_id);
     }
 
     State::TransactionsMap const&
@@ -780,17 +795,21 @@ namespace surface
     State::_on_transaction(TransactionNotification const& notif,
                            bool is_new)
     {
-      ELLE_TRACE("New transaction");
+      ELLE_TRACE_FUNCTION(notif.transaction.transaction_id, is_new);
 
-      if (!is_new) // XXX Why ?
-        return;
+      // If it's not new, we already has it on our transactions.
+      if (!is_new) return;
 
       auto it = this->transactions().find(notif.transaction.transaction_id);
 
       if (it != this->transactions().end())
       {
+        // The evaluation of transaction is lazy, which means that if your first
+        // operation about transactions is create one, at the first evaluation,
+        // the new transaction will already be in the transactions map, causing
+        // the following warning to appear. Don't care.
         ELLE_WARN("you already have this transaction");
-        return; // XXX really ?
+        return;
       }
 
       // Normal case, this is a new transaction, store it to match server.
@@ -800,7 +819,7 @@ namespace surface
     void
     State::_on_transaction_status(TransactionStatusNotification const& notif)
     {
-      ELLE_TRACE("_on_notification: gap_TransactionStatusNotification");
+      ELLE_TRACE_FUNCTION(notif.status);
 
       auto const pair = State::transactions().find(notif.transaction_id);
 
@@ -809,10 +828,16 @@ namespace surface
         // Something went wrong.
         auto transaction = this->_meta->transaction(notif.transaction_id);
 
+        if (transaction.status == gap_transaction_status_canceled)
+        {
+          ELLE_WARN("we merged a canceled transaction, nothing to do with that.");
+          return;
+        }
+
         (*this->_transactions)[notif.transaction_id] = transaction;
       }
 
-      (*this->_transactions)[notif.transaction_id].status = notif.status;
+      this->_transactions->at(notif.transaction_id).status = notif.status;
 
       auto const& transaction = this->transaction(notif.transaction_id);
 
@@ -820,6 +845,7 @@ namespace surface
       {
         case plasma::TransactionStatus::accepted:
           // We update the transaction from meta.
+          // XXX: we should have it from transaction_notification.
           (*_transactions)[notif.transaction_id] = this->_meta->transaction(
               notif.transaction_id
           );

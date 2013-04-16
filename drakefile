@@ -149,6 +149,9 @@ def configure(cxx_toolkit,
     cxx_config.define('INFINIT_HORIZON')
   cxx_config.define('BOOST_PP_VARIADICS')
 
+  cxx_config_libs = drake.cxx.Config(cxx_config)
+  cxx_config_libs.lib_path_runtime('.')
+
   # Lune
   lune_sources = drake.nodes(
     'lune/Configuration.cc',
@@ -795,6 +798,7 @@ def configure(cxx_toolkit,
     'progress',
     'transfer',
     'user',
+    'dump',
     ]:
     satellite(name)
 
@@ -806,6 +810,15 @@ def configure(cxx_toolkit,
 
   if "search" in satellites:
       build << search_copy
+
+  # 8d00m
+  d00m_sources = drake.nodes(
+    'satellites/d00m/8d00m.py'
+    )
+  d00m_copy = drake.copy(d00m_sources, 'bin', 'satellites/d00m')
+
+  if "d00m" in satellites:
+      build << d00m_copy
 
   # 8sendto
   sendto_sources = drake.nodes(
@@ -855,7 +868,7 @@ def configure(cxx_toolkit,
     )
   gap_lib = drake.cxx.DynLib('lib/gap',
                              gap_sources + infinit_libs,
-                             cxx_toolkit, cxx_config)
+                             cxx_toolkit, cxx_config_libs)
   build << gap_lib
 
   # GAP python
@@ -923,20 +936,22 @@ def configure(cxx_toolkit,
     )
 
   oracle_lib += drake.nodes(
+    'oracle/disciples/meta/__init__.py',
+    'oracle/disciples/meta/apertus.py',
     'oracle/disciples/meta/application.py',
     'oracle/disciples/meta/conf.py',
     'oracle/disciples/meta/database.py',
     'oracle/disciples/meta/apertus.py',
-    'oracle/disciples/meta/error_code.hh.inc',
+    'oracle/disciples/meta/invitation.py',
     'oracle/disciples/meta/error.py',
-    'oracle/disciples/meta/__init__.py',
+    'oracle/disciples/meta/error_code.hh.inc',
     'oracle/disciples/meta/mail.py',
     'oracle/disciples/meta/notification_type.hh.inc',
     'oracle/disciples/meta/notifier.py',
     'oracle/disciples/meta/page.py',
     'oracle/disciples/meta/regexp.py',
-    'oracle/disciples/meta/resources/device.py',
     'oracle/disciples/meta/resources/__init__.py',
+    'oracle/disciples/meta/resources/device.py',
     'oracle/disciples/meta/resources/network.py',
     'oracle/disciples/meta/resources/network_update.hh.inc',
     'oracle/disciples/meta/resources/notification.py',
@@ -947,6 +962,7 @@ def configure(cxx_toolkit,
     'oracle/disciples/meta/resources/user.py',
     'oracle/disciples/meta/session.py',
     'oracle/disciples/meta/session_store.py',
+    'oracle/disciples/meta/user_status.hh.inc',
     )
 
   oracle_lib += drake.nodes(
@@ -1005,7 +1021,7 @@ def configure(cxx_toolkit,
 
   # Tests
   tests_cxx_config = drake.cxx.Config(cxx_config)
-  tests_cxx_config.lib_path_runtime('../lib')
+  tests_cxx_config.lib_path_runtime('../../../../lib')
   tests_cxx_config += boost.config_test()
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib] + udt_libs
   tests_src_n_lib = [
@@ -1013,6 +1029,7 @@ def configure(cxx_toolkit,
     ('tests/unit/elle/finally.cc', [elle_lib]),
     ('tests/unit/elle/log.cc', [elle_lib]),
     ('tests/unit/elle/operator.cc', [elle_lib]),
+    ('tests/unit/elle/serialize/all_archives.cc', [elle_lib]),
     ('tests/unit/elle/print.cc', [elle_lib]),
     ('tests/unit/nucleus/neutron/nn_Group.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Object.cc', nucleus_test_libs),
@@ -1037,7 +1054,9 @@ def configure(cxx_toolkit,
   for test in tests_src_n_lib:
     bin_path = drake.Path(test[0])
     bin_path.extension = ''
-    test_bin = drake.cxx.Executable('bin/test_' + os.path.basename(test[0]).split('.')[0], #XXX
+    path = drake.Path(test[0])
+    path.extension = ''
+    test_bin = drake.cxx.Executable(path,
                                     drake.nodes(*test[:-1]) + test[-1],
                                     cxx_toolkit, tests_cxx_config)
 

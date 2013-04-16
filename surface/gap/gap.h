@@ -400,12 +400,13 @@ extern "C" {
   void
   gap_transactions_free(char** transactions);
 
-  /// Error
+  /// Error callback type. The arguments are respectively error code, reason
+  /// and optionally a transaction id.
+  typedef void (*gap_on_error_callback_t)(gap_Status status,
+                                          char const* reason,
+                                          char const* transaction_id);
 
-  typedef void (*gap_on_error_callback_t)(gap_Status,
-                                          char const*,
-                                          char const*);
-
+  /// Register an error callback.
   gap_Status
   gap_on_error_callback(gap_State* state,
                         gap_on_error_callback_t cb);

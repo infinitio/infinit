@@ -5,11 +5,13 @@
 #include <elle/network/Interface.hh>
 #include <elle/utility/Time.hh>
 #include <elle/utility/Duration.hh>
+#include <elle/utility/Move.hh>
 
 #include <reactor/network/exception.hh>
 #include <reactor/network/udt-server.hh>
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/tcp-socket.hh>
+#include <reactor/Scope.hh>
 
 #include <agent/Agent.hh>
 
@@ -56,26 +58,11 @@ namespace hole
   {
     namespace slug
     {
-      // FIXME
-      static Machine* machine(nullptr);
-      void
-      portal_connect(std::string const& host, int port)
-      {
-        machine->portal_connect(host, port);
-      }
-
       void
       Machine::portal_connect(std::string const& host, int port)
       {
         ELLE_TRACE_FUNCTION(host, port);
-
-        _server->accept(host, port);
-      }
-
-      bool
-      portal_wait(std::string const& host, int port)
-      {
-        return (machine->portal_wait(host, port));
+        this->_server->accept(host, port);
       }
 
       bool
@@ -118,7 +105,7 @@ namespace hole
                 n++;
               // Stop iteration if we know that the host is forbidden.
               if (n > 1)
-                return false;
+                goto error;
             }
             ELLE_DEBUG("%s found", locus);
             return true;
@@ -128,7 +115,10 @@ namespace hole
             ELLE_DEBUG("not yet..");
           }
         }
-
+      error:
+        ELLE_DEBUG("out of portal_wait(%s, %s) (%s)",
+                   host, port, this->_hosts.size())
+        this->_hosts.erase(locus);
         return false;
       }
 
@@ -219,10 +209,14 @@ namespace hole
       Machine::_rpc_accept()
       {
         int i = 0;
+        reactor::Scope scope;
+
         while (true)
         {
           std::shared_ptr<reactor::network::TCPSocket> socket(
             this->_rpc_server->accept());
+
+          ELLE_DEBUG("accepted new rpc control from %s", socket->remote_locus());
 
           i++;
           auto run = [&, socket]
@@ -240,8 +234,14 @@ namespace hole
               };
               control::RPC rpcs{channels};
 
-              rpcs.slug_connect = &hole::implementations::slug::portal_connect;
-              rpcs.slug_wait = &hole::implementations::slug::portal_wait;
+              rpcs.slug_connect = std::bind(&Machine::portal_connect,
+                                            this,
+                                            std::placeholders::_1,
+                                            std::placeholders::_2);
+              rpcs.slug_wait = std::bind(&Machine::portal_wait,
+                                         this,
+                                         std::placeholders::_1,
+                                         std::placeholders::_2);
 
               rpcs.parallel_run();
             }
@@ -250,10 +250,8 @@ namespace hole
               ELLE_WARN("slug control: %s", e.what());
             }
           };
-          this->_controlers.push_back(std::make_shared<reactor::Thread>(
-                                      *reactor::Scheduler::scheduler(),
-                                      elle::sprintf("SLUG RPC %s", i),
-                                      run));
+          auto name = reactor::Scheduler::scheduler()->current()->name();
+          scope.run_background(elle::sprintf("%s: pool %s", name, i), run);
           ELLE_TRACE("new connection accepted");
         }
       }
@@ -275,7 +273,6 @@ namespace hole
                                             [&] { this->_rpc_accept(); },
                                             true))
       {
-        machine = this; // FIXME
         elle::network::Locus     locus;
         ELLE_TRACE_SCOPE("launch");
         this->_rpc_server->listen(0);
@@ -421,6 +418,9 @@ namespace hole
         // acceptor.
         if (_acceptor)
           _acceptor->terminate_now();
+
+        if (!this->_rpc_acceptor->done())
+          this->_rpc_acceptor->terminate_now();
       }
 
       /*------.
@@ -458,6 +458,8 @@ namespace hole
       void
       Machine::_accept()
       {
+        reactor::Scope scope;
+
         while (true)
         {
           std::unique_ptr<reactor::network::Socket> socket(_server->accept());
@@ -494,20 +496,15 @@ namespace hole
                 // FIXME: handling via loci is very wrong. IPs are
                 // not uniques, and this reconstruction is lame and
                 // non-injective.
+                using elle::utility::move_on_copy_wrapper;
                 auto locus = socket->remote_locus();
-                reactor::network::Socket* s = socket.release();
-                reactor::Thread *t =
-                  new reactor::Thread(
-                    *reactor::Scheduler::scheduler(),
-                     elle::sprintf("connect"),
-                     [this, s, locus] {
-                       _connect(
-                         std::move(std::unique_ptr<reactor::network::Socket>(s)),
-                         locus,
-                         false
-                       );
-                     }
-                  );
+                move_on_copy_wrapper<std::unique_ptr<reactor::network::Socket>>
+                  msocket(std::move(socket));
+                auto auth_fn = [&, msocket, locus]
+                {
+                  this->_connect(std::move(msocket.value), locus, false);
+                };
+                scope.run_background(elle::sprintf("auth %s", locus), auth_fn);
                 break;
               }
             default:

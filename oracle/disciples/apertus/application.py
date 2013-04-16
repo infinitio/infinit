@@ -90,10 +90,8 @@ class Application(object):
         l_addr4 = iface[netifaces.AF_INET]
         l_addr6 = iface[netifaces.AF_INET6]
 
-        factory = apertus.Factory()
-        factory.slave = apertus.Apertus()
+        factory = apertus.Factory(l_addr4[0]['addr'])
 
-        reactor.listenUDP(self.port, factory.slave, interface=l_addr4[0]['addr'])
         reactor.listenTCP(self.control_port, factory, interface="localhost")
 
         if HAVE_SETPROCTITLE:

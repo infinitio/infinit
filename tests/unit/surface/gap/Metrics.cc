@@ -40,211 +40,228 @@ int main(void)
 
     using MKey = elle::metrics::Key;
 
-    // Initialize server.
-    auto const& g_info = common::metrics::google_info();
-    elle::metrics::google::register_service(g_info.server,
-                                            g_info.port,
-                                            g_info.id_path);
+    // // Initialize server.
+    // auto const& g_info = common::metrics::google_info();
+    // elle::metrics::google::register_service(g_info.server,
+    //                                         g_info.port,
+    //                                         g_info.id_path);
 
     // Initialize server.
     auto const& km_info = common::metrics::km_info();
-    elle::metrics::kissmetrics::register_service(km_info.server,
+    elle::metrics::Reporter reporter{};
+
+    elle::metrics::kissmetrics::register_service(reporter,
+                                                 km_info.server,
                                                  km_info.port,
                                                  km_info.id_path);
+    reporter.store("user_landing");
+    reporter.store("user_signup");
+    reporter.store("user_fullname");
+    reporter.store("user_email");
+    reporter.store("user_password");
+    reporter.store("user_code");
 
-    auto& reporter = elle::metrics::reporter();
+    reporter.store("user_register",{{MKey::status,"attempt"}});
+    reporter.store("user_register",{{MKey::status,"succeed"}});
+    reporter.store("user_register",{{MKey::status,"fail"}});
+    reporter.store("user_login",{{MKey::status,"attempt"}});
+    reporter.store("user_login",{{MKey::status,"succeed"}});
+    reporter.store("user_login",{{MKey::status,"fail"}});
+    reporter.store("user_logout",{{MKey::status,"attempt"}});
+    reporter.store("user_logout",{{MKey::status,"succeed"}});
+    reporter.store("user_logout",{{MKey::status,"fail"}});
 
+    reporter.store("network_create",{{MKey::status,"attempt"}});
+    reporter.store("network_create",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("network_create",{{MKey::status,"fail"}});
+    reporter.store("network_delete",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("network_delete",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("network_delete",{{MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("network_adduser",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("network_adduser",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("network_adduser",{{MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("network_removeuser",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("network_removeuser",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("network_removeuser",{{MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("transaction_create",{{MKey::status,"attempt"}, {MKey::size,"31231"}, {MKey::count,"31231"}});
+    reporter.store("transaction_create",{{MKey::status,"succeed"}, {MKey::value,"31231"}, {MKey::size,"31231"}, {MKey::count,"31231"}});
+    reporter.store("transaction_create",{{MKey::status,"fail"}, {MKey::size,"31231"}, {MKey::count,"31231"}});
+    reporter.store("transaction_ready",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("transaction_ready",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("transaction_ready",{{MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("transaction_accept",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("transaction_accept",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("transaction_accept",{{MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("transaction_start",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("transaction_start",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("transaction_start",{{MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("transaction_finish",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("transaction_finish",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("transaction_finish",{{MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel",{{MKey::author,"sender"}, {MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel",{{MKey::author,"sender"}, {MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel",{{MKey::author,"sender"}, {MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel",{{MKey::author,"recipient"}, {MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel",{{MKey::author,"recipient"}, {MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel",{{MKey::author,"recipient"}, {MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("connect_google",{{MKey::status,"attempt"}});
+    reporter.store("connect_google",{{MKey::status,"succeed"}});
+    reporter.store("connect_google",{{MKey::status,"fail"}});
+    reporter.store("connect_facebook",{{MKey::status,"attempt"}});
+    reporter.store("connect_facebook",{{MKey::status,"succeed"}});
+    reporter.store("connect_facebook",{{MKey::status,"fail"}});
+    reporter.store("login_google",{{MKey::status,"attempt"}});
+    reporter.store("login_google",{{MKey::status,"succeed"}});
+    reporter.store("login_google",{{MKey::status,"fail"}});
+    reporter.store("login_facebook",{{MKey::status,"attempt"}});
+    reporter.store("login_facebook",{{MKey::status,"succeed"}});
+    reporter.store("login_facebook",{{MKey::status,"fail"}});
+    reporter.store("import_google",{{MKey::status,"attempt"}});
+    reporter.store("import_google",{{MKey::status,"succeed"}});
+    reporter.store("import_google",{{MKey::status,"fail"}});
+    reporter.store("import_facebook",{{MKey::status,"attempt"}});
+    reporter.store("import_facebook",{{MKey::status,"succeed"}});
+    reporter.store("import_facebook",{{MKey::status,"fail"}});
+    reporter.store("google_invite",{{MKey::status,"attempt"}});
+    reporter.store("google_invite",{{MKey::status,"succeed"}});
+    reporter.store("google_invite",{{MKey::status,"fail"}});
+    reporter.store("facebook_invite",{{MKey::status,"attempt"}});
+    reporter.store("facebook_invite",{{MKey::status,"succeed"}});
+    reporter.store("facebook_invite",{{MKey::status,"fail"}});
+    reporter.store("google_share",{{MKey::status,"attempt"}});
+    reporter.store("google_share",{{MKey::status,"succeed"}});
+    reporter.store("google_share",{{MKey::status,"fail"}});
+    reporter.store("drop_self");
+    reporter.store("drop_favorite");
+    reporter.store("drop_bar");
+    reporter.store("drop_user");
+    reporter.store("drop_nowhere");
+    reporter.store("click_self");
+    reporter.store("click_favorite");
+    reporter.store("click_searchbar");
+    reporter.store("transfer_self");
+    reporter.store("transfer_favorite");
+    reporter.store("transfer_user");
+    reporter.store("transfer_social");
+    reporter.store("transfer_email");
+    reporter.store("panel_open",{{MKey::panel,"transfer"}});
+    reporter.store("panel_open",{{MKey::panel,"notification"}});
+    reporter.store("panel_close",{{MKey::panel,"transfer"}});
+    reporter.store("panel_close",{{MKey::panel,"notification"}});
+    reporter.store("panel_accept",{{MKey::panel,"transfer"}});
+    reporter.store("panel_accept",{{MKey::panel,"notification"}});
+    reporter.store("panel_deny",{{MKey::panel,"transfer"}});
+    reporter.store("panel_deny",{{MKey::panel,"notification"}});
+    reporter.store("panel_access",{{MKey::panel,"transfer"}});
+    reporter.store("panel_access",{{MKey::panel,"notification"}});
+    reporter.store("panel_cancel",{{MKey::panel,"transfer"}, {MKey::author,"sender"}});
+    reporter.store("panel_cancel", {{MKey::panel,"notification"}, {MKey::author, "recipient"}});
+    reporter.store("dropzone_open");
+    reporter.store("dropzone_close");
+    reporter.store("dropzone_removeitem");
+    reporter.store("dropzone_removeall");
+    reporter.store("searchbar_search");
+    reporter.store("searchbar_invite",{{MKey::input,"click"}});
+    reporter.store("searchbar_invite",{{MKey::input,"keyboard"}});
+    reporter.store("searchbar_share",{{MKey::input,"click"}});
+    reporter.store("searchbar_share",{{MKey::input,"keyboard"}});
+    reporter.store("select_user",{{MKey::input,"click"}});
+    reporter.store("select_user",{{MKey::input,"keyboard"}});
+    reporter.store("select_social",{{MKey::input,"click"}});
+    reporter.store("select_social",{{MKey::input,"keyboard"}});
+    reporter.store("select_other",{{MKey::input,"click"}});
+    reporter.store("select_other",{{MKey::input,"keyboard"}});
+    reporter.store("select_close",{{MKey::input,"click"}});
+    reporter.store("select_close",{{MKey::input,"keyboard"}});
 
-    reporter.store("test:transaction:cancel:sender:succeed");
-// //  Login success.
-//     reporter.store("test:user:login:attempt");
-//     reporter.store("test:user:login:succeed");
-//     reporter.update_user(users.first);
+// Share to Infinit Contact
 
-//     reporter.store("test:ux:drop:bar");
-//     reporter.store("test:ux:keyboard:bar:search");
-//     reporter.store("test:ux:click:panel:search:select:user");
-//     reporter.store("test:ux:click:bar:search:share");
-//     reporter.store("test:transaction:create:attempt",
-//                    {{MKey::value, transactions[3]},
-//                     {MKey::size, "32402"},
-//                     {MKey::count, "3"}});
-//     reporter.store("test:transaction:create:succeed",
-//                  {{MKey::value, transactions[3]}, {MKey::size, "32402"}, {MKey::count, "3"}});
-//     reporter.store("test:ux:click:panel:transfer:accept");
-//     reporter.store("test:transaction:accept:attempt",  MKey::value, transactions[3]);
-//     reporter.store("test:transaction:accept:succeed",  MKey::value, transactions[3]);
-//     reporter.store("test:transaction:prepare:attempt", MKey::value, transactions[3]);
-//     reporter.store("test:transaction:prepare:succeed", MKey::value, transactions[3]);
-//     reporter.store("test:transaction:start:attempt",   MKey::value, transactions[3]);
-//     reporter.store("test:transaction:start:succeed",   MKey::value, transactions[3]);
-//     reporter.store("test:transaction:finish:attempt",  MKey::value, transactions[3]);
-//     reporter.store("test:transaction:finish:succeed",  MKey::value, transactions[3]);
+    reporter.store("drop_bar");
+    reporter.store("searchbar_search");
+    reporter.store("select_user", {{MKey::input, "click"}});
+    reporter.store("searchbar_share", {{MKey::input, "click"}});
+    reporter.store("transaction_create", {{MKey::status, "attempt"}});
 
+    reporter.store("drop_bar");
+    reporter.store("searchbar_search");
+    reporter.store("select_user", {{MKey::input, "keyboard"}});
+    reporter.store("searchbar_share", {{MKey::input, "keyboard"}});
+    reporter.store("transaction_create", {{MKey::status, "attempt"}});
 
+// Share to Social Contact
 
-// // Register failure.
-//     reporter.store("test:user:register:attempt");
-//     reporter.store("test:user:register:fail", MKey::value, "email already taken.");
-// // Register success.
-//     reporter.store("test:user:register:attempt");
-//     reporter.store("test:user:register:succeed");
+    reporter.store("drop_bar");
+    reporter.store("searchbar_search");
+    reporter.store("select_social", {{MKey::input, "click"}});
+    reporter.store("searchbar_share", {{MKey::input, "click"}});
+    reporter.store("transaction_create", {{MKey::status, "attempt"}});
 
-// // Login failure
-//     reporter.store("test:user:login:attempt");
-//     reporter.store("test:user:login:fail", MKey::value, "login:password invalid.");
+    reporter.store("drop_bar");
+    reporter.store("searchbar_search");
+    reporter.store("select_social", {{MKey::input, "keyboard"}});
+    reporter.store("searchbar_share", {{MKey::input, "keyboard"}});
+    reporter.store("transaction_create", {{MKey::status, "attempt"}});
 
-// // Login success.
-//     reporter.store("test:user:login:attempt");
-//     reporter.store("test:user:login:succeed");
-//     reporter.update_user(users.first);
+// Share to Email Address
 
-// // Logout failure.
-//     reporter.update_user(users.first);
-//     reporter.store("test:user:logout:attempt");
-//     reporter.store("test:user:logout:fail", MKey::value, "unknown error");
+    reporter.store("drop_bar");
+    reporter.store("searchbar_search");
+    reporter.store("searchbar_share", {{MKey::input, "click"}});
+    reporter.store("transaction_create", {{MKey::status, "attempt"}});
 
-// //  Login success.
-//     reporter.store("test:user:login:attempt");
-//     reporter.store("test:user:login:succeed");
-//     reporter.update_user(users.first);
+    reporter.store("drop_bar");
+    reporter.store("searchbar_search");
+    reporter.store("searchbar_share", {{MKey::input, "keyboard"}});
+    reporter.store("transaction_create", {{MKey::status, "attempt"}});
 
+// Share to Other Contact
 
-// // Send file process.
-//     reporter.store("test:transaction:create:attempt",
-//                  {{MKey::value, transactions[3]},{MKey::size, "32402"}, {MKey::count, "3"}});
-//     reporter.store("test:transaction:create:succeed",
-//                  {{MKey::value, transactions[3]}, {MKey::size, "32402"}, {MKey::count, "3"}});
-//     reporter.store("test:transaction:accept:attempt",  MKey::value, transactions[3]);
-//     reporter.store("test:transaction:accept:succeed",  MKey::value, transactions[3]);
-//     reporter.store("test:transaction:prepare:attempt", MKey::value, transactions[3]);
-//     reporter.store("test:transaction:prepare:succeed", MKey::value, transactions[3]);
-//     reporter.store("test:transaction:start:attempt",   MKey::value, transactions[3]);
-//     reporter.store("test:transaction:start:succeed",   MKey::value, transactions[3]);
-//     reporter.store("test:transaction:finish:attempt",  MKey::value, transactions[3]);
-//     reporter.store("test:transaction:finish:succeed",  MKey::value, transactions[3]);
+    reporter.store("drop_bar");
+    reporter.store("searchbar_search");
+    reporter.store("select_other", {{MKey::input, "click"}});
+    reporter.store("searchbar_share", {{MKey::input, "click"}});
+    reporter.store("transaction_create", {{MKey::status, "attempt"}});
 
-//     // Self share, cancel while downloading.
-//     reporter.store("test:ux:drop:self");
-//     reporter.store("test:network:create:attempt");
-//     reporter.store("test:network:create:success");
-//     reporter.store("test:transaction:create:attempt", {{MKey::value, transactions[4]}, {MKey::size, "32402"}, {MKey::count, "3"}});
-//     reporter.store("test:transaction:create:succeed", {{MKey::value, transactions[4]}, {MKey::size, "32402"}, {MKey::count, "3"}});
-//     reporter.store("test:ux:click:transfer:self");
-//     reporter.store("test:ux:click:panel:transfer:accept");
-//     reporter.store("test:transaction:accept:attempt", MKey::value, transactions[4]);
-//     reporter.store("test:transaction:accept:succeed", MKey::value, transactions[4]);
-//     reporter.store("test:ux:click:panel:transfer:close:nowhere");
-//     reporter.store("test:ux:click:transfer:self");
-//     reporter.store("test:ux:click:panel:transfer:close:button");
-//     reporter.store("test:transaction:prepare:attempt", MKey::value, transactions[4]);
-//     reporter.store("test:network:user:add:attempt");
-//     reporter.store("test:network:user:add:succeed");
-//     reporter.store("test:transaction:prepare:succeed", MKey::value, transactions[4]);
-//     reporter.store("test:transaction:start:attempt", MKey::value, transactions[4]);
-//     reporter.store("test:transaction:start:succeed", MKey::value, transactions[4]);
-//     reporter.store("test:ux:click:transfer:self");
-//     reporter.store("test:ux:click:panel:transfer:cancel");
-//     reporter.store("test:transaction:cancel:attempt", MKey::value, transactions[4]);
-//     reporter.store("test:network:delete:attempt");
-//     reporter.store("test:network:delete:succeed");
-//     reporter.store("test:transaction:cancel:succeed", MKey::value, transactions[4]);
-//     reporter.store("test:ux:click:transfer:close:nowhere");
+    reporter.store("drop_bar");
+    reporter.store("searchbar_search");
+    reporter.store("select_other", {{MKey::input, "keyboard"}});
+    reporter.store("searchbar_share", {{MKey::input, "keyboard"}});
+    reporter.store("transaction_create", {{MKey::status, "attempt"}});
 
-//     // Self share.
-//     reporter.store("test:ux:drop:self");
-//     reporter.store("test:network:create:attempt");
-//     reporter.store("test:network:create:success");
-//     reporter.store("test:transaction:create:attempt", {{MKey::value, transactions[4]}, {MKey::size, "32402"}, {MKey::count, "3"}});
-//     reporter.store("test:transaction:create:succeed", {{MKey::value, transactions[4]}, {MKey::size, "32402"}, {MKey::count, "3"}});
-//     reporter.store("test:ux:click:transfer:self");
-//     reporter.store("test:ux:click:panel:transfer:accept");
-//     reporter.store("test:transaction:accept:attempt", MKey::value, transactions[4]);
-//     reporter.store("test:transaction:accept:succeed", MKey::value, transactions[4]);
-//     reporter.store("test:ux:click:panel:transfer:close:nowhere");
-//     reporter.store("test:ux:click:transfer:self");
-//     reporter.store("test:ux:click:panel:transfer:close:button");
-//     reporter.store("test:transaction:prepare:attempt", MKey::value, transactions[4]);
-//     reporter.store("test:network:user:add:attempt");
-//     reporter.store("test:network:user:add:succeed");
-//     reporter.store("test:transaction:prepare:succeed", MKey::value, transactions[4]);
-//     reporter.store("test:transaction:start:attempt", MKey::value, transactions[4]);
-//     reporter.store("test:transaction:start:succeed", MKey::value, transactions[4]);
-//     reporter.store("test:transaction:finish:attempt", MKey::value, transactions[4]);
-//     reporter.store("test:transaction:finish:succeed", MKey::value, transactions[4]);
-//     reporter.store("test:network:delete:attempt");
-//     reporter.store("test:network:delete:succeed");
+// Sign Up
 
-//     // P10.2:
-//     reporter.update_user(users.first);
-//     reporter.store("test:ux:drop:self");
-//     reporter.store("test:network:create");
-//     reporter.store("test:transaction:create", {{MKey::value, transactions[5]}, {MKey::size, "32402"}, {MKey::count, "3"}});
-//     reporter.store("test:ux:click:transfer:self");
-//     reporter.store("test:ux:click:panel:transfer:accept");
-//     reporter.store("test:transaction:accept", MKey::value, transactions[5]);
-//     reporter.store("test:ux:click:panel:transfer:close:nowhere");
-//     reporter.store("test:ux:click:transfer:self");
-//     reporter.store("test:ux:click:panel:transfer:close:button");
-//     reporter.store("test:network:user:add");
-//     reporter.store("test:transaction:start", MKey::value, transactions[5]);
-//     reporter.store("test:transaction:finish", MKey::value, transactions[5]);
-//     reporter.store("test:ux:click:transfer:self");
-//     reporter.store("test:ux:click:panel:transfer:access");
-//     reporter.store("test:network:delete");
-//     reporter.store("test:ux:click:panel:transfer:close:nowhere");
+    reporter.store("user_landing");
+    reporter.store("user_signup");
+    reporter.store("user_fullname");
+    reporter.store("user_email");
+    reporter.store("user_password");
+    reporter.store("user_code");
+    reporter.store("user_register", {{MKey::status, "succeed"}});
 
+// Cancel via Notifications
 
-//     reporter.store("test:ux:drop:favorite");
-//     reporter.store("test:ux:drop:bar");
-//     reporter.store("test:ux:drop:nowhere");
-//     reporter.store("test:ux:click:self");
-//     reporter.store("test:ux:click:favorite");
-//     reporter.store("test:ux:click:transfer:self");
-//     reporter.store("test:ux:click:transfer:favorite");
-//     reporter.store("test:ux:click:transfer:user");
-//     reporter.store("test:ux:click:transfer:social");
-//     reporter.store("test:ux:click:transfer:email");
-//     reporter.store("test:ux:click:nowhere");
-//     reporter.store("test:ux:click:panel:transfer:open");
-//     reporter.store("test:ux:click:panel:transfer:close:button");
-//     reporter.store("test:ux:click:panel:transfer:close:nowhere");
-//     reporter.store("test:ux:click:panel:transfer:nowhere");
-//     reporter.store("test:ux:click:panel:transfer:accept");
-//     reporter.store("test:ux:click:panel:transfer:deny");
-//     reporter.store("test:ux:click:panel:transfer:cancel");
-//     reporter.store("test:ux:click:panel:transfer:access");
-//     reporter.store("test:ux:click:bar:search:field");
-//     reporter.store("test:ux:click:bar:search:dropzone:empty");
-//     reporter.store("test:ux:click:bar:search:dropzone:open");
-//     reporter.store("test:ux:click:bar:search:dropzone:close:nowhere");
-//     reporter.store("test:ux:click:bar:search:dropzone:close:button");
-//     reporter.store("test:ux:click:bar:search:dropzone:nowhere");
-//     reporter.store("test:ux:click:bar:search:dropzone:remove:item");
-//     reporter.store("test:ux:click:bar:search:dropzone:remove:all");
-//     reporter.store("test:ux:keyboard:bar:search");
-//     reporter.store("test:ux:click:bar:search:invite");
-//     reporter.store("test:ux:click:bar:search:share");
-//     reporter.store("test:ux:keyboard:bar:search:invite");
-//     reporter.store("test:ux:keyboard:bar:search:share");
-//     reporter.store("test:ux:click:panel:search:open");
-//     reporter.store("test:ux:click:panel:search:close:nowhere");
-//     reporter.store("test:ux:keyboard:panel:search:close:empty");
-//     reporter.store("test:ux:click:panel:search:select:user");
-//     reporter.store("test:ux:click:panel:search:select:social");
-//     reporter.store("test:ux:click:panel:search:select:other");
-//     reporter.store("test:ux:keyboard:panel:search:select:user");
-//     reporter.store("test:ux:keyboard:panel:search:select:social");
-//     reporter.store("test:ux:keyboard:panel:search:select:other");
-//     reporter.store("test:ux:click:panel:notifications:open");
-//     reporter.store("test:ux:click:panel:notifications:close:icon");
-//     reporter.store("test:ux:click:panel:notifications:close:nowhere");
-//     reporter.store("test:ux:click:panel:notifications:nowhere");
-//     reporter.store("test:ux:click:panel:notifications:accept");
-//     reporter.store("test:ux:click:panel:notifications:deny");
-//     reporter.store("test:ux:click:panel:notifications:cancel");
-//     reporter.store("test:ux:click:panel:notifications:access");
+    reporter.store("panel_open", {{MKey::panel, "transfer"}});
+    reporter.store("panel_cancel", {{MKey::panel, "transfer"}});
+    reporter.store("transaction_cancel", {{MKey::status, "attempt"}, {MKey::author, "sender"}});
+
+    reporter.store("panel_open", {{MKey::panel, "notification"}});
+    reporter.store("panel_cancel", {{MKey::panel, "notification"}, {MKey::author, "recipient"}});
+    reporter.store("transaction_cancel", {{MKey::status, "attempt"}, {MKey::author, "recipient"}});
+
+// Core Funnel
+
+    reporter.store("transaction_create", {{MKey::status, "succeed"}});
+    reporter.store("panel_accept", {{MKey::panel, "transfer"}});
+    reporter.store("transaction_accept", {{MKey::status, "attempt"}});
+    reporter.store("transaction_accept", {{MKey::status, "succeed"}});
+    reporter.store("transaction_prepare", {{MKey::status, "attempt"}});
+    reporter.store("transaction_prepare", {{MKey::status, "succeed"}});
+    reporter.store("transaction_start", {{MKey::status, "attempt"}});
+    reporter.store("transaction_start", {{MKey::status, "succeed"}});
+    reporter.store("transaction_finish", {{MKey::status, "attempt"}});
+    reporter.store("transaction_finish", {{MKey::status, "succeed"}});
   }
+
   elle::printf("Test done.\n");
 
   return 0;

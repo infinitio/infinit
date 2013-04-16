@@ -2,6 +2,7 @@ from __future__ import print_function
 
 from twisted.internet.protocol import DatagramProtocol, Factory
 from twisted.protocols.basic import LineReceiver
+from twisted.internet import task, reactor
 from twisted.python import log
 from pprint import pprint
 
@@ -11,80 +12,64 @@ import json
 import sys
 
 
-def make_id(ip, port):
-    return "{}:{}".format(ip, port)
+class Endpoint(object):
+    def __init__(self, ip, port = 0):
+        self.ip = ip
+        self.port = port
+
+    def __str__(self):
+        return "{}:{}".format(self.ip, self.port)
+
+    def __repr__(self):
+        return "{}:{}".format(self.ip, self.port)
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    @property
+    def addr(self):
+        return (self.ip, int(self.port))
 
 class Apertus(DatagramProtocol):
 
     def __str__(self):
-        attrs = []
-        if getattr(self, "local_endpoint", None):
-            attrs.append("local={}".format(self.local_endpoint))
-        if getattr(self, "public_endpoint", None):
-            attrs.append("public={}".format(self.public_endpoint))
-        if attrs:
-            repr = "<" + self.__class__.__name__ + " " + ", ".join(attrs) + ">"
+        if self.transport != None:
+            repr = "<Apertus(host={}, id={})>".format(self.get_endpoint(), self.id)
         else:
-            repr = "<" + self.__class__.__name__ + ">"
+            repr = "<Apertus(host=None, id={})>".format(self.id)
         return repr
 
     def __repr__(self):
         return self.__str__()
 
-    def __init__(self):
-        self.links = {}
+    def __init__(self, iface, id):
+        self.id = id
+        self.links = []
+        #self.task = task.LoopingCall(self.test_timeout)
+        #self.task.start(5 * 60) # check every five seconds
+        reactor.listenUDP(0, self, interface=iface)
 
-    def datagramReceived(self, data, (host, port)):
-        id = make_id(host, port)
-        peer = ""
-        if id in self.links.keys():
-            for peer in self.links[id]:
-                host, port = peer.split(":")
-                self.transport.write(data, (host, int(port)))
-
-    def add_link(self, endpoints):
-        """
-        endpoints is a list of lists of endpoints
-
-        and we connect each one of the list to all the other from the other
-        list
-        """
-        rhs_, lhs_ = endpoints
-        rhs = [make_id(f["ip"], int(f["port"])) for f in rhs_]
-        lhs = [make_id(f["ip"], int(f["port"])) for f in lhs_]
-
-        for k, v in it.product(rhs, lhs):
-            # Make a 1 to 1 link k -> v, v -> k
-
-            if k not in self.links:
-                self.links[k] = [v]
-            else:
-                self.links[k].append(v)
-
-            if v not in self.links:
-                self.links[v] = [k]
-            else:
-                self.links[v].append(k)
-
-    def del_link(self, endpoints):
-        """
-        endpoints is a list of lists of endpoints
-
-        we have to find each relation a<->b into the map
-        """
-        rhs_, lhs_ = endpoints
-        rhs = [make_id(f["ip"], int(f["port"])) for f in rhs_]
-        lhs = [make_id(f["ip"], int(f["port"])) for f in lhs_]
-        for k, v in it.product(rhs, lhs):
-            # Remove the 1 to 1 link
-            if k in self.links:
-                del self.links[k]
-            if v in self.links:
-                del self.links[v]
+    def port(self):
+        host = self.transport.getHost()
+        return host.port
 
     def get_endpoint(self):
         host = self.transport.getHost()
         return "{}:{}".format(host.host, host.port)
+
+    def datagramReceived(self, data, (host, port)):
+        id = Endpoint(host, port)
+        #print(self, "->", id)
+        if id not in self.links:
+            self.links.append(id)
+
+        for peer in (l for l in self.links if l.addr != id.addr):
+            #print(self, id.addr, "->", peer.addr)
+            self.transport.write(data, peer.addr)
+
+    def die(self):
+        print("SHUTDOWN", self)
+        self.transport.stopListening()
 
     def debug():
         pprint(self.links)
@@ -96,8 +81,9 @@ class ApertusMaster(LineReceiver):
 
     delimiter = "\n"
 
-    def __init__(self, slave):
-        self.slave = slave
+    def __init__(self, addr, factory):
+        self.addr = addr
+        self.factory = factory
 
     def connectionMade(self):
         pass
@@ -105,21 +91,29 @@ class ApertusMaster(LineReceiver):
     def handle_add_link(self, data):
         """handle_add_link add a link between two peers"""
         endpoints = data["endpoints"]
-        print("add_link", endpoints)
-        self.slave.add_link(endpoints)
-        pprint(self.slave.links)
+        id = data["_id"]
+        print("add_link", endpoints, id)
+        new_apertus = Apertus(self.addr, id)
+        self.factory.slaves.append(new_apertus)
+        print("create new link at", new_apertus.get_endpoint())
+        msg = {"endpoint" : new_apertus.get_endpoint(), "_id" : id}
+        self.sendLine(json.dumps(msg))
 
     def handle_del_link(self, data):
         """handle_del_link del a link between two peers"""
         endpoints = data["endpoints"]
-        print("del_link", endpoints)
-        self.slave.del_link(endpoints)
-        pprint(self.slave.links)
-
-    def handle_get_endpoint(self, data):
-        s = {"endpoints" : self.slave.get_endpoint()}
-        msg = json.dumps(s)
-        self.sendLine(msg)
+        id = data["_id"]
+        print("del_link", endpoints, id)
+        print("slaves are:", self.factory.slaves)
+        for slave in self.factory.slaves:
+            print("slave is", slave)
+            print("slave id is:", slave.id)
+            print("id is:", id)
+            if slave.id == id:
+                print("KILL", slave)
+                slave.die()
+                self.factory.slaves.remove(slave)
+        pprint(self.factory.slaves)
 
     def lineReceived(self, line):
         print(line)
@@ -134,5 +128,9 @@ class ApertusMaster(LineReceiver):
 
 class Factory(Factory):
 
+    def __init__(self, addr):
+        self.ap_addr = addr
+        self.slaves = []
+
     def buildProtocol(self, addr):
-        return ApertusMaster(self.slave)
+        return ApertusMaster(self.ap_addr, self)

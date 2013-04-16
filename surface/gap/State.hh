@@ -11,6 +11,8 @@
 
 # include <elle/format/json/fwd.hh>
 
+# include <metrics/Reporter.hh>
+
 # include <reactor/scheduler.hh> // XXX
 
 # include <functional>
@@ -18,24 +20,27 @@
 # include <string>
 # include <unordered_set>
 
-# define CATCH_FAILURE_TO_METRICS(prefix)                               \
-  catch (elle::HTTPException const& e)                                  \
-  {                                                                     \
-    elle::metrics::reporter().store(prefix  ":fail",                      \
-                                    elle::metrics::Key::status, "http" + std::to_string((int) e.code)); \
-    throw;                                                              \
-  }                                                                     \
-  catch (surface::gap::Exception const& e)                              \
-  {                                                                     \
-    elle::metrics::reporter().store(prefix ":fail",               \
-                                    elle::metrics::Key::status, "gap" + std::to_string((int) e.code)); \
-    throw;                                                              \
-  }                                                                     \
-  catch (...)                                                           \
-  {                                                                     \
-    elle::metrics::reporter().store(prefix ":fail",               \
-                                    elle::metrics::Key::status, "unknown");                  \
-    throw;                                                              \
+# define CATCH_FAILURE_TO_METRICS(prefix)                                       \
+  catch (elle::HTTPException const& e)                                          \
+  {                                                                             \
+    this->_reporter.store(prefix,                                               \
+                          {{elle::metrics::Key::status, "fail"},                \
+                           {elle::metrics::Key::value, "http " + std::to_string((int) e.code)}}); \
+    throw;                                                                      \
+  }                                                                             \
+  catch (surface::gap::Exception const& e)                                      \
+  {                                                                             \
+    this->_reporter.store(prefix,                                               \
+                          {{elle::metrics::Key::status, "fail"},                \
+                            {elle::metrics::Key::value, "gap " + std::to_string((int) e.code)}}); \
+    throw;                                                                      \
+  }                                                                             \
+  catch (...)                                                                   \
+  {                                                                             \
+    this->_reporter.store(prefix,                                               \
+                          {{elle::metrics::Key::status, "fail"},                \
+                            {elle::metrics::Key::value, "unknown"}});           \
+    throw;                                                                      \
   } /* */
 
 
@@ -78,11 +83,25 @@ namespace surface
     using ::plasma::trophonius::NetworkUpdateNotification;
     using ::plasma::trophonius::NotificationType;
 
+    // XXX: In order to ensure the logger is initialized at the begining of
+    // state LoggerInitializer MUST be the first member of State.
+    class LoggerInitializer
+    {
+    public:
+      LoggerInitializer();
+    };
+
     class State
     {
     private:
+      // XXX: LoggerInitializer is the first member of state.
+      LoggerInitializer _logger_intializer;
       std::unique_ptr<plasma::meta::Client>       _meta;
       std::unique_ptr<plasma::trophonius::Client> _trophonius;
+      elle::metrics::Reporter _reporter;
+      // XXX: While network count is still on GA, we need to keep one reporter
+      // to GA.
+      elle::metrics::Reporter _google_reporter;
 
     public:
       State();
@@ -92,9 +111,6 @@ namespace surface
     public:
       void
       debug();
-
-      void
-      output_log_file(std::string const& path);
 
     //- Login & register ------------------------------------------------------
     private:
@@ -106,14 +122,15 @@ namespace surface
       login(std::string const& email,
             std::string const& password);
 
-
-    private:
-      bool
-      _logged;
     public:
       bool
       logged_in() const
-      { return !this->_meta->token().empty(); }
+      {
+        if (!this->_meta)
+          return false;
+
+        return !this->_meta->token().empty();
+      }
 
       /// Logout from meta.
       void
@@ -446,28 +463,28 @@ namespace surface
 
     public:
       typedef
-        std::function<void(UserStatusNotification const&)>
+        std::function<void (UserStatusNotification const&)>
         UserStatusNotificationCallback;
 
       typedef
-        std::function<void(TransactionNotification const&, bool)>
+        std::function<void (TransactionNotification const&, bool)>
         TransactionNotificationCallback;
 
 
       typedef
-        std::function<void(TransactionStatusNotification const&, bool)>
+        std::function<void (TransactionStatusNotification const&, bool)>
         TransactionStatusNotificationCallback;
 
       typedef
-        std::function<void(MessageNotification const&)>
+        std::function<void (MessageNotification const&)>
         MessageNotificationCallback;
 
       typedef
-        std::function<void(NetworkUpdateNotification const&)>
+        std::function<void (NetworkUpdateNotification const&)>
         NetworkUpdateNotificationCallback;
 
       typedef
-        std::function<void(gap_Status, std::string const&, std::string const&)>
+        std::function<void (gap_Status, std::string const&, std::string const&)>
         OnErrorCallback;
 
     public:

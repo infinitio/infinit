@@ -30,9 +30,6 @@ namespace hole
   {
     namespace slug
     {
-      void portal_connect(std::string const& host, int port);
-      bool portal_wait(std::string const& host, int port);
-
       ///
       /// XXX represents the current host
       ///
@@ -145,13 +142,13 @@ namespace hole
         //control::RPC    _rpcs;
         lune::Phrase _phrase;
         std::unique_ptr<reactor::network::TCPServer> _rpc_server;
-        std::unique_ptr<reactor::Thread> _rpc_acceptor;
-        std::vector<std::shared_ptr<reactor::Thread>> _controlers;
+        reactor::Thread* _rpc_acceptor;
+
+        void
+        _run_gc();
 
         void
         _rpc_accept();
-
-
 
       /*---------.
       | Dumpable |

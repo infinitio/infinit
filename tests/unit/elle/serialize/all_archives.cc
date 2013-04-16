@@ -165,10 +165,11 @@ void testJSON()
     }
 }
 
-
+#include <elle/format/hexadecimal.hh>
 
 int main()
 {
+  /* XXX
   testLinear<BinaryArchive>();
   testLinear<Base64Archive>();
   testLinear<HexadecimalArchive>();
@@ -178,6 +179,24 @@ int main()
   testClass<HexadecimalArchive>();
 
   testJSON();
+  */
+
+  // XXX[ce test doit absolument etre inclus]
+  {
+    std::stringstream ssoutput;
+    BinaryArchive<ArchiveMode::Output> aroutput(ssoutput);
+
+    elle::Buffer soutput((elle::Byte const*)"sucemoncul", 10);
+    aroutput << soutput;
+    elle::String string = ssoutput.str().substr(0, 15);
+
+    std::stringstream ssinput(string);
+    BinaryArchive<ArchiveMode::Input> arinput(ssinput);
+    elle::Buffer sinput;
+    // XXX[use BOOST_CHECK_THROW()]
+    arinput >> sinput;
+  }
+  // XXX
 
   std::cout << "tests done.\n";
   return 0;

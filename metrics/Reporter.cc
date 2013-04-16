@@ -70,14 +70,19 @@ namespace elle
     {
       this->_keep_alive.reset(
         new boost::asio::io_service::work(_flusher_sched.io_service()));
-      this->_run_thread.reset(new std::thread{[this] { this->_flusher_sched.run(); }});
     }
 
     Reporter::~Reporter()
     {
       this->_keep_alive.reset();
-      if (this->_run_thread->joinable())
+      if (this->_run_thread && this->_run_thread->joinable())
         this->_run_thread->join();
+    }
+
+    void
+    Reporter::start()
+    {
+      this->_run_thread.reset(new std::thread{[this] { this->_flusher_sched.run(); }});
     }
 
     void

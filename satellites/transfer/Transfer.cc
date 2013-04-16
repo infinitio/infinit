@@ -219,6 +219,9 @@ namespace satellite
 
       // Set the size variable.
       _size = boost::lexical_cast<elle::Natural64>(size.value());
+      ELLE_ASSERT_NEQ(_size, 0);
+
+      ELLE_DEBUG("the 'size' attribute is '%s'", _size);
 
       // Discard the directory since unchanged.
       Transfer::rpcs->directorydiscard(directory);
@@ -298,9 +301,10 @@ namespace satellite
     _progress += increment;
 
     // Compute the increment in terms of pourcentage of progress.
+    ELLE_ASSERT_NEQ(_size, 0);
     elle::Real difference = (_progress - stale) * 100 / _size;
 
-    ELLE_TRACE("difference %s", difference);
+    ELLE_DEBUG("difference %s", difference);
 
     // If the difference is large enough, update the progress in the root
     // directory's attribtues.
@@ -320,7 +324,7 @@ namespace satellite
                                       "infinit:transfer:progress",
                                       string);
 
-        ELLE_TRACE("update progress to %s", string);
+        ELLE_DEBUG("update progress to '%s'", string);
 
         // Store the modifications.
         Transfer::rpcs->filestore(identifier);
@@ -364,7 +368,7 @@ namespace satellite
         etoile::path::Way _source(source.path +
                                   entry->name());
 
-        ELLE_TRACE("source %s", _source.path.c_str());
+        ELLE_DEBUG("source %s", _source.path.c_str());
 
         // Resolve the child.
         etoile::path::Chemin chemin(Transfer::rpcs->pathresolve(_source));
@@ -392,7 +396,7 @@ namespace satellite
 
               std::ofstream stream(path, std::ios::binary);
 
-              ELLE_TRACE("file %s", path.c_str());
+              ELLE_DEBUG("file %s", path.c_str());
 
               // Copy the file.
               while (offset < abstract.size)
@@ -423,7 +427,7 @@ namespace satellite
             }
           case nucleus::neutron::Genre::directory:
             {
-              ELLE_TRACE("directory %s", path.c_str());
+              ELLE_DEBUG("directory %s", path.c_str());
 
               // Create the directory.
               if (boost::filesystem::create_directory(path) == false)
@@ -446,7 +450,7 @@ namespace satellite
             }
           case nucleus::neutron::Genre::link:
             {
-              ELLE_TRACE("link %s", path.c_str());
+              ELLE_DEBUG("link %s", path.c_str());
 
               // Resolve the link.
               etoile::path::Way way(Transfer::rpcs->linkresolve(child));
@@ -648,8 +652,8 @@ namespace satellite
         elle::String root(path.parent_path().string());
         elle::String base(path.string().substr(root.length()));
 
-        ELLE_TRACE("root %s", root.c_str());
-        ELLE_TRACE("link %s", base.c_str());
+        ELLE_DEBUG("root %s", root.c_str());
+        ELLE_DEBUG("link %s", base.c_str());
 
         size += Transfer::to_symlink(source, base);
       }
@@ -659,8 +663,8 @@ namespace satellite
         elle::String root(path.parent_path().string());
         elle::String base(path.string().substr(root.length()));
 
-        ELLE_TRACE("root %s", root.c_str());
-        ELLE_TRACE("base %s", base.c_str());
+        ELLE_DEBUG("root %s", root.c_str());
+        ELLE_DEBUG("base %s", base.c_str());
 
         boost::filesystem::recursive_directory_iterator iterator(source);
         boost::filesystem::recursive_directory_iterator end;
@@ -669,14 +673,14 @@ namespace satellite
 
         for (; iterator != end; ++iterator)
           {
-            ELLE_TRACE("path %s", iterator->path().string().c_str());
+            ELLE_DEBUG("path %s", iterator->path().string().c_str());
 
             if (boost::filesystem::is_symlink(iterator->path()) == true)
               {
                 elle::String link(
                   iterator->path().string().substr(root.length()));
 
-                ELLE_TRACE("link %s", link.c_str());
+                ELLE_DEBUG("link %s", link.c_str());
 
                 size += Transfer::to_symlink(iterator->path().string(), link);
               }
@@ -686,7 +690,7 @@ namespace satellite
                 elle::String file(
                   iterator->path().string().substr(root.length()));
 
-                ELLE_TRACE("file %s", file.c_str());
+                ELLE_DEBUG("file %s", file.c_str());
 
                 size += Transfer::to_create(iterator->path().string(), file);
               }
@@ -695,7 +699,7 @@ namespace satellite
                 elle::String directory(
                   iterator->path().string().substr(root.length()));
 
-                ELLE_TRACE("directory %s", directory.c_str());
+                ELLE_DEBUG("directory %s", directory.c_str());
 
                 size += Transfer::to_dig(directory);
               }
@@ -709,8 +713,8 @@ namespace satellite
         elle::String root(path.parent_path().string());
         elle::String base(path.string().substr(root.length()));
 
-        ELLE_TRACE("root %s", root.c_str());
-        ELLE_TRACE("file %s", base.c_str());
+        ELLE_DEBUG("root %s", root.c_str());
+        ELLE_DEBUG("file %s", base.c_str());
 
         size += Transfer::to_create(source, base);
       }

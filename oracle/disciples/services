@@ -2,6 +2,7 @@
 # -*- encoding: utf-8 -*-
 
 import os, sys
+import time
 import subprocess
 import argparse
 
@@ -72,7 +73,8 @@ def main(argv):
                 TROPHONIUS_BIN,
                 '--port', str(args.trophonius_port),
                 '--control-port', str(args.trophonius_control_port),
-            ])
+            ],
+            env=dict(INFINIT_META_PORT=str(args.meta_port), **os.environ))
         )
         processes.append(
             subprocess.Popen([
@@ -81,13 +83,18 @@ def main(argv):
                 '--control-port', str(args.apertus_control_port)
             ])
         )
+        print("INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port)
+        print("INFINIT_META_PORT=%s" % args.meta_port)
+        print("INFINIT_LONGINUS_PORT=%s" % args.longinus_port)
         running = True
         while running:
             for p in processes:
                 p.poll()
                 if p.returncode is not None:
                     running = False
-
+                time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Exiting")
     finally:
         for p in processes:
             try:

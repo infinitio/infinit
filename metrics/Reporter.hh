@@ -20,14 +20,18 @@ namespace elle
     //XXX lake of genericity here.
     enum class Key: int
     {
-      tag,
-      session,
-      status,
-      value,
+      author,
       count,
       height,
+      session,
       size,
+      status,
+      step,
+      tag,
+      value,
       width,
+      panel,
+      input,
     };
 
     class Reporter
@@ -86,6 +90,10 @@ namespace elle
       Reporter(Reporter&&) = delete;
 
     public:
+      /// Start publishing.
+      void
+      start();
+
       /// Enqueue data.
       virtual
       void
@@ -147,16 +155,6 @@ namespace std
       return static_cast<int>(k);
     }
   };
-
-  // template<>
-  // struct equal_to<elle::metrics::Key>
-  // {
-  // public:
-  //   bool operator()(const elle::metrics::Key &k) const
-  //   {
-  //     return static_cast<int>k;
-  //   }
-  // };
 }
 
 #endif

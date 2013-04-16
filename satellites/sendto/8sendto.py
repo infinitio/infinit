@@ -35,9 +35,14 @@ def login(state, email = None):
 def show_status(state, transaction, new):
     print("Transaction ({}) status changed to".format(transaction), state.transaction_status(transaction))
 
+def on_transaction(state, transaction, new):
+    print("New transaction", transaction)
+    state.current_transaction_id = transaction
+
 def on_started(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.started:
-        state.current_transaction_id = transaction
+        print("Transaction ({}) canceled, check your log".format(transaction))
+        state.started = True
 
 def on_canceled(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.canceled:
@@ -59,8 +64,9 @@ def main(state, user, filepath):
     login(state)
 
     id = state.send_files(user, [filepath,])
-    state.transaction_status_callback(partial(on_started, state))
+    state.transaction_callback(partial(on_transaction, state))
     state.transaction_status_callback(partial(on_finished, state))
+    state.transaction_status_callback(partial(on_started, state))
     state.transaction_status_callback(partial(on_canceled, state))
     state.transaction_status_callback(partial(show_status, state))
     state.on_error_callback(partial(on_error, state))
@@ -80,12 +86,12 @@ def main(state, user, filepath):
             return
 
     while state.running:
-        if getattr(state, "current_transaction_id", None):
+        if getattr(state, "current_transaction_id", None) and getattr(state, "started", None):
             tid = state.current_transaction_id
             progress = state.transaction_progress(tid)
-            print("Progress {2}: [{0:50s}] {1:.1f}%".format('#' * int(progress * 50), progress * 100, tid), end=" "),
+            print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, tid, state.transaction_first_filename(tid)), end=" "),
             print("\r", end="")
-        time.sleep(0.5)
+        time.sleep(1)
         state.poll()
 
 if __name__ == "__main__":
