@@ -446,12 +446,7 @@ namespace infinit
           auto chan = std::make_shared<Channel>(_channels.accept());
           ++i;
 
-<<<<<<< HEAD
           auto call_procedure = [&, chan] {
-=======
-          auto call_procedure = [&, chan, call]
-          {
->>>>>>> release/0.1.4
             ELLE_LOG_COMPONENT("infinit.protocol.RPC");
 
             Packet question(chan->read());
@@ -511,17 +506,7 @@ namespace infinit
             }
             chan->write(answer);
           };
-<<<<<<< HEAD
           scope.run_background(elle::sprintf("RPC %s", i), call_procedure);
-=======
-          auto name = reactor::Scheduler::scheduler()->current()->name();
-          call->first =
-            elle::make_unique<reactor::Thread>(this->_channels.scheduler(),
-                                               elle::sprintf("%s: RPC %s",
-                                                             name, i),
-                                               call_procedure);
-          this->_threads.push_back(call);
->>>>>>> release/0.1.4
         }
       }
       catch (reactor::network::ConnectionClosed const& e)
