@@ -3,6 +3,7 @@
 #include <elle/log.hh>
 #include <common/common.hh>
 #include <satellites/satellite.hh>
+#include <CrashReporter.hh>
 
 ELLE_LOG_COMPONENT("infinit.Satellite");
 
