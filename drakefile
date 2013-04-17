@@ -364,18 +364,8 @@ def configure(cxx_toolkit,
                                  cxx_toolkit, cxx_config)
 
   # Comet
-  cxx_config.add_local_include_path('comet/sources/')
-  comet_sources = drake.nodes(
-    'comet/sources/comet/all.hh',
-    'comet/sources/comet/bn.hh',
-    'comet/sources/comet/bn.cc',
-    'comet/sources/comet/rand.cc',
-    'comet/sources/comet/rand.hh',
-    'comet/sources/comet/rsa.hh',
-    'comet/sources/comet/rsa.cc',
-    )
-  comet_lib = drake.cxx.DynLib('lib/comet', comet_sources,
-                               cxx_toolkit, cxx_config)
+  comet = drake.include('comet', cxx_toolkit, cxx_config, openssl = openssl.config(), boost = boost)
+  comet_lib = drake.copy(comet.lib_dynamic, 'lib', comet.lib_dynamic.path().dirname())
 
   # Protocol
   protocol_sources = drake.nodes(
