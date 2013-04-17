@@ -38,7 +38,6 @@
 #include <fstream>
 
 #include <Program.hh>
-#include <CrashReporter.hh>
 
 ELLE_LOG_COMPONENT("infinit.satellites.transfer.Transfer");
 

@@ -13,7 +13,6 @@
 
 #include <Infinit.hh>
 #include <Program.hh>
-#include <CrashReporter.hh>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>

@@ -36,7 +36,6 @@
 #include <common/common.hh>
 
 #include <Program.hh>
-#include <CrashReporter.hh>
 
 #include <HoleFactory.hh>
 

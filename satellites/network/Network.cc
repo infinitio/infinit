@@ -34,7 +34,6 @@
 
 #include <horizon/Policy.hh>
 
-#include <CrashReporter.hh>
 #include <Infinit.hh>
 #include <Program.hh>
 

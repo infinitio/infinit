@@ -28,7 +28,6 @@
 #include <common/common.hh>
 
 #include <Program.hh>
-#include <CrashReporter.hh>
 
 #include <boost/foreach.hpp>
 #include <limits>

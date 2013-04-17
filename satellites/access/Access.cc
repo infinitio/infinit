@@ -33,7 +33,6 @@ using namespace infinit;
 #include <limits>
 
 #include <Program.hh>
-#include <CrashReporter.hh>
 
 namespace satellite
 {
