@@ -66,14 +66,6 @@ def configure(cxx_toolkit,
   cxx_config.define('INFINIT_VERSION', '%s.%s' % (version_major, version_minor))
   cxx_config.define('BOOST_PP_VARIADICS')
 
-  # Boost
-  boost = boost or drake.cxx.boost.Boost()
-  cxx_config += boost.cfg
-  cxx_config += boost.config_signals()
-  cxx_config += boost.config_system()
-  cxx_config += boost.config_filesystem()
-  cxx_config += boost.config_thread()
-
   # OpenSSL
   openssl = None
 
@@ -131,6 +123,14 @@ def configure(cxx_toolkit,
   )
   cxx_config += openssl.config()
 
+  # Boost
+  boost = boost or drake.cxx.boost.Boost()
+  cxx_config += boost.cfg
+  cxx_config += boost.config_signals()
+  cxx_config += boost.config_system()
+  cxx_config += boost.config_filesystem()
+  cxx_config += boost.config_thread()
+
   # Python
   python2 = drake.cxx.find_library('pyconfig.h', python2,
                                    include_dir = ['include/python2.7',
@@ -139,6 +139,7 @@ def configure(cxx_toolkit,
                                    include_dir = ['include/python3.2',
                                                   'include/python3.2m',
                                                   'include/python3.3m'])
+
   # Elle
   elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost)
   elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
