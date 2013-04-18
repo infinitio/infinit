@@ -103,21 +103,24 @@ namespace plasma
     //- Implementation --------------------------------------------------------
     struct Client::Impl
     {
-      boost::asio::io_service io_service;
-
-      /// The connexion to the server
-      boost::asio::ip::tcp::socket socket;
-      std::string             server;
-      uint16_t                port;
-      bool                    check_errors;
-      boost::asio::streambuf request;
-      boost::asio::streambuf response;
+      boost::asio::io_service       io_service;
+      boost::asio::ip::tcp::socket  socket;
+      bool                          connected;
+      std::string                   server;
+      uint16_t                      port;
+      bool                          check_errors;
+      boost::asio::streambuf        request;
+      boost::asio::streambuf        response;
+      boost::system::error_code     last_error;
+      std::string                   user_id;
+      std::string                   user_token;
 
       Impl(std::string const& server,
            uint16_t port,
            bool check_errors)
         : io_service{}
         , socket{io_service}
+        , connected{false}
         , server{server}
         , port{port}
         , check_errors{check_errors}
@@ -130,7 +133,20 @@ namespace plasma
                    uint16_t port,
                    bool check_errors)
       : _impl{new Impl{server, port, check_errors}}
+    {}
+
+    Client::~Client()
     {
+      delete _impl;
+      _impl = nullptr;
+    }
+
+    void
+    Client::_connect()
+    {
+      if (_impl->connected)
+        return;
+
       typedef boost::asio::ip::tcp tcp;
       // Resolve the host name into an IP address.
       tcp::resolver resolver(_impl->io_service);
@@ -139,28 +155,35 @@ namespace plasma
 
       ELLE_DEBUG("connecting trophonius client to %s:%s",
                  _impl->server, _impl->port);
+      if (_impl->socket.is_open())
+      {
+        _impl->socket.close();
+        _impl->socket.open(boost::asio::ip::tcp::v4());
+      }
 
       // Start connect operation.
       _impl->socket.connect(*endpoint_iterator);
       //_impl->socket.non_blocking(true);
+      _impl->socket.set_option(boost::asio::socket_base::keep_alive{true});
+      _impl->connected = true;
+
       // Do not inherit file descriptor when forking.
       ::fcntl(_impl->socket.native_handle(), F_SETFD, 1);
-    }
-
-    Client::~Client()
-    {
-      delete _impl;
-      _impl = nullptr;
     }
 
     void Client::_on_read_socket(boost::system::error_code const& err,
                                  size_t bytes_transferred)
     {
       if (err || bytes_transferred == 0)
+      {
+        if (err)
         {
-          ELLE_WARN("Something went wrong while reading from socket: %s", err);
-          return;
+          _impl->last_error = err;
+          _impl->connected = false;
         }
+        ELLE_WARN("Something went wrong while reading from socket: %s", err);
+        return;
+      }
 
       ELLE_TRACE("Read %s bytes from the socket (%s available)",
                  bytes_transferred,
@@ -168,7 +191,7 @@ namespace plasma
 
       try
         {
-          ELLE_DEBUG("Recieved stream from trophonius.");
+          ELLE_DEBUG("Received stream from trophonius.");
 
           // Bind stream to response.
           std::istream is(&(_impl->response));
@@ -251,6 +274,10 @@ namespace plasma
     Client::connect(std::string const& _id,
                     std::string const& token)
     {
+      _impl->user_id = _id;
+      _impl->user_token = token;
+      this->_connect();
+
       json::Dictionary connection_request{std::map<std::string, std::string>{
         {"_id", _id},
         {"token", token},
@@ -282,8 +309,11 @@ namespace plasma
     std::unique_ptr<Notification>
     Client::poll()
     {
-      // Check socket and insert notification dictionary in the queue if any.
-      //_read_socket();
+      if (!_impl->connected)
+      {
+        this->connect(_impl->user_id, _impl->user_token);
+        _impl->last_error = boost::system::error_code{};
+      }
 
       if (_notifications.empty())
         _impl->io_service.poll_one();

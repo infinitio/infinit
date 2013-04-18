@@ -102,6 +102,9 @@ namespace plasma
       std::queue<std::unique_ptr<Notification>> _notifications;
 
       void
+      _connect();
+
+      void
       _read_socket();
 
       void
