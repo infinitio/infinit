@@ -97,10 +97,10 @@ namespace nucleus
       Network const&
       network() const;
       /// Return the address' family.
-      Family const&
+      Family
       family() const;
       /// Return the address' component.
-      neutron::Component const&
+      neutron::Component
       component() const;
 
       /*----------.

@@ -118,7 +118,7 @@ namespace nucleus
       return (this->_valid->network());
     }
 
-    Family const&
+    Family
     Address::family() const
     {
       ELLE_ASSERT(this->_type == Type::valid);
@@ -127,7 +127,7 @@ namespace nucleus
       return (this->_valid->family());
     }
 
-    neutron::Component const&
+    neutron::Component
     Address::component() const
     {
       ELLE_ASSERT(this->_type == Type::valid);
