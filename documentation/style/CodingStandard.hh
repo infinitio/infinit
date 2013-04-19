@@ -128,9 +128,9 @@ namespace package
        * Note that offering both the copy constructor and the = operator often
        * leads to redundant code sections since the = operator can be considered
        * as a merge between the destructor and the copy constructor. Thus, the
-       * copy constructor should be used as much as possible while the = operator
-       * should be provided for very important classes whose manipulation needs
-       * to be eased.
+       * copy constructor should be used as much as possible while the =
+       * operator should be provided for very important classes whose
+       * manipulation needs to be eased.
        */
       private boost::noncopyable
     {
