@@ -174,12 +174,7 @@ namespace surface
         }
 
       std::string const& progress_binary = common::infinit::binary_path("8progress");
-      std::list<std::string> arguments {
-                                    "-n",
-                                    tr.network_id,
-                                    "-u",
-                                    this->_me._id
-                                };
+      std::list<std::string> arguments{"-n", tr.network_id, "-u", this->_me._id};
 
       ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
                  boost::algorithm::join(arguments, " "));
@@ -201,10 +196,15 @@ namespace surface
       }
       elle::system::Process p{std::move(pc), progress_binary, arguments};
 
-      if (p.wait_status() != 0)
+      if (p.wait_status(elle::system::Process::Milliseconds(10)) != 0)
         throw Exception{
             gap_internal_error, "8progress binary failed"
         };
+      if (p.running())
+      {
+        p.kill();
+        p.wait();
+      }
 
       int current_size = 0;
       int total_size = 0;
