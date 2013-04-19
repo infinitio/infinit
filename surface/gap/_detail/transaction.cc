@@ -217,15 +217,15 @@ namespace surface
       float progress = float(current_size) / float(total_size);
 
       if (progress < 0)
-        {
-          ELLE_WARN("8progress returned a negative integer: %s", progress);
-          progress = 0;
-        }
-      else if (progress > 100)
-        {
-          ELLE_WARN("8progress returned an integer greater than 100: %s", progress);
-          progress = 100;
-        }
+      {
+        ELLE_WARN("8progress returned a negative integer: %s", progress);
+        progress = 0;
+      }
+      else if (progress > 1.0f)
+      {
+        ELLE_WARN("8progress returned an integer greater than 1: %s", progress);
+        progress = 1.0f;
+      }
       ELLE_DEBUG("transaction_progress(%s) -> %f", transaction_id, progress);
       return progress;
     }
@@ -754,10 +754,7 @@ namespace surface
         }
       catch (std::runtime_error const& e)
         {
-          throw Exception{
-              gap_transaction_doesnt_exist,
-              e.what()
-          };
+          throw Exception{gap_transaction_doesnt_exist, e.what()};
         }
     }
 
