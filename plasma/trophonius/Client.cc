@@ -21,6 +21,7 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/write.hpp>
+#include <boost/asio/deadline_timer.hpp>
 
 #include <fcntl.h>
 
@@ -105,6 +106,7 @@ namespace plasma
     {
       boost::asio::io_service       io_service;
       boost::asio::ip::tcp::socket  socket;
+      boost::asio::deadline_timer   connection_checker;
       bool                          connected;
       std::string                   server;
       uint16_t                      port;
@@ -120,6 +122,7 @@ namespace plasma
            bool check_errors)
         : io_service{}
         , socket{io_service}
+        , connection_checker{io_service}
         , connected{false}
         , server{server}
         , port{port}
@@ -133,12 +136,74 @@ namespace plasma
                    uint16_t port,
                    bool check_errors)
       : _impl{new Impl{server, port, check_errors}}
-    {}
+    {
+      _impl->connection_checker.expires_from_now(
+        boost::posix_time::seconds(10)
+      );
+      _impl->connection_checker.async_wait(
+          std::bind(&Client::_check_connection, this, std::placeholders::_1)
+      );
+    }
 
     Client::~Client()
     {
       delete _impl;
       _impl = nullptr;
+    }
+
+    void
+    Client::_check_connection(boost::system::error_code const& err)
+    {
+      if (err)
+      {
+        ELLE_WARN("timer failed, stopping connection checks");
+        return;
+      }
+
+      static char const* ping = "PING";
+
+      boost::asio::async_write(
+        _impl->socket,
+        boost::asio::buffer(ping, 4),
+        std::bind(
+          &Client::_on_write_check, this,
+          std::placeholders::_1, std::placeholders::_2
+        )
+      );
+      if (_impl->connected == false)
+      {
+        try
+        {
+          ELLE_DEBUG("trying to reconnect to tropho now");
+          this->connect(_impl->user_id, _impl->user_token);
+          _impl->last_error = boost::system::error_code{};
+          ELLE_DEBUG("reconnect to tropho successfully");
+        }
+        catch (std::exception const& e)
+        {
+          ELLE_WARN("Couldn't reconnect to tropho: %s", e.what());
+        }
+      }
+
+    }
+
+    void
+    Client::_on_write_check(boost::system::error_code const& err,
+                            size_t const bytes_transferred)
+    {
+      if (err)
+      {
+        _impl->connected = false;
+        ELLE_WARN("trophonius has been disconnected, re-try in 10 seconds");
+      }
+      else if (bytes_transferred == 4)
+        _impl->connected = true;
+      _impl->connection_checker.expires_from_now(
+        boost::posix_time::seconds(10)
+      );
+      _impl->connection_checker.async_wait(
+          std::bind(&Client::_check_connection, this, std::placeholders::_1)
+      );
     }
 
     void
@@ -179,7 +244,7 @@ namespace plasma
         if (err)
         {
           _impl->last_error = err;
-          _impl->connected = false;
+          //_impl->connected = false;
         }
         ELLE_WARN("Something went wrong while reading from socket: %s", err);
         return;
@@ -309,11 +374,6 @@ namespace plasma
     std::unique_ptr<Notification>
     Client::poll()
     {
-      if (!_impl->connected)
-      {
-        this->connect(_impl->user_id, _impl->user_token);
-        _impl->last_error = boost::system::error_code{};
-      }
 
       if (_notifications.empty())
         _impl->io_service.poll_one();
