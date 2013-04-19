@@ -60,10 +60,10 @@ def on_error(state, status, message, tid):
     else:
         print("Error ({}): {}: {}".format(int(status), status, message))
 
-def main(state, user, filepath):
+def main(state, user, files):
     login(state)
 
-    id = state.send_files(user, [filepath,])
+    id = state.send_files(user, files)
     state.transaction_callback(partial(on_transaction, state))
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_started, state))
@@ -97,7 +97,7 @@ def main(state, user, filepath):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("user", help="to user to who you want to send a file")
-    parser.add_argument("file", help="path to the file")
+    parser.add_argument("files", nargs='+', help="path to the file")
     parser.add_argument("-l", "--logfile", help="path to the log file")
     args = parser.parse_args()
 
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     import gap
     with gap.State() as state:
         try:
-            main(state, args.user, args.file)
+            main(state, args.user, args.files)
         except KeyboardInterrupt as e:
             if getattr(state, "current_transaction_id", None):
                 tid = state.current_transaction_id
