@@ -374,9 +374,8 @@ namespace plasma
     std::unique_ptr<Notification>
     Client::poll()
     {
-
-      if (_notifications.empty())
-        _impl->io_service.poll_one();
+      // Poll while something has to be done
+      while (_impl->io_service.poll_one()) { }
 
       std::unique_ptr<Notification> ret;
 
