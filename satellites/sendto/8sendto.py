@@ -30,7 +30,6 @@ def login(state, email = None):
     state.login(sender_id, password)
     import socket
     state.set_device_name(socket.gethostname().strip())
-    state.connect()
 
 def show_status(state, transaction, new):
     print("Transaction ({})".format(transaction), state.transaction_status(transaction))
@@ -71,7 +70,8 @@ def main(state, user, files):
     state.running = True
 
     while True:
-        time.sleep(0.5)
+        state.poll()
+        time.sleep(1)
         status = state.operation_status(id)
         if status == state.OperationStatus.running:
             print(".", end="", file=sys.stdout)

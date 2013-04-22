@@ -25,8 +25,8 @@ int fail_counter = 0;
 void
 auto_accept_transaction_cb(TransactionNotification const &tn, State &s)
 {
-  s.update_transaction(tn.transaction.transaction_id,
-                       gap_transaction_status_accepted);
+  s.transaction_manager().update(tn.transaction.id,
+                                 gap_transaction_status_accepted);
 }
 
 void
@@ -48,18 +48,17 @@ auto make_login = []
 (State &s, std::string user, std::string email)
 {
   try
-    {
-      s.register_(user,
-                  email,
-                  s.hash_password(email, "bitebitebite"),
-                  "bitebite");
-    }
+  {
+    s.register_(user,
+                email,
+                s.hash_password(email, "bitebitebite"),
+                "bitebite");
+  }
   catch (...)
-    {
-      s.login(email,
-              s.hash_password(email, "bitebitebite"));
-    }
-  s.connect();
+  {
+    s.login(email,
+            s.hash_password(email, "bitebitebite"));
+  }
   s.update_device("device" + user);
 };
 
@@ -68,7 +67,7 @@ work(surface::gap::State& state)
 {
   while (state.logged_in())
   {
-    state.poll();
+    state.notification_manager().poll();
     ::sleep(1);
   }
 }
@@ -99,14 +98,14 @@ init_sender(std::string const& to_send, unsigned int count = 10)
   bool finish = false;
   unsigned int counter = 0;
 
-  state.transaction_status_callback([&] (TransactionStatusNotification const& t,
-                                         bool)
-                                    {
-                                      close_on_finished_transaction_cb(
-                                        t, state, finish);
-                                    });
+  state.notification_manager().transaction_status_callback([&] (TransactionStatusNotification const& t,
+                                                                bool)
+                                                           {
+                                                             close_on_finished_transaction_cb(
+                                                               t, state, finish);
+                                                           });
 
-  state.on_error_callback(error_cb);
+  state.notification_manager().on_error_callback(error_cb);
   make_login(state, "Bite", email1);
   static std::thread thread = make_worker(state);
 
@@ -115,20 +114,20 @@ init_sender(std::string const& to_send, unsigned int count = 10)
     for (counter = 0; counter < count; ++counter)
     {
       ELLE_LOG("%s send / %s", counter, count);
-      auto operation_id = state.send_files(email2, {to_send});
+      auto operation_id = state.transaction_manager().send_files(email2, {to_send});
 
-      auto operation_status = surface::gap::State::OperationStatus::running;
+      auto operation_status = surface::gap::OperationManager::OperationStatus::running;
 
       timeout = 30;
-      while (operation_status == surface::gap::State::OperationStatus::running)
+      while (operation_status == surface::gap::OperationManager::OperationStatus::running)
       {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         if (--timeout < 0)
           throw std::runtime_error{"sending files timed out"};
 
-        operation_status = state.operation_status(operation_id);
+        operation_status = state.transaction_manager().status(operation_id);
       }
-      state.operation_finalize(operation_id);
+      state.transaction_manager().finalize(operation_id);
 
       timeout = 60;
       while (!finish)
@@ -154,10 +153,10 @@ init_recipient()
 {
   static surface::gap::State state;
 
-  state.transaction_callback([&] (TransactionNotification const& t, bool)
-                          { auto_accept_transaction_cb(t, state); });
+  state.notification_manager().transaction_callback([&] (TransactionNotification const& t, bool)
+                                                    { auto_accept_transaction_cb(t, state); });
 
-  state.on_error_callback(error_cb);
+  state.notification_manager().on_error_callback(error_cb);
 
   make_login(state, "Bite", email2);
 
@@ -190,10 +189,10 @@ main(int argc, char** argv)
   {
     auto const& rstate = init_recipient();
 
-    std::get<0>(rstate)->user_status_callback(
+    std::get<0>(rstate)->notification_manager().user_status_callback(
       [&rstate] (surface::gap::UserStatusNotification const& notif)
       {
-        auto id = std::get<0>(rstate)->user(email1)._id;
+        auto id = std::get<0>(rstate)->user_manager().one(email1).id;
 
         if (notif.user_id == id && notif.status == 0)
         {

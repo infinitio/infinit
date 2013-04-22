@@ -27,11 +27,9 @@ class _State:
 
         directly_exported_methods = [
             'enable_debug',
-            'set_permissions',
             'set_device_name',
 
             'logout',
-            'connect',
             'invite_user',
             'send_message',
 
@@ -48,7 +46,6 @@ class _State:
             'networks',
             'network_add_user',
             'network_name',
-            'network_mount_point',
 
             # Transaction
             'send_files',
@@ -140,9 +137,6 @@ class _State:
         self.email = email
         pw_hash = self._call('hash_password', email, password)
         self._call('register', fullname, email, pw_hash, dev_name, activation_code)
-
-    def connect():
-        self._call('connect')
 
     @property
     def _id(self):

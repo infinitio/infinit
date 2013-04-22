@@ -102,7 +102,7 @@ struct UniqueUser
     , external_port{std::rand() % 65535}
   {
     // Initialize user.
-    this->user._id = "";
+    this->user.id = "";
     this->user.fullname = name;
     this->email = name + "@infinit.io";
     this->user.public_key = "";
@@ -423,7 +423,7 @@ _create_device(plasma::meta::Client& client,
 {
   auto res = client.create_device(device_name);
 
-  BOOST_CHECK(!res.created_device_id.empty());
+  BOOST_CHECK(!res.id.empty());
   BOOST_CHECK(!res.passport.empty());
 
   return res;
@@ -437,7 +437,7 @@ _update_device(plasma::meta::Client& client,
   auto res = client.update_device(device_id,
                                   device_name);
 
-  BOOST_CHECK(!res.updated_device_id.empty());
+  BOOST_CHECK(!res.id.empty());
   BOOST_CHECK(!res.passport.empty());
 
   return res;
@@ -609,7 +609,7 @@ _is_device_connect(plasma::meta::Client& client,
                                      owner_device_id,
                                      u.device_id);
 
-  if (res.externals.empty() && owner_id != u.user._id)
+  if (res.externals.empty() && owner_id != u.user.id)
     return false;
   if (res.locals.empty())
     return false;
@@ -618,7 +618,7 @@ _is_device_connect(plasma::meta::Client& client,
   auto itext = std::find(res.externals.begin(), res.externals.end(),
                          peer_ext);
 
-  if (itext == res.externals.end() && owner_id != u.user._id)
+  if (itext == res.externals.end() && owner_id != u.user.id)
     return false;
   std::string peer_locals = u.local_ip + ":" + std::to_string(u.local_port);
   auto itloc = std::find(res.locals.begin(), res.locals.end(),
@@ -676,12 +676,12 @@ test_device(Users& users)
   {
     {
       auto const& created_device = _create_device(*u.client, u.device_name);
-      u.device_id = created_device.created_device_id;
+      u.device_id = created_device.id;
     }
     u.device_name += "_new";
     {
       auto const& device = _update_device(*u.client, u.device_id, u.device_name);
-      u.device_id = device.updated_device_id;
+      u.device_id = device.id;
     }
   }
 }
@@ -714,7 +714,7 @@ test_search(Users const& users)
     {
       auto user = _user(*u.client, user_id);
 
-      BOOST_CHECK(user._id == user_id);
+      BOOST_CHECK(user.id == user_id);
       BOOST_CHECK(!user.fullname.compare(0, prefix.size(), prefix));
     }
   }
@@ -760,8 +760,8 @@ test_create_network(Users& users)
     // Add users in network.
     for (UniqueUser const& guest: users)
     {
-      if (guest.user._id != u.user._id)
-        _network_add_user(*u.client, u.network_id, guest.user._id);
+      if (guest.user.id != u.user.id)
+        _network_add_user(*u.client, u.network_id, guest.user.id);
 
       _network_add_device(*u.client, u.network_id, guest.device_id);
       _network_connect_device(*u.client,
@@ -773,7 +773,7 @@ test_create_network(Users& users)
     {
       BOOST_CHECK(_is_device_connect(*u.client,
                                      u.network_id,
-                                     u.user._id,
+                                     u.user.id,
                                      u.device_id,
                                      guest));
     }
@@ -791,11 +791,11 @@ test_transactions(Users& users)
     for (UniqueUser const& recipient: users)
     {
       // Can't send to your self (on the same device).
-      if (recipient.user._id == u.user._id)
+      if (recipient.user.id == u.user.id)
         continue;
 
       auto transaction = _create_transaction(*u.client,
-                                             recipient.user._id,
+                                             recipient.user.id,
                                              recipient.network_id,
                                              recipient.device_id);
 
@@ -869,7 +869,7 @@ _accept_transactions(UniqueUser const& u)
     auto transaction_res = u.client->transaction(transaction_id);
 
     // Only recipient can accept.
-    if (transaction_res.recipient_id != u.user._id)
+    if (transaction_res.recipient_id != u.user.id)
       continue;
 
     u.client->update_transaction(transaction_id,
@@ -894,7 +894,7 @@ _prepare_transactions(UniqueUser const& u)
     auto transaction_res = u.client->transaction(transaction_id);
 
     // Only recipient can accept.
-    if (transaction_res.sender_id != u.user._id)
+    if (transaction_res.sender_id != u.user.id)
       continue;
 
     u.client->update_transaction(transaction_id,
@@ -917,7 +917,7 @@ _start_transactions(UniqueUser const& u)
     auto transaction_res = u.client->transaction(transaction_id);
 
     // Only recipient can prepare.
-    if (transaction_res.recipient_id != u.user._id)
+    if (transaction_res.recipient_id != u.user.id)
       continue;
 
     u.client->update_transaction(transaction_id,
@@ -936,7 +936,7 @@ _finish_transactions(UniqueUser const& u)
     auto transaction_res = u.client->transaction(transaction_id);
 
     // Only recipient can finish.
-    if (transaction_res.recipient_id != u.user._id)
+    if (transaction_res.recipient_id != u.user.id)
       continue;
 
     u.client->update_transaction(transaction_id,
@@ -951,7 +951,7 @@ _finish_transactions(UniqueUser const& u)
 void
 _check_user(plasma::meta::User const& u)
 {
-  BOOST_CHECK(!u._id.empty());
+  BOOST_CHECK(!u.id.empty());
   BOOST_CHECK(!u.fullname.empty());
   BOOST_CHECK(!u.public_key.empty());
 }
@@ -960,7 +960,7 @@ void
 _compare_users(plasma::meta::User const& u1,
                plasma::meta::User const& u2)
 {
-  BOOST_CHECK_EQUAL(u1._id, u2._id);
+  BOOST_CHECK_EQUAL(u1.id, u2.id);
   BOOST_CHECK_EQUAL(u1.fullname, u2.fullname);
   BOOST_CHECK_EQUAL(u1.public_key, u2.public_key);
 }
@@ -988,14 +988,14 @@ void
 _check_network_data(plasma::meta::NetworkResponse const& net,
                     UniqueUser const& u)
 {
-  BOOST_CHECK_EQUAL(net.owner, u.user._id);
+  BOOST_CHECK_EQUAL(net.owner, u.user.id);
   BOOST_CHECK_EQUAL(net._id, u.network_id);
 }
 
 void
 _check_transaction_data(plasma::Transaction const& tr)
 {
-  BOOST_CHECK(!tr.transaction_id.empty());
+  BOOST_CHECK(!tr.id.empty());
   BOOST_CHECK(!tr.sender_id.empty());
   BOOST_CHECK(!tr.sender_fullname.empty());
   BOOST_CHECK(!tr.sender_device_id.empty());
@@ -1024,11 +1024,11 @@ _check_transaction_data(plasma::Transaction const& tr,
                         UniqueUser const& sender,
                         UniqueUser const& recipient)
 {
-  BOOST_CHECK(!tr.transaction_id.empty());
-  BOOST_CHECK_EQUAL(tr.sender_id, sender.user._id);
+  BOOST_CHECK(!tr.id.empty());
+  BOOST_CHECK_EQUAL(tr.sender_id, sender.user.id);
   BOOST_CHECK_EQUAL(tr.sender_fullname, sender.user.fullname);
   BOOST_CHECK_EQUAL(tr.sender_device_id, sender.device_id);
-  BOOST_CHECK_EQUAL(tr.recipient_id, recipient.user._id);
+  BOOST_CHECK_EQUAL(tr.recipient_id, recipient.user.id);
   BOOST_CHECK_EQUAL(tr.recipient_fullname, recipient.user.fullname);
   BOOST_CHECK_EQUAL(tr.network_id, sender.network_id);
   BOOST_CHECK(tr.message.empty());

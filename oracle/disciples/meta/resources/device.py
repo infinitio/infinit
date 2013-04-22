@@ -106,7 +106,8 @@ class Create(Page):
         database.users().save(self.user)
         return self.success({
             'created_device_id': id_,
-            'passport': to_save['passport']
+            'passport': to_save['passport'],
+            'name': to_save['name'],
         })
 
 class Update(Page):
@@ -151,6 +152,7 @@ class Update(Page):
         return self.success({
             'updated_device_id': id_,
             'passport': to_save['passport'],
+            to_save['name'],
         })
 
 class Delete(Page):

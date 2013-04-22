@@ -6,6 +6,7 @@
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/os/getenv.hh>
+#include <elle/os/path.hh>
 #include <elle/system/signal.hh>
 
 #include <signal.h>
@@ -23,8 +24,54 @@ namespace surface
       : _user_id{user_id}
     {}
 
+    InfinitInstanceManager::~InfinitInstanceManager()
+    {
+      this->clear();
+    }
+
     void
-    InfinitInstanceManager::launch_network(std::string const& network_id)
+    InfinitInstanceManager::clear()
+    {
+      auto it = begin(this->_instances);
+
+      while(it != end(this->_instances))
+      {
+        this->stop(it->first);
+        it = begin(this->_instances);
+      }
+
+      ELLE_ASSERT(this->_instances.empty());
+    }
+
+    bool
+    InfinitInstanceManager::wait_portal(std::string const& network_id)
+    {
+      ELLE_TRACE("_wait_portal for network %s", network_id);
+
+      ELLE_DEBUG("retrieving portal path");
+      auto portal_path = common::infinit::portal_path(this->_user_id, network_id);
+
+      ELLE_DEBUG("portal path is %s", portal_path);
+      if (!this->exists(network_id))
+        this->launch(network_id);
+
+      for (int i = 0; i < 45; ++i)
+      {
+        ELLE_DEBUG("Waiting for portal.");
+        if (elle::os::path::exists(portal_path))
+          return true;
+
+        if (!this->exists(network_id))
+          throw Exception{gap_error, "Infinit instance has crashed"};
+        ::sleep(1);
+      }
+
+      return false;
+    }
+
+
+    void
+    InfinitInstanceManager::launch(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
       if (_instances.find(network_id) != _instances.end())
@@ -98,7 +145,7 @@ namespace surface
     }
 
     void
-    InfinitInstanceManager::stop_network(std::string const& network_id)
+    InfinitInstanceManager::stop(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
       try
@@ -109,7 +156,7 @@ namespace surface
       }
       catch (elle::Exception const& e)
       {
-        ELLE_DEBUG("no network found, no infinit to kill");
+        ELLE_WARN("no network found, no infinit to kill");
       }
 
       auto it_proc = this->_instances.find(network_id);
@@ -151,17 +198,17 @@ namespace surface
     }
 
     bool
-    InfinitInstanceManager::has_network(std::string const& network_id) const
+    InfinitInstanceManager::exists(std::string const& network_id) const
     {
       ELLE_TRACE_METHOD(network_id);
       if (this->_instances.find(network_id) == this->_instances.end())
         return false;
 
-      if (!this->network_instance(network_id).process->running())
+      if (!this->instance(network_id).process->running())
       {
         ELLE_WARN("Found not running infinit instance (pid = %s): status = %s",
-                   this->network_instance(network_id).process->id(),
-                   this->network_instance(network_id).process->status());
+                   this->instance(network_id).process->id(),
+                   this->instance(network_id).process->status());
         //XXX this->_instances.erase(network_id);
         return false;
       }
@@ -169,7 +216,7 @@ namespace surface
     }
 
     InfinitInstance const&
-    InfinitInstanceManager::network_instance(std::string const& network_id) const
+    InfinitInstanceManager::instance(std::string const& network_id) const
     {
       ELLE_TRACE_METHOD(network_id);
       auto it = _instances.find(network_id);
@@ -180,7 +227,7 @@ namespace surface
     }
 
     InfinitInstance const*
-    InfinitInstanceManager::network_instance_for_file(std::string const& path)
+    InfinitInstanceManager::instance_for_file(std::string const& path)
     {
       ELLE_TRACE_METHOD(path);
       for (auto const& pair : _instances)
