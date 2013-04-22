@@ -9,8 +9,8 @@ namespace hole
     {
       class Bank;
       class Host;
-      class Implementation;
       class Machine;
+      class Slug;
     }
   }
 }

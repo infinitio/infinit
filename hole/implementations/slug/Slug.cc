@@ -1,4 +1,4 @@
-#include <hole/implementations/slug/Implementation.hh>
+#include <hole/implementations/slug/Slug.hh>
 #include <hole/implementations/slug/Machine.hh>
 #include <hole/Exception.hh>
 
@@ -18,7 +18,7 @@ namespace hole
       ///
       /// default constructor.
       ///
-      Implementation::Implementation(
+      Slug::Slug(
         hole::storage::Storage& storage,
         elle::Passport const& passport,
         elle::Authority const& authority,
@@ -38,47 +38,47 @@ namespace hole
       `------------*/
 
       void
-      Implementation::_join()
+      Slug::_join()
       {
         this->_machine.reset(new Machine(*this, this->_port,
                                          this->_connection_timeout));
       }
 
       void
-      Implementation::_leave()
+      Slug::_leave()
       {
         this->_machine.reset(nullptr);
       }
 
       void
-      Implementation::_push(const nucleus::proton::Address& address,
+      Slug::_push(const nucleus::proton::Address& address,
                             const nucleus::proton::ImmutableBlock& block)
       {
         this->_machine->put(address, block);
       }
 
       void
-      Implementation::_push(const nucleus::proton::Address& address,
+      Slug::_push(const nucleus::proton::Address& address,
                             const nucleus::proton::MutableBlock& block)
       {
         this->_machine->put(address, block);
       }
 
       std::unique_ptr<nucleus::proton::Block>
-      Implementation::_pull(const nucleus::proton::Address& address)
+      Slug::_pull(const nucleus::proton::Address& address)
       {
         return this->_machine->get(address);
       }
 
       std::unique_ptr<nucleus::proton::Block>
-      Implementation::_pull(const nucleus::proton::Address& address,
+      Slug::_pull(const nucleus::proton::Address& address,
                             const nucleus::proton::Revision& revision)
       {
         return this->_machine->get(address, revision);
       }
 
       void
-      Implementation::_wipe(const nucleus::proton::Address& address)
+      Slug::_wipe(const nucleus::proton::Address& address)
       {
         this->_machine->wipe(address);
       }
@@ -88,11 +88,11 @@ namespace hole
       `---------*/
 
       elle::Status
-      Implementation::Dump(const elle::Natural32 margin) const
+      Slug::Dump(const elle::Natural32 margin) const
       {
         elle::String    alignment(margin, ' ');
 
-        std::cout << alignment << "[Implementation] Slug" << std::endl;
+        std::cout << alignment << "[Slug]" << std::endl;
 
         // dump the machine.
         if (this->_machine->Dump(margin + 2) == elle::Status::Error)

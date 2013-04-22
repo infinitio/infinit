@@ -20,7 +20,7 @@
 #include <hole/Hole.hh>
 #include <hole/Passport.hh>
 #include <hole/implementations/slug/Host.hh>
-#include <hole/implementations/slug/Implementation.hh>
+#include <hole/implementations/slug/Slug.hh>
 #include <hole/implementations/slug/Machine.hh>
 #include <hole/implementations/slug/Manifest.hh>
 #include <hole/Exception.hh>
@@ -256,7 +256,7 @@ namespace hole
         }
       }
 
-      Machine::Machine(Implementation& hole,
+      Machine::Machine(Slug& hole,
                        int port,
                        reactor::Duration connection_timeout)
         : _hole(hole)

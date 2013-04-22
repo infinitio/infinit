@@ -44,11 +44,11 @@ namespace hole
       | Construction |
       `-------------*/
       public:
-        Machine(Implementation& hole,
+        Machine(Slug& hole,
                 int port,
                 reactor::Duration connection_timeout);
         ~Machine();
-        ELLE_ATTRIBUTE_RX(Implementation&, hole);
+        ELLE_ATTRIBUTE_RX(Slug&, hole);
         ELLE_ATTRIBUTE_RX(reactor::Duration, connection_timeout);
 
       /*------.

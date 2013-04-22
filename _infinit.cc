@@ -15,7 +15,6 @@
 #include <etoile/depot/Depot.hh>
 
 #include <hole/Hole.hh>
-#include <hole/implementations/slug/Implementation.hh>
 #include <hole/storage/Directory.hh>
 #include <horizon/Horizon.hh>
 

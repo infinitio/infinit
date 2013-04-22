@@ -16,9 +16,9 @@
 
 #include <hole/Hole.hh>
 #include <hole/implementations/slug/Host.hh>
-#include <hole/implementations/slug/Implementation.hh>
 #include <hole/implementations/slug/Machine.hh>
 #include <hole/implementations/slug/Manifest.hh>
+#include <hole/implementations/slug/Slug.hh>
 
 #include <Infinit.hh>
 #include <Scheduler.hh>

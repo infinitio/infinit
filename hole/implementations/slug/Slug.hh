@@ -1,5 +1,5 @@
-#ifndef HOLE_IMPLEMENTATIONS_SLUG_IMPLEMENTATION_HH
-# define HOLE_IMPLEMENTATIONS_SLUG_IMPLEMENTATION_HH
+#ifndef HOLE_IMPLEMENTATIONS_SLUG_SLUG_HH
+# define HOLE_IMPLEMENTATIONS_SLUG_SLUG_HH
 
 # include <reactor/network/Protocol.hh>
 
@@ -19,20 +19,20 @@ namespace hole
     {
 
       /// Slug hole implementation.
-      class Implementation:
+      class Slug:
         public Hole
       {
       /*-------------.
       | Construction |
       `-------------*/
       public:
-        Implementation(hole::storage::Storage& storage,
-                       elle::Passport const& passport,
-                       elle::Authority const& authority,
-                       reactor::network::Protocol protocol,
-                       std::vector<elle::network::Locus> const& members,
-                       int port,
-                       reactor::Duration connection_timeout);
+        Slug(hole::storage::Storage& storage,
+             elle::Passport const& passport,
+             elle::Authority const& authority,
+             reactor::network::Protocol protocol,
+             std::vector<elle::network::Locus> const& members,
+             int port,
+             reactor::Duration connection_timeout);
       private:
         ELLE_ATTRIBUTE_R(reactor::network::Protocol, protocol);
         ELLE_ATTRIBUTE_R(std::vector<elle::network::Locus>, members);

@@ -5,7 +5,7 @@
 
 #include <hole/implementations/local/Implementation.hh>
 #include <hole/implementations/remote/Implementation.hh>
-#include <hole/implementations/slug/Implementation.hh>
+#include <hole/implementations/slug/Slug.hh>
 #include <hole/Authority.hh>
 #include <hole/Passport.hh>
 
@@ -73,7 +73,7 @@ namespace infinit
             throw elle::Exception
               (elle::sprintf("invalid transport protocol: %s", protocol_str));
           return std::unique_ptr<hole::Hole>(
-            new hole::implementations::slug::Implementation(
+            new hole::implementations::slug::Slug(
               storage, passport, authority,
               protocol, members, port, timeout));
         }
