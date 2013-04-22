@@ -10,6 +10,3 @@
 [submodule "documentation/finder-injection/FinderMenu"]
 	path = documentation/finder-injection/FinderMenu
 	url = https://github.com/infinitelabs/FinderMenu.git
-[submodule "drake"]
-	path = drake
-	url = git@development.infinit.io:drake
