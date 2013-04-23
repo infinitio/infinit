@@ -203,12 +203,13 @@ class Nodes(_Page):
             "network_id": network['_id'],
             "nodes": [],
         }
-        addrs = {'locals': set(), 'externals': set()}
+        addrs = {'locals': set(), 'externals': set(), 'fallback': set()}
         for node in network['nodes'].values():
             assert 'locals' in node
             assert 'externals' in node
-            assert len(node) == 2
-            for addr_kind in ['locals', 'externals']:
+            assert 'fallback' in node
+            assert len(node) == 3
+            for addr_kind in ['locals', 'externals', 'fallback']:
                 if node[addr_kind] is None:
                     continue
                 for a in node[addr_kind]:
@@ -217,7 +218,7 @@ class Nodes(_Page):
                         addrs[addr_kind].add(
                             a["ip"] + ':' + str(a["port"]),
                         )
-        res['nodes'] = list(addrs['locals'].union(addrs['externals']))
+        res['nodes'] = list(addrs['locals'].union(addrs['externals']).union(addrs['fallback']))
         #print("Find nodes of %s: " % network['name'], res['nodes'])
 
         return self.success(res)
@@ -422,6 +423,7 @@ class AddDevice(_Page):
             network['nodes'][str(device_id)] = {
                     "locals": None,
                     "externals": None,
+                    "fallback": None,
             }
             database.networks().save(network)
 
@@ -492,14 +494,14 @@ class ConnectDevice(_Page):
             node['locals'] = []
 
         external_addresses = self.data.get('externals')
-        print("E================")
-        print(external_addresses)
-        print("E================")
 
         if external_addresses is not None:
             node['externals'] = [{"ip" : v["ip"], "port" : v["port"]} for v in external_addresses if v["ip"] != "0.0.0.0"]
         else:
             node['externals'] = []
+
+        # By default we have no fallback. Fallback will be set while trying to connected the 2 devices.
+        node['fallback'] = []
 
         database.networks().save(network)
 
