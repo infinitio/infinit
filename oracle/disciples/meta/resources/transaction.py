@@ -158,6 +158,7 @@ class Create(Page):
             'files_count': self.data['files_count'],
             'total_size': self.data['total_size'],
             'is_directory': self.data['is_directory'],
+            'already_accepted': False,
 
             'status': PENDING,
         }
@@ -214,12 +215,71 @@ class Create(Page):
                     'is_directory': int(self.data['is_directory']),
 
                     'status': int(PENDING),
+                    'already_accepted': False,
                 }
             }
         )
         return self.success({
             'created_transaction_id': transaction_id,
             'remaining_invitations': self.user.get('remaining_invitations', 0),
+        })
+
+class FullyCreated(Page):
+    """
+    XXX
+    """
+    __pattern__ = "/transaction/fully_created"
+
+    _validators = [
+        ('transaction_id', regexp.TransactionValidator),
+    ]
+
+    def POST(self):
+        self.requireLoggedIn()
+
+        status = self.validate()
+        if status:
+            return self.error(status)
+
+        transaction =  database.transactions().find_one(
+            database.ObjectId(self.data['transaction_id'].strip()))
+
+        if not transaction:
+            return self.error(error.TRANSACTION_DOESNT_EXIST)
+
+        if self.user['_id'] != transaction['sender_id']:
+            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+
+        if transaction['status'] not in (PENDING, ACCEPTED):
+            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
+                              "This transaction can't be %s. Current status : %s"
+                              % (_status_to_string[CREATED], _status_to_string[transaction['status']])
+            )
+
+        sender = database.users().find_one(database.ObjectId(transaction['sender_id']))
+
+        assert sender is not None
+
+        transaction.update({
+            'status': transaction['status'] == ACCEPTED and ACCEPTED or CREATED,
+            'already_accepted': bool(transaction['status'] == ACCEPTED),
+        })
+
+        updated_transaction_id = database.transactions().save(transaction);
+
+        self.notifier.notify_some(
+            notifier.TRANSACTION_STATUS,
+            [transaction['sender_id'], transaction['recipient_id']],
+            {
+                'transaction_id': str(updated_transaction_id),
+
+                # Status.
+                'status': CREATED,
+            }
+        )
+
+        return self.success({
+            'updated_transaction_id': str(updated_transaction_id),
         })
 
 class Accept(Page):
@@ -267,7 +327,7 @@ class Accept(Page):
         if self.data['device_id'] == transaction['sender_device_id']:
             return self.error(error.TRANSACTION_CANT_BE_ACCEPTED, "Sender and recipient devices are the same.")
 
-        if transaction['status'] != PENDING :
+        if transaction['status'] not in (PENDING, CREATED):
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
                               "This transaction can't be %s. Current status : %s"
                               % (_status_to_string[ACCEPTED], _status_to_string[transaction['status']])
@@ -349,10 +409,10 @@ class Prepare(Page):
         if self.user['_id'] != transaction['sender_id']:
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
-        if transaction['status'] != ACCEPTED :
+        if transaction['status'] != ACCEPTED:
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
                               "This transaction can't be %s. Current status : %s"
-                              % (_status_to_string[PREPAREED], _status_to_string[transaction['status']])
+                              % (_status_to_string[PREPARED], _status_to_string[transaction['status']])
             )
 
         transaction.update({
@@ -413,7 +473,7 @@ class Start(Page):
         if self.user['_id'] != transaction['recipient_id']:
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
-        if transaction['status'] != PREPARED :
+        if transaction['status'] != PREPARED:
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
                               "This transaction can't be %s. Current status : %s"
                               % (_status_to_string[STARTED], _status_to_string[transaction['status']])
@@ -583,7 +643,7 @@ class Cancel(Page):
         if self.user['_id'] not in (transaction['sender_id'], transaction['recipient_id']):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
-        if not transaction['status'] in (ACCEPTED, PENDING, STARTED, PREPARED) :
+        if not transaction['status'] in (ACCEPTED, PENDING, STARTED, PREPARED, CREATED):
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
                               "This transaction can't be %s. Current status : %s"
                               % (_status_to_string[CANCELED], _status_to_string[transaction['status']])
@@ -726,6 +786,7 @@ class One(Page):
 
                 'status': int(transaction['status']),
                 'message': transaction['message'],
+                'already_accepted': bool(transaction.get('already_accepted', False)),
  #           }
         }
 
