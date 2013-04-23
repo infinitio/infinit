@@ -267,8 +267,8 @@ namespace surface
                  std::unordered_set<std::string> const& files);
     private:
       void
-      _send_files(std::string const& recipient,
-                  std::unordered_set<std::string> const& files);
+      _upload_files(std::string const& network_id,
+                    std::unordered_set<std::string> const& files);
 
     public:
       /// @brief Update transaction status.
@@ -296,6 +296,14 @@ namespace surface
 
     private:
       // Functions callback on each status (set and get).
+
+      /// @brief Tell meta that the transaction is fully creted.
+      void
+      _create_transaction(Transaction const& transaction);
+
+      /// @brief Use to handle a fully created transaction.
+      void
+      _on_transaction_created(Transaction const& transaction);
 
       /// @brief Use to accept the transaction for the recipient.
       void

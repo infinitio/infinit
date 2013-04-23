@@ -25,6 +25,14 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & elle::serialize::named("total_size", res.total_size);
   ar & elle::serialize::named("is_directory", res.is_directory);
   ar & elle::serialize::named("status", res.status);
+  try
+  {
+    ar & elle::serialize::named("already_accepted", res.already_accepted);
+  }
+  catch (...)
+  {
+    res.already_accepted = false;
+  }
 }
 
 #endif

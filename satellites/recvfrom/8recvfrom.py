@@ -78,7 +78,7 @@ def select_transactions(state, l_transactions, sender):
     # select pending transactions matching the sender id (if not None)
     enumeration = list(enumerate(
             l for l in l_transactions
-            if state.transaction_status(l) == state.TransactionStatus.pending
+            if state.transaction_status(l) in [state.TransactionStatus.pending, state.TransactionStatus.created, ]
             and (sender is None or state.transaction_sender_id(l) == sender_id)
     ))
 
@@ -120,6 +120,9 @@ def select_transactions(state, l_transactions, sender):
 
 def main(state, sender):
     id = login(state)
+
+    # Pull only new notifications to ensure the transaction has been fetched.
+    state.pull_notifications(0, 0)
 
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_canceled, state))

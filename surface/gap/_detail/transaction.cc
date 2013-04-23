@@ -26,49 +26,90 @@ namespace surface
     State::send_files(std::string const& recipient_id_or_email,
                       std::unordered_set<std::string> const& files)
     {
-      ELLE_TRACE("Sending files to %s", recipient_id_or_email);
+      ELLE_TRACE_FUNCTION(recipient_id_or_email, files);
+
+      if (files.empty())
+        throw Exception(gap_no_file, "no files to send");
+
+      int size = 0;
+      for (auto const& file: files)
+        size += this->file_size(file);
+
+      std::string first_file = fs::path(*(files.cbegin())).filename().string();
+      elle::utility::Time time; time.Current();
+      std::string network_name = elle::sprintf("%s-%s",
+                                               recipient_id_or_email,
+                                               time.nanoseconds);
+      std::string network_id = this->create_network(network_name);
+      plasma::meta::CreateTransactionResponse res;
+
+      ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
+                 this->device_id(),
+                 files.size(),
+                 first_file,
+                 size,
+                 recipient_id_or_email,
+                 network_name,
+                 network_id);
+
+      try
+      {
+        res = this->_meta->create_transaction(recipient_id_or_email,
+                                              first_file,
+                                              files.size(),
+                                              size,
+                                              fs::is_directory(first_file),
+                                              network_id,
+                                              this->_device_id);
+      }
+      catch (...)
+      {
+        ELLE_DEBUG("transaction creation failed");
+        // Something went wrong, we need to destroy the network.
+        this->delete_network(network_id, false);
+        throw;
+      }
+
+      this->_me.remaining_invitations = res.remaining_invitations;
+
       return this->_add_operation(
-        "send_files",
-        std::bind(&State::_send_files, this, recipient_id_or_email, files)
-      );
+        "send_files_for_" + res.created_transaction_id,
+        [&,network_id,res,files]
+        {
+          this->_reporter.store("transaction_create",
+                                {{MKey::status, "attempt"},
+                                  {MKey::value, res.created_transaction_id},
+                                  {MKey::count, std::to_string(files.size())},
+                                  {MKey::size, std::to_string(size)}});
+
+          try
+          {
+            this->_upload_files(network_id, files);
+          }
+          catch (...)
+          {
+            ELLE_DEBUG("detroying network");
+            // Something went wrong, we need to destroy the network.
+            this->delete_network(network_id, false);
+            throw;
+          }
+
+          this->_reporter.store("transaction_create",
+                                {{MKey::status, "succeed"},
+                                  {MKey::value, res.created_transaction_id},
+                                  {MKey::count, std::to_string(files.size())},
+                                  {MKey::size, std::to_string(size)}});
+
+          this->update_transaction(res.created_transaction_id,
+                                   gap_TransactionStatus::gap_transaction_status_created);
+        });
     }
 
     void
-    State::_send_files(std::string const& recipient_id_or_email,
+    State::_upload_files(std::string const& network_id,
                        std::unordered_set<std::string> const& files)
     {
-      ELLE_TRACE("_Sending file to '%s'.", recipient_id_or_email);
-
-      if (files.empty())
-        throw Exception(gap_no_file,
-                        "no files to send");
-
-      int size = 0;
-      for (auto const& path : files)
-        {
-          if (!fs::exists(path))
-            throw Exception(gap_file_not_found,
-                            "file doesn't exist.");
-
-          size += this->file_size(path);
-        }
-
-      std::string first_filename =
-        fs::path(*(files.cbegin())).filename().string();
-
-      ELLE_DEBUG("First filename '%s'.", first_filename);
-
-      // Build timestamp.
-      elle::utility::Time time;
-      time.Current();
-
-      std::string network_name = elle::sprintf(
-          "%s-%s", recipient_id_or_email, time.nanoseconds
-      );
-
-      ELLE_DEBUG("Creating temporary network '%s'.", network_name);
-
-      std::string network_id = this->create_network(network_name);
+      ELLE_TRACE_FUNCTION(network_id, files);
 
       ELLE_DEBUG("created network id is %s", network_id);
       if (this->_wait_portal(network_id) == false)
@@ -78,76 +119,40 @@ namespace surface
       auto transfer_binary = common::infinit::binary_path("8transfer");
       ELLE_DEBUG("Using 8transfert binary '%s'", transfer_binary);
 
-      this->_reporter.store("transaction_create",
-                            {{MKey::status, "attempt"},
-                             {MKey::count, std::to_string(files.size())},
-                             {MKey::size, std::to_string(size)}});
-
       try
       {
-        try
+        for (auto& file: files)
         {
-          for (auto& file: files)
+          std::list<std::string> arguments{
+            "-n", network_id,
+            "-u", this->_me._id,
+            "--path", file,
+            "--to"
+          };
+
+          ELLE_DEBUG("LAUNCH: %s %s",
+                     transfer_binary,
+                     boost::algorithm::join(arguments, " "));
+
+          auto pc = elle::system::process_config(elle::system::normal_config);
           {
-            std::list<std::string> arguments{
-              "-n",
-                network_id,
-                "-u",
-                this->_me._id,
-                "--path",
-                file,
-                "--to"
-                };
-
-            ELLE_DEBUG("LAUNCH: %s %s",
-                       transfer_binary,
-                       boost::algorithm::join(arguments, " "));
-
-            auto pc = elle::system::process_config(elle::system::normal_config);
+            std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+            if (!log_file.empty())
             {
-              std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-              if (!log_file.empty())
+              if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
               {
-                if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-                {
-                  log_file += ".";
-                  log_file += std::to_string(::getpid());
-                }
-                log_file += ".to.transfer.log";
-                pc.setenv("ELLE_LOG_FILE", log_file);
+                log_file += ".";
+                log_file += std::to_string(::getpid());
               }
+              log_file += ".to.transfer.log";
+              pc.setenv("ELLE_LOG_FILE", log_file);
             }
-            // set the environment and start the transfer
-            elle::system::Process p{std::move(pc), transfer_binary, arguments};
-            if (p.wait_status() != 0)
-              throw Exception(gap_internal_error, "8transfer binary failed");
           }
-        }
-        catch (...)
-        {
-          ELLE_DEBUG("detroying network");
-          // Something went wrong, we need to destroy the network.
-          this->delete_network(network_id, false);
-          throw;
-        }
-
-        plasma::meta::CreateTransactionResponse res;
-
-        res = this->_meta->create_transaction(recipient_id_or_email,
-                                              first_filename,
-                                              files.size(),
-                                              size,
-                                              fs::is_directory(first_filename),
-                                              network_id,
-                                              this->device_id());
-        this->_me.remaining_invitations = res.remaining_invitations;
-
-      this->_reporter.store("transaction_create",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, res.created_transaction_id},
-                             {MKey::count, std::to_string(files.size())},
-                             {MKey::size, std::to_string(size)}});
-
+            // set the environment and start the transfer
+          elle::system::Process p{std::move(pc), transfer_binary, arguments};
+          if (p.wait_status() != 0)
+            throw Exception(gap_internal_error, "8transfer binary failed");
+          }
       }
       CATCH_FAILURE_TO_METRICS("transaction_create");
     }
@@ -322,9 +327,11 @@ namespace surface
 
       static const StatusMap _sender_status_update{
         {gap_transaction_status_pending,
-          {gap_transaction_status_canceled}},
+          {gap_transaction_status_canceled, gap_transaction_status_created}},
+        {gap_transaction_status_created,
+          {gap_transaction_status_canceled, gap_transaction_status_prepared}},
         {gap_transaction_status_accepted,
-          {gap_transaction_status_prepared, gap_transaction_status_canceled}},
+          {gap_transaction_status_prepared, gap_transaction_status_created, gap_transaction_status_canceled}},
         {gap_transaction_status_prepared,
           {gap_transaction_status_canceled}},
         {gap_transaction_status_started,
@@ -337,6 +344,8 @@ namespace surface
 
       static StatusMap _recipient_status_update{
         {gap_transaction_status_pending,
+          {gap_transaction_status_accepted, gap_transaction_status_canceled}},
+        {gap_transaction_status_created,
           {gap_transaction_status_accepted, gap_transaction_status_canceled}},
         {gap_transaction_status_accepted,
           {gap_transaction_status_canceled}},
@@ -395,9 +404,11 @@ namespace surface
                                       " status from %s to %s",
                                       transaction.status, status));
 
-
       switch (status)
       {
+        case gap_transaction_status_created:
+          this->_create_transaction(transaction);
+          break;
         case gap_transaction_status_accepted:
           this->_accept_transaction(transaction);
           break;
@@ -423,6 +434,32 @@ namespace surface
 
       // Send file request successful.
     } // !update_transaction()
+
+    void
+    State::_create_transaction(Transaction const& transaction)
+    {
+      if (transaction.sender_device_id != this->device_id())
+        throw Exception{gap_error, "Only sender can lekf his network."};
+
+      this->_meta->update_transaction(transaction.transaction_id,
+                                      plasma::TransactionStatus::created);
+    }
+
+    void
+    State::_on_transaction_created(Transaction const& transaction)
+    {
+      if (transaction.sender_device_id != this->_device_id)
+        return;
+
+      if (transaction.already_accepted)
+      {
+        ELLE_DEBUG("the transaction %s has already been accepted",
+                   transaction.transaction_id);
+
+        this->update_transaction(transaction.transaction_id,
+                                 gap_TransactionStatus::gap_transaction_status_prepared);
+      }
+    }
 
     void
     State::_accept_transaction(Transaction const& transaction)
@@ -463,12 +500,15 @@ namespace surface
       if (transaction.sender_device_id != this->device_id())
         return;
 
-      // When recipient has rights, allow him to start download.
-      this->update_transaction(transaction.transaction_id,
-                               gap_transaction_status_prepared);
+      if (!transaction.already_accepted)
+      {
+        // When recipient has rights, allow him to start download.
+        this->update_transaction(transaction.transaction_id,
+                                 gap_transaction_status_prepared);
 
-      // XXX Could be improved.
-      _swaggers_dirty = true;
+        // XXX Could be improved.
+        _swaggers_dirty = true;
+      }
     }
 
     void
@@ -840,6 +880,14 @@ namespace surface
 
       switch((plasma::TransactionStatus) notif.status)
       {
+        case plasma::TransactionStatus::created:
+          // We update the transaction from meta.
+          // XXX: we should have it from transaction_notification.
+          (*_transactions)[notif.transaction_id] = this->_meta->transaction(
+              notif.transaction_id
+          );
+          this->_on_transaction_created(transaction);
+          break;
         case plasma::TransactionStatus::accepted:
           // We update the transaction from meta.
           // XXX: we should have it from transaction_notification.

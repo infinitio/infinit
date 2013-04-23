@@ -150,6 +150,14 @@ SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
   ar & named("is_directory", res.is_directory);
   ar & named("status", res.status);
   ar & named("message", res.message);
+  try
+  {
+    ar & named("already_accepted", res.already_accepted);
+  }
+  catch (...)
+  {
+    res.already_accepted = false;
+  }
 }
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionsResponse, ar, res)
@@ -479,6 +487,9 @@ namespace plasma
 
       switch(status)
       {
+        case plasma::TransactionStatus::created:
+          res = this->_post<UpdateTransactionResponse>("/transaction/fully_created", request);
+          break;
         case plasma::TransactionStatus::accepted:
           res = this->_post<UpdateTransactionResponse>("/transaction/accept", request);
           break;
