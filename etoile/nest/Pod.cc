@@ -43,7 +43,8 @@ namespace etoile
       ELLE_ASSERT(this->_egg != nullptr);
 
       stream << *this->_egg
-             << "(" << this->_attachment << ", " << this->_actors << ", "
+             << "(" << this->_attachment << ", " << this->_state << ", "
+             << this->_actors << ", "
              << this->_footprint << ", "
              << (this->_mutex.locked() == true ? "locked" : "unlocked")
              << ")";

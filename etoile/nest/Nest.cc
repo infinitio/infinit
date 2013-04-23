@@ -144,6 +144,9 @@ namespace etoile
           {
             break;
           }
+          default:
+            throw Exception(
+              elle::sprintf("unknown pod attachment '%s'", pod->attachment()));
         }
       }
 
@@ -152,21 +155,25 @@ namespace etoile
 
       gear::Transcript transcript;
 
-      for (auto& pair: this->_pods)
+      auto iterator = this->_pods.begin();
+      auto end = this->_pods.end();
+
+      while (iterator != end)
       {
-        auto pod = pair.second;
+        auto pod = iterator->second;
 
         ELLE_ASSERT_EQ(pod->actors(), 0);
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
+
+        // Compute the iterator for the next element.
+        ++iterator;
 
         // Depending on the pod's state.
         switch (pod->state())
         {
           case Pod::State::dangling:
           case Pod::State::use:
-            throw Exception(
-              elle::sprintf("unable to transcribe a pod in state '%s'",
-                            pod->state()));
+            break;
           case Pod::State::queue:
           {
             ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
@@ -177,14 +184,22 @@ namespace etoile
             ELLE_ASSERT_EQ(pod->footprint(),
                            pod->egg()->block()->footprint());
 
+            // XXX plutot lock que d'assert?
+            // XXX comme ca on est pas oblige de dire qu'il faut appeler
+            //     transcribe() quand plus d'ops
+            // XXX si on ne fait pas ca, remplacer le break dans danglging/use
+            //     par un throw comme a l'origine.
+
             // Note that only consistent blocks need to be published onto
             // the storage layer.
             switch (pod->egg()->block()->state())
             {
               case nucleus::proton::State::clean:
-                break;
               case nucleus::proton::State::dirty:
-                throw Exception("dirty blocks should have been sealed");
+              {
+                // Ignore such blocks.
+                break;
+              }
               case nucleus::proton::State::consistent:
               {
                 // The address of the block has been recomputed during
@@ -198,6 +213,9 @@ namespace etoile
 
                 ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                                pod->egg()->address());
+
+                // Update the egg's state.
+                // XXX pod->egg()->state(nucleus::proton::State::consistent);
 
                 // Finally, push the final version of the block.
                 transcript.record(
@@ -231,7 +249,7 @@ namespace etoile
                 //
                 // The system therefore assumes the block has been
                 // pre-published.
-                continue;
+                break;
               }
               case Pod::Attachment::detached:
               {
@@ -246,6 +264,16 @@ namespace etoile
                 transcript.record(
                   new gear::action::Wipe(pod->egg()->address()));
 
+                // Unmap the pod so as to be able to erase it from the nest.
+                this->_unmap(pod->egg()->address());
+
+                // And erase it.
+                this->_erase(pod);
+
+                // Finally, delete the pod since it is no longer referenced
+                // anywhere.
+                delete pod;
+
                 break;
               }
               default:
@@ -255,6 +283,9 @@ namespace etoile
 
             break;
           }
+          default:
+            throw Exception(
+              elle::sprintf("unknown pod state '%s'", pod->state()));
         }
       }
 
@@ -389,6 +420,8 @@ namespace etoile
         ELLE_ASSERT(pod->mutex().write().locked() == false);
         ELLE_ASSERT_EQ(pod->footprint(), pod->egg()->block()->footprint());
 
+        // XXX si block-state != node-state -> ignore
+
         ELLE_DEBUG("block state: '%s'", pod->egg()->block()->state());
 
         // Depending on the block's state.
@@ -445,6 +478,9 @@ namespace etoile
 
                 break;
               }
+              default:
+                throw Exception(
+                  elle::sprintf("unknwon egg type '%s'", pod->egg()->type()));
             }
 
             break;
@@ -558,6 +594,10 @@ namespace etoile
             // XXX
             continue;
           }
+          default:
+            throw Exception(
+              elle::sprintf("unknown block state '%s'",
+                            pod->egg()->block()->state()));
         }
 
         ELLE_ASSERT(pod->egg()->block() == nullptr);
@@ -725,7 +765,7 @@ namespace etoile
         }
         default:
           throw Exception(
-            elle::sprintf("unsupported or unknown pod state '%s'",
+            elle::sprintf("unknown pod state '%s'",
                           pod->state()));
       }
 
@@ -850,7 +890,7 @@ namespace etoile
       ELLE_ASSERT_EQ(pod->state(), Pod::State::queue);
       ELLE_ASSERT_EQ(pod->actors(), 0);
 
-      ELLE_ASSERT_EQ(handle.state(), nucleus::proton::Handle::State::nested);
+      ELLE_ASSERT_EQ(handle.phase(), nucleus::proton::Handle::Phase::nested);
 
       // Try to optimize the nest.
       this->_optimize();
@@ -863,11 +903,11 @@ namespace etoile
     {
       ELLE_TRACE_METHOD(handle);
 
-      ELLE_DEBUG("handle state's: %s", handle.state());
+      ELLE_DEBUG("handle phase's: %s", handle.phase());
 
-      switch (handle.state())
+      switch (handle.phase())
       {
-        case nucleus::proton::Handle::State::unnested:
+        case nucleus::proton::Handle::Phase::unnested:
         {
           // Make the handle evolve so as to reference a newly
           // created egg.
@@ -907,7 +947,7 @@ namespace etoile
 
           break;
         }
-        case nucleus::proton::Handle::State::nested:
+        case nucleus::proton::Handle::Phase::nested:
         {
           // Retrieve the pod associated with this handle's egg.
           Pod* pod = this->_lookup(handle.egg());
@@ -963,7 +1003,7 @@ namespace etoile
             }
             default:
               throw Exception(
-                elle::sprintf("unsupported or unknown pod state '%s'",
+                elle::sprintf("unknown pod state '%s'",
                               pod->state()));
           }
 
@@ -997,6 +1037,10 @@ namespace etoile
 
               break;
             }
+            default:
+              throw Exception(
+                elle::sprintf("unknown egg type '%s'",
+                              pod->egg()->type()));
           }
 
           // Try to optimize the nest.
@@ -1005,8 +1049,8 @@ namespace etoile
           break;
         }
         default:
-          throw Exception(elle::sprintf("unknown handle state '%s'",
-                                        handle.state()));
+          throw Exception(elle::sprintf("unknown handle phase '%s'",
+                                        handle.phase()));
       }
     }
 
@@ -1015,12 +1059,12 @@ namespace etoile
     {
       ELLE_TRACE_METHOD(handle);
 
-      ELLE_DEBUG("handle state's: %s", handle.state());
+      ELLE_DEBUG("handle phase's: %s", handle.phase());
 
-      // Act depending on the handle's state.
-      switch (handle.state())
+      // Act depending on the handle's phase.
+      switch (handle.phase())
       {
-        case nucleus::proton::Handle::State::unnested:
+        case nucleus::proton::Handle::Phase::unnested:
         {
           // In this case, this is the first time this handle
           // instance is actually loaded.
@@ -1105,7 +1149,7 @@ namespace etoile
 
           break;
         }
-        case nucleus::proton::Handle::State::nested:
+        case nucleus::proton::Handle::Phase::nested:
         {
           // Retrieve the existing pod.
           Pod* pod = this->_lookup(handle.egg());
@@ -1120,11 +1164,11 @@ namespace etoile
           break;
         }
         default:
-          throw Exception(elle::sprintf("unknown handle state '%s'",
-                                        handle.state()));
+          throw Exception(elle::sprintf("unknown handle phase '%s'",
+                                        handle.phase()));
       }
 
-      ELLE_ASSERT_EQ(handle.state(), nucleus::proton::Handle::State::nested);
+      ELLE_ASSERT_EQ(handle.phase(), nucleus::proton::Handle::Phase::nested);
       ELLE_ASSERT_NEQ(handle.egg(), nullptr);
       ELLE_ASSERT_NEQ(handle.egg()->block(), nullptr);
     }
@@ -1134,17 +1178,19 @@ namespace etoile
     {
       ELLE_TRACE_METHOD(handle);
 
-      ELLE_DEBUG("handle state's: %s", handle.state());
+      ELLE_DEBUG("handle phase's: %s", handle.phase());
 
-      switch (handle.state())
+      switch (handle.phase())
       {
-        case nucleus::proton::Handle::State::unnested:
+        case nucleus::proton::Handle::Phase::unnested:
           throw Exception(elle::sprintf("unable to unload an unested --- "
                                         "i.e non-loaded --- handle '%s'",
                                         handle));
-        case nucleus::proton::Handle::State::nested:
+        case nucleus::proton::Handle::Phase::nested:
         {
           Pod* pod = this->_lookup(handle.egg());
+
+          ELLE_DEBUG("unloading the pod: %s", *pod);
 
           ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
           ELLE_ASSERT_EQ(pod->state(), Pod::State::use);
@@ -1160,36 +1206,43 @@ namespace etoile
           // Decrease the number of actors on the pod.
           pod->actors(pod->actors() - 1);
 
-          // Queue the pod if no longer used.
+          // Should nobody act on the block anymore.
           if (pod->actors() == 0)
+          {
+            // Queue the pod if no longer used.
             this->_queue(pod);
 
-          // Adjust the nest's size depending on the evolution of the block's
-          // footprint since the block may have grown or shrunk during its
-          // manipulation.
-          ELLE_DEBUG("about to update the pod's footprint '%s' according to "
-                     "the block's '%s'",
-                     pod->footprint(),
-                     pod->egg()->block()->footprint());
+            // Adjust the nest's size depending on the evolution of the block's
+            // footprint since the block may have grown or shrunk during its
+            // manipulation.
+            //
+            // Note that this adjusting needs to be made only when the pod is
+            // queued.
+            ELLE_DEBUG("about to update the pod's footprint '%s' according to "
+                       "the block's '%s' in a nest of size '%s'",
+                       pod->footprint(),
+                       pod->egg()->block()->footprint(),
+                       this->_size);
 
-          if (pod->footprint() < pod->egg()->block()->footprint())
-          {
-            // The block's footprint has increased, so should the nest's size.
-            this->_size +=
-              pod->egg()->block()->footprint() - pod->footprint();
-          }
-          else
-          {
-            // Otherwise, the new footprint is either smaller or equal, the
-            // nest's size needing to be adjusted accordingly.
-            ELLE_ASSERT_GTE(this->_size,
-                            pod->egg()->block()->footprint());
-            this->_size -=
-              pod->footprint() - pod->egg()->block()->footprint();
-          }
+            if (pod->footprint() < pod->egg()->block()->footprint())
+            {
+              // The block's footprint has increased, so should the nest's size.
+              this->_size +=
+                pod->egg()->block()->footprint() - pod->footprint();
+            }
+            else
+            {
+              // Otherwise, the new footprint is either smaller or equal, the
+              // nest's size needing to be adjusted accordingly.
+              ELLE_ASSERT_GTE(this->_size,
+                              pod->egg()->block()->footprint());
+              this->_size -=
+                pod->footprint() - pod->egg()->block()->footprint();
+            }
 
-          // Update the pod's footprint.
-          pod->footprint(pod->egg()->block()->footprint());
+            // Update the pod's footprint.
+            pod->footprint(pod->egg()->block()->footprint());
+          }
 
           ELLE_ASSERT((pod->state() == Pod::State::use) ||
                       (pod->state() == Pod::State::queue));
@@ -1200,11 +1253,11 @@ namespace etoile
           break;
         }
         default:
-          throw Exception(elle::sprintf("unknown handle state '%s'",
-                                        handle.state()));
+          throw Exception(elle::sprintf("unknown handle phase '%s'",
+                                        handle.phase()));
       }
 
-      ELLE_ASSERT_EQ(handle.state(), nucleus::proton::Handle::State::nested);
+      ELLE_ASSERT_EQ(handle.phase(), nucleus::proton::Handle::Phase::nested);
     }
   }
 }
