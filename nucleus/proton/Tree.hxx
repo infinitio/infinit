@@ -23,8 +23,7 @@ namespace nucleus
                                                 new Quill<T>))}),
       _height(1),
       _capacity(0),
-      _nest(nest),
-      _state(State::dirty)
+      _nest(nest)
     {
     }
 
@@ -35,9 +34,9 @@ namespace nucleus
       _root(new Handle{root.address(), secret}),
       _height(root.height()),
       _capacity(root.capacity()),
-      _nest(nest),
-      _state(State::clean)
+      _nest(nest)
     {
+      ELLE_ASSERT_EQ(this->_root->state(), State::clean);
     }
 
     template <typename T>
@@ -85,7 +84,7 @@ namespace nucleus
       // since the tree's configuration has changed, the tree is optimised,
       // operation which could result in nodules being split etc.
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -93,8 +92,14 @@ namespace nucleus
 
       root().add(k, v);
 
+      // Make sure that root nodule is dirty since a key/value tuple
+      // has been added. Also, update the nodule block's state.
+      ELLE_ASSERT_EQ(root().state(), State::dirty);
+      root.contents().state(root().state());
+
       this->_capacity = root().capacity();
-      this->_state = root().state();
+
+      this->_root->state(root().state());
 
       root.unload();
 
@@ -109,7 +114,7 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_TRACE_METHOD(k);
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -118,9 +123,13 @@ namespace nucleus
       // Recursively remove the value from the root.
       root().remove(k);
 
+      // Make sure that root nodule is dirty since a key/value tuple
+      // has been removed. Also, update the nodule block's state.
+      ELLE_ASSERT_EQ(root().state(), State::dirty);
+      root.contents().state(root().state());
+
       // Update the capacity and state.
       this->_capacity = root().capacity();
-      this->_state = root().state();
 
       root.unload();
 
@@ -160,7 +169,7 @@ namespace nucleus
       // Initialize the base.
       Capacity base(0);
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -184,8 +193,8 @@ namespace nucleus
       // Initialize the base.
       Capacity base(0);
 
-      ELLE_ASSERT(this->_root != nullptr);
-      ELLE_ASSERT(target < this->_capacity);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
+      ELLE_ASSERT_LT(target, this->_capacity);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -206,7 +215,7 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_TRACE_METHOD(k);
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -215,9 +224,14 @@ namespace nucleus
       // Recursively update the tree from the given key.
       root().update(k);
 
+      // Make sure that root nodule is dirty since a key/value tuple
+      // has been updated. Also update the block containing the node so
+      // as to match the node's state.
+      ELLE_ASSERT_EQ(root().state(), State::dirty);
+      root.contents().state(root().state());
+
       // Update the capacity and state.
       this->_capacity = root().capacity();
-      this->_state = root().state();
 
       root.unload();
 
@@ -232,8 +246,8 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_TRACE_METHOD("");
 
-      ELLE_ASSERT(this->_root != nullptr);
-      ELLE_ASSERT(this->_capacity != 0);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
+      ELLE_ASSERT_NEQ(this->_capacity, 0);
 
       return (this->seek(0).first);
     }
@@ -245,8 +259,8 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_TRACE_METHOD("");
 
-      ELLE_ASSERT(this->_root != nullptr);
-      ELLE_ASSERT(this->_capacity != 0);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
+      ELLE_ASSERT_NEQ(this->_capacity, 0);
 
       return (this->seek(this->_capacity - 1).first);
     }
@@ -258,7 +272,7 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_TRACE_METHOD(flags);
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -271,7 +285,7 @@ namespace nucleus
       // Check the address.
       if (flags & flags::address)
         {
-          ELLE_TRACE_SCOPE("checking addresses");
+          ELLE_DEBUG_SCOPE("checking addresses");
 
           // Compute the address of the root block.
           Address address{root.contents().bind()};
@@ -286,7 +300,7 @@ namespace nucleus
       // Check the capacity.
       if (flags & flags::capacity)
         {
-          ELLE_TRACE_SCOPE("checking capacities");
+          ELLE_DEBUG_SCOPE("checking capacities");
 
           if (this->_capacity != root().capacity())
             throw Exception
@@ -297,7 +311,7 @@ namespace nucleus
       // Check the footprint.
       if (flags & flags::footprint)
         {
-          ELLE_TRACE_SCOPE("checking footprints");
+          ELLE_DEBUG_SCOPE("checking footprints");
 
           if (root().footprint() == 0)
             throw Exception("the footprint is null");
@@ -316,17 +330,6 @@ namespace nucleus
                              this->_nest.limits().extent()));
         }
 
-      // Check the state.
-      if (flags & flags::state)
-        {
-          ELLE_TRACE_SCOPE("checking states");
-
-          if (this->_state != root().state())
-            throw Exception
-              (elle::sprintf("invalid state: this(%s) versus root(%s)",
-                             this->_state, root().state()));
-        }
-
       root.unload();
     }
 
@@ -337,7 +340,7 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_TRACE_METHOD("");
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -363,7 +366,7 @@ namespace nucleus
       elle::String alignment(margin, ' ');
       elle::String shift(2, ' ');
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       std::cout << alignment << "[Tree] "
                 << "height(" << this->_height << ") "
@@ -387,13 +390,17 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_TRACE_METHOD(secret);
 
-      switch (this->_state)
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
+
+      ELLE_DEBUG("state: %s", this->_root->state());
+
+      switch (this->_root->state())
         {
         case State::clean:
           throw Exception("unable to seal a clean porcupine");
         case State::dirty:
           {
-            ELLE_ASSERT(this->_root != nullptr);
+            ELLE_ASSERT_NEQ(this->_root, nullptr);
 
             Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -410,9 +417,6 @@ namespace nucleus
             root().state(State::consistent);
             root.contents().state(State::consistent);
 
-            // Update the tree state.
-            this->_state = root().state();
-
             // Reset the handle with the new address and secret.
             this->_root->reset(address, secret);
 
@@ -426,8 +430,9 @@ namespace nucleus
         case State::consistent:
           throw Exception("unable to seal a consistent porcupine");
         default:
-          throw Exception(elle::sprintf("unknown state: '%s'",
-                                        static_cast<int>(this->_state)));
+          throw Exception(
+            elle::sprintf("unknown state: '%s'",
+                          static_cast<int>(this->_root->state())));
         }
     }
 
@@ -438,7 +443,7 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_TRACE_METHOD("");
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -460,7 +465,7 @@ namespace nucleus
     Handle const&
     Tree<T>::root() const
     {
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       return (*this->_root);
     }
@@ -469,9 +474,27 @@ namespace nucleus
     Handle&
     Tree<T>::root()
     {
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       return (*this->_root);
+    }
+
+    template <typename T>
+    State
+    Tree<T>::state() const
+    {
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
+
+      return (this->_root->state());
+    }
+
+    template <typename T>
+    void
+    Tree<T>::state(State const state)
+    {
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
+
+      this->_root->state(state);
     }
 
     template <typename T>
@@ -481,7 +504,7 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_DEBUG_METHOD(k);
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -515,7 +538,7 @@ namespace nucleus
       ELLE_LOG_COMPONENT("infinit.nucleus.proton.Tree");
       ELLE_DEBUG_METHOD("");
 
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       Ambit<Nodule<T>> root(this->_nest, *this->_root);
 
@@ -535,6 +558,10 @@ namespace nucleus
           // Split the root nodule.
           Handle orphan{root().split()};
 
+          // Update the current root nodule block's state.
+          ELLE_ASSERT_EQ(root().state(), State::dirty);
+          root.contents().state(root().state());
+
           // At this point, the tree needs to grow in order to welcome
           // the new right nodule.
 
@@ -546,7 +573,6 @@ namespace nucleus
 
           // Retrieve the current root nodule's capacity and state.
           Capacity capacity_root{root().capacity()};
-          State state_root{root().state()};
 
           // Unload the root nodule so as insert it in the new root.
           root.unload();
@@ -558,11 +584,14 @@ namespace nucleus
 
           newright.load();
 
+          // Update the new nodule block's state.
+          ELLE_ASSERT_EQ(newright().state(), State::dirty);
+          newright.contents().state(newright().state());
+
           // Retrieve the mayor key, capacity and state of the _newright_
           // nodule.
           typename T::K mayor_newright{newright().mayor()};
           Capacity capacity_newright{newright().capacity()};
-          State state_newright{newright().state()};
 
           newright.unload();
 
@@ -608,7 +637,6 @@ namespace nucleus
           ELLE_FINALLY_ACTION_DELETE(inlet_left);
 
           inlet_left->capacity(capacity_root);
-          inlet_left->state(state_root);
 
           newroot().insert(inlet_left);
 
@@ -621,7 +649,6 @@ namespace nucleus
           ELLE_FINALLY_ACTION_DELETE(inlet_right);
 
           inlet_right->capacity(capacity_newright);
-          inlet_right->state(state_newright);
 
           newroot().insert(inlet_right);
 
@@ -633,9 +660,12 @@ namespace nucleus
           // state to dirty.
           newroot().capacity(capacity_root + capacity_newright);
 
+          // Update the new root nodule block's state.
+          ELLE_ASSERT_EQ(newroot().state(), State::dirty);
+          newroot.contents().state(newroot().state());
+
           // Update the capacity and state of the tree.
           this->_capacity = newroot().capacity();
-          this->_state = newroot().state();
 
           newroot.unload();
 
@@ -663,7 +693,7 @@ namespace nucleus
         }
       else
         {
-          ELLE_ASSERT(this->_height != 0);
+          ELLE_ASSERT_NEQ(this->_height, 0);
 
           // Try to reduce the tree's height.
           if (this->_height > 1)
@@ -737,7 +767,7 @@ namespace nucleus
     void
     Tree<T>::print(std::ostream& stream) const
     {
-      ELLE_ASSERT(this->_root != nullptr);
+      ELLE_ASSERT_NEQ(this->_root, nullptr);
 
       stream << "("
              << *this->_root

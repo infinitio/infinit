@@ -30,8 +30,8 @@ namespace nucleus
       Extent const extent = left.nest().limits().extent();
       Footprint footprint(initial);
 
-      ELLE_ASSERT(left.nest().limits().extent() ==
-                  right.nest().limits().extent());
+      ELLE_ASSERT_EQ(left.nest().limits().extent(),
+                     right.nest().limits().extent());
 
       auto end = left._container.end();
       auto i = left._container.begin();
@@ -74,7 +74,7 @@ namespace nucleus
           // XXX make it like Catalog.cc
 
           // Make sure the operation is valid.
-          ELLE_ASSERT(inlet->capacity() <= left.capacity());
+          ELLE_ASSERT_LTE(inlet->capacity(), left.capacity());
 
           // adjust the capacities.
           left.capacity(left.capacity() - inlet->capacity());
@@ -112,8 +112,8 @@ namespace nucleus
       ELLE_TRACE_SCOPE("transfer_left(%s, %s, %s)",
                        left, right, size);
 
-      ELLE_ASSERT(left.nest().limits().extent() ==
-                  right.nest().limits().extent());
+      ELLE_ASSERT_EQ(left.nest().limits().extent(),
+                     right.nest().limits().extent());
 
       // go through the right seam's inlets until the future size is reached
       // after which all the remaining inlets will be moved to the left seam.
@@ -152,7 +152,7 @@ namespace nucleus
           left.insert(inlet);
 
           // make sure the operation is valid.
-          ELLE_ASSERT(inlet->capacity() <= right.capacity());
+          ELLE_ASSERT_LTE(inlet->capacity(), right.capacity());
 
           // adjust the capacities.
           left.capacity(left.capacity() + inlet->capacity());
@@ -207,12 +207,8 @@ namespace nucleus
           {
             Capacity newright;
           } capacity;
-          struct
-          {
-            State newright;
-          } state;
 
-          ELLE_TRACE("nodule's extent high limit reached: "
+          ELLE_DEBUG("nodule's extent high limit reached: "
                      "%s > %s",
                      current().footprint(),
                      nodule.nest().limits().extent());
@@ -220,10 +216,18 @@ namespace nucleus
           // Split the current current nodule.
           Handle orphan{current().split()};
 
+          // Update the current nodule block's state.
+          ELLE_ASSERT_EQ(current().state(), State::dirty);
+          current.contents().state(current().state());
+
           // load the new right nodule.
           Ambit<typename X::V> newright(nodule.nest(), orphan);
 
           newright.load();
+
+          // Update the new nodule block's state.
+          ELLE_ASSERT_EQ(newright().state(), State::dirty);
+          newright.contents().state(newright().state());
 
           //
           // first, retrieve the mayor for both the current and new
@@ -235,7 +239,6 @@ namespace nucleus
 
           // also retrieve the _newright_ capacity and state.
           capacity.newright = newright().capacity();
-          state.newright = newright().state();
 
           // unload the new right nodule.
           newright.unload();
@@ -270,11 +273,10 @@ namespace nucleus
 
           // update the inlet with the proper capacity and state.
           il->capacity(capacity.newright);
-          il->state(state.newright);
 
           // Should it be necessary, try to optimize further the
           // freshly split _newright_ node.
-          ELLE_TRACE("try to optimize further the new right node");
+          ELLE_DEBUG("try to optimize further the new right node");
           Nodule::optimize(nodule, mayor.newright);
         }
       else if ((current().empty() == true) ||
@@ -282,7 +284,7 @@ namespace nucleus
                 (nodule.nest().limits().extent() *
                  nodule.nest().limits().balancing())))
         {
-          ELLE_TRACE("nodule's extent low limit reached: "
+          ELLE_DEBUG("nodule's extent low limit reached: "
                      "%s < %s",
                      current().footprint(),
                      nodule.nest().limits().extent() *
@@ -290,7 +292,7 @@ namespace nucleus
 
           if (current().empty() == true)
             {
-              ELLE_TRACE("nodule is empty");
+              ELLE_DEBUG("nodule is empty");
 
               //
               // if the nodule became empty, it can as well be removed
@@ -299,8 +301,8 @@ namespace nucleus
 
               // at this point, the capacity of current nodule must
               // be zero.
-              ELLE_ASSERT(inlet->capacity() == 0);
-              ELLE_ASSERT(current().capacity() == 0);
+              ELLE_ASSERT_EQ(inlet->capacity(), 0);
+              ELLE_ASSERT_EQ(current().capacity(), 0);
 
               // unload the current nodule.
               current.unload();
@@ -320,7 +322,7 @@ namespace nucleus
             }
           else
             {
-              ELLE_TRACE("nodule not empty but could be balanced");
+              ELLE_DEBUG("nodule not empty but could be balanced");
 
               //
               // the nodule may not be empty but could have reached a size
@@ -363,13 +365,13 @@ namespace nucleus
 
               if (left != nullptr)
                 {
-                  ELLE_TRACE("left neighbour present");
+                  ELLE_DEBUG("left neighbour present");
                   (*left).load();
                 }
 
               if (right != nullptr)
                 {
-                  ELLE_TRACE("right neighbour present");
+                  ELLE_DEBUG("right neighbour present");
                   (*right).load();
                 }
 
@@ -424,15 +426,20 @@ namespace nucleus
                   //
                 _merge_left:
 
-                  ELLE_TRACE("merging with the left neighbour");
+                  ELLE_DEBUG("merging with the left neighbour");
 
                   // merge the nodule.
                   (*left)().merge(current.handle());
 
+                  // Update the nodule block's state.
+                  ELLE_ASSERT_EQ((*left)().state(), State::dirty);
+                  ELLE_ASSERT_EQ(current().state(), State::dirty);
+                  ELLE_ASSERT_EQ(current().empty(), true);
+                  (*left).contents().state((*left)().state());
+
                   // update the inlet referencing left.
                   typename X::I* il = previous->second;
                   il->capacity((*left)().capacity());
-                  il->state((*left)().state());
 
                   // unload the current nodule.
                   current.unload();
@@ -466,15 +473,20 @@ namespace nucleus
                   //
                 _merge_right:
 
-                  ELLE_TRACE("merging with the right neighbour");
+                  ELLE_DEBUG("merging with the right neighbour");
 
                   // merge the nodule.
                   (*right)().merge(current.handle());
 
+                  // Update the nodule block's state.
+                  ELLE_ASSERT_EQ(current().state(), State::dirty);
+                  ELLE_ASSERT_EQ(current().empty(), true);
+                  ELLE_ASSERT_EQ((*right)().state(), State::dirty);
+                  (*right).contents().state((*right)().state());
+
                   // update the inlet referencing right.
                   typename X::I* il = next->second;
                   il->capacity((*right)().capacity());
-                  il->state((*right)().state());
 
                   // unload the current nodule.
                   current.unload();

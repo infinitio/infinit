@@ -12,7 +12,7 @@ namespace nucleus
     `-------------*/
 
     Handle::Handle():
-      _state(State::unnested),
+      _phase(Phase::unnested),
       _clef(nullptr)
     {
       // Manually set all the union pointers to null so as to make sure all
@@ -23,28 +23,28 @@ namespace nucleus
 
     Handle::Handle(Address const& address,
                    cryptography::SecretKey const& secret):
-      _state(State::unnested),
+      _phase(Phase::unnested),
       _clef(new Clef{address, secret})
     {
     }
 
     Handle::Handle(std::shared_ptr<Egg>& egg):
-      _state(State::nested),
+      _phase(Phase::nested),
       _egg(new std::shared_ptr<Egg>{egg})
     {
     }
 
     Handle::Handle(Handle const& other):
-      _state(other._state)
+      _phase(other._phase)
     {
       // Manually set all the union pointers to null so as to make sure all
       // the cases are handled.
       this->_clef = nullptr;
       this->_egg = nullptr;
 
-      switch (this->_state)
+      switch (this->_phase)
         {
-        case State::unnested:
+        case Phase::unnested:
           {
             ELLE_ASSERT(other._clef != nullptr);
 
@@ -52,7 +52,7 @@ namespace nucleus
 
             break;
           }
-        case State::nested:
+        case Phase::nested:
           {
             ELLE_ASSERT(other._egg != nullptr);
             ELLE_ASSERT(*other._egg != nullptr);
@@ -62,26 +62,26 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
+          throw Exception(elle::sprintf("unknown phase '%s'", this->_phase));
         }
     }
 
     Handle::~Handle()
     {
-      switch (this->_state)
+      switch (this->_phase)
         {
-        case State::unnested:
+        case Phase::unnested:
           {
             delete this->_clef;
 
             break;
           }
-        case State::nested:
+        case Phase::nested:
           {
             break;
           }
         default:
-          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
+          throw Exception(elle::sprintf("unknown phase '%s'", this->_phase));
         }
     }
 
@@ -92,15 +92,15 @@ namespace nucleus
     Address const&
     Handle::address() const
     {
-      switch (this->_state)
+      switch (this->_phase)
         {
-        case State::unnested:
+        case Phase::unnested:
           {
             ELLE_ASSERT(this->_clef != nullptr);
 
             return (this->_clef->address());
           }
-        case State::nested:
+        case Phase::nested:
           {
             ELLE_ASSERT(this->_egg != nullptr);
             ELLE_ASSERT(*this->_egg != nullptr);
@@ -108,22 +108,22 @@ namespace nucleus
             return ((*this->_egg)->address());
           }
         default:
-          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
+          throw Exception(elle::sprintf("unknown phase '%s'", this->_phase));
         }
     }
 
     cryptography::SecretKey const&
     Handle::secret() const
     {
-      switch (this->_state)
+      switch (this->_phase)
         {
-        case State::unnested:
+        case Phase::unnested:
           {
             ELLE_ASSERT(this->_clef != nullptr);
 
             return (this->_clef->secret());
           }
-        case State::nested:
+        case Phase::nested:
           {
             ELLE_ASSERT(this->_egg != nullptr);
             ELLE_ASSERT(*this->_egg != nullptr);
@@ -131,14 +131,14 @@ namespace nucleus
             return ((*this->_egg)->secret());
           }
         default:
-          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
+          throw Exception(elle::sprintf("unknown phase '%s'", this->_phase));
         }
     }
 
     std::shared_ptr<Egg> const&
     Handle::egg() const
     {
-      ELLE_ASSERT(this->_state == State::nested);
+      ELLE_ASSERT(this->_phase == Phase::nested);
       ELLE_ASSERT(this->_egg != nullptr);
       ELLE_ASSERT(*this->_egg != nullptr);
 
@@ -148,7 +148,7 @@ namespace nucleus
     std::shared_ptr<Egg>&
     Handle::egg()
     {
-      ELLE_ASSERT(this->_state == State::nested);
+      ELLE_ASSERT(this->_phase == Phase::nested);
       ELLE_ASSERT(this->_egg != nullptr);
       ELLE_ASSERT(*this->_egg != nullptr);
 
@@ -158,7 +158,7 @@ namespace nucleus
     void
     Handle::place(std::shared_ptr<Egg>& egg)
     {
-      ELLE_ASSERT(this->_state == State::unnested);
+      ELLE_ASSERT(this->_phase == Phase::unnested);
 
       // Delete the previous clef.
       ELLE_ASSERT(this->_clef != nullptr);
@@ -168,14 +168,14 @@ namespace nucleus
       // Set the egg to reference to access the block.
       this->_egg = new std::shared_ptr<Egg>{egg};
 
-      // Update the state.
-      this->_state = State::nested;
+      // Update the phase.
+      this->_phase = Phase::nested;
     }
 
     void
     Handle::evolve()
     {
-      ELLE_ASSERT(this->_state == State::unnested);
+      ELLE_ASSERT(this->_phase == Phase::unnested);
 
       // Keep the clef's memory address and reset the attribute.
       ELLE_ASSERT(this->_clef != nullptr);
@@ -185,17 +185,17 @@ namespace nucleus
       // Allocate a new egg based on the handle's clef.
       this->_egg = new std::shared_ptr<Egg>{new Egg{clef}};
 
-      // Update the state.
-      this->_state = State::nested;
+      // Update the phase.
+      this->_phase = Phase::nested;
     }
 
     void
     Handle::reset(Address const& address,
                   cryptography::SecretKey const& secret)
     {
-      switch (this->_state)
+      switch (this->_phase)
         {
-        case State::unnested:
+        case Phase::unnested:
           {
             ELLE_ASSERT(this->_clef != nullptr);
 
@@ -206,7 +206,7 @@ namespace nucleus
 
             break;
           }
-        case State::nested:
+        case Phase::nested:
           {
             ELLE_ASSERT(this->_egg != nullptr);
             ELLE_ASSERT(*this->_egg != nullptr);
@@ -217,8 +217,44 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
+          throw Exception(elle::sprintf("unknown phase '%s'", this->_phase));
         }
+    }
+
+    State
+    Handle::state() const
+    {
+      // Depending on the phase which is nested or not.
+      switch (this->_phase)
+      {
+        case Handle::Phase::unnested:
+        {
+          // If the handle is unnested, it means the block has never been loaded
+          // in which case it is, by definition, clean.
+          return (State::clean);
+        }
+        case Handle::Phase::nested:
+        {
+          // Otherwise, the egg knows the state of the block.
+          ELLE_ASSERT_NEQ(this->_egg, nullptr);
+
+          return ((*this->_egg)->state());
+        }
+        default:
+          throw Exception(
+            elle::sprintf("unknown handle phase '%s'", this->_phase));
+      }
+
+      elle::unreachable();
+    }
+
+    void
+    Handle::state(State const state)
+    {
+      ELLE_ASSERT_NEQ(this->_egg, nullptr);
+
+      // Update the egg's state.
+      (*this->_egg)->state(state);
     }
 
     /*----------.
@@ -231,9 +267,9 @@ namespace nucleus
       if (this == &other)
         return true;
 
-      // Compare the handles depending on their state.
-      if ((this->_state == State::nested) &&
-          (other._state == State::nested))
+      // Compare the handles depending on their phase.
+      if ((this->_phase == Phase::nested) &&
+          (other._phase == Phase::nested))
         {
           // In this case, both handles reference a transient block through
           // an egg whose memory address can be compared to know if both track
@@ -261,13 +297,13 @@ namespace nucleus
           // have been true), then the handles reference different blocks.
           //
           // Otherwise, both blocks are permanent in which case their addresses
-          // can be compared, no matter the state of the handle.
+          // can be compared, no matter the phase of the handle.
 
           // Check whether one of the handles reference a nested and transient
           // block.
-          if (((this->_state == State::nested) &&
+          if (((this->_phase == Phase::nested) &&
                ((*this->_egg)->type() == Egg::Type::transient)) ||
-              ((other._state == State::nested) &&
+              ((other._phase == Phase::nested) &&
                ((*other._egg)->type() == Egg::Type::transient)))
             return (false);
 
@@ -288,11 +324,11 @@ namespace nucleus
     {
       elle::String alignment(margin, ' ');
 
-      std::cout << alignment << "[Handle] " << this->_state << std::endl;
+      std::cout << alignment << "[Handle] " << this->_phase << std::endl;
 
-      switch (this->_state)
+      switch (this->_phase)
         {
-        case State::unnested:
+        case Phase::unnested:
           {
             ELLE_ASSERT(this->_clef != nullptr);
 
@@ -301,7 +337,7 @@ namespace nucleus
 
             break;
           }
-        case State::nested:
+        case Phase::nested:
           {
             ELLE_ASSERT(this->_egg != nullptr);
             ELLE_ASSERT(*this->_egg != nullptr);
@@ -312,7 +348,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
+          throw Exception(elle::sprintf("unknown phase '%s'", this->_phase));
         }
 
       return elle::Status::Ok;
@@ -325,11 +361,11 @@ namespace nucleus
     void
     Handle::print(std::ostream& stream) const
     {
-      stream << this->_state << "(";
+      stream << this->_phase << "(";
 
-      switch (this->_state)
+      switch (this->_phase)
         {
-        case State::unnested:
+        case Phase::unnested:
           {
             ELLE_ASSERT(this->_clef != nullptr);
 
@@ -337,7 +373,7 @@ namespace nucleus
 
             break;
           }
-        case State::nested:
+        case Phase::nested:
           {
             ELLE_ASSERT(this->_egg != nullptr);
             ELLE_ASSERT(*this->_egg != nullptr);
@@ -347,7 +383,7 @@ namespace nucleus
             break;
           }
         default:
-          throw Exception(elle::sprintf("unknown state '%s'", this->_state));
+          throw Exception(elle::sprintf("unknown phase '%s'", this->_phase));
         }
 
       stream << ")";
@@ -359,24 +395,24 @@ namespace nucleus
 
     std::ostream&
     operator <<(std::ostream& stream,
-                Handle::State const state)
+                Handle::Phase const phase)
     {
-      switch (state)
+      switch (phase)
         {
-        case Handle::State::unnested:
+        case Handle::Phase::unnested:
           {
             stream << "unnested";
             break;
           }
-        case Handle::State::nested:
+        case Handle::Phase::nested:
           {
             stream << "nested";
             break;
           }
         default:
           {
-            throw Exception(elle::sprintf("unknown state: '%s'",
-                                          static_cast<int>(state)));
+            throw Exception(elle::sprintf("unknown phase: '%s'",
+                                          static_cast<int>(phase)));
           }
         }
 

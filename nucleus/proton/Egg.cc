@@ -36,6 +36,7 @@ namespace nucleus
       _alive(new Clef{address, secret}),
       _block(block)
     {
+      ELLE_ASSERT_EQ(this->_block->state(), State::clean);
     }
 
     /*--------.
@@ -110,6 +111,36 @@ namespace nucleus
 
       // Regenerate the clef with the new address and secret.
       this->_alive.reset(new Clef{address, secret});
+    }
+
+    State
+    Egg::state() const
+    {
+      // Depending on the presence of the tracked block.
+      if (this->_block == nullptr)
+      {
+        // If the block is not present in main memory, it obviously is clean
+        // but also cannot be transient.
+        ELLE_ASSERT_NEQ(this->_type, Type::transient);
+
+        return (State::clean);
+      }
+      else
+      {
+        // Otherwise, the block can give us information on its state.
+        return (this->_block->state());
+      }
+
+      elle::unreachable();
+    }
+
+    void
+    Egg::state(State const state)
+    {
+      ELLE_ASSERT_NEQ(this->_block, nullptr);
+
+      // Update the block's state.
+      this->_block->state(state);
     }
 
     /*----------.

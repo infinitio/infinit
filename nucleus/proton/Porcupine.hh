@@ -8,7 +8,6 @@
 # include <cryptography/PublicKey.hh>
 
 # include <nucleus/proton/fwd.hh>
-# include <nucleus/proton/State.hh>
 # include <nucleus/proton/Flags.hh>
 # include <nucleus/proton/Strategy.hh>
 # include <nucleus/proton/Handle.hh>
@@ -155,6 +154,9 @@ namespace nucleus
       /// efficient.
       void
       destroy();
+      /// Return the state of the porcupine.
+      State
+      state() const;
       /// Return the embedded value, should the strategy comply.
       ///
       /// !WARNING! Do not use unless one knows exactly what he/she is doing.
@@ -220,7 +222,7 @@ namespace nucleus
     private:
       /// XXX
       ELLE_ATTRIBUTE_RP(Strategy, strategy, mutable);
-      /// XXX
+      /// XXX[maybe use the ELLE_ATTRIBUTE_r etc.?]
       union
       {
         /// Represent the directly embedded value when in evolving in
@@ -234,8 +236,9 @@ namespace nucleus
         /// handling large amount of data.
         Tree<T>* _tree;
       };
+      /// XXX
+      ELLE_ATTRIBUTE_P(elle::Boolean, emptied, mutable);
       ELLE_ATTRIBUTE_X(Nest&, nest);
-      ELLE_ATTRIBUTE_R(State, state);
     };
   }
 }

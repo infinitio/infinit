@@ -336,7 +336,6 @@ namespace nucleus
       value.load();
 
       inlet->capacity(value().capacity());
-      inlet->state(value().state());
 
       // Note that the current quill's state is not set to
       // Dirty because the insert() method took care of it.
@@ -414,13 +413,12 @@ namespace nucleus
       value.load();
 
       // Check whether the value has indeed been modified without
-      // which one would not need to call update().
-      if (value().state() != State::dirty)
-        throw Exception("unable to update the nodule based on a non-dirty "
-                        "value");
+      // which one would not need to call update() and update the
+      // value block's state as well.
+      ELLE_ASSERT_EQ(value().state(), State::dirty);
+      value.contents().state(value().state());
 
-      // update the inlet's and quill's state.
-      inlet->state(State::dirty);
+      // update the quill's state.
       this->state(State::dirty);
 
       //
@@ -717,34 +715,34 @@ namespace nucleus
             {
               ELLE_TRACE_SCOPE("checking states");
 
-              if (inlet->state() != value().state())
-                throw Exception(elle::sprintf("invalid state: inlet(%s) versus value(%s)",
-                                              inlet->state(), value().state()));
+              if (value.contents().state() != value().state())
+                throw Exception(elle::sprintf("invalid state: block(%s) versus value(%s)",
+                                              value.contents().state(), value().state()));
 
               switch (this->state())
                 {
                 case State::clean:
                   {
-                    if (inlet->state() != State::clean)
-                      throw Exception(elle::sprintf("the inlet's state '%s' should "
-                                                    "be clean", inlet->state()));
+                    if (value().state() != State::clean)
+                      throw Exception(elle::sprintf("the value's state '%s' should "
+                                                    "be clean", value().state()));
 
                     break;
                   }
                 case State::dirty:
                   {
-                    if (inlet->state() == State::dirty)
+                    if (value().state() == State::dirty)
                       dirty = true;
 
                     break;
                   }
                 case State::consistent:
                   {
-                    if ((inlet->state() != State::clean) &&
-                        (inlet->state() != State::consistent))
-                      throw Exception(elle::sprintf("the inlet's state '%s' should "
+                    if ((value().state() != State::clean) &&
+                        (value().state() != State::consistent))
+                      throw Exception(elle::sprintf("the value's state '%s' should "
                                                     "be either clean or consistent",
-                                                    inlet->state()));
+                                                    value().state()));
 
                     break;
                   }
@@ -793,12 +791,12 @@ namespace nucleus
           Quill<T>::I* inlet = iterator->second;
           Ambit<T> value(this->nest(), inlet->value());
 
-          // load the value block.
+          // load the value block. // XXX should not load if not dirty i.e inlet->value().state()
           value.load();
 
           // ignore nodules which have not been created or modified
           // i.e is not dirty.
-          switch (inlet->state())
+          switch (value().state())
             {
             case State::clean:
               {
@@ -819,7 +817,6 @@ namespace nucleus
 
                 // Reset the inlet's value with the new address and secret.
                 inlet->value().reset(address, secret);
-                inlet->state(State::consistent);
 
                 // set the current quill as dirty.
                 this->state(State::dirty);
@@ -854,6 +851,9 @@ namespace nucleus
           // Detach the value block from the nest.
           this->nest().detach(inlet->value());
         }
+
+      // Update the quill's state.
+      this->state(State::dirty);
     }
 
     template <typename T>

@@ -7,7 +7,6 @@
 
 # include <nucleus/proton/Footprint.hh>
 # include <nucleus/proton/Handle.hh>
-# include <nucleus/proton/State.hh>
 
 # include <boost/noncopyable.hpp>
 
@@ -61,7 +60,6 @@ namespace nucleus
       ELLE_ATTRIBUTE_RW(K, key);
       ELLE_ATTRIBUTE_RX(Handle, value);
       ELLE_ATTRIBUTE_RW(Capacity, capacity);
-      ELLE_ATTRIBUTE_RW(State, state);
       ELLE_ATTRIBUTE_RW(Footprint, footprint);
     };
   }
