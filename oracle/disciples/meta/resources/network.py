@@ -129,9 +129,9 @@ class AddUser(_Page):
                 'network_name': network['name'],
                 'space': ' ',
             }
-            subject = mail.NETWORK_INVITATION_SUBJECT % infos
-            content = mail.NETWORK_INVITATION_CONTENT % infos
-            #mail.send(to_add_user['email'], subject, content) #XXX
+            # subject = mail.NETWORK_INVITATION_SUBJECT % infos
+            # content = mail.NETWORK_INVITATION_CONTENT % infos
+            # mail.send(to_add_user['email'], subject, content) #XXX
         network['users'].append(to_add_user_id)
         database.networks().save(network)
         to_add_user['networks'].append(network['_id'])
@@ -482,10 +482,6 @@ class ConnectDevice(_Page):
             return self.error(error.DEVICE_NOT_IN_NETWORK)
 
         local_addresses = self.data.get('locals') # notice the 's'
-        print("L================")
-        print(local_addresses)
-        print("L================")
-
 
         if local_addresses is not None:
             # Generate a list of dictionary ip:port.

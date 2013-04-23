@@ -3,7 +3,6 @@
 import json
 
 from meta.page import Page
-from meta import database
 
 class Root(Page):
     """
@@ -46,22 +45,18 @@ class ScratchDB(Page):
     __pattern__ = "/scratchit"
 
     def GET(self):
-
         return self.success({})
 
 class GetBacktrace(Page):
     """
-    Debug function to scratch db and start back to 0.
+    Store the crash into database and send a mail if set.
     """
     __pattern__ = "/debug/report"
 
     def PUT(self):
-        import meta.mail
-
-        _id = self.user and self.user.get('_id', 'anonymous') or 'anonymous'
-        # Key in object and value not empty.
-        email = 'email' in self.data and self.data['email'] or "crash@infinit.io"
-        send = self.data.get('send', True);
+        _id = self.user and self.user.get('_id', "anonymous") or "anonymous" # _id if the user is logged in.
+        email = self.data.get('email', "crash@infinit.io") #specified email if set.
+        send = self.data.get('send', False) #Only send if set.
         module = self.data.get('module', "unknown module")
         signal = self.data.get('signal', "unknown reason")
         backtrace = self.data.get('backtrace', [])
@@ -73,6 +68,7 @@ class GetBacktrace(Page):
 
         backtrace.reverse()
 
+        import meta.database
         meta.database.crashes().insert(
              {
                  "user": _id,
@@ -86,10 +82,11 @@ class GetBacktrace(Page):
         )
 
         if send:
+            import meta.mail
             meta.mail.send(
                 email,
-                meta.mail.BACKTRACE_SUBJECT % {"user": _id, "module": module, "signal": signal},
-                meta.mail.BACKTRACE_CONTENT %
+                subect = meta.mail.BACKTRACE_SUBJECT % {"user": _id, "module": module, "signal": signal},
+                content = meta.mail.BACKTRACE_CONTENT %
                 {
                     "user": _id,
                     "bt":   '\n'.join('{}'.format(l) for l in backtrace),
