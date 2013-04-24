@@ -37,7 +37,30 @@ namespace surface
                      _instances[network_id]->process->id(),
                      _instances[network_id]->process->status());
       }
+
+      std::string command;
+      std::list<std::string> args;
+
       auto pc = elle::system::process_config(elle::system::normal_config);
+      if (elle::os::getenv("INFINIT_DEBUG_WITH_VALGRIND", "") == "1")
+      {
+        pc.pipe_file(
+            elle::system::ProcessChannelStream::out,
+            "/tmp/infinit.out", "a+"
+        );
+        pc.pipe_file(
+            elle::system::ProcessChannelStream::err,
+            "/tmp/infinit.out", "a+"
+        );
+        command = "/opt/local/bin/valgrind";
+        args = {
+          "--dsymutil=yes", "--max-stackframe=751633440",
+          common::infinit::binary_path("8infinit"),
+          "-n", network_id,
+          "-u", _user_id
+        };
+      }
+      else
       {
         std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
@@ -52,14 +75,19 @@ namespace surface
 
           pc.setenv("INFINIT_LOG_FILE", log_file);
         }
+        command = common::infinit::binary_path("8infinit");
+        args = {
+          "-n", network_id,
+          "-u", _user_id
+        };
       }
       ELLE_DEBUG("%s %s %s %s %s", common::infinit::binary_path("8infinit"),
                  "-n", network_id, "-u",
                  _user_id);
       auto process = elle::make_unique<elle::system::Process>(
         std::move(pc),
-        common::infinit::binary_path("8infinit"),
-        std::list<std::string>{"-n", network_id, "-u", _user_id}
+        command,
+        args
       );
 
       _instances[network_id].reset(new InfinitInstance{
