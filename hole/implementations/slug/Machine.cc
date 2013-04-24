@@ -351,11 +351,6 @@ namespace hole
           plasma::meta::Client client(common::meta::host(), common::meta::port());
           try
             {
-              elle::io::Path passport_path(lune::Lune::Passport);
-              passport_path.Complete(elle::io::Piece{"%USER%", Infinit::User});
-              elle::Passport passport;
-              passport.load(passport_path);
-
               std::vector<std::pair<std::string, uint16_t>> addresses;
               auto interfaces = elle::network::Interface::get_map(
                 elle::network::Interface::Filter::only_up
@@ -396,7 +391,7 @@ namespace hole
                             { ELLE_DEBUG("%s:%s", e.first, e.second); });
 
               client.network_connect_device(descriptor.meta().id(),
-                                            passport.id(),
+                                            hole.passport().id(),
                                             addresses,
                                             public_addresses);
             }
