@@ -38,6 +38,10 @@ namespace plasma
   std::ostream&
   operator <<(std::ostream& out,
               TransactionStatus t);
+
+  std::ostream&
+  operator <<(std::ostream& out,
+              Transaction const& t);
 }
 
 # include "plasma.hxx"

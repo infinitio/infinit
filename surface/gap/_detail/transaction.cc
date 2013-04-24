@@ -438,6 +438,8 @@ namespace surface
     void
     State::_create_transaction(Transaction const& transaction)
     {
+      ELLE_TRACE_FUNCTION(transaction);
+
       if (transaction.sender_device_id != this->device_id())
         throw Exception{gap_error, "Only sender can lekf his network."};
 
@@ -448,6 +450,8 @@ namespace surface
     void
     State::_on_transaction_created(Transaction const& transaction)
     {
+      ELLE_TRACE_FUNCTION(transaction);
+
       if (transaction.sender_device_id != this->_device_id)
         return;
 
@@ -464,7 +468,7 @@ namespace surface
     void
     State::_accept_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("Accept transaction '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction);
 
       if (transaction.recipient_id != this->_me._id)
       {
@@ -495,7 +499,7 @@ namespace surface
     void
     State::_on_transaction_accepted(Transaction const& transaction)
     {
-      ELLE_TRACE("On transaction accepted '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction);
 
       if (transaction.sender_device_id != this->device_id())
         return;
@@ -514,7 +518,7 @@ namespace surface
     void
     State::_prepare_transaction(Transaction const& transaction)
     {
-      ELLE_TRACE_FUNCTION(transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction);
 
       if (transaction.sender_device_id != this->device_id())
       {
@@ -560,7 +564,7 @@ namespace surface
     void
     State::_on_transaction_prepared(Transaction const& transaction)
     {
-      ELLE_TRACE("prepared trans '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction);
 
       if (transaction.recipient_device_id != this->device_id())
       {
@@ -586,7 +590,7 @@ namespace surface
     void
     State::_start_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("Start transaction '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction);
 
       if (transaction.recipient_device_id != this->device_id())
       {
@@ -613,7 +617,7 @@ namespace surface
     void
     State::_on_transaction_started(Transaction const& transaction)
     {
-      ELLE_TRACE("Started trans '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction);
 
       if (transaction.recipient_device_id != this->device_id() &&
           transaction.sender_device_id != this->device_id())
@@ -672,7 +676,7 @@ namespace surface
     void
     State::_close_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("Close transaction '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction);
 
       if(transaction.recipient_device_id != this->device_id())
       {
@@ -699,7 +703,7 @@ namespace surface
     void
     State::_on_transaction_closed(Transaction const& transaction)
     {
-      ELLE_DEBUG("Closed transaction '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction);
 
       // Delete networks.
       this->delete_network(transaction.network_id, true /* force */);
@@ -708,7 +712,7 @@ namespace surface
     void
     State::_cancel_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("Cancel transaction '%s'", transaction.transaction_id);
+      ELLE_TRACE_FUNCTION(transaction);
 
       //XXX: If download has started, cancel it, delete files, ...
 
@@ -786,16 +790,16 @@ namespace surface
       ELLE_TRACE("Synching transaction %s from meta", id);
       this->transactions(); // ensure _transactions is not null;
       try
-        {
-          auto transaction = this->_meta->transaction(id);
-          ELLE_DEBUG("Synched transaction %s has status %d",
-                     id, transaction.status);
-          return ((*this->_transactions)[id] = transaction);
-        }
+      {
+        auto transaction = this->_meta->transaction(id);
+        ELLE_DEBUG("Synched transaction %s has status %d",
+                   id, transaction.status);
+        return ((*this->_transactions)[id] = transaction);
+      }
       catch (std::runtime_error const& e)
-        {
-          throw Exception{gap_transaction_doesnt_exist, e.what()};
-        }
+      {
+        throw Exception{gap_transaction_doesnt_exist, e.what()};
+      }
     }
 
     void
