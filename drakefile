@@ -1041,9 +1041,10 @@ def configure(cxx_toolkit,
      [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     ('tests/unit/surface/gap/state_ctor.cc',
      [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
+    ('tests/unit/hole/hole.cc', infinit_libs)
   ]
 
-  with open(str(drake.path_src('elle/drake/test.py')), 'r') as f:
+  with open(str(drake.path_src('elle/drake-additions/test.py')), 'r') as f:
     exec(f.read(), globals())
 
   check = drake.Rule('check')
