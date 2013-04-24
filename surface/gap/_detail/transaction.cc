@@ -1,4 +1,6 @@
 #include "../State.hh"
+#include "TransactionProgress.hh"
+
 #include <metrics/Reporter.hh>
 
 #include <common/common.hh>
@@ -8,6 +10,7 @@
 #include <elle/os/getenv.hh>
 #include <elle/system/Process.hh>
 #include <elle/finally.hh>
+#include <elle/memory.hh>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
@@ -177,61 +180,73 @@ namespace surface
           };
         }
 
-      std::string const& progress_binary = common::infinit::binary_path("8progress");
-      std::list<std::string> arguments{"-n", tr.network_id, "-u", this->_me._id};
+      auto& progress_ptr = this->_transaction_progress[transaction_id];
+      if (progress_ptr == nullptr)
+        progress_ptr = elle::make_unique<TransactionProgress>();
 
-      ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
-                 boost::algorithm::join(arguments, " "));
+      ELLE_ASSERT(progress_ptr != nullptr);
+      TransactionProgress& progress = *progress_ptr;
 
-      auto pc = elle::system::process_config(elle::system::check_output_config);
+      if (progress.process == nullptr)
       {
-        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+        std::string const& progress_binary = common::infinit::binary_path("8progress");
+        std::list<std::string> arguments{"-n", tr.network_id, "-u", this->_me._id};
 
-        if (!log_file.empty())
+        ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
+                   boost::algorithm::join(arguments, " "));
+
+        auto pc = elle::system::process_config(elle::system::check_output_config);
         {
-          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+          std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+          if (!log_file.empty())
           {
-            log_file += ".";
-            log_file += std::to_string(::getpid());
+            if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+            {
+              log_file += ".";
+              log_file += std::to_string(::getpid());
+            }
+            log_file += ".progress.log";
+            pc.setenv("ELLE_LOG_FILE", log_file);
           }
-          log_file += ".progress.log";
-          pc.setenv("ELLE_LOG_FILE", log_file);
+        }
+        progress.process = elle::make_unique<elle::system::Process>(
+            std::move(pc),
+            progress_binary,
+            arguments
+        );
+      }
+      ELLE_ASSERT(progress.process != nullptr);
+
+      if (!progress.process->running())
+      {
+        int current_size = 0;
+        int total_size = 0;
+        std::stringstream ss;
+        ss << progress.process->read();
+        ss >> current_size >> total_size;
+        progress.process.reset();
+
+        if (total_size == 0)
+            return 0.f;
+        progress.last_value = float(current_size) / float(total_size);
+
+        if (progress.last_value < 0)
+        {
+          ELLE_WARN("8progress returned a negative integer: %s", progress);
+          progress.last_value = 0;
+        }
+        else if (progress.last_value > 1.0f)
+        {
+          ELLE_WARN("8progress returned an integer greater than 1: %s", progress);
+          progress.last_value = 1.0f;
         }
       }
-      elle::system::Process p{std::move(pc), progress_binary, arguments};
 
-      if (p.wait_status(elle::system::Process::Milliseconds(10)) != 0)
-        throw Exception{
-            gap_internal_error, "8progress binary failed"
-        };
-      if (p.running())
-      {
-        p.kill();
-        p.wait();
-      }
-
-      int current_size = 0;
-      int total_size = 0;
-      std::stringstream ss;
-      ss << p.read();
-      ss >> current_size >> total_size;
-
-      if (total_size == 0)
-          return 0.f;
-      float progress = float(current_size) / float(total_size);
-
-      if (progress < 0)
-      {
-        ELLE_WARN("8progress returned a negative integer: %s", progress);
-        progress = 0;
-      }
-      else if (progress > 1.0f)
-      {
-        ELLE_WARN("8progress returned an integer greater than 1: %s", progress);
-        progress = 1.0f;
-      }
-      ELLE_DEBUG("transaction_progress(%s) -> %f", transaction_id, progress);
-      return progress;
+      ELLE_DEBUG("transaction_progress(%s) -> %f",
+                 transaction_id,
+                 progress.last_value);
+      return progress.last_value;
     }
 
     void

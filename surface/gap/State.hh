@@ -222,6 +222,12 @@ namespace surface
       Transaction const&
       transaction_sync(std::string const& id);
 
+    private:
+      struct TransactionProgress;
+      typedef std::unique_ptr<TransactionProgress> TransactionProgressPtr;
+      std::map<std::string, TransactionProgressPtr> _transaction_progress;
+
+    public:
       /// @brief Returns a floating number in [0.0f, 1.0f]
       float
       transaction_progress(std::string const& transaction_id);
