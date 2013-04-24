@@ -59,6 +59,7 @@ namespace infinit
   int
   satellite_main(std::string const& name, std::function<void ()> const& action)
   {
+    ELLE_TRACE_FUNCTION(name, action);
     reactor::Scheduler sched;
 
     try
