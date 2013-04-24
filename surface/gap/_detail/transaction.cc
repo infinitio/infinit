@@ -161,7 +161,6 @@ namespace surface
     State::transaction_progress(std::string const& transaction_id)
     {
       ELLE_TRACE("Retrieve progress of transaction %s", transaction_id);
-
       auto const& tr = this->transaction(transaction_id);
 
       if (tr.status == gap_transaction_status_finished)
@@ -280,7 +279,7 @@ namespace surface
 
         {
           elle::system::Process p{std::move(pc), transfer_binary, arguments};
-          ELLE_DEBUG("Waiting transfert process to finish");
+          ELLE_DEBUG("Waiting transfer process to finish");
           p.wait();
         }
 
