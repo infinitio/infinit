@@ -20,7 +20,6 @@
 #include <hole/implementations/slug/Manifest.hh>
 #include <hole/implementations/slug/Slug.hh>
 
-#include <Infinit.hh>
 #include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.slug.Host");
