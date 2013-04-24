@@ -1,5 +1,6 @@
 #include "../State.hh"
 
+#include <surface/gap/_detail/Operation.hh>
 #include <elle/os/path.hh>
 #include <metrics/_details/google.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
@@ -237,6 +238,11 @@ namespace surface
     {
       if (this->_meta->token().empty())
         return;
+
+      for (auto const& op: this->_operations)
+        op.second->cancel();
+
+      this->_operations.clear();
 
       // End session the session.
       this->_reporter.store("user_logout",

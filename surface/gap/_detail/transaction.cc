@@ -726,7 +726,9 @@ namespace surface
                              {MKey::value, transaction.transaction_id}});
 
       ELLE_SCOPE_EXIT(
-        [&] { this->delete_network(transaction.network_id, true); }
+        [&] {
+          this->_cancel_all_operations(transaction.transaction_id);
+          this->delete_network(transaction.network_id, true); }
       );
 
       try

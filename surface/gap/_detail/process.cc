@@ -1,6 +1,8 @@
 #include "../State.hh"
 #include "Operation.hh"
 
+#include <boost/algorithm/string/predicate.hpp>
+
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
 namespace surface
@@ -58,6 +60,20 @@ namespace surface
       for (auto& pair: _operations)
       {
         if (pair.second != nullptr && pair.second->name() == name)
+        {
+          pair.second->cancel();
+          return;
+        }
+      }
+    }
+
+    void
+    State::_cancel_all_operations(std::string const& name)
+    {
+      for (auto& pair: _operations)
+      {
+        if (pair.second != nullptr &&
+            boost::algorithm::ends_with(pair.second->name(), name))
         {
           pair.second->cancel();
           return;

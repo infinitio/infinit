@@ -258,6 +258,9 @@ namespace surface
       void
       _cancel_operation(std::string const& name);
 
+      void
+      _cancel_all_operations(std::string const& name);
+
     public:
       /// @brief Send a file list to a specified user.
       ///
