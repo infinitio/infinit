@@ -123,6 +123,10 @@ def configure(cxx_toolkit,
   )
   cxx_config += openssl.config()
 
+  # Comet
+  comet = drake.include('comet', cxx_toolkit, cxx_config, openssl = openssl.config())
+  comet_lib = drake.copy(comet.lib_dynamic, 'lib', comet.lib_dynamic.path().dirname())
+
   # Boost
   boost = boost or drake.cxx.boost.Boost()
   cxx_config += boost.config()
@@ -369,10 +373,6 @@ def configure(cxx_toolkit,
     )
   nucleus_lib = drake.cxx.DynLib('lib/nucleus', nucleus_sources,
                                  cxx_toolkit, cxx_config)
-
-  # Comet
-  comet = drake.include('comet', cxx_toolkit, cxx_config, openssl = openssl.config(), boost = boost)
-  comet_lib = drake.copy(comet.lib_dynamic, 'lib', comet.lib_dynamic.path().dirname())
 
   # Protocol
   protocol_sources = drake.nodes(
