@@ -247,6 +247,9 @@ namespace etoile
       // XXX[the method below is temporary since expensive:
       //     the block is serialized and deserialized instead
       //     of copying the block]
+      // XXX[note however that it is also good because temporary
+      //     values (which are not serialized such as state) are
+      //     thus reinitialized]
 
       std::stringstream stream(std::ios_base::in |
                                std::ios_base::out |
