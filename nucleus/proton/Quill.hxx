@@ -636,7 +636,6 @@ namespace nucleus
       auto scoutor = this->_container.begin();
       auto end = this->_container.end();
       Capacity capacity(0);
-      elle::Boolean dirty(false);
 
       ELLE_TRACE_SCOPE("check(%s)", flags);
 
@@ -730,12 +729,7 @@ namespace nucleus
                     break;
                   }
                 case State::dirty:
-                  {
-                    if (value().state() == State::dirty)
-                      dirty = true;
-
-                    break;
-                  }
+                  break;
                 case State::consistent:
                   {
                     if ((value().state() != State::clean) &&
@@ -761,16 +755,6 @@ namespace nucleus
           if (this->capacity() != capacity)
             throw Exception(elle::sprintf("invalid capacity: this(%s) versus inlets(%s)",
                                           this->capacity(), capacity));
-        }
-
-      // Should the quill be dirty, verify that at least on of its
-      // inlet is.
-      if (flags & flags::state)
-        {
-          ELLE_TRACE_SCOPE("checking states");
-
-          if ((this->state() == State::dirty) && (dirty == false))
-            throw Exception("none of the inlet seems to be dirty");
         }
     }
 
