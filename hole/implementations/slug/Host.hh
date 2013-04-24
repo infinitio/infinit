@@ -11,7 +11,7 @@
 # include <protocol/ChanneledStream.hh>
 # include <protocol/Serializer.hh>
 
-# include <hole/implementations/slug/Machine.hh>
+# include <hole/implementations/slug/Slug.hh>
 # include <hole/implementations/slug/Manifest.hh>
 
 namespace hole
@@ -36,7 +36,7 @@ namespace hole
       | Construction |
       `-------------*/
       public:
-        Host(Machine& machine,
+        Host(Slug& slug,
              elle::network::Locus const& locus,
              std::unique_ptr<reactor::network::Socket> socket);
         ~Host();
@@ -45,7 +45,7 @@ namespace hole
       | Attributes |
       `-----------*/
       private:
-        Machine& _machine;
+        Slug& _slug;
         /// The remote locus.
         ELLE_ATTRIBUTE_R(elle::network::Locus, locus);
         /// Our own state.
