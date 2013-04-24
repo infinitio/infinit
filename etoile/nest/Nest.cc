@@ -339,6 +339,9 @@ namespace etoile
     void
     Nest::_optimize()
     {
+      // XXX[ignore for now: see the feature/porcupine branch]
+      return;
+
       ELLE_DEBUG_FUNCTION("");
 
       // Return right away if the threshold has not been reached.
