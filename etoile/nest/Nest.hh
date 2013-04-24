@@ -116,6 +116,9 @@ namespace etoile
       /// Update the given pod by loading its associated block.
       void
       _load(Pod* pod);
+      /// Check that the nest is valid, for debugging purposes only.
+      void
+      _check() const;
 
       /*-----------.
       | Interfaces |
@@ -154,7 +157,11 @@ namespace etoile
       /// The threshold which, once reached, triggers the pre-publication of
       /// the least-recently used blocks onto the storage layer.
       ELLE_ATTRIBUTE_R(nucleus::proton::Footprint, threshold);
-      /// The footprint of the currently held blocks.
+      /// The footprint of the blocks currently being held in the queue.
+      ///
+      /// Note that only the pods in _queue can be considered for
+      /// pre-publication. Thus, only these blocks are taken into account in
+      /// the size calculation.
       ELLE_ATTRIBUTE_R(nucleus::proton::Footprint, size);
     };
   }

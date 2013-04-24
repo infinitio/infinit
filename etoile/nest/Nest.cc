@@ -1,8 +1,3 @@
-/* XXX[just to check the performance in production]
-#undef DEBUG
-#define NDEBUG
-*/
-
 #include <etoile/nest/Nest.hh>
 #include <etoile/gear/Transcript.hh>
 #include <etoile/gear/Action.hh>
@@ -69,88 +64,7 @@ namespace etoile
       ELLE_TRACE_METHOD("");
 
 #if defined(DEBUG) || !defined(NDEBUG)
-      // For debug purposes, check that the consistent blocks account
-      // for all the blocks in the history queue.
-      nucleus::proton::Footprint size = 0;
-
-      for (auto& pair: this->_pods)
-      {
-        auto pod = pair.second;
-
-        ELLE_ASSERT_EQ(pod->actors(), 0);
-        ELLE_ASSERT_NEQ(pod->egg(), nullptr);
-
-        // Act depending on the pod's attachment.
-        switch (pod->attachment())
-        {
-          case Pod::Attachment::attached:
-          {
-            // Depending on the pod's state.
-            switch (pod->state())
-            {
-              case Pod::State::dangling:
-              case Pod::State::use:
-                throw Exception(
-                  elle::sprintf("unable to transcribe a pod in state '%s'",
-                                pod->state()));
-              case Pod::State::queue:
-              {
-                ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
-                ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
-                ELLE_ASSERT(pod->mutex().locked() == false);
-                ELLE_ASSERT(pod->mutex().write().locked() == false);
-                ELLE_ASSERT_EQ(pod->footprint(),
-                               pod->egg()->block()->footprint());
-
-                // Note that only consistent blocks need to be published onto
-                // the storage layer.
-                switch (pod->egg()->block()->state())
-                {
-                  case nucleus::proton::State::clean:
-                    break;
-                  case nucleus::proton::State::dirty:
-                    throw Exception("dirty blocks should have been "
-                                    "sealed");
-                  case nucleus::proton::State::consistent:
-                  {
-                    // Add the block's footprint to the total.
-                    size += pod->egg()->block()->footprint();
-
-                    break;
-                  }
-                  default:
-                    throw Exception(
-                      elle::sprintf("unknown block state '%s'",
-                                    pod->egg()->block()->state()));
-                }
-
-                break;
-              }
-              case Pod::State::shell:
-              {
-                ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
-                ELLE_ASSERT_EQ(pod->position(), this->_history.end());
-                ELLE_ASSERT(pod->mutex().locked() == false);
-                ELLE_ASSERT(pod->mutex().write().locked() == false);
-
-                // Ignore such pods because they do not embed a block.
-                continue;
-              }
-            }
-
-            break;
-          }
-          case Pod::Attachment::detached:
-          {
-            break;
-          }
-          default:
-            throw Exception(
-              elle::sprintf("unknown pod attachment '%s'", pod->attachment()));
-        }
-      }
-
-      ELLE_ASSERT_EQ(this->_size, size);
+      this->_check();
 #endif
 
       gear::Transcript transcript;
@@ -181,8 +95,8 @@ namespace etoile
             ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
             ELLE_ASSERT(pod->mutex().locked() == false);
             ELLE_ASSERT(pod->mutex().write().locked() == false);
-            ELLE_ASSERT_EQ(pod->footprint(),
-                           pod->egg()->block()->footprint());
+            // XXX ELLE_ASSERT_EQ(elle::serialize::footprint(*pod->egg()->block()),
+            //                    pod->egg()->block()->footprint());
 
             // XXX plutot lock que d'assert?
             // XXX comme ca on est pas oblige de dire qu'il faut appeler
@@ -213,9 +127,6 @@ namespace etoile
 
                 ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                                pod->egg()->address());
-
-                // Update the egg's state.
-                // XXX pod->egg()->state(nucleus::proton::State::consistent);
 
                 // Finally, push the final version of the block.
                 transcript.record(
@@ -389,6 +300,10 @@ namespace etoile
       auto iterator = this->_history.begin();
       auto end = this->_history.end();
 
+      // XXX faire une premiere passe ou on considere les clean/consistent
+      // XXX puis faire une deuxieme avec les dirty: comme ca ca evite de
+      //     pre-publish les dirty.
+
       std::unique_ptr<gear::Transcript> transcript{new gear::Transcript};
 
       for (; iterator != end;)
@@ -396,7 +311,7 @@ namespace etoile
         // Stop once the threshold is no longer in sight.
         if (this->_size < this->_threshold)
         {
-          ELLE_DEBUG("stop optimizing given the nest's size: %s / %s",
+          ELLE_DEBUG("stop optimizing given the queue size: %s / %s",
                      this->_size, this->_threshold);
           break;
         }
@@ -404,7 +319,6 @@ namespace etoile
         Pod* pod = *iterator;
 
         ELLE_ASSERT_NEQ(pod, nullptr);
-
         ELLE_DEBUG("consider pod '%s' for eviction from the nest",
                    *pod);
 
@@ -418,9 +332,8 @@ namespace etoile
         ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
         ELLE_ASSERT(pod->mutex().locked() == false);
         ELLE_ASSERT(pod->mutex().write().locked() == false);
-        ELLE_ASSERT_EQ(pod->footprint(), pod->egg()->block()->footprint());
-
-        // XXX si block-state != node-state -> ignore
+        // XXX ELLE_ASSERT_EQ(elle::serialize::footprint(*pod->egg()->block()),
+        //                    pod->egg()->block()->footprint());
 
         ELLE_DEBUG("block state: '%s'", pod->egg()->block()->state());
 
@@ -429,6 +342,10 @@ namespace etoile
         {
           case nucleus::proton::State::clean:
           {
+            // XXX[isn't there a way to ensure that the tree is never in
+            //     an inconsistent state: the update being performed before
+            //     the block is unloaded? though they may be other cases]
+
             // First, let us ignore blocks whose state does not match the
             // node's.
             //
@@ -443,6 +360,7 @@ namespace etoile
                          "the node's '%s'",
                          pod->egg()->block()->state(),
                          pod->egg()->block()->node().state());
+
               continue;
             }
 
@@ -464,11 +382,11 @@ namespace etoile
               }
               case nucleus::proton::Egg::Type::permanent:
               {
-                // Decrease the nest's size.
+                // Since the block is about to get completely wiped off
+                // from the queue, decrease the queue size.
                 ELLE_ASSERT_GTE(this->_size,
                                 pod->egg()->block()->footprint());
-                this->_size -=
-                  pod->footprint() - pod->egg()->block()->footprint();
+                this->_size -= pod->egg()->block()->footprint();
 
                 ELLE_DEBUG("delete the block '%s' from the main memory",
                            pod->egg()->block().get());
@@ -490,15 +408,15 @@ namespace etoile
             // In this case, the block must be prepared for publishing. First
             // a temporary secret is generated with which the block will be
             // encrypted. Then, the block's address is computed.
-            /* XXX
+
             ELLE_ASSERT_EQ(pod->egg()->block()->state(),
                            pod->egg()->block()->node().state());
 
-            // Decrease the nest's size.
+            // Since the block is about to get completely wiped off
+            // from the queue, decrease the nest's size.
             ELLE_ASSERT_GTE(this->_size,
                             pod->egg()->block()->footprint());
-            this->_size -=
-              pod->footprint() - pod->egg()->block()->footprint();
+            this->_size -= pod->egg()->block()->footprint();
 
             // Generate a random secret.
             cryptography::SecretKey secret =
@@ -508,7 +426,7 @@ namespace etoile
 
             // Encrypt and bind the block.
             pod->egg()->block()->encrypt(secret);
-            Address address{pod->egg()->block()->bind()};
+            nucleus::proton::Address address{pod->egg()->block()->bind()};
 
             // Update the node and block.
             pod->egg()->block()->node().state(
@@ -520,56 +438,7 @@ namespace etoile
             // the block's new address.
             pod->egg()->reset(address, secret);
 
-            // XXX update the block state -> consistent
-            // XXX do the same with inlet which references it! HOW?
-
             // Then, record the previous version of the block for it to
-            // be removed from the storage layer.
-            if (pod->egg()->has_history() == true)
-              transcript.record(
-                new gear::action::Wipe(pod->egg()->historical().address()));
-
-            // Finally, record the current version so as to be published onto
-            // the storage layer.
-            transcript->record(
-              new gear::action::Push(pod->egg()->address(),
-                                     std::move(pod->egg()->block())));
-            // XXX
-            // 1) le state dans inlet permet de parcourir un node (genre
-            //    Quill) et de savoir si un Value doit etre encrypt()/bind()
-            //    sans etre loaded. TRES IMPORTANT DONC!
-            //      => pour ca, mettre le state de inlet dans Egg
-            //      => et faire que si pas d'Egg, retourner clean. pas contre
-            //         impossible d'update si pas d'Egg.
-            // 2) states clean/consistent, WHY?
-            //      => essayer avec clean/consistent ce qui aura comme effet
-            //         qu'un arbre sealed et tjs utilisable (reecrire doc du
-            //         coup).
-            // XXX
-
-            break;
-            */
-
-            // XXX
-            continue;
-          }
-          case nucleus::proton::State::consistent:
-          {
-            /* XXX
-            // In this case, it happens that the block has already
-            // been sealed. The block is therefore ready to be published
-            // onto the storage layer.
-
-            ELLE_ASSERT_EQ(pod->egg()->block()->state(),
-                           pod->egg()->block()->node().state());
-
-            // Decrease the nest's size.
-            ELLE_ASSERT_GTE(this->_size,
-                            pod->egg()->block()->footprint());
-            this->_size -=
-              pod->footprint() - pod->egg()->block()->footprint();
-
-            // However, the previous version of the block must first
             // be removed from the storage layer.
             if (pod->egg()->has_history() == true)
               transcript->record(
@@ -578,21 +447,44 @@ namespace etoile
             ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                            pod->egg()->address());
 
-            // Push the final version of the block.
+            // Finally, record the current version so as to be published onto
+            // the storage layer.
             transcript->record(
               new gear::action::Push(pod->egg()->address(),
                                      std::move(pod->egg()->block())));
 
             break;
-            */
+          }
+          case nucleus::proton::State::consistent:
+          {
+            // In this case, it happens that the block has already
+            // been sealed. The block is therefore ready to be published
+            // onto the storage layer.
 
-            // XXX
-            // do not handle these because they are about to be
-            // publish anyway
-            // => en fait avec le state dans egg c'est bon.
+            ELLE_ASSERT_EQ(pod->egg()->block()->state(),
+                           pod->egg()->block()->node().state());
 
-            // XXX
-            continue;
+            // Since the block is about to get completely wiped off
+            // from the queue, decrease the nest's size.
+            ELLE_ASSERT_GTE(this->_size,
+                            pod->egg()->block()->footprint());
+            this->_size -= pod->egg()->block()->footprint();
+
+            // The previous version of the block must first be
+            // removed from the storage layer.
+            if (pod->egg()->has_history() == true)
+              transcript->record(
+                new gear::action::Wipe(pod->egg()->historical().address()));
+
+            ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
+                           pod->egg()->address());
+
+            // Finally, push the final version of the block.
+            transcript->record(
+              new gear::action::Push(pod->egg()->address(),
+                                     std::move(pod->egg()->block())));
+
+            break;
           }
           default:
             throw Exception(
@@ -617,6 +509,13 @@ namespace etoile
       // Note that this operation is performed at the end so as to be sure not
       // to block in the process of traversing the queue.
       journal::Journal::record(std::move(transcript));
+
+#if defined(DEBUG) || !defined(NDEBUG)
+      this->_check();
+#endif
+
+      ELLE_DEBUG("the queue size has been reduced to: %s / %s",
+                 this->_size, this->_threshold);
     }
 
     void
@@ -732,14 +631,18 @@ namespace etoile
           ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
           ELLE_ASSERT(pod->mutex().locked() == false);
           ELLE_ASSERT(pod->mutex().write().locked() == false);
-          ELLE_ASSERT_EQ(pod->footprint(),
-                         pod->egg()->block()->footprint());
+
+          // Since the block is about to loaded, hence removed from the
+          // queue, decrease the queue size.
+          // XXX ELLE_ASSERT_EQ(elle::serialize::footprint(*pod->egg()->block()),
+          //                    pod->egg()->block()->footprint());
+          ELLE_ASSERT_GTE(this->_size,
+                          pod->egg()->block()->footprint());
+          this->_size -= pod->egg()->block()->footprint();
 
           // Remove the pod from the queue since it is going to be
           // used by at least one actor.
           this->_unqueue(pod);
-
-          ELLE_ASSERT_EQ(pod->footprint(), pod->egg()->block()->footprint());
 
           break;
         }
@@ -755,9 +658,6 @@ namespace etoile
           // Note that the pod may locked in writing because someone else
           // is trying to load it as well.
           this->_pull(pod);
-
-          // Update the pod's footprint.
-          pod->footprint(pod->egg()->block()->footprint());
 
           ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
 
@@ -874,13 +774,12 @@ namespace etoile
       // Construct a handle referencing the created egg.
       nucleus::proton::Handle handle{nucleus::proton::Handle{pod->egg()}};
 
-      // Set the pod's footprint.
-      pod->footprint(pod->egg()->block()->footprint());
-
       // XXX[set the nest in the node]
       pod->egg()->block()->node().nest(*this);
 
       // Take the block's footprint into account.
+      // XXX ELLE_ASSERT_EQ(elle::serialize::footprint(*pod->egg()->block()),
+      //                    pod->egg()->block()->footprint());
       this->_size += pod->egg()->block()->footprint();
 
       // Queue the pod since not loaded yet.
@@ -938,7 +837,6 @@ namespace etoile
           // Noteworthy is that, in this case, no block has been loaded.
           // Therefore there is no need to increase or decrease the
           // nest's size.
-          ELLE_ASSERT_EQ(pod->footprint(), 0);
 
           // Finally, mark the pod as detached and set the state to shell
           // since the pod contains nothing i.e no block.
@@ -975,10 +873,10 @@ namespace etoile
               ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
               ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
 
-              // Since the block is about to get completely wiped off,
-              // decrease the nest's size.
-              ELLE_ASSERT_EQ(pod->footprint(),
-                             pod->egg()->block()->footprint());
+              // Since the block is about to get completely wiped off
+              // from the queue, decrease the queue size.
+              // XXX ELLE_ASSERT_EQ(elle::serialize::footprint(*pod->egg()->block()),
+              //                    pod->egg()->block()->footprint());
               ELLE_ASSERT_GTE(this->_size,
                               pod->egg()->block()->footprint());
               this->_size -= pod->egg()->block()->footprint();
@@ -1126,9 +1024,6 @@ namespace etoile
             // Actually pull the block from the storage layer.
             this->_pull(pod);
 
-            // Set the pod's footprint.
-            pod->footprint(pod->egg()->block()->footprint());
-
             // Noteworthy that there is no need to unqueue the pod
             // since it has just been created.
 
@@ -1138,9 +1033,6 @@ namespace etoile
 
             // Update the pod's state.
             pod->state(Pod::State::use);
-
-            // Take the block's footprint into account.
-            this->_size += pod->egg()->block()->footprint();
 
             // Lock the pod so as to make sure nobody else unloads it
             // on the storage layer while being used.
@@ -1209,39 +1101,13 @@ namespace etoile
           // Should nobody act on the block anymore.
           if (pod->actors() == 0)
           {
-            // Queue the pod if no longer used.
+            // Take the block's footprint into account.
+            // XXX ELLE_ASSERT_EQ(elle::serialize::footprint(*pod->egg()->block()),
+            // pod->egg()->block()->footprint());
+            this->_size += pod->egg()->block()->footprint();
+
+            // Unqueue the pod.
             this->_queue(pod);
-
-            // Adjust the nest's size depending on the evolution of the block's
-            // footprint since the block may have grown or shrunk during its
-            // manipulation.
-            //
-            // Note that this adjusting needs to be made only when the pod is
-            // queued.
-            ELLE_DEBUG("about to update the pod's footprint '%s' according to "
-                       "the block's '%s' in a nest of size '%s'",
-                       pod->footprint(),
-                       pod->egg()->block()->footprint(),
-                       this->_size);
-
-            if (pod->footprint() < pod->egg()->block()->footprint())
-            {
-              // The block's footprint has increased, so should the nest's size.
-              this->_size +=
-                pod->egg()->block()->footprint() - pod->footprint();
-            }
-            else
-            {
-              // Otherwise, the new footprint is either smaller or equal, the
-              // nest's size needing to be adjusted accordingly.
-              ELLE_ASSERT_GTE(this->_size,
-                              pod->egg()->block()->footprint());
-              this->_size -=
-                pod->footprint() - pod->egg()->block()->footprint();
-            }
-
-            // Update the pod's footprint.
-            pod->footprint(pod->egg()->block()->footprint());
           }
 
           ELLE_ASSERT((pod->state() == Pod::State::use) ||
@@ -1258,6 +1124,99 @@ namespace etoile
       }
 
       ELLE_ASSERT_EQ(handle.phase(), nucleus::proton::Handle::Phase::nested);
+    }
+
+    void
+    Nest::_check() const
+    {
+      // Check that the consistent blocks account for all the blocks
+      // in the history queue.
+
+      nucleus::proton::Footprint size = 0;
+
+      for (auto& pair: this->_pods)
+      {
+        auto pod = pair.second;
+
+        ELLE_ASSERT_NEQ(pod->egg(), nullptr);
+
+        // Act depending on the pod's attachment.
+        switch (pod->attachment())
+        {
+          case Pod::Attachment::attached:
+          {
+            // Depending on the pod's state.
+            switch (pod->state())
+            {
+              case Pod::State::dangling:
+              {
+                ELLE_WARN("the pod '%s' is in a dangling state", *pod);
+
+                // XXX[asserts]
+
+                break;
+              }
+              case Pod::State::use:
+              {
+                // XXX[asserts]
+
+                break;
+              }
+              case Pod::State::queue:
+              {
+                ELLE_ASSERT_EQ(pod->actors(), 0);
+                ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
+                ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
+                ELLE_ASSERT(pod->mutex().locked() == false);
+                ELLE_ASSERT(pod->mutex().write().locked() == false);
+
+                // Note that only consistent blocks need to be published onto
+                // the storage layer.
+                switch (pod->egg()->block()->state())
+                {
+                  case nucleus::proton::State::dirty:
+                  case nucleus::proton::State::clean:
+                  case nucleus::proton::State::consistent:
+                  {
+                    // Add the block's footprint to the total.
+                    size += pod->egg()->block()->footprint();
+
+                    break;
+                  }
+                  default:
+                    throw Exception(
+                      elle::sprintf("unknown block state '%s'",
+                                    pod->egg()->block()->state()));
+                }
+
+                break;
+              }
+              case Pod::State::shell:
+              {
+                ELLE_ASSERT_EQ(pod->actors(), 0);
+                ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
+                ELLE_ASSERT_EQ(pod->position(), this->_history.end());
+                ELLE_ASSERT(pod->mutex().locked() == false);
+                ELLE_ASSERT(pod->mutex().write().locked() == false);
+
+                // Ignore such pods because they do not embed a block.
+                continue;
+              }
+            }
+
+            break;
+          }
+          case Pod::Attachment::detached:
+          {
+            break;
+          }
+          default:
+            throw Exception(
+              elle::sprintf("unknown pod attachment '%s'", pod->attachment()));
+        }
+      }
+
+      ELLE_ASSERT_EQ(this->_size, size);
     }
   }
 }

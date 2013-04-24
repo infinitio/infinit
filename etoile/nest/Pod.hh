@@ -45,7 +45,7 @@ namespace etoile
       ///   3) Queue: being accessed by nobody, ready to be
       ///      quickly reloaded, removed from main memory or even
       ///      pre-published onto the storage layer.
-      ///   4) Shell: the pod has been depossessed from its block
+      ///   4) Shell: the pod has been depossessed of its block
       ///      so as to lighten the nest.
       enum class State
       {
@@ -98,11 +98,6 @@ namespace etoile
       /// A mutex so as to control whether moving the block, loading it or
       /// just accessing it does not impact the other.
       ELLE_ATTRIBUTE_RX(reactor::RWMutex, mutex);
-      /// The footprint of the associated block. Note that this footprint
-      /// is an approximation because the nest can keep track of it only
-      /// when loaded/unloaded while its actual footprint may changed between
-      /// these calls.
-      ELLE_ATTRIBUTE_RW(nucleus::proton::Footprint, footprint);
     };
 
     /*----------.
