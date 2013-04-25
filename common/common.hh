@@ -196,6 +196,15 @@ namespace common
 
   }
 
+  namespace longinus
+  {
+    std::string
+    host();
+
+    int
+    port();
+  }
+
 } // !common
 
 #endif
