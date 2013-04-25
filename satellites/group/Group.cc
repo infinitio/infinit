@@ -796,6 +796,7 @@ namespace satellite
 
 int main(int argc, char** argv)
 {
-  return satellite_main("8group", std::bind(satellite::Group,
-                                            argc, argv));
+  return satellite_main("8group", [&] {
+                          satellite::Group(argc, argv);
+                        });
 }
