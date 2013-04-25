@@ -3,7 +3,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <hole/Hole.hh>
-#include <hole/implementations/slug/Implementation.hh>
+#include <hole/implementations/slug/Slug.hh>
 #include <hole/storage/Memory.hh>
 #include <hole/Passport.hh>
 #include <nucleus/proton/Network.hh>
@@ -24,14 +24,14 @@ Main()
 
   std::vector<elle::network::Locus> members;
   std::unique_ptr<hole::Hole> h{
-    new hole::implementations::slug::Implementation{
+    new hole::implementations::slug::Slug{
       mem, passport, Infinit::authority(),
       reactor::network::Protocol::tcp, members, 0,
       boost::posix_time::milliseconds(5000)}};
   h->join();
 }
 
-BOOST_AUTO_TEST_CASE(hole)
+BOOST_AUTO_TEST_CASE(holetest)
 {
   reactor::Scheduler sched;
 
