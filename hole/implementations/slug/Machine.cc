@@ -6,6 +6,8 @@
 #include <elle/utility/Time.hh>
 #include <elle/utility/Duration.hh>
 #include <elle/utility/Move.hh>
+#include <elle/container/vector.hh>
+#include <elle/container/map.hh>
 
 #include <reactor/network/exception.hh>
 #include <reactor/network/udt-server.hh>
@@ -357,18 +359,15 @@ namespace hole
                 | elle::network::Interface::Filter::no_loopback
                 | elle::network::Interface::Filter::no_autoip
                 );
-              ELLE_DEBUG("local addresses:")
               for (auto const& pair: interfaces)
                 if (pair.second.ipv4_address.size() > 0 &&
                     pair.second.mac_address.size() > 0)
                   {
                     auto const &ipv4   = pair.second.ipv4_address;
 
-                    ELLE_DEBUG("%s:%s", ipv4, _server->port());
-
-                    addresses.emplace_back(pair.second.ipv4_address,
-                                           _server->port());
+                    addresses.emplace_back(ipv4, _server->port());
                   }
+              ELLE_DEBUG("addresses: %s", addresses);
 
               std::vector<std::pair<std::string, uint16_t>> public_addresses;
               auto udt = dynamic_cast<reactor::network::UDTServer*>
@@ -380,15 +379,7 @@ namespace hole
                                           ep.port()));
               client.token(agent::Agent::meta_token);
 
-              ELLE_DEBUG("addresses:")
-              std::for_each(addresses.begin(), addresses.end(),
-                            [](std::pair<std::string, uint16_t> const& e)
-                            { ELLE_DEBUG("%s:%s", e.first, e.second); });
-
-              ELLE_DEBUG("public_addresses")
-              std::for_each(public_addresses.begin(), public_addresses.end(),
-                            [](std::pair<std::string, uint16_t> const& e)
-                            { ELLE_DEBUG("%s:%s", e.first, e.second); });
+              ELLE_DEBUG("public_addresses: %s", public_addresses);
 
               client.network_connect_device(descriptor.meta().id(),
                                             hole.passport().id(),
