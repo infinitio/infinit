@@ -28,36 +28,14 @@ class PunchHelper(DatagramProtocol):
 
     def handle_echo(self, (host, port), type, *args):
         print("handle_echo {}".format(type))
+        me = "{}:{}".format(host, port)
         if type == "sasp": #Same Address Same Port
-            msg = "{}:{}".format(host, port)
             print("send {} to {}:{}".format(msg, host, port))
-            self.transport.write("{}\n".format(msg), (host, port))
+            self.transport.write("{}\n".format(me), (host, port))
         elif type == "dadp": #Different Address Different Port
             pass
         elif type == "sadp": #Same Address Different Port
             self.transport.write(msg, (host, port))
-
-    def handle_hello(self, (host, port), *args):
-        me = "{}:{}".format(host, port)
-        self.public_endpoint = me;
-        print("send {} to {}".format(me, (host, port)))
-        # for (what, who) in it.permutations(self.clients, 2):
-        #     host, port = who.split(":")
-        #     port = int(port)
-        #     print("{} -> {}".format(who, what))
-        #     self.transport.write("{}\n".format(what), (host, port))
-
-    def handle_local(self, (host, port), endpoint, *args):
-        print("local endpoint is", endpoint);
-        me = "{}:{}".format(host, port)
-        self.public_endpoint = me;
-        self.local_endpoint = endpoint.split()[0]
-        answ = "public {}\n".format(self.public_endpoint)
-        print(answ)
-        self.transport.write(
-                answ,
-                (host, port)
-        )
 
     def handle_ping(self, (host, port), *args):
         print("Keep Alive from {}:{}".format(host, port))
