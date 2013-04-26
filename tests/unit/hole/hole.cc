@@ -16,22 +16,26 @@
 void
 Main()
 {
-  nucleus::proton::Network n{"test network"};
-  hole::storage::Memory mem{n};
-  elle::Passport passport{
-    elle::serialize::from_file(common::infinit::passport_path("5166eafde77989454a000003"))
-  };
+  nucleus::proton::Network n("test network");
+  hole::storage::Memory mem(n);
+  infinit::cryptography::KeyPair keys =
+    infinit::cryptography::KeyPair::generate(
+      infinit::cryptography::Cryptosystem::rsa, 1024);
+  infinit::cryptography::KeyPair authority_keys =
+    infinit::cryptography::KeyPair::generate(
+      infinit::cryptography::Cryptosystem::rsa, 1024);
+  elle::Authority authority(authority_keys);
+  elle::Passport passport("0xdeadbeef", "host1", keys.K(), authority);
 
   std::vector<elle::network::Locus> members;
-  std::unique_ptr<hole::Hole> h{
-    new hole::implementations::slug::Slug{
-      mem, passport, Infinit::authority(),
+  std::unique_ptr<hole::Hole> h(
+    new hole::implementations::slug::Slug(
+      mem, passport, authority,
       reactor::network::Protocol::tcp, members, 0,
-      boost::posix_time::milliseconds(5000)}};
-  h->join();
+      boost::posix_time::milliseconds(5000)));
 }
 
-BOOST_AUTO_TEST_CASE(hole)
+BOOST_AUTO_TEST_CASE(test_hole)
 {
   reactor::Scheduler sched;
 
