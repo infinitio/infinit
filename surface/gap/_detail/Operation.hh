@@ -14,102 +14,264 @@ namespace surface
 {
   namespace gap
   {
-
-    struct State::Operation
+    class State::Operation
     {
-    public:
-      typedef std::function<void(void)> Callback;
-
-    private:
-      Callback            _callback;
-      std::string         _name;
-      bool                _done;
-      bool                _success;
-      bool                _cancelled;
-      bool                _delete_later;
-      std::exception_ptr  _exception;
-      std::thread         _thread;
+    protected:
+      std::string _name;
+      bool _done;
+      bool _succeeded;
+      bool _cancelled;
+      bool _delete_later;
+      bool _rethrown;
+      std::exception_ptr _exception;
 
     public:
-      Operation(std::string const& name,
-                Callback const& cb)
-        : _callback{cb}
-        , _name{name}
-        , _done{false}
-        , _success{false}
-        , _cancelled{false}
-        , _delete_later{false}
-        , _exception{}
-        , _thread{&Operation::_run, this}
+      std::string const& name() const { return this->_name; }
+      bool done() const { return this->_done; }
+      bool succeeded() const { return this->_succeeded; }
+      bool cancelled() const { return this->_cancelled; }
+      bool delete_later() const { return this->_delete_later; }
+
+      //- Cancelletion ---------------------------------------------------------
+    public:
+      /// This method is used to cancel the transaction by setting _cancel to
+      /// true. The inherited class has to implement the cancelletion behavior
+      /// on _cancel method.
+      void
+      cancel()
       {
         ELLE_LOG_COMPONENT("infinit.surface.gap.State");
-        ELLE_TRACE("Creating long operation: %s", this->_name);
-      }
-
-      virtual
-      ~Operation()
-      {
-        ELLE_LOG_COMPONENT("infinit.surface.gap.State");
-        ELLE_LOG("Destroying long operation: %s", this->_name);
-
-        try
-        {
-          if (this->_thread.joinable())
-            this->_thread.join();
-        }
-        catch (...)
-        {
-          ELLE_ERR("Couldn't join the operation's thread of %s", _name);
-        }
-      }
-
-      std::string const&
-      name() const { return _name; }
-
-      virtual
-      Operation& cancel()
-      {
+        ELLE_TRACE_METHOD(this->_name);
+        if (this->_done || this->_cancelled)
+          return;
         this->_cancelled = true;
-        return *this;
+        this->_cancel();
       }
-      bool cancelled() const { return _cancelled; }
-      bool done() const { return _done; }
-      bool succeeded() const { return _success; }
-      bool scheduled_for_deletion() const { return _delete_later; }
 
-      Operation&
+    protected:
+      /// This method allow user to create special behavior when the operation
+      /// is cancelled. The body of this function is deliberately empty.
+      virtual
+      void
+      _cancel()
+      {
+        ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+        ELLE_TRACE_FUNCTION(this->_name);
+      }
+
+      //- Deletion -------------------------------------------------------------
+    public:
+      /// This method is used to notify that the process is scheduled for
+      /// deletion.
+      void
       delete_later(bool const flag = true)
       {
         this->_delete_later = flag;
-        return *this;
       }
 
-      void rethrow()
-      {
-        std::rethrow_exception(this->_exception);
-      }
-    private:
-      void _run()
+      /// Rethrow the catched exception that may occured during _run.
+      void
+      rethrow()
       {
         ELLE_LOG_COMPONENT("infinit.surface.gap.State");
-        try
-          {
-            ELLE_TRACE("Running long operation: %s", this->_name);
-            (this->_callback)();
-            _success = true;
-          }
-        catch (std::runtime_error const& e)
-          {
-            this->_exception = std::current_exception();
-            ELLE_ERR(
-              "Operation %s threw an exception: %s (not handle yet)",
-              this->_name, e.what()
-            );
-          }
-        _done = true;
+        ELLE_TRACE_FUNCTION(this->_name);
+
+        this->_rethrown = true;
+        std::rethrow_exception(this->_exception);
       }
+
+      std::string
+      failure_reason()
+      {
+        if (!this->_exception)
+          throw elle::Exception{"No current exception"};
+
+        try
+        {
+          std::rethrow_exception(this->_exception);
+        }
+        catch (std::exception const& e)
+        {
+          return e.what();
+        }
+        catch (...)
+        {
+          return "unknown exception type";
+        }
+
+        elle::unreachable();
+      }
+
+    public:
+      Operation(std::string const& name)
+        : _name{name}
+        , _done{false}
+        , _succeeded{false}
+        , _cancelled{false}
+        , _delete_later{false}
+        , _rethrown{false}
+        , _exception{}
+      {}
+
+      virtual
+      ~Operation() {}
+
+    protected:
+      // The doc goes here.
+      virtual
+      void
+      _run() = 0;
     };
 
+    template <typename T>
+    struct State::OperationAdaptor: public T
+    {
+      static_assert(std::is_base_of<Operation, T>::value, "");
+
+    public:
+      typedef std::function<void (Operation &)> Callback;
+
+    protected:
+      ELLE_ATTRIBUTE(Callback, on_success_callback);
+      ELLE_ATTRIBUTE(Callback, on_error_callback);
+      ELLE_ATTRIBUTE(std::thread, thread);
+
+    public:
+      template <typename... Args>
+      OperationAdaptor(Args&&... args)
+        : T{std::forward<Args>(args)...}
+        , _on_success_callback{std::bind(&OperationAdaptor<T>::_on_success, this, std::placeholders::_1)}
+        , _on_error_callback{std::bind(&OperationAdaptor<T>::_on_error, this, std::placeholders::_1)}
+        , _thread{std::bind(&OperationAdaptor<T>::_start, this)}
+      {
+        ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+        ELLE_TRACE_FUNCTION(this->_name);
+      }
+
+      virtual
+      ~OperationAdaptor()
+      {
+        ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+        ELLE_TRACE_FUNCTION(this->_name);
+
+        try
+        {
+          if (this->_done && !this->_succeeded && !this->_rethrown)
+          {
+            ELLE_WARN("operation %s deleted without having been checked: %s",
+                      this->_name, this->failure_reason());
+          }
+          else if (!this->_done)
+          {
+            ELLE_WARN("destroying running operation %s", this->_name);
+          }
+        }
+        catch (...)
+        {
+          ELLE_ERR("this is not normal...");
+        }
+
+        try
+        {
+          if (!this->_done && !this->_cancelled)
+          {
+            this->cancel();
+          }
+          if (this->_thread.joinable())
+          {
+            ELLE_DEBUG("wait operation %s to finish", this->_name);
+            this->_thread.join();
+          }
+          else
+          {
+            ELLE_DEBUG("not joinable");
+          }
+
+          ELLE_DEBUG("successfully joined");
+        }
+        catch (std::exception const& e)
+        {
+          ELLE_ERR("couldn't join the operation's thread of %s: %s",
+                   this->_name,
+                   e.what());
+        }
+        catch (...)
+        {
+          ELLE_ERR("couldn't join the operation's thread of %s: unknown",
+                   this->_name);
+        }
+      }
+
+      virtual
+      void
+      _on_error(Operation&)
+      {
+        ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+        ELLE_TRACE_FUNCTION(this->_name);
+      }
+
+      virtual
+      void
+      _on_success(Operation&)
+      {
+        ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+        ELLE_TRACE_FUNCTION(this->_name);
+      }
+
+    private:
+      void
+      _start()
+      {
+        ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+        ELLE_TRACE_FUNCTION(this->_name);
+
+        try
+        {
+          ELLE_TRACE("Running long operation: %s", this->_name);
+          this->_run();
+          this->_succeeded = true;
+        }
+        catch (std::exception const& e)
+        {
+          this->_exception = std::current_exception();
+          ELLE_ERR("Operation %s threw an exception: %s (not rethrown yet)",
+                   this->_name,
+                   e.what());
+        }
+        catch (...)
+        {
+          this->_exception = std::current_exception();
+          ELLE_ERR("Operation %s threw an exception: unknow (not rethrown yet)",
+                   this->_name);
+        }
+
+        this->_done = true;
+
+        if (this->_cancelled)
+          return;
+
+        try
+        {
+          if (this->_succeeded && this->_on_success_callback)
+            this->_on_success_callback(*this);
+          else if (!this->_succeeded && this->_on_error_callback)
+            this->_on_error_callback(*this);
+        }
+        catch (std::exception const& e)
+        {
+          ELLE_ERR("%s handler for operation %s failed: %s",
+                   this->_succeeded ? "success" : "error",
+                   this->_name,
+                   e.what());
+        }
+        catch (...)
+        {
+          ELLE_ERR("%s handler for operation %s failed: unknow",
+                   this->_succeeded ? "success" : "error",
+                   this->_name);
+        }
+      }
+    };
   }
 }
 

@@ -236,11 +236,11 @@ namespace surface
     void
     State::logout()
     {
+      ELLE_TRACE_FUNCTION("");
+
       if (this->_meta->token().empty())
         return;
-
-      for (auto const& op: this->_operations)
-        op.second->cancel();
+      this->_cancel_all_operations();
 
       this->_operations.clear();
 

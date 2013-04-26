@@ -239,8 +239,16 @@ namespace surface
       /// The status of a process. failure or success implies that the process
       /// is terminated.
       enum class OperationStatus : int { failure = 0, success = 1, running = 2};
-    private:
+
+      template <typename T>
+      struct OperationAdaptor;
       struct Operation;
+      struct UploadOperation;
+      struct DownloadOperation;
+
+      friend struct UploadOperation;
+      friend struct DownloadOperation;
+    private:
       typedef std::unique_ptr<Operation> OperationPtr;
       typedef std::unordered_map<OperationId, OperationPtr> OperationMap;
       OperationMap _operations;
@@ -256,16 +264,31 @@ namespace surface
       void operation_finalize(OperationId const id);
 
     private:
+      static
       OperationId
-      _add_operation(std::string const& name,
-                     std::function<void(void)> const& cb,
-                     bool auto_delete = false);
+      _next_operation_id();
+
+      template <typename Op, typename... Args>
+      OperationId
+      _add_operation(Args&&... args)
+      {
+        auto id = _next_operation_id();
+
+        this->_operations[id].reset(
+          new OperationAdaptor<Op>{std::forward<Args>(args)...});
+
+        return id;
+      }
+
 
       void
       _cancel_operation(std::string const& name);
 
       void
       _cancel_all_operations(std::string const& name);
+
+      void
+      _cancel_all_operations();
 
     public:
       /// @brief Send a file list to a specified user.
@@ -290,7 +313,7 @@ namespace surface
     private:
       /// @brief Start the transfer process on recipient.
       ///
-      void
+      OperationId
       _download_files(std::string const& transaction_id);
 
     private:
