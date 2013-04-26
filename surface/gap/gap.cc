@@ -650,7 +650,8 @@ extern "C"
     gap_Status ret = gap_ok;
     try
       {
-        return (gap_UserStatus) __TO_CPP(state)->user(user_id).status;
+        // XXX Rework that shit
+        return (gap_UserStatus) __TO_CPP(state)->swagger(user_id).status;
       }
     CATCH_ALL(user_status);
 
