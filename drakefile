@@ -1046,25 +1046,25 @@ def configure(cxx_toolkit,
     ('tests/unit/hole/hole.cc', infinit_libs)
   ]
 
-  with open(str(drake.path_src('elle/drake-additions/test.py')), 'r') as f:
-    exec(f.read(), globals())
+  #with open(str(drake.path_src('elle/drake-additions/test.py')), 'r') as f:
+  #  exec(f.read(), globals())
 
-  check = drake.Rule('check')
-  check << elle.rule_check
-  for test in tests_src_n_lib:
-    bin_path = drake.Path(test[0])
-    bin_path.extension = ''
-    path = drake.Path(test[0])
-    path.extension = ''
-    test_bin = drake.cxx.Executable(path,
-                                    drake.nodes(*test[:-1]) + test[-1],
-                                    cxx_toolkit, tests_cxx_config)
-    tests << test_bin
-    runner = TestRunner(test_bin)
-    check << runner.status
+  #check = drake.Rule('check')
+  #check << elle.rule_check
+  #for test in tests_src_n_lib:
+  #  bin_path = drake.Path(test[0])
+  #  bin_path.extension = ''
+  #  path = drake.Path(test[0])
+  #  path.extension = ''
+  #  test_bin = drake.cxx.Executable(path,
+  #                                  drake.nodes(*test[:-1]) + test[-1],
+  #                                  cxx_toolkit, tests_cxx_config)
+  #  tests << test_bin
+  #  runner = TestRunner(test_bin)
+  #  check << runner.status
 
-  #Check
-  rule_check = drake.Rule('check')
-  rule_check << elle.rule_check
+  ##Check
+  #rule_check = drake.Rule('check')
+  #rule_check << elle.rule_check
 
 # vim: set sw=2 ts=2 sts=2 expandtab:
