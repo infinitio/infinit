@@ -89,19 +89,18 @@ if __name__ == "__main__":
         os.environ["INFINIT_LOG_FILE"] = args.logfile
 
     import gap
-    state = gap.State()
+    with gap.State() as state:
+        login(state, os.getenv("INFINIT_USER"))
 
-    login(state, os.getenv("INFINIT_USER"))
+        if args.username:
+            search_username(state, args.username)
 
-    if args.username:
-        search_username(state, args.username)
+        if args.transactions:
+            search_transactions(state)
 
-    if args.transactions:
-        search_transactions(state)
+        if args.swaggers:
+            search_swaggers(state)
 
-    if args.swaggers:
-        search_swaggers(state)
-
-    if args.me:
-        #search_me(state)
-        print("not implemented")
+        if args.me:
+            #search_me(state)
+            print("not implemented")
