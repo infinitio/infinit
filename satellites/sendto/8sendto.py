@@ -41,7 +41,7 @@ def on_transaction(state, transaction, new):
 
 def on_started(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.started:
-        print("Transaction ({}) canceled, check your log".format(transaction))
+        print("Transaction ({}) started".format(transaction))
         state.started = True
 
 def on_canceled(state, transaction, new):
