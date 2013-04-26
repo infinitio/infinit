@@ -78,7 +78,7 @@ namespace surface
 
         ELLE_DEBUG("Retrieving 8transfert binary path...");
         auto transfer_binary = common::infinit::binary_path("8transfer");
-        ELLE_DEBUG("Using 8transfert binary '%s'", transfer_binary);
+        ELLE_DEBUG("Using 8transfer binary '%s'", transfer_binary);
 
         try
         {
@@ -157,7 +157,7 @@ namespace surface
       void
       _cancel()
       {
-        ELLE_DEBUG("cancelling %t name", this->name());
+        ELLE_DEBUG("cancelling %s name", this->name());
         this->_state.update_transaction(this->_transaction_id,
                                         gap_TransactionStatus::gap_transaction_status_canceled);
 
@@ -268,7 +268,7 @@ namespace surface
       void
       _cancel()
       {
-        ELLE_DEBUG("cancelling %t name", this->name());
+        ELLE_DEBUG("cancelling %s name", this->name());
         this->_state.update_transaction(this->_transaction.transaction_id,
                                         gap_TransactionStatus::gap_transaction_status_canceled);
 
