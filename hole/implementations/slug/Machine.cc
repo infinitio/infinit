@@ -8,11 +8,13 @@
 #include <elle/utility/Move.hh>
 #include <elle/container/vector.hh>
 #include <elle/container/map.hh>
+#include <elle/memory.hh>
 
 #include <reactor/network/exception.hh>
-#include <reactor/network/udt-server.hh>
+#include <reactor/network/nat.hh>
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/tcp-socket.hh>
+#include <reactor/network/udt-server.hh>
 #include <reactor/Scope.hh>
 
 #include <agent/Agent.hh>
@@ -84,11 +86,7 @@ namespace hole
         {
           infinit::scheduler().current()->wait(this->_new_host,
                                                boost::posix_time::seconds(1));
-          ELLE_DEBUG("(%s) resume from wait. number of hosts: %d ", locus, _hosts.size())
-          for (auto const &p: _hosts)
-          {
-            ELLE_DEBUG("-- %s:%s", p.first, p.second);
-          }
+          ELLE_DEBUG("(%s) resume from wait. Hosts: %s ", locus, _hosts);
           auto it = _hosts.find(locus);
           if (it != end(_hosts))
           {
@@ -265,8 +263,7 @@ namespace hole
         , _connection_timeout(connection_timeout)
         , _state(State::detached)
         , _port(port)
-        , _server(reactor::network::Server::create
-                  (hole.protocol(), infinit::scheduler()))
+        , _server(nullptr)
         , _acceptor()
         , _phrase()
         , _rpc_server(new reactor::network::TCPServer(*reactor::Scheduler::scheduler()))
@@ -275,11 +272,13 @@ namespace hole
                                             [&] { this->_rpc_accept(); },
                                             true))
       {
-        elle::network::Locus     locus;
+        // XXX Don't do any other task requiring the scheduler before listening
+        elle::network::Locus locus;
         ELLE_TRACE_SCOPE("launch");
         this->_rpc_server->listen(0);
         int rpc_port = this->_rpc_server->local_endpoint().port();
-        ELLE_DEBUG("listen to port: %s", rpc_port);
+        ELLE_DEBUG("rpc listening: (%s) %s",
+                   reactor::network::Protocol::tcp, rpc_port);
 
         // Connect to hosts from the descriptor.
         {
@@ -320,6 +319,19 @@ namespace hole
             this->_hole.ready();
           }
 
+        // Nat
+        reactor::nat::NAT nat(*reactor::Scheduler::scheduler());
+
+        auto pokey = nat.punch(common::longinus::host(),
+                               common::longinus::port(),
+                               port);
+        ELLE_TRACE("punch done: %s", pokey.public_endpoint());
+        this->_server = elle::make_unique<reactor::network::UDTServer>(
+          *reactor::Scheduler::scheduler(),
+          pokey.handle()
+        );
+        this->_port = _server->port(); // Update the port
+
         // Finally, listen for incoming connections.
         {
           elle::network::Locus locus;
@@ -330,7 +342,6 @@ namespace hole
               _server->listen(this->_port);
               // In case we asked for a random port to be picked up (by using 0)
               // or hole punching happened, retrieve the actual listening port.
-              this->_port = _server->port();
               ELLE_ASSERT(this->_port != 0);
               ELLE_TRACE("listening on port %s", this->_port);
               _acceptor.reset(new reactor::Thread(infinit::scheduler(),
@@ -370,10 +381,7 @@ namespace hole
               ELLE_DEBUG("addresses: %s", addresses);
 
               std::vector<std::pair<std::string, uint16_t>> public_addresses;
-              auto udt = dynamic_cast<reactor::network::UDTServer*>
-                (_server.get());
-              assert(udt);
-              auto ep = udt->public_endpoint();
+              auto ep = pokey.public_endpoint();
               public_addresses.push_back(std::pair<std::string, uint16_t>
                                          (ep.address().to_string(),
                                           ep.port()));
