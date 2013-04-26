@@ -21,7 +21,7 @@ You have to specify your user name in the INFINIT_USER env variable.
 """
 
 def show_status(state, transaction, new):
-    print("Transaction ({}) status changed to".format(transaction),
+    print("Transaction ({})".format(transaction),
           state.transaction_status(transaction))
 
 def on_started(state, transaction, new):
@@ -33,14 +33,12 @@ def on_started(state, transaction, new):
 
 def on_canceled(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.canceled:
-        print("Transaction ({}) canceled, check your log".format(transaction))
         state.number_of_transactions -= 1
         if state.number_of_transactions == 0:
             state.running = False
 
 def on_finished(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.finished:
-        print("Transaction ({}) succeeded".format(transaction))
         cnt = state.transaction_files_count(transaction)
         if cnt == 1:
             filename = state.transaction_first_filename(transaction)
@@ -49,13 +47,16 @@ def on_finished(state, transaction, new):
         else:
             print("{} files received in '{}'".format(
                 cnt, state.get_output_dir()))
-        state.running = False
+        state.number_of_transactions -= 1
+        if state.number_of_transactions == 0:
+            state.running = False
 
 def on_error(state, status, message, tid):
     if tid:
         print("Error ({}): {}: {}: {}".format(int(status), tid, status, message))
     else:
         print("Error ({}): {}: {}".format(int(status), status, message))
+    state.running = False
 
 def login(state, email = None):
     receiver_id = os.getenv("INFINIT_USER", None)
@@ -92,9 +93,9 @@ def select_transactions(state, l_transactions, sender):
         fullname        = state.transaction_sender_fullname(t)
         file_number     = state.transaction_files_count(t)
         if file_number > 1:
-            print("[{}] {} files from {}".format(index, file_number, fullname))
+            print("[{}] {} files from {} ({})".format(index, file_number, fullname, t))
         else:
-            print("[{}] {} from {}".format(index, first_filename, fullname))
+            print("[{}] {} from {} ({})".format(index, first_filename, fullname, t))
 
     selected = input("transaction numbers [all]> ")
     if selected:
