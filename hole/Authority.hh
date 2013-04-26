@@ -14,15 +14,12 @@ using namespace infinit;
 
 namespace elle
 {
-
+  /// This class represents the authority.
   ///
-  /// this class represents the authority.
-  ///
-  /// the authority can be represented through its whole key pair through
+  /// The authority can be represented through its whole key pair through
   /// which it can both sign and verify signatures or only through the
   /// public key, the most common case, through which it is only used to
   /// verify signatures.
-  ///
   class Authority:
     public elle::concept::MakeFileable<Authority>,
     public elle::io::Dumpable

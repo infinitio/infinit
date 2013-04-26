@@ -38,6 +38,10 @@ namespace elle
   public:
     Passport(); // XXX Do not use (sheduled for deletion)
     ELLE_SERIALIZE_CONSTRUCT(Passport) {}
+    /// @param id Unique identifier.
+    /// @param name Represented device name.
+    /// @param owner_K Owning user keys.
+    /// @param
     Passport(elle::String const& id,
              elle::String const& name,
              cryptography::PublicKey const& owner_K,
