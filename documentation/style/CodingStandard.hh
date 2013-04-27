@@ -193,6 +193,21 @@ namespace package
       | Constants |
       `----------*/
     public:
+      /*
+       * The space between a type and the variable name must always be one,
+       * for attributes, static attributes, local variables, global variables,
+       * arrays etc.
+       *
+       * As such, declarations such as follows are not valid;
+       *
+       *   Natural64     i;
+       *   Real          difference;
+       *
+       * But should be:
+       *
+       *   Natural64 i;
+       *   Real difference;
+       */
       static const Natural32 zero;
 
       /*------------------.
