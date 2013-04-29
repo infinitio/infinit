@@ -175,12 +175,12 @@ namespace surface
       /// Swaggers.
 
     private:
-      typedef std::map<std::string, User const*> SwaggersMap;
-      SwaggersMap _swaggers;
+      typedef std::unordered_set<std::string> SwaggersSet;
+      SwaggersSet _swaggers;
       bool _swaggers_dirty;
 
     public:
-      SwaggersMap const&
+      SwaggersSet const&
       swaggers();
 
       User const&
