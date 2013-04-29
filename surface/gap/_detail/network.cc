@@ -42,7 +42,7 @@ namespace surface
     bool
     State::_wait_portal(std::string const& network_id)
     {
-      ELLE_TRACE("_wait_portal for network %s", network_id);
+      ELLE_TRACE_METHOD(network_id);
 
       ELLE_DEBUG("retrieving portal path");
       auto portal_path = common::infinit::portal_path(this->_me._id, network_id);
@@ -84,7 +84,7 @@ namespace surface
     std::string
     State::create_network(std::string const& name)
     {
-      ELLE_TRACE("creating network %s", name);
+      ELLE_TRACE_METHOD(name);
 
       this->_reporter.store("network_create", {{MKey::status, "attempt"}});
 
@@ -118,7 +118,7 @@ namespace surface
     void
     State::prepare_network(std::string const& network_id)
     {
-      ELLE_TRACE("preparing network %s directory", network_id);
+      ELLE_TRACE_METHOD(network_id);
       std::string const network_dir = common::infinit::network_directory(
           this->_me._id,
           network_id
@@ -151,7 +151,7 @@ namespace surface
     void
     State::_create_network_root_block(std::string const& id)
     {
-      ELLE_DEBUG("Creating the network descriptor for network %s.", id);
+      ELLE_TRACE_METHOD(id);
       // XXX this value depends on the network policy and openness.
       static nucleus::neutron::Permissions permissions =
         nucleus::neutron::permissions::read;
@@ -267,7 +267,7 @@ namespace surface
     void
     State::_prepare_network_directory(std::string const& network_id)
     {
-      ELLE_DEBUG("Prepare network %s directory.", network_id);
+      ELLE_TRACE_METHOD(network_id);
       using elle::serialize::from_string;
       using elle::serialize::InputBase64Archive;
 
@@ -350,7 +350,7 @@ namespace surface
     std::string
     State::delete_network(std::string const& network_id, bool force)
     {
-      ELLE_TRACE("deleting network %s", network_id);
+      ELLE_TRACE_METHOD(network_id, force);
 
       this->_networks[network_id].reset();
 
@@ -427,7 +427,7 @@ namespace surface
     State::network_add_user(std::string const& network_id,
                             std::string const& user)
     {
-      ELLE_TRACE("adding user '%s' to network '%s'", user, network_id);
+      ELLE_TRACE_METHOD(network_id, user);
 
       this->_reporter.store("network_adduser",
                             {{MKey::status, "attempt"},

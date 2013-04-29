@@ -240,9 +240,12 @@ namespace surface
 
       if (this->_meta->token().empty())
         return;
-      this->_cancel_all_operations();
 
+      this->_trophonius.reset();
+
+      this->_cancel_all_operations();
       this->_operations.clear();
+      this->_infinit_instance_manager.reset();
 
       // End session the session.
       this->_reporter.store("user_logout",

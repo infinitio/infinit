@@ -248,7 +248,10 @@ namespace surface
         this->_done = true;
 
         if (this->_cancelled)
+        {
+          ELLE_DEBUG("operation has been cancelled");
           return;
+        }
 
         try
         {
@@ -266,7 +269,7 @@ namespace surface
         }
         catch (...)
         {
-          ELLE_ERR("%s handler for operation %s failed: unknow",
+          ELLE_ERR("%s handler for operation %s failed: unknown",
                    this->_succeeded ? "success" : "error",
                    this->_name);
         }

@@ -310,6 +310,10 @@ namespace surface
       update_transaction(std::string const& transaction_id,
                          gap_TransactionStatus status);
 
+      void
+      _ensure_transaction_ownership(Transaction const& transaction,
+                                    bool check_devices = false);
+
     private:
       /// @brief Start the transfer process on recipient.
       ///

@@ -118,7 +118,7 @@ namespace surface
             elle::sprintf("Couldn't find portal to infinit for network %s",
                           this->_network_id));
 
-        ELLE_DEBUG("Retrieving 8transfert binary path...");
+        ELLE_DEBUG("Retrieving 8transfer binary path...");
         auto transfer_binary = common::infinit::binary_path("8transfer");
         ELLE_DEBUG("Using 8transfer binary '%s'", transfer_binary);
 
@@ -501,7 +501,7 @@ namespace surface
         (gap_TransactionStatus) transaction.status);
 
       if (status_list == list.end() ||
-          status_list->second.find((gap_TransactionStatus) status) == status_list->second.end())
+          status_list->second.find(status) == status_list->second.end())
       {
         ELLE_WARN("You are not allowed to change status from %s to %s",
                   transaction.status, status);
@@ -515,10 +515,16 @@ namespace surface
     State::update_transaction(std::string const& transaction_id,
                               gap_TransactionStatus status)
     {
-      ELLE_DEBUG("Update transaction '%s': '%s'",
-                 transaction_id, status);
+      ELLE_DEBUG("Update transaction '%s': '%s'", transaction_id, status);
 
       auto const& transaction = this->transaction_sync(transaction_id);
+
+      if (transaction.status == gap_transaction_status_canceled)
+      {
+        ELLE_WARN("updating %s with canceled status to %s",
+                  transaction_id, status);
+        return;
+      }
 
       if (!_check_action_is_available(this->_me._id, transaction, status))
         throw Exception(gap_api_error,
@@ -558,12 +564,25 @@ namespace surface
     } // !update_transaction()
 
     void
+    State::_ensure_transaction_ownership(Transaction const& transaction,
+                                         bool check_devices)
+    {
+      ELLE_ASSERT(this->_me._id == transaction.sender_id ||
+                  this->_me._id == transaction.recipient_id);
+
+      if (check_devices)
+      {
+        ELLE_ASSERT(this->device_id() == transaction.sender_device_id ||
+                    this->device_id() == transaction.recipient_device_id);
+      }
+    }
+
+    void
     State::_create_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
-      if (transaction.sender_device_id != this->device_id())
-        throw Exception{gap_error, "Only sender can lekf his network."};
+      this->_ensure_transaction_ownership(transaction);
+      ELLE_ASSERT_EQ(transaction.sender_device_id, this->device_id());
 
       this->_meta->update_transaction(transaction.transaction_id,
                                       plasma::TransactionStatus::created);
@@ -573,9 +592,16 @@ namespace surface
     State::_on_transaction_created(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
+      this->_ensure_transaction_ownership(transaction);
       if (transaction.sender_device_id != this->_device_id)
+      {
+        ELLE_DEBUG("%s not the sender device %s. You are the %s",
+                   this->device_id(),
+                   transaction.sender_device_id,
+                   transaction.sender_id == this->_me._id ? "sender"
+                                                          : "recipient");
         return;
+      }
 
       if (transaction.already_accepted)
       {
@@ -591,11 +617,8 @@ namespace surface
     State::_accept_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
-      if (transaction.recipient_id != this->_me._id)
-      {
-        throw Exception{gap_error, "Only recipient can accept transaction."};
-      }
+      this->_ensure_transaction_ownership(transaction);
+      ELLE_ASSERT_EQ(transaction.recipient_id, this->_me._id);
 
       this->_reporter.store("transaction_accept",
                             {{MKey::status, "attempt"},
@@ -622,9 +645,17 @@ namespace surface
     State::_on_transaction_accepted(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
+      this->_ensure_transaction_ownership(transaction);
 
       if (transaction.sender_device_id != this->device_id())
+      {
+        ELLE_DEBUG("%s not the sender device %s. You are the %s",
+                   this->device_id(),
+                   transaction.sender_device_id,
+                   transaction.sender_id == this->_me._id ? "sender"
+                                                          : "recipient");
         return;
+      }
 
       if (!transaction.already_accepted)
       {
@@ -641,11 +672,8 @@ namespace surface
     State::_prepare_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
-      if (transaction.sender_device_id != this->device_id())
-      {
-        throw Exception{gap_error, "Only sender can prepare his network."};
-      }
+      this->_ensure_transaction_ownership(transaction);
+      ELLE_ASSERT_EQ(transaction.sender_device_id, this->device_id());
 
       this->_reporter.store("transaction_ready",
                             {{MKey::status, "attempt"},
@@ -672,7 +700,6 @@ namespace surface
                               transaction.network_id,
                               nucleus::neutron::permissions::write);
 
-
         this->_meta->update_transaction(transaction.transaction_id,
                                         plasma::TransactionStatus::prepared);
       }
@@ -687,10 +714,15 @@ namespace surface
     State::_on_transaction_prepared(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
+      this->_ensure_transaction_ownership(transaction);
 
       if (transaction.recipient_device_id != this->device_id())
       {
-        ELLE_DEBUG("transaction doesn't concern your device.");
+        ELLE_DEBUG("%s not the recipient device %s. You are the %s",
+                   this->device_id(),
+                   transaction.sender_device_id,
+                   transaction.sender_id == this->_me._id ? "sender"
+                                                          : "recipient");
         return;
       }
 
@@ -713,11 +745,8 @@ namespace surface
     State::_start_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
-      if (transaction.recipient_device_id != this->device_id())
-      {
-        throw Exception{gap_error, "Only recipient can start transaction."};
-      }
+      this->_ensure_transaction_ownership(transaction);
+      ELLE_ASSERT_EQ(transaction.recipient_device_id, this->device_id());
 
       this->_reporter.store("transaction_start",
                             {{MKey::status, "attempt"},
@@ -740,13 +769,7 @@ namespace surface
     State::_on_transaction_started(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
-      if (transaction.recipient_device_id != this->device_id() &&
-          transaction.sender_device_id != this->device_id())
-      {
-        ELLE_DEBUG("transaction doesn't concern your device.");
-        return;
-      }
+      this->_ensure_transaction_ownership(transaction, true);
 
       if (this->_wait_portal(transaction.network_id) == false)
         throw Exception{gap_error, "Couldn't find portal to infinit instance"};
@@ -795,12 +818,8 @@ namespace surface
     State::_close_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
-      if(transaction.recipient_device_id != this->device_id())
-      {
-        throw Exception{gap_error,
-            "Only recipient can close transaction."};
-      }
+      this->_ensure_transaction_ownership(transaction);
+      ELLE_ASSERT_EQ(transaction.recipient_device_id, this->device_id());
 
       this->_reporter.store("transaction_finish",
                             {{MKey::status, "attempt"},
@@ -822,8 +841,10 @@ namespace surface
     State::_on_transaction_closed(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
+      this->_ensure_transaction_ownership(transaction, true);
 
       // Delete networks.
+      this->infinit_instance_manager().stop_network(transaction.network_id);
       this->delete_network(transaction.network_id, true /* force */);
     }
 
@@ -831,8 +852,6 @@ namespace surface
     State::_cancel_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
-      //XXX: If download has started, cancel it, delete files, ...
 
       std::string author{
         transaction.sender_id == this->_me._id ? "sender" : "recipient",};
@@ -846,7 +865,6 @@ namespace surface
       ELLE_SCOPE_EXIT(
         [&] {
           this->_cancel_all_operations(transaction.transaction_id);
-          this->infinit_instance_manager().stop_network(transaction.network_id);
           this->delete_network(transaction.network_id, true);
         }
       );
@@ -868,13 +886,19 @@ namespace surface
     void
     State::_on_transaction_canceled(Transaction const& transaction)
     {
-      ELLE_DEBUG("Canceled transaction '%s'", transaction.transaction_id);
+      ELLE_TRACE_METHOD(transaction);
 
-      this->_cancel_all_operations(transaction.transaction_id);
-      this->infinit_instance_manager().stop_network(transaction.network_id);
-      this->delete_network(transaction.network_id, true);
+      // We can't do check_device = true cause the recipient device is not set
+      // until he accepts. So we need to check manualy.
+      this->_ensure_transaction_ownership(transaction);
 
-      ELLE_DEBUG("Network %s successfully deleted", transaction.network_id);
+      if (transaction.recipient_device_id == this->device_id() ||
+          transaction.sender_device_id == this->device_id())
+      {
+        this->_cancel_all_operations(transaction.transaction_id);
+        this->delete_network(transaction.network_id, true);
+        ELLE_DEBUG("Network %s successfully deleted", transaction.network_id);
+      }
     }
 
     State::TransactionsMap const&
@@ -982,37 +1006,19 @@ namespace surface
     {
       ELLE_TRACE_METHOD(notif.status);
 
-      auto const pair = State::transactions().find(notif.transaction_id);
+      auto const& transaction = this->transaction_sync(notif.transaction_id);
 
-      if (pair == State::transactions().end())
+      if (transaction.status == gap_transaction_status_canceled &&
+          notif.status != gap_transaction_status_canceled)
       {
-        // Something went wrong.
-        auto transaction = this->_meta->transaction(notif.transaction_id);
+        ELLE_WARN("we merged a canceled transaction, nothing to do with that.");
 
-        if (transaction.status == gap_transaction_status_canceled &&
-            notif.status != gap_transaction_status_canceled)
-        {
-          ELLE_WARN("we merged a canceled transaction, nothing to do with that.");
-          return;
-        }
-
-        (*this->_transactions)[notif.transaction_id] = transaction;
-      }
-      else
-      {
-        if (pair->second.status == gap_transaction_status_canceled &&
-            notif.status != gap_transaction_status_canceled)
-        {
-          ELLE_DEBUG("trying to update the canceled transaction %s",
-                     pair->second);
-          this->update_transaction(notif.transaction_id,
-                                   gap_transaction_status_canceled);
-        }
+        this->update_transaction(notif.transaction_id,
+                                 gap_transaction_status_canceled);
+        return;
       }
 
-      this->_transactions->at(notif.transaction_id).status = notif.status;
-
-      auto const& transaction = this->transaction(notif.transaction_id);
+      //this->_transactions->at(notif.transaction_id).status = notif.status;
 
       switch((plasma::TransactionStatus) notif.status)
       {
