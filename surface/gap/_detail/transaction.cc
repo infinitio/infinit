@@ -31,23 +31,27 @@ namespace surface
     class State::UploadOperation: public State::Operation
     {
       State& _state;
+      plasma::meta::Client& _meta;
+      plasma::meta::SelfResponse& _me;
       elle::metrics::Reporter& _reporter;
+      std::string _recipient_id_or_email;
+      std::unordered_set<std::string> _files;
       std::string _transaction_id;
       std::string _network_id;
 
-      std::unordered_set<std::string> _files;
-
     public:
       UploadOperation(State& state,
+                      plasma::meta::Client& meta,
+                      plasma::meta::SelfResponse& me,
                       elle::metrics::Reporter& reporter,
-                      std::string const& transaction_id,
-                      std::string const& network_id,
+                      std::string const& recipient_id_or_email,
                       std::unordered_set<std::string> const& files):
-        Operation{"upload_files_" + transaction_id},
+        Operation{"upload_files_"},
         _state(state),
+        _meta(meta),
+        _me(me),
         _reporter(reporter),
-        _transaction_id{transaction_id},
-        _network_id{network_id},
+        _recipient_id_or_email{recipient_id_or_email},
         _files{files}
       {}
 
@@ -58,10 +62,48 @@ namespace surface
       {
         ELLE_TRACE_METHOD(this->_network_id, this->_files);
 
-        auto size = 0;
 
+        int size = 0;
         for (auto const& file: this->_files)
-          _state.file_size(file);
+          size += this->_state.file_size(file);
+
+        std::string first_file = fs::path(*(this->_files.cbegin())).filename().string();
+        elle::utility::Time time; time.Current();
+        std::string network_name = elle::sprintf("%s-%s",
+                                                 this->_recipient_id_or_email,
+                                                 time.nanoseconds);
+        this->_network_id = this->_state.create_network(network_name);
+        plasma::meta::CreateTransactionResponse res;
+
+        ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
+                   this->_state.device_id(),
+                   this->_files.size(),
+                   first_file,
+                   size,
+                   this->_recipient_id_or_email,
+                   network_name,
+                   this->_network_id);
+
+        try
+        {
+          res = this->_meta.create_transaction(this->_recipient_id_or_email,
+                                                first_file,
+                                                this->_files.size(),
+                                                size,
+                                                fs::is_directory(first_file),
+                                                this->_network_id,
+                                                this->_state.device_id());
+        }
+        catch (...)
+        {
+          ELLE_DEBUG("transaction creation failed");
+          // Something went wrong, we need to destroy the network.
+          this->_state.delete_network(this->_network_id, false);
+          throw;
+        }
+        this->_transaction_id = res.created_transaction_id;
+        this->_name += this->_transaction_id;
+        this->_me.remaining_invitations = res.remaining_invitations;
 
         this->_reporter.store("transaction_create",
                               {{MKey::status, "attempt"},
@@ -284,51 +326,11 @@ namespace surface
       if (files.empty())
         throw Exception(gap_no_file, "no files to send");
 
-      int size = 0;
-      for (auto const& file: files)
-        size += this->file_size(file);
-
-      std::string first_file = fs::path(*(files.cbegin())).filename().string();
-      elle::utility::Time time; time.Current();
-      std::string network_name = elle::sprintf("%s-%s",
-                                               recipient_id_or_email,
-                                               time.nanoseconds);
-      std::string network_id = this->create_network(network_name);
-      plasma::meta::CreateTransactionResponse res;
-
-      ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
-                 this->device_id(),
-                 files.size(),
-                 first_file,
-                 size,
-                 recipient_id_or_email,
-                 network_name,
-                 network_id);
-
-      try
-      {
-        res = this->_meta->create_transaction(recipient_id_or_email,
-                                              first_file,
-                                              files.size(),
-                                              size,
-                                              fs::is_directory(first_file),
-                                              network_id,
-                                              this->_device_id);
-      }
-      catch (...)
-      {
-        ELLE_DEBUG("transaction creation failed");
-        // Something went wrong, we need to destroy the network.
-        this->delete_network(network_id, false);
-        throw;
-      }
-
-      this->_me.remaining_invitations = res.remaining_invitations;
-
       return this->_add_operation<UploadOperation>(*this,
+                                                   *this->_meta,
+                                                   this->_me,
                                                    this->_reporter,
-                                                   res.created_transaction_id,
-                                                   network_id,
+                                                   recipient_id_or_email,
                                                    files);
     }
 
