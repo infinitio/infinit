@@ -140,7 +140,7 @@ class Page(object):
         user = database.users().find_one(user_id)
         if not user:
             raise Exception("This user doesn't exist")
-        return 'connected' in user and user['connected'] or 0
+        return user.get('connected', False)
 
     def forbidden(self, msg):
         raise web.HTTPError("403 {}".format(msg))
@@ -153,16 +153,21 @@ class Page(object):
         seasoned = seasoned.encode('utf-8')
         return hashlib.md5(seasoned).hexdigest()
 
-    def notifySwaggers(self, notification_id, data, bAll = False):
-        swgs = list(self.user["swaggers"].keys())
-        # if not bAll, notify only the connected ones.
-        if not bAll:
-            for s in swgs:
-                if not self.connected(database.ObjectId(s)):
-                    swgs.remove(s)
-        d = {"user_id" : self.user["_id"]}
+    def notifySwaggers(self, notification_id, data, user_id = None, all_ = False):
+        if user_id is None:
+            user = self.user
+            user_id = user['_id']
+        else:
+            assert isinstance(user_id, database.ObjectId)
+            user = database.users().find_one(user_id)
+
+        swaggers = list(
+            swagger_id for swagger_id in user['swaggers'].keys()
+            if not all_ and self.connected(database.ObjectId(swagger_id))
+        )
+        d = {"user_id" : user_id}
         d.update(data)
-        self.notifier.notify_some(notification_id, swgs, d, store = False)
+        self.notifier.notify_some(notification_id, swaggers, d, store = False)
 
     def error(self, err=error.UNKNOWN, msg=""):
         assert isinstance(err, tuple)

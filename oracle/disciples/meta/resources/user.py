@@ -17,7 +17,7 @@ import re
 import StringIO
 import unicodedata
 import web
-
+import sys
 
 from meta.page import Page
 from meta import notifier
@@ -245,6 +245,7 @@ class Self(Page):
             'public_key': self.user['public_key'],
             'accounts': self.user['accounts'],
             'remaining_invitations': self.user.get('remaining_invitations', 0),
+            'status': self.user.get('connected', False) and meta.page.CONNECTED or meta.page.DISCONNECTED
         })
 
 class Invitations(Page):
@@ -308,7 +309,7 @@ class One(Page):
             'fullname': user.get('fullname', ''),
             'handle': user.get('handle', ''),
             # XXX: user['connected']
-            'status': 'connected' in user and user['connected'] or 0
+            'status': user.get('connected', False) and meta.page.CONNECTED or meta.page.DISCONNECTED
         })
 
 class Avatar(Page):
@@ -512,25 +513,19 @@ class Disconnection(Page):
         if self.data['admin_token'] != pythia.constants.ADMIN_TOKEN:
             return self.error(error.UNKNOWN, "You're not admin")
 
-        if not self._user:
-            return self.error(error.UNKNOWN)
-
-        _id = self.data['user_id']
+        user_id = database.ObjectId(self.data['user_id'])
         token = self.data['user_token']
+        connected = bool(self.data['full'])
 
-        del self.session.store[token]
-
-        self._user['connected'] = bool(self.data['full'])
-
-        if not self._user['connected']:
+        if not connected:
+            database.users().update({"_id": user_id}, {"$set": {"connected": False}})
             self.notifySwaggers(
                 notifier.USER_STATUS,
                 {
                     'status': meta.page.DISCONNECTED, #Disconnected.
-                }
+                },
+                user_id = user_id,
             )
-
-        database.users().save(self._user)
 
         return self.success()
 
@@ -548,11 +543,11 @@ class Logout(Page):
         if not self.user:
             return self.error(error.NOT_LOGGED_IN)
 
-        self.logout()
         self.notifySwaggers(
             notifier.USER_STATUS,
             {
                 "status" : meta.page.DISCONNECTED,
             }
         )
+        self.logout()
         return self.success()
