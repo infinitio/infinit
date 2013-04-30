@@ -7,6 +7,20 @@
 
 ELLE_LOG_COMPONENT("infinit.Satellite");
 
+// XXX quick fix
+static std::string satellite_name;
+
+static
+void
+on_critical_signal(int signum)
+{
+  ::signal(signum, SIG_DFL);
+  elle::crash::Handler(
+      common::meta::host(),
+      common::meta::port(),
+      satellite_name, false)(signum);
+}
+
 namespace infinit
 {
   static
@@ -14,23 +28,21 @@ namespace infinit
   _satellite_wrapper(std::string const& name,
                      std::function<void ()> const& action)
   {
+    satellite_name = name; // XXX Quiche fix.
+    ::signal(SIGSEGV, &on_critical_signal);
+    ::signal(SIGBUS, &on_critical_signal);
+    ::signal(SIGILL, &on_critical_signal);
+    ::signal(SIGABRT, &on_critical_signal);
+
     try
     {
       // Capture signal and send email without exiting.
       elle::signal::ScopedGuard guard
         (*reactor::Scheduler::scheduler(),
-         {SIGABRT, SIGPIPE, SIGTERM},
+         {SIGPIPE, SIGTERM},
          elle::crash::Handler(common::meta::host(),
                               common::meta::port(),
                               name, false));
-
-      // Capture signal and send email exiting.
-      elle::signal::ScopedGuard exit_guard
-        (*reactor::Scheduler::scheduler(),
-         {SIGILL, SIGSEGV},
-         elle::crash::Handler(common::meta::host(),
-                              common::meta::port(),
-                              name, true));
 
       // Exit on keyboard interrupt.
       elle::signal::ScopedGuard int_guard
