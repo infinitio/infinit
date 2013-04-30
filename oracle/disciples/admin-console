@@ -173,6 +173,17 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         ]
     )
 
+    _cancel_transactions_argument_parser = make_simple_argument_parser(
+        prog = "cancel_transactions",
+        description = "Cancel transactions",
+        args = [
+            {
+                'flags': '--do-it-for-real',
+                'action': 'store_true'
+            },
+        ]
+    )
+
     def __init__(self, args):
         self._connect(args.db_host, args.db_port)
         super(AdminShell, self).__init__()
@@ -271,8 +282,18 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         count = int(args.count)
         users = 'users' in args and args.users or []
 
-        meta.database.users().update(users and {'email': {'$in': users}} or {},
-                                     {'$set': {'remaining_invitations': count}}, multi=True)
+        meta.database.users().update(
+            users and {'email': {'$in': users}} or {},
+            {'$set': {'remaining_invitations': count}},
+            multi = True
+        )
+
+    def do_cancel_transactions(self, line):
+        args = self._get_args(self._cancel_transactions_argument_parser, line)
+        if not args: return
+        transactions = meta.database.transactions().find_one()
+        print(transactions)
+
 
     def help_update_invitations(self):
         self._invite_argument_parser.print_help()
