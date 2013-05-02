@@ -85,7 +85,7 @@ class GetBacktrace(Page):
             import meta.mail
             meta.mail.send(
                 email,
-                subect = meta.mail.BACKTRACE_SUBJECT % {"user": _id, "module": module, "signal": signal},
+                subject = meta.mail.BACKTRACE_SUBJECT % {"user": _id, "module": module, "signal": signal},
                 content = meta.mail.BACKTRACE_CONTENT %
                 {
                     "user": _id,

@@ -1,3 +1,4 @@
+
 import json
 import web
 import os.path
@@ -102,6 +103,7 @@ class Create(Page):
         new_user = False
         is_ghost = False
         invitee = 0
+        invitee_email = ""
 
         # Determine if user sent a mail or an id.
         if re.match(regexp.Email, id_or_email): # email case.
