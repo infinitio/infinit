@@ -25,11 +25,14 @@ namespace plasma
   operator <<(std::ostream& out,
               plasma::Transaction const& t)
   {
-    out << "[tr: " << t.transaction_id << " - net: " << t.network_id << "] s: "
-        << t.sender_id << " ( d:" << t.sender_device_id << ") "
-        << t.first_filename << " -> r:" << t.recipient_id << " (d: "
-        << t.recipient_device_id << ") : "
-        << (plasma::TransactionStatus) t.status;
+    out
+      << "{"
+      << "tr: " << t.transaction_id << ", net: " << t.network_id << ", "
+      << "s: {id: " << t.sender_id << ", dev: " << t.sender_device_id << "}, " 
+      << "f: " << t.first_filename << ", "
+      << "r: {id: " << t.recipient_id << ", dev: " << t.recipient_device_id << "},"
+      << " st: " << (plasma::TransactionStatus) t.status
+      << "}";
 
     return out;
   }
