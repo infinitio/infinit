@@ -1,4 +1,5 @@
 #include <satellites/passport/Passport.hh>
+#include <satellites/satellite.hh>
 
 #include <Infinit.hh>
 
@@ -146,11 +147,9 @@ namespace satellite
 // ---------- functions -------------------------------------------------------
 //
 
-  ///
-  /// the main function.
-  ///
-  elle::Status          Main(elle::Natural32                    argc,
-                             elle::Character*                   argv[])
+  void
+  Passport(elle::Natural32 argc,
+           elle::Character* argv[])
   {
     Passport::Operation operation;
 
@@ -244,7 +243,7 @@ namespace satellite
       {
         // display the usage.
         Infinit::Parser->Usage();
-        return (elle::Status::Ok);
+        return;
       }
 
     // retrieve the user name.
@@ -350,8 +349,6 @@ namespace satellite
     // clean Lune
     if (lune::Lune::Clean() == elle::Status::Error)
       throw elle::Exception("unable to clean Lune");
-
-    return elle::Status::Ok;
   }
 
 }
@@ -360,24 +357,10 @@ namespace satellite
 // ---------- main ------------------------------------------------------------
 //
 
-///
-/// this is the program entry point.
-///
 int                     main(int                                argc,
                              char**                             argv)
 {
-  try
-    {
-      if (satellite::Main(argc, argv) == elle::Status::Error)
-        return (1);
-    }
-  catch (std::exception& e)
-    {
-      std::cout << "The program has been terminated following "
-                << "a fatal error (" << e.what() << ")." << std::endl;
-
-      return (1);
-    }
-
-  return (0);
+  return satellite_main("8passport", [&] {
+                          satellite::Passport(argc, argv);
+                        });
 }
