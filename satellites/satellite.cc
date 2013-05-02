@@ -15,20 +15,6 @@
 
 ELLE_LOG_COMPONENT("infinit.satellite");
 
-// XXX quick fix
-static std::string satellite_name;
-
-static
-void
-on_critical_signal(int signum)
-{
-  ::signal(signum, SIG_DFL);
-  elle::crash::Handler(
-      common::meta::host(),
-      common::meta::port(),
-      satellite_name, false)(signum);
-}
-
 namespace infinit
 {
 
@@ -64,7 +50,7 @@ namespace infinit
       if (WCOREDUMP(status))
       {
         ELLE_LOG("%s[%d]: core dumped", name, pid);
-        ss <<
+        ss << 
           elle::system::check_output("gdb",
                                      "-e", common::infinit::binary_path(name),
 #if defined INFINIT_LINUX
@@ -91,12 +77,6 @@ namespace infinit
   _satellite_wrapper(std::string const& name,
                      std::function<void ()> const& action)
   {
-    satellite_name = name; // XXX Quiche fix.
-    ::signal(SIGSEGV, &on_critical_signal);
-    ::signal(SIGBUS, &on_critical_signal);
-    ::signal(SIGILL, &on_critical_signal);
-    ::signal(SIGABRT, &on_critical_signal);
-
     try
     {
       auto sig_fn = [] (int)
