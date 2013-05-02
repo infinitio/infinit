@@ -1,4 +1,5 @@
 #include <satellites/passport/Passport.hh>
+#include <satellites/satellite.hh>
 
 #include <Infinit.hh>
 
@@ -12,8 +13,6 @@
 #include <cryptography/random.hh>
 // XXX[temporary: for cryptography]
 using namespace infinit;
-
-#include <etoile/Etoile.hh>
 
 #include <hole/Authority.hh>
 #include <hole/Hole.hh>
@@ -146,11 +145,9 @@ namespace satellite
 // ---------- functions -------------------------------------------------------
 //
 
-  ///
-  /// the main function.
-  ///
-  elle::Status          Main(elle::Natural32                    argc,
-                             elle::Character*                   argv[])
+  void
+  Passport(elle::Natural32 argc,
+           elle::Character* argv[])
   {
     Passport::Operation operation;
 
@@ -167,10 +164,6 @@ namespace satellite
     // initialize Infinit.
     if (Infinit::Initialize() == elle::Status::Error)
       throw elle::Exception("unable to initialize Infinit");
-
-    // initialize the Etoile library.
-    if (etoile::Etoile::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize Etoile");
 
     // initialize the operation.
     operation = Passport::OperationUnknown;
@@ -244,7 +237,7 @@ namespace satellite
       {
         // display the usage.
         Infinit::Parser->Usage();
-        return (elle::Status::Ok);
+        return;
       }
 
     // retrieve the user name.
@@ -339,10 +332,6 @@ namespace satellite
     delete Infinit::Parser;
     Infinit::Parser = nullptr;
 
-    // clean the Etoile.
-    if (etoile::Etoile::Clean() == elle::Status::Error)
-      throw elle::Exception("unable to clean Etoile");
-
     // clean Infinit.
     if (Infinit::Clean() == elle::Status::Error)
       throw elle::Exception("unable to clean Infinit");
@@ -350,34 +339,17 @@ namespace satellite
     // clean Lune
     if (lune::Lune::Clean() == elle::Status::Error)
       throw elle::Exception("unable to clean Lune");
-
-    return elle::Status::Ok;
   }
-
 }
 
 //
 // ---------- main ------------------------------------------------------------
 //
 
-///
-/// this is the program entry point.
-///
 int                     main(int                                argc,
                              char**                             argv)
 {
-  try
-    {
-      if (satellite::Main(argc, argv) == elle::Status::Error)
-        return (1);
-    }
-  catch (std::exception& e)
-    {
-      std::cout << "The program has been terminated following "
-                << "a fatal error (" << e.what() << ")." << std::endl;
-
-      return (1);
-    }
-
-  return (0);
+  return satellite_main("8passport", [&] {
+                          satellite::Passport(argc, argv);
+                        });
 }

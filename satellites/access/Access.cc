@@ -666,5 +666,7 @@ namespace satellite
 
 int main(int argc, char** argv)
 {
-  return satellite_main("8access", std::bind(satellite::Access, argc, argv));
+  return satellite_main("8access", [&] {
+                          satellite::Access(argc, argv);
+                        });
 }

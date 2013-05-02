@@ -4,7 +4,6 @@
 #include <elle/io/Piece.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
-#include <elle/nat/Nat.hh>
 #include <elle/network/Interface.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/utility/Parser.hh>

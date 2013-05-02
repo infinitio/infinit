@@ -123,10 +123,6 @@ def configure(cxx_toolkit,
   )
   cxx_config += openssl.config()
 
-  # dOpenSSL
-  dopenssl = drake.include('dopenssl', cxx_toolkit, cxx_config, openssl = openssl.config())
-  dopenssl_lib = drake.copy(dopenssl.lib_dynamic, 'lib', dopenssl.lib_dynamic.path().dirname())
-
   # Boost
   boost = boost or drake.cxx.boost.Boost()
   cxx_config += boost.config()
@@ -522,7 +518,7 @@ def configure(cxx_toolkit,
 #    drake.cxx.Executable(hole_tests_root / test,
 #                         drake.nodes(hole_tests_root / ('%s.cc' % test)) +
 #                         [reactor.lib_dynamic, elle.lib_dynamic, cryptography_lib,
-#                          hole_lib, dopenssl_lib, nucleus_lib, protocol_lib],
+#                          hole_lib, nucleus_lib, protocol_lib],
 #                         cxx_toolkit, cxx_config + boost.config_test())
 
   # Etoile
@@ -731,7 +727,6 @@ def configure(cxx_toolkit,
 
   infinit_libs = [
     agent_lib,
-    dopenssl_lib,
     etoile_lib,
     hole_lib,
     infinit_lib,

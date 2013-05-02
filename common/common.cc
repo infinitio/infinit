@@ -494,4 +494,27 @@ namespace common
       return km;
     }
   }
+
+  namespace longinus
+  {
+    std::string
+    host()
+    {
+      static std::string const host_string = elle::os::getenv(
+        "INFINIT_LONGINUS_HOST",
+        COMMON_LONGINUS_HOST
+      );
+      return host_string;
+    }
+
+    int
+    port()
+    {
+      static std::string const port_string = elle::os::getenv(
+        "INFINIT_LONGINUS_PORT",
+        std::to_string(COMMON_LONGINUS_PORT)
+      );
+      return std::stoi(port_string);
+    }
+  }
 }

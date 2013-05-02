@@ -1,8 +1,12 @@
 #include <elle/cast.hh>
+#include <elle/container/map.hh>
+#include <elle/container/vector.hh>
+#include <elle/memory.hh>
 #include <elle/utility/Move.hh>
 
 #include <cryptography/random.hh>
 
+#include <reactor/network/nat.hh>
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/udt-server.hh>
 
@@ -46,8 +50,7 @@ namespace hole
         _connection_timeout(connection_timeout),
         _state(State::detached),
         _port(port),
-        _server(reactor::network::Server::create(
-                  protocol, *reactor::Scheduler::scheduler())),
+        _server(nullptr),
         _acceptor(),
         _phrase(),
         _rpc_server(),
@@ -105,6 +108,19 @@ namespace hole
             this->ready();
           }
 
+          // Nat
+          reactor::nat::NAT nat(*reactor::Scheduler::scheduler());
+
+          auto pokey = nat.punch(common::longinus::host(),
+                                 common::longinus::port(),
+                                 port);
+          ELLE_TRACE("punch done: %s", pokey.public_endpoint());
+          this->_server = elle::make_unique<reactor::network::UDTServer>(
+            *reactor::Scheduler::scheduler(),
+            pokey.handle()
+            );
+          this->_port = _server->port(); // Update the port
+
           // Finally, listen for incoming connections.
           ELLE_TRACE("serve on port %s", this->_port);
           {
@@ -115,7 +131,6 @@ namespace hole
               _server->listen(this->_port);
               // In case we asked for a random port to be picked up (by using 0)
               // or hole punching happened, retrieve the actual listening port.
-              this->_port = _server->port();
               ELLE_ASSERT(this->_port != 0);
               ELLE_DEBUG("listening on port %s", this->_port);
               _acceptor.reset(new reactor::Thread(
@@ -144,33 +159,22 @@ namespace hole
                 | elle::network::Interface::Filter::no_loopback
                 | elle::network::Interface::Filter::no_autoip
                 );
-              ELLE_DEBUG("local addresses:")
                 for (auto const& pair: interfaces)
                   if (pair.second.ipv4_address.size() > 0 &&
                       pair.second.mac_address.size() > 0)
                   {
-                    auto const &ipv4   = pair.second.ipv4_address;
-                    ELLE_DEBUG("%s:%s", ipv4, _server->port());
-                    addresses.emplace_back(pair.second.ipv4_address,
-                                           _server->port());
+                    auto const &ipv4 = pair.second.ipv4_address;
+                    addresses.emplace_back(ipv4, _server->port());
                   }
+                ELLE_DEBUG("addresses: %s", addresses);
               std::vector<std::pair<std::string, uint16_t>> public_addresses;
-              auto udt = dynamic_cast<reactor::network::UDTServer*>
-                (_server.get());
-              assert(udt);
-              auto ep = udt->public_endpoint();
+              auto ep = pokey.public_endpoint();
               public_addresses.push_back(std::pair<std::string, uint16_t>
                                          (ep.address().to_string(),
                                           ep.port()));
               client.token(agent::Agent::meta_token);
-              ELLE_DEBUG("addresses:")
-                std::for_each(addresses.begin(), addresses.end(),
-                              [](std::pair<std::string, uint16_t> const& e)
-                              { ELLE_DEBUG("%s:%s", e.first, e.second); });
-              ELLE_DEBUG("public_addresses")
-                std::for_each(public_addresses.begin(), public_addresses.end(),
-                              [](std::pair<std::string, uint16_t> const& e)
-                              { ELLE_DEBUG("%s:%s", e.first, e.second); });
+
+              ELLE_DEBUG("public_addresses: %s", public_addresses);
               client.network_connect_device(descriptor.meta().id(),
                                             this->passport().id(),
                                             addresses,
@@ -1332,11 +1336,7 @@ namespace hole
                max_tries--)
           {
             thread.wait(this->_new_host, boost::posix_time::seconds(1));
-            ELLE_DEBUG("(%s) resume from wait. number of hosts: %d ", locus, _hosts.size())
-              for (auto const &p: _hosts)
-              {
-                ELLE_DEBUG("-- %s:%s", p.first, p.second);
-              }
+            ELLE_DEBUG("(%s) resume from wait. Hosts: %s ", locus, _hosts);
             auto it = _hosts.find(locus);
             if (it != end(_hosts))
             {

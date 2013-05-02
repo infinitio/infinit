@@ -33,7 +33,7 @@ def login(state, email = None):
     state.connect()
 
 def show_status(state, transaction, new):
-    print("Transaction ({}) status changed to".format(transaction), state.transaction_status(transaction))
+    print("Transaction ({})".format(transaction), state.transaction_status(transaction))
 
 def on_transaction(state, transaction, new):
     print("New transaction", transaction)
@@ -41,17 +41,14 @@ def on_transaction(state, transaction, new):
 
 def on_started(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.started:
-        print("Transaction ({}) canceled, check your log".format(transaction))
         state.started = True
 
 def on_canceled(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.canceled:
-        print("Transaction ({}) canceled, check your log".format(transaction))
         state.running = False
 
 def on_finished(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.finished:
-        print("Transaction ({}) succeeded".format(transaction))
         state.running = False
 
 def on_error(state, status, message, tid):
@@ -59,6 +56,7 @@ def on_error(state, status, message, tid):
         print("Error ({}): {}: {}: {}".format(int(status), tid, status, message))
     else:
         print("Error ({}): {}: {}".format(int(status), status, message))
+    state.running = False
 
 def main(state, user, files):
     login(state)
