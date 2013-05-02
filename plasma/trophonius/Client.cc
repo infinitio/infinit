@@ -376,7 +376,9 @@ namespace plasma
     {
       // Poll while something has to be done
       if (size_t count = _impl->io_service.poll())
+      {
         ELLE_DEBUG("polling io service has triggered %s events", count);
+      }
 
       std::unique_ptr<Notification> ret;
 
