@@ -14,8 +14,6 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <etoile/Etoile.hh>
-
 #include <hole/Authority.hh>
 #include <hole/Hole.hh>
 #include <hole/Passport.hh>
@@ -166,10 +164,6 @@ namespace satellite
     // initialize Infinit.
     if (Infinit::Initialize() == elle::Status::Error)
       throw elle::Exception("unable to initialize Infinit");
-
-    // initialize the Etoile library.
-    if (etoile::Etoile::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize Etoile");
 
     // initialize the operation.
     operation = Passport::OperationUnknown;
@@ -338,10 +332,6 @@ namespace satellite
     delete Infinit::Parser;
     Infinit::Parser = nullptr;
 
-    // clean the Etoile.
-    if (etoile::Etoile::Clean() == elle::Status::Error)
-      throw elle::Exception("unable to clean Etoile");
-
     // clean Infinit.
     if (Infinit::Clean() == elle::Status::Error)
       throw elle::Exception("unable to clean Infinit");
@@ -350,7 +340,6 @@ namespace satellite
     if (lune::Lune::Clean() == elle::Status::Error)
       throw elle::Exception("unable to clean Lune");
   }
-
 }
 
 //
