@@ -36,17 +36,17 @@ namespace surface
     void
     State::_on_user_status_update(UserStatusNotification const& notif)
     {
-      ELLE_ASSERT(
-        this->swaggers().find(notif.user_id) != this->swaggers().end()
-      );
-
-      auto it = this->swagger(notif.user_id);
-      ELLE_DEBUG("%s's status changed to %s", it.fullname, notif.status);
+      ELLE_TRACE_METHOD(notif.user_id, notif.status);
+      auto it = this->_users.find(notif.user_id);
+      ELLE_ASSERT_NEQ(it, this->_users.end());
+      
+      auto& swagger = *it->second;
+      ELLE_DEBUG("%s's status changed to %s", swagger.fullname, notif.status);
       ELLE_ASSERT(
             notif.status == gap_user_status_online
         or  notif.status == gap_user_status_offline
       );
-      it.status = notif.status;
+      swagger.status = notif.status;
     }
 
   }
