@@ -15,7 +15,10 @@ namespace surface
           auto response = this->_meta->get_swaggers();
           this->_swaggers.clear();
           for (auto const& swagger_id: response.swaggers)
+          {
             this->_swaggers.insert(swagger_id);
+            this->user(swagger_id); // Force swagger/user sync.
+          }
           this->_swaggers_dirty = false;
         }
       return this->_swaggers;
@@ -37,6 +40,7 @@ namespace surface
     State::_on_user_status_update(UserStatusNotification const& notif)
     {
       ELLE_TRACE_METHOD(notif.user_id, notif.status);
+      this->swaggers(); // Force the sync of swaggers. This is ridiculous.
       auto it = this->_users.find(notif.user_id);
       ELLE_ASSERT_NEQ(it, this->_users.end());
       
