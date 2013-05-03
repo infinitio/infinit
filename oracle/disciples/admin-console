@@ -39,7 +39,7 @@ class DatabaseCommands(type):
     def __prepare__(cls, name, bases):
         ns = {}
         ns['_argument_parsers'] = {}
-        for k in ['users', 'devices', 'networks', 'invitations']:
+        for k in ['users', 'devices', 'networks', 'invitations', 'transactions']:
             ns['_argument_parsers'][k] = cls._generate_argument_parser(k)
             ns['do_%s' % k] = cls._make_collection_command(k)
             ns['help_%s' % k] = cls._make_collection_command_help(k)
@@ -226,6 +226,16 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         for id_ in network['users']:
             print('\t\t* %s' % id_)
 
+    def _transactions_printer(self, tr):
+        print("transaction", tr['_id'], "status is", tr['status'])
+        print("\t- sender: %s (%s) on device %s" % (
+            tr['sender_fullname'], tr['sender_id'], tr['sender_device_id'])
+        )
+        print("\t- recipient: %s (%s) on device %s" % (
+            tr['recipient_fullname'], tr['recipient_id'], tr['recipient_device_id'])
+        )
+
+
 
     def _devices_printer(self, device):
         print('%s (%s)' % (device['name'], device['_id']))
@@ -291,9 +301,20 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
     def do_cancel_transactions(self, line):
         args = self._get_args(self._cancel_transactions_argument_parser, line)
         if not args: return
-        transactions = meta.database.transactions().find_one()
-        print(transactions)
+        meta.database.transactions().update(
+            {'status': {'$ne': 6}},
+            {'$set': {'status': 5}},
+            multi = True,
+        )
+        transactions = meta.database.transactions().find(
+            {'status': {'$nin': [5, 6]}},
+        )
+        for t in transactions:
+            print(t)
 
+
+    def help_cancel_transactions(self):
+        self._cancel_transactions_argument_parser.print_help()
 
     def help_update_invitations(self):
         self._invite_argument_parser.print_help()

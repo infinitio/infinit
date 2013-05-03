@@ -78,8 +78,8 @@ class Application(object):
         The right way to do it is to disconnect all users (in the database)
         when the trophonius instance goes down.
         """
-        import meta
-        meta.database().users().update({}, {'$set': {'connected': False}})
+        import meta.database
+        meta.database.users().update({}, {'$set': {'connected': False}})
 
     def run(self):
         self.reset_user_status()
