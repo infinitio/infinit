@@ -49,11 +49,9 @@ namespace surface
         throw Exception{gap_error, "Trophonius is not connected"};
 
       size_t count = 0;
-      while (count < max)
+      while (count < max && this->_trophonius)
       {
-        std::unique_ptr<Notification> notif{
-          this->_trophonius->poll()
-        };
+        std::unique_ptr<Notification> notif{this->_trophonius->poll()};
 
         if (!notif)
           break;

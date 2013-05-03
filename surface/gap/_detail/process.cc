@@ -13,6 +13,7 @@ namespace surface
     State::OperationStatus
     State::operation_status(OperationId const id) const
     {
+      ELLE_TRACE_METHOD(id);
       auto it = _operations.find(id);
       if (it == _operations.end())
         throw elle::Exception{
@@ -29,6 +30,7 @@ namespace surface
     void
     State::operation_finalize(OperationId const id)
     {
+      ELLE_TRACE_METHOD(id);
       auto it = _operations.find(id);
       if (it == _operations.end())
         throw elle::Exception{
@@ -41,25 +43,19 @@ namespace surface
     }
 
     State::OperationId
-    State::_add_operation(std::string const& name,
-                          std::function<void(void)> const& cb,
-                          bool auto_delete)
+    State::_next_operation_id()
     {
-      ELLE_TRACE("Adding operation %s.", name);
-      static OperationId id = 0;
-      id += 1;
-      _operations[id].reset(new Operation{name, cb});
-      if (auto_delete)
-        _operations[id]->delete_later();
-      return id;
+      static State::OperationId id = 0;
+      return ++id;
     }
 
     void
     State::_cancel_operation(std::string const& name)
     {
+      ELLE_TRACE_METHOD(name);
       for (auto& pair: _operations)
       {
-        if (pair.second != nullptr && pair.second->name() == name)
+        if (pair.second != nullptr && pair.second->name() == name && !pair.second->done())
         {
           pair.second->cancel();
           return;
@@ -70,10 +66,27 @@ namespace surface
     void
     State::_cancel_all_operations(std::string const& name)
     {
+      ELLE_TRACE_METHOD(name);
       for (auto& pair: _operations)
       {
         if (pair.second != nullptr &&
+            !pair.second->done() &&
             boost::algorithm::ends_with(pair.second->name(), name))
+        {
+          pair.second->cancel();
+          return;
+        }
+      }
+    }
+
+    void
+    State::_cancel_all_operations()
+    {
+      ELLE_TRACE_METHOD("");
+      for (auto& pair: _operations)
+      {
+        if (pair.second != nullptr &&
+            !pair.second->done())
         {
           pair.second->cancel();
           return;

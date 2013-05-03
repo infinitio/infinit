@@ -640,6 +640,8 @@ class Delete(_Page):
             remove=True
         )
 
+        assert database.networks().find_one(_id) == None
+
         return  self.success({
             'deleted_network_id': network_id,
         })

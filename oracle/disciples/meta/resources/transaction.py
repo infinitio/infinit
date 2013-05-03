@@ -1,3 +1,4 @@
+
 import json
 import web
 import os.path
@@ -102,6 +103,7 @@ class Create(Page):
         new_user = False
         is_ghost = False
         invitee = 0
+        invitee_email = ""
 
         # Determine if user sent a mail or an id.
         if re.match(regexp.Email, id_or_email): # email case.
@@ -640,6 +642,9 @@ class Cancel(Page):
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
 
+        if transaction['status'] == CANCELED:
+            return self.success({'updated_transaction_id': str(transaction['_id']) })
+
         if self.user['_id'] not in (transaction['sender_id'], transaction['recipient_id']):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
@@ -668,8 +673,13 @@ class Cancel(Page):
         network = database.networks().find_one({
             '_id' : database.ObjectId(transaction["network_id"])
         })
+
+        if transaction['recipient_device_id'] == "":
+            return self.success({'updated_transaction_id': str(updated_transaction_id), })
+
         if not network:
             return self.forbidden("Couldn't find any network with this id")
+
         if network['owner'] != self.user['_id'] and \
            self.user['_id'] not in network['users']:
             return self.forbidden("This network does not belong to you")

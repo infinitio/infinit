@@ -236,13 +236,16 @@ namespace surface
     void
     State::logout()
     {
+      ELLE_TRACE_FUNCTION("");
+
       if (this->_meta->token().empty())
         return;
 
-      for (auto const& op: this->_operations)
-        op.second->cancel();
+      this->_trophonius.reset();
 
+      this->_cancel_all_operations();
       this->_operations.clear();
+      this->_infinit_instance_manager.reset();
 
       // End session the session.
       this->_reporter.store("user_logout",

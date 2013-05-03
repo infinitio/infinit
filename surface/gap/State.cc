@@ -1,5 +1,6 @@
 #include "State.hh"
 #include "_detail/Operation.hh"
+#include "_detail/TransactionProgress.hh"
 
 #include <common/common.hh>
 
