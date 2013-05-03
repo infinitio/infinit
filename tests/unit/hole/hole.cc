@@ -2,13 +2,17 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
+#include <cryptography/KeyPair.hh>
+
+#include <elle/serialize/extract.hh>
+
+#include <common/common.hh>
+
 #include <hole/Hole.hh>
 #include <hole/implementations/slug/Slug.hh>
 #include <hole/storage/Memory.hh>
 #include <hole/Passport.hh>
 #include <nucleus/proton/Network.hh>
-#include <common/common.hh>
-#include <elle/serialize/extract.hh>
 #include <Infinit.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/thread.hh>

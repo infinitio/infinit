@@ -9,8 +9,6 @@
 # include <elle/network/Locus.hh>
 # include <elle/types.hh>
 
-# include <lune/Phrase.hh>
-
 # include <nucleus/proton/fwd.hh>
 
 # include <hole/Hole.hh>
@@ -136,18 +134,6 @@ namespace hole
       public:
         void portal_connect(std::string const& host, int port);
         bool portal_wait(std::string const& host, int port);
-
-      /*------------.
-      | RPC Control |
-      `------------*/
-      private:
-        lune::Phrase _phrase;
-        std::unique_ptr<reactor::network::TCPServer> _rpc_server;
-        std::unique_ptr<reactor::Thread> _rpc_acceptor;
-        void
-        _run_gc();
-        void
-        _rpc_accept();
 
       /*---------.
       | Dumpable |

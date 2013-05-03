@@ -1,3 +1,4 @@
+#include <elle/attribute.hh>
 #include <elle/cast.hh>
 #include <elle/container/map.hh>
 #include <elle/container/vector.hh>
@@ -51,10 +52,7 @@ namespace hole
         _state(State::detached),
         _port(port),
         _server(nullptr),
-        _acceptor(),
-        _phrase(),
-        _rpc_server(),
-        _rpc_acceptor()
+        _acceptor()
       {
         ELLE_TRACE_SCOPE("launch slug");
         try
@@ -76,23 +74,6 @@ namespace hole
               sched.current()->wait(*t);
               delete t;
             }
-          }
-          ELLE_TRACE("start RPCs")
-          {
-            elle::network::Locus locus;
-            this->_rpc_server.reset(new reactor::network::TCPServer(
-                                      *reactor::Scheduler::scheduler()));
-            this->_rpc_server->listen(0);
-            int rpc_port = this->_rpc_server->local_endpoint().port();
-            ELLE_DEBUG("RPC listening on port %s", rpc_port);
-            this->_rpc_acceptor.reset(
-              new reactor::Thread(*reactor::Scheduler::scheduler(),
-                                  elle::sprintf("RPC %s", *this),
-                                  [&] { this->_rpc_accept(); },
-                                  true));
-            elle::String pass(cryptography::random::generate<elle::String>(4096));
-            this->_phrase.Create(rpc_port, pass);
-            this->_phrase.store(Infinit::User, Infinit::Network, "slug");
           }
           // If the machine has been neither connected nor authenticated
           // to existing nodes...
@@ -189,7 +170,6 @@ namespace hole
         }
         catch (...)
         {
-          this->_rpc_acceptor->terminate_now();
           if (_acceptor)
             _acceptor->terminate_now();
           throw;
@@ -206,11 +186,6 @@ namespace hole
         // acceptor.
         if (_acceptor)
           _acceptor->terminate_now();
-
-        if (!this->_rpc_acceptor->done())
-        {
-          this->_rpc_acceptor->terminate_now();
-        }
       }
 
       /*------------.
@@ -1371,61 +1346,6 @@ namespace hole
                    host, port, this->_hosts.size())
           this->_hosts.erase(locus);
         return false;
-      }
-
-      /*----.
-      | RPC |
-      `----*/
-
-      void
-      Slug::_rpc_accept()
-      {
-        int i = 0;
-        reactor::Scope scope;
-
-        while (true)
-        {
-          std::shared_ptr<reactor::network::TCPSocket> socket(
-            this->_rpc_server->accept());
-
-          ELLE_DEBUG("accepted new rpc control from %s", socket->remote_locus());
-
-          i++;
-          auto run = [&, socket]
-          {
-            ELLE_LOG_COMPONENT("infinit.hole.slug.Slug");
-            try
-            {
-              infinit::protocol::Serializer serializer{
-                *reactor::Scheduler::scheduler(),
-                *socket
-              };
-              infinit::protocol::ChanneledStream channels{
-                *reactor::Scheduler::scheduler(),
-                serializer
-              };
-              control::RPC rpcs{channels};
-
-              rpcs.slug_connect = std::bind(&Slug::portal_connect,
-                                            this,
-                                            std::placeholders::_1,
-                                            std::placeholders::_2);
-              rpcs.slug_wait = std::bind(&Slug::portal_wait,
-                                         this,
-                                         std::placeholders::_1,
-                                         std::placeholders::_2);
-
-              rpcs.parallel_run();
-            }
-            catch (elle::Exception const& e)
-            {
-              ELLE_WARN("slug control: %s", e.what());
-            }
-          };
-          auto name = reactor::Scheduler::scheduler()->current()->name();
-          scope.run_background(elle::sprintf("%s: pool %s", name, i), run);
-          ELLE_TRACE("new connection accepted");
-        }
       }
 
       /*---------.

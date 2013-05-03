@@ -15,8 +15,9 @@ namespace hole
   {
     namespace slug
     {
-      struct RPC: public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
-                                                elle::serialize::OutputBinaryArchive>
+      struct RPC:
+        public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
+                                      elle::serialize::OutputBinaryArchive>
       {
         RemoteProcedure<std::vector<elle::network::Locus>,
                         elle::Passport const&> authenticate;
@@ -29,11 +30,11 @@ namespace hole
         RPC(infinit::protocol::ChanneledStream& channels);
       };
 
-      namespace control {
-
+      namespace control
+      {
         struct RPC:
-            public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
-                                                  elle::serialize::OutputBinaryArchive>
+          public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
+                                          elle::serialize::OutputBinaryArchive>
         {
           RPC(infinit::protocol::ChanneledStream& channels);
 
@@ -43,10 +44,9 @@ namespace hole
           RemoteProcedure<bool, std::string const&, int>
           slug_wait;
         };
-      } /* control */
+      }
     }
   }
 }
-
 
 #endif

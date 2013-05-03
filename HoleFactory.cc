@@ -5,15 +5,50 @@
 
 #include <hole/implementations/local/Implementation.hh>
 #include <hole/implementations/remote/Implementation.hh>
+#include <hole/implementations/slug/Manifest.hh>
 #include <hole/implementations/slug/Slug.hh>
 #include <hole/Authority.hh>
 #include <hole/Passport.hh>
 
 #include <HoleFactory.hh>
 #include <Infinit.hh>
+#include <Portal.hh>
 
 namespace infinit
 {
+  class PortaledSlug: public hole::implementations::slug::Slug
+  {
+  public:
+    typedef hole::implementations::slug::Slug Super;
+    PortaledSlug(hole::storage::Storage& storage,
+                 elle::Passport const& passport,
+                 elle::Authority const& authority,
+                 reactor::network::Protocol protocol,
+                 std::vector<elle::network::Locus> const& members,
+                 int port,
+                 reactor::Duration connection_timeout):
+      Super(storage, passport, authority,
+            protocol, members, port, connection_timeout),
+      _portal(
+        "slug",
+        [&](hole::implementations::slug::control::RPC& rpcs)
+        {
+          rpcs.slug_connect = std::bind(&Slug::portal_connect,
+                                        this,
+                                        std::placeholders::_1,
+                                        std::placeholders::_2);
+          rpcs.slug_wait = std::bind(&Slug::portal_wait,
+                                     this,
+                                     std::placeholders::_1,
+                                     std::placeholders::_2);
+        }
+        )
+    {}
+
+
+    Portal<hole::implementations::slug::control::RPC> _portal;
+  };
+
   std::unique_ptr<hole::Hole>
   hole_factory(hole::storage::Storage& storage,
                elle::Passport const& passport,
@@ -73,9 +108,8 @@ namespace infinit
             throw elle::Exception
               (elle::sprintf("invalid transport protocol: %s", protocol_str));
           return std::unique_ptr<hole::Hole>(
-            new hole::implementations::slug::Slug(
-              storage, passport, authority,
-              protocol, members, port, timeout));
+            new PortaledSlug(storage, passport, authority,
+                             protocol, members, port, timeout));
         }
         case hole::Model::TypeCirkle:
         {
