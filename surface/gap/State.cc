@@ -137,18 +137,10 @@ namespace surface
       }
 
       // Initialize google metrics.
-      auto const& g_info = common::metrics::google_info();
-      elle::metrics::google::register_service(this->_google_reporter,
-                                              g_info.server,
-                                              g_info.port,
-                                              g_info.id_path);
+      elle::metrics::google::register_service(this->_google_reporter);
 
       // Initialize server.
-      auto const& km_info = common::metrics::km_info();
-      elle::metrics::kissmetrics::register_service(this->_reporter,
-                                                   km_info.server,
-                                                   km_info.port,
-                                                   km_info.id_path);
+      elle::metrics::kissmetrics::register_service(this->_reporter);
     }
 
     State::State(std::string const& token):

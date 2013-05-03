@@ -154,34 +154,14 @@ namespace common
 
   }
 
-  // XXX The watchdog use a local socket for now, but it will be redesigned
-  namespace watchdog
-  {
-
-    /// The name of the local socket.
-    std::string
-    server_name(std::string const& user_id);
-
-    /// The path to the lock file.
-    std::string
-    lock_path(std::string const& user_id);
-
-    /// The path to the id file.
-    std::string
-    id_path(std::string const& user_id);
-
-    /// The path to the log file.
-    std::string
-    log_path(std::string const& user_id);
-  }
-
   namespace metrics
   {
     struct Info
     {
-      std::string server;
+      std::string host;
       uint16_t port;
       std::string id_path;
+      std::string tracking_id;
     };
 
     Info const&

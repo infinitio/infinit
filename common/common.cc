@@ -479,18 +479,21 @@ namespace common
     {
       static Info google{"www.google-analytics.com",
                          80,
-                         path::join(common::infinit::home(), "ga.id")};
-
+                         path::join(common::infinit::home(), "ga.id"),
+                         elle::os::getenv("INFINIT_METRICS_GOOGLE_TID",
+                                          "UA-31957100-3")};
       return google;
     }
 
     Info const&
     km_info()
     {
-      static Info km{"trk.kissmetrics.com",
-                     80,
-                     path::join(common::infinit::home(), "km.id")};
-
+      static Info km{
+        "trk.kissmetrics.com",
+        80,
+        path::join(common::infinit::home(), "km.id"),
+        elle::os::getenv("INFINIT_METRICS_KISSMETRICS_TID",
+                         "0a79eca82697f0f7f0e6d5183daf8f1ebb81b39e")};
       return km;
     }
   }
