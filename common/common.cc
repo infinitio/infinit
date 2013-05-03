@@ -125,6 +125,7 @@ namespace
       {"8watchdog", "bin/8watchdog"},
       {"8transfer", "bin/8transfer"},
       {"8progress", "bin/8progress"},
+      {"gdbmacro",  "bin/gdbmacro"},
     };
     auto it = paths.find(name);
     if (it == paths.end())
