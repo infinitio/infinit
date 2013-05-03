@@ -7,8 +7,8 @@
 
 #include <cryptography/random.hh>
 
-#include <reactor/network/nat.hh>
 #include <reactor/network/tcp-server.hh>
+#include <reactor/network/udp-socket.hh>
 #include <reactor/network/udt-server.hh>
 
 #include <hole/Exception.hh>
@@ -16,14 +16,6 @@
 #include <hole/implementations/slug/Slug.hh>
 
 #include <nucleus/proton/Block.hh>
-
-// FIXME
-#include <Infinit.hh>
-#include <common/common.hh>
-#include <lune/Descriptor.hh>
-#include <plasma/meta/Client.hh>
-#include <agent/Agent.hh>
-#include <elle/network/Interface.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.slug.Slug");
 
@@ -44,7 +36,8 @@ namespace hole
                  reactor::network::Protocol protocol,
                  std::vector<elle::network::Locus> const& members,
                  int port,
-                 reactor::Duration connection_timeout):
+                 reactor::Duration connection_timeout,
+                 std::unique_ptr<reactor::network::UDPSocket> socket):
         Hole(storage, passport, authority),
         _protocol(protocol),
         _members(members),
@@ -89,18 +82,18 @@ namespace hole
             this->ready();
           }
 
-          // Nat
-          reactor::nat::NAT nat(*reactor::Scheduler::scheduler());
-
-          auto pokey = nat.punch(common::longinus::host(),
-                                 common::longinus::port(),
-                                 port);
-          ELLE_TRACE("punch done: %s", pokey.public_endpoint());
-          this->_server = elle::make_unique<reactor::network::UDTServer>(
-            *reactor::Scheduler::scheduler(),
-            pokey.handle()
-            );
-          this->_port = _server->port(); // Update the port
+          if (socket)
+          {
+            this->_server = elle::make_unique<reactor::network::UDTServer>(
+              *reactor::Scheduler::scheduler(), std::move(socket));
+          }
+          else
+          {
+            this->_server = elle::make_unique<reactor::network::UDTServer>(
+              *reactor::Scheduler::scheduler());
+            this->_server->listen(0);
+          }
+          this->_port = this->_server->port();
 
           // Finally, listen for incoming connections.
           ELLE_TRACE("serve on port %s", this->_port);
@@ -125,46 +118,6 @@ namespace hole
               // FIXME: what do ? For now, just go on without
               // listening. Useful when testing with several clients
               // on the same machine.
-            }
-          }
-
-          ELLE_TRACE("send addresses to meta")
-          {
-            lune::Descriptor descriptor(Infinit::User, Infinit::Network);
-            plasma::meta::Client client(common::meta::host(), common::meta::port());
-            try
-            {
-              std::vector<std::pair<std::string, uint16_t>> addresses;
-              auto interfaces = elle::network::Interface::get_map(
-                elle::network::Interface::Filter::only_up
-                | elle::network::Interface::Filter::no_loopback
-                | elle::network::Interface::Filter::no_autoip
-                );
-                for (auto const& pair: interfaces)
-                  if (pair.second.ipv4_address.size() > 0 &&
-                      pair.second.mac_address.size() > 0)
-                  {
-                    auto const &ipv4 = pair.second.ipv4_address;
-                    addresses.emplace_back(ipv4, _server->port());
-                  }
-                ELLE_DEBUG("addresses: %s", addresses);
-              std::vector<std::pair<std::string, uint16_t>> public_addresses;
-              auto ep = pokey.public_endpoint();
-              public_addresses.push_back(std::pair<std::string, uint16_t>
-                                         (ep.address().to_string(),
-                                          ep.port()));
-              client.token(agent::Agent::meta_token);
-
-              ELLE_DEBUG("public_addresses: %s", public_addresses);
-              client.network_connect_device(descriptor.meta().id(),
-                                            this->passport().id(),
-                                            addresses,
-                                            public_addresses);
-            }
-            catch (std::exception const& err)
-            {
-              ELLE_ERR("Cannot update device port: %s",
-                       err.what()); // XXX[to improve]
             }
           }
         }

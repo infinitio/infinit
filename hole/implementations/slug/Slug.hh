@@ -4,6 +4,7 @@
 # include <reactor/duration.hh>
 # include <reactor/network/Protocol.hh>
 # include <reactor/network/socket.hh>
+# include <reactor/network/udp-socket.hh>
 # include <reactor/signal.hh>
 
 # include <elle/network/Locus.hh>
@@ -35,7 +36,8 @@ namespace hole
              reactor::network::Protocol protocol,
              std::vector<elle::network::Locus> const& members,
              int port,
-             reactor::Duration connection_timeout);
+             reactor::Duration connection_timeout,
+             std::unique_ptr<reactor::network::UDPSocket> socket = nullptr);
         virtual ~Slug();
       private:
         ELLE_ATTRIBUTE_R(reactor::network::Protocol, protocol);
