@@ -59,7 +59,7 @@ namespace infinit
                                      "-c", elle::sprintf("/cores/core.%d", pid),
 #endif
                                      "-s", common::infinit::binary_path(name),
-                                     "-x", "./gdbmacro");
+                                     "-x", common::infinit::binary_path("gdbmacro"));
         std::ofstream debuginfo{
           elle::sprintf("/tmp/crash-%s-%d.txt", name, pid)};
         debuginfo << ss.str();

@@ -764,6 +764,14 @@ def configure(cxx_toolkit,
                                      cxx_toolkit, infinit_bin_config)
   build << infinit_bin
 
+  # GdbMacro
+  gdbmacro_files = drake.nodes(
+    'default/gdbmacro',
+    )
+  macro_copy = drake.copy(gdbmacro_files, 'bin', 'default')
+
+  build << macro_copy
+
   # 8hole
   hole_cxx_config = drake.cxx.Config(cxx_config)
   hole_cxx_config.lib('fuse')
