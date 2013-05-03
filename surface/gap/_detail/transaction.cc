@@ -774,44 +774,89 @@ namespace surface
       if (this->_wait_portal(transaction.network_id) == false)
         throw Exception{gap_error, "Couldn't find portal to infinit instance"};
 
-      std::exception_ptr exception;
+      struct NotifyOp:
+        public Operation
       {
-        reactor::Scheduler sched;
-        reactor::Thread sync{
-          sched,
-          "notify_8infinit",
-          [&]
+      public:
+        State& state;
+        Transaction transaction;
+        std::function<void(Transaction const&, reactor::Scheduler&)>
+          notify_8infinit;
+        std::function<void(std::string const&)> download_files;
+
+        NotifyOp(State& state,
+                 Transaction const& transaction,
+                 std::function<void(Transaction const&, reactor::Scheduler&)>
+                 notify_8infinit,
+                 std::function<void(std::string const&)> download_files):
+          Operation{"notify_8infinit_" + transaction.transaction_id},
+          state(state),
+          transaction(transaction),
+          notify_8infinit(notify_8infinit),
+          download_files(download_files)
+        {}
+
+      public:
+        void
+        _run() override
+        {
+          std::exception_ptr exception;
           {
-            try
-            {
-              this->_notify_8infinit(transaction, sched);
-            }
-            catch (elle::Exception const& e)
-            {
-              exception = std::make_exception_ptr(e);
-            }
+            reactor::Scheduler sched;
+            reactor::Thread sync{
+              sched,
+              "notify_8infinit",
+              [&]
+              {
+                try
+                {
+                  this->notify_8infinit(this->transaction, sched);
+                }
+                // A parsing bug in gcc (fixed in 4.8.3) make this block
+                // mandatory.
+                catch (std::exception const& e)
+                {
+                  exception = std::make_exception_ptr(e);
+                }
+                catch (...)
+                {
+                  exception = std::current_exception();
+                }
+              }
+            };
+
+            sched.run();
+            ELLE_DEBUG("notify finished");
           }
-        };
+          if (this->cancelled())
+            return;
+          if (exception != std::exception_ptr{})
+          {
+            std::string msg;
+            try { std::rethrow_exception(exception); }
+            catch (std::exception const& err) { msg = err.what(); }
+            catch (...) { msg = "Unknown exception type"; }
+            ELLE_ERR("cannot connect infinit instances: %s", msg);
+            this->state.update_transaction(this->transaction.transaction_id,
+                                           gap_transaction_status_canceled);
+            std::rethrow_exception(exception);
+          }
+          if (this->transaction.recipient_device_id == this->state.device_id())
+          {
+            this->download_files(this->transaction.transaction_id);
+          }
+        }
+      };
 
-        sched.run();
-        ELLE_DEBUG("notify finished");
-      }
-
-      if (exception != std::exception_ptr{})
-      {
-        std::string msg;
-        try { std::rethrow_exception(exception); }
-        catch (std::exception const& err) { msg = err.what(); }
-        catch (...) { msg = "Unknown exception type"; }
-        ELLE_ERR("cannot connect infinit instances: %s", msg);
-        this->update_transaction(transaction.transaction_id,
-                                 gap_transaction_status_canceled);
-        std::rethrow_exception(exception);
-      }
-      if (transaction.recipient_device_id == this->device_id())
-      {
-        this->_download_files(transaction.transaction_id);
-      }
+      this->_add_operation<NotifyOp>(*this,
+                                     transaction,
+                                     std::bind(&State::_notify_8infinit,
+                                               this,
+                                               std::placeholders::_1,
+                                               std::placeholders::_2),
+                                     std::bind(&State::_download_files,
+                                               this,
+                                               std::placeholders::_1));
     }
 
     void
