@@ -10,6 +10,8 @@
 
 #include <agent/Agent.hh>
 
+#include <satellites/satellite.hh>
+
 #include <etoile/Etoile.hh>
 #include <etoile/depot/Depot.hh>
 
@@ -244,33 +246,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
     throw elle::Exception("unable to clean Lune");
 }
 
-elle::Status
-Main(elle::Natural32 argc, elle::Character* argv[])
-{
-  try
-   {
-      Infinit(argc, argv);
-    }
-  catch (elle::utility::ParserException const &e)
-    {
-      std::cerr << e.what() << std::endl;
-      Infinit::Parser->Usage();
-    }
-  catch (std::exception const& e)
-    {
-      std::cerr << argv[0] << ": fatal error: " << e.what() << std::endl;
-      if (elle::Exception const* re = dynamic_cast<elle::Exception const*>(&e))
-        std::cerr << re->backtrace() << std::endl;
-
-      elle::crash::report(common::meta::host(), common::meta::port(),
-                          "8infinit", e.what(), elle::Backtrace::current());
-      reactor::Scheduler::scheduler()->terminate();
-      return elle::Status::Error;
-    }
-  reactor::Scheduler::scheduler()->terminate();
-  return elle::Status::Ok;
-}
-
 int
 main(int argc, char* argv[])
 {
@@ -278,13 +253,9 @@ main(int argc, char* argv[])
     (std::unique_ptr<elle::log::Logger>
      (new elle::log::TextLogger(log_destination())));
 
-  reactor::Scheduler sched;
-  reactor::VThread<elle::Status> main(sched,
-                                      "Infinit main",
-                                      [&argc, &argv] () -> elle::Status {
-                                        return Main(argc, argv);
-                                      });
-  sched.run();
-
-  return main.result() == elle::Status::Ok ? 0 : 1;
+  auto _main = [&]
+  {
+    Infinit(argc, argv);
+  };
+  return infinit::satellite_main("8infinit", std::move(_main));
 }

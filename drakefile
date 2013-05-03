@@ -753,8 +753,14 @@ def configure(cxx_toolkit,
   if enable_horizon:
     infinit_bin_config.lib('fuse')
     infinit_bin_config.lib('pthread')
+
+  infinit_sources = drake.nodes(
+      '_infinit.cc',
+      'satellites/satellite.cc',
+      'satellites/satellite.hh'
+  )
   infinit_bin = drake.cxx.Executable('bin/8infinit',
-                                     drake.nodes('_infinit.cc') + infinit_libs,
+                                     infinit_sources + infinit_libs,
                                      cxx_toolkit, infinit_bin_config)
   build << infinit_bin
 
