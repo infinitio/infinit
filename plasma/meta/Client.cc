@@ -84,6 +84,7 @@ SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
   ar & named("fullname", res.fullname);
   ar & named("handle", res.handle);
   ar & named("public_key", res.public_key);
+  ar & named("status", res.status);
 }
 
 // SERIALIZE_RESPONSE(plasma::meta::SwaggerResponse, ar, res)
@@ -103,6 +104,7 @@ SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
   ar & named("public_key", res.public_key);
   ar & named("identity", res.identity);
   ar & named("remaining_invitations",  res.remaining_invitations);
+  ar & named("status", res.status);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UsersResponse, ar, res)
