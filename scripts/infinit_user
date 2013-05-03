@@ -14,5 +14,5 @@
 
 infinit_user() {
 	export INFINIT_USER=$1
-	export RPROMPT="[$1] Infinit"
+	export RPROMPT="[\$INFINIT_USER] Infinit"
 }
