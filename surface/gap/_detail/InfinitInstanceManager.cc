@@ -26,7 +26,7 @@ namespace surface
     void
     InfinitInstanceManager::launch_network(std::string const& network_id)
     {
-      ELLE_TRACE_FUNCTION(network_id);
+      ELLE_TRACE_METHOD(network_id);
       if (_instances.find(network_id) != _instances.end())
       {
         ELLE_ASSERT(_instances[network_id] != nullptr);
@@ -100,11 +100,11 @@ namespace surface
     void
     InfinitInstanceManager::stop_network(std::string const& network_id)
     {
-      ELLE_TRACE("stopping network");
-
+      ELLE_TRACE_METHOD(network_id);
       try
       {
         auto const& instance = this->network_instance(network_id);
+        ELLE_ASSERT(instance.process != nullptr);
         instance.process->interrupt(elle::system::ProcessTermination::dont_wait);
       }
       catch (elle::Exception const& e)
@@ -115,6 +115,7 @@ namespace surface
       auto it_proc = this->_instances.find(network_id);
       if (it_proc != this->_instances.end())
       {
+        ELLE_ASSERT(it_proc->second != nullptr);
         auto& proc = it_proc->second->process;
 
         if (proc->running())
@@ -140,6 +141,10 @@ namespace surface
             else
               ELLE_ERR("8infinit exited with status %s", status_code);
           }
+          else
+          {
+            ELLE_DEBUG("status 0");
+          }
         }
         _instances.erase(network_id);
       }
@@ -148,6 +153,7 @@ namespace surface
     bool
     InfinitInstanceManager::has_network(std::string const& network_id) const
     {
+      ELLE_TRACE_METHOD(network_id);
       if (this->_instances.find(network_id) == this->_instances.end())
         return false;
 
@@ -165,6 +171,7 @@ namespace surface
     InfinitInstance const&
     InfinitInstanceManager::network_instance(std::string const& network_id) const
     {
+      ELLE_TRACE_METHOD(network_id);
       auto it = _instances.find(network_id);
       if (it == _instances.end())
         throw elle::Exception{"Cannot find any network " + network_id};
@@ -175,6 +182,7 @@ namespace surface
     InfinitInstance const*
     InfinitInstanceManager::network_instance_for_file(std::string const& path)
     {
+      ELLE_TRACE_METHOD(path);
       for (auto const& pair : _instances)
         {
           std::string mount_point = pair.second->mount_point;

@@ -77,6 +77,7 @@ namespace plasma
     Client::_deserialize_answer(std::istream& res)
     {
       T ret;
+      ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
       // deserialize response
       try
       {
@@ -84,6 +85,7 @@ namespace plasma
       }
       catch (std::exception const& err)
       {
+        ELLE_ERR("Couldn't deserialize %s: %s", ELLE_PRETTY_TYPE(T), err.what());
         throw Exception(Error::unknown, err.what());
       }
 

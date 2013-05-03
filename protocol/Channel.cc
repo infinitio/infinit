@@ -49,7 +49,7 @@ namespace infinit
       assert(_packets.empty());
       if (_id != 0)
         {
-          ELLE_DEBUG_SCOPE("%s: close %s", _backend, *this);
+          ELLE_DEBUG_SCOPE("close channel %s", _id);
           assert(_backend._channels.find(_id) != _backend._channels.end());
           _backend._channels.erase(_id);
         }
