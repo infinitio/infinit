@@ -156,7 +156,7 @@ namespace etoile
           data().write(relative_offset,
                        elle::WeakBuffer{
                          region.mutable_contents() + (absolute_offset - offset),
-                         relative_size});
+                         static_cast<size_t>(relative_size)});
 
           data.close();
 
@@ -204,11 +204,12 @@ namespace etoile
 
               // Write the remaining content at the end of the last
               // data block.
-              end().write(end().size(),
-                          elle::WeakBuffer{
-                            region.mutable_contents() +
-                              (absolute_offset - offset),
-                            expanding_size - (absolute_offset - offset)});
+              end().write(
+                end().size(),
+                elle::WeakBuffer{
+                  region.mutable_contents() + (absolute_offset - offset),
+                  static_cast<size_t>(expanding_size -
+                                      (absolute_offset - offset))});
 
               context.contents_porcupine->update(absolute_offset);
 
