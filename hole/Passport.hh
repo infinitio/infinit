@@ -29,7 +29,7 @@ namespace elle
   private:
     ELLE_ATTRIBUTE_R(elle::String, id);
     ELLE_ATTRIBUTE_R(elle::String, name);
-    cryptography::PublicKey _owner_K;
+    ELLE_ATTRIBUTE_R(cryptography::PublicKey, owner_K);
     cryptography::Signature _signature;
 
     /*-------------.
@@ -37,6 +37,7 @@ namespace elle
     `-------------*/
   public:
     Passport(); // XXX Do not use (sheduled for deletion)
+    // XXX[init the complex attributes: owner & signature]
     ELLE_SERIALIZE_CONSTRUCT(Passport) {}
     /// @param id Unique identifier.
     /// @param name Represented device name.
