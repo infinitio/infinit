@@ -1,11 +1,15 @@
+#include "google.hh"
+
 #include <elle/format/hexadecimal.hh>
+#include <elle/os/getenv.hh>
+#include <elle/memory.hh>
 #include <elle/os/path.hh>
 
 #include <cryptography/Digest.hh>
 #include <cryptography/Plain.hh>
 #include <cryptography/oneway.hh>
 
-#include "google.hh"
+#include <common/common.hh>
 
 
 ELLE_LOG_COMPONENT("elle.metrics.google.Service");
@@ -35,12 +39,13 @@ namespace elle
 
 
       //- Service --------------------------------------------------------------
-      Service::Service(std::string const& host,
-                       uint16_t  port,
-                       std::string const& id,
-                       std::string const& id_file_path)
-        : elle::metrics::Reporter::Service{host, port, id, pretty_name}
-        , _id_file_path{id_file_path}
+      Service::Service():
+        elle::metrics::Reporter::Service{
+          common::metrics::google_info().host,
+          common::metrics::google_info().port,
+          retrieve_id(common::metrics::google_info().id_path),
+          pretty_name}
+        , _id_file_path{common::metrics::google_info().id_path}
       {}
 
       void
@@ -59,7 +64,7 @@ namespace elle
           .post_field("an", "Infinit")         // Application name.
           .post_field("t", "appview")          // Type of interraction.
           .post_field("cid", this->_user_id)   // Anonymous user.
-          .post_field("tid", "UA-31957100-2")  // Tracking ID.
+          .post_field("tid", common::metrics::google_info().tracking_id)
           .post_field("v", "1");               // Api version.
 
         typedef Reporter::Metric::value_type Field;
@@ -123,14 +128,9 @@ namespace elle
 
       //- Helper ---------------------------------------------------------------
       void
-      register_service(Reporter& reporter,
-                       std::string const& host,
-                       uint16_t port,
-                       std::string const& id_file_path)
+      register_service(Reporter& reporter)
       {
-        reporter.add_service(
-          std::unique_ptr<Service>{
-            new Service{host, port, retrieve_id(id_file_path), id_file_path}});
+        reporter.add_service(elle::make_unique<Service>());
       }
 
       std::string
@@ -142,7 +142,7 @@ namespace elle
         {
           std::ifstream id_file(path);
 
-          if(!id_file.good())
+          if (!id_file.good())
             return id;
 
           std::getline(id_file, id);

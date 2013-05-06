@@ -16,10 +16,8 @@ namespace elle
       class Service: public elle::metrics::Reporter::Service
       {
       public:
-        Service(std::string const& host,
-                uint16_t  port,
-                std::string const& id,
-                std::string const& id_file_path);
+        Service();
+
       private:
         virtual
         void
@@ -38,10 +36,7 @@ namespace elle
 
       // Create a static Reporter with google analytics server.
       void
-      register_service(Reporter& reporter,
-                       std::string const& host,
-                       uint16_t port,
-                       std::string const& id);
+      register_service(Reporter& reporter);
     }
   }
 }
