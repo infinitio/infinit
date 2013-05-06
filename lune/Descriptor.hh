@@ -4,7 +4,6 @@
 # include <elle/Version.hh>
 # include <elle/serialize/fwd.hh>
 # include <elle/serialize/Format.hh>
-# include <elle/serialize/DynamicFormat.hh>
 # include <elle/serialize/construct.hh>
 
 # include <cryptography/Signature.hh>
@@ -119,7 +118,6 @@ namespace lune
   class Descriptor:
     public elle::concept::MakeFileable<Descriptor>,
     public elle::concept::MakeUniquable<Descriptor>,
-    public elle::serialize::DynamicFormat<Descriptor>,
     private boost::noncopyable
   {
     /*---------------------.
