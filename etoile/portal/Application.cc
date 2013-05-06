@@ -17,8 +17,6 @@
 #include <etoile/wall/Attributes.hh>
 #include <etoile/Exception.hh>
 
-#include <hole/implementations/slug/Machine.hh> // FIXME
-
 #include <Infinit.hh>
 #include <Scheduler.hh>
 

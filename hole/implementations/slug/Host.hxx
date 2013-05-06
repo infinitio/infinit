@@ -1,6 +1,7 @@
-#pragma once
-#ifndef HOST_O9N6CLMS
-#define HOST_O9N6CLMS
+#ifndef HOLE_IMPLEMENTATIONS_SLUG_HOST_HXX
+# define HOLE_IMPLEMENTATIONS_SLUG_HOST_HXX
+
+# include <hole/Passport.hh>
 
 namespace hole
 {
@@ -23,4 +24,4 @@ namespace hole
   }
 }
 
-#endif /* end of include guard: HOST_O9N6CLMS */
+#endif

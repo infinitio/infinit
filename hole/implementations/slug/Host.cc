@@ -16,7 +16,6 @@
 
 #include <hole/Hole.hh>
 #include <hole/implementations/slug/Host.hh>
-#include <hole/implementations/slug/Machine.hh>
 #include <hole/implementations/slug/Manifest.hh>
 #include <hole/implementations/slug/Slug.hh>
 
@@ -34,10 +33,10 @@ namespace hole
       | Construction |
       `-------------*/
 
-      Host::Host(Machine& machine,
+      Host::Host(Slug& slug,
                  elle::network::Locus const& locus,
                  std::unique_ptr<reactor::network::Socket> socket)
-        : _machine(machine)
+        : _slug(slug)
         , _locus(locus)
         , _state(State::connected)
         , _authenticated(false)
@@ -79,11 +78,11 @@ namespace hole
         catch (reactor::network::Exception& e)
           {
             ELLE_WARN("%s: discarded: %s", *this, e.what());
-            this->_machine._remove(this);
+            this->_slug._remove(this);
             return;
           }
         ELLE_LOG("%s: left", *this);
-        this->_machine._remove(this);
+        this->_slug._remove(this);
       }
 
       /*----.
@@ -134,22 +133,22 @@ namespace hole
         {
             ELLE_DEBUG("already authenticated");
             // XXX is this required ?
-            this->_machine._host_register(this);
-            return this->_machine.loci();
+            this->_slug._host_register(this);
+            return this->_slug.loci();
         }
 
-        if (!passport.validate(this->_machine.hole().authority()))
+        if (!passport.validate(this->_slug.authority()))
           throw Exception("unable to validate the passport");
         else
           this->_authenticated = true;
         // Also authenticate to this host if we're not already doing so.
         if (this->_state == State::connected)
-          this->authenticate(this->_machine.hole().passport());
+          this->authenticate(this->_slug.passport());
         // If we're authenticated, validate this host.
         if (this->_state == State::authenticated)
-          this->_machine._host_register(this);
+          this->_slug._host_register(this);
         // Send back all the hosts we know.
-        return this->_machine.loci();
+        return this->_slug.loci();
       }
 
       void
@@ -175,7 +174,7 @@ namespace hole
               nucleus::proton::ImmutableBlock const& ib =
                 static_cast<nucleus::proton::ImmutableBlock const&>(*block);
 
-              this->_machine.hole().storage().store(address, ib);
+              this->_slug.storage().store(address, ib);
 
               break;
             }
@@ -210,7 +209,7 @@ namespace hole
                         {
                           // Load the access block.
                           std::unique_ptr<nucleus::proton::Block> block
-                            (this->_machine.hole().pull(object->access(),
+                            (this->_slug.pull(object->access(),
                                                    nucleus::proton::Revision::Last));
                           std::unique_ptr<nucleus::neutron::Access> access
                             (dynamic_cast<nucleus::neutron::Access*>(block.release()));
@@ -247,7 +246,7 @@ namespace hole
                     }
                   }
 
-                this->_machine.hole().storage().store(address, *mb);
+                this->_slug.storage().store(address, *mb);
               }
               break;
             }
@@ -282,7 +281,7 @@ namespace hole
             {
               ELLE_DEBUG("%s: block is immutable", *this);
 
-              block = this->_machine.hole().storage().load(address);
+              block = this->_slug.storage().load(address);
 
               // validate the block.
               block->validate(address);
@@ -296,7 +295,7 @@ namespace hole
               ELLE_TRACE("%s: block is mutable", *this);
 
               // Load block.
-              block = this->_machine.hole().storage().load(address, revision);
+              block = this->_slug.storage().load(address, revision);
 
               // validate the block, depending on its component.
               //
@@ -320,7 +319,7 @@ namespace hole
                   {
                     // Load the access block.
                     std::unique_ptr<Block> addressBlock
-                      (this->_machine.hole().storage().load(object->access(),
+                      (this->_slug.storage().load(object->access(),
                                                             nucleus::proton::Revision::Last));
 
                     // Get address block.
@@ -388,7 +387,7 @@ namespace hole
             {
             case nucleus::proton::Family::content_hash_block:
               {
-                this->_machine.hole().storage().erase(address);
+                this->_slug.storage().erase(address);
 
                 break;
               }
@@ -396,7 +395,7 @@ namespace hole
             case nucleus::proton::Family::owner_key_block:
             case nucleus::proton::Family::imprint_block:
               {
-                this->_machine.hole().storage().erase(address);
+                this->_slug.storage().erase(address);
 
                 break;
               }
