@@ -47,13 +47,9 @@ int main(void)
     //                                         g_info.id_path);
 
     // Initialize server.
-    auto const& km_info = common::metrics::km_info();
     elle::metrics::Reporter reporter{};
 
-    elle::metrics::kissmetrics::register_service(reporter,
-                                                 km_info.server,
-                                                 km_info.port,
-                                                 km_info.id_path);
+    elle::metrics::kissmetrics::register_service(reporter);
     reporter.store("user_landing");
     reporter.store("user_signup");
     reporter.store("user_fullname");
