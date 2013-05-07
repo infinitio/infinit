@@ -153,7 +153,7 @@ namespace surface
 
     State::~State()
     {
-      ELLE_WARN("Destroying state.");
+      ELLE_TRACE_METHOD("");
       this->logout();
     }
 
