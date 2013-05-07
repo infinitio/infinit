@@ -1,9 +1,4 @@
 # -*- encoding: utf-8 -*-
-
-import _gap
-from collections import namedtuple
-import sys
-
 """
 gap library binding module
 
@@ -14,6 +9,10 @@ True
 >>>
 
 """
+
+import _gap
+
+
 class _State:
     """State is the interface to gap library functions
     """
@@ -90,11 +89,11 @@ class _State:
             'on_error_callback',
         ]
 
-        def make_method(m):
+        def make_method(meth):
             method = lambda *args: (
-                self._call(m, *args)
+                self._call(meth, *args)
             )
-            method.__doc__ = getattr(_gap, m).__doc__
+            method.__doc__ = getattr(_gap, meth).__doc__
             return method
 
         for method in directly_exported_methods:
@@ -111,7 +110,7 @@ class _State:
     def meta_status(self):
         try:
             return self._call('meta_status') == self.Status.ok
-        except:
+        except Exception as e:
             return False
 
     @property
@@ -144,7 +143,7 @@ class _State:
         pw_hash = self._call('hash_password', email, password)
         self._call('register', fullname, email, pw_hash, dev_name, activation_code)
 
-    def connect():
+    def connect(self):
         self._call('connect')
 
     @property
@@ -156,7 +155,7 @@ class State(_State):
         self._state = _gap.new()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, value, traceback):
         _gap.free(self._state)
 
 if __name__ == "__main__":
