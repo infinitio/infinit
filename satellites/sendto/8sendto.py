@@ -22,12 +22,13 @@ This script blocks until the end of the transfer.
 """
 
 def login(state, email = None):
-    sender_id = os.getenv("INFINIT_USER", None)
-    if sender_id == None:
-        raise Exception("you must provide INFINIT_USER")
+    if not state.logged:
+        sender_id = os.getenv("INFINIT_USER", None)
+        if sender_id == None:
+            raise Exception("you must provide INFINIT_USER")
 
-    password = getpass("password: ")
-    state.login(sender_id, password)
+        password = getpass("password: ")
+        state.login(sender_id, password)
     import socket
     state.set_device_name(socket.gethostname().strip())
     state.connect()

@@ -59,13 +59,13 @@ def on_error(state, status, message, tid):
     state.running = False
 
 def login(state, email = None):
-    receiver_id = os.getenv("INFINIT_USER", None)
-    if receiver_id == None:
-        raise Exception("you must provide INFINIT_USER")
-    password = getpass("password: ")
-    state.login(receiver_id, password)
+    if not state.logged:
+        if receiver_id == None:
+            raise Exception("you must provide INFINIT_USER")
+        password = getpass("password: ")
+        state.login(receiver_id, password)
     state.connect()
-    return receiver_id
+    return state.email()
 
 def select_transactions(state, l_transactions, sender):
     if sender is not None:
