@@ -1,16 +1,17 @@
 #include "kissmetrics.hh"
 
 #include <elle/format/hexadecimal.hh>
+#include <elle/memory.hh>
 #include <elle/os/path.hh>
 
 #include <cryptography/Digest.hh>
 #include <cryptography/Plain.hh>
 #include <cryptography/oneway.hh>
 
-#include "google.hh"
+#include <common/common.hh>
 
 
-ELLE_LOG_COMPONENT("elle.metrics.google.Service");
+ELLE_LOG_COMPONENT("elle.metrics.kissmetrics.Service");
 
 namespace elle
 {
@@ -36,12 +37,13 @@ namespace elle
       };
 
       //- Service --------------------------------------------------------------
-      Service::Service(std::string const& host,
-                       uint16_t  port,
-                       std::string const& id,
-                       std::string const& id_file_path)
-        : elle::metrics::Reporter::Service{host, port, id, pretty_name}
-        , _id_file_path{id_file_path}
+      Service::Service():
+        elle::metrics::Reporter::Service{
+          common::metrics::km_info().host,
+          common::metrics::km_info().port,
+          retrieve_id(common::metrics::km_info().id_path),
+          pretty_name}
+        , _id_file_path{common::metrics::km_info().id_path}
       {}
 
       void
@@ -57,7 +59,7 @@ namespace elle
           .parameter("version", elle::metrics::Reporter::version)
           .parameter("app_name", "Infinit")
           .parameter("_p", this->_user_id)
-          .parameter("_k", "0a79eca82697f0f7f0e6d5183daf8f1ebb81b39e")  // Tracking ID.
+          .parameter("_k", common::metrics::km_info().tracking_id)
           .parameter("version", "1");
 
         typedef Reporter::Metric::value_type Field;
@@ -89,14 +91,9 @@ namespace elle
 
       //- Helper ---------------------------------------------------------------
       void
-      register_service(Reporter& reporter,
-                       std::string const& host,
-                       uint16_t port,
-                       std::string const& id_file_path)
+      register_service(Reporter& reporter)
       {
-        reporter.add_service(
-          std::unique_ptr<Service>{
-            new Service{host, port, retrieve_id(id_file_path), id_file_path}});
+        reporter.add_service(elle::make_unique<Service>());
       }
 
       std::string

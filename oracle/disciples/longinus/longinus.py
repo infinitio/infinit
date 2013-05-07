@@ -28,10 +28,10 @@ class PunchHelper(DatagramProtocol):
 
     def handle_echo(self, (host, port), type, *args):
         print("handle_echo {}".format(type))
-        me = "{}:{}".format(host, port)
+        msg = "{}:{}".format(host, port)
         if type == "sasp": #Same Address Same Port
             print("send {} to {}:{}".format(msg, host, port))
-            self.transport.write("{}\n".format(me), (host, port))
+            self.transport.write("{}\n".format(msg), (host, port))
         elif type == "dadp": #Different Address Different Port
             pass
         elif type == "sadp": #Same Address Different Port
