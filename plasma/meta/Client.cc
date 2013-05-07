@@ -105,6 +105,16 @@ SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
   ar & named("identity", res.identity);
   ar & named("remaining_invitations",  res.remaining_invitations);
   ar & named("status", res.status);
+  try
+  {
+    ar & named("token_generation_key", res.token_generation_key);
+  }
+  catch (std::exception const& e)
+  {
+    ELLE_WARN("User{%s, %s, %s}, has no member token_generation_key",
+              res.fullname, res._id, res.email);
+    res.token_generation_key = "";
+  }
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UsersResponse, ar, res)
@@ -310,10 +320,26 @@ namespace plasma
       auto res = this->_post<LoginResponse>("/user/login", request);
       if (res.success())
         {
-          this->token(res.token);
+          this->_token = res.token;
           this->_identity = res.identity;
           this->_email = email;
         }
+      return res;
+    }
+
+    LoginResponse
+    Client::generate_token(string const& token_genkey)
+    {
+      json::Dictionary request;
+      request["token_generation_key"] = token_genkey;
+
+      auto res = this->_post<LoginResponse>("/user/generate_token", request);
+      if (res.success())
+      {
+        this->_token = res.token;
+        this->_identity = res.identity;
+        this->_email = res.email;
+      }
       return res;
     }
 

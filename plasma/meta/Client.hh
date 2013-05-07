@@ -117,6 +117,7 @@ namespace plasma
       string identity;
       string email;
       int remaining_invitations;
+      string token_generation_key;
     };
 
     struct InviteUserResponse : Response
@@ -266,6 +267,9 @@ namespace plasma
       LoginResponse
       login(string const& email,
             string const& password);
+
+      LoginResponse
+      generate_token(string const& token_genkey);
 
       LogoutResponse
       logout();
