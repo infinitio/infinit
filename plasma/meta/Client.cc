@@ -310,8 +310,9 @@ namespace plasma
 
     // - API calls ------------------------------------------------------------
     // XXX add login with token method.
-    LoginResponse Client::login(string const& email,
-                                string const& password)
+    LoginResponse
+    Client::login(string const& email,
+                  string const& password)
     {
       json::Dictionary request{map<string, string>{
         {"email", email},
