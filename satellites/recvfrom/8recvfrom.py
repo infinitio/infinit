@@ -188,4 +188,4 @@ if __name__ == "__main__":
                 tid = state.current_transaction_id
                 print("Interupted. Cancel the outgoing transaction ({})".format(tid))
                 state.update_transaction(tid, state.TransactionStatus.canceled)
-                raise e
+            raise e
