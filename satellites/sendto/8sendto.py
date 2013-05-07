@@ -60,7 +60,6 @@ def on_error(state, status, message, tid):
     state.running = False
 
 def main(state, user, files):
-    login(state)
 
     id = state.send_files(user, files)
     state.transaction_callback(partial(on_transaction, state))
@@ -93,6 +92,30 @@ def main(state, user, files):
         time.sleep(1)
         state.poll()
 
+def go(state, user, files):
+    try:
+        main(state, user, files)
+    except KeyboardInterrupt as e:
+        if getattr(state, "current_transaction_id", None):
+            tid = state.current_transaction_id
+            print("Interrupted. Cancel the outgoing transaction ({})".format(tid))
+            state.update_transaction(tid, state.TransactionStatus.canceled)
+    except Exception as e:
+        if getattr(state, "current_transaction_id", None):
+            tid = state.current_transaction_id
+            print("Interrupted. Cancel the outgoing transaction ({})".format(tid))
+            state.update_transaction(tid, state.TransactionStatus.canceled)
+        raise e
+
+def get_homedir():
+    home = os.getenv("INFINIT_HOME", "~/.infinit/")
+    return os.path.expanduser(home)
+
+def login_and_go(args):
+    with gap.State() as state:
+        login(state, args.user)
+        go(state, args.user, args.files)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("user", help="to user to who you want to send a file")
@@ -104,17 +127,4 @@ if __name__ == "__main__":
         os.environ["INFINIT_LOG_FILE"] = args.logfile
 
     import gap
-    with gap.State() as state:
-        try:
-            main(state, args.user, args.files)
-        except KeyboardInterrupt as e:
-            if getattr(state, "current_transaction_id", None):
-                tid = state.current_transaction_id
-                print("Interrupted. Cancel the outgoing transaction ({})".format(tid))
-                state.update_transaction(tid, state.TransactionStatus.canceled)
-        except Exception as e:
-            if getattr(state, "current_transaction_id", None):
-                tid = state.current_transaction_id
-                print("Interrupted. Cancel the outgoing transaction ({})".format(tid))
-                state.update_transaction(tid, state.TransactionStatus.canceled)
-            raise e
+    login_and_go(args)
