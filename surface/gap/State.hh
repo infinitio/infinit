@@ -167,6 +167,9 @@ namespace surface
       std::string const&
       token();
 
+      std::string const&
+      token_generation_key() const;
+
       /// Retrieve a user by its public key.
       User const&
       user_from_public_key(std::string const& public_key);

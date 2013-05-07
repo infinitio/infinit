@@ -20,6 +20,36 @@ _gap_user_directory(gap_State* state)
   return ret;
 }
 
+static boost::python::str
+_gap_token(gap_State* state)
+{
+  assert(state != nullptr);
+  boost::python::str o;
+  char *tok;
+  if (gap_token(state, &tok) == gap_error)
+  {
+    return boost::python::str();
+  }
+  boost::python::str ret{std::string{tok}};
+  free(tok);
+  return ret;
+}
+
+static boost::python::str
+_gap_generation_key(gap_State* state)
+{
+  assert(state != nullptr);
+  boost::python::str o;
+  char *tok = nullptr;
+  if (gap_generation_key(state, &tok) == gap_error)
+  {
+    return boost::python::str();
+  }
+  boost::python::str ret{std::string{tok}};
+  free(tok);
+  return ret;
+}
+
 static boost::python::object
 _get_networks(gap_State* state)
 {
@@ -351,6 +381,8 @@ BOOST_PYTHON_MODULE(_gap)
 
   py::def("hash_password", &_hash_password, by_value());
   py::def("login", &gap_login);
+  py::def("token", &_gap_token);
+  py::def("generation_key", &_gap_generation_key);
   py::def("is_logged", &gap_logged_in);
   py::def("logout", &gap_logout);
   py::def("register", &gap_register);

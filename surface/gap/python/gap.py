@@ -34,6 +34,8 @@ class _State:
             'connect',
             'invite_user',
             'send_message',
+            'token',
+            'generation_key',
 
             # Users.
             'search_users',

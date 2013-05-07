@@ -312,6 +312,46 @@ extern "C"
     WRAP_CPP(state, logout);
   }
 
+  gap_Status
+  gap_token(gap_State* state,
+            char** usertoken)
+  {
+    gap_Status ret = gap_error;
+    try
+    {
+      std::string token = __TO_CPP(state)->token();
+      char* new_token = strdup(token.c_str());
+      if (new_token != nullptr)
+      {
+        ret = gap_ok;
+        *usertoken = new_token;
+        return ret;
+      }
+    }
+    CATCH_ALL(token)
+    return ret;
+  }
+
+  gap_Status
+  gap_generation_key(gap_State* state,
+                     char** usertoken)
+  {
+    gap_Status ret = gap_error;
+    try
+    {
+      std::string token = __TO_CPP(state)->token_generation_key();
+      char* new_token = strdup(token.c_str());
+      if (new_token != nullptr)
+      {
+        ret = gap_ok;
+        *usertoken = new_token;
+        return ret;
+      }
+    }
+    CATCH_ALL(token)
+    return ret;
+  }
+
   gap_Status gap_register(gap_State* state,
                           char const* fullname,
                           char const* email,

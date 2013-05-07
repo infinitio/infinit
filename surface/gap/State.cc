@@ -154,16 +154,10 @@ namespace surface
                                                    km_info.id_path);
     }
 
-    State::State(std::string const& token):
-      State{}
+    std::string const&
+    State::token_generation_key() const
     {
-      ELLE_LOG("Creating a new State with token");
-      this->_meta->token(token);
-      auto res = this->_meta->self();
-      this->_meta->identity(res.identity);
-      this->_meta->email(res.email);
-      //XXX factorize that shit
-      this->_me = res;
+      return this->_me.token_generation_key;
     }
 
     void
