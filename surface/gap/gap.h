@@ -326,6 +326,10 @@ extern "C" {
   /// Retrieve user handle.
   char const* gap_user_handle(gap_State* state, char const* id);
 
+  // The user directory
+  char const*
+  gap_user_directory(gap_State* state, char const** directory);
+
   /// Retrieve user status.
   gap_UserStatus
   gap_user_status(gap_State* state, char const* user_id);

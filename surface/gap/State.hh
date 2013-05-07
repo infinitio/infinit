@@ -160,6 +160,9 @@ namespace surface
       /// Retrieve current user data.
       Self const& me();
 
+      std::string
+      user_directory();
+
       /// Retrieve current user token.
       std::string const&
       token();

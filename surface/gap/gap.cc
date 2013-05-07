@@ -546,6 +546,25 @@ extern "C"
 
   /// - User ----------------------------------------------------------------
 
+  char const*
+  gap_user_directory(gap_State* state, char const** directory)
+  {
+    gap_Status ret;
+    try
+    {
+      std::string path = __TO_CPP(state)->user_directory();
+      char const* tmp = strdup(path.c_str());
+      if (directory != nullptr)
+      {
+        *directory = tmp;
+      }
+      return tmp;
+    }
+    CATCH_ALL(user_directory);
+    (void)ret; // this CATCH_ALL Macro sucks.
+    return nullptr;
+  }
+
   char const* gap_user_fullname(gap_State* state, char const* id)
   {
     assert(state != nullptr);

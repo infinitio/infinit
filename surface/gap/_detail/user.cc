@@ -233,6 +233,12 @@ namespace surface
       identity_infos.close();
     }
 
+    std::string
+    State::user_directory()
+    {
+      return common::infinit::user_directory(this->_me._id);
+    }
+
     void
     State::logout()
     {

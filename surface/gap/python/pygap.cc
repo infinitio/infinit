@@ -5,6 +5,21 @@
 
 #include <surface/gap/State.hh>
 
+static boost::python::str
+_gap_user_directory(gap_State* state)
+{
+  assert(state != nullptr);
+  boost::python::str o;
+  char const* udir;
+  if (gap_user_directory(state, &udir) == nullptr)
+  {
+    return boost::python::str();
+  }
+  boost::python::str ret{std::string{udir}};
+  free((void *)udir);
+  return ret;
+}
+
 static boost::python::object
 _get_networks(gap_State* state)
 {
@@ -339,6 +354,7 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("is_logged", &gap_logged_in);
   py::def("logout", &gap_logout);
   py::def("register", &gap_register);
+  py::def("user_directory", *_gap_user_directory);
 
   py::def("invite_user", &gap_invite_user);
   py::def("send_message", &gap_message);

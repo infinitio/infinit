@@ -42,6 +42,7 @@ class _State:
             'user_handle',
             'email',
             'remaining_invitations',
+            'user_directory',
 
             # Networks.
             'create_network',
