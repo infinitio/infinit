@@ -59,6 +59,7 @@ namespace plasma
     {
       auto request = this->_client.request("POST", url);
       request.body_string(req.repr());
+      request.header("Authorization", this->_token);
       request.fire();
       return this->_deserialize_answer<T>(request.response());
     }
@@ -68,6 +69,7 @@ namespace plasma
     Client::_get(std::string const& url)
     {
       auto request = this->_client.request("GET", url);
+      request.header("Authorization", this->_token);
       request.fire();
       return this->_deserialize_answer<T>(request.response());
     }

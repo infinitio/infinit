@@ -770,13 +770,13 @@ namespace plasma
     void
     Client::token(string const& tok)
     {
-      _client.token(tok);
+      this->_token = tok;
     }
 
     string const&
     Client::token() const
     {
-      return _client.token();
+      return this->_token;
     }
 
     string const&
