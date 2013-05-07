@@ -78,7 +78,7 @@ namespace surface
       , _networks_dirty{true}
       , _infinit_instance_manager{}
     {
-      ELLE_LOG("Creating a new State");
+      ELLE_TRACE_METHOD("");
 
       this->_output_dir = common::system::download_directory();
 
@@ -87,17 +87,20 @@ namespace surface
       _google_reporter.start();
 
       this->transaction_callback(
-          [&] (TransactionNotification const &n, bool is_new) -> void {
+          [&] (TransactionNotification const &n, bool is_new)
+          {
             this->_on_transaction(n, is_new);
           }
       );
       this->transaction_status_callback(
-          [&] (TransactionStatusNotification const &n, bool) -> void {
+          [&] (TransactionStatusNotification const &n, bool)
+          {
             this->_on_transaction_status(n);
           }
       );
       this->user_status_callback(
-          [&] (UserStatusNotification const &n) -> void {
+          [&] (UserStatusNotification const &n)
+          {
             this->_on_user_status_update(n);
           }
       );
@@ -244,21 +247,29 @@ namespace surface
                                                 ip, port));
       };
 
+
       auto start_thread = [&] (std::string const &endpoint) {
-        v.push_back(std::make_pair(elle::make_unique<reactor::VThread<bool>>(
-          sched,
-          elle::sprintf("slug_connect(%s)", endpoint),
-          [&] () -> int {
-            try {
-              slug_connect(endpoint);
-            }
-            catch (elle::Exception const &e) {
-              ELLE_WARN("slug_connect failed: %s", e.what());
-              return false;
-            }
-            return true;
+        auto thread_fn = [&]
+        {
+          try
+          {
+            slug_connect(endpoint);
           }
-        ), endpoint));
+          catch (elle::Exception const &e)
+          {
+            ELLE_WARN("slug_connect failed: %s", e.what());
+            return false;
+          }
+          return true;
+        };
+        auto ptr = new reactor::VThread<bool>{
+          sched,
+          elle::sprint("slug_connect(%s)", endpoint),
+          thread_fn
+        };
+        auto pair = std::make_pair(std::unique_ptr<reactor::VThread<bool>>(ptr),
+                                   endpoint);
+        v.push_back(std::move(pair));
       };
 
       ELLE_DEBUG("Connecting...")
