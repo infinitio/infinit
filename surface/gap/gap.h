@@ -40,7 +40,6 @@ extern "C" {
   /// Create a new state.
   /// Returns NULL on failure.
   gap_State* gap_new();
-  gap_State* gap_new_with_token(char const* token);
 
   /// Release a state.
   void gap_free(gap_State* state);

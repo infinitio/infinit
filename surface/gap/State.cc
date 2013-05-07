@@ -105,38 +105,23 @@ namespace surface
           }
       );
 
-      std::string user = elle::os::getenv("INFINIT_USER", "");
+      std::string token_path = elle::os::getenv("INFINIT_TOKEN_FILE", "");
 
-      if (user.length() > 0)
+      if (!token_path.empty() && elle::os::path::exists(token_path))
       {
-        std::string identity_path = common::infinit::identity_path(user);
-
-        if (identity_path.length() > 0 && fs::exists(identity_path))
+        std::string const token_genkey = [&] () -> std::string
         {
-          std::ifstream identity;
-          identity.open(identity_path);
+          ELLE_DEBUG("read generation token from %s", token_path);
+          std::ifstream token_file{token_path};
 
-          if (!identity.good())
-            return;
+          std::string _token_genkey;
+          std::getline(token_file, _token_genkey);
+          return _token_genkey;
+        }();
 
-          std::string token;
-          std::getline(identity, token);
-
-          std::string ident;
-          std::getline(identity, ident);
-
-          std::string mail;
-          std::getline(identity, mail);
-
-          std::string id;
-          std::getline(identity, id);
-
-          this->_meta->token(token);
-          this->_meta->identity(ident);
-          this->_meta->email(mail);
-
-          this->_me = this->_meta->self();
-        }
+        ELLE_TRACE_SCOPE("loading token generating key: %s", token_genkey);
+        this->_meta->generate_token(token_genkey);
+        this->_me = this->_meta->self();
       }
 
       // Initialize google metrics.

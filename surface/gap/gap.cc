@@ -138,35 +138,6 @@ extern "C"
       }
   }
 
-  gap_State* gap_new_with_token(char const* token)
-  {
-    static bool initialized = false;
-    if (!initialized)
-      {
-        initialized = true;
-        if (lune::Lune::Initialize() == elle::Status::Error)
-          {
-            ELLE_ERR("Cannot initialize root components");
-            return nullptr;
-          }
-      }
-
-    try
-      {
-        return __TO_C(new surface::gap::State(token));
-      }
-    catch (std::exception const& err)
-      {
-        ELLE_ERR("Cannot initialize gap state: %s", err.what());
-        return nullptr;
-      }
-    catch (...)
-      {
-        ELLE_ERR("Cannot initialize gap state");
-        return nullptr;
-      }
-  }
-
   void gap_free(gap_State* state)
   {
     delete __TO_CPP(state);

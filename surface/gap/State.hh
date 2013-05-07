@@ -105,7 +105,6 @@ namespace surface
 
     public:
       State();
-      State(std::string const& token);
       ~State();
 
     public:
