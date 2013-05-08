@@ -1,16 +1,30 @@
-#!/bin/sh
+#!/usr/bin/env python3
 
-set -ex
+template = '''\
+import os, sys
+sys.path.insert(
+    0,
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__),
+        '../source/elle/drake/src')
+    )
+)
 
-mkdir -p "$DIR_BUILD"
-DIR_BUILD=$(realpath "$DIR_BUILD")
-DIR_SOURCE=$(realpath "$DIR_SOURCE")
+import drake
+import drake.cxx
 
-mkdir -p "$DIR_BUILD"
-cd "$DIR_BUILD"
-CXX="$(which g++-4.7.1)"
-cmake "-GUnix Makefiles"                    \
-	-DCMAKE_CXX_COMPILER="$CXX"             \
-	-DINFINIT_PLATFORM=linux64              \
-	.                                       \
-	"$DIR_SOURCE"
+cxx_toolkit = drake.cxx.GccToolkit()
+cxx_config = drake.cxx.Config()
+
+cxx_config.flag('-Wall')
+cxx_config.flag('-W')
+cxx_config.enable_debug_symbols()
+cxx_config.enable_optimization(False)
+
+drake.run('../%s', cxx_toolkit, cxx_config)
+'''
+
+import os
+
+with open('%s/drake' % os.environ['DIR_BUILD'], 'w') as drake:
+  print(template % os.environ['DIR_SOURCE'], file = drake)
