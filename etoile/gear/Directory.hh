@@ -62,6 +62,7 @@ namespace etoile
       nucleus::proton::Porcupine<nucleus::neutron::Catalog>* contents_porcupine;
       etoile::nest::Nest* contents_nest;
       nucleus::proton::Limits contents_limits;
+      nucleus::proton::Footprint contents_threshold;
     };
 
   }

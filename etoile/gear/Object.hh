@@ -98,10 +98,12 @@ namespace etoile
       nucleus::proton::Porcupine<nucleus::neutron::Access>* access_porcupine;
       etoile::nest::Nest* access_nest;
       nucleus::proton::Limits access_limits;
+      nucleus::proton::Footprint access_threshold;
 
       nucleus::proton::Porcupine<nucleus::neutron::Attributes>* attributes_porcupine;
       etoile::nest::Nest* attributes_nest;
       nucleus::proton::Limits attributes_limits;
+      nucleus::proton::Footprint attributes_threshold;
 
       struct
       {
