@@ -310,6 +310,25 @@ namespace nucleus
       return (this->_container);
     }
 
+    /*-----.
+    | Node |
+    `-----*/
+
+    template <typename T>
+    elle::Boolean
+    Quill<T>::eligible() const
+    {
+      for (auto const& pair: this->_container)
+      {
+        Quill<T>::I* inlet = pair.second;
+
+        if (inlet->value().state() == State::dirty)
+          return (false);
+      }
+
+      return (true);
+    }
+
 //
 // ---------- nodule ----------------------------------------------------------
 //

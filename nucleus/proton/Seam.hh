@@ -136,6 +136,10 @@ namespace nucleus
       // interfaces
       //
     public:
+      // node
+      virtual
+      elle::Boolean
+      eligible() const;
       // nodule
       void
       add(typename T::K const& k,
@@ -174,7 +178,6 @@ namespace nucleus
       mayor() const;
       typename T::K const&
       maiden() const;
-
       // dumpable
       elle::Status
       Dump(const elle::Natural32 = 0) const;

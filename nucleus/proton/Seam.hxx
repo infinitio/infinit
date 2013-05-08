@@ -310,6 +310,25 @@ namespace nucleus
       return (inlet->value());
     }
 
+    /*-----.
+    | Node |
+    `-----*/
+
+    template <typename T>
+    elle::Boolean
+    Seam<T>::eligible() const
+    {
+      for (auto const& pair: this->_container)
+      {
+        Seam<T>::I* inlet = pair.second;
+
+        if (inlet->value().state() == State::dirty)
+          return (false);
+      }
+
+      return (true);
+    }
+
 //
 // ---------- nodule ----------------------------------------------------------
 //

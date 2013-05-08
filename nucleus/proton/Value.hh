@@ -60,6 +60,10 @@ namespace nucleus
       Dump(const elle::Natural32 = 0) const;
       // serializable
       ELLE_SERIALIZE_FRIEND_FOR(Value);
+      // node
+      virtual
+      elle::Boolean
+      eligible() const;
     };
   }
 }

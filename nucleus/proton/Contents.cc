@@ -133,6 +133,17 @@ namespace nucleus
       return (this->_node->footprint());
     }
 
+    elle::Boolean
+    Contents::eligible() const
+    {
+      ELLE_ASSERT_NEQ(this->_node, nullptr);
+
+      if (this->state() != this->_node->state())
+        return (false);
+
+      return (this->_node->eligible());
+    }
+
     /*---------.
     | Dumpable |
     `---------*/
