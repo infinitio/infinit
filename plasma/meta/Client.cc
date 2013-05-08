@@ -63,7 +63,7 @@ SERIALIZE_RESPONSE(plasma::meta::LoginResponse, ar, res)
   ar & named("fullname", res.fullname);
   ar & named("email", res.email);
   ar & named("identity", res.identity);
-  ar & named("_id", res._id);
+  ar & named("_id", res.id);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::LogoutResponse, ar, res)
@@ -80,7 +80,7 @@ SERIALIZE_RESPONSE(plasma::meta::RegisterResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
 {
-  ar & named("_id", res._id);
+  ar & named("_id", res.id);
   ar & named("fullname", res.fullname);
   ar & named("handle", res.handle);
   ar & named("public_key", res.public_key);
@@ -97,7 +97,7 @@ SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
 {
-  ar & named("_id", res._id);
+  ar & named("_id", res.id);
   ar & named("fullname", res.fullname);
   ar & named("handle", res.handle);
   ar & named("email", res.email);
@@ -119,14 +119,20 @@ SERIALIZE_RESPONSE(plasma::meta::SwaggersResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::CreateDeviceResponse, ar, res)
 {
-  ar & named("created_device_id", res.created_device_id);
+  ar & named("created_device_id", res.id);
   ar & named("passport", res.passport);
+  // XXXX
+  // ar & named("name", res.name);
+  res.name = "Todo";
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UpdateDeviceResponse, ar, res)
 {
-  ar & named("updated_device_id", res.updated_device_id);
+  ar & named("updated_device_id", res.id);
   ar & named("passport", res.passport);
+  // XXXX
+  // ar & named("name", res.name);
+  res.name = "Todo";
 }
 
 SERIALIZE_RESPONSE(plasma::meta::InviteUserResponse, ar, res)
@@ -137,7 +143,7 @@ SERIALIZE_RESPONSE(plasma::meta::InviteUserResponse, ar, res)
 SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
 {
   // XXX see plasma/plasma.hxx
-  ar & named("transaction_id", res.transaction_id);
+  ar & named("transaction_id", res.id);
   ar & named("sender_id", res.sender_id);
   ar & named("sender_fullname", res.sender_fullname);
   ar & named("sender_device_id", res.sender_device_id);

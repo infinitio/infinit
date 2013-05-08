@@ -26,7 +26,8 @@
 
 namespace infinit
 {
-  class PortaledSlug: public hole::implementations::slug::Slug
+  class PortaledSlug:
+    public hole::implementations::slug::Slug
   {
   public:
     typedef hole::implementations::slug::Slug Super;

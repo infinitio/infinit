@@ -24,8 +24,8 @@ int fail_counter = 0;
 void
 auto_accept_transaction_cb(TransactionNotification const &tn, State &s)
 {
-  s.update_transaction(tn.transaction.transaction_id,
-                       gap_transaction_status_accepted);
+  s.transaction_manager().update(tn.transaction.id,
+                                 gap_transaction_status_accepted);
 }
 
 void
@@ -43,35 +43,21 @@ close_on_finished_transaction_cb(TransactionStatusNotification const &tn,
     finish_test = true;
 }
 
-auto kill_all = []
-(State &s) {
-  auto &n = s.networks();
-  while (1)
-    {
-      auto it = n.begin();
-      auto ite = n.end();
-      if (it == ite)
-        break;
-      s.delete_network(std::string(it->first));
-    }
-};
-
 auto make_login = []
 (State &s, std::string user, std::string email)
 {
   try
-    {
-      s.register_(user,
-                  email,
-                  s.hash_password(email, "bitebitebite"),
-                  "bitebite");
-    }
+  {
+    s.register_(user,
+                email,
+                s.hash_password(email, "bitebitebite"),
+                "bitebite");
+  }
   catch (...)
-    {
-      s.login(email,
-              s.hash_password(email, "bitebitebite"));
-    }
-  s.connect();
+  {
+    s.login(email,
+            s.hash_password(email, "bitebitebite"));
+  }
   s.update_device("device" + user);
 };
 

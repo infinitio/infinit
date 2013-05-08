@@ -1,31 +1,30 @@
 #include "State.hh"
-#include "_detail/Operation.hh"
-#include "_detail/TransactionProgress.hh"
 
 #include <common/common.hh>
 
-#include <protocol/Serializer.hh>
-#include <protocol/ChanneledStream.hh>
-
-#include <etoile/portal/Portal.hh>
-
-#include <reactor/network/tcp-socket.hh>
-#include <reactor/sleep.hh>
+// #include <etoile/portal/Portal.hh>
+#include <lune/Identity.hh>
+#include <lune/Dictionary.hh>
 
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
 #include <elle/os/path.hh>
 #include <elle/os/getenv.hh>
+#include <elle/serialize/HexadecimalArchive.hh>
+
+#include <surface/gap/metrics.hh>
 #include <metrics/_details/google.hh>
 #include <metrics/_details/kissmetrics.hh>
-#include <elle/memory.hh>
 
-#include <boost/algorithm/string.hpp>
+
+// #include <elle/memory.hh>
 #include <boost/filesystem.hpp>
-#include <hole/implementations/slug/Manifest.hh>
+
 
 #include <fstream>
-#include <iterator>
+//#include <iterator>
+
+#include <openssl/sha.h>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
@@ -34,12 +33,6 @@ namespace surface
   namespace gap
   {
     namespace fs = boost::filesystem;
-
-    // - Exception ------------------------------------------------------------
-    Exception::Exception(gap_Status code, std::string const& msg)
-      : std::runtime_error(msg)
-      , code(code)
-    {}
 
     LoggerInitializer::LoggerInitializer()
     {
@@ -62,45 +55,17 @@ namespace surface
     }
 
     // - State ----------------------------------------------------------------
-    State::State()
-      : _logger_intializer{}
-      , _meta{new plasma::meta::Client{
-          common::meta::host(), common::meta::port(), true,
-        }}
-      , _trophonius{nullptr}
-      , _reporter{}
-      , _google_reporter{}
-      , _users{}
-      , _swaggers_dirty{true}
-      , _output_dir{}
-      , _files_infos{}
-      , _networks{}
-      , _networks_dirty{true}
-      , _infinit_instance_manager{}
+    State::State():
+      _logger_intializer{},
+      _meta{common::meta::host(), common::meta::port(), true},
+      _reporter(),
+      _google_reporter()
     {
       ELLE_LOG("Creating a new State");
 
-      this->_output_dir = common::system::download_directory();
-
       // Start metrics after setting up the logger.
-      _reporter.start();
-      _google_reporter.start();
-
-      this->transaction_callback(
-          [&] (TransactionNotification const &n, bool is_new) -> void {
-            this->_on_transaction(n, is_new);
-          }
-      );
-      this->transaction_status_callback(
-          [&] (TransactionStatusNotification const &n, bool) -> void {
-            this->_on_transaction_status(n);
-          }
-      );
-      this->user_status_callback(
-          [&] (UserStatusNotification const &n) -> void {
-            this->_on_user_status_update(n);
-          }
-      );
+      this->_reporter.start();
+      this->_google_reporter.start();
 
       std::string user = elle::os::getenv("INFINIT_USER", "");
 
@@ -128,17 +93,16 @@ namespace surface
           std::string id;
           std::getline(identity, id);
 
-          this->_meta->token(token);
-          this->_meta->identity(ident);
-          this->_meta->email(mail);
+          this->_meta.token(token);
+          this->_meta.identity(ident);
+          this->_meta.email(mail);
 
-          this->_me = this->_meta->self();
+          this->_me = this->_meta.self();
         }
       }
 
       // Initialize google metrics.
       elle::metrics::google::register_service(this->_google_reporter);
-
       // Initialize server.
       elle::metrics::kissmetrics::register_service(this->_reporter);
     }
@@ -147,18 +111,12 @@ namespace surface
       State{}
     {
       ELLE_LOG("Creating a new State with token");
-      this->_meta->token(token);
-      auto res = this->_meta->self();
-      this->_meta->identity(res.identity);
-      this->_meta->email(res.email);
+      this->_meta.token(token);
+      auto res = this->_meta.self();
+      this->_meta.identity(res.identity);
+      this->_meta.email(res.email);
       //XXX factorize that shit
       this->_me = res;
-    }
-
-    void
-    State::on_error_callback(OnErrorCallback const& cb)
-    {
-      _error_handlers.push_back(cb);
     }
 
     State::~State()
@@ -167,308 +125,227 @@ namespace surface
       this->logout();
     }
 
-    void
-    State::debug()
+    std::string const&
+    State::token()
     {
-      this->_meta->debug();
+      return this->_meta.token();
     }
 
-    // - TROPHONIUS ----------------------------------------------------
-    /// Connect to trophonius
-    ///
-
-    auto _print = [] (std::string const &s) { ELLE_DEBUG("-- %s", s); };
-
-    static
-    std::vector<std::string>
-    _find_commond_addr(std::list<std::string> const &externals,
-                       std::list<std::string> const &my_externals)
+    Self const&
+    State::me()
     {
-      std::vector<std::string> theirs_addr;
-      std::vector<std::string> ours_addr;
-      std::vector<std::string> common_addr;
-
-      // XXX[refactor this]
-      for (auto const& i: externals)
-      {
-        std::vector<std::string> res;
-        boost::split(res, i, boost::is_any_of(":"));
-        theirs_addr.push_back(res[0]);
-      }
-      // XXX[refactor this]
-      for (auto const& i: my_externals)
-      {
-        std::vector<std::string> res;
-        boost::split(res, i, boost::is_any_of(":"));
-        ours_addr.push_back(res[0]);
-      }
-
-      std::set_intersection(begin(theirs_addr), end(theirs_addr),
-                            begin(ours_addr), end(ours_addr),
-                            std::back_inserter(common_addr));
-      return common_addr;
-    }
-
-    static
-    int
-    _connect_try(reactor::Scheduler& sched,
-                 hole::implementations::slug::control::RPC& rpcs,
-                 std::vector<std::string> const& addresses)
-    {
-      std::vector<
-        std::pair<
-          std::unique_ptr<reactor::VThread<bool>>, std::string
-        >
-      > v;
-
-      auto slug_connect = [&] (std::string const& endpoint) {
-        std::vector<std::string> result;
-        boost::split(result, endpoint, boost::is_any_of(":"));
-
-        auto const &ip = result[0];
-        auto const &port = result[1];
-        ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
-          rpcs.slug_connect(ip, std::stoi(port));
-
-        ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
-          if (!rpcs.slug_wait(ip, std::stoi(port)))
-            throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
-                                                ip, port));
-      };
-
-      auto start_thread = [&] (std::string const &endpoint) {
-        v.push_back(std::make_pair(elle::make_unique<reactor::VThread<bool>>(
-          sched,
-          elle::sprintf("slug_connect(%s)", endpoint),
-          [&] () -> int {
-            try {
-              slug_connect(endpoint);
-            }
-            catch (elle::Exception const &e) {
-              ELLE_WARN("slug_connect failed: %s", e.what());
-              return false;
-            }
-            return true;
-          }
-        ), endpoint));
-      };
-
-      ELLE_DEBUG("Connecting...")
-        std::for_each(std::begin(addresses), std::end(addresses), start_thread);
-
-      int i = 0;
-      for (auto &t : v)
-      {
-        reactor::VThread<bool> &vt = *t.first;
-        sched.current()->wait(vt);
-        if (vt.result() == true)
-        {
-          i++;
-          ELLE_WARN("connection to %s succeed", t.second);
-        }
-        else
-        {
-          ELLE_WARN("connection to %s failed", t.second);
-        }
-      }
-      ELLE_TRACE("finish connecting to %d node%s", i, i > 0 ? "s" : "");
-      return i;
+      return this->_me;
     }
 
     void
-    State::_notify_8infinit(Transaction const& trans, reactor::Scheduler& sched)
+    State::login(std::string const& email,
+                 std::string const& password)
     {
-      ELLE_TRACE("Notify 8infinit for transaction %s", trans);
+      this->_meta.token("");
 
-      namespace proto = infinit::protocol;
-      std::string const& network_id = trans.network_id;
+      std::string lower_email = email;
 
-      /// Check if network is valid
+      std::transform(lower_email.begin(),
+                     lower_email.end(),
+                     lower_email.begin(),
+                     ::tolower);
+
+      this->_reporter.store("user_login",
+                            {{MKey::status, "attempt"}});
+
+      plasma::meta::LoginResponse res;
+      try
       {
-        auto network = this->networks().find(network_id);
+        res = this->_meta.login(lower_email, password);
+      }
+      CATCH_FAILURE_TO_METRICS("user_login");
 
-        if (network == this->networks().end())
-          throw gap::Exception{gap_internal_error, "Unable to find network"};
+      this->_reporter.update_user(res.id);
+      this->_reporter.store("user_login",
+                            {{MKey::status, "succeed"}});
+
+      // XXX: Not necessary but better.
+      this->_google_reporter.update_user(res.id);
+      this->_google_reporter.store("user:login:succeed",
+                                  {{MKey::session, "start"},
+                                   {MKey::status, "succeed"}});
+
+
+      ELLE_DEBUG("Logged in as %s token = %s", email, res.token);
+
+      this->_me = this->_meta.self();
+
+      ELLE_DEBUG("id: '%s' - fullname: '%s' - lower_email: '%s'",
+                 this->_me.id,
+                 this->_me.fullname,
+                 this->_me.email);
+
+      std::string identity_clear;
+
+      lune::Identity identity;
+
+      // Decrypt the identity
+      if (identity.Restore(res.identity)    == elle::Status::Error ||
+          identity.Decrypt(password)        == elle::Status::Error ||
+          identity.Clear()                  == elle::Status::Error ||
+          identity.Save(identity_clear)     == elle::Status::Error)
+        throw Exception(gap_internal_error,
+                        "Couldn't decrypt the identity file !");
+
+      // Store the identity
+      {
+        if (identity.Restore(identity_clear)  == elle::Status::Error)
+          throw Exception(gap_internal_error,
+                          "Cannot save the identity file.");
+
+        identity.store();
+
+        // user.dic
+        lune::Dictionary dictionary;
+
+        dictionary.store(res.id);
       }
 
-      // Fetch Nodes and find the correct one to contact
-      std::list<std::string> externals;
-      std::list<std::string> locals;
-      std::list<std::string> my_externals;
-      std::list<std::string> my_locals;
-      std::list<std::string> fallback;
+      std::ofstream identity_infos{common::infinit::identity_path(res.id)};
+
+      if (!identity_infos.good())
       {
-        std::string theirs_device;
-        std::string ours_device;
-
-        if (trans.recipient_device_id == this->device_id())
-        {
-          theirs_device = trans.sender_device_id;
-          ours_device = trans.recipient_device_id;
-        }
-        else
-        {
-          theirs_device = trans.recipient_device_id;
-          ours_device = trans.sender_device_id;
-        }
-
-        // theirs
-        {
-          Endpoint e = this->_meta->device_endpoints(network_id,
-                                                     ours_device,
-                                                     theirs_device);
-
-          externals = std::move(e.externals);
-          locals = std::move(e.locals);
-        }
-        //ours
-        {
-          Endpoint e = this->_meta->device_endpoints(network_id,
-                                                     theirs_device,
-                                                     ours_device);
-
-          my_externals = std::move(e.externals);
-          my_locals = std::move(e.locals);
-          fallback = std::move(e.fallback);
-        }
+        ELLE_ERR("Cannot open identity file");
       }
 
-      ELLE_DEBUG("externals")
-        std::for_each(begin(externals), end(externals), _print);
-      ELLE_DEBUG("locals")
-        std::for_each(begin(locals), end(locals), _print);
-      ELLE_DEBUG("fallback")
-        std::for_each(begin(fallback), end(fallback), _print);
+      identity_infos << res.token << "\n"
+                     << res.identity << "\n"
+                     << res.email << "\n"
+                     << res.id << "\n"
+                     ;
 
-      // Very sophisticated heuristic to deduce the addresses to try first.
-      std::vector<std::vector<std::string>> rounds;
+      if (!identity_infos.good())
       {
-        std::vector<std::string> common = _find_commond_addr(externals,
-                                                             my_externals);
-        std::vector<std::string> first_round;
-        std::vector<std::string> second_round;
-
-        // sort the list, in order to have a deterministic behavior
-        externals.sort();
-        locals.sort();
-        fallback.sort();
-
-        if (externals.empty() || my_externals.empty())
-        {
-          for (auto const& s: locals)
-            first_round.push_back(s);
-          rounds.push_back(first_round);
-          for (auto const& s: fallback)
-            second_round.push_back(s);
-          rounds.push_back(second_round);
-        }
-        else if (common.empty())
-        {
-          // if there is no common external address, then we can try them first.
-          for (auto const& s: externals)
-            first_round.push_back(s);
-          rounds.push_back(first_round);
-          // then, we know we can not connect locally, so try to fallback
-          for (auto const& s: fallback)
-            second_round.push_back(s);
-          rounds.push_back(second_round);
-        }
-        else
-        {
-          // if there is a common external address, we can try to connect to
-          // local endpoints
-          std::vector<std::string> addr = _find_commond_addr(locals,
-                                                             my_locals);
-
-          if (!addr.empty())
-          {
-            // wtf, you are trying to do a local exchange, this is stupid, but
-            // let it be.
-            first_round.push_back(locals.front());
-            rounds.push_back(first_round);
-            if (addr.size() > 1)
-            {
-              second_round.push_back(locals.back());
-              rounds.push_back(second_round);
-            }
-          }
-          else
-          {
-            std::vector<std::string> third_round;
-            // try local first
-            for (auto const &s: locals)
-              first_round.push_back(s);
-            rounds.push_back(first_round);
-            // then externals
-            for (auto const& s: externals)
-              second_round.push_back(s);
-            rounds.push_back(second_round);
-            // then fallback
-            for (auto const& s: fallback)
-              third_round.push_back(s);
-            rounds.push_back(third_round);
-          }
-        }
+        ELLE_ERR("Cannot write identity file");
       }
+      identity_infos.close();
 
-      // Finish by calling the RPC to notify 8infinit of all the IPs of the peer
-      {
-        lune::Phrase phrase;
+      this->_notification_manager.reset(new NotificationManager(this->_meta,
+                                                                this->_me));
 
-        if (this->_wait_portal(network_id) == false)
-          throw Exception{gap_error, "Couldn't find portal to infinit instance"};
+      this->_user_manager.reset(new UserManager(*this->_notification_manager,
+                                                this->_meta,
+                                                this->_me));
 
-        phrase.load(this->_me._id, network_id, "slug");
+      this->_network_manager.reset(new NetworkManager(//*this->_notification_manager,
+                                                      this->_meta,
+                                                      this->_reporter,
+                                                      this->_google_reporter,
+                                                      this->_me,
+                                                      this->_device));
 
-        ELLE_DEBUG("Connect to the local 8infint instance (%s:%d)",
-                   elle::String{"127.0.0.1"},
-                   phrase.port);
-
-        // Connect to the server.
-        reactor::network::TCPSocket socket{
-          sched,
-          elle::String("127.0.0.1"),
-          phrase.port,
-        };
-
-        proto::Serializer serializer{
-          sched,
-          socket
-        };
-
-        proto::ChanneledStream channels{
-          sched,
-          serializer
-        };
-
-        hole::implementations::slug::control::RPC rpcs{channels};
-
-        int i = 1;
-        ELLE_DEBUG("DEBUG ROUNDS")
-          for (auto const& round: rounds)
-          {
-            ELLE_DEBUG("- ROUND %s", i++)
-              for (auto const& addr: round)
-              {
-                ELLE_DEBUG("-- %s", addr);
-              }
-          }
-        int round_number = 1;
-        bool success = false;
-        for (auto const& round: rounds)
-        {
-          ELLE_DEBUG("ROUND %s:", round_number++)
-            for (auto const&s : round)
-              ELLE_DEBUG("-- %s", s);
-          if (_connect_try(sched, rpcs, round) > 0)
-          {
-            success = true;
-            break;
-          }
-        }
-        if (!success)
-          throw elle::Exception{"Unable to connect"};
-      }
+      this->_transaction_manager.reset(
+        new TransactionManager(*this->_notification_manager,
+                               *this->_network_manager,
+                               *this->_user_manager,
+                               this->_meta,
+                               this->_reporter,
+                               this->_me,
+                               this->_device));
     }
+
+    void
+    State::logout()
+    {
+      if (this->_meta.token().empty())
+        return;
+
+      // End session the session.
+      this->_reporter.store("user_logout",
+                            {{MKey::status, "attempt"}});
+
+      // XXX: Not necessary but better.
+      this->_google_reporter.store("user:logout:attempt",
+                                   {{MKey::session, "end"},});
+
+
+      try
+      {
+        this->_meta.logout();
+        this->_transaction_manager.reset();
+        this->_network_manager.reset();
+        this->_user_manager.reset();
+        this->_notification_manager.reset();
+
+      }
+      CATCH_FAILURE_TO_METRICS("user_logout");
+
+      // End session the session.
+      this->_reporter.store("user_logout",
+                       {{MKey::status, "succeed"}});
+
+      // XXX: Not necessary but better.
+      this->_google_reporter.store("user:logout:succeed");
+    }
+
+    std::string
+    State::hash_password(std::string const& email,
+                         std::string const& password)
+    {
+      std::string lower_email = email;
+
+      std::transform(lower_email.begin(),
+                     lower_email.end(),
+                     lower_email.begin(),
+                     ::tolower);
+
+      unsigned char hash[SHA256_DIGEST_LENGTH];
+      SHA256_CTX context;
+      std::string to_hash = lower_email + "MEGABIET" + password + lower_email + "MEGABIET";
+
+      if (SHA256_Init(&context) == 0 ||
+          SHA256_Update(&context, to_hash.c_str(), to_hash.size()) == 0 ||
+          SHA256_Final(hash, &context) == 0)
+        throw Exception(gap_internal_error, "Cannot hash login/password");
+
+      std::ostringstream out;
+      elle::serialize::OutputHexadecimalArchive ar(out);
+
+      ar.SaveBinary(hash, SHA256_DIGEST_LENGTH);
+
+      return out.str();
+    }
+
+    void
+    State::register_(std::string const& fullname,
+                     std::string const& email,
+                     std::string const& password,
+                     std::string const& activation_code)
+    {
+      // End session the session.
+      this->_reporter.store("user_register",
+                            {{MKey::status, "attempt"}});
+
+
+      std::string lower_email = email;
+
+      std::transform(lower_email.begin(),
+                     lower_email.end(),
+                     lower_email.begin(),
+                     ::tolower);
+
+      // Logout first, and ignore errors.
+      try { this->logout(); } catch (elle::HTTPException const&) {}
+
+      try
+      {
+        this->_meta.register_(lower_email, fullname, password, activation_code);
+      }
+      CATCH_FAILURE_TO_METRICS("user_register");
+
+      // Send file request successful.
+      this->_reporter.store("user_register",
+                            {{MKey::status, "succeed"}});
+
+
+      ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);
+      this->login(lower_email, password);
+    }
+
   }
 }

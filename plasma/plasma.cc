@@ -27,8 +27,8 @@ namespace plasma
   {
     out
       << "{"
-      << "tr: " << t.transaction_id << ", net: " << t.network_id << ", "
-      << "s: {id: " << t.sender_id << ", dev: " << t.sender_device_id << "}, " 
+      << "tr: " << t.id << ", net: " << t.network_id << ", "
+      << "s: {id: " << t.sender_id << ", dev: " << t.sender_device_id << "}, "
       << "f: " << t.first_filename << ", "
       << "r: {id: " << t.recipient_id << ", dev: " << t.recipient_device_id << "},"
       << " st: " << (plasma::TransactionStatus) t.status

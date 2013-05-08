@@ -1,5 +1,6 @@
 #include "gap.h"
 #include "State.hh"
+#include "OperationManager.hh"
 
 #include <common/common.hh>
 
@@ -77,10 +78,25 @@ extern "C"
   CATCH_ALL(_func_)                                                            \
   /**/
 
-# define WRAP_CPP(...)                                                       \
-  WRAP_CPP_RET(__VA_ARGS__);                                                 \
+// automate cpp wrapping
+# define WRAP_CPP_MANAGER_RET(_state_, _manager_, _func_, ...)                 \
+  assert(_state_ != nullptr);                                                  \
+  gap_Status ret;                                                              \
+  try                                                                          \
+  { __TO_CPP(_state_)->_manager_()._func_(__VA_ARGS__); ret = gap_ok; }        \
+  CATCH_ALL(_func_)                                                            \
+  /**/
+
+# define WRAP_CPP(...)                                                         \
+  WRAP_CPP_RET(__VA_ARGS__);                                                   \
+  return ret                                                                   \
+  /**/
+
+# define WRAP_CPP_MANAGER(...)                                                 \
+  WRAP_CPP_MANAGER_RET(__VA_ARGS__);                                           \
   return ret                                                                   \
     /**/
+
 
   static char**
   _cpp_stringlist_to_c_stringlist(std::list<std::string> const& list)
@@ -204,7 +220,10 @@ extern "C"
   gap_invite_user(gap_State* state,
                   char const* email)
   {
-    WRAP_CPP(state, invite_user, email);
+    assert(state != nullptr);
+    assert(email != nullptr);
+
+    WRAP_CPP_MANAGER(state, user_manager, invite, email);
   }
 
   gap_Status
@@ -214,19 +233,19 @@ extern "C"
   {
     assert(recipient_id != nullptr);
     assert(message != nullptr);
-    WRAP_CPP(state, send_message, recipient_id, message);
+    WRAP_CPP_MANAGER(state, user_manager, send_message, recipient_id, message);
   }
 
   //- Operation interface -------------------------------------------------------
 
   gap_OperationStatus gap_operation_status_failure =
-    (gap_OperationStatus) surface::gap::State::OperationStatus::failure;
+    (gap_OperationStatus) surface::gap::OperationManager::OperationStatus::failure;
 
   gap_OperationStatus gap_operation_status_success =
-    (gap_OperationStatus) surface::gap::State::OperationStatus::success;
+    (gap_OperationStatus) surface::gap::OperationManager::OperationStatus::success;
 
   gap_OperationStatus gap_operation_status_running =
-    (gap_OperationStatus) surface::gap::State::OperationStatus::running;
+    (gap_OperationStatus) surface::gap::OperationManager::OperationStatus::running;
 
   gap_OperationStatus
   gap_operation_status(gap_State* state,
@@ -235,9 +254,9 @@ extern "C"
     assert(state != nullptr);
     gap_Status ret = gap_ok;
     try
-      {
-        return (gap_OperationStatus) __TO_CPP(state)->operation_status(pid);
-      }
+    {
+      return (gap_OperationStatus) __TO_CPP(state)->transaction_manager().status(pid);
+    }
     CATCH_ALL(operation_status);
     return ret;
   }
@@ -248,7 +267,7 @@ extern "C"
   gap_operation_finalize(gap_State* state,
                        gap_OperationId const pid)
   {
-    WRAP_CPP(state, operation_finalize, pid);
+    WRAP_CPP_MANAGER(state, transaction_manager, finalize, pid);
   }
 
   //- Authentication ----------------------------------------------------------
@@ -328,25 +347,23 @@ extern "C"
                    password, activation_code);
 
     if (ret == gap_ok && device_name != nullptr)
-      {
-        WRAP_CPP(state, update_device, device_name, true);
-      }
+    {
+      WRAP_CPP(state, update_device, device_name, true);
+    }
     return ret;
   }
-
-  gap_Status
-  gap_trophonius_connect(gap_State* state)
-  {
-    WRAP_CPP_RET(state, connect);
-
-    return ret;
-  }
-
 
   gap_Status
   gap_poll(gap_State* state)
   {
-    WRAP_CPP_RET(state, poll);
+    assert(state != nullptr);
+
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->notification_manager().poll();
+    }
+    CATCH_ALL(poll);
 
     return ret;
   }
@@ -387,7 +404,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
       {
-        auto const& networks_map = __TO_CPP(state)->networks();
+        auto const& networks_map = __TO_CPP(state)->network_manager().all();
 
         std::list<std::string> res;
 
@@ -414,28 +431,10 @@ extern "C"
     gap_Status ret;
     try
       {
-        auto const& network = __TO_CPP(state)->network(id);
+        auto const& network = __TO_CPP(state)->network_manager().one(id);
         return network.name.c_str();
       }
     CATCH_ALL(network_name);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  char const* gap_network_mount_point(gap_State* state,
-                                      char const* id)
-  {
-    assert(state != nullptr);
-    assert(id != nullptr);
-    gap_Status ret;
-    try
-      {
-        auto const& instance =
-          __TO_CPP(state)->infinit_instance_manager().network_instance(id);
-        return instance.mount_point.c_str();
-      }
-    CATCH_ALL(network_mount_point);
 
     (void) ret;
     return nullptr;
@@ -448,7 +447,7 @@ extern "C"
     gap_Status ret;
     try
       {
-        auto const& network = __TO_CPP(state)->network(id);
+        auto const& network = __TO_CPP(state)->network_manager().one(id);
         return _cpp_stringlist_to_c_stringlist(network.users);
       }
     CATCH_ALL(network_users);
@@ -465,7 +464,14 @@ extern "C"
   gap_Status gap_create_network(gap_State* state,
                                 char const* name)
   {
-    WRAP_CPP(state, create_network, name);
+    gap_Status ret;
+    try
+    {
+      __TO_CPP(state)->network_manager().create(name);
+      ret = gap_ok;
+    }
+    CATCH_ALL(create_network);
+    return ret;
   }
 
   gap_Status
@@ -475,7 +481,19 @@ extern "C"
   {
     assert(network_id != nullptr);
     assert(user_id != nullptr);
-    WRAP_CPP(state, network_add_user, network_id, user_id);
+    gap_Status ret;
+    try
+    {
+      auto const& user = __TO_CPP(state)->user_manager().one(user_id);
+      std::string me = __TO_CPP(state)->me().id;
+      __TO_CPP(state)->network_manager().add_user(network_id,
+                                                  me,
+                                                  user.id,
+                                                  user.public_key);
+      ret = gap_ok;
+    }
+    CATCH_ALL(create_network);
+    return ret;
   }
 
 
@@ -519,7 +537,7 @@ extern "C"
     gap_Status ret;
     try
       {
-        auto user_id = __TO_CPP(state)->me()._id;
+        auto user_id = __TO_CPP(state)->me().id;
         return user_id.c_str();
       }
     CATCH_ALL(user_token);
@@ -553,7 +571,7 @@ extern "C"
     gap_Status ret;
     try
       {
-        auto const& user = __TO_CPP(state)->user(id);
+        auto const& user = __TO_CPP(state)->user_manager().one(id);
         return user.fullname.c_str();
       }
     CATCH_ALL(user_fullname);
@@ -569,7 +587,7 @@ extern "C"
     gap_Status ret;
     try
       {
-        auto const& user = __TO_CPP(state)->user(id);
+        auto const& user = __TO_CPP(state)->user_manager().one(id);
         return user.handle.c_str();
       }
     CATCH_ALL(user_email);
@@ -591,7 +609,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
       {
-        auto pair = __TO_CPP(state)->user_icon(user_id).release();
+        auto pair = __TO_CPP(state)->user_manager().icon(user_id).release();
         *data = pair.first.release();
         *size = pair.second;
       }
@@ -611,8 +629,8 @@ extern "C"
     gap_Status ret;
     try
       {
-        auto const& user = __TO_CPP(state)->user(email);
-        return user._id.c_str();
+        auto const& user = __TO_CPP(state)->user_manager().one(email);
+        return user.id.c_str();
       }
     CATCH_ALL(user_by_email);
 
@@ -627,7 +645,7 @@ extern "C"
     gap_Status ret;
     try
       {
-        auto users = __TO_CPP(state)->search_users(text);
+        auto users = __TO_CPP(state)->user_manager().search(text);
         std::list<std::string> result;
         for (auto const& pair : users)
           result.push_back(pair.first);
@@ -649,9 +667,9 @@ extern "C"
   {
     gap_Status ret = gap_ok;
     try
-      {
-        return (gap_UserStatus) __TO_CPP(state)->user(user_id).status;
-      }
+    {
+      return (gap_UserStatus) __TO_CPP(state)->user_manager().one(user_id).status;
+    }
     CATCH_ALL(user_status);
 
     return (gap_UserStatus) ret;
@@ -665,10 +683,10 @@ extern "C"
     gap_Status ret;
     try
       {
-        auto swaggers = __TO_CPP(state)->swaggers();
+        auto swaggers = __TO_CPP(state)->user_manager().swaggers();
         std::list<std::string> result;
-        for (auto const& id : swaggers)
-          result.push_back(id);
+        for (auto const& pair : swaggers)
+          result.push_back(pair.first);
         return _cpp_stringlist_to_c_stringlist(result);
       }
     CATCH_ALL(get_swaggers);
@@ -684,75 +702,9 @@ extern "C"
   }
 
   /// - Permissions ---------------------------------------------------------
-
-  gap_Status gap_set_permissions(gap_State* state,
-                                 char const* user_id,
-                                 char const* absolute_path,
-                                 int permissions)
-  {
-    assert(user_id != nullptr);
-    assert(absolute_path != nullptr);
-    WRAP_CPP(state, deprecated_set_permissions, user_id, absolute_path, permissions);
-  }
-
-  gap_Status gap_set_permissions_rec(gap_State* state,
-                                     char const* user_id,
-                                     char const* absolute_path,
-                                     int permissions)
-  {
-    assert(user_id != nullptr);
-    assert(absolute_path != nullptr);
-    WRAP_CPP(state,
-               deprecated_set_permissions,
-               user_id,
-               absolute_path,
-               permissions,
-               true);
-  }
-
-  char** gap_file_users(gap_State* state,
-                        char const* absolute_path)
-  {
-    assert(absolute_path != nullptr);
-    gap_Status ret;
-    try
-      {
-        auto const& infos = __TO_CPP(state)->file_infos(absolute_path);
-        std::list<std::string> list;
-        for (auto const& pair : infos.accesses)
-          list.push_back(pair.first);
-        return _cpp_stringlist_to_c_stringlist(list);
-      }
-    CATCH_ALL(get_file_users);
-
-    (void) ret;
-    return nullptr;
-  }
-
   void gap_file_users_free(char** users)
   {
     ::free(users);
-  }
-
-  int gap_get_permissions(gap_State* state,
-                          char const* user_id,
-                          char const* absolute_path)
-  {
-    assert(user_id != nullptr);
-    assert(absolute_path != nullptr);
-    gap_Status ret;
-    try
-      {
-        auto const& infos = __TO_CPP(state)->file_infos(absolute_path);
-        auto it = infos.accesses.find(user_id);
-        if (it == infos.accesses.end())
-          throw surface::gap::Exception(gap_error, "No such user for this file");
-        return it->second;
-      }
-    CATCH_ALL(get_permissions);
-
-    (void) ret;
-    return gap_error;
   }
 
   // - Trophonius -----------------------------------------------------------
@@ -765,7 +717,15 @@ extern "C"
     auto cpp_cb = [cb] (UserStatusNotification const& notif) {
         cb(notif.user_id.c_str(), (gap_UserStatus) notif.status);
     };
-    WRAP_CPP(state, user_status_callback, cpp_cb);
+
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->notification_manager().user_status_callback(cpp_cb);
+    }
+    CATCH_ALL(user_status_callback);
+
+    return ret;
   }
 
   gap_Status
@@ -774,9 +734,17 @@ extern "C"
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-        cb(notif.transaction.transaction_id.c_str(), is_new);
+        cb(notif.transaction.id.c_str(), is_new);
     };
-    WRAP_CPP(state, transaction_callback, cpp_cb);
+
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->notification_manager().transaction_callback(cpp_cb);
+    }
+    CATCH_ALL(transaction_callback);
+
+    return ret;
   }
 
   gap_Status
@@ -787,7 +755,15 @@ extern "C"
     auto cpp_cb = [cb] (TransactionStatusNotification const& notif, bool is_new) {
         cb(notif.transaction_id.c_str(), is_new);
     };
-    WRAP_CPP(state, transaction_status_callback, cpp_cb);
+
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->notification_manager().transaction_status_callback(cpp_cb);
+    }
+    CATCH_ALL(transaction_status_callback);
+
+    return ret;
   }
 
   gap_Status
@@ -798,7 +774,15 @@ extern "C"
     auto cpp_cb = [cb] (MessageNotification const& notif) {
         cb(notif.sender_id.c_str(), notif.message.c_str());
     };
-    WRAP_CPP(state, message_callback, cpp_cb);
+
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->notification_manager().message_callback(cpp_cb);
+    }
+    CATCH_ALL(message_callback);
+
+    return ret;
   }
 
   gap_Status
@@ -811,7 +795,8 @@ extern "C"
     {
       cb(s, str.c_str(), tid.c_str());
     };
-    WRAP_CPP(state, on_error_callback, cpp_cb);
+
+    WRAP_CPP_MANAGER(state, notification_manager, on_error_callback, cpp_cb);
   }
 
   /// Transaction getters.
@@ -823,7 +808,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& transaction = __TO_CPP(state)->transaction(_id);
+      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
       return transaction.sender_id.c_str();
     }
     CATCH_ALL(transaction_sender_id);
@@ -839,7 +824,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& transaction = __TO_CPP(state)->transaction(_id);
+      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
       return transaction.sender_fullname.c_str();
     }
     CATCH_ALL(transaction_sender_fullname);
@@ -855,7 +840,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& transaction = __TO_CPP(state)->transaction(_id);
+      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
       return transaction.sender_device_id.c_str();
     }
     CATCH_ALL(transaction_device_id);
@@ -871,7 +856,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& transaction = __TO_CPP(state)->transaction(_id);
+      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
       return transaction.recipient_id.c_str();
     }
     CATCH_ALL(transaction_recipient_id);
@@ -887,7 +872,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& transaction = __TO_CPP(state)->transaction(_id);
+      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
       return transaction.recipient_fullname.c_str();
     }
     CATCH_ALL(transaction_recipient_fullname);
@@ -903,7 +888,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& transaction = __TO_CPP(state)->transaction(_id);
+      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
       return transaction.recipient_device_id.c_str();
     }
     CATCH_ALL(transaction_recipient_device_id);
@@ -919,7 +904,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& transaction = __TO_CPP(state)->transaction(_id);
+      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
       return transaction.network_id.c_str();
     }
     CATCH_ALL(transaction_network_id);
@@ -935,7 +920,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& transaction = __TO_CPP(state)->transaction(_id);
+      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
       return transaction.first_filename.c_str();
     }
     CATCH_ALL(transaction_first_filename);
@@ -951,7 +936,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& transaction = __TO_CPP(state)->transaction(_id);
+      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
       return transaction.files_count;
     }
     CATCH_ALL(transaction_files_count);
@@ -966,7 +951,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
       {
-        auto const& transaction = __TO_CPP(state)->transaction(_id);
+        auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
         return transaction.total_size;
       }
     CATCH_ALL(transaction_total_size);
@@ -982,7 +967,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
       {
-        auto const& transaction = __TO_CPP(state)->transaction(_id);
+        auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
         return transaction.is_directory;
       }
     CATCH_ALL(transaction_is_directory);
@@ -1000,7 +985,7 @@ extern "C"
 
     try
       {
-        auto const& transaction = __TO_CPP(state)->transaction(transaction_id);
+        auto const& transaction = __TO_CPP(state)->transaction_manager().one(transaction_id);
         return (gap_TransactionStatus) transaction.status;
       }
     CATCH_ALL(transaction_status);
@@ -1018,7 +1003,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
       {
-        auto const& transaction = __TO_CPP(state)->transaction(transaction_id);
+        auto const& transaction = __TO_CPP(state)->transaction_manager().one(transaction_id);
         return transaction.message.c_str();
       }
     CATCH_ALL(transaction_message);
@@ -1035,9 +1020,9 @@ extern "C"
     assert(transaction_id != nullptr);
     gap_Status ret = gap_ok;
     try
-      {
-        return __TO_CPP(state)->transaction_progress(transaction_id);
-      }
+    {
+      return __TO_CPP(state)->transaction_manager().progress(transaction_id);
+    }
     CATCH_ALL(transaction_progress);
 
     (void) ret;
@@ -1052,9 +1037,9 @@ extern "C"
     assert(transaction_id != nullptr);
     gap_Status ret = gap_ok;
     try
-      {
-        __TO_CPP(state)->transaction_sync(transaction_id);
-      }
+    {
+      __TO_CPP(state)->transaction_manager().sync(transaction_id);
+    }
     CATCH_ALL(transaction_update);
     return ret;
   }
@@ -1065,13 +1050,21 @@ extern "C"
                          int count,
                          int offset)
   {
-    WRAP_CPP(state, pull_notifications, count, offset);
+    WRAP_CPP_MANAGER(state, notification_manager, pull, count, offset, false);
+  }
+
+  gap_Status
+  gap_pull_new_notifications(gap_State* state,
+                             int count,
+                             int offset)
+  {
+    WRAP_CPP_MANAGER(state, notification_manager, pull, count, offset, true);
   }
 
   gap_Status
   gap_notifications_read(gap_State* state)
   {
-    WRAP_CPP(state, notifications_read);
+    WRAP_CPP_MANAGER(state, notification_manager, read);
   }
 
  char** gap_transactions(gap_State* state)
@@ -1080,7 +1073,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
       {
-        auto const& transactions_map = __TO_CPP(state)->transactions();
+        auto const& transactions_map = __TO_CPP(state)->transaction_manager().all();
 
         std::list<std::string> res;
 
@@ -1112,17 +1105,17 @@ extern "C"
     gap_Status ret = gap_ok;
 
     try
-      {
-        std::unordered_set<std::string> s;
+    {
+      std::unordered_set<std::string> s;
 
         while (*files != nullptr)
-          {
-            s.insert(*files);
-            ++files;
-          }
+        {
+          s.insert(*files);
+          ++files;
+        }
 
-        return (gap_OperationStatus) __TO_CPP(state)->send_files(recipient_id, s);
-      }
+      return (gap_OperationStatus) __TO_CPP(state)->transaction_manager().send_files(recipient_id, s);
+    }
     CATCH_ALL(send_files);
 
     return ret;
@@ -1139,10 +1132,11 @@ extern "C"
        || status >= gap_TransactionStatus::gap_transaction_status__count)
       return gap_error;
 
-    WRAP_CPP_RET(state,
-                   update_transaction,
-                   transaction_id,
-                   status);
+    WRAP_CPP_MANAGER_RET(state,
+                         transaction_manager,
+                         update,
+                         transaction_id,
+                         status);
 
     return ret;
   }
@@ -1154,9 +1148,10 @@ extern "C"
     assert(state != nullptr);
     assert(output_path != nullptr);
 
-    WRAP_CPP_RET(state,
-                 output_dir,
-                 output_path);
+    WRAP_CPP_MANAGER_RET(state,
+                         transaction_manager,
+                         output_dir,
+                         output_path);
 
     return ret;
   }
@@ -1169,7 +1164,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& directory = __TO_CPP(state)->output_dir();
+      auto const& directory = __TO_CPP(state)->transaction_manager().output_dir();
       return directory.c_str();
     }
     CATCH_ALL(get_output_directory);

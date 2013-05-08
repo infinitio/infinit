@@ -7,23 +7,7 @@
 extern "C" {
 # endif
 
-  /// Status returned froym gap calls.
-  typedef enum
-  {
-    gap_ok = 0,
-    gap_error = -1,
-    gap_network_error = -2,
-    gap_internal_error = -3,
-    gap_no_device_error = -4,
-    gap_wrong_passport = -5,
-    gap_no_file = -6,
-    gap_file_not_found = -7,
-    gap_api_error = -10,
-# define ERR_CODE(name, value, comment)                                         \
-      gap_ ## name = value,
-# include <oracle/disciples/meta/error_code.hh.inc>
-# undef ERR_CODE
-  } gap_Status;
+#include <surface/gap/status.hh>
 
   typedef enum
   {
@@ -65,6 +49,13 @@ extern "C" {
   gap_pull_notifications(gap_State*,
                          int count,
                          int offset);
+
+
+  /// Debug func: Pull notifications.
+  gap_Status
+  gap_pull_new_notifications(gap_State*,
+                             int count,
+                             int offset);
 
   gap_Status
   gap_notifications_read(gap_State*);
@@ -133,10 +124,6 @@ extern "C" {
                           char const* device_name,
                           char const* activation_code);
 
-  /// Login to trophonius
-  gap_Status
-  gap_trophonius_connect(gap_State* state);
-
   //- Swaggers ----------------------------------------------------------------
 
   typedef enum
@@ -152,16 +139,6 @@ extern "C" {
   gap_Status
   gap_user_status_callback(gap_State* state,
                            gap_user_status_callback_t cb);
-
-  //- Transaction -------------------------------------------------------------
-
-  typedef enum
-  {
-# define TRANSACTION_STATUS(name, value)        \
-      gap_transaction_status_ ## name = value,
-# include <oracle/disciples/meta/resources/transaction_status.hh.inc>
-# undef TRANSACTION_STATUS
-  } gap_TransactionStatus;
 
   /// New transaction callback.
   typedef void (*gap_transaction_callback_t)(char const* transaction_id,
@@ -284,17 +261,6 @@ extern "C" {
   /// Get the network name from its id.
   char const* gap_network_name(gap_State* state, char const* id);
 
-  /// Get the network mount point.
-  char const* gap_network_mount_point(gap_State* state,
-                                      char const* id);
-
-  /// Retreive all users ids from a network. Returns a null-terminated array
-  /// of null-terminated strings.
-  char** gap_network_users(gap_State* state, char const* id);
-
-  /// Free a previously allocated network users'.
-  void gap_network_users_free(char** users);
-
   /// Invite a user to join a network with its id or email.
   gap_Status gap_network_add_user(gap_State* state,
                                   char const* network_id,
@@ -372,25 +338,6 @@ extern "C" {
     // WARNING: negative values are reserved for errors, no value of this
     // enum should have a negative value.
   } gap_Permission;
-
-  /// Change file permissions for a user.
-  // XXX exec permission does not work
-  gap_Status gap_set_permissions(gap_State* state,
-                                 char const* user_id,
-                                 char const* absolute_path,
-                                 int permissions);
-
-  /// Retrieve users associated to a file (have read and/or write access).
-  char** gap_file_users(gap_State* state,
-                        char const* absolute_path);
-
-  void gap_file_users_free(char** users);
-
-  /// Retrieve file permissions for a user. Returns -1 in case of errors.
-  // XXX exec permission does not work
-  int gap_get_permissions(gap_State* state,
-                          char const* user_id,
-                          char const* absolute_path);
 
   /// Get the list of transaction ids involving the user.
   char**
