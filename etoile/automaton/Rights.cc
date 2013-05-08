@@ -266,13 +266,14 @@ namespace etoile
                                     nucleus::proton::limits::Porcupine{},
                                     nucleus::proton::limits::Node{1048576, 0.5, 0.2},
                                     nucleus::proton::limits::Node{1048576, 0.5, 0.2}};
+                                  nucleus::proton::Footprint ensemble_threshold{20971520};
 
                                   etoile::nest::Nest ensemble_nest{
                                     ENSEMBLE_SECRET_KEY_LENGTH,
                                     ensemble_limits,
                                     depot::hole().storage().network(),
                                     agent::Agent::Subject.user(),
-                                    20971520};
+                                    ensemble_threshold};
 
                                   nucleus::proton::Porcupine<nucleus::neutron::Ensemble> ensemble_porcupine{
                                     group->ensemble(),
