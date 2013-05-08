@@ -55,7 +55,7 @@ namespace surface
       void
       clear();
 
-      bool
+      void
       wait_portal(std::string const& network_id);
 
       void

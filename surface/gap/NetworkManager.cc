@@ -168,9 +168,13 @@ namespace surface
     using MKey = elle::metrics::Key;
 
     NetworkManager::NetworkManager(plasma::meta::Client& meta,
+                                  elle::metrics::Reporter& reporter,
+                                  elle::metrics::Reporter& google_reporter,
                                    Self const& me,
                                    Device const& device):
       _meta(meta),
+     _reporter(reporter),
+     _google_reporter(google_reporter),
       _self(me),
       _device(device),
       _infinit_instance_manager{me.id}
@@ -194,9 +198,9 @@ namespace surface
     {
       ELLE_TRACE("creating network %s", name);
 
-      reporter().store("network_create", {{MKey::status, "attempt"}});
+     this->_reporter.store("network_create", {{MKey::status, "attempt"}});
 
-      google_reporter().store("network:create:attempt");
+     this->_google_reporter.store("network:create:attempt");
 
       plasma::meta::CreateNetworkResponse response;
       try
@@ -205,11 +209,11 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("network_create");
 
-      reporter().store("network_create",
+     this->_reporter.store("network_create",
                        {{MKey::status, "succeed"},
                         {MKey::value, response.created_network_id}});
 
-      google_reporter().store("network:create:succeed");
+     this->_google_reporter.store("network:create:succeed");
 
       // XXX: Device manager.
       if (auto_add)
@@ -357,7 +361,7 @@ namespace surface
       this->_networks->at(network_id).reset();
       this->_infinit_instance_manager.stop(network_id);
 
-      reporter().store("network_delete",
+     this->_reporter.store("network_delete",
                        {{MKey::status, "attempt"},
                          {MKey::value,  network_id}});
 
@@ -368,7 +372,7 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("network_delete");
 
-      reporter().store("network_delete",
+     this->_reporter.store("network_delete",
                             {{MKey::status, "succeed"},
                              {MKey::value,  response.deleted_network_id}});
 
@@ -452,7 +456,7 @@ namespace surface
     {
       ELLE_TRACE_FUNCTION(network_id, user_id);
 
-      reporter().store("network_adduser",
+     this->_reporter.store("network_adduser",
                        {{MKey::status, "attempt"},
                         {MKey::value, network_id}});
 
@@ -500,19 +504,24 @@ namespace surface
         ELLE_DEBUG("set user in network in meta.");
 
         auto res = this->_meta.network_add_user(network_id, user_id);
-        if (std::find(network.users.begin(),
-                      network.users.end(),
-                      user_id) == network.users.end())
-          network.users.push_back(user_id);
+       this->sync(network_id);
       }
       CATCH_FAILURE_TO_METRICS("network_adduser");
 
-      reporter().store("network_adduser",
+     this->_reporter.store("network_adduser",
                        {{MKey::status, "succeed"},
                         {MKey::value, network_id}});
     }
 
     void
+   NetworkManager::add_device(std::string const& network_id,
+                              std::string const& device_id)
+   {
+     this->_meta.network_add_device(network_id, device_id);
+     this->sync(network_id);
+   }
+
+   void
     NetworkManager::_on_network_update(NetworkUpdateNotification const& notif)
     {
       ELLE_TRACE("network %s updated %s", notif.network_id, notif.what);
@@ -528,8 +537,7 @@ namespace surface
       ELLE_TRACE("setting permissions");
 
       // TODO: Do this only on the current device for sender and recipient.
-      if (this->wait_portal(network_id) == false)
-          throw Exception{gap_error, "Couldn't find portal to infinit instance"};
+      this->wait_portal(network_id);
 
       std::string const& access_binary = common::infinit::binary_path("8access");
 
@@ -585,11 +593,8 @@ namespace surface
                  hole::implementations::slug::control::RPC& rpcs,
                  std::vector<std::string> const& addresses)
     {
-      std::vector<
-        std::pair<
-          std::unique_ptr<reactor::VThread<bool>>, std::string
-        >
-      > v;
+     typedef std::unique_ptr<reactor::VThread<bool>> VThreadBoolPtr;
+     std::vector<std::pair<VThreadBoolPtr, std::string>> v;
 
       auto slug_connect = [&] (std::string const& endpoint) {
         std::vector<std::string> result;
@@ -812,8 +817,7 @@ namespace surface
       {
         lune::Phrase phrase;
 
-        if (this->wait_portal(network_id) == false)
-          throw Exception{gap_error, "Couldn't find portal to infinit instance"};
+        this->wait_portal(network_id);
 
         phrase.load(this->_self.id, network_id, "slug");
 
@@ -867,103 +871,12 @@ namespace surface
       }
     }
 
-    bool
+    void
     NetworkManager::wait_portal(std::string const& network_id)
     {
-      ELLE_TRACE("_wait_portal for network %s", network_id);
-
-      ELLE_DEBUG("retrieving portal path");
-      auto portal_path = common::infinit::portal_path(this->_self.id, network_id);
-
-      ELLE_DEBUG("portal path is %s", portal_path);
-      if (!this->infinit_instance_manager().exists(network_id))
-        this->_infinit_instance_manager.launch(network_id);
-
-      for (int i = 0; i < 45; ++i)
-      {
-        ELLE_DEBUG("Waiting for portal.");
-        if (elle::os::path::exists(portal_path))
-          return true;
-
-        if (!this->infinit_instance_manager().exists(network_id))
-          throw Exception{gap_error, "Infinit instance has crashed"};
-        ::sleep(1);
-      }
-
-      return false;
+      ELLE_TRACE_METHOD(network_id);
+      this->prepare(network_id);
+      this->_infinit_instance_manager.wait_portal(network_id);
     }
-
-    /*
-    void
-    NetworkManager::deprecated_set_permissions(std::string const& user_id,
-                                      std::string const& abspath,
-                                      nucleus::neutron::Permissions permissions,
-                                      bool recursive)
-    {
-      FileInfos const& infos = this->file_infos(abspath);
-      Network const& network = this->network_manager().one(infos.network_id);
-
-      this->_wait_portal(infos.network_id);
-
-      std::string const& access_binary = common::infinit::binary_path("8access");
-
-      std::list<std::string> arguments{
-                                    "--user",
-                                    this->_me._id,
-                                    "--type",
-                                    "user",
-                                    "--grant",
-                                    "--network",
-                                    network._id,
-                                    "--path",
-                                    ("/" + infos.relative_path),
-                                    "--identity",
-                                    this->user(user_id).public_key
-                                };
-
-      if (permissions & nucleus::neutron::permissions::read)
-        arguments.push_back("--read");
-      if (permissions & nucleus::neutron::permissions::write)
-        arguments.push_back("--write");
-
-      ELLE_DEBUG("LAUNCH: %s %s", access_binary, boost::algorithm::join(arguments, " "));
-
-      if (permissions & gap_exec)
-      {
-        ELLE_WARN("XXX: setting executable permissions not yet implemented");
-      }
-
-      auto pc = elle::system::process_config(elle::system::normal_config);
-      {
-        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-
-        if (!log_file.empty())
-        {
-          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-          {
-            log_file += ".";
-            log_file += std::to_string(::getpid());
-          }
-          log_file += ".access.log";
-          pc.setenv("ELLE_LOG_FILE", log_file);
-        }
-      }
-      elle::system::Process p{std::move(pc), access_binary, arguments};
-      if (p.wait_status() != 0)
-        throw Exception(gap_internal_error, "8access binary failed");
-
-      if (recursive && elle::os::path::is_directory(abspath))
-      {
-        boost::filesystem::directory_iterator it{abspath},
-        end{};
-        for (; it != end; ++it)
-        {
-          this->deprecated_set_permissions(user_id,
-                                           it->path().string(),
-                                           permissions,
-                                           true);
-        }
-      }
-    } */
   }
 }

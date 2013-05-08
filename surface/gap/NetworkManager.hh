@@ -4,11 +4,12 @@
 # include <plasma/meta/Client.hh>
 # include <surface/gap/NotificationManager.hh>
 # include <surface/gap/Exception.hh>
-# include <surface/gap/_detail/InfinitInstanceManager.hh>
+# include <surface/gap/InfinitInstanceManager.hh>
 
 # include <nucleus/neutron/Permissions.hh>
 
 # include <reactor/scheduler.hh>
+# include <surface/gap/metrics.hh>
 
 namespace surface
 {
@@ -21,8 +22,7 @@ namespace surface
 
     class NetworkManager
     {
-      class Exception:
-        surface::gap::Exception
+      class Exception: public surface::gap::Exception
       {
       public:
         Exception(gap_Status error, std::string const& what):
@@ -38,12 +38,16 @@ namespace surface
       // XXX: meta should be constant everywhere.
       // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
+      elle::metrics::Reporter& _reporter;
+      elle::metrics::Reporter& _google_reporter;
       Self const& _self;
       Device const& _device;
       ELLE_ATTRIBUTE_R(InfinitInstanceManager, infinit_instance_manager);
 
     public:
       NetworkManager(plasma::meta::Client& meta,
+                    elle::metrics::Reporter& reporter,
+                    elle::metrics::Reporter& google_reporter,
                      Self const& me,
                      Device const& device);
 
@@ -54,7 +58,7 @@ namespace surface
       clear();
 
     public:
-      bool
+      void
       wait_portal(std::string const& network_id);
 
       /// Types.
@@ -99,6 +103,11 @@ namespace surface
                std::string const& user_id,
                std::string const& identity);
 
+     /// Add a device to a network.
+     void
+     add_device(std::string const& network_id,
+                std::string const& device_id);
+
       ///
       void
       _prepare_directory(std::string const& network_id);
@@ -117,16 +126,6 @@ namespace surface
                       std::string const& user_id,
                       std::string const& user_identity,
                       nucleus::neutron::Permissions permissions);
-
-      /*/// Set the permissions for a file.
-      /// XXX: old
-      void
-      deprecated_set_permissions(std::string const& user_id,
-                                 std::string const& abspath,
-                                 nucleus::neutron::Permissions permissions,
-                                 bool recursive = false);
-      */
-
 
       /// On NetworkUpdate.
       void

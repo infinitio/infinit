@@ -1,7 +1,6 @@
 #include "UserManager.hh"
 
 #include <elle/os/path.hh>
-#include <metrics/_details/google.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
 #include <common/common.hh>
@@ -19,7 +18,6 @@ namespace surface
 {
   namespace gap
   {
-    using MKey = elle::metrics::Key;
     namespace fs = boost::filesystem;
     namespace path = elle::os::path;
 
@@ -29,13 +27,14 @@ namespace surface
       Notifiable{notification_manager},
       _meta(meta),
       _self(self)
-   {
+    {
       this->_notification_manager.user_status_callback(
-          [&] (UserStatusNotification const &n) -> void {
-            this->_on_swagger_status_update(n);
-          }
+        [&] (UserStatusNotification const &n) -> void
+        {
+          this->_on_swagger_status_update(n);
+        }
       );
-   }
+    }
 
     User const&
     UserManager::one(std::string const& id)
@@ -43,9 +42,6 @@ namespace surface
       auto it = this->_users.find(id);
       if (it != this->_users.end())
       {
-        // Search user.
-        // metrics::google::server().store("Search-user", {{"cd1", "local"}, {"cd2", id}});
-
         return *(it->second);
       }
       auto response = this->_meta.user(id);
@@ -55,8 +51,6 @@ namespace surface
           response.handle,
           response.public_key,
           response.status}};
-
-      // metrics::google::server().store("Search-user", {{"cd1", "server"}, {"cd2", id}});
 
       this->_users[response.id] = user.get();
       return *(user.release());
@@ -89,9 +83,9 @@ namespace surface
       std::map<std::string, User const*> result;
       auto res = this->_meta.search_users(text);
       for (auto const& user_id : res.users)
-        {
-          result[user_id] = &this->one(user_id);
-        }
+     {
+       result[user_id] = &this->one(user_id);
+     }
       return result;
     }
 
@@ -168,6 +162,11 @@ namespace surface
       it.status = notif.status;
     }
 
+   void
+   UserManager::swaggers_dirty()
+   {
+     this->_swaggers_dirty = true;
+   }
 
   }
 }

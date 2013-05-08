@@ -33,6 +33,13 @@ namespace surface
         operation.second->cancel();
     }
 
+    OperationManager::OperationId
+    OperationManager::_next_operation_id()
+    {
+      static OperationManager::OperationId id = 0;
+      return ++id;
+    }
+
     void
     OperationManager::finalize(OperationId const id)
     {
@@ -47,26 +54,13 @@ namespace surface
         it->second->rethrow();
     }
 
-    OperationManager::OperationId
-    OperationManager::_create(std::string const& name,
-                              std::function<void(void)> const& cb,
-                              bool auto_delete)
-    {
-      ELLE_TRACE("Adding operation %s.", name);
-      static OperationId id = 0;
-      id += 1;
-      _operations[id].reset(new Operation{name, cb});
-      if (auto_delete)
-        _operations[id]->delete_later();
-      return id;
-    }
-
     void
     OperationManager::_cancel(std::string const& name)
     {
+      ELLE_TRACE_METHOD(name);
       for (auto& pair: _operations)
       {
-        if (pair.second != nullptr && pair.second->name() == name)
+       if (pair.second != nullptr && pair.second->name() == name && !pair.second->done())
         {
           pair.second->cancel();
           return;
@@ -77,10 +71,27 @@ namespace surface
     void
     OperationManager::_cancel_all(std::string const& name)
     {
+      ELLE_TRACE_METHOD(name);
       for (auto& pair: _operations)
       {
         if (pair.second != nullptr &&
+           !pair.second->done() &&
             boost::algorithm::ends_with(pair.second->name(), name))
+        {
+          pair.second->cancel();
+          return;
+        }
+      }
+    }
+
+    void
+    OperationManager::_cancel_all()
+    {
+      ELLE_TRACE_METHOD("");
+      for (auto& pair: _operations)
+      {
+        if (pair.second != nullptr &&
+            !pair.second->done())
         {
           pair.second->cancel();
           return;

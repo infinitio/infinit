@@ -1,8 +1,5 @@
 #include "State.hh"
 
-#include "_detail/Operation.hh"
-#include "_detail/TransactionProgress.hh"
-
 #include <common/common.hh>
 
 // #include <etoile/portal/Portal.hh>
@@ -58,16 +55,17 @@ namespace surface
     }
 
     // - State ----------------------------------------------------------------
-    State::State()
-      : _logger_intializer{}
-      , _meta{common::meta::host(), common::meta::port(), true}
-      , _files_infos{}
+    State::State():
+      _logger_intializer{},
+      _meta{common::meta::host(), common::meta::port(), true},
+      _reporter(),
+      _google_reporter()
     {
       ELLE_LOG("Creating a new State");
 
       // Start metrics after setting up the logger.
-      reporter().start();
-      google_reporter().start();
+      this->_reporter.start();
+      this->_google_reporter.start();
 
       std::string user = elle::os::getenv("INFINIT_USER", "");
 
@@ -104,18 +102,9 @@ namespace surface
       }
 
       // Initialize google metrics.
-      auto const& g_info = common::metrics::google_info();
-      elle::metrics::google::register_service(google_reporter(),
-                                              g_info.server,
-                                              g_info.port,
-                                              g_info.id_path);
-
+      elle::metrics::google::register_service(this->_google_reporter);
       // Initialize server.
-      auto const& km_info = common::metrics::km_info();
-      elle::metrics::kissmetrics::register_service(reporter(),
-                                                   km_info.server,
-                                                   km_info.port,
-                                                   km_info.id_path);
+      elle::metrics::kissmetrics::register_service(this->_reporter);
     }
 
     State::State(std::string const& token):
@@ -161,8 +150,8 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
 
-      reporter().store("user_login",
-                       {{MKey::status, "attempt"}});
+      this->_reporter.store("user_login",
+                            {{MKey::status, "attempt"}});
 
       plasma::meta::LoginResponse res;
       try
@@ -171,13 +160,13 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("user_login");
 
-      reporter().update_user(res.id);
-      reporter().store("user_login",
+      this->_reporter.update_user(res.id);
+      this->_reporter.store("user_login",
                             {{MKey::status, "succeed"}});
 
       // XXX: Not necessary but better.
-      google_reporter().update_user(res.id);
-      google_reporter().store("user:login:succeed",
+      this->_google_reporter.update_user(res.id);
+      this->_google_reporter.store("user:login:succeed",
                                   {{MKey::session, "start"},
                                    {MKey::status, "succeed"}});
 
@@ -238,21 +227,24 @@ namespace surface
 
       this->_notification_manager.reset(new NotificationManager(this->_meta,
                                                                 this->_me));
+
       this->_user_manager.reset(new UserManager(*this->_notification_manager,
                                                 this->_meta,
                                                 this->_me));
 
-      this->device_id();
-
       this->_network_manager.reset(new NetworkManager(//*this->_notification_manager,
                                                       this->_meta,
+                                                      this->_reporter,
+                                                      this->_google_reporter,
                                                       this->_me,
                                                       this->_device));
 
       this->_transaction_manager.reset(
-        new TransactionManager(*this->_network_manager,
-                               *this->_notification_manager,
+        new TransactionManager(*this->_notification_manager,
+                               *this->_network_manager,
+                               *this->_user_manager,
                                this->_meta,
+                               this->_reporter,
                                this->_me,
                                this->_device));
     }
@@ -263,32 +255,32 @@ namespace surface
       if (this->_meta.token().empty())
         return;
 
-      this->_transaction_manager.reset();
-      this->_network_manager.reset();
-      this->_user_manager.reset();
-      this->_notification_manager.reset();
-
       // End session the session.
-      reporter().store("user_logout",
-                       {{MKey::status, "attempt"}});
+      this->_reporter.store("user_logout",
+                            {{MKey::status, "attempt"}});
 
       // XXX: Not necessary but better.
-      google_reporter().store("user:logout:attempt",
-                              {{MKey::session, "end"},});
+      this->_google_reporter.store("user:logout:attempt",
+                                   {{MKey::session, "end"},});
 
 
       try
       {
         this->_meta.logout();
+        this->_transaction_manager.reset();
+        this->_network_manager.reset();
+        this->_user_manager.reset();
+        this->_notification_manager.reset();
+
       }
       CATCH_FAILURE_TO_METRICS("user_logout");
 
       // End session the session.
-      reporter().store("user_logout",
+      this->_reporter.store("user_logout",
                        {{MKey::status, "succeed"}});
 
       // XXX: Not necessary but better.
-      google_reporter().store("user:logout:succeed");
+      this->_google_reporter.store("user:logout:succeed");
     }
 
     std::string
@@ -326,7 +318,7 @@ namespace surface
                      std::string const& activation_code)
     {
       // End session the session.
-      reporter().store("user_register",
+      this->_reporter.store("user_register",
                             {{MKey::status, "attempt"}});
 
 
@@ -347,8 +339,8 @@ namespace surface
       CATCH_FAILURE_TO_METRICS("user_register");
 
       // Send file request successful.
-      reporter().store("user_register",
-                       {{MKey::status, "succeed"}});
+      this->_reporter.store("user_register",
+                            {{MKey::status, "succeed"}});
 
 
       ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);

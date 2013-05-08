@@ -32,7 +32,7 @@ namespace surface
     class NotificationManager
     {
       // XXX:
-      class Exception: surface::gap::Exception
+      class Exception: public surface::gap::Exception
       {
       public:
         Exception(std::string const& what):

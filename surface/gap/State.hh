@@ -3,28 +3,21 @@
 
 # include "gap.h"
 
-# include "_detail/InfinitInstanceManager.hh"
 # include <surface/gap/Exception.hh>
-# include "surface/gap/NetworkManager.hh"
-# include "surface/gap/NotificationManager.hh"
-# include "surface/gap/UserManager.hh"
-# include "surface/gap/TransactionManager.hh"
+# include <surface/gap/NetworkManager.hh>
+# include <surface/gap/NotificationManager.hh>
+# include <surface/gap/UserManager.hh>
+# include <surface/gap/TransactionManager.hh>
 
-# include "surface/gap/metrics.hh"
+# include <surface/gap/metrics.hh>
 
 # include <plasma/meta/Client.hh>
 # include <plasma/trophonius/Client.hh>
 
 # include <elle/format/json/fwd.hh>
 
-# include <metrics/Reporter.hh>
-
-# include <reactor/scheduler.hh> // XXX
-
-# include <functional>
 # include <map>
 # include <string>
-# include <unordered_set>
 
 
 namespace surface
@@ -65,6 +58,9 @@ namespace surface
 
       ///- Servers -------------------------------------------------------------
       plasma::meta::Client _meta;
+
+      elle::metrics::Reporter _reporter;
+      elle::metrics::Reporter _google_reporter;
 
     public:
       ///- Construction --------------------------------------------------------

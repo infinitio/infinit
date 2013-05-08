@@ -4,8 +4,10 @@
 #include <common/common.hh>
 
 #include <elle/os/path.hh>
+#include <elle/os/file.hh>
 #include <elle/os/getenv.hh>
 #include <elle/system/Process.hh>
+#include <elle/memory.hh>
 #include <elle/finally.hh>
 
 #include <boost/algorithm/string/join.hpp>
@@ -20,6 +22,18 @@ namespace surface
     using MKey = elle::metrics::Key;
     namespace fs = boost::filesystem;
 
+   struct TransactionManager::TransactionProgress
+   {
+   public:
+     float last_value;
+     std::unique_ptr<elle::system::Process> process;
+
+   public:
+     TransactionProgress():
+       last_value{0.0f}
+     {}
+   };
+
     size_t
     total_size(std::unordered_set<std::string> const& files)
     {
@@ -31,7 +45,7 @@ namespace surface
         for (auto const& file: files)
         {
           ELLE_DEBUG("castor");
-          auto _size = elle::os::path::size(file);
+          auto _size = elle::os::file::size(file);
           ELLE_DEBUG("%s: %i", file, _size);
           size += _size;
         }
@@ -39,14 +53,309 @@ namespace surface
       return size;
     }
 
-    TransactionManager::TransactionManager(NetManager& network_manager,
-                                           NotifManager& notification_manager,
-                                           plasma::meta::Client& meta,
-                                           Self& self,
-                                           Device const& device):
-      Notifiable{notification_manager},
+   class UploadOperation: public OperationManager::Operation
+   {
+     TransactionManager& _transaction_manager;
+     NetworkManager& _network_manager;
+     elle::metrics::Reporter& _reporter;
+     plasma::meta::Client& _meta;
+     plasma::meta::SelfResponse& _me;
+     Device _device;
+     std::string _recipient_id_or_email;
+     std::unordered_set<std::string> _files;
+     std::string _transaction_id;
+     std::string _network_id;
+
+   public:
+     UploadOperation(TransactionManager& transaction_manager,
+                     NetworkManager& network_manager,
+                     plasma::meta::Client& meta,
+                     elle::metrics::Reporter& reporter,
+                     plasma::meta::SelfResponse& me,
+                     Device device,
+                     std::string const& recipient_id_or_email,
+                     std::unordered_set<std::string> const& files):
+       Operation{"upload_files_"},
+       _transaction_manager(transaction_manager),
+       _network_manager(network_manager),
+       _reporter(reporter),
+       _meta(meta),
+       _me(me),
+       _device(device),
+       _recipient_id_or_email{recipient_id_or_email},
+       _files{files}
+     {}
+
+   protected:
+     virtual
+     void
+     _run() override
+     {
+       ELLE_TRACE_METHOD(this->_files);
+
+       int size = total_size(this->_files);
+
+       std::string first_file = fs::path(*(this->_files.cbegin())).filename().string();
+       elle::utility::Time time; time.Current();
+       std::string network_name = elle::sprintf("%s-%s",
+                                                this->_recipient_id_or_email,
+                                                time.nanoseconds);
+       this->_network_id = this->_network_manager.create(network_name);
+       plasma::meta::CreateTransactionResponse res;
+
+       ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
+                  this->_device.id,
+                  this->_files.size(),
+                  first_file,
+                  size,
+                  this->_recipient_id_or_email,
+                  network_name,
+                  this->_network_id);
+
+       try
+       {
+         res = this->_meta.create_transaction(this->_recipient_id_or_email,
+                                               first_file,
+                                               this->_files.size(),
+                                               size,
+                                               fs::is_directory(first_file),
+                                               this->_network_id,
+                                               this->_device.id);
+       }
+       catch (...)
+       {
+         ELLE_DEBUG("transaction creation failed");
+         // Something went wrong, we need to destroy the network.
+         this->_network_manager.delete_(this->_network_id, false);
+         throw;
+       }
+       this->_transaction_id = res.created_transaction_id;
+       this->_name += this->_transaction_id;
+       this->_me.remaining_invitations = res.remaining_invitations;
+
+       this->_reporter.store("transaction_create",
+                        {{MKey::status, "attempt"},
+                         {MKey::value, this->_transaction_id},
+                         {MKey::count, std::to_string(this->_files.size())},
+                         {MKey::size, std::to_string(size)}});
+
+       ELLE_DEBUG("created network id is %s", this->_network_id);
+       this->_network_manager.wait_portal(this->_network_id);
+
+       ELLE_DEBUG("Retrieving 8transfer binary path...");
+       auto transfer_binary = common::infinit::binary_path("8transfer");
+       ELLE_DEBUG("Using 8transfer binary '%s'", transfer_binary);
+
+       try
+       {
+         try
+         {
+           for (auto& file: this->_files)
+           {
+             ELLE_DEBUG("uploading %s for operation %s", file, this->name());
+             std::list<std::string> arguments{
+               "-n", this->_network_id,
+               "-u", this->_me.id,
+               "--path", file,
+               "--to"
+             };
+
+             ELLE_DEBUG("LAUNCH: %s %s",
+                        transfer_binary,
+                        boost::algorithm::join(arguments, " "));
+
+             auto pc = elle::system::process_config(elle::system::normal_config);
+             {
+               std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+               if (!log_file.empty())
+               {
+                 if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+                 {
+                   log_file += ".";
+                   log_file += std::to_string(::getpid());
+                 }
+                 log_file += ".to.transfer.log";
+                 pc.setenv("ELLE_LOG_FILE", log_file);
+               }
+             }
+             // set the environment and start the transfer
+             elle::system::Process p{std::move(pc), transfer_binary, arguments};
+             while (p.running())
+             {
+               if (p.wait_status(elle::system::Process::Milliseconds(100)) != 0)
+                 throw surface::gap::Exception(
+                   gap_internal_error,
+                   elle::sprintf("8transfer binary failed for network %s",
+                                 this->_network_id));
+
+               if (this->cancelled())
+               {
+                 ELLE_DEBUG("operation cancelled");
+                 // Terminate and wait.
+                 p.interrupt(elle::system::ProcessTermination::dont_wait);
+                 p.wait(elle::system::Process::Milliseconds(1000));
+                 return;
+               }
+             }
+           }
+         }
+         catch (...)
+         {
+           ELLE_DEBUG("detroying network");
+           // Something went wrong, we need to destroy the network.
+           this->_transaction_manager.update(this->_transaction_id,
+                                             gap_TransactionStatus::gap_transaction_status_canceled);
+           throw;
+         }
+       }
+       CATCH_FAILURE_TO_METRICS("transaction_create");
+
+       this->_reporter.store("transaction_create",
+                        {{MKey::status, "succeed"},
+                         {MKey::value, this->_transaction_id},
+                         {MKey::count, std::to_string(this->_files.size())},
+                         {MKey::size, std::to_string(size)}});
+
+       this->_transaction_manager.update(this->_transaction_id,
+                                         gap_TransactionStatus::gap_transaction_status_created);
+     }
+
+     void
+     _cancel()
+     {
+       ELLE_DEBUG("cancelling %s name", this->name());
+       this->_transaction_manager.update(this->_transaction_id,
+                                         gap_TransactionStatus::gap_transaction_status_canceled);
+
+     }
+   };
+
+   class DownloadOperation: public OperationManager::Operation
+   {
+     TransactionManager& _transaction_manager;
+     plasma::meta::SelfResponse const& _me;
+     plasma::Transaction const& _transaction;
+
+   public:
+     DownloadOperation(TransactionManager& transaction_manager,
+                       plasma::meta::SelfResponse const& me,
+                       plasma::Transaction const& transaction)
+       : Operation{"download_files_for_" + transaction.id}
+       , _transaction_manager(transaction_manager)
+       , _me(me)
+       , _transaction(transaction)
+     {}
+
+   protected:
+     virtual
+     void
+     _run() override
+     {
+       std::string const& transfer_binary = common::infinit::binary_path("8transfer");
+
+       std::list<std::string> arguments{
+         "-n", this->_transaction.network_id,
+         "-u", this->_me.id,
+         "--path", this->_transaction_manager.output_dir(),
+         "--from"
+       };
+
+       ELLE_DEBUG("LAUNCH: %s %s",
+                  transfer_binary,
+                  boost::algorithm::join(arguments, " "));
+
+       try
+       {
+         auto pc = elle::system::process_config(elle::system::normal_config);
+         {
+           std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+
+           if (!log_file.empty())
+           {
+             if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+             {
+               log_file += ".";
+               log_file += std::to_string(::getpid());
+             }
+             log_file += ".from.transfer.log";
+             pc.setenv("ELLE_LOG_FILE", log_file);
+           }
+         }
+
+         {
+           elle::system::Process p{std::move(pc), transfer_binary, arguments};
+           ELLE_DEBUG("Waiting transfer --from process to finish");
+           while (p.running())
+           {
+             if (p.wait_status(elle::system::Process::Milliseconds(10)) != 0)
+               throw surface::gap::Exception(
+                 gap_internal_error,
+                 elle::sprintf("8transfer binary failed for network %s",
+                               this->_transaction.network_id));
+
+             if (this->cancelled())
+             {
+               ELLE_DEBUG("operation cancelled");
+               // Terminate and wait.
+               p.interrupt(elle::system::ProcessTermination::dont_wait);
+               p.wait(elle::system::Process::Milliseconds(1000));
+               return;
+             }
+           }
+         }
+
+         if (this->_transaction.files_count == 1)
+         {
+           ELLE_LOG("Download complete. Your file is at '%s'.",
+                    elle::os::path::join(
+                      this->_transaction_manager.output_dir(),
+                      this->_transaction.first_filename));
+         }
+         else
+         {
+           ELLE_LOG("Download complete. Your %d files are in '%s'.",
+                    this->_transaction.files_count,
+                    this->_transaction_manager.output_dir());
+         }
+
+         this->_transaction_manager.update(
+           this->_transaction.id,
+           gap_TransactionStatus::gap_transaction_status_finished
+         );
+       }
+       catch (std::exception const& err)
+       {
+         ELLE_ERR("couldn't receive file %s: %s",
+                  this->_transaction.first_filename,
+                  err.what());
+         this->_transaction_manager.update(this->_transaction.id,
+                                           gap_TransactionStatus::gap_transaction_status_canceled);
+       }
+     }
+
+     void
+     _cancel()
+     {
+       ELLE_DEBUG("cancelling %s name", this->name());
+       this->_transaction_manager.update(this->_transaction.id,
+                                         gap_TransactionStatus::gap_transaction_status_canceled);
+
+     }
+   };
+
+   TransactionManager::TransactionManager(
+     NotificationManager& notification_manager,
+     NetworkManager& network_manager,
+     UserManager& user_manager,
+     plasma::meta::Client& meta,
+     elle::metrics::Reporter& reporter,
+     Self& self,
+     Device const& device):
+     Notifiable(notification_manager),
       _network_manager(network_manager),
+     _user_manager(user_manager),
       _meta(meta),
+     _reporter(reporter),
       _self(self),
       _device(device)
     {
@@ -87,124 +396,20 @@ namespace surface
     TransactionManager::send_files(std::string const& recipient_id_or_email,
                                    std::unordered_set<std::string> const& files)
     {
-      ELLE_TRACE_FUNCTION(recipient_id_or_email, files);
+     ELLE_TRACE_METHOD(recipient_id_or_email, files);
 
       if (files.empty())
         throw Exception(gap_no_file, "no files to send");
 
-      auto size = total_size(files);
-      std::string first_file = fs::path(*(files.cbegin())).filename().string();
-      elle::utility::Time time; time.Current();
-      std::string network_name = elle::sprintf("%s-%s",
-                                               recipient_id_or_email,
-                                               time.nanoseconds);
-      std::string network_id = this->_network_manager.create(network_name);
-      plasma::meta::CreateTransactionResponse res;
+     return this->_add<UploadOperation>(*this,
+                                        this->_network_manager,
+                                        this->_meta,
+                                        this->_reporter,
+                                        this->_self,
+                                        this->_device,
+                                        recipient_id_or_email,
+                                        files);
 
-      ELLE_ERR("(%s): (%s) %s [%s] -> %s throught %s (%s)",
-               this->_device.id,
-               files.size(),
-               first_file,
-               size,
-               recipient_id_or_email,
-               network_name,
-               network_id);
-
-      res = this->_meta.create_transaction(recipient_id_or_email,
-                                           first_file,
-                                           files.size(),
-                                           size,
-                                           fs::is_directory(first_file),
-                                           network_id,
-                                           this->_device.id);
-
-
-      this->_self.remaining_invitations = res.remaining_invitations;
-
-      return this->OperationManager::_create(
-        "download_files_for_" + res.created_transaction_id,
-        [&,network_id,res]
-        {
-          reporter().store("transaction_create",
-                           {{MKey::status, "attempt"},
-                            {MKey::value, res.created_transaction_id},
-                            {MKey::count, std::to_string(files.size())},
-                            {MKey::size, std::to_string(size)}});
-
-          try
-          {
-            this->upload_files(network_id, files);
-          }
-          catch (...)
-          {
-            ELLE_DEBUG("detroying network");
-            // Something went wrong, we need to destroy the network.
-            this->_network_manager.delete_(network_id, false);
-            throw;
-          }
-
-          reporter().store("transaction_create",
-                           {{MKey::status, "succeed"},
-                             {MKey::value, res.created_transaction_id},
-                             {MKey::count, std::to_string(files.size())},
-                             {MKey::size, std::to_string(size)}});
-
-          this->update(res.created_transaction_id,
-                       gap_TransactionStatus::gap_transaction_status_created);
-        });
-    }
-
-    void
-    TransactionManager::upload_files(std::string const& network_id,
-                                     std::unordered_set<std::string> const& files)
-    {
-      ELLE_ERR("666999");
-      ELLE_TRACE_FUNCTION(network_id);
-      ELLE_DEBUG("Retrieving 8transfert binary path...");
-      auto transfer_binary = common::infinit::binary_path("8transfer");
-      ELLE_DEBUG("Using 8transfert binary '%s'", transfer_binary);
-
-      this->_network_manager.prepare(network_id);
-      ELLE_DEBUG("created network id is %s", network_id);
-
-      this->_network_manager.wait_portal(network_id);
-
-      try
-      {
-        for (auto& file: files)
-        {
-          std::list<std::string> arguments{
-            "-n", network_id,
-            "-u", this->_self.id,
-            "--path", file,
-            "--to"
-          };
-
-          ELLE_DEBUG("LAUNCH: %s %s",
-                     transfer_binary,
-                     boost::algorithm::join(arguments, " "));
-
-          auto pc = elle::system::process_config(elle::system::normal_config);
-          {
-            std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-            if (!log_file.empty())
-            {
-              if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-              {
-                log_file += ".";
-                log_file += std::to_string(::getpid());
-              }
-              log_file += ".to.transfer.log";
-              pc.setenv("ELLE_LOG_FILE", log_file);
-            }
-          }
-            // set the environment and start the transfer
-          elle::system::Process p{std::move(pc), transfer_binary, arguments};
-          if (p.wait_status() != 0)
-            throw Exception(gap_internal_error, "8transfer binary failed");
-          }
-      }
-      CATCH_FAILURE_TO_METRICS("transaction_create");
     }
 
     float
@@ -228,84 +433,25 @@ namespace surface
         };
       }
 
-      std::string const& progress_binary = common::infinit::binary_path("8progress");
-      std::list<std::string> args{"-n", tr.network_id, "-u", this->_self.id};
+     auto& progress_ptr = this->_progresses[id];
+     if (progress_ptr == nullptr)
+       progress_ptr = elle::make_unique<TransactionProgress>();
 
-      ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
-                 boost::algorithm::join(args, " "));
+     ELLE_ASSERT(progress_ptr != nullptr);
+     TransactionProgress& progress = *progress_ptr;
 
-      auto pc = elle::system::process_config(elle::system::check_output_config);
+     if (progress.process == nullptr)
       {
-        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+       std::string const& progress_binary = common::infinit::binary_path("8progress");
+       std::list<std::string> arguments{
+         "-n", tr.network_id,
+         "-u", this->_self.id
+       };
 
-        if (!log_file.empty())
-        {
-          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-          {
-            log_file += ".";
-            log_file += std::to_string(::getpid());
-          }
-          log_file += ".progress.log";
-          pc.setenv("ELLE_LOG_FILE", log_file);
-        }
-      }
-      elle::system::Process p{std::move(pc), progress_binary, args};
+       ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
+                  boost::algorithm::join(arguments, " "));
 
-      if (p.wait_status() != 0)
-        throw Exception{gap_internal_error, "8progress binary failed"};
-
-      int current_size = 0;
-      int total_size = 0;
-      std::stringstream ss;
-      ss << p.read();
-      ss >> current_size >> total_size;
-
-      if (total_size == 0)
-          return 0.f;
-      float progress = float(current_size) / float(total_size);
-
-      if (progress < 0)
-      {
-        ELLE_WARN("8progress returned a negative integer: %s", progress);
-        progress = 0;
-      }
-      else if (progress > 1.0f)
-      {
-        ELLE_WARN("8progress returned an integer greater than 1: %s", progress);
-        progress = 1.0f;
-      }
-      ELLE_DEBUG("transaction_progress(%s) -> %f", id, progress);
-      return progress;
-    }
-
-    void
-    TransactionManager::_download_files(std::string const& id)
-    {
-      auto pair = this->all().find(id);
-
-      ELLE_ASSERT(pair != this->all().end());
-
-      if (pair == this->all().end())
-        return;
-
-      Transaction const& trans = pair->second;
-
-      std::string const& transfer_binary = common::infinit::binary_path("8transfer");
-
-      std::list<std::string> arguments{
-        "-n", trans.network_id,
-        "-u", trans.recipient_id,
-        "--path", this->_output_dir,
-        "--from"
-      };
-
-      ELLE_DEBUG("LAUNCH: %s %s",
-                 transfer_binary,
-                 boost::algorithm::join(arguments, " "));
-
-      try
-      {
-        auto pc = elle::system::process_config(elle::system::normal_config);
+       auto pc = elle::system::process_config(elle::system::check_output_config);
         {
           std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
 
@@ -316,43 +462,68 @@ namespace surface
               log_file += ".";
               log_file += std::to_string(::getpid());
             }
-            log_file += ".from.transfer.log";
+           log_file += ".progress.log";
             pc.setenv("ELLE_LOG_FILE", log_file);
           }
         }
+       progress.process = elle::make_unique<elle::system::Process>(
+           std::move(pc),
+           progress_binary,
+           arguments
+       );
+     }
+     ELLE_ASSERT(progress.process != nullptr);
 
-        {
-          elle::system::Process p{std::move(pc), transfer_binary, arguments};
-          ELLE_DEBUG("Waiting transfert process to finish");
-          p.wait();
-        }
+     if (!progress.process->running())
+     {
+       int current_size = 0;
+       int total_size = 0;
+       std::stringstream ss;
+       ss << progress.process->read();
+       ss >> current_size >> total_size;
+       progress.process.reset();
 
-        if (trans.files_count == 1)
-        {
-          ELLE_LOG("Download complete. Your file is at '%s'.",
-                   elle::os::path::join(this->_output_dir.c_str(),
-                                        trans.first_filename));
-        }
-        else
-        {
-          ELLE_LOG("Download complete. Your %d files are in '%s'.",
-              trans.files_count, this->_output_dir.c_str());
-        }
+       if (total_size == 0)
+           return 0.f;
+       progress.last_value = float(current_size) / float(total_size);
 
-        this->update(
-            id,
-            gap_TransactionStatus::gap_transaction_status_finished
-        );
+       if (progress.last_value < 0)
+        {
+         ELLE_WARN("8progress returned a negative integer: %s", progress);
+         progress.last_value = 0;
+        }
+       else if (progress.last_value > 1.0f)
+        {
+         ELLE_WARN("8progress returned an integer greater than 1: %s", progress);
+         progress.last_value = 1.0f;
+        }
       }
-      catch (std::exception const& err)
-      {
-        ELLE_ERR("couldn't receive file %s: %s", trans.first_filename,
-                                                 err.what());
-        this->update(id,
-                                 gap_TransactionStatus::gap_transaction_status_canceled);
 
-        this->OperationManager::_cancel("download_files_for_" + id);
+     ELLE_DEBUG("transaction_progress(%s) -> %f",
+                id,
+                progress.last_value);
+     return progress.last_value;
+   }
+
+   TransactionManager::OperationId
+   TransactionManager::_download_files(std::string const& id)
+   {
+     auto pair = this->all().find(id);
+
+     ELLE_ASSERT(pair != this->all().end());
+
+     if (pair == this->all().end())
+     {
+       throw Exception(gap_error,
+                       elle::sprintf("download failure cause %s doesn't exist",
+                                     id));
       }
+
+     Transaction const& trans = pair->second;
+
+     return this->_add<DownloadOperation>(*this,
+                                          this->_self,
+                                          trans);
     }
 
     static
@@ -424,19 +595,20 @@ namespace surface
 
     void
     TransactionManager::update(std::string const& id,
-                                           gap_TransactionStatus status)
+                              gap_TransactionStatus status)
     {
-      ELLE_DEBUG("Update transaction '%s': '%s'",
+     ELLE_TRACE_METHOD(id, status);
+
+     auto const& transaction = this->sync(id);
+
+     ELLE_DEBUG("transaction: %s", transaction);
+
+     if (transaction.status == gap_transaction_status_canceled)
+     {
+       ELLE_WARN("updating %s with canceled status to %s",
                  id, status);
-
-      auto pair = this->all().find(id);
-
-      ELLE_ASSERT(pair != this->all().end());
-
-      if (pair == this->all().end())
         return;
-
-      Transaction const& transaction = pair->second;
+     }
 
       if (!_check_action_is_available(this->_self.id, transaction, status))
         throw Exception(gap_api_error,
@@ -476,63 +648,97 @@ namespace surface
     } // !update()
 
     void
+   TransactionManager::_ensure_ownership(Transaction const& transaction,
+                                         bool check_devices)
+   {
+     ELLE_ASSERT(this->_self.id == transaction.sender_id ||
+                 this->_self.id == transaction.recipient_id);
+
+     if (check_devices)
+     {
+       ELLE_ASSERT(this->_device.id == transaction.sender_device_id ||
+                   this->_device.id == transaction.recipient_device_id);
+     }
+   }
+
+   void
     TransactionManager::_create_transaction(Transaction const& transaction)
     {
-      if (transaction.sender_device_id != this->_device.id)
-        throw Exception{gap_error, "Only sender can lekf his network."};
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction);
+     ELLE_ASSERT_EQ(transaction.sender_device_id, this->_device.id);
 
+     this->_meta.update_transaction(transaction.id,
+                                    plasma::TransactionStatus::created);
     }
 
     void
     TransactionManager::_on_transaction_created(Transaction const& transaction)
     {
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction);
       if (transaction.sender_device_id != this->_device.id)
+     {
+       ELLE_DEBUG("%s not the sender device %s. You are the %s",
+                  this->_device.id,
+                  transaction.sender_device_id,
+                  transaction.sender_id == this->_self.id ? "sender"
+                                                          : "recipient");
         return;
+     }
 
       if (transaction.already_accepted)
+     {
+       ELLE_DEBUG("the transaction %s has already been accepted",
+                  transaction.id);
+
         this->update(transaction.id,
                                  gap_TransactionStatus::gap_transaction_status_prepared);
+     }
     }
 
     void
     TransactionManager::_accept_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("Accept transaction '%s'", transaction.id);
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction);
+     ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
 
-      if (transaction.recipient_id != this->_self.id)
-      {
-        throw Exception{gap_error, "Only recipient can accept transaction."};
-      }
-
-      reporter().store("transaction_accept",
+     this->_reporter.store("transaction_accept",
                             {{MKey::status, "attempt"},
                              {MKey::value, transaction.id}});
 
       try
       {
-        ELLE_ERR("%s %s", this->_device.id, this->_device.name);
         this->_meta.update_transaction(transaction.id,
                                        plasma::TransactionStatus::accepted,
                                        this->_device.id,
                                        this->_device.name);
+       this->_user_manager.swaggers_dirty();
       }
       CATCH_FAILURE_TO_METRICS("transaction_accept");
 
-      reporter().store("transaction_accept",
-                       {{MKey::status, "succeed"},
-                        {MKey::value, transaction.id}});
+     this->_reporter.store("transaction_accept",
+                           {{MKey::status, "succeed"},
+                            {MKey::value, transaction.id}});
 
-      // XXX: Could be improve.
-      // _swaggers_dirty = true;
     }
 
     void
     TransactionManager::_on_transaction_accepted(Transaction const& transaction)
     {
-      ELLE_TRACE("On transaction accepted '%s'", transaction.id);
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction);
 
       if (transaction.sender_device_id != this->_device.id)
+     {
+       ELLE_DEBUG("%s not the sender device %s. You are the %s",
+                  this->_device.id,
+                  transaction.sender_device_id,
+                  transaction.sender_id == this->_self.id ? "sender"
+                                                          : "recipient");
         return;
+     }
 
       if (!transaction.already_accepted)
       {
@@ -541,41 +747,36 @@ namespace surface
                                  gap_transaction_status_prepared);
 
         // XXX Could be improved.
-        // _swaggers_dirty = true;
+       this->_user_manager.swaggers_dirty();
       }
     }
 
     void
     TransactionManager::_prepare_transaction(Transaction const& transaction)
     {
-      ELLE_TRACE_FUNCTION(transaction.id);
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction);
+     ELLE_ASSERT_EQ(transaction.sender_device_id, this->_device.id);
 
-      if (transaction.sender_device_id != this->_device.id)
-      {
-        throw Exception{gap_error, "Only sender can prepare his network."};
-      }
-
-      reporter().store("transaction_ready",
+     this->_reporter.store("transaction_ready",
                             {{MKey::status, "attempt"},
                              {MKey::value, transaction.id}});
 
       try
       {
-        // XXX: dirty
-        // if (this->_network_manager.infinit_instance_manager().wait_portal(transaction.network_id) == false)
-        //   throw Exception{gap_network_error, "Cannot wait portal"};
+       this->_network_manager.wait_portal(transaction.network_id);
 
-        ELLE_DEBUG("Giving '%s' access to the network '%s'",
+       ELLE_DEBUG("giving '%s' access to the network '%s'",
                    transaction.recipient_id,
                    transaction.network_id);
 
-        // XXX dirty
-        //this->network_manager().networks_dirty = true;
+       std::string recipient_k =
+         this->_meta.user(transaction.recipient_id).public_key;
+
         this->_network_manager.add_user(transaction.network_id,
                                         this->_self.id,
                                         transaction.recipient_id,
-                                        // XXX: dirty?
-                                        this->_meta.user(transaction.recipient_id).public_key);
+                                       recipient_k);
 
         ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
                    transaction.recipient_id,
@@ -583,7 +784,7 @@ namespace surface
 
         this->_network_manager.set_permissions(transaction.network_id,
                                                transaction.recipient_id,
-                                               this->_meta.user(transaction.recipient_id).public_key,
+                                              recipient_k,
                                                nucleus::neutron::permissions::write);
 
         this->_meta.update_transaction(transaction.id,
@@ -591,7 +792,7 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_ready");
 
-      reporter().store("transaction_ready",
+     this->_reporter.store("transaction_ready",
                             {{MKey::status, "succeed"},
                              {MKey::value, transaction.id}});
     }
@@ -599,35 +800,36 @@ namespace surface
     void
     TransactionManager::_on_transaction_prepared(Transaction const& transaction)
     {
-      ELLE_TRACE("prepared trans '%s'", transaction.id);
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction);
 
       if (transaction.recipient_device_id != this->_device.id)
       {
-        ELLE_DEBUG("transaction doesn't concern your device.");
+       ELLE_DEBUG("%s not the recipient device %s. You are the %s",
+                  this->_device.id,
+                  transaction.sender_device_id,
+                  transaction.sender_id == this->_self.id ? "sender"
+                                                         : "recipient");
         return;
       }
 
-      // XXX dirty
-      //this->_network_manager.networks_dirty = true;
-      this->_meta.network_add_device(transaction.network_id, this->_device.id);
 
+     this->_network_manager.add_device(transaction.network_id, this->_device.id);
+     // XXX: prepare also launch infinit.
       this->_network_manager.prepare(transaction.network_id);
 
       this->update(transaction.id,
-                               gap_transaction_status_started);
+                  gap_transaction_status_started);
     }
 
     void
     TransactionManager::_start_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("Start transaction '%s'", transaction.id);
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction);
+     ELLE_ASSERT_EQ(transaction.recipient_device_id, this->_device.id);
 
-      if (transaction.recipient_device_id != this->_device.id)
-      {
-        throw Exception{gap_error, "Only recipient can start transaction."};
-      }
-
-      reporter().store("transaction_start",
+     this->_reporter.store("transaction_start",
                             {{MKey::status, "attempt"},
                               {MKey::value, transaction.id}});
 
@@ -638,87 +840,127 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_start");
 
-      reporter().store("transaction_start",
+     this->_reporter.store("transaction_start",
                             {{MKey::status, "succeed"},
                              {MKey::value, transaction.id}});
-
     }
 
     void
     TransactionManager::_on_transaction_started(Transaction const& transaction)
     {
-      ELLE_TRACE("Started trans '%s'", transaction.id);
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction, true);
 
-      if (transaction.recipient_device_id != this->_device.id &&
-          transaction.sender_device_id != this->_device.id)
+     this->_network_manager.wait_portal(transaction.network_id);
+
+     struct NotifyOp:
+       public Operation
       {
-        ELLE_DEBUG("transaction doesn't concern your device.");
-        return;
-      }
+       typedef std::function<void(std::string const&,
+                                  std::string const&,
+                                  std::string const&,
+                                  reactor::Scheduler&)> Notify8infinitFunc;
+       typedef std::function<void(std::string const&)> DownloadFilesFunc;
+     public:
+       TransactionManager& _transaction_manager;
+       Transaction const& _transaction;
+       Device const& _device;
+       Notify8infinitFunc notify_8infinit;
+       DownloadFilesFunc download_files;
 
-      // XXX dirty
-      // if (this->_wait_portal(transaction.network_id) == false)
-      //   throw Exception{gap_error, "Couldn't find portal to infinit instance"};
+       NotifyOp(TransactionManager& transaction_manager,
+                Transaction const& transaction,
+                Device const& device,
+                Notify8infinitFunc notify_8infinit,
+                DownloadFilesFunc download_files):
+         Operation{"notify_8infinit_" + transaction.id},
+         _transaction_manager(transaction_manager),
+         _transaction(transaction),
+         _device(device),
+         notify_8infinit(notify_8infinit),
+         download_files(download_files)
+       {}
 
-      std::exception_ptr exception;
-      {
-        reactor::Scheduler sched;
-        reactor::Thread sync{
-          sched,
-          "notify_8infinit",
-          [&]
+     public:
+       void
+       _run() override
+       {
+         std::exception_ptr exception;
           {
-            try
-            {
-              this->_network_manager.notify_8infinit(transaction.network_id,
-                                                     transaction.sender_device_id,
-                                                     transaction.recipient_device_id,
-                                                     sched);
-            }
-            catch (elle::Exception const& e)
-            {
-              exception = std::make_exception_ptr(e);
-            }
-          }
-        };
+           reactor::Scheduler sched;
+           reactor::Thread sync{
+             sched,
+             "notify_8infinit",
+             [&]
+             {
+               try
+               {
+                 this->notify_8infinit(this->_transaction.network_id,
+                                       this->_transaction.sender_device_id,
+                                       this->_transaction.recipient_device_id,
+                                       sched);
+               }
+               // A parsing bug in gcc (fixed in 4.8.3) make this block
+               // mandatory.
+               catch (std::exception const& e)
+               {
+                 exception = std::make_exception_ptr(e);
+               }
+               catch (...)
+               {
+                 exception = std::current_exception();
+               }
+             }
+           };
 
-        sched.run();
-        ELLE_DEBUG("notify finished");
-      }
+           sched.run();
+           ELLE_DEBUG("notify finished");
+         }
+         if (this->cancelled())
+           return;
+         if (exception != std::exception_ptr{})
+         {
+           std::string msg;
+           try { std::rethrow_exception(exception); }
+           catch (std::exception const& err) { msg = err.what(); }
+           catch (...) { msg = "Unknown exception type"; }
+           ELLE_ERR("cannot connect infinit instances: %s", msg);
+           this->_transaction_manager.update(this->_transaction.id,
+                                             gap_transaction_status_canceled);
+           std::rethrow_exception(exception);
+         }
+         if (this->_transaction.recipient_device_id == this->_device.id)
+         {
+           this->download_files(this->_transaction.id);
+         }
+       }
+     };
 
-      if (exception != std::exception_ptr{})
-      {
-        std::string msg;
-        try { std::rethrow_exception(exception); }
-        catch (std::exception const& err) { msg = err.what(); }
-        catch (...) { msg = "Unknown exception type"; }
-        ELLE_ERR("cannot connect infinit instances: %s", msg);
-        this->update(transaction.id,
-                                 gap_transaction_status_canceled);
-        std::rethrow_exception(exception);
-      }
-      if (transaction.recipient_device_id == this->_device.id)
-      {
-        this->OperationManager::_create("download_files_for_" + transaction.id,
-                                        std::bind(&TransactionManager::_download_files,
-                                                  this,
-                                                  transaction.id),
-                                        true);
-      }
+     NotifyOp::Notify8infinitFunc n = std::bind(&NetworkManager::notify_8infinit,
+                                                &(this->_network_manager),
+                                                std::placeholders::_1,
+                                                std::placeholders::_2,
+                                                std::placeholders::_3,
+                                                std::placeholders::_4);
+     NotifyOp::DownloadFilesFunc d = std::bind(&TransactionManager::_download_files,
+                                               this,
+                                               std::placeholders::_1);
+
+     this->_add<NotifyOp>(*this,
+                          transaction,
+                          this->_device,
+                          n,
+                          d);
     }
 
     void
     TransactionManager::_close_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("Close transaction '%s'", transaction.id);
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction);
+     ELLE_ASSERT_EQ(transaction.recipient_device_id, this->_device.id);
 
-      if(transaction.recipient_device_id != this->_device.id)
-      {
-        throw Exception{gap_error,
-            "Only recipient can close transaction."};
-      }
-
-      reporter().store("transaction_finish",
+     this->_reporter.store("transaction_finish",
                             {{MKey::status, "attempt"},
                               {MKey::value, transaction.id}});
 
@@ -729,7 +971,7 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_finish");
 
-      reporter().store("transaction_finish",
+     this->_reporter.store("transaction_finish",
                             {{MKey::status, "succeed"},
                               {MKey::value, transaction.id}});
     }
@@ -737,31 +979,35 @@ namespace surface
     void
     TransactionManager::_on_transaction_closed(Transaction const& transaction)
     {
-      ELLE_DEBUG("Closed transaction '%s'", transaction.id);
+     ELLE_TRACE_METHOD(transaction);
+     this->_ensure_ownership(transaction, true);
 
       // Delete networks.
-      this->_network_manager.delete_(transaction.network_id, true /* force */);
+     this->_network_manager.delete_(transaction.network_id,
+                                           true /* force */);
     }
 
     void
     TransactionManager::_cancel_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG("Cancel transaction '%s'", transaction.id);
-
-      //XXX: If download has started, cancel it, delete files, ...
+     ELLE_TRACE_METHOD(transaction);
 
       std::string author{
-        transaction.sender_id == this->_self.id ? "sender" : "recipient"};
+       transaction.sender_id == this->_self.id ? "sender" : "recipient",};
 
-      reporter().store("transaction_cancel",
-                       {{MKey::status, "attempt"},
-                         {MKey::author, author},
-                         {MKey::step, std::to_string(transaction.status)},
-                         {MKey::value, transaction.id}});
+     this->_reporter.store("transaction_cancel",
+                           {{MKey::status, "attempt"},
+                            {MKey::author, author},
+                            {MKey::step, std::to_string(transaction.status)},
+                            {MKey::value, transaction.id}});
 
       ELLE_SCOPE_EXIT(
-        [&] { this->_cancel_all(transaction.id);
-              this->_network_manager.delete_(transaction.network_id, true); });
+       [&] {
+         this->_cancel_all(transaction.id);
+         this->_network_manager.delete_(transaction.network_id,
+                                        true);
+       }
+     );
 
       try
       {
@@ -770,25 +1016,29 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-      reporter().store("transaction_cancel",
-                       {{MKey::status, "succeed"},
-                         {MKey::author, author},
-                         {MKey::step, std::to_string(transaction.status)},
-                         {MKey::value, transaction.id}});
+     this->_reporter.store("transaction_cancel",
+                           {{MKey::status, "succeed"},
+                            {MKey::author, author},
+                            {MKey::step, std::to_string(transaction.status)},
+                            {MKey::value, transaction.id}});
     }
 
     void
     TransactionManager::_on_transaction_canceled(Transaction const& transaction)
     {
-      ELLE_TRACE_METHOD("Canceled transaction '%s'", transaction.id);
+     ELLE_TRACE_METHOD(transaction);
 
-      // XXX: If some operation are launched, such as 8transfer, 8progess for the
-      // current transaction, cancel them.
-      this->OperationManager::_cancel_all(transaction.id);
+     // We can't do check_device = true cause the recipient device is not set
+     // until he accepts. So we need to check manualy.
+     this->_ensure_ownership(transaction);
 
-      // Delete networks.
-      this->_network_manager.delete_(transaction.network_id, true);
-      ELLE_DEBUG("Network %s successfully deleted", transaction.network_id);
+     if (transaction.recipient_device_id == this->_device.id ||
+         transaction.sender_device_id == this->_device.id)
+     {
+       this->_cancel_all(transaction.id);
+       this->_network_manager.delete_(transaction.network_id, true);
+       ELLE_DEBUG("Network %s successfully deleted", transaction.network_id);
+     }
     }
 
     TransactionManager::TransactionsMap const&

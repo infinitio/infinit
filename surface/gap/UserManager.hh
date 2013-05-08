@@ -81,6 +81,9 @@ namespace surface
 
       User const&
       swagger(std::string const& id);
+
+     void
+     swaggers_dirty();
     };
   }
 }

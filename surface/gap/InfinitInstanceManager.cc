@@ -43,10 +43,10 @@ namespace surface
       ELLE_ASSERT(this->_instances.empty());
     }
 
-    bool
+    void
     InfinitInstanceManager::wait_portal(std::string const& network_id)
     {
-      ELLE_TRACE("_wait_portal for network %s", network_id);
+      ELLE_TRACE_METHOD(network_id);
 
       ELLE_DEBUG("retrieving portal path");
       auto portal_path = common::infinit::portal_path(this->_user_id, network_id);
@@ -59,14 +59,15 @@ namespace surface
       {
         ELLE_DEBUG("Waiting for portal.");
         if (elle::os::path::exists(portal_path))
-          return true;
+          return;
 
         if (!this->exists(network_id))
           throw Exception{gap_error, "Infinit instance has crashed"};
         ::sleep(1);
       }
 
-      return false;
+      throw Exception{
+        elle::sprintf("Unable to find portal for %s", network_id)};
     }
 
 
@@ -150,7 +151,7 @@ namespace surface
       ELLE_TRACE_METHOD(network_id);
       try
       {
-        auto const& instance = this->network_instance(network_id);
+        auto const& instance = this->instance(network_id);
         ELLE_ASSERT(instance.process != nullptr);
         instance.process->interrupt(elle::system::ProcessTermination::dont_wait);
       }

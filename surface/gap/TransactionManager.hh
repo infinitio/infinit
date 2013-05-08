@@ -5,10 +5,11 @@
 # include <unordered_set>
 # include <surface/gap/status.hh>
 
-
-# include <surface/gap/OperationManager.hh>
-# include <surface/gap/NotificationManager.hh>
 # include <surface/gap/NetworkManager.hh>
+# include <surface/gap/NotificationManager.hh>
+# include <surface/gap/OperationManager.hh>
+# include <surface/gap/UserManager.hh> // Could be avoid using accept response.
+# include <surface/gap/metrics.hh>
 
 # include <plasma/trophonius/Client.hh>
 # include <plasma/meta/Client.hh>
@@ -20,23 +21,32 @@ namespace surface
     using ::plasma::Transaction;
     using Self = ::plasma::meta::SelfResponse;
     using Device = ::plasma::meta::Device;
-    using NotifManager = ::surface::gap::NotificationManager;
-    using NetManager = ::surface::gap::NetworkManager;
+   using NotificationManager = ::surface::gap::NotificationManager;
+   using NetworkManager = ::surface::gap::NetworkManager;
+   using UserManager = ::surface::gap::UserManager;
 
     class TransactionManager: public OperationManager, Notifiable
     {
+     struct TransactionProgress;
+     typedef std::unique_ptr<TransactionProgress> TransactionProgressPtr;
+     std::map<std::string, TransactionProgressPtr> _progresses;
+
     private:
-      surface::gap::NetworkManager& _network_manager;
+     NetworkManager& _network_manager;
+     UserManager& _user_manager;
       // XXX: meta should be constant everywhere.
       // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
+     elle::metrics::Reporter& _reporter;
       Self& _self;
       Device const& _device;
 
     public:
-      TransactionManager(NetManager& network_manager,
-                         NotifManager& notification_manager,
-                         plasma::meta::Client& meta,
+     TransactionManager(NotificationManager& notification_manager,
+                        NetworkManager& network_manager,
+                        UserManager& user_manager,
+                        plasma::meta::Client& meta,
+                        elle::metrics::Reporter& reporter,
                          Self& self,
                          Device const& device);
 
@@ -102,10 +112,17 @@ namespace surface
     private:
       /// @brief Start the transfer process on recipient.
       ///
-      void
+     OperationId
       _download_files(std::string const& transaction_id);
 
     private:
+     /// @brief Ensure the transaction belongs to the user, as sender or
+     /// recipient. May also check if involved devices are the good ones.
+     void
+     _ensure_ownership(Transaction const& transaction,
+                       bool check_devices = false);
+
+   private:
       // Functions callback on each status (set and get).
 
       /// @brief Use to launch the process if the recipient already accepted

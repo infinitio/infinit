@@ -98,6 +98,7 @@ init_sender(std::string const& to_send, unsigned int count = 10)
   bool finish = false;
   unsigned int counter = 0;
 
+  make_login(state, "Bite", email1);
   state.notification_manager().transaction_status_callback([&] (TransactionStatusNotification const& t,
                                                                 bool)
                                                            {
@@ -106,7 +107,7 @@ init_sender(std::string const& to_send, unsigned int count = 10)
                                                            });
 
   state.notification_manager().on_error_callback(error_cb);
-  make_login(state, "Bite", email1);
+
   static std::thread thread = make_worker(state);
 
   try
@@ -153,12 +154,12 @@ init_recipient()
 {
   static surface::gap::State state;
 
+  make_login(state, "Bite", email2);
   state.notification_manager().transaction_callback([&] (TransactionNotification const& t, bool)
                                                     { auto_accept_transaction_cb(t, state); });
 
   state.notification_manager().on_error_callback(error_cb);
 
-  make_login(state, "Bite", email2);
 
   static std::thread thread = make_worker(state);
 

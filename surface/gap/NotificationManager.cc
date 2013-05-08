@@ -103,15 +103,13 @@ namespace surface
     size_t
     NotificationManager::poll(size_t max)
     {
-      if (!this->_trophonius)
+      if (this->_trophonius == nullptr)
         throw Exception{gap_error, "Trophonius is not connected"};
 
       size_t count = 0;
-      while (count < max)
+      while (count < max && this->_trophonius != nullptr)
       {
-        std::unique_ptr<Notification> notif{
-          this->_trophonius->poll()
-        };
+        std::unique_ptr<Notification> notif{this->_trophonius->poll()};
 
         if (!notif)
           break;
