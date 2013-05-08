@@ -41,7 +41,7 @@ namespace infinit
     {
       std::stringstream ss;
       int signum = WTERMSIG(status);
-      ELLE_LOG("%s[%d]: stopped by signal %s(%d)", name, pid,
+      ELLE_ERR("%s[%d]: stopped by signal %s(%d)", name, pid,
                elle::system::strsignal(signum), signum);
       retval = -signum;
       if (signum == SIGKILL)
