@@ -87,7 +87,11 @@ namespace etoile
         {
           case Pod::State::dangling:
           case Pod::State::use:
+          {
+            // XXX
+            ELLE_WARN("the pod's block '%s' is dangling or still in use", *pod);
             break;
+          }
           case Pod::State::queue:
           {
             ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
@@ -366,8 +370,10 @@ namespace etoile
         Pod* pod = *iterator;
 
         ELLE_ASSERT_NEQ(pod, nullptr);
-        ELLE_DEBUG("consider pod '%s' for eviction from the nest",
-                   *pod);
+        ELLE_DEBUG_SCOPE("consider pod '%s' for eviction from the nest: "
+                         "%s / %s",
+                         *pod,
+                         this->_size, this->_threshold);
 
         // Prepare for the next iteration.
         ++iterator;
@@ -1044,6 +1050,9 @@ namespace etoile
           // appropriate egg.
           if (this->_exist(handle.address()) == true)
           {
+            ELLE_DEBUG("the block referenced by the handle's address is "
+                       "present in the history");
+
             // Retrieve the existing pod.
             Pod* pod = this->_lookup(handle.address());
 
@@ -1062,6 +1071,9 @@ namespace etoile
             // In this case, no egg exists. One must therefore create
             // an egg, encapsulte it in a pod which must be tracked by
             // the nest.
+
+            ELLE_DEBUG("the block referenced by the handle's address does not "
+                       "seem to be present in the history");
 
             // Make the handle evolve so as to reference a newly
             // created egg.
