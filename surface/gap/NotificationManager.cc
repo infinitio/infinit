@@ -285,10 +285,6 @@ namespace surface
       if (count < 1)
         return;
 
-      if (offset < 0)
-        return;
-
-
       auto res = this->_meta.pull_notifications(count, offset);
 
       if (only_new)
