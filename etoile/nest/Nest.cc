@@ -337,33 +337,28 @@ namespace etoile
 
         ELLE_DEBUG("block state: '%s'", pod->egg()->block()->state());
 
+        // First, ignore the blocks which are not eligible i.e whose content
+        // is not suited for pre-publication.
+        //
+        // For instance, a block could reference another block which is
+        // clean/transient or dirty. This referenced block would need to
+        // be pre-published first, assuming it does not reference a dirty
+        // block itself.
+        if (pod->egg()->block()->eligible() == false)
+        {
+          ELLE_DEBUG("ignore pod '%s' because ineligible", *pod);
+
+          continue;
+        }
+
+        ELLE_ASSERT_EQ(pod->egg()->block()->state(),
+                       pod->egg()->block()->node().state());
+
         // Depending on the block's state.
         switch (pod->egg()->block()->state())
         {
           case nucleus::proton::State::clean:
           {
-            // XXX[isn't there a way to ensure that the tree is never in
-            //     an inconsistent state: the update being performed before
-            //     the block is unloaded? though they may be other cases]
-
-            // First, let us ignore blocks whose state does not match the
-            // node's.
-            //
-            // This case is quite common. For example, one could load a block,
-            // modify its node and unload it. Until the tree is updated,
-            // the block is invalid in the sense that it does not know the node
-            // has been modified.
-            if (pod->egg()->block()->state() !=
-                pod->egg()->block()->node().state())
-            {
-              ELLE_DEBUG("ignore the pod as the block's state '%s' mismatches "
-                         "the node's '%s'",
-                         pod->egg()->block()->state(),
-                         pod->egg()->block()->node().state());
-
-              continue;
-            }
-
             // Nothing to do in this case but to release the block so as to
             // lighten the nest.
             //
@@ -408,9 +403,6 @@ namespace etoile
             // In this case, the block must be prepared for publishing. First
             // a temporary secret is generated with which the block will be
             // encrypted. Then, the block's address is computed.
-
-            ELLE_ASSERT_EQ(pod->egg()->block()->state(),
-                           pod->egg()->block()->node().state());
 
             // Since the block is about to get completely wiped off
             // from the queue, decrease the nest's size.
@@ -460,9 +452,6 @@ namespace etoile
             // In this case, it happens that the block has already
             // been sealed. The block is therefore ready to be published
             // onto the storage layer.
-
-            ELLE_ASSERT_EQ(pod->egg()->block()->state(),
-                           pod->egg()->block()->node().state());
 
             // Since the block is about to get completely wiped off
             // from the queue, decrease the nest's size.
