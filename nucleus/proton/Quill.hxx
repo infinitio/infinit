@@ -412,10 +412,14 @@ namespace nucleus
       // load the value block.
       value.load();
 
-      // Check whether the value has indeed been modified without
-      // which one would not need to call update() and update the
-      // value block's state as well.
-      ELLE_ASSERT_EQ(value().state(), State::dirty);
+      // Update the value block's state so as to match the node's
+      //
+      // Note that here, we deliberatly do not mark the block as
+      // dirty because, before calling update(), the value block
+      // may have been published on the storage layer.
+      //
+      // Should it be the case, the value block and node would be,
+      // at this point, clean.
       value.contents().state(value().state());
 
       // update the quill's state.

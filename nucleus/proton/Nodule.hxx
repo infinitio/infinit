@@ -225,8 +225,14 @@ namespace nucleus
 
           newright.load();
 
-          // Update the new nodule block's state.
-          ELLE_ASSERT_EQ(newright().state(), State::dirty);
+          // Update the new right block's state so as to match the nodule's
+          //
+          // Note that here, we deliberatly do not mark the block as
+          // dirty because, before loading, the block may have been
+          // published on the storage layer.
+          //
+          // Should it be the case, the new right block and nodule would be,
+          // at this point, clean.
           newright.contents().state(newright().state());
 
           //
