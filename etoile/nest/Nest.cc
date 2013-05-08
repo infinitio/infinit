@@ -433,17 +433,41 @@ namespace etoile
             // Then, record the previous version of the block for it to
             // be removed from the storage layer.
             if (pod->egg()->has_history() == true)
+            {
+              ELLE_DEBUG("unmap the historical address '%s' from the nest",
+                         pod->egg()->historical().address());
+
+              ELLE_ASSERT_EQ(this->_exist(pod->egg()->historical().address()),
+                             true);
+              this->_unmap(pod->egg()->historical().address());
+
+              ELLE_DEBUG("the historical instance of the block '%s' is "
+                         "recorded for deletion",
+                         pod->egg()->historical().address());
+
               transcript->record(
                 new gear::action::Wipe(pod->egg()->historical().address()));
+            }
 
             ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                            pod->egg()->address());
+
+            ELLE_DEBUG("the instance of the block '%s' is recorded for "
+                       "publication",
+                       pod->egg()->address());
 
             // Finally, record the current version so as to be published onto
             // the storage layer.
             transcript->record(
               new gear::action::Push(pod->egg()->address(),
                                      std::move(pod->egg()->block())));
+
+            // Map the new address for other handles to find the pod given
+            // the new address.
+            ELLE_DEBUG("map the new address '%s' from the pod '%s'",
+                       pod->egg()->address(),
+                       *pod);
+            this->_map(pod->egg()->address(), pod);
 
             break;
           }
@@ -462,11 +486,20 @@ namespace etoile
             // The previous version of the block must first be
             // removed from the storage layer.
             if (pod->egg()->has_history() == true)
+            {
+              ELLE_DEBUG("the historical instance of the block '%s' is "
+                         "recorded for deletion",
+                         pod->egg()->historical().address());
               transcript->record(
                 new gear::action::Wipe(pod->egg()->historical().address()));
+            }
 
             ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
                            pod->egg()->address());
+
+            ELLE_DEBUG("the instance of the block '%s' is recorded for "
+                       "publication",
+                       pod->egg()->address());
 
             // Finally, push the final version of the block.
             transcript->record(
