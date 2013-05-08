@@ -104,14 +104,61 @@ namespace etoile
             // XXX si on ne fait pas ca, remplacer le break dans danglging/use
             //     par un throw comme a l'origine.
 
+            // XXX si on veut que le nest soit encore coherent apres transcribe,
+            //     il faudrait que le blocks stored soit enleve de la queue -> shell
+
             // Note that only consistent blocks need to be published onto
             // the storage layer.
             switch (pod->egg()->block()->state())
             {
               case nucleus::proton::State::clean:
+              {
+                // Nothing to do in this case but to release the block so as to
+                // lighten the nest.
+                //
+                // Note however that only permanent blocks must be discarded
+                // while transient ones must be kept in main memory until they
+                // get modified so as to be eligible for pre-publishing.
+                switch (pod->egg()->type())
+                {
+                  case nucleus::proton::Egg::Type::transient:
+                  {
+                    // XXX
+                    ELLE_WARN("ignore the pod '%s' which tracks a transient "
+                              "and clean block", *pod);
+
+                    // Ignore this pod for now.
+                    continue;
+                  }
+                  case nucleus::proton::Egg::Type::permanent:
+                  {
+                    // Since the block is about to get completely wiped off
+                    // from the queue, decrease the queue size.
+                    ELLE_ASSERT_GTE(this->_size,
+                                    pod->egg()->block()->footprint());
+                    this->_size -= pod->egg()->block()->footprint();
+
+                    ELLE_DEBUG("delete the block '%s' from the main memory",
+                               pod->egg()->block().get());
+
+                    // Discard the block.
+                    pod->egg()->block().reset();
+
+                    break;
+                  }
+                  default:
+                    throw Exception(
+                      elle::sprintf("unknwon egg type '%s'",
+                                    pod->egg()->type()));
+                }
+
+                break;
+              }
               case nucleus::proton::State::dirty:
               {
-                // Ignore such blocks.
+                // XXX
+                ELLE_WARN("the pod's block '%s' is dirty, which should never "
+                          "happen", *pod);
                 break;
               }
               case nucleus::proton::State::consistent:
