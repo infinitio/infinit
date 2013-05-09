@@ -221,7 +221,18 @@ namespace surface
           break;
 
         case NotificationType::transaction:
-#define GET_TR_FIELD(f, type)                                                   \
+#define GET_TR_FIELD_RENAME(_if_, _of_, type)                                          \
+          try                                                                   \
+          {                                                                     \
+            ELLE_DEBUG("Get transaction field " #_if_);                            \
+            transaction->transaction._of_ = d["transaction"][#_if_].as_ ## type ();   \
+          }                                                                     \
+          catch (...)                                                           \
+          {                                                                     \
+            ELLE_ERR("Couldn't get field " #_if_);                                 \
+          }                                                                     \
+
+#define GET_TR_FIELD(f, type)                                          \
           try                                                                   \
           {                                                                     \
             ELLE_DEBUG("Get transaction field " #f);                            \
@@ -230,9 +241,9 @@ namespace surface
           catch (...)                                                           \
           {                                                                     \
             ELLE_ERR("Couldn't get field " #f);                                 \
-          }                                                                     \
+          }
 
-          GET_TR_FIELD(id, string);
+          GET_TR_FIELD_RENAME(transaction, id, string);
           GET_TR_FIELD(sender_id, string);
           GET_TR_FIELD(sender_fullname, string);
           GET_TR_FIELD(sender_device_id, string);
@@ -282,8 +293,11 @@ namespace surface
     {
       ELLE_TRACE_FUNCTION(count, offset);
 
-      if (count < 1)
-        return;
+      if (count < 0)
+        throw Exception("pulling a negative number of notification");
+
+      if (offset < 0)
+        throw Exception("offset is negativ");
 
       auto res = this->_meta.pull_notifications(count, offset);
 
