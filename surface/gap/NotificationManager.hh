@@ -52,6 +52,9 @@ namespace surface
       NotificationManager(plasma::meta::Client& meta,
                           Self const& self);
 
+      virtual
+      ~NotificationManager();
+
     private:
       void
       _connect(std::string const& _id, std::string const& token);

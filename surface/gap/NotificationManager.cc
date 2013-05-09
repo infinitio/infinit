@@ -23,7 +23,13 @@ namespace surface
       : _meta(meta)
       , _self(self)
     {
+      ELLE_TRACE_METHOD("");
       this->_connect(_self.id, meta.token());
+    }
+
+    NotificationManager::~NotificationManager()
+    {
+      ELLE_TRACE_METHOD("");
     }
 
     // - TROPHONIUS ----------------------------------------------------

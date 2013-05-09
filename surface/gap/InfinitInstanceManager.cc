@@ -22,10 +22,13 @@ namespace surface
 
     InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id)
       : _user_id{user_id}
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     InfinitInstanceManager::~InfinitInstanceManager()
     {
+      ELLE_TRACE_METHOD("");
       this->clear();
     }
 

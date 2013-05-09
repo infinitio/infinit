@@ -361,6 +361,7 @@ namespace surface
      _device(device),
      _output_dir{common::system::download_directory()}
    {
+     ELLE_TRACE_METHOD("");
      this->_notification_manager.transaction_callback(
        [&] (TransactionNotification const &n, bool is_new) -> void {
          this->_on_transaction(n, is_new);
@@ -371,7 +372,6 @@ namespace surface
          this->_on_transaction_status(n);
        }
        );
-     ELLE_TRACE_METHOD("");
    }
 
     TransactionManager::~TransactionManager()

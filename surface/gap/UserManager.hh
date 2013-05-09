@@ -37,6 +37,9 @@ namespace surface
                   plasma::meta::Client& meta,
                   Self const& self);
 
+      virtual
+      ~UserManager();
+
       // Caching.
     private:
       std::map<std::string, User*> _users;

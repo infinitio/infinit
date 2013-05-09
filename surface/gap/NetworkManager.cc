@@ -168,8 +168,8 @@ namespace surface
     using MKey = elle::metrics::Key;
 
     NetworkManager::NetworkManager(plasma::meta::Client& meta,
-                                  elle::metrics::Reporter& reporter,
-                                  elle::metrics::Reporter& google_reporter,
+                                   elle::metrics::Reporter& reporter,
+                                   elle::metrics::Reporter& google_reporter,
                                    Self const& me,
                                    Device const& device):
       _meta(meta),
@@ -178,10 +178,13 @@ namespace surface
       _self(me),
       _device(device),
       _infinit_instance_manager{me.id}
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     NetworkManager::~NetworkManager()
     {
+      ELLE_TRACE_METHOD("");
       this->clear();
     }
 

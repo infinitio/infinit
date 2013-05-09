@@ -35,6 +35,13 @@ namespace surface
           this->_on_swagger_status_update(n);
         }
       );
+
+      ELLE_TRACE_METHOD("");
+    }
+
+    UserManager::~UserManager()
+    {
+      ELLE_TRACE_METHOD("");
     }
 
     User const&
