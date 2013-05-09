@@ -60,7 +60,7 @@ namespace etoile
                                    context.access_limits,
                                    depot::hole().storage().network(),
                                    agent::Agent::Subject.user(),
-                                   20971520);
+                                   context.access_threshold);
 
           // Instanciate a porcupine.
           context.access_porcupine =
@@ -77,7 +77,7 @@ namespace etoile
                                    context.access_limits,
                                    depot::hole().storage().network(),
                                    agent::Agent::Subject.user(),
-                                   20971520);
+                                   context.access_threshold);
 
           // otherwise create a new empty porcupine.
           context.access_porcupine =

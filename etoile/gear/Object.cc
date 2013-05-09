@@ -29,12 +29,14 @@ namespace etoile
       access_limits(nucleus::proton::limits::Porcupine{},
                     nucleus::proton::limits::Node{1048576, 0.5, 0.2},
                     nucleus::proton::limits::Node{1048576, 0.5, 0.2}),
+      access_threshold(20971520),
 
       attributes_porcupine(nullptr),
       attributes_nest(nullptr),
       attributes_limits(nucleus::proton::limits::Porcupine{},
                         nucleus::proton::limits::Node{1048576, 0.5, 0.2},
                         nucleus::proton::limits::Node{1048576, 0.5, 0.2}),
+      attributes_threshold(20971520),
 
       author(nullptr)
     {

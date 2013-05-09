@@ -12,7 +12,6 @@ namespace nucleus
     template <typename K>
     Inlet<K>::Inlet():
       _capacity(0),
-      _state(State::clean),
       _footprint(0)
     {
     }
@@ -23,7 +22,6 @@ namespace nucleus
       _key(k),
       _value(v),
       _capacity(0),
-      _state(State::clean),
       _footprint(0)
     {
       // Compute the footprint of the inlet.
@@ -56,10 +54,6 @@ namespace nucleus
       // dump the capacity.
       std::cout << alignment << elle::io::Dumpable::Shift
                 << "[Capacity] " << std::dec << this->_capacity << std::endl;
-
-      // dump the state.
-      std::cout << alignment << elle::io::Dumpable::Shift
-                << "[State] " << std::dec << this->_state << std::endl;
 
       // dump the footprint.
       std::cout << alignment << elle::io::Dumpable::Shift

@@ -17,8 +17,7 @@ namespace etoile
       _state(State::dangling),
       _actors(0),
       _egg(egg),
-      _position(position),
-      _footprint(0)
+      _position(position)
     {
     }
 
@@ -28,8 +27,7 @@ namespace etoile
       _state(State::dangling),
       _actors(0),
       _egg(std::move(egg)),
-      _position(position),
-      _footprint(0)
+      _position(position)
     {
     }
 
@@ -43,8 +41,8 @@ namespace etoile
       ELLE_ASSERT(this->_egg != nullptr);
 
       stream << *this->_egg
-             << "(" << this->_attachment << ", " << this->_actors << ", "
-             << this->_footprint << ", "
+             << "(" << this->_attachment << ", " << this->_state << ", "
+             << this->_actors << ", "
              << (this->_mutex.locked() == true ? "locked" : "unlocked")
              << ")";
     }

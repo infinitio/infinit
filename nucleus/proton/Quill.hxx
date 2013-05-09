@@ -310,6 +310,25 @@ namespace nucleus
       return (this->_container);
     }
 
+    /*-----.
+    | Node |
+    `-----*/
+
+    template <typename T>
+    elle::Boolean
+    Quill<T>::eligible() const
+    {
+      for (auto const& pair: this->_container)
+      {
+        Quill<T>::I* inlet = pair.second;
+
+        if (inlet->value().state() == State::dirty)
+          return (false);
+      }
+
+      return (true);
+    }
+
 //
 // ---------- nodule ----------------------------------------------------------
 //
@@ -336,7 +355,6 @@ namespace nucleus
       value.load();
 
       inlet->capacity(value().capacity());
-      inlet->state(value().state());
 
       // Note that the current quill's state is not set to
       // Dirty because the insert() method took care of it.
@@ -413,14 +431,17 @@ namespace nucleus
       // load the value block.
       value.load();
 
-      // Check whether the value has indeed been modified without
-      // which one would not need to call update().
-      if (value().state() != State::dirty)
-        throw Exception("unable to update the nodule based on a non-dirty "
-                        "value");
+      // Update the value block's state so as to match the node's
+      //
+      // Note that here, we deliberatly do not mark the block as
+      // dirty because, before calling update(), the value block
+      // may have been published on the storage layer.
+      //
+      // Should it be the case, the value block and node would be,
+      // at this point, clean.
+      value.contents().state(value().state());
 
-      // update the inlet's and quill's state.
-      inlet->state(State::dirty);
+      // update the quill's state.
       this->state(State::dirty);
 
       //
@@ -638,7 +659,6 @@ namespace nucleus
       auto scoutor = this->_container.begin();
       auto end = this->_container.end();
       Capacity capacity(0);
-      elle::Boolean dirty(false);
 
       ELLE_TRACE_SCOPE("check(%s)", flags);
 
@@ -717,34 +737,29 @@ namespace nucleus
             {
               ELLE_TRACE_SCOPE("checking states");
 
-              if (inlet->state() != value().state())
-                throw Exception(elle::sprintf("invalid state: inlet(%s) versus value(%s)",
-                                              inlet->state(), value().state()));
+              if (value.contents().state() != value().state())
+                throw Exception(elle::sprintf("invalid state: block(%s) versus value(%s)",
+                                              value.contents().state(), value().state()));
 
               switch (this->state())
                 {
                 case State::clean:
                   {
-                    if (inlet->state() != State::clean)
-                      throw Exception(elle::sprintf("the inlet's state '%s' should "
-                                                    "be clean", inlet->state()));
+                    if (value().state() != State::clean)
+                      throw Exception(elle::sprintf("the value's state '%s' should "
+                                                    "be clean", value().state()));
 
                     break;
                   }
                 case State::dirty:
-                  {
-                    if (inlet->state() == State::dirty)
-                      dirty = true;
-
-                    break;
-                  }
+                  break;
                 case State::consistent:
                   {
-                    if ((inlet->state() != State::clean) &&
-                        (inlet->state() != State::consistent))
-                      throw Exception(elle::sprintf("the inlet's state '%s' should "
+                    if ((value().state() != State::clean) &&
+                        (value().state() != State::consistent))
+                      throw Exception(elle::sprintf("the value's state '%s' should "
                                                     "be either clean or consistent",
-                                                    inlet->state()));
+                                                    value().state()));
 
                     break;
                   }
@@ -763,16 +778,6 @@ namespace nucleus
           if (this->capacity() != capacity)
             throw Exception(elle::sprintf("invalid capacity: this(%s) versus inlets(%s)",
                                           this->capacity(), capacity));
-        }
-
-      // Should the quill be dirty, verify that at least on of its
-      // inlet is.
-      if (flags & flags::state)
-        {
-          ELLE_TRACE_SCOPE("checking states");
-
-          if ((this->state() == State::dirty) && (dirty == false))
-            throw Exception("none of the inlet seems to be dirty");
         }
     }
 
@@ -793,12 +798,12 @@ namespace nucleus
           Quill<T>::I* inlet = iterator->second;
           Ambit<T> value(this->nest(), inlet->value());
 
-          // load the value block.
+          // load the value block. // XXX should not load if not dirty i.e inlet->value().state()
           value.load();
 
           // ignore nodules which have not been created or modified
           // i.e is not dirty.
-          switch (inlet->state())
+          switch (value().state())
             {
             case State::clean:
               {
@@ -819,7 +824,6 @@ namespace nucleus
 
                 // Reset the inlet's value with the new address and secret.
                 inlet->value().reset(address, secret);
-                inlet->state(State::consistent);
 
                 // set the current quill as dirty.
                 this->state(State::dirty);
@@ -854,6 +858,9 @@ namespace nucleus
           // Detach the value block from the nest.
           this->nest().detach(inlet->value());
         }
+
+      // Update the quill's state.
+      this->state(State::dirty);
     }
 
     template <typename T>

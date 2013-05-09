@@ -34,5 +34,17 @@ namespace nucleus
 
       return (elle::Status::Ok);
     }
+
+    /*------.
+    | Value |
+    `------*/
+
+    elle::Boolean
+    Value::eligible() const
+    {
+      // Every value is eligible because it does not reference
+      // other blocks.
+      return (true);
+    }
   }
 }
