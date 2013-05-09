@@ -351,32 +351,40 @@ namespace surface
      elle::metrics::Reporter& reporter,
      Self& self,
      Device const& device):
+
      Notifiable(notification_manager),
-      _network_manager(network_manager),
+     _network_manager(network_manager),
      _user_manager(user_manager),
-      _meta(meta),
+     _meta(meta),
      _reporter(reporter),
-      _self(self),
-      _device(device)
-    {
-      this->_notification_manager.transaction_callback(
-          [&] (TransactionNotification const &n, bool is_new) -> void {
-            this->_on_transaction(n, is_new);
-          }
-      );
-      this->_notification_manager.transaction_status_callback(
-          [&] (TransactionStatusNotification const &n, bool) -> void {
-            this->_on_transaction_status(n);
-          }
-      );
-    }
+     _self(self),
+     _device(device),
+     _output_dir{common::system::download_directory()}
+   {
+     this->_notification_manager.transaction_callback(
+       [&] (TransactionNotification const &n, bool is_new) -> void {
+         this->_on_transaction(n, is_new);
+       }
+       );
+     this->_notification_manager.transaction_status_callback(
+       [&] (TransactionStatusNotification const &n, bool) -> void {
+         this->_on_transaction_status(n);
+       }
+       );
+     ELLE_TRACE_METHOD("");
+   }
 
     TransactionManager::~TransactionManager()
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+      this->clear();
+    }
 
     void
     TransactionManager::clear()
-    {}
+    {
+      this->_network_manager.clear();
+    }
 
     void
     TransactionManager::output_dir(std::string const& dir)
