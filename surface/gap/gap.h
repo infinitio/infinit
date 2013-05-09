@@ -248,8 +248,14 @@ extern "C" {
   /// - Network -------------------------------------------------------------
 
   /// Create a new network.
-  gap_Status gap_create_network(gap_State* state,
-                                char const* name);
+  char const*
+  gap_create_network(gap_State* state,
+                     char const* name);
+
+  /// Prepare a network.
+  gap_Status
+  gap_prepare_network(gap_State* state,
+                      char const* network_id);
 
   /// Retrieve all user networks ids. Returned value is null in case of
   /// error, or is a null-terminated array of null-terminated strings.

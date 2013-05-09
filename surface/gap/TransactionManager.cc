@@ -140,7 +140,14 @@ namespace surface
                          {MKey::size, std::to_string(size)}});
 
        ELLE_DEBUG("created network id is %s", this->_network_id);
-       this->_network_manager.wait_portal(this->_network_id);
+       this->_network_manager.prepare(this->_network_id);
+       this->_network_manager.to_directory(
+         this->_network_id,
+         common::infinit::network_shelter(
+           this->_me.id,
+           this->_network_id));
+
+      this->_network_manager.wait_portal(this->_network_id);
 
        ELLE_DEBUG("Retrieving 8transfer binary path...");
        auto transfer_binary = common::infinit::binary_path("8transfer");
@@ -343,15 +350,14 @@ namespace surface
      }
    };
 
-   TransactionManager::TransactionManager(
-     NotificationManager& notification_manager,
-     NetworkManager& network_manager,
-     UserManager& user_manager,
-     plasma::meta::Client& meta,
-     elle::metrics::Reporter& reporter,
-     Self& self,
-     Device const& device):
-
+   TransactionManager::TransactionManager(NotificationManager&
+                                            notification_manager,
+                                          NetworkManager& network_manager,
+                                          UserManager& user_manager,
+                                          plasma::meta::Client& meta,
+                                          elle::metrics::Reporter& reporter,
+                                          Self& self,
+                                          Device const& device):
      Notifiable(notification_manager),
      _network_manager(network_manager),
      _user_manager(user_manager),
@@ -738,7 +744,7 @@ namespace surface
      ELLE_TRACE_METHOD(transaction);
      this->_ensure_ownership(transaction);
 
-      if (transaction.sender_device_id != this->_device.id)
+     if (transaction.sender_device_id != this->_device.id)
      {
        ELLE_DEBUG("%s not the sender device %s. You are the %s",
                   this->_device.id,
@@ -811,20 +817,22 @@ namespace surface
      ELLE_TRACE_METHOD(transaction);
      this->_ensure_ownership(transaction);
 
-      if (transaction.recipient_device_id != this->_device.id)
-      {
+     if (transaction.recipient_device_id != this->_device.id)
+     {
        ELLE_DEBUG("%s not the recipient device %s. You are the %s",
                   this->_device.id,
                   transaction.sender_device_id,
                   transaction.sender_id == this->_self.id ? "sender"
-                                                         : "recipient");
-        return;
-      }
-
+                                                          : "recipient");
+       return;
+     }
 
      this->_network_manager.add_device(transaction.network_id, this->_device.id);
-     // XXX: prepare also launch infinit.
       this->_network_manager.prepare(transaction.network_id);
+      this->_network_manager.to_directory(
+        transaction.network_id,
+        common::infinit::network_shelter(this->_self.id, transaction.network_id));
+      this->_network_manager.wait_portal(transaction.network_id);
 
       this->update(transaction.id,
                   gap_transaction_status_started);
@@ -992,7 +1000,7 @@ namespace surface
 
       // Delete networks.
      this->_network_manager.delete_(transaction.network_id,
-                                           true /* force */);
+                                    true /* force */);
     }
 
     void

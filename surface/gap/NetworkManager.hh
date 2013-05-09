@@ -46,8 +46,8 @@ namespace surface
 
     public:
       NetworkManager(plasma::meta::Client& meta,
-                    elle::metrics::Reporter& reporter,
-                    elle::metrics::Reporter& google_reporter,
+                     elle::metrics::Reporter& reporter,
+                     elle::metrics::Reporter& google_reporter,
                      Self const& me,
                      Device const& device);
 
@@ -96,6 +96,8 @@ namespace surface
       delete_(std::string const& name,
               bool force = false);
 
+      ///
+
       /// Add a user to a network with its mail or id.
       void
       add_user(std::string const& network_id,
@@ -107,11 +109,6 @@ namespace surface
      void
      add_device(std::string const& network_id,
                 std::string const& device_id);
-
-      ///
-      void
-      _prepare_directory(std::string const& network_id);
-
 
       /// XXX
       void
@@ -127,6 +124,12 @@ namespace surface
                       std::string const& user_identity,
                       nucleus::neutron::Permissions permissions);
 
+      ///
+      void
+      to_directory(std::string const& network_id,
+                   std::string const& path);
+
+    private:
       /// On NetworkUpdate.
       void
       _on_network_update(NetworkUpdateNotification const& notif);

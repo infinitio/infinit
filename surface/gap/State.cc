@@ -111,7 +111,7 @@ namespace surface
       State{}
     {
       ELLE_LOG("Creating a new State with token");
-      this->_meta.token(token);
+       this->_meta.token(token);
       auto res = this->_meta.self();
       this->_meta.identity(res.identity);
       this->_meta.email(res.email);
@@ -271,7 +271,6 @@ namespace surface
         this->_network_manager.reset();
         this->_user_manager.reset();
         this->_notification_manager.reset();
-
       }
       CATCH_FAILURE_TO_METRICS("user_logout");
 

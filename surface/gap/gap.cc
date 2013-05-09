@@ -371,21 +371,21 @@ extern "C"
   gap_Status gap_device_status(gap_State* state)
   {
     try
-      {
-        if (__TO_CPP(state)->has_device())
-          return gap_ok;
-        else
-          return gap_no_device_error;
-      }
+    {
+      if (__TO_CPP(state)->has_device())
+        return gap_ok;
+      else
+        return gap_no_device_error;
+    }
     catch (surface::gap::Exception const& err)
-      {
-        ELLE_ERR("Couldn't check the device: %s", err.what());
-        return err.code;
-      }
+    {
+      ELLE_ERR("Couldn't check the device: %s", err.what());
+      return err.code;
+    }
     catch (std::exception const& err)
-      {
-        ELLE_ERR("Couldn't check the device: %s", err.what());
-      }
+    {
+      ELLE_ERR("Couldn't check the device: %s", err.what());
+    }
     return gap_internal_error;
   }
 
@@ -461,16 +461,34 @@ extern "C"
     ::free(users);
   }
 
-  gap_Status gap_create_network(gap_State* state,
-                                char const* name)
+  char const*
+  gap_create_network(gap_State* state,
+                     char const* name)
   {
+    assert(name != nullptr);
     gap_Status ret;
     try
     {
-      __TO_CPP(state)->network_manager().create(name);
-      ret = gap_ok;
+      auto network_id = __TO_CPP(state)->network_manager().create(name);
+      return network_id.c_str();
     }
     CATCH_ALL(create_network);
+    (void) ret;
+    return nullptr;
+  }
+
+  gap_Status
+  gap_prepare_network(gap_State* state,
+                     char const* id)
+  {
+    assert(id != nullptr);
+    gap_Status ret;
+    try
+    {
+      __TO_CPP(state)->network_manager().prepare(id);
+      ret = gap_ok;
+    }
+    CATCH_ALL(prepare_network);
     return ret;
   }
 
@@ -492,7 +510,7 @@ extern "C"
                                                   user.public_key);
       ret = gap_ok;
     }
-    CATCH_ALL(create_network);
+    CATCH_ALL(network_add_user);
     return ret;
   }
 
@@ -805,6 +823,7 @@ extern "C"
   gap_transaction_sender_id(gap_State* state,
                             char const* _id)
   {
+    assert(_id != nullptr);
     gap_Status ret = gap_ok;
     try
     {
@@ -821,6 +840,7 @@ extern "C"
   gap_transaction_sender_fullname(gap_State* state,
                                   char const* _id)
   {
+    assert(_id != nullptr);
     gap_Status ret = gap_ok;
     try
     {
@@ -837,6 +857,7 @@ extern "C"
   gap_transaction_sender_device_id(gap_State* state,
                                    char const* _id)
   {
+    assert(_id != nullptr);
     gap_Status ret = gap_ok;
     try
     {
@@ -853,6 +874,7 @@ extern "C"
   gap_transaction_recipient_id(gap_State* state,
                                char const* _id)
   {
+    assert(_id != nullptr);
     gap_Status ret = gap_ok;
     try
     {
@@ -869,6 +891,7 @@ extern "C"
   gap_transaction_recipient_fullname(gap_State* state,
                                      char const* _id)
   {
+    assert(_id != nullptr);
     gap_Status ret = gap_ok;
     try
     {
@@ -885,6 +908,7 @@ extern "C"
   gap_transaction_recipient_device_id(gap_State* state,
                                       char const* _id)
   {
+    assert(_id != nullptr);
     gap_Status ret = gap_ok;
     try
     {

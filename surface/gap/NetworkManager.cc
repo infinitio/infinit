@@ -205,16 +205,16 @@ namespace surface
 
      this->_google_reporter.store("network:create:attempt");
 
-      plasma::meta::CreateNetworkResponse response;
-      try
-      {
-        response = this->_meta.create_network(name);
-      }
-      CATCH_FAILURE_TO_METRICS("network_create");
+     plasma::meta::CreateNetworkResponse response;
+     try
+     {
+       response = this->_meta.create_network(name);
+     }
+     CATCH_FAILURE_TO_METRICS("network_create");
 
      this->_reporter.store("network_create",
-                       {{MKey::status, "succeed"},
-                        {MKey::value, response.created_network_id}});
+                           {{MKey::status, "succeed"},
+                            {MKey::value, response.created_network_id}});
 
      this->_google_reporter.store("network:create:succeed");
 
@@ -241,16 +241,14 @@ namespace surface
       if (!elle::os::path::exists(network_dir))
         elle::os::path::make_path(network_dir);
 
-      std::string const description_filename = elle::os::path::join(
-        network_dir,
-        network_id + ".dsc"
-      );
+      std::string const description_filename =
+        common::infinit::descriptor_path(this->_self.id, network_id);
 
       ELLE_DEBUG("descriptor path: %s", description_filename);
 
       if (!elle::os::path::exists(description_filename))
       {
-        if (!this->one(network_id).descriptor.size())
+        if (this->one(network_id).descriptor.empty())
         {
           auto nb = create_network_root_block(network_id,
                                               this->_meta.identity());
@@ -264,8 +262,6 @@ namespace surface
 
           this->sync(network_id);
         }
-        this->_prepare_directory(network_id);
-        this->_infinit_instance_manager.wait_portal(network_id);
       }
       else
       {
@@ -274,20 +270,20 @@ namespace surface
     }
 
     void
-    NetworkManager::_prepare_directory(std::string const& network_id)
+    NetworkManager::to_directory(std::string const& network_id,
+                                 std::string const& path)
     {
-      ELLE_DEBUG("Prepare network %s directory.", network_id);
+      ELLE_TRACE_METHOD(network_id, path);
+
+      if (elle::os::path::exists(path))
+        return;
+
       using elle::serialize::from_string;
       using elle::serialize::InputBase64Archive;
 
       auto& network = this->one(network_id);
 
-      elle::io::Path shelter_path(lune::Lune::Shelter);
-      shelter_path.Complete(
-        elle::io::Piece{"%USER%", this->_self.id},
-        elle::io::Piece{"%NETWORK%", network_id}
-      );
-      ELLE_DEBUG("Shelter path == %s", shelter_path.string());
+      elle::io::Path shelter_path(path);
       nucleus::proton::Network proton_network(network_id);
       hole::storage::Directory storage(proton_network, shelter_path.string());
 

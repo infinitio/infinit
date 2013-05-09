@@ -144,13 +144,6 @@ namespace surface
       std::string
       file_name(std::string const& path);
 
-    public:
-      typedef std::unique_ptr<InfinitInstanceManager> InfinitInstanceManagerPtr;
-      InfinitInstanceManagerPtr _infinit_instance_manager;
-
-      InfinitInstanceManager&
-      infinit_instance_manager();
-
     private:
       std::unique_ptr<NetworkManager> _network_manager;
 
