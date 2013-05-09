@@ -243,7 +243,7 @@ namespace surface
             ELLE_ERR("Couldn't get field " #f);                                 \
           }
 
-          GET_TR_FIELD_RENAME(transaction, id, string);
+          GET_TR_FIELD_RENAME(transaction_id, id, string);
           GET_TR_FIELD(sender_id, string);
           GET_TR_FIELD(sender_fullname, string);
           GET_TR_FIELD(sender_device_id, string);
