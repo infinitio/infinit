@@ -26,7 +26,8 @@ namespace surface
                              Self const& self):
       Notifiable{notification_manager},
       _meta(meta),
-      _self(self)
+      _self(self),
+      _swaggers_dirty(true)
     {
       this->_notification_manager.user_status_callback(
         [&] (UserStatusNotification const &n) -> void
