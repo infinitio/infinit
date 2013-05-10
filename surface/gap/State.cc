@@ -105,6 +105,8 @@ namespace surface
       elle::metrics::google::register_service(this->_google_reporter);
       // Initialize server.
       elle::metrics::kissmetrics::register_service(this->_reporter);
+
+      this->_init_managers();
     }
 
     State::State(std::string const& token):
@@ -225,28 +227,45 @@ namespace surface
       }
       identity_infos.close();
 
-      this->_notification_manager.reset(new NotificationManager(this->_meta,
-                                                                this->_me));
+      this->_init_managers();
+    }
 
-      this->_user_manager.reset(new UserManager(*this->_notification_manager,
-                                                this->_meta,
-                                                this->_me));
+    void
+    State::_init_managers()
+    {
+      if (this->_notification_manager == nullptr)
+        this->_notification_manager.reset(new NotificationManager(this->_meta,
+                                                                  this->_me));
+      if (this->_user_manager == nullptr)
+        this->_user_manager.reset(new UserManager(*this->_notification_manager,
+                                                  this->_meta,
+                                                  this->_me));
 
-      this->_network_manager.reset(new NetworkManager(//*this->_notification_manager,
-                                                      this->_meta,
-                                                      this->_reporter,
-                                                      this->_google_reporter,
-                                                      this->_me,
-                                                      this->_device));
+      if (this->_network_manager == nullptr)
+        this->_network_manager.reset(new NetworkManager(this->_meta,
+                                                        this->_reporter,
+                                                        this->_google_reporter,
+                                                        this->_me,
+                                                        this->_device));
 
-      this->_transaction_manager.reset(
-        new TransactionManager(*this->_notification_manager,
-                               *this->_network_manager,
-                               *this->_user_manager,
-                               this->_meta,
-                               this->_reporter,
-                               this->_me,
-                               this->_device));
+      if (this->_transaction_manager == nullptr)
+        this->_transaction_manager.reset(
+          new TransactionManager(*this->_notification_manager,
+                                 *this->_network_manager,
+                                 *this->_user_manager,
+                                 this->_meta,
+                                 this->_reporter,
+                                 this->_me,
+                                 this->_device));
+    }
+
+    void
+    State::_cleanup_managers()
+    {
+      this->_transaction_manager.reset();
+      this->_network_manager.reset();
+      this->_user_manager.reset();
+      this->_notification_manager.reset();
     }
 
     void
@@ -267,10 +286,7 @@ namespace surface
       try
       {
         this->_meta.logout();
-        this->_transaction_manager.reset();
-        this->_network_manager.reset();
-        this->_user_manager.reset();
-        this->_notification_manager.reset();
+        this->_cleanup_managers();
       }
       CATCH_FAILURE_TO_METRICS("user_logout");
 

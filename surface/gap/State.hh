@@ -186,6 +186,13 @@ namespace surface
         ELLE_ASSERT_NEQ(this->_transaction_manager, nullptr);
         return *this->_transaction_manager;
       }
+
+    private:
+      void
+      _init_managers();
+
+      void
+      _cleanup_managers();
     };
 
   }
