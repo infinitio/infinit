@@ -349,6 +349,7 @@ namespace surface
     NetworkManager::delete_(std::string const& network_id, bool force)
     {
       ELLE_TRACE_METHOD(network_id);
+      this->all();
 
       this->_networks->at(network_id).reset();
       this->_infinit_instance_manager.stop(network_id);
