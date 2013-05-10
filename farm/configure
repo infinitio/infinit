@@ -22,22 +22,26 @@ cxx_toolkit = drake.cxx.GccToolkit()
 cxx_config = drake.cxx.Config()
 
 boost = %(boost)s
+python3 = %(python3)s
+
 cxx_config.flag('-Wall')
 cxx_config.flag('-W')
 cxx_config.enable_debug_symbols()
 cxx_config.enable_optimization(False)
 
-drake.run('../%(dir_source)s', cxx_toolkit, cxx_params, boost = boost)
+drake.run('../%(dir_source)s', cxx_toolkit, cxx_config, boost = boost, python3 = python3)
 '''
 
 params = {
     'dir_build': os.environ['DIR_BUILD'],
     'dir_source': os.environ['DIR_SOURCE'],
     'boost': 'None',
+    'python3': 'None',
 }
 
 if osyst.startswith('macosx'):
   params['boost'] = '''drake.cxx.boost.Boost(prefix = '/opt/local')'''
+  params['python3'] = '\'/opt/local/Library/Frameworks/Python.framework/Versions/3.2\''
 
 with open('%s/drake' % os.environ['DIR_BUILD'], 'w') as drake:
   print(template % params, file = drake)
