@@ -24,7 +24,9 @@ namespace surface
     std::string const&
     State::device_id()
     {
-      if (this->_device.id.size() == 0)
+      if (!elle::os::path::exists(common::infinit::passport_path(this->_me.id)))
+        update_device("XXX");
+      else if (this->_device.id.size() == 0)
       {
         elle::Passport passport;
          passport.load(elle::io::Path{common::infinit::passport_path(this->_me.id)});
@@ -37,7 +39,9 @@ namespace surface
     std::string const&
     State::device_name()
     {
-      if (this->_device.name.size() == 0)
+      if (!elle::os::path::exists(common::infinit::passport_path(this->_me.id)))
+        update_device("XXX");
+      else if (this->_device.name.size() == 0)
       {
         elle::Passport passport;
         passport.load(elle::io::Path{common::infinit::passport_path(this->_me.id)});
@@ -76,6 +80,12 @@ namespace surface
         this->_device.id = res.id;
         passport_string = res.passport;
       }
+
+      elle::Passport passport;
+      if (passport.Restore(passport_string) == elle::Status::Error)
+        throw Exception(gap_wrong_passport, "Cannot load the passport");
+
+      passport.store(elle::io::Path(passport_path));
     }
   }
 }
