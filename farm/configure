@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+import os
+
+arch, osyst, compiler = os.environ['BUILDFARM_NAME'].split('-')
+
 template = '''\
 import os, sys
 sys.path.insert(
@@ -12,19 +16,28 @@ sys.path.insert(
 
 import drake
 import drake.cxx
+import drake.cxx.boost
 
 cxx_toolkit = drake.cxx.GccToolkit()
 cxx_config = drake.cxx.Config()
 
+boost = %(boost)s
 cxx_config.flag('-Wall')
 cxx_config.flag('-W')
 cxx_config.enable_debug_symbols()
 cxx_config.enable_optimization(False)
 
-drake.run('../%s', cxx_toolkit, cxx_config)
+drake.run('../%(dir_source)s', cxx_toolkit, cxx_params, boost = boost)
 '''
 
-import os
+params = {
+    'dir_build': os.environ['DIR_BUILD'],
+    'dir_source': os.environ['DIR_SOURCE'],
+    'boost': 'None',
+}
+
+if osyst.startswith('macosx'):
+  params['boost'] = '''drake.cxx.boost.Boost(prefix = '/opt/local')'''
 
 with open('%s/drake' % os.environ['DIR_BUILD'], 'w') as drake:
-  print(template % os.environ['DIR_SOURCE'], file = drake)
+  print(template % params, file = drake)
