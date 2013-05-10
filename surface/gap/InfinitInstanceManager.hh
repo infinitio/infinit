@@ -12,7 +12,9 @@ namespace surface
 {
   namespace gap
   {
-
+    /*------.
+    | Types |
+    `------*/
     typedef std::unique_ptr<elle::system::Process> SystemProcessPtr;
 
     struct InfinitInstance
@@ -24,6 +26,9 @@ namespace surface
 
     class InfinitInstanceManager
     {
+      /*----------.
+      | Exception |
+      `----------*/
       class Exception:
         surface::gap::Exception
       {
@@ -37,13 +42,17 @@ namespace surface
         {}
       };
 
-    private:
-      std::string _user_id;
-
+      /*-----------.
+      | Attributes |
+      `-----------*/
     private:
       typedef std::unique_ptr<InfinitInstance> InfinitInstancePtr;
       std::map<std::string, InfinitInstancePtr> _instances;
+      std::string _user_id;
 
+      /*-------------.
+      | Construction |
+      `-------------*/
     public:
       explicit
       InfinitInstanceManager(std::string const& user_id);
