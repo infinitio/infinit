@@ -11,6 +11,9 @@ os.chdir('%s/dependencies' % os.environ['DIR_SOURCE'])
 if osyst.startswith('linux') and arch == 'x86_64':
   if subprocess.call(['./build.sh', 'linux64']) != 0:
     exit(1)
+if osyst.startswith('macosx') and arch == 'x86_64':
+  if subprocess.call(['./build.sh', 'macosx64']) != 0:
+    exit(1)
 else:
   raise Exception('unhandled OS / arch combination: %s, %s' % (osyst, arch))
 os.chdir(prev)
