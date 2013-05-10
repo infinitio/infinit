@@ -4,6 +4,7 @@
 #include <plasma/meta/Client.hh>
 #include <tests/unit/ExceptionExpector.hxx>
 
+#define BOOST_TEST_MODULE MetaClient
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
@@ -1059,28 +1060,19 @@ test_suite()
   ELLE_DEBUG("add test_suite");
   boost::unit_test::framework::master_test_suite().add(basics);
 
-  basics->add(BOOST_TEST_CASE(std::bind(test_register, std::cref(users))));
-  basics->add(BOOST_TEST_CASE(std::bind(test_login, std::ref(users))));
-  basics->add(BOOST_TEST_CASE(std::bind(test_logout, std::cref(users))));
-  basics->add(BOOST_TEST_CASE(std::bind(test_login, std::ref(users))));
-  basics->add(BOOST_TEST_CASE(std::bind(test_device, std::ref(users))));
-  basics->add(BOOST_TEST_CASE(std::bind(test_search, std::cref(users))));
-  basics->add(BOOST_TEST_CASE(std::bind(test_delete_network,
-                                        std::ref(users),
-                                        true)));
-  basics->add(BOOST_TEST_CASE(std::bind(test_create_network, std::ref(users))));
-  basics->add(BOOST_TEST_CASE(std::bind(test_transactions, std::ref(users))));
-  basics->add(BOOST_TEST_CASE(std::bind(test_delete_network,
-                                        std::ref(users),
-                                        false)));
-
   return true;
 }
 
-int
-main(int argc, char** argv)
+BOOST_AUTO_TEST_CASE(ultra_test)
 {
-  assert((USER_COUNT % 2) == 0);
-
-  return ::boost::unit_test::unit_test_main(test_suite, argc, argv);
-};
+  test_register(users);
+  test_login(users);
+  test_logout(users); 
+  test_login(users);
+  test_device(users);
+  test_search(users);
+  test_delete_network(users, true);
+  test_create_network(users);
+  test_transactions(users);
+  test_delete_network(users, false);
+}

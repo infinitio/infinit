@@ -240,10 +240,12 @@ namespace plasma
     class Client
     {
     private:
-      elle::HTTPClient  _client;
-      bool              _check_errors;
-      string            _identity;
-      string            _email;
+      string _root_url;
+      bool _check_errors;
+      string _identity;
+      string _email;
+      string _token;
+      string _user_agent;
 
     public:
       Client(string const& server,

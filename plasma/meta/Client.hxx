@@ -2,6 +2,8 @@
 #ifndef  PLASMA_META_CLIENT_HXX
 # define PLASMA_META_CLIENT_HXX
 
+# include "curly.hh"
+
 namespace plasma
 {
   namespace meta
@@ -53,23 +55,93 @@ namespace plasma
                                            public_adapter);
     }
 
+    static inline
+    int
+    curl_debug_callback (CURL *handle,
+                         curl_infotype type,
+                         char *what,
+                         size_t what_size,
+                         void *userptr)
+    {
+      ELLE_LOG_COMPONENT("infinit.plasma.meta.Client.curl");
+      std::map<curl_infotype, std::string> symbols = {
+        {CURLINFO_TEXT, "*"},
+        {CURLINFO_HEADER_IN, "<"},
+        {CURLINFO_HEADER_OUT, ">"},
+        {CURLINFO_DATA_IN, "<<"},
+        {CURLINFO_DATA_OUT, ">>"},
+      };
+      // get rid of \n
+      if (what[what_size - 1] == '\n')
+      {
+        what_size--;
+        what[what_size] = '\0';
+      }
+
+      std::string msg{what, what + what_size};
+      std::string sym;
+      try
+      {
+        sym = symbols.at(type);
+      }
+      catch (std::out_of_range const&)
+      {
+        sym = "*";
+      }
+      ELLE_DEBUG("%s %s", sym, msg);
+      return 0;
+    }
+
     template <typename T>
     T
     Client::_post(std::string const& url, elle::format::json::Object const& req)
     {
-      auto request = this->_client.request("POST", url);
-      request.body_string(req.repr());
-      request.fire();
-      return this->_deserialize_answer<T>(request.response());
+      curly::request_configuration c;
+      std::stringstream in;
+      std::stringstream out;
+      
+      req.repr(in);
+      c.option(CURLOPT_POST, 1);
+      c.option(CURLOPT_VERBOSE, 1);
+      c.option(CURLOPT_POSTFIELDSIZE, in.str().size());
+      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+      c.option(CURLOPT_DEBUGDATA, nullptr);
+
+      c.url(elle::sprintf("%s%s", this->_root_url, url));
+      c.input(in);
+      c.output(out);
+      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+      c.headers({
+        {"Authorization", this->_token},
+        {"User-Agent", this->_user_agent},
+        {"Connection", "close"},
+      });
+      curly::request request(std::move(c));
+      return this->_deserialize_answer<T>(out);
     }
 
     template <typename T>
     T
     Client::_get(std::string const& url)
     {
-      auto request = this->_client.request("GET", url);
-      request.fire();
-      return this->_deserialize_answer<T>(request.response());
+      std::stringstream resp;
+      curly::request_configuration c;
+
+      c.option(CURLOPT_HTTPGET, 1);
+      c.option(CURLOPT_VERBOSE, 1);
+      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+      c.option(CURLOPT_DEBUGDATA, nullptr);
+
+      c.url(elle::sprintf("%s%s", this->_root_url, url));
+      c.output(resp);
+      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+      c.headers({
+        {"Authorization", this->_token},
+        {"User-Agent", this->_user_agent},
+        {"Connection", "close"},
+      });
+      curly::request request(std::move(c));
+      return this->_deserialize_answer<T>(resp);
     }
 
     template <typename T>

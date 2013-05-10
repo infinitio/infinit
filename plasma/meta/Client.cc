@@ -6,6 +6,7 @@
 #include <elle/serialize/MapSerializer.hxx>
 
 #include "Client.hh"
+#include "curly.hh"
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -289,11 +290,13 @@ namespace plasma
      // - Ctor & dtor ----------------------------------------------------------
     Client::Client(string const& server,
                    uint16_t port,
-                   bool check_errors)
-      : _client{server, port, "MetaClient"}
-      , _check_errors{check_errors}
-      , _identity{}
-      , _email{}
+                   bool check_errors):
+      _root_url{elle::sprintf("http://%s:%d", server, port)},
+      _check_errors{check_errors},
+      _identity{},
+      _email{},
+      _token{},
+      _user_agent{"MetaClient"}
     {
 
     }
@@ -316,7 +319,7 @@ namespace plasma
       auto res = this->_post<LoginResponse>("/user/login", request);
       if (res.success())
         {
-          this->token(res.token);
+          this->_token = res.token;
           this->_identity = res.identity;
           this->_email = email;
         }
@@ -329,7 +332,7 @@ namespace plasma
       auto res = this->_get<LogoutResponse>("/user/logout");
       if (res.success())
         {
-          this->token("");
+          this->_token = "";
           this->_identity = "";
           this->_email = "";
         }
@@ -366,7 +369,7 @@ namespace plasma
     UserIcon
     Client::user_icon(string const& id)
     {
-      return this->_client.get_buffer("/user/" + id + "/icon");
+      //return this->_client.get_buffer("/user/" + id + "/icon");
     }
 
     SelfResponse
@@ -770,13 +773,13 @@ namespace plasma
     void
     Client::token(string const& tok)
     {
-      _client.token(tok);
+      this->_token = tok;
     }
 
     string const&
     Client::token() const
     {
-      return _client.token();
+      return this->_token;
     }
 
     string const&
