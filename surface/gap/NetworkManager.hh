@@ -15,6 +15,9 @@ namespace surface
 {
   namespace gap
   {
+    /*-------.
+    | Usings |
+    `-------*/
     using Self = ::plasma::meta::SelfResponse;
     using Network = ::plasma::meta::NetworkResponse;
     using Device = ::plasma::meta::Device;
@@ -22,6 +25,9 @@ namespace surface
 
     class NetworkManager
     {
+      /*-----------------.
+      | Module Exception |
+      `-----------------*/
       class Exception: public surface::gap::Exception
       {
       public:
@@ -34,6 +40,9 @@ namespace surface
         {}
       };
 
+      /*-----------.
+      | Attributes |
+      `-----------*/
     private:
       // XXX: meta should be constant everywhere.
       // But httpclient fire can't be constant.
@@ -44,6 +53,9 @@ namespace surface
       Device const& _device;
       ELLE_ATTRIBUTE_R(InfinitInstanceManager, infinit_instance_manager);
 
+      /*-------------.
+      | Construction |
+      `-------------*/
     public:
       NetworkManager(plasma::meta::Client& meta,
                      elle::metrics::Reporter& reporter,
@@ -61,9 +73,11 @@ namespace surface
       void
       wait_portal(std::string const& network_id);
 
-      /// Types.
+
+      /*------------.
+      |  Attributes |
+      `------------*/
     protected:
-      using Network = ::plasma::meta::NetworkResponse;
       typedef std::unique_ptr<Network> NetworkPtr;
       typedef std::map<std::string, NetworkPtr> NetworkMap;
     protected:
@@ -96,8 +110,6 @@ namespace surface
       delete_(std::string const& name,
               bool force = false);
 
-      ///
-
       /// Add a user to a network with its mail or id.
       void
       add_user(std::string const& network_id,
@@ -105,12 +117,12 @@ namespace surface
                std::string const& user_id,
                std::string const& identity);
 
-     /// Add a device to a network.
-     void
-     add_device(std::string const& network_id,
-                std::string const& device_id);
+      /// Add a device to a network.
+      void
+      add_device(std::string const& network_id,
+                 std::string const& device_id);
 
-      /// XXX
+      /// Connect 2 devices via infinit.
       void
       notify_8infinit(std::string const& network_id,
                       std::string const& sender_device_id,

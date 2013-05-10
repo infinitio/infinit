@@ -59,7 +59,7 @@ namespace
   create_network_root_block(std::string const& id,
                             std::string const& identity_)
   {
-    ELLE_DEBUG("Creating the network descriptor for network %s.", id);
+    ELLE_TRACE_FUNCTION(id, identity_);
     // XXX this value depends on the network policy and openness.
     static nucleus::neutron::Permissions permissions =
       nucleus::neutron::permissions::read;
@@ -70,24 +70,24 @@ namespace
     ELLE_DEBUG("Create proton network from id '%s'.", id);
     nucleus::proton::Network network(id);
 
-    //- identity ----------------------------------------------------------------
+    //- identity ---------------------------------------------------------------
     lune::Identity        identity;
     if (identity.Restore(identity_) == e)
       throw std::runtime_error("Couldn't restore the identity.");
 
-    //- group -------------------------------------------------------------------
+    //- group ------------------------------------------------------------------
     nucleus::neutron::Group group(network, identity.pair().K(), "everybody");
     group.seal(identity.pair().k());
 
-    //- group address -----------------------------------------------------------
+    //- group address ----------------------------------------------------------
     nucleus::proton::Address  group_address(group.bind());
 
-    //- subject -----------------------------------------------------------------
+    //- subject ----------------------------------------------------------------
     nucleus::neutron::Subject subject;
     if (subject.Create(group_address) == elle::Status::Error)
       throw std::runtime_error("unable to create the group subject");
 
-    //- access-------------------------------------------------------------------
+    //- access------------------------------------------------------------------
     nucleus::proton::Porcupine<nucleus::neutron::Access> access_porcupine{
       nucleus::proton::nest::none()};
 
@@ -104,22 +104,24 @@ namespace
 #define ACCESS_SECRET_KEY "no-secret-key"
 
     // XXX
-    static cryptography::SecretKey secret_key(cryptography::cipher::Algorithm::aes256,
-                                              ACCESS_SECRET_KEY);
+    static cryptography::SecretKey secret_key(
+      cryptography::cipher::Algorithm::aes256,
+      ACCESS_SECRET_KEY);
 
-    ELLE_ASSERT(access_porcupine.strategy() == nucleus::proton::Strategy::value);
+    ELLE_ASSERT_EQ(access_porcupine.strategy(),
+                   nucleus::proton::Strategy::value);
 
     cryptography::Digest access_fingerprint =
       nucleus::neutron::access::fingerprint(access_porcupine);
 
     nucleus::proton::Radix access_radix = access_porcupine.seal(secret_key);
 
-    //- directory ---------------------------------------------------------------
+    //- directory --------------------------------------------------------------
     nucleus::neutron::Object directory{
       network,
-        identity.pair().K(),
-        genreDirectory
-        };
+      identity.pair().K(),
+      genreDirectory
+    };
 
     if (directory.Update(directory.author(),
                          directory.contents(),
@@ -131,25 +133,16 @@ namespace
     if (directory.Seal(identity.pair().k(), access_fingerprint) == e)
       throw std::runtime_error("Cannot seal the access");
 
-    //- directory address -------------------------------------------------------
+    //- directory address ------------------------------------------------------
     nucleus::proton::Address  directory_address(directory.bind());
 
     NetworkBlocks nb;
-    elle::io::Unique root_block_;
-    elle::serialize::to_string<elle::serialize::OutputBase64Archive>(
-      nb.root_block) << directory;
-
-    elle::io::Unique root_address_;
-    elle::serialize::to_string<elle::serialize::OutputBase64Archive>(
-      nb.root_address) << directory_address;
-
-    elle::io::Unique group_block_;
-    elle::serialize::to_string<elle::serialize::OutputBase64Archive>(
-      nb.group_block) << group;
-
-    elle::io::Unique group_address_;
-    elle::serialize::to_string<elle::serialize::OutputBase64Archive>(
-      nb.group_address) << group_address;
+    using elle::serialize::to_string;
+    using OutputArchive = elle::serialize::OutputBase64Archive;
+    to_string<OutputArchive>(nb.root_block) << directory;
+    to_string<OutputArchive>(nb.root_address) << directory_address;
+    to_string<OutputArchive>(nb.group_block) << group;
+    to_string<OutputArchive>(nb.group_address) << group_address;
 
     ELLE_DEBUG("root block %s", nb.root_block);
     ELLE_DEBUG("root address %s", nb.root_address);
@@ -173,8 +166,8 @@ namespace surface
                                    Self const& me,
                                    Device const& device):
       _meta(meta),
-     _reporter(reporter),
-     _google_reporter(google_reporter),
+      _reporter(reporter),
+      _google_reporter(google_reporter),
       _self(me),
       _device(device),
       _infinit_instance_manager{me.id}
@@ -201,22 +194,22 @@ namespace surface
     {
       ELLE_TRACE("creating network %s", name);
 
-     this->_reporter.store("network_create", {{MKey::status, "attempt"}});
+      this->_reporter.store("network_create", {{MKey::status, "attempt"}});
 
-     this->_google_reporter.store("network:create:attempt");
+      this->_google_reporter.store("network:create:attempt");
 
-     plasma::meta::CreateNetworkResponse response;
-     try
-     {
-       response = this->_meta.create_network(name);
-     }
-     CATCH_FAILURE_TO_METRICS("network_create");
+      plasma::meta::CreateNetworkResponse response;
+      try
+      {
+        response = this->_meta.create_network(name);
+      }
+      CATCH_FAILURE_TO_METRICS("network_create");
 
-     this->_reporter.store("network_create",
-                           {{MKey::status, "succeed"},
-                            {MKey::value, response.created_network_id}});
+      this->_reporter.store("network_create",
+                            {{MKey::status, "succeed"},
+                             {MKey::value, response.created_network_id}});
 
-     this->_google_reporter.store("network:create:succeed");
+      this->_google_reporter.store("network:create:succeed");
 
       // XXX: Device manager.
       if (auto_add)
@@ -303,27 +296,27 @@ namespace surface
         };
         ELLE_DEBUG("Lune descriptor created");
 
-      // XXX[pas forcement necessaire si le format n'a pas change entre
-      //     la version du descriptor et celle d'Infinit. il faudrait
-      //     comparer static format avec ceux de reference dans le descriptor]
-      //if (descriptor.version() > Infinit::version)
-      //  {
-      //    throw std::runtime_error("you have to update Infinit");
-      //  }
+        // XXX[pas forcement necessaire si le format n'a pas change entre
+        //     la version du descriptor et celle d'Infinit. il faudrait
+        //     comparer static format avec ceux de reference dans le descriptor]
+        //if (descriptor.version() > Infinit::version)
+        //{
+        //  throw std::runtime_error("you have to update Infinit");
+        //}
 
-      // XXX[ici plutot compare static/dynamic format car on peut passer
-      //     a une nouvelle version sans que le descriptor n'ait change
-      //     de format]
-      //if (description.version() < Infinit::version && je suis owner)
-      //  {
-      //     static_assert(false, "migrate the descriptor here and send to meta");
-      //  }
+        // XXX[ici plutot compare static/dynamic format car on peut passer
+        //     a une nouvelle version sans que le descriptor n'ait change
+        //     de format]
+        //if (description.version() < Infinit::version && je suis owner)
+        //{
+        //  static_assert(false, "migrate the descriptor here & send to meta");
+        //}
 
         lune::Identity identity;
         identity.Restore(this->_meta.identity());
 
         ELLE_DEBUG("Storing the descriptor of %s for user %s",
-            network_id, this->_self.id);
+                   network_id, this->_self.id);
         descriptor.store(identity);
 
         nucleus::neutron::Object directory{
@@ -355,14 +348,14 @@ namespace surface
     std::string
     NetworkManager::delete_(std::string const& network_id, bool force)
     {
-      ELLE_TRACE("deleting network %s", network_id);
+      ELLE_TRACE_METHOD(network_id);
 
       this->_networks->at(network_id).reset();
       this->_infinit_instance_manager.stop(network_id);
 
-     this->_reporter.store("network_delete",
-                       {{MKey::status, "attempt"},
-                         {MKey::value,  network_id}});
+      this->_reporter.store("network_delete",
+                            {{MKey::status, "attempt"},
+                             {MKey::value,  network_id}});
 
       plasma::meta::DeleteNetworkResponse response;
       try
@@ -371,18 +364,17 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("network_delete");
 
-     this->_reporter.store("network_delete",
+      this->_reporter.store("network_delete",
                             {{MKey::status, "succeed"},
                              {MKey::value,  response.deleted_network_id}});
-
 
       if (this->infinit_instance_manager().exists(response.deleted_network_id))
       {
         this->_infinit_instance_manager.stop(response.deleted_network_id);
       }
 
-      std::string network_path = common::infinit::network_directory(
-        this->_self.id, network_id);
+      std::string network_path =
+        common::infinit::network_directory(this->_self.id, network_id);
 
       if (elle::os::path::exists(network_path))
         elle::os::path::remove_directory(network_path);
@@ -408,7 +400,7 @@ namespace surface
       return *(this->_networks);
     }
 
-    NetworkManager::Network&
+    surface::gap::Network&
     NetworkManager::one(std::string const& id)
     {
       auto it = this->all().find(id);
@@ -421,10 +413,10 @@ namespace surface
       return this->sync(id);
     }
 
-    NetworkManager::Network&
+    surface::gap::Network&
     NetworkManager::sync(std::string const& id)
     {
-      ELLE_TRACE_FUNCTION(id);
+      ELLE_TRACE_METHOD(id);
       this->all(); // ensure _networks is not null;
 
       auto it = this->all().find(id);
@@ -453,30 +445,27 @@ namespace surface
                              std::string const& user_id,
                              std::string const& user_identity)
     {
-      ELLE_TRACE_FUNCTION(network_id, user_id);
+      ELLE_TRACE_METHOD(network_id, user_id);
 
-     this->_reporter.store("network_adduser",
-                       {{MKey::status, "attempt"},
-                        {MKey::value, network_id}});
+      this->_reporter.store("network_adduser",
+                            {{MKey::status, "attempt"},
+                             {MKey::value, network_id}});
 
       try
       {
         Network& network = this->one(network_id);
 
         ELLE_DEBUG("locating 8 group");
-        std::string const& group_binary = common::infinit::binary_path("8group");
+        std::string const& group_binary =
+          common::infinit::binary_path("8group");
 
         std::list<std::string> arguments{
-                                    "--user",
-                                    owner,
-                                    "--type",
-                                    "user",
-                                    "--add",
-                                    "--network",
-                                    network._id,
-                                    "--identity",
-                                    user_identity
-                                };
+          "--user", owner,
+          "--type", "user",
+          "--add",
+          "--network", network._id,
+          "--identity", user_identity
+        };
 
         ELLE_DEBUG("LAUNCH: %s %s",
                    group_binary,
@@ -503,24 +492,24 @@ namespace surface
         ELLE_DEBUG("set user in network in meta.");
 
         auto res = this->_meta.network_add_user(network_id, user_id);
-       this->sync(network_id);
+        this->sync(network_id);
       }
       CATCH_FAILURE_TO_METRICS("network_adduser");
 
-     this->_reporter.store("network_adduser",
-                       {{MKey::status, "succeed"},
-                        {MKey::value, network_id}});
+      this->_reporter.store("network_adduser",
+                            {{MKey::status, "succeed"},
+                              {MKey::value, network_id}});
     }
 
     void
-   NetworkManager::add_device(std::string const& network_id,
-                              std::string const& device_id)
-   {
-     this->_meta.network_add_device(network_id, device_id);
-     this->sync(network_id);
-   }
+    NetworkManager::add_device(std::string const& network_id,
+                               std::string const& device_id)
+    {
+      this->_meta.network_add_device(network_id, device_id);
+      this->sync(network_id);
+    }
 
-   void
+    void
     NetworkManager::_on_network_update(NetworkUpdateNotification const& notif)
     {
       ELLE_TRACE("network %s updated %s", notif.network_id, notif.what);
@@ -538,28 +527,26 @@ namespace surface
       // TODO: Do this only on the current device for sender and recipient.
       this->wait_portal(network_id);
 
-      std::string const& access_binary = common::infinit::binary_path("8access");
+      std::string const& access_binary =
+        common::infinit::binary_path("8access");
 
       std::list<std::string> arguments{
-                                  "--user",
-                                  this->_self.id,
-                                  "--type",
-                                  "user",
-                                  "--grant",
-                                  "--network",
-                                  network_id,
-                                  "--path",
-                                  "/",
-                                  "--identity",
-                                  user_identity,
-                                };
+        "--user", this->_self.id,
+        "--type", "user",
+        "--grant",
+        "--network", network_id,
+        "--path", "/",
+        "--identity", user_identity,
+      };
 
       if (permissions & nucleus::neutron::permissions::read)
         arguments.push_back("--read");
       if (permissions & nucleus::neutron::permissions::write)
         arguments.push_back("--write");
 
-      ELLE_DEBUG("LAUNCH: %s %s", access_binary, boost::algorithm::join(arguments, " "));
+      ELLE_DEBUG("LAUNCH: %s %s",
+                 access_binary,
+                 boost::algorithm::join(arguments, " "));
 
       if (permissions & gap_exec)
       {
@@ -592,40 +579,46 @@ namespace surface
                  hole::implementations::slug::control::RPC& rpcs,
                  std::vector<std::string> const& addresses)
     {
-     typedef std::unique_ptr<reactor::VThread<bool>> VThreadBoolPtr;
-     std::vector<std::pair<VThreadBoolPtr, std::string>> v;
+      typedef std::unique_ptr<reactor::VThread<bool>> VThreadBoolPtr;
+      std::vector<std::pair<VThreadBoolPtr, std::string>> v;
 
-      auto slug_connect = [&] (std::string const& endpoint) {
-        std::vector<std::string> result;
-        boost::split(result, endpoint, boost::is_any_of(":"));
+      auto slug_connect = [&] (std::string const& endpoint)
+        {
+          std::vector<std::string> result;
+          boost::split(result, endpoint, boost::is_any_of(":"));
 
-        auto const &ip = result[0];
-        auto const &port = result[1];
-        ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
+          auto const &ip = result[0];
+          auto const &port = result[1];
+          ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
           rpcs.slug_connect(ip, std::stoi(port));
 
-        ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
+          ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
           if (!rpcs.slug_wait(ip, std::stoi(port)))
             throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
                                                 ip, port));
-      };
+        };
 
-      auto start_thread = [&] (std::string const &endpoint) {
-        v.push_back(std::make_pair(elle::make_unique<reactor::VThread<bool>>(
-          sched,
-          elle::sprintf("slug_connect(%s)", endpoint),
-          [&] () -> int {
-            try {
-              slug_connect(endpoint);
-            }
-            catch (elle::Exception const &e) {
-              ELLE_WARN("slug_connect failed: %s", e.what());
-              return false;
-            }
-            return true;
-          }
-        ), endpoint));
-      };
+      auto start_thread = [&] (std::string const &endpoint)
+        {
+          v.push_back(std::make_pair(
+                        elle::make_unique<reactor::VThread<bool>>(
+                          sched,
+                          elle::sprintf("slug_connect(%s)", endpoint),
+                          [&] () -> int
+                          {
+                            try
+                            {
+                              slug_connect(endpoint);
+                            }
+                            catch (elle::Exception const &e)
+                            {
+                              ELLE_WARN("slug_connect failed: %s", e.what());
+                              return false;
+                            }
+                            return true;
+                          }),
+                        endpoint));
+        };
 
       ELLE_DEBUG("Connecting...")
         std::for_each(std::begin(addresses), std::end(addresses), start_thread);
@@ -645,7 +638,7 @@ namespace surface
           ELLE_WARN("connection to %s failed", t.second);
         }
       }
-      ELLE_TRACE("finish connecting to %d node%s", i, i > 0 ? "s" : "");
+      ELLE_TRACE("finish connecting to %d node%s", i, i > 1 ? "s" : "");
       return i;
     }
 
@@ -688,7 +681,7 @@ namespace surface
                                     std::string const& recipient_device_id,
                                     reactor::Scheduler& sched)
     {
-      ELLE_TRACE_FUNCTION(network_id, sender_device_id, recipient_device_id);
+      ELLE_TRACE_METHOD(network_id, sender_device_id, recipient_device_id);
       ELLE_ASSERT(this->_device.id == sender_device_id ||
                   this->_device.id == recipient_device_id);
 
