@@ -156,7 +156,7 @@ namespace surface
     }
 
     void
-    UserManager::_on_swagger_status_update(plasma::trophonius::UserStatusNotification const& notif)
+    UserManager::_on_swagger_status_update(UserStatusNotification const& notif)
     {
       ELLE_ASSERT(
         this->swaggers().find(notif.user_id) != this->swaggers().end()

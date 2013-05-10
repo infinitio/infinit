@@ -12,8 +12,12 @@ namespace surface
     using User = ::plasma::meta::User;
     using Self = ::plasma::meta::SelfResponse;
     using NotifManager = ::surface::gap::NotificationManager;
+    using UserStatusNotification = ::surface::gap::UserStatusNotification;
     class UserManager: Notifiable
     {
+      /*----------.
+      | Exception |
+      `----------*/
     public:
       class Exception:
         surface::gap::Exception
@@ -28,10 +32,16 @@ namespace surface
         {}
       };
 
+      /*-----------.
+      | Attributes |
+      `-----------*/
     private:
       plasma::meta::Client& _meta;
       Self const& _self;
 
+      /*-------------.
+      | Construction |
+      `-------------*/
     public:
       UserManager(NotifManager& notification_manager,
                   plasma::meta::Client& meta,
@@ -40,10 +50,15 @@ namespace surface
       virtual
       ~UserManager();
 
-      // Caching.
+      /*------.
+      | Cache |
+      `------*/
     private:
       std::map<std::string, User*> _users;
 
+      /*-------.
+      | Access |
+      `-------*/
     public:
       /// Retrieve a user by id or with its email.
       User const&
@@ -60,6 +75,9 @@ namespace surface
       elle::Buffer
       icon(std::string const& id);
 
+      /*-------------.
+      | Interraction |
+      `-------------*/
       std::string
       invite(std::string const& email);
 
@@ -68,16 +86,18 @@ namespace surface
       send_message(std::string const& recipient_id,
                    std::string const& message);
 
-    public:
-      void
-      _on_swagger_status_update(plasma::trophonius::UserStatusNotification const& notif);
-
-      /// Swaggers.
+      //- Swaggers -------------------------------------------------------------
+      /*--------.
+      | Storage |
+      `--------*/
     private:
       typedef std::map<std::string, User const*> SwaggersMap;
       SwaggersMap _swaggers;
       bool _swaggers_dirty;
 
+      /*-------.
+      | Access |
+      `-------*/
     public:
       SwaggersMap const&
       swaggers();
@@ -87,6 +107,13 @@ namespace surface
 
      void
      swaggers_dirty();
+      /*----------.
+      | Callbacks |
+      `----------*/
+    public:
+      void
+      _on_swagger_status_update(UserStatusNotification const& notif);
+
     };
   }
 }
