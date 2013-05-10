@@ -105,8 +105,6 @@ namespace surface
       elle::metrics::google::register_service(this->_google_reporter);
       // Initialize server.
       elle::metrics::kissmetrics::register_service(this->_reporter);
-
-      this->_init_managers();
     }
 
     State::State(std::string const& token):
