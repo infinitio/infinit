@@ -10,7 +10,7 @@ namespace surface
 {
   namespace gap
   {
-    class Exception:
+    struct Exception:
       public std::runtime_error
     {
     public:
