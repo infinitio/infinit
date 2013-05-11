@@ -1141,7 +1141,7 @@ namespace hole
         ELLE_LOG("%s: add host: %s", *this, *host);
         // XXX: the next line is broken
         host->remote_passport(this->passport());
-        _hosts[host->locus()] = host;
+        this->_hosts[host->locus()] = host;
         this->_new_host.signal();
       }
 
