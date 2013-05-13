@@ -18,6 +18,14 @@ ELLE_LOG_COMPONENT("infinit.satellite");
 
 namespace infinit
 {
+  static int st_pid = -1;
+
+  void
+  sighdl(int signum)
+  {
+    if (st_pid != -1)
+      kill(st_pid, signum);
+  }
 
   static
   int
@@ -28,6 +36,10 @@ namespace infinit
 
     ELLE_DEBUG("%s[%d]: start tracing", name, pid);
     int err;
+    st_pid = pid;
+    signal(SIGINT, sighdl);
+    signal(SIGTERM, sighdl);
+    signal(SIGQUIT, sighdl);
     while ((err = waitpid(pid, &status, 0)) != pid)
     {
       if (errno == EINTR)
@@ -48,7 +60,7 @@ namespace infinit
       ELLE_ERR("%s[%d]: stopped by signal %s(%d)", name, pid,
                elle::system::strsignal(signum), signum);
       retval = -signum;
-      if (signum == SIGKILL)
+      if (signum == SIGTERM)
         return retval;
 #if defined WCOREDUMP
       if (WCOREDUMP(status))
