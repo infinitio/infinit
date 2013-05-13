@@ -224,6 +224,9 @@ not remove the need to explicitly specify copyable constructors.
 
 They follow the same rules as copyable types.
 
+**Note:** After beeing moved, an instance should not be used anymore, and
+any call except calling the destructor goes in the land of "undefined behavior".
+
 ### Serializable types
 
 To be instanciated easily on the stack from an archiver, types must implement
