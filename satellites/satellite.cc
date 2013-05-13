@@ -12,6 +12,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <cerrno>
 
 ELLE_LOG_COMPONENT("infinit.satellite");
 
@@ -27,10 +28,13 @@ namespace infinit
 
     ELLE_DEBUG("%s[%d]: start tracing", name, pid);
     int err;
-    while ((err = waitpid(pid, &status, 0)) == -1)
+    while ((err = waitpid(pid, &status, 0)) != pid)
     {
-      if (err == EINTR)
+      if (errno == EINTR)
         continue;
+      int _errno = errno; // Hack for context switch in throw stmt.
+      throw elle::Exception{elle::sprintf("waitpid: error %s: %s",
+                                          err, ::strerror(_errno))};
     }
     if (WIFEXITED(status))
     {
