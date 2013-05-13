@@ -404,12 +404,12 @@ extern "C"
     gap_Status ret = gap_ok;
     try
       {
-        auto const& networks_map = __TO_CPP(state)->network_manager().all();
+        auto const& networks_ids = __TO_CPP(state)->network_manager().all_ids();
 
         std::list<std::string> res;
 
-        for (auto const& network_pair : networks_map)
-          res.push_back(network_pair.first);
+        for (auto const& id : networks_ids)
+          res.push_back(id);
 
         return _cpp_stringlist_to_c_stringlist(res);
       }
