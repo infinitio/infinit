@@ -182,6 +182,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
     common::infinit::network_shelter(Infinit::User, Infinit::Network)
   };
 
+  ELLE_DEBUG("loading passport");
   elle::Passport passport{
     elle::serialize::from_file(common::infinit::passport_path(Infinit::User))
   };

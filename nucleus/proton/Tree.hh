@@ -245,6 +245,13 @@ namespace nucleus
       /// Return the root block handle.
       Handle&
       root();
+      /// Return the state of the tree.
+      State
+      state() const;
+      /// Explicitely set the state of the tree. One should carefully use this
+      /// method.
+      void
+      state(State const state);
 
     private:
       /// Return the handle of the quill block responsible for the given key
@@ -276,7 +283,6 @@ namespace nucleus
       ELLE_ATTRIBUTE_R(Capacity, capacity);
 
       ELLE_ATTRIBUTE(Nest&, nest);
-      ELLE_ATTRIBUTE_R(State, state);
     };
   }
 }

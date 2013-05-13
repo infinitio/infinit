@@ -11,6 +11,7 @@
 using namespace infinit;
 
 # include <nucleus/proton/fwd.hh>
+# include <nucleus/proton/State.hh>
 
 # include <boost/noncopyable.hpp>
 
@@ -98,6 +99,12 @@ namespace nucleus
       void
       reset(Address const& address,
             cryptography::SecretKey const& secret);
+      /// Return the state of the block referenced by the egg.
+      State
+      state() const;
+      /// Update the state of the block referenced by the egg.
+      void
+      state(State const state);
 
       /*----------.
       | Operators |

@@ -45,6 +45,11 @@ namespace common
     log_path(std::string const& user_id,
              std::string const& network_id);
 
+    /// The path to the descriptor.
+    std::string
+    descriptor_path(std::string const& user_id,
+                    std::string const& network_id);
+
     // Returns the path to the shelter.
     std::string
     network_shelter(std::string const& user_id,
@@ -62,7 +67,6 @@ namespace common
     /// The path to the identity file.
     std::string
     identity_path(std::string const& user_id);
-
   }
 
   /// System and Operating System related stuffs

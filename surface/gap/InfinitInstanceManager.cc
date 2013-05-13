@@ -6,6 +6,7 @@
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/os/getenv.hh>
+#include <elle/os/path.hh>
 #include <elle/system/signal.hh>
 
 #include <signal.h>
@@ -21,21 +22,72 @@ namespace surface
 
     InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id)
       : _user_id{user_id}
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
+
+    InfinitInstanceManager::~InfinitInstanceManager()
+    {
+      ELLE_TRACE_METHOD("");
+      this->clear();
+    }
 
     void
-    InfinitInstanceManager::launch_network(std::string const& network_id)
+    InfinitInstanceManager::clear()
+    {
+      auto it = begin(this->_instances);
+
+      while(it != end(this->_instances))
+      {
+        this->stop(it->first);
+        it = begin(this->_instances);
+      }
+
+      ELLE_ASSERT(this->_instances.empty());
+    }
+
+    void
+    InfinitInstanceManager::wait_portal(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
-      if (_instances.find(network_id) != _instances.end())
+
+      ELLE_DEBUG("retrieving portal path");
+      auto portal_path = common::infinit::portal_path(this->_user_id,
+                                                      network_id);
+
+      ELLE_DEBUG("portal path is %s", portal_path);
+      if (!this->exists(network_id))
+        this->launch(network_id);
+
+      for (int i = 0; i < 45; ++i)
       {
-        ELLE_ASSERT(_instances[network_id] != nullptr);
-        if (_instances[network_id]->process->running())
+        ELLE_DEBUG("Waiting for portal.");
+        if (elle::os::path::exists(portal_path))
+          return;
+
+        if (!this->exists(network_id))
+          throw Exception{gap_error, "Infinit instance has crashed"};
+        ::sleep(1);
+      }
+
+      throw Exception{
+        elle::sprintf("Unable to find portal for %s", network_id)};
+    }
+
+
+    void
+    InfinitInstanceManager::launch(std::string const& network_id)
+    {
+      ELLE_TRACE_METHOD(network_id);
+      if (this->_instances.find(network_id) != this->_instances.end())
+      {
+        ELLE_ASSERT_NEQ(this->_instances[network_id], nullptr);
+        if (this->_instances[network_id]->process->running())
           throw elle::Exception{"Network " + network_id + " already launched"};
         else
           ELLE_DEBUG("Found staled infinit instance (%s): status = %s",
-                     _instances[network_id]->process->id(),
-                     _instances[network_id]->process->status());
+                     this->_instances[network_id]->process->id(),
+                     this->_instances[network_id]->process->status());
       }
 
       std::string command;
@@ -44,20 +96,19 @@ namespace surface
       auto pc = elle::system::process_config(elle::system::normal_config);
       if (elle::os::getenv("INFINIT_DEBUG_WITH_VALGRIND", "") == "1")
       {
-        pc.pipe_file(
-            elle::system::ProcessChannelStream::out,
-            "/tmp/infinit.out", "a+"
-        );
-        pc.pipe_file(
-            elle::system::ProcessChannelStream::err,
-            "/tmp/infinit.out", "a+"
-        );
+        pc.pipe_file(elle::system::ProcessChannelStream::out,
+                     "/tmp/infinit.out",
+                     "a+");
+        pc.pipe_file(elle::system::ProcessChannelStream::err,
+                     "/tmp/infinit.out",
+                     "a+");
         command = "/opt/local/bin/valgrind";
         args = {
-          "--dsymutil=yes", "--max-stackframe=751633440",
+          "--dsymutil=yes",
+          "--max-stackframe=751633440",
           common::infinit::binary_path("8infinit"),
           "-n", network_id,
-          "-u", _user_id
+          "-u", this->_user_id,
         };
       }
       else
@@ -78,19 +129,23 @@ namespace surface
         command = common::infinit::binary_path("8infinit");
         args = {
           "-n", network_id,
-          "-u", _user_id
+          "-u", this->_user_id,
         };
       }
-      ELLE_DEBUG("%s %s %s %s %s", common::infinit::binary_path("8infinit"),
-                 "-n", network_id, "-u",
-                 _user_id);
+      ELLE_DEBUG("%s %s %s %s %s",
+                 common::infinit::binary_path("8infinit"),
+                 "-n",
+                 network_id,
+                 "-u",
+                 this->_user_id);
       auto process = elle::make_unique<elle::system::Process>(
         std::move(pc),
         command,
         args
       );
 
-      _instances[network_id].reset(new InfinitInstance{
+      this->_instances[network_id].reset(
+        new InfinitInstance{
           network_id,
           "",
           std::move(process),
@@ -98,24 +153,25 @@ namespace surface
     }
 
     void
-    InfinitInstanceManager::stop_network(std::string const& network_id)
+    InfinitInstanceManager::stop(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
       try
       {
-        auto const& instance = this->network_instance(network_id);
-        ELLE_ASSERT(instance.process != nullptr);
-        instance.process->interrupt(elle::system::ProcessTermination::dont_wait);
+        using elle::system::ProcessTermination;
+        auto const& instance = this->instance(network_id);
+        ELLE_ASSERT_NEQ(instance.process, nullptr);
+        instance.process->interrupt(ProcessTermination::dont_wait);
       }
       catch (elle::Exception const& e)
       {
-        ELLE_DEBUG("no network found, no infinit to kill");
+        ELLE_WARN("no network found, no infinit to kill");
       }
 
       auto it_proc = this->_instances.find(network_id);
       if (it_proc != this->_instances.end())
       {
-        ELLE_ASSERT(it_proc->second != nullptr);
+        ELLE_ASSERT_NEQ(it_proc->second, nullptr);
         auto& proc = it_proc->second->process;
 
         if (proc->running())
@@ -146,22 +202,22 @@ namespace surface
             ELLE_DEBUG("status 0");
           }
         }
-        _instances.erase(network_id);
+        this->_instances.erase(network_id);
       }
     }
 
     bool
-    InfinitInstanceManager::has_network(std::string const& network_id) const
+    InfinitInstanceManager::exists(std::string const& network_id) const
     {
       ELLE_TRACE_METHOD(network_id);
       if (this->_instances.find(network_id) == this->_instances.end())
         return false;
 
-      if (!this->network_instance(network_id).process->running())
+      if (!this->instance(network_id).process->running())
       {
         ELLE_WARN("Found not running infinit instance (pid = %s): status = %s",
-                   this->network_instance(network_id).process->id(),
-                   this->network_instance(network_id).process->status());
+                   this->instance(network_id).process->id(),
+                   this->instance(network_id).process->status());
         //XXX this->_instances.erase(network_id);
         return false;
       }
@@ -169,29 +225,28 @@ namespace surface
     }
 
     InfinitInstance const&
-    InfinitInstanceManager::network_instance(std::string const& network_id) const
+    InfinitInstanceManager::instance(std::string const& network_id) const
     {
       ELLE_TRACE_METHOD(network_id);
-      auto it = _instances.find(network_id);
-      if (it == _instances.end())
+      auto it = this->_instances.find(network_id);
+      if (it == this->_instances.end())
         throw elle::Exception{"Cannot find any network " + network_id};
-      ELLE_ASSERT(it->second != nullptr);
+      ELLE_ASSERT_NEQ(it->second, nullptr);
       return *(it->second);
     }
 
     InfinitInstance const*
-    InfinitInstanceManager::network_instance_for_file(std::string const& path)
+    InfinitInstanceManager::instance_for_file(std::string const& path)
     {
       ELLE_TRACE_METHOD(path);
-      for (auto const& pair : _instances)
-        {
-          std::string mount_point = pair.second->mount_point;
+      for (auto const& pair : this->_instances)
+      {
+        std::string mount_point = pair.second->mount_point;
 
-          if (path.compare(0, mount_point.length(), path) != 0)
-            return pair.second.get();
-        }
+        if (path.compare(0, mount_point.length(), path) != 0)
+          return pair.second.get();
+      }
       return nullptr;
     }
-
   }
 }

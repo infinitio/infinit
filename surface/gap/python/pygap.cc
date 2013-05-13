@@ -273,7 +273,7 @@ namespace
         wrap_call(cb)(notif.user_id.c_str(), (gap_UserStatus) notif.status);
     };
 
-    reinterpret_cast<surface::gap::State*>(state)->user_status_callback(cpp_cb);
+    reinterpret_cast<surface::gap::State*>(state)->notification_manager().user_status_callback(cpp_cb);
   }
 
   void
@@ -282,10 +282,10 @@ namespace
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-        wrap_call(cb)(notif.transaction.transaction_id.c_str(), is_new);
+        wrap_call(cb)(notif.transaction.id.c_str(), is_new);
     };
 
-    reinterpret_cast<surface::gap::State*>(state)->transaction_callback(cpp_cb);
+    reinterpret_cast<surface::gap::State*>(state)->notification_manager().transaction_callback(cpp_cb);
   }
 
   void
@@ -297,7 +297,7 @@ namespace
         wrap_call(cb)(notif.transaction_id.c_str(), is_new);
     };
 
-    reinterpret_cast<surface::gap::State*>(state)->transaction_status_callback(cpp_cb);
+    reinterpret_cast<surface::gap::State*>(state)->notification_manager().transaction_status_callback(cpp_cb);
   }
 
   void
@@ -309,7 +309,7 @@ namespace
         wrap_call(cb)(notif.sender_id.c_str(), notif.message.c_str());
     };
 
-    reinterpret_cast<surface::gap::State*>(state)->message_callback(cpp_cb);
+    reinterpret_cast<surface::gap::State*>(state)->notification_manager().message_callback(cpp_cb);
   }
 
   void
@@ -323,7 +323,7 @@ namespace
       wrap_call(cb)(status, str.c_str(), tid.c_str());
     };
 
-    reinterpret_cast<surface::gap::State*>(state)->on_error_callback(cpp_cb);
+    reinterpret_cast<surface::gap::State*>(state)->notification_manager().on_error_callback(cpp_cb);
   }
 }
 
@@ -390,7 +390,6 @@ BOOST_PYTHON_MODULE(_gap)
 
   py::def("invite_user", &gap_invite_user);
   py::def("send_message", &gap_message);
-  py::def("connect", &gap_trophonius_connect);
 
   //- Notifications ------------------------------------------------------------
 
@@ -440,7 +439,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("networks", &_get_networks);
   py::def("create_network", &gap_create_network);
   py::def("network_name", &gap_network_name, by_value());
-  py::def("network_mount_point", &gap_network_mount_point, by_value());
   py::def("network_add_user", &gap_network_add_user);
 
   //- Users -------------------------------------------------------------------
@@ -461,7 +459,6 @@ BOOST_PYTHON_MODULE(_gap)
     .value("gap_exec", gap_exec)
     .export_values()
   ;
-  py::def("set_permissions", &gap_set_permissions);
 
   //- Transactions- ------------------------------------------------------------
 

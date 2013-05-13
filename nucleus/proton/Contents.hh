@@ -88,6 +88,10 @@ namespace nucleus
       /// Return the footprint of the embedded node, should it be present.
       Footprint
       footprint() const;
+      /// Return true if the block is ready to be published onto the storage
+      /// layer.
+      elle::Boolean
+      eligible() const;
 
       /*-----------.
       | Interfaces |

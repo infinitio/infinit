@@ -22,7 +22,6 @@ def login(state, email = None):
         raise Exception("you must provide an username")
     password = getpass("password: ")
     state.login(receiver_id, password)
-    state.connect()
     return state.generation_key()
 
 if __name__ == "__main__":

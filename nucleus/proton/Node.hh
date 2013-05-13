@@ -54,6 +54,10 @@ namespace nucleus
       /// XXX
       void
       state(State const state);
+      /// XXX
+      virtual
+      elle::Boolean
+      eligible() const = 0;
 
       //
       // interfaces

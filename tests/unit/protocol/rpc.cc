@@ -85,11 +85,11 @@ struct DummyRPC: public infinit::protocol::RPC<elle::serialize::InputBinaryArchi
 | Basic |
 `------*/
 
-void caller(reactor::Semaphore& lock)
+void caller(reactor::Semaphore& lock, int& port)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   sched.current()->wait(lock);
-  reactor::network::TCPSocket socket(sched, "127.0.0.1", 12345);
+  reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
   infinit::protocol::Serializer s(sched, socket);
   infinit::protocol::ChanneledStream channels(sched, s);
 
@@ -101,11 +101,12 @@ void caller(reactor::Semaphore& lock)
 }
 
 void runner(reactor::Semaphore& lock,
-            bool sync)
+            bool sync, int& port)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   reactor::network::TCPServer server(sched);
-  server.listen(12345);
+  server.listen();
+  port = server.port();
   lock.release();
   lock.release();
   reactor::network::TCPSocket* socket = server.accept();
@@ -134,9 +135,17 @@ int test(bool sync)
 {
   reactor::Scheduler sched;
   reactor::Semaphore lock;
+  int port = 0;
 
-  reactor::Thread r(sched, "Runner", std::bind(runner, std::ref(lock), sync));
-  reactor::Thread c(sched, "Caller", std::bind(caller, std::ref(lock)));
+  reactor::Thread r(sched, "Runner",
+                    std::bind(runner,
+                              std::ref(lock),
+                              sync,
+                              std::ref(port)));
+  reactor::Thread c(sched, "Caller",
+                    std::bind(caller,
+                              std::ref(lock),
+                              std::ref(port)));
 
   sched.run();
   return 0;
@@ -146,11 +155,11 @@ int test(bool sync)
 | Terminate |
 `----------*/
 
-void pacify(reactor::Semaphore& lock, reactor::Thread& t)
+void pacify(reactor::Semaphore& lock, reactor::Thread& t, int& port)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   sched.current()->wait(lock);
-  reactor::network::TCPSocket socket(sched, "127.0.0.1", 12345);
+  reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
   infinit::protocol::Serializer s(sched, socket);
   infinit::protocol::ChanneledStream channels(sched, s);
 
@@ -163,13 +172,16 @@ int test_terminate(bool sync)
 {
   reactor::Scheduler sched{};
   reactor::Semaphore lock;
+  int port = 0;
 
   reactor::Thread r(sched, "Runner", std::bind(runner,
                                                std::ref(lock),
-                                               sync));
+                                               sync,
+                                               std::ref(port)));
   reactor::Thread j(sched, "Judge dread", std::bind(pacify,
                                                     std::ref(lock),
-                                                    std::ref(r)));
+                                                    std::ref(r),
+                                                    std::ref(port)));
 
   sched.run();
   return 0;
@@ -179,11 +191,11 @@ int test_terminate(bool sync)
 | Parallel |
 `---------*/
 
-void counter(reactor::Semaphore& lock, bool sync)
+void counter(reactor::Semaphore& lock, bool sync, int& port)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   sched.current()->wait(lock);
-  reactor::network::TCPSocket socket(sched, "127.0.0.1", 12345);
+  reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
   infinit::protocol::Serializer s(sched, socket);
   infinit::protocol::ChanneledStream channels(sched, s);
 
@@ -212,13 +224,16 @@ int test_parallel(bool sync)
 {
   reactor::Scheduler sched;
   reactor::Semaphore lock;
+  int port = 0;
 
   reactor::Thread r(sched, "Runner", std::bind(runner,
                                                std::ref(lock),
-                                               sync));
+                                               sync,
+                                               std::ref(port)));
   reactor::Thread c1(sched, "Counter", std::bind(counter,
-                                                   std::ref(lock),
-                                                   sync));
+                                                 std::ref(lock),
+                                                 sync,
+                                                 std::ref(port)));
 
   sched.run();
   return 0;

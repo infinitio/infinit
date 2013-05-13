@@ -21,9 +21,9 @@ ELLE_SERIALIZE_SPLIT_SAVE(nucleus::proton::Handle,
 {
   enforce(version == 0);
 
-  switch (value._state)
+  switch (value._phase)
     {
-    case nucleus::proton::Handle::State::unnested:
+    case nucleus::proton::Handle::Phase::unnested:
       {
         ELLE_ASSERT(value._clef != nullptr);
 
@@ -31,7 +31,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(nucleus::proton::Handle,
 
         break;
       }
-    case nucleus::proton::Handle::State::nested:
+    case nucleus::proton::Handle::Phase::nested:
       {
         ELLE_ASSERT(value._egg != nullptr);
         ELLE_ASSERT(*value._egg != nullptr);
@@ -42,7 +42,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(nucleus::proton::Handle,
         break;
       }
     default:
-      throw Exception(elle::sprintf("unknown state '%s'", value._state));
+      throw Exception(elle::sprintf("unknown phase '%s'", value._phase));
     }
 }
 
@@ -53,7 +53,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(nucleus::proton::Handle,
 {
   enforce(version == 0);
 
-  ELLE_ASSERT(value._state == nucleus::proton::Handle::State::unnested);
+  ELLE_ASSERT(value._phase == nucleus::proton::Handle::Phase::unnested);
   ELLE_ASSERT(value._clef == nullptr);
 
   value._clef = new nucleus::proton::Clef{archive};

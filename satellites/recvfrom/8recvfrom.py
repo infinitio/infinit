@@ -60,11 +60,11 @@ def on_error(state, status, message, tid):
 
 def login(state, email = None):
     if not state.logged:
+        receiver_id = os.getenv("INFINIT_USER", None)
         if receiver_id == None:
             raise Exception("you must provide INFINIT_USER")
         password = getpass("password: ")
         state.login(receiver_id, password)
-    state.connect()
     return state.email()
 
 def select_transactions(state, l_transactions, sender):
@@ -122,14 +122,14 @@ def select_transactions(state, l_transactions, sender):
 def main(state, sender):
     id = login(state)
 
-    # Pull only new notifications to ensure the transaction has been fetched.
-    state.pull_notifications(0, 0)
-
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_canceled, state))
     state.transaction_status_callback(partial(on_started, state))
     state.transaction_status_callback(partial(show_status, state))
     state.on_error_callback(partial(on_error, state))
+
+    # Pull only new notifications to ensure the transaction has been fetched.
+    state.pull_notifications(0, 0)
 
     state.running = True
     state.set_device_name(id + "device")
@@ -175,6 +175,7 @@ if __name__ == "__main__":
 
     import gap
     with gap.State() as state:
+        state.number_of_transactions = 0
         try:
             main(state, args.sender)
         except KeyboardInterrupt as e:

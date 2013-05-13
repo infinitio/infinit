@@ -26,7 +26,8 @@ namespace etoile
       contents_nest(nullptr),
       contents_limits(nucleus::proton::limits::Porcupine{},
                       nucleus::proton::limits::Node{1048576, 1.0, 0.0},
-                      nucleus::proton::limits::Node{1048576, 1.0, 0.0})
+                      nucleus::proton::limits::Node{1048576, 1.0, 0.0}),
+      contents_threshold(20971520)
     {
     }
 

@@ -9,7 +9,7 @@ namespace plasma
 
   struct Transaction
   {
-    std::string           transaction_id;
+    std::string           id;
     std::string           sender_id;
     std::string           sender_fullname;
     std::string           sender_device_id;

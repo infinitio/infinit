@@ -63,6 +63,7 @@ namespace etoile
       nucleus::proton::Porcupine<nucleus::neutron::Ensemble>* ensemble_porcupine;
       etoile::nest::Nest* ensemble_nest;
       nucleus::proton::Limits ensemble_limits;
+      nucleus::proton::Footprint ensemble_threshold;
 
       struct
       {

@@ -27,7 +27,7 @@ namespace nucleus
     public:
       /// Define whether the block is located in the nest or not, in which
       /// case only the address/secret tuple would be kept.
-      enum class State
+      enum class Phase
         {
           unnested,
           nested
@@ -85,6 +85,15 @@ namespace nucleus
       void
       reset(Address const& address,
             cryptography::SecretKey const& secret);
+      /// Return the state of the block referenced by the handle.
+      ///
+      /// This allows someone to know the state of a block without necessarily
+      /// loading it.
+      State
+      state() const;
+      /// Update the state of the block referenced by the handle.
+      void
+      state(State const state);
 
       /*----------.
       | Operators |
@@ -113,7 +122,7 @@ namespace nucleus
       | Attributes |
       `-----------*/
     private:
-      ELLE_ATTRIBUTE_R(State, state);
+      ELLE_ATTRIBUTE_R(Phase, phase);
       union
       {
         /// Contain the address and secret of the block referenced
@@ -141,7 +150,7 @@ namespace nucleus
 
     std::ostream&
     operator <<(std::ostream& stream,
-                Handle::State const state);
+                Handle::Phase const phase);
   }
 }
 

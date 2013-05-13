@@ -211,9 +211,9 @@ namespace etoile
                   static_cast<size_t>(expanding_size -
                                       (absolute_offset - offset))});
 
-              context.contents_porcupine->update(absolute_offset);
-
               end.close();
+
+              context.contents_porcupine->update(absolute_offset);
             }
         }
 

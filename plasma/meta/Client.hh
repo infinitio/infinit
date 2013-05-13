@@ -3,6 +3,7 @@
 
 # include <functional>
 # include <list>
+# include <vector>
 # include <map>
 # include <memory>
 # include <stdexcept>
@@ -25,6 +26,9 @@ namespace plasma
 
     template <typename T>
     using list = std::list<T>;
+
+    template <typename T>
+    using vector = std::vector<T>;
 
     template <typename T, typename U>
     using pair = std::pair<T, U>;
@@ -76,7 +80,7 @@ namespace plasma
       string handle;
       string email;
       string identity;
-      string _id;
+      string id;
     };
 
     struct LogoutResponse : Response
@@ -99,7 +103,7 @@ namespace plasma
 
     struct User
     {
-      string _id;
+      string id;
       string fullname;
       string handle;
       string public_key;
@@ -199,26 +203,27 @@ namespace plasma
 
     struct EndpointNodeResponse : Response
     {
-      list<string>      externals;
-      list<string>      locals;
-      list<string>      fallback;
+      vector<string>      externals;
+      vector<string>      locals;
+      vector<string>      fallback;
     };
 
     typedef UpdateNetworkResponse NetworkAddUserResponse;
     typedef UpdateNetworkResponse NetworkAddDeviceResponse;
     typedef UpdateNetworkResponse NetworkConnectDeviceResponse;
 
-    struct CreateDeviceResponse : Response
+    struct Device
     {
-      string             created_device_id;
+      string             id;
       string             passport;
+      string             name;
     };
 
-    struct UpdateDeviceResponse : Response
-    {
-      string             updated_device_id;
-      string             passport;
-    };
+    struct CreateDeviceResponse : Response, Device
+    {};
+
+    struct UpdateDeviceResponse : Response, Device
+    {};
 
     /// Callbacks for API calls.
     typedef std::function<void(LoginResponse const&)> LoginCallback;

@@ -210,6 +210,16 @@ namespace common
     }
 
     std::string
+    descriptor_path(std::string const& user_id,
+                    std::string const& network_id)
+    {
+      return path::join(
+        network_directory(user_id, network_id)
+,
+        network_id + ".dsc");
+    }
+
+    std::string
     network_directory(std::string const& user_id,
                       std::string const& network_id)
     {
@@ -257,10 +267,10 @@ namespace common
     std::string
     identity_path(std::string const& user_id)
     {
-        return path::join(
-          infinit::user_directory(user_id),
-          "identity"
-        );
+      return path::join(
+        infinit::user_directory(user_id),
+        "identity"
+      );
     }
 
   } // !infinit
