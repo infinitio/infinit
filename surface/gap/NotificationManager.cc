@@ -299,15 +299,9 @@ namespace surface
     {
       ELLE_TRACE_FUNCTION(count, offset);
 
-      if (count < 0)
-        throw Exception("pulling a negative number of notification");
-
-      if (offset < 0)
-        throw Exception("offset is negative");
-
       auto res = this->_meta.pull_notifications(count, offset);
 
-      ELLE_DEBUG("Pulled %s new and %s old notifications",
+      ELLE_DEBUG("pulled %s new and %s old notifications",
                  res.notifs.size(),
                  res.old_notifs.size());
 
