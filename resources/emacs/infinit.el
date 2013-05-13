@@ -12,6 +12,15 @@
 
 ;; indentation
 (require 'cc-mode)
+
+(defun infinit-c-lineup-C-comments-boxes (arg)
+  (let ((box (save-excursion
+               (goto-char (cdr arg))
+               (looking-at "/\\*-*\\.$"))))
+    (if box
+        0
+      (c-lineup-C-comments arg))))
+
 (add-to-list 'c-style-alist
   '("infinit"
     (c-basic-offset . 2)
@@ -24,4 +33,5 @@
                         (substatement . +)
                         (substatement-open . 0)
                         (case-label . +)
-                        (access-label . -)))))
+                        (access-label . -)
+                        (c . infinit-c-lineup-C-comments-boxes)))))
