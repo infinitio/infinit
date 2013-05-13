@@ -151,7 +151,15 @@ namespace surface
       NetworkManager&
       network_manager()
       {
-        ELLE_ASSERT_NEQ(this->_network_manager, nullptr);
+        if (this->_network_manager == nullptr)
+        {
+          this->_network_manager.reset(
+            new NetworkManager{this->_meta,
+                               this->_reporter,
+                               this->_google_reporter,
+                               this->_me,
+                               this->_device});
+        }
         return *this->_network_manager;
       }
 
@@ -162,7 +170,11 @@ namespace surface
       NotificationManager&
       notification_manager()
       {
-        ELLE_ASSERT_NEQ(this->_notification_manager, nullptr);
+        if (this->_notification_manager == nullptr)
+        {
+          this->_notification_manager.reset(new NotificationManager{this->_meta,
+                                                                    this->_me});
+        }
         return *this->_notification_manager;
       }
 
@@ -173,7 +185,13 @@ namespace surface
       UserManager&
       user_manager()
       {
-        ELLE_ASSERT_NEQ(this->_user_manager, nullptr);
+        if (this->_user_manager == nullptr)
+        {
+          this->_user_manager.reset(
+            new UserManager{this->notification_manager(),
+                            this->_meta,
+                            this->_me});
+        }
         return *this->_user_manager;
       }
 
@@ -183,7 +201,17 @@ namespace surface
       TransactionManager&
       transaction_manager()
       {
-        ELLE_ASSERT_NEQ(this->_transaction_manager, nullptr);
+        if (this->_transaction_manager == nullptr)
+        {
+          this->_transaction_manager.reset(
+            new TransactionManager{this->notification_manager(),
+                                   this->network_manager(),
+                                   this->user_manager(),
+                                   this->_meta,
+                                   this->_reporter,
+                                   this->_me,
+                                   this->_device});
+        }
         return *this->_transaction_manager;
       }
 
