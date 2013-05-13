@@ -303,11 +303,15 @@ namespace surface
         throw Exception("pulling a negative number of notification");
 
       if (offset < 0)
-        throw Exception("offset is negativ");
+        throw Exception("offset is negative");
 
       auto res = this->_meta.pull_notifications(count, offset);
 
-      if (only_new)
+      ELLE_DEBUG("Pulled %s new and %s old notifications",
+                 res.notifs.size(),
+                 res.old_notifs.size());
+
+      if (!only_new)
         for (auto const& notification: res.old_notifs)
           this->_handle_notification(notification, false);
 
