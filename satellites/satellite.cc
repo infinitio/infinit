@@ -60,8 +60,6 @@ namespace infinit
       ELLE_ERR("%s[%d]: stopped by signal %s(%d)", name, pid,
                elle::system::strsignal(signum), signum);
       retval = -signum;
-      if (signum == SIGTERM)
-        return retval;
 #if defined WCOREDUMP
       if (WCOREDUMP(status))
       {
