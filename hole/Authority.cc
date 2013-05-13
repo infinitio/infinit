@@ -22,32 +22,32 @@ namespace elle
   Authority::Authority(Authority const& from):
     type(from.type),
     _K(from._K),
-    k(nullptr),
-    code(nullptr)
+    _k(nullptr),
+    _code(nullptr)
   {
-    if (from.k)
-      this->k = new cryptography::PrivateKey(*from.k);
-    if (from.code)
-      this->code = new cryptography::Code(*from.code);
+    if (from._k)
+      this->_k = new cryptography::PrivateKey(*from._k);
+    if (from._code)
+      this->_code = new cryptography::Code(*from._code);
   }
 
   Authority::Authority(cryptography::KeyPair const& pair):
     type(Authority::TypePair),
     _K(pair.K()),
-    k(new cryptography::PrivateKey{pair.k()}),
-    code(nullptr)
+    _k(new cryptography::PrivateKey{pair.k()}),
+    _code(nullptr)
   {}
 
   Authority::Authority(cryptography::PublicKey const& K):
     type(Authority::TypePublic),
     _K(K),
-    k(nullptr),
-    code(nullptr)
+    _k(nullptr),
+    _code(nullptr)
   {}
 
   Authority::Authority(elle::io::Path const& path):
-    k(nullptr),
-    code(0)
+    _k(nullptr),
+    _code(nullptr)
   {
     if (!elle::Authority::exists(path))
       throw Exception
@@ -57,8 +57,8 @@ namespace elle
 
   Authority::~Authority()
   {
-    delete this->k;
-    delete this->code;
+    delete this->_k;
+    delete this->_code;
   }
 
 //
@@ -76,9 +76,9 @@ namespace elle
 
     ELLE_ASSERT(this->type == Authority::TypePair);
 
-    delete this->code;
-    this->code = nullptr;
-    this->code = new cryptography::Code{key.encrypt(*this->k)};
+    delete this->_code;
+    this->_code = nullptr;
+    this->_code = new cryptography::Code{key.encrypt(this->k())};
 
     return elle::Status::Ok;
   }
@@ -91,15 +91,15 @@ namespace elle
     ELLE_TRACE_METHOD(pass);
 
     ELLE_ASSERT(this->type == Authority::TypePair);
-    ELLE_ASSERT(this->code != nullptr);
+    ELLE_ASSERT(this->_code != nullptr);
 
     cryptography::SecretKey key{cryptography::cipher::Algorithm::aes256, pass};
 
-    delete this->k;
-    this->k = nullptr;
-    this->k =
+    delete this->_k;
+    this->_k = nullptr;
+    this->_k =
       new cryptography::PrivateKey{
-        key.decrypt<cryptography::PrivateKey>(*this->code)};
+        key.decrypt<cryptography::PrivateKey>(*this->_code)};
 
     return elle::Status::Ok;
   }
@@ -126,19 +126,33 @@ namespace elle
               << "[K] " << this->_K << std::endl;
 
     // if present...
-    if (this->k != nullptr)
+    if (this->_k != nullptr)
       {
         std::cout << alignment << elle::io::Dumpable::Shift
-                  << "[k] " << *this->k << std::endl;
+                  << "[k] " << this->k() << std::endl;
       }
 
     // dump the code.
-    if (this->code != nullptr)
+    if (this->_code != nullptr)
       {
         std::cout << alignment << elle::io::Dumpable::Shift
-                  << "[Code] " << *this->code << std::endl;
+                  << "[Code] " << this->code() << std::endl;
       }
 
     return elle::Status::Ok;
+  }
+
+  cryptography::PrivateKey const&
+  Authority::k() const
+  {
+    ELLE_ASSERT_NEQ(this->_k, nullptr);
+    return *this->_k;
+  }
+
+  cryptography::Code const&
+  Authority::code() const
+  {
+    ELLE_ASSERT_NEQ(this->_code, nullptr);
+    return *this->_code;
   }
 }

@@ -22,7 +22,7 @@ namespace elle
     : _id{id}
     , _name{name}
     , _owner_K{owner_K}
-    , _signature{authority.k->sign(elle::serialize::make_tuple(id, owner_K))}
+    , _signature{authority.k().sign(elle::serialize::make_tuple(id, owner_K))}
   {
     ELLE_ASSERT(id.size() > 0);
     ELLE_ASSERT(name.size() > 0);

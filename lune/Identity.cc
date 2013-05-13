@@ -145,7 +145,7 @@ namespace lune
     delete this->_signature;
     this->_signature = nullptr;
     this->_signature = new cryptography::Signature{
-      authority.k->sign(
+      authority.k().sign(
         elle::serialize::make_tuple(this->_id, this->name, *this->code))};
 
     return elle::Status::Ok;

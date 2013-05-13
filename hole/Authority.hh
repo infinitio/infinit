@@ -79,9 +79,16 @@ namespace elle
     Type                type;
 
     ELLE_ATTRIBUTE_R(cryptography::PublicKey, K);
-    cryptography::PrivateKey*   k;
+  private:
+    cryptography::PrivateKey* _k;
+    cryptography::Code* _code;
 
-    cryptography::Code*       code;
+  public:
+    cryptography::PrivateKey const&
+    k() const;
+    cryptography::Code const&
+    code() const;
+
   };
 
 }
