@@ -275,6 +275,11 @@ SERIALIZE_RESPONSE(plasma::meta::NetworkResponse, ar, res)
   ar & named("users", res.users);
 }
 
+SERIALIZE_RESPONSE(plasma::meta::NetworkSignatureResponse, ar, res)
+{
+  ar & named("signature", res.signature);
+}
+
 namespace plasma
 {
   namespace meta
