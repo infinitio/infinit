@@ -396,7 +396,25 @@ namespace plasma
     UserIcon
     Client::user_icon(string const& id)
     {
-      //return this->_client.get_buffer("/user/" + id + "/icon");
+      std::stringstream resp;
+      curly::request_configuration c;
+
+      c.option(CURLOPT_HTTPGET, 1);
+      c.option(CURLOPT_VERBOSE, 1);
+      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+      c.option(CURLOPT_DEBUGDATA, nullptr);
+
+      c.url(elle::sprintf("%s/user/%s/icon", this->_root_url, id));
+      c.output(resp);
+      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+      c.headers({
+        {"Authorization", this->_token},
+        {"User-Agent", this->_user_agent},
+        {"Connection", "close"},
+      });
+      curly::request request(std::move(c));
+      std::string sdata = resp.str();
+      return elle::Buffer{(elle::Byte const*)sdata.data(), sdata.size()};
     }
 
     SelfResponse
