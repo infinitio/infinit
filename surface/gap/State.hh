@@ -221,8 +221,6 @@ namespace surface
       }
 
     private:
-      void
-      _init_managers();
 
       void
       _cleanup_managers();
