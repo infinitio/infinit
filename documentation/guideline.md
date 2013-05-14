@@ -132,6 +132,10 @@ XXX Derive and implement elle::Printable as much as possible
 
  * Only small and intensively used objects should suffer the vtable problem
  * Object should be adapted, because `Printable` is a capacity, not a behavior
+ * What to print ? Example with the class Endpoint:
+	<Endpoint ip=192.168.0.1 port=4242>
+	Vs
+	192.168.0.1:4242
 
 Use forward files (`fwd.hh`) as much as possible
 ------------------------------------------------
