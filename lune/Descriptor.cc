@@ -6,6 +6,7 @@
 #include <common/common.hh>
 
 #include <cryptography/PrivateKey.hh>
+#include <cryptography/oneway.hh>
 
 #include <hole/Authority.hh>
 #include <hole/Openness.hh>
@@ -15,59 +16,52 @@
 #include <lune/Identity.hh>
 
 #include <nucleus/proton/Address.hh>
-#include <nucleus/neutron/Subject.hh>
 
 #include <Infinit.hh>
 
+ELLE_LOG_COMPONENT("infinit.lune.Descriptor");
+
+//
+// ---------- Descriptor ------------------------------------------------------
+//
+
 namespace lune
 {
-
-  ELLE_LOG_COMPONENT("infinit.lune.Descriptor");
-
-  ///
-  /// this constant defines whether or not the history functionality
-  /// is activated for this network.
-  ///
-  const elle::Boolean           Descriptor::History = false;
-
-  ///
-  /// this constant defines the size of the blocks stored within this
-  /// network.
-  ///
-  const elle::Natural32         Descriptor::Extent = 8192;
-
-//
-// ---------- descriptor ------------------------------------------------------
-//
-
   Descriptor::Descriptor(elle::String const& user,
                          elle::String const& network)
   {
-    ELLE_TRACE("Creating descriptor of network %s in %s",
-               network, this->_path(user, network));
+    ELLE_TRACE("creating descriptor of network %s in %s",
+               network,
+               common::infinit::descriptor_path(user, network));
+
     if (Descriptor::exists(user, network) == false)
-      throw elle::Exception(elle::sprintf(
-                              "network %s does not seem to exist for user %s",
-                              network, user));
+      throw elle::Exception(
+        elle::sprintf("network %s does not seem to exist for user %s",
+                      network, user));
+
     this->load(user, network);
-    this->validate(Infinit::authority());
+
+    if (this->validate(Infinit::authority()) == false)
+      throw elle::Exception("unable to validate the descriptor");
   }
 
-  Descriptor::Descriptor(elle::String const& id,
-                         cryptography::PublicKey const& administrator_K,
-                         hole::Model const& model,
-                         nucleus::proton::Address const& root,
-                         nucleus::neutron::Group::Identity const& everybody,
-                         elle::String const& name,
-                         hole::Openness const& openness,
-                         horizon::Policy const& policy,
-                         elle::Boolean history,
-                         elle::Natural32 extent,
-                         elle::Version const& version,
-                         elle::Authority const& authority):
-    _meta(id, administrator_K, model, root, everybody, history, extent,
-          authority),
-    _data(name, openness, policy, version)
+  Descriptor::Descriptor(descriptor::Meta const& meta,
+                         descriptor::Data const& data):
+    _meta(new descriptor::Meta(meta)),
+    _data(new descriptor::Data(data))
+  {
+  }
+
+  Descriptor::Descriptor(descriptor::Meta&& meta,
+                         descriptor::Data&& data):
+    _meta(new descriptor::Meta(std::move(meta))),
+    _data(new descriptor::Data(std::move(data)))
+  {
+  }
+
+  Descriptor::Descriptor(Descriptor const& other):
+    _meta(new descriptor::Meta(*other._meta)),
+    _data(new descriptor::Data(*other._data))
   {
   }
 
@@ -79,473 +73,477 @@ namespace lune
   | Methods |
   `--------*/
 
-  void
-  Descriptor::seal(cryptography::PrivateKey const& administrator_k)
-  {
-    this->_data.seal(administrator_k);
-  }
-
-  void
+  elle::Boolean
   Descriptor::validate(elle::Authority const& authority) const
   {
-    this->_meta.validate(authority);
-    this->_data.validate(this->_meta.administrator_K());
+    ELLE_ASSERT_NEQ(this->_meta, nullptr);
+    ELLE_ASSERT_NEQ(this->_data, nullptr);
+
+    if (this->_meta->validate(authority) == false)
+      return (false);
+
+    if (this->_data->validate(this->_meta->administrator_K()) == false)
+      return (false);
+
+    return (true);
   }
 
-  Descriptor::Meta const&
+  descriptor::Meta const&
   Descriptor::meta() const
   {
-    return (this->_meta);
+    ELLE_ASSERT_NEQ(this->_meta, nullptr);
+
+    return (*this->_meta);
   }
 
-  Descriptor::Data const&
+  descriptor::Data const&
   Descriptor::data() const
   {
-    return (this->_data);
+    ELLE_ASSERT_NEQ(this->_data, nullptr);
+
+    return (*this->_data);
   }
 
-  std::string
-  Descriptor::_path(elle::String const& user_id,
-                    elle::String const& network_id)
+  void
+  Descriptor::data(descriptor::Data const& data)
   {
-    ELLE_TRACE("retrieving path for user %s in network %s", user_id, network_id);
-    return elle::os::path::join(
-      common::infinit::network_directory(user_id, network_id),
-      network_id + ".dsc"
-    );
+    ELLE_ASSERT_NEQ(this->_data, nullptr);
+
+    this->_data.reset(new descriptor::Data(data));
   }
 
-  elle::Status
-  Descriptor::Dump(const elle::Natural32  margin) const
+  void
+  Descriptor::data(descriptor::Data&& data)
   {
-    elle::String alignment(margin, ' ');
+    ELLE_ASSERT_NEQ(this->_data, nullptr);
 
-    std::cout << alignment << "[Descriptor]" << std::endl;
-
-    if (this->_meta.Dump(margin + 2) == elle::Status::Error)
-      throw elle::Exception("XXX");
-
-    if (this->_data.Dump(margin + 2) == elle::Status::Error)
-      throw elle::Exception("XXX");
-
-    return elle::Status::Ok;
+    this->_data.reset(new descriptor::Data(std::move(data)));
   }
+
+  /*---------.
+  | Fileable |
+  `---------*/
 
   void
   Descriptor::load(elle::String const& user,
                    elle::String const& network)
   {
-    ELLE_TRACE("load descriptor for user %s in network %s", user, network);
-    this->load(elle::io::Path{Descriptor::_path(user, network)});
+    ELLE_TRACE_METHOD(user, network);
+
+    this->load(
+      elle::io::Path{common::infinit::descriptor_path(user, network)});
   }
 
   void
   Descriptor::store(Identity const& identity) const
   {
-    ELLE_TRACE("store descriptor with %s", identity);
-    this->store(elle::io::Path{Descriptor::_path(identity.id(),
-                                                 this->meta().id())});
+    ELLE_TRACE_METHOD(identity);
+
+    ELLE_ASSERT_NEQ(this->_meta, nullptr);
+
+    this->store(
+      elle::io::Path{common::infinit::descriptor_path(identity.id(),
+                                                      this->_meta->id())});
   }
 
   void
   Descriptor::erase(elle::String const& user,
                     elle::String const& network)
   {
-    ELLE_TRACE("erase descriptor for user %s in network %s", user, network);
+    ELLE_TRACE_FUNCTION(user, network);
+
     elle::concept::Fileable<>::erase(
-      elle::io::Path{Descriptor::_path(user, network)});
+      elle::io::Path{common::infinit::descriptor_path(user, network)});
   }
 
   elle::Boolean
   Descriptor::exists(elle::String const& user,
                      elle::String const& network)
   {
-    return elle::os::path::exists(Descriptor::_path(user, network));
+    ELLE_TRACE_FUNCTION(user, network);
+
+    return (elle::os::path::exists(
+              common::infinit::descriptor_path(user, network)));
   }
+
+  /*----------.
+  | Printable |
+  `----------*/
+
+  void
+  Descriptor::print(std::ostream& stream) const
+  {
+    ELLE_ASSERT_NEQ(this->_meta, nullptr);
+    ELLE_ASSERT_NEQ(this->_data, nullptr);
+
+    stream << "[" << *this->_meta << ", " << *this->_data << "]";
+  }
+}
 
 //
-// ---------- meta ------------------------------------------------------------
+// ---------- Meta ------------------------------------------------------------
 //
 
-  Descriptor::Meta::Meta():
-    _signature(nullptr)
+namespace lune
+{
+  namespace descriptor
   {
-    this->_everybody.subject = nullptr;
-  }
+    /*-------------.
+    | Construction |
+    `-------------*/
 
-  Descriptor::Meta::Meta(elle::String const& id,
-                         cryptography::PublicKey const& administrator_K,
-                         hole::Model const& model,
-                         nucleus::proton::Address const& root,
-                         nucleus::neutron::Group::Identity const& everybody,
-                         elle::Boolean history,
-                         elle::Natural32 extent,
-                         elle::Authority const& authority):
-    _id(id),
-    _administrator_K(administrator_K),
-    _model(model),
-    _root(root),
-    _everybody{everybody, nullptr},
-    _history(history),
-    _extent(extent),
-    _signature(nullptr)
-  {
-    if (authority.type != elle::Authority::TypePair)
-      throw std::runtime_error("unable to sign with a public authority");
+    Meta::Meta()
+    {
+    }
 
-    delete this->_signature;
-    this->_signature = nullptr;
-    this->_signature = new cryptography::Signature{
-      authority.k().sign(
-        elle::serialize::make_tuple(
-          this->_id,
-          this->_administrator_K,
-          this->_model,
-          this->_root,
-          this->_everybody.identity,
-          this->_history,
-          this->_extent))};
-  }
+    Meta::Meta(elle::String const& id,
+               cryptography::PublicKey const& administrator_K,
+               hole::Model const& model,
+               nucleus::proton::Address const& root,
+               nucleus::neutron::Group::Identity const& everybody,
+               elle::Boolean history,
+               elle::Natural32 extent,
+               cryptography::Signature const& signature):
+      _id(id),
+      _administrator_K(administrator_K),
+      _model(model),
+      _root(root),
+      _everybody_identity(everybody),
+      _history(history),
+      _extent(extent),
+      _signature(signature)
+    {
+    }
 
-  Descriptor::Meta::~Meta()
-  {
-    delete this->_everybody.subject;
-    delete this->_signature;
-  }
+    Meta::Meta(elle::String&& id,
+               cryptography::PublicKey&& administrator_K,
+               hole::Model&& model,
+               nucleus::proton::Address&& root,
+               nucleus::neutron::Group::Identity&& everybody,
+               elle::Boolean history,
+               elle::Natural32 extent,
+               cryptography::Signature&& signature):
+      _id(std::move(id)),
+      _administrator_K(std::move(administrator_K)),
+      _model(std::move(model)),
+      _root(std::move(root)),
+      _everybody_identity(std::move(everybody)),
+      _history(history),
+      _extent(extent),
+      _signature(std::move(signature))
+    {
+    }
 
-  void
-  Descriptor::Meta::validate(elle::Authority const& authority) const
-  {
-    ELLE_ASSERT(this->_signature != nullptr);
+    Meta::Meta(Meta const& other):
+      _id(other._id),
+      _administrator_K(other._administrator_K),
+      _model(other._model),
+      _root(other._root),
+      _everybody_identity(other._everybody_identity),
+      _history(other._history),
+      _extent(other._extent),
+      _signature(other._signature)
+    {
+    }
 
-    if (authority.K().verify(
-          *this->_signature,
-          elle::serialize::make_tuple(
-            this->_id,
-            this->_administrator_K,
-            this->_model,
-            this->_root,
-            this->_everybody.identity,
-            this->_history,
-            this->_extent)) == false)
-      throw std::runtime_error("unable to validate the meta section "
-                               "with the authority's key");
-  }
+    /*--------.
+    | Methods |
+    `--------*/
 
-  elle::String const&
-  Descriptor::Meta::id() const
-  {
-    return (this->_id);
-  }
+    elle::Boolean
+    Meta::validate(elle::Authority const& authority) const
+    {
+      return (authority.K().verify(
+                this->_signature,
+                meta::hash(this->_id,
+                           this->_administrator_K,
+                           this->_model,
+                           this->_root,
+                           this->_everybody_identity,
+                           this->_history,
+                           this->_extent)));
+    }
 
-  void
-  Descriptor::Meta::id(elle::String const& id)
-  {
-    this->_id = id;
-  }
+    nucleus::neutron::Subject const&
+    Meta::everybody_subject() const
+    {
+      // Create the subject corresponding to the everybody group, if necessary.
+      // Note that this subject will never be serialized but is used to ease
+      // the process of access control since most methods manipulate subjects.
+      if (this->_everybody_subject == nullptr)
+        this->_everybody_subject.reset(
+          new nucleus::neutron::Subject(this->_everybody_identity));
 
-  cryptography::PublicKey const&
-  Descriptor::Meta::administrator_K() const
-  {
-    return (this->_administrator_K);
-  }
+      return (*this->_everybody_subject);
+    }
 
-  hole::Model const&
-  Descriptor::Meta::model() const
-  {
-    return (this->_model);
-  }
+    /*----------.
+    | Printable |
+    `----------*/
 
-  nucleus::proton::Address const&
-  Descriptor::Meta::root() const
-  {
-    return (this->_root);
-  }
+    void
+    Meta::print(std::ostream& stream) const
+    {
+      stream << this->_id << "("
+             << this->_administrator_K << ", "
+        // XXX << this->_model << ", "
+             << this->_root << ", "
+             << this->_history << ", "
+             << this->_extent << ")";
+    }
 
-  nucleus::neutron::Group::Identity const&
-  Descriptor::Meta::everybody_identity() const
-  {
-    return (this->_everybody.identity);
-  }
+    namespace meta
+    {
+      /*----------.
+      | Functions |
+      `----------*/
 
-  nucleus::neutron::Subject const&
-  Descriptor::Meta::everybody_subject() const
-  {
-    const_cast<Descriptor::Meta*>(this)->_everybody_subject();
-    return (*this->_everybody.subject);
-  }
-
-  elle::Boolean
-  Descriptor::Meta::history() const
-  {
-    return (this->_history);
-  }
-
-  elle::Natural32
-  Descriptor::Meta::extent() const
-  {
-    return (this->_extent);
-  }
-
-  void
-  Descriptor::Meta::_everybody_subject()
-  {
-    // Create the subject corresponding to the everybody group, if necessary.
-    // Note that this subject will never be serialized but is used to ease
-    // the process of access control since most method manipulate subjects.
-    if (this->_everybody.subject == nullptr)
-      this->_everybody.subject =
-        new nucleus::neutron::Subject(this->_everybody.identity);
-
-    assert(this->_everybody.subject != nullptr);
-  }
-
-  elle::Status
-  Descriptor::Meta::Dump(const elle::Natural32  margin) const
-  {
-    elle::String alignment(margin, ' ');
-    elle::io::Unique unique;
-
-    std::cout << alignment << "[Meta]" << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[ID] " << this->_id << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Administrator K] " << this->_administrator_K << std::endl;
-
-    if (this->_model.Dump(margin + 2) == elle::Status::Error)
-      throw elle::Exception("unable to dump the model");
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Root] " << this->_root << std::endl;
-
-    if (this->_everybody.identity.Save(unique) == elle::Status::Error)
-      throw elle::Exception("unable to save the address");
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Everybody] " << unique << std::endl;
-
-    if (this->_everybody.identity.Dump(margin + 4) == elle::Status::Error)
-      throw elle::Exception("unable to dump the address");
-
-    std::cout << alignment << elle::io::Dumpable::Shift << "[History] "
-              << static_cast<elle::Natural32>(this->_history) << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift << "[Extent] "
-              << this->_extent << std::endl;
-
-    if (this->_signature != nullptr)
+      cryptography::Digest
+      hash(elle::String const& id,
+           cryptography::PublicKey const& administrator_K,
+           hole::Model const& model,
+           nucleus::proton::Address const& root,
+           nucleus::neutron::Group::Identity const& everybody,
+           elle::Boolean history,
+           elle::Natural32 extent)
       {
-        std::cout << alignment << elle::io::Dumpable::Shift << "[Signature] "
-                  << *this->_signature << std::endl;
+        return (cryptography::oneway::hash(
+                  elle::serialize::make_tuple(id,
+                                              administrator_K,
+                                              model,
+                                              root,
+                                              everybody,
+                                              history,
+                                              extent),
+                  cryptography::KeyPair::oneway_algorithm));
       }
-
-    return (elle::Status::Ok);
+    }
   }
+}
 
 //
-// ---------- data ------------------------------------------------------------
+// ---------- Data ------------------------------------------------------------
 //
 
-  Descriptor::Data::Data():
-    _signature(nullptr)
+namespace lune
+{
+  namespace descriptor
   {
-  }
+    /*-------------.
+    | Construction |
+    `-------------*/
 
-  Descriptor::Data::Data(elle::String const& name,
-                         hole::Openness const& openness,
-                         horizon::Policy const& policy,
-                         elle::Version const& version):
-    _name(name),
-    _openness(openness),
-    _policy(policy),
-    _version(version),
-    _formats{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    _signature(nullptr)
-  {
-  }
+    Data::Data()
+    {
+    }
 
-  Descriptor::Data::~Data()
-  {
-    delete this->_signature;
-  }
+    Data::Data(elle::String const& name,
+               hole::Openness const& openness,
+               horizon::Policy const& policy,
+               elle::Version const& version,
+               elle::serialize::Format const& format_block,
+               elle::serialize::Format const& format_content_hash_block,
+               elle::serialize::Format const& format_contents,
+               elle::serialize::Format const& format_immutable_block,
+               elle::serialize::Format const& format_imprint_block,
+               elle::serialize::Format const& format_mutable_block,
+               elle::serialize::Format const& format_owner_key_block,
+               elle::serialize::Format const& format_public_key_block,
+               elle::serialize::Format const& format_access,
+               elle::serialize::Format const& format_attributes,
+               elle::serialize::Format const& format_catalog,
+               elle::serialize::Format const& format_data,
+               elle::serialize::Format const& format_ensemble,
+               elle::serialize::Format const& format_group,
+               elle::serialize::Format const& format_object,
+               elle::serialize::Format const& format_reference,
+               elle::serialize::Format const& format_user,
+               elle::serialize::Format const& format_identity,
+               elle::serialize::Format const& format_descriptor,
+               cryptography::Signature const& signature):
+      _name(name),
+      _openness(openness),
+      _policy(policy),
+      _version(version),
+      _format_block(format_block),
+      _format_content_hash_block(format_content_hash_block),
+      _format_contents(format_contents),
+      _format_immutable_block(format_immutable_block),
+      _format_imprint_block(format_imprint_block),
+      _format_mutable_block(format_mutable_block),
+      _format_owner_key_block(format_owner_key_block),
+      _format_public_key_block(format_public_key_block),
+      _format_access(format_access),
+      _format_attributes(format_attributes),
+      _format_catalog(format_catalog),
+      _format_data(format_data),
+      _format_ensemble(format_ensemble),
+      _format_group(format_group),
+      _format_object(format_object),
+      _format_reference(format_reference),
+      _format_user(format_user),
+      _format_identity(format_identity),
+      _format_descriptor(format_descriptor),
+      _signature(signature)
+    {
+    }
 
-  void
-  Descriptor::Data::seal(cryptography::PrivateKey const& administrator_k)
-  {
-    delete this->_signature;
-    this->_signature = nullptr;
-    this->_signature = new cryptography::Signature{
-      administrator_k.sign(
-        elle::serialize::make_tuple(
-          this->_name,
-          this->_openness,
-          this->_policy,
-          this->_version,
-          this->_formats.block,
-          this->_formats.content_hash_block,
-          this->_formats.contents,
-          this->_formats.immutable_block,
-          this->_formats.imprint_block,
-          this->_formats.mutable_block,
-          this->_formats.owner_key_block,
-          this->_formats.public_key_block,
-          this->_formats.access,
-          this->_formats.attributes,
-          this->_formats.catalog,
-          this->_formats.data,
-          this->_formats.ensemble,
-          this->_formats.group,
-          this->_formats.object,
-          this->_formats.reference,
-          this->_formats.user,
-          this->_formats.identity,
-          this->_formats.descriptor))};
-  }
+    Data::Data(elle::String&& name,
+               hole::Openness&& openness,
+               horizon::Policy&& policy,
+               elle::Version&& version,
+               elle::serialize::Format&& format_block,
+               elle::serialize::Format&& format_content_hash_block,
+               elle::serialize::Format&& format_contents,
+               elle::serialize::Format&& format_immutable_block,
+               elle::serialize::Format&& format_imprint_block,
+               elle::serialize::Format&& format_mutable_block,
+               elle::serialize::Format&& format_owner_key_block,
+               elle::serialize::Format&& format_public_key_block,
+               elle::serialize::Format&& format_access,
+               elle::serialize::Format&& format_attributes,
+               elle::serialize::Format&& format_catalog,
+               elle::serialize::Format&& format_data,
+               elle::serialize::Format&& format_ensemble,
+               elle::serialize::Format&& format_group,
+               elle::serialize::Format&& format_object,
+               elle::serialize::Format&& format_reference,
+               elle::serialize::Format&& format_user,
+               elle::serialize::Format&& format_identity,
+               elle::serialize::Format&& format_descriptor,
+               cryptography::Signature&& signature):
+      _name(std::move(name)),
+      _openness(std::move(openness)),
+      _policy(std::move(policy)),
+      _version(std::move(version)),
+      _format_block(std::move(format_block)),
+      _format_content_hash_block(std::move(format_content_hash_block)),
+      _format_contents(std::move(format_contents)),
+      _format_immutable_block(std::move(format_immutable_block)),
+      _format_imprint_block(std::move(format_imprint_block)),
+      _format_mutable_block(std::move(format_mutable_block)),
+      _format_owner_key_block(std::move(format_owner_key_block)),
+      _format_public_key_block(std::move(format_public_key_block)),
+      _format_access(std::move(format_access)),
+      _format_attributes(std::move(format_attributes)),
+      _format_catalog(std::move(format_catalog)),
+      _format_data(std::move(format_data)),
+      _format_ensemble(std::move(format_ensemble)),
+      _format_group(std::move(format_group)),
+      _format_object(std::move(format_object)),
+      _format_reference(std::move(format_reference)),
+      _format_user(std::move(format_user)),
+      _format_identity(std::move(format_identity)),
+      _format_descriptor(std::move(format_descriptor)),
+      _signature(std::move(signature))
+    {
+    }
 
-  void
-  Descriptor::Data::validate(
-    cryptography::PublicKey const& administrator_K) const
-  {
-    ELLE_ASSERT(this->_signature != nullptr);
+    /*--------.
+    | Methods |
+    `--------*/
 
-    if (administrator_K.verify(
-          *this->_signature,
-          elle::serialize::make_tuple(
-            this->_name,
-            this->_openness,
-            this->_policy,
-            this->_version,
-            this->_formats.block,
-            this->_formats.content_hash_block,
-            this->_formats.contents,
-            this->_formats.immutable_block,
-            this->_formats.imprint_block,
-            this->_formats.mutable_block,
-            this->_formats.owner_key_block,
-            this->_formats.public_key_block,
-            this->_formats.access,
-            this->_formats.attributes,
-            this->_formats.catalog,
-            this->_formats.data,
-            this->_formats.ensemble,
-            this->_formats.group,
-            this->_formats.object,
-            this->_formats.reference,
-            this->_formats.user,
-            this->_formats.identity,
-            this->_formats.descriptor)) == false)
-      throw std::runtime_error("unable to validate the data section "
-                               "with the administrator's key");
-  }
+    elle::Boolean
+    Data::validate(cryptography::PublicKey const& administrator_K) const
+    {
+      return (administrator_K.verify(
+                this->_signature,
+                data::hash(this->_name,
+                           this->_openness,
+                           this->_policy,
+                           this->_version,
+                           this->_format_block,
+                           this->_format_content_hash_block,
+                           this->_format_contents,
+                           this->_format_immutable_block,
+                           this->_format_imprint_block,
+                           this->_format_mutable_block,
+                           this->_format_owner_key_block,
+                           this->_format_public_key_block,
+                           this->_format_access,
+                           this->_format_attributes,
+                           this->_format_catalog,
+                           this->_format_data,
+                           this->_format_ensemble,
+                           this->_format_group,
+                           this->_format_object,
+                           this->_format_reference,
+                           this->_format_user,
+                           this->_format_identity,
+                           this->_format_descriptor)));
+    }
 
-  elle::String const&
-  Descriptor::Data::name() const
-  {
-    return (this->_name);
-  }
+    /*----------.
+    | Printable |
+    `----------*/
 
-  hole::Openness const&
-  Descriptor::Data::openness() const
-  {
-    return (this->_openness);
-  }
+    void
+    Data::print(std::ostream& stream) const
+    {
+      stream << this->_name << "("
+             << this->_openness << ", "
+             << this->_policy << ", "
+             << this->_version << ")";
+    }
 
-  horizon::Policy const&
-  Descriptor::Data::policy() const
-  {
-    return (this->_policy);
-  }
+    namespace data
+    {
+      /*----------.
+      | Functions |
+      `----------*/
 
-  elle::Version const&
-  Descriptor::Data::version() const
-  {
-    return (this->_version);
-  }
-
-  /// Makes it easier to generate the accessors to the formats.
-#define LUNE_DESCRIPTOR_FORMAT_ACCESSOR(_name_)                         \
-  elle::serialize::Format const&                                        \
-  Descriptor::Data::format_ ## _name_ () const                          \
-  {                                                                     \
-    return (this->_formats._name_);                                     \
-  }
-
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(content_hash_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(contents);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(immutable_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(imprint_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(mutable_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(owner_key_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(public_key_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(access);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(attributes);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(catalog);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(data);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(ensemble);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(group);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(object);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(reference);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(user);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(identity);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(descriptor);
-
-  elle::Status
-  Descriptor::Data::Dump(const elle::Natural32  margin) const
-  {
-    elle::String alignment(margin, ' ');
-
-    std::cout << alignment << "[Data]" << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift << "[Name] "
-              << this->_name << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Openness] " << this->_openness << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Policy] " << this->_policy << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift << "[Version] "
-              << this->_version << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Formats]" << std::endl;
-
-#define LUNE_DESCRIPTOR_FORMAT_DUMPER(_name_)                           \
-    std::cout << alignment << elle::io::Dumpable::Shift                 \
-              << elle::io::Dumpable::Shift << "[" << #_name_ << "] "    \
-              << this->_formats._name_ << std::endl;
-
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(content_hash_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(contents);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(immutable_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(imprint_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(mutable_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(owner_key_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(public_key_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(access);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(attributes);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(catalog);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(data);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(ensemble);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(group);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(object);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(reference);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(user);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(identity);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(descriptor);
-
-    if (this->_signature != nullptr)
+      cryptography::Digest
+      hash(elle::String const& name,
+           hole::Openness const& openness,
+           horizon::Policy const& policy,
+           elle::Version const& version,
+           elle::serialize::Format const& format_block,
+           elle::serialize::Format const& format_content_hash_block,
+           elle::serialize::Format const& format_contents,
+           elle::serialize::Format const& format_immutable_block,
+           elle::serialize::Format const& format_imprint_block,
+           elle::serialize::Format const& format_mutable_block,
+           elle::serialize::Format const& format_owner_key_block,
+           elle::serialize::Format const& format_public_key_block,
+           elle::serialize::Format const& format_access,
+           elle::serialize::Format const& format_attributes,
+           elle::serialize::Format const& format_catalog,
+           elle::serialize::Format const& format_data,
+           elle::serialize::Format const& format_ensemble,
+           elle::serialize::Format const& format_group,
+           elle::serialize::Format const& format_object,
+           elle::serialize::Format const& format_reference,
+           elle::serialize::Format const& format_user,
+           elle::serialize::Format const& format_identity,
+           elle::serialize::Format const& format_descriptor)
       {
-        std::cout << alignment << elle::io::Dumpable::Shift
-                  << "[Signature] " << *this->_signature << std::endl;
+        return (cryptography::oneway::hash(
+                  elle::serialize::make_tuple(
+                    name,
+                    openness,
+                    policy,
+                    version,
+                    format_block,
+                    format_content_hash_block,
+                    format_contents,
+                    format_immutable_block,
+                    format_imprint_block,
+                    format_mutable_block,
+                    format_owner_key_block,
+                    format_public_key_block,
+                    format_access,
+                    format_attributes,
+                    format_catalog,
+                    format_data,
+                    format_ensemble,
+                    format_group,
+                    format_object,
+                    format_reference,
+                    format_user,
+                    format_identity,
+                    format_descriptor),
+                  cryptography::KeyPair::oneway_algorithm));
       }
-
-    return elle::Status::Ok;
+    }
   }
-
 }
