@@ -3,6 +3,8 @@
 
 # include "curly.hh"
 # include <plasma/meta/Client.hh>
+# include <boost/algorithm/string/split.hpp>
+# include <boost/algorithm/string/classification.hpp>
 
 namespace plasma
 {
@@ -91,7 +93,22 @@ namespace plasma
       {
         sym = "*";
       }
-      ELLE_DEBUG("%s %s", sym, msg);
+      if (type == CURLINFO_HEADER_IN ||
+          type == CURLINFO_HEADER_OUT)
+      {
+        std::vector<std::string> v;
+        boost::split(v, msg, boost::algorithm::is_any_of("\n"));
+        ELLE_DEBUG_SCOPE("%s %s", sym, v[0]);
+        int i = 0;
+        for (auto const&s : v)
+        {
+          if (i++ == 0)
+            continue;
+          ELLE_DEBUG("%s %s", sym, s);
+        }
+      }
+      else
+        ELLE_DEBUG("%s %s", sym, msg);
       return 0;
     }
 
