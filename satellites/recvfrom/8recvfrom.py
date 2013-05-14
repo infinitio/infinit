@@ -65,7 +65,9 @@ def login(state, email = None):
             raise Exception("you must provide INFINIT_USER")
         password = getpass("password: ")
         state.login(receiver_id, password)
-    return state.email()
+    import socket
+    state.set_device_name(socket.gethostname().strip())
+    return state.email
 
 def select_transactions(state, l_transactions, sender):
     if sender is not None:
@@ -122,19 +124,16 @@ def select_transactions(state, l_transactions, sender):
 def main(state, sender):
     id = login(state)
 
+    # Pull only new notifications to ensure the transaction has been fetched.
+    state.pull_notifications(0, 0)
+    state.running = True
+    transactions = state.transactions()
+
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_canceled, state))
     state.transaction_status_callback(partial(on_started, state))
     state.transaction_status_callback(partial(show_status, state))
     state.on_error_callback(partial(on_error, state))
-
-    # Pull only new notifications to ensure the transaction has been fetched.
-    state.pull_notifications(0, 0)
-
-    state.running = True
-    state.set_device_name(id + "device")
-
-    transactions = state.transactions()
 
     if len(transactions) > 1:
         to_handle = list(select_transactions(state, transactions, sender))
@@ -146,6 +145,7 @@ def main(state, sender):
     state.number_of_transactions = len(to_handle)
 
     num = 0
+    print(to_handle)
     for transaction_id in to_handle:
         print("accept transaction {}".format(transaction_id))
         state.current_transaction_id = transaction_id
@@ -153,7 +153,7 @@ def main(state, sender):
 
         while state.running:
             if getattr(state, "started_transactions", None):
-                for t in state.started_transactions:
+                for t in (T for T in state.started_transactions if T in to_handle):
                     progress = state.transaction_progress(t)
                     print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, t, state.transaction_first_filename(t)), end=" "),
                     print("\r", end="")

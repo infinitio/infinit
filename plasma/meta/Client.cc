@@ -406,19 +406,17 @@ namespace plasma
     Client::user_icon(string const& id)
     {
       std::stringstream resp;
-      curly::request_configuration c;
+      curly::request_configuration c = curly::make_get();
 
-      c.option(CURLOPT_HTTPGET, 1);
-      c.option(CURLOPT_VERBOSE, 1);
       c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
       c.option(CURLOPT_DEBUGDATA, nullptr);
 
       c.url(elle::sprintf("%s/user/%s/icon", this->_root_url, id));
       c.output(resp);
       c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+      c.user_agent(this->_user_agent);
       c.headers({
         {"Authorization", this->_token},
-        {"User-Agent", this->_user_agent},
         {"Connection", "close"},
       });
       curly::request request(std::move(c));

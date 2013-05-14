@@ -84,7 +84,6 @@ namespace surface
         ELLE_TRACE_SCOPE("loading token generating key: %s", token_genkey);
         this->_meta.generate_token(token_genkey);
         this->_me = this->_meta.self();
-        this->_init_managers();
       }
 
       // Initialize google metrics.
@@ -210,36 +209,6 @@ namespace surface
       }
       identity_infos.close();
 
-      this->_init_managers();
-    }
-
-    void
-    State::_init_managers()
-    {
-      if (this->_notification_manager == nullptr)
-        this->_notification_manager.reset(new NotificationManager(this->_meta,
-                                                                  this->_me));
-      if (this->_user_manager == nullptr)
-        this->_user_manager.reset(new UserManager(*this->_notification_manager,
-                                                  this->_meta,
-                                                  this->_me));
-
-      if (this->_network_manager == nullptr)
-        this->_network_manager.reset(new NetworkManager(this->_meta,
-                                                        this->_reporter,
-                                                        this->_google_reporter,
-                                                        this->_me,
-                                                        this->_device));
-
-      if (this->_transaction_manager == nullptr)
-        this->_transaction_manager.reset(
-          new TransactionManager(*this->_notification_manager,
-                                 *this->_network_manager,
-                                 *this->_user_manager,
-                                 this->_meta,
-                                 this->_reporter,
-                                 this->_me,
-                                 this->_device));
     }
 
     void

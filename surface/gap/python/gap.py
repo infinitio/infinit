@@ -147,6 +147,7 @@ class _State:
 class State(_State):
     def __enter__(self):
         self._state = _gap.new()
+        assert(self._state != None)
         return self
 
     def __exit__(self, exc_type, value, traceback):
