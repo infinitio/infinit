@@ -171,11 +171,20 @@ SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
   ar & named("message", res.message);
   try
   {
+    // XXX: no used anymore.
     ar & named("already_accepted", res.already_accepted);
   }
   catch (...)
   {
     res.already_accepted = false;
+  }
+  try
+  {
+    ar & named("early_accepted", res.early_accepted);
+  }
+  catch (...)
+  {
+    res.early_accepted = false;
   }
 }
 

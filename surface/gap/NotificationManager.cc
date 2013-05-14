@@ -264,6 +264,8 @@ namespace surface
           GET_TR_FIELD(total_size, integer);
           GET_TR_FIELD(is_directory, integer);
           GET_TR_FIELD(status, integer);
+          // GET_TR_FIELD(already_accepted, integer);
+          // GET_TR_FIELD(early_accepted, integer);
           res = std::move(transaction);
           break;
 
