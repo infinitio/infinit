@@ -213,6 +213,7 @@ namespace nucleus
       if (this->_meta.attributes != &attributes)
         {
           delete this->_meta.attributes;
+          this->_meta.attributes = nullptr;
           this->_meta.attributes = new proton::Radix{attributes};
         }
 
