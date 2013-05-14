@@ -59,7 +59,7 @@ namespace infinit
       int signum = WTERMSIG(status);
       ELLE_ERR("%s[%d]: stopped by signal %s(%d)", name, pid,
                elle::system::strsignal(signum), signum);
-      retval = -signum;
+      retval = 128 + signum;
 #if defined WCOREDUMP
       if (WCOREDUMP(status))
       {
