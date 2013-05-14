@@ -25,32 +25,39 @@ def on_canceled(state, transaction, new):
             state.running = False
 
 def login(state, email = None):
-    if email is None:
-        email = os.environ.get("INFINIT_USER")
-    if email is None:
-        email = input("email: ").strip()
-    else:
-        print("email:", email)
-    password = getpass("password: ")
-    state.login(email, password)
-    state.connect()
+    if not state.logged:
+        if email is None:
+            email = os.environ.get("INFINIT_USER")
+        if email is None:
+            email = input("email: ").strip()
+        else:
+            print("email:", email)
+        password = getpass("password: ")
+        state.login(email, password)
+    import socket
+    state.set_device_name(socket.gethostname().strip())
     return email
 
 
 def main(state, email):
     email = login(state, email)
 
-    state.transaction_status_callback(partial(on_canceled, state))
-
     state.running = True
-    state.set_device_name(email + "-device")
 
+    state.pull_notifications(0, 0)
     transactions = state.transactions()
     state.number_of_transactions = len(transactions)
+    state.transaction_status_callback(partial(on_canceled, state))
 
     for transaction_id in transactions:
-        print("* doomed transaction {}".format(transaction_id))
-        state.update_transaction(transaction_id, state.TransactionStatus.canceled)
+        tid = transaction_id
+        try:
+            if not (state.transaction_status(tid) == state.TransactionStatus.canceled) \
+               and not (state.transaction_status(tid) == state.TransactionStatus.finished):
+                print("* doomed transaction {}".format(transaction_id))
+                state.update_transaction(tid, state.TransactionStatus.canceled)
+        except Exception as e:
+            print(tid, e)
     else:
         return
 

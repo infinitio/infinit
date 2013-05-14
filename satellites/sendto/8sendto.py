@@ -61,6 +61,7 @@ def on_error(state, status, message, tid):
 def main(state, user, files):
 
     id = state.send_files(user, files)
+
     state.transaction_callback(partial(on_transaction, state))
     state.transaction_status_callback(partial(on_finished, state))
     state.transaction_status_callback(partial(on_started, state))
