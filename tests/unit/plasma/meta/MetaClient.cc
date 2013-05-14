@@ -1067,12 +1067,12 @@ BOOST_AUTO_TEST_CASE(ultra_test)
 {
   test_register(users);
   test_login(users);
-  test_logout(users); 
+  test_logout(users);
   test_login(users);
   test_device(users);
   test_search(users);
-  test_delete_network(users, true);
   test_create_network(users);
   test_transactions(users);
   test_delete_network(users, false);
+  test_delete_network(users, true);
 }
