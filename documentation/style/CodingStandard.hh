@@ -284,12 +284,10 @@ namespace package
       /// cannot distinguish methods from accessors.
       Real
       something() const;
-
       /// Compute something based on something and somethingelse.
       Natural32
       compute(another::place::SomeOtherClass const& something,
               Natural32 const somethingelse);
-
       /*
        * Note that the 'const' keywords must be well-placed, i.e after
        * the type.
