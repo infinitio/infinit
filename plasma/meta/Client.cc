@@ -6,6 +6,7 @@
 #include <elle/serialize/MapSerializer.hxx>
 
 #include "Client.hh"
+#include "curly.hh"
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -299,11 +300,13 @@ namespace plasma
      // - Ctor & dtor ----------------------------------------------------------
     Client::Client(string const& server,
                    uint16_t port,
-                   bool check_errors)
-      : _client{server, port, "MetaClient"}
-      , _check_errors{check_errors}
-      , _identity{}
-      , _email{}
+                   bool check_errors):
+      _root_url{elle::sprintf("http://%s:%d", server, port)},
+      _check_errors{check_errors},
+      _identity{},
+      _email{},
+      _token{},
+      _user_agent{"MetaClient"}
     {
 
     }
@@ -356,7 +359,7 @@ namespace plasma
       auto res = this->_get<LogoutResponse>("/user/logout");
       if (res.success())
         {
-          this->token("");
+          this->_token = "";
           this->_identity = "";
           this->_email = "";
         }
@@ -393,7 +396,25 @@ namespace plasma
     UserIcon
     Client::user_icon(string const& id)
     {
-      return this->_client.get_buffer("/user/" + id + "/icon");
+      std::stringstream resp;
+      curly::request_configuration c;
+
+      c.option(CURLOPT_HTTPGET, 1);
+      c.option(CURLOPT_VERBOSE, 1);
+      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+      c.option(CURLOPT_DEBUGDATA, nullptr);
+
+      c.url(elle::sprintf("%s/user/%s/icon", this->_root_url, id));
+      c.output(resp);
+      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+      c.headers({
+        {"Authorization", this->_token},
+        {"User-Agent", this->_user_agent},
+        {"Connection", "close"},
+      });
+      curly::request request(std::move(c));
+      std::string sdata = resp.str();
+      return elle::Buffer{(elle::Byte const*)sdata.data(), sdata.size()};
     }
 
     SelfResponse
