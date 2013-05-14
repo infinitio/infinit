@@ -160,7 +160,7 @@ class Create(Page):
             'files_count': self.data['files_count'],
             'total_size': self.data['total_size'],
             'is_directory': self.data['is_directory'],
-            'already_accepted': False,
+            'early_accepted': False,
 
             'status': PENDING,
         }
@@ -218,7 +218,7 @@ class Create(Page):
                     'is_directory': int(self.data['is_directory']),
 
                     'status': int(PENDING),
-                    'already_accepted': False,
+                    'early_accepted': False,
                 }
             }
         )
@@ -265,7 +265,6 @@ class FullyCreated(Page):
 
         transaction.update({
             'status': transaction['status'] == ACCEPTED and ACCEPTED or CREATED,
-            'already_accepted': bool(transaction['status'] == ACCEPTED),
         })
 
         updated_transaction_id = database.transactions().save(transaction);
@@ -347,6 +346,7 @@ class Accept(Page):
             'recipient_device_name' : self.data['device_name'],
             'recipient_device_id': database.ObjectId(self.data['device_id']),
             'status': ACCEPTED,
+            'early_accepted': bool(transaction['status'] == PENDING)
         })
 
         updated_transaction_id = database.transactions().save(transaction);
@@ -797,7 +797,8 @@ class One(Page):
 
                 'status': int(transaction['status']),
                 'message': transaction['message'],
-                'already_accepted': bool(transaction.get('already_accepted', False)),
+                'already_accepted': bool(transaction.get('already_accepted', False)), # XXX to remove.
+                'early_accepted': bool(transaction.get('early_accepted', False)),
  #           }
         }
 
