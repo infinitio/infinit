@@ -145,13 +145,17 @@ class _State:
         return self._call('_id');
 
 class State(_State):
+    def __init__(self):
+        super(State).__init__()
+        self.__state = None
+
     def __enter__(self):
-        self._state = _gap.new()
-        assert(self._state != None)
+        self.__state = _gap.new()
+        assert self.__state is not None
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        _gap.free(self._state)
+        _gap.free(self.__state)
 
 if __name__ == "__main__":
     import doctest
