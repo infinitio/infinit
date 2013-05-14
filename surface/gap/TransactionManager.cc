@@ -714,16 +714,16 @@ namespace surface
                    this->_device.id,
                    transaction.sender_device_id,
                    transaction.sender_id == this->_self.id ? "sender"
-                   : "recipient");
+                                                           : "recipient");
         return;
       }
 
-      if (transaction.already_accepted)
+      auto const& tr = this->sync(transaction.id);
+      if (tr.early_accepted)
       {
-        ELLE_DEBUG("the transaction %s has already been accepted",
-                   transaction.id);
+        ELLE_DEBUG("the transaction %s has early been accepted", tr.id);
 
-        this->update(transaction.id,
+        this->update(tr.id,
                      gap_TransactionStatus::gap_transaction_status_prepared);
       }
     }
@@ -771,10 +771,12 @@ namespace surface
         return;
       }
 
-      if (!transaction.already_accepted)
+      auto const& tr = this->sync(transaction.id);
+      if (!tr.early_accepted)
       {
+        ELLE_DEBUG("not early accepted");
         // When recipient has rights, allow him to start download.
-        this->update(transaction.id,
+        this->update(tr.id,
                      gap_transaction_status_prepared);
 
         // XXX Could be improved.
@@ -1167,15 +1169,24 @@ namespace surface
       if (pair == all().end())
       {
         // Something went wrong.
-        auto transaction = this->_meta.transaction(notif.transaction_id);
+        auto transaction = this->sync(notif.transaction_id);
 
-        if (transaction.status == gap_transaction_status_canceled)
+        if (transaction.status == gap_transaction_status_canceled ||
+            transaction.status == gap_transaction_status_finished)
         {
           ELLE_WARN("we merged a canceled transaction, nothing to do.");
           return;
         }
 
         (*this->_transactions)[notif.transaction_id] = transaction;
+      }
+
+      if (pair->second.status == gap_transaction_status_canceled ||
+          pair->second.status == gap_transaction_status_finished)
+      {
+        ELLE_WARN("recieved a status update for a canceled or finished " \
+                  "transaction");
+        return;
       }
 
       this->_transactions->at(notif.transaction_id).status = notif.status;

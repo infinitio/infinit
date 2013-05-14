@@ -27,11 +27,21 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & elle::serialize::named("status", res.status);
   try
   {
+    // XXX: not used anymore.
     ar & elle::serialize::named("already_accepted", res.already_accepted);
   }
   catch (...)
   {
     res.already_accepted = false;
+  }
+
+  try
+  {
+    ar & elle::serialize::named("early_accepted", res.early_accepted);
+  }
+  catch (...)
+  {
+    res.early_accepted = false;
   }
 }
 

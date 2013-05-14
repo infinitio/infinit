@@ -25,6 +25,7 @@ namespace plasma
     int                   is_directory;
     int                   status;
     bool                  already_accepted;
+    bool                  early_accepted;
   };
 
   enum class TransactionStatus: int
