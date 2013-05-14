@@ -1,15 +1,18 @@
 #ifndef NETWORKMANAGER_HH
 # define NETWORKMANAGER_HH
 
-# include <plasma/meta/Client.hh>
 # include <surface/gap/NotificationManager.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/InfinitInstanceManager.hh>
+# include <surface/gap/metrics.hh>
 
 # include <nucleus/neutron/Permissions.hh>
 
+# include <plasma/meta/Client.hh>
+
 # include <reactor/scheduler.hh>
-# include <surface/gap/metrics.hh>
+
+# include <elle/threading/Monitor.hh>
 
 namespace surface
 {
@@ -80,20 +83,27 @@ namespace surface
     protected:
       typedef std::unique_ptr<Network> NetworkPtr;
       typedef std::map<std::string, NetworkPtr> NetworkMap;
+      typedef std::unique_ptr<NetworkMap> NetworkMapPtr;
+      typedef elle::threading::Monitor<NetworkMapPtr> NetworkMapMonitor;
     protected:
+      NetworkMapMonitor _networks;
 
-      std::unique_ptr<NetworkMap> _networks;
+
+    protected:
+      /// Retreive all networks, ensuring the map is initialized.
+      NetworkMapMonitor&
+      _all();
 
     public:
       /// Retrieve all networks.
-      NetworkMap const&
-      all();
+      std::vector<std::string>
+      all_ids();
 
       /// Retrieve a network.
-      Network&
+      Network const&
       one(std::string const& id);
 
-      Network&
+      Network const&
       sync(std::string const& id);
 
       /// Create a new network.

@@ -59,12 +59,13 @@ def on_error(state, status, message, tid):
     state.running = False
 
 def login(state, email = None):
-    receiver_id = os.getenv("INFINIT_USER", None)
-    if receiver_id == None:
-        raise Exception("you must provide INFINIT_USER")
-    password = getpass("password: ")
-    state.login(receiver_id, password)
-    return receiver_id
+    if not state.logged:
+        receiver_id = os.getenv("INFINIT_USER", None)
+        if receiver_id == None:
+            raise Exception("you must provide INFINIT_USER")
+        password = getpass("password: ")
+        state.login(receiver_id, password)
+    return state.email()
 
 def select_transactions(state, l_transactions, sender):
     if sender is not None:
@@ -188,4 +189,4 @@ if __name__ == "__main__":
                 tid = state.current_transaction_id
                 print("Interupted. Cancel the outgoing transaction ({})".format(tid))
                 state.update_transaction(tid, state.TransactionStatus.canceled)
-                raise e
+            raise e

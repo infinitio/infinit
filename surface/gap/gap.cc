@@ -154,35 +154,6 @@ extern "C"
       }
   }
 
-  gap_State* gap_new_with_token(char const* token)
-  {
-    static bool initialized = false;
-    if (!initialized)
-      {
-        initialized = true;
-        if (lune::Lune::Initialize() == elle::Status::Error)
-          {
-            ELLE_ERR("Cannot initialize root components");
-            return nullptr;
-          }
-      }
-
-    try
-      {
-        return __TO_C(new surface::gap::State(token));
-      }
-    catch (std::exception const& err)
-      {
-        ELLE_ERR("Cannot initialize gap state: %s", err.what());
-        return nullptr;
-      }
-    catch (...)
-      {
-        ELLE_ERR("Cannot initialize gap state");
-        return nullptr;
-      }
-  }
-
   void gap_free(gap_State* state)
   {
     delete __TO_CPP(state);
@@ -331,6 +302,46 @@ extern "C"
     WRAP_CPP(state, logout);
   }
 
+  gap_Status
+  gap_token(gap_State* state,
+            char** usertoken)
+  {
+    gap_Status ret = gap_error;
+    try
+    {
+      std::string token = __TO_CPP(state)->token();
+      char* new_token = strdup(token.c_str());
+      if (new_token != nullptr)
+      {
+        ret = gap_ok;
+        *usertoken = new_token;
+        return ret;
+      }
+    }
+    CATCH_ALL(token)
+    return ret;
+  }
+
+  gap_Status
+  gap_generation_key(gap_State* state,
+                     char** usertoken)
+  {
+    gap_Status ret = gap_error;
+    try
+    {
+      std::string token = __TO_CPP(state)->token_generation_key();
+      char* new_token = strdup(token.c_str());
+      if (new_token != nullptr)
+      {
+        ret = gap_ok;
+        *usertoken = new_token;
+        return ret;
+      }
+    }
+    CATCH_ALL(token)
+    return ret;
+  }
+
   gap_Status gap_register(gap_State* state,
                           char const* fullname,
                           char const* email,
@@ -404,12 +415,12 @@ extern "C"
     gap_Status ret = gap_ok;
     try
       {
-        auto const& networks_map = __TO_CPP(state)->network_manager().all();
+        auto const& networks_ids = __TO_CPP(state)->network_manager().all_ids();
 
         std::list<std::string> res;
 
-        for (auto const& network_pair : networks_map)
-          res.push_back(network_pair.first);
+        for (auto const& id : networks_ids)
+          res.push_back(id);
 
         return _cpp_stringlist_to_c_stringlist(res);
       }
@@ -581,6 +592,25 @@ extern "C"
   }
 
   /// - User ----------------------------------------------------------------
+
+  char const*
+  gap_user_directory(gap_State* state, char const** directory)
+  {
+    gap_Status ret;
+    try
+    {
+      std::string path = __TO_CPP(state)->user_directory();
+      char const* tmp = strdup(path.c_str());
+      if (directory != nullptr)
+      {
+        *directory = tmp;
+      }
+      return tmp;
+    }
+    CATCH_ALL(user_directory);
+    (void)ret; // this CATCH_ALL Macro sucks.
+    return nullptr;
+  }
 
   char const* gap_user_fullname(gap_State* state, char const* id)
   {

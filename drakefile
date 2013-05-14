@@ -810,6 +810,13 @@ def configure(cxx_toolkit,
     ]:
     satellite(name)
 
+  # infinit-agent
+  agent_sources = drake.nodes(
+    'satellites/agent/infinit-agent.py'
+    )
+  agent_copy = drake.copy(agent_sources, 'bin', 'satellites/agent')
+  build << agent_copy
+
   # 8search
   search_sources = drake.nodes(
     'satellites/search/8search.py',

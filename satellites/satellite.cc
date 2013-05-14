@@ -12,11 +12,20 @@
 
 #include <fstream>
 #include <sstream>
+#include <cerrno>
 
 ELLE_LOG_COMPONENT("infinit.satellite");
 
 namespace infinit
 {
+  static int st_pid = -1;
+
+  void
+  sighdl(int signum)
+  {
+    if (st_pid != -1)
+      kill(st_pid, signum);
+  }
 
   static
   int
@@ -27,10 +36,17 @@ namespace infinit
 
     ELLE_DEBUG("%s[%d]: start tracing", name, pid);
     int err;
-    while ((err = waitpid(pid, &status, 0)) == -1)
+    st_pid = pid;
+    signal(SIGINT, sighdl);
+    signal(SIGTERM, sighdl);
+    signal(SIGQUIT, sighdl);
+    while ((err = waitpid(pid, &status, 0)) != pid)
     {
-      if (err == EINTR)
+      if (errno == EINTR)
         continue;
+      int _errno = errno; // Hack for context switch in throw stmt.
+      throw elle::Exception{elle::sprintf("waitpid: error %s: %s",
+                                          err, ::strerror(_errno))};
     }
     if (WIFEXITED(status))
     {
@@ -44,8 +60,6 @@ namespace infinit
       ELLE_ERR("%s[%d]: stopped by signal %s(%d)", name, pid,
                elle::system::strsignal(signum), signum);
       retval = -signum;
-      if (signum == SIGKILL)
-        return retval;
 #if defined WCOREDUMP
       if (WCOREDUMP(status))
       {

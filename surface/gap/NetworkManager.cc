@@ -349,9 +349,10 @@ namespace surface
     NetworkManager::delete_(std::string const& network_id, bool force)
     {
       ELLE_TRACE_METHOD(network_id);
-      this->all();
+      this->_all()([&network_id] (NetworkMapPtr& map) {
+          map->at(network_id).reset();
+      });
 
-      this->_networks->at(network_id).reset();
       this->_infinit_instance_manager.stop(network_id);
 
       this->_reporter.store("network_delete",
@@ -383,56 +384,76 @@ namespace surface
       return response.deleted_network_id;
     }
 
-    NetworkManager::NetworkMap const&
-    NetworkManager::all()
+    NetworkManager::NetworkMapMonitor&
+    NetworkManager::_all()
     {
-      if (_networks != nullptr)
-        return *_networks;
+      if (this->_networks->get() != nullptr)
+        return this->_networks;
 
-      _networks.reset(new NetworkManager::NetworkMap{});
+      this->_networks->reset(new NetworkManager::NetworkMap{});
 
       auto response = this->_meta.networks();
       for (auto const& id: response.networks)
       {
         auto network = this->_meta.network(id);
-        (*this->_networks)[id].reset(new Network{network});
+        this->_networks([&id, &network] (NetworkMapPtr& map) {
+          (*map)[id].reset(new Network{network});
+        });
       }
 
-      return *(this->_networks);
+      return this->_networks;
     }
 
-    surface::gap::Network&
+    std::vector<std::string>
+    NetworkManager::all_ids()
+    {
+      return this->_all()([](NetworkMapPtr const& map) {
+          std::vector<std::string> res{map->size()};
+          for (auto const& pair: *map)
+            res.emplace_back(pair.first);
+          return res;
+      });
+    }
+
+    Network const&
     NetworkManager::one(std::string const& id)
     {
-      auto it = this->all().find(id);
-      if (it != this->all().end())
-      {
-        if (it->second == nullptr)
-          throw Exception("Getting a delete nework");
-        return *(it->second);
-      }
+      auto ptr = this->_all()([&id] (NetworkMapPtr& map) -> Network const*{
+        auto it = map->find(id);
+        if (it != map->end())
+        {
+          if (it->second == nullptr)
+            throw Exception("getting a deleted network");
+          return it->second.get();
+        }
+        return nullptr;
+      });
+      if (ptr != nullptr)
+        return *ptr;
       return this->sync(id);
     }
 
-    surface::gap::Network&
+    Network const&
     NetworkManager::sync(std::string const& id)
     {
       ELLE_TRACE_METHOD(id);
-      this->all(); // ensure _networks is not null;
-
-      auto it = this->all().find(id);
-      if (it != this->all().end())
-      {
-        if (it->second == nullptr)
-          throw Exception("Sync a delete nework");
-      }
+      this->_all()([&id] (NetworkMapPtr& map) {
+        auto it = map->find(id);
+        if (it != map->end())
+        {
+          if (it->second == nullptr)
+            throw Exception("Sync a delete nework");
+        }
+      });
 
       try
       {
         auto network = this->_meta.network(id);
         ELLE_DEBUG("Synched %s", id);
-        (*this->_networks)[id].reset(new Network{network});
-        return *(this->_networks->at(id));
+        return this->_all()([&id, &network] (NetworkMapPtr& map) -> Network const& {
+          (*map)[id].reset(new Network{network});
+          return *(map->at(id));
+        });
       }
       catch (std::runtime_error const& e)
       {
@@ -454,7 +475,7 @@ namespace surface
 
       try
       {
-        Network& network = this->one(network_id);
+        Network const& network = this->one(network_id);
 
         ELLE_DEBUG("locating 8 group");
         std::string const& group_binary =
@@ -690,9 +711,9 @@ namespace surface
 
       /// Check if network is valid
       {
-        auto network = this->all().find(network_id);
+        auto network = this->_all()->get()->find(network_id);
 
-        if (network == this->all().end())
+        if (network == this->_all()->get()->end())
           throw gap::Exception{gap_internal_error, "Unable to find network"};
       }
 

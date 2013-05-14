@@ -1,8 +1,8 @@
-#pragma once
 #ifndef  PLASMA_META_CLIENT_HXX
 # define PLASMA_META_CLIENT_HXX
 
 # include "curly.hh"
+# include <plasma/meta/Client.hh>
 
 namespace plasma
 {
@@ -64,6 +64,9 @@ namespace plasma
                          void *userptr)
     {
       ELLE_LOG_COMPONENT("infinit.plasma.meta.Client.curl");
+
+      (void)handle;
+      (void)userptr;
       std::map<curl_infotype, std::string> symbols = {
         {CURLINFO_TEXT, "*"},
         {CURLINFO_HEADER_IN, "<"},
