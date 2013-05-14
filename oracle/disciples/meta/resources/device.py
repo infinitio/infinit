@@ -152,7 +152,7 @@ class Update(Page):
         return self.success({
             'updated_device_id': id_,
             'passport': to_save['passport'],
-            to_save['name'],
+            'name' : to_save['name'],
         })
 
 class Delete(Page):

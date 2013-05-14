@@ -189,6 +189,7 @@ class FromPublicKey(Page):
             'handle': user['handle'],
             'public_key': user['public_key'],
             'fullname': user['fullname'],
+            'status': user.get('connected', False) and meta.page.CONNECTED or meta.page.DISCONNECTED
         })
 
 class Invite(Page):
@@ -233,8 +234,7 @@ class Self(Page):
     __pattern__ = "/self"
 
     def GET(self):
-        if not self.user:
-            return self.error(error.NOT_LOGGED_IN)
+        self.requireLoggedIn()
         return self.success({
             '_id': self.user['_id'],
             'fullname': self.user['fullname'],

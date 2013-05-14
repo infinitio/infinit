@@ -412,9 +412,7 @@ class AddDevice(_Page):
         network_id = database.ObjectId(self.data["_id"])
         device_id = database.ObjectId(self.data["device_id"])
 
-        network = database.networks().find_one(network_id)
-        if not network:
-            return self.error(error.NETWORK_NOT_FOUND)
+        network = self.network(network_id)
         device = database.devices().find_one(device_id)
         if not device:
             return self.error(error.DEVICE_NOT_FOUND)
@@ -471,9 +469,7 @@ class ConnectDevice(_Page):
         network_id = database.ObjectId(self.data["_id"])
         device_id = database.ObjectId(self.data["device_id"])
 
-        network = database.networks().find_one(network_id)
-        if not network:
-            return self.error(error.NETWORK_NOT_FOUND)
+        network = self.network(network_id)
 
         device = database.devices().find_one(device_id)
         if not device:
