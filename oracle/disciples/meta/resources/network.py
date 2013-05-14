@@ -44,6 +44,8 @@ class _Page(Page):
         })
         if not network:
             return self.forbidden("Couldn't find any network with this id")
+        if len(network) == 1:
+            raise web.ok(data = self.error(error.NETWORK_NOT_FOUND, "Network cleared"))
         if network['owner'] != self.user['_id'] and \
            self.user['_id'] not in network['users']:
             return self.forbidden("This network does not belong to you")
@@ -607,8 +609,9 @@ class Delete(_Page):
         network = database.networks().find_one(_id)
 
         if network is None:
+            return self.error(error.NETWORK_NOT_FOUND)
+        if len(network) == 1:
             if self.data['force']:
-                print("Network doesn't exist but force is enable, no error !!")
                 return self.success({
                     'deleted_network_id': network_id
                 });
@@ -629,14 +632,12 @@ class Delete(_Page):
             {"network_id": network_id, "what": DELETED},
             store = False)
 
-        database.networks().find_and_modify(
+        database.networks().update(
             {
                 '_id': _id,
             },
-            remove=True
+            {}
         )
-
-        assert database.networks().find_one(_id) == None
 
         return  self.success({
             'deleted_network_id': network_id,
