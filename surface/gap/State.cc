@@ -61,44 +61,30 @@ namespace surface
       _reporter(),
       _google_reporter()
     {
-      ELLE_LOG("Creating a new State");
+      ELLE_TRACE_METHOD("");
 
       // Start metrics after setting up the logger.
       this->_reporter.start();
       this->_google_reporter.start();
 
-      std::string user = elle::os::getenv("INFINIT_USER", "");
+      std::string token_path = elle::os::getenv("INFINIT_TOKEN_FILE", "");
 
-      if (user.length() > 0)
+      if (!token_path.empty() && elle::os::path::exists(token_path))
       {
-        std::string identity_path = common::infinit::identity_path(user);
-
-        if (identity_path.length() > 0 && fs::exists(identity_path))
+        std::string const token_genkey = [&] () -> std::string
         {
-          std::ifstream identity;
-          identity.open(identity_path);
+          ELLE_DEBUG("read generation token from %s", token_path);
+          std::ifstream token_file{token_path};
 
-          if (!identity.good())
-            return;
+          std::string _token_genkey;
+          std::getline(token_file, _token_genkey);
+          return _token_genkey;
+        }();
 
-          std::string token;
-          std::getline(identity, token);
-
-          std::string ident;
-          std::getline(identity, ident);
-
-          std::string mail;
-          std::getline(identity, mail);
-
-          std::string id;
-          std::getline(identity, id);
-
-          this->_meta.token(token);
-          this->_meta.identity(ident);
-          this->_meta.email(mail);
-
-          this->_me = this->_meta.self();
-        }
+        ELLE_TRACE_SCOPE("loading token generating key: %s", token_genkey);
+        this->_meta.generate_token(token_genkey);
+        this->_me = this->_meta.self();
+        this->_init_managers();
       }
 
       // Initialize google metrics.
@@ -107,21 +93,21 @@ namespace surface
       elle::metrics::kissmetrics::register_service(this->_reporter);
     }
 
-    State::State(std::string const& token):
-      State{}
+    std::string const&
+    State::token_generation_key() const
     {
-      ELLE_LOG("Creating a new State with token");
-       this->_meta.token(token);
-      auto res = this->_meta.self();
-      this->_meta.identity(res.identity);
-      this->_meta.email(res.email);
-      //XXX factorize that shit
-      this->_me = res;
+      return this->_me.token_generation_key;
+    }
+
+    std::string
+    State::user_directory()
+    {
+      return common::infinit::user_directory(this->_me.id);
     }
 
     State::~State()
     {
-      ELLE_WARN("Destroying state.");
+      ELLE_TRACE_METHOD("");
       this->logout();
     }
 
@@ -218,7 +204,6 @@ namespace surface
                      << res.email << "\n"
                      << res.id << "\n"
                      ;
-
       if (!identity_infos.good())
       {
         ELLE_ERR("Cannot write identity file");

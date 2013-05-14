@@ -6,6 +6,7 @@ import hashlib
 import json
 import traceback
 import urllib
+import time
 import re
 import os
 
@@ -109,25 +110,33 @@ class Page(object):
         print("user %s logged out.", self.user)
         self.session.kill()
 
+    def authenticate_with_token(self, token_genkey):
+        user = database.users().find_one({
+            'token_generation_key': token_genkey,
+        })
+        if not user:
+            return False
+        user.setdefault('connected', False)
+        database.users().save(user)
+        self.session._user_id = user['_id']
+        self._user = user
+        return True
+
     def authenticate(self, email, password):
         user = database.users().find_one({
             'email': email,
             'password': self.hashPassword(password)
         })
-        if user:
-            user['connected'] = True
-            database.users().save(user)
-            self._user = user
-            self.session._user_id = user['_id']
-            self.notifySwaggers(
-                notifier.USER_STATUS,
-                {
-                    'status': CONNECTED,
-                }
-            )
-            return True
-        else:
+        if not user:
             return False
+        user.setdefault('connected', False)
+        if 'token_generation_key' not in user:
+            tmp_gen_key = email + conf.SALT + str(time.time()) + conf.SALT
+            user['token_generation_key'] = self.hashPassword(tmp_gen_key)
+        database.users().save(user)
+        self.session._user_id = user['_id']
+        self._user = user
+        return True
 
     def registerUser(self, **kwargs):
         kwargs['connected'] = False

@@ -24,7 +24,6 @@ extern "C" {
   /// Create a new state.
   /// Returns NULL on failure.
   gap_State* gap_new();
-  gap_State* gap_new_with_token(char const* token);
 
   /// Release a state.
   void gap_free(gap_State* state);
@@ -111,6 +110,13 @@ extern "C" {
 
   /// Logout from meta.
   gap_Status gap_logout(gap_State* state);
+
+  /// Get the current token, if any.
+  gap_Status
+  gap_token(gap_State* state, char** token);
+
+  gap_Status
+  gap_generation_key(gap_State* state, char** token);
 
   /// @brief Register to meta.
   ///
@@ -297,6 +303,10 @@ extern "C" {
 
   /// Retrieve user handle.
   char const* gap_user_handle(gap_State* state, char const* id);
+
+  // The user directory
+  char const*
+  gap_user_directory(gap_State* state, char const** directory);
 
   /// Retrieve user status.
   gap_UserStatus

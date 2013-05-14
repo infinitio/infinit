@@ -66,7 +66,6 @@ namespace surface
       ///- Construction --------------------------------------------------------
     public:
       State();
-      State(std::string const& token);
       ~State();
 
     public:
@@ -99,9 +98,15 @@ namespace surface
       hash_password(std::string const& email,
                     std::string const& password);
 
+      std::string
+      user_directory();
+
       /// Retrieve current user token.
       std::string const&
       token();
+
+      std::string const&
+      token_generation_key() const;
 
       /// Retrieve current user data.
       Self const& me();

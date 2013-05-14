@@ -226,6 +226,7 @@ class Self(Page):
                 'accounts': [
                     {'type':'account type', 'id':'unique account identifier'}
                 ]
+                'token_generation_key' : ...
             }
     """
 
@@ -245,7 +246,8 @@ class Self(Page):
             'public_key': self.user['public_key'],
             'accounts': self.user['accounts'],
             'remaining_invitations': self.user.get('remaining_invitations', 0),
-            'status': self.user.get('connected', False) and meta.page.CONNECTED or meta.page.DISCONNECTED
+            'status': self.user.get('connected', False) and meta.page.CONNECTED or meta.page.DISCONNECTED,
+            'token_generation_key': self.user.get('token_generation_key', ''),
         })
 
 class Invitations(Page):
@@ -445,6 +447,38 @@ class Register(Page):
             invitation['status'] = 'activated'
             database.invitations().save(invitation)
         return self.success()
+
+class GenerateToken(Page):
+    """
+    Generate a token for further communication
+        POST {
+                 'token_generation_key': bla,
+             }
+             -> {
+                     'success': True,
+                     'token': "generated session token",
+                     'fullname': 'full name',
+                     'identity': 'Full base64 identity',
+                     'handle': ...,
+                     'email': ...,
+                }
+    """
+    __pattern__ = "/user/generate_token"
+
+    def POST(self):
+        if self.user is not None:
+            return self.error(error.ALREADY_LOGGED_IN)
+
+        if self.authenticate_with_token(self.data['token_generation_key']):
+            return self.success({
+                "_id" : self.user["_id"],
+                'token': self.session.session_id,
+                'fullname': self.user['fullname'],
+                'email': self.user['email'],
+                'handle': self.user['handle'],
+                'identity': self.user['identity'],
+            })
+        return self.error(error.ALREADY_LOGGED_IN)
 
 class Login(Page):
     """
