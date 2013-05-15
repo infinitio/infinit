@@ -64,7 +64,7 @@ namespace infinit
       if (WCOREDUMP(status))
       {
         ELLE_LOG("%s[%d]: core dumped", name, pid);
-        ss << 
+        ss <<
           elle::system::check_output("gdb",
                                      "-e", common::infinit::binary_path(name),
 #if defined INFINIT_LINUX
@@ -118,6 +118,7 @@ namespace infinit
   {
     ELLE_TRACE_FUNCTION(name, action);
 
+    /* XXX
     int pid = 0;
     if ((pid = fork()))
     {
@@ -133,6 +134,14 @@ namespace infinit
         sched.run();
         return main.result();
       }
+      catch (reactor::Exception const& e)
+      {
+        ELLE_ERR("%s: fatal error: %s", name, e.what());
+        std::cerr << name << ": fatal error: " << e << std::endl;
+        elle::crash::report(common::meta::host(),common::meta::port(),
+                            name, e.what());
+        return 1;
+      }
       catch (std::runtime_error const& e)
       {
         ELLE_ERR("%s: fatal error: %s", name, e.what());
@@ -142,6 +151,8 @@ namespace infinit
         return 1;
       }
     }
+    */
+    action();
   }
 
 }

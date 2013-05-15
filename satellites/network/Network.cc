@@ -18,6 +18,11 @@
 #include <elle/io/Unique.hh>
 #include <elle/utility/Parser.hh>
 
+#include <cryptography/oneway.hh>
+#include <cryptography/random.hh>
+// XXX[temporary: for cryptography]
+using namespace infinit;
+
 #include <lune/Lune.hh>
 #include <lune/Descriptor.hh>
 #include <lune/Identity.hh>
@@ -47,13 +52,13 @@ namespace satellite
   /// this method creates a new network by using the user 'name' as the
   /// initial user.
   ///
-  elle::Status          Network::Create(const elle::String&     identifier,
-                                        const elle::String&     name,
+  elle::Status          Network::Create(const elle::String&     name,
                                         const hole::Model&      model,
                                         hole::Openness const& openness,
                                         horizon::Policy const& policy,
                                         const elle::String&     administrator)
   {
+    elle::String identifier(name);
     lune::Identity identity;
 
     //
@@ -61,7 +66,7 @@ namespace satellite
     //
     {
       // does the network already exist.
-      if (lune::Descriptor::exists(administrator, name) == true)
+      if (lune::Descriptor::exists(administrator, identifier) == true)
         throw elle::Exception("this network seems to already exist");
 
       // check the model.
@@ -117,7 +122,7 @@ namespace satellite
         throw elle::Exception("unable to decrypt the identity");
     }
 
-    nucleus::proton::Network network(name);
+    nucleus::proton::Network network(identifier);
 
     //
     // create an "everybody" group.
@@ -128,7 +133,7 @@ namespace satellite
 
     elle::io::Path shelter_path(lune::Lune::Shelter);
     shelter_path.Complete(elle::io::Piece{"%USER%", administrator},
-                          elle::io::Piece{"%NETWORK%", name});
+                          elle::io::Piece{"%NETWORK%", identifier});
     hole::storage::Directory storage(network, shelter_path.string());
 
     group.seal(identity.pair().k());
@@ -252,6 +257,7 @@ namespace satellite
     // create the network's descriptor.
     //
     {
+      /* XXX
       lune::Descriptor    descriptor(identifier,
                                      identity.pair().K(),
                                      model,
@@ -260,14 +266,33 @@ namespace satellite
                                      name,
                                      openness,
                                      policy,
-                                     lune::Descriptor::History,
-                                     lune::Descriptor::Extent,
+                                     false,
+                                     1048576,
                                      Infinit::version,
                                      authority);
 
       descriptor.seal(identity.pair().k());
+      */
 
-      descriptor.store(identity);
+      cryptography::Signature meta_signature =
+        authority.k().sign(
+          lune::descriptor::meta::hash(identifier,
+                                       identity.pair().K(),
+                                       model,
+                                       directory_address,
+                                       group_address,
+                                       false,
+                                       1048576));
+      lune::descriptor::Meta meta_section(identifier,
+                                          identity.pair().K(),
+                                          model,
+                                          directory_address,
+                                          group_address,
+                                          false,
+                                          1048576,
+                                          meta_signature);
+
+      // XXX descriptor.store(identity);
     }
 
     return elle::Status::Ok;
@@ -279,6 +304,8 @@ namespace satellite
   elle::Status          Network::Destroy(const elle::String& administrator,
                                          const elle::String&    name)
   {
+    elle::String identifier(name);
+
     //
     // remove the descriptor.
     //
@@ -286,8 +313,8 @@ namespace satellite
       elle::io::Path        path;
 
       // does the network exist.
-      if (lune::Descriptor::exists(administrator, name) == true)
-        lune::Descriptor::erase(administrator, name);
+      if (lune::Descriptor::exists(administrator, identifier) == true)
+        lune::Descriptor::erase(administrator, identifier);
     }
 
     //
@@ -302,7 +329,7 @@ namespace satellite
 
       // complete the path with the network name.
       if (path.Complete(elle::io::Piece("%USER%", administrator),
-                        elle::io::Piece("%NETWORK%", name)) == elle::Status::Error)
+                        elle::io::Piece("%NETWORK%", identifier)) == elle::Status::Error)
         throw elle::Exception("unable to complete the path");
 
       // if the shelter exists, clear it and remove it.
@@ -330,7 +357,7 @@ namespace satellite
 
       // complete the path with the network name.
       if (path.Complete(elle::io::Piece("%USER%", administrator),
-                        elle::io::Piece("%NETWORK%", name)) == elle::Status::Error)
+                        elle::io::Piece("%NETWORK%", identifier)) == elle::Status::Error)
         throw elle::Exception("unable to complete the path");
 
       // if the network exists, clear it and remove it.
@@ -355,23 +382,23 @@ namespace satellite
   elle::Status          Network::Information(const elle::String& administrator,
                                              const elle::String& name)
   {
+    elle::String identifier(name);
+
     //
     // test the arguments.
     //
     {
       // does the network exist.
-      if (lune::Descriptor::exists(administrator, name) == false)
+      if (lune::Descriptor::exists(administrator, identifier) == false)
         throw elle::Exception("this network does not seem to exist");
     }
 
-    lune::Descriptor descriptor(administrator, name);
+    lune::Descriptor descriptor(administrator, identifier);
 
     // validate the descriptor.
     descriptor.validate(Infinit::authority());
 
-    // dump the descriptor.
-    if (descriptor.Dump() == elle::Status::Error)
-      throw elle::Exception("unable to dump the descriptor");
+    std::cout << descriptor << std::endl;
 
     return elle::Status::Ok;
   }
@@ -447,15 +474,6 @@ namespace satellite
           "information",
           "display information regarding a network",
           elle::utility::Parser::KindNone) == elle::Status::Error)
-      throw elle::Exception("unable to register the option");
-
-    // register the options.
-    if (Infinit::Parser->Register(
-          "Identifier",
-          'i',
-          "identifier",
-          "specify the network identifier",
-          elle::utility::Parser::KindOptional) == elle::Status::Error)
       throw elle::Exception("unable to register the option");
 
     // register the options.
@@ -540,7 +558,6 @@ namespace satellite
       {
       case Network::OperationCreate:
         {
-          elle::String          identifier;
           elle::String          name;
           elle::String          string;
           hole::Model           model;
@@ -549,10 +566,6 @@ namespace satellite
           // retrieve the name.
           if (Infinit::Parser->Value("Name", name) == elle::Status::Error)
             throw elle::Exception("unable to retrieve the name value");
-
-          // retrieve the identifier.
-          if (Infinit::Parser->Value("Identifier", identifier, name) == elle::Status::Error)
-            throw elle::Exception("unable to retrieve the identifier value");
 
           // retrieve the model.
           if (Infinit::Parser->Value("Model", string) == elle::Status::Error)
@@ -568,8 +581,7 @@ namespace satellite
             throw elle::Exception("unable to retrieve the administrator value");
 
           // create the network.
-          if (Network::Create(identifier,
-                              name,
+          if (Network::Create(name,
                               model,
                               hole::Openness::closed, // XXX[make an option]
                               horizon::Policy::accessible, // XXX[make an option]

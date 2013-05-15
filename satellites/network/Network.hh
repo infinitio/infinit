@@ -38,7 +38,6 @@ namespace satellite
     // static methods
     //
     static elle::Status         Create(const elle::String&,
-                                       const elle::String&,
                                        const hole::Model&,
                                        hole::Openness const& openness,
                                        horizon::Policy const& policy,
