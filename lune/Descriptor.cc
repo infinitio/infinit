@@ -278,6 +278,12 @@ namespace lune
       return (*this->_everybody_subject);
     }
 
+    ELLE_SERIALIZE_CONSTRUCT_DEFINE(Meta /* XXX,
+                                    administrator_K, model, root,
+                                    everybody_identity, signature */)
+    {
+    }
+
     /*----------.
     | Printable |
     `----------*/
@@ -437,6 +443,21 @@ namespace lune
       _format_identity(std::move(format_identity)),
       _format_descriptor(std::move(format_descriptor)),
       _signature(std::move(signature))
+    {
+    }
+
+    ELLE_SERIALIZE_CONSTRUCT_DEFINE(Data /* XXX,
+                                    openness, policy, version,
+                                    format_block, format_content_hash_block,
+                                    format_contents, format_immutable_block,
+                                    format_imprint_block, format_mutable_block,
+                                    format_owner_key_block,
+                                    format_public_key_block, format_access,
+                                    format_attributes, format_catalog,
+                                    format_data, format_ensemble, format_group,
+                                    format_object, format_reference,
+                                    format_user, format_identity,
+                                    format_descriptor, format_signature */)
     {
     }
 

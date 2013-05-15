@@ -181,7 +181,8 @@ namespace lune
       | Friends |
       `--------*/
     public:
-      friend class Descriptor; // XXX
+      // Required for the format 0.
+      friend class Descriptor;
 
       /*-------------.
       | Construction |
@@ -209,6 +210,7 @@ namespace lune
            cryptography::Signature&& signature);
       Meta(Meta const& other);
       Meta(Meta&& other) = default;
+      ELLE_SERIALIZE_CONSTRUCT_DECLARE(Meta);
 
       /*--------.
       | Methods |
@@ -233,6 +235,7 @@ namespace lune
     public:
       // serializable
       ELLE_SERIALIZE_FRIEND_FOR(Descriptor);
+      ELLE_SERIALIZE_FRIEND_FOR(Meta);
       // printable
       virtual
       void
@@ -366,13 +369,14 @@ namespace lune
       | Friends |
       `--------*/
     public:
-      friend class Descriptor; // XXX
+      // Required for the format 0.
+      friend class Descriptor;
 
       /*-------------.
       | Construction |
       `-------------*/
     public:
-      Data(); // XXX[deserializatio instead]
+      Data(); // XXX[deserialization instead]
       /// Construct a data section from the given elements.
       Data(elle::String const& name,
            hole::Openness const& openness,
@@ -426,6 +430,7 @@ namespace lune
            cryptography::Signature&& signature);
       Data(Data const& other) = default;
       Data(Data&& other) = default;
+      ELLE_SERIALIZE_CONSTRUCT_DECLARE(Data);
 
       /*--------.
       | Methods |
@@ -448,6 +453,7 @@ namespace lune
     public:
       // serializable
       ELLE_SERIALIZE_FRIEND_FOR(Descriptor);
+      ELLE_SERIALIZE_FRIEND_FOR(Data);
       // printable
       virtual
       void
