@@ -257,23 +257,7 @@ namespace satellite
     // create the network's descriptor.
     //
     {
-      /* XXX
-      lune::Descriptor    descriptor(identifier,
-                                     identity.pair().K(),
-                                     model,
-                                     directory_address,
-                                     group_address,
-                                     name,
-                                     openness,
-                                     policy,
-                                     false,
-                                     1048576,
-                                     Infinit::version,
-                                     authority);
-
-      descriptor.seal(identity.pair().k());
-      */
-
+      // Create the meta section.
       cryptography::Signature meta_signature =
         authority.k().sign(
           lune::descriptor::meta::hash(identifier,
@@ -292,7 +276,28 @@ namespace satellite
                                           1048576,
                                           meta_signature);
 
-      // XXX descriptor.store(identity);
+      // Create the data section.
+      cryptography::Signature data_signature =
+        identity.pair().k().sign(
+          lune::descriptor::data::hash(name,
+                                       openness,
+                                       policy,
+                                       Infinit::version,
+                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                       0, 0, 0, 0, 0, 0, 0, 0, 0));
+      lune::descriptor::Data data_section(name,
+                                          openness,
+                                          policy,
+                                          Infinit::version,
+                                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                          0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                          data_signature);
+
+      // Create the descriptor from both sections and store it.
+      lune::Descriptor descriptor(std::move(meta_section),
+                                  std::move(data_section));
+
+      descriptor.store(identity);
     }
 
     return elle::Status::Ok;
