@@ -20,9 +20,10 @@ ELLE_SERIALIZE_SIMPLE(lune::Descriptor,
 {
   enforce(version == 0);
 
-  ELLE_ASSERT_NEQ(value._meta, nullptr);
+  ELLE_ASSERT_EQ(value._meta, nullptr);
+  value._meta.reset(new lune::descriptor::Meta);
 
-  archive & value._meta->_id;
+  archive & value._meta->_identifier;
   archive & value._meta->_administrator_K;
   archive & value._meta->_model;
   archive & value._meta->_root;
@@ -31,7 +32,8 @@ ELLE_SERIALIZE_SIMPLE(lune::Descriptor,
   archive & value._meta->_extent;
   archive & value._meta->_signature;
 
-  ELLE_ASSERT_NEQ(value._data, nullptr);
+  ELLE_ASSERT_EQ(value._data, nullptr);
+  value._data.reset(new lune::descriptor::Data);
 
   archive & value._data->_name;
   archive & value._data->_openness;

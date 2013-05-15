@@ -80,6 +80,7 @@ namespace lune
   ///
   ///   Descriptor descriptor(meta_section, data_section);
   class Descriptor:
+    public elle::Printable,
     public elle::concept::MakeFileable<Descriptor>,
     public elle::concept::MakeUniquable<Descriptor>
   {
@@ -188,7 +189,7 @@ namespace lune
     public:
       Meta(); // XXX[deserialization instead]
       /// Construct a meta section based on the given elements.
-      Meta(elle::String const& id,
+      Meta(elle::String const& identifier,
            cryptography::PublicKey const& administrator_K,
            hole::Model const& model,
            nucleus::proton::Address const& root,
@@ -198,7 +199,7 @@ namespace lune
            cryptography::Signature const& signature);
       /// Construct a meta section based on the given elements whose
       /// ownership is transferred to the descriptor.
-      Meta(elle::String&& id,
+      Meta(elle::String&& identifier,
            cryptography::PublicKey&& administrator_K,
            hole::Model&& model,
            nucleus::proton::Address&& root,
@@ -241,7 +242,7 @@ namespace lune
       | Attributes |
       `-----------*/
     private:
-      ELLE_ATTRIBUTE_R(elle::String, id);
+      ELLE_ATTRIBUTE_R(elle::String, identifier);
       ELLE_ATTRIBUTE_R(cryptography::PublicKey, administrator_K);
       ELLE_ATTRIBUTE_R(hole::Model, model);
       ELLE_ATTRIBUTE_R(nucleus::proton::Address, root);
@@ -263,7 +264,7 @@ namespace lune
       /// Return a digest of the most fondamental elements composing the meta
       /// section.
       cryptography::Digest
-      hash(elle::String const& id,
+      hash(elle::String const& identifier,
            cryptography::PublicKey const& administrator_K,
            hole::Model const& model,
            nucleus::proton::Address const& root,

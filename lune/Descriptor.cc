@@ -30,7 +30,7 @@ namespace lune
   Descriptor::Descriptor(elle::String const& user,
                          elle::String const& network)
   {
-    ELLE_TRACE("creating descriptor of network %s in %s",
+    ELLE_TRACE("creating descriptor of network %s from %s",
                network,
                common::infinit::descriptor_path(user, network));
 
@@ -128,7 +128,7 @@ namespace lune
   Descriptor::load(elle::String const& user,
                    elle::String const& network)
   {
-    ELLE_TRACE_METHOD(user, network);
+    ELLE_TRACE_FUNCTION(user, network);
 
     this->load(
       elle::io::Path{common::infinit::descriptor_path(user, network)});
@@ -142,8 +142,9 @@ namespace lune
     ELLE_ASSERT_NEQ(this->_meta, nullptr);
 
     this->store(
-      elle::io::Path{common::infinit::descriptor_path(identity.id(),
-                                                      this->_meta->id())});
+      elle::io::Path{
+        common::infinit::descriptor_path(identity.id(),
+                                         this->_meta->identifier())});
   }
 
   void
@@ -196,7 +197,7 @@ namespace lune
     {
     }
 
-    Meta::Meta(elle::String const& id,
+    Meta::Meta(elle::String const& identifier,
                cryptography::PublicKey const& administrator_K,
                hole::Model const& model,
                nucleus::proton::Address const& root,
@@ -204,7 +205,7 @@ namespace lune
                elle::Boolean history,
                elle::Natural32 extent,
                cryptography::Signature const& signature):
-      _id(id),
+      _identifier(identifier),
       _administrator_K(administrator_K),
       _model(model),
       _root(root),
@@ -215,7 +216,7 @@ namespace lune
     {
     }
 
-    Meta::Meta(elle::String&& id,
+    Meta::Meta(elle::String&& identifier,
                cryptography::PublicKey&& administrator_K,
                hole::Model&& model,
                nucleus::proton::Address&& root,
@@ -223,7 +224,7 @@ namespace lune
                elle::Boolean history,
                elle::Natural32 extent,
                cryptography::Signature&& signature):
-      _id(std::move(id)),
+      _identifier(std::move(identifier)),
       _administrator_K(std::move(administrator_K)),
       _model(std::move(model)),
       _root(std::move(root)),
@@ -235,7 +236,7 @@ namespace lune
     }
 
     Meta::Meta(Meta const& other):
-      _id(other._id),
+      _identifier(other._identifier),
       _administrator_K(other._administrator_K),
       _model(other._model),
       _root(other._root),
@@ -255,7 +256,7 @@ namespace lune
     {
       return (authority.K().verify(
                 this->_signature,
-                meta::hash(this->_id,
+                meta::hash(this->_identifier,
                            this->_administrator_K,
                            this->_model,
                            this->_root,
@@ -284,7 +285,7 @@ namespace lune
     void
     Meta::print(std::ostream& stream) const
     {
-      stream << this->_id << "("
+      stream << this->_identifier << "("
              << this->_administrator_K << ", "
         // XXX << this->_model << ", "
              << this->_root << ", "
@@ -299,7 +300,7 @@ namespace lune
       `----------*/
 
       cryptography::Digest
-      hash(elle::String const& id,
+      hash(elle::String const& identifier,
            cryptography::PublicKey const& administrator_K,
            hole::Model const& model,
            nucleus::proton::Address const& root,
@@ -308,7 +309,7 @@ namespace lune
            elle::Natural32 extent)
       {
         return (cryptography::oneway::hash(
-                  elle::serialize::make_tuple(id,
+                  elle::serialize::make_tuple(identifier,
                                               administrator_K,
                                               model,
                                               root,
