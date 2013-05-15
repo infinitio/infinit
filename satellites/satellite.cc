@@ -64,7 +64,7 @@ namespace infinit
       if (WCOREDUMP(status))
       {
         ELLE_LOG("%s[%d]: core dumped", name, pid);
-        ss << 
+        ss <<
           elle::system::check_output("gdb",
                                      "-e", common::infinit::binary_path(name),
 #if defined INFINIT_LINUX
@@ -95,8 +95,11 @@ namespace infinit
     {
       auto sig_fn = [] (int)
       {
-        reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
-        sched.terminate();
+        auto sched = reactor::Scheduler::scheduler();
+        if (sched != nullptr)
+            sched->terminate();
+        else
+            ELLE_WARN("signal caught, but no scheduler alive");
       };
       elle::signal::ScopedGuard sigint{{SIGINT}, std::move(sig_fn)};
 
