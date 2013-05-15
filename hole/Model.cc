@@ -167,4 +167,17 @@ namespace hole
       return elle::Status::Ok;
     }
 
+  /*----------.
+  | Printable |
+  `----------*/
+
+  void
+  Model::print(std::ostream& stream) const
+  {
+    elle::String type;
+
+    Model::Convert(this->type, type);
+
+    stream << type;
+  }
 }
