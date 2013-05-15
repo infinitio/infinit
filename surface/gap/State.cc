@@ -84,6 +84,25 @@ namespace surface
         ELLE_TRACE_SCOPE("loading token generating key: %s", token_genkey);
         this->_meta.generate_token(token_genkey);
         this->_me = this->_meta.self();
+
+        std::ofstream identity_infos{
+          common::infinit::identity_path(this->_me.id)};
+
+        if (!identity_infos.good())
+        {
+          ELLE_ERR("Cannot open identity file");
+        }
+
+        identity_infos << this->_meta.token() << "\n"
+          << this->_me.identity << "\n"
+          << this->_me.email << "\n"
+          << this->_me.id << "\n"
+          ;
+        if (!identity_infos.good())
+        {
+          ELLE_ERR("Cannot write identity file");
+        }
+        identity_infos.close();
       }
 
       // Initialize google metrics.
