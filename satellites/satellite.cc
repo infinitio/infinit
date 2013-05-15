@@ -3,6 +3,7 @@
 #include <elle/system/signal.hh>
 #include <elle/system/Process.hh>
 #include <elle/log.hh>
+#include <elle/os/getenv.hh>
 #include <common/common.hh>
 #include <satellites/satellite.hh>
 #include <CrashReporter.hh>
@@ -122,7 +123,8 @@ namespace infinit
     ELLE_TRACE_FUNCTION(name, action);
 
     int pid = 0;
-    if ((pid = fork()))
+    std::string shallfork = elle::os::getenv("INFINIT_NO_FORK", "");
+    if (shallfork.empty() && (pid = fork()))
     {
       return _satellite_trace(pid, name);
     }
