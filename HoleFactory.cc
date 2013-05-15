@@ -161,7 +161,7 @@ namespace infinit
               client.token(agent::Agent::meta_token);
 
               ELLE_DEBUG("public_addresses: %s", public_addresses);
-              client.network_connect_device(descriptor.meta().id(),
+              client.network_connect_device(descriptor.meta().identifier(),
                                             passport.id(),
                                             addresses,
                                             public_addresses);
