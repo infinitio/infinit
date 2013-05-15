@@ -223,6 +223,7 @@ namespace surface
     void
     State::logout()
     {
+      ELLE_TRACE_METHOD("");
       if (this->_meta.token().empty())
         return;
 
