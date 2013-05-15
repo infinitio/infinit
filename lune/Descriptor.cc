@@ -287,7 +287,7 @@ namespace lune
     {
       stream << this->_identifier << "("
              << this->_administrator_K << ", "
-        // XXX << this->_model << ", "
+             << this->_model << ", "
              << this->_root << ", "
              << this->_history << ", "
              << this->_extent << ")";
