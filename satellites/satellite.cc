@@ -1,4 +1,5 @@
 #include <reactor/scheduler.hh>
+#include <reactor/exception.hh>
 
 #include <elle/system/signal.hh>
 #include <elle/system/Process.hh>
@@ -107,6 +108,14 @@ namespace infinit
       action();
       return 0;
     }
+    catch (reactor::Exception const& e)
+    {
+      ELLE_ERR("%s: fatal error: %s", name, e);
+      std::cerr << name << ": fatal error: " << e << std::endl;
+      elle::crash::report(common::meta::host(), common::meta::port(),
+                          name, e.what());
+      return 1;
+    }
     catch (std::runtime_error const& e)
     {
       ELLE_ERR("%s: fatal error: %s", name, e.what());
@@ -137,6 +146,14 @@ namespace infinit
                                                           name, action));
         sched.run();
         return main.result();
+      }
+      catch (reactor::Exception const& e)
+      {
+        ELLE_ERR("%s: fatal error: %s", name, e);
+        std::cerr << name << ": fatal error: " << e << std::endl;
+        elle::crash::report(common::meta::host(),common::meta::port(),
+                            name, e.what());
+        return 1;
       }
       catch (std::runtime_error const& e)
       {
