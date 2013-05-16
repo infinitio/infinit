@@ -643,8 +643,8 @@ namespace surface
 
       if (!_check_action_is_available(this->_self.id, transaction, status))
         throw Exception(gap_api_error,
-                        elle::sprintf("you are allowed to change transaction " \
-                                      " status from %s to %s",
+                        elle::sprintf("you aren't allowed to change "
+                                      "transaction status from %s to %s",
                                       transaction.status, status));
 
       switch (status)
