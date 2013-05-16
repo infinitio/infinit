@@ -100,6 +100,9 @@ class _State:
         self.TransactionStatus = getattr(_gap, "TransactionStatus")
         self.OperationStatus = getattr(_gap, "OperationStatus")
 
+    def __del__(self):
+        _gap.free(self.__state)
+
     @property
     def meta_status(self):
         try:
@@ -143,7 +146,7 @@ class _State:
 
 class State(_State):
     def __init__(self):
-        super(State, self).__init__()
+        super(State).__init__()
         self.__state = None
 
     def __enter__(self):
@@ -152,9 +155,7 @@ class State(_State):
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        if self.__state is not None:
-            _gap.free(self.__state)
-        self.__state = None
+        _gap.free(self.__state)
 
 if __name__ == "__main__":
     import doctest
