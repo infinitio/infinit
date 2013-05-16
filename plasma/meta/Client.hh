@@ -215,8 +215,8 @@ namespace plasma
     struct Device
     {
       string             id;
-      string             passport;
       string             name;
+      string             passport;
     };
 
     struct CreateDeviceResponse : Response, Device
