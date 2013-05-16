@@ -84,6 +84,8 @@ namespace etoile
 
       ELLE_FINALLY_ACTION_DELETE(scope);
 
+      ELLE_ASSERT_EQ(scope->actors.empty(), true);
+
       // Ignore empty scope' transcripts.
       if (scope->context->transcript().empty() == true)
         {
