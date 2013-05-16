@@ -3,6 +3,7 @@
 #include <elle/system/signal.hh>
 #include <elle/system/Process.hh>
 #include <elle/log.hh>
+#include <elle/log/TextLogger.hh>
 #include <elle/os/getenv.hh>
 #include <common/common.hh>
 #include <satellites/satellite.hh>
@@ -16,6 +17,19 @@
 #include <cerrno>
 
 ELLE_LOG_COMPONENT("infinit.satellite");
+
+static
+std::ostream&
+log_destination()
+{
+  if (auto env = ::getenv("INFINIT_LOG_FILE"))
+    {
+      static std::ofstream res(env, std::fstream::trunc | std::fstream::out);
+      return res;
+    }
+  else
+    return std::cerr;
+}
 
 namespace infinit
 {
@@ -113,7 +127,6 @@ namespace infinit
         else
         {
           ELLE_WARN("signal caught, but no scheduler alive");
-          exit(EXIT_SUCCESS);
         }
       };
       elle::signal::ScopedGuard sigint{{SIGINT}, sig_fn};
@@ -135,6 +148,10 @@ namespace infinit
   int
   satellite_main(std::string const& name, std::function<void ()> const& action)
   {
+    elle::log::logger
+      (std::unique_ptr<elle::log::Logger>
+       (new elle::log::TextLogger(log_destination())));
+
     ELLE_TRACE_FUNCTION(name, action);
 
     int pid = 0;
