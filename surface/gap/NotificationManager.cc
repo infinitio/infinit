@@ -94,7 +94,8 @@ namespace surface
             common::trophonius::host(),
             common::trophonius::port(),
             true,
-          });
+          }
+        );
       }
       catch (std::runtime_error const& err)
       {
@@ -109,89 +110,87 @@ namespace surface
     size_t
     NotificationManager::poll(size_t max)
     {
-      if (this->_trophonius == nullptr)
-        throw Exception{gap_error, "Trophonius is not connected"};
-
+      std::unique_ptr<Notification> notif;
+      std::string transaction_id = "";
       size_t count = 0;
-      while (count < max && this->_trophonius != nullptr)
+      try
       {
-        std::unique_ptr<Notification> notif{this->_trophonius->poll()};
+        if (this->_trophonius == nullptr)
+          throw Exception{gap_error, "Trophonius is not connected"};
 
-        if (!notif)
-          break;
-        // Try to retrieve Transaction ID if possible
-        std::string transaction_id = "";
-        {
-          if (notif->notification_type == NotificationType::transaction_status)
-          {
-            auto ptr = static_cast<TransactionStatusNotification*>(notif.get());
-            transaction_id = ptr->transaction_id;
-          }
-          else if (notif->notification_type == NotificationType::transaction)
-          {
-            auto ptr = static_cast<TransactionNotification*>(notif.get());
-            transaction_id = ptr->transaction.id;
-          }
-        }
+        while (count < max && this->_trophonius != nullptr)
+         {
+          notif.reset(this->_trophonius->poll().release());
+          transaction_id = "";
 
-        try
-        {
+          if (!notif)
+            break;
+          // Try to retrieve Transaction ID if possible
+          {
+            if (notif->notification_type == NotificationType::transaction_status)
+            {
+              auto ptr = static_cast<TransactionStatusNotification*>(notif.get());
+              transaction_id = ptr->transaction_id;
+            }
+            else if (notif->notification_type == NotificationType::transaction)
+            {
+              auto ptr = static_cast<TransactionNotification*>(notif.get());
+              transaction_id = ptr->transaction.id;
+            }
+          }
+
           this->_handle_notification(*notif);
+          transaction_id = "";
+          notif.reset();
+          ++count;
         }
-        catch (surface::gap::Exception const& e)
-        {
-          ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
-          this->_call_error_handlers(e.code,
-                                     elle::sprintf("%s: %s",
-                                                   notif->notification_type,
-                                                   e.what()),
-                                     transaction_id);
-          continue;
-        }
-        catch (elle::Exception const& e)
-        {
-          ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
-          auto bt = e.backtrace();
-          for (auto const& f: bt)
-            ELLE_WARN("%s", f);
-          this->_call_error_handlers(gap_error,
-                                     elle::sprintf("%s: %s",
-                                                   notif->notification_type,
-                                                   e.what()),
-                                     transaction_id);
-          continue;
-        }
-        catch (std::runtime_error const& e)
-        {
-          ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
-          this->_call_error_handlers(gap_unknown,
-                                     elle::sprintf("%s: %s",
-                                                   notif->notification_type,
-                                                   e.what()),
-                                     transaction_id);
-          continue;
-        }
-        catch (std::exception const& e)
-        {
-
-          ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
-          this->_call_error_handlers(gap_unknown,
-                                     elle::sprintf("%s: %s",
-                                                   notif->notification_type,
-                                                   e.what()),
-                                     transaction_id);
-          continue;
-        }
-        catch (...)
-        {
-          ELLE_ERR("poll: %s: unknown error", notif->notification_type);
-          this->_call_error_handlers(gap_unknown,
-                                     elle::sprintf("%s: unexpected error",
-                                                   notif->notification_type),
-                                     transaction_id);
-          continue;
-        }
-        ++count;
+      }
+      catch (surface::gap::Exception const& e)
+      {
+        ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
+        this->_call_error_handlers(e.code,
+                                   elle::sprintf("%s: %s",
+                                                 notif->notification_type,
+                                                 e.what()),
+                                   transaction_id);
+      }
+      catch (elle::Exception const& e)
+      {
+        ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
+        auto bt = e.backtrace();
+        for (auto const& f: bt)
+          ELLE_WARN("%s", f);
+        this->_call_error_handlers(gap_error,
+                                   elle::sprintf("%s: %s",
+                                                 notif->notification_type,
+                                                 e.what()),
+                                   transaction_id);
+      }
+      catch (std::runtime_error const& e)
+      {
+        ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
+        this->_call_error_handlers(gap_unknown,
+                                   elle::sprintf("%s: %s",
+                                                 notif->notification_type,
+                                                 e.what()),
+                                   transaction_id);
+      }
+      catch (std::exception const& e)
+      {
+        ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
+        this->_call_error_handlers(gap_unknown,
+                                   elle::sprintf("%s: %s",
+                                                 notif->notification_type,
+                                                 e.what()),
+                                   transaction_id);
+      }
+      catch (...)
+      {
+        ELLE_ERR("poll: %s: unknown error", notif->notification_type);
+        this->_call_error_handlers(gap_unknown,
+                                   elle::sprintf("%s: unexpected error",
+                                                 notif->notification_type),
+                                   transaction_id);
       }
 
       return count;
