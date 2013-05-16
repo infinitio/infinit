@@ -122,7 +122,7 @@ namespace infinit
         auto sched = reactor::Scheduler::scheduler();
         if (sched != nullptr)
         {
-          sched->terminate();
+          sched->terminate_later();
         }
         else
         {
