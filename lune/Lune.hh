@@ -39,7 +39,6 @@ namespace lune
     static elle::io::Pattern Configuration;
     static elle::io::Pattern Networks;
     static elle::io::Pattern Network;
-    static elle::io::Pattern Descriptor;
     static elle::io::Pattern Phrase;
     static elle::io::Pattern Set;
     static elle::io::Pattern Shelter;

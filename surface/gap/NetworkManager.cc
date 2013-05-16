@@ -10,11 +10,12 @@
 #include <hole/storage/Directory.hh>
 
 // This should be outside.
-#include <lune/Descriptor.hh>
 #include <lune/Identity.hh>
 #include <lune/Lune.hh>
 #include <lune/Phrase.hh>
 #include <lune/Set.hh>
+
+#include <Descriptor.hh>
 
 #include <nucleus/neutron/Access.hh>
 #include <nucleus/neutron/Genre.hh>
@@ -291,7 +292,7 @@ namespace surface
 
         ELLE_DEBUG("Create lune descriptor of %s", network_id);
 
-        lune::Descriptor descriptor{
+        Descriptor descriptor{
           from_string<InputBase64Archive>(network.descriptor)
         };
         ELLE_DEBUG("Lune descriptor created");

@@ -19,7 +19,6 @@
 #include <hole/storage/Directory.hh>
 #include <horizon/Horizon.hh>
 
-#include <lune/Descriptor.hh>
 #include <lune/Lune.hh>
 
 #include <plasma/meta/Client.hh>

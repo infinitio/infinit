@@ -8,7 +8,6 @@
 
 #include <common/common.hh>
 
-#include <lune/Descriptor.hh>
 #include <lune/Set.hh>
 
 #include <hole/implementations/local/Implementation.hh>
@@ -23,6 +22,7 @@
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Portal.hh>
+#include <Descriptor.hh>
 
 namespace infinit
 {
@@ -66,7 +66,7 @@ namespace infinit
                elle::Passport const& passport,
                elle::Authority const& authority)
   {
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+    Descriptor descriptor(Infinit::User, Infinit::Network);
 
     lune::Set set;
     if (lune::Set::exists(Infinit::User, Infinit::Network) == true)
@@ -135,7 +135,6 @@ namespace infinit
 
           ELLE_TRACE("send addresses to meta")
           {
-            lune::Descriptor descriptor(Infinit::User, Infinit::Network);
             plasma::meta::Client client(common::meta::host(), common::meta::port());
             try
             {

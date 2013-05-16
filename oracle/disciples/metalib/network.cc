@@ -12,7 +12,6 @@ using namespace infinit;
 #include <hole/Model.hh>
 
 #include <lune/Identity.hh>
-#include <lune/Descriptor.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>
@@ -25,6 +24,7 @@ using namespace infinit;
 #include <horizon/Policy.hh>
 
 #include <Infinit.hh>
+#include <Descriptor.hh>
 
 // XXX When Qt is out, remove this
 #ifdef slots
@@ -79,18 +79,19 @@ generate_network_descriptor(elle::String const& id,
   if (identity.Restore(identity_) != elle::Status::Ok)
     throw std::runtime_error("Unable to restore the identity");
 
-  lune::Descriptor descriptor(id,
-                              identity.pair().K(),
-                              model,
-                              directory_address,
-                              group_address,
-                              name,
-                              openness,
-                              policy,
-                              lune::Descriptor::History,
-                              lune::Descriptor::Extent,
-                              Infinit::version,
-                              authority);
+  /* XXX[to adapt to the new descriptor]
+  Descriptor descriptor(id,
+                        identity.pair().K(),
+                        model,
+                        directory_address,
+                        group_address,
+                        name,
+                        openness,
+                        policy,
+                        false,
+                        1048576,
+                        Infinit::version,
+                        authority);
 
   descriptor.seal(identity.pair().k());
 
@@ -101,6 +102,7 @@ generate_network_descriptor(elle::String const& id,
     throw std::runtime_error("Unable to save the network descriptor");
 
   return unique;
+  */
 }
 
 

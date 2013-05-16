@@ -11,7 +11,6 @@
 #include <lune/Configuration.hh>
 #include <lune/Identity.hh>
 #include <lune/Dictionary.hh>
-#include <lune/Descriptor.hh>
 #include <lune/Set.hh>
 #include <lune/Phrase.hh>
 
@@ -36,7 +35,6 @@ namespace lune
   elle::io::Pattern Lune::Configuration;
   elle::io::Pattern Lune::Networks;
   elle::io::Pattern Lune::Network;
-  elle::io::Pattern Lune::Descriptor;
   elle::io::Pattern Lune::Phrase;
   elle::io::Pattern Lune::Set;
   elle::io::Pattern Lune::Shelter;
@@ -129,20 +127,6 @@ namespace lune
             "networks" +
             elle::system::path::separator +
             "%NETWORK%") == elle::Status::Error)
-        throw elle::Exception("unable to create the pattern");
-
-      if (Lune::Descriptor.Create(
-            home +
-            elle::system::path::separator +
-            "users" +
-            elle::system::path::separator +
-            "%USER%" +
-            elle::system::path::separator +
-            "networks" +
-            elle::system::path::separator +
-            "%NETWORK%" +
-            elle::system::path::separator +
-            "%NETWORK%.dsc") == elle::Status::Error)
         throw elle::Exception("unable to create the pattern");
 
       if (Lune::Phrase.Create(

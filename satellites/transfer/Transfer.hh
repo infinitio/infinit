@@ -16,6 +16,7 @@
 # include <lune/fwd.hh>
 
 # include <Infinit.hh>
+# include <Descriptor.hh>
 
 namespace satellite
 {
@@ -95,7 +96,7 @@ namespace satellite
     static infinit::protocol::Serializer* serializer;
     static infinit::protocol::ChanneledStream* channels;
     static etoile::portal::RPC* rpcs;
-    static lune::Descriptor* descriptor;
+    static Descriptor* descriptor;
   };
 
 }

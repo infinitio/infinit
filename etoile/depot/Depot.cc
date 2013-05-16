@@ -1,6 +1,6 @@
 #include <etoile/depot/Depot.hh>
 
-#include <lune/Descriptor.hh>
+#include <Descriptor.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>
@@ -58,7 +58,7 @@ namespace etoile
     elle::Status        Depot::Origin(nucleus::proton::Address& address)
     {
       // FIXME: do not re-parse the descriptor every time.
-      lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+      Descriptor descriptor(Infinit::User, Infinit::Network);
       address = descriptor.meta().root();
       return elle::Status::Ok;
     }

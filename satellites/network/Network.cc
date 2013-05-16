@@ -24,8 +24,9 @@
 using namespace infinit;
 
 #include <lune/Lune.hh>
-#include <lune/Descriptor.hh>
 #include <lune/Identity.hh>
+
+#include <Descriptor.hh>
 
 #include <nucleus/proton/Network.hh>
 #include <nucleus/proton/MutableBlock.hh>
@@ -66,7 +67,7 @@ namespace satellite
     //
     {
       // does the network already exist.
-      if (lune::Descriptor::exists(administrator, identifier) == true)
+      if (Descriptor::exists(administrator, identifier) == true)
         throw elle::Exception("this network seems to already exist");
 
       // check the model.
@@ -260,42 +261,42 @@ namespace satellite
       // Create the meta section.
       cryptography::Signature meta_signature =
         authority.k().sign(
-          lune::descriptor::meta::hash(identifier,
-                                       identity.pair().K(),
-                                       model,
-                                       directory_address,
-                                       group_address,
-                                       false,
-                                       1048576));
-      lune::descriptor::Meta meta_section(identifier,
-                                          identity.pair().K(),
-                                          model,
-                                          directory_address,
-                                          group_address,
-                                          false,
-                                          1048576,
-                                          meta_signature);
+          descriptor::meta::hash(identifier,
+                                 identity.pair().K(),
+                                 model,
+                                 directory_address,
+                                 group_address,
+                                 false,
+                                 1048576));
+      descriptor::Meta meta_section(identifier,
+                                    identity.pair().K(),
+                                    model,
+                                    directory_address,
+                                    group_address,
+                                    false,
+                                    1048576,
+                                    meta_signature);
 
       // Create the data section.
       cryptography::Signature data_signature =
         identity.pair().k().sign(
-          lune::descriptor::data::hash(name,
-                                       openness,
-                                       policy,
-                                       Infinit::version,
-                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                       0, 0, 0, 0, 0, 0, 0, 0, 0));
-      lune::descriptor::Data data_section(name,
-                                          openness,
-                                          policy,
-                                          Infinit::version,
-                                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                          0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                          data_signature);
+          descriptor::data::hash(name,
+                                 openness,
+                                 policy,
+                                 Infinit::version,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0));
+      descriptor::Data data_section(name,
+                                    openness,
+                                    policy,
+                                    Infinit::version,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    data_signature);
 
       // Create the descriptor from both sections and store it.
-      lune::Descriptor descriptor(std::move(meta_section),
-                                  std::move(data_section));
+      Descriptor descriptor(std::move(meta_section),
+                            std::move(data_section));
 
       descriptor.store(identity);
     }
@@ -318,8 +319,8 @@ namespace satellite
       elle::io::Path        path;
 
       // does the network exist.
-      if (lune::Descriptor::exists(administrator, identifier) == true)
-        lune::Descriptor::erase(administrator, identifier);
+      if (Descriptor::exists(administrator, identifier) == true)
+        Descriptor::erase(administrator, identifier);
     }
 
     //
@@ -394,11 +395,11 @@ namespace satellite
     //
     {
       // does the network exist.
-      if (lune::Descriptor::exists(administrator, identifier) == false)
+      if (Descriptor::exists(administrator, identifier) == false)
         throw elle::Exception("this network does not seem to exist");
     }
 
-    lune::Descriptor descriptor(administrator, identifier);
+    Descriptor descriptor(administrator, identifier);
 
     // validate the descriptor.
     descriptor.validate(Infinit::authority());

@@ -22,7 +22,6 @@
 
 #include <lune/Lune.hh>
 #include <lune/Phrase.hh>
-#include <lune/Descriptor.hh>
 
 #include <common/common.hh>
 
@@ -38,6 +37,7 @@
 #include <fstream>
 
 #include <Program.hh>
+#include <Descriptor.hh>
 
 ELLE_LOG_COMPONENT("infinit.satellites.transfer.Transfer");
 
@@ -47,7 +47,7 @@ namespace satellite
   infinit::protocol::Serializer* Transfer::serializer = nullptr;
   infinit::protocol::ChanneledStream* Transfer::channels = nullptr;
   etoile::portal::RPC* Transfer::rpcs = nullptr;
-  lune::Descriptor* Transfer::descriptor = nullptr;
+  Descriptor* Transfer::descriptor = nullptr;
 
   /// Ward helper to make sure objects are discarded on errors.
   class Ward
@@ -877,7 +877,7 @@ namespace satellite
 
     // FIXME: do not re-parse the descriptor every time.
     Transfer::descriptor =
-      new lune::Descriptor(Infinit::User, Infinit::Network);
+      new Descriptor(Infinit::User, Infinit::Network);
 
     elle::String path;
 

@@ -1,5 +1,5 @@
-#ifndef LUNE_DESCRIPTOR_HXX
-# define LUNE_DESCRIPTOR_HXX
+#ifndef INFINIT_DESCRIPTOR_HXX
+# define INFINIT_DESCRIPTOR_HXX
 
 # include <elle/serialize/Pointer.hh>
 # include <elle/serialize/StaticFormat.hh>
@@ -15,11 +15,11 @@
 // ---------- Descriptor ------------------------------------------------------
 //
 
-ELLE_SERIALIZE_STATIC_FORMAT(lune::Descriptor, 1);
+ELLE_SERIALIZE_STATIC_FORMAT(infinit::Descriptor, 1);
 
-ELLE_SERIALIZE_SPLIT(lune::Descriptor);
+ELLE_SERIALIZE_SPLIT(infinit::Descriptor);
 
-ELLE_SERIALIZE_SPLIT_LOAD(lune::Descriptor,
+ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
                           archive,
                           value,
                           format)
@@ -31,7 +31,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(lune::Descriptor,
   {
     case 0:
     {
-      value._meta.reset(new lune::descriptor::Meta);
+      value._meta.reset(new infinit::descriptor::Meta);
 
       archive >> value._meta->_identifier;
       archive >> value._meta->_administrator_K;
@@ -42,7 +42,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(lune::Descriptor,
       archive >> value._meta->_extent;
       archive >> value._meta->_signature;
 
-      value._data.reset(new lune::descriptor::Data);
+      value._data.reset(new infinit::descriptor::Data);
 
       archive >> value._data->_name;
       archive >> value._data->_openness;
@@ -85,7 +85,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(lune::Descriptor,
   }
 }
 
-ELLE_SERIALIZE_SPLIT_SAVE(lune::Descriptor,
+ELLE_SERIALIZE_SPLIT_SAVE(infinit::Descriptor,
                           archive,
                           value,
                           format)
@@ -151,7 +151,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(lune::Descriptor,
 // ---------- Meta ------------------------------------------------------------
 //
 
-ELLE_SERIALIZE_SIMPLE(lune::descriptor::Meta,
+ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Meta,
                       archive,
                       value,
                       format)
@@ -172,7 +172,7 @@ ELLE_SERIALIZE_SIMPLE(lune::descriptor::Meta,
 // ---------- Data ------------------------------------------------------------
 //
 
-ELLE_SERIALIZE_SIMPLE(lune::descriptor::Data,
+ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Data,
                       archive,
                       value,
                       format)

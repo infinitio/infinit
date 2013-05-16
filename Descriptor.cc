@@ -6,26 +6,26 @@
 #include <common/common.hh>
 
 #include <cryptography/PrivateKey.hh>
+#include <cryptography/KeyPair.hh>
 #include <cryptography/oneway.hh>
 
 #include <hole/Authority.hh>
 #include <hole/Openness.hh>
 
-#include <lune/Descriptor.hh>
-#include <lune/Lune.hh>
 #include <lune/Identity.hh>
 
 #include <nucleus/proton/Address.hh>
 
 #include <Infinit.hh>
+#include <Descriptor.hh>
 
-ELLE_LOG_COMPONENT("infinit.lune.Descriptor");
+ELLE_LOG_COMPONENT("infinit.Descriptor");
 
 //
 // ---------- Descriptor ------------------------------------------------------
 //
 
-namespace lune
+namespace infinit
 {
   Descriptor::Descriptor(elle::String const& user,
                          elle::String const& network)
@@ -135,7 +135,7 @@ namespace lune
   }
 
   void
-  Descriptor::store(Identity const& identity) const
+  Descriptor::store(lune::Identity const& identity) const
   {
     ELLE_TRACE_METHOD(identity);
 
@@ -185,7 +185,7 @@ namespace lune
 // ---------- Meta ------------------------------------------------------------
 //
 
-namespace lune
+namespace infinit
 {
   namespace descriptor
   {
@@ -332,7 +332,7 @@ namespace lune
 // ---------- Data ------------------------------------------------------------
 //
 
-namespace lune
+namespace infinit
 {
   namespace descriptor
   {

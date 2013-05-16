@@ -1,5 +1,5 @@
-#ifndef LUNE_DESCRIPTOR_HH
-# define LUNE_DESCRIPTOR_HH
+#ifndef INFINIT_DESCRIPTOR_HH
+# define INFINIT_DESCRIPTOR_HH
 
 # include <elle/Version.hh>
 # include <elle/Printable.hh>
@@ -28,7 +28,7 @@ using namespace infinit;
 // ---------- Descriptor ------------------------------------------------------
 //
 
-namespace lune
+namespace infinit
 {
   /*---------------------.
   | Forward Declarations |
@@ -141,7 +141,7 @@ namespace lune
     load(elle::String const& user,
          elle::String const& network);
     void
-    store(Identity const& identity) const;
+    store(lune::Identity const& identity) const;
     static
     void
     erase(elle::String const& user,
@@ -168,7 +168,7 @@ namespace lune
 // ---------- Meta ------------------------------------------------------------
 //
 
-namespace lune
+namespace infinit
 {
   namespace descriptor
   {
@@ -282,7 +282,7 @@ namespace lune
 // ---------- Data ------------------------------------------------------------
 //
 
-namespace lune
+namespace infinit
 {
   namespace descriptor
   {
@@ -525,6 +525,6 @@ namespace lune
   }
 }
 
-# include <lune/Descriptor.hxx>
+# include <Descriptor.hxx>
 
 #endif
