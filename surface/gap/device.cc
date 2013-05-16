@@ -14,41 +14,38 @@ namespace surface
     bool
     State::has_device() const
     {
-      ELLE_ASSERT(this->_me.id.size() > 0 && "not properly initialized");
+      ELLE_ASSERT(this->me().id.size() > 0 && "not properly initialized");
       ELLE_DEBUG("Check for '%s' device existence at '%s'",
-                 this->_me.id,
-                 common::infinit::passport_path(this->_me.id));
-      return elle::os::path::exists(common::infinit::passport_path(this->_me.id));
+                 this->me().id,
+                 common::infinit::passport_path(this->me().id));
+      return elle::os::path::exists(common::infinit::passport_path(this->me().id));
+    }
+
+    Device&
+    State::device()
+    {
+      if (!elle::os::path::exists(common::infinit::passport_path(this->me().id)))
+        update_device("XXX");
+      else if (this->_device == nullptr)
+      {
+        elle::Passport passport;
+        passport.load(
+          elle::io::Path{common::infinit::passport_path(this->me().id)});
+        this->_device.reset(new Device{passport.id(), passport.name()});
+      }
+      return *this->_device;
     }
 
     std::string const&
     State::device_id()
     {
-      if (!elle::os::path::exists(common::infinit::passport_path(this->_me.id)))
-        update_device("XXX");
-      else if (this->_device.id.size() == 0)
-      {
-        elle::Passport passport;
-         passport.load(elle::io::Path{common::infinit::passport_path(this->_me.id)});
-         this->_device.id   = passport.id();
-         this->_device.name = passport.name();
-      }
-      return this->_device.id;
+      return this->device().id;
     }
 
     std::string const&
     State::device_name()
     {
-      if (!elle::os::path::exists(common::infinit::passport_path(this->_me.id)))
-        update_device("XXX");
-      else if (this->_device.name.size() == 0)
-      {
-        elle::Passport passport;
-        passport.load(elle::io::Path{common::infinit::passport_path(this->_me.id)});
-        this->_device.id = passport.id();
-        this->_device.name = passport.name();
-      }
-      return this->_device.name;
+      return this->device().name;
     }
 
     void
@@ -56,18 +53,16 @@ namespace surface
     {
       ELLE_TRACE_FUNCTION(name, force_create);
 
-      ELLE_DEBUG("update device %s to %s", this->_device.name, name);
-      std::string passport_path = common::infinit::passport_path(this->_me.id);
-
-      this->_device.name = name;
+      ELLE_DEBUG("update device name to %s", name);
+      std::string passport_path = common::infinit::passport_path(this->me().id);
 
       std::string passport_string;
       if (force_create || !this->has_device())
       {
         auto res = this->_meta.create_device(name);
         passport_string = res.passport;
-        this->_device.id = res.id;
-        ELLE_DEBUG("Created device id: %s", this->_device.id);
+        this->_device.reset(new Device{res.id, name});
+        ELLE_DEBUG("Created device id: %s", this->_device->id);
       }
       else
       {
@@ -77,7 +72,7 @@ namespace surface
 
         ELLE_DEBUG("Passport id: %s", passport.id());
         auto res = this->_meta.update_device(passport.id(), name);
-        this->_device.id = res.id;
+        this->_device.reset(new Device{res.id, name});
         passport_string = res.passport;
       }
 
