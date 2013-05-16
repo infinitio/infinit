@@ -24,23 +24,31 @@ namespace infinit
   void
   sighdl(int signum)
   {
+    ELLE_DEBUG_SCOPE("received signal %s(%d)",
+               elle::system::strsignal(signum), signum);
     if (st_pid != -1)
+    {
+      ELLE_DEBUG("kill(%d, %s(%d))",
+                 st_pid, elle::system::strsignal(signum), signum);
       kill(st_pid, signum);
+    }
   }
 
   static
   int
   _satellite_trace(int pid, std::string const& name)
   {
+    ELLE_LOG_COMPONENT("infinit.satellite.parent");
+    int err;
     int status;
     int retval = -1;
 
-    ELLE_DEBUG("%s[%d]: start tracing", name, pid);
-    int err;
     st_pid = pid;
     signal(SIGINT, sighdl);
     signal(SIGTERM, sighdl);
     signal(SIGQUIT, sighdl);
+
+    ELLE_DEBUG("%s[%d]: start tracing", name, pid);
     while ((err = waitpid(pid, &status, 0)) != pid)
     {
       if (errno == EINTR)
@@ -49,6 +57,7 @@ namespace infinit
       throw elle::Exception{elle::sprintf("waitpid: error %s: %s",
                                           err, ::strerror(_errno))};
     }
+    ELLE_DEBUG("finished waiting %s", pid);
     if (WIFEXITED(status))
     {
       retval = WEXITSTATUS(status);
@@ -98,16 +107,22 @@ namespace infinit
       {
         auto sched = reactor::Scheduler::scheduler();
         if (sched != nullptr)
-            sched->terminate();
+        {
+          sched->terminate();
+        }
         else
-            ELLE_WARN("signal caught, but no scheduler alive");
+        {
+          ELLE_WARN("signal caught, but no scheduler alive");
+          exit(EXIT_SUCCESS);
+        }
       };
-      elle::signal::ScopedGuard sigint{{SIGINT}, std::move(sig_fn)};
+      elle::signal::ScopedGuard sigint{{SIGINT}, sig_fn};
 
       action();
+      ELLE_DEBUG("quiting %s", name);
       return 0;
     }
-    catch (std::runtime_error const& e)
+    catch (std::exception const& e)
     {
       ELLE_ERR("%s: fatal error: %s", name, e.what());
       std::cerr << name << ": fatal error: " << e.what() << std::endl;
@@ -130,6 +145,7 @@ namespace infinit
     }
     else
     {
+      ELLE_LOG_COMPONENT("infinit.satellite.child");
       reactor::Scheduler sched;
       try
       {
