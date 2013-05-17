@@ -256,19 +256,20 @@ namespace plasma
 
       template <typename T>
       T
-      _post(std::string const& url, elle::format::json::Object const& req);
+      _post(std::string const& url,
+            elle::format::json::Object const& req) const;
 
       template <typename T>
       T
-      _get(std::string const& url);
+      _get(std::string const& url) const;
 
       template <typename T>
       T
-      _deserialize_answer(std::istream& res);
+      _deserialize_answer(std::istream& res) const;
 
     public:
       DebugResponse
-      debug();
+      debug() const;
 
       LoginResponse
       login(string const& email,
@@ -287,44 +288,44 @@ namespace plasma
                 string const& activation_code,
                 string const& picture_name = "",
                 string const& picture_data = ""
-      );
+      ) const;
 
       UserResponse
-      user(string const& id);
+      user(string const& id) const;
 
       UserIcon
-      user_icon(string const& id);
+      user_icon(string const& id) const;
 
       SelfResponse
-      self();
+      self() const;
 
       UserResponse
-      user_from_public_key(string const& public_key);
+      user_from_public_key(string const& public_key) const;
 
       UsersResponse
-      search_users(string const& text, int count = 10, int offset = 0);
+      search_users(string const& text, int count = 10, int offset = 0) const;
 
       SwaggersResponse
-      get_swaggers();
+      get_swaggers() const;
 
       // SwaggerResponse
-      // get_swagger(string const& id);
+      // get_swagger(string const& id) const;
 
       CreateDeviceResponse
-      create_device(string const& name);
+      create_device(string const& name) const;
 
       UpdateDeviceResponse
       update_device(string const& _id,
-                    string const& name);
+                    string const& name) const;
 
       InviteUserResponse
-      invite_user(string const& email);
+      invite_user(string const& email) const;
 
       TransactionResponse
-      transaction(string const& _id);
+      transaction(string const& _id) const;
 
       TransactionsResponse
-      transactions();
+      transactions() const;
 
       CreateTransactionResponse
       create_transaction(string const& recipient_id_or_email,
@@ -333,40 +334,40 @@ namespace plasma
                          size_t size,
                          bool is_dir,
                          string const& network_id,
-                         string const& device_id);
+                         string const& device_id) const;
 
       UpdateTransactionResponse
       update_transaction(string const& transaction_id,
                          plasma::TransactionStatus status,
                          string const& device_id = "",
-                         string const& device_name = "");
+                         string const& device_name = "") const;
 
       MessageResponse
       send_message(string const& recipient_id,
                    string const& sender_id, // DEBUG.
-                   string const& message);
+                   string const& message) const;
 
       PullNotificationResponse
-      pull_notifications(int count, int offset = 0);
+      pull_notifications(int count, int offset = 0) const;
 
       ReadNotificationResponse
-      notification_read();
+      notification_read() const;
 
       NetworkResponse
-      network(string const& _id);
+      network(string const& _id) const;
 
       NetworksResponse
-      networks();
+      networks() const;
 
       CreateNetworkResponse
-      create_network(string const& network_id);
+      create_network(string const& network_id) const;
 
       DeleteNetworkResponse
       delete_network(string const& network_id,
-                     bool force = false);
+                     bool force = false) const;
 
       NetworkNodesResponse
-      network_nodes(string const& network_id);
+      network_nodes(string const& network_id) const;
 
       UpdateNetworkResponse
       update_network(string const& _id,
@@ -374,15 +375,15 @@ namespace plasma
                      string const* root_block,
                      string const* root_address,
                      string const* group_block,
-                     string const* group_address);
+                     string const* group_address) const;
 
       NetworkAddUserResponse
       network_add_user(string const& network_id,
-                       string const& user_id);
+                       string const& user_id) const;
 
       NetworkAddDeviceResponse
       network_add_device(string const& network_id,
-                         string const& device_id);
+                         string const& device_id) const;
 
       //
       // Frontend on _network_connect_device
@@ -393,7 +394,7 @@ namespace plasma
                              string const* local_ip,
                              uint16_t local_port,
                              string const* external_ip = nullptr,
-                             uint16_t external_port = 0);
+                             uint16_t external_port = 0) const;
 
       //
       // Frontend on _network_connect_device
@@ -403,7 +404,7 @@ namespace plasma
       network_connect_device(string const& network_id,
                              string const& device_id,
                              Container1 const& local_endpoints,
-                             Container2 const& public_endpoints);
+                             Container2 const& public_endpoints) const;
       //
       // Frontend on _network_connect_device
       //
@@ -411,7 +412,7 @@ namespace plasma
       NetworkConnectDeviceResponse
       network_connect_device(string const& network_id,
                              string const& device_id,
-                             Container const& local_endpoints);
+                             Container const& local_endpoints) const;
 
     private:
 
@@ -426,14 +427,14 @@ namespace plasma
       _network_connect_device(string const& network_id,
                               string const& device_id,
                               adapter_type const& local_endpoints,
-                              adapter_type const& public_endpoints);
+                              adapter_type const& public_endpoints) const;
 
 
     public:
       EndpointNodeResponse
       device_endpoints(std::string const& network_id,
                        std::string const& self_device_id,
-                       std::string const& device_id);
+                       std::string const& device_id) const;
 
     public:
       void token(string const& tok);
