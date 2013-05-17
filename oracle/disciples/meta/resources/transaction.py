@@ -184,7 +184,7 @@ class Create(Page):
                     reply_to = self.user['email'],
                     filename = first_filename,
                     sendername = self.user['fullname'],
-                    user_id = self.user['_id'],
+                    user_id = str(self.user['_id']),
                 )
 
 
