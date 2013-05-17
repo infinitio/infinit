@@ -15,6 +15,7 @@
 # include <plasma/trophonius/Client.hh>
 
 # include <elle/format/json/fwd.hh>
+# include <elle/threading/Monitor.hh>
 
 # include <map>
 # include <string>
@@ -154,10 +155,17 @@ namespace surface
       file_name(std::string const& path);
 
     private:
-      std::unique_ptr<NetworkManager> _network_manager;
-      std::unique_ptr<NotificationManager> _notification_manager;
-      std::unique_ptr<UserManager> _user_manager;
-      std::unique_ptr<TransactionManager> _transaction_manager;
+      typedef std::unique_ptr<NetworkManager> NetworkManagerPtr;
+      elle::threading::Monitor<NetworkManagerPtr> _network_manager;
+
+      typedef std::unique_ptr<NotificationManager> NotificationManagerPtr;
+      elle::threading::Monitor<NotificationManagerPtr> _notification_manager;
+
+      typedef std::unique_ptr<UserManager> UserManagerPtr;
+      elle::threading::Monitor<UserManagerPtr> _user_manager;
+
+      typedef std::unique_ptr<TransactionManager> TransactionManagerPtr;
+      elle::threading::Monitor<TransactionManagerPtr> _transaction_manager;
 
     public:
       NetworkManager&

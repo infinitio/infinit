@@ -255,10 +255,10 @@ namespace surface
     State::_cleanup()
     {
       ELLE_TRACE_METHOD("");
-      this->_transaction_manager.reset();
-      this->_network_manager.reset();
-      this->_user_manager.reset();
-      this->_notification_manager.reset();
+      this->_transaction_manager->reset();
+      this->_network_manager->reset();
+      this->_user_manager->reset();
+      this->_notification_manager->reset();
 
       this->_device.reset();
       this->_me.reset();
@@ -369,61 +369,60 @@ namespace surface
     NetworkManager&
     State::network_manager()
     {
-      if (this->_network_manager == nullptr)
-      {
-        this->_network_manager.reset(
-          new NetworkManager{this->_meta,
-                             this->_reporter,
-                             this->_google_reporter,
-                             this->me(),
-                             this->device()});
-      }
-      ELLE_ASSERT_NEQ(this->_network_manager, nullptr);
-      return *this->_network_manager;
+      return this->_network_manager(
+        [this] (NetworkManagerPtr& manager) -> NetworkManager& {
+          if (manager == nullptr)
+            manager.reset(
+              new NetworkManager{this->_meta,
+                                 this->_reporter,
+                                 this->_google_reporter,
+                                 this->me(),
+                                 this->device()});
+          return *manager;
+        });
     }
 
     NotificationManager&
     State::notification_manager()
     {
-      if (this->_notification_manager == nullptr)
-      {
-        this->_notification_manager.reset(new NotificationManager{this->_meta,
-                                                                  this->me()});
-      }
-      ELLE_ASSERT_NEQ(this->_notification_manager, nullptr);
-      return *this->_notification_manager;
+      return this->_notification_manager(
+        [this] (NotificationManagerPtr& manager) -> NotificationManager& {
+          if (manager == nullptr)
+            manager.reset(new NotificationManager{this->_meta, this->me()});
+          return *manager;
+        });
     }
 
     UserManager&
     State::user_manager()
     {
-      if (this->_user_manager == nullptr)
-      {
-        this->_user_manager.reset(
-          new UserManager{this->notification_manager(),
-                          this->_meta,
-                          this->me()});
-      }
-      ELLE_ASSERT_NEQ(this->_user_manager, nullptr);
-      return *this->_user_manager;
+      return this->_user_manager(
+        [this] (UserManagerPtr& manager) -> UserManager& {
+          if (manager == nullptr)
+            manager.reset(
+              new UserManager{this->notification_manager(),
+                              this->_meta,
+                              this->me()});
+          return *manager;
+        });
     }
 
     TransactionManager&
     State::transaction_manager()
     {
-      if (this->_transaction_manager == nullptr)
-      {
-        this->_transaction_manager.reset(
-          new TransactionManager{this->notification_manager(),
-              this->network_manager(),
-              this->user_manager(),
-              this->_meta,
-              this->_reporter,
-              this->me(),
-              this->device()});
-      }
-      ELLE_ASSERT_NEQ(this->_transaction_manager, nullptr);
-      return *this->_transaction_manager;
+      return this->_transaction_manager(
+        [this] (TransactionManagerPtr& manager) -> TransactionManager& {
+          if (manager == nullptr)
+            manager.reset(
+              new TransactionManager{this->notification_manager(),
+                                     this->network_manager(),
+                                     this->user_manager(),
+                                     this->_meta,
+                                     this->_reporter,
+                                     this->me(),
+                                     this->device()});
+          return *manager;
+        });
     }
   }
 }
