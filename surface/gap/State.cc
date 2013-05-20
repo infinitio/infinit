@@ -145,6 +145,9 @@ namespace surface
       if (!this->logged_in())
         throw Exception{gap_internal_error, "you must be logged in"};
 
+      if (this->_me == nullptr)
+        this->_me.reset(new Self{this->_meta.self()});
+
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
     }
@@ -156,6 +159,9 @@ namespace surface
 
       if (!this->logged_in())
         throw Exception{gap_internal_error, "you must be logged in"};
+
+      if (this->_me == nullptr)
+        this->_me.reset(new Self{this->_meta.self()});
 
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
@@ -183,6 +189,7 @@ namespace surface
       try
       {
         res = this->_meta.login(lower_email, password);
+        ELLE_LOG("Logged in as %s token = %s", email, res.token);
       }
       CATCH_FAILURE_TO_METRICS("user_login");
 
@@ -195,11 +202,6 @@ namespace surface
       this->_google_reporter.store("user:login:succeed",
                                   {{MKey::session, "start"},
                                    {MKey::status, "succeed"}});
-
-
-      ELLE_WARN("Logged in as %s token = %s", email, res.token);
-
-      this->_me.reset(new Self{this->_meta.self()});
 
       ELLE_WARN("id: '%s' - fullname: '%s' - lower_email: '%s'",
                  this->me().id,

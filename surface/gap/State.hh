@@ -77,12 +77,13 @@ namespace surface
       }
 
     //- Login & register ------------------------------------------------------
-      std::unique_ptr<Self> _me;
-      Self const&
-      me() const;
+      std::unique_ptr<Self> mutable _me;
 
       Self&
       me();
+
+      Self const&
+      me() const;
     public:
       /// Login to meta.
       void
