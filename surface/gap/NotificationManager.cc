@@ -107,6 +107,13 @@ namespace surface
       ELLE_LOG("Connect to trophonius: id:<%s> and token:<%s>", id, token);
     }
 
+    void
+    NotificationManager::_check_trophonius()
+    {
+      if (this->_trophonius == nullptr)
+        throw Exception{gap_error, "Trophonius is not connected"};
+    }
+
     size_t
     NotificationManager::poll(size_t max)
     {
@@ -115,11 +122,10 @@ namespace surface
       size_t count = 0;
       try
       {
-        if (this->_trophonius == nullptr)
-          throw Exception{gap_error, "Trophonius is not connected"};
+        this->_check_trophonius();
 
         while (count < max && this->_trophonius != nullptr)
-         {
+        {
           notif.reset(this->_trophonius->poll().release());
           transaction_id = "";
 
@@ -324,6 +330,8 @@ namespace surface
     NotificationManager::_handle_notification(json::Dictionary const& dict,
                                               bool new_)
     {
+      this->_check_trophonius();
+
       try
       {
         this->_handle_notification(*_xxx_dict_to_notification(dict), new_);
@@ -437,8 +445,11 @@ namespace surface
                                               std::string const& s,
                                               std::string const& tid)
     {
+      this->_check_trophonius();
+
       try
       {
+        std::cerr << this->_error_handlers.size() << std::endl;
         for (auto const& c: this->_error_handlers)
         {
           c(status, s, tid);

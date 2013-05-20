@@ -59,6 +59,9 @@ namespace surface
       void
       _connect(std::string const& _id, std::string const& token);
 
+      void
+      _check_trophonius();
+
     private:
       typedef
         std::function<void(Notification const&, bool)>
