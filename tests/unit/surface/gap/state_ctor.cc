@@ -160,7 +160,6 @@ init_recipient()
 
   state.notification_manager().on_error_callback(error_cb);
 
-
   static std::thread thread = make_worker(state);
 
   return std::make_tuple(&state, &thread);
@@ -183,8 +182,6 @@ main(int argc, char** argv)
 
     std::get<1>(rstate)->join();
     std::get<1>(sstate)->join();
-
-    elle::os::path::remove_directory(to_send);
   }
   else if (argc == 2 && std::string{argv[1]} == "--from")
   {
