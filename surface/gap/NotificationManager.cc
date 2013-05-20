@@ -449,7 +449,6 @@ namespace surface
 
       try
       {
-        std::cerr << this->_error_handlers.size() << std::endl;
         for (auto const& c: this->_error_handlers)
         {
           c(status, s, tid);
