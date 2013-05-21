@@ -27,6 +27,7 @@
 #include <CrashReporter.hh>
 #include <HoleFactory.hh>
 #include <Infinit.hh>
+#include <Program.hh>
 #include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit");
@@ -34,6 +35,10 @@ ELLE_LOG_COMPONENT("infinit");
 void
 Infinit(elle::Natural32 argc, elle::Character* argv[])
 {
+  // set up the program.
+  if (elle::concurrency::Program::Setup("Infinit") == elle::Status::Error)
+    throw elle::Exception("unable to set up the program");
+
   // allocate a new parser.
   Infinit::Parser = new elle::utility::Parser(argc, argv);
 
@@ -194,6 +199,9 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   throw elle::Exception("horizon was disabled at compilation time "
                            "but a mountpoint was given on the command line");
 #endif
+
+  // launch the program.
+  elle::concurrency::Program::Launch();
 
   // delete the parser.
   delete Infinit::Parser;
