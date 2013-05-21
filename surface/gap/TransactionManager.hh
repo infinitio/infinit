@@ -102,7 +102,8 @@ namespace surface
       `--------*/
     private:
       typedef std::map<std::string, plasma::Transaction> TransactionsMap;
-      std::unique_ptr<TransactionsMap> _transactions;
+      typedef std::unique_ptr<TransactionsMap> TransactionMapPtr;
+      elle::threading::Monitor<TransactionMapPtr> _transactions;
 
     public:
       /// @brief Pull transactions from serveur.

@@ -1094,19 +1094,25 @@ namespace surface
     TransactionManager::TransactionsMap const&
     TransactionManager::all()
     {
-      if (_transactions != nullptr)
-        return *_transactions;
 
-      _transactions.reset(new TransactionsMap{});
+      if (this->_transactions->get() != nullptr)
+        return *this->_transactions->get();
+
+      this->_transactions([] (TransactionMapPtr& map) {
+        if (map == nullptr)
+          map.reset(new TransactionsMap{});
+      });
 
       auto response = this->_meta.transactions();
       for (auto const& id: response.transactions)
       {
         auto transaction = this->_meta.transaction(id);
-        (*this->_transactions)[id] = transaction;
+        this->_transactions([&id, &transaction] (TransactionMapPtr& map) {
+            (*map)[id] = transaction;
+        });
       }
 
-      return *(this->_transactions);
+      return *(this->_transactions->get());
     }
 
     Transaction const&
@@ -1128,7 +1134,13 @@ namespace surface
         auto transaction = this->_meta.transaction(id);
         ELLE_DEBUG("Synched transaction %s has status %d",
                    id, transaction.status);
-        return ((*this->_transactions)[id] = transaction);
+        return this->_transactions(
+          [&id, &transaction] (TransactionMapPtr& map)
+            -> plasma::Transaction const&
+          {
+            return (*map)[id] = transaction;
+          }
+        );
       }
       catch (std::runtime_error const& e)
       {
@@ -1177,8 +1189,9 @@ namespace surface
           ELLE_WARN("we merged a canceled transaction, nothing to do.");
           return;
         }
-
-        (*this->_transactions)[notif.transaction_id] = transaction;
+        this->_transactions([&notif, &transaction] (TransactionMapPtr& map) {
+            (*map)[notif.transaction_id] = transaction;
+        });
       }
 
       if (pair->second.status == gap_transaction_status_canceled ||
@@ -1189,7 +1202,9 @@ namespace surface
         return;
       }
 
-      this->_transactions->at(notif.transaction_id).status = notif.status;
+      this->_transactions([&notif] (TransactionMapPtr& map) {
+        map->at(notif.transaction_id).status = notif.status;
+      });
 
       auto const& transaction = this->one(notif.transaction_id);
 
@@ -1198,17 +1213,13 @@ namespace surface
         case plasma::TransactionStatus::accepted:
           // We update the transaction from meta.
           // XXX: we should have it from transaction_notification.
-          (*_transactions)[notif.transaction_id] = this->_meta.transaction(
-            notif.transaction_id
-            );
+          this->sync(notif.transaction_id);
           this->_on_transaction_accepted(transaction);
           break;
         case plasma::TransactionStatus::created:
           // We update the transaction from meta.
           // XXX: we should have it from transaction_notification.
-          (*_transactions)[notif.transaction_id] = this->_meta.transaction(
-            notif.transaction_id
-            );
+          this->sync(notif.transaction_id);
           this->_on_transaction_created(transaction);
           break;
         case plasma::TransactionStatus::prepared:
