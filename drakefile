@@ -1,6 +1,6 @@
+import drake
 import drake.cxx
 import drake.cxx.boost
-import drake
 
 import os
 import sys
