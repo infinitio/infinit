@@ -75,18 +75,22 @@ namespace hole
       void
       Host::_rpc_run()
       {
+        auto fn_on_exit = [&] {
+          ELLE_LOG("%s: left", *this);
+          this->_slug._remove(this);
+        };
+        elle::Finally on_exit(std::move(fn_on_exit));
+
         try
-          {
-            this->_rpcs.run();
-          }
+        {
+          this->_rpcs.run();
+        }
         catch (reactor::network::Exception& e)
-          {
-            ELLE_WARN("%s: discarded: %s", *this, e.what());
-            this->_slug._remove(this);
-            return;
-          }
-        ELLE_LOG("%s: left", *this);
-        this->_slug._remove(this);
+        {
+          ELLE_WARN("%s: discarded: %s", *this, e.what());
+          this->_slug._remove(this);
+          return;
+        }
       }
 
       /*----.
