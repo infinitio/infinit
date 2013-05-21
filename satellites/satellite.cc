@@ -134,7 +134,7 @@ namespace infinit
       ELLE_DEBUG("quiting %s", name);
       return 0;
     }
-    catch (std::exception const& e)
+    catch (std::runtime_error const& e)
     {
       ELLE_ERR("%s: fatal error: %s", name, e.what());
       std::cerr << name << ": fatal error: " << e.what() << std::endl;
