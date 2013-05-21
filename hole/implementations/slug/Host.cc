@@ -61,10 +61,14 @@ namespace hole
       {
         // Stop operations on the socket before it is deleted.
         // Check if we are not committing suicide.
-        auto current = reactor::Scheduler::scheduler()->current();
-        if (!_rpcs_handler->done() && current != _rpcs_handler)
+        auto sched = reactor::Scheduler::scheduler();
+        if (sched != nullptr)
         {
+          auto current = sched->current();
+          if (!_rpcs_handler->done() && current != _rpcs_handler)
+          {
             _rpcs_handler->terminate_now();
+          }
         }
       }
 
