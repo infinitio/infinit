@@ -76,7 +76,7 @@ namespace etoile
       {
         auto pod = iterator->second;
 
-        ELLE_ASSERT_EQ(pod->actors(), 0);
+        ELLE_ASSERT_EQ(pod->actors(), 0u);
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
 
         // Compute the iterator for the next element.
@@ -377,7 +377,7 @@ namespace etoile
 
         ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
         ELLE_ASSERT_EQ(pod->state(), Pod::State::queue);
-        ELLE_ASSERT_EQ(pod->actors(), 0);
+        ELLE_ASSERT_EQ(pod->actors(), 0u);
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
         ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
         ELLE_ASSERT(pod->mutex().locked() == false);
@@ -685,7 +685,7 @@ namespace etoile
       {
         case Pod::State::use:
         {
-          ELLE_ASSERT_NEQ(pod->actors(), 0);
+          ELLE_ASSERT_NEQ(pod->actors(), 0u);
           ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
           ELLE_ASSERT_EQ(pod->position(), this->_history.end());
           ELLE_ASSERT(pod->mutex().locked() == true);
@@ -698,7 +698,7 @@ namespace etoile
         }
         case Pod::State::queue:
         {
-          ELLE_ASSERT_EQ(pod->actors(), 0);
+          ELLE_ASSERT_EQ(pod->actors(), 0u);
           ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
           ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
           ELLE_ASSERT(pod->mutex().locked() == false);
@@ -720,7 +720,7 @@ namespace etoile
         }
         case Pod::State::shell:
         {
-          ELLE_ASSERT_EQ(pod->actors(), 0);
+          ELLE_ASSERT_EQ(pod->actors(), 0u);
           ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
           ELLE_ASSERT_EQ(pod->position(), this->_history.end());
           ELLE_ASSERT(pod->mutex().locked() == false);
@@ -831,7 +831,7 @@ namespace etoile
 
       ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
       ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
-      ELLE_ASSERT_EQ(pod->actors(), 0);
+      ELLE_ASSERT_EQ(pod->actors(), 0u);
       ELLE_ASSERT_NEQ(pod->egg(), nullptr);
       ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
       ELLE_ASSERT_EQ(pod->position(), this->_history.end());
@@ -859,7 +859,7 @@ namespace etoile
 
       ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
       ELLE_ASSERT_EQ(pod->state(), Pod::State::queue);
-      ELLE_ASSERT_EQ(pod->actors(), 0);
+      ELLE_ASSERT_EQ(pod->actors(), 0u);
 
       ELLE_ASSERT_EQ(handle.phase(), nucleus::proton::Handle::Phase::nested);
 
@@ -891,7 +891,7 @@ namespace etoile
 
           ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
           ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
-          ELLE_ASSERT_EQ(pod->actors(), 0);
+          ELLE_ASSERT_EQ(pod->actors(), 0u);
           ELLE_ASSERT_NEQ(pod->egg(), nullptr);
           ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
           ELLE_ASSERT_EQ(pod->position(), this->_history.end());
@@ -926,7 +926,7 @@ namespace etoile
           ELLE_ASSERT_EQ(handle.secret(), pod->egg()->secret());
 
           ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
-          ELLE_ASSERT_EQ(pod->actors(), 0);
+          ELLE_ASSERT_EQ(pod->actors(), 0u);
           ELLE_ASSERT_NEQ(pod->egg(), nullptr);
 
           // Note that since detaching a block is a modifying operation,
@@ -1083,7 +1083,7 @@ namespace etoile
 
             ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
             ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
-            ELLE_ASSERT_EQ(pod->actors(), 0);
+            ELLE_ASSERT_EQ(pod->actors(), 0u);
             ELLE_ASSERT_NEQ(pod->egg(), nullptr);
             ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
             ELLE_ASSERT_EQ(pod->position(), this->_history.end());
@@ -1107,7 +1107,7 @@ namespace etoile
 
             // Increase the number of actors on the pod.
             pod->actors(pod->actors() + 1);
-            ELLE_ASSERT_EQ(pod->actors(), 1);
+            ELLE_ASSERT_EQ(pod->actors(), 1u);
 
             // Update the pod's state.
             pod->state(Pod::State::use);
@@ -1164,7 +1164,7 @@ namespace etoile
 
           ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
           ELLE_ASSERT_EQ(pod->state(), Pod::State::use);
-          ELLE_ASSERT_GT(pod->actors(), 0);
+          ELLE_ASSERT_GT(pod->actors(), 0u);
           ELLE_ASSERT_NEQ(pod->egg(), nullptr);
           ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
           ELLE_ASSERT_EQ(pod->position(), this->_history.end());
@@ -1242,7 +1242,7 @@ namespace etoile
               }
               case Pod::State::queue:
               {
-                ELLE_ASSERT_EQ(pod->actors(), 0);
+                ELLE_ASSERT_EQ(pod->actors(), 0u);
                 ELLE_ASSERT_NEQ(pod->egg()->block(), nullptr);
                 ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
                 ELLE_ASSERT(pod->mutex().locked() == false);
@@ -1271,7 +1271,7 @@ namespace etoile
               }
               case Pod::State::shell:
               {
-                ELLE_ASSERT_EQ(pod->actors(), 0);
+                ELLE_ASSERT_EQ(pod->actors(), 0u);
                 ELLE_ASSERT_EQ(pod->egg()->block(), nullptr);
                 ELLE_ASSERT_EQ(pod->position(), this->_history.end());
                 ELLE_ASSERT(pod->mutex().locked() == false);

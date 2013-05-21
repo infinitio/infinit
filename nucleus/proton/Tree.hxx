@@ -260,7 +260,7 @@ namespace nucleus
       ELLE_TRACE_METHOD("");
 
       ELLE_ASSERT_NEQ(this->_root, nullptr);
-      ELLE_ASSERT_NEQ(this->_capacity, 0);
+      ELLE_ASSERT_NEQ(this->_capacity, 0u);
 
       return (this->seek(this->_capacity - 1).first);
     }
@@ -699,7 +699,7 @@ namespace nucleus
         }
       else
         {
-          ELLE_ASSERT_NEQ(this->_height, 0);
+          ELLE_ASSERT_NEQ(this->_height, 0u);
 
           // Try to reduce the tree's height.
           if (this->_height > 1)

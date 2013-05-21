@@ -307,8 +307,8 @@ namespace nucleus
 
               // at this point, the capacity of current nodule must
               // be zero.
-              ELLE_ASSERT_EQ(inlet->capacity(), 0);
-              ELLE_ASSERT_EQ(current().capacity(), 0);
+              ELLE_ASSERT_EQ(inlet->capacity(), 0u);
+              ELLE_ASSERT_EQ(current().capacity(), 0u);
 
               // unload the current nodule.
               current.unload();
