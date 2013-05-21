@@ -94,6 +94,7 @@ namespace surface
       std::list<std::string> args;
 
       auto pc = elle::system::process_config(elle::system::normal_config);
+      pc.daemon(true);
       if (elle::os::getenv("INFINIT_DEBUG_WITH_VALGRIND", "") == "1")
       {
         pc.pipe_file(elle::system::ProcessChannelStream::out,

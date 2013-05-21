@@ -331,11 +331,6 @@ namespace etoile
             // operating on it, record it in the journal.
             //
 
-            // relinquish the scope: at this point we know there is no
-            // remaining actor.
-            if (gear::Scope::Relinquish(scope) == elle::Status::Error)
-              throw Exception("unable to relinquish the scope");
-
             // record the scope in the journal.
             if (journal::Journal::Record(scope) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
@@ -425,11 +420,6 @@ namespace etoile
             // if the file has been sealed, i.e there is no more actor
             // operating on it, record it in the journal.
             //
-
-            // relinquish the scope: at this point we know there is no
-            // remaining actor.
-            if (gear::Scope::Relinquish(scope) == elle::Status::Error)
-              throw Exception("unable to relinquish the scope");
 
             // record the scope in the journal.
             if (journal::Journal::Record(scope) == elle::Status::Error)
@@ -523,11 +513,6 @@ namespace etoile
             // if the file has been sealed, i.e there is no more actor
             // operating on it, record it in the journal.
             //
-
-            // relinquish the scope: at this point we know there is no
-            // remaining actor.
-            if (gear::Scope::Relinquish(scope) == elle::Status::Error)
-              throw Exception("unable to relinquish the scope");
 
             // record the scope in the journal.
             if (journal::Journal::Record(scope) == elle::Status::Error)

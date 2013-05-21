@@ -32,19 +32,6 @@
 
 ELLE_LOG_COMPONENT("infinit");
 
-static
-std::ostream&
-log_destination()
-{
-  if (auto env = ::getenv("INFINIT_LOG_FILE"))
-    {
-      static std::ofstream res(env, std::fstream::trunc | std::fstream::out);
-      return res;
-    }
-  else
-    return std::cerr;
-}
-
 void
 Infinit(elle::Natural32 argc, elle::Character* argv[])
 {
@@ -236,7 +223,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
     throw elle::Exception("unable to clean Agent");
 
   hole->leave();
-  delete hole.release();
+  hole.reset(nullptr);
 
   // clean Infinit.
   if (Infinit::Clean() == elle::Status::Error)
@@ -250,10 +237,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
 int
 main(int argc, char* argv[])
 {
-  elle::log::logger
-    (std::unique_ptr<elle::log::Logger>
-     (new elle::log::TextLogger(log_destination())));
-
   auto _main = [&]
   {
     Infinit(argc, argv);

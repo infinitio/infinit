@@ -60,7 +60,7 @@ namespace surface
       elle::metrics::Reporter& _reporter;
       plasma::meta::Client& _meta;
       plasma::meta::SelfResponse& _me;
-      Device _device;
+      std::string _device_id;
       std::string _recipient_id_or_email;
       std::unordered_set<std::string> _files;
       std::string _transaction_id;
@@ -72,7 +72,7 @@ namespace surface
                       plasma::meta::Client& meta,
                       elle::metrics::Reporter& reporter,
                       plasma::meta::SelfResponse& me,
-                      Device device,
+                      std::string const& device_id,
                       std::string const& recipient_id_or_email,
                       std::unordered_set<std::string> const& files):
         Operation{"upload_files_"},
@@ -81,7 +81,7 @@ namespace surface
         _reporter(reporter),
         _meta(meta),
         _me(me),
-        _device(device),
+        _device_id(device_id),
         _recipient_id_or_email{recipient_id_or_email},
         _files{files}
       {}
@@ -105,7 +105,7 @@ namespace surface
         plasma::meta::CreateTransactionResponse res;
 
         ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
-                   this->_device.id,
+                   this->_device_id,
                    this->_files.size(),
                    first_file,
                    size,
@@ -121,7 +121,7 @@ namespace surface
                                                size,
                                                fs::is_directory(first_file),
                                                this->_network_id,
-                                               this->_device.id);
+                                               this->_device_id);
         }
         catch (...)
         {
@@ -431,7 +431,7 @@ namespace surface
                                          this->_meta,
                                          this->_reporter,
                                          this->_self,
-                                         this->_device,
+                                         this->_device.id,
                                          recipient_id_or_email,
                                          files);
     }
@@ -643,8 +643,8 @@ namespace surface
 
       if (!_check_action_is_available(this->_self.id, transaction, status))
         throw Exception(gap_api_error,
-                        elle::sprintf("you are allowed to change transaction " \
-                                      " status from %s to %s",
+                        elle::sprintf("you aren't allowed to change "
+                                      "transaction status from %s to %s",
                                       transaction.status, status));
 
       switch (status)

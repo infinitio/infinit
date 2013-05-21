@@ -377,3 +377,7 @@ if (my_bool == true ||
 
 ### Discussion
 
+XXX Always use override keyword when overriding a virtual method
+----------------------------------------------------------------
+
+### Discussion

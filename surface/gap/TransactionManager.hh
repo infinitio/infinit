@@ -41,7 +41,7 @@ namespace surface
       plasma::meta::Client& _meta;
       elle::metrics::Reporter& _reporter;
       Self& _self;
-      Device const& _device;
+      Device _device;
       ELLE_ATTRIBUTE_R(std::string, output_dir);
 
       /*-------------.

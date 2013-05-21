@@ -128,7 +128,7 @@ def main(id, tropho_endpoint):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--trophonius', '-t', help="longinus address",
-            default="infinit.im:23456")
+            default="development.infinit.io:23456")
     parser.add_argument('user', help="user name")
     args = parser.parse_args()
     main(args.user, args.trophonius)

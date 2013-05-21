@@ -173,9 +173,6 @@ namespace etoile
           Access::Close(context);
         }
 
-      // set the context's state.
-      context.state = gear::Context::StateStored;
-
       return elle::Status::Ok;
     }
 

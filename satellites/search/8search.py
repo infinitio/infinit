@@ -13,8 +13,6 @@ def login(state, email = None):
         raise Exception("you must provide INFINIT_USER")
     password = getpass("password: ")
     state.login(receiver_id, password)
-    state.connect()
-    return receiver_id
 
 def search_username(state, username):
     l_users = state.search_users(username)
@@ -90,7 +88,8 @@ if __name__ == "__main__":
 
     import gap
     with gap.State() as state:
-        login(state, os.getenv("INFINIT_USER"))
+        if not state.logged:
+            login(state, os.getenv("INFINIT_USER"))
 
         if args.username:
             search_username(state, args.username)

@@ -131,7 +131,10 @@ namespace elle
               int sig)
           {
             if (error != boost::system::errc::operation_canceled)
+            {
+              this->release();
               _wrap(error, sig, this->_handler);
+            }
           });
       }
 

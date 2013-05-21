@@ -854,7 +854,40 @@ namespace etoile
       // way, potential conflicts are prevented while expensive cryptographic
       // operations are performed only once.
       if (this->actors.empty() == false)
+      {
+        ELLE_DEBUG("actors remain: ignore the shutdown");
+
         return elle::Status::Ok;
+      }
+
+      ELLE_DEBUG("no actors remaining");
+
+      // relinquish the scope: at this point we know there is no
+      // remaining actor.
+      //
+      // Note that this action was previously being performed in the
+      // wall, right after releasing the lock on the scope and
+      // before proceeding to recording the scope in the journal.
+      //
+      // Unfortunately, this caused a problem because of this possible
+      // scenario given two threads T1 and T2:
+      //
+      //   1) T1 acquires the scope and starts the process of shutdown
+      //   2) T1 yields because of a network operation
+      //   3) T2 is scheduled, acquires the scope since still registered
+      //   4) T2 tries to lock the scope but fails since T1 has acquired this
+      //      lock and is still operating on the scope.
+      //   5) T1 is rescheduled, continues the shutdown process and completes
+      //      it by recording the scope in the journal and finally deleting
+      //      the scope, assuming it was the only actor since shutting down
+      //      the scope.
+      //   6) T2 is scheduled, acquires the lock and tries to use the scope
+      //      though it has actually been deleted by T1.
+      //
+      // The problem is solved by unregistering the scope as soon as we know
+      // we are going to go through the shutdown process and that, from now
+      // on, no more actors should be able to attach to it.
+      Scope::Relinquish(this);
 
       //
       // otherwise, the current actor is the last one and is responsible
