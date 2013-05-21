@@ -3,6 +3,7 @@
 #include <cryptography/PublicKey.hh>
 
 #include <Infinit.hh>
+#include <version.hh>
 
 //
 // ---------- definitions -----------------------------------------------------

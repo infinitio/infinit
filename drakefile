@@ -60,12 +60,34 @@ def configure(cxx_toolkit,
 
   # Version
   git = drake.git.Git()
-  version = git.version().split('-')[0]
-  major, minor, subminor = version.split('.')
-  cxx_config.define('INFINIT_VERSION_MAJOR', major)
-  cxx_config.define('INFINIT_VERSION_MINOR', minor)
-  cxx_config.define('INFINIT_VERSION_SUBMINOR', subminor)
-  cxx_config.define('INFINIT_VERSION', version)
+  version = drake.node('version.hh')
+
+  class VersionGenerator(drake.Builder):
+
+    def __init__(self, git, output):
+      drake.Builder.__init__(self, [git], [output])
+      self.__git = git
+      self.__output = output
+
+    def execute(self):
+      version = git.version().split('-')[0]
+      major, minor, subminor = map(int, version.split('.'))
+      defines = {
+        'INFINIT_VERSION_MAJOR': major,
+        'INFINIT_VERSION_MINOR': minor,
+        'INFINIT_VERSION_SUBMINOR': subminor,
+        'INFINIT_VERSION': version,
+      }
+      with open(str(self.__output.path()), 'w') as f:
+        print('#ifndef INFINIT_VERSION_HH', file = f)
+        print('# define INFINIT_VERSION_HH', file = f)
+        for name, value in defines.items():
+          print('# define %s %r' % (name, value), file = f)
+        print('#endif', file = f)
+      return True
+
+  VersionGenerator(git, version)
+
 
   # OpenSSL
   openssl = None
@@ -432,7 +454,7 @@ def configure(cxx_toolkit,
     'Scheduler.cc',
     'Scheduler.hh',
     'common/common.cc',
-    )
+    ) + [version]
   infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources,
                                  cxx_toolkit, cxx_config)
 

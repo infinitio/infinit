@@ -15,6 +15,7 @@
 #include <cryptography/Plain.hh>
 #include <cryptography/oneway.hh>
 
+#include <version.hh>
 #include "Reporter.hh"
 
 #include <fstream>
