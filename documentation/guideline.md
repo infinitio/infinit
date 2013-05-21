@@ -252,8 +252,8 @@ XXX Throwing exception from a destructor
 
 ### Discussion
 
-XXX Calling member function in constructors/destructors
--------------------------------------------------------
+XXX Calling virtual member function in constructors/destructors
+---------------------------------------------------------------
 
 ### Rationale
 
@@ -267,8 +267,15 @@ might cause a pure virtual function call.
  * Tag function with final or static
  * Document the function to not be made virtual (in the header)
 
-XXX Write README and samples for shippable libraries
-----------------------------------------------------
+XXX How to ship library
+-----------------------
+
+### How to
+
+ * README file
+ * LICENSE file
+ * Makefile file
+ * Sources files header
 
 ### Discussion
 
@@ -277,6 +284,7 @@ users, especially on Github want to have access to all the information directly
 from the main page: how to build, install and write a test program in just a
 few minutes. If it works, I'll consider the library, otherwise I am frustrated
 with my first experience as a developer.
+
 
 XXX Never use postincrement or postdecrement
 --------------------------------------------
@@ -295,16 +303,6 @@ XXX In unit tests, add at least on deserialization from hardcoded string & upgra
 
 XXX Always specify full namespace path in macros (with root namespace)
 ----------------------------------------------------------------------
-
-### Discussion
-
-XXX Never throw from a destructor
----------------------------------
-
-### Discussion
-
-XXX Always specify all parent classes and all attributes in constructors (especially in copy, move and deserialization constructors)
-------------------------------------------------------------------------------------------------------------------------------------
 
 ### Discussion
 
@@ -330,11 +328,6 @@ XXX Highlight early returns in function (and prefer short function with few bloc
 
 XXX Use of template should be considered twice (or more)
 --------------------------------------------------------
-
-### Discussion
-
-XXX How and when to use catch (...)
------------------------------------
 
 ### Discussion
 
@@ -381,3 +374,4 @@ XXX Always use override keyword when overriding a virtual method
 ----------------------------------------------------------------
 
 ### Discussion
+
