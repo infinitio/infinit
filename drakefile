@@ -1,6 +1,7 @@
 import drake
 import drake.cxx
 import drake.cxx.boost
+import drake.git
 
 import os
 import sys
@@ -58,12 +59,13 @@ def configure(cxx_toolkit,
   cxx_config.define("HAVE_SETXATTR")
 
   # Version
-  version_major = '0'
-  version_minor = '1'
-
-  cxx_config.define('INFINIT_VERSION_MAJOR', version_major)
-  cxx_config.define('INFINIT_VERSION_MINOR', version_minor)
-  cxx_config.define('INFINIT_VERSION', '%s.%s' % (version_major, version_minor))
+  git = drake.git.Git()
+  version = git.version().split('-')[0]
+  major, minor, subminor = version.split('.')
+  cxx_config.define('INFINIT_VERSION_MAJOR', major)
+  cxx_config.define('INFINIT_VERSION_MINOR', minor)
+  cxx_config.define('INFINIT_VERSION_SUBMINOR', subminor)
+  cxx_config.define('INFINIT_VERSION', version)
 
   # OpenSSL
   openssl = None
