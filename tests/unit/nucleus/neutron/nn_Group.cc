@@ -15,8 +15,6 @@ using namespace infinit;
 
 #define CHECK(call) if (call != elle::Status::Ok) { assert(false); } else
 
-ELLE_LOG_COMPONENT("infinit.tests.nucleus.neutron.Group");
-
 void test1()
 {
   cryptography::KeyPair owner =
