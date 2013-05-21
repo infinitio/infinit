@@ -115,21 +115,21 @@ namespace infinit
   _satellite_wrapper(std::string const& name,
                      std::function<void ()> const& action)
   {
+    auto sched = reactor::Scheduler::scheduler();
     try
     {
-      auto sig_fn = [] (int)
+      auto sig_fn = [sched] (int)
       {
-        auto sched = reactor::Scheduler::scheduler();
         if (sched != nullptr)
         {
-          sched->terminate_later();
+          sched->terminate();
         }
         else
         {
           ELLE_WARN("signal caught, but no scheduler alive");
         }
       };
-      signal(SIGINT, sig_fn);
+      elle::signal::ScopedGuard sigint{*sched, {SIGINT}, sig_fn};
       action();
       ELLE_DEBUG("quiting %s", name);
       return 0;
