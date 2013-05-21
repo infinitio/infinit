@@ -60,8 +60,12 @@ namespace hole
       Host::~Host()
       {
         // Stop operations on the socket before it is deleted.
-        if (!_rpcs_handler->done())
-          _rpcs_handler->terminate_now();
+        // Check if we are not committing suicide.
+        auto current = reactor::Scheduler::scheduler()->current();
+        if (!_rpcs_handler->done() && current != _rpcs_handler)
+        {
+            _rpcs_handler->terminate_now();
+        }
       }
 
       /*-----.
