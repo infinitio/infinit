@@ -54,6 +54,10 @@ namespace surface
       void
       finalize(OperationId const id);
 
+      /// Clean all terminated operations.
+      void
+      cleanup();
+
     protected:
      static
       OperationId

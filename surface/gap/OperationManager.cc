@@ -57,6 +57,21 @@ namespace surface
     }
 
     void
+    OperationManager::cleanup()
+    {
+      std::vector<OperationId> to_remove;
+      for (auto& pair: this->_operations)
+      {
+        auto& ptr = pair.second;
+        if ((ptr == nullptr) ||
+            (ptr->done() && ptr->scheduled_for_deletion()))
+          to_remove.push_back(pair.first);
+      }
+      for (auto id: to_remove)
+        this->finalize(id);
+    }
+
+    void
     OperationManager::_cancel(std::string const& name)
     {
       ELLE_TRACE_METHOD(name);
