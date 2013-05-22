@@ -10,7 +10,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
 {
   enforce(version == 0);
 
-  ar & elle::serialize::named("transaction_id", res.id);
+  ar & elle::serialize::named("_id", res.id);
   ar & elle::serialize::named("sender_id", res.sender_id);
   ar & elle::serialize::named("sender_fullname", res.sender_fullname);
   ar & elle::serialize::named("sender_device_id", res.sender_device_id);

@@ -67,19 +67,19 @@ class TrophoniusNotify(Notifier):
         self.conn.send("{}\n".format(msg))
 
     def _add_notif_to_db(self, recipient_id, notif):
-        user_ = database.users().find_one(
+        recipient = database.users().find_one(
             database.ObjectId(recipient_id));
 
-        if not user_:
+        if not recipient:
             return None
 
         #Timestamp in ms.
         notif['timestamp'] = int(time.time() * 1000)
 
-        user_['notifications'].append(notif)
-        database.users().save(user_)
+        recipient['notifications'].append(notif)
+        database.users().save(recipient)
 
-        return user_
+        return recipient
 
     def notify_one(self, notification_type, recipient_id, message, store = True):
         message['notification_type'] = notification_type;

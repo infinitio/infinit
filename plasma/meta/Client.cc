@@ -154,7 +154,7 @@ SERIALIZE_RESPONSE(plasma::meta::InviteUserResponse, ar, res)
 SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
 {
   // XXX see plasma/plasma.hxx
-  ar & named("transaction_id", res.id);
+  ar & named("_id", res.id);
   ar & named("sender_id", res.sender_id);
   ar & named("sender_fullname", res.sender_fullname);
   ar & named("sender_device_id", res.sender_device_id);
