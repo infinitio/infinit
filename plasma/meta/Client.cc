@@ -166,6 +166,7 @@ SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
   ar & named("first_filename", res.first_filename);
   ar & named("files_count", res.files_count);
   ar & named("total_size", res.total_size);
+  ar & named("timestamp", res.timestamp);
   ar & named("is_directory", res.is_directory);
   ar & named("status", res.status);
   ar & named("message", res.message);

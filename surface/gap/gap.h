@@ -200,6 +200,10 @@ extern "C" {
   gap_transaction_total_size(gap_State*,
                              char const*);
 
+  double
+  gap_transaction_timestamp(gap_State* state,
+                            char const* transaction_id);
+
   // gap_Bool
   int
   gap_transaction_is_directory(gap_State*,
