@@ -28,7 +28,9 @@ namespace surface
     using NetworkManager = ::surface::gap::NetworkManager;
     using UserManager = ::surface::gap::UserManager;
 
-    class TransactionManager: public OperationManager, Notifiable
+    class TransactionManager:
+      public OperationManager,
+      public Notifiable
     {
       /*-----------.
       | Attributes |
