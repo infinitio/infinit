@@ -77,10 +77,11 @@ namespace surface
       ELLE_TRACE_METHOD(name);
       for (auto& pair: _operations)
       {
-       if (pair.second != nullptr && pair.second->name() == name && !pair.second->done())
+       if (pair.second != nullptr &&
+           pair.second->name() == name &&
+           !pair.second->done())
         {
           pair.second->cancel();
-          return;
         }
       }
     }
@@ -96,7 +97,6 @@ namespace surface
             boost::algorithm::ends_with(pair.second->name(), name))
         {
           pair.second->cancel();
-          return;
         }
       }
     }
@@ -111,7 +111,6 @@ namespace surface
             !pair.second->done())
         {
           pair.second->cancel();
-          return;
         }
       }
     }
