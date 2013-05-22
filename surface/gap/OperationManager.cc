@@ -32,7 +32,20 @@ namespace surface
     OperationManager::~OperationManager()
     {
       for (auto& operation: this->_operations)
-        operation.second->cancel();
+      {
+        if (operation.second == nullptr)
+          continue;
+        try
+        {
+          operation.second->cancel();
+        }
+        catch (...)
+        {
+          ELLE_ERR("couldn't cancel operation %s: %s",
+                   operation.second->name(),
+                   elle::exception_string());
+        }
+      }
     }
 
     OperationManager::OperationId

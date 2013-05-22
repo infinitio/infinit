@@ -393,8 +393,16 @@ namespace surface
 
     TransactionManager::~TransactionManager()
     {
-      ELLE_TRACE_METHOD("");
-      this->clear();
+      try
+      {
+        ELLE_TRACE("destroying the transaction manager");
+        this->clear();
+      }
+      catch (...)
+      {
+        ELLE_WARN("couldn't clear the transaction manager: %s",
+                  elle::exception_string());
+      }
     }
 
     void
