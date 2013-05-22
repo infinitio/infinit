@@ -361,6 +361,8 @@ namespace surface
                                               bool new_)
     {
       ELLE_DEBUG_SCOPE("Handling notification");
+      this->_check_trophonius();
+
       // Connexion established.
       if (notif.notification_type == NotificationType::connection_enabled)
         // XXX set _connection_enabled to true
