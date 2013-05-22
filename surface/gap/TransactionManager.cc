@@ -459,12 +459,16 @@ namespace surface
         };
       }
 
-      auto& progress_ptr = this->_progresses[id];
-      if (progress_ptr == nullptr)
-        progress_ptr = elle::make_unique<TransactionProgress>();
 
-      ELLE_ASSERT(progress_ptr != nullptr);
-      TransactionProgress& progress = *progress_ptr;
+      auto& progress = this->_progresses(
+        [&id] (TransactionProgressMap& map) -> TransactionProgress&
+        {
+          auto& ptr = map[id];
+          if (ptr == nullptr)
+            ptr = elle::make_unique<TransactionProgress>();
+          return *ptr;
+        }
+      );
 
       if (progress.process == nullptr)
       {
@@ -493,44 +497,49 @@ namespace surface
             pc.setenv("ELLE_LOG_FILE", log_file);
           }
         }
-        progress.process = elle::make_unique<elle::system::Process>(
-          std::move(pc),
-          progress_binary,
-          arguments
-          );
-      }
-      ELLE_ASSERT(progress.process != nullptr);
-
-      if (!progress.process->running())
-      {
-        int current_size = 0;
-        int total_size = 0;
-        std::stringstream ss;
-        ss << progress.process->read();
-        ss >> current_size >> total_size;
-        progress.process.reset();
-
-        if (total_size == 0)
-          return 0.f;
-        progress.last_value = float(current_size) / float(total_size);
-
-        if (progress.last_value < 0)
-        {
-          ELLE_WARN("8progress returned a negative integer: %s", progress);
-          progress.last_value = 0;
-        }
-        else if (progress.last_value > 1.0f)
-        {
-          ELLE_WARN("8progress returned an integer greater than 1: %s",
-                    progress);
-          progress.last_value = 1.0f;
-        }
+        this->_progresses(
+          [&] (TransactionProgressMap&)
+          {
+            progress.process = elle::make_unique<elle::system::Process>(
+              std::move(pc),
+              progress_binary,
+              arguments);
+          });
       }
 
-      ELLE_DEBUG("transaction_progress(%s) -> %f",
-                 id,
-                 progress.last_value);
-      return progress.last_value;
+      return this->_progresses(
+        [&] () -> float
+        {
+          if (progress.process == nullptr)
+            return 0.0f;
+          if (!progress.process->running())
+          {
+            int current_size = 0;
+            int total_size = 0;
+            std::stringstream ss;
+            ss << progress.process->read();
+            ss >> current_size >> total_size;
+            progress.process.reset();
+
+            if (total_size == 0)
+              return 0.f;
+            progress.last_value = float(current_size) / float(total_size);
+
+            if (progress.last_value < 0)
+            {
+              ELLE_WARN("8progress returned a negative integer: %s", progress);
+              progress.last_value = 0;
+            }
+            else if (progress.last_value > 1.0f)
+            {
+              ELLE_WARN("8progress returned an integer greater than 1: %s",
+                        progress);
+              progress.last_value = 1.0f;
+            }
+          }
+          return progress.last_value;
+        }
+      );
     }
 
     TransactionManager::OperationId

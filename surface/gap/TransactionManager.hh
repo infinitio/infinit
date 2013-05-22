@@ -89,7 +89,8 @@ namespace surface
       `---------*/
       struct TransactionProgress;
       typedef std::unique_ptr<TransactionProgress> TransactionProgressPtr;
-      std::map<std::string, TransactionProgressPtr> _progresses;
+      typedef std::map<std::string, TransactionProgressPtr> TransactionProgressMap;
+      elle::threading::Monitor<TransactionProgressMap> _progresses;
 
     public:
       /// @brief Returns a floating number in [0.0f, 1.0f]
