@@ -26,9 +26,9 @@ const elle::Version Infinit::version(INFINIT_VERSION_MAJOR,
 /// this constant contains the copyright string.
 ///
 const elle::String              Infinit::Copyright(
-                                  "Infinit " +
-                                  elle::sprint(Infinit::version) +
-                                  " " +
+                                  "Infinit "
+                                  INFINIT_VERSION
+                                  " "
                                   "Copyright (c) 2013 "
                                   "infinit.io All rights reserved.");
 

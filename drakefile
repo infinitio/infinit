@@ -70,8 +70,9 @@ def configure(cxx_toolkit,
       self.__output = output
 
     def execute(self):
-      version = git.version().split('-')[0]
-      major, minor, subminor = map(int, version.split('.'))
+      self.output('Generate %s' % self.__output.path())
+      version = git.version()
+      major, minor, subminor = map(int, version.split('-')[0].split('.'))
       defines = {
         'INFINIT_VERSION_MAJOR': major,
         'INFINIT_VERSION_MINOR': minor,
@@ -82,7 +83,7 @@ def configure(cxx_toolkit,
         print('#ifndef INFINIT_VERSION_HH', file = f)
         print('# define INFINIT_VERSION_HH', file = f)
         for name, value in defines.items():
-          print('# define %s %r' % (name, value), file = f)
+          print('# define %s %s' % (name, repr(value).replace("'", '"')), file = f)
         print('#endif', file = f)
       return True
 
