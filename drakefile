@@ -27,11 +27,18 @@ def configure(cxx_toolkit,
 
   if enable_debug:
     cxx_config.define("DEBUG")
+    cxx_config.enable_debug_symbols()
   else:
+    cxx_config.enable_optimization(True)
     cxx_config.define("NDEBUG")
 
-  build_types = {'Development': (),
-                 'Production': ("INFINIT_PRODUCTION_BUILD",)}
+  build_types = {
+    'Development': (),
+    'Production': ("INFINIT_PRODUCTION_BUILD",)
+  }
+
+  if build_type == 'Production':
+    cxx_config.enable_optimization(2)
 
   if not build_type in build_types.keys():
     raise Exception("build type {} is unknown. Candidates are {}.".format(
