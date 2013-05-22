@@ -94,7 +94,6 @@ namespace surface
       std::list<std::string> args;
 
       auto pc = elle::system::process_config(elle::system::normal_config);
-      pc.daemon(true);
       if (elle::os::getenv("INFINIT_DEBUG_WITH_VALGRIND", "") == "1")
       {
         pc.pipe_file(elle::system::ProcessChannelStream::out,
@@ -157,54 +156,57 @@ namespace surface
     InfinitInstanceManager::stop(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
+      if (this->_instances.find(network_id) == this->_instances.end())
+      {
+        ELLE_DEBUG("no network %s found, no 8infinit to kill", network_id);
+        return;
+      }
+
+      elle::system::Process::StatusCode status_code = 0;
       try
       {
         using elle::system::ProcessTermination;
+        typedef elle::system::Process::Milliseconds ms;
         auto const& instance = this->instance(network_id);
         ELLE_ASSERT_NEQ(instance.process, nullptr);
-        instance.process->interrupt(ProcessTermination::dont_wait);
+        auto& process = *(instance.process);
+        if (instance.process->running())
+          status_code = process.interrupt(ProcessTermination::dont_wait)
+            .wait_status(ms{1000});
+        if (instance.process->running())
+          status_code = process.terminate(ProcessTermination::dont_wait)
+            .wait_status(ms{100});
+        if (instance.process->running())
+          status_code = process.kill(ProcessTermination::dont_wait)
+            .wait_status(ms{1});
       }
       catch (elle::Exception const& e)
       {
-        ELLE_WARN("no network found, no infinit to kill");
+        ELLE_WARN("Couldn't interrupt 8infinit instance of %s: %s",
+                  network_id, e);
       }
-
-      auto it_proc = this->_instances.find(network_id);
-      if (it_proc != this->_instances.end())
+      if (status_code != 0)
       {
-        ELLE_ASSERT_NEQ(it_proc->second, nullptr);
-        auto& proc = it_proc->second->process;
-
-        if (proc->running())
+        if (status_code < 0)
         {
-          proc->interrupt(elle::system::ProcessTermination::dont_wait);
+          if (-status_code == SIGINT)
+            ELLE_LOG("8infinit stopped with signal %s (%s)",
+                     -status_code,
+                     elle::system::strsignal(-status_code));
+          else
+            ELLE_ERR("8infinit stopped with signal %s (%s)",
+                     -status_code,
+                     elle::system::strsignal(-status_code));
         }
         else
-        {
-          if (proc->status() != 0)
-          {
-            elle::system::Process::StatusCode status_code = proc->status();
-            if (status_code < 0)
-            {
-              if (-status_code == SIGINT)
-                ELLE_LOG("8infinit stopped with signal %s (%s)",
-                         -status_code,
-                         elle::system::strsignal(-status_code));
-              else
-                ELLE_ERR("8infinit stopped with signal %s (%s)",
-                         -status_code,
-                         elle::system::strsignal(-status_code));
-            }
-            else
-              ELLE_ERR("8infinit exited with status %s", status_code);
-          }
-          else
-          {
-            ELLE_DEBUG("status 0");
-          }
-        }
-        this->_instances.erase(network_id);
+          ELLE_ERR("8infinit(%s) exited with status %s",
+                   network_id, status_code);
       }
+      else
+      {
+        ELLE_DEBUG("8infinit(%s) exited with status 0", network_id);
+      }
+      this->_instances.erase(network_id);
     }
 
     bool
