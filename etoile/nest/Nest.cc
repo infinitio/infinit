@@ -600,8 +600,7 @@ namespace etoile
 
       // First, let us lock the egg so that someone does not try to
       // use/change it while we are loading it.
-      reactor::Lock lock(*reactor::Scheduler::scheduler(),
-                         pod->mutex().write());
+      reactor::Lock lock(pod->mutex().write());
 
       // Nothing to do if the egg already holds the block.
       //

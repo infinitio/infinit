@@ -30,7 +30,7 @@ namespace infinit
     Packet
     Serializer::read()
     {
-      reactor::Lock lock(scheduler(), _lock_read);
+      reactor::Lock lock(_lock_read);
       ELLE_TRACE("%s: read packet", *this)
       {
         uint32_t hash_size(_uint32_get(_stream));
@@ -72,7 +72,7 @@ namespace infinit
     void
     Serializer::_write(Packet& packet)
     {
-      reactor::Lock lock(scheduler(), _lock_write);
+      reactor::Lock lock(_lock_write);
       ELLE_TRACE("%s: send %s", *this, packet)
       {
         auto hash = cryptography::oneway::hash(

@@ -962,7 +962,7 @@ namespace etoile
       //
       // this is especially required since Load()ing may block the current
       // fiber.
-      reactor::Lock lock(*reactor::Scheduler::scheduler(), mutex.write());
+      reactor::Lock lock(mutex.write());
       {
         // allocate a context.
         auto context = std::unique_ptr<T>(new T);
@@ -1020,7 +1020,7 @@ namespace etoile
       if (Infinit::Configuration.etoile.debug == true)
         printf("[etoile] gear::Scope::Disclose()\n");
 
-      reactor::Lock lock(*reactor::Scheduler::scheduler(), mutex.write());
+      reactor::Lock lock(mutex.write());
       {
         Scope*          scope = nullptr;
         T*              context = nullptr;

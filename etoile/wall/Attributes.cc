@@ -46,8 +46,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(*reactor::Scheduler::scheduler(),
-                           scope->mutex.write());
+        reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -85,7 +84,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(*reactor::Scheduler::scheduler(), scope->mutex);
+        reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -125,7 +124,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(*reactor::Scheduler::scheduler(), scope->mutex);
+        reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -162,8 +161,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(*reactor::Scheduler::scheduler(),
-                           scope->mutex.write());
+        reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
