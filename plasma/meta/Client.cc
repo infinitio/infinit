@@ -166,6 +166,16 @@ SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
   ar & named("first_filename", res.first_filename);
   ar & named("files_count", res.files_count);
   ar & named("total_size", res.total_size);
+  try
+  {
+    // XXX remove try catch when all transactions have a timestamp
+    ar & named("timestamp", res.timestamp);
+  }
+  catch (...)
+  {
+    ELLE_WARN("timestamp not yet present in all transactions");
+    res.timestamp = 0.0;
+  }
   ar & named("is_directory", res.is_directory);
   ar & named("status", res.status);
   ar & named("message", res.message);

@@ -128,7 +128,14 @@ namespace surface
     State::~State()
     {
       ELLE_TRACE_METHOD("");
-      this->logout();
+      try
+      {
+        this->logout();
+      }
+      catch (...)
+      {
+        ELLE_WARN("Couldn't logout: %s", elle::exception_string());
+      }
     }
 
     std::string const&

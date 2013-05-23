@@ -57,8 +57,16 @@ namespace hole
       Host::~Host()
       {
         // Stop operations on the socket before it is deleted.
-        if (!_rpcs_handler->done())
-          _rpcs_handler->terminate_now();
+        // Check if we are not committing suicide.
+        auto sched = reactor::Scheduler::scheduler();
+        if (sched != nullptr)
+        {
+          auto current = sched->current();
+          if (!_rpcs_handler->done() && current != _rpcs_handler)
+          {
+            _rpcs_handler->terminate_now();
+          }
+        }
       }
 
       /*-----.
@@ -68,18 +76,22 @@ namespace hole
       void
       Host::_rpc_run()
       {
+        auto fn_on_exit = [&] {
+          ELLE_LOG("%s: left", *this);
+          this->_slug._remove(this);
+        };
+        elle::Finally on_exit(std::move(fn_on_exit));
+
         try
-          {
-            this->_rpcs.run();
-          }
+        {
+          this->_rpcs.run();
+        }
         catch (reactor::network::Exception& e)
-          {
-            ELLE_WARN("%s: discarded: %s", *this, e.what());
-            this->_slug._remove(this);
-            return;
-          }
-        ELLE_LOG("%s: left", *this);
-        this->_slug._remove(this);
+        {
+          ELLE_WARN("%s: discarded: %s", *this, e.what());
+          this->_slug._remove(this);
+          return;
+        }
       }
 
       /*----.

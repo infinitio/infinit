@@ -54,6 +54,10 @@ namespace surface
       void
       finalize(OperationId const id);
 
+      /// Clean all terminated operations.
+      void
+      cleanup();
+
     protected:
      static
       OperationId
@@ -99,7 +103,7 @@ namespace surface
        bool done() const { return this->_done; }
        bool succeeded() const { return this->_succeeded; }
        bool cancelled() const { return this->_cancelled; }
-       bool delete_later() const { return this->_delete_later; }
+       bool scheduled_for_deletion() const { return this->_delete_later; }
        void delete_later(bool flag = true) { this->_delete_later = flag; }
 
      protected:

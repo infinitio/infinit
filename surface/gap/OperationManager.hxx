@@ -52,7 +52,7 @@ namespace surface
 
        virtual
        ~OperationAdaptor()
-        {
+       {
          ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
          ELLE_TRACE_FUNCTION(this->_name);
 
@@ -95,7 +95,7 @@ namespace surface
                     this->_exception_string(),
                     this->_name);
          }
-        }
+       }
 
        virtual
        void

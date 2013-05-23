@@ -28,11 +28,18 @@ def configure(cxx_toolkit,
 
   if enable_debug:
     cxx_config.define("DEBUG")
+    cxx_config.enable_debug_symbols()
   else:
+    cxx_config.enable_optimization(True)
     cxx_config.define("NDEBUG")
 
-  build_types = {'Development': (),
-                 'Production': ("INFINIT_PRODUCTION_BUILD",)}
+  build_types = {
+    'Development': (),
+    'Production': ("INFINIT_PRODUCTION_BUILD",)
+  }
+
+  if build_type == 'Production':
+    cxx_config.enable_optimization(2)
 
   if not build_type in build_types.keys():
     raise Exception("build type {} is unknown. Candidates are {}.".format(
@@ -103,49 +110,60 @@ def configure(cxx_toolkit,
 
   if cxx_toolkit.os == drake.os.linux:
     if architecture_wordsize == 32:
-      openssl_prefix = 'dependencies/platforms/linux32/work/'
+      dependencies_prefix = 'dependencies/platforms/linux32/work/'
     elif architecture_wordsize == 64:
-      openssl_prefix = 'dependencies/platforms/linux64/work/'
+      dependencies_prefix = 'dependencies/platforms/linux64/work/'
     else:
       raise Exception("architecture {} not supported".format(architecture))
   elif cxx_toolkit.os == drake.os.macos:
     if architecture_wordsize == 32:
-      openssl_prefix = 'dependencies/platforms/macosx32/work/'
+      dependencies_prefix = 'dependencies/platforms/macosx32/work/'
     elif architecture_wordsize == 64:
-      openssl_prefix = 'dependencies/platforms/macosx64/work/'
+      dependencies_prefix = 'dependencies/platforms/macosx64/work/'
     else:
       raise Exception("architecture {} not supported".format(architecture))
   else:
     raise Exception("operating system {} not supported".format(cxx_toolkit.os))
 
-  #assert os.path.isdir(
-  #  os.path.join(
-  #    os.path.abspath(os.path.dirname(__file__)),
-  #    openssl_prefix
-  #  )
-  #)
-
   openssl = drake.cxx.LibraryConfiguration(
     'openssl/opensslconf.h',
-    prefix = openssl_prefix,
+    prefix = dependencies_prefix,
+  )
+
+  curl = drake.cxx.LibraryConfiguration(
+    'curl/curl.h',
+    prefix = dependencies_prefix,
   )
 
   if cxx_toolkit.os == drake.os.macos:
-    suffix = '.1.0.0.dylib'
+    ssl_suffix = '.1.0.0.dylib'
+    curl_suffix = '.4.dylib'
   elif cxx_toolkit.os == drake.os.windows:
-    suffix = '.dll'
+    ssl_suffix = '.dll'
+    curl_suffix = '.dll'
   else:
-    suffix = '.so.1.0.0'
+    ssl_suffix = '.so.1.0.0'
+    curl_suffix = '.so.4'
 
   openssl_lib = drake.copy(
     drake.nodes(
-      openssl.libraries_path / ('libssl%s' % suffix),
-      openssl.libraries_path / ('libcrypto%s' % suffix),
+      openssl.libraries_path / ('libssl%s' % ssl_suffix),
+      openssl.libraries_path / ('libcrypto%s' % ssl_suffix),
     ),
     'lib',
     openssl.libraries_path
   )
+
+  curl_lib = drake.copy(
+    drake.nodes(
+      curl.libraries_path / ('libcurl%s' % curl_suffix)
+    ),
+    'lib',
+    curl.libraries_path
+  )
+
   cxx_config += openssl.config()
+  cxx_config += curl.config()
 
   # Boost
   boost = boost or drake.cxx.boost.Boost()
@@ -743,6 +761,7 @@ def configure(cxx_toolkit,
 
   build = drake.Rule('build')
   build << openssl_lib
+  build << curl_lib
 
   ## -------- ##
   ## Programs ##
