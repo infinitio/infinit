@@ -957,9 +957,9 @@ namespace surface
                 }
                 // A parsing bug in gcc (fixed in 4.8.3) make this block
                 // mandatory.
-                catch (std::exception const& e)
+                catch (std::exception const&)
                 {
-                  exception = std::make_exception_ptr(e);
+                  exception = std::current_exception();
                 }
                 catch (...)
                 {
@@ -975,20 +975,8 @@ namespace surface
             return;
           if (exception != std::exception_ptr{})
           {
-            std::string msg;
-            try
-            {
-              std::rethrow_exception(exception);
-            }
-            catch (std::exception const& err)
-            {
-              msg = err.what();
-            }
-            catch (...)
-            {
-              msg = "Unknown exception type";
-            }
-            ELLE_ERR("cannot connect infinit instances: %s", msg);
+            ELLE_ERR("cannot connect infinit instances: %s",
+                     elle::exception_string(exception));
             this->_transaction_manager.update(this->_transaction.id,
                                               gap_transaction_status_canceled);
             std::rethrow_exception(exception);
