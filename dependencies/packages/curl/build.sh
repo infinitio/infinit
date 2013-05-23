@@ -42,7 +42,9 @@ uptodate "${CURL_LIBRARIES}" ||
         --disable-ldaps                                 \
         --disable-rtmp                                  \
         --disable-sspi                                  \
+        --disable-ssh                                   \
         --disable-rtsp                                  \
+        --without-libidn                                \
         --disable-rtmp || die "unable to configure"
     make all install || die "unable to build"
     for lib in ${WORKDIR}/lib/libcurl.so*
