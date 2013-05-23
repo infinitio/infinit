@@ -375,3 +375,13 @@ XXX Always use override keyword when overriding a virtual method
 
 ### Discussion
 
+XXX How to include headers
+
+### Quote or angle brackets ?
+
+### Order
+
+### Discussion
+
+Raph: Use both, quote for module includes, angle brackets with absolute path
+for everything else.
