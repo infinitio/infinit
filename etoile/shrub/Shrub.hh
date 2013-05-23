@@ -9,6 +9,7 @@
 
 # include <etoile/path/fwd.hh>
 # include <etoile/shrub/Riffle.hh>
+# include <etoile/shrub/fwd.hh>
 
 namespace etoile
 {
@@ -18,7 +19,6 @@ namespace etoile
   ///
   namespace shrub
   {
-    class Shrub;
     extern Shrub* global_shrub;
 
     ///
@@ -85,32 +85,38 @@ namespace etoile
       ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, sweep_frequency);
 
     public:
+      /// Allocate \param size slots for the introduction of new riffles.
       void
-      allocate(const elle::Natural32);
+      allocate(const elle::Natural32 size);
+      /// Fill the \param venue by resolving the given \param route as much as
+      /// possible.
       void
       resolve(path::Route const& route,
               path::Venue& venue);
+      /// Fill the shrub with the given \param venue for  \param route.
       void
-      update(const path::Route&,
-             const path::Venue&);
+      update(const path::Route& route,
+             const path::Venue& venue);
+      /// Remove the \param route from the Shrub.
       void
-      evict(const path::Route&);
-
+      evict(const path::Route& route);
       void
+      /// Dump the whole shrub.
       show(const elle::Natural32 = 0);
-
-      static
+      /// Remove all routes from the Shrub.
       void
       clear();
+
+    /*------.
+    | Cache |
+    `------*/
+    private:
+      /// Remove expired routes.
       void
-      sweeper();
-
-      //
-      // static attributes
-      //
-      static Riffle*                    Riffles;
-
-      static elle::container::timeline::Timeline<Riffle*>    Queue;
+      _sweeper();
+      friend class Riffle;
+      ELLE_ATTRIBUTE(Riffle*, riffles);
+      ELLE_ATTRIBUTE(elle::container::timeline::Timeline<Riffle*>, queue);
     };
 
   }

@@ -16,20 +16,6 @@ namespace etoile
 
 //
 // ---------- definitions -----------------------------------------------------
-//
-
-    ///
-    /// this container represents the root of the hierarchical data container.
-    ///
-    Riffle*                             Shrub::Riffles = nullptr;
-
-    ///
-    /// this queue maintains the freshness timestamps related to the riffles.
-    ///
-    /// whenever the capacity is reached, this data structure is used
-    /// to quickly locate the least-recently-used riffles.
-    ///
-    elle::container::timeline::Timeline<Riffle*>             Shrub::Queue;
 
     /*-------------.
     | Construction |
@@ -39,57 +25,50 @@ namespace etoile
                  boost::posix_time::time_duration const& lifespan,
                  boost::posix_time::time_duration const& sweep_frequency):
       _capacity(capacity),
-      _sweep_frequency(sweep_frequency)
+      _sweep_frequency(sweep_frequency),
+      _riffles(nullptr),
+      _queue()
     {
-      reactor::Scheduler::scheduler()->Every(std::bind(&Shrub::sweeper, this),
+      reactor::Scheduler::scheduler()->Every(std::bind(&Shrub::_sweeper, this),
                                              "Shrub sweeper", sweep_frequency);
     }
 
     Shrub::~Shrub()
     {
-      // delete the shrub content, if present.
-      if (Shrub::Riffles != nullptr)
-        {
-          // flush the riffle.
-          if (Shrub::Riffles->Flush() == elle::Status::Error)
-            throw Exception("unable to flush the riffles");
+      // Delete the shrub content, if present.
+      if (this->_riffles != nullptr)
+      {
+        this->_riffles->flush();
+        // release the shrub slot.
+        if (this->_queue.Delete(this->_riffles->timestamp(),
+                                this->_riffles) == elle::Status::Error)
+          throw Exception("unable to remove the riffle");
 
-          // release the shrub slot.
-          if (Shrub::Queue.Delete(Shrub::Riffles->timestamp,
-                                  Shrub::Riffles) == elle::Status::Error)
-            throw Exception("unable to remove the riffle");
-
-          // delete the root riffle.
-          delete Shrub::Riffles;
-          Shrub::Riffles = nullptr;
-        }
+        // delete the root riffle.
+        delete this->_riffles;
+        this->_riffles = nullptr;
+      }
     }
 
     void
     Shrub::clear()
     {
       // delete the shrub content, if present.
-      if (Shrub::Riffles != nullptr)
+      if (this->_riffles != nullptr)
         {
           // flush the riffle.
-          if (Shrub::Riffles->Flush() == elle::Status::Error)
-            throw Exception("unable to flush the riffles");
-
+          this->_riffles->flush();
           // release the shrub slot.
-          if (Shrub::Queue.Delete(Shrub::Riffles->timestamp,
-                                  Shrub::Riffles) == elle::Status::Error)
+          if (this->_queue.Delete(this->_riffles->timestamp(),
+                                  this->_riffles) == elle::Status::Error)
             throw Exception("unable to remove the riffle");
 
           // delete the root riffle.
-          delete Shrub::Riffles;
-          Shrub::Riffles = nullptr;
+          delete this->_riffles;
+          this->_riffles = nullptr;
         }
     }
 
-    ///
-    /// this method allocates _size_ slots for the introduction of
-    /// new riffles.
-    ///
     void
     Shrub::allocate(const elle::Natural32 size)
     {
@@ -109,15 +88,15 @@ namespace etoile
           Riffle*                       riffle;
 
           // stop if there are enough available slots to proceed.
-          if ((this->_capacity - Shrub::Queue.container.size()) >= size)
+          if ((this->_capacity - this->_queue.container.size()) >= size)
             break;
 
           // stop if the shrub is empty.
-          if (Shrub::Queue.container.empty() == true)
+          if (this->_queue.container.empty() == true)
             break;
 
           // retrieve the least-recently-used bucket of riffles.
-          bucket = Shrub::Queue.container.begin()->second;
+          bucket = this->_queue.container.begin()->second;
 
           // retrieve the first bucket's riffle.
           //
@@ -128,43 +107,30 @@ namespace etoile
           riffle = bucket->container.front();
 
           // depending on the riffle's parent.
-          if (riffle->parent != nullptr)
-            {
-              // destroy the entry in the parent riffle.
-              if (riffle->parent->Destroy(riffle->slab) == elle::Status::Error)
-                throw Exception("unable to destroy the riffle");
-            }
+          if (riffle->parent() != nullptr)
+          {
+            // destroy the entry in the parent riffle.
+            riffle->parent()->destroy(riffle->slab());
+          }
           else
-            {
-              //
-              // otherwise, the root riffle needs to be released.
-              //
-              // note that the loop will be exited right after that
-              // since the shrub will be empty.
-              //
+          {
+            // Otherwise, the root riffle needs to be released.  Note that the
+            // loop will be exited right after that since the shrub will be
+            // empty.
+            this->_riffles->flush();
 
-              // flush the riffle.
-              if (Shrub::Riffles->Flush() == elle::Status::Error)
-                throw Exception("unable to flush the riffles");
-
-              // release the shrub slot.
-              if (Shrub::Queue.Delete(Shrub::Riffles->timestamp,
-                                      Shrub::Riffles) == elle::Status::Error)
-                throw Exception("unable to remove the riffle");
-
-              // delete the root riffle.
-              delete Shrub::Riffles;
-
-              // reset the pointer.
-              Shrub::Riffles = nullptr;
-            }
+            // release the shrub slot.
+            if (this->_queue.Delete(this->_riffles->timestamp(),
+                                    this->_riffles) == elle::Status::Error)
+              throw Exception("unable to remove the riffle");
+            // delete the root riffle.
+            delete this->_riffles;
+            // reset the pointer.
+            this->_riffles = nullptr;
+          }
         }
     }
 
-    ///
-    /// this method takes a path in the form of a route and updates
-    /// the venue as much as possible through the shrub.
-    ///
     void
     Shrub::resolve(path::Route const& route,
                    path::Venue& venue)
@@ -175,11 +141,11 @@ namespace etoile
       elle::utility::Time threshold;
 
       // make sure this root riffle is present.
-      if (Shrub::Riffles == nullptr)
+      if (this->_riffles == nullptr)
         return;
 
       // resolve the root directory by recording its location.
-      if (venue.Record(Shrub::Riffles->location) == elle::Status::Error)
+      if (venue.Record(this->_riffles->location()) == elle::Status::Error)
         throw Exception("unable to record the location");
 
       // retrieve the current timestamp.
@@ -193,68 +159,49 @@ namespace etoile
         this->_lifespan.total_milliseconds());
 
       // for every element of the route.
-      for (riffle = Shrub::Riffles,
+      for (riffle = this->_riffles,
              scoutor = route.elements.begin() + 1;
            scoutor != route.elements.end();
            scoutor++)
         {
           // check whether the riffle has expired.
-          if (riffle->timestamp < threshold)
+          if (riffle->timestamp() < threshold)
             {
               // depending on the riffle's parent.
-              if (riffle->parent != nullptr)
-                {
-                  // destroy this riffle.
-                  if (riffle->parent->Destroy(riffle->slab) ==
-                      elle::Status::Error)
-                    throw Exception("unable to destroy the riffle");
-                }
+              if (riffle->parent() != nullptr)
+              {
+                // destroy this riffle.
+                riffle->parent()->destroy(riffle->slab());
+              }
               else
-                {
-                  //
-                  // otherwise, the root riffle needs to be released.
-                  //
-
-                  // flush the riffle.
-                  if (Shrub::Riffles->Flush() == elle::Status::Error)
-                    throw Exception("unable to flush the riffles");
-
-                  // release the shrub slot.
-                  if (Shrub::Queue.Delete(Shrub::Riffles->timestamp,
-                                          Shrub::Riffles) == elle::Status::Error)
-                    throw Exception("unable to remove the riffle");
-
-                  // delete the root riffle.
-                  delete Shrub::Riffles;
-
-                  // reset the pointer.
-                  Shrub::Riffles = nullptr;
-                }
-
+              {
+                // Otherwise, the root riffle needs to be released.
+                this->_riffles->flush();
+                // release the shrub slot.
+                if (this->_queue.Delete(this->_riffles->timestamp(),
+                                        this->_riffles) == elle::Status::Error)
+                  throw Exception("unable to remove the riffle");
+                // delete the root riffle.
+                delete this->_riffles;
+                // reset the pointer.
+                this->_riffles = nullptr;
+              }
               break;
             }
-
-          //
-          // the riffle has not expired. thus try to resolve within it.
-          //
+          // The riffle has not expired. thus try to resolve within it.
 
           // try to resolve within this riffle.
-          if (riffle->Resolve(*scoutor, riffle) == elle::Status::Error)
-            throw Exception("unable to resolve the route");
-
+          riffle->resolve(*scoutor, riffle);
           // check the pointer.
           if (riffle == nullptr)
             break;
 
           // add the location to the venue.
-          if (venue.Record(riffle->location) == elle::Status::Error)
+          if (venue.Record(riffle->location()) == elle::Status::Error)
             throw Exception("unable to record the location");
         }
     }
 
-    ///
-    /// this method updates the shrub with a route/venue tuple.
-    ///
     void
     Shrub::update(const path::Route& route,
                   const path::Venue& venue)
@@ -277,47 +224,36 @@ namespace etoile
       }
 
       // make sure the root riffle is present, if not create it.
-      if (Shrub::Riffles == nullptr)
+      if (this->_riffles == nullptr)
         {
           // allocate a new root riffle.
-          std::unique_ptr<Riffle> riffle(new Riffle);
-
-          // create the riffle.
-          if (riffle->Create(route.elements[0],
-                             venue.elements[0]) == elle::Status::Error)
-            throw Exception("unable to create the riffle");
-
+          std::unique_ptr<Riffle> riffle(new Riffle(*this,
+                                                    route.elements[0],
+                                                    venue.elements[0]));
           // add the riffle to the queue.
-          if (Shrub::Queue.Insert(riffle->timestamp,
+          if (this->_queue.Insert(riffle->timestamp(),
                                   riffle.get()) == elle::Status::Error)
             throw Exception("unable to add the riffle");
 
           // set the root riffle.
-          Shrub::Riffles = riffle.release();
+          this->_riffles = riffle.release();
         }
       else
-        {
-          // update the root riffle's location.
-          Shrub::Riffles->location = venue.elements[0];
-        }
+        this->_riffles->location(venue.elements[0]);
 
       // for every element of the route/venue.
       Riffle* riffle;
-      for (riffle = Shrub::Riffles,
+      for (riffle = this->_riffles,
              r = route.elements.begin() + 1, v = venue.elements.begin() + 1;
            (r != route.elements.end()) && (v != venue.elements.end());
            r++, v++)
         {
           // update the riffle with the new location.
-          if (riffle->Update(*r, *v) == elle::Status::Error)
-            throw Exception("unable to update the riffle");
+          riffle->update(*r, *v);
 
-          // try to resolve within this riffle.
-          //
-          // note that the previous update may have led to no change
-          // so that resolving the slab fails.
-          if (riffle->Resolve(*r, riffle) == elle::Status::Error)
-            throw Exception("unable to resolve the route");
+          // Try to resolve within this riffle. Note that the previous update
+          // may have led to no change so that resolving the slab fails.
+          riffle->resolve(*r, riffle);
 
           // check the pointer.
           if (riffle == nullptr)
@@ -325,9 +261,6 @@ namespace etoile
         }
     }
 
-    ///
-    /// this method takes a route and removes it from the shrub.
-    ///
     void
     Shrub::evict(const path::Route& route)
     {
@@ -335,26 +268,23 @@ namespace etoile
       path::Route::Scoutor scoutor;
 
       // make sure the root riffle is present.
-      if (global_shrub->Riffles == nullptr)
+      if (this->_riffles == nullptr)
         return;
 
       // for every element of the route/venue.
-      for (riffle = Shrub::Riffles,
+      for (riffle = this->_riffles,
              scoutor = route.elements.begin() + 1;
            scoutor < route.elements.end();
            scoutor++)
-        {
-          // try to resolve within this riffle.
-          //
-          // if this process fails, it would mean that the given route
-          // is not held in the shrub.
-          if (riffle->Resolve(*scoutor, riffle) == elle::Status::Error)
-            throw Exception("unable to resolve the route");
+      {
+        // Try to resolve within this riffle. If this process fails, it would
+        // mean that the given route is not held in the shrub.
+        riffle->resolve(*scoutor, riffle);
 
-          // check the pointer.
-          if (riffle == nullptr)
-            return;
-        }
+        // check the pointer.
+        if (riffle == nullptr)
+          return;
+      }
 
       //
       // at this point, _riffle_ points to the riffle associated with the
@@ -363,38 +293,25 @@ namespace etoile
 
       // destroy the riffle by removing it from its parent. should this parent
       // not exist---i.e for the root riffle---reset the root pointer.
-      if (riffle->parent != nullptr)
-        {
-          // destroy the entry in the parent riffle.
-          if (riffle->parent->Destroy(riffle->slab) == elle::Status::Error)
-            throw Exception("unable to destroy the riffle's entry");
-        }
+      if (riffle->parent() != nullptr)
+        riffle->parent()->destroy(riffle->slab());
       else
-        {
-          //
-          // otherwise, the route references the root riffle.
-          //
+      {
+        // Otherwise, the route references the root riffle.
+        this->_riffles->flush();
+        // release the shrub slot.
+        if (this->_queue.Delete(this->_riffles->timestamp(),
+                                this->_riffles) == elle::Status::Error)
+          throw Exception("unable to remove the riffle");
 
-          // flush the riffle.
-          if (Shrub::Riffles->Flush() == elle::Status::Error)
-            throw Exception("unable to flush the riffles");
+        // delete the root riffle.
+        delete this->_riffles;
 
-          // release the shrub slot.
-          if (Shrub::Queue.Delete(Shrub::Riffles->timestamp,
-                                  Shrub::Riffles) == elle::Status::Error)
-            throw Exception("unable to remove the riffle");
-
-          // delete the root riffle.
-          delete Shrub::Riffles;
-
-          // reset the pointer.
-          Shrub::Riffles = nullptr;
-        }
+        // reset the pointer.
+        this->_riffles = nullptr;
+      }
     }
 
-    ///
-    /// this method dumps the whole shrub.
-    ///
     void
     Shrub::show(const elle::Natural32 margin)
     {
@@ -403,24 +320,20 @@ namespace etoile
       std::cout << alignment << "[Shrub]" << std::endl;
 
       // make sure this root riffle is present.
-      if (Shrub::Riffles != nullptr)
+      if (this->_riffles != nullptr)
         {
           std::cout << alignment << elle::io::Dumpable::Shift
                     << "[Riffles]" << std::endl;
 
           // just initiate a recursive dump, starting with the root riffle.
-          if (Shrub::Riffles->Dump(margin + 4) == elle::Status::Error)
+          if (this->_riffles->Dump(margin + 4) == elle::Status::Error)
             throw Exception("unable to dump the shrub's riffles");
         }
 
       // dump the queue.
-      if (Shrub::Queue.Dump(margin + 4) == elle::Status::Error)
+      if (this->_queue.Dump(margin + 4) == elle::Status::Error)
         throw Exception("unable to dump the queue");
     }
-
-//
-// ---------- static callbacks ------------------------------------------------
-//
 
     ///
     /// this callback is triggered on a periodic basis in order to evict
@@ -431,7 +344,7 @@ namespace etoile
     /// accessed must be removed by using the sweeper.
     ///
     void
-    Shrub::sweeper()
+    Shrub::_sweeper()
     {
       elle::utility::Time        current;
       elle::utility::Time        threshold;
@@ -448,57 +361,44 @@ namespace etoile
 
       // go through the queue as long as the riffles have expired i.e
       // their update timestamp has reached the threshold.
-      while (Shrub::Queue.container.empty() == false)
+      while (this->_queue.container.empty() == false)
+      {
+        elle::container::timeline::Bucket<Riffle*>*        bucket;
+        Riffle*                       riffle;
+
+        // retrieve the least-recently-used bucket.
+        bucket = this->_queue.container.begin()->second;
+
+        // Retrieve the first bucket's riffle. Note that here we do not go
+        // through the bucket's riffles because the destruction of one may
+        // actually imply the destruction of many others, i.e its children, and
+        // therefore perhaps remove the bucket.
+        riffle = bucket->container.front();
+
+        // If the riffle has not expired, exit the loop since all the
+        // following riffles are fresher.
+        if (riffle->timestamp() >= threshold)
+          break;
+
+        if (riffle->parent() != nullptr)
+          riffle->parent()->destroy(riffle->slab());
+        else
         {
-          elle::container::timeline::Bucket<Riffle*>*        bucket;
-          Riffle*                       riffle;
+          // Otherwise, the root riffle needs to be released.
+          this->_riffles->flush();
 
-          // retrieve the least-recently-used bucket.
-          bucket = Shrub::Queue.container.begin()->second;
+          // release the shrub slot.
+          if (this->_queue.Delete(this->_riffles->timestamp(),
+                                  this->_riffles) == elle::Status::Error)
+            throw Exception("unable to remove the riffle");
 
-          // retrieve the first bucket's riffle.
-          //
-          // note that here we do not go through the bucket's riffles because
-          // the destruction of one may actually imply the destruction of
-          // many others, i.e its children, and therefore perhaps remove
-          // the bucket.
-          riffle = bucket->container.front();
+          // delete the root riffle.
+          delete this->_riffles;
 
-          // if the riffle has not expired, exit the loop since all the
-          // following riffles are fresher.
-          if (riffle->timestamp >= threshold)
-            break;
-
-          // depending on the riffle's parent.
-          if (riffle->parent != nullptr)
-            {
-              // destroy this riffle.
-              if (riffle->parent->Destroy(riffle->slab) == elle::Status::Error)
-                throw Exception("unable to destroy the riffle");
-            }
-          else
-            {
-              //
-              // otherwise, the root riffle needs to be released.
-              //
-
-              // flush the riffle.
-              if (Shrub::Riffles->Flush() == elle::Status::Error)
-                throw Exception("unable to flush the riffles");
-
-              // release the shrub slot.
-              if (Shrub::Queue.Delete(Shrub::Riffles->timestamp,
-                                      Shrub::Riffles) == elle::Status::Error)
-                throw Exception("unable to remove the riffle");
-
-              // delete the root riffle.
-              delete Shrub::Riffles;
-
-              // reset the pointer.
-              Shrub::Riffles = nullptr;
-            }
+          // reset the pointer.
+          this->_riffles = nullptr;
         }
+      }
     }
-
   }
 }

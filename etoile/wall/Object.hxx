@@ -22,7 +22,7 @@ namespace etoile
         ELLE_TRACE("clearing the cache in order to evict %s",
                    scope.chemin.route);
 
-        shrub::Shrub::clear();
+        shrub::global_shrub->clear();
 
         ELLE_TRACE("try to resolve the route now that the cache was cleaned");
 
