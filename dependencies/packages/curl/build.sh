@@ -47,7 +47,6 @@ uptodate "${CURL_LIBRARIES}" ||
     make all install || die "unable to build"
     for lib in ${WORKDIR}/lib/libcurl.so*
     do
-      echo patchelf --set-rpath \$ORIGIN $lib
-      patchelf --set-rpath \$ORIGIN $lib
+      set_rpath \$ORIGIN $lib
     done
 )

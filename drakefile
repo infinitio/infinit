@@ -112,16 +112,19 @@ def configure(cxx_toolkit,
   )
 
   if cxx_toolkit.os == drake.os.macos:
-    suffix = '.1.0.0.dylib'
+    ssl_suffix = '.1.0.0.dylib'
+    curl_suffix = '.4.dylib'
   elif cxx_toolkit.os == drake.os.windows:
-    suffix = '.dll'
+    ssl_suffix = '.dll'
+    curl_suffix = '.dll'
   else:
-    suffix = '.so.1.0.0'
+    ssl_suffix = '.so.1.0.0'
+    curl_suffix = '.so.4'
 
   openssl_lib = drake.copy(
     drake.nodes(
-      openssl.libraries_path / ('libssl%s' % suffix),
-      openssl.libraries_path / ('libcrypto%s' % suffix),
+      openssl.libraries_path / ('libssl%s' % ssl_suffix),
+      openssl.libraries_path / ('libcrypto%s' % ssl_suffix),
     ),
     'lib',
     openssl.libraries_path
@@ -129,7 +132,7 @@ def configure(cxx_toolkit,
 
   curl_lib = drake.copy(
     drake.nodes(
-      curl.libraries_path / ('libcurl.so.4')
+      curl.libraries_path / ('libcurl%s' % curl_suffix)
     ),
     'lib',
     curl.libraries_path
