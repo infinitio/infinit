@@ -377,12 +377,8 @@ namespace etoile
         //
         {
           // evict the route from the shrub.
-          if (shrub::Shrub::Evict(routes.from) == elle::Status::Error)
-            throw Exception("unable to evict the route from the shrub");
-
-          // evict the route from the shrub.
-          if (shrub::Shrub::Evict(routes.to) == elle::Status::Error)
-            throw Exception("unable to evict the route from the shrub");
+          shrub::global_shrub->evict(routes.from);
+          shrub::global_shrub->evict(routes.to);
         }
       }
 
@@ -435,8 +431,7 @@ namespace etoile
             throw Exception("unable to create the route");
 
           // evict the route from the shrub.
-          if (shrub::Shrub::Evict(route) == elle::Status::Error)
-            throw Exception("unable to evict the route from the shrub");
+          shrub::global_shrub->evict(route);
         }
       }
 

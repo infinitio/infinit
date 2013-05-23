@@ -1,11 +1,14 @@
 #ifndef ETOILE_SHRUB_SHRUB_HH
 # define ETOILE_SHRUB_SHRUB_HH
 
-# include <elle/types.hh>
+# include <boost/date_time/posix_time/posix_time.hpp>
+
 # include <elle/container/timeline/Timeline.hh>
-# include <etoile/shrub/Riffle.hh>
+# include <elle/types.hh>
+# include <elle/utility/Duration.hh>
 
 # include <etoile/path/fwd.hh>
+# include <etoile/shrub/Riffle.hh>
 
 namespace etoile
 {
@@ -15,6 +18,8 @@ namespace etoile
   ///
   namespace shrub
   {
+    class Shrub;
+    extern Shrub* global_shrub;
 
     ///
     /// the shrub i.e path cache relies on the LRU algorithm by keeping two
@@ -61,32 +66,44 @@ namespace etoile
     ///
     class Shrub
     {
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
-      //
-      // static methods
-      //
-      static elle::Status       Initialize();
-      static elle::Status       Clean();
+      /// Create a Shrub.
+      Shrub(elle::Size capacity,
+            boost::posix_time::time_duration const& lifespan,
+            boost::posix_time::time_duration const& sweep_frequency);
+      /// Destroy a Shrub.
+      ~Shrub();
 
-      static elle::Status       Allocate(const elle::Natural32);
+    /*--------------.
+    | Configuration |
+    `--------------*/
+      ELLE_ATTRIBUTE_R(elle::Size, capacity);
+      ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, lifespan);
+      ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, sweep_frequency);
 
-      static elle::Status       Resolve(const path::Route&,
-                                        path::Venue&);
-      static elle::Status       Update(const path::Route&,
-                                       const path::Venue&);
-      static elle::Status       Evict(const path::Route&);
+    public:
+      void
+      allocate(const elle::Natural32);
+      void
+      resolve(path::Route const& route,
+              path::Venue& venue);
+      void
+      update(const path::Route&,
+             const path::Venue&);
+      void
+      evict(const path::Route&);
 
-      static elle::Status       Show(const elle::Natural32 = 0);
+      void
+      show(const elle::Natural32 = 0);
 
       static
       void
       clear();
-
-
-      //
-      // static callbacks
-      //
-      static elle::Status       Sweeper();
+      void
+      sweeper();
 
       //
       // static attributes

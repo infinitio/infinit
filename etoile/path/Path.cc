@@ -74,8 +74,7 @@ namespace etoile
       Route::Scoutor    scoutor;
 
       // first ask the shrub i.e path cache to resolve as much as it can.
-      if (shrub::Shrub::Resolve(route, venue) == elle::Status::Error)
-        throw Exception("unable to resolve part of the route through the shrub");
+      shrub::global_shrub->resolve(route, venue);
 
       assert(venue.elements.size() <= route.elements.size());
 
@@ -176,8 +175,7 @@ namespace etoile
         }
 
       // update the shrub with the resolved path.
-      if (shrub::Shrub::Update(route, venue) == elle::Status::Error)
-        throw Exception("unable to update the shrub");
+      shrub::global_shrub->update(route, venue);
 
       return elle::Status::Ok;
     }

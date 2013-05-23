@@ -5,6 +5,8 @@
 #include <etoile/portal/Portal.hh>
 #include <etoile/Exception.hh>
 
+#include <Infinit.hh>
+
 namespace etoile
 {
 
@@ -23,8 +25,16 @@ namespace etoile
     if (gear::Gear::Initialize() == elle::Status::Error)
       throw Exception("unable to initialize the gear");
 
-    if (shrub::Shrub::Initialize() == elle::Status::Error)
-      throw Exception("unable to initialize the shrub");
+    if (Infinit::Configuration.etoile.shrub.frequency)
+    {
+      auto capacity = Infinit::Configuration.etoile.shrub.capacity;
+      auto lifespan = Infinit::Configuration.etoile.shrub.lifespan;
+      auto sweep_frequency = Infinit::Configuration.etoile.shrub.frequency;
+      shrub::global_shrub = new shrub::Shrub(
+        capacity,
+        boost::posix_time::milliseconds(lifespan),
+        boost::posix_time::milliseconds(sweep_frequency));
+    }
 
     if (portal::Portal::Initialize() == elle::Status::Error)
       throw Exception("unable to initialize the portal");
@@ -40,8 +50,11 @@ namespace etoile
     if (portal::Portal::Clean() == elle::Status::Error)
       throw Exception("unable to clean the portal");
 
-    if (shrub::Shrub::Clean() == elle::Status::Error)
-      throw Exception("unable to clean the shrub");
+    if (shrub::global_shrub)
+    {
+      delete shrub::global_shrub;
+      shrub::global_shrub = nullptr;
+    }
 
     if (gear::Gear::Clean() == elle::Status::Error)
       throw Exception("unable to clean the gear");

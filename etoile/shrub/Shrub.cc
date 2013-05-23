@@ -1,20 +1,18 @@
-#include <elle/utility/Duration.hh>
 #include <elle/container/timeline/Bucket.hh>
 #include <elle/container/timeline/Timeline.hh>
 
 #include <reactor/scheduler.hh>
 
-#include <etoile/shrub/Shrub.hh>
+#include <etoile/Exception.hh>
 #include <etoile/path/Route.hh>
 #include <etoile/path/Venue.hh>
-#include <etoile/Exception.hh>
-
-#include <Infinit.hh>
+#include <etoile/shrub/Shrub.hh>
 
 namespace etoile
 {
   namespace shrub
   {
+    shrub::Shrub* global_shrub = nullptr;
 
 //
 // ---------- definitions -----------------------------------------------------
@@ -33,33 +31,43 @@ namespace etoile
     ///
     elle::container::timeline::Timeline<Riffle*>             Shrub::Queue;
 
-//
-// ---------- static methods --------------------------------------------------
-//
+    /*-------------.
+    | Construction |
+    `-------------*/
 
-    ///
-    /// this method initializes the shrub.
-    ///
-    elle::Status        Shrub::Initialize()
+    Shrub::Shrub(elle::Size capacity,
+                 boost::posix_time::time_duration const& lifespan,
+                 boost::posix_time::time_duration const& sweep_frequency):
+      _capacity(capacity),
+      _sweep_frequency(sweep_frequency)
     {
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
+      reactor::Scheduler::scheduler()->Every(std::bind(&Shrub::sweeper, this),
+                                             "Shrub sweeper", sweep_frequency);
+    }
 
-      reactor::Scheduler::scheduler()->Every
-        (&Shrub::Sweeper, "Shrub sweeper",
-         boost::posix_time::milliseconds
-         (Infinit::Configuration.etoile.shrub.frequency));
+    Shrub::~Shrub()
+    {
+      // delete the shrub content, if present.
+      if (Shrub::Riffles != nullptr)
+        {
+          // flush the riffle.
+          if (Shrub::Riffles->Flush() == elle::Status::Error)
+            throw Exception("unable to flush the riffles");
 
-      return elle::Status::Ok;
+          // release the shrub slot.
+          if (Shrub::Queue.Delete(Shrub::Riffles->timestamp,
+                                  Shrub::Riffles) == elle::Status::Error)
+            throw Exception("unable to remove the riffle");
+
+          // delete the root riffle.
+          delete Shrub::Riffles;
+          Shrub::Riffles = nullptr;
+        }
     }
 
     void
     Shrub::clear()
     {
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return;
-
       // delete the shrub content, if present.
       if (Shrub::Riffles != nullptr)
         {
@@ -76,42 +84,14 @@ namespace etoile
           delete Shrub::Riffles;
           Shrub::Riffles = nullptr;
         }
-    }
-
-    ///
-    /// this method cleans the shrub.
-    ///
-    elle::Status        Shrub::Clean()
-    {
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
-
-      // delete the shrub content, if present.
-      if (Shrub::Riffles != nullptr)
-        {
-          // flush the riffle.
-          if (Shrub::Riffles->Flush() == elle::Status::Error)
-            throw Exception("unable to flush the riffles");
-
-          // release the shrub slot.
-          if (Shrub::Queue.Delete(Shrub::Riffles->timestamp,
-                                  Shrub::Riffles) == elle::Status::Error)
-            throw Exception("unable to remove the riffle");
-
-          // delete the root riffle.
-          delete Shrub::Riffles;
-          Shrub::Riffles = nullptr;
-        }
-
-      return elle::Status::Ok;
     }
 
     ///
     /// this method allocates _size_ slots for the introduction of
     /// new riffles.
     ///
-    elle::Status        Shrub::Allocate(const elle::Natural32   size)
+    void
+    Shrub::allocate(const elle::Natural32 size)
     {
       elle::Natural32   i;
 
@@ -129,8 +109,7 @@ namespace etoile
           Riffle*                       riffle;
 
           // stop if there are enough available slots to proceed.
-          if ((Infinit::Configuration.etoile.shrub.capacity -
-               Shrub::Queue.container.size()) >= size)
+          if ((this->_capacity - Shrub::Queue.container.size()) >= size)
             break;
 
           // stop if the shrub is empty.
@@ -180,32 +159,24 @@ namespace etoile
               Shrub::Riffles = nullptr;
             }
         }
-
-      return elle::Status::Ok;
     }
 
     ///
     /// this method takes a path in the form of a route and updates
     /// the venue as much as possible through the shrub.
     ///
-    elle::Status        Shrub::Resolve(const path::Route&       route,
-                                       path::Venue&             venue)
+    void
+    Shrub::resolve(path::Route const& route,
+                   path::Venue& venue)
     {
-      Riffle*                   riffle;
-      path::Route::Scoutor      scoutor;
-      elle::utility::Duration            lifespan(
-        elle::utility::Duration::UnitSeconds,
-        Infinit::Configuration.etoile.shrub.lifespan);
-      elle::utility::Time                current;
-      elle::utility::Time                threshold;
-
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
+      Riffle* riffle;
+      path::Route::Scoutor scoutor;
+      elle::utility::Time current;
+      elle::utility::Time threshold;
 
       // make sure this root riffle is present.
       if (Shrub::Riffles == nullptr)
-        return elle::Status::Ok;
+        return;
 
       // resolve the root directory by recording its location.
       if (venue.Record(Shrub::Riffles->location) == elle::Status::Error)
@@ -217,7 +188,9 @@ namespace etoile
 
       // substract the lifespan to the current time rather than adding it
       // to the timestamp of every riffle.
-      threshold = current - lifespan;
+      threshold = current - elle::utility::Duration(
+        elle::utility::Duration::UnitMilliseconds,
+        this->_lifespan.total_milliseconds());
 
       // for every element of the route.
       for (riffle = Shrub::Riffles,
@@ -277,22 +250,17 @@ namespace etoile
           if (venue.Record(riffle->location) == elle::Status::Error)
             throw Exception("unable to record the location");
         }
-
-      return elle::Status::Ok;
     }
 
     ///
     /// this method updates the shrub with a route/venue tuple.
     ///
-    elle::Status        Shrub::Update(const path::Route&        route,
-                                      const path::Venue&        venue)
+    void
+    Shrub::update(const path::Route& route,
+                  const path::Venue& venue)
     {
-      path::Route::Scoutor      r;
-      path::Venue::Scoutor      v;
-
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
+      path::Route::Scoutor r;
+      path::Venue::Scoutor v;
 
       //
       // first, try to resolve the given route in order to know how
@@ -302,12 +270,10 @@ namespace etoile
         path::Venue             _venue;
 
         // resolve the route.
-        if (Shrub::Resolve(route, _venue) == elle::Status::Error)
-          throw Exception("unable to resolve the route");
+        global_shrub->resolve(route, _venue);
 
         // requests the allocation of enough slots for those elements.
-        if (Shrub::Allocate(_venue.elements.size()) == elle::Status::Error)
-          throw Exception("unable to allocate the required slots");
+        this->allocate(_venue.elements.size());
       }
 
       // make sure the root riffle is present, if not create it.
@@ -357,25 +323,20 @@ namespace etoile
           if (riffle == nullptr)
             break;
         }
-
-      return elle::Status::Ok;
     }
 
     ///
     /// this method takes a route and removes it from the shrub.
     ///
-    elle::Status        Shrub::Evict(const path::Route&         route)
+    void
+    Shrub::evict(const path::Route& route)
     {
-      Riffle*                   riffle;
-      path::Route::Scoutor      scoutor;
-
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
+      Riffle* riffle;
+      path::Route::Scoutor scoutor;
 
       // make sure the root riffle is present.
-      if (Shrub::Riffles == nullptr)
-        return elle::Status::Ok;
+      if (global_shrub->Riffles == nullptr)
+        return;
 
       // for every element of the route/venue.
       for (riffle = Shrub::Riffles,
@@ -392,7 +353,7 @@ namespace etoile
 
           // check the pointer.
           if (riffle == nullptr)
-            return elle::Status::Ok;
+            return;
         }
 
       //
@@ -429,14 +390,13 @@ namespace etoile
           // reset the pointer.
           Shrub::Riffles = nullptr;
         }
-
-      return elle::Status::Ok;
     }
 
     ///
     /// this method dumps the whole shrub.
     ///
-    elle::Status        Shrub::Show(const elle::Natural32       margin)
+    void
+    Shrub::show(const elle::Natural32 margin)
     {
       elle::String      alignment(margin, ' ');
 
@@ -456,8 +416,6 @@ namespace etoile
       // dump the queue.
       if (Shrub::Queue.Dump(margin + 4) == elle::Status::Error)
         throw Exception("unable to dump the queue");
-
-      return elle::Status::Ok;
     }
 
 //
@@ -472,16 +430,11 @@ namespace etoile
     /// when detecting they have expired. however, riffles being never
     /// accessed must be removed by using the sweeper.
     ///
-    elle::Status        Shrub::Sweeper()
+    void
+    Shrub::sweeper()
     {
-      elle::utility::Duration    lifespan(elle::utility::Duration::UnitSeconds,
-                                          Infinit::Configuration.etoile.shrub.lifespan);
       elle::utility::Time        current;
       elle::utility::Time        threshold;
-
-      // debug.
-      if (Infinit::Configuration.etoile.debug == true)
-        printf("[etoile] shrub::Shrub::Sweeper()\n");
 
       // retrieve the current timestamp.
       if (current.Current() == elle::Status::Error)
@@ -489,7 +442,9 @@ namespace etoile
 
       // substract the lifespan to the current time rather than adding it
       // to the timestamp of every riffle.
-      threshold = current - lifespan;
+      threshold = current - elle::utility::Duration(
+        elle::utility::Duration::UnitMilliseconds,
+        this->_lifespan.total_milliseconds());
 
       // go through the queue as long as the riffles have expired i.e
       // their update timestamp has reached the threshold.
@@ -543,8 +498,6 @@ namespace etoile
               Shrub::Riffles = nullptr;
             }
         }
-
-      return elle::Status::Ok;
     }
 
   }
