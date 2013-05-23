@@ -1,3 +1,7 @@
+#include <elle/log.hh>
+
+#include <reactor/scheduler.hh>
+
 #include <etoile/wall/Directory.hh>
 #include <etoile/gear/Identifier.hh>
 #include <etoile/gear/Scope.hh>
@@ -17,10 +21,7 @@
 #include <nucleus/neutron/Range.hh>
 #include <nucleus/neutron/Entry.hh>
 
-#include <elle/log.hh>
-
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Directory");
 
@@ -50,7 +51,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
@@ -97,7 +98,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
@@ -174,7 +175,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
@@ -220,7 +221,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex);
+        reactor::Lock lock(*reactor::Scheduler::scheduler(), scope->mutex);
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -258,7 +259,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex);
+        reactor::Lock lock(*reactor::Scheduler::scheduler(), scope->mutex);
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -297,7 +298,7 @@ namespace etoile
 
       scope = actor->scope;
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         path::Venue venue(scope->chemin.venue);
@@ -415,7 +416,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
@@ -467,7 +468,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
@@ -557,7 +558,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
@@ -650,7 +651,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.

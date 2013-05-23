@@ -28,7 +28,6 @@
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Program.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit");
 

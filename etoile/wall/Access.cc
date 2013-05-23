@@ -1,6 +1,8 @@
 #include <elle/Exception.hh>
 #include <elle/log.hh>
 
+#include <reactor/scheduler.hh>
+
 #include <etoile/wall/Access.hh>
 #include <etoile/gear/Identifier.hh>
 #include <etoile/gear/Scope.hh>
@@ -17,7 +19,6 @@
 #include <nucleus/neutron/Permissions.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Access");
 
@@ -43,7 +44,7 @@ namespace etoile
       scope = actor->scope;
 
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex);
+        reactor::Lock lock(*reactor::Scheduler::scheduler(), scope->mutex);
         if (scope->Use(context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
         nucleus::neutron::Record const* record(nullptr);
@@ -77,7 +78,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex);
+        reactor::Lock lock(*reactor::Scheduler::scheduler(), scope->mutex);
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
@@ -116,7 +117,8 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
+                           scope->mutex.write());
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
@@ -157,7 +159,8 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
+                           scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)

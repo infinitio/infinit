@@ -13,7 +13,6 @@
 #include <nucleus/proton/MutableBlock.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.remote.Client");
 
@@ -31,9 +30,9 @@ namespace hole
                      std::string const& host,
                      int port)
         : _state(State::connected)
-        , _stream(infinit::scheduler(), host, port)
-        , _serializer(infinit::scheduler(), _stream)
-        , _channels(infinit::scheduler(), _serializer)
+        , _stream(*reactor::Scheduler::scheduler(), host, port)
+        , _serializer(*reactor::Scheduler::scheduler(), _stream)
+        , _channels(*reactor::Scheduler::scheduler(), _serializer)
         , _rpc(_channels)
       {
         ELLE_TRACE("Authenticate to the server")

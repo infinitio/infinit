@@ -18,7 +18,6 @@
 #include <etoile/Exception.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.portal.Application");
 
@@ -73,9 +72,9 @@ namespace etoile
       // set the socket.
       this->socket = socket;
       this->serializer =
-        new infinit::protocol::Serializer(infinit::scheduler(), *this->socket);
+        new infinit::protocol::Serializer(*reactor::Scheduler::scheduler(), *this->socket);
       this->channels =
-        new infinit::protocol::ChanneledStream(infinit::scheduler(),
+        new infinit::protocol::ChanneledStream(*reactor::Scheduler::scheduler(),
                                                *this->serializer);
 
       // Setup RPCs.
@@ -123,7 +122,7 @@ namespace etoile
       this->rpcs->attributesget = &wall::Attributes::get;
       this->rpcs->attributesfetch = &wall::Attributes::fetch;
 
-      new reactor::Thread(infinit::scheduler(),
+      new reactor::Thread(*reactor::Scheduler::scheduler(),
                           elle::sprintf("RPC %s", *this),
                           std::bind(&Application::_run, this), true);
 
@@ -132,7 +131,7 @@ namespace etoile
 
       // XXX: this SEGVs if the Application is destroyed before the
       // timeout. Since abort does nothing for now, disabled.
-      // infinit::scheduler().CallLater
+      // reactor::Scheduler::scheduler()->CallLater
       //   (boost::bind(&Application::Abort, this),
       //    "Application abort", Application::Timeout);
 

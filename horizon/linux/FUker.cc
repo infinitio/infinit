@@ -19,7 +19,6 @@
 
 #include <Infinit.hh>
 #include <Program.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.horizon.FUker");
 
@@ -110,7 +109,7 @@ namespace horizon
          BOOST_PP_SEQ_FOR_EACH_I(INFINIT_FUSE_FORMALS, _,               \
                                  BOOST_PP_SEQ_POP_FRONT(Args)))         \
     {                                                                   \
-      return infinit::scheduler().mt_run<int>                 \
+      return reactor::Scheduler::scheduler()->mt_run<int>               \
         (BOOST_PP_STRINGIZE(Name),                                      \
          boost::bind(Name, INFINIT_FUSE_EFFECTIVE(Args)));              \
     }                                                                   \
@@ -253,7 +252,7 @@ namespace horizon
 
     _leave:
       // now that FUSE has stopped, make sure the program is exiting.
-      new reactor::Thread(infinit::scheduler(), "exit",
+      new reactor::Thread(*reactor::Scheduler::scheduler(), "exit",
                           &elle::concurrency::Program::Exit, true);
       return nullptr;
     }

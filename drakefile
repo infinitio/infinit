@@ -452,8 +452,6 @@ def configure(cxx_toolkit,
     'Infinit.cc',
     'Program.cc',
     'Program.hh',
-    'Scheduler.cc',
-    'Scheduler.hh',
     'common/common.cc',
     ) + [version]
   infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources,

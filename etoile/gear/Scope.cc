@@ -1,5 +1,7 @@
 #include <elle/Exception.hh>
 
+#include <reactor/scheduler.hh>
+
 #include <etoile/gear/Scope.hh>
 #include <etoile/gear/Directory.hh>
 #include <etoile/gear/File.hh>
@@ -12,7 +14,6 @@
 #include <elle/log.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 namespace etoile
 {
@@ -961,7 +962,7 @@ namespace etoile
       //
       // this is especially required since Load()ing may block the current
       // fiber.
-      reactor::Lock lock(infinit::scheduler(), mutex.write());
+      reactor::Lock lock(*reactor::Scheduler::scheduler(), mutex.write());
       {
         // allocate a context.
         auto context = std::unique_ptr<T>(new T);
@@ -1019,7 +1020,7 @@ namespace etoile
       if (Infinit::Configuration.etoile.debug == true)
         printf("[etoile] gear::Scope::Disclose()\n");
 
-      reactor::Lock lock(infinit::scheduler(), mutex.write());
+      reactor::Lock lock(*reactor::Scheduler::scheduler(), mutex.write());
       {
         Scope*          scope = nullptr;
         T*              context = nullptr;

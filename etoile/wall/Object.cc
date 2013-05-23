@@ -1,3 +1,8 @@
+#include <elle/log.hh>
+#include <elle/Exception.hh>
+
+#include <reactor/scheduler.hh>
+
 #include <etoile/wall/Object.hh>
 #include <etoile/gear/Identifier.hh>
 #include <etoile/gear/Scope.hh>
@@ -19,11 +24,7 @@
 #include <nucleus/neutron/Object.hh>
 #include <nucleus/neutron/Genre.hh>
 
-#include <elle/log.hh>
-#include <elle/Exception.hh>
-
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Object");
 
@@ -167,7 +168,7 @@ namespace etoile
 
       // declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
@@ -225,7 +226,7 @@ namespace etoile
 
       // declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex);
+        reactor::Lock lock(*reactor::Scheduler::scheduler(), scope->mutex);
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -262,7 +263,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
@@ -355,7 +356,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
@@ -445,7 +446,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(),
+        reactor::Lock lock(*reactor::Scheduler::scheduler(),
                            scope->mutex.write());
 
         // retrieve the context.
