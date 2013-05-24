@@ -3,6 +3,8 @@
 
 # include <elle/types.hh>
 
+# include <reactor/scheduler.hh>
+
 # include <lune/Dictionary.hh>
 
 # include <sys/types.h>
@@ -35,7 +37,8 @@ namespace horizon
     //
     // static methods
     //
-    static elle::Status         Initialize();
+    static void
+    Initialize(reactor::Scheduler& sched);
     static elle::Status         Clean();
 
     //

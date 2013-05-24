@@ -16,7 +16,8 @@ namespace horizon
     ///
     /// this method initializes Linux.
     ///
-    elle::Status        Linux::Initialize()
+    void
+    Linux::Initialize(reactor::Scheduler& sched)
     {
       //
       // initialize FUSE.
@@ -69,10 +70,8 @@ namespace horizon
         operations.flag_nullpath_ok = 1;
 
         // initialize FUSE.
-        if (FUSE::Initialize(operations) == elle::Status::Error)
-          throw elle::Exception("unable to initialize FUSE");
+        FUSE::Initialize(sched, operations);
       }
-      return elle::Status::Ok;
     }
 
     ///

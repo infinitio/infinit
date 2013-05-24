@@ -192,8 +192,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   // initialize the horizon.
   if (!Infinit::Mountpoint.empty())
 #ifdef INFINIT_HORIZON
-    if (horizon::Horizon::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize the horizon");
+    horizon::Horizon::Initialize(*reactor::Scheduler::scheduler());
 #else
   throw elle::Exception("horizon was disabled at compilation time "
                            "but a mountpoint was given on the command line");

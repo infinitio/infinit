@@ -67,10 +67,8 @@ namespace horizon
 // ---------- static methods --------------------------------------------------
 //
 
-  ///
-  /// this method initializes the horizon.
-  ///
-  elle::Status          Horizon::Initialize()
+  void
+  Horizon::Initialize(reactor::Scheduler& sched)
   {
     //
     // initialize the 'somebody' entity.
@@ -100,11 +98,7 @@ namespace horizon
     }
 
 #if defined(INFINIT_LINUX)
-    {
-      // initialize the Linux implementation.
-      if (linux::Linux::Initialize() == elle::Status::Error)
-        throw elle::Exception("unable to initialize the Linux implementation");
-    }
+    linux::Linux::Initialize(sched);
 #elif defined(INFINIT_MACOSX)
     {
       // initialize the MacOS X implementation.
@@ -120,8 +114,6 @@ namespace horizon
 #else
 # error "unsupported platform"
 #endif
-
-    return elle::Status::Ok;
   }
 
   ///

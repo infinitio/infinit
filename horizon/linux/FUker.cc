@@ -26,6 +26,9 @@ namespace horizon
 {
   namespace linux
   {
+    // XXX: remove when horizon is instantiable.
+    static reactor::Scheduler* _scheduler;
+
     // XXX
     typedef struct ::timespec timespec2[2];
 
@@ -109,7 +112,7 @@ namespace horizon
          BOOST_PP_SEQ_FOR_EACH_I(INFINIT_FUSE_FORMALS, _,               \
                                  BOOST_PP_SEQ_POP_FRONT(Args)))         \
     {                                                                   \
-      return reactor::Scheduler::scheduler()->mt_run<int>               \
+      return _scheduler->mt_run<int>                                    \
         (BOOST_PP_STRINGIZE(Name),                                      \
          boost::bind(Name, INFINIT_FUSE_EFFECTIVE(Args)));              \
     }                                                                   \
@@ -252,7 +255,7 @@ namespace horizon
 
     _leave:
       // now that FUSE has stopped, make sure the program is exiting.
-      new reactor::Thread(*reactor::Scheduler::scheduler(), "exit",
+      new reactor::Thread(*_scheduler, "exit",
                           &elle::concurrency::Program::Exit, true);
       return nullptr;
     }
@@ -279,23 +282,23 @@ namespace horizon
     /// for handling the posted events along with creating a specific
     /// thread for FUSE.
     ///
-    elle::Status        FUker::Initialize()
+    void
+    FUker::Initialize(reactor::Scheduler& sched)
     {
+      _scheduler = &sched;
       switch (horizon::hole().state())
-        {
+      {
         case hole::Hole::State::offline:
-          {
-            hole().ready_hook(&FUker::run);
-            break;
-          }
-          case hole::Hole::State::online:
-          {
-            FUker::run();
-            break;
-          }
+        {
+          hole().ready_hook(&FUker::run);
+          break;
         }
-
-      return elle::Status::Ok;
+        case hole::Hole::State::online:
+        {
+          FUker::run();
+          break;
+        }
+      }
     }
 
     ///
