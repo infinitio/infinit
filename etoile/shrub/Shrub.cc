@@ -26,15 +26,19 @@ namespace etoile
                  boost::posix_time::time_duration const& sweep_frequency):
       _capacity(capacity),
       _sweep_frequency(sweep_frequency),
+      _sweeper(),
       _riffles(nullptr),
       _queue()
     {
-      reactor::Scheduler::scheduler()->Every(std::bind(&Shrub::_sweeper, this),
-                                             "Shrub sweeper", sweep_frequency);
+      _sweeper = reactor::Scheduler::scheduler()->every(
+        std::bind(&Shrub::_sweep, this),
+        "Shrub sweeper", sweep_frequency);
     }
 
     Shrub::~Shrub()
     {
+      this->_sweeper->terminate_now();
+      this->_sweeper = nullptr;
       // Delete the shrub content, if present.
       if (this->_riffles != nullptr)
       {
@@ -335,16 +339,12 @@ namespace etoile
         throw Exception("unable to dump the queue");
     }
 
-    ///
-    /// this callback is triggered on a periodic basis in order to evict
-    /// the expired riffle.
-    ///
-    /// note that most riffles are removed during the resolving process
-    /// when detecting they have expired. however, riffles being never
-    /// accessed must be removed by using the sweeper.
-    ///
+    // This callback is triggered on a periodic basis in order to evict the
+    // expired riffle. Note that most riffles are removed during the resolving
+    // process when detecting they have expired. however, riffles being never
+    // accessed must be removed by using the sweeper.
     void
-    Shrub::_sweeper()
+    Shrub::_sweep()
     {
       elle::utility::Time        current;
       elle::utility::Time        threshold;

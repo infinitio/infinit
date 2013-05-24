@@ -3,6 +3,9 @@
 
 # include <boost/date_time/posix_time/posix_time.hpp>
 
+# include <reactor/fwd.hh>
+
+# include <elle/attribute.hh>
 # include <elle/container/timeline/Timeline.hh>
 # include <elle/types.hh>
 # include <elle/utility/Duration.hh>
@@ -113,7 +116,9 @@ namespace etoile
     private:
       /// Remove expired routes.
       void
-      _sweeper();
+      _sweep();
+      /// The thread running _sweep regularly.
+      ELLE_ATTRIBUTE(reactor::Thread*, sweeper);
       friend class Riffle;
       ELLE_ATTRIBUTE(Riffle*, riffles);
       ELLE_ATTRIBUTE(elle::container::timeline::Timeline<Riffle*>, queue);
