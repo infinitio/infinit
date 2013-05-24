@@ -22,20 +22,14 @@ namespace horizon
 // ---------- methods ---------------------------------------------------------
 //
 
-    ///
-    /// this method initializes the FUSE component.
-    ///
-    elle::Status        FUSE::Initialize(
-                          const struct ::fuse_operations&       operations)
+    void
+    FUSE::Initialize(reactor::Scheduler& sched,
+                     struct ::fuse_operations const& operations)
     {
       // set the fuse operations.
       FUSE::Operations = operations;
-
       // initialize the FUker.
-      if (FUker::Initialize() == elle::Status::Error)
-        throw elle::Exception("unable to initialize the FUker");
-
-      return elle::Status::Ok;
+      FUker::Initialize(sched);
     }
 
     ///

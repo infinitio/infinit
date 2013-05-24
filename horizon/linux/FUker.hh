@@ -8,6 +8,8 @@
 # include <elle/types.hh>
 # include <elle/system/platform.hh>
 
+# include <reactor/scheduler.hh>
+
 # include <fuse.h>
 # if defined(HAVE_SETXATTR)
 #  include <attr/xattr.h>
@@ -38,10 +40,9 @@ namespace horizon
     class FUker
     {
     public:
-      //
-      // static methods
-      //
-      static elle::Status       Initialize();
+      static
+      void
+      Initialize(reactor::Scheduler& sched);
       static void run();
       static void*              Setup(void*);
       static elle::Status       Clean();

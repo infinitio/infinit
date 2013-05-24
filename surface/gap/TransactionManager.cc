@@ -393,8 +393,16 @@ namespace surface
 
     TransactionManager::~TransactionManager()
     {
-      ELLE_TRACE_METHOD("");
-      this->clear();
+      try
+      {
+        ELLE_TRACE("destroying the transaction manager");
+        this->clear();
+      }
+      catch (...)
+      {
+        ELLE_WARN("couldn't clear the transaction manager: %s",
+                  elle::exception_string());
+      }
     }
 
     void
@@ -459,12 +467,16 @@ namespace surface
         };
       }
 
-      auto& progress_ptr = this->_progresses[id];
-      if (progress_ptr == nullptr)
-        progress_ptr = elle::make_unique<TransactionProgress>();
 
-      ELLE_ASSERT(progress_ptr != nullptr);
-      TransactionProgress& progress = *progress_ptr;
+      auto& progress = this->_progresses(
+        [&id] (TransactionProgressMap& map) -> TransactionProgress&
+        {
+          auto& ptr = map[id];
+          if (ptr == nullptr)
+            ptr = elle::make_unique<TransactionProgress>();
+          return *ptr;
+        }
+      );
 
       if (progress.process == nullptr)
       {
@@ -493,44 +505,49 @@ namespace surface
             pc.setenv("ELLE_LOG_FILE", log_file);
           }
         }
-        progress.process = elle::make_unique<elle::system::Process>(
-          std::move(pc),
-          progress_binary,
-          arguments
-          );
-      }
-      ELLE_ASSERT(progress.process != nullptr);
-
-      if (!progress.process->running())
-      {
-        int current_size = 0;
-        int total_size = 0;
-        std::stringstream ss;
-        ss << progress.process->read();
-        ss >> current_size >> total_size;
-        progress.process.reset();
-
-        if (total_size == 0)
-          return 0.f;
-        progress.last_value = float(current_size) / float(total_size);
-
-        if (progress.last_value < 0)
-        {
-          ELLE_WARN("8progress returned a negative integer: %s", progress);
-          progress.last_value = 0;
-        }
-        else if (progress.last_value > 1.0f)
-        {
-          ELLE_WARN("8progress returned an integer greater than 1: %s",
-                    progress);
-          progress.last_value = 1.0f;
-        }
+        this->_progresses(
+          [&] (TransactionProgressMap&)
+          {
+            progress.process = elle::make_unique<elle::system::Process>(
+              std::move(pc),
+              progress_binary,
+              arguments);
+          });
       }
 
-      ELLE_DEBUG("transaction_progress(%s) -> %f",
-                 id,
-                 progress.last_value);
-      return progress.last_value;
+      return this->_progresses(
+        [&] () -> float
+        {
+          if (progress.process == nullptr)
+            return 0.0f;
+          if (!progress.process->running())
+          {
+            int current_size = 0;
+            int total_size = 0;
+            std::stringstream ss;
+            ss << progress.process->read();
+            ss >> current_size >> total_size;
+            progress.process.reset();
+
+            if (total_size == 0)
+              return 0.f;
+            progress.last_value = float(current_size) / float(total_size);
+
+            if (progress.last_value < 0)
+            {
+              ELLE_WARN("8progress returned a negative integer: %s", progress);
+              progress.last_value = 0;
+            }
+            else if (progress.last_value > 1.0f)
+            {
+              ELLE_WARN("8progress returned an integer greater than 1: %s",
+                        progress);
+              progress.last_value = 1.0f;
+            }
+          }
+          return progress.last_value;
+        }
+      );
     }
 
     TransactionManager::OperationId
@@ -940,9 +957,9 @@ namespace surface
                 }
                 // A parsing bug in gcc (fixed in 4.8.3) make this block
                 // mandatory.
-                catch (std::exception const& e)
+                catch (std::exception const&)
                 {
-                  exception = std::make_exception_ptr(e);
+                  exception = std::current_exception();
                 }
                 catch (...)
                 {
@@ -958,20 +975,8 @@ namespace surface
             return;
           if (exception != std::exception_ptr{})
           {
-            std::string msg;
-            try
-            {
-              std::rethrow_exception(exception);
-            }
-            catch (std::exception const& err)
-            {
-              msg = err.what();
-            }
-            catch (...)
-            {
-              msg = "Unknown exception type";
-            }
-            ELLE_ERR("cannot connect infinit instances: %s", msg);
+            ELLE_ERR("cannot connect infinit instances: %s",
+                     elle::exception_string(exception));
             this->_transaction_manager.update(this->_transaction.id,
                                               gap_transaction_status_canceled);
             std::rethrow_exception(exception);
@@ -1094,19 +1099,25 @@ namespace surface
     TransactionManager::TransactionsMap const&
     TransactionManager::all()
     {
-      if (_transactions != nullptr)
-        return *_transactions;
 
-      _transactions.reset(new TransactionsMap{});
+      if (this->_transactions->get() != nullptr)
+        return *this->_transactions->get();
+
+      this->_transactions([] (TransactionMapPtr& map) {
+        if (map == nullptr)
+          map.reset(new TransactionsMap{});
+      });
 
       auto response = this->_meta.transactions();
       for (auto const& id: response.transactions)
       {
         auto transaction = this->_meta.transaction(id);
-        (*this->_transactions)[id] = transaction;
+        this->_transactions([&id, &transaction] (TransactionMapPtr& map) {
+            (*map)[id] = transaction;
+        });
       }
 
-      return *(this->_transactions);
+      return *(this->_transactions->get());
     }
 
     Transaction const&
@@ -1128,7 +1139,13 @@ namespace surface
         auto transaction = this->_meta.transaction(id);
         ELLE_DEBUG("Synched transaction %s has status %d",
                    id, transaction.status);
-        return ((*this->_transactions)[id] = transaction);
+        return this->_transactions(
+          [&id, &transaction] (TransactionMapPtr& map)
+            -> plasma::Transaction const&
+          {
+            return (*map)[id] = transaction;
+          }
+        );
       }
       catch (std::runtime_error const& e)
       {
@@ -1177,8 +1194,9 @@ namespace surface
           ELLE_WARN("we merged a canceled transaction, nothing to do.");
           return;
         }
-
-        (*this->_transactions)[notif.transaction_id] = transaction;
+        this->_transactions([&notif, &transaction] (TransactionMapPtr& map) {
+            (*map)[notif.transaction_id] = transaction;
+        });
       }
 
       if (pair->second.status == gap_transaction_status_canceled ||
@@ -1189,7 +1207,9 @@ namespace surface
         return;
       }
 
-      this->_transactions->at(notif.transaction_id).status = notif.status;
+      this->_transactions([&notif] (TransactionMapPtr& map) {
+        map->at(notif.transaction_id).status = notif.status;
+      });
 
       auto const& transaction = this->one(notif.transaction_id);
 
@@ -1198,17 +1218,13 @@ namespace surface
         case plasma::TransactionStatus::accepted:
           // We update the transaction from meta.
           // XXX: we should have it from transaction_notification.
-          (*_transactions)[notif.transaction_id] = this->_meta.transaction(
-            notif.transaction_id
-            );
+          this->sync(notif.transaction_id);
           this->_on_transaction_accepted(transaction);
           break;
         case plasma::TransactionStatus::created:
           // We update the transaction from meta.
           // XXX: we should have it from transaction_notification.
-          (*_transactions)[notif.transaction_id] = this->_meta.transaction(
-            notif.transaction_id
-            );
+          this->sync(notif.transaction_id);
           this->_on_transaction_created(transaction);
           break;
         case plasma::TransactionStatus::prepared:

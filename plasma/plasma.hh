@@ -24,6 +24,7 @@ namespace plasma
     int                   total_size;
     int                   is_directory;
     int                   status;
+    uint64_t              timestamp;
     bool                  already_accepted;
     bool                  early_accepted;
   };

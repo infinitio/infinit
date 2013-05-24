@@ -88,7 +88,7 @@ namespace elle
     {
       if (!error)
       {
-        ELLE_DEBUG("signal caught: %s.", elle::signal::strsignal(sig));
+        ELLE_WARN("signal caught: %s.", elle::signal::strsignal(sig));
         handler(sig);
       }
       else if (error != boost::system::errc::operation_canceled)

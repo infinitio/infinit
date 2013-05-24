@@ -32,7 +32,20 @@ namespace surface
     OperationManager::~OperationManager()
     {
       for (auto& operation: this->_operations)
-        operation.second->cancel();
+      {
+        if (operation.second == nullptr)
+          continue;
+        try
+        {
+          operation.second->cancel();
+        }
+        catch (...)
+        {
+          ELLE_ERR("couldn't cancel operation %s: %s",
+                   operation.second->name(),
+                   elle::exception_string());
+        }
+      }
     }
 
     OperationManager::OperationId
@@ -57,15 +70,31 @@ namespace surface
     }
 
     void
+    OperationManager::cleanup()
+    {
+      std::vector<OperationId> to_remove;
+      for (auto& pair: this->_operations)
+      {
+        auto& ptr = pair.second;
+        if ((ptr == nullptr) ||
+            (ptr->done() && ptr->scheduled_for_deletion()))
+          to_remove.push_back(pair.first);
+      }
+      for (auto id: to_remove)
+        this->finalize(id);
+    }
+
+    void
     OperationManager::_cancel(std::string const& name)
     {
       ELLE_TRACE_METHOD(name);
       for (auto& pair: _operations)
       {
-       if (pair.second != nullptr && pair.second->name() == name && !pair.second->done())
+       if (pair.second != nullptr &&
+           pair.second->name() == name &&
+           !pair.second->done())
         {
           pair.second->cancel();
-          return;
         }
       }
     }
@@ -81,7 +110,6 @@ namespace surface
             boost::algorithm::ends_with(pair.second->name(), name))
         {
           pair.second->cancel();
-          return;
         }
       }
     }
@@ -96,7 +124,6 @@ namespace surface
             !pair.second->done())
         {
           pair.second->cancel();
-          return;
         }
       }
     }

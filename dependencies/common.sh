@@ -7,7 +7,7 @@ PACKAGESDIR="${BASEDIR}/packages"
 PLATFORMDIR="${BASEDIR}/platforms/${PLATFORM}"
 BUILDDIR="${PLATFORMDIR}/build"
 WORKDIR="${PLATFORMDIR}/work"
-DEPENDENCIES="openssl"
+DEPENDENCIES="openssl curl"
 
 #
 # ---------- imports ----------------------------------------------------------
@@ -27,6 +27,15 @@ OPENSSL_TARBALL="${OPENSSL_NAME}.tar.gz"
 OPENSSL_SNAPSHOT="http://www.openssl.org/source/${OPENSSL_TARBALL}"
 OPENSSL_FINGERPRINT="ae412727c8c15b67880aef7bd2999b2e"
 OPENSSL_LIBRARIES="${WORKDIR}/lib/libssl.${PLATFORM_LIBRARY_EXTENSION} ${WORKDIR}/lib/libcrypto.${PLATFORM_LIBRARY_EXTENSION}"
+
+# curl
+CURL_VERSION="7.30.0"
+CURL_BUILDDIR="curl-${CURL_VERSION}"
+CURL_NAME="curl-${CURL_VERSION}"
+CURL_TARBALL="${CURL_NAME}.tar.gz"
+CURL_SNAPSHOT="http://curl.haxx.se/download/${CURL_TARBALL}"
+CURL_FINGERPRINT="60bb6ff558415b73ba2f00163fd307c5"
+CURL_LIBRARIES="${WORKDIR}/lib/libcurl.${PLATFORM_LIBRARY_EXTENSION}"
 
 #
 # ---------- functions --------------------------------------------------------
@@ -68,6 +77,7 @@ uptodate()
     libraries="${1}"
 
     for library in ${libraries} ; do
+	echo ${library}
         if [ ! -f "${library}" ] ; then
             return 1
         fi

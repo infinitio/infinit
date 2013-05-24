@@ -8,6 +8,7 @@ ELLE_SERIALIZE_NO_FORMAT(plasma::Transaction);
 
 ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
 {
+  ELLE_LOG_COMPONENT("infinit.plasma");
   enforce(version == 0);
 
   ar & elle::serialize::named("_id", res.id);
@@ -23,6 +24,16 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & elle::serialize::named("first_filename", res.first_filename);
   ar & elle::serialize::named("files_count", res.files_count);
   ar & elle::serialize::named("total_size", res.total_size);
+  try
+  {
+    // XXX remove try catch when all transactions have a timestamp
+    ar & elle::serialize::named("timestamp", res.timestamp);
+  }
+  catch (...)
+  {
+    ELLE_WARN("timestamp not yet present in all transactions");
+    res.timestamp = 0.0;
+  }
   ar & elle::serialize::named("is_directory", res.is_directory);
   ar & elle::serialize::named("status", res.status);
   try
