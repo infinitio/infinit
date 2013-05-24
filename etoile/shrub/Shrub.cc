@@ -46,7 +46,7 @@ namespace etoile
       if (Infinit::Configuration.etoile.shrub.status == false)
         return elle::Status::Ok;
 
-      reactor::Scheduler::scheduler()->Every
+      reactor::Scheduler::scheduler()->every
         (&Shrub::Sweeper, "Shrub sweeper",
          boost::posix_time::milliseconds
          (Infinit::Configuration.etoile.shrub.frequency));
