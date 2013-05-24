@@ -1136,6 +1136,7 @@ def configure(cxx_toolkit,
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib] + udt_libs
   tests_src_n_lib = [
     ('tests/testing_tests.cc', []),
+    ('tests/unit/etoile/Shrub.cc', infinit_libs),
     ('tests/unit/nucleus/neutron/nn_Group.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Object.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
