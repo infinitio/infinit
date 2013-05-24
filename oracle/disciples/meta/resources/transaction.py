@@ -797,25 +797,25 @@ class One(Page):
 
         res = {
 #            'transaction': {
-                'transaction_id': str(transaction['_id']),
+                '_id': transaction['_id'],
 
-                'sender_id': str(transaction['sender_id']),
+                'sender_id': transaction['sender_id'],
                 'sender_fullname': transaction['sender_fullname'],
-                'sender_device_id': str(transaction['sender_device_id']),
+                'sender_device_id': transaction['sender_device_id'],
 
-                'recipient_id': str(transaction['recipient_id']),
+                'recipient_id': transaction['recipient_id'],
                 'recipient_fullname': transaction['recipient_fullname'],
-                'recipient_device_id': str(transaction['recipient_device_id']),
+                'recipient_device_id': transaction['recipient_device_id'],
                 'recipient_device_name': transaction['recipient_device_name'],
 
-                'network_id': str(transaction['network_id']),
+                'network_id': transaction['network_id'],
 
                 'first_filename': transaction['first_filename'],
                 'files_count': transaction['files_count'],
                 'total_size': transaction['total_size'],
-                'is_directory': int(transaction['is_directory']),
+                'is_directory': transaction['is_directory'],
 
-                'status': int(transaction['status']),
+                'status': transaction['status'],
                 'message': transaction['message'],
                 'already_accepted': bool(transaction.get('already_accepted', False)), # XXX to remove.
                 'early_accepted': bool(transaction.get('early_accepted', False)),
