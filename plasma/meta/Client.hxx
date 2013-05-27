@@ -93,12 +93,17 @@ namespace plasma
       {
         sym = "*";
       }
-      if (type == CURLINFO_HEADER_IN ||
-          type == CURLINFO_HEADER_OUT)
+
+      if (type == CURLINFO_TEXT)
+      {
+        ELLE_DUMP("%s %s", sym, msg);
+      }
+      else if (type == CURLINFO_HEADER_OUT)
       {
         std::vector<std::string> v;
+
         boost::split(v, msg, boost::algorithm::is_any_of("\n"));
-        ELLE_DEBUG_SCOPE("%s %s", sym, v[0]);
+        ELLE_TRACE_SCOPE("%s %s", sym, v[0]);
         int i = 0;
         for (auto const&s : v)
         {
@@ -107,8 +112,14 @@ namespace plasma
           ELLE_DEBUG("%s %s", sym, s);
         }
       }
-      else
+      else if (type == CURLINFO_DATA_IN || type == CURLINFO_DATA_OUT)
+      {
         ELLE_DEBUG("%s %s", sym, msg);
+      }
+      else if (type == CURLINFO_HEADER_IN)
+      {
+        ELLE_TRACE("%s %s", sym, msg);
+      }
       return 0;
     }
 
