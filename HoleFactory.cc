@@ -3,6 +3,7 @@
 #include <elle/network/Interface.hh>
 
 #include <reactor/network/nat.hh>
+#include <reactor/network/resolve.hh>
 
 #include <agent/Agent.hh>
 
@@ -125,15 +126,17 @@ namespace infinit
           boost::asio::ip::udp::endpoint pub;
           try
           {
-            reactor::nat::NAT nat(*reactor::Scheduler::scheduler());
+            auto& sched = *reactor::Scheduler::scheduler();
+            reactor::nat::NAT nat(sched);
 
-            auto pokey = nat.punch(common::longinus::host(),
-                                   common::longinus::port(),
-                                   port);
+            auto host = reactor::network::resolve_udp(sched,
+                                                      common::longinus::host(),
+                                                      std::to_string(3478));
+            auto breach = nat.map(host); 
 
-            ELLE_TRACE("punch done: %s", pokey.public_endpoint());
-            socket = std::move(pokey.handle());
-            pub = pokey.public_endpoint();
+            ELLE_TRACE("breach done: %s", breach.mapped_endpoint());
+            socket = std::move(breach.handle());
+            pub = breach.mapped_endpoint();
           }
           catch (elle::Exception const& e)
           {

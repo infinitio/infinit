@@ -135,6 +135,18 @@ def configure(cxx_toolkit,
     prefix = dependencies_prefix,
   )
 
+  stun_common = drake.cxx.LibraryConfiguration(
+    'commonincludes.hpp',
+    prefix = dependencies_prefix,
+    include_dir = "include/stun/common/",
+  )
+
+  stun_core = drake.cxx.LibraryConfiguration(
+    'stuncore.h',
+    prefix = dependencies_prefix,
+    include_dir = "include/stun/stuncore/",
+  )
+
   if cxx_toolkit.os == drake.os.macos:
     ssl_suffix = '.1.0.0.dylib'
     curl_suffix = '.4.dylib'
@@ -162,8 +174,26 @@ def configure(cxx_toolkit,
     curl.libraries_path
   )
 
+  stun_core_lib = drake.copy(
+    drake.nodes(
+      stun_core.libraries_path / ('libstuncore.a'),
+    ),
+    'lib',
+    stun_core.libraries_path
+  )
+
+  stun_common_lib = drake.copy(
+    drake.nodes(
+      stun_common.libraries_path / ('libstuncommon.a'),
+    ),
+    'lib',
+    stun_common.libraries_path
+  )
+
   cxx_config += openssl.config()
   cxx_config += curl.config()
+  cxx_config += stun_core.config()
+  cxx_config += stun_common.config()
 
   # Boost
   boost = boost or drake.cxx.boost.Boost()
@@ -185,7 +215,10 @@ def configure(cxx_toolkit,
                                                   'include/python3.3m'])
 
   # Elle
-  elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost)
+  elle = drake.include('elle', cxx_toolkit, cxx_config,
+      boost = boost,
+      curl = curl,
+      stuntman = stun_core)
   elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
   cryptography_lib = drake.copy(elle.cryptography_dynamic, 'lib', elle.cryptography_dynamic.path().dirname())
   reactor_lib = drake.copy(elle.reactor_dynamic, 'lib', elle.reactor_dynamic.path().dirname())
@@ -754,6 +787,7 @@ def configure(cxx_toolkit,
   ## ----- ##
 
   tests = drake.Rule('tests')
+  tests << elle.rule_tests
 
   ## ----- ##
   ## Build ##
@@ -762,6 +796,8 @@ def configure(cxx_toolkit,
   build = drake.Rule('build')
   build << openssl_lib
   build << curl_lib
+  build << stun_core_lib
+  build << stun_common_lib
 
   ## -------- ##
   ## Programs ##
@@ -807,7 +843,7 @@ def configure(cxx_toolkit,
 
   # GdbMacro
   gdbmacro_files = drake.nodes(
-    'default/gdbmacro',
+    'default/gdbmacro.py',
     )
   macro_copy = drake.copy(gdbmacro_files, 'bin', 'default')
 
