@@ -140,7 +140,7 @@ namespace infinit
                 breach.nat_behavior() == Breach::NatBehavior::DirectMapping)
             {
               ELLE_TRACE("breach done: %s", breach.mapped_endpoint());
-              socket = std::move(breach.handle());
+              socket = std::move(breach.take_handle());
               pub = breach.mapped_endpoint();
             }
             else
