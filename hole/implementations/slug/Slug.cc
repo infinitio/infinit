@@ -129,6 +129,7 @@ namespace hole
 
       Slug::~Slug()
       {
+        ELLE_TRACE_SCOPE("%s: terminating", *this);
         for (auto host: Hosts(_hosts))
           this->_remove(host.second);
 
@@ -1140,10 +1141,13 @@ namespace hole
       Slug::_remove(Host* host)
       {
         elle::network::Locus locus(host->locus());
-        assert(this->_hosts.find(locus) != this->_hosts.end());
-        ELLE_LOG("%s: remove host: %s", *this, *host);
+        // Stopping the RPCS will call this recursively. Break the loop.
+        auto it = this->_hosts.find(locus);
+        if (it == this->_hosts.end())
+          return;
+        ELLE_LOG_SCOPE("%s: remove host: %s", *this, *host);
+        std::unique_ptr<Host> guard(host);
         this->_hosts.erase(locus);
-        delete host;
       }
 
       /*-------.
