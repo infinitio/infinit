@@ -40,7 +40,7 @@ namespace infinit
   sighdl(int signum)
   {
     ELLE_DEBUG_SCOPE("received signal %s(%d)",
-               elle::system::strsignal(signum), signum);
+                     elle::system::strsignal(signum), signum);
     if (st_pid != -1)
     {
       ELLE_DEBUG("kill(%d, %s(%d))",
