@@ -6,6 +6,9 @@ import sys
 
 arch, osyst, compiler = os.environ['BUILDFARM_NAME'].split('-')
 
+if osyst is "OSX":
+    os.environ["CXXFLAGS"] = "-I/opt/local/include/ -L/opt/local/lib/"
+
 prev = os.getcwd()
 os.chdir('%s/dependencies' % os.environ['DIR_SOURCE'])
 if osyst.startswith('linux') and arch == 'x86_64':
