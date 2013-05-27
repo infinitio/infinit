@@ -192,36 +192,8 @@ class Create(Page):
         self.notifier.notify_some(
             notifier.TRANSACTION,
             [database.ObjectId(recipient_id), database.ObjectId(_id)], # sender and recipient.
-            {'transaction': transaction}
+            transaction
         )
-              #{
-              #      'transaction_id': str(transaction_id),
-
-              #      # Sender.
-              #      'sender_id': str(_id),
-              #      'sender_fullname': self.user['fullname'],
-              #      'sender_device_id': str(device_id),
-
-              #      # Recipient.
-              #      'recipient_id': str(recipient_id),
-              #      'recipient_fullname': recipient_fullname,
-              #      'recipient_device_id': '',
-              #      'recipient_device_name': '',
-
-              #      # Network.
-              #      'network_id': str(network_id),
-
-              #      'message': message,
-
-              #      # File info.
-              #      'first_filename': first_filename,
-              #      'files_count': int(self.data['files_count']),
-              #      'total_size': int(self.data['total_size']),
-              #      'is_directory': int(self.data['is_directory']),
-
-              #      'status': int(PENDING),
-              #      'early_accepted': False,
-              #  }
 
         return self.success({
             'created_transaction_id': transaction_id,
@@ -795,31 +767,4 @@ class One(Page):
         if not self.user['_id'] in (transaction['sender_id'], transaction['recipient_id']):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
-        res = {
-#            'transaction': {
-                '_id': transaction['_id'],
-
-                'sender_id': transaction['sender_id'],
-                'sender_fullname': transaction['sender_fullname'],
-                'sender_device_id': transaction['sender_device_id'],
-
-                'recipient_id': transaction['recipient_id'],
-                'recipient_fullname': transaction['recipient_fullname'],
-                'recipient_device_id': transaction['recipient_device_id'],
-                'recipient_device_name': transaction['recipient_device_name'],
-
-                'network_id': transaction['network_id'],
-
-                'first_filename': transaction['first_filename'],
-                'files_count': transaction['files_count'],
-                'total_size': transaction['total_size'],
-                'is_directory': transaction['is_directory'],
-
-                'status': transaction['status'],
-                'message': transaction['message'],
-                'already_accepted': bool(transaction.get('already_accepted', False)), # XXX to remove.
-                'early_accepted': bool(transaction.get('early_accepted', False)),
- #           }
-        }
-
-        return self.success(res)
+        return self.success(transaction)
