@@ -132,7 +132,7 @@ namespace infinit
             auto host = reactor::network::resolve_udp(sched,
                                                       common::longinus::host(),
                                                       std::to_string(3478));
-            auto breach = nat.map(host); 
+            auto breach = nat.map(host);
 
             using reactor::nat::Breach;
 
