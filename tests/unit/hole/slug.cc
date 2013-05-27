@@ -98,8 +98,6 @@ two_slugs_push_pull()
   auto addr = g.bind();
   slug1.slug.push(addr, g);
 
-  reactor::Scheduler::scheduler()->current()->sleep(boost::posix_time::milliseconds(100));
-
   auto pulled = slug2.slug.pull(addr, nucleus::proton::Revision::Last);
   auto pulled_group = dynamic_cast<nucleus::neutron::Group*>(pulled.get());
   BOOST_CHECK(pulled_group);
