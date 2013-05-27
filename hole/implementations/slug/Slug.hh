@@ -56,17 +56,6 @@ namespace hole
       private:
         State _state;
 
-      /*------------.
-      | Join, leave |
-      `------------*/
-      protected:
-        virtual
-        void
-        _join();
-        virtual
-        void
-        _leave();
-
       /*---------------.
       | Implementation |
       `---------------*/

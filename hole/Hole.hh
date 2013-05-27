@@ -27,34 +27,6 @@ namespace hole
          elle::Authority const& authority);
     virtual ~Hole();
 
-  /*------.
-  | Ready |
-  `------*/
-  public:
-    void
-    ready_hook(boost::function<void ()> const& f);
-    /// Signal other components the storage layer is ready.
-    void
-    ready(); // FIXME: protected
-  private:
-    boost::signal<void ()> _ready;
-
-  /*------------.
-  | Join, leave |
-  `------------*/
-  public:
-    void
-    join();
-    void
-    leave();
-  protected:
-    virtual
-    void
-    _join() = 0;
-    virtual
-    void
-    _leave() = 0;
-
   /*--------.
   | Storage |
   `--------*/
@@ -101,17 +73,6 @@ namespace hole
   private:
     ELLE_ATTRIBUTE_R(elle::Passport, passport);
     ELLE_ATTRIBUTE_R(elle::Authority, authority);
-
-  /*------.
-  | State |
-  `------*/
-  public:
-    enum struct State
-      {
-        offline,
-        online
-      };
-    ELLE_ATTRIBUTE_R(State, state);
   };
 }
 

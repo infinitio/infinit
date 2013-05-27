@@ -77,9 +77,6 @@ namespace hole
             // in the network.  Thus, it can be implicitly considered
             // as authenticated in a network composed of itself alone.
             this->_state = State::attached;
-
-            // Set the hole as ready to receive requests.
-            this->ready();
           }
 
           if (socket)
@@ -139,23 +136,6 @@ namespace hole
         // acceptor.
         if (_acceptor)
           _acceptor->terminate_now();
-      }
-
-      /*------------.
-      | Join, leave |
-      `------------*/
-
-      void
-      Slug::_join()
-      {
-        // this->_machine.reset(new Machine(*this, this->_port,
-        //                                  this->_connection_timeout));
-      }
-
-      void
-      Slug::_leave()
-      {
-        // this->_machine.reset(nullptr);
       }
 
       void
@@ -1122,10 +1102,7 @@ namespace hole
         ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
         auto loci = host->authenticate(this->passport());
         if (this->_state == State::detached)
-        {
           this->_state = State::attached;
-          this->ready();
-        }
         // XXX Propagation disabled.
         // for (auto locus: loci)
         //   if (_hosts.find(locus) == _hosts.end())

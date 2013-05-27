@@ -25,8 +25,7 @@ namespace hole
              elle::Authority const& authority):
     _storage(storage),
     _passport(passport),
-    _authority(authority),
-    _state(State::offline)
+    _authority(authority)
   {
     if (!_passport.validate(this->authority()))
       throw Exception("unable to validate the passport");
@@ -35,42 +34,9 @@ namespace hole
   Hole::~Hole()
   {}
 
-  /*-------------.
-  | Join, leave |
-  `-------------*/
-
-  void
-  Hole::join()
-  {
-    this->_join();
-  }
-
-  void
-  Hole::leave()
-  {
-    this->_leave();
-  }
-
   /*------.
   | Ready |
   `------*/
-
-  void
-  Hole::ready()
-  {
-    ELLE_DEBUG_SCOPE("ready");
-    if (this->_state != State::online)
-      {
-        this->_ready();
-        this->_state = Hole::State::online;
-      }
-  }
-
-  void
-  Hole::ready_hook(boost::function<void ()> const& f)
-  {
-    Hole::_ready.connect(f);
-  }
 
   void
   Hole::push(const nucleus::proton::Address& address,

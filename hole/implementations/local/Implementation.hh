@@ -25,17 +25,7 @@ namespace hole
         Implementation(storage::Storage& storage,
                        elle::Passport const& passport,
                        elle::Authority const& authority);
-
-      /*------------.
-      | Join, leave |
-      `------------*/
-      protected:
-        virtual
-        void
-        _join();
-        virtual
-        void
-        _leave();
+        ~Implementation();
 
       /*---------------.
       | Implementation |
