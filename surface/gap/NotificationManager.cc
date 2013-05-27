@@ -262,7 +262,16 @@ namespace surface
 #define GET_TR_FIELD_DEFAULT(_f_, _type_, _default_)                            \
           GET_TR_FIELD_RENAME_DEFAULT(_f_, _f_, _type_, _default_)
 
-          GET_TR_FIELD_RENAME(_id, id, string);
+          try
+          {
+            transaction->transaction.id = d["transaction"]["_id"].as_string();
+          }
+          catch (...)
+          {
+            transaction->transaction.id =
+              d["transaction"]["transaction_id"].as_string();
+          }
+
           GET_TR_FIELD(sender_id, string);
           GET_TR_FIELD(sender_fullname, string);
           GET_TR_FIELD(sender_device_id, string);
