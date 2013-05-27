@@ -232,27 +232,35 @@ namespace surface
           break;
 
         case NotificationType::transaction:
-#define GET_TR_FIELD_RENAME(_if_, _of_, type)                                          \
+
+#define GET_TR_FIELD_RENAME_DEFAULT(_if_, _of_, _type_, _default_)                        \
           try                                                                   \
           {                                                                     \
-            ELLE_DEBUG("Get transaction field " #_if_);                            \
-            transaction->transaction._of_ = d["transaction"][#_if_].as_ ## type ();   \
+            ELLE_DEBUG("get transaction field " #_if_);                         \
+            transaction->transaction._of_ = d["transaction"][#_if_].as_ ## _type_ (); \
           }                                                                     \
           catch (...)                                                           \
           {                                                                     \
-            ELLE_ERR("Couldn't get field " #_if_);                                 \
+            ELLE_ERR("couldn't get field " #_if_ " default: %s", _default_);    \
+            transaction->transaction._of_ = _default_;                          \
           }                                                                     \
 
-#define GET_TR_FIELD(f, type)                                          \
+#define GET_TR_FIELD_RENAME(_if_, _of_, _type_)                                 \
           try                                                                   \
           {                                                                     \
-            ELLE_DEBUG("Get transaction field " #f);                            \
-            transaction->transaction.f = d["transaction"][#f].as_ ## type ();   \
+            ELLE_DEBUG("get transaction field " #_if_);                         \
+            transaction->transaction._of_ = d["transaction"][#_if_].as_ ## _type_ (); \
           }                                                                     \
           catch (...)                                                           \
           {                                                                     \
-            ELLE_ERR("Couldn't get field " #f);                                 \
-          }
+            ELLE_ERR("couldn't get field " #_if_);                              \
+          }                                                                     \
+
+#define GET_TR_FIELD(_f_, _type_)                                               \
+          GET_TR_FIELD_RENAME(_f_, _f_, _type_)
+
+#define GET_TR_FIELD_DEFAULT(_f_, _type_, _default_)                            \
+          GET_TR_FIELD_RENAME_DEFAULT(_f_, _f_, _type_, _default_)
 
           GET_TR_FIELD_RENAME(_id, id, string);
           GET_TR_FIELD(sender_id, string);
@@ -267,8 +275,9 @@ namespace surface
           GET_TR_FIELD(first_filename, string);
           GET_TR_FIELD(files_count, integer);
           GET_TR_FIELD(total_size, integer);
-          GET_TR_FIELD(timestamp, float);
-          GET_TR_FIELD(is_directory, bool);
+          GET_TR_FIELD_DEFAULT(timestamp, float, 0.0f);
+          GET_TR_FIELD_DEFAULT(is_directory, bool, false);
+          GET_TR_FIELD_DEFAULT(early_accepted, bool, false);
           GET_TR_FIELD(status, integer);
           // GET_TR_FIELD(already_accepted, integer);
           // GET_TR_FIELD(early_accepted, integer);

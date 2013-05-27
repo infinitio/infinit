@@ -153,7 +153,15 @@ SERIALIZE_RESPONSE(plasma::meta::InviteUserResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
 {
-  ar & named("_id", res.id);
+  try
+  {
+    ar & named("_id", res.id);
+  }
+  catch (...)
+  {
+    ar & named("transaction_id", res.id);
+  }
+
   ar & named("sender_id", res.sender_id);
   ar & named("sender_fullname", res.sender_fullname);
   ar & named("sender_device_id", res.sender_device_id);
@@ -166,27 +174,11 @@ SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
   ar & named("first_filename", res.first_filename);
   ar & named("files_count", res.files_count);
   ar & named("total_size", res.total_size);
-  ar & named("is_directory", res.is_directory);
   ar & named("status", res.status);
 
-  try
-  {
-    // XXX remove try catch when all transactions have a timestamp
-    ar & named("timestamp", res.timestamp);
-  }
-  catch (...)
-  {
-    ELLE_WARN("timestamp not yet present in all transactions");
-    res.timestamp = 0.0;
-  }
-  try
-  {
-    ar & named("early_accepted", res.early_accepted);
-  }
-  catch (...)
-  {
-    res.early_accepted = false;
-  }
+  DEFAULT_FILL_VALUE(ar, res, is_directory, false);
+  DEFAULT_FILL_VALUE(ar, res, timestamp, 0.0f);
+  DEFAULT_FILL_VALUE(ar, res, early_accepted, false);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionsResponse, ar, res)
