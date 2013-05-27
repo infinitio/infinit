@@ -23,7 +23,7 @@
 #include <Infinit.hh>
 
 void
-Main()
+slug_push_pull()
 {
   nucleus::proton::Network n("test network");
   hole::storage::Memory mem(n);
@@ -54,11 +54,11 @@ Main()
   BOOST_CHECK_EQUAL(pulled_group->description(), "towel");
 }
 
-BOOST_AUTO_TEST_CASE(test_hole)
+BOOST_AUTO_TEST_CASE(test_slug_push_pull)
 {
   reactor::Scheduler sched;
   reactor::Thread t(sched,
                     "main",
-                    [&] {Main();});
+                    &slug_push_pull);
   sched.run();
 }
