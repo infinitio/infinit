@@ -114,3 +114,33 @@ BOOST_AUTO_TEST_CASE(test_two_slugs_push_pull)
                     &two_slugs_push_pull);
   sched.run();
 }
+
+void
+two_slugs_push_pull_async()
+{
+  nucleus::proton::Network n("test network");
+  Slug slug1("1", n);
+
+  nucleus::neutron::Group g(n, slug1.keys.K(), "towel");
+  g.seal(slug1.keys.k());
+  auto addr = g.bind();
+  slug1.slug.push(addr, g);
+
+  std::vector<elle::network::Locus> members;
+  members.push_back(elle::network::Locus("127.0.0.1", slug1.slug.port()));
+  Slug slug2("2", n, members);
+
+  auto pulled = slug2.slug.pull(addr, nucleus::proton::Revision::Last);
+  auto pulled_group = dynamic_cast<nucleus::neutron::Group*>(pulled.get());
+  BOOST_CHECK(pulled_group);
+  BOOST_CHECK_EQUAL(pulled_group->description(), "towel");
+}
+
+BOOST_AUTO_TEST_CASE(test_two_slugs_push_pull_async)
+{
+  reactor::Scheduler sched;
+  reactor::Thread t(sched,
+                    "main",
+                    &two_slugs_push_pull);
+  sched.run();
+}
