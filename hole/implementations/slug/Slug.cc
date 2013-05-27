@@ -1279,6 +1279,19 @@ namespace hole
         return false;
       }
 
+      /*----------.
+      | Printable |
+      `----------*/
+
+      void
+      Slug::print(std::ostream& stream) const
+      {
+        stream << "Slug(";
+        if (this->_server)
+          stream << this->_server->port();
+        stream << ")";
+      }
+
       /*---------.
       | Dumpable |
       `---------*/
