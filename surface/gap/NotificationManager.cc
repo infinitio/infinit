@@ -233,11 +233,12 @@ namespace surface
 
         case NotificationType::transaction:
 
-#define GET_TR_FIELD_RENAME_DEFAULT(_if_, _of_, _type_, _default_)                        \
+#define GET_TR_FIELD_RENAME_DEFAULT(_if_, _of_, _type_, _default_)              \
           try                                                                   \
           {                                                                     \
             ELLE_DEBUG("get transaction field " #_if_);                         \
-            transaction->transaction._of_ = d["transaction"][#_if_].as_ ## _type_ (); \
+            transaction->transaction._of_ =                                     \
+              d["transaction"][#_if_].as_ ## _type_ ();                         \
           }                                                                     \
           catch (...)                                                           \
           {                                                                     \
@@ -249,7 +250,8 @@ namespace surface
           try                                                                   \
           {                                                                     \
             ELLE_DEBUG("get transaction field " #_if_);                         \
-            transaction->transaction._of_ = d["transaction"][#_if_].as_ ## _type_ (); \
+            transaction->transaction._of_ =                                     \
+              d["transaction"][#_if_].as_ ## _type_ ();                         \
           }                                                                     \
           catch (...)                                                           \
           {                                                                     \
