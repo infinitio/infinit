@@ -125,6 +125,17 @@ namespace hole
       this->_erase(address);
     }
 
+
+    /*----------.
+    | Printable |
+    `----------*/
+
+    void
+    Storage::print(std::ostream& stream) const
+    {
+      stream << "Storage(" << this->network() << ")";
+    }
+
     /*----------.
     | Utilities |
     `----------*/

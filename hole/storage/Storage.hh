@@ -18,7 +18,8 @@ namespace hole
     /// An abstract local block storage.
     ///
     /// For now, the assumption that blocks are stored as files is made.
-    class Storage
+    class Storage:
+      public elle::Printable
     {
     /*------.
     | Types |
@@ -75,11 +76,16 @@ namespace hole
       /// \throw if address doesn't match any block.
       void
       erase(nucleus::proton::Address const& address);
-
-
     protected:
       std::string _identifier(Address const& address,
                               Revision const& revision = Revision::Last) const;
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      void
+      print(std::ostream& stream) const;
 
     /*----------.
     | Utilities |

@@ -63,7 +63,7 @@ namespace hole
     void
     Memory::print(std::ostream& stream) const
     {
-      stream << "#" << this->_container.size();
+      stream << "storage::Memory(" << this->network() << ")";
     }
 
     /*--------.
