@@ -127,16 +127,20 @@ class Trophonius(basic.LineReceiver):
             assert isinstance(self.factory.clients, dict)
             self.factory.clients.setdefault(self.id, set()).add(self)
             self.devices = self.factory.clients[self.id]
-            print("client {}: current devices {}".format(self.id, self.devices));
-            for d in self.devices:
-                print(self.transport.getPeer())
+
+            pythia.Admin().post(
+                '/user/connected',
+                {
+                    'user_id': self.id,
+                    'user_token': self.token,
+                }
+            )
 
             # Enable the notifications for the current client
             self.state = "CHAT"
-            print("Switching state to", self.state)
 
             # Send the success to the client
-            self._send_res(res=200)
+            self._send_res(res = 200)
         except (ValueError, KeyError) as ve:
             log.err("Handled exception {} in state {}: {}".format(
                                         ve.__class__.__name__,
@@ -238,4 +242,3 @@ class MetaTrophoFactory(protocol.Factory):
 
     def buildProtocol(self, addr):
         return MetaTropho(self)
-
