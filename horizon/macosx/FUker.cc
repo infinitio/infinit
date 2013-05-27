@@ -304,7 +304,7 @@ namespace horizon
     ///
     elle::Status        FUker::Initialize()
     {
-      Fuker::run();
+      FUker::run();
       return elle::Status::Ok;
     }
 
