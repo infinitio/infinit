@@ -33,7 +33,7 @@ uptodate "${STUN_LIBRARIES}" ||
     cd stunserver ||
     die "unable to enter the directory"
 
-    make CXXFLAGS="-fPIC" || die "unable to build"
+    make CXXFLAGS="-fPIC -I/opt/local/include -L/opt/local/lib" || die "unable to build"
 
     CORE_DIR=${WORKDIR}/include/stun/stuncore
     COMMON_DIR=${WORKDIR}/include/stun/common
