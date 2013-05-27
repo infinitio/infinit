@@ -134,9 +134,17 @@ namespace infinit
                                                       std::to_string(3478));
             auto breach = nat.map(host); 
 
-            ELLE_TRACE("breach done: %s", breach.mapped_endpoint());
-            socket = std::move(breach.handle());
-            pub = breach.mapped_endpoint();
+            using reactor::nat::Breach;
+
+            if (breach.nat_behavior() == Breach::NatBehavior::EndpointIndependentMapping ||
+                breach.nat_behavior() == Breach::NatBehavior::DirectMapping)
+            {
+              ELLE_TRACE("breach done: %s", breach.mapped_endpoint());
+              socket = std::move(breach.handle());
+              pub = breach.mapped_endpoint();
+            }
+            else
+              throw elle::Exception{"invalid mapping behavior"};
           }
           catch (elle::Exception const& e)
           {
@@ -172,9 +180,10 @@ namespace infinit
                   }
                 ELLE_DEBUG("addresses: %s", addresses);
               std::vector<std::pair<std::string, uint16_t>> public_addresses;
-              public_addresses.push_back(std::pair<std::string, uint16_t>
-                                         (pub.address().to_string(),
-                                          pub.port()));
+              if (pub.port() != 0)
+                public_addresses.push_back(std::pair<std::string, uint16_t>
+                                           (pub.address().to_string(),
+                                            pub.port()));
               client.token(agent::Agent::meta_token);
 
               ELLE_DEBUG("public_addresses: %s", public_addresses);
