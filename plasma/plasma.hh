@@ -22,9 +22,9 @@ namespace plasma
     std::string           first_filename;
     int                   files_count;
     int                   total_size;
-    int                   is_directory;
+    bool                  is_directory;
     int                   status;
-    uint64_t              timestamp;
+    double                timestamp;
     bool                  already_accepted;
     bool                  early_accepted;
   };

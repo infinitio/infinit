@@ -153,7 +153,6 @@ SERIALIZE_RESPONSE(plasma::meta::InviteUserResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
 {
-  // XXX see plasma/plasma.hxx
   ar & named("_id", res.id);
   ar & named("sender_id", res.sender_id);
   ar & named("sender_fullname", res.sender_fullname);
@@ -163,9 +162,13 @@ SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
   ar & named("recipient_device_id", res.recipient_device_id);
   ar & named("recipient_device_name", res.recipient_device_name);
   ar & named("network_id", res.network_id);
+  ar & named("message", res.message);
   ar & named("first_filename", res.first_filename);
   ar & named("files_count", res.files_count);
   ar & named("total_size", res.total_size);
+  ar & named("is_directory", res.is_directory);
+  ar & named("status", res.status);
+
   try
   {
     // XXX remove try catch when all transactions have a timestamp
@@ -175,18 +178,6 @@ SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
   {
     ELLE_WARN("timestamp not yet present in all transactions");
     res.timestamp = 0.0;
-  }
-  ar & named("is_directory", res.is_directory);
-  ar & named("status", res.status);
-  ar & named("message", res.message);
-  try
-  {
-    // XXX: no used anymore.
-    ar & named("already_accepted", res.already_accepted);
-  }
-  catch (...)
-  {
-    res.already_accepted = false;
   }
   try
   {

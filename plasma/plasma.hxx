@@ -24,6 +24,9 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & elle::serialize::named("first_filename", res.first_filename);
   ar & elle::serialize::named("files_count", res.files_count);
   ar & elle::serialize::named("total_size", res.total_size);
+  ar & elle::serialize::named("is_directory", res.is_directory);
+  ar & elle::serialize::named("status", res.status);
+
   try
   {
     // XXX remove try catch when all transactions have a timestamp
@@ -34,18 +37,6 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
     ELLE_WARN("timestamp not yet present in all transactions");
     res.timestamp = 0.0;
   }
-  ar & elle::serialize::named("is_directory", res.is_directory);
-  ar & elle::serialize::named("status", res.status);
-  try
-  {
-    // XXX: not used anymore.
-    ar & elle::serialize::named("already_accepted", res.already_accepted);
-  }
-  catch (...)
-  {
-    res.already_accepted = false;
-  }
-
   try
   {
     ar & elle::serialize::named("early_accepted", res.early_accepted);

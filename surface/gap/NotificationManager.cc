@@ -254,7 +254,7 @@ namespace surface
             ELLE_ERR("Couldn't get field " #f);                                 \
           }
 
-          GET_TR_FIELD_RENAME(transaction_id, id, string);
+          GET_TR_FIELD_RENAME(_id, id, string);
           GET_TR_FIELD(sender_id, string);
           GET_TR_FIELD(sender_fullname, string);
           GET_TR_FIELD(sender_device_id, string);
@@ -268,7 +268,7 @@ namespace surface
           GET_TR_FIELD(files_count, integer);
           GET_TR_FIELD(total_size, integer);
           GET_TR_FIELD(timestamp, float);
-          GET_TR_FIELD(is_directory, integer);
+          GET_TR_FIELD(is_directory, bool);
           GET_TR_FIELD(status, integer);
           // GET_TR_FIELD(already_accepted, integer);
           // GET_TR_FIELD(early_accepted, integer);
