@@ -178,13 +178,15 @@ def configure(cxx_toolkit = None,
   cxx_config += boost.config_thread()
 
   # Python
-  python2 = drake.cxx.find_library('pyconfig.h', prefix = python2,
-                                   include_dir = ['include/python2.7',
-                                                  'include/python2.7m'])
-  python3 = drake.cxx.find_library('pyconfig.h', prefix = python3,
-                                   include_dir = ['include/python3.2',
-                                                  'include/python3.2m',
-                                                  'include/python3.3m'])
+  python_enabled = cxx_toolkit.os != drake.os.windows
+  if python_enabled:
+    python2 = drake.cxx.find_library('pyconfig.h', prefix = python2,
+                                     include_dir = ['include/python2.7',
+                                                    'include/python2.7m'])
+    python3 = drake.cxx.find_library('pyconfig.h', prefix = python3,
+                                     include_dir = ['include/python3.2',
+                                                    'include/python3.2m',
+                                                    'include/python3.3m'])
 
   # Elle
   elle = drake.include('elle',
@@ -1022,36 +1024,37 @@ def configure(cxx_toolkit = None,
   build << gap_lib
 
   # GAP python
-  gap_python_cxx_config = cxx_config + python3
-  gap_python_cxx_config += boost.config_python()
-  gap_python_cxx_config.lib_path_runtime('..')
-  gap_python_sources = drake.nodes(
-    'surface/gap/python/pygap.cc',
-    )
-  gap_python_lib = drake.cxx.Module('lib/python/_gap',
-                                    # FIXME: sooooo many libs ...
-                                    gap_python_sources + [gap_lib, tropho_lib] + infinit_libs,
-                                    cxx_toolkit, gap_python_cxx_config)
+  if python_enabled:
+    gap_python_cxx_config = cxx_config + python3
+    gap_python_cxx_config += boost.config_python()
+    gap_python_cxx_config.lib_path_runtime('..')
+    gap_python_sources = drake.nodes(
+      'surface/gap/python/pygap.cc',
+      )
+    gap_python_lib = drake.cxx.Module('lib/python/_gap',
+                                      # FIXME: sooooo many libs ...
+                                      gap_python_sources + [gap_lib, tropho_lib] + infinit_libs,
+                                      cxx_toolkit, gap_python_cxx_config)
 
-  gap_python_pyfiles = drake.nodes(
-    'surface/gap/python/gap.py',
-    )
+    gap_python_pyfiles = drake.nodes(
+      'surface/gap/python/gap.py',
+      )
 
-  gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
-                                      'lib/python',
-                                      'surface/gap/python')
+    gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
+                                        'lib/python',
+                                        'surface/gap/python')
 
-  infinit_cli_sources = drake.nodes(
-    'surface/cli/infinit-cli'
-    )
+    infinit_cli_sources = drake.nodes(
+      'surface/cli/infinit-cli'
+      )
 
-  infinit_cli_copy = drake.copy(infinit_cli_sources,
-                                'bin',
-                                'surface/cli')
+    infinit_cli_copy = drake.copy(infinit_cli_sources,
+                                  'bin',
+                                  'surface/cli')
 
-  build << gap_python_lib
-  build << gap_python_pyfile_copy
-  build << infinit_cli_copy
+    build << gap_python_lib
+    build << gap_python_pyfile_copy
+    build << infinit_cli_copy
 
   # Oracles
 
