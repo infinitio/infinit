@@ -182,7 +182,7 @@ namespace surface
       }
       catch (elle::Exception const& e)
       {
-        ELLE_WARN("Couldn't interrupt 8infinit instance of %s: %s",
+        ELLE_WARN("couldn't interrupt 8infinit instance of %s: %s",
                   network_id, e);
       }
       if (status_code != 0)
