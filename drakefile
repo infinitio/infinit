@@ -62,7 +62,7 @@ def configure(cxx_toolkit = None,
   elif sys.platform == 'darwin':
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   else:
-    raise Exception("platform {} not supported".format(sys.platform))
+    raise Exception("platform %s not supported" % sys.platform)
   for define in platform_defines:
     cxx_config.define(define)
 
@@ -109,7 +109,7 @@ def configure(cxx_toolkit = None,
   elif architecture == "64bit":
     architecture_wordsize = 64
   else:
-    raise Exception("architecture {} not supported".format(architecture))
+    raise Exception("architecture %s not supported" % architecture)
 
   if cxx_toolkit.os == drake.os.linux:
     if architecture_wordsize == 32:
@@ -117,16 +117,16 @@ def configure(cxx_toolkit = None,
     elif architecture_wordsize == 64:
       dependencies_prefix = 'dependencies/platforms/linux64/work/'
     else:
-      raise Exception("architecture {} not supported".format(architecture))
+      raise Exception("architecture %s not supported" % architecture)
   elif cxx_toolkit.os == drake.os.macos:
     if architecture_wordsize == 32:
       dependencies_prefix = 'dependencies/platforms/macosx32/work/'
     elif architecture_wordsize == 64:
       dependencies_prefix = 'dependencies/platforms/macosx64/work/'
     else:
-      raise Exception("architecture {} not supported".format(architecture))
+      raise Exception("architecture %s not supported" % architecture)
   else:
-    raise Exception("operating system {} not supported".format(cxx_toolkit.os))
+    raise Exception("operating system %s not supported" % cxx_toolkit.os)
 
   openssl = drake.cxx.LibraryConfiguration(
     'openssl/opensslconf.h',
