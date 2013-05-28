@@ -56,7 +56,7 @@ if sys.maxsize > 2**32:
 else:
     INFINIT_PLATFORM += '32'
 
-MANIFEST_URI = "http://download.infinit.im/%s/manifest.xml" % INFINIT_PLATFORM
+MANIFEST_URI = "http://download.development.infinit.io/%s/manifest.xml" % INFINIT_PLATFORM
 
 SHELL_INTRO = """
 Welcome to the infinit shell (type help for a list of commands).
@@ -793,7 +793,7 @@ def update_binaries():
 
     # Update binaries.
     for binary in binaries:
-        url = "http://download.infinit.im/%s/%s" % (INFINIT_PLATFORM, binary['path'])
+        url = "http://download.development.infinit.io/%s/%s" % (INFINIT_PLATFORM, binary['path'])
         dst_path = os.path.join(INFINIT_HOME, binary['path'])
 
         # Check if the binary is up to date.
