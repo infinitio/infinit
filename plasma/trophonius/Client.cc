@@ -60,7 +60,32 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification, ar, value, ve
 
   //ar & base_class<plasma::trophonius::Notification>(value);
   XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
-  ar & named("transaction", value.transaction);
+  try
+  {
+    ar & named("_id", value.transaction.id);
+  }
+  catch (...)
+  {
+    ar & named("transaction_id", value.transaction.id);
+  }
+
+  ar & named("sender_id", value.transaction.sender_id);
+  ar & named("sender_fullname", value.transaction.sender_fullname);
+  ar & named("sender_device_id", value.transaction.sender_device_id);
+  ar & named("recipient_id", value.transaction.recipient_id);
+  ar & named("recipient_fullname", value.transaction.recipient_fullname);
+  ar & named("recipient_device_id", value.transaction.recipient_device_id);
+  ar & named("recipient_device_name", value.transaction.recipient_device_name);
+  ar & named("network_id", value.transaction.network_id);
+  ar & named("message", value.transaction.message);
+  ar & named("first_filename", value.transaction.first_filename);
+  ar & named("files_count", value.transaction.files_count);
+  ar & named("total_size", value.transaction.total_size);
+  ar & named("status", value.transaction.status);
+
+  DEFAULT_FILL_VALUE(ar, value.transaction, is_directory, false);
+  DEFAULT_FILL_VALUE(ar, value.transaction, timestamp, 0.0f);
+  DEFAULT_FILL_VALUE(ar, value.transaction, early_accepted, false);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::TransactionStatusNotification);
