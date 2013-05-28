@@ -737,7 +737,7 @@ def configure(cxx_toolkit = None,
         'horizon/macosx/fwd.hh',
         )
     else:
-      raise Exception('unsupport os')
+      raise Exception('cannot compile horizon: unsupported os')
 
     horizon_lib = drake.cxx.DynLib('lib/horizon', horizon_sources,
                                    cxx_toolkit, cxx_config)
