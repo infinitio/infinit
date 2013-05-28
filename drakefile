@@ -165,7 +165,6 @@ def configure(cxx_toolkit = None,
     curl.libraries_path
   )
 
-  cxx_config += openssl.config()
   cxx_config += curl.config()
 
   # Boost
@@ -188,7 +187,11 @@ def configure(cxx_toolkit = None,
                                                   'include/python3.3m'])
 
   # Elle
-  elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost)
+  elle = drake.include('elle',
+                       cxx_toolkit,
+                       cxx_config,
+                       boost = boost,
+                       openssl = openssl.config())
   elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
   cryptography_lib = drake.copy(elle.cryptography_dynamic, 'lib', elle.cryptography_dynamic.path().dirname())
   reactor_lib = drake.copy(elle.reactor_dynamic, 'lib', elle.reactor_dynamic.path().dirname())
