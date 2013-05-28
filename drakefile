@@ -193,7 +193,8 @@ def configure(cxx_toolkit = None,
                        cxx_toolkit,
                        cxx_config,
                        boost = boost,
-                       openssl = openssl.config())
+                       openssl = openssl.config(),
+                       curl = curl.config())
   elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
   cryptography_lib = drake.copy(elle.cryptography_dynamic, 'lib', elle.cryptography_dynamic.path().dirname())
   reactor_lib = drake.copy(elle.reactor_dynamic, 'lib', elle.reactor_dynamic.path().dirname())
