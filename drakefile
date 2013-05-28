@@ -11,8 +11,8 @@ satellite_path = str(drake.path_src("satellites"))
 satellite_default = [s for s in os.listdir(satellite_path) \
                      if os.path.isdir(os.path.join(satellite_path, s))]
 
-def configure(cxx_toolkit,
-              cxx_config,
+def configure(cxx_toolkit = None,
+              cxx_config = None,
               enable_horizon = True,
               satellites = satellite_default,
               optimization = True,
@@ -25,6 +25,9 @@ def configure(cxx_toolkit,
               enable_debug = True):
 
   prefix = drake.Path(prefix)
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
 
   if enable_debug:
     cxx_config.define("DEBUG")
