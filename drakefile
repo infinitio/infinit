@@ -1059,113 +1059,112 @@ def configure(cxx_toolkit = None,
 
   # Oracles
 
-  oracles = drake.Rule('oracle')
+  oracles_enabled = cxx_toolkit.os != drake.os.windows
+  if oracles_enabled:
+    oracles = drake.Rule('oracle')
 
-  oracle_sources = drake.nodes(
-    'oracle/disciples/creosus-server',
-    'oracle/disciples/erginus-server',
-    'oracle/disciples/longinus-server',
-    'oracle/disciples/meta-server',
-    'oracle/disciples/trophonius-server',
-    'oracle/disciples/admin-console',
-    'oracle/disciples/apertus-server',
-    'oracle/disciples/services',
-    )
+    oracle_sources = drake.nodes(
+      'oracle/disciples/creosus-server',
+      'oracle/disciples/erginus-server',
+      'oracle/disciples/longinus-server',
+      'oracle/disciples/meta-server',
+      'oracle/disciples/trophonius-server',
+      'oracle/disciples/admin-console',
+      'oracle/disciples/apertus-server',
+      'oracle/disciples/services',
+      )
 
-  oracle_source_copy = drake.copy(oracle_sources,
-                                  'bin',
-                                  'oracle/disciples')
-  oracle_lib = drake.nodes(
-    'oracle/disciples/longinus/application.py',
-    'oracle/disciples/longinus/__init__.py',
-    'oracle/disciples/longinus/longinus.py',
-    )
+    oracle_source_copy = drake.copy(oracle_sources,
+                                    'bin',
+                                    'oracle/disciples')
+    oracle_lib = drake.nodes(
+      'oracle/disciples/longinus/application.py',
+      'oracle/disciples/longinus/__init__.py',
+      'oracle/disciples/longinus/longinus.py',
+      )
 
-  oracle_lib += drake.nodes(
-    'oracle/disciples/apertus/__init__.py',
-    'oracle/disciples/apertus/apertus.py',
-    'oracle/disciples/apertus/application.py',
-    'oracle/disciples/apertus/conf.py',
-    )
+    oracle_lib += drake.nodes(
+      'oracle/disciples/apertus/__init__.py',
+      'oracle/disciples/apertus/apertus.py',
+      'oracle/disciples/apertus/application.py',
+      'oracle/disciples/apertus/conf.py',
+      )
 
-  oracle_lib += drake.nodes(
-    'oracle/disciples/meta/__init__.py',
-    'oracle/disciples/meta/apertus.py',
-    'oracle/disciples/meta/application.py',
-    'oracle/disciples/meta/conf.py',
-    'oracle/disciples/meta/database.py',
-    'oracle/disciples/meta/apertus.py',
-    'oracle/disciples/meta/invitation.py',
-    'oracle/disciples/meta/error.py',
-    'oracle/disciples/meta/error_code.hh.inc',
-    'oracle/disciples/meta/mail.py',
-    'oracle/disciples/meta/notification_type.hh.inc',
-    'oracle/disciples/meta/notifier.py',
-    'oracle/disciples/meta/page.py',
-    'oracle/disciples/meta/regexp.py',
-    'oracle/disciples/meta/resources/__init__.py',
-    'oracle/disciples/meta/resources/device.py',
-    'oracle/disciples/meta/resources/network.py',
-    'oracle/disciples/meta/resources/network_update.hh.inc',
-    'oracle/disciples/meta/resources/notification.py',
-    'oracle/disciples/meta/resources/place_holder_avatar.png',
-    'oracle/disciples/meta/resources/root.py',
-    'oracle/disciples/meta/resources/transaction.py',
-    'oracle/disciples/meta/resources/transaction_status.hh.inc',
-    'oracle/disciples/meta/resources/user.py',
-    'oracle/disciples/meta/session.py',
-    'oracle/disciples/meta/session_store.py',
-    'oracle/disciples/meta/user_status.hh.inc',
-    )
+    oracle_lib += drake.nodes(
+      'oracle/disciples/meta/__init__.py',
+      'oracle/disciples/meta/apertus.py',
+      'oracle/disciples/meta/application.py',
+      'oracle/disciples/meta/conf.py',
+      'oracle/disciples/meta/database.py',
+      'oracle/disciples/meta/apertus.py',
+      'oracle/disciples/meta/invitation.py',
+      'oracle/disciples/meta/error.py',
+      'oracle/disciples/meta/error_code.hh.inc',
+      'oracle/disciples/meta/mail.py',
+      'oracle/disciples/meta/notification_type.hh.inc',
+      'oracle/disciples/meta/notifier.py',
+      'oracle/disciples/meta/page.py',
+      'oracle/disciples/meta/regexp.py',
+      'oracle/disciples/meta/resources/__init__.py',
+      'oracle/disciples/meta/resources/device.py',
+      'oracle/disciples/meta/resources/network.py',
+      'oracle/disciples/meta/resources/network_update.hh.inc',
+      'oracle/disciples/meta/resources/notification.py',
+      'oracle/disciples/meta/resources/place_holder_avatar.png',
+      'oracle/disciples/meta/resources/root.py',
+      'oracle/disciples/meta/resources/transaction.py',
+      'oracle/disciples/meta/resources/transaction_status.hh.inc',
+      'oracle/disciples/meta/resources/user.py',
+      'oracle/disciples/meta/session.py',
+      'oracle/disciples/meta/session_store.py',
+      'oracle/disciples/meta/user_status.hh.inc',
+      )
 
-  oracle_lib += drake.nodes(
-    'oracle/disciples/pythia/admin.py',
-    'oracle/disciples/pythia/client.py',
-    'oracle/disciples/pythia/constants.py',
-    'oracle/disciples/pythia/__init__.py',
-    )
+    oracle_lib += drake.nodes(
+      'oracle/disciples/pythia/admin.py',
+      'oracle/disciples/pythia/client.py',
+      'oracle/disciples/pythia/constants.py',
+      'oracle/disciples/pythia/__init__.py',
+      )
 
 
-  oracle_lib += drake.nodes(
-    'oracle/disciples/trophonius/application.py',
-    'oracle/disciples/trophonius/clients.py',
-    'oracle/disciples/trophonius/conf.py',
-    'oracle/disciples/trophonius/constants.py',
-    'oracle/disciples/trophonius/__init__.py',
-    'oracle/disciples/trophonius/trophonius.py',
-    )
+    oracle_lib += drake.nodes(
+      'oracle/disciples/trophonius/application.py',
+      'oracle/disciples/trophonius/clients.py',
+      'oracle/disciples/trophonius/conf.py',
+      'oracle/disciples/trophonius/constants.py',
+      'oracle/disciples/trophonius/__init__.py',
+      'oracle/disciples/trophonius/trophonius.py',
+      )
 
-  oracle_lib_copy = drake.copy(oracle_lib,
-                               'lib/python',
-                               'oracle/disciples')
+    oracle_lib_copy = drake.copy(oracle_lib,
+                                 'lib/python',
+                                 'oracle/disciples')
 
-  oracles << oracle_source_copy
-  oracles << oracle_lib_copy
+    oracles << oracle_source_copy
+    oracles << oracle_lib_copy
 
-  # Oracle/metalib
+    # Oracle/metalib
+    if python_enabled:
+      metalib_config = cxx_config + python2
+      metalib_config.lib_path_runtime('..')
+      metalib_sources = drake.nodes(
+        'oracle/disciples/metalib/identity.cc',
+        'oracle/disciples/metalib/identity.hh',
+        'oracle/disciples/metalib/metalib.cc',
+        'oracle/disciples/metalib/metalib.hh',
+        'oracle/disciples/metalib/network.cc',
+        'oracle/disciples/metalib/network.hh',
+        'oracle/disciples/metalib/passport.cc',
+        'oracle/disciples/metalib/passport.hh',
+        )
+      metalib_lib = drake.cxx.Module('lib/python/metalib',
+                                     metalib_sources + infinit_libs,
+                                     cxx_toolkit, metalib_config)
 
-  metalib_config = cxx_config + python2
-  metalib_config.lib_path_runtime('..')
+      oracles << metalib_lib
 
-  metalib_sources = drake.nodes(
-    'oracle/disciples/metalib/identity.cc',
-    'oracle/disciples/metalib/metalib.cc',
-    'oracle/disciples/metalib/network.cc',
-    'oracle/disciples/metalib/passport.cc',
-
-    'oracle/disciples/metalib/identity.hh',
-    'oracle/disciples/metalib/metalib.hh',
-    'oracle/disciples/metalib/network.hh',
-    'oracle/disciples/metalib/passport.hh',
-    )
-
-  metalib_lib = drake.cxx.Module('lib/python/metalib',
-                                 metalib_sources + infinit_libs,
-                                 cxx_toolkit, metalib_config)
-
-  oracles << metalib_lib
-
-  build << oracles
+    build << oracles
 
   # Install
   install = drake.Rule('install')
