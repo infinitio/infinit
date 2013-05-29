@@ -1186,6 +1186,8 @@ def configure(cxx_toolkit,
      udt_libs),
     ('tests/unit/surface/gap/state_connect.cc',
      [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    ('tests/unit/surface/gap/gap_metrics.cc',
+     [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
     # ('tests/unit/surface/gap/state_ctor.cc',
     #  [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
     ('tests/unit/hole/slug.cc', infinit_libs)
