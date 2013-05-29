@@ -133,9 +133,11 @@ namespace surface
             break;
           // Try to retrieve Transaction ID if possible
           {
-            if (notif->notification_type == NotificationType::transaction_status)
+            if (notif->notification_type ==
+                NotificationType::transaction_status)
             {
-              auto ptr = static_cast<TransactionStatusNotification*>(notif.get());
+              auto ptr =
+                static_cast<TransactionStatusNotification*>(notif.get());
               transaction_id = ptr->transaction_id;
             }
             else if (notif->notification_type == NotificationType::transaction)
@@ -151,52 +153,27 @@ namespace surface
           ++count;
         }
       }
-      catch (surface::gap::Exception const& e)
-      {
-        ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
-        this->_call_error_handlers(e.code,
-                                   elle::sprintf("%s: %s",
-                                                 notif->notification_type,
-                                                 e.what()),
-                                   transaction_id);
-      }
-      catch (elle::Exception const& e)
-      {
-        ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
-        auto bt = e.backtrace();
-        for (auto const& f: bt)
-          ELLE_WARN("%s", f);
-        this->_call_error_handlers(gap_error,
-                                   elle::sprintf("%s: %s",
-                                                 notif->notification_type,
-                                                 e.what()),
-                                   transaction_id);
-      }
-      catch (std::runtime_error const& e)
-      {
-        ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
-        this->_call_error_handlers(gap_unknown,
-                                   elle::sprintf("%s: %s",
-                                                 notif->notification_type,
-                                                 e.what()),
-                                   transaction_id);
-      }
-      catch (std::exception const& e)
-      {
-        ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
-        this->_call_error_handlers(gap_unknown,
-                                   elle::sprintf("%s: %s",
-                                                 notif->notification_type,
-                                                 e.what()),
-                                   transaction_id);
-      }
       catch (...)
       {
-        ELLE_ERR("poll: %s: unknown error", notif->notification_type);
-        this->_call_error_handlers(gap_unknown,
-                                   elle::sprintf("%s: unexpected error",
-                                                 notif->notification_type),
-                                   transaction_id);
+        if (notif)
+        {
+          ELLE_WARN("poll: %s %s",
+                    notif->notification_type,
+                    elle::exception_string());
+          this->_call_error_handlers(gap_error,
+                                     elle::sprintf("%s: %s",
+                                                   notif->notification_type,
+                                                   elle::exception_string()),
+                                     transaction_id);
+        }
+        else
+        {
+          ELLE_WARN("poll: unknown %s", elle::exception_string());
+          this->_call_error_handlers(gap_error,
+                                     elle::sprintf("unknown: %s",
+                                                   elle::exception_string()),
+                                     transaction_id);
+        }
       }
 
       return count;
@@ -207,7 +184,8 @@ namespace surface
     _xxx_dict_to_notification(json::Dictionary const& d)
     {
       std::unique_ptr<Notification> res;
-      NotificationType notification_type = (NotificationType) d["notification_type"].as_integer().value();
+      NotificationType notification_type =
+        (NotificationType) d["notification_type"].as_integer().value();
 
       std::unique_ptr<UserStatusNotification> user_status{
           new UserStatusNotification
@@ -406,33 +384,41 @@ namespace surface
     }
 
     void
-    NotificationManager::network_update_callback(NetworkUpdateNotificationCallback const& cb)
+    NotificationManager::network_update_callback(
+      NetworkUpdateNotificationCallback const& cb)
     {
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<NetworkUpdateNotification const&>(notif));
       };
 
-      this->_notification_handlers[NotificationType::network_update].push_back(fn);
+      using Type = NotificationType;
+      this->_notification_handlers[Type::network_update].push_back(fn);
     }
 
     void
-    NotificationManager::transaction_callback(TransactionNotificationCallback const& cb)
+    NotificationManager::transaction_callback(
+      TransactionNotificationCallback const& cb)
     {
       auto fn = [cb] (Notification const& notif, bool is_new) -> void {
         return cb(static_cast<TransactionNotification const&>(notif), is_new);
       };
 
-      this->_notification_handlers[NotificationType::transaction].push_back(fn);
+      using Type = NotificationType;
+      this->_notification_handlers[Type::transaction].push_back(fn);
     }
 
     void
-    NotificationManager::transaction_status_callback(TransactionStatusNotificationCallback const& cb)
+    NotificationManager::transaction_status_callback(
+      TransactionStatusNotificationCallback const& cb)
     {
       auto fn = [cb] (Notification const& notif, bool is_new) -> void {
-        return cb(static_cast<TransactionStatusNotification const&>(notif), is_new);
+        return cb(static_cast<TransactionStatusNotification const&>(notif),
+                  is_new);
       };
 
-      _notification_handlers[NotificationType::transaction_status].push_back(fn);
+      using Type = NotificationType;
+      this->_notification_handlers[Type::transaction_status]
+        .push_back(fn);
     }
 
     void
@@ -442,17 +428,20 @@ namespace surface
         return cb(static_cast<MessageNotification const&>(notif));
       };
 
-      this->_notification_handlers[NotificationType::message].push_back(fn);
+      using Type = NotificationType;
+      this->_notification_handlers[Type::message].push_back(fn);
     }
 
     void
-    NotificationManager::user_status_callback(UserStatusNotificationCallback const& cb)
+    NotificationManager::user_status_callback(
+      UserStatusNotificationCallback const& cb)
     {
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<UserStatusNotification const&>(notif));
       };
 
-      this->_notification_handlers[NotificationType::user_status].push_back(fn);
+      using Type = NotificationType;
+      this->_notification_handlers[Type::user_status].push_back(fn);
     }
 
     void
