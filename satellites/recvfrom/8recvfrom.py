@@ -126,6 +126,7 @@ def main(state, sender):
 
     # Pull only new notifications to ensure the transaction has been fetched.
     state.pull_notifications(0, 0)
+    state.notifications_read()
     state.running = True
     transactions = state.transactions()
 

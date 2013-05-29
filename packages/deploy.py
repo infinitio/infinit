@@ -126,7 +126,7 @@ def yesno(s, default=False):
 
 
 def deployClientTarball(package):
-    os.system('scp "%s" oracle@infinit.im:www/infinit.im/downloads' % package.path)
+    os.system('scp "%s" oracle@development.infinit.io:www/development.infinit.io/downloads' % package.path)
 
     dir_ = {
         libpkg.constants.Platforms.LINUX: 'linux',
@@ -138,7 +138,7 @@ def deployClientTarball(package):
     }[package.architecture]
 
     cmd = ' && '.join([
-        "cd www/infinit.im/downloads",
+        "cd www/development.infinit.io/downloads",
         "mkdir -p %(dir)s",
         "tar --extract --file=%(tarball)s --strip-components=1 --directory=%(dir)s",
         #"rm %(tarball)s",
@@ -147,21 +147,21 @@ def deployClientTarball(package):
         'dir': dir_,
         'tarball': package.file_,
     }
-    os.system('ssh oracle@infinit.im "%s"' % cmd)
+    os.system('ssh oracle@development.infinit.io "%s"' % cmd)
 
 def deployServerTarball(package):
-    os.system('scp  %s oracle@infinit.im:www/infinit.im/' % package.path)
+    os.system('scp  %s oracle@development.infinit.io:www/development.infinit.io/' % package.path)
     cmd = ' && '.join([
-        "cd www/infinit.im",
+        "cd www/development.infinit.io",
         "tar --extract --file=%(tarball)s --strip-components=1 --directory=.",
         "rm %(tarball)s",
     ]) % {
         'tarball': package.file_,
     }
-    os.system('ssh oracle@infinit.im "%s"' % cmd)
+    os.system('ssh oracle@development.infinit.io "%s"' % cmd)
     if yesno("Restart api server ?", True):
         cmd = 'sudo /etc/init.d/meta restart && sleep 3'
-        subprocess.call('ssh -t infinit.im "%s"' % cmd, shell=True)
+        subprocess.call('ssh -t development.infinit.io "%s"' % cmd, shell=True)
 
 def deployTarball(package):
     assert package.type_ in ('client', 'server')
@@ -174,7 +174,7 @@ def deployPackage(package):
     if package.kind == 'Archive':
         deployTarball(package)
     else:
-        os.system('scp "%s" oracle@infinit.im:www/infinit.im/downloads' % package.path)
+        os.system('scp "%s" oracle@development.infinit.io:www/infinit/downloads' % package.path)
 
 def getFarmBuild(infos, args):
     if args.last:

@@ -14,28 +14,34 @@
 #include <protocol/Serializer.hh>
 #include <protocol/RPC.hh>
 
-int answer()
+int
+answer()
 {
   return 42;
 }
 
-int answer2()
+int
+answer2()
 {
   return 42;
 }
 
-int square(int x)
+int
+square(int x)
 {
   return x * x;
 }
 
-std::string concat(std::string const& left, std::string const& right)
+std::string
+concat(std::string const& left,
+       std::string const& right)
 {
   return left + right;
 }
 
 reactor::Thread* suicide_thread(nullptr);
-void suicide()
+void
+suicide()
 {
   suicide_thread->terminate();
   suicide_thread = nullptr;
@@ -45,22 +51,25 @@ void suicide()
 }
 
 static int global_counter = 0;
-int count(int exp)
+int
+count()
 {
   ++global_counter;
+  // This gives 100ms to the rpc to "synchronize".
   reactor::Scheduler::scheduler()->current()->sleep(
-    boost::posix_time::milliseconds(10));
-  BOOST_CHECK_EQUAL(global_counter, exp);
+    boost::posix_time::milliseconds(100));
   return global_counter;
 }
 
-void except()
+void
+except()
 {
   throw std::runtime_error("blablabla");
 }
 
-struct DummyRPC: public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
-                                               elle::serialize::OutputBinaryArchive>
+struct DummyRPC:
+  public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
+                                elle::serialize::OutputBinaryArchive>
 {
   DummyRPC(infinit::protocol::ChanneledStream& channels)
     : infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
@@ -78,14 +87,15 @@ struct DummyRPC: public infinit::protocol::RPC<elle::serialize::InputBinaryArchi
   RemoteProcedure<std::string, std::string const&, std::string const&> concat;
   RemoteProcedure<void> raise;
   RemoteProcedure<void> suicide;
-  RemoteProcedure<int, int> count;
+  RemoteProcedure<int> count;
 };
 
 /*------.
 | Basic |
 `------*/
 
-void caller(reactor::Semaphore& lock, int& port)
+void
+caller(reactor::Semaphore& lock, int& port)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   sched.current()->wait(lock);
@@ -100,8 +110,10 @@ void caller(reactor::Semaphore& lock, int& port)
   BOOST_CHECK_THROW(rpc.raise(), std::runtime_error);
 }
 
-void runner(reactor::Semaphore& lock,
-            bool sync, int& port)
+void
+runner(reactor::Semaphore& lock,
+       bool sync,
+       int& port)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   reactor::network::TCPServer server(sched);
@@ -117,9 +129,9 @@ void runner(reactor::Semaphore& lock,
   rpc.answer = &answer;
   rpc.square = &square;
   rpc.concat = &concat;
-  rpc.raise  = &except;
-  rpc.suicide  = &suicide;
-  rpc.count  = &count;
+  rpc.raise = &except;
+  rpc.suicide = &suicide;
+  rpc.count = &count;
   try
   {
     if (sync)
@@ -131,7 +143,8 @@ void runner(reactor::Semaphore& lock,
   {}
 }
 
-int test(bool sync)
+int
+test(bool sync)
 {
   reactor::Scheduler sched;
   reactor::Semaphore lock;
@@ -155,7 +168,10 @@ int test(bool sync)
 | Terminate |
 `----------*/
 
-void pacify(reactor::Semaphore& lock, reactor::Thread& t, int& port)
+void
+pacify(reactor::Semaphore& lock,
+       reactor::Thread& t,
+       int& port)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   sched.current()->wait(lock);
@@ -168,7 +184,8 @@ void pacify(reactor::Semaphore& lock, reactor::Thread& t, int& port)
   BOOST_CHECK_THROW(rpc.suicide(), std::runtime_error);
 }
 
-int test_terminate(bool sync)
+int
+test_terminate(bool sync)
 {
   reactor::Scheduler sched{};
   reactor::Semaphore lock;
@@ -191,7 +208,10 @@ int test_terminate(bool sync)
 | Parallel |
 `---------*/
 
-void counter(reactor::Semaphore& lock, bool sync, int& port)
+void
+counter(reactor::Semaphore& lock,
+        bool sync,
+        int& port)
 {
   auto& sched = *reactor::Scheduler::scheduler();
   sched.current()->wait(lock);
@@ -202,13 +222,19 @@ void counter(reactor::Semaphore& lock, bool sync, int& port)
   DummyRPC rpc(channels);
   global_counter = 0;
   std::vector<reactor::Thread*> threads;
+  std::list<int> inserted;
   for (int i = 1; i <= 3; ++i)
   {
+    if (sync)
+      inserted.push_back(i);
     auto t = new reactor::Thread(sched,
                                  elle::sprintf("Counter %s", i),
                                  [&,i] ()
                                  {
-                                   rpc.count(sync ? i : 3);
+                                   if (sync)
+                                     inserted.remove(rpc.count());
+                                   else
+                                     BOOST_CHECK_EQUAL(rpc.count(), 3);
                                  });
     threads.push_back(t);
   }
@@ -217,10 +243,13 @@ void counter(reactor::Semaphore& lock, bool sync, int& port)
     sched.current()->wait(*t);
     delete t;
   }
+
+  BOOST_CHECK(inserted.empty());
 }
 
 
-int test_parallel(bool sync)
+int
+test_parallel(bool sync)
 {
   reactor::Scheduler sched;
   reactor::Semaphore lock;
@@ -243,7 +272,8 @@ int test_parallel(bool sync)
 | Test suite |
 `-----------*/
 
-bool test_suite()
+bool
+test_suite()
 {
   boost::unit_test::test_suite* rpc = BOOST_TEST_SUITE("RPC");
   boost::unit_test::framework::master_test_suite().add(rpc);

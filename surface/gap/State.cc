@@ -59,7 +59,9 @@ namespace surface
       _logger_intializer{},
       _meta{common::meta::host(), common::meta::port(), true},
       _reporter(),
-      _google_reporter()
+      _google_reporter(),
+      _me{nullptr},
+      _device{nullptr}
     {
       ELLE_TRACE_METHOD("");
 
@@ -83,7 +85,26 @@ namespace surface
 
         ELLE_TRACE_SCOPE("loading token generating key: %s", token_genkey);
         this->_meta.generate_token(token_genkey);
-        this->_me = this->_meta.self();
+        this->_me.reset(new Self{this->_meta.self()});
+
+        std::ofstream identity_infos{
+          common::infinit::identity_path(this->me().id)};
+
+        if (!identity_infos.good())
+        {
+          ELLE_ERR("Cannot open identity file");
+        }
+
+        identity_infos << this->_meta.token() << "\n"
+                       << this->me().identity << "\n"
+                       << this->me().email << "\n"
+                       << this->me().id << "\n"
+        ;
+        if (!identity_infos.good())
+        {
+          ELLE_ERR("Cannot write identity file");
+        }
+        identity_infos.close();
       }
 
       // Initialize google metrics.
@@ -95,19 +116,26 @@ namespace surface
     std::string const&
     State::token_generation_key() const
     {
-      return this->_me.token_generation_key;
+      return this->me().token_generation_key;
     }
 
     std::string
     State::user_directory()
     {
-      return common::infinit::user_directory(this->_me.id);
+      return common::infinit::user_directory(this->me().id);
     }
 
     State::~State()
     {
       ELLE_TRACE_METHOD("");
-      this->logout();
+      try
+      {
+        this->logout();
+      }
+      catch (...)
+      {
+        ELLE_WARN("Couldn't logout: %s", elle::exception_string());
+      }
     }
 
     std::string const&
@@ -117,16 +145,42 @@ namespace surface
     }
 
     Self const&
+    State::me() const
+    {
+      ELLE_TRACE_METHOD("");
+
+      if (!this->logged_in())
+        throw Exception{gap_internal_error, "you must be logged in"};
+
+      if (this->_me == nullptr)
+        this->_me.reset(new Self{this->_meta.self()});
+
+      ELLE_ASSERT_NEQ(this->_me, nullptr);
+      return *this->_me;
+    }
+
+    Self&
     State::me()
     {
-      return this->_me;
+      ELLE_TRACE_METHOD("");
+
+      if (!this->logged_in())
+        throw Exception{gap_internal_error, "you must be logged in"};
+
+      if (this->_me == nullptr)
+        this->_me.reset(new Self{this->_meta.self()});
+
+      ELLE_ASSERT_NEQ(this->_me, nullptr);
+      return *this->_me;
     }
 
     void
     State::login(std::string const& email,
                  std::string const& password)
     {
+      ELLE_TRACE_METHOD("");
       this->_meta.token("");
+      this->_cleanup();
 
       std::string lower_email = email;
 
@@ -142,6 +196,7 @@ namespace surface
       try
       {
         res = this->_meta.login(lower_email, password);
+        ELLE_LOG("Logged in as %s token = %s", email, res.token);
       }
       CATCH_FAILURE_TO_METRICS("user_login");
 
@@ -155,15 +210,10 @@ namespace surface
                                   {{MKey::session, "start"},
                                    {MKey::status, "succeed"}});
 
-
-      ELLE_DEBUG("Logged in as %s token = %s", email, res.token);
-
-      this->_me = this->_meta.self();
-
-      ELLE_DEBUG("id: '%s' - fullname: '%s' - lower_email: '%s'",
-                 this->_me.id,
-                 this->_me.fullname,
-                 this->_me.email);
+      ELLE_WARN("id: '%s' - fullname: '%s' - lower_email: '%s'",
+                 this->me().id,
+                 this->me().fullname,
+                 this->me().email);
 
       std::string identity_clear;
 
@@ -208,21 +258,25 @@ namespace surface
         ELLE_ERR("Cannot write identity file");
       }
       identity_infos.close();
-
     }
 
     void
-    State::_cleanup_managers()
+    State::_cleanup()
     {
-      this->_transaction_manager.reset();
-      this->_network_manager.reset();
-      this->_user_manager.reset();
-      this->_notification_manager.reset();
+      ELLE_TRACE_METHOD("");
+      this->_transaction_manager->reset();
+      this->_network_manager->reset();
+      this->_user_manager->reset();
+      this->_notification_manager->reset();
+
+      this->_device.reset();
+      this->_me.reset();
     }
 
     void
     State::logout()
     {
+      ELLE_TRACE_METHOD("");
       if (this->_meta.token().empty())
         return;
 
@@ -237,14 +291,22 @@ namespace surface
 
       try
       {
-        this->_meta.logout();
-        this->_cleanup_managers();
+        try
+        {
+          this->_meta.logout();
+        }
+        catch (...)
+        {
+          ELLE_WARN("logout failed, ignore");
+          this->_meta.token("");
+        }
+        this->_cleanup();
       }
       CATCH_FAILURE_TO_METRICS("user_logout");
 
       // End session the session.
       this->_reporter.store("user_logout",
-                       {{MKey::status, "succeed"}});
+                            {{MKey::status, "succeed"}});
 
       // XXX: Not necessary but better.
       this->_google_reporter.store("user:logout:succeed");
@@ -309,10 +371,67 @@ namespace surface
       this->_reporter.store("user_register",
                             {{MKey::status, "succeed"}});
 
-
       ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);
       this->login(lower_email, password);
     }
 
+    NetworkManager&
+    State::network_manager()
+    {
+      return this->_network_manager(
+        [this] (NetworkManagerPtr& manager) -> NetworkManager& {
+          if (manager == nullptr)
+            manager.reset(
+              new NetworkManager{this->_meta,
+                                 this->_reporter,
+                                 this->_google_reporter,
+                                 this->me(),
+                                 this->device()});
+          return *manager;
+        });
+    }
+
+    NotificationManager&
+    State::notification_manager()
+    {
+      return this->_notification_manager(
+        [this] (NotificationManagerPtr& manager) -> NotificationManager& {
+          if (manager == nullptr)
+            manager.reset(new NotificationManager{this->_meta, this->me()});
+          return *manager;
+        });
+    }
+
+    UserManager&
+    State::user_manager()
+    {
+      return this->_user_manager(
+        [this] (UserManagerPtr& manager) -> UserManager& {
+          if (manager == nullptr)
+            manager.reset(
+              new UserManager{this->notification_manager(),
+                              this->_meta,
+                              this->me()});
+          return *manager;
+        });
+    }
+
+    TransactionManager&
+    State::transaction_manager()
+    {
+      return this->_transaction_manager(
+        [this] (TransactionManagerPtr& manager) -> TransactionManager& {
+          if (manager == nullptr)
+            manager.reset(
+              new TransactionManager{this->notification_manager(),
+                                     this->network_manager(),
+                                     this->user_manager(),
+                                     this->_meta,
+                                     this->_reporter,
+                                     this->me(),
+                                     this->device()});
+          return *manager;
+        });
+    }
   }
 }

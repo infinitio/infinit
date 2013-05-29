@@ -153,8 +153,15 @@ SERIALIZE_RESPONSE(plasma::meta::InviteUserResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
 {
-  // XXX see plasma/plasma.hxx
-  ar & named("transaction_id", res.id);
+  try
+  {
+    ar & named("_id", res.id);
+  }
+  catch (...)
+  {
+    ar & named("transaction_id", res.id);
+  }
+
   ar & named("sender_id", res.sender_id);
   ar & named("sender_fullname", res.sender_fullname);
   ar & named("sender_device_id", res.sender_device_id);
@@ -163,20 +170,15 @@ SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
   ar & named("recipient_device_id", res.recipient_device_id);
   ar & named("recipient_device_name", res.recipient_device_name);
   ar & named("network_id", res.network_id);
+  ar & named("message", res.message);
   ar & named("first_filename", res.first_filename);
   ar & named("files_count", res.files_count);
   ar & named("total_size", res.total_size);
-  ar & named("is_directory", res.is_directory);
   ar & named("status", res.status);
-  ar & named("message", res.message);
-  try
-  {
-    ar & named("already_accepted", res.already_accepted);
-  }
-  catch (...)
-  {
-    res.already_accepted = false;
-  }
+
+  DEFAULT_FILL_VALUE(ar, res, is_directory, false);
+  DEFAULT_FILL_VALUE(ar, res, timestamp, 0.0f);
+  DEFAULT_FILL_VALUE(ar, res, early_accepted, false);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionsResponse, ar, res)
@@ -372,7 +374,7 @@ namespace plasma
                       string const& password,
                       string const& activation_code,
                       string const& picture_name,
-                      string const& picture_data)
+                      string const& picture_data) const
     {
       json::Dictionary request{map<string, string>{
         {"email", email},
@@ -386,7 +388,7 @@ namespace plasma
     }
 
     UserResponse
-    Client::user(string const& id)
+    Client::user(string const& id) const
     {
       if (id.size() == 0)
         throw std::runtime_error("Wrong id");
@@ -394,7 +396,7 @@ namespace plasma
     }
 
     UserIcon
-    Client::user_icon(string const& id)
+    Client::user_icon(string const& id) const
     {
       std::stringstream resp;
       curly::request_configuration c = curly::make_get();
@@ -416,13 +418,13 @@ namespace plasma
     }
 
     SelfResponse
-    Client::self()
+    Client::self() const
     {
       return this->_get<SelfResponse>("/self");
     }
 
     UserResponse
-    Client::user_from_public_key(string const& public_key)
+    Client::user_from_public_key(string const& public_key) const
     {
       if (public_key.size() == 0)
         throw std::runtime_error("empty public key!");
@@ -432,7 +434,7 @@ namespace plasma
     }
 
     UsersResponse
-    Client::search_users(string const& text, int count, int offset)
+    Client::search_users(string const& text, int count, int offset) const
     {
       json::Dictionary request;
       request["text"] = text;
@@ -442,13 +444,13 @@ namespace plasma
     }
 
     SwaggersResponse
-    Client::get_swaggers()
+    Client::get_swaggers() const
     {
       return this->_get<SwaggersResponse>("/user/swaggers");
     }
 
     // SwaggerResponse
-    // Client::get_swagger(string const& id)
+    // Client::get_swagger(string const& id) const
     // {
     //   return this->_get<SwaggerResponse>("/user/" + id + "/view");
     // }
@@ -457,7 +459,7 @@ namespace plasma
     //- Devices ---------------------------------------------------------------
 
     CreateDeviceResponse
-    Client::create_device(string const& name)
+    Client::create_device(string const& name) const
     {
       json::Dictionary request{map<string, string>{
           {"name", name},
@@ -467,7 +469,7 @@ namespace plasma
 
     UpdateDeviceResponse
     Client::update_device(string const& _id,
-                          string const& name)
+                          string const& name) const
     {
       json::Dictionary request{map<string, string>{
             {"_id", _id},
@@ -479,7 +481,7 @@ namespace plasma
     }
 
     InviteUserResponse
-    Client::invite_user(string const& email)
+    Client::invite_user(string const& email) const
     {
       json::Dictionary request{map<string, string>
         {
@@ -498,7 +500,7 @@ namespace plasma
                                size_t size,
                                bool is_dir,
                                string const& network_id,
-                               string const& device_id)
+                               string const& device_id) const
     {
       json::Dictionary request{map<string, string>{
           {"recipient_id_or_email", recipient_id_or_email},
@@ -519,7 +521,7 @@ namespace plasma
     Client::update_transaction(string const& transaction_id,
                                plasma::TransactionStatus status,
                                string const& device_id,
-                               string const& device_name)
+                               string const& device_name) const
     {
       json::Dictionary request{map<string, string>
         {
@@ -568,13 +570,13 @@ namespace plasma
     }
 
     TransactionResponse
-    Client::transaction(string const& _id)
+    Client::transaction(string const& _id) const
     {
       return this->_get<TransactionResponse>("/transaction/" + _id + "/view");
     }
 
     TransactionsResponse
-    Client::transactions()
+    Client::transactions() const
     {
       return this->_get<TransactionsResponse>("/transactions");
     }
@@ -582,7 +584,7 @@ namespace plasma
     MessageResponse
     Client::send_message(string const& recipient_id,
                          string const& sender_id,
-                         string const& message)
+                         string const& message) const
     {
       json::Dictionary request{map<string, string>
         {
@@ -602,13 +604,13 @@ namespace plasma
     }
 
     DebugResponse
-    Client::debug()
+    Client::debug() const
     {
       return this->_get<DebugResponse>("/scratchit");
     }
 
     PullNotificationResponse
-    Client::pull_notifications(int count, int offset)
+    Client::pull_notifications(int count, int offset) const
     {
       json::Dictionary request{map<string, string>
       {
@@ -624,7 +626,7 @@ namespace plasma
     }
 
     ReadNotificationResponse
-    Client::notification_read()
+    Client::notification_read() const
     {
       return this->_get<ReadNotificationResponse>("/notification/read");
     }
@@ -632,25 +634,25 @@ namespace plasma
     //- Networks --------------------------------------------------------------
 
     NetworksResponse
-    Client::networks()
+    Client::networks() const
     {
       return this->_get<NetworksResponse>("/networks");
     }
 
     NetworkResponse
-    Client::network(string const& _id)
+    Client::network(string const& _id) const
     {
       return this->_get<NetworkResponse>("/network/" + _id + "/view");
     }
 
     NetworkNodesResponse
-    Client::network_nodes(string const& _id)
+    Client::network_nodes(string const& _id) const
     {
       return this->_get<NetworkNodesResponse>("/network/" + _id + "/nodes");
     }
 
     CreateNetworkResponse
-    Client::create_network(string const& network_id)
+    Client::create_network(string const& network_id) const
     {
       json::Dictionary request{map<string, string>{
           {"name", network_id},
@@ -660,7 +662,7 @@ namespace plasma
 
     DeleteNetworkResponse
     Client::delete_network(string const& network_id,
-                           bool force)
+                           bool force) const
     {
       json::Dictionary request{map<string, string>{
           {"network_id", network_id},
@@ -675,7 +677,7 @@ namespace plasma
                            string const* root_block,
                            string const* root_address,
                            string const* group_block,
-                           string const* group_address)
+                           string const* group_address) const
     {
       json::Dictionary request{map<string, string>{
             {"_id", _id},
@@ -711,7 +713,7 @@ namespace plasma
 
     NetworkAddUserResponse
     Client::network_add_user(string const& network_id,
-                             string const& user_id)
+                             string const& user_id) const
     {
       json::Dictionary request{map<string, string>{
           {"_id", network_id},
@@ -721,7 +723,7 @@ namespace plasma
     }
     NetworkAddDeviceResponse
     Client::network_add_device(string const& network_id,
-                               string const& device_id)
+                               string const& device_id) const
     {
       json::Dictionary request{map<string, string>{
           {"_id", network_id},
@@ -736,7 +738,7 @@ namespace plasma
                                    string const* local_ip,
                                    uint16_t local_port,
                                    string const* external_ip,
-                                   uint16_t external_port)
+                                   uint16_t external_port) const
     {
         adapter_type local_adapter;
         adapter_type public_adapter;
@@ -754,7 +756,7 @@ namespace plasma
     Client::_network_connect_device(string const& network_id,
                                     string const& device_id,
                                     adapter_type const& local_endpoints,
-                                    adapter_type const& public_endpoints)
+                                    adapter_type const& public_endpoints) const
       {
         json::Dictionary request{
           map<string, string>{
@@ -796,7 +798,7 @@ namespace plasma
       EndpointNodeResponse
       Client::device_endpoints(std::string const& network_id,
                                std::string const& self_device_id,
-                               std::string const& device_id)
+                               std::string const& device_id) const
       {
         json::Dictionary request{
           map<string, string>{

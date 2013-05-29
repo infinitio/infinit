@@ -27,19 +27,13 @@ namespace hole
                        elle::Passport const& passport,
                        elle::Authority const& authority,
                        elle::network::Locus const& server);
+        ~Implementation();
         ELLE_ATTRIBUTE_R(elle::network::Locus, server_locus);
 
       /*-----.
       | Hole |
       `-----*/
       protected:
-        /// Try connecting to the server; if impossible, be the server.
-        virtual
-        void
-        _join();
-        virtual
-        void
-        _leave();
         virtual
         void
         _push(const nucleus::proton::Address& address,

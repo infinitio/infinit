@@ -79,8 +79,8 @@ namespace nucleus
       this->state(State::dirty);
 
       // add the inlet footprint to the seam's.
-      ELLE_ASSERT_NEQ(this->footprint(), 0);
-      ELLE_ASSERT_NEQ(inlet->footprint(), 0);
+      ELLE_ASSERT_NEQ(this->footprint(), 0u);
+      ELLE_ASSERT_NEQ(inlet->footprint(), 0u);
       this->footprint(this->footprint() + inlet->footprint());
     }
 
@@ -114,8 +114,8 @@ namespace nucleus
       this->state(State::dirty);
 
       // substract the inlet footprint to the seam's.
-      ELLE_ASSERT_NEQ(this->footprint(), 0);
-      ELLE_ASSERT_NEQ(inlet->footprint(), 0);
+      ELLE_ASSERT_NEQ(this->footprint(), 0u);
+      ELLE_ASSERT_NEQ(inlet->footprint(), 0u);
       this->footprint(this->footprint() - inlet->footprint());
 
       // delete the inlet.
@@ -1117,7 +1117,7 @@ namespace nucleus
     typename T::K const&
     Seam<T>::maiden() const
     {
-      ELLE_ASSERT_EQ(this->_container.size(), 1);
+      ELLE_ASSERT_EQ(this->_container.size(), 1u);
 
       return (this->_container.begin()->first);
     }

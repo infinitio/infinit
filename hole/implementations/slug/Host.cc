@@ -19,8 +19,6 @@
 #include <hole/implementations/slug/Manifest.hh>
 #include <hole/implementations/slug/Slug.hh>
 
-#include <Scheduler.hh>
-
 ELLE_LOG_COMPONENT("infinit.hole.slug.Host");
 
 namespace hole
@@ -42,14 +40,13 @@ namespace hole
         , _authenticated(false)
         , _remote_passport(nullptr)
         , _socket(std::move(socket))
-        , _serializer(infinit::scheduler(), *_socket)
-        , _channels(infinit::scheduler(), _serializer)
+        , _serializer(*reactor::Scheduler::scheduler(), *_socket)
+        , _channels(*reactor::Scheduler::scheduler(), _serializer)
         , _rpcs(_channels)
-        , _rpcs_handler(new reactor::Thread(infinit::scheduler(),
+        , _rpcs_handler(new reactor::Thread(*reactor::Scheduler::scheduler(),
                                             elle::sprintf("RPC %s", *this),
                                             boost::bind(&Host::_rpc_run, this),
-                                            true)
-                        )
+                                            true))
       {
         _rpcs.authenticate = boost::bind(&Host::_authenticate, this, _1);
         _rpcs.push = boost::bind(&Host::_push, this, _1, _2);
@@ -60,8 +57,16 @@ namespace hole
       Host::~Host()
       {
         // Stop operations on the socket before it is deleted.
-        if (!_rpcs_handler->done())
-          _rpcs_handler->terminate_now();
+        // Check if we are not committing suicide.
+        auto sched = reactor::Scheduler::scheduler();
+        if (sched != nullptr)
+        {
+          auto current = sched->current();
+          if (!_rpcs_handler->done() && current != _rpcs_handler)
+          {
+            _rpcs_handler->terminate_now();
+          }
+        }
       }
 
       /*-----.
@@ -71,18 +76,20 @@ namespace hole
       void
       Host::_rpc_run()
       {
+        auto fn_on_exit = [&] {
+          ELLE_LOG("%s: left", *this);
+          this->_slug._remove(this);
+        };
+        elle::Finally on_exit(std::move(fn_on_exit));
+
         try
-          {
-            this->_rpcs.run();
-          }
+        {
+          this->_rpcs.run();
+        }
         catch (reactor::network::Exception& e)
-          {
-            ELLE_WARN("%s: discarded: %s", *this, e.what());
-            this->_slug._remove(this);
-            return;
-          }
-        ELLE_LOG("%s: left", *this);
-        this->_slug._remove(this);
+        {
+          ELLE_WARN("%s: discarded: %s", *this, e.what());
+        }
       }
 
       /*----.

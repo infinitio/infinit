@@ -21,7 +21,7 @@ class _State:
     exec_perm = _gap.gap_exec
 
     def __init__(self):
-        self._state = None
+        self.__state = None
         self.email = ''
 
         directly_exported_methods = [
@@ -88,7 +88,7 @@ class _State:
 
         def make_method(meth):
             method = lambda *args: (
-                self._call(meth, *args)
+                self.__call(meth, *args)
             )
             method.__doc__ = getattr(_gap, meth).__doc__
             return method
@@ -100,26 +100,23 @@ class _State:
         self.TransactionStatus = getattr(_gap, "TransactionStatus")
         self.OperationStatus = getattr(_gap, "OperationStatus")
 
-    def __del__(self):
-        _gap.free(self._state)
-
     @property
     def meta_status(self):
         try:
-            return self._call('meta_status') == self.Status.ok
+            return self.__call('meta_status') == self.Status.ok
         except Exception as e:
             return False
 
     @property
     def has_device(self):
         try:
-            return self._call('device_status') == self.Status.ok
+            return self.__call('device_status') == self.Status.ok
         except:
             return False
 
-    def _call(self, method, *args):
-        assert(self._state != None)
-        res = getattr(_gap, method)(self._state, *args)
+    def __call(self, method, *args):
+        assert(self.__state != None)
+        res = getattr(_gap, method)(self.__state, *args)
         if isinstance(res, _gap.Status) and res != self.Status.ok:
             raise Exception(
                 "Error while calling %s: %s " % (method, str(res))
@@ -128,30 +125,36 @@ class _State:
 
     def login(self, email, password):
         self.email = email
-        pw_hash = self._call('hash_password', email, password)
-        self._call('login', email, pw_hash)
+        pw_hash = self.__call('hash_password', email, password)
+        self.__call('login', email, pw_hash)
 
     @property
     def logged(self):
-        return self._call('is_logged')
+        return self.__call('is_logged')
 
     def register(self, fullname, email, password, dev_name, activation_code):
         self.email = email
-        pw_hash = self._call('hash_password', email, password)
-        self._call('register', fullname, email, pw_hash, dev_name, activation_code)
+        pw_hash = self.__call('hash_password', email, password)
+        self.__call('register', fullname, email, pw_hash, dev_name, activation_code)
 
     @property
     def _id(self):
-        return self._call('_id');
+        return self.__call('_id');
 
 class State(_State):
+    def __init__(self):
+        super(State, self).__init__()
+        self.__state = None
+
     def __enter__(self):
-        self._state = _gap.new()
-        assert(self._state != None)
+        self.__state = _gap.new()
+        assert self.__state is not None
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        _gap.free(self._state)
+        if self.__state is not None:
+            _gap.free(self.__state)
+        self.__state = None
 
 if __name__ == "__main__":
     import doctest

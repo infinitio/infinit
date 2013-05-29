@@ -1,5 +1,7 @@
 #include <boost/lexical_cast.hpp>
 
+#include <reactor/scheduler.hh>
+
 #include <etoile/path/Path.hh>
 #include <etoile/path/Venue.hh>
 #include <etoile/path/Route.hh>
@@ -19,8 +21,6 @@
 #include <hole/Hole.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
-
 
 namespace etoile
 {
@@ -167,7 +167,8 @@ namespace etoile
           // accessed as it has potentially been released with the context
           // through the call to Discard().
           if (entry == nullptr)
-            throw wall::NoSuchFileOrDirectory(infinit::scheduler(), slice);
+            throw wall::NoSuchFileOrDirectory(*reactor::Scheduler::scheduler(),
+                                              slice);
 
           // first, record the address/revision in the venue.
           if (venue.Record(address, revision) == elle::Status::Error)

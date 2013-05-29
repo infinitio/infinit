@@ -40,7 +40,6 @@ using namespace infinit;
 #include <hole/Hole.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.portal.Portal");
 
@@ -87,21 +86,7 @@ namespace etoile
 
       // Wait for hole to be ready before enabling outside applications to
       // issue file system requests.
-      switch (depot::hole().state())
-        {
-        case hole::Hole::State::offline:
-          {
-            ELLE_DEBUG("hole state is offline");
-            depot::hole().ready_hook(&Portal::_run);
-            break;
-          }
-        case hole::Hole::State::online:
-          {
-            ELLE_DEBUG("hole state is already online");
-            Portal::_run();
-            break;
-          }
-        }
+      Portal::_run();
 
       return (elle::Status::Ok);
     }
@@ -120,9 +105,9 @@ namespace etoile
 
           // allocate the server and acceptor for handling incoming connections.
           Portal::server =
-            new reactor::network::TCPServer(infinit::scheduler());
+            new reactor::network::TCPServer(*reactor::Scheduler::scheduler());
           Portal::acceptor =
-            new reactor::Thread(infinit::scheduler(),
+            new reactor::Thread(*reactor::Scheduler::scheduler(),
                                 "Portal Server accept",
                                 boost::bind(&Portal::accept));
 

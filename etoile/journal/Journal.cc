@@ -12,7 +12,6 @@
 #include <nucleus/factory.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.journal.Journal");
 
@@ -58,7 +57,7 @@ namespace etoile
          // Spawn a thread and do not wait for it to complete since
          // we want the processing to occur in the background as it
          // may take some time.
-         new reactor::Thread(infinit::scheduler(),
+         new reactor::Thread(*reactor::Scheduler::scheduler(),
                              "journal process",
                              boost::bind(&Journal::_process,
                                          std::move(transcript)),
@@ -83,6 +82,8 @@ namespace etoile
       ELLE_TRACE_SCOPE("Journal::Record(%s)", *scope);
 
       ELLE_FINALLY_ACTION_DELETE(scope);
+
+      ELLE_ASSERT_EQ(scope->actors.empty(), true);
 
       // Ignore empty scope' transcripts.
       if (scope->context->transcript().empty() == true)

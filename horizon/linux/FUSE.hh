@@ -7,6 +7,8 @@
 
 # include <elle/types.hh>
 
+# include <reactor/scheduler.hh>
+
 # include <fuse/fuse.h>
 
 namespace horizon
@@ -25,7 +27,10 @@ namespace horizon
       //
       // static methods
       //
-      static elle::Status       Initialize(const struct ::fuse_operations&);
+      static
+      void
+      Initialize(reactor::Scheduler& sched,
+                 struct ::fuse_operations const&);
       static elle::Status       Clean();
 
       //

@@ -15,7 +15,7 @@ namespace plasma
     NetworkConnectDeviceResponse
     Client::network_connect_device(std::string const& network_id,
                                    std::string const& device_id,
-                                   Container const& local_ips)
+                                   Container const& local_ips) const
     {
       adapter_type local_adapter;
       adapter_type public_adapter;
@@ -36,7 +36,7 @@ namespace plasma
     Client::network_connect_device(std::string const& network_id,
                                    std::string const& device_id,
                                    Container1 const& local_ips,
-                                   Container2 const& public_endpoints)
+                                   Container2 const& public_endpoints) const
     {
       adapter_type local_adapter;
       adapter_type public_adapter;
@@ -93,12 +93,17 @@ namespace plasma
       {
         sym = "*";
       }
-      if (type == CURLINFO_HEADER_IN ||
-          type == CURLINFO_HEADER_OUT)
+
+      if (type == CURLINFO_TEXT)
+      {
+        ELLE_DUMP("%s %s", sym, msg);
+      }
+      else if (type == CURLINFO_HEADER_OUT)
       {
         std::vector<std::string> v;
+
         boost::split(v, msg, boost::algorithm::is_any_of("\n"));
-        ELLE_DEBUG_SCOPE("%s %s", sym, v[0]);
+        ELLE_TRACE_SCOPE("%s %s", sym, v[0]);
         int i = 0;
         for (auto const&s : v)
         {
@@ -107,19 +112,26 @@ namespace plasma
           ELLE_DEBUG("%s %s", sym, s);
         }
       }
-      else
+      else if (type == CURLINFO_DATA_IN || type == CURLINFO_DATA_OUT)
+      {
         ELLE_DEBUG("%s %s", sym, msg);
+      }
+      else if (type == CURLINFO_HEADER_IN)
+      {
+        ELLE_TRACE("%s %s", sym, msg);
+      }
       return 0;
     }
 
     template <typename T>
     T
-    Client::_post(std::string const& url, elle::format::json::Object const& req)
+    Client::_post(std::string const& url,
+                  elle::format::json::Object const& req) const
     {
       std::stringstream in;
       std::stringstream out;
       curly::request_configuration c = curly::make_post();
-      
+
       c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
       c.option(CURLOPT_DEBUGDATA, nullptr);
 
@@ -140,7 +152,7 @@ namespace plasma
 
     template <typename T>
     T
-    Client::_get(std::string const& url)
+    Client::_get(std::string const& url) const
     {
       std::stringstream resp;
       curly::request_configuration c = curly::make_get();
@@ -162,7 +174,7 @@ namespace plasma
 
     template <typename T>
     T
-    Client::_deserialize_answer(std::istream& res)
+    Client::_deserialize_answer(std::istream& res) const
     {
       T ret;
       ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
@@ -173,7 +185,9 @@ namespace plasma
       }
       catch (std::exception const& err)
       {
-        ELLE_ERR("Couldn't deserialize %s: %s", ELLE_PRETTY_TYPE(T), err.what());
+        ELLE_ERR("Couldn't deserialize %s: %s",
+                 ELLE_PRETTY_TYPE(T),
+                 err.what());
         throw Exception(Error::unknown, err.what());
       }
 

@@ -10,7 +10,6 @@
 #include <hole/Hole.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 #include <boost/function.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
@@ -110,7 +109,7 @@ namespace horizon
          BOOST_PP_SEQ_FOR_EACH_I(INFINIT_FUSE_FORMALS, _,               \
                                  BOOST_PP_SEQ_POP_FRONT(Args)))         \
     {                                                                   \
-      return infinit::scheduler().mt_run<int>                           \
+      return reactor::Scheduler::scheduler()->mt_run<int>               \
         (BOOST_PP_STRINGIZE(Name),                                      \
          boost::bind(Name, INFINIT_FUSE_EFFECTIVE(Args)));              \
     }                                                                   \
@@ -276,7 +275,7 @@ namespace horizon
 
     _leave:
       // now that FUSE has stopped, make sure the program is exiting.
-      new reactor::Thread(infinit::scheduler(), "exit",
+      new reactor::Thread(*reactor::Scheduler::scheduler(), "exit",
                           &elle::concurrency::Program::Exit, true);
       return nullptr;
     }
@@ -305,20 +304,7 @@ namespace horizon
     ///
     elle::Status        FUker::Initialize()
     {
-      switch (hole().state())
-        {
-        case hole::Hole::State::offline:
-          {
-            hole().ready_hook(&FUker::run);
-            break;
-          }
-        case hole::Hole::State::online:
-          {
-            FUker::run();
-            break;
-          }
-        }
-
+      FUker::run();
       return elle::Status::Ok;
     }
 

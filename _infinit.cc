@@ -27,22 +27,8 @@
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Program.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit");
-
-static
-std::ostream&
-log_destination()
-{
-  if (auto env = ::getenv("INFINIT_LOG_FILE"))
-    {
-      static std::ofstream res(env, std::fstream::trunc | std::fstream::out);
-      return res;
-    }
-  else
-    return std::cerr;
-}
 
 void
 Infinit(elle::Natural32 argc, elle::Character* argv[])
@@ -195,8 +181,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   ELLE_DEBUG("INFINIT_HORIZON enable");
   horizon::hole(hole.get());
 #endif
-  ELLE_DEBUG("joining hole");
-  hole->join();
 
   // initialize the Etoile library.
   if (etoile::Etoile::Initialize() == elle::Status::Error)
@@ -205,8 +189,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   // initialize the horizon.
   if (!Infinit::Mountpoint.empty())
 #ifdef INFINIT_HORIZON
-    if (horizon::Horizon::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize the horizon");
+    horizon::Horizon::Initialize(*reactor::Scheduler::scheduler());
 #else
   throw elle::Exception("horizon was disabled at compilation time "
                            "but a mountpoint was given on the command line");
@@ -234,8 +217,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   if (agent::Agent::Clean() == elle::Status::Error)
     throw elle::Exception("unable to clean Agent");
 
-  hole->leave();
-  delete hole.release();
+  hole.reset(nullptr);
 
   // clean Infinit.
   if (Infinit::Clean() == elle::Status::Error)
@@ -249,10 +231,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
 int
 main(int argc, char* argv[])
 {
-  elle::log::logger
-    (std::unique_ptr<elle::log::Logger>
-     (new elle::log::TextLogger(log_destination())));
-
   auto _main = [&]
   {
     Infinit(argc, argv);

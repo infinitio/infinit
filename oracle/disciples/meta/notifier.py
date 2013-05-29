@@ -67,22 +67,24 @@ class TrophoniusNotify(Notifier):
         self.conn.send("{}\n".format(msg))
 
     def _add_notif_to_db(self, recipient_id, notif):
-        user_ = database.users().find_one(
+        recipient = database.users().find_one(
             database.ObjectId(recipient_id));
 
-        if not user_:
+        if not recipient:
             return None
 
-        #Timestamp in ms.
-        notif['timestamp'] = int(time.time() * 1000)
+        recipient['notifications'].append(notif)
+        database.users().save(recipient)
 
-        user_['notifications'].append(notif)
-        database.users().save(user_)
+        return recipient
 
-        return user_
+    def fill(message, notification_type, recipient):
+        message['notification_type'] = notification_type
+        message['timestamp'] = time.time() #timestamp in s.
+        message['to'] = recipient_id
 
     def notify_one(self, notification_type, recipient_id, message, store = True):
-        message['notification_type'] = notification_type;
+        fill(message, notification_type, str(recipient_id))
 
         user_ = self._add_notif_to_db(recipient_id, message)
 
@@ -91,24 +93,20 @@ class TrophoniusNotify(Notifier):
             return
 
         if user_['connected']:
-            message.update({'to': str(recipient_id)})
             self.send_notification(message)
 
     def notify_some(self, notification_type, recipients_id, message, store = True):
         if not isinstance(recipients_id, list):
             return self.notify_one(notification_type, recipients_id, message)
 
-        print("Notifying some", recipients_id)
         # Recipients empty.
         if not recipients_id:
             return
 
-        message.update({'notification_type' : notification_type})
+        fill(message, notification_type, recipents_id)
 
         if store:
             for _id in recipients_id:
-                self._add_notif_to_db(_id, message)
-
-        message.update({'to': recipients_id})
-
-        self.send_notification(message)
+                user_ = self._add_notif_to_db(_id, message)
+                if user_['connected']:
+                    self.send_notification(message)

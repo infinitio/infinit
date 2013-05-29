@@ -666,7 +666,6 @@ Main(elle::Natural32,
       etoile::depot::hole(hole);
       etoile::Etoile::Initialize();
 
-      hole->join();
 #endif
 
       test_porcupine_catalog();
@@ -675,8 +674,6 @@ Main(elle::Natural32,
 
 #ifdef PORCUPINE_SERIALIZE_TEST
       etoile::Etoile::Clean();
-
-      hole->leave();
 
       ELLE_FINALLY_ABORT(hole);
 

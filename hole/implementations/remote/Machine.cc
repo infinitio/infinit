@@ -79,7 +79,6 @@ namespace hole
                 new Client(this->_hole.passport(), host,
                            _hole.server_locus().port));
               this->role = Machine::RoleClient;
-              this->_hole.ready();
               this->client = client.release();
               return;
             }

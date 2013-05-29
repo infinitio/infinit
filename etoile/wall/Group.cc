@@ -1,6 +1,8 @@
 #include <elle/Exception.hh>
 #include <elle/log.hh>
 
+#include <reactor/scheduler.hh>
+
 #include <etoile/abstract/Group.hh>
 #include <etoile/automaton/Group.hh>
 #include <etoile/automaton/Rights.hh>
@@ -19,7 +21,6 @@
 #include <nucleus/neutron/Fellow.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Group");
 
@@ -50,7 +51,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
+        reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -92,7 +93,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
+        reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -136,7 +137,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex);
+        reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -169,7 +170,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
+        reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -203,7 +204,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex);
+        reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -242,7 +243,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex);
+        reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -277,7 +278,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
+        reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -311,7 +312,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
+        reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -363,11 +364,6 @@ namespace etoile
             // operating on it, record it in the journal.
             //
 
-            // relinquish the scope: at this point we know there is no
-            // remaining actor.
-            if (gear::Scope::Relinquish(scope) == elle::Status::Error)
-              throw Exception("unable to relinquish the scope");
-
             // record the scope in the journal.
             if (journal::Journal::Record(scope) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
@@ -404,7 +400,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
+        reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -456,11 +452,6 @@ namespace etoile
             // operating on it, record it in the journal.
             //
 
-            // relinquish the scope: at this point we know there is no
-            // remaining actor.
-            if (gear::Scope::Relinquish(scope) == elle::Status::Error)
-              throw Exception("unable to relinquish the scope");
-
             // record the scope in the journal.
             if (journal::Journal::Record(scope) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
@@ -498,7 +489,7 @@ namespace etoile
 
       // Declare a critical section.
       {
-        reactor::Lock lock(infinit::scheduler(), scope->mutex.write());
+        reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
@@ -549,11 +540,6 @@ namespace etoile
             // if the group has been sealed, i.e there is no more actor
             // operating on it, record it in the journal.
             //
-
-            // relinquish the scope: at this point we know there is no
-            // remaining actor.
-            if (gear::Scope::Relinquish(scope) == elle::Status::Error)
-              throw Exception("unable to relinquish the scope");
 
             // record the scope in the journal.
             if (journal::Journal::Record(scope) == elle::Status::Error)

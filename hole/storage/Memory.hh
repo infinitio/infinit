@@ -17,8 +17,7 @@ namespace hole
   {
     /// Storage that holds blocks in a map located in main memory.
     class Memory:
-      public Storage,
-      public elle::Printable
+      public Storage
     {
       /*------.
       | Types |

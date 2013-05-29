@@ -48,13 +48,13 @@ namespace hole
         _acceptor()
       {
         ELLE_TRACE_SCOPE("launch slug");
+        auto& sched = *reactor::Scheduler::scheduler();
         try
         {
           ELLE_TRACE("try connecting to peers")
           {
             // FIXME: use builtin support for subcoroutines when available.
             std::vector<reactor::Thread*> connections;
-            auto& sched = *reactor::Scheduler::scheduler();
             for (elle::network::Locus const& locus: this->members())
             {
               auto action = [&, locus] { this->_connect_try(locus); };
@@ -77,23 +77,20 @@ namespace hole
             // in the network.  Thus, it can be implicitly considered
             // as authenticated in a network composed of itself alone.
             this->_state = State::attached;
-
-            // Set the hole as ready to receive requests.
-            this->ready();
           }
 
           if (socket)
           {
+            // XXX: for now rebinding a socket is only available with UDT.
+            ELLE_ASSERT_EQ(this->protocol(), reactor::network::Protocol::udt);
             this->_server = elle::make_unique<reactor::network::UDTServer>(
               *reactor::Scheduler::scheduler(), std::move(socket));
           }
           else
           {
-            this->_server = elle::make_unique<reactor::network::UDTServer>(
-              *reactor::Scheduler::scheduler());
-            this->_server->listen(0);
+            this->_server = reactor::network::Server::create(
+              this->protocol(), sched);
           }
-          this->_port = this->_server->port();
 
           // Finally, listen for incoming connections.
           ELLE_TRACE("serve on port %s", this->_port);
@@ -105,6 +102,7 @@ namespace hole
               _server->listen(this->_port);
               // In case we asked for a random port to be picked up (by using 0)
               // or hole punching happened, retrieve the actual listening port.
+              this->_port = this->_server->port();
               ELLE_ASSERT(this->_port != 0);
               ELLE_DEBUG("listening on port %s", this->_port);
               _acceptor.reset(new reactor::Thread(
@@ -131,6 +129,7 @@ namespace hole
 
       Slug::~Slug()
       {
+        ELLE_TRACE_SCOPE("%s: terminating", *this);
         for (auto host: Hosts(_hosts))
           this->_remove(host.second);
 
@@ -139,23 +138,6 @@ namespace hole
         // acceptor.
         if (_acceptor)
           _acceptor->terminate_now();
-      }
-
-      /*------------.
-      | Join, leave |
-      `------------*/
-
-      void
-      Slug::_join()
-      {
-        // this->_machine.reset(new Machine(*this, this->_port,
-        //                                  this->_connection_timeout));
-      }
-
-      void
-      Slug::_leave()
-      {
-        // this->_machine.reset(nullptr);
       }
 
       void
@@ -1122,10 +1104,7 @@ namespace hole
         ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
         auto loci = host->authenticate(this->passport());
         if (this->_state == State::detached)
-        {
           this->_state = State::attached;
-          this->ready();
-        }
         // XXX Propagation disabled.
         // for (auto locus: loci)
         //   if (_hosts.find(locus) == _hosts.end())
@@ -1162,10 +1141,13 @@ namespace hole
       Slug::_remove(Host* host)
       {
         elle::network::Locus locus(host->locus());
-        assert(this->_hosts.find(locus) != this->_hosts.end());
-        ELLE_LOG("%s: remove host: %s", *this, *host);
+        // Stopping the RPCS will call this recursively. Break the loop.
+        auto it = this->_hosts.find(locus);
+        if (it == this->_hosts.end())
+          return;
+        ELLE_LOG_SCOPE("%s: remove host: %s", *this, *host);
+        std::unique_ptr<Host> guard(host);
         this->_hosts.erase(locus);
-        delete host;
       }
 
       /*-------.
@@ -1299,6 +1281,19 @@ namespace hole
                    host, port, this->_hosts.size())
           this->_hosts.erase(locus);
         return false;
+      }
+
+      /*----------.
+      | Printable |
+      `----------*/
+
+      void
+      Slug::print(std::ostream& stream) const
+      {
+        stream << "Slug(";
+        if (this->_server)
+          stream << this->_server->port();
+        stream << ")";
       }
 
       /*---------.

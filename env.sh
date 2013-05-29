@@ -5,7 +5,7 @@ INFINIT_BUILD_DIR=$PWD
 
 ELLE_LOG_LEVEL="infinit.*:DUMP,reactor.network.*:DUMP"
 
-DISTCC_HOSTS="infinit.im"
+DISTCC_HOSTS="development.infinit.io"
 
 infinit_env_init() {
 	export INFINIT_BUILD_DIR=${INFINIT_BUILD_DIR}

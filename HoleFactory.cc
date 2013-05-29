@@ -120,17 +120,32 @@ namespace infinit
             throw elle::Exception
               (elle::sprintf("invalid transport protocol: %s", protocol_str));
 
-          // Punch NAT
-          reactor::nat::NAT nat(*reactor::Scheduler::scheduler());
+          // Punch NAT.
+          std::unique_ptr<reactor::network::UDPSocket> socket;
+          boost::asio::ip::udp::endpoint pub;
+          try
+          {
+            reactor::nat::NAT nat(*reactor::Scheduler::scheduler());
 
-          auto pokey = nat.punch(common::longinus::host(),
-                                 common::longinus::port(),
-                                 port);
-          ELLE_TRACE("punch done: %s", pokey.public_endpoint());
+            auto pokey = nat.punch(common::longinus::host(),
+                                   common::longinus::port(),
+                                   port);
+
+            ELLE_TRACE("punch done: %s", pokey.public_endpoint());
+            socket = std::move(pokey.handle());
+            pub = pokey.public_endpoint();
+          }
+          catch (elle::Exception const& e)
+          {
+            // Nat punching failed
+            ELLE_TRACE("punch failed: %s", e.what());
+          }
 
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,
-                                        pokey.handle());
+                                        std::move(socket));
+
+          // Create the hole.
           std::unique_ptr<hole::Hole> hole(slug);
 
           ELLE_TRACE("send addresses to meta")
@@ -153,10 +168,9 @@ namespace infinit
                   }
                 ELLE_DEBUG("addresses: %s", addresses);
               std::vector<std::pair<std::string, uint16_t>> public_addresses;
-              auto ep = pokey.public_endpoint();
               public_addresses.push_back(std::pair<std::string, uint16_t>
-                                         (ep.address().to_string(),
-                                          ep.port()));
+                                         (pub.address().to_string(),
+                                          pub.port()));
               client.token(agent::Agent::meta_token);
 
               ELLE_DEBUG("public_addresses: %s", public_addresses);

@@ -17,7 +17,6 @@
 #include <nucleus/proton/Revision.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.remote.Customer");
 
@@ -38,14 +37,13 @@ namespace hole
         : _state(State::connected)
         , _server(server)
         , _socket(socket.release())
-        , _serializer(infinit::scheduler(), *_socket.get())
-        , _channels(infinit::scheduler(), _serializer)
+        , _serializer(*reactor::Scheduler::scheduler(), *_socket.get())
+        , _channels(*reactor::Scheduler::scheduler(), _serializer)
         , _rpcs(_channels)
-        , _runner(new reactor::Thread(
-                    infinit::scheduler(),
-                    elle::sprintf("%s RPCs", *this),
-                    boost::bind(&Customer::_run, this),
-                    true))
+        , _runner(new reactor::Thread(*reactor::Scheduler::scheduler(),
+                                      elle::sprintf("%s RPCs", *this),
+                                      boost::bind(&Customer::_run, this),
+                                      true))
       {
         _rpcs.challenge = boost::bind(&Customer::challenge, this, _1);
         _rpcs.push = boost::bind(&Customer::push, this, _1, _2);

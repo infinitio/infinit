@@ -218,7 +218,7 @@ namespace satellite
 
       // Set the size variable.
       _size = boost::lexical_cast<elle::Natural64>(size.value());
-      ELLE_ASSERT_NEQ(_size, 0);
+      ELLE_ASSERT_NEQ(_size, 0u);
 
       ELLE_DEBUG("the 'size' attribute is '%s'", _size);
 
@@ -300,7 +300,7 @@ namespace satellite
     _progress += increment;
 
     // Compute the increment in terms of pourcentage of progress.
-    ELLE_ASSERT_NEQ(_size, 0);
+    ELLE_ASSERT_NEQ(_size, 0u);
     elle::Real difference = (_progress - stale) * 100 / _size;
 
     ELLE_DEBUG("difference %s", difference);

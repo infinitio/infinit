@@ -6,6 +6,7 @@
 #include <elle/log.hh>
 
 #include <reactor/network/tcp-server.hh>
+#include <reactor/scheduler.hh>
 
 #include <nucleus/proton/ImmutableBlock.hh>
 #include <nucleus/proton/MutableBlock.hh>
@@ -20,7 +21,6 @@
 #include <lune/Lune.hh>
 
 #include <Infinit.hh>
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.remote.Server");
 
@@ -38,8 +38,8 @@ namespace hole
         : _hole(hole)
         , _port(port)
         , _server(new reactor::network::TCPServer
-                  (infinit::scheduler()))
-        , _acceptor(new reactor::Thread(infinit::scheduler(),
+                  (*reactor::Scheduler::scheduler()))
+        , _acceptor(new reactor::Thread(*reactor::Scheduler::scheduler(),
                                         "Remote Server accept",
                                         boost::bind(&Server::_accept, this)))
       {

@@ -3,6 +3,7 @@ import json
 import web
 import os.path
 import sys
+import time
 
 from meta.page import Page
 from meta import notifier
@@ -140,7 +141,7 @@ class Create(Page):
 
         _id = self.user['_id']
 
-        req = {
+        transaction = {
             'sender_id': database.ObjectId(_id),
             'sender_fullname': self.user['fullname'],
             'sender_device_id': database.ObjectId(device_id),
@@ -148,7 +149,7 @@ class Create(Page):
             'recipient_id': database.ObjectId(recipient_id),
             'recipient_fullname': recipient_fullname,
 
-            # Empty while accepted.
+            # Empty until accepted.
             'recipient_device_id': '',
             'recipient_device_name': '',
 
@@ -160,17 +161,17 @@ class Create(Page):
             'files_count': self.data['files_count'],
             'total_size': self.data['total_size'],
             'is_directory': self.data['is_directory'],
-            'already_accepted': False,
 
+            'timestamp': time.time(),
             'status': PENDING,
+            'early_accepted': False,
         }
 
-        if not database.transactions().find_one(req):
-            transaction_id = database.transactions().insert(req)
+        transaction_id = database.transactions().insert(transaction)
 
         sent = first_filename;
-        if self.data['files_count'] > 1:
-            sent +=  " and %i other files" % (self.data['files_count'] - 1)
+        if transaction['files_count'] > 1:
+            sent +=  " and %i other files" % (transaction['files_count'] - 1)
 
         # XXX: MAIL DESACTIVATED
         if not self.connected(recipient_id):
@@ -184,44 +185,16 @@ class Create(Page):
                     reply_to = self.user['email'],
                     filename = first_filename,
                     sendername = self.user['fullname'],
-                    user_id = self.user['_id'],
+                    user_id = str(self.user['_id']),
                 )
 
 
         self.notifier.notify_some(
             notifier.TRANSACTION,
             [database.ObjectId(recipient_id), database.ObjectId(_id)], # sender and recipient.
-            {
-                'transaction': {
-                    'transaction_id': str(transaction_id),
-
-                    # Sender.
-                    'sender_id': str(_id),
-                    'sender_fullname': self.user['fullname'],
-                    'sender_device_id': str(device_id),
-
-                    # Recipient.
-                    'recipient_id': str(recipient_id),
-                    'recipient_fullname': recipient_fullname,
-                    'recipient_device_id': '',
-                    'recipient_device_name': '',
-
-                    # Network.
-                    'network_id': str(network_id),
-
-                    'message': message,
-
-                    # File info.
-                    'first_filename': first_filename,
-                    'files_count': int(self.data['files_count']),
-                    'total_size': int(self.data['total_size']),
-                    'is_directory': int(self.data['is_directory']),
-
-                    'status': int(PENDING),
-                    'already_accepted': False,
-                }
-            }
+            transaction
         )
+
         return self.success({
             'created_transaction_id': transaction_id,
             'remaining_invitations': self.user.get('remaining_invitations', 0),
@@ -245,7 +218,8 @@ class FullyCreated(Page):
             return self.error(status)
 
         transaction =  database.transactions().find_one(
-            database.ObjectId(self.data['transaction_id'].strip()))
+            database.ObjectId(self.data['transaction_id'].strip())
+        )
 
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
@@ -254,18 +228,22 @@ class FullyCreated(Page):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
         if transaction['status'] not in (PENDING, ACCEPTED):
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                              "This transaction can't be %s. Current status : %s"
-                              % (_status_to_string[CREATED], _status_to_string[transaction['status']])
+            return self.error(
+              error.TRANSACTION_OPERATION_NOT_PERMITTED,
+              "This transaction can't be %s. Current status : %s" % (
+                _status_to_string[CREATED],
+                _status_to_string[transaction['status']]
+              )
             )
 
-        sender = database.users().find_one(database.ObjectId(transaction['sender_id']))
+        sender = database.users().find_one(
+          database.ObjectId(transaction['sender_id'])
+        )
 
         assert sender is not None
 
         transaction.update({
             'status': transaction['status'] == ACCEPTED and ACCEPTED or CREATED,
-            'already_accepted': bool(transaction['status'] == ACCEPTED),
         })
 
         updated_transaction_id = database.transactions().save(transaction);
@@ -328,15 +306,23 @@ class Accept(Page):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
         if self.data['device_id'] == transaction['sender_device_id']:
-            return self.error(error.TRANSACTION_CANT_BE_ACCEPTED, "Sender and recipient devices are the same.")
-
-        if transaction['status'] not in (PENDING, CREATED):
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                              "This transaction can't be %s. Current status : %s"
-                              % (_status_to_string[ACCEPTED], _status_to_string[transaction['status']])
+            return self.error(
+              error.TRANSACTION_CANT_BE_ACCEPTED,
+              "Sender and recipient devices are the same."
             )
 
-        sender = database.users().find_one(database.ObjectId(transaction['sender_id']))
+        if transaction['status'] not in (PENDING, CREATED):
+            return self.error(
+                error.TRANSACTION_OPERATION_NOT_PERMITTED,
+                "This transaction can't be %s. Current status : %s" % (
+                    _status_to_string[ACCEPTED],
+                    _status_to_string[transaction['status']]
+                )
+            )
+
+        sender = database.users().find_one(
+          database.ObjectId(transaction['sender_id'])
+        )
 
         # XXX: If the sender delete his account while transaction is pending.
         # We should turn all his transaction to canceled.
@@ -347,6 +333,7 @@ class Accept(Page):
             'recipient_device_name' : self.data['device_name'],
             'recipient_device_id': database.ObjectId(self.data['device_id']),
             'status': ACCEPTED,
+            'early_accepted': bool(transaction['status'] == PENDING)
         })
 
         updated_transaction_id = database.transactions().save(transaction);
@@ -404,7 +391,8 @@ class Prepare(Page):
             return self.error(status)
 
         transaction =  database.transactions().find_one(
-            database.ObjectId(self.data['transaction_id'].strip()))
+            database.ObjectId(self.data['transaction_id'].strip())
+        )
 
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
@@ -413,9 +401,12 @@ class Prepare(Page):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
         if transaction['status'] != ACCEPTED:
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                              "This transaction can't be %s. Current status : %s"
-                              % (_status_to_string[PREPARED], _status_to_string[transaction['status']])
+            return self.error(
+                error.TRANSACTION_OPERATION_NOT_PERMITTED,
+                "This transaction can't be %s. Current status : %s" % (
+                    _status_to_string[PREPARED],
+                    _status_to_string[transaction['status']]
+                )
             )
 
         transaction.update({
@@ -599,10 +590,11 @@ class Finish(Page):
         send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
         recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
 
-        self.apertus.del_link(str(transaction["network_id"]),
-                              send_endpoints["externals"],
-                              recv_endpoints["externals"]
-                              )
+        self.apertus.del_link(
+            str(transaction["network_id"]),
+            send_endpoints["externals"],
+            recv_endpoints["externals"]
+        )
 
         return self.success({
             'updated_transaction_id': str(updated_transaction_id),
@@ -775,30 +767,4 @@ class One(Page):
         if not self.user['_id'] in (transaction['sender_id'], transaction['recipient_id']):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
-        res = {
-#            'transaction': {
-                'transaction_id': str(transaction['_id']),
-
-                'sender_id': str(transaction['sender_id']),
-                'sender_fullname': transaction['sender_fullname'],
-                'sender_device_id': str(transaction['sender_device_id']),
-
-                'recipient_id': str(transaction['recipient_id']),
-                'recipient_fullname': transaction['recipient_fullname'],
-                'recipient_device_id': str(transaction['recipient_device_id']),
-                'recipient_device_name': transaction['recipient_device_name'],
-
-                'network_id': str(transaction['network_id']),
-
-                'first_filename': transaction['first_filename'],
-                'files_count': transaction['files_count'],
-                'total_size': transaction['total_size'],
-                'is_directory': int(transaction['is_directory']),
-
-                'status': int(transaction['status']),
-                'message': transaction['message'],
-                'already_accepted': bool(transaction.get('already_accepted', False)),
- #           }
-        }
-
-        return self.success(res)
+        return self.success(transaction)

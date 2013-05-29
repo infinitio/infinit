@@ -28,7 +28,9 @@ namespace surface
     using NetworkManager = ::surface::gap::NetworkManager;
     using UserManager = ::surface::gap::UserManager;
 
-    class TransactionManager: public OperationManager, Notifiable
+    class TransactionManager:
+      public OperationManager,
+      public Notifiable
     {
       /*-----------.
       | Attributes |
@@ -41,7 +43,7 @@ namespace surface
       plasma::meta::Client& _meta;
       elle::metrics::Reporter& _reporter;
       Self& _self;
-      Device const& _device;
+      Device _device;
       ELLE_ATTRIBUTE_R(std::string, output_dir);
 
       /*-------------.
@@ -89,7 +91,8 @@ namespace surface
       `---------*/
       struct TransactionProgress;
       typedef std::unique_ptr<TransactionProgress> TransactionProgressPtr;
-      std::map<std::string, TransactionProgressPtr> _progresses;
+      typedef std::map<std::string, TransactionProgressPtr> TransactionProgressMap;
+      elle::threading::Monitor<TransactionProgressMap> _progresses;
 
     public:
       /// @brief Returns a floating number in [0.0f, 1.0f]
@@ -102,7 +105,8 @@ namespace surface
       `--------*/
     private:
       typedef std::map<std::string, plasma::Transaction> TransactionsMap;
-      std::unique_ptr<TransactionsMap> _transactions;
+      typedef std::unique_ptr<TransactionsMap> TransactionMapPtr;
+      elle::threading::Monitor<TransactionMapPtr> _transactions;
 
     public:
       /// @brief Pull transactions from serveur.

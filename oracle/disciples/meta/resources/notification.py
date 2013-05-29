@@ -53,6 +53,7 @@ class Get(Page):
         old_notifs = []
         if (len(notifs) < count):
             old_notifs = _user['old_notifications'][:(count - len(notifs))]
+            old_notifs.reverse()
 
         return self.success({
             'notifs' : notifs,
@@ -75,6 +76,7 @@ class Read(Page):
         if not self.user:
             return self.error(error.NOT_LOGGED_IN)
 
+        self._user['notifications'].reverse()
         self._user['old_notifications'] = self._user['notifications'] + self._user['old_notifications']
 
         self._user['notifications'] = []

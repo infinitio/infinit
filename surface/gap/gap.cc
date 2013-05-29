@@ -1013,6 +1013,22 @@ extern "C"
     return ret;
   }
 
+  double
+  gap_transaction_timestamp(gap_State* state,
+                            char const* transaction_id)
+  {
+    gap_Status ret = gap_ok;
+    try
+      {
+        auto const& transaction =
+          __TO_CPP(state)->transaction_manager().one(transaction_id);
+        return transaction.timestamp;
+      }
+    CATCH_ALL(transaction_timestamp);
+    (void) ret;
+    return 0.0;
+  }
+
   // gap_Bool
   int
   gap_transaction_is_directory(gap_State* state,
@@ -1252,5 +1268,8 @@ extern "C"
                         elle::Backtrace::current(),
                         file_content);
   }
+
+  // Generated file.
+  #include <surface/gap/gen_metrics.hh>
 
 } // ! extern "C"

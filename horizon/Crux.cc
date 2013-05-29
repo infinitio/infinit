@@ -2,6 +2,8 @@
 #include <elle/log.hh>
 #include <elle/Buffer.hh>
 
+#include <reactor/scheduler.hh>
+
 #include <agent/Agent.hh>
 
 #include <etoile/gear/Identifier.hh>
@@ -36,8 +38,6 @@
 #include <nucleus/neutron/Trait.hh>
 #include <nucleus/neutron/Subject.hh>
 #include <nucleus/neutron/Range.hh>
-
-#include <Scheduler.hh>
 
 ELLE_LOG_COMPONENT("infinit.horizon.Crux");
 
@@ -1624,7 +1624,7 @@ namespace horizon
         //
         // This is conveniently made possible because FUSE ignores the
         // return value release().
-        new reactor::Thread(infinit::scheduler(),
+        new reactor::Thread(*reactor::Scheduler::scheduler(),
                             "_release",
                             std::bind(&_release, way, handle),
                             true);

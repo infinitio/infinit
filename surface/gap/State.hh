@@ -15,6 +15,7 @@
 # include <plasma/trophonius/Client.hh>
 
 # include <elle/format/json/fwd.hh>
+# include <elle/threading/Monitor.hh>
 
 # include <map>
 # include <string>
@@ -59,10 +60,9 @@ namespace surface
       ///- Servers -------------------------------------------------------------
       plasma::meta::Client _meta;
 
-      elle::metrics::Reporter _reporter;
-      elle::metrics::Reporter _google_reporter;
+      ELLE_ATTRIBUTE_X(elle::metrics::Reporter, reporter);
+      ELLE_ATTRIBUTE(elle::metrics::Reporter, google_reporter);
 
-    public:
       ///- Construction --------------------------------------------------------
     public:
       State();
@@ -76,7 +76,13 @@ namespace surface
       }
 
     //- Login & register ------------------------------------------------------
-      Self _me;
+      std::unique_ptr<Self> mutable _me;
+
+      Self&
+      me();
+
+      Self const&
+      me() const;
     public:
       /// Login to meta.
       void
@@ -108,13 +114,12 @@ namespace surface
       std::string const&
       token_generation_key() const;
 
-      /// Retrieve current user data.
-      Self const& me();
-
     private:
-      Device _device;
+      std::unique_ptr<Device> _device;
 
     public:
+      Device&
+      device();
       std::string const&
       device_id();
       std::string const&
@@ -150,80 +155,35 @@ namespace surface
       file_name(std::string const& path);
 
     private:
-      std::unique_ptr<NetworkManager> _network_manager;
+      typedef std::unique_ptr<NetworkManager> NetworkManagerPtr;
+      elle::threading::Monitor<NetworkManagerPtr> _network_manager;
+
+      typedef std::unique_ptr<NotificationManager> NotificationManagerPtr;
+      elle::threading::Monitor<NotificationManagerPtr> _notification_manager;
+
+      typedef std::unique_ptr<UserManager> UserManagerPtr;
+      elle::threading::Monitor<UserManagerPtr> _user_manager;
+
+      typedef std::unique_ptr<TransactionManager> TransactionManagerPtr;
+      elle::threading::Monitor<TransactionManagerPtr> _transaction_manager;
 
     public:
       NetworkManager&
-      network_manager()
-      {
-        if (this->_network_manager == nullptr)
-        {
-          this->_network_manager.reset(
-            new NetworkManager{this->_meta,
-                               this->_reporter,
-                               this->_google_reporter,
-                               this->_me,
-                               this->_device});
-        }
-        return *this->_network_manager;
-      }
+      network_manager();
 
-    private:
-      std::unique_ptr<NotificationManager> _notification_manager;
-
-    public:
       NotificationManager&
-      notification_manager()
-      {
-        if (this->_notification_manager == nullptr)
-        {
-          this->_notification_manager.reset(new NotificationManager{this->_meta,
-                                                                    this->_me});
-        }
-        return *this->_notification_manager;
-      }
+      notification_manager();
 
-    private:
-      std::unique_ptr<UserManager> _user_manager;
-
-    public:
       UserManager&
-      user_manager()
-      {
-        if (this->_user_manager == nullptr)
-        {
-          this->_user_manager.reset(
-            new UserManager{this->notification_manager(),
-                            this->_meta,
-                            this->_me});
-        }
-        return *this->_user_manager;
-      }
+      user_manager();
 
-    private:
-      std::unique_ptr<TransactionManager> _transaction_manager;
-    public:
       TransactionManager&
-      transaction_manager()
-      {
-        if (this->_transaction_manager == nullptr)
-        {
-          this->_transaction_manager.reset(
-            new TransactionManager{this->notification_manager(),
-                                   this->network_manager(),
-                                   this->user_manager(),
-                                   this->_meta,
-                                   this->_reporter,
-                                   this->_me,
-                                   this->_device});
-        }
-        return *this->_transaction_manager;
-      }
+      transaction_manager();
 
     private:
 
       void
-      _cleanup_managers();
+      _cleanup();
     };
 
   }

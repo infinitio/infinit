@@ -25,26 +25,12 @@ namespace hole
                                      elle::Passport const& passport,
                                      elle::Authority const& authority):
         Hole(storage, passport, authority)
-      {}
-
-      /*------------.
-      | Join, leave |
-      `------------*/
-
-      void
-      Implementation::_join()
       {
-        ELLE_DEBUG_METHOD("");
-
         Local::Computer = new Machine(*this);
-        this->ready();
       }
 
-      void
-      Implementation::_leave()
+      Implementation::~Implementation()
       {
-        ELLE_DEBUG_METHOD("");
-
         delete Local::Computer;
       }
 

@@ -40,7 +40,7 @@ namespace infinit
       new reactor::Thread(*reactor::Scheduler::scheduler(),
                           elle::sprintf("RPC %s", *this),
                           [&] { this->_accept(); },
-                          true));
+                          false));
     try
     {
       elle::String pass(cryptography::random::generate<elle::String>(4096));

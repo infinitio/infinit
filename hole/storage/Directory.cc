@@ -39,7 +39,9 @@ namespace hole
     void
     Directory::print(std::ostream& stream) const
     {
-      stream << "Directory " << this->_root;
+      stream << "storage::Directory("
+             << this->network() << ", "
+             << this->root() << ")";
     }
 
     /*--------.
