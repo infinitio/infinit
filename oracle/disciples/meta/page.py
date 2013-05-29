@@ -107,7 +107,6 @@ class Page(object):
         return ()
 
     def logout(self):
-        print("user %s logged out.", self.user)
         self.session.kill()
 
     def authenticate_with_token(self, token_genkey):
