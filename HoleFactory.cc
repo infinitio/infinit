@@ -22,7 +22,7 @@
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Portal.hh>
-#include <Descriptor.hh>
+#include <infinit/Descriptor.hh>
 
 namespace infinit
 {

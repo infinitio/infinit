@@ -24,7 +24,7 @@
 #include <horizon/Horizon.hh>
 #include <horizon/finally.hh>
 
-#include <lune/Descriptor.hh>
+#include <infinit/Descriptor.hh>
 
 #include <nucleus/neutron/Entry.hh>
 #include <nucleus/neutron/Record.hh>
@@ -465,7 +465,7 @@ namespace horizon
       return (-EPERM);
 
     // FIXME: do not re-parse the descriptor every time.
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+    infinit::Descriptor descriptor(Infinit::User, Infinit::Network);
 
     switch (descriptor.data().policy())
       {
@@ -1106,7 +1106,7 @@ namespace horizon
     HORIZON_FINALLY_ACTION_DISCARD(link);
 
     // FIXME: do not re-parse the descriptor every time.
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+    infinit::Descriptor descriptor(Infinit::User, Infinit::Network);
 
     switch (descriptor.data().policy())
       {
@@ -1274,7 +1274,7 @@ namespace horizon
 
 
     // FIXME: do not re-parse the descriptor every time.
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+    infinit::Descriptor descriptor(Infinit::User, Infinit::Network);
 
     switch (descriptor.data().policy())
       {

@@ -26,7 +26,7 @@ using namespace infinit;
 #include <lune/Lune.hh>
 #include <lune/Identity.hh>
 
-#include <Descriptor.hh>
+#include <infinit/Descriptor.hh>
 
 #include <nucleus/proton/Network.hh>
 #include <nucleus/proton/MutableBlock.hh>

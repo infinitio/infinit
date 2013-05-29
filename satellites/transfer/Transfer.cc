@@ -37,7 +37,7 @@
 #include <fstream>
 
 #include <Program.hh>
-#include <Descriptor.hh>
+#include <infinit/Descriptor.hh>
 
 ELLE_LOG_COMPONENT("infinit.satellites.transfer.Transfer");
 

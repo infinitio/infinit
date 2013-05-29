@@ -24,7 +24,7 @@ using namespace infinit;
 #include <horizon/Policy.hh>
 
 #include <Infinit.hh>
-#include <Descriptor.hh>
+#include <infinit/Descriptor.hh>
 
 // XXX When Qt is out, remove this
 #ifdef slots

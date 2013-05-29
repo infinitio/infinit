@@ -15,7 +15,7 @@
 #include <lune/Phrase.hh>
 #include <lune/Set.hh>
 
-#include <Descriptor.hh>
+#include <infinit/Descriptor.hh>
 
 #include <nucleus/neutron/Access.hh>
 #include <nucleus/neutron/Genre.hh>

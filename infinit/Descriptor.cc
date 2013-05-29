@@ -17,7 +17,7 @@
 #include <nucleus/proton/Address.hh>
 
 #include <Infinit.hh>
-#include <Descriptor.hh>
+#include <infinit/Descriptor.hh>
 
 ELLE_LOG_COMPONENT("infinit.Descriptor");
 

@@ -16,7 +16,7 @@
 # include <lune/fwd.hh>
 
 # include <Infinit.hh>
-# include <Descriptor.hh>
+# include <infinit/Descriptor.hh>
 
 namespace satellite
 {

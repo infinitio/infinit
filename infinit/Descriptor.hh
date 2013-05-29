@@ -525,6 +525,6 @@ namespace infinit
   }
 }
 
-# include <Descriptor.hxx>
+# include <infinit/Descriptor.hxx>
 
 #endif

@@ -35,7 +35,7 @@
 #include <common/common.hh>
 
 #include <Program.hh>
-#include <Descriptor.hh>
+#include <infinit/Descriptor.hh>
 
 #include <HoleFactory.hh>
 
