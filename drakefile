@@ -1146,12 +1146,50 @@ def configure(cxx_toolkit,
     'oracle/disciples/trophonius/trophonius.py',
     )
 
+  nico_config = drake.cxx.Config(cxx_config)
+  nico_config.lib('udt')
+  nico_config.lib_path_runtime('../lib')
+  nico_config.add_local_include_path('oracle/disciples/')
+  nico_config.add_local_include_path('.')
+  nico_config.lib('reactor')
+  nico_config.lib('elle')
+
+  nico_sources = drake.nodes(
+    'oracle/disciples/heartbite/heartbite.cc',
+    'satellites/satellite.cc',
+    'satellites/satellite.hh',
+    'common/common.cc',
+    'common/common.hh',
+    'CrashReporter.cc',
+    'CrashReporter.hh',
+    )
+
+  nico_sources_test = drake.nodes(
+    'oracle/disciples/heartbite/test-client.cc',
+    'satellites/satellite.cc',
+    'satellites/satellite.hh',
+    'common/common.cc',
+    'common/common.hh',
+    'CrashReporter.cc',
+    'CrashReporter.hh',
+    )
+
+  heartbite = drake.cxx.Executable('bin/heartbite',
+      nico_sources + [reactor_lib, elle_lib] + udt_libs,
+      cxx_toolkit, nico_config)
+
+  test_heartbite = drake.cxx.Executable('bin/test-heartbite',
+      nico_sources_test + [reactor_lib, elle_lib] + udt_libs,
+      cxx_toolkit, nico_config)
+
   oracle_lib_copy = drake.copy(oracle_lib,
                                'lib/python',
                                'oracle/disciples')
 
   oracles << oracle_source_copy
   oracles << oracle_lib_copy
+  oracles << heartbite
+  oracles << test_heartbite
 
   # Oracle/metalib
 
