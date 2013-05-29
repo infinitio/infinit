@@ -1269,4 +1269,7 @@ extern "C"
                         file_content);
   }
 
+  // Generated file.
+  #include <surface/gap/gen_metrics.hh>
+
 } // ! extern "C"

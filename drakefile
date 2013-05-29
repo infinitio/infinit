@@ -981,6 +981,21 @@ def configure(cxx_toolkit,
                   gap_user_lib, ]
 
   # GAP
+  gap_generator = drake.node('surface/gap/metrics_generator.py')
+  class GAPGenerator(drake.Builder):
+    def __init__(self, script, path):
+      self.__script = script
+      self.__path = path
+      self.__targets = drake.nodes('%s.hh' % path, '%s.h' % path)
+      drake.Builder.__init__(self, [self.__script], self.__targets)
+
+    def execute(self):
+      return self.cmd('Generate %s' % ', '.join(map(str, self.__targets)), [self.__script.path(), self.__path])
+
+    @property
+    def generated(self):
+      return self.__targets
+
   gap_sources = drake.nodes(
     'surface/gap/Exception.hh',
     'surface/gap/State.cc',
@@ -990,7 +1005,7 @@ def configure(cxx_toolkit,
     'surface/gap/gap.cc',
     'surface/gap/gap.h',
     'surface/gap/metrics.hh',
-  )
+  ) + GAPGenerator(gap_generator, 'surface/gap/gen_metrics').generated
 
   gap_ccx_config_libs = cxx_config_libs
   gap_ccx_config_libs.lib_path_runtime('../../lib/_gap')
