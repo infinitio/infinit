@@ -1022,7 +1022,7 @@ extern "C"
       {
         auto const& transaction =
           __TO_CPP(state)->transaction_manager().one(transaction_id);
-        return transaction.timestamp / 1000.0;
+        return transaction.timestamp;
       }
     CATCH_ALL(transaction_timestamp);
     (void) ret;
