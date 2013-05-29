@@ -24,7 +24,8 @@ namespace hole
 
       /// Slug hole implementation.
       class Slug:
-        public Hole
+        public Hole,
+        public elle::Printable
       {
       /*-------------.
       | Construction |
@@ -125,6 +126,16 @@ namespace hole
       public:
         void portal_connect(std::string const& host, int port);
         bool portal_wait(std::string const& host, int port);
+
+
+      /*----------.
+      | Printable |
+      `----------*/
+
+      public:
+        virtual
+        void
+        print(std::ostream& stream) const;
 
       /*---------.
       | Dumpable |

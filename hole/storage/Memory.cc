@@ -63,7 +63,7 @@ namespace hole
     void
     Memory::print(std::ostream& stream) const
     {
-      stream << "#" << this->_container.size();
+      stream << "storage::Memory(" << this->network() << ")";
     }
 
     /*--------.
@@ -114,20 +114,14 @@ namespace hole
       elle::io::Unique unique_address{address.unique()};
 
       // Serialize the block.
-      elle::io::Unique value;
-
+      std::string value;
       elle::serialize::to_string(value) << block;
 
       // Insert in the container.
-      auto result =
-        this->_container.insert(
-          std::pair<elle::String const, elle::String const>(unique_address,
-                                                            value));
-
-      // Check if the insertion was successful.
-      if (result.second == false)
-        throw Exception("unable to insert the pair address/block "
-                              "in the container");
+      this->_container.erase(unique_address);
+      this->_container.insert(
+        std::pair<elle::String const, elle::String const>(unique_address,
+                                                          value));
     }
 
     std::unique_ptr<nucleus::proton::Block>
@@ -170,7 +164,7 @@ namespace hole
                               % unique_address
                               % revision.number));
 
-      ELLE_ASSERT(this->_exist(unique) == true);
+      ELLE_ASSERT(this->_exist(unique_address));
 
       // Create an empty block.
       nucleus::proton::ImmutableBlock* block{

@@ -16,8 +16,7 @@ namespace hole
     /// Storage that holds blocks as single files in a given
     /// directory.
     class Directory:
-      public Storage,
-      public elle::Printable
+      public Storage
     {
     /*-------------.
     | Construction |

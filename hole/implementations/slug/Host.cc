@@ -89,8 +89,6 @@ namespace hole
         catch (reactor::network::Exception& e)
         {
           ELLE_WARN("%s: discarded: %s", *this, e.what());
-          this->_slug._remove(this);
-          return;
         }
       }
 

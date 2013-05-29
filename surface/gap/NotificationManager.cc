@@ -233,43 +233,43 @@ namespace surface
 
         case NotificationType::transaction:
 
-#define GET_TR_FIELD_RENAME_DEFAULT(_if_, _of_, _type_, _default_)                        \
-          try                                                                   \
-          {                                                                     \
-            ELLE_DEBUG("get transaction field " #_if_);                         \
-            transaction->transaction._of_ = d["transaction"][#_if_].as_ ## _type_ (); \
-          }                                                                     \
-          catch (...)                                                           \
-          {                                                                     \
-            ELLE_ERR("couldn't get field " #_if_ " default: %s", _default_);    \
-            transaction->transaction._of_ = _default_;                          \
-          }                                                                     \
+#define GET_TR_FIELD_RENAME_DEFAULT(_if_, _of_, _type_, _default_)             \
+          try                                                                  \
+          {                                                                    \
+            ELLE_DEBUG("get transaction field " #_if_);                        \
+            transaction->transaction._of_ = d[#_if_].as_ ## _type_ ();         \
+          }                                                                    \
+          catch (...)                                                          \
+          {                                                                    \
+            ELLE_ERR("couldn't get field " #_if_ " default: %s", _default_);   \
+            transaction->transaction._of_ = _default_;                         \
+          }                                                                    \
 
-#define GET_TR_FIELD_RENAME(_if_, _of_, _type_)                                 \
-          try                                                                   \
-          {                                                                     \
-            ELLE_DEBUG("get transaction field " #_if_);                         \
-            transaction->transaction._of_ = d["transaction"][#_if_].as_ ## _type_ (); \
-          }                                                                     \
-          catch (...)                                                           \
-          {                                                                     \
-            ELLE_ERR("couldn't get field " #_if_);                              \
-          }                                                                     \
+#define GET_TR_FIELD_RENAME(_if_, _of_, _type_)                                \
+          try                                                                  \
+          {                                                                    \
+            ELLE_DEBUG("get transaction field " #_if_);                        \
+            transaction->transaction._of_ = d[#_if_].as_ ## _type_ ();         \
+          }                                                                    \
+          catch (...)                                                          \
+          {                                                                    \
+            ELLE_ERR("couldn't get field " #_if_);                             \
+          }                                                                    \
 
-#define GET_TR_FIELD(_f_, _type_)                                               \
+#define GET_TR_FIELD(_f_, _type_)                                              \
           GET_TR_FIELD_RENAME(_f_, _f_, _type_)
 
-#define GET_TR_FIELD_DEFAULT(_f_, _type_, _default_)                            \
+#define GET_TR_FIELD_DEFAULT(_f_, _type_, _default_)                           \
           GET_TR_FIELD_RENAME_DEFAULT(_f_, _f_, _type_, _default_)
 
           try
           {
-            transaction->transaction.id = d["transaction"]["_id"].as_string();
+            transaction->transaction.id = d["_id"].as_string();
           }
           catch (...)
           {
             transaction->transaction.id =
-              d["transaction"]["transaction_id"].as_string();
+              d["transaction_id"].as_string();
           }
 
           GET_TR_FIELD(sender_id, string);

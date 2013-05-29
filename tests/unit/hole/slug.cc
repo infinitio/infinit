@@ -22,43 +22,123 @@
 #include <nucleus/proton/Network.hh>
 #include <Infinit.hh>
 
+infinit::cryptography::KeyPair authority_keys =
+  infinit::cryptography::KeyPair::generate(
+  infinit::cryptography::Cryptosystem::rsa, 1024);
+elle::Authority authority(authority_keys);
+
+
+struct Slug
+{
+public:
+  Slug(std::string const& name,
+       nucleus::proton::Network const& network,
+       std::vector<elle::network::Locus> const& members =
+         std::vector<elle::network::Locus>()):
+    storage(network),
+    keys(infinit::cryptography::KeyPair::generate(
+           infinit::cryptography::Cryptosystem::rsa, 1024)),
+    passport(elle::sprintf("passport_%s", name),
+             elle::sprintf("host_%s", name),
+             keys.K(),
+             authority),
+    slug(storage,
+         passport,
+         authority,
+         reactor::network::Protocol::tcp,
+         members,
+         0,
+         boost::posix_time::milliseconds(5000))
+  {}
+
+  hole::storage::Memory storage;
+  infinit::cryptography::KeyPair keys;
+  elle::Passport passport;
+  hole::implementations::slug::Slug slug;
+};
+
 void
-Main()
+slug_push_pull()
 {
   nucleus::proton::Network n("test network");
-  hole::storage::Memory mem(n);
-  infinit::cryptography::KeyPair keys =
-    infinit::cryptography::KeyPair::generate(
-      infinit::cryptography::Cryptosystem::rsa, 1024);
-  infinit::cryptography::KeyPair authority_keys =
-    infinit::cryptography::KeyPair::generate(
-      infinit::cryptography::Cryptosystem::rsa, 1024);
-  elle::Authority authority(authority_keys);
-  elle::Passport passport("0xdeadbeef", "host1", keys.K(), authority);
+  Slug slug("slug", n);
 
-  std::vector<elle::network::Locus> members;
-  std::unique_ptr<hole::Hole> h(
-    new hole::implementations::slug::Slug(
-      mem, passport, authority,
-      reactor::network::Protocol::tcp, members, 0,
-      boost::posix_time::milliseconds(5000)));
-
-  nucleus::neutron::Group g(n, keys.K(), "towel");
-  g.seal(keys.k());
+  nucleus::neutron::Group g(n, slug.keys.K(), "towel");
+  g.seal(slug.keys.k());
   auto addr = g.bind();
-  h->push(addr, g);
+  slug.slug.push(addr, g);
 
-  auto pulled = h->pull(addr, nucleus::proton::Revision::Last);
+  auto pulled = slug.slug.pull(addr, nucleus::proton::Revision::Last);
   auto pulled_group = dynamic_cast<nucleus::neutron::Group*>(pulled.get());
   BOOST_CHECK(pulled_group);
   BOOST_CHECK_EQUAL(pulled_group->description(), "towel");
 }
 
-BOOST_AUTO_TEST_CASE(test_hole)
+BOOST_AUTO_TEST_CASE(test_slug_push_pull)
 {
   reactor::Scheduler sched;
   reactor::Thread t(sched,
                     "main",
-                    [&] {Main();});
+                    &slug_push_pull);
+  sched.run();
+}
+
+void
+two_slugs_push_pull()
+{
+  nucleus::proton::Network n("test network");
+  Slug slug1("1", n);
+
+  std::vector<elle::network::Locus> members;
+  members.push_back(elle::network::Locus("127.0.0.1", slug1.slug.port()));
+  Slug slug2("2", n, members);
+
+  nucleus::neutron::Group g(n, slug1.keys.K(), "towel");
+  g.seal(slug1.keys.k());
+  auto addr = g.bind();
+  slug1.slug.push(addr, g);
+
+  auto pulled = slug2.slug.pull(addr, nucleus::proton::Revision::Last);
+  auto pulled_group = dynamic_cast<nucleus::neutron::Group*>(pulled.get());
+  BOOST_CHECK(pulled_group);
+  BOOST_CHECK_EQUAL(pulled_group->description(), "towel");
+}
+
+BOOST_AUTO_TEST_CASE(test_two_slugs_push_pull)
+{
+  reactor::Scheduler sched;
+  reactor::Thread t(sched,
+                    "main",
+                    &two_slugs_push_pull);
+  sched.run();
+}
+
+void
+two_slugs_push_pull_async()
+{
+  nucleus::proton::Network n("test network");
+  Slug slug1("1", n);
+
+  nucleus::neutron::Group g(n, slug1.keys.K(), "towel");
+  g.seal(slug1.keys.k());
+  auto addr = g.bind();
+  slug1.slug.push(addr, g);
+
+  std::vector<elle::network::Locus> members;
+  members.push_back(elle::network::Locus("127.0.0.1", slug1.slug.port()));
+  Slug slug2("2", n, members);
+
+  auto pulled = slug2.slug.pull(addr, nucleus::proton::Revision::Last);
+  auto pulled_group = dynamic_cast<nucleus::neutron::Group*>(pulled.get());
+  BOOST_CHECK(pulled_group);
+  BOOST_CHECK_EQUAL(pulled_group->description(), "towel");
+}
+
+BOOST_AUTO_TEST_CASE(test_two_slugs_push_pull_async)
+{
+  reactor::Scheduler sched;
+  reactor::Thread t(sched,
+                    "main",
+                    &two_slugs_push_pull);
   sched.run();
 }

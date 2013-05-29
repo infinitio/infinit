@@ -67,14 +67,21 @@ namespace elle
               << "[Signature] " << this->_signature << std::endl;
   }
 
-
   void
   Passport::print(std::ostream& stream) const
   {
-      elle::io::Unique u;
-
-      this->Save(u);
+    stream << "Passport(";
+    std::string u;
+    this->Save(u);
+    if (u.size() < 16)
       stream << u;
+    else
+    {
+      stream << u.substr(0, 8);
+      stream << "...";
+      stream << u.substr(u.size() - 8, std::string::npos);
+    }
+    stream << ")";
   }
 
   bool
