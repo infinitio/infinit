@@ -21,6 +21,7 @@
 
 #include <plasma/meta/Client.hh>
 
+#include <HeartBeat.hh>
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Portal.hh>
@@ -122,11 +123,11 @@ namespace infinit
               (elle::sprintf("invalid transport protocol: %s", protocol_str));
 
           // Punch NAT.
+          auto& sched = *reactor::Scheduler::scheduler();
           std::unique_ptr<reactor::network::UDPSocket> socket;
           boost::asio::ip::udp::endpoint pub;
           try
           {
-            auto& sched = *reactor::Scheduler::scheduler();
             reactor::nat::NAT nat(sched);
 
             auto host = reactor::network::resolve_udp(sched,
@@ -151,6 +152,10 @@ namespace infinit
             // Nat punching failed
             ELLE_TRACE("punch failed: %s", e.what());
           }
+
+          // If the punch succeed, we start the heartbite thread.
+          if (socket)
+            start_heartbeat(*socket);
 
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,
