@@ -66,25 +66,14 @@ class TrophoniusNotify(Notifier):
         print("{}\n".format(msg))
         self.conn.send("{}\n".format(msg))
 
-    def _add_notif_to_db(self, recipient_id, notif):
-        recipient = database.users().find_one(
-            database.ObjectId(recipient_id));
-
-        if not recipient:
-            return None
-
-        recipient['notifications'].append(notif)
-        database.users().save(recipient)
-
-        return recipient
-
-    def fill(message, notification_type, recipient):
+    def fill(self, message, notification_type, recipient):
         message['notification_type'] = notification_type
         message['timestamp'] = time.time() #timestamp in s.
-        message['to'] = recipient_id
+        message['to'] = recipient
 
     def notify_one(self, notification_type, recipient_id, message, store = True):
-        fill(message, notification_type, str(recipient_id))
+#      assert isinstance(recipient, database.ObjectId)
+        self.fill(message, notification_type, str(recipient_id))
 
         user_ = self._add_notif_to_db(recipient_id, message)
 
@@ -103,10 +92,14 @@ class TrophoniusNotify(Notifier):
         if not recipients_id:
             return
 
-        fill(message, notification_type, recipents_id)
+        self.fill(message, notification_type, recipients_id)
 
-        if store:
-            for _id in recipients_id:
-                user_ = self._add_notif_to_db(_id, message)
-                if user_['connected']:
-                    self.send_notification(message)
+        for _id in recipients_id:
+            _id = database.ObjectId(_id)
+            assert isinstance(_id, database.ObjectId)
+            if store:
+                user = database.users().find_one(_id)
+                user['notifications'].append(message)
+                database.users().save(user)
+
+        self.send_notification(message)
