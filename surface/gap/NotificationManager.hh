@@ -1,16 +1,18 @@
 #ifndef NOTIFICATIONMANAGER_HH
 # define NOTIFICATIONMANAGER_HH
 
+# include "Exception.hh"
+
+# include <plasma/trophonius/Client.hh>
+# include <plasma/meta/Client.hh>
+
+# include <elle/attribute.hh>
+# include <elle/format/json/fwd.hh>
+
 # include <vector>
 # include <functional>
 # include <list>
 # include <map>
-
-# include <plasma/trophonius/Client.hh>
-# include <plasma/meta/Client.hh>
-# include <surface/gap/Exception.hh>
-# include <elle/format/json/fwd.hh>
-
 
 namespace surface
 {
@@ -32,8 +34,8 @@ namespace surface
 
     class NotificationManager
     {
-      // XXX:
-      class Exception: public surface::gap::Exception
+      class Exception:
+        public surface::gap::Exception
       {
       public:
         Exception(std::string const& what):

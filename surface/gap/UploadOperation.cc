@@ -91,7 +91,8 @@ namespace surface
       }
       catch (...)
       {
-        ELLE_DEBUG("transaction creation failed");
+        ELLE_DEBUG("transaction creation failed: %s",
+                   elle::exception_string());
         // Something went wrong, we need to destroy the network.
         this->_network_manager.delete_(this->_network_id, false);
         throw;
@@ -176,7 +177,7 @@ namespace surface
         }
         catch (...)
         {
-          ELLE_DEBUG("detroying network");
+          ELLE_DEBUG("destroying network: %s", elle::exception_string());
           // Something went wrong, we need to destroy the network.
           this->_transaction_manager.update(
             this->_transaction_id,

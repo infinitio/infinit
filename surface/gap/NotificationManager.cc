@@ -4,7 +4,7 @@
 #include <elle/printf.hh>
 #include <elle/format/json.hh>
 #include <elle/format/json/Dictionary.hxx>
-#include <reactor/exception.hh>
+#include <elle/Exception.hh>
 
 #include <fstream>
 
@@ -48,18 +48,15 @@ namespace surface
     //    - if it's not: we start it TODO
     //  - We use common::trophonius::{port, host} if the file is not there
     void
-    NotificationManager::_connect(std::string const& id,
-                                  std::string const& token)
+    NotificationManager::_connect()
     {
-      ELLE_TRACE_FUNCTION(id, token);
-
       ELLE_ASSERT_EQ(this->_trophonius, nullptr);
 
       try
       {
         uint16_t port;
         std::string port_file_path = elle::os::path::join(
-            common::infinit::user_directory(_self.id),
+            common::infinit::user_directory(this->_self.id),
             "erginus.sock");
 
         if (elle::os::path::exists(port_file_path))
@@ -73,20 +70,16 @@ namespace surface
             file >> port;
             ELLE_DEBUG("erginus port is %s", port);
             this->_trophonius.reset(
-              new plasma::trophonius::Client{"localhost",
-                  port,
-                  true
-                  }
-              );
+              new plasma::trophonius::Client{"localhost", port, true});
+            ELLE_DEBUG("successfully connected to erginus");
           }
-          ELLE_DEBUG("successfully connected to erginus");
           return ;
         }
         ELLE_DEBUG("erginus port file not found");
       }
       catch (std::runtime_error const& err)
       {
-        ELLE_DEBUG("couldn't connect to erginus");
+        ELLE_DEBUG("couldn't connect to erginus: %s", err.what());
       }
 
       try
@@ -99,10 +92,12 @@ namespace surface
           }
         );
       }
-      catch (std::runtime_error const& err)
+      catch (...)
       {
-        throw NotificationManager::Exception(gap_error,
-                                             "Couldn't connect to trophonius");
+        std::string err = elle::sprint("Couldn't connect to trophonius:",
+                                       elle::exception_string());
+        ELLE_ERR(err);
+        throw NotificationManager::Exception{gap_error, err};
       }
       this->_trophonius->connect(this->_self.id,
                                  this->_meta.token(),
@@ -158,54 +153,14 @@ namespace surface
           ++count;
         }
       }
-      catch (surface::gap::Exception const& e)
-      {
-        ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
-        this->_call_error_handlers(e.code,
-                                   elle::sprintf("%s: %s",
-                                                 notif->notification_type,
-                                                 e.what()),
-                                   transaction_id);
-      }
-      catch (elle::Exception const& e)
-      {
-        ELLE_WARN("poll: %s: %s", notif->notification_type, e.what());
-        auto bt = e.backtrace();
-        for (auto const& f: bt)
-          ELLE_WARN("%s", f);
-        this->_call_error_handlers(gap_error,
-                                   elle::sprintf("%s: %s",
-                                                 notif->notification_type,
-                                                 e.what()),
-                                   transaction_id);
-      }
-      catch (std::runtime_error const& e)
-      {
-        ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
-        this->_call_error_handlers(gap_unknown,
-                                   elle::sprintf("%s: %s",
-                                                 notif->notification_type,
-                                                 e.what()),
-                                   transaction_id);
-      }
-      catch (std::exception const& e)
-      {
-        ELLE_ERR("poll: %s: %s", notif->notification_type, e.what());
-        this->_call_error_handlers(gap_unknown,
-                                   elle::sprintf("%s: %s",
-                                                 notif->notification_type,
-                                                 e.what()),
-                                   transaction_id);
-      }
       catch (...)
       {
-        ELLE_ERR("poll: %s: unknown error", notif->notification_type);
-        this->_call_error_handlers(gap_unknown,
-                                   elle::sprintf("%s: unexpected error",
-                                                 notif->notification_type),
-                                   transaction_id);
+        std::string error = elle::sprintf("%s: %s",
+                                          notif->notification_type,
+                                          elle::exception_string());
+        ELLE_ERR("got error while polling: %s", error);
+        this->_call_error_handlers(gap_unknown, error, transaction_id);
       }
-
       return count;
     }
 
@@ -252,16 +207,7 @@ namespace surface
             ELLE_ERR("Couldn't get field " #_if_);                                 \
           }                                                                     \
 
-#define GET_TR_FIELD(f, type)                                          \
-          try                                                                   \
-          {                                                                     \
-            ELLE_DEBUG("Get transaction field " #f);                            \
-            transaction->transaction.f = d["transaction"][#f].as_ ## type ();   \
-          }                                                                     \
-          catch (...)                                                           \
-          {                                                                     \
-            ELLE_ERR("Couldn't get field " #f);                                 \
-          }
+#define GET_TR_FIELD(_if_, _type_) GET_TR_FIELD_RENAME(_if_, _if_, type)
 
           GET_TR_FIELD_RENAME(transaction_id, id, string);
           GET_TR_FIELD(sender_id, string);
@@ -346,23 +292,12 @@ namespace surface
       {
         this->_handle_notification(*_xxx_dict_to_notification(dict), new_);
       }
-      catch (std::bad_cast const&)
-      {
-        ELLE_ERR("couldn't cast: %s", dict.repr());
-      }
-      catch (std::ios_base::failure const&)
-      {
-        ELLE_ERR("ios failure: %s", dict.repr());
-      }
-      catch (std::exception const& e)
-      {
-        ELLE_ERR("exception: %s: %s", dict.repr(), e.what());
-      }
       catch (...)
       {
-        ELLE_ERR("couldn't handle: %s", dict.repr());
+        ELLE_ERR("couldn't handle notification: %s: %s",
+                 dict.repr(),
+                 elle::exception_string());
       }
-
       ELLE_DEBUG("End of notification pull");
     }
 
@@ -459,28 +394,16 @@ namespace surface
     {
       this->_check_trophonius();
 
-      try
-      {
-        for (auto const& c: this->_error_handlers)
+      for (auto const& c: this->_error_handlers)
+        try
         {
-          c(status, s, tid);
+            c(status, s, tid);
         }
-      }
-      catch (surface::gap::Exception const& e)
-      {
-        ELLE_WARN("error handlers: %s", e.what());
-      }
-      catch (elle::Exception const& e)
-      {
-        ELLE_WARN("error handlers: %s", e.what());
-        auto bt = e.backtrace();
-        for (auto const& f: bt)
-          ELLE_WARN("%s", f);
-      }
-      catch (...)
-      {
-        ELLE_ERR("error handlers: unknown error");
-      }
+        catch (...)
+        {
+          ELLE_ERR("error handler threw an error: %s",
+                   elle::exception_string());
+        }
     }
 
     Notifiable::Notifiable(NotificationManager& notification_manager):
