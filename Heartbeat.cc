@@ -1,4 +1,4 @@
-#include "HeartBeat.hh"
+#include "Heartbeat.hh"
 
 #include <elle/log.hh>
 
@@ -19,7 +19,7 @@ namespace infinit
   start_heartbeat(network::UDPSocket& sock)
   {
     auto& sched = *reactor::Scheduler::scheduler();
-    auto heartbite = [&]
+    auto heartbeat = [&]
     {
       namespace network = reactor::network;
 
@@ -56,6 +56,6 @@ namespace infinit
         ELLE_LOG("exception handled: %s", e.what());
       }
     };
-    return new reactor::Thread{sched, "heartbite", std::move(heartbite)};
+    return new reactor::Thread{sched, "heartbeat", std::move(heartbeat)};
   }
 } /* infinit */

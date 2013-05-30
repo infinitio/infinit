@@ -6,8 +6,8 @@
 
 namespace infinit
 {
-    reactor::Thread*
-    start_heartbeat(reactor::network::UDPSocket& s);
+  reactor::Thread*
+  start_heartbeat(reactor::network::UDPSocket& s);
 } /* infinit */
 
 #endif /* end of include guard: INFINIT_HEARBEAT_HH */
