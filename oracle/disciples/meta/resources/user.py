@@ -654,12 +654,5 @@ class Logout(Page):
     def GET(self):
         if not self.user:
             return self.error(error.NOT_LOGGED_IN)
-
-        self.notifySwaggers(
-            notifier.USER_STATUS,
-            {
-                "status" : meta.page.DISCONNECTED,
-            }
-        )
         self.logout()
         return self.success()
