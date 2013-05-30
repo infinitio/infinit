@@ -1227,40 +1227,40 @@ def configure(cxx_toolkit,
   tests_cxx_config = drake.cxx.Config(cxx_config)
   tests_cxx_config.lib_path_runtime('../../../../lib')
   tests_cxx_config.lib_path_runtime('../../../lib')
+  tests_cxx_config.lib_path_runtime('../../lib')
   tests_cxx_config += boost.config_test()
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib] + udt_libs
+
   tests_src_n_lib = [
     ('tests/testing_tests.cc', []),
     ('tests/unit/nucleus/neutron/nn_Group.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Object.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
-    ('tests/unit/nucleus/proton/Porcupine.cc', [hole_lib] + infinit_libs + [elle_lib, hole_lib]),
-    # ('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc',
-    #  [elle_lib, plasma_lib, curly_lib]),
-    ('tests/unit/protocol/rpc.cc',
-     [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
+    ('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
+    # ('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc',  [elle_lib, plasma_lib, curly_lib]),
+    ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib]),
-    ('tests/unit/surface/gap/Metrics.cc', 'common/common.cc',
-     [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib,
-       curly_lib] +
-     udt_libs),
-    ('tests/unit/surface/gap/state_connect.cc',
-     [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
-    # ('tests/unit/surface/gap/state_ctor.cc',
-    #  [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
-    ('tests/unit/hole/slug.cc', infinit_libs)
+    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib] + udt_libs),
+    ('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    # ('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    ('tests/unit/hole/slug.cc', infinit_libs),
+    (('tests/unit/heartbeat.cc', 'HeartBeat.cc', 'common/common.cc'), [reactor_lib, elle_lib] + udt_libs),
   ]
+
 
   check = drake.Rule('check')
   check << elle.rule_check
-  for test in tests_src_n_lib:
-    bin_path = drake.Path(test[0])
-    bin_path.extension = ''
-    path = drake.Path(test[0])
-    path.extension = ''
-    test_bin = drake.cxx.Executable(path,
-                                    drake.nodes(*test[:-1]) + test[-1],
+  for test, deps in tests_src_n_lib:
+    if isinstance(test, str):
+      bin_name, ext = os.path.splitext(test)
+      sources = [test]
+    else:
+      first, *others = test
+      bin_name, ext = os.path.splitext(first)
+      sources = test
+    test_bin = drake.cxx.Executable(bin_name,
+                                    drake.nodes(*sources) + deps,
                                     cxx_toolkit, tests_cxx_config)
     tests << test_bin
     runner = drake.Runner(test_bin)
