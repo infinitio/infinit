@@ -125,6 +125,4 @@ namespace plasma
   }
 }
 
-#undef _PLASMA_TROPHONIUS_GENERATE_HANDLERS
-
 #endif

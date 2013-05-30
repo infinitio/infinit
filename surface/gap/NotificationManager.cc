@@ -94,16 +94,16 @@ namespace surface
       }
       catch (...)
       {
-        std::string err = elle::sprint("Couldn't connect to trophonius:",
+        std::string err = elle::sprint("couldn't connect to trophonius:",
                                        elle::exception_string());
-        ELLE_ERR(err);
+        ELLE_ERR("%s", err);
         throw NotificationManager::Exception{gap_error, err};
       }
       this->_trophonius->connect(this->_self.id,
                                  this->_meta.token(),
                                  this->_device.id);
 
-      ELLE_LOG("Connect to trophonius: id = %s token = %s device_id = %s",
+      ELLE_LOG("connect to trophonius: id = %s token = %s device_id = %s",
                this->_self.id,
                this->_meta.token(),
                this->_device.id);
@@ -187,20 +187,20 @@ namespace surface
           break;
 
         case NotificationType::transaction:
-#define GET_TR_FIELD_RENAME(_if_, _of_, type)                                          \
-          try                                                                   \
-          {                                                                     \
-            ELLE_DEBUG("Get transaction field " #_if_);                            \
-            transaction->transaction._of_ = d["transaction"][#_if_].as_ ## type ();   \
-          }                                                                     \
-          catch (...)                                                           \
-          {                                                                     \
-            ELLE_ERR("Couldn't get field " #_if_);                                 \
-          }                                                                     \
+#define GET_TR_FIELD_RENAME(_if_, _of_, _type_)                               \
+  try                                                                         \
+  {                                                                           \
+    ELLE_DEBUG("Get transaction field " #_if_);                               \
+    transaction->transaction._of_ = d["transaction"][#_if_].as_ ## _type_ (); \
+  }                                                                           \
+  catch (...)                                                                 \
+  {                                                                           \
+    ELLE_ERR("Couldn't get field " #_if_);                                    \
+  }                                                                           \
+/**/
+#define GET_TR_FIELD(_if_, _type_) GET_TR_FIELD_RENAME(_if_, _if_, _type_)
 
-#define GET_TR_FIELD(_if_, _type_) GET_TR_FIELD_RENAME(_if_, _if_, type)
-
-          GET_TR_FIELD_RENAME(transaction_id, id, string);
+          GET_TR_FIELD_RENAME(_id, id, string);
           GET_TR_FIELD(sender_id, string);
           GET_TR_FIELD(sender_fullname, string);
           GET_TR_FIELD(sender_device_id, string);

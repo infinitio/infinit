@@ -192,4 +192,4 @@ namespace plasma
   }
 }
 
-#endif /* end of include guard:  PLASMA_META_CLIENT_HXX */
+#endif
