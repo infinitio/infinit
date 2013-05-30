@@ -1,11 +1,11 @@
-#define BOOST_TEST_MODULE heartbite
+#define BOOST_TEST_MODULE heartbeat
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
 #include <elle/log.hh>
 #include <elle/system/Process.hh>
 
-#include <HeartBeat.hh>
+#include <Heartbeat.hh>
 
 #include <reactor/thread.hh>
 #include <reactor/scheduler.hh>
@@ -19,11 +19,11 @@
 #include <algorithm>
 #include <memory>
 
-ELLE_LOG_COMPONENT("testing.heartbite");
+ELLE_LOG_COMPONENT("testing.heartbeat");
 
 namespace network = reactor::network;
 
-namespace heartbite {
+namespace heartbeat {
 
 void
 _sleep(int seconds)
@@ -53,7 +53,7 @@ start()
   }
 }
 
-} /* heartbite */
+} /* heartbeat */
 
 BOOST_AUTO_TEST_CASE(heartbeat)
 {
@@ -62,8 +62,8 @@ BOOST_AUTO_TEST_CASE(heartbeat)
   auto fn = [&]
   {
     auto pc = elle::system::process_config(elle::system::normal_config);
-    elle::system::Process p{std::move(pc), "bin/heartbite"};
-    heartbite::start();
+    elle::system::Process p{std::move(pc), "bin/heartbeat"};
+    heartbeat::start();
     p.interrupt();
   };
   reactor::Thread t(sched, "test", fn);
