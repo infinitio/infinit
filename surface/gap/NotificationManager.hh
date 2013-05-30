@@ -24,6 +24,7 @@ namespace surface
     using ::plasma::trophonius::NetworkUpdateNotification;
     using ::plasma::trophonius::NotificationType;
     using Self = ::plasma::meta::SelfResponse;
+    using Device = ::plasma::meta::Device;
 
     namespace json = elle::format::json;
 
@@ -44,20 +45,23 @@ namespace surface
         {}
       };
 
-      std::unique_ptr<plasma::trophonius::Client> _trophonius;
-      plasma::meta::Client& _meta;
-      Self const& _self;
+      ELLE_ATTRIBUTE(std::unique_ptr<plasma::trophonius::Client>,
+                     trophonius);
+      ELLE_ATTRIBUTE(plasma::meta::Client&, meta);
+      ELLE_ATTRIBUTE(Self const&, self);
+      ELLE_ATTRIBUTE(Device const&, device);
 
     public:
       NotificationManager(plasma::meta::Client& meta,
-                          Self const& self);
+                          Self const& self,
+                          Device const& device);
 
       virtual
       ~NotificationManager();
 
     private:
       void
-      _connect(std::string const& _id, std::string const& token);
+      _connect();
 
       void
       _check_trophonius();

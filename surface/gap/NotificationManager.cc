@@ -19,12 +19,14 @@ namespace surface
     namespace json = elle::format::json;
 
     NotificationManager::NotificationManager(plasma::meta::Client& meta,
-                                             Self const& self)
-      : _meta(meta)
-      , _self(self)
+                                             Self const& self,
+                                             Device const& device):
+      _meta(meta),
+      _self(self),
+      _device(device)
     {
       ELLE_TRACE_METHOD("");
-      this->_connect(_self.id, meta.token());
+      this->_connect();
     }
 
     NotificationManager::~NotificationManager()
@@ -102,9 +104,14 @@ namespace surface
         throw NotificationManager::Exception(gap_error,
                                              "Couldn't connect to trophonius");
       }
-      this->_trophonius->connect(id, token);
+      this->_trophonius->connect(this->_self.id,
+                                 this->_meta.token(),
+                                 this->_device.id);
 
-      ELLE_LOG("Connect to trophonius: id:<%s> and token:<%s>", id, token);
+      ELLE_LOG("Connect to trophonius: id = %s token = %s device_id = %s",
+               this->_self.id,
+               this->_meta.token(),
+               this->_device.id);
     }
 
     void
@@ -228,6 +235,8 @@ namespace surface
         case NotificationType::user_status:
           user_status->user_id = d["user_id"].as_string();
           user_status->status = d["status"].as_integer();
+          user_status->user_id = d["device_id"].as_string();
+          user_status->status = d["device_status"].as_integer();
           res = std::move(user_status);
           break;
 
