@@ -7,6 +7,7 @@
 #include "identity.hh"
 #include "passport.hh"
 #include "network.hh"
+#include "authority.hh"
 
 // XXX When Qt is out, remove this
 #ifdef slots
@@ -77,6 +78,31 @@ static PyMethodDef _metalib_methods[] = {
     ":param public_key: The base64 encoded public key\n"
     ":rtype: Boolean\n"
     ":return: Wether or not the root_block is valid\n"
+  },
+  {
+    "sign",
+    &metalib_sign,
+    METH_VARARGS,
+    "Sign a given representation"
+    "\n"
+    ":param to_hash: The hash to sign\n"
+    ":param authority_file: The path to the authority file\n"
+    ":param authority_password: Password to decrypt the authority file\n"
+    ":rtype: String\n"
+    ":return: base64 encoded signature\n"
+  },
+  {
+    "verify",
+    &metalib_verify,
+    METH_VARARGS,
+    "Verify if a signature matchs a hash."
+    "\n"
+    ":param hashed: The hash to sign\n"
+    ":param hashed: base64 encoded signature\n"
+    ":param authority_file: The path to the authority file\n"
+    ":param authority_password: Password to decrypt the authority file\n"
+    ":rtype: Boolean\n"
+    ":return: Wether or not the signature is valid\n"
   },
   {NULL, NULL, 0, NULL}        /* Sentinel */
 };
