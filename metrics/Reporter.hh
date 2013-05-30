@@ -34,6 +34,10 @@ namespace elle
       input,
     };
 
+    std::ostream&
+    operator <<(std::ostream& out,
+                Key k);
+
     class Reporter
     {
       /*------.
