@@ -189,8 +189,7 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
 
-      this->_reporter.store("user_login",
-                            {{MKey::status, "attempt"}});
+      this->_reporter.store("user_login_attempt");
 
       plasma::meta::LoginResponse res;
       try
@@ -201,8 +200,7 @@ namespace surface
       CATCH_FAILURE_TO_METRICS("user_login");
 
       this->_reporter.update_user(res.id);
-      this->_reporter.store("user_login",
-                            {{MKey::status, "succeed"}});
+      this->_reporter.store("user_login_succeed");
 
       // XXX: Not necessary but better.
       this->_google_reporter.update_user(res.id);
@@ -281,13 +279,11 @@ namespace surface
         return;
 
       // End session the session.
-      this->_reporter.store("user_logout",
-                            {{MKey::status, "attempt"}});
+      this->_reporter.store("user_logout_attempt");
 
       // XXX: Not necessary but better.
       this->_google_reporter.store("user:logout:attempt",
                                    {{MKey::session, "end"},});
-
 
       try
       {
@@ -305,8 +301,7 @@ namespace surface
       CATCH_FAILURE_TO_METRICS("user_logout");
 
       // End session the session.
-      this->_reporter.store("user_logout",
-                            {{MKey::status, "succeed"}});
+      this->_reporter.store("user_logout_succeed");
 
       // XXX: Not necessary but better.
       this->_google_reporter.store("user:logout:succeed");
@@ -347,9 +342,7 @@ namespace surface
                      std::string const& activation_code)
     {
       // End session the session.
-      this->_reporter.store("user_register",
-                            {{MKey::status, "attempt"}});
-
+      this->_reporter.store("user_register_attempt");
 
       std::string lower_email = email;
 
@@ -368,8 +361,7 @@ namespace surface
       CATCH_FAILURE_TO_METRICS("user_register");
 
       // Send file request successful.
-      this->_reporter.store("user_register",
-                            {{MKey::status, "succeed"}});
+      this->_reporter.store("user_register_succeed");
 
       ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);
       this->login(lower_email, password);

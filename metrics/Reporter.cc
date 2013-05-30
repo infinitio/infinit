@@ -8,6 +8,7 @@
 #include <elle/serialize/PairSerializer.hxx>
 #include <elle/serialize/ListSerializer.hxx>
 
+#include <elle/container/map.hh>
 #include <elle/utility/Time.hh>
 #include <elle/Buffer.hh>
 #include <elle/format/hexadecimal.hh>
@@ -43,7 +44,13 @@ namespace elle
 #else
 # warning "machine not supported"
 #endif
-
+    //- Key --------------------------------------------------------------------
+    std::ostream&
+    operator <<(std::ostream& out,
+                Key k)
+    {
+      return out << (int) k;
+    }
     //- Service ----------------------------------------------------------------
     Reporter::Service::Service(std::string const& host,
                                uint16_t port,
@@ -118,6 +125,7 @@ namespace elle
     void
     Reporter::store(TimeMetricPair const& metric)
     {
+      ELLE_TRACE("metric: %s", metric);
       for (auto& serv: this->_services)
       {
         try

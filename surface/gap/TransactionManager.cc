@@ -135,9 +135,8 @@ namespace surface
         this->_me.remaining_invitations = res.remaining_invitations;
 
         this->_reporter.store(
-          "transaction_create",
-          {{MKey::status, "attempt"},
-           {MKey::value, this->_transaction_id},
+          "transaction_create_attempt",
+          {{MKey::value, this->_transaction_id},
            {MKey::count, std::to_string(this->_files.size())},
            {MKey::size, std::to_string(size)}});
 
@@ -221,9 +220,8 @@ namespace surface
         CATCH_FAILURE_TO_METRICS("transaction_create");
 
         this->_reporter.store(
-          "transaction_create",
-          {{MKey::status, "succeed"},
-           {MKey::value, this->_transaction_id},
+          "transaction_create_succeed",
+          {{MKey::value, this->_transaction_id},
            {MKey::count, std::to_string(this->_files.size())},
            {MKey::size, std::to_string(size)}});
 
@@ -752,9 +750,8 @@ namespace surface
       this->_ensure_ownership(transaction);
       ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
 
-      this->_reporter.store("transaction_accept",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, transaction.id}});
+      this->_reporter.store("transaction_accept_attempt",
+                            {{MKey::value, transaction.id}});
 
       try
       {
@@ -766,9 +763,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_accept");
 
-      this->_reporter.store("transaction_accept",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, transaction.id}});
+      this->_reporter.store("transaction_accept_succeed",
+                            {{MKey::value, transaction.id}});
 
     }
 
@@ -808,9 +804,8 @@ namespace surface
       this->_ensure_ownership(transaction);
       ELLE_ASSERT_EQ(transaction.sender_device_id, this->_device.id);
 
-      this->_reporter.store("transaction_ready",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, transaction.id}});
+      this->_reporter.store("transaction_ready_attempt",
+                            {{MKey::value, transaction.id}});
 
       try
       {
@@ -843,9 +838,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_ready");
 
-      this->_reporter.store("transaction_ready",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, transaction.id}});
+      this->_reporter.store("transaction_ready_succeed",
+                            {{MKey::value, transaction.id}});
     }
 
     void
@@ -884,9 +878,8 @@ namespace surface
       this->_ensure_ownership(transaction);
       ELLE_ASSERT_EQ(transaction.recipient_device_id, this->_device.id);
 
-      this->_reporter.store("transaction_start",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, transaction.id}});
+      this->_reporter.store("transaction_start_attempt",
+                            {{MKey::value, transaction.id}});
 
       try
       {
@@ -895,9 +888,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_start");
 
-      this->_reporter.store("transaction_start",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, transaction.id}});
+      this->_reporter.store("transaction_start_succeed",
+                            {{MKey::value, transaction.id}});
     }
 
     void
@@ -1014,9 +1006,8 @@ namespace surface
       this->_ensure_ownership(transaction);
       ELLE_ASSERT_EQ(transaction.recipient_device_id, this->_device.id);
 
-      this->_reporter.store("transaction_finish",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, transaction.id}});
+      this->_reporter.store("transaction_finish_attempt",
+                            {{MKey::value, transaction.id}});
 
       try
       {
@@ -1025,9 +1016,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_finish");
 
-      this->_reporter.store("transaction_finish",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, transaction.id}});
+      this->_reporter.store("transaction_finish_succeed",
+                            {{MKey::value, transaction.id}});
     }
 
     void
@@ -1049,9 +1039,8 @@ namespace surface
       std::string author{
         transaction.sender_id == this->_self.id ? "sender" : "recipient",};
 
-      this->_reporter.store("transaction_cancel",
-                            {{MKey::status, "attempt"},
-                             {MKey::author, author},
+      this->_reporter.store("transaction_cancel_attempt",
+                            {{MKey::author, author},
                              {MKey::step, std::to_string(transaction.status)},
                              {MKey::value, transaction.id}});
 
@@ -1071,9 +1060,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-      this->_reporter.store("transaction_cancel",
-                            {{MKey::status, "succeed"},
-                             {MKey::author, author},
+      this->_reporter.store("transaction_cancel_succeed",
+                            {{MKey::author, author},
                              {MKey::step, std::to_string(transaction.status)},
                              {MKey::value, transaction.id}});
     }
