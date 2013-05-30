@@ -191,6 +191,9 @@ class Page(object):
             'error_details': msg,
         })
 
+    def raise_error(self, error_code, msg = None):
+        raise web.ok(data = self.error(error_code, msg))
+
     def success(self, obj={}):
         assert(isinstance(obj, dict))
         d = {'success': True}
