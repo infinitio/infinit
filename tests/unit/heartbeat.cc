@@ -1,3 +1,7 @@
+#define BOOST_TEST_MODULE heartbite
+#define BOOST_TEST_DYN_LINK
+#include <boost/test/unit_test.hpp>
+
 #include <elle/log.hh>
 #include <elle/system/Process.hh>
 
@@ -51,8 +55,7 @@ start()
 
 } /* heartbite */
 
-int
-main(int, const char *[])
+BOOST_AUTO_TEST_CASE(heartbeat)
 {
   reactor::Scheduler sched;
 
