@@ -761,13 +761,28 @@ namespace surface
         std::for_each(begin(fallback), end(fallback), _print);
 
       // Very sophisticated heuristic to deduce the addresses to try first.
-      std::vector<std::vector<std::string>> rounds;
+      class Round
+      {
+        typedef std::vector<std::string> Addresses;
+      public:
+        explicit
+        Round(std::string const& name, Addresses const& addresses):
+          _name(name),
+          _addresses(addresses)
+        {}
+
+        ELLE_ATTRIBUTE_R(std::string, name);
+        ELLE_ATTRIBUTE_R(Addresses, addresses);
+      };
+
+      static std::string nat = "nat";
+      static std::string local = "nat";
+      static std::string forwarder = "nat";
+
+      std::vector<Round> rounds;
       {
         std::vector<std::string> common = _find_commond_addr(externals,
                                                              my_externals);
-        std::vector<std::string> first_round;
-        std::vector<std::string> second_round;
-
         // sort the list, in order to have a deterministic behavior
         std::sort(begin(externals), end(externals));
         std::sort(begin(locals), end(locals));
@@ -775,23 +790,15 @@ namespace surface
 
         if (externals.empty() || my_externals.empty())
         {
-          for (auto const& s: locals)
-            first_round.push_back(s);
-          rounds.push_back(first_round);
-          for (auto const& s: fallback)
-            second_round.push_back(s);
-          rounds.push_back(second_round);
+          rounds.emplace_back("local", locals);
+          rounds.emplace_back("forwarder", fallback);
         }
         else if (common.empty())
         {
           // if there is no common external address, then we can try them first.
-          for (auto const& s: externals)
-            first_round.push_back(s);
-          rounds.push_back(first_round);
+          rounds.emplace_back("nat", externals);
           // then, we know we can not connect locally, so try to fallback
-          for (auto const& s: fallback)
-            second_round.push_back(s);
-          rounds.push_back(second_round);
+          rounds.emplace_back("forwarder", fallback);
         }
         else
         {
@@ -800,23 +807,13 @@ namespace surface
           std::vector<std::string> addr = _find_commond_addr(locals,
                                                              my_locals);
 
-          if (!addr.empty())
+          rounds.emplace_back("local", locals);
+          if (addr.empty())
           {
             // wtf, you are trying to do a local exchange, this is stupid, but
             // let it be.
-            first_round.push_back(locals.front());
-            rounds.push_back(first_round);
-            if (addr.size() > 1)
-            {
-              second_round.push_back(locals.back());
-              rounds.push_back(second_round);
-            }
-          }
-          else
-          {
-            rounds.push_back(locals);
-            rounds.push_back(externals);
-            rounds.push_back(fallback);
+            rounds.emplace_back("nat", externals);
+            rounds.emplace_back("forwarder", fallback);
           }
         }
       }
@@ -844,14 +841,15 @@ namespace surface
         proto::ChanneledStream channels{sched, serializer};
         hole::implementations::slug::control::RPC rpcs{channels};
 
-        int i = 1;
-        ELLE_DEBUG("DEBUG ROUNDS")
+        ELLE_DEBUG("connection rounds:")
         {
+          int i = 0;
           for (auto const& round: rounds)
           {
-            ELLE_DEBUG("- ROUND %s", i++)
+            ++i;
+            ELLE_WARN("- round[%s]: %s", i, round.name())
             {
-              for (auto const& addr: round)
+              for (auto const& addr: round.addresses())
               {
                 ELLE_DEBUG("-- %s", addr);
               }
@@ -859,19 +857,30 @@ namespace surface
           }
         }
 
-        int round_number = 1;
+        int round_number = 0;
         bool success = false;
         for (auto const& round: rounds)
         {
-          ELLE_DEBUG("ROUND %s:", round_number++)
+          ++round_number;
+          ELLE_WARN("round[%s]: %s", round_number, round.name())
           {
-            for (auto const&s : round)
-              ELLE_DEBUG("-- %s", s);
+            for (auto const& addr : round.addresses())
+              ELLE_DEBUG("-- %s", addr);
           }
-          if (_connect_try(sched, rpcs, round) > 0)
+
+          this->_reporter.store("connection_method_attempt",
+                                {{MKey::value, round.name()}});
+          if (_connect_try(sched, rpcs, round.addresses()) > 0)
           {
+            this->_reporter.store("connection_method_succeed",
+                                  {{MKey::value, round.name()}});
             success = true;
             break;
+          }
+          else
+          {
+            this->_reporter.store("connection_method_fail",
+                                  {{MKey::value, round.name()}});
           }
         }
         if (!success)
