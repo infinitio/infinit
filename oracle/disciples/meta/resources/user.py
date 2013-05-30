@@ -525,43 +525,121 @@ class Login(Page):
             })
         return self.error(error.EMAIL_PASSWORD_DONT_MATCH)
 
-class Disconnection(Page):
+
+
+class _DeviceAccess(Page):
     """
-    POST {
-              'user_id': "the user id".
-              'user_token': 'the user token'
-              'full': no more device for this client connected.
-         }
-         -> {
-                 'success': True
-            }
+    Base class to update device connection status.
     """
+    def __get_device(self, user_id, device_id):
+        device = database.devices().find_one({
+            '_id': device_id,
+            'owner': user_id,
+        })
 
-    __pattern__ = "/user/disconnected"
+        if device is None:
+            self.raise_error(
+                error.DEVICE_ID_NOT_VALID,
+                "The device %s does not belong to the user %s" % (
+                    device_id,
+                    user_id
+                )
+            )
+        return device
 
-    _validators = [
-        ('user_id', regexp.UserIDValidator),
-    ]
+    def is_connected(self, user_id):
+        return database.users().find_one(user_id)['connected']
 
+    status_map = {
+        True: meta.page.CONNECTED,
+        False: meta.page.DISCONNECTED,
+    }
+
+    def __set_connected(self, value, user_id, device_id):
+        device = self.__get_device(user_id, device_id)
+        connected_before = self.is_connected(user_id)
+
+        # Add / remove device from db
+        database.users().update(user_id, {
+            (value and '$push' or '$pull'): {
+                'connected_devices': device['_id'],
+            },
+            multi = False,
+        })
+
+        req = {'_id': user_id}
+        # Disconnect only user with an empty list of connected device.
+        if value is False:
+            req['connected_devices'] = []
+        database.users().update(
+            req,
+            {"$set": {"connected": value}},
+            multi = False,
+        )
+
+        self.notifySwaggers(
+            notifier.USER_STATUS,
+            {
+                'status': self.status_map[self.is_connected(user_id)],
+                'device_id': device_id,
+                'device_status': self.status_map[value],
+            },
+            user_id = user_id,
+        )
+
+    def connect(self, user_id, device_id):
+        self.__set_connected(True, user_id, device_id)
+
+    def disconnect(self, user_id, device_id):
+        self.__set_connected(False, user_id, device_id)
+
+    action = None
     def POST(self):
         if self.data['admin_token'] != pythia.constants.ADMIN_TOKEN:
             return self.error(error.UNKNOWN, "You're not admin")
-
-        user_id = database.ObjectId(self.data['user_id'])
-        token = self.data['user_token']
-        connected = bool(self.data['full'])
-
-        if not connected:
-            database.users().update({"_id": user_id}, {"$set": {"connected": False}})
-            self.notifySwaggers(
-                notifier.USER_STATUS,
-                {
-                    'status': meta.page.DISCONNECTED, #Disconnected.
-                },
-                user_id = user_id,
-            )
-
+        self.action(
+            database.ObjectId(self.data['device_id']),
+            database.ObjectId(self.data['user_id']),
+        )
         return self.success()
+
+class Connect(_DeviceAccess):
+    """
+    Should only be called by Trophonius: add the given device to the list
+    of connected devices. This means that notifications will be sent to that
+    device.
+
+    POST {
+        "user_id": <user_id>,
+        "device_id": <device_id>,
+    }
+    -> {
+        'success': True,
+    }
+    """
+
+    __pattern__ = "/user/connect"
+
+    action = self.connect
+
+class Disconnect(Page):
+    """
+    Should only be called by Trophonius: remove the given device from the list
+    of connected devices. This means that notification won't be sent to that
+    device anymore.
+
+    POST {
+        'device_id': <device_id>,
+        'user_id': <user_id>,
+    }
+    -> {
+        'success': True,
+    }
+    """
+
+    __pattern__ = "/user/disconnect"
+
+    action = self.disconnect
 
 class Logout(Page):
     """
