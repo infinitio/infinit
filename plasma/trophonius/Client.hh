@@ -44,6 +44,8 @@ namespace plasma
     {
       std::string user_id;
       int         status;
+      std::string device_id;
+      int         device_status;
     };
 
     struct TransactionNotification:
@@ -89,7 +91,8 @@ namespace plasma
     public:
       bool
       connect(std::string const& _id,
-              std::string const& token);
+              std::string const& token,
+              std::string const& device_id);
 
       //GenericNotification
       std::unique_ptr<Notification>

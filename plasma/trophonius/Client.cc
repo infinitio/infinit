@@ -116,6 +116,7 @@ namespace plasma
       boost::system::error_code     last_error;
       std::string                   user_id;
       std::string                   user_token;
+      std::string                   user_device_id;
 
       Impl(std::string const& server,
            uint16_t port,
@@ -175,7 +176,9 @@ namespace plasma
         try
         {
           ELLE_DEBUG("trying to reconnect to tropho now");
-          this->connect(_impl->user_id, _impl->user_token);
+          this->connect(_impl->user_id,
+                        _impl->user_token,
+                        _impl->user_device_id);
           _impl->last_error = boost::system::error_code{};
           ELLE_DEBUG("reconnect to tropho successfully");
         }
@@ -293,9 +296,6 @@ namespace plasma
               case NotificationType::transaction:
                 notification = std::move(ar.Construct<TransactionNotification>());
                 break;
-              case NotificationType::transaction_status:
-                notification = std::move(ar.Construct<TransactionStatusNotification>());
-                break;
               case NotificationType::message:
                 notification = std::move(ar.Construct<MessageNotification>());
                 break;
@@ -337,15 +337,19 @@ namespace plasma
 
     bool
     Client::connect(std::string const& _id,
-                    std::string const& token)
+                    std::string const& token,
+                    std::string const& device_id)
     {
       _impl->user_id = _id;
       _impl->user_token = token;
+      _impl->user_device_id = device_id;
       this->_connect();
 
-      json::Dictionary connection_request{std::map<std::string, std::string>{
-        {"_id", _id},
-        {"token", token},
+      json::Dictionary connection_request{
+        std::map<std::string, std::string>{
+          {"_id", _id},
+          {"token", token},
+          {"device_id", device_id},
       }};
 
       std::ostream request_stream(&_impl->request);
