@@ -194,8 +194,7 @@ namespace surface
     {
       ELLE_TRACE("creating network %s", name);
 
-      this->_reporter.store("network_create", {{MKey::status, "attempt"}});
-
+      this->_reporter.store("network_create_attempt");
       this->_google_reporter.store("network:create:attempt");
 
       plasma::meta::CreateNetworkResponse response;
@@ -205,9 +204,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("network_create");
 
-      this->_reporter.store("network_create",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, response.created_network_id}});
+      this->_reporter.store("network_create_succeed",
+                            {{MKey::value, response.created_network_id}});
 
       this->_google_reporter.store("network:create:succeed");
 
@@ -355,9 +353,8 @@ namespace surface
 
       this->_infinit_instance_manager.stop(network_id);
 
-      this->_reporter.store("network_delete",
-                            {{MKey::status, "attempt"},
-                             {MKey::value,  network_id}});
+      this->_reporter.store("network_delete_attempt",
+                            {{MKey::value,  network_id}});
 
       plasma::meta::DeleteNetworkResponse response;
       try
@@ -366,9 +363,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("network_delete");
 
-      this->_reporter.store("network_delete",
-                            {{MKey::status, "succeed"},
-                             {MKey::value,  response.deleted_network_id}});
+      this->_reporter.store("network_delete_succeed",
+                            {{MKey::value,  response.deleted_network_id}});
 
       if (this->infinit_instance_manager().exists(response.deleted_network_id))
       {
@@ -469,9 +465,8 @@ namespace surface
     {
       ELLE_TRACE_METHOD(network_id, user_id);
 
-      this->_reporter.store("network_adduser",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, network_id}});
+      this->_reporter.store("network_adduser_attempt",
+                            {{MKey::value, network_id}});
 
       try
       {
@@ -518,9 +513,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("network_adduser");
 
-      this->_reporter.store("network_adduser",
-                            {{MKey::status, "succeed"},
-                              {MKey::value, network_id}});
+      this->_reporter.store("network_adduser_succeed",
+                            {{MKey::value, network_id}});
     }
 
     void
