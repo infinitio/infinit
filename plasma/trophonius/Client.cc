@@ -63,17 +63,6 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification, ar, value, ve
   ar & named("transaction", value.transaction);
 }
 
-ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::TransactionStatusNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionStatusNotification, ar, value, version)
-{
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
-  ar & named("transaction_id", value.transaction_id);
-  ar & named("status", value.status);
-}
-
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::NetworkUpdateNotification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification, ar, value, version)
 {

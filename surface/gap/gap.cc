@@ -796,25 +796,6 @@ extern "C"
   }
 
   gap_Status
-  gap_transaction_status_callback(gap_State* state,
-                                  gap_transaction_status_callback_t cb)
-  {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (TransactionStatusNotification const& notif, bool is_new) {
-        cb(notif.transaction_id.c_str(), is_new);
-    };
-
-    gap_Status ret = gap_ok;
-    try
-    {
-      __TO_CPP(state)->notification_manager().transaction_status_callback(cpp_cb);
-    }
-    CATCH_ALL(transaction_status_callback);
-
-    return ret;
-  }
-
-  gap_Status
   gap_message_callback(gap_State* state,
                        gap_message_callback_t cb)
   {

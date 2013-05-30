@@ -54,12 +54,6 @@ namespace plasma
       Transaction transaction;
     };
 
-    struct TransactionStatusNotification:
-      public Notification
-    {
-      std::string transaction_id;
-      int         status;
-    };
 
     struct NetworkUpdateNotification:
       public Notification

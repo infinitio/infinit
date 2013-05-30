@@ -20,7 +20,6 @@ namespace surface
   {
     using ::plasma::trophonius::Notification;
     using ::plasma::trophonius::TransactionNotification;
-    using ::plasma::trophonius::TransactionStatusNotification;
     using ::plasma::trophonius::UserStatusNotification;
     using ::plasma::trophonius::MessageNotification;
     using ::plasma::trophonius::NetworkUpdateNotification;
@@ -88,10 +87,6 @@ namespace surface
         TransactionNotificationCallback;
 
       typedef
-        std::function<void (TransactionStatusNotification const&, bool)>
-        TransactionStatusNotificationCallback;
-
-      typedef
         std::function<void (MessageNotification const&)>
         MessageNotificationCallback;
 
@@ -105,9 +100,6 @@ namespace surface
 
       void
       transaction_callback(TransactionNotificationCallback const& cb);
-
-      void
-      transaction_status_callback(TransactionStatusNotificationCallback const& cb);
 
       void
       message_callback(MessageNotificationCallback const& cb);

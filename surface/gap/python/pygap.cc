@@ -289,18 +289,6 @@ namespace
   }
 
   void
-  _gap_transaction_status_callback(gap_State* state,
-                                  boost::python::object cb)
-  {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (TransactionStatusNotification const& notif, bool is_new) {
-        wrap_call(cb)(notif.transaction_id.c_str(), is_new);
-    };
-
-    reinterpret_cast<surface::gap::State*>(state)->notification_manager().transaction_status_callback(cpp_cb);
-  }
-
-  void
   _gap_message_callback(gap_State* state,
                         boost::python::object cb)
   {
@@ -403,11 +391,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def(
     "transaction_callback",
     &_gap_transaction_callback
-  );
-
-  py::def(
-    "transaction_status_callback",
-    &_gap_transaction_status_callback
   );
 
   py::def(

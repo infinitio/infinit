@@ -133,18 +133,12 @@ namespace surface
 
           if (!notif)
             break;
+
           // Try to retrieve Transaction ID if possible
+          if (notif->notification_type == NotificationType::transaction)
           {
-            if (notif->notification_type == NotificationType::transaction_status)
-            {
-              auto ptr = static_cast<TransactionStatusNotification*>(notif.get());
-              transaction_id = ptr->transaction_id;
-            }
-            else if (notif->notification_type == NotificationType::transaction)
-            {
-              auto ptr = static_cast<TransactionNotification*>(notif.get());
-              transaction_id = ptr->transaction.id;
-            }
+            auto ptr = static_cast<TransactionNotification*>(notif.get());
+            transaction_id = ptr->transaction.id;
           }
 
           this->_handle_notification(*notif);
@@ -177,9 +171,6 @@ namespace surface
 
       std::unique_ptr<TransactionNotification> transaction{
           new TransactionNotification
-      };
-      std::unique_ptr<TransactionStatusNotification> transaction_status{
-          new TransactionStatusNotification
       };
       std::unique_ptr<MessageNotification> message{
           new MessageNotification
@@ -228,12 +219,6 @@ namespace surface
           // GET_TR_FIELD(already_accepted, integer);
           // GET_TR_FIELD(early_accepted, integer);
           res = std::move(transaction);
-          break;
-
-        case NotificationType::transaction_status:
-          transaction_status->transaction_id = d["transaction_id"].as_string();
-          transaction_status->status = d["status"].as_integer();
-          res = std::move(transaction_status);
           break;
 
         case NotificationType::message:
@@ -349,16 +334,6 @@ namespace surface
       };
 
       this->_notification_handlers[NotificationType::transaction].push_back(fn);
-    }
-
-    void
-    NotificationManager::transaction_status_callback(TransactionStatusNotificationCallback const& cb)
-    {
-      auto fn = [cb] (Notification const& notif, bool is_new) -> void {
-        return cb(static_cast<TransactionStatusNotification const&>(notif), is_new);
-      };
-
-      _notification_handlers[NotificationType::transaction_status].push_back(fn);
     }
 
     void

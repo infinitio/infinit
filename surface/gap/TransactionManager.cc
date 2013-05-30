@@ -61,12 +61,6 @@ namespace surface
           this->_on_transaction(n, is_new);
         }
       );
-      this->_notification_manager.transaction_status_callback(
-        [&] (TransactionStatusNotification const &n, bool) -> void
-        {
-          this->_on_transaction_status(n);
-        }
-      );
     }
 
     TransactionManager::~TransactionManager()
@@ -764,75 +758,5 @@ namespace surface
         return;
       }
     }
-
-    void
-    TransactionManager::_on_transaction_status(TransactionStatusNotification const& notif)
-    {
-      ELLE_TRACE_FUNCTION(notif.status);
-
-      auto const pair = all().find(notif.transaction_id);
-
-      if (pair == all().end())
-      {
-        // Something went wrong.
-        auto transaction = this->sync(notif.transaction_id);
-
-        if (transaction.status == gap_transaction_status_canceled ||
-            transaction.status == gap_transaction_status_finished)
-        {
-          ELLE_WARN("we merged a canceled transaction, nothing to do.");
-          return;
-        }
-        this->_transactions([&notif, &transaction] (TransactionMapPtr& map) {
-            (*map)[notif.transaction_id] = transaction;
-        });
-      }
-
-      if (pair->second.status == gap_transaction_status_canceled ||
-          pair->second.status == gap_transaction_status_finished)
-      {
-        ELLE_WARN("recieved a status update for a canceled or finished " \
-                  "transaction");
-        return;
-      }
-
-      this->_transactions([&notif] (TransactionMapPtr& map) {
-        map->at(notif.transaction_id).status = notif.status;
-      });
-
-      auto const& transaction = this->one(notif.transaction_id);
-
-      switch((plasma::TransactionStatus) notif.status)
-      {
-        case plasma::TransactionStatus::accepted:
-          // We update the transaction from meta.
-          // XXX: we should have it from transaction_notification.
-          this->sync(notif.transaction_id);
-          this->_on_transaction_accepted(transaction);
-          break;
-        case plasma::TransactionStatus::created:
-          // We update the transaction from meta.
-          // XXX: we should have it from transaction_notification.
-          this->sync(notif.transaction_id);
-          this->_on_transaction_created(transaction);
-          break;
-        case plasma::TransactionStatus::prepared:
-          this->_on_transaction_prepared(transaction);
-          break;
-        case plasma::TransactionStatus::started:
-          this->_on_transaction_started(transaction);
-          break;
-        case plasma::TransactionStatus::canceled:
-          this->_on_transaction_canceled(transaction);
-          break;
-        case plasma::TransactionStatus::finished:
-          this->_on_transaction_closed(transaction);
-          break;
-        default:
-          ELLE_WARN("The status '%s' is unknown.", notif.status);
-          return;
-      }
-    }
-
   }
 }

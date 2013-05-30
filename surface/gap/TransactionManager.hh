@@ -173,10 +173,6 @@ namespace surface
       void
       _on_transaction(TransactionNotification const& notif, bool is_new);
 
-      /// @brief Calback when recieving an update for a transaction.
-      void
-      _on_transaction_status(TransactionStatusNotification const& notif);
-
       /// @brief Use to created the transaction for the recipient.
       void
       _on_transaction_created(Transaction const& transaction);
