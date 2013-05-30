@@ -4,7 +4,6 @@
 # include <plasma/plasma.hh>
 
 # include <elle/HttpClient.hh>
-# include <elle/serialize/JSONArchive.hh>
 
 # include <boost/system/error_code.hpp>
 

@@ -153,49 +153,7 @@ SERIALIZE_RESPONSE(plasma::meta::InviteUserResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
 {
-  // XXX see plasma/plasma.hxx
-  ar & named("_id", res.id);
-  ar & named("sender_id", res.sender_id);
-  ar & named("sender_fullname", res.sender_fullname);
-  ar & named("sender_device_id", res.sender_device_id);
-  ar & named("recipient_id", res.recipient_id);
-  ar & named("recipient_fullname", res.recipient_fullname);
-  ar & named("recipient_device_id", res.recipient_device_id);
-  ar & named("recipient_device_name", res.recipient_device_name);
-  ar & named("network_id", res.network_id);
-  ar & named("first_filename", res.first_filename);
-  ar & named("files_count", res.files_count);
-  ar & named("total_size", res.total_size);
-  try
-  {
-    // XXX remove try catch when all transactions have a timestamp
-    ar & named("timestamp", res.timestamp);
-  }
-  catch (...)
-  {
-    ELLE_WARN("timestamp not yet present in all transactions");
-    res.timestamp = 0.0;
-  }
-  ar & named("is_directory", res.is_directory);
-  ar & named("status", res.status);
-  ar & named("message", res.message);
-  try
-  {
-    // XXX: no used anymore.
-    ar & named("already_accepted", res.already_accepted);
-  }
-  catch (...)
-  {
-    res.already_accepted = false;
-  }
-  try
-  {
-    ar & named("early_accepted", res.early_accepted);
-  }
-  catch (...)
-  {
-    res.early_accepted = false;
-  }
+  ar & static_cast<plasma::Transaction&>(res);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionsResponse, ar, res)
@@ -536,54 +494,34 @@ namespace plasma
 
     UpdateTransactionResponse
     Client::update_transaction(string const& transaction_id,
-                               plasma::TransactionStatus status,
-                               string const& device_id,
-                               string const& device_name) const
+                               plasma::TransactionStatus status) const
     {
-      json::Dictionary request{map<string, string>
-        {
-          {"transaction_id", transaction_id},
-        }};
-
+      ELLE_TRACE("update %s transaction with new status %s",
+                 transaction_id,
+                 status);
+      json::Dictionary request{};
+      request["transaction_id"] = transaction_id;
       request["status"] = (int) status;
-      if (device_id.length() > 0)
-        request["device_id"] = device_id;
-      if (device_name.length() > 0)
-        request["device_name"] = device_name;
 
-      ELLE_DEBUG("Update '%s' transaction with device '%s'. New status '%s'",
+      return this->_post<UpdateTransactionResponse>("/transaction/update",
+                                                    request);
+    }
+
+    UpdateTransactionResponse
+    Client::accept_transaction(std::string const& transaction_id,
+                               std::string const& device_id,
+                               std::string const& device_name) const
+    {
+      ELLE_TRACE("accept %s transaction on device %s (%s)",
                  transaction_id,
                  device_name,
-                 status);
+                 device_id);
+      json::Dictionary request{};
+      request["device_id"] = device_id;
+      request["device_name"] = device_name;
 
-      UpdateTransactionResponse res;
-
-      switch(status)
-      {
-        case plasma::TransactionStatus::created:
-          res = this->_post<UpdateTransactionResponse>("/transaction/fully_created", request);
-          break;
-        case plasma::TransactionStatus::accepted:
-          res = this->_post<UpdateTransactionResponse>("/transaction/accept", request);
-          break;
-        case plasma::TransactionStatus::started:
-          res = this->_post<UpdateTransactionResponse>("/transaction/start", request);
-          break;
-        case plasma::TransactionStatus::canceled:
-          res = this->_post<UpdateTransactionResponse>("/transaction/cancel", request);
-          break;
-        case plasma::TransactionStatus::finished:
-          res = this->_post<UpdateTransactionResponse>("/transaction/finish", request);
-          break;
-        case plasma::TransactionStatus::prepared:
-          res = this->_post<UpdateTransactionResponse>("/transaction/prepare", request);
-          break;
-        default:
-          ELLE_WARN("You are not able to change transaction status to '%s'.",
-            status);
-      }
-
-      return res;
+      return this->_post<UpdateTransactionResponse>("/transaction/accept",
+                                                    request);
     }
 
     TransactionResponse

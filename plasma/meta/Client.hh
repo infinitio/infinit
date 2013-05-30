@@ -338,9 +338,12 @@ namespace plasma
 
       UpdateTransactionResponse
       update_transaction(string const& transaction_id,
-                         plasma::TransactionStatus status,
-                         string const& device_id = "",
-                         string const& device_name = "") const;
+                         plasma::TransactionStatus status) const;
+
+      UpdateTransactionResponse
+      accept_transaction(std::string const& transaction_id,
+                         std::string const& device_id,
+                         std::string const& device_name) const;
 
       MessageResponse
       send_message(string const& recipient_id,

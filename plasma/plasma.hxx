@@ -8,52 +8,25 @@ ELLE_SERIALIZE_NO_FORMAT(plasma::Transaction);
 
 ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
 {
-  ELLE_LOG_COMPONENT("infinit.plasma");
   enforce(version == 0);
 
-  ar & elle::serialize::named("_id", res.id);
-  ar & elle::serialize::named("sender_id", res.sender_id);
-  ar & elle::serialize::named("sender_fullname", res.sender_fullname);
-  ar & elle::serialize::named("sender_device_id", res.sender_device_id);
-  ar & elle::serialize::named("recipient_id", res.recipient_id);
-  ar & elle::serialize::named("recipient_fullname", res.recipient_fullname);
-  ar & elle::serialize::named("recipient_device_id", res.recipient_device_id);
-  ar & elle::serialize::named("recipient_device_name", res.recipient_device_name);
-  ar & elle::serialize::named("network_id", res.network_id);
-  ar & elle::serialize::named("message", res.message);
-  ar & elle::serialize::named("first_filename", res.first_filename);
-  ar & elle::serialize::named("files_count", res.files_count);
-  ar & elle::serialize::named("total_size", res.total_size);
-  try
-  {
-    // XXX remove try catch when all transactions have a timestamp
-    ar & elle::serialize::named("timestamp", res.timestamp);
-  }
-  catch (...)
-  {
-    ELLE_WARN("timestamp not yet present in all transactions");
-    res.timestamp = 0.0;
-  }
-  ar & elle::serialize::named("is_directory", res.is_directory);
-  ar & elle::serialize::named("status", res.status);
-  try
-  {
-    // XXX: not used anymore.
-    ar & elle::serialize::named("already_accepted", res.already_accepted);
-  }
-  catch (...)
-  {
-    res.already_accepted = false;
-  }
-
-  try
-  {
-    ar & elle::serialize::named("early_accepted", res.early_accepted);
-  }
-  catch (...)
-  {
-    res.early_accepted = false;
-  }
+  ar & named("_id", res.id);
+  ar & named("sender_id", res.sender_id);
+  ar & named("sender_fullname", res.sender_fullname);
+  ar & named("sender_device_id", res.sender_device_id);
+  ar & named("recipient_id", res.recipient_id);
+  ar & named("recipient_fullname", res.recipient_fullname);
+  ar & named("recipient_device_id", res.recipient_device_id);
+  ar & named("recipient_device_name", res.recipient_device_name);
+  ar & named("network_id", res.network_id);
+  ar & named("message", res.message);
+  ar & named("first_filename", res.first_filename);
+  ar & named("files_count", res.files_count);
+  ar & named("total_size", res.total_size);
+  ar & named("timestamp", res.timestamp);
+  ar & named("is_directory", res.is_directory);
+  ar & named("status", res.status);
+  ar & named("accepted", res.accepted);
 }
 
 #endif

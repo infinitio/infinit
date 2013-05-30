@@ -1,4 +1,12 @@
+#include <surface/gap/gap.h> // XXX remove dependency
+
+#include "Client.hh"
+
+#include <plasma/plasma.hh>
+
+#include <elle/assert.hh>
 #include <elle/log.hh>
+#include <elle/print.hh>
 #include <elle/serialize/JSONArchive.hh>
 #include <elle/format/json/Dictionary.hxx>
 #include <elle/format/json/Parser.hh>
@@ -6,22 +14,15 @@
 #include <elle/serialize/Serializer.hh>
 #include <elle/serialize/NamedValue.hh>
 
-#include <surface/gap/gap.h>
-
-#include "Client.hh"
-
-#include <iostream>
-#include <fstream>
-
-#include <elle/print.hh>
-#include <elle/assert.hh>
-
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/read_until.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/asio/deadline_timer.hpp>
+
+#include <iostream>
+#include <fstream>
 
 #include <fcntl.h>
 

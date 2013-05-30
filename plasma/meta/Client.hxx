@@ -1,8 +1,12 @@
-#ifndef  PLASMA_META_CLIENT_HXX
+#ifndef PLASMA_META_CLIENT_HXX
 # define PLASMA_META_CLIENT_HXX
 
 # include "curly.hh"
+
 # include <plasma/meta/Client.hh>
+
+# include <elle/serialize/JSONArchive.hh>
+
 # include <boost/algorithm/string/split.hpp>
 # include <boost/algorithm/string/classification.hpp>
 
