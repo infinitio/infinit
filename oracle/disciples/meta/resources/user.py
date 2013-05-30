@@ -48,8 +48,8 @@ class Search(Page):
                 {
                     '$or' : [
                         {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
-                       {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
-                        ],
+                        {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
+                    ],
                     'register_status':'ok',
                 },
                 fields=["_id"],
