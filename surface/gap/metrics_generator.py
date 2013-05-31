@@ -76,6 +76,7 @@ prototypes = [
   ('select_user', 'input', ),
   ('select_social', 'input', ),
   ('select_ghost', 'input', ),
+  ('select_favorite', 'input', ),
   ('select_close', 'input', ),
 ]
 
