@@ -87,8 +87,10 @@ namespace hole
           }
           else
           {
-            this->_server = elle::make_unique<reactor::network::UDTRendezVousServer>(
-              *reactor::Scheduler::scheduler());
+            using reactor::network::Server;
+            auto& sched = *reactor::Scheduler::scheduler();
+
+            this->_server = Server::create(this->protocol(), sched);
             this->_server->listen(0);
           }
           this->_port = this->_server->port();
@@ -100,7 +102,6 @@ namespace hole
             elle::network::Host host(elle::network::Host::TypeAny);
             try
             {
-              _server->listen(this->_port);
               // In case we asked for a random port to be picked up (by using 0)
               // or hole punching happened, retrieve the actual listening port.
               ELLE_ASSERT(this->_port != 0);
