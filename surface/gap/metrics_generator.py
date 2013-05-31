@@ -117,7 +117,9 @@ def gen_declaration(name, keys = [], prefix = "gap_"):
     out = "{%s}" % ", ".join([line(key, "MKey") for key in keys])
     return out
 
-  return declaration % (gen_prototype(name, keys, prefix), name, keys_to_args(keys))
+  return declaration % (gen_prototype(name, keys, prefix),
+                        name,
+                        keys_to_args(keys))
 
 import sys
 
@@ -125,13 +127,17 @@ def main(argv = None):
   if argv is None:
     argv = sys.argv
 
-  dest_file = argv[1]
-  with open("%s.h" % dest_file, "w") as dest_h, open("%s.hh" % dest_file, "w") as dest_c:
+  dest = argv[1]
+  with open("%s.h" % dest, "w") as dest_h, open("%s.hh" % dest, "w") as dest_c:
 
     dest_h.write(header_header % (generated_file,
-                                  "\n".join([gen_definition(name, keys = args) for name, *args in prototypes])))
+                                  "\n".join([gen_definition(proto[0],
+                                                            keys = proto[1:])
+                                             for proto in prototypes])))
     dest_c.write(source_header % (generated_file,
-                                  "\n".join([gen_declaration(name, keys = args) for name, *args in prototypes])))
+                                  "\n".join([gen_declaration(proto[0],
+                                                             keys = proto[1:])
+                                             for proto in prototypes])))
 
 if __name__ == "__main__":
   sys.exit(main())
