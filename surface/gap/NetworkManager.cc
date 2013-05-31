@@ -647,7 +647,7 @@ namespace surface
         if (vt.result() == true)
         {
           i++;
-          ELLE_WARN("connection to %s succeed", t.second);
+          ELLE_LOG("connection to %s succeed", t.second);
         }
         else
         {
@@ -775,9 +775,9 @@ namespace surface
         ELLE_ATTRIBUTE_R(Addresses, addresses);
       };
 
-      static std::string nat = "nat";
-      static std::string local = "nat";
-      static std::string forwarder = "nat";
+      static std::string _nat = "nat";
+      static std::string _local = "local";
+      static std::string _forwarder = "forwarder";
 
       std::vector<Round> rounds;
       {
@@ -790,15 +790,15 @@ namespace surface
 
         if (externals.empty() || my_externals.empty())
         {
-          rounds.emplace_back("local", locals);
-          rounds.emplace_back("forwarder", fallback);
+          rounds.emplace_back(_local, locals);
+          rounds.emplace_back(_forwarder, fallback);
         }
         else if (common.empty())
         {
           // if there is no common external address, then we can try them first.
-          rounds.emplace_back("nat", externals);
+          rounds.emplace_back(_nat, externals);
           // then, we know we can not connect locally, so try to fallback
-          rounds.emplace_back("forwarder", fallback);
+          rounds.emplace_back(_forwarder, fallback);
         }
         else
         {
@@ -807,13 +807,13 @@ namespace surface
           std::vector<std::string> addr = _find_commond_addr(locals,
                                                              my_locals);
 
-          rounds.emplace_back("local", locals);
+          rounds.emplace_back(_local, locals);
           if (addr.empty())
           {
             // wtf, you are trying to do a local exchange, this is stupid, but
             // let it be.
-            rounds.emplace_back("nat", externals);
-            rounds.emplace_back("forwarder", fallback);
+            rounds.emplace_back(_nat, externals);
+            rounds.emplace_back(_forwarder, fallback);
           }
         }
       }
@@ -847,7 +847,7 @@ namespace surface
           for (auto const& round: rounds)
           {
             ++i;
-            ELLE_WARN("- round[%s]: %s", i, round.name())
+            ELLE_TRACE("- round[%s]: %s", i, round.name())
             {
               for (auto const& addr: round.addresses())
               {
@@ -862,7 +862,7 @@ namespace surface
         for (auto const& round: rounds)
         {
           ++round_number;
-          ELLE_WARN("round[%s]: %s", round_number, round.name())
+          ELLE_TRACE("round[%s]: %s", round_number, round.name())
           {
             for (auto const& addr : round.addresses())
               ELLE_DEBUG("-- %s", addr);
