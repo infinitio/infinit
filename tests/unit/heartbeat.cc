@@ -55,7 +55,7 @@ start()
 
 } /* heartbeat */
 
-BOOST_AUTO_TEST_CASE(heartbeat)
+BOOST_AUTO_TEST_CASE(heartbeat_test)
 {
   reactor::Scheduler sched;
 

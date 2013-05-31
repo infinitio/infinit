@@ -1179,16 +1179,16 @@ def configure(cxx_toolkit = None,
                                  'lib/python',
                                  'oracle/disciples')
 
-    heartbite_config = drake.cxx.Config(cxx_config)
-    heartbite_config.lib('udt')
-    heartbite_config.lib_path_runtime('../lib')
-    heartbite_config.add_local_include_path('oracle/disciples/')
-    heartbite_config.add_local_include_path('.')
-    heartbite_config.lib('reactor')
-    heartbite_config.lib('elle')
+    heartbeat_config = drake.cxx.Config(cxx_config)
+    heartbeat_config.lib('udt')
+    heartbeat_config.lib_path_runtime('../lib')
+    heartbeat_config.add_local_include_path('oracle/disciples/')
+    heartbeat_config.add_local_include_path('.')
+    heartbeat_config.lib('reactor')
+    heartbeat_config.lib('elle')
 
-    heartbite_sources = drake.nodes(
-      'oracle/disciples/heartbite/heartbite.cc',
+    heartbeat_sources = drake.nodes(
+      'oracle/disciples/heartbeat/heartbeat.cc',
       'satellites/satellite.cc',
       'satellites/satellite.hh',
       'common/common.cc',
@@ -1197,13 +1197,13 @@ def configure(cxx_toolkit = None,
       'CrashReporter.hh',
       )
 
-    heartbite = drake.cxx.Executable('bin/heartbite',
-        heartbite_sources + [reactor_lib, elle_lib] + udt_libs,
-        cxx_toolkit, heartbite_config)
+    heartbeat = drake.cxx.Executable('bin/heartbeat',
+        heartbeat_sources + [reactor_lib, elle_lib] + udt_libs,
+        cxx_toolkit, heartbeat_config)
 
     oracles << oracle_source_copy
     oracles << oracle_lib_copy
-    oracles << heartbite
+    oracles << heartbeat
 
     # Oracle/metalib
     if python_enabled:
