@@ -45,6 +45,7 @@ main(void)
   gap_metrics_transfer_user(state);
   gap_metrics_transfer_social(state);
   gap_metrics_transfer_email(state);
+  gap_metrics_transfer_ghost(state);
   gap_metrics_panel_open(state, "panel");
   gap_metrics_panel_close(state, "panel");
   gap_metrics_panel_accept(state, "panel");
@@ -61,7 +62,7 @@ main(void)
   gap_metrics_searchbar_share(state, "input");
   gap_metrics_select_user(state, "input");
   gap_metrics_select_social(state, "input");
-  gap_metrics_select_other(state, "input");
+  gap_metrics_select_ghost(state, "input");
   gap_metrics_select_close(state, "input");
 
   gap_free(state);

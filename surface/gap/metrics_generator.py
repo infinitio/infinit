@@ -45,6 +45,7 @@ prototypes = [
   ('metrics_transfer_user', ),
   ('metrics_transfer_social', ),
   ('metrics_transfer_email', ),
+  ('metrics_transfer_ghost', ),
   ('metrics_panel_open', 'panel', ),
   ('metrics_panel_close', 'panel', ),
   ('metrics_panel_accept', 'panel', ),
@@ -62,7 +63,7 @@ prototypes = [
   ('metrics_searchbar_share', 'input', ),
   ('metrics_select_user', 'input', ),
   ('metrics_select_social', 'input', ),
-  ('metrics_select_other', 'input', ),
+  ('metrics_select_ghost', 'input', ),
   ('metrics_select_close', 'input', ),
 ]
 
