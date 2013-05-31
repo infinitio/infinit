@@ -4,7 +4,6 @@ Generate the C api for metrics.
 
 """
 
-
 prototypes = [
   ('metrics_connect_google_attempt', ),
   ('metrics_connect_google_succeed', ),
@@ -58,6 +57,7 @@ prototypes = [
   ('metrics_dropzone_removeall', ),
   ('metrics_search', 'input', ),
   ('metrics_searchbar_search', ),
+  ('metrics_searchbar_focus', ),
   ('metrics_searchbar_invite', 'input', ),
   ('metrics_searchbar_share', 'input', ),
   ('metrics_select_user', 'input', ),
@@ -65,7 +65,6 @@ prototypes = [
   ('metrics_select_other', 'input', ),
   ('metrics_select_close', 'input', ),
 ]
-
 
 generated_file = '// This file has been generated. Do not edit it.'
 
@@ -78,7 +77,6 @@ source_header = """%s
 #include <surface/gap/metrics.hh>
 
 using MKey = elle::metrics::Key;
-
 %s
 """
 
@@ -86,15 +84,14 @@ prototype = """
 gap_Status
 %s%s(%s)"""
 
-declaration = """
-%s
+declaration = """%s
 {
   assert(state != nullptr);
 
   WRAP_CPP_MANAGER(state,
                    reporter,
                    store,
-                   "%s"
+                   "%s",
                    %s);
 }"""
 
@@ -114,11 +111,10 @@ def gen_definition(name, keys = [], prefix = "gap_"):
 
 def gen_declaration(name, keys = [], prefix = "gap_"):
   def line(key, marker):
-    return "{ %s::%s, %s }" % (marker, key, key)
+    return "{%s::%s, %s}" % (marker, key, key)
 
   def keys_to_args(keys):
-    # Output should be improved.
-    out = ", { %s }" % ", ".join([line(key, "MKey") for key in keys])
+    out = "{%s}" % ", ".join([line(key, "MKey") for key in keys])
     return out
 
   return declaration % (gen_prototype(name, keys, prefix), name, keys_to_args(keys))
@@ -132,14 +128,10 @@ def main(argv = None):
   dest_file = argv[1]
   with open("%s.h" % dest_file, "w") as dest_h, open("%s.hh" % dest_file, "w") as dest_c:
 
-    h = ""
-    c = ""
-    for proto in prototypes:
-      h += gen_definition(proto[0], keys = proto[1:])
-      c += gen_declaration(proto[0], keys = proto[1:])
-
-    dest_h.write(header_header % (generated_file, h))
-    dest_c.write(source_header % (generated_file, c))
+    dest_h.write(header_header % (generated_file,
+                                  "\n".join([gen_definition(name, keys = args) for name, *args in prototypes])))
+    dest_c.write(source_header % (generated_file,
+                                  "\n".join([gen_declaration(name, keys = args) for name, *args in prototypes])))
 
 if __name__ == "__main__":
   sys.exit(main())
