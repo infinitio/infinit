@@ -1143,15 +1143,15 @@ namespace hole
       {
         ELLE_LOG("%s: remove host at %s", *this, locus);
         auto it_host = this->_hosts.find(locus);
-        /// If the Host didn't took care of erasing himself from the list:
+        // If the Host didn't took care of erasing himself from the list:
         if (it_host != end(this->_hosts))
         {
           auto host_ptr = it_host->second;
           this->_hosts.erase(it_host);
 
-          /// delete the host if it's still in the map.
-          /// This line can yield, so we need to make sure that the host is
-          /// erased from the list before calling it's dtor.
+          // delete the host if it's still in the map.
+          // This line can yield, so we need to make sure that the host is
+          // erased from the list before calling it's dtor.
           delete host_ptr;
         }
       }
