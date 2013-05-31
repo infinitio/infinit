@@ -319,147 +319,146 @@ namespace surface
         return;
       }
 
-      auto const& tr = this->sync(transaction.id);
-      if (tr.early_accepted)
-      {
-        ELLE_DEBUG("the transaction %s has early been accepted", tr.id);
+      //auto const& tr = this->sync(transaction.id);
+      //if (tr.early_accepted)
+      //{
+      //  ELLE_DEBUG("the transaction %s has early been accepted", tr.id);
 
-        this->update(tr.id,
-                     gap_TransactionStatus::gap_transaction_status_prepared);
-      }
+      //  this->update(tr.id,
+      //               gap_TransactionStatus::gap_transaction_status_prepared);
+      //}
     }
 
-    void
-    TransactionManager::_accept_transaction(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction);
-      ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
+    //void
+    //TransactionManager::_accept_transaction(Transaction const& transaction)
+    //{
+    //  ELLE_TRACE_METHOD(transaction);
+    //  this->_ensure_ownership(transaction);
+    //  ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
 
-      this->_reporter.store("transaction_accept",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, transaction.id}});
+    //  this->_reporter.store("transaction_accept",
+    //                        {{MKey::status, "attempt"},
+    //                         {MKey::value, transaction.id}});
 
-      try
-      {
-        this->_meta.update_transaction(transaction.id,
-                                       plasma::TransactionStatus::accepted,
-                                       this->_device.id,
-                                       this->_device.name);
-        this->_user_manager.swaggers_dirty();
-      }
-      CATCH_FAILURE_TO_METRICS("transaction_accept");
+    //  try
+    //  {
+    //    this->_meta.update_transaction(transaction.id,
+    //                                   plasma::TransactionStatus::accepted,
+    //                                   this->_device.id,
+    //                                   this->_device.name);
+    //    this->_user_manager.swaggers_dirty();
+    //  }
+    //  CATCH_FAILURE_TO_METRICS("transaction_accept");
 
-      this->_reporter.store("transaction_accept",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, transaction.id}});
+    //  this->_reporter.store("transaction_accept",
+    //                        {{MKey::status, "succeed"},
+    //                         {MKey::value, transaction.id}});
+    //}
 
-    }
+    //void
+    //TransactionManager::_on_transaction_accepted(Transaction const& transaction)
+    //{
+    //  ELLE_TRACE_METHOD(transaction);
+    //  this->_ensure_ownership(transaction);
 
-    void
-    TransactionManager::_on_transaction_accepted(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction);
+    //  if (transaction.sender_device_id != this->_device.id)
+    //  {
+    //    ELLE_DEBUG("%s not the sender device %s. You are the %s",
+    //               this->_device.id,
+    //               transaction.sender_device_id,
+    //               transaction.sender_id == this->_self.id ? "sender"
+    //                                                       : "recipient");
+    //    return;
+    //  }
 
-      if (transaction.sender_device_id != this->_device.id)
-      {
-        ELLE_DEBUG("%s not the sender device %s. You are the %s",
-                   this->_device.id,
-                   transaction.sender_device_id,
-                   transaction.sender_id == this->_self.id ? "sender"
-                                                           : "recipient");
-        return;
-      }
+    //  auto const& tr = this->sync(transaction.id);
+    //  if (!tr.early_accepted)
+    //  {
+    //    ELLE_DEBUG("not early accepted");
+    //    // When recipient has rights, allow him to start download.
+    //    this->update(tr.id,
+    //                 gap_transaction_status_prepared);
 
-      auto const& tr = this->sync(transaction.id);
-      if (!tr.early_accepted)
-      {
-        ELLE_DEBUG("not early accepted");
-        // When recipient has rights, allow him to start download.
-        this->update(tr.id,
-                     gap_transaction_status_prepared);
+    //    // XXX Could be improved.
+    //    this->_user_manager.swaggers_dirty();
+    //  }
+    //}
 
-        // XXX Could be improved.
-        this->_user_manager.swaggers_dirty();
-      }
-    }
+    //void
+    //TransactionManager::_prepare_transaction(Transaction const& transaction)
+    //{
+    //  ELLE_TRACE_METHOD(transaction);
+    //  this->_ensure_ownership(transaction);
+    //  ELLE_ASSERT_EQ(transaction.sender_device_id, this->_device.id);
 
-    void
-    TransactionManager::_prepare_transaction(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction);
-      ELLE_ASSERT_EQ(transaction.sender_device_id, this->_device.id);
+    //  this->_reporter.store("transaction_ready",
+    //                        {{MKey::status, "attempt"},
+    //                         {MKey::value, transaction.id}});
 
-      this->_reporter.store("transaction_ready",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, transaction.id}});
+    //  try
+    //  {
+    //    this->_network_manager.wait_portal(transaction.network_id);
 
-      try
-      {
-        this->_network_manager.wait_portal(transaction.network_id);
+    //    ELLE_DEBUG("giving '%s' access to the network '%s'",
+    //               transaction.recipient_id,
+    //               transaction.network_id);
 
-        ELLE_DEBUG("giving '%s' access to the network '%s'",
-                   transaction.recipient_id,
-                   transaction.network_id);
+    //    std::string recipient_k =
+    //      this->_meta.user(transaction.recipient_id).public_key;
 
-        std::string recipient_k =
-          this->_meta.user(transaction.recipient_id).public_key;
+    //    this->_network_manager.add_user(transaction.network_id,
+    //                                    this->_self.id,
+    //                                    transaction.recipient_id,
+    //                                    recipient_k);
 
-        this->_network_manager.add_user(transaction.network_id,
-                                        this->_self.id,
-                                        transaction.recipient_id,
-                                        recipient_k);
+    //    ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
+    //               transaction.recipient_id,
+    //               transaction.network_id);
 
-        ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
-                   transaction.recipient_id,
-                   transaction.network_id);
+    //    this->_network_manager.set_permissions(
+    //      transaction.network_id,
+    //      transaction.recipient_id,
+    //      recipient_k,
+    //      nucleus::neutron::permissions::write);
 
-        this->_network_manager.set_permissions(
-          transaction.network_id,
-          transaction.recipient_id,
-          recipient_k,
-          nucleus::neutron::permissions::write);
+    //    this->_meta.update_transaction(transaction.id,
+    //                                   plasma::TransactionStatus::prepared);
+    //  }
+    //  CATCH_FAILURE_TO_METRICS("transaction_ready");
 
-        this->_meta.update_transaction(transaction.id,
-                                       plasma::TransactionStatus::prepared);
-      }
-      CATCH_FAILURE_TO_METRICS("transaction_ready");
+    //  this->_reporter.store("transaction_ready",
+    //                        {{MKey::status, "succeed"},
+    //                         {MKey::value, transaction.id}});
+    //}
 
-      this->_reporter.store("transaction_ready",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, transaction.id}});
-    }
+    //void
+    //TransactionManager::_on_transaction_prepared(Transaction const& transaction)
+    //{
+    //  ELLE_TRACE_METHOD(transaction);
+    //  this->_ensure_ownership(transaction);
 
-    void
-    TransactionManager::_on_transaction_prepared(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction);
+    //  if (transaction.recipient_device_id != this->_device.id)
+    //  {
+    //    ELLE_DEBUG("%s not the recipient device %s. You are the %s",
+    //               this->_device.id,
+    //               transaction.sender_device_id,
+    //               transaction.sender_id == this->_self.id ? "sender"
+    //                                                       : "recipient");
+    //    return;
+    //  }
 
-      if (transaction.recipient_device_id != this->_device.id)
-      {
-        ELLE_DEBUG("%s not the recipient device %s. You are the %s",
-                   this->_device.id,
-                   transaction.sender_device_id,
-                   transaction.sender_id == this->_self.id ? "sender"
-                                                           : "recipient");
-        return;
-      }
+    //  this->_network_manager.add_device(transaction.network_id,
+    //                                    this->_device.id);
+    //  this->_network_manager.prepare(transaction.network_id);
+    //  this->_network_manager.to_directory(
+    //    transaction.network_id,
+    //    common::infinit::network_shelter(this->_self.id,
+    //                                     transaction.network_id));
+    //  this->_network_manager.wait_portal(transaction.network_id);
 
-      this->_network_manager.add_device(transaction.network_id,
-                                        this->_device.id);
-      this->_network_manager.prepare(transaction.network_id);
-      this->_network_manager.to_directory(
-        transaction.network_id,
-        common::infinit::network_shelter(this->_self.id,
-                                         transaction.network_id));
-      this->_network_manager.wait_portal(transaction.network_id);
-
-      this->update(transaction.id,
-                   gap_transaction_status_started);
-    }
+    //  this->update(transaction.id,
+    //               gap_transaction_status_started);
+    //}
 
     void
     TransactionManager::_start_transaction(Transaction const& transaction)
@@ -741,12 +740,12 @@ namespace surface
     TransactionManager::_on_transaction(TransactionNotification const& notif,
                                         bool is_new)
     {
-      ELLE_TRACE_FUNCTION(notif.transaction.id, is_new);
+      ELLE_TRACE_FUNCTION(notif.id, is_new);
 
       // If it's not new, we already has it on our transactions.
       if (!is_new) return;
 
-      auto it = this->all().find(notif.transaction.id);
+      auto it = this->all().find(notif.id);
 
       if (it != this->all().end())
       {

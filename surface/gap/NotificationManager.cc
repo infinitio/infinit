@@ -138,7 +138,7 @@ namespace surface
           if (notif->notification_type == NotificationType::transaction)
           {
             auto ptr = static_cast<TransactionNotification*>(notif.get());
-            transaction_id = ptr->transaction.id;
+            transaction_id = ptr->id;
           }
 
           this->_handle_notification(*notif);
@@ -191,7 +191,7 @@ namespace surface
   try                                                                         \
   {                                                                           \
     ELLE_DEBUG("Get transaction field " #_if_);                               \
-    transaction->transaction._of_ = d["transaction"][#_if_].as_ ## _type_ (); \
+    transaction->_of_ = d["transaction"][#_if_].as_ ## _type_ (); \
   }                                                                           \
   catch (...)                                                                 \
   {                                                                           \

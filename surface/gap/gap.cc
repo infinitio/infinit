@@ -782,7 +782,7 @@ extern "C"
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-        cb(notif.transaction.id.c_str(), is_new);
+        cb(notif.id.c_str(), is_new);
     };
 
     gap_Status ret = gap_ok;

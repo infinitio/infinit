@@ -48,10 +48,9 @@ namespace plasma
     };
 
     struct TransactionNotification:
-      public Notification
-    {
-      Transaction transaction;
-    };
+      public Notification,
+      public Transaction
+    {};
 
 
     struct NetworkUpdateNotification:

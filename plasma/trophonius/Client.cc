@@ -38,18 +38,13 @@ ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::Notification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::Notification, ar, value, version)
 {
-  enforce(version == 0);
-
   XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::UserStatusNotification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification, ar, value, version)
 {
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
+  ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("user_id", value.user_id);
   ar & named("status", value.status);
 }
@@ -57,20 +52,14 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification, ar, value, ver
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::TransactionNotification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification, ar, value, version)
 {
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
-  ar & named("transaction", value.transaction);
+  ar & base_class<plasma::trophonius::Notification>(value);
+  ar & base_class<plasma::Transaction>(value);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::NetworkUpdateNotification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification, ar, value, version)
 {
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
+  ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("network_id", value.network_id);
   ar & named("what", value.what);
 }
@@ -78,10 +67,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification, ar, value, 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::MessageNotification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::MessageNotification, ar, value, version)
 {
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
+  ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("sender_id", value.sender_id);
   ar & named("message", value.message);
 }
