@@ -1139,13 +1139,20 @@ namespace hole
       }
 
       void
+      Slug::_remove(elle::network::Locus locus)
+      {
+        ELLE_LOG("%s: remove host at %s", *this, locus);
+        auto it_host = this->_hosts.find(locus);
+        // If the Host didn't took care of erasing himself:
+        if (it_host != end(this->_hosts))
+            this->_hosts.erase(it_host);
+      }
+
+      void
       Slug::_remove(Host* host)
       {
-        elle::network::Locus locus(host->locus());
-        assert(this->_hosts.find(locus) != this->_hosts.end());
         ELLE_LOG("%s: remove host: %s", *this, *host);
-        this->_hosts.erase(locus);
-        delete host;
+        this->_remove(host->locus());
       }
 
       /*-------.
@@ -1254,18 +1261,20 @@ namespace hole
               ELLE_DEBUG("passport: %s", pass);
 
               // We compare each passport with the one of the host.
-              // If there is only one host with this passport, n shall be 1
-              int n = 0;
+              // If there is only one host with this passport.
+              int i = 0;
               for (auto const& p: _hosts)
               {
-                ELLE_DEBUG("value of n: %d", n);
                 if (p.second->remote_passport() == pass)
-                  n++;
-                // Stop iteration if we know that the host is forbidden.
-                if (n > 1)
-                  goto error;
+                {
+                  ELLE_DEBUG("already have this passport");
+                  i++;
+                }
               }
-              ELLE_DEBUG("%s found", locus);
+              if (i > 1)
+                goto error;
+
+              ELLE_DEBUG("new connection from %s", locus);
               return true;
             }
             else
@@ -1277,7 +1286,7 @@ namespace hole
         error:
         ELLE_DEBUG("out of portal_wait(%s, %s) (%s)",
                    host, port, this->_hosts.size())
-          this->_hosts.erase(locus);
+          this->_remove(locus);
         return false;
       }
 

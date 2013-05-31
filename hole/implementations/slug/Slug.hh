@@ -104,7 +104,10 @@ namespace hole
                  elle::network::Locus const& locus, bool opener);
         void
         _connect_try(elle::network::Locus const& locus);
-        void _remove(Host* host);
+        void
+        _remove(Host* host);
+        void
+        _remove(elle::network::Locus loc);
         Hosts _hosts;
         Hosts _pending;
 
