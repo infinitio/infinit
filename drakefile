@@ -1180,6 +1180,7 @@ def configure(cxx_toolkit = None,
                                  'oracle/disciples')
 
     heartbeat_config = drake.cxx.Config(cxx_config)
+    heartbeat_config += boost.config_program()
     heartbeat_config.lib('udt')
     heartbeat_config.lib_path_runtime('../lib')
     heartbeat_config.add_local_include_path('oracle/disciples/')

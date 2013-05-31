@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <memory>
 
+#include <boost/program_options.hpp>
+
 ELLE_LOG_COMPONENT("oracle.disciple.heartbite");
 
 namespace network = reactor::network;
@@ -23,7 +25,7 @@ namespace network = reactor::network;
 namespace heartbite {
 
 void
-start()
+start(int port)
 {
   ELLE_TRACE_FUNCTION("");
   auto& sched = *reactor::Scheduler::scheduler();
@@ -31,7 +33,7 @@ start()
   network::UDTServer server(sched);
   reactor::Scope scope;
 
-  server.listen(9999);
+  server.listen(port);
   ELLE_LOG("starting %s", server);
   for (;;)
   {
@@ -66,11 +68,28 @@ start()
 } /* heartbite */
 
 int
-main(int, const char *[])
+main(int ac, const char *av[])
 {
+  namespace po = boost::program_options;
+  po::options_description cli("Heartbeat options");
+  cli.add_options()
+    ("help", "help message")
+    ("port", po::value<int>(0), "port")
+  ;
+
+  po::variables_map vm;
+  po::store(po::parse_command_line(ac, av, cli), vm);
+  po::notify(vm);
+
+  if (vm.count("help"))
+  {
+    std::cout << cli << std::endl;
+    return 0;
+  }
+
   auto Main = [&]
   {
-    heartbite::start();
+    heartbite::start(vm["port"].as<int>());
   };
   return infinit::satellite_main("heartbite", std::move(Main));
 }
