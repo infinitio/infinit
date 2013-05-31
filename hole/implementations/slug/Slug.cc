@@ -58,9 +58,8 @@ namespace hole
             for (elle::network::Locus const& locus: this->members())
             {
               auto action = [&, locus] { this->_connect_try(locus); };
-              auto thread = new reactor::Thread
-                (sched, elle::sprintf("connect %s", locus), action);
-              connections.push_back(thread);
+              auto name = elle::sprintf("connect %s", locus);
+              connections.push_back(new reactor::Thread{sched, name, action});
             }
             for (reactor::Thread* t: connections)
             {
@@ -1082,7 +1081,7 @@ namespace hole
       void
       Slug::_connect(elle::network::Locus const& locus)
       {
-        ELLE_TRACE_SCOPE("try connecting to %s", locus);
+        ELLE_TRACE_SCOPE("try connecting to %s(%s)", this->protocol(), locus);
         std::string hostname;
         locus.host.Convert(hostname);
         std::unique_ptr<reactor::network::Socket> socket(
@@ -1129,13 +1128,13 @@ namespace hole
       Slug::_connect_try(elle::network::Locus const& locus)
       {
         try
-          {
-            _connect(locus);
-          }
-        catch (reactor::network::Exception& err)
-          {
-            ELLE_TRACE("ignore host %s: %s", locus, err.what());
-          }
+        {
+          _connect(locus);
+        }
+      catch (reactor::network::Exception& err)
+        {
+          ELLE_TRACE("ignore host %s: %s", locus, err.what());
+        }
       }
 
       void
