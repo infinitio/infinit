@@ -39,7 +39,7 @@ start()
   auto& sched = *reactor::Scheduler::scheduler();
 
   ELLE_LOG("connecting to localhost");
-  network::UDTSocket socket(sched, "127.0.0.1", 9999);
+  network::UDTSocket socket(sched, "127.0.0.1", 9090);
 
   for (int i = 0; i < 10; ++i)
   {
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(heartbeat_test)
   auto fn = [&]
   {
     auto pc = elle::system::process_config(elle::system::normal_config);
-    elle::system::Process p{std::move(pc), "bin/heartbeat"};
+    elle::system::Process p{std::move(pc), "bin/heartbeat", {"--port=9090"}};
     heartbeat::start();
     p.interrupt();
   };

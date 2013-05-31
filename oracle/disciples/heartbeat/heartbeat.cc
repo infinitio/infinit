@@ -18,11 +18,12 @@
 
 #include <boost/program_options.hpp>
 
-ELLE_LOG_COMPONENT("oracle.disciple.heartbite");
+ELLE_LOG_COMPONENT("oracle.disciple.heartbeat");
 
 namespace network = reactor::network;
 
-namespace heartbite {
+namespace heartbeat
+{
 
 void
 start(int port)
@@ -65,7 +66,7 @@ start(int port)
   }
 }
 
-} /* heartbite */
+} /* heartbeat */
 
 int
 main(int ac, const char *av[])
@@ -89,8 +90,8 @@ main(int ac, const char *av[])
 
   auto Main = [&]
   {
-    heartbite::start(vm["port"].as<int>());
+    heartbeat::start(vm["port"].as<int>());
   };
-  return infinit::satellite_main("heartbite", std::move(Main));
+  return infinit::satellite_main("heartbeat", std::move(Main));
 }
 
