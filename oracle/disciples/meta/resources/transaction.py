@@ -256,23 +256,6 @@ class Accept(Page):
               "Sender and recipient devices are the same."
             )
 
-        #if transaction['status'] not in (PENDING, CREATED):
-        #    return self.error(
-        #        error.TRANSACTION_OPERATION_NOT_PERMITTED,
-        #        "This transaction can't be %s. Current status : %s" % (
-        #            _status_to_string[ACCEPTED],
-        #            _status_to_string[transaction['status']]
-        #        )
-        #    )
-
-        sender = database.users().find_one(
-          database.ObjectId(transaction['sender_id'])
-        )
-
-        # XXX: If the sender delete his account while transaction is pending.
-        # We should turn all his transaction to canceled.
-        assert sender is not None
-
         transaction.update({
             'recipient_fullname': self.user['fullname'],
             'recipient_device_name' : self.data['device_name'],
@@ -282,12 +265,22 @@ class Accept(Page):
 
         updated_transaction_id = database.transactions().save(transaction);
 
+        sender = database.users().find_one(
+          database.ObjectId(transaction['sender_id'])
+        )
+
+        # XXX: If the sender delete his account while transaction is pending.
+        # We should turn all his transaction to canceled.
+        assert sender is not None
+
         # If transfer is accepted, increase popularity of each user.
         if self.user['_id'] != sender['_id']:
-            # XXX: probably not optimized, we should maybe use database.find_and_modify and increase
-            # the value.
-            sender['swaggers'][str(self.user['_id'])] = sender['swaggers'].setdefault(str(self.user['_id']), 0) + 1;
-            self.user['swaggers'][str(sender['_id'])] = self.user['swaggers'].setdefault(str(sender['_id']), 0) + 1;
+            # XXX: probably not optimized, we should maybe use database.
+            # find_and_modify and increase the value.
+            sender['swaggers'][str(self.user['_id'])] = \
+                sender['swaggers'].setdefault(str(self.user['_id']), 0) + 1;
+            self.user['swaggers'][str(sender['_id'])] = \
+                self.user['swaggers'].setdefault(str(sender['_id']), 0) + 1;
             database.users().save(sender)
             database.users().save(self.user)
 

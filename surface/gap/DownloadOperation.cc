@@ -31,6 +31,16 @@ namespace surface
     void
     DownloadOperation::_run()
     {
+      this->_network_manager.add_device(this->_transaction.network_id,
+                                        this->_device.id);
+      this->_network_manager.prepare(this->_transaction.network_id);
+      this->_network_manager.to_directory(
+        this->_transaction.network_id,
+        common::infinit::network_shelter(this->_self.id,
+                                         this->_transaction.network_id));
+      this->_network_manager.wait_portal(this->_transaction.network_id);
+      this->_notify();
+
       std::string const& transfer_binary =
         common::infinit::binary_path("8transfer");
 

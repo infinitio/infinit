@@ -53,14 +53,19 @@ namespace surface
         return *(it->second);
       }
       auto response = this->_meta.user(id);
-      std::unique_ptr<User> user{new User{
+      std::unique_ptr<User> user{
+        new User{
           response.id,
           response.fullname,
           response.handle,
           response.public_key,
-          response.status}};
+          response.status,
+          response.connected_devices,
+        }};
 
       this->_users[response.id] = user.get();
+      for (auto const& dev: user->connected_devices)
+        this->_connected_devices.insert(dev);
       return *(user.release());
     }
 
@@ -95,6 +100,13 @@ namespace surface
        result[user_id] = &this->one(user_id);
      }
       return result;
+    }
+
+    bool
+    UserManager::device_status(std::string const& device_id) const
+    {
+      return (this->_connected_devices.find(device_id) !=
+              this->_connected_devices.end());
     }
 
     elle::Buffer
@@ -168,6 +180,10 @@ namespace surface
                   notif.status == gap_user_status_offline);
 
       it.status = notif.status;
+      if (notif.device_status)
+        this->_connected_devices.insert(notif.device_id);
+      else
+        this->_connected_devices.erase(notif.device_id);
     }
 
    void

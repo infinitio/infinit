@@ -310,8 +310,8 @@ class One(Page):
             'public_key': user.get('public_key', ''),
             'fullname': user.get('fullname', ''),
             'handle': user.get('handle', ''),
-            # XXX: user['connected']
-            'status': user.get('connected', False) and meta.page.CONNECTED or meta.page.DISCONNECTED
+            'connected_devices': user.get('connected_devices', []),
+            'status': bool(user.get('connected_devices', [])) ,
         })
 
 class Avatar(Page):
@@ -436,6 +436,7 @@ class Register(Page):
             swaggers = {},
             networks = [],
             devices = [],
+            connected_devices = [],
             notifications = ghost and ghost['notifications'] or [],
             old_notifications = [],
             accounts = [

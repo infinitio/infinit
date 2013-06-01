@@ -700,8 +700,45 @@ namespace surface
     void
     NetworkManager::notify_8infinit(std::string const& network_id,
                                     std::string const& sender_device_id,
-                                    std::string const& recipient_device_id,
-                                    reactor::Scheduler& sched)
+                                    std::string const& recipient_device_id)
+    {
+      std::exception_ptr exception;
+      {
+        reactor::Scheduler sched;
+        reactor::Thread sync{sched, "notify_8infinit", [&] {
+            try
+            {
+              this->_notify_func();
+            }
+            // A parsing bug in gcc (fixed in 4.8.3) make this block
+            // mandatory.
+            catch (std::exception const&)
+            {
+              exception = std::current_exception();
+            }
+            catch (...)
+            {
+              exception = std::current_exception();
+            }
+          }
+        };
+
+        sched.run();
+        ELLE_DEBUG("notify finished");
+      }
+      if (exception != std::exception_ptr{})
+      {
+        ELLE_ERR("cannot connect infinit instances: %s",
+                 elle::exception_string(exception));
+        std::rethrow_exception(exception);
+      }
+    }
+
+    void
+    NetworkManager::_notify_8infinit(std::string const& network_id,
+                                     std::string const& sender_device_id,
+                                     std::string const& recipient_device_id,
+                                     reactor::Scheduler& sched)
     {
       ELLE_TRACE_METHOD(network_id, sender_device_id, recipient_device_id);
       ELLE_ASSERT(this->_device.id == sender_device_id ||

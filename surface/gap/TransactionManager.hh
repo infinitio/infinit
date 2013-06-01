@@ -129,8 +129,28 @@ namespace surface
                         bool check_devices = false);
 
       /*-------------------.
-      | Transcation update |
+      | Transaction update |
       `-------------------*/
+    private:
+      struct State
+      {
+        enum
+        {
+          none,     // Unknown transaction.
+          preparing,
+          running,
+        } state;
+        int tries;
+        OperationId operation;
+        State():
+          state{none},
+          tries{0},
+          operation{0}
+        {}
+      };
+      typedef std::map<std::string, TransactionLocalState> StateMap;
+      elle::threading::Monitor<StateMap> _states;
+
     public:
       /// @brief Update transaction status.
       void
@@ -138,32 +158,14 @@ namespace surface
              gap_TransactionStatus status);
 
     private:
-      /// @brief Use to launch the process if the recipient already accepted
-      // the transaction.
       void
-      _create_transaction(Transaction const& transaction);
+      _prepare_upload(Transaction const& transaction);
 
-      /// @brief Use to accept the transaction for the recipient.
       void
-      _accept_transaction(Transaction const& transaction);
+      _start_upload(Transaction const& transaction);
 
-      /// @brief Use to inform recipient that everything is ok and he can
-      /// prepare for downloading.
       void
-      _prepare_transaction(Transaction const& transaction);
-
-      /// @brief Use to inform recipient that everything is ok and he can start
-      /// downloading.
-      void
-      _start_transaction(Transaction const& transaction);
-
-      /// @brief Use to inform the sender that download is complete.
-      void
-      _close_transaction(Transaction const& transaction);
-
-      /// @brief Use to cancel a pending transaction or an unfinished one.
-      void
-      _cancel_transaction(Transaction const& transaction);
+      _start_download(Transaction const& transaction);
 
       /*----------.
       | Callbacks |
@@ -172,30 +174,6 @@ namespace surface
       /// @brief Callback when recieving an new transaction.
       void
       _on_transaction(TransactionNotification const& notif, bool is_new);
-
-      /// @brief Use to created the transaction for the recipient.
-      void
-      _on_transaction_created(Transaction const& transaction);
-
-      /// @brief Use to add rights on network when the recipient accepts.
-      void
-      _on_transaction_accepted(Transaction const& transaction);
-
-      /// @brief Use to .
-      void
-      _on_transaction_prepared(Transaction const& transaction);
-
-      /// @brief Use to .
-      void
-      _on_transaction_started(Transaction const& transaction);
-
-      /// @brief Use to close network.
-      void
-      _on_transaction_closed(Transaction const& transaction);
-
-      /// @brief Use to destroy network if transaction has been canceled.
-      void
-      _on_transaction_canceled(Transaction const& transaction);
     };
   }
 }

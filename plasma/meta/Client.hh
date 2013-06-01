@@ -107,14 +107,12 @@ namespace plasma
       string fullname;
       string handle;
       string public_key;
-      int    status;
+      int status;
+      list<string> connected_devices;
     };
 
     struct UserResponse : User, Response
     {};
-
-    // struct SwaggerResponse : UserResponse
-    // {};
 
     struct SelfResponse : UserResponse
     {

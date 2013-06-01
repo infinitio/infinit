@@ -5,6 +5,8 @@
 # include <surface/gap/NotificationManager.hh>
 # include <plasma/meta/Client.hh>
 
+# include <set>
+
 namespace surface
 {
   namespace gap
@@ -55,6 +57,7 @@ namespace surface
       `------*/
     private:
       std::map<std::string, User*> _users;
+      std::set<std::string> _connected_devices;
 
       /*-------.
       | Access |
@@ -68,9 +71,13 @@ namespace surface
       User const&
       from_public_key(std::string const& public_key);
 
-      // Search users
+      /// Search users
       std::map<std::string, User const*>
       search(std::string const& text);
+
+      /// Device connection status
+      bool
+      device_status(std::string const& device_id) const;
 
       elle::Buffer
       icon(std::string const& id);

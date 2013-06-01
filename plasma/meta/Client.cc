@@ -86,6 +86,7 @@ SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
   ar & named("handle", res.handle);
   ar & named("public_key", res.public_key);
   ar & named("status", res.status);
+  ar & named("connected_devices", res.connected_devices);
 }
 
 // SERIALIZE_RESPONSE(plasma::meta::SwaggerResponse, ar, res)

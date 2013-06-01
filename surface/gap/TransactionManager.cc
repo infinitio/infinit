@@ -4,6 +4,8 @@
 #include "UploadOperation.hh"
 #include "metrics.hh"
 
+#include <plasma/meta/Client.hh>
+
 #include <common/common.hh>
 
 #include <elle/os/path.hh>
@@ -106,14 +108,15 @@ namespace surface
       if (files.empty())
         throw Exception(gap_no_file, "no files to send");
 
-      return this->_add<UploadOperation>(*this,
-                                         this->_network_manager,
-                                         this->_meta,
-                                         this->_reporter,
-                                         this->_self,
-                                         this->_device.id,
-                                         recipient_id_or_email,
-                                         files);
+      return this->_add<CreateTransactionOperation>(
+          *this,
+          this->_network_manager,
+          this->_meta,
+          this->_reporter,
+          this->_self,
+          this->_device.id,
+          recipient_id_or_email,
+          files);
     }
 
     float
@@ -225,58 +228,20 @@ namespace surface
     TransactionManager::OperationId
     TransactionManager::_download_files(std::string const& id)
     {
-      auto pair = this->all().find(id);
-
-      ELLE_ASSERT(pair != this->all().end());
-
-      if (pair == this->all().end())
-      {
-        throw Exception(gap_error,
-                        elle::sprintf("download failure cause %s doesn't exist",
-                                      id));
-      }
-
-      Transaction const& trans = pair->second;
-
-      return this->_add<DownloadOperation>(*this,
-                                           this->_self,
-                                           trans);
+      auto it = this->all().find(id);
+      if (it != this->all().end())
+        throw Exception(
+          gap_error,
+          elle::sprintf("download failure cause %s doesn't exist", id));
+      return this->_add<DownloadOperation>(*this, this->_self, it->second);
     }
 
     void
     TransactionManager::update(std::string const& id,
                                gap_TransactionStatus status)
     {
-      ELLE_TRACE_METHOD(id, status);
-
-      auto const& transaction = this->sync(id); // XXX: remove sync
-
-      ELLE_DEBUG("transaction: %s", transaction);
-
-      typedef void (TransactionManager::*callback_t)(Transaction const&);
-
-      static callback_t callbacks[gap_transaction_status__count] = {0};
-      if (callbacks[gap_transaction_status_created] == nullptr)
-      {
-        callbacks[gap_transaction_status_created] = &TransactionManager::_create_transaction;
-        callbacks[gap_transaction_status_started] = &TransactionManager::_start_transaction;
-        callbacks[gap_transaction_status_canceled] = &TransactionManager::_cancel_transaction;
-        //callbacks[gap_transaction_status_finished] = &TransactionManager::_finish_transaction;
-      }
-
-      if (status < 0 ||
-          status >= gap_transaction_status__count ||
-          callbacks[status] == nullptr)
-      {
-          ELLE_WARN("invalid status %s", status);
-          throw Exception(gap_api_error,
-                          elle::sprintf("unknown status %s", status));
-
-      }
-      else
-      {
-        (this->*callbacks[status])(transaction);
-      }
+      ELLE_TRACE("set status %s on transaction %s", status, transaction);
+      this->_meta.update_transaction(transaction.transaction_id, status)
     }
 
     void
@@ -291,42 +256,6 @@ namespace surface
         ELLE_ASSERT(this->_device.id == transaction.sender_device_id ||
                     this->_device.id == transaction.recipient_device_id);
       }
-    }
-
-    void
-    TransactionManager::_create_transaction(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction);
-      ELLE_ASSERT_EQ(transaction.sender_device_id, this->_device.id);
-
-      this->_meta.update_transaction(transaction.id,
-                                     plasma::TransactionStatus::created);
-    }
-
-    void
-    TransactionManager::_on_transaction_created(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction);
-      if (transaction.sender_device_id != this->_device.id)
-      {
-        ELLE_DEBUG("%s not the sender device %s. You are the %s",
-                   this->_device.id,
-                   transaction.sender_device_id,
-                   transaction.sender_id == this->_self.id ? "sender"
-                                                           : "recipient");
-        return;
-      }
-
-      //auto const& tr = this->sync(transaction.id);
-      //if (tr.early_accepted)
-      //{
-      //  ELLE_DEBUG("the transaction %s has early been accepted", tr.id);
-
-      //  this->update(tr.id,
-      //               gap_TransactionStatus::gap_transaction_status_prepared);
-      //}
     }
 
     //void
@@ -355,241 +284,6 @@ namespace surface
     //                         {MKey::value, transaction.id}});
     //}
 
-    //void
-    //TransactionManager::_on_transaction_accepted(Transaction const& transaction)
-    //{
-    //  ELLE_TRACE_METHOD(transaction);
-    //  this->_ensure_ownership(transaction);
-
-    //  if (transaction.sender_device_id != this->_device.id)
-    //  {
-    //    ELLE_DEBUG("%s not the sender device %s. You are the %s",
-    //               this->_device.id,
-    //               transaction.sender_device_id,
-    //               transaction.sender_id == this->_self.id ? "sender"
-    //                                                       : "recipient");
-    //    return;
-    //  }
-
-    //  auto const& tr = this->sync(transaction.id);
-    //  if (!tr.early_accepted)
-    //  {
-    //    ELLE_DEBUG("not early accepted");
-    //    // When recipient has rights, allow him to start download.
-    //    this->update(tr.id,
-    //                 gap_transaction_status_prepared);
-
-    //    // XXX Could be improved.
-    //    this->_user_manager.swaggers_dirty();
-    //  }
-    //}
-
-    //void
-    //TransactionManager::_prepare_transaction(Transaction const& transaction)
-    //{
-    //  ELLE_TRACE_METHOD(transaction);
-    //  this->_ensure_ownership(transaction);
-    //  ELLE_ASSERT_EQ(transaction.sender_device_id, this->_device.id);
-
-    //  this->_reporter.store("transaction_ready",
-    //                        {{MKey::status, "attempt"},
-    //                         {MKey::value, transaction.id}});
-
-    //  try
-    //  {
-    //    this->_network_manager.wait_portal(transaction.network_id);
-
-    //    ELLE_DEBUG("giving '%s' access to the network '%s'",
-    //               transaction.recipient_id,
-    //               transaction.network_id);
-
-    //    std::string recipient_k =
-    //      this->_meta.user(transaction.recipient_id).public_key;
-
-    //    this->_network_manager.add_user(transaction.network_id,
-    //                                    this->_self.id,
-    //                                    transaction.recipient_id,
-    //                                    recipient_k);
-
-    //    ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
-    //               transaction.recipient_id,
-    //               transaction.network_id);
-
-    //    this->_network_manager.set_permissions(
-    //      transaction.network_id,
-    //      transaction.recipient_id,
-    //      recipient_k,
-    //      nucleus::neutron::permissions::write);
-
-    //    this->_meta.update_transaction(transaction.id,
-    //                                   plasma::TransactionStatus::prepared);
-    //  }
-    //  CATCH_FAILURE_TO_METRICS("transaction_ready");
-
-    //  this->_reporter.store("transaction_ready",
-    //                        {{MKey::status, "succeed"},
-    //                         {MKey::value, transaction.id}});
-    //}
-
-    //void
-    //TransactionManager::_on_transaction_prepared(Transaction const& transaction)
-    //{
-    //  ELLE_TRACE_METHOD(transaction);
-    //  this->_ensure_ownership(transaction);
-
-    //  if (transaction.recipient_device_id != this->_device.id)
-    //  {
-    //    ELLE_DEBUG("%s not the recipient device %s. You are the %s",
-    //               this->_device.id,
-    //               transaction.sender_device_id,
-    //               transaction.sender_id == this->_self.id ? "sender"
-    //                                                       : "recipient");
-    //    return;
-    //  }
-
-    //  this->_network_manager.add_device(transaction.network_id,
-    //                                    this->_device.id);
-    //  this->_network_manager.prepare(transaction.network_id);
-    //  this->_network_manager.to_directory(
-    //    transaction.network_id,
-    //    common::infinit::network_shelter(this->_self.id,
-    //                                     transaction.network_id));
-    //  this->_network_manager.wait_portal(transaction.network_id);
-
-    //  this->update(transaction.id,
-    //               gap_transaction_status_started);
-    //}
-
-    void
-    TransactionManager::_start_transaction(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction);
-      ELLE_ASSERT_EQ(transaction.recipient_device_id, this->_device.id);
-
-      this->_reporter.store("transaction_start",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, transaction.id}});
-
-      try
-      {
-        this->_meta.update_transaction(transaction.id,
-                                       plasma::TransactionStatus::started);
-      }
-      CATCH_FAILURE_TO_METRICS("transaction_start");
-
-      this->_reporter.store("transaction_start",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, transaction.id}});
-    }
-
-    void
-    TransactionManager::_on_transaction_started(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction, true);
-
-      this->_network_manager.wait_portal(transaction.network_id);
-
-      struct NotifyOp:
-         public Operation
-      {
-        typedef std::function<void(std::string const&,
-                                   std::string const&,
-                                   std::string const&,
-                                   reactor::Scheduler&)> Notify8infinitFunc;
-        typedef std::function<void(std::string const&)> DownloadFilesFunc;
-      public:
-        TransactionManager& _transaction_manager;
-        Transaction const& _transaction;
-        Device const& _device;
-        Notify8infinitFunc notify_8infinit;
-        DownloadFilesFunc download_files;
-
-        NotifyOp(TransactionManager& transaction_manager,
-                 Transaction const& transaction,
-                 Device const& device,
-                 Notify8infinitFunc notify_8infinit,
-                 DownloadFilesFunc download_files):
-          Operation{"notify_8infinit_" + transaction.id},
-          _transaction_manager(transaction_manager),
-          _transaction(transaction),
-          _device(device),
-          notify_8infinit(notify_8infinit),
-          download_files(download_files)
-        {}
-
-      public:
-        void
-        _run() override
-        {
-          std::exception_ptr exception;
-          {
-            reactor::Scheduler sched;
-            reactor::Thread sync{
-              sched,
-              "notify_8infinit",
-              [&]
-              {
-                try
-                {
-                  this->notify_8infinit(this->_transaction.network_id,
-                                        this->_transaction.sender_device_id,
-                                        this->_transaction.recipient_device_id,
-                                        sched);
-                }
-                // A parsing bug in gcc (fixed in 4.8.3) make this block
-                // mandatory.
-                catch (std::exception const&)
-                {
-                  exception = std::current_exception();
-                }
-                catch (...)
-                {
-                  exception = std::current_exception();
-                }
-              }
-            };
-
-            sched.run();
-            ELLE_DEBUG("notify finished");
-          }
-          if (this->cancelled())
-            return;
-          if (exception != std::exception_ptr{})
-          {
-            ELLE_ERR("cannot connect infinit instances: %s",
-                     elle::exception_string(exception));
-            this->_transaction_manager.update(this->_transaction.id,
-                                              gap_transaction_status_canceled);
-            std::rethrow_exception(exception);
-          }
-          if (this->_transaction.recipient_device_id == this->_device.id)
-          {
-            this->download_files(this->_transaction.id);
-          }
-        }
-      };
-
-      NotifyOp::Notify8infinitFunc n =
-        std::bind(&NetworkManager::notify_8infinit,
-                  &(this->_network_manager),
-                  std::placeholders::_1,
-                  std::placeholders::_2,
-                  std::placeholders::_3,
-                  std::placeholders::_4);
-      NotifyOp::DownloadFilesFunc d =
-        std::bind(&TransactionManager::_download_files,
-                  this,
-                  std::placeholders::_1);
-
-      this->_add<NotifyOp>(*this,
-                           transaction,
-                           this->_device,
-                           n,
-                           d);
-    }
-
     void
     TransactionManager::_close_transaction(Transaction const& transaction)
     {
@@ -611,17 +305,6 @@ namespace surface
       this->_reporter.store("transaction_finish",
                             {{MKey::status, "succeed"},
                              {MKey::value, transaction.id}});
-    }
-
-    void
-    TransactionManager::_on_transaction_closed(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction, true);
-
-      // Delete networks.
-      this->_network_manager.delete_(transaction.network_id,
-                                     true /* force */);
     }
 
     void
@@ -661,23 +344,6 @@ namespace surface
                              {MKey::value, transaction.id}});
     }
 
-    void
-    TransactionManager::_on_transaction_canceled(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-
-      // We can't do check_device = true cause the recipient device is not set
-      // until he accepts. So we need to check manualy.
-      this->_ensure_ownership(transaction);
-
-      if (transaction.recipient_device_id == this->_device.id ||
-          transaction.sender_device_id == this->_device.id)
-      {
-        this->_cancel_all(transaction.id);
-        this->_network_manager.delete_(transaction.network_id, true);
-        ELLE_DEBUG("Network %s successfully deleted", transaction.network_id);
-      }
-    }
 
     TransactionManager::TransactionsMap const&
     TransactionManager::all()
@@ -742,20 +408,123 @@ namespace surface
     {
       ELLE_TRACE_FUNCTION(notif.id, is_new);
 
-      // If it's not new, we already has it on our transactions.
-      if (!is_new) return;
-
-      auto it = this->all().find(notif.id);
-
-      if (it != this->all().end())
+      if (notif.sender_id == this->self().id)
       {
-        // The evaluation of transaction is lazy, which means that if your first
-        // operation about transactions is create one, at the first evaluation,
-        // the new transaction will already be in the transactions map, causing
-        // the following warning to appear. Don't care.
-        ELLE_WARN("you already have this transaction");
+        if (notif.sender_device_id != this->_device.id)
+        {
+          // ELLE_ASSERT(
+          //     false,
+          //     "got a transaction notif that does not involve my device: %s",
+          //     notif);
+          ELLE_WARN("XXX Should be an assert: got device unrelated notif");
+          return;
+        }
+        if (notif.status == plasma::TransactionStatus::created)
+          this->_prepare_upload(notif);
+        else if (notif.status == plasma::TransactionStatus::started &&
+                 notif.accepted &&
+                 this->_user_manager.device_status(notif.receiver_device_id))
+          this->_start_upload(notif);
+      }
+      else if (notif.receiver_id == this->self().id)
+      {
+        if (notif.receiver_device_id != this->_device.id)
+        {
+          // ELLE_ASSERT(
+          //     false,
+          //     "got a transaction notif that does not involve my device: %s",
+          //     notif);
+          ELLE_WARN("XXX Should be an assert: got device unrelated notif");
+          return;
+        }
+        if (notif.status == plasma::TransactionStatus::started &&
+            notif.accepted &&
+            this->_user_manager.device_status(notif.sender_device_id))
+          this->_start_download(notif);
+      }
+      else
+      {
+        ELLE_ASSERT(false,
+                    "got a transaction notif that does not involve myself: %s",
+                    notif);
         return;
       }
+      // Ensure map is not null
+      this->all();
+
+      this->_transactions([&notif] (TransactionMapPtr& ptr) {
+          (*ptr)[notif.id] = notif;
+      });
     }
+
+
+      void
+      TransactionManager::_prepare_upload(Transaction const& transaction)
+      {
+        auto& s = this->_states([&] (StateMap& map)-> State& {
+            return map[transaction.id];
+        });
+
+        if (s.state == State::none)
+        {
+          ELLE_DEBUG("prepare transaction %s", transaction)
+          s.operation = this->_add<PrepareTransactionOperation>(
+            *this,
+            this->_network_manager,
+            this->_meta,
+            this->_reporter,
+            this->_self,
+            transaction);
+          s.state = State::preparing;
+        }
+        else
+        {
+          ELLE_DEBUG("do not prepare %s, already in state %d",
+                     transaction,
+                     s.state);
+        }
+      }
+
+      void
+      _start_upload(Transaction const& transaction)
+      {
+        auto& s = this->_states([&] (StateMap& map)-> State& {
+            return map[transaction.id];
+        });
+        if (s.state == State::preparing &&
+            this->operation_status(s.operation) == OperationStatus::success)
+        {
+          s.operation = this->_add<UploadOperation>(
+            std::bind(&NetworkManager::notify_8infinit,
+                      &(this->_network_manager),
+                      transaction.network_id,
+                      transaction.sender_device_id,
+                      transaction.recipient_device_id));
+          s.state = State::running;
+          s.tries += 1;
+        }
+      }
+
+      void
+      _start_download(Transaction const& transaction)
+      {
+        auto& s = this->_states([&] (StateMap& map)-> State& {
+            return map[transaction.id];
+        });
+        if (s.state == State::none)
+        {
+          s.operation = this->_add<DownloadOperation>(
+              *this,
+              this->self(),
+              transaction,
+              std::bind(&NetworkManager::notify_8infinit,
+                        &(this->_network_manager),
+                        transaction.network_id,
+                        transaction.sender_device_id,
+                        transaction.recipient_device_id));
+          s.state = State::running;
+          s.tries += 1;
+        }
+      }
   }
 }

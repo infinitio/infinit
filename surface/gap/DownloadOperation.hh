@@ -7,6 +7,7 @@
 # include <plasma/plasma.hh>
 # include <plasma/meta/Client.hh>
 
+# include <functional>
 # include <list>
 # include <string>
 
@@ -20,11 +21,13 @@ namespace surface
       TransactionManager& _transaction_manager;
       plasma::meta::SelfResponse const& _me;
       plasma::Transaction const& _transaction;
+      std::function<void()> _notify;
 
     public:
       DownloadOperation(TransactionManager& transaction_manager,
                         plasma::meta::SelfResponse const& me,
-                        plasma::Transaction const& transaction);
+                        plasma::Transaction const& transaction,
+                        std::function<void()> notify);
 
     protected:
       void
