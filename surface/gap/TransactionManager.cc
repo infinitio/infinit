@@ -251,90 +251,95 @@ namespace surface
       }
     }
 
-    //void
-    //TransactionManager::_accept_transaction(Transaction const& transaction)
-    //{
-    //  ELLE_TRACE_METHOD(transaction);
-    //  this->_ensure_ownership(transaction);
-    //  ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
-
-    //  this->_reporter.store("transaction_accept",
-    //                        {{MKey::status, "attempt"},
-    //                         {MKey::value, transaction.id}});
-
-    //  try
-    //  {
-    //    this->_meta.update_transaction(transaction.id,
-    //                                   plasma::TransactionStatus::accepted,
-    //                                   this->_device.id,
-    //                                   this->_device.name);
-    //    this->_user_manager.swaggers_dirty();
-    //  }
-    //  CATCH_FAILURE_TO_METRICS("transaction_accept");
-
-    //  this->_reporter.store("transaction_accept",
-    //                        {{MKey::status, "succeed"},
-    //                         {MKey::value, transaction.id}});
-    //}
-
     void
-    TransactionManager::_close_transaction(Transaction const& transaction)
+    TransactionManager::accept_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
       this->_ensure_ownership(transaction);
-      ELLE_ASSERT_EQ(transaction.recipient_device_id, this->_device.id);
+      ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
+      this->_add<LambdaOperation>(
+          "accept_" + transaction.id,
+          std::function<void(Operation&)>{
+            std::bind(&TransactionManager::_accept_transaction,
+                      this,
+                      transaction,
+                      std::placeholders::_1)});
+    }
 
-      this->_reporter.store("transaction_finish",
+
+    void
+    TransactionManager::_accept_transaction(Transaction const& transaction,
+                                            Operation& operation)
+    {
+      this->_reporter.store("transaction_accept",
                             {{MKey::status, "attempt"},
                              {MKey::value, transaction.id}});
-
       try
       {
-        this->_meta.update_transaction(transaction.id,
-                                       plasma::TransactionStatus::finished);
-      }
-      CATCH_FAILURE_TO_METRICS("transaction_finish");
+        this->_meta.accept_transaction(transaction.id,
+                                       this->_device.id,
+                                       this->_device.name);
 
-      this->_reporter.store("transaction_finish",
+        this->_network_manager.add_device(transaction.network_id,
+                                          this->_device.id);
+        // XXX add to swaggers locally
+        //this->_user_manager.swaggers_dirty();
+      }
+      CATCH_FAILURE_TO_METRICS("transaction_accept");
+
+      this->_reporter.store("transaction_accept",
                             {{MKey::status, "succeed"},
                              {MKey::value, transaction.id}});
+      this->_network_manager.prepare(transaction.network_id);
+      this->_network_manager.to_directory(
+        transaction.network_id,
+        common::infinit::network_shelter(this->_self.id,
+                                         transaction.network_id));
     }
 
     void
-    TransactionManager::_cancel_transaction(Transaction const& transaction)
+    TransactionManager::cancel_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
 
-      std::string author{
-        transaction.sender_id == this->_self.id ? "sender" : "recipient",};
+      this->_add<LambdaOperation>(
+        "cancel_" + transaction.id,
+        std::function<void()>{
+          [&]
+          {
+            std::string author = (
+              transaction.sender_id == this->_self.id ? "sender" : "recipient"
+            );
 
-      this->_reporter.store("transaction_cancel",
-                            {{MKey::status, "attempt"},
-                             {MKey::author, author},
-                             {MKey::step, std::to_string(transaction.status)},
-                             {MKey::value, transaction.id}});
+            this->_reporter.store(
+              "transaction_cancel",
+              {{MKey::status, "attempt"},
+               {MKey::author, author},
+               {MKey::step, elle::sprint(transaction.status)},
+               {MKey::value, transaction.id}});
 
-      ELLE_SCOPE_EXIT(
-        [&]
-        {
-          this->_cancel_all(transaction.id);
-          this->_network_manager.delete_(transaction.network_id,
-                                         true);
-        }
-      );
+            ELLE_SCOPE_EXIT(
+              [&]
+              {
+                this->_cancel_all(transaction.id);
+                this->_network_manager.delete_(transaction.network_id, true);
+              }
+            );
 
-      try
-      {
-        this->_meta.update_transaction(transaction.id,
-                                       plasma::TransactionStatus::canceled);
-      }
-      CATCH_FAILURE_TO_METRICS("transaction_cancel");
+            try
+            {
+              this->_meta.update_transaction(transaction.id,
+                                             plasma::TransactionStatus::canceled);
+            }
+            CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-      this->_reporter.store("transaction_cancel",
-                            {{MKey::status, "succeed"},
-                             {MKey::author, author},
-                             {MKey::step, std::to_string(transaction.status)},
-                             {MKey::value, transaction.id}});
+            this->_reporter.store(
+              "transaction_cancel",
+              {{MKey::status, "succeed"},
+               {MKey::author, author},
+               {MKey::step, elle::sprint(transaction.status)},
+               {MKey::value, transaction.id}});
+          }});
     }
 
 
