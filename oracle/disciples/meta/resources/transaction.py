@@ -1,3 +1,4 @@
+# -*- encoding: utf-8 -*-
 
 import json
 import web
@@ -176,7 +177,9 @@ class Create(Page):
         # XXX: MAIL DESACTIVATED
         if not self.connected(recipient_id):
             if not invitee_email:
-                invitee_email = database.users().find_one({'_id': database.ObjectId(id_or_email)})['email']
+                invitee_email = database.users().find_one(
+                    {'_id': database.ObjectId(id_or_email)}
+                )['email']
 
             if new_user:
                 meta.invitation.invite_user(
@@ -193,7 +196,7 @@ class Create(Page):
         # transaction can be initiated only on the sender's device_id).
         self.notifier.notify_some(
             notifier.TRANSACTION,
-            [database.ObjectId(recipient_id), database.ObjectId(_id)], # sender and recipient.
+            [database.ObjectId(recipient_id), database.ObjectId(_id)],
             transaction
         )
 
