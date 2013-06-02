@@ -20,12 +20,14 @@ namespace horizon
   {
     accessible = 1,
     editable,
-    confidential
+    confidential,
   };
 
   std::ostream&
   operator <<(std::ostream& stream, Policy policy);
 
+  Policy
+  policy_from_name(std::string const& name);
 }
 
 #endif
