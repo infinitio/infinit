@@ -18,7 +18,7 @@
 static
 elle::Authority
 authority(std::string const& authority_file,
-          std::string const& authority_password,
+          std::string const& authority_password)
 {
   elle::io::Path authority_path;
 
@@ -95,14 +95,14 @@ metalib_sign(PyObject* self,
 static
 bool
 verify(std::string const& hash,
-       std::string const& signature,
+       std::string const& signature_str,
        std::string const& authority_file,
        std::string const& authority_password)
 {
   cryptography::Signature signature;
-  elle::serialize::from_string<elle::serialize::InputBase64Archive>(hashed) >> signature;
+  elle::serialize::from_string<elle::serialize::InputBase64Archive>(hash) >> signature;
 
-  return authority(authority_file, authority_password).K().verify(signature, hash);
+  return authority(authority_file, authority_password).K().verify(signature, signature_str);
 }
 
 extern "C"
