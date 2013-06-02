@@ -67,17 +67,17 @@ namespace lune
     ~Identity();
 
   public:
-    elle::Status        Create(elle::String const&,
-                               const elle::String&,
-                               cryptography::KeyPair const&);
+    elle::Status        Create(elle::String const& user_id,
+                               elle::String const& user_name,
+                               cryptography::KeyPair const& pair);
 
-    elle::Status        Encrypt(const elle::String&);
-    elle::Status        Decrypt(const elle::String&);
+    elle::Status        Encrypt(elle::String const& pass);
+    elle::Status        Decrypt(elle::String const& pass);
 
     elle::Status        Clear();
 
-    elle::Status        Seal(elle::Authority const&);
-    elle::Status        Validate(elle::Authority const&) const;
+    elle::Status        Seal(elle::Authority const& authority);
+    elle::Status        Validate(elle::Authority const& authority) const;
 
   private:
     /// XXX
