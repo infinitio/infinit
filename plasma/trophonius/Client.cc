@@ -78,6 +78,31 @@ namespace plasma
 {
   namespace trophonius
   {
+    std::unique_ptr<Notification>
+    notification_from_dict(json::Dictionary const& dict)
+    {
+      NotificationType notification_type = dict["notification_type"]
+        .as<NotificationType>();
+      auto extractor = elle::serialize::from_string(dict.repr());
+      switch (notification_type)
+      {
+      case NotificationType::transaction:
+        return std::move(extractor.Construct<TransactionNotification>());
+      case NotificationType::user_status:
+        return std::move(extractor.Construct<UserStatusNotification>());
+      case NotificationType::message:
+        return std::move(extractor.Construct<MessageNotification>());
+      case NotificationType::network_update:
+        return std::move(extractor.Construct<NetworkUpdateNotification>());
+      case NotificationType::connection_enabled:
+        return std::move(extractor.Construct<Notification>());
+      default:
+        throw elle::Exception{
+          elle::sprint("Unknown notification type", notification_type)};
+      }
+      elle::unreachable();
+      return {nullptr};
+    }
 
     //- Implementation --------------------------------------------------------
     struct Client::Impl
@@ -251,45 +276,8 @@ namespace plasma
           std::string msg{data.get(), bytes_transferred};
           ELLE_DEBUG("Got message: %s", msg);
 
-          plasma::trophonius::NotificationType notification_type =
-            plasma::trophonius::NotificationType::none; // Invalid notification type.
-
-          {
-            std::stringstream ss{msg};
-
-            Notification notification;
-            elle::serialize::InputJSONArchive ar(ss, notification);
-            notification_type = notification.notification_type;
-          }
-
-          std::unique_ptr<Notification> notification;
-          {
-            std::stringstream ss{msg};
-            elle::serialize::InputJSONArchive ar{ss};
-            switch (notification_type)
-              {
-              case NotificationType::user_status:
-                notification = std::move(ar.Construct<UserStatusNotification>());
-                break;
-              case NotificationType::transaction:
-                notification = std::move(ar.Construct<TransactionNotification>());
-                break;
-              case NotificationType::message:
-                notification = std::move(ar.Construct<MessageNotification>());
-                break;
-              case NotificationType::network_update:
-                notification = std::move(ar.Construct<NetworkUpdateNotification>());
-                break;
-              case NotificationType::connection_enabled:
-                notification = std::move(ar.Construct<Notification>());
-                break;
-              default:
-                ELLE_WARN("unknown notification %s", notification_type);
-              };
-          }
-
-          if (notification)
-            this->_notifications.push(std::move(notification));
+          this->_notifications.push(
+            notification_from_dict(json::parse(msg)->as_dictionary()));
 
           this->_read_socket();
         }

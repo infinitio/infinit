@@ -158,88 +158,6 @@ namespace surface
       return count;
     }
 
-    static
-    std::unique_ptr<Notification>
-    _xxx_dict_to_notification(json::Dictionary const& d)
-    {
-      std::unique_ptr<Notification> res;
-      NotificationType notification_type = (NotificationType) d["notification_type"].as_integer().value();
-
-      std::unique_ptr<UserStatusNotification> user_status{
-          new UserStatusNotification
-      };
-
-      std::unique_ptr<TransactionNotification> transaction{
-          new TransactionNotification
-      };
-      std::unique_ptr<MessageNotification> message{
-          new MessageNotification
-      };
-
-      switch (notification_type)
-        {
-        case NotificationType::user_status:
-          user_status->user_id = d["user_id"].as_string();
-          user_status->status = d["status"].as_integer();
-          user_status->user_id = d["device_id"].as_string();
-          user_status->status = d["device_status"].as_integer();
-          res = std::move(user_status);
-          break;
-
-        case NotificationType::transaction:
-#define GET_TR_FIELD_RENAME(_if_, _of_, _type_)                               \
-  try                                                                         \
-  {                                                                           \
-    ELLE_DEBUG("Get transaction field " #_if_);                               \
-    transaction->_of_ = d["transaction"][#_if_].as_ ## _type_ (); \
-  }                                                                           \
-  catch (...)                                                                 \
-  {                                                                           \
-    ELLE_ERR("Couldn't get field " #_if_);                                    \
-  }                                                                           \
-/**/
-#define GET_TR_FIELD(_if_, _type_) GET_TR_FIELD_RENAME(_if_, _if_, _type_)
-
-          GET_TR_FIELD_RENAME(_id, id, string);
-          GET_TR_FIELD(sender_id, string);
-          GET_TR_FIELD(sender_fullname, string);
-          GET_TR_FIELD(sender_device_id, string);
-          GET_TR_FIELD(recipient_id, string);
-          GET_TR_FIELD(recipient_fullname, string);
-          GET_TR_FIELD(recipient_device_id, string);
-          GET_TR_FIELD(recipient_device_name, string);
-          GET_TR_FIELD(network_id, string);
-          GET_TR_FIELD(message, string);
-          GET_TR_FIELD(first_filename, string);
-          GET_TR_FIELD(files_count, integer);
-          GET_TR_FIELD(total_size, integer);
-          GET_TR_FIELD(timestamp, float);
-          GET_TR_FIELD(is_directory, integer);
-          GET_TR_FIELD(status, integer);
-          // GET_TR_FIELD(already_accepted, integer);
-          // GET_TR_FIELD(early_accepted, integer);
-          res = std::move(transaction);
-          break;
-
-        case NotificationType::message:
-          message->sender_id = d["sender_id"].as_string();
-          message->message = d["message"].as_string();
-          res = std::move(message);
-          break;
-
-        case NotificationType::connection_enabled:
-          res.reset(new Notification);
-          break;
-
-        default:
-          throw elle::Exception{
-              elle::sprintf("Unknown notification type %s", notification_type)
-          };
-        }
-      res->notification_type = notification_type;
-      return res;
-    }
-
     void
     NotificationManager::pull(size_t count,
                               size_t offset,
@@ -275,7 +193,8 @@ namespace surface
 
       try
       {
-        this->_handle_notification(*_xxx_dict_to_notification(dict), new_);
+        this->_handle_notification(
+          *plasma::trophonius::notification_from_dict(dict), new_);
       }
       catch (...)
       {

@@ -67,6 +67,10 @@ namespace plasma
       std::string message;
     };
 
+    /// Build a notification object from a dictionnary.
+    std::unique_ptr<Notification>
+    notification_from_dict(json::Dictionary const& dict);
+
     class Client:
       private boost::noncopyable
     {
