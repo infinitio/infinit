@@ -19,6 +19,9 @@ namespace hole
     closed
   };
 
+  Openness
+  openness_from_name(std::string const& name);
+
   std::ostream&
   operator <<(std::ostream& stream, Openness openness);
 
