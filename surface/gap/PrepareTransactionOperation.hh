@@ -17,7 +17,7 @@ namespace surface
   namespace gap
   {
     class PrepareTransactionOperation:
-      public OperationManager::Operation
+      public Operation
     {
       TransactionManager& _transaction_manager;
       NetworkManager& _network_manager;

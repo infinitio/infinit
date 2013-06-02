@@ -1,13 +1,12 @@
 #ifndef SURFACE_GAP_STATE_OPERATION_HH
 # define SURFACE_GAP_STATE_OPERATION_HH
 
+# include "Operation.hh"
+
 # include <elle/log.hh>
 # include <elle/Exception.hh>
 
 # include <functional>
-# include <stdexcept>
-# include <string>
-# include <thread>
 
 namespace surface
 {
@@ -16,11 +15,6 @@ namespace surface
     /// Base class for specialized operation managers.
     class OperationManager
     {
-    public:
-      /// Base class for any operation kind. It only requires the override of
-      /// the method `void _run()`.
-      class Operation;
-
     private:
       // Glue to manage thread creation and destruction.
       template <typename T>
