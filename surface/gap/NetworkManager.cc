@@ -708,7 +708,10 @@ namespace surface
         reactor::Thread sync{sched, "notify_8infinit", [&] {
             try
             {
-              this->_notify_func();
+              this->_notify_8infinit(network_id,
+                                     sender_device_id,
+                                     recipient_device_id,
+                                     sched);
             }
             // A parsing bug in gcc (fixed in 4.8.3) make this block
             // mandatory.

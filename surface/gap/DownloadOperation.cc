@@ -20,25 +20,24 @@ namespace surface
   {
     DownloadOperation::DownloadOperation(
         TransactionManager& transaction_manager,
+        NetworkManager& network_manager,
         plasma::meta::SelfResponse const& me,
-        plasma::Transaction const& transaction):
+        plasma::Transaction const& transaction,
+        std::function<void()> notify):
       Operation{"download_files_for_" + transaction.id},
       _transaction_manager(transaction_manager),
+      _network_manager(network_manager),
       _me(me),
-      _transaction(transaction)
+      _transaction(transaction),
+      _notify{notify}
     {}
 
     void
     DownloadOperation::_run()
     {
-      this->_network_manager.add_device(this->_transaction.network_id,
-                                        this->_device.id);
-      this->_network_manager.prepare(this->_transaction.network_id);
-      this->_network_manager.to_directory(
+      this->_network_manager.add_device(
         this->_transaction.network_id,
-        common::infinit::network_shelter(this->_self.id,
-                                         this->_transaction.network_id));
-      this->_network_manager.wait_portal(this->_transaction.network_id);
+        this->_transaction.recipient_device_id);
       this->_notify();
 
       std::string const& transfer_binary =
@@ -117,9 +116,7 @@ namespace surface
         ELLE_ERR("couldn't receive file %s: %s",
                  this->_transaction.first_filename,
                  elle::exception_string());
-        this->_transaction_manager.update(
-          this->_transaction.id,
-          gap_TransactionStatus::gap_transaction_status_canceled);
+        throw;
       }
     }
 

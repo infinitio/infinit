@@ -1,7 +1,10 @@
 #include "TransactionManager.hh"
 
+#include "CreateTransactionOperation.hh"
+#include "PrepareTransactionOperation.hh"
 #include "DownloadOperation.hh"
 #include "UploadOperation.hh"
+
 #include "metrics.hh"
 
 #include <plasma/meta/Client.hh>
@@ -398,7 +401,7 @@ namespace surface
     {
       ELLE_TRACE_FUNCTION(notif.id, is_new);
 
-      if (notif.sender_id == this->self().id)
+      if (notif.sender_id == this->_self.id)
       {
         if (notif.sender_device_id != this->_device.id)
         {
@@ -413,12 +416,12 @@ namespace surface
           this->_prepare_upload(notif);
         else if (notif.status == plasma::TransactionStatus::started &&
                  notif.accepted &&
-                 this->_user_manager.device_status(notif.receiver_device_id))
+                 this->_user_manager.device_status(notif.recipient_device_id))
           this->_start_upload(notif);
       }
-      else if (notif.receiver_id == this->self().id)
+      else if (notif.recipient_id == this->_self.id)
       {
-        if (notif.receiver_device_id != this->_device.id)
+        if (notif.recipient_device_id != this->_device.id)
         {
           // ELLE_ASSERT(
           //     false,
@@ -434,9 +437,7 @@ namespace surface
       }
       else
       {
-        ELLE_ASSERT(false,
-                    "got a transaction notif that does not involve myself: %s",
-                    notif);
+        ELLE_WARN("got a transaction notif not related to me: %s", notif);
         return;
       }
       // Ensure map is not null
@@ -476,15 +477,16 @@ namespace surface
       }
 
       void
-      _start_upload(Transaction const& transaction)
+      TransactionManager::_start_upload(Transaction const& transaction)
       {
         auto& s = this->_states([&] (StateMap& map)-> State& {
             return map[transaction.id];
         });
         if (s.state == State::preparing &&
-            this->operation_status(s.operation) == OperationStatus::success)
+            this->status(s.operation) == OperationStatus::success)
         {
           s.operation = this->_add<UploadOperation>(
+            transaction.id,
             std::bind(&NetworkManager::notify_8infinit,
                       &(this->_network_manager),
                       transaction.network_id,
@@ -496,7 +498,7 @@ namespace surface
       }
 
       void
-      _start_download(Transaction const& transaction)
+      TransactionManager::_start_download(Transaction const& transaction)
       {
         auto& s = this->_states([&] (StateMap& map)-> State& {
             return map[transaction.id];
@@ -505,7 +507,8 @@ namespace surface
         {
           s.operation = this->_add<DownloadOperation>(
               *this,
-              this->self(),
+              this->_network_manager,
+              this->_self,
               transaction,
               std::bind(&NetworkManager::notify_8infinit,
                         &(this->_network_manager),

@@ -81,11 +81,6 @@ namespace surface
                  std::unordered_set<std::string> const& files);
 
     private:
-      /// @brief Start the transfer process on recipient.
-      ///
-      OperationId
-      _download_files(std::string const& transaction_id);
-
       /*---------.
       | Progress |
       `---------*/
@@ -148,15 +143,25 @@ namespace surface
           operation{0}
         {}
       };
-      typedef std::map<std::string, TransactionLocalState> StateMap;
+      typedef std::map<std::string, State> StateMap;
       elle::threading::Monitor<StateMap> _states;
 
     public:
       /// @brief Update transaction status.
       void
       update(std::string const& transaction_id,
-             gap_TransactionStatus status);
+             plasma::TransactionStatus status);
 
+      void
+      accept_transaction(Transaction const& transaction);
+
+      void
+      cancel_transaction(Transaction const& transaction);
+
+    private:
+      void
+      _accept_transaction(Transaction const& transaction,
+                          Operation& operation);
     private:
       void
       _prepare_upload(Transaction const& transaction);

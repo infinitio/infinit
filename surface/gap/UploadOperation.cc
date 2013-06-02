@@ -1,6 +1,7 @@
 #include "UploadOperation.hh"
 
 #include <elle/log.hh>
+#include <elle/Exception.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.UploadOperation");
 
@@ -8,12 +9,10 @@ namespace surface
 {
   namespace gap
   {
-    UploadOperation::UploadOperation(Notify8infinitFunc _notify_func):
-      Operation{"notify_8infinit_" + transaction.id},
-      _transaction_manager(transaction_manager),
-      _transaction(transaction),
-      _device(device),
-      notify_func(notify_8infinit)
+    UploadOperation::UploadOperation(std::string const& transaction_id,
+                                     NotifyFunc notify):
+      Operation{"notify_upload_" + transaction_id},
+      _notify(notify)
     {}
 
     void
@@ -21,14 +20,12 @@ namespace surface
     {
       try
       {
-        this->_notify_func();
+        this->_notify();
       }
       catch (...)
       {
         ELLE_ERR("cannot connect infinit instances: %s",
-                 elle::exception_string(exception));
-        if (this->cancelled())
-          return;
+                 elle::exception_string());
         throw;
       }
     }

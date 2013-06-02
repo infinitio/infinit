@@ -3,6 +3,8 @@
 
 # include "OperationManager.hh"
 
+# include <elle/attribute.hh>
+
 # include <string>
 # include <functional>
 
@@ -13,12 +15,13 @@ namespace surface
     struct UploadOperation:
       public Operation
     {
-      typedef std::function<void()> Notify8infinitFunc;
-    private::
-      Notify8infinitFunc _notify_func;
+      typedef std::function<void()> NotifyFunc;
+    private:
+      ELLE_ATTRIBUTE(NotifyFunc, notify);
 
     public:
-      UploadOperation(Notify8infinitFunc _notify_func);
+      UploadOperation(std::string const& transaction_id,
+                      NotifyFunc _notify_func);
 
       void
       _run() override;
