@@ -6,10 +6,29 @@
 #include <nucleus/neutron/Permissions.hh>
 #include <nucleus/Exception.hh>
 
+#include <map>
+#include <string>
+
 namespace nucleus
 {
   namespace neutron
   {
+
+    std::map<Permissions, std::string> const&
+    permissions_string(std::string const& permission)
+    {
+      static std::map<Permissions, std::string> permissions_string =
+      {
+        {permissions::none, "none"},
+        {permissions::read, "read"},
+        {permissions::write, "write"},
+      };
+
+      return permissions_string;
+    }
+
+
+
     /*-------.
     | Values |
     `-------*/

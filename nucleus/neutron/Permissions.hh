@@ -36,6 +36,9 @@ namespace nucleus
     std::ostream&
     operator <<(std::ostream& stream,
                 Permissions const permissions);
+
+    Permissions
+    permission_from_string(std::string const& permission);
   }
 }
 
