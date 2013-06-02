@@ -20,17 +20,17 @@ namespace hole
     // type
     //
     enum Type
-      {
-        TypeUnknown = 0,
+    {
+      TypeUnknown = 0,
 
-        TypeLocal,
-        TypeRemote,
-        TypeSlug,
-        TypeCirkle,
-        TypeKool,
+      TypeLocal,
+      TypeRemote,
+      TypeSlug,
+      TypeCirkle,
+      TypeKool,
 
-        Types = TypeKool,
-      };
+      Types = TypeKool,
+    };
 
     //
     // structures
@@ -60,6 +60,7 @@ namespace hole
     //
     Model();
     Model(const Type);
+    Model(std::string const& type);
 
     //
     // methods
@@ -87,7 +88,6 @@ namespace hole
     //
     Type                type;
   };
-
 }
 
 #include <hole/Model.hxx>

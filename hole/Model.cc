@@ -1,6 +1,7 @@
 #include <hole/Model.hh>
 #include <hole/Exception.hh>
 
+#include <map>
 #include <iostream>
 #include <algorithm>
 #include <string>
@@ -21,18 +22,49 @@ namespace hole
   /// this table maintains a mapping between model identifiers and
   /// human-readable representations.
   ///
-  const Model::Descriptor               Model::Descriptors[Model::Types] =
-    {
-      { Model::TypeLocal, "local" },
-      { Model::TypeRemote, "remote" },
-      { Model::TypeSlug, "slug" },
-      { Model::TypeCirkle, "cirkle" },
-      { Model::TypeKool, "kool" },
-    };
+  const Model::Descriptor Model::Descriptors[Model::Types] =
+  {
+    { Model::TypeLocal,"local" },
+    { Model::TypeRemote,"remote" },
+    { Model::TypeSlug,"slug" },
+    { Model::TypeCirkle, "cirkle" },
+    { Model::TypeKool, "kool" },
+  };
 
 //
 // ---------- static methods --------------------------------------------------
 //
+  // Trick: This return the 'translation' map from type to string.
+  // The getter allow to assert that the map contains the right number of
+  // fields and could be extend to ensure that none of the 'tag' fields (e.g.
+  // TypeUnknown).
+  std::map<Model::Type, std::string> const&
+  type_string()
+  {
+    static std::map<Model::Type, std::string> type_string =
+      {
+        {Model::TypeLocal,  "local"},
+        {Model::TypeRemote, "remote"},
+        {Model::TypeSlug,   "slug"},
+        {Model::TypeCirkle, "cirkle"},
+        {Model::TypeKool,   "kool"},
+      };
+
+    ELLE_ASSERT_EQ(type_string.size(), Model::Type::Types);
+
+    return type_string;
+  }
+
+  static
+  Model::Type
+  modeltype_from_string(std::string const& name)
+  {
+    for (auto pair: type_string())
+      if (pair.second == name)
+        return pair.first;
+    throw Exception(elle::sprintf("unknown model name: %s", name));
+  }
+
 
   ///
   /// this method returns the model type associated with the given string.
@@ -92,20 +124,23 @@ namespace hole
 //
 
   ///
+  /// specific constructor.
+  ///
+  Model::Model(const Type type):
+    type(type)
+  {}
+
+  ///
   /// default constructor.
   ///
   Model::Model():
-    type(Model::TypeUnknown)
-  {
-  }
+    Model(Model::TypeUnknown)
+  {}
 
-  ///
-  /// specific constructor.
-  ///
-  Model::Model(const Type                                       type):
-    type(type)
-  {
-  }
+  Model::Model(std::string const& type):
+    Model(modeltype_from_string(type))
+  {}
+
 
 //
 // ---------- methods ---------------------------------------------------------
