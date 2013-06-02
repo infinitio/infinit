@@ -275,9 +275,14 @@ SERIALIZE_RESPONSE(plasma::meta::NetworkResponse, ar, res)
   ar & named("users", res.users);
 }
 
-SERIALIZE_RESPONSE(plasma::meta::NetworkSignatureResponse, ar, res)
+SERIALIZE_RESPONSE(plasma::meta::SignHashResponse, ar, res)
 {
   ar & named("signature", res.signature);
+}
+
+SERIALIZE_RESPONSE(plasma::meta::VerifySignatureResponse, ar, res)
+{
+  ar & named("verified", res.verified);
 }
 
 namespace plasma
@@ -663,6 +668,26 @@ namespace plasma
           {"name", network_id},
       }};
       return this->_post<CreateNetworkResponse>("/network/create", request);
+    }
+
+    SignHashResponse
+    Client::sign_hash(std::string const& hash) const
+    {
+      json::Dictionary request{map<string, string>{
+          {"hash", hash},
+      }};
+      return this->_post<SignHashResponse>("/authority/sign", request);
+    }
+
+    VerifySignatureResponse
+    Client::verify_signature(std::string const& signature,
+                             std::string const& hash) const
+    {
+      json::Dictionary request{map<string, string>{
+          {"hash", hash},
+          {"signature", signature},
+      }};
+      return this->_post<VerifySignatureResponse>("/authority/verify", request);
     }
 
     DeleteNetworkResponse

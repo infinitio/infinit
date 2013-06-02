@@ -201,11 +201,6 @@ namespace plasma
       list<string>       nodes;
     };
 
-    struct NetworkSignatureResponse : Response
-    {
-      string signature;
-    };
-
     struct EndpointNodeResponse : Response
     {
       vector<string>      externals;
@@ -232,7 +227,12 @@ namespace plasma
 
     struct SignHashResponse: Response
     {
-      std::string hash;
+      std::string signature;
+    };
+
+    struct VerifySignatureResponse: Response
+    {
+      bool verified;
     };
 
     /// Callbacks for API calls.
@@ -373,7 +373,11 @@ namespace plasma
       create_network(string const& network_id) const;
 
       SignHashResponse
-      sign_hash(std::string const& hash);
+      sign_hash(std::string const& hash) const;
+
+      VerifySignatureResponse
+      verify_signature(std::string const& signature,
+                       std::string const& hash) const;
 
       DeleteNetworkResponse
       delete_network(string const& network_id,
