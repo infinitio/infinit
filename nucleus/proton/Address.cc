@@ -80,6 +80,21 @@ namespace nucleus
         }
     }
 
+    Address::Address(Address&& other):
+      _type(other._type),
+      _valid(nullptr)
+    {
+      if (other._valid != nullptr)
+        {
+          this->_valid =
+            new Valid(
+              other._valid->network(),
+              other._valid->family(),
+              other._valid->component(),
+              other._valid->digest());
+        }
+    }
+
     ELLE_SERIALIZE_CONSTRUCT_DEFINE(Address)
     {
       this->_valid = nullptr;

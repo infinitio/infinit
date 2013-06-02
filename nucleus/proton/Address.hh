@@ -81,6 +81,7 @@ namespace nucleus
               const neutron::Component&,
               const T&...);
       Address(Address const& other);
+      Address(Address&& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Address);
       ~Address();
     private:
