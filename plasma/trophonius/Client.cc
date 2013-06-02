@@ -8,6 +8,7 @@
 #include <elle/log.hh>
 #include <elle/print.hh>
 #include <elle/serialize/JSONArchive.hh>
+#include <elle/serialize/extract.hh>
 #include <elle/format/json/Dictionary.hxx>
 #include <elle/format/json/Parser.hh>
 #include <elle/serialize/ListSerializer.hxx>

@@ -1187,7 +1187,7 @@ extern "C"
                          transaction_manager,
                          update,
                          transaction_id,
-                         status);
+                         static_cast<plasma::TransactionStatus>(status));
 
     return ret;
   }

@@ -7,6 +7,14 @@
 namespace plasma
 {
 
+  enum class TransactionStatus: int
+  {
+# define TRANSACTION_STATUS(name, value)                                       \
+    name = value,
+# include <oracle/disciples/meta/resources/transaction_status.hh.inc>
+# undef TRANSACTION_STATUS
+  };
+
   struct Transaction
   {
     std::string           id;
@@ -23,17 +31,9 @@ namespace plasma
     int                   files_count;
     int                   total_size;
     int                   is_directory;
-    int                   status;
+    TransactionStatus     status;
     uint64_t              timestamp;
     bool                  accepted;
-  };
-
-  enum class TransactionStatus: int
-  {
-# define TRANSACTION_STATUS(name, value)                                       \
-    name = value,
-# include <oracle/disciples/meta/resources/transaction_status.hh.inc>
-# undef TRANSACTION_STATUS
   };
 
   std::ostream&

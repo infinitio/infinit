@@ -109,10 +109,8 @@ namespace surface
                    this->_transaction_manager.output_dir());
         }
 
-        this->_transaction_manager.update(
-          this->_transaction.id,
-          gap_TransactionStatus::gap_transaction_status_finished
-          );
+        this->_transaction_manager.update(this->_transaction.id,
+                                          plasma::TransactionStatus::finished);
       }
       catch (...)
       {
@@ -131,7 +129,7 @@ namespace surface
       ELLE_DEBUG("cancelling %s name", this->name());
       this->_transaction_manager.update(
         this->_transaction.id,
-        gap_TransactionStatus::gap_transaction_status_canceled);
+        plasma::TransactionStatus::canceled);
     }
   }
 }

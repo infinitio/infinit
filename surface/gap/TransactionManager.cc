@@ -128,11 +128,11 @@ namespace surface
       auto const& instance_manager =
         this->_network_manager.infinit_instance_manager();
 
-      if (tr.status == gap_transaction_status_finished)
+      if (tr.status == plasma::TransactionStatus::finished)
         return 1.0f;
-      else if (tr.status == gap_transaction_status_canceled)
+      else if (tr.status == plasma::TransactionStatus::canceled)
         return 0.0f;
-      else if (tr.status != gap_transaction_status_started)
+      else if (tr.status != plasma::TransactionStatus::started)
         return 0.0f;
       else if (!instance_manager.exists(tr.network_id))
       {
@@ -225,23 +225,13 @@ namespace surface
       );
     }
 
-    TransactionManager::OperationId
-    TransactionManager::_download_files(std::string const& id)
-    {
-      auto it = this->all().find(id);
-      if (it != this->all().end())
-        throw Exception(
-          gap_error,
-          elle::sprintf("download failure cause %s doesn't exist", id));
-      return this->_add<DownloadOperation>(*this, this->_self, it->second);
-    }
 
     void
-    TransactionManager::update(std::string const& id,
-                               gap_TransactionStatus status)
+    TransactionManager::update(std::string const& transaction_id,
+                               plasma::TransactionStatus status)
     {
-      ELLE_TRACE("set status %s on transaction %s", status, transaction);
-      this->_meta.update_transaction(transaction.transaction_id, status)
+      ELLE_TRACE("set status %s on transaction %s", status, transaction_id);
+      this->_meta.update_transaction(transaction_id, status);
     }
 
     void
