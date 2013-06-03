@@ -1,8 +1,8 @@
 #include <reactor/scheduler.hh>
-#include <reactor/exception.hh>
 
 #include <elle/system/signal.hh>
 #include <elle/system/Process.hh>
+#include <elle/Exception.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
 #include <elle/os/getenv.hh>
@@ -168,7 +168,7 @@ namespace infinit
         sched.run();
         return main.result();
       }
-      catch (reactor::Exception const& e)
+      catch (elle::Exception const& e)
       {
         ELLE_ERR("%s: fatal error: %s", name, e);
         std::cerr << name << ": fatal error: " << e << std::endl;
