@@ -1106,6 +1106,7 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/meta/page.py',
       'oracle/disciples/meta/regexp.py',
       'oracle/disciples/meta/resources/__init__.py',
+      'oracle/disciples/meta/resources/authority.py',
       'oracle/disciples/meta/resources/device.py',
       'oracle/disciples/meta/resources/network.py',
       'oracle/disciples/meta/resources/network_update.hh.inc',
@@ -1149,6 +1150,8 @@ def configure(cxx_toolkit = None,
       metalib_config = cxx_config + python2
       metalib_config.lib_path_runtime('..')
       metalib_sources = drake.nodes(
+        'oracle/disciples/metalib/authority.cc',
+        'oracle/disciples/metalib/authority.hh',
         'oracle/disciples/metalib/identity.cc',
         'oracle/disciples/metalib/identity.hh',
         'oracle/disciples/metalib/metalib.cc',
