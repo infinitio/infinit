@@ -35,15 +35,16 @@ authority(std::string const& authority_file,
 
 static
 std::string
-hash(std::string const& to_hash,
-             std::string const& authority_file,
-             std::string const& authority_password)
+sign(std::string const& to_sign,
+     std::string const& authority_file,
+     std::string const& authority_password)
 {
   cryptography::Signature signature =
-    authority(authority_file, authority_password).k().sign(to_hash);
+    authority(authority_file, authority_password).k().sign(to_sign);
 
   std::string hashed;
-  elle::serialize::to_string<elle::serialize::OutputBase64Archive>(hashed) << signature;
+  elle::serialize::to_string<elle::serialize::OutputBase64Archive>(hashed) <<
+    signature;
 
   return hashed;
 }
@@ -54,15 +55,15 @@ metalib_sign(PyObject* self,
              PyObject* args)
 {
   (void) self;
-  char const* to_hash = nullptr;
+  char const* to_sign = nullptr;
   char const* authority_file = nullptr;
   char const* authority_password = nullptr;
 
   PyObject* ret = nullptr;
 
   if (!PyArg_ParseTuple(args,
-                        "sss:hash",
-                        &to_hash,
+                        "sss:sign",
+                        &to_sign,
                         &authority_file,
                         &authority_password))
     return nullptr;
@@ -72,14 +73,14 @@ metalib_sign(PyObject* self,
 
   try
   {
-    std::string hashed = hash(to_hash,
-                              authority_file,
-                              authority_password);
+    std::string signature = sign(to_sign,
+                                 authority_file,
+                                 authority_password);
 
     // WARNING: restore state before setting exception !
     PyEval_RestoreThread(_save);
 
-    ret = Py_BuildValue("s", hashed.c_str());
+    ret = Py_BuildValue("s", signature.c_str());
   }
   catch (std::exception const& err)
   {
@@ -97,12 +98,14 @@ bool
 verify(std::string const& hash,
        std::string const& signature_str,
        std::string const& authority_file,
-       std::string const& authority_password)
+       std::string const& password)
 {
   cryptography::Signature signature;
-  elle::serialize::from_string<elle::serialize::InputBase64Archive>(hash) >> signature;
+  elle::serialize::from_string<elle::serialize::InputBase64Archive>(hash) >>
+    signature;
 
-  return authority(authority_file, authority_password).K().verify(signature, signature_str);
+  return authority(authority_file, password).K().verify(signature,
+                                                        signature_str);
 }
 
 extern "C"
