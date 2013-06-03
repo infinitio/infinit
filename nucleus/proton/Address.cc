@@ -82,17 +82,10 @@ namespace nucleus
 
     Address::Address(Address&& other):
       _type(other._type),
-      _valid(nullptr)
+      _valid(other._valid)
     {
-      if (other._valid != nullptr)
-        {
-          this->_valid =
-            new Valid(
-              other._valid->network(),
-              other._valid->family(),
-              other._valid->component(),
-              other._valid->digest());
-        }
+      // Reset the pointer since the value has been moved.
+      other._valid = nullptr;
     }
 
     ELLE_SERIALIZE_CONSTRUCT_DEFINE(Address)
