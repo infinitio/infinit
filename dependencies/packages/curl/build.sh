@@ -48,8 +48,5 @@ uptodate "${CURL_LIBRARIES}" ||
         --without-libidn                                \
         --disable-rtmp || die "unable to configure"
     make all install || die "unable to build"
-    for lib in ${WORKDIR}/lib/libcurl*
-    do
-      set_rpath \$ORIGIN $lib
-    done
+    set_rpath \$ORIGIN ${WORKDIR}/lib/libcurl.${PLATFORM_LIBRARY_EXTENSION}
 )
