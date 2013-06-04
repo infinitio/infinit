@@ -144,8 +144,8 @@ namespace surface
       return this->_meta.token();
     }
 
-    Self const&
-    State::me() const
+    void
+    State::_self_load() const
     {
       ELLE_TRACE_METHOD("");
 
@@ -154,7 +154,12 @@ namespace surface
 
       if (this->_me == nullptr)
         this->_me.reset(new Self{this->_meta.self()});
+    }
 
+    Self const&
+    State::me() const
+    {
+      this->_self_load();
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
     }
@@ -162,14 +167,7 @@ namespace surface
     Self&
     State::me()
     {
-      ELLE_TRACE_METHOD("");
-
-      if (!this->logged_in())
-        throw Exception{gap_internal_error, "you must be logged in"};
-
-      if (this->_me == nullptr)
-        this->_me.reset(new Self{this->_meta.self()});
-
+      this->_self_load();
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
     }
