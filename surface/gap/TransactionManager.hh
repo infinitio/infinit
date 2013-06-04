@@ -1,18 +1,21 @@
-#ifndef TRANSACTIONMANAGER_HH
-# define TRANSACTIONMANAGER_HH
+#ifndef SURFACE_GAP_TRANSACTIONMANAGER_HH
+# define SURFACE_GAP_TRANSACTIONMANAGER_HH
+
+# include "status.hh"
+# include "NetworkManager.hh"
+# include "NotificationManager.hh"
+# include "OperationManager.hh"
+# include "UserManager.hh"
+# include "metrics.hh"
 
 # include <plasma/plasma.hh>
-# include <unordered_set>
-# include <surface/gap/status.hh>
-
-# include <surface/gap/NetworkManager.hh>
-# include <surface/gap/NotificationManager.hh>
-# include <surface/gap/OperationManager.hh>
-# include <surface/gap/UserManager.hh> // Could be avoid using accept response.
-# include <surface/gap/metrics.hh>
-
 # include <plasma/trophonius/Client.hh>
 # include <plasma/meta/Client.hh>
+
+# include <elle/attribute.hh>
+
+# include <string>
+# include <unordered_set>
 
 namespace surface
 {
@@ -137,6 +140,7 @@ namespace surface
         } state;
         int tries;
         OperationId operation;
+        std::unordered_set<std::string> files;
         State():
           state{none},
           tries{0},

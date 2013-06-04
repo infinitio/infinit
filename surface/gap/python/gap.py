@@ -76,7 +76,6 @@ class _State:
 
             # Callback.
             'transaction_callback',
-            'transaction_status_callback',
             'message_callback',
 
             # Operation.

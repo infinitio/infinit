@@ -119,7 +119,12 @@ namespace surface
           this->_self,
           this->_device.id,
           recipient_id_or_email,
-          files);
+          files,
+          [this, &files] (std::string const& tr_id) {
+            this->_states([&tr_id, &files] (StateMap& map) {
+              map[tr_id].files = files;
+            });
+          });
     }
 
     float
@@ -144,7 +149,6 @@ namespace surface
           "Cannot launch 8progress without infinit instance",
         };
       }
-
 
       auto& progress = this->_progresses(
         [&id] (TransactionProgressMap& map) -> TransactionProgress&
@@ -453,76 +457,73 @@ namespace surface
       });
     }
 
+    void
+    TransactionManager::_prepare_upload(Transaction const& transaction)
+    {
+      auto s = this->_states[transaction.id];
 
-      void
-      TransactionManager::_prepare_upload(Transaction const& transaction)
+      if (s.state == State::none)
       {
-        auto& s = this->_states([&] (StateMap& map)-> State& {
-            return map[transaction.id];
-        });
+        ELLE_DEBUG("prepare transaction %s", transaction)
+        s.operation = this->_add<PrepareTransactionOperation>(
+          *this,
+          this->_network_manager,
+          this->_meta,
+          this->_reporter,
+          this->_self,
+          transaction,
+          s.files);
+        s.state = State::preparing;
+        this->_states->insert({transaction.id, s});
+      }
+      else
+      {
+        ELLE_DEBUG("do not prepare %s, already in state %d",
+                   transaction,
+                   s.state);
+      }
+    }
 
-        if (s.state == State::none)
-        {
-          ELLE_DEBUG("prepare transaction %s", transaction)
-          s.operation = this->_add<PrepareTransactionOperation>(
+    void
+    TransactionManager::_start_upload(Transaction const& transaction)
+    {
+      auto s = this->_states[transaction.id];
+      if (s.state == State::preparing &&
+          this->status(s.operation) == OperationStatus::success)
+      {
+        s.operation = this->_add<UploadOperation>(
+          transaction.id,
+          std::bind(&NetworkManager::notify_8infinit,
+                    &(this->_network_manager),
+                    transaction.network_id,
+                    transaction.sender_device_id,
+                    transaction.recipient_device_id));
+        s.state = State::running;
+        s.tries += 1;
+        this->_states->insert({transaction.id, s});
+      }
+    }
+
+    void
+    TransactionManager::_start_download(Transaction const& transaction)
+    {
+      auto state = this->_states[transaction.id];
+      if (state.state == State::none)
+      {
+        state.operation = this->_add<DownloadOperation>(
             *this,
             this->_network_manager,
-            this->_meta,
-            this->_reporter,
             this->_self,
-            transaction);
-          s.state = State::preparing;
-        }
-        else
-        {
-          ELLE_DEBUG("do not prepare %s, already in state %d",
-                     transaction,
-                     s.state);
-        }
-      }
-
-      void
-      TransactionManager::_start_upload(Transaction const& transaction)
-      {
-        auto& s = this->_states([&] (StateMap& map)-> State& {
-            return map[transaction.id];
-        });
-        if (s.state == State::preparing &&
-            this->status(s.operation) == OperationStatus::success)
-        {
-          s.operation = this->_add<UploadOperation>(
-            transaction.id,
+            transaction,
             std::bind(&NetworkManager::notify_8infinit,
                       &(this->_network_manager),
                       transaction.network_id,
                       transaction.sender_device_id,
                       transaction.recipient_device_id));
-          s.state = State::running;
-          s.tries += 1;
-        }
+        state.state = State::running;
+        state.tries += 1;
+        this->_states->insert({transaction.id, state});
       }
-
-      void
-      TransactionManager::_start_download(Transaction const& transaction)
-      {
-        auto& s = this->_states([&] (StateMap& map)-> State& {
-            return map[transaction.id];
-        });
-        if (s.state == State::none)
-        {
-          s.operation = this->_add<DownloadOperation>(
-              *this,
-              this->_network_manager,
-              this->_self,
-              transaction,
-              std::bind(&NetworkManager::notify_8infinit,
-                        &(this->_network_manager),
-                        transaction.network_id,
-                        transaction.sender_device_id,
-                        transaction.recipient_device_id));
-          s.state = State::running;
-          s.tries += 1;
-        }
-      }
+    }
   }
 }

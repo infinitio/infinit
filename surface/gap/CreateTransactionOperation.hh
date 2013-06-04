@@ -29,6 +29,7 @@ namespace surface
       std::unordered_set<std::string> _files;
       std::string _transaction_id;
       std::string _network_id;
+      std::function<void(std::string const&)> _on_transaction;
 
     public:
       CreateTransactionOperation(TransactionManager& transaction_manager,
@@ -38,7 +39,8 @@ namespace surface
                                  plasma::meta::SelfResponse& me,
                                  std::string const& device_id,
                                  std::string const& recipient_id_or_email,
-                                 std::unordered_set<std::string> const& files);
+                                 std::unordered_set<std::string> const& files,
+                                 std::function<void(std::string const&)> cb);
 
     protected:
       void

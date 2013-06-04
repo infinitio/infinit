@@ -107,10 +107,6 @@ namespace surface
       void
       network_update_callback(NetworkUpdateNotificationCallback const& cb);
 
-      template<NotificationType type>
-      void
-      detach(NotificationHandler const& to_remove);
-
     public:
       size_t
       poll(size_t max = 10);
@@ -158,7 +154,5 @@ namespace surface
     };
   }
 }
-
-#include "NotificationManager.hxx"
 
 #endif

@@ -23,8 +23,9 @@ namespace surface
       NetworkManager& _network_manager;
       plasma::meta::Client& _meta;
       elle::metrics::Reporter& _reporter;
-      plasma::meta::SelfResponse& _me;
+      plasma::meta::SelfResponse& _self;
       Transaction _transaction;
+      std::unordered_set<std::string> _files;
 
     public:
       PrepareTransactionOperation(
@@ -33,7 +34,8 @@ namespace surface
           plasma::meta::Client& meta,
           elle::metrics::Reporter& reporter,
           plasma::meta::SelfResponse& me,
-          Transaction const& transaction);
+          Transaction const& transaction,
+          std::unordered_set<std::string> const& files);
 
     protected:
       void

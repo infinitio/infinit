@@ -42,7 +42,8 @@ namespace surface
         plasma::meta::SelfResponse& me,
         std::string const& device_id,
         std::string const& recipient_id_or_email,
-        std::unordered_set<std::string> const& files):
+        std::unordered_set<std::string> const& files,
+        std::function<void(std::string const&)> cb):
       Operation{"upload_files_"},
       _transaction_manager(transaction_manager),
       _network_manager(network_manager),
@@ -51,7 +52,8 @@ namespace surface
       _me(me),
       _device_id(device_id),
       _recipient_id_or_email{recipient_id_or_email},
-      _files{files}
+      _files{files},
+      _on_transaction{cb}
     {}
 
     void
@@ -107,6 +109,8 @@ namespace surface
          {MKey::value, this->_transaction_id},
          {MKey::count, std::to_string(this->_files.size())},
          {MKey::size, std::to_string(size)}});
+      if (this->_on_transaction != nullptr)
+        this->_on_transaction(this->_transaction_id);
     }
 
     void

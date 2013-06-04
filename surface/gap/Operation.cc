@@ -1,3 +1,10 @@
+#include "Operation.hh"
+
+#include <elle/log.hh>
+#include <elle/Exception.hh>
+
+ELLE_LOG_COMPONENT("surface.gap.Operation");
+
 namespace surface
 {
   namespace gap
@@ -19,7 +26,6 @@ namespace surface
     void
     Operation::cancel()
     {
-      ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
       ELLE_TRACE_METHOD(this->_name);
       if (this->_done || this->_cancelled)
         return;
@@ -30,14 +36,12 @@ namespace surface
     void
     Operation::_cancel()
     {
-      ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
       ELLE_TRACE_FUNCTION(this->_name);
     }
 
     void
     Operation::rethrow()
     {
-      ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
       ELLE_TRACE_FUNCTION(this->_name);
 
       this->_rethrown = true;
@@ -78,7 +82,7 @@ namespace surface
         throw elle::Exception{"no current exception"};
 
       if (this->_failure_reason.empty())
-        this->_failure_reason = this->_exception_string(this->_exception);
+        this->_failure_reason = elle::exception_string(this->_exception);
 
       return this->_failure_reason;
     }

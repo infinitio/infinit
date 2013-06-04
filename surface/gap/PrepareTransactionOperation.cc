@@ -22,15 +22,17 @@ namespace surface
         NetworkManager& network_manager,
         plasma::meta::Client& meta,
         elle::metrics::Reporter& reporter,
-        plasma::meta::SelfResponse& me,
-        Transaction const& transaction):
+        plasma::meta::SelfResponse& self,
+        Transaction const& transaction,
+        std::unordered_set<std::string> const& files):
       Operation{"prepare_transaction_" + transaction.id},
       _transaction_manager(transaction_manager),
       _network_manager(network_manager),
       _meta(meta),
       _reporter(reporter),
-      _me(me),
-      _transaction{transaction}
+      _self(self),
+      _transaction(transaction),
+      _files{files}
     {}
 
     void
@@ -41,9 +43,8 @@ namespace surface
       this->_network_manager.prepare(this->_transaction.network_id);
       this->_network_manager.to_directory(
         this->_transaction.network_id,
-        common::infinit::network_shelter(
-          this->_me.id,
-          this->_transaction.network_id));
+        common::infinit::network_shelter(this->_self.id,
+                                         this->_transaction.network_id));
 
       this->_network_manager.wait_portal(this->_transaction.network_id);
 
@@ -78,7 +79,7 @@ namespace surface
           ELLE_DEBUG("uploading %s for operation %s", file, this->name());
           std::list<std::string> arguments{
             "-n", this->_transaction.network_id,
-            "-u", this->_me.id,
+            "-u", this->_self.id,
             "--path", file,
             "--to",
           };
@@ -127,22 +128,18 @@ namespace surface
       this->_reporter.store(
         "transaction_create",
         {{MKey::status, "succeed"},
-         {MKey::value, this->_transaction_id},
-         {MKey::count, std::to_string(this->_files.size())},
-         {MKey::size, std::to_string(size)}});
+         {MKey::value, this->_transaction.id},
+         {MKey::count, std::to_string(this->_transaction.files_count)},
+         {MKey::size, std::to_string(this->_transaction.total_size)}});
 
-      this->_transaction_manager.update(
-        this->_transaction_id,
-        gap_TransactionStatus::gap_transaction_status_started);
+      this->_transaction_manager.update(this->_transaction.id,
+                                        plasma::TransactionStatus::started);
     }
 
     void
     PrepareTransactionOperation::_cancel()
     {
       ELLE_DEBUG("cancelling %s name", this->name());
-      this->_transaction_manager.update(
-        this->_transaction_id,
-        gap_TransactionStatus::gap_transaction_status_canceled);
     }
   }
 }
