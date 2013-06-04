@@ -1102,7 +1102,6 @@ def configure(cxx_toolkit = None,
     oracles = drake.Rule('oracle')
 
     oracle_sources = drake.nodes(
-      'oracle/disciples/creosus-server',
       'oracle/disciples/erginus-server',
       'oracle/disciples/longinus-server',
       'oracle/disciples/meta-server',
