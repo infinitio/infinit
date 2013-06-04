@@ -18,20 +18,17 @@ BASEDIR="${ROOTDIR}/../.."
 # ---------- entry point ------------------------------------------------------
 #
 
-uptodate "${OPENSSL_LIBRARIES}" ||
-(
+if ! uptodate "${OPENSSL_LIBRARIES}"; then
+
     rm -Rf "${BUILDDIR}/${OPENSSL_NAME}"
 
     download "${OPENSSL_SNAPSHOT}" "${OPENSSL_FINGERPRINT}" "${BUILDDIR}/${OPENSSL_TARBALL}"
 
-    cd "${BUILDDIR}" ||
-    die "unable to move to the build directory '${BUILDDIR}'"
+    cd "${BUILDDIR}" || die "unable to move to the build directory '${BUILDDIR}'"
 
-    tar xzf "${OPENSSL_TARBALL}" ||
-    die "unable to extract the tarball"
+    tar xzf "${OPENSSL_TARBALL}" || die "unable to extract the tarball"
 
-    cd "${OPENSSL_NAME}" ||
-    die "unable to enter the directory"
+    cd "${OPENSSL_NAME}" || die "unable to enter the directory"
 
     ./config                                                            \
         --prefix="${WORKDDIR}"                                          \
@@ -39,6 +36,5 @@ uptodate "${OPENSSL_LIBRARIES}" ||
         shared                                                          \
     || die "unable to configure"
 
-    make install ||
-    die "unable to build"
-)
+    make install || die "unable to build"
+fi
