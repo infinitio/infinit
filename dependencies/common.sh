@@ -70,7 +70,7 @@ download()
             die "unable to download the snapshot"
         fi
 
-        checksum=$(openssl dgst -md5 "${tarball}" | cut -d' ' -f2)
+        checksum=$(md5sum "${tarball}" | cut -d ' ' -f 1)
 
         test "${fingerprint}" = "${checksum}" &&
         return
