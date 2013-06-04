@@ -472,7 +472,7 @@ def configure(cxx_toolkit,
     'Program.hh',
     'common/common.cc',
     ) + [version]
-  infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources,
+  infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources + [reactor_lib],
                                  cxx_toolkit, cxx_config)
 
   # Hole
