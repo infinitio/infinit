@@ -86,21 +86,7 @@ namespace etoile
 
       // Wait for hole to be ready before enabling outside applications to
       // issue file system requests.
-      switch (depot::hole().state())
-        {
-        case hole::Hole::State::offline:
-          {
-            ELLE_DEBUG("hole state is offline");
-            depot::hole().ready_hook(&Portal::_run);
-            break;
-          }
-        case hole::Hole::State::online:
-          {
-            ELLE_DEBUG("hole state is already online");
-            Portal::_run();
-            break;
-          }
-        }
+      Portal::_run();
 
       return (elle::Status::Ok);
     }

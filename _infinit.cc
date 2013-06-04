@@ -182,8 +182,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   ELLE_DEBUG("INFINIT_HORIZON enable");
   horizon::hole(hole.get());
 #endif
-  ELLE_DEBUG("joining hole");
-  hole->join();
 
   // initialize the Etoile library.
   if (etoile::Etoile::Initialize() == elle::Status::Error)
@@ -220,7 +218,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   if (agent::Agent::Clean() == elle::Status::Error)
     throw elle::Exception("unable to clean Agent");
 
-  hole->leave();
   hole.reset(nullptr);
 
   // clean Infinit.

@@ -236,23 +236,27 @@ namespace surface
     }
 
     void
-    NotificationManager::network_update_callback(NetworkUpdateNotificationCallback const& cb)
+    NotificationManager::network_update_callback(
+      NetworkUpdateNotificationCallback const& cb)
     {
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<NetworkUpdateNotification const&>(notif));
       };
 
-      this->_notification_handlers[NotificationType::network_update].push_back(fn);
+      using Type = NotificationType;
+      this->_notification_handlers[Type::network_update].push_back(fn);
     }
 
     void
-    NotificationManager::transaction_callback(TransactionNotificationCallback const& cb)
+    NotificationManager::transaction_callback(
+      TransactionNotificationCallback const& cb)
     {
       auto fn = [cb] (Notification const& notif, bool is_new) -> void {
         return cb(static_cast<TransactionNotification const&>(notif), is_new);
       };
 
-      this->_notification_handlers[NotificationType::transaction].push_back(fn);
+      using Type = NotificationType;
+      this->_notification_handlers[Type::transaction].push_back(fn);
     }
 
     void
@@ -262,17 +266,20 @@ namespace surface
         return cb(static_cast<MessageNotification const&>(notif));
       };
 
-      this->_notification_handlers[NotificationType::message].push_back(fn);
+      using Type = NotificationType;
+      this->_notification_handlers[Type::message].push_back(fn);
     }
 
     void
-    NotificationManager::user_status_callback(UserStatusNotificationCallback const& cb)
+    NotificationManager::user_status_callback(
+      UserStatusNotificationCallback const& cb)
     {
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<UserStatusNotification const&>(notif));
       };
 
-      this->_notification_handlers[NotificationType::user_status].push_back(fn);
+      using Type = NotificationType;
+      this->_notification_handlers[Type::user_status].push_back(fn);
     }
 
     void

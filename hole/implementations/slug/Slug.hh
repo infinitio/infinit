@@ -24,7 +24,8 @@ namespace hole
 
       /// Slug hole implementation.
       class Slug:
-        public Hole
+        public Hole,
+        public elle::Printable
       {
       /*-------------.
       | Construction |
@@ -55,17 +56,6 @@ namespace hole
         };
       private:
         State _state;
-
-      /*------------.
-      | Join, leave |
-      `------------*/
-      protected:
-        virtual
-        void
-        _join();
-        virtual
-        void
-        _leave();
 
       /*---------------.
       | Implementation |
@@ -104,6 +94,7 @@ namespace hole
         std::vector<Host*> hosts();
       private:
         friend class Host;
+        /// XXX We need to stop storing naked pointer.
         typedef std::unordered_map<elle::network::Locus, Host*> Hosts;
         void
         _host_register(Host* host);
@@ -114,7 +105,10 @@ namespace hole
                  elle::network::Locus const& locus, bool opener);
         void
         _connect_try(elle::network::Locus const& locus);
-        void _remove(Host* host);
+        void
+        _remove(Host* host);
+        void
+        _remove(elle::network::Locus loc);
         Hosts _hosts;
         Hosts _pending;
 
@@ -136,6 +130,16 @@ namespace hole
       public:
         void portal_connect(std::string const& host, int port);
         bool portal_wait(std::string const& host, int port);
+
+
+      /*----------.
+      | Printable |
+      `----------*/
+
+      public:
+        virtual
+        void
+        print(std::ostream& stream) const;
 
       /*---------.
       | Dumpable |

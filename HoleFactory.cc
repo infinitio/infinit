@@ -3,6 +3,7 @@
 #include <elle/network/Interface.hh>
 
 #include <reactor/network/nat.hh>
+#include <reactor/network/resolve.hh>
 
 #include <agent/Agent.hh>
 
@@ -20,6 +21,7 @@
 
 #include <plasma/meta/Client.hh>
 
+#include <Heartbeat.hh>
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Portal.hh>
@@ -121,25 +123,39 @@ namespace infinit
               (elle::sprintf("invalid transport protocol: %s", protocol_str));
 
           // Punch NAT.
+          auto& sched = *reactor::Scheduler::scheduler();
           std::unique_ptr<reactor::network::UDPSocket> socket;
           boost::asio::ip::udp::endpoint pub;
           try
           {
-            reactor::nat::NAT nat(*reactor::Scheduler::scheduler());
+            reactor::nat::NAT nat(sched);
 
-            auto pokey = nat.punch(common::longinus::host(),
-                                   common::longinus::port(),
-                                   port);
+            auto host = reactor::network::resolve_udp(sched,
+                                                      common::longinus::host(),
+                                                      std::to_string(3478));
+            auto breach = nat.map(host);
 
-            ELLE_TRACE("punch done: %s", pokey.public_endpoint());
-            socket = std::move(pokey.handle());
-            pub = pokey.public_endpoint();
+            using reactor::nat::Breach;
+
+            if (breach.nat_behavior() == Breach::NatBehavior::EndpointIndependentMapping ||
+                breach.nat_behavior() == Breach::NatBehavior::DirectMapping)
+            {
+              ELLE_TRACE("breach done: %s", breach.mapped_endpoint());
+              socket = std::move(breach.take_handle());
+              pub = breach.mapped_endpoint();
+            }
+            else
+              throw elle::Exception{"invalid mapping behavior"};
           }
           catch (elle::Exception const& e)
           {
             // Nat punching failed
             ELLE_TRACE("punch failed: %s", e.what());
           }
+
+          // If the punch succeed, we start the heartbite thread.
+          if (socket)
+            start_heartbeat(*socket);
 
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,
@@ -169,9 +185,10 @@ namespace infinit
                   }
                 ELLE_DEBUG("addresses: %s", addresses);
               std::vector<std::pair<std::string, uint16_t>> public_addresses;
-              public_addresses.push_back(std::pair<std::string, uint16_t>
-                                         (pub.address().to_string(),
-                                          pub.port()));
+              if (pub.port() != 0)
+                public_addresses.push_back(std::pair<std::string, uint16_t>
+                                           (pub.address().to_string(),
+                                            pub.port()));
               client.token(agent::Agent::meta_token);
 
               ELLE_DEBUG("public_addresses: %s", public_addresses);

@@ -9,7 +9,6 @@
 
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/udp-socket.hh>
-#include <reactor/network/udt-server.hh>
 #include <reactor/network/udt-rdv-server.hh>
 
 #include <hole/Exception.hh>
@@ -59,9 +58,8 @@ namespace hole
             for (elle::network::Locus const& locus: this->members())
             {
               auto action = [&, locus] { this->_connect_try(locus); };
-              auto thread = new reactor::Thread
-                (sched, elle::sprintf("connect %s", locus), action);
-              connections.push_back(thread);
+              auto name = elle::sprintf("connect %s", locus);
+              connections.push_back(new reactor::Thread{sched, name, action});
             }
             for (reactor::Thread* t: connections)
             {
@@ -78,22 +76,22 @@ namespace hole
             // in the network.  Thus, it can be implicitly considered
             // as authenticated in a network composed of itself alone.
             this->_state = State::attached;
-
-            // Set the hole as ready to receive requests.
-            this->ready();
           }
 
           if (socket)
           {
+            // XXX: for now rebinding a socket is only available with UDT.
+            ELLE_ASSERT_EQ(this->protocol(), reactor::network::Protocol::udt);
             this->_server =
               elle::make_unique<reactor::network::UDTRendezVousServer>(
-                *reactor::Scheduler::scheduler(), std::move(socket));
+                  *reactor::Scheduler::scheduler(), std::move(socket));
           }
           else
           {
-            this->_server =
-              elle::make_unique<reactor::network::UDTRendezVousServer>(
-                *reactor::Scheduler::scheduler());
+            using reactor::network::Server;
+            auto& sched = *reactor::Scheduler::scheduler();
+
+            this->_server = Server::create(this->protocol(), sched);
             this->_server->listen(0);
           }
           this->_port = this->_server->port();
@@ -105,7 +103,6 @@ namespace hole
             elle::network::Host host(elle::network::Host::TypeAny);
             try
             {
-              _server->listen(this->_port);
               // In case we asked for a random port to be picked up (by using 0)
               // or hole punching happened, retrieve the actual listening port.
               ELLE_ASSERT(this->_port != 0);
@@ -142,23 +139,6 @@ namespace hole
         // acceptor.
         if (_acceptor)
           _acceptor->terminate_now();
-      }
-
-      /*------------.
-      | Join, leave |
-      `------------*/
-
-      void
-      Slug::_join()
-      {
-        // this->_machine.reset(new Machine(*this, this->_port,
-        //                                  this->_connection_timeout));
-      }
-
-      void
-      Slug::_leave()
-      {
-        // this->_machine.reset(nullptr);
       }
 
       void
@@ -1103,7 +1083,7 @@ namespace hole
       void
       Slug::_connect(elle::network::Locus const& locus)
       {
-        ELLE_TRACE_SCOPE("try connecting to %s", locus);
+        ELLE_TRACE_SCOPE("try connecting to %s(%s)", this->protocol(), locus);
         std::string hostname;
         locus.host.Convert(hostname);
         std::unique_ptr<reactor::network::Socket> socket(
@@ -1118,6 +1098,7 @@ namespace hole
       Slug::_connect(std::unique_ptr<reactor::network::Socket> socket,
                         elle::network::Locus const& locus, bool opener)
       {
+        (void)opener;
         // Beware: do not yield between the host creation and the
         // authentication, or we might face a race condition.
         Host* host = new Host(*this, locus, std::move(socket));
@@ -1125,10 +1106,7 @@ namespace hole
         ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
         auto loci = host->authenticate(this->passport());
         if (this->_state == State::detached)
-        {
           this->_state = State::attached;
-          this->ready();
-        }
         // XXX Propagation disabled.
         // for (auto locus: loci)
         //   if (_hosts.find(locus) == _hosts.end())
@@ -1152,23 +1130,38 @@ namespace hole
       Slug::_connect_try(elle::network::Locus const& locus)
       {
         try
-          {
-            _connect(locus);
-          }
-        catch (reactor::network::Exception& err)
-          {
-            ELLE_TRACE("ignore host %s: %s", locus, err.what());
-          }
+        {
+          _connect(locus);
+        }
+      catch (reactor::network::Exception& err)
+        {
+          ELLE_TRACE("ignore host %s: %s", locus, err.what());
+        }
+      }
+
+      void
+      Slug::_remove(elle::network::Locus locus)
+      {
+        ELLE_LOG("%s: remove host at %s", *this, locus);
+        auto it_host = this->_hosts.find(locus);
+        // If the Host didn't took care of erasing himself from the list:
+        if (it_host != end(this->_hosts))
+        {
+          auto host_ptr = it_host->second;
+          this->_hosts.erase(it_host);
+
+          // delete the host if it's still in the map.
+          // This line can yield, so we need to make sure that the host is
+          // erased from the list before calling it's dtor.
+          delete host_ptr;
+        }
       }
 
       void
       Slug::_remove(Host* host)
       {
-        elle::network::Locus locus(host->locus());
-        assert(this->_hosts.find(locus) != this->_hosts.end());
         ELLE_LOG("%s: remove host: %s", *this, *host);
-        this->_hosts.erase(locus);
-        delete host;
+        this->_remove(host->locus());
       }
 
       /*-------.
@@ -1277,18 +1270,20 @@ namespace hole
               ELLE_DEBUG("passport: %s", pass);
 
               // We compare each passport with the one of the host.
-              // If there is only one host with this passport, n shall be 1
-              int n = 0;
+              // If there is only one host with this passport.
+              int i = 0;
               for (auto const& p: _hosts)
               {
-                ELLE_DEBUG("value of n: %d", n);
                 if (p.second->remote_passport() == pass)
-                  n++;
-                // Stop iteration if we know that the host is forbidden.
-                if (n > 1)
-                  goto error;
+                {
+                  ELLE_DEBUG("already have this passport");
+                  i++;
+                }
               }
-              ELLE_DEBUG("%s found", locus);
+              if (i > 1)
+                goto error;
+
+              ELLE_DEBUG("new connection from %s", locus);
               return true;
             }
             else
@@ -1300,8 +1295,20 @@ namespace hole
         error:
         ELLE_DEBUG("out of portal_wait(%s, %s) (%s)",
                    host, port, this->_hosts.size())
-          this->_hosts.erase(locus);
+          this->_remove(locus);
         return false;
+      }
+
+      /*---------.
+      | Dumpable |
+      `---------*/
+      void
+      Slug::print(std::ostream& stream) const
+      {
+        stream << "Slug(";
+        if (this->_server)
+          stream << this->_server->port();
+        stream << ")";
       }
 
       /*---------.

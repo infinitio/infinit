@@ -642,6 +642,44 @@ class Disconnect(Page):
 
     action = self.disconnect
 
+class Connection(Page):
+    """
+    POST {
+              'user_id': the user id.
+              'user_token': the user token
+         }
+         -> {
+                 'success': True
+            }
+    """
+
+    __pattern__ = "/user/connected"
+
+    _validators = [
+        ('user_id', regexp.UserIDValidator),
+    ]
+
+    def POST(self):
+        if self.data['admin_token'] != pythia.constants.ADMIN_TOKEN:
+            return self.error(error.UNKNOWN, "You're not admin")
+
+        user_id = database.ObjectId(self.data['user_id'])
+        token = self.data['user_token']
+
+        already_connected = database.users().find_one({"_id": user_id}, field =('connected', ))['connected']
+
+        if not already_connected:
+            database.users().update({"_id": user_id}, {"$set": {"connected": True}})
+            self.notifySwaggers(
+                notifier.USER_STATUS,
+                {
+                    'status': meta.page.CONNECTED, #Disconnected.
+                },
+                user_id = user_id,
+            )
+
+        return self.success()
+
 class Logout(Page):
     """
     GET

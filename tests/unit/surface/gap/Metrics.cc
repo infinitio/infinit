@@ -37,7 +37,6 @@ int main(void)
   }
 
   {
-
     using MKey = elle::metrics::Key;
 
     // // Initialize server.
@@ -57,76 +56,76 @@ int main(void)
     reporter.store("user_password");
     reporter.store("user_code");
 
-    reporter.store("user_register",{{MKey::status,"attempt"}});
-    reporter.store("user_register",{{MKey::status,"succeed"}});
-    reporter.store("user_register",{{MKey::status,"fail"}});
-    reporter.store("user_login",{{MKey::status,"attempt"}});
-    reporter.store("user_login",{{MKey::status,"succeed"}});
-    reporter.store("user_login",{{MKey::status,"fail"}});
-    reporter.store("user_logout",{{MKey::status,"attempt"}});
-    reporter.store("user_logout",{{MKey::status,"succeed"}});
-    reporter.store("user_logout",{{MKey::status,"fail"}});
+    reporter.store("user_register_attempt");
+    reporter.store("user_register_succeed");
+    reporter.store("user_register_fail");
+    reporter.store("user_login_attempt");
+    reporter.store("user_login_succeed");
+    reporter.store("user_login_fail");
+    reporter.store("user_logout_attempt");
+    reporter.store("user_logout_succeed");
+    reporter.store("user_logout_fail");
 
-    reporter.store("network_create",{{MKey::status,"attempt"}});
-    reporter.store("network_create",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("network_create",{{MKey::status,"fail"}});
-    reporter.store("network_delete",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
-    reporter.store("network_delete",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("network_delete",{{MKey::status,"fail"}, {MKey::value,"31231"}});
-    reporter.store("network_adduser",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
-    reporter.store("network_adduser",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("network_adduser",{{MKey::status,"fail"}, {MKey::value,"31231"}});
-    reporter.store("network_removeuser",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
-    reporter.store("network_removeuser",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("network_removeuser",{{MKey::status,"fail"}, {MKey::value,"31231"}});
-    reporter.store("transaction_create",{{MKey::status,"attempt"}, {MKey::size,"31231"}, {MKey::count,"31231"}});
-    reporter.store("transaction_create",{{MKey::status,"succeed"}, {MKey::value,"31231"}, {MKey::size,"31231"}, {MKey::count,"31231"}});
-    reporter.store("transaction_create",{{MKey::status,"fail"}, {MKey::size,"31231"}, {MKey::count,"31231"}});
-    reporter.store("transaction_ready",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
-    reporter.store("transaction_ready",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("transaction_ready",{{MKey::status,"fail"}, {MKey::value,"31231"}});
-    reporter.store("transaction_accept",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
-    reporter.store("transaction_accept",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("transaction_accept",{{MKey::status,"fail"}, {MKey::value,"31231"}});
-    reporter.store("transaction_start",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
-    reporter.store("transaction_start",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("transaction_start",{{MKey::status,"fail"}, {MKey::value,"31231"}});
-    reporter.store("transaction_finish",{{MKey::status,"attempt"}, {MKey::value,"31231"}});
-    reporter.store("transaction_finish",{{MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("transaction_finish",{{MKey::status,"fail"}, {MKey::value,"31231"}});
-    reporter.store("transaction_cancel",{{MKey::author,"sender"}, {MKey::status,"attempt"}, {MKey::value,"31231"}});
-    reporter.store("transaction_cancel",{{MKey::author,"sender"}, {MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("transaction_cancel",{{MKey::author,"sender"}, {MKey::status,"fail"}, {MKey::value,"31231"}});
-    reporter.store("transaction_cancel",{{MKey::author,"recipient"}, {MKey::status,"attempt"}, {MKey::value,"31231"}});
-    reporter.store("transaction_cancel",{{MKey::author,"recipient"}, {MKey::status,"succeed"}, {MKey::value,"31231"}});
-    reporter.store("transaction_cancel",{{MKey::author,"recipient"}, {MKey::status,"fail"}, {MKey::value,"31231"}});
-    reporter.store("connect_google",{{MKey::status,"attempt"}});
-    reporter.store("connect_google",{{MKey::status,"succeed"}});
-    reporter.store("connect_google",{{MKey::status,"fail"}});
-    reporter.store("connect_facebook",{{MKey::status,"attempt"}});
-    reporter.store("connect_facebook",{{MKey::status,"succeed"}});
-    reporter.store("connect_facebook",{{MKey::status,"fail"}});
-    reporter.store("login_google",{{MKey::status,"attempt"}});
-    reporter.store("login_google",{{MKey::status,"succeed"}});
-    reporter.store("login_google",{{MKey::status,"fail"}});
-    reporter.store("login_facebook",{{MKey::status,"attempt"}});
-    reporter.store("login_facebook",{{MKey::status,"succeed"}});
-    reporter.store("login_facebook",{{MKey::status,"fail"}});
-    reporter.store("import_google",{{MKey::status,"attempt"}});
-    reporter.store("import_google",{{MKey::status,"succeed"}});
-    reporter.store("import_google",{{MKey::status,"fail"}});
-    reporter.store("import_facebook",{{MKey::status,"attempt"}});
-    reporter.store("import_facebook",{{MKey::status,"succeed"}});
-    reporter.store("import_facebook",{{MKey::status,"fail"}});
-    reporter.store("google_invite",{{MKey::status,"attempt"}});
-    reporter.store("google_invite",{{MKey::status,"succeed"}});
-    reporter.store("google_invite",{{MKey::status,"fail"}});
-    reporter.store("facebook_invite",{{MKey::status,"attempt"}});
-    reporter.store("facebook_invite",{{MKey::status,"succeed"}});
-    reporter.store("facebook_invite",{{MKey::status,"fail"}});
-    reporter.store("google_share",{{MKey::status,"attempt"}});
-    reporter.store("google_share",{{MKey::status,"succeed"}});
-    reporter.store("google_share",{{MKey::status,"fail"}});
+    reporter.store("network_create_attempt");
+    reporter.store("network_create_succeed", {{MKey::value,"31231"}});
+    reporter.store("network_create_fail");
+    reporter.store("network_delete_attempt", {{MKey::value,"31231"}});
+    reporter.store("network_delete_succeed", {{MKey::value,"31231"}});
+    reporter.store("network_delete_fail", {{MKey::value,"31231"}});
+    reporter.store("network_adduser_attempt", {{MKey::value,"31231"}});
+    reporter.store("network_adduser_succeed", {{MKey::value,"31231"}});
+    reporter.store("network_adduser_fail",  {{MKey::value,"31231"}});
+    reporter.store("network_removeuser_attempt", {{MKey::value,"31231"}});
+    reporter.store("network_removeuser_succeed", {{MKey::value,"31231"}});
+    reporter.store("network_removeuser_fail", {{MKey::value,"31231"}});
+    reporter.store("transaction_create_attempt", {{MKey::size,"31231"}, {MKey::count,"31231"}});
+    reporter.store("transaction_create_succeed", {{MKey::value,"31231"}, {MKey::size,"31231"}, {MKey::count,"31231"}});
+    reporter.store("transaction_create_fail", {{MKey::size,"31231"}, {MKey::count,"31231"}});
+    reporter.store("transaction_ready_attempt", {{MKey::value,"31231"}});
+    reporter.store("transaction_ready_succeed", {{MKey::value,"31231"}});
+    reporter.store("transaction_ready_fail", {{MKey::value,"31231"}});
+    reporter.store("transaction_accept_attempt", {{MKey::value,"31231"}});
+    reporter.store("transaction_accept_succeed", {{MKey::value,"31231"}});
+    reporter.store("transaction_accept_fail", {{MKey::value,"31231"}});
+    reporter.store("transaction_start_attempt", {{MKey::value,"31231"}});
+    reporter.store("transaction_start_succeed", {{MKey::value,"31231"}});
+    reporter.store("transaction_start_fail", {{MKey::value,"31231"}});
+    reporter.store("transaction_finish_attempt", {{MKey::value,"31231"}});
+    reporter.store("transaction_finish_succeed", {{MKey::value,"31231"}});
+    reporter.store("transaction_finish_fail", {{MKey::value,"31231"}});
+    reporter.store("transaction_cancel_attempt",{{MKey::author,"sender"}, {MKey::status,"attempt"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel_succeed",{{MKey::author,"sender"}, {MKey::status,"succeed"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel_fail",{{MKey::author,"sender"}, {MKey::status,"fail"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel_attempt",{{MKey::author,"recipient"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel_succeed",{{MKey::author,"recipient"}, {MKey::value,"31231"}});
+    reporter.store("transaction_cancel_fail",{{MKey::author,"recipient"}, {MKey::value,"31231"}});
+    reporter.store("connect_google_attempt");
+    reporter.store("connect_google_succeed");
+    reporter.store("connect_google_fail");
+    reporter.store("connect_facebook_attempt");
+    reporter.store("connect_facebook_succeed");
+    reporter.store("connect_facebook_fail");
+    reporter.store("login_google_attempt");
+    reporter.store("login_google_succeed");
+    reporter.store("login_google_fail");
+    reporter.store("login_facebook_attempt");
+    reporter.store("login_facebook_succeed");
+    reporter.store("login_facebook_fail");
+    reporter.store("import_google_attempt");
+    reporter.store("import_google_succeed");
+    reporter.store("import_google_fail");
+    reporter.store("import_facebook_attempt");
+    reporter.store("import_facebook_succeed");
+    reporter.store("import_facebook_fail");
+    reporter.store("google_invite_attempt");
+    reporter.store("google_invite_succeed");
+    reporter.store("google_invite_fail");
+    reporter.store("facebook_invite_attempt");
+    reporter.store("facebook_invite_succeed");
+    reporter.store("facebook_invite_fail");
+    reporter.store("google_share_attempt");
+    reporter.store("google_share_succeed");
+    reporter.store("google_share_fail");
     reporter.store("drop_self");
     reporter.store("drop_favorite");
     reporter.store("drop_bar");
@@ -176,13 +175,13 @@ int main(void)
     reporter.store("searchbar_search");
     reporter.store("select_user", {{MKey::input, "click"}});
     reporter.store("searchbar_share", {{MKey::input, "click"}});
-    reporter.store("transaction_create", {{MKey::status, "attempt"}});
+    reporter.store("transaction_create_attempt");
 
     reporter.store("drop_bar");
     reporter.store("searchbar_search");
     reporter.store("select_user", {{MKey::input, "keyboard"}});
     reporter.store("searchbar_share", {{MKey::input, "keyboard"}});
-    reporter.store("transaction_create", {{MKey::status, "attempt"}});
+    reporter.store("transaction_create_attempt");
 
 // Share to Social Contact
 
@@ -190,25 +189,25 @@ int main(void)
     reporter.store("searchbar_search");
     reporter.store("select_social", {{MKey::input, "click"}});
     reporter.store("searchbar_share", {{MKey::input, "click"}});
-    reporter.store("transaction_create", {{MKey::status, "attempt"}});
+    reporter.store("transaction_create_attempt");
 
     reporter.store("drop_bar");
     reporter.store("searchbar_search");
     reporter.store("select_social", {{MKey::input, "keyboard"}});
     reporter.store("searchbar_share", {{MKey::input, "keyboard"}});
-    reporter.store("transaction_create", {{MKey::status, "attempt"}});
+    reporter.store("transaction_create_attempt");
 
 // Share to Email Address
 
     reporter.store("drop_bar");
     reporter.store("searchbar_search");
     reporter.store("searchbar_share", {{MKey::input, "click"}});
-    reporter.store("transaction_create", {{MKey::status, "attempt"}});
+    reporter.store("transaction_create_attempt");
 
     reporter.store("drop_bar");
     reporter.store("searchbar_search");
     reporter.store("searchbar_share", {{MKey::input, "keyboard"}});
-    reporter.store("transaction_create", {{MKey::status, "attempt"}});
+    reporter.store("transaction_create_attempt");
 
 // Share to Other Contact
 
@@ -216,13 +215,13 @@ int main(void)
     reporter.store("searchbar_search");
     reporter.store("select_other", {{MKey::input, "click"}});
     reporter.store("searchbar_share", {{MKey::input, "click"}});
-    reporter.store("transaction_create", {{MKey::status, "attempt"}});
+    reporter.store("transaction_create_attempt");
 
     reporter.store("drop_bar");
     reporter.store("searchbar_search");
     reporter.store("select_other", {{MKey::input, "keyboard"}});
     reporter.store("searchbar_share", {{MKey::input, "keyboard"}});
-    reporter.store("transaction_create", {{MKey::status, "attempt"}});
+    reporter.store("transaction_create_attempt");
 
 // Sign Up
 
@@ -232,30 +231,30 @@ int main(void)
     reporter.store("user_email");
     reporter.store("user_password");
     reporter.store("user_code");
-    reporter.store("user_register", {{MKey::status, "succeed"}});
+    reporter.store("user_register_succeed");
 
 // Cancel via Notifications
 
     reporter.store("panel_open", {{MKey::panel, "transfer"}});
     reporter.store("panel_cancel", {{MKey::panel, "transfer"}});
-    reporter.store("transaction_cancel", {{MKey::status, "attempt"}, {MKey::author, "sender"}});
+    reporter.store("transaction_cancel_attempt", {{MKey::author, "sender"}});
 
     reporter.store("panel_open", {{MKey::panel, "notification"}});
     reporter.store("panel_cancel", {{MKey::panel, "notification"}, {MKey::author, "recipient"}});
-    reporter.store("transaction_cancel", {{MKey::status, "attempt"}, {MKey::author, "recipient"}});
+    reporter.store("transaction_cancel_attempt", {{MKey::author, "recipient"}});
 
 // Core Funnel
 
-    reporter.store("transaction_create", {{MKey::status, "succeed"}});
+    reporter.store("transaction_create_succeed");
     reporter.store("panel_accept", {{MKey::panel, "transfer"}});
-    reporter.store("transaction_accept", {{MKey::status, "attempt"}});
-    reporter.store("transaction_accept", {{MKey::status, "succeed"}});
-    reporter.store("transaction_prepare", {{MKey::status, "attempt"}});
-    reporter.store("transaction_prepare", {{MKey::status, "succeed"}});
-    reporter.store("transaction_start", {{MKey::status, "attempt"}});
-    reporter.store("transaction_start", {{MKey::status, "succeed"}});
-    reporter.store("transaction_finish", {{MKey::status, "attempt"}});
-    reporter.store("transaction_finish", {{MKey::status, "succeed"}});
+    reporter.store("transaction_accept_attempt");
+    reporter.store("transaction_accept_succeed");
+    reporter.store("transaction_prepare_attempt");
+    reporter.store("transaction_prepare_succeed");
+    reporter.store("transaction_start_attempt");
+    reporter.store("transaction_start_succeed");
+    reporter.store("transaction_finish_attempt");
+    reporter.store("transaction_finish_succeed");
   }
 
   elle::printf("Test done.\n");

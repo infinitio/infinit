@@ -404,6 +404,10 @@ extern "C" {
   void
   gap_send_file_crash_report(char const* module,
                              char const* filename);
+
+  // Generated file.
+  #include <surface/gap/gen_metrics.h>
+
 # ifdef __cplusplus
 } // ! extern "C"
 # endif

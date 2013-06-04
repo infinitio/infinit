@@ -252,6 +252,10 @@ Writing contructors
 
  3. Use of c++11 delegate constructor facilities is encouraged.
 
+ 4. Classes declaration must explicitly show if the object is copyable or not.
+
+ 4. Movability is encouraged over copyability.
+
 ### Default constructible types
 
 Only if a default value for that object makes sense.
@@ -273,12 +277,35 @@ While a non copyable one
   A& operator =(A const& other) = delete;
 };</code>
 
+If you declare a type moveable, you shall not explicitely delete copy ctor and
+assignment, as it's the default behavior.
+
 Using `boost::noncopyable` (when interoperability with boost is required) do
 not remove the need to explicitly specify copyable constructors.
 
 ### Movable types
 
-They follow the same rules as copyable types.
+Making a type movable implicitly tag the copy constructor as `deleted`, as well
+as copy assignment and move assignment operators. However, you should always be
+clear on your intent. Movability can be an optimization of the copy, or express
+precisely the opposite: the class is not copyable.
+
+A fully movable class should look like:
+<code lang="c++">struct A {
+  A(A&& other);
+  A& operator =(A&& other);
+  // The class is not copyable by default
+  // A(A const& other) = delete;
+  // A& operator =(A const& other) = delete;
+};</code>
+
+While a non movable one
+<code lang="c++">struct A {
+  A(A&& other) = delete;
+  A& operator =(A&& other) = delete;
+};</code>
+
+**Note:** A copyable object support the move syntax.
 
 **Note:** After beeing moved, an instance should not be used anymore, and any
 call except calling the destructor goes in the land of "undefined behavior".
@@ -308,8 +335,38 @@ should be "not initialized" but "yet destructible".
 
 ### General constructors
 
-Single argument constructors should be explicit or documented as implicit on
-purpose.
+Constructors that have one argument and/or any number of optional arguments
+should be `explicit` or documented as implicit on purpose.
+
+### Summary
+
+Any class of type T should have the following constructors and assignment
+operators:
+
+    T(T const& other)[ = default/delete ];
+    T& operator =(T const& other)[ = default/delete];
+
+and/or
+
+    T(T&& other)[ = default/delete]
+    T& operator =(T&& other)[ = default/delete]
+
+Any (possible) single argument constructor should be explicit:
+
+<code lang="c++">
+    explicit
+    T(int i);
+
+    explicit
+    T(int i, int j = 0);
+
+    explicit
+    T(int i = 12, int j = 0);
+
+    // or documented as implicit:
+    /// Implicit construction from intptr_t;
+    T(intptr_t ptr);
+</code>
 
 XXX Throwing exception from a destructor
 ----------------------------------------
@@ -369,10 +426,10 @@ You should never use post-increment or post-decrement operators.
 ### Exceptions
 
 Sometimes, the copy of the operator is wanted, and simple enough to be
-understood. You should prefer the cleanest way to implement you algorithm,
-rather than use more variables just to fit that rule.
+understood. You should prefer the cleanest way to implement your algorithm,
+rather than using more variables just to fit that rule.
 
-Be aware that in few case, pre-increment operators forbid some CPU
+Be aware that in few cases, pre-increment operators forbid some CPU
 optimisations when the result of the incrementation is needed before another
 load/store operation.
 

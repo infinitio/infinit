@@ -174,7 +174,7 @@ def deployPackage(package):
     if package.kind == 'Archive':
         deployTarball(package)
     else:
-        os.system('scp "%s" oracle@development.infinit.io:www/infinit.im/downloads' % package.path)
+        os.system('scp "%s" oracle@development.infinit.io:www/infinit/downloads' % package.path)
 
 def getFarmBuild(infos, args):
     if args.last:

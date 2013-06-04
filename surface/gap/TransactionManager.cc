@@ -291,9 +291,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_accept");
 
-      this->_reporter.store("transaction_accept",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, transaction.id}});
+      this->_reporter.store("transaction_accept_succeed",
+                            {{MKey::value, transaction.id}});
       this->_network_manager.prepare(transaction.network_id);
       this->_network_manager.to_directory(
         transaction.network_id,
@@ -343,9 +342,10 @@ namespace surface
                {MKey::author, author},
                {MKey::step, elle::sprint(transaction.status)},
                {MKey::value, transaction.id}});
-          }});
+          }
+        }
+      );
     }
-
 
     TransactionManager::TransactionsMap const&
     TransactionManager::all()

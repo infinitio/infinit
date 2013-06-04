@@ -238,7 +238,7 @@ SERIALIZE_RESPONSE(plasma::meta::NetworkResponse, ar, res)
       ar & named("group_address", res.group_address);
       ar & named("descriptor", res.descriptor);
     }
-  catch (std::bad_cast const&)
+  catch (std::exception const&)
     {
       if (Archive::mode != ArchiveMode::Input)
           throw;

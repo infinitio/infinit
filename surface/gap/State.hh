@@ -60,10 +60,9 @@ namespace surface
       ///- Servers -------------------------------------------------------------
       plasma::meta::Client _meta;
 
-      elle::metrics::Reporter _reporter;
-      elle::metrics::Reporter _google_reporter;
+      ELLE_ATTRIBUTE_X(elle::metrics::Reporter, reporter);
+      ELLE_ATTRIBUTE(elle::metrics::Reporter, google_reporter);
 
-    public:
       ///- Construction --------------------------------------------------------
     public:
       State();

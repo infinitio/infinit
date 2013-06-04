@@ -32,8 +32,8 @@ namespace plasma
     int                   total_size;
     int                   is_directory;
     TransactionStatus     status;
-    uint64_t              timestamp;
     bool                  accepted;
+    double                timestamp;
   };
 
   std::ostream&

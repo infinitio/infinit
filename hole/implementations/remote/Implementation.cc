@@ -21,24 +21,19 @@ namespace hole
                                      elle::network::Locus const& server):
         Hole(storage, passport, authority),
         _server_locus(server)
-      {}
-
-      /*-----.
-      | Hole |
-      `-----*/
-
-      void
-      Implementation::_join()
       {
         Remote::Computer = new Machine(*this);
         Remote::Computer->Launch();
       }
 
-      void
-      Implementation::_leave()
+      Implementation::~Implementation()
       {
         delete Remote::Computer;
       }
+
+      /*-----.
+      | Hole |
+      `-----*/
 
       void
       Implementation::_push(const nucleus::proton::Address& address,

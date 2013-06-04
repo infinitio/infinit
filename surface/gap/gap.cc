@@ -1003,7 +1003,7 @@ extern "C"
       {
         auto const& transaction =
           __TO_CPP(state)->transaction_manager().one(transaction_id);
-        return transaction.timestamp / 1000.0;
+        return transaction.timestamp;
       }
     CATCH_ALL(transaction_timestamp);
     (void) ret;
@@ -1249,5 +1249,8 @@ extern "C"
                         elle::Backtrace::current(),
                         file_content);
   }
+
+  // Generated file.
+  #include <surface/gap/gen_metrics.hh>
 
 } // ! extern "C"

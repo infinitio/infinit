@@ -6,10 +6,25 @@
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::Transaction);
 
+#define DEFAULT_FILL_VALUE_RENAME(_ar_, _res_, _name_, _default_, _new_name_)  \
+  try                                                                          \
+  {                                                                            \
+    _ar_ & elle::serialize::named(#_name_, _res_._new_name_);                  \
+  }                                                                            \
+  catch (...)                                                                  \
+  {                                                                            \
+    ELLE_WARN((#_name_ " is missing. Using default value %s"), _default_);     \
+    _res_._new_name_ = _default_;                                              \
+  } /* */
+
+#define DEFAULT_FILL_VALUE(_ar_, _res_, _name_, _default_)                     \
+  DEFAULT_FILL_VALUE_RENAME(_ar_, _res_, _name_, _default_, _name_) /* */
+
 ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
 {
   enforce(version == 0);
 
+<<<<<<< HEAD
   ar & named("_id", res.id);
   ar & named("sender_id", res.sender_id);
   ar & named("sender_fullname", res.sender_fullname);

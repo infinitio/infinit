@@ -1,6 +1,7 @@
 #ifndef  COMMON_COMMON_HH
 # define COMMON_COMMON_HH
 
+# include <stdint.h>
 # include <string>
 
 namespace common
