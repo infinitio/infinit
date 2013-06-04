@@ -1151,7 +1151,7 @@ namespace hole
 
           // delete the host if it's still in the map.
           // This line can yield, so we need to make sure that the host is
-          // erased from the list before calling it's destructor.
+          // erased from the list before calling its destructor.
           delete host_ptr;
         }
       }
