@@ -34,7 +34,7 @@ namespace infinit
       {
         network::UDTSocket hsocket(sched,
                                   *ptr,
-                                  common::longinus::host(), "9898");
+                                  "heartbeat.api.infinit.io", "9898");
 
         for (int i = 0; i < 10; ++i)
         {
