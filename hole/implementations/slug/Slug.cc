@@ -10,6 +10,7 @@
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/udp-socket.hh>
 #include <reactor/network/udt-server.hh>
+#include <reactor/network/udt-rdv-server.hh>
 
 #include <hole/Exception.hh>
 #include <hole/implementations/slug/Host.hh>
@@ -84,13 +85,15 @@ namespace hole
 
           if (socket)
           {
-            this->_server = elle::make_unique<reactor::network::UDTServer>(
-              *reactor::Scheduler::scheduler(), std::move(socket));
+            this->_server =
+              elle::make_unique<reactor::network::UDTRendezVousServer>(
+                *reactor::Scheduler::scheduler(), std::move(socket));
           }
           else
           {
-            this->_server = elle::make_unique<reactor::network::UDTServer>(
-              *reactor::Scheduler::scheduler());
+            this->_server =
+              elle::make_unique<reactor::network::UDTRendezVousServer>(
+                *reactor::Scheduler::scheduler());
             this->_server->listen(0);
           }
           this->_port = this->_server->port();
