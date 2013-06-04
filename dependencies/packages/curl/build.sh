@@ -38,7 +38,7 @@ uptodate "${CURL_LIBRARIES}" ||
         --with-ssl="${WORKDIR}"                         \
         --enable-optimize                               \
         --enable-warnings                               \
-	--enable-threaded-resolver			\
+        --enable-threaded-resolver                      \
         --disable-ldap                                  \
         --disable-ldaps                                 \
         --disable-rtmp                                  \
