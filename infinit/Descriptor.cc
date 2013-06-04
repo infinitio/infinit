@@ -29,6 +29,10 @@ namespace infinit
   /*-------------.
   | Construction |
   `-------------*/
+  Descriptor::Descriptor(elle::io::Path const& path)
+  {
+    this->load(path);
+  }
 
   // XXX remove this constructor in favor of something like:
   //       template <typename T>
@@ -136,6 +140,16 @@ namespace infinit
       elle::io::Path{
         common::infinit::descriptor_path(identity.id(),
                                          this->_meta->identifier())});
+  }
+
+  void
+  Descriptor::store(elle::io::Path const& path) const
+  {
+    ELLE_TRACE_METHOD(path);
+
+    ELLE_ASSERT_NEQ(this->_meta, nullptr);
+
+    elle::concept::Fileable<>::store(elle::io::Path{path.string()});
   }
 
   void

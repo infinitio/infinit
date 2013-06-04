@@ -85,6 +85,7 @@ namespace infinit
     /// XXX[should we keep this?]
     Descriptor(elle::String const& user,
                elle::String const& network);
+    Descriptor(elle::io::Path const& path);
     /// Construct a descriptor from both its meta and data sections.
     Descriptor(descriptor::Meta meta,
                descriptor::Data data);
@@ -136,6 +137,8 @@ namespace infinit
          elle::String const& network);
     void
     store(lune::Identity const& identity) const;
+    void
+    store(elle::io::Path const& path) const;
     static
     void
     erase(elle::String const& user,
