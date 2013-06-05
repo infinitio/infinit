@@ -3,6 +3,8 @@
 
 # include <elle/Version.hh>
 # include <elle/Printable.hh>
+# include <elle/concept/Fileable.hh>
+# include <elle/concept/Uniquable.hh>
 # include <elle/serialize/fwd.hh>
 # include <elle/serialize/Format.hh>
 # include <elle/serialize/DynamicFormat.hh>
