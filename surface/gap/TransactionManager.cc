@@ -285,24 +285,23 @@ namespace surface
                              {MKey::value, transaction.id}});
       try
       {
-        this->_meta.accept_transaction(transaction.id,
-                                       this->_device.id,
-                                       this->_device.name);
 
         this->_network_manager.add_device(transaction.network_id,
                                           this->_device.id);
-        // XXX add to swaggers locally
-        //this->_user_manager.swaggers_dirty();
+        this->_network_manager.prepare(transaction.network_id);
+        this->_network_manager.to_directory(
+          transaction.network_id,
+          common::infinit::network_shelter(this->_self.id,
+                                           transaction.network_id));
+        this->_network_manager.wait_portal(transaction.network_id);
+        this->_meta.accept_transaction(transaction.id,
+                                       this->_device.id,
+                                       this->_device.name);
       }
       CATCH_FAILURE_TO_METRICS("transaction_accept");
 
       this->_reporter.store("transaction_accept_succeed",
                             {{MKey::value, transaction.id}});
-      this->_network_manager.prepare(transaction.network_id);
-      this->_network_manager.to_directory(
-        transaction.network_id,
-        common::infinit::network_shelter(this->_self.id,
-                                         transaction.network_id));
     }
 
     void
