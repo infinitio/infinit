@@ -68,6 +68,7 @@ class _State:
             'transaction_files_count',
             'transaction_total_size',
             'transaction_is_directory',
+            'transaction_accepted',
             'transaction_status',
 
             # Notifications

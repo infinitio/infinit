@@ -464,6 +464,7 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transaction_files_count", &gap_transaction_files_count);
   py::def("transaction_total_size", &gap_transaction_total_size);
   py::def("transaction_is_directory", &gap_transaction_is_directory);
+  py::def("transaction_accepted", &gap_transaction_accepted);
   py::def("transaction_status", &gap_transaction_status);
   py::def("transaction_message", &gap_transaction_message);
 

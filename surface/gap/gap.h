@@ -9,11 +9,12 @@ extern "C" {
 
 #include <surface/gap/status.hh>
 
-  typedef enum
-  {
-    gap_true = 1,
-    gap_false = 0,
-  } gap_Bool;
+  //typedef enum
+  //{
+  //  gap_true = 1,
+  //  gap_false = 0,
+  //} gap_Bool;
+  typedef int gap_Bool; // XXX Use the previous enum.
 
   /// gap_State is an opaque structure used in every calls.
   struct gap_State;
@@ -204,10 +205,13 @@ extern "C" {
   gap_transaction_timestamp(gap_State* state,
                             char const* transaction_id);
 
-  // gap_Bool
-  int
+  gap_Bool
   gap_transaction_is_directory(gap_State*,
                                char const*);
+
+  gap_Bool
+  gap_transaction_accepted(gap_State* state,
+                           char const* transaction_id);
 
   gap_TransactionStatus
   gap_transaction_status(gap_State*,
