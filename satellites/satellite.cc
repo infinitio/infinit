@@ -151,7 +151,6 @@ namespace infinit
 
     ELLE_TRACE_FUNCTION(name, action);
 
-    /* XXX
     int pid = 0;
     std::string shallfork = elle::os::getenv("INFINIT_NO_FORK", "");
     if (shallfork.empty() && (pid = fork()))
@@ -186,8 +185,6 @@ namespace infinit
         return 1;
       }
     }
-    */
-    action();
   }
 
 }
