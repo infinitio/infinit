@@ -17,23 +17,23 @@ namespace plasma
 
   struct Transaction
   {
-    std::string           id;
-    std::string           sender_id;
-    std::string           sender_fullname;
-    std::string           sender_device_id;
-    std::string           recipient_id;
-    std::string           recipient_fullname;
-    std::string           recipient_device_id;
-    std::string           recipient_device_name;
-    std::string           network_id;
-    std::string           message;
-    std::string           first_filename;
-    int                   files_count;
-    int                   total_size;
-    int                   is_directory;
-    TransactionStatus     status;
-    bool                  accepted;
-    double                timestamp;
+    std::string id;
+    std::string sender_id;
+    std::string sender_fullname;
+    std::string sender_device_id;
+    std::string recipient_id;
+    std::string recipient_fullname;
+    std::string recipient_device_id;
+    std::string recipient_device_name;
+    std::string network_id;
+    std::string message;
+    std::string first_filename;
+    int files_count;
+    int total_size;
+    bool is_directory;
+    TransactionStatus status;
+    bool accepted;
+    double timestamp;
   };
 
   std::ostream&

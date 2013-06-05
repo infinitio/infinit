@@ -44,7 +44,7 @@ namespace surface
         std::string const& recipient_id_or_email,
         std::unordered_set<std::string> const& files,
         std::function<void(std::string const&)> cb):
-      Operation{"upload_files_"},
+      Operation{"create_transaction_"},
       _transaction_manager(transaction_manager),
       _network_manager(network_manager),
       _reporter(reporter),

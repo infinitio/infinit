@@ -42,9 +42,9 @@ namespace plasma
       public Notification
     {
       std::string user_id;
-      int         status;
+      bool status;
       std::string device_id;
-      int         device_status;
+      bool device_status;
     };
 
     struct TransactionNotification:

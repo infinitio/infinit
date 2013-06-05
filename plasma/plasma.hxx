@@ -24,7 +24,6 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
 {
   enforce(version == 0);
 
-<<<<<<< HEAD
   ar & named("_id", res.id);
   ar & named("sender_id", res.sender_id);
   ar & named("sender_fullname", res.sender_fullname);

@@ -253,41 +253,30 @@ namespace plasma
           _impl->last_error = err;
           //_impl->connected = false;
         }
-        ELLE_WARN("Something went wrong while reading from socket: %s", err);
+        ELLE_WARN("something went wrong while reading from socket: %s", err);
         return;
       }
 
-      ELLE_TRACE("Read %s bytes from the socket (%s available)",
+      ELLE_TRACE("read %s bytes from the socket (%s available)",
                  bytes_transferred,
                  _impl->response.in_avail());
 
-      try
-        {
-          ELLE_DEBUG("Received stream from trophonius.");
+      // Bind stream to response.
+      std::istream is(&(_impl->response));
 
-          // Bind stream to response.
-          std::istream is(&(_impl->response));
+      // Transfer socket stream to stringstream that ensure there are no
+      // encoding troubles (and make the stream human readable).
+      std::unique_ptr<char[]> data{new char[bytes_transferred]};
+      if (!data)
+        throw std::bad_alloc{};
+      is.read(data.get(), bytes_transferred);
+      std::string msg{data.get(), bytes_transferred};
+      ELLE_DEBUG("Got message: %s", msg);
 
-          // Transfer socket stream to stringstream that ensure there are no
-          // encoding troubles (and make the stream human readable).
-          std::unique_ptr<char[]> data{new char[bytes_transferred]};
-          if (!data)
-            throw std::bad_alloc{};
-          is.read(data.get(), bytes_transferred);
-          std::string msg{data.get(), bytes_transferred};
-          ELLE_DEBUG("Got message: %s", msg);
+      this->_notifications.push(
+        notification_from_dict(json::parse(msg)->as_dictionary()));
 
-          this->_notifications.push(
-            notification_from_dict(json::parse(msg)->as_dictionary()));
-
-          this->_read_socket();
-        }
-      catch (std::runtime_error const& err)
-        {
-          throw elle::HTTPException{
-            elle::ResponseCode::bad_content, err.what()
-          };
-        }
+      this->_read_socket();
     }
 
     void

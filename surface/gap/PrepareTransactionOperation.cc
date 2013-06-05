@@ -52,13 +52,14 @@ namespace surface
                  this->_transaction.recipient_id,
                  this->_transaction.network_id);
 
-      std::string recipient_k =
+      std::string recipient_K =
         this->_meta.user(this->_transaction.recipient_id).public_key;
+      ELLE_ASSERT_NEQ(recipient_K.size(), 0u);
 
       this->_network_manager.add_user(this->_transaction.network_id,
                                       this->_self.id,
                                       this->_transaction.recipient_id,
-                                      recipient_k);
+                                      recipient_K);
 
       ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
                  this->_transaction.recipient_id,
@@ -67,7 +68,7 @@ namespace surface
       this->_network_manager.set_permissions(
         this->_transaction.network_id,
         this->_transaction.recipient_id,
-        recipient_k,
+        recipient_K,
         nucleus::neutron::permissions::write); // XXX write ?
 
       auto transfer_binary = common::infinit::binary_path("8transfer");

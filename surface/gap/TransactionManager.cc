@@ -120,7 +120,7 @@ namespace surface
           this->_device.id,
           recipient_id_or_email,
           files,
-          [this, &files] (std::string const& tr_id) {
+          [this, files] (std::string const& tr_id) {
             this->_states([&tr_id, &files] (StateMap& map) {
               map[tr_id].files = files;
             });

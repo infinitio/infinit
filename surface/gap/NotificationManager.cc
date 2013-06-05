@@ -149,9 +149,14 @@ namespace surface
       }
       catch (...)
       {
-        std::string error = elle::sprintf("%s: %s",
-                                          notif->notification_type,
-                                          elle::exception_string());
+        std::string error = elle::sprintf(
+          "%s: %s",
+          (
+            notif != nullptr ?
+            elle::sprint(notif->notification_type) :
+            "no notification available"
+          ),
+          elle::exception_string());
         ELLE_ERR("got error while polling: %s", error);
         this->_call_error_handlers(gap_unknown, error, transaction_id);
       }

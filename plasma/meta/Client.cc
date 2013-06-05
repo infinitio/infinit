@@ -10,11 +10,6 @@
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
-#define XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE()      \
-  int* n = (int*) &value;                                   \
-  ar & named("notification_type", *n)                       \
-  /**/
-
 // - API responses serializers ------------------------------------------------
 #define SERIALIZE_RESPONSE(type, archive, value)                              \
   ELLE_SERIALIZE_NO_FORMAT(type);                                             \
@@ -23,18 +18,18 @@ ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
     enforce(version == 0);                                                    \
     archive & named("success", value._success);                               \
     if (!value.success())                                                     \
-    {                                                                   \
-      int* n = (int*) &value.error_code;                                \
-      archive & named("error_code", *n);                                \
-      archive & named("error_details", value.error_details);            \
-      return;                                                           \
-    }                                                                   \
-    ResponseSerializer<type>::serialize(archive, value);                \
-  }                                                                     \
-  template<> template<typename Archive, typename Value>                 \
+    {                                                                         \
+      int* n = (int*) &value.error_code;                                      \
+      archive & named("error_code", *n);                                      \
+      archive & named("error_details", value.error_details);                  \
+      return;                                                                 \
+    }                                                                         \
+    ResponseSerializer<type>::serialize(archive, value);                      \
+  }                                                                           \
+  template<> template<typename Archive, typename Value>                       \
   void elle::serialize::ResponseSerializer<type>::serialize(Archive& archive, \
-                                                            Value& value) \
-  /**/
+                                                            Value& value)     \
+/**/
 
 namespace elle
 {
@@ -88,14 +83,6 @@ SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
   ar & named("status", res.status);
   ar & named("connected_devices", res.connected_devices);
 }
-
-// SERIALIZE_RESPONSE(plasma::meta::SwaggerResponse, ar, res)
-// {
-//   ar & named("_id", res._id);
-//   ar & named("fullname", res.fullname);
-//   ar & named("email", res.email);
-//   ar & named("public_key", res.public_key);
-// }
 
 SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
 {
@@ -285,9 +272,7 @@ namespace plasma
       _email{},
       _token{},
       _user_agent{"MetaClient"}
-    {
-
-    }
+    {}
 
     Client::~Client()
     {
