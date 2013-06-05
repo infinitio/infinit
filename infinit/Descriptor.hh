@@ -5,6 +5,7 @@
 # include <elle/Printable.hh>
 # include <elle/serialize/fwd.hh>
 # include <elle/serialize/Format.hh>
+# include <elle/serialize/DynamicFormat.hh>
 # include <elle/serialize/construct.hh>
 
 # include <cryptography/Signature.hh>
@@ -82,7 +83,8 @@ namespace infinit
   class Descriptor:
     public elle::Printable,
     public elle::concept::MakeFileable<Descriptor>,
-    public elle::concept::MakeUniquable<Descriptor>
+    public elle::concept::MakeUniquable<Descriptor>,
+    public elle::serialize::DynamicFormat<Descriptor>
   {
     /*-------------.
     | Construction |
