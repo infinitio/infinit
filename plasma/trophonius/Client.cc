@@ -48,7 +48,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification, ar, value, ver
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("user_id", value.user_id);
   ar & named("status", value.status);
-  ar & named("device_id", value.user_id);
+  ar & named("device_id", value.device_id);
   ar & named("device_status", value.device_status);
 }
 
