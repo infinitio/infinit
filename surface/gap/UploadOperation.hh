@@ -2,6 +2,9 @@
 # define SURFACE_GAP_UPLOADOPERATION_HH
 
 # include "OperationManager.hh"
+# include "NetworkManager.hh"
+
+# include <plasma/plasma.hh>
 
 # include <elle/attribute.hh>
 
@@ -18,9 +21,12 @@ namespace surface
       typedef std::function<void()> NotifyFunc;
     private:
       ELLE_ATTRIBUTE(NotifyFunc, notify);
+      ELLE_ATTRIBUTE(NetworkManager&, network_manager);
+      ELLE_ATTRIBUTE(plasma::Transaction, transaction);
 
     public:
-      UploadOperation(std::string const& transaction_id,
+      UploadOperation(plasma::Transaction const& transaction,
+                      NetworkManager& network_manager,
                       NotifyFunc _notify_func);
 
       void

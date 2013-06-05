@@ -433,7 +433,7 @@ namespace surface
     NetworkManager::sync(std::string const& id)
     {
       ELLE_TRACE_METHOD(id);
-      this->_all()([&id] (NetworkMapPtr& map) {
+      this->_all()([id] (NetworkMapPtr& map) {
         auto it = map->find(id);
         if (it != map->end())
         {

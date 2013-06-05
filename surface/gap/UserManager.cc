@@ -53,7 +53,7 @@ namespace surface
         return *(it->second);
       }
       auto response = this->_meta.user(id);
-      std::unique_ptr<User> user{
+      std::unique_ptr<User> user_ptr{
         new User{
           response.id,
           response.fullname,

@@ -21,7 +21,7 @@ namespace surface
       TransactionManager& _transaction_manager;
       NetworkManager& _network_manager;
       plasma::meta::SelfResponse const& _me;
-      plasma::Transaction const& _transaction;
+      plasma::Transaction _transaction;
       std::function<void()> _notify;
 
     public:

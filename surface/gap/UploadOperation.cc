@@ -9,10 +9,13 @@ namespace surface
 {
   namespace gap
   {
-    UploadOperation::UploadOperation(std::string const& transaction_id,
+    UploadOperation::UploadOperation(plasma::Transaction const& transaction,
+                                     NetworkManager& network_manager,
                                      NotifyFunc notify):
-      Operation{"notify_upload_" + transaction_id},
-      _notify(notify)
+      Operation{"notify_upload_" + transaction.id},
+      _notify(notify),
+      _network_manager(network_manager),
+      _transaction(transaction)
     {}
 
     void
