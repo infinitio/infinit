@@ -3,100 +3,122 @@
 
 # include <plasma/meta/Client.hh>
 
-# include <lune/Descriptor.hh>
+# include <version.hh>
+# include <infinit/Descriptor.hh>
+# include <surface/crust/Authority.hh>
+# include <surface/crust/MetaAuthority.hh>
+
+# include <elle/serialize/Base64Archive.hh>
+# include <elle/serialize/insert.hh>
+# include <elle/serialize/extract.hh>
+
+# include <boost/filesystem/path.hpp>
 
 # include <memory>
 
-static int major_version = INFINIT_VERSION_MAJOR;
-static int minor_version = INFINIT_VERSION_MINOR;
-
-class Authority
-{
-private:
-  template <typename T>
-  void
-  _seal(T const& t) const
-  {
-    // Do some stuff.
-  }
-
-  template <typename T>
-  void
-  _validate(T const& t) const
-  {
-    // Do some stuff.
-  }
-
-public:
-  template <typename T>
-  void
-  seal(T const& t) const
-  {
-    this->_seal(t);
-  }
-
-  template <typename T>
-  void
-  validate(T const& t) const
-  {
-    this->_validate(t);
-  }
-};
-
-class MetaAuthority: public Authority
-{
-  plasma::meta::Client _meta;
-
-  MetaAuthority(std::string const& host,
-                uint16_t port):
-    _meta{host, port}
-  {}
-
-  //XXX
-  std::string
-  seal(std::string const& s) // const
-  {
-    return this->_meta.sign_hash(s).signature;
-  }
-};
-
 class Network
 {
-  std::unique_ptr<lune::Descriptor> _desc;
-  std::string _id;
-  std::string _path;
+  ELLE_ATTRIBUTE(std::unique_ptr<infinit::Descriptor>, descriptor);
+public:
+  static
+  bool
+  validate(std::string const& path,
+           infinit::Authority const& authority = infinit::MetaAuthority{})
+  {
+    // XXX: Authority are not the same (elle:: and infinit::)
+    return true;
+  }
+
+  static
+  bool
+  validate(infinit::Descriptor const& dsc,
+           infinit::Authority const& authority = infinit::MetaAuthority{})
+  {
+    // XXX: Authority are not the same (elle:: and infinit::)
+    return true;
+  }
 
 public:
+  /// Main constructor.
   Network(std::string const& name,
-          cryptography::PublicKey const& administrator_K,
-          hole::Model const& model = hole::Model(hole::Type::TypeSlug),
+          lune::Identity const& identity,
+          const hole::Model& model,
+          hole::Openness const& openness,
+          horizon::Policy const& policy,
+          infinit::Authority const& authority);
+
+  /// Constructor with identity_path and passphrase.
+  Network(std::string const& name,
+          std::string const& identity_path,
+          std::string const& identity_passphrase,
+          const hole::Model& model = hole::Model(hole::Model::Type::TypeSlug),
           hole::Openness const& openness = hole::Openness::open,
           horizon::Policy const& policy = horizon::Policy::editable,
-          bool history = false,
-          int32_t extent = 1024,
-          elle::Version const& version = elle::Version(major_version,
-                                                       minor_version));
+          infinit::Authority const& authority = infinit::MetaAuthority{});
 
-  std::string const&
-  create(std::string const& name);
+  /// String only constructor to make python binding easier.
+  Network(std::string const& name,
+          std::string const& identity_path,
+          std::string const& passphrase,
+          std::string const& model = "slug",
+          std::string const& openness = "open",
+          std::string const& policy = "editable",
+          infinit::Authority const& authority = infinit::MetaAuthority{});
 
-  cryptography::Signature
-  seal(Authority const& auth);
+  /// Load constructor, using local descriptor.
+  Network(std::string const& descriptor_path);
 
+  /// Load constructor, using descriptor from remote meta.
+  // XXX: Should I put a dependencie to common by setting default value for meta
+  // host and port?
+  Network(std::string const& id,
+          std::string const& host,
+          int16_t port);
+
+  /// Copy constructor, usefull for python binding. Should be remove.
+  Network(Network const& other);
+
+  /// Store descriptor localy.
   void
-  validate(Authority const& auth) const;
+  store(std::string const& descriptor_path) const;
 
+  /// Publish descriptor to the remote meta.
   void
-  prepare();
+  publish(std::string const& host,
+          int16_t port) const;
 
+  /// Delete local descritor.
   void
-  store(std::string const& path);
+  delete_(std::string const& descriptor_path);
 
-  nucleus::proton::Address
-  create_rootblock(lune::Identity const& owner_identity);
+  /// Remove descriptor from remote meta.
+  // XXX: Should I put a dependencie to common by setting default value for meta
+  // host and port?
+  void
+  unpublish(std::string const& id,
+            std::string const& host,
+            int16_t port);
 
-  nucleus::proton::Address
-  create_group_address(lune::Identity const& owner_identity);
+  ///
+  // void
+  // update();
+
+  /// Explore the given path and return all the (verified) .dsc.
+  std::vector<std::string>
+  list(std::string const& path,
+       bool verify = true);
+
+  enum NetworkList
+  {
+    all,
+    mine,
+    other,
+  };
+  /// Get the list of descriptor stored on the network.
+  // std::vector<std::string>
+  // list(std::string const& host,
+  //      uint16_t port,
+  //      NetworkList list);
 };
 
 #endif

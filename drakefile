@@ -914,6 +914,23 @@ def configure(cxx_toolkit = None,
   tropho_lib = drake.cxx.DynLib('lib/trophonius',
                              tropho_sources,
                              cxx_toolkit, cxx_config)
+
+  ## Crust:
+  crust_sources = drake.nodes(
+    'surface/crust/Network.cc',
+    'surface/crust/Network.hh',
+    'surface/crust/Authority.hh',
+    'surface/crust/Authority.hxx',
+    'surface/crust/MetaAuthority.cc',
+    'surface/crust/MetaAuthority.hh',
+  )
+
+  crust_lib = drake.cxx.DynLib('lib/crust',
+                               crust_sources + infinit_libs,
+                               cxx_toolkit, cxx_config_libs)
+
+  build << crust_lib
+
   ## GAP:
   gap_operation_sources = drake.nodes(
     'surface/gap/Exception.hh',
@@ -922,7 +939,7 @@ def configure(cxx_toolkit = None,
 
   gap_operation_lib = drake.cxx.DynLib('lib/gap_operation',
                                       gap_operation_sources + infinit_libs,
-                                      cxx_toolkit, cxx_config_libs);
+                                      cxx_toolkit, cxx_config_libs)
 
   build << gap_operation_lib
 
@@ -1024,8 +1041,23 @@ def configure(cxx_toolkit = None,
 
   build << gap_lib
 
-  # GAP python
+  # python
   if python_enabled:
+    # Crust
+    crust_python_cxx_config = cxx_config + python3
+    crust_python_cxx_config += boost.config_python()
+    crust_python_cxx_config.lib_path_runtime('..')
+    crust_python_sources = drake.nodes(
+      'surface/crust/python/Network.cc',
+    )
+    crust_python_lib = drake.cxx.Module('lib/python/_crust',
+                                        # FIXME: sooooo many libs ...
+                                        crust_python_sources + [crust_lib, tropho_lib] + infinit_libs,
+                                        cxx_toolkit, crust_python_cxx_config)
+
+    build << crust_python_lib
+
+    # Gap
     gap_python_cxx_config = cxx_config + python3
     gap_python_cxx_config += boost.config_python()
     gap_python_cxx_config.lib_path_runtime('..')
