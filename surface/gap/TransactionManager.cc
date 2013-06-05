@@ -529,15 +529,30 @@ namespace surface
           this->status(s.operation) == OperationStatus::success)
       {
         s.operation = this->_add<UploadOperation>(
-          transaction.id,
-          std::bind(&NetworkManager::notify_8infinit,
-                    &(this->_network_manager),
-                    transaction.network_id,
-                    transaction.sender_device_id,
-                    transaction.recipient_device_id));
+          transaction,
+          this->_network_manager, [this, transaction] {
+            this->_network_manager.notify_8infinit(
+              transaction.network_id,
+              transaction.sender_device_id,
+              transaction.recipient_device_id);
+            });
         s.state = State::running;
         s.tries += 1;
-        this->_states->insert({transaction.id, s});
+        this->_states(
+          [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
+      }
+      else
+      {
+        if (s.state != State::preparing)
+          ELLE_TRACE("cannot start upload of %s, state is not preparing: %s",
+                     transaction, (int) s.state);
+        else if (this->status(s.operation) == OperationStatus::failure)
+          ELLE_TRACE("cannot start upload of %s, prepare failed", transaction);
+        else if (this->status(s.operation) == OperationStatus::running)
+          ELLE_TRACE("cannot start upload of %s, prepare still running",
+                     transaction);
+        else
+          ELLE_TRACE("XXX cannot start upload (should not be printed)");
       }
     }
 

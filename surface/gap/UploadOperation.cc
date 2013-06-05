@@ -23,6 +23,7 @@ namespace surface
     {
       try
       {
+        this->_network_manager.wait_portal(this->_transaction.network_id);
         this->_notify();
       }
       catch (...)
