@@ -63,10 +63,6 @@ def main(state, user, files):
     id = state.send_files(user, files)
 
     state.transaction_callback(partial(on_transaction, state))
-    state.transaction_status_callback(partial(on_finished, state))
-    state.transaction_status_callback(partial(on_started, state))
-    state.transaction_status_callback(partial(on_canceled, state))
-    state.transaction_status_callback(partial(show_status, state))
     state.on_error_callback(partial(on_error, state))
     state.running = True
 
