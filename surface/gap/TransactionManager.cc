@@ -413,7 +413,7 @@ namespace surface
     TransactionManager::_on_transaction(TransactionNotification const& notif,
                                         bool is_new)
     {
-      ELLE_TRACE_FUNCTION(notif.id, is_new);
+      ELLE_TRACE_FUNCTION(notif, is_new);
 
       if (notif.sender_id == this->_self.id)
       {
@@ -427,11 +427,22 @@ namespace surface
           return;
         }
         if (notif.status == plasma::TransactionStatus::created)
+        {
+          ELLE_TRACE("sender prepare upload for %s", notif);
           this->_prepare_upload(notif);
+        }
         else if (notif.status == plasma::TransactionStatus::started &&
                  notif.accepted &&
                  this->_user_manager.device_status(notif.recipient_device_id))
+        {
+          ELLE_TRACE("sender start upload for %s", notif);
           this->_start_upload(notif);
+
+        }
+        else
+        {
+          ELLE_DEBUG("sender does nothing for %s", notif);
+        }
       }
       else if (notif.recipient_id == this->_self.id)
       {
@@ -447,7 +458,25 @@ namespace surface
         if (notif.status == plasma::TransactionStatus::started &&
             notif.accepted &&
             this->_user_manager.device_status(notif.sender_device_id))
+        {
+          ELLE_TRACE("recipient start download for %s", notif);
           this->_start_download(notif);
+        }
+        else
+        {
+#ifdef DEBUG
+          std::string reason;
+          if (notif.status == plasma::TransactionStatus::created)
+            reason = "transaction not started yet";
+          else if (notif.status != plasma::TransactionStatus::started)
+            reason = "transaction is terminated";
+          else if (!notif.accepted)
+            reason = "transaction not accepted yet";
+          else if (!this->_user_manager.device_status(notif.sender_device_id))
+            reason = "sender device_id is down";
+          ELLE_DEBUG("recipient does nothing for %s (%s)", notif, reason);
+#endif
+        }
       }
       else
       {

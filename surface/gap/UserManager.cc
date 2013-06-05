@@ -105,8 +105,10 @@ namespace surface
     bool
     UserManager::device_status(std::string const& device_id) const
     {
-      return (this->_connected_devices.find(device_id) !=
-              this->_connected_devices.end());
+      bool status = (this->_connected_devices.find(device_id) !=
+                     this->_connected_devices.end());
+      ELLE_DEBUG("device %s is %s", device_id, (status ? "up" : "down"));
+      return status;
     }
 
     elle::Buffer
