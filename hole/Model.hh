@@ -1,9 +1,11 @@
 #ifndef HOLE_MODEL_HH
 # define HOLE_MODEL_HH
 
-# include <elle/types.hh>
-# include <elle/operator.hh>
 # include <elle/Printable.hh>
+# include <elle/attribute.hh>
+# include <elle/operator.hh>
+# include <elle/serialize/fwd.hh>
+# include <elle/types.hh>
 
 namespace hole
 {
@@ -61,6 +63,8 @@ namespace hole
     Model();
     Model(const Type);
     Model(std::string const& type);
+    Model(Model const& other);
+    Model(Model&& other);
 
     //
     // methods
@@ -72,7 +76,7 @@ namespace hole
     // interfaces
     //
 
-    ELLE_OPERATOR_ASSIGNMENT(Model); // XXX
+    ELLE_OPERATOR_NO_ASSIGNMENT(Model);
 
     elle::Boolean       operator==(const Model&) const;
 
@@ -86,7 +90,9 @@ namespace hole
     //
     // attributes
     //
-    Type                type;
+    ELLE_ATTRIBUTE_R(Type, type);
+
+    ELLE_SERIALIZE_FRIEND_FOR(Model);
   };
 }
 

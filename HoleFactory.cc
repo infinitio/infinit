@@ -72,7 +72,7 @@ namespace infinit
     if (lune::Set::exists(Infinit::User, Infinit::Network) == true)
       set.load(Infinit::User, Infinit::Network);
 
-    switch (descriptor.meta().model().type)
+    switch (descriptor.meta().model().type())
       {
         case hole::Model::TypeLocal:
         {
@@ -201,7 +201,7 @@ namespace infinit
         default:
         {
           static boost::format fmt("unknown or not-yet-supported model '%u'");
-          throw elle::Exception(str(fmt % descriptor.meta().model().type));
+          throw elle::Exception(str(fmt % descriptor.meta().model().type()));
         }
       }
 

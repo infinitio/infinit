@@ -1,4 +1,4 @@
-#ifndef  HOLE_MODEL_HXX
+#ifndef HOLE_MODEL_HXX
 # define HOLE_MODEL_HXX
 
 # include <cassert>
@@ -12,7 +12,7 @@ ELLE_SERIALIZE_SIMPLE(hole::Model,
 {
   enforce(version == 0);
 
-  archive & value.type;
+  archive & value._type;
 }
 
 #endif

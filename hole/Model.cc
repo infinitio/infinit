@@ -127,7 +127,7 @@ namespace hole
   /// specific constructor.
   ///
   Model::Model(const Type type):
-    type(type)
+    _type(type)
   {}
 
   ///
@@ -141,6 +141,13 @@ namespace hole
     Model(modeltype_from_string(type))
   {}
 
+  Model::Model(Model const& other):
+    _type(other._type)
+  {}
+
+  Model::Model(Model&& other):
+    _type(std::move(other._type))
+  {}
 
 //
 // ---------- methods ---------------------------------------------------------
@@ -152,7 +159,7 @@ namespace hole
   elle::Status          Model::Create(const Type                type)
   {
     // set the type.
-    this->type = type;
+    this->_type = type;
 
     return elle::Status::Ok;
   }
@@ -163,7 +170,7 @@ namespace hole
   elle::Status          Model::Create(const elle::String&       name)
   {
     // convert the name into a type.
-    if (Model::Convert(name, this->type) == elle::Status::Error)
+    if (Model::Convert(name, this->_type) == elle::Status::Error)
       throw Exception("unable to convert the model name into a valid type");
 
     return elle::Status::Ok;
@@ -182,7 +189,7 @@ namespace hole
       if (this == &element)
         return true;
 
-      return (this->type == element.type);
+      return (this->_type == element._type);
     }
 
 //
@@ -197,7 +204,7 @@ namespace hole
       elle::String      alignment(margin, ' ');
 
       // display the name.
-      std::cout << alignment << "[Model] " << this->type << std::endl;
+      std::cout << alignment << "[Model] " << this->_type << std::endl;
 
       return elle::Status::Ok;
     }
@@ -211,7 +218,7 @@ namespace hole
   {
     elle::String type;
 
-    Model::Convert(this->type, type);
+    Model::Convert(this->_type, type);
 
     stream << type;
   }
