@@ -155,7 +155,7 @@ namespace infinit
 
           // If the punch succeed, we start the heartbite thread.
           if (socket)
-            start_heartbeat(*socket);
+            heartbeat::start(*socket);
 
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,

@@ -11,12 +11,12 @@
 
 ELLE_LOG_COMPONENT("infinit.heartbeat");
 
-namespace infinit
+namespace heartbeat
 {
   namespace network = reactor::network;
 
   reactor::Thread*
-  start_heartbeat(network::UDPSocket& sock)
+  start(network::UDPSocket& sock)
   {
     auto& sched = *reactor::Scheduler::scheduler();
     auto heartbeat = [&]

@@ -5,8 +5,6 @@
 #include <elle/log.hh>
 #include <elle/system/Process.hh>
 
-#include <Heartbeat.hh>
-
 #include <reactor/thread.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/network/udp-socket.hh>
@@ -34,7 +32,7 @@ _sleep(int seconds)
 }
 
 void
-start()
+run()
 {
   auto& sched = *reactor::Scheduler::scheduler();
 
@@ -63,7 +61,7 @@ BOOST_AUTO_TEST_CASE(heartbeat_test)
   {
     auto pc = elle::system::process_config(elle::system::normal_config);
     elle::system::Process p{std::move(pc), "bin/heartbeat", {"--port=9090"}};
-    heartbeat::start();
+    heartbeat::run();
     p.interrupt();
   };
   reactor::Thread t(sched, "test", fn);

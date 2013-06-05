@@ -4,10 +4,10 @@
 # include <reactor/thread.hh>
 # include <reactor/network/udp-socket.hh>
 
-namespace infinit
+namespace heartbeat
 {
   reactor::Thread*
-  start_heartbeat(reactor::network::UDPSocket& s);
+  start(reactor::network::UDPSocket& s);
 } /* infinit */
 
 #endif /* end of include guard: INFINIT_HEARBEAT_HH */
