@@ -1279,5 +1279,3 @@ def configure(cxx_toolkit = None,
   #Check
   rule_check = drake.Rule('check')
   rule_check << elle.rule_check
-
-# vim: set sw=2 ts=2 sts=2 expandtab:
