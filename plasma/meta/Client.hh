@@ -107,7 +107,7 @@ namespace plasma
       string fullname;
       string handle;
       string public_key;
-      int status;
+      bool status;
       list<string> connected_devices;
     };
 
