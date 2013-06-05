@@ -125,8 +125,16 @@ def configure(cxx_toolkit = None,
       dependencies_prefix = 'dependencies/platforms/macosx64/work/'
     else:
       raise Exception("architecture %s not supported" % architecture)
+  elif cxx_toolkit.os == drake.os.windows:
+    if architecture_wordsize == 32:
+      dependencies_prefix = 'dependencies/platforms/win32/work/'
+    elif architecture_wordsize == 64:
+      dependencies_prefix = 'dependencies/platforms/win64/work/'
+    else:
+      raise Exception("architecture %s not supported" % architecture)
   else:
-    raise Exception("operating system %s not supported" % cxx_toolkit.os)
+    raise Exception(
+      'operating system %s not supported' % cxx_toolkit.os)
 
   openssl = drake.cxx.LibraryConfiguration(
     'openssl/opensslconf.h',
