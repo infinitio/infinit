@@ -54,6 +54,7 @@ class _State:
             'set_output_dir',
             'get_output_dir',
             'update_transaction',
+            'accept_transaction',
             'transactions',
             'transaction_progress',
             'transaction_sender_id',

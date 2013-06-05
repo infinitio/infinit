@@ -269,6 +269,11 @@ namespace surface
                       transaction,
                       std::placeholders::_1)});
     }
+    void
+    TransactionManager::accept_transaction(std::string const& transaction_id)
+    {
+      this->accept_transaction(this->one(transaction_id));
+    }
 
 
     void

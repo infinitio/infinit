@@ -1014,6 +1014,21 @@ extern "C"
   }
 
   gap_Status
+  gap_accept_transaction(gap_State* state,
+                         char const* transaction_id)
+  {
+    assert(state != nullptr);
+    assert(transaction_id != nullptr);
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->transaction_manager().accept_transaction(transaction_id);
+    }
+    CATCH_ALL(accept_transaction);
+    return ret;
+  }
+
+  gap_Status
   gap_set_output_dir(gap_State* state,
                      char const* output_path)
   {

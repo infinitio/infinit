@@ -158,6 +158,8 @@ namespace surface
 
       void
       accept_transaction(Transaction const& transaction);
+      void
+      accept_transaction(std::string const& transaction_id);
 
       void
       cancel_transaction(Transaction const& transaction);
