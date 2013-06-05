@@ -510,7 +510,8 @@ namespace surface
           transaction,
           s.files);
         s.state = State::preparing;
-        this->_states->insert({transaction.id, s});
+        this->_states(
+          [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
       }
       else
       {
@@ -558,7 +559,8 @@ namespace surface
                       transaction.recipient_device_id));
         state.state = State::running;
         state.tries += 1;
-        this->_states->insert({transaction.id, state});
+        this->_states(
+          [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
       }
     }
   }
