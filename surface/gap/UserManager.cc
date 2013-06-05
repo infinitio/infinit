@@ -63,10 +63,12 @@ namespace surface
           response.connected_devices,
         }};
 
-      this->_users[response.id] = user.get();
-      for (auto const& dev: user->connected_devices)
+      auto const& user = *(this->_users[response.id] = user_ptr.get());
+      user_ptr.release();
+
+      for (auto const& dev: user.connected_devices)
         this->_connected_devices.insert(dev);
-      return *(user.release());
+      return user;
     }
 
     User const&
