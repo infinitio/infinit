@@ -305,7 +305,7 @@ namespace plasma
 
       json::Dictionary connection_request{
         std::map<std::string, std::string>{
-          {"_id", _id},
+          {"user_id", _id},
           {"token", token},
           {"device_id", device_id},
       }};
