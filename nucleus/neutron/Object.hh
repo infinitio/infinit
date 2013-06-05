@@ -84,6 +84,7 @@ namespace nucleus
       Object(proton::Network const& network,
              cryptography::PublicKey const& owner_K,
              Genre const genre);
+      Object(Object const& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Object);
       ~Object();
 

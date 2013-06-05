@@ -57,24 +57,10 @@ namespace infinit
   ///
   /// The following details the process of creating such a descriptor.
   ///
-  /// First, the meta elements are signed with the authority, generating a
-  /// signature which is then used, along with the other elements, for creating
-  /// the meta section:
-  ///
-  ///   cryptography::Signature meta_signature =
-  ///     authority.sign(
-  ///       meta::hash(id, admin_K, model, root, everybody, history, extent));
-  ///   Meta meta_section(id, admin_K, model, root, everybody, history, extent,
-  ///                     meta_signature);
-  ///
-  /// The same is done with the data section except that it is signed with the
-  /// administrator's private key:
-  ///
-  ///   cryptography::Signature data_signature =
-  ///     admin_k.sign(
-  ///       data::hash(name, openness, policy, version, format_...);
+  ///   Meta meta_section(id, admin_K, model, root_address, ...,
+  ///                     authority.k());
   ///   Data data_section(name, openness, policy, version, format_...,
-  ///                     data_signature);
+  ///                     administrator_k());
   ///
   /// Finally, a descriptor is instantiated from both the sections.
   ///
@@ -179,6 +165,7 @@ namespace infinit
     /// Represent the descriptor elements which cannot change over time because
     /// sealed by the authority.
     class Meta:
+      public elle::serialize::DynamicFormat<Meta>,
       public elle::Printable
     {
       /*--------.
@@ -197,8 +184,9 @@ namespace infinit
       Meta(elle::String identifier,
            cryptography::PublicKey administrator_K,
            hole::Model model,
-           nucleus::proton::Address root,
-           nucleus::neutron::Group::Identity everybody,
+           nucleus::proton::Address root_address,
+           std::unique_ptr<nucleus::neutron::Object> root_object,
+           nucleus::neutron::Group::Identity everybody_identity,
            elle::Boolean history,
            elle::Natural32 extent,
            cryptography::Signature signature);
@@ -211,8 +199,9 @@ namespace infinit
       Meta(elle::String identifier,
            cryptography::PublicKey administrator_K,
            hole::Model model,
-           nucleus::proton::Address root,
-           nucleus::neutron::Group::Identity everybody,
+           nucleus::proton::Address root_address,
+           std::unique_ptr<nucleus::neutron::Object> root_object,
+           nucleus::neutron::Group::Identity everybody_identity,
            elle::Boolean history,
            elle::Natural32 extent,
            T const& authority);
@@ -234,6 +223,10 @@ namespace infinit
       /// Return the subject representing the everybody's group.
       nucleus::neutron::Subject const&
       everybody_subject() const;
+      /// Return the original (i.e at the network creation) content of the
+      /// root directory object.
+      nucleus::neutron::Object const&
+      root_object() const;
 
       /*----------.
       | Operators |
@@ -260,7 +253,8 @@ namespace infinit
       ELLE_ATTRIBUTE_R(elle::String, identifier);
       ELLE_ATTRIBUTE_R(cryptography::PublicKey, administrator_K);
       ELLE_ATTRIBUTE_R(hole::Model, model);
-      ELLE_ATTRIBUTE_R(nucleus::proton::Address, root);
+      ELLE_ATTRIBUTE_R(nucleus::proton::Address, root_address);
+      ELLE_ATTRIBUTE(std::unique_ptr<nucleus::neutron::Object>, root_object);
       ELLE_ATTRIBUTE_R(nucleus::neutron::Group::Identity, everybody_identity);
       ELLE_ATTRIBUTE_P(std::unique_ptr<nucleus::neutron::Subject>,
                        everybody_subject,
@@ -282,10 +276,20 @@ namespace infinit
       hash(elle::String const& identifier,
            cryptography::PublicKey const& administrator_K,
            hole::Model const& model,
-           nucleus::proton::Address const& root,
-           nucleus::neutron::Group::Identity const& everybody,
+           nucleus::proton::Address const& root_address,
+           std::unique_ptr<nucleus::neutron::Object> const& root_object,
+           nucleus::neutron::Group::Identity const& everybody_identity,
            elle::Boolean history,
            elle::Natural32 extent);
+      /// Compatibility with format 0.
+      cryptography::Digest
+      hash_0(elle::String const& identifier,
+             cryptography::PublicKey const& administrator_K,
+             hole::Model const& model,
+             nucleus::proton::Address const& root_address,
+             nucleus::neutron::Group::Identity const& everybody_identity,
+             elle::Boolean history,
+             elle::Natural32 extent);
     }
   }
 }

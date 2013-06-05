@@ -324,7 +324,7 @@ namespace surface
           from_string<InputBase64Archive>(network.root_block)
         };
 
-        storage.store(descriptor.meta().root(), directory);
+        storage.store(descriptor.meta().root_address(), directory);
         ELLE_DEBUG("Root block stored.");
       }
 

@@ -7,7 +7,8 @@
 
 # include <cryptography/Signature.hh>
 
-# include <nucleus/proton/Address.hxx>
+# include <nucleus/proton/Address.hh>
+# include <nucleus/neutron/Object.hh>
 
 # include <hole/Model.hh>
 
@@ -58,12 +59,16 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
   {
     case 0:
     {
+      // Set the meta format to zero instead of the latest
+      // so as to make sure the attributes deserialized are
+      // consistent with the format.
       value._meta.reset(new infinit::descriptor::Meta);
+      value._meta->version(0);
 
       archive >> value._meta->_identifier;
       archive >> value._meta->_administrator_K;
       archive >> value._meta->_model;
-      archive >> value._meta->_root;
+      archive >> value._meta->_root_address;
       archive >> value._meta->_everybody_identity;
       archive >> value._meta->_history;
       archive >> value._meta->_extent;
@@ -127,7 +132,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Descriptor,
       archive << value._meta->_identifier;
       archive << value._meta->_administrator_K;
       archive << value._meta->_model;
-      archive << value._meta->_root;
+      archive << value._meta->_root_address;
       archive << value._meta->_everybody_identity;
       archive << value._meta->_history;
       archive << value._meta->_extent;
@@ -190,24 +195,27 @@ namespace infinit
     Meta::Meta(elle::String identifier,
                cryptography::PublicKey administrator_K,
                hole::Model model,
-               nucleus::proton::Address root,
-               nucleus::neutron::Group::Identity everybody,
+               nucleus::proton::Address root_address,
+               std::unique_ptr<nucleus::neutron::Object> root_object,
+               nucleus::neutron::Group::Identity everybody_identity,
                elle::Boolean history,
                elle::Natural32 extent,
                T const& authority):
       Meta(std::move(identifier),
            std::move(administrator_K),
            std::move(model),
-           std::move(root),
-           std::move(everybody),
+           std::move(root_address),
+           std::move(root_object),
+           std::move(everybody_identity),
            std::move(history),
            std::move(extent),
            authority.sign(
              meta::hash(identifier,
                         administrator_K,
                         model,
-                        root,
-                        everybody,
+                        root_address,
+                        root_object,
+                        everybody_identity,
                         history,
                         extent)))
     {
@@ -221,15 +229,43 @@ namespace infinit
     elle::Boolean
     Meta::validate(T const& authority) const
     {
-      return (authority.verify(
-                this->_signature,
-                meta::hash(this->_identifier,
-                           this->_administrator_K,
-                           this->_model,
-                           this->_root,
-                           this->_everybody_identity,
-                           this->_history,
-                           this->_extent)));
+      ELLE_LOG_COMPONENT("infinit.Descriptor");
+      ELLE_TRACE_METHOD(authority);
+
+      ELLE_DEBUG("format: %s", this->version());
+
+      switch (this->version())
+      {
+        case 0:
+        {
+          return (authority.verify(
+                    this->_signature,
+                    meta::hash_0(this->_identifier,
+                                 this->_administrator_K,
+                                 this->_model,
+                                 this->_root_address,
+                                 this->_everybody_identity,
+                                 this->_history,
+                                 this->_extent)));
+        }
+        case 1:
+        {
+          return (authority.verify(
+                    this->_signature,
+                    meta::hash(this->_identifier,
+                               this->_administrator_K,
+                               this->_model,
+                               this->_root_address,
+                               this->_root_object,
+                               this->_everybody_identity,
+                               this->_history,
+                               this->_extent)));
+        }
+        default:
+          // XXX ::infinit::Exception
+          throw elle::Exception(
+            elle::sprintf("unknown format '%s'", this->version()));
+      }
     }
   }
 }
@@ -238,21 +274,47 @@ namespace infinit
 | Serializer |
 `-----------*/
 
+ELLE_SERIALIZE_STATIC_FORMAT(infinit::descriptor::Meta, 1);
+
 ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Meta,
                       archive,
                       value,
                       format)
 {
-  enforce(format == 0);
+  switch (format)
+  {
+    case 0:
+    {
+      archive & value._identifier;
+      archive & value._administrator_K;
+      archive & value._model;
+      archive & value._root_address;
+      archive & value._everybody_identity;
+      archive & value._history;
+      archive & value._extent;
+      archive & value._signature;
 
-  archive & value._identifier;
-  archive & value._administrator_K;
-  archive & value._model;
-  archive & value._root;
-  archive & value._everybody_identity;
-  archive & value._history;
-  archive & value._extent;
-  archive & value._signature;
+      break;
+    }
+    case 1:
+    {
+      archive & value._identifier;
+      archive & value._administrator_K;
+      archive & value._model;
+      archive & value._root_address;
+      archive & value._root_object;
+      archive & value._everybody_identity;
+      archive & value._history;
+      archive & value._extent;
+      archive & value._signature;
+
+      break;
+    }
+    default:
+      // XXX ::infinit::Exception
+      throw elle::Exception(
+        elle::sprintf("unknown format '%s'", format));
+  }
 }
 
 //

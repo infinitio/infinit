@@ -59,7 +59,7 @@ namespace etoile
     {
       // FIXME: do not re-parse the descriptor every time.
       Descriptor descriptor(Infinit::User, Infinit::Network);
-      address = descriptor.meta().root();
+      address = descriptor.meta().root_address();
       return elle::Status::Ok;
     }
 

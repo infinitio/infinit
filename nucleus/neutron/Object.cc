@@ -115,6 +115,12 @@ namespace nucleus
       }
     }
 
+    Object::Object(Object const& other)
+    {
+      // XXX to provide later.
+      ELLE_ASSERT(false);
+    }
+
     ELLE_SERIALIZE_CONSTRUCT_DEFINE(Object, ImprintBlock)
     {
       this->_author = nullptr;

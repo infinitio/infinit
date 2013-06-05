@@ -250,10 +250,6 @@ namespace satellite
     shelter_path.Complete(elle::io::Piece{"%USER%", administrator},
                           elle::io::Piece{"%NETWORK%", identifier});
 
-    hole::storage::Directory storage(network, shelter_path.string());
-    storage.store(group_address, *group);
-    storage.store(directory_address, *directory);
-
     //
     // create the network's descriptor.
     //
@@ -263,6 +259,7 @@ namespace satellite
                                     identity.pair().K(),
                                     model,
                                     std::move(directory_address),
+                                    std::move(directory),
                                     std::move(group_address),
                                     false,
                                     1048576,
@@ -282,6 +279,17 @@ namespace satellite
 
       descriptor.store(identity);
     }
+
+    // Reload the descriptor just to make sure it is valid.
+    Descriptor descriptor(administrator, identifier);
+    descriptor.validate(authority.K());
+
+    // Finally, store the blocks on the disk.
+    hole::storage::Directory storage(network, shelter_path.string());
+    storage.store(descriptor.meta().everybody_identity(),
+                  *group);
+    storage.store(descriptor.meta().root_address(),
+                  descriptor.meta().root_object());
 
     return elle::Status::Ok;
   }

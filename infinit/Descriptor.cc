@@ -188,27 +188,31 @@ namespace infinit
     Meta::Meta(elle::String identifier,
                cryptography::PublicKey administrator_K,
                hole::Model model,
-               nucleus::proton::Address root,
-               nucleus::neutron::Group::Identity everybody,
+               nucleus::proton::Address root_address,
+               std::unique_ptr<nucleus::neutron::Object> root_object,
+               nucleus::neutron::Group::Identity everybody_identity,
                elle::Boolean history,
                elle::Natural32 extent,
                cryptography::Signature signature):
       _identifier(std::move(identifier)),
       _administrator_K(std::move(administrator_K)),
       _model(std::move(model)),
-      _root(std::move(root)),
-      _everybody_identity(std::move(everybody)),
+      _root_address(std::move(root_address)),
+      _root_object(std::move(root_object)),
+      _everybody_identity(std::move(everybody_identity)),
       _history(std::move(history)),
       _extent(std::move(extent)),
       _signature(std::move(signature))
     {
+      ELLE_ASSERT_NEQ(this->_root_object, nullptr);
     }
 
     Meta::Meta(Meta const& other):
       _identifier(other._identifier),
       _administrator_K(other._administrator_K),
       _model(other._model),
-      _root(other._root),
+      _root_address(other._root_address),
+      _root_object(new nucleus::neutron::Object(*other._root_object)),
       _everybody_identity(other._everybody_identity),
       _history(other._history),
       _extent(other._extent),
@@ -220,11 +224,19 @@ namespace infinit
       _identifier(std::move(other._identifier)),
       _administrator_K(std::move(other._administrator_K)),
       _model(std::move(other._model)),
-      _root(std::move(other._root)),
+      _root_address(std::move(other._root_address)),
+      _root_object(std::move(other._root_object)),
       _everybody_identity(std::move(other._everybody_identity)),
       _history(std::move(other._history)),
       _extent(std::move(other._extent)),
       _signature(std::move(other._signature))
+    {
+      ELLE_ASSERT_NEQ(this->_root_object, nullptr);
+    }
+
+    ELLE_SERIALIZE_CONSTRUCT_DEFINE(Meta /* XXX,
+                                    administrator_K, model, root_address, root_object,
+                                    everybody_identity, signature */)
     {
     }
 
@@ -245,10 +257,12 @@ namespace infinit
       return (*this->_everybody_subject);
     }
 
-    ELLE_SERIALIZE_CONSTRUCT_DEFINE(Meta /* XXX,
-                                    administrator_K, model, root,
-                                    everybody_identity, signature */)
+    nucleus::neutron::Object const&
+    Meta::root_object() const
     {
+      ELLE_ASSERT(this->_root_object != nullptr);
+
+      return (*this->_root_object);
     }
 
     /*----------.
@@ -261,7 +275,7 @@ namespace infinit
       stream << this->_identifier << "("
              << this->_administrator_K << ", "
              << this->_model << ", "
-             << this->_root << ", "
+             << this->_root_address << ", "
              << this->_history << ", "
              << this->_extent << ")";
     }
@@ -276,8 +290,9 @@ namespace infinit
       hash(elle::String const& identifier,
            cryptography::PublicKey const& administrator_K,
            hole::Model const& model,
-           nucleus::proton::Address const& root,
-           nucleus::neutron::Group::Identity const& everybody,
+           nucleus::proton::Address const& root_address,
+           std::unique_ptr<nucleus::neutron::Object> const& root_object,
+           nucleus::neutron::Group::Identity const& everybody_identity,
            elle::Boolean history,
            elle::Natural32 extent)
       {
@@ -285,8 +300,29 @@ namespace infinit
                   elle::serialize::make_tuple(identifier,
                                               administrator_K,
                                               model,
-                                              root,
-                                              everybody,
+                                              root_address,
+                                              root_object,
+                                              everybody_identity,
+                                              history,
+                                              extent),
+                  cryptography::KeyPair::oneway_algorithm));
+      }
+
+      cryptography::Digest
+      hash_0(elle::String const& identifier,
+             cryptography::PublicKey const& administrator_K,
+             hole::Model const& model,
+             nucleus::proton::Address const& root_address,
+             nucleus::neutron::Group::Identity const& everybody_identity,
+             elle::Boolean history,
+             elle::Natural32 extent)
+      {
+        return (cryptography::oneway::hash(
+                  elle::serialize::make_tuple(identifier,
+                                              administrator_K,
+                                              model,
+                                              root_address,
+                                              everybody_identity,
                                               history,
                                               extent),
                   cryptography::KeyPair::oneway_algorithm));
