@@ -140,6 +140,15 @@ namespace common
     url();
   }
 
+  namespace heartbeat
+  {
+    std::string const&
+    host();
+
+    int
+    port();
+  }
+
   /// All resources URIs
   namespace resources
   {
