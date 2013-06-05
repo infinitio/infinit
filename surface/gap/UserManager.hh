@@ -5,7 +5,7 @@
 # include <surface/gap/NotificationManager.hh>
 # include <plasma/meta/Client.hh>
 
-# include <set>
+# include <unordered_set>
 
 namespace surface
 {
@@ -57,7 +57,7 @@ namespace surface
       `------*/
     private:
       std::map<std::string, User*> _users;
-      std::set<std::string> _connected_devices;
+      std::unordered_set<std::string> _connected_devices;
 
       /*-------.
       | Access |
@@ -99,15 +99,15 @@ namespace surface
       | Storage |
       `--------*/
     private:
-      typedef std::map<std::string, User const*> SwaggersMap;
-      SwaggersMap _swaggers;
+      typedef std::unordered_set<std::string> SwaggersSet;
+      SwaggersSet _swaggers;
       bool _swaggers_dirty;
 
       /*-------.
       | Access |
       `-------*/
     public:
-      SwaggersMap const&
+      SwaggersSet const&
       swaggers();
 
       User const&

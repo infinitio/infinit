@@ -138,24 +138,16 @@ namespace surface
     }
 
     ///- Swaggers --------------------------------------------------------------
-    UserManager::SwaggersMap const&
+    UserManager::SwaggersSet const&
     UserManager::swaggers()
     {
       if (this->_swaggers_dirty)
       {
         auto response = this->_meta.get_swaggers();
+        this->_swaggers.clear();
         for (auto const& swagger_id: response.swaggers)
-        {
-          if (this->_swaggers.find(swagger_id) == this->_swaggers.end())
-          {
-            auto response = this->_meta.user(swagger_id);
-            this->_swaggers[swagger_id] = new User{response.id,
-                                                   response.fullname,
-                                                   response.handle,
-                                                   response.public_key,
-                                                   response.status, };
-          }
-        }
+          this->_swaggers.insert(swagger_id);
+
         this->_swaggers_dirty = false;
       }
       return this->_swaggers;
@@ -164,28 +156,30 @@ namespace surface
     User const&
     UserManager::swagger(std::string const& id)
     {
-      auto it = this->swaggers().find(id);
-      if (it == this->swaggers() .end())
+      if (this->swaggers().find(id) == this->swaggers().end())
         throw Exception{
-            gap_error,
-            "Cannot find any swagger for id '" + id + "'"
-        };
-      return *(it->second);
+          gap_error,
+          "Cannot find any swagger for id '" + id + "'"};
+      return this->one(id);
     }
 
     void
     UserManager::_on_swagger_status_update(UserStatusNotification const& notif)
     {
-      ELLE_ASSERT(
-        this->swaggers().find(notif.user_id) != this->swaggers().end()
-      );
-
-      auto it = this->swagger(notif.user_id);
-      ELLE_DEBUG("%s's status changed to %s", it.fullname, notif.status);
+      auto swagger = this->one(notif.user_id);
+      this->swaggers(); // force up-to-date swaggers
+      this->_swaggers.insert(swagger.id);
+      ELLE_DEBUG("%s's status changed to %s", swagger, notif.status);
       ELLE_ASSERT(notif.status == gap_user_status_online ||
                   notif.status == gap_user_status_offline);
 
-      it.status = notif.status;
+      // Update user status.
+      auto it = this->_users.find(notif.user_id);
+      ELLE_ASSERT(it != this->_users.end());
+      ELLE_ASSERT(it->second != nullptr);
+      it->second->status = notif.status;
+
+      // Update connected devices.
       if (notif.device_status)
         this->_connected_devices.insert(notif.device_id);
       else

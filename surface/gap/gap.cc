@@ -733,8 +733,8 @@ extern "C"
       {
         auto swaggers = __TO_CPP(state)->user_manager().swaggers();
         std::list<std::string> result;
-        for (auto const& pair : swaggers)
-          result.push_back(pair.first);
+        for (auto const& id : swaggers)
+          result.push_back(id);
         return _cpp_stringlist_to_c_stringlist(result);
       }
     CATCH_ALL(get_swaggers);
