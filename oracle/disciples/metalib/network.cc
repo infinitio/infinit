@@ -284,3 +284,61 @@ metalib_check_root_directory_signature(PyObject* self,
 
   return ret;
 }
+
+
+static
+infinit::Descriptor
+deserialize_descriptor(std::string const& serialized)
+                       // std::string const& authority_file = nullptr,
+                       // * authority_password = nullptr;)
+{
+  infinit::Descriptor descriptor{
+    elle::serialize::from_string<elle::serialize::InputBase64Archive>(
+      serialized)};
+
+//  descriptor.validate(authority);
+
+  return descriptor;
+}
+
+extern "C"
+PyObject*
+metalib_deserialize_network_descriptor(PyObject* self,
+                                       PyObject* args)
+{
+  (void) self;
+
+  char const* descriptor_str = nullptr;
+  PyObject* ret = nullptr;
+
+  if (!PyArg_ParseTuple(args,
+                        "s:deserialize_descriptor",
+                        &descriptor_str))
+    return nullptr;
+
+  PyThreadState *_save;
+  _save = PyEval_SaveThread();
+
+  try
+    {
+      auto descriptor = deserialize_descriptor(descriptor_str);
+
+      // WARNING: restore state before setting exception !
+      PyEval_RestoreThread(_save);
+
+      PyDict_SetItemString(ret, "id", PyString_FromString(descriptor.meta().identifier().c_str()));
+      PyDict_SetItemString(ret, "adminK", PyString_FromString("bite")); //descriptor.meta().administrator_K().c_str()));
+      PyDict_SetItemString(ret, "name", PyString_FromString(descriptor.data().name().c_str()));
+
+      Py_INCREF(ret);
+    }
+  catch (std::exception const& err)
+    {
+      // WARNING: restore state before setting exception !
+      PyEval_RestoreThread(_save);
+      char const* error_string = err.what();
+      PyErr_SetString(metalib_MetaError, error_string);
+    }
+
+  return ret;
+}

@@ -80,6 +80,16 @@ static PyMethodDef _metalib_methods[] = {
     ":return: Wether or not the root_block is valid\n"
   },
   {
+    "deserialze_descriptor",
+    &metalib_deserialize_network_descriptor,
+    METH_VARARGS,
+    "Return the fields from the given descriptor.\n"
+    "\n"
+    ":param descriptor: The base64 encoded descriptor\n"
+    ":rtype: bite\n"
+    ":return: Wether or not the root_block is valid\n"
+  },
+  {
     "sign",
     &metalib_sign,
     METH_VARARGS,

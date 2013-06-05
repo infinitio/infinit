@@ -13,4 +13,9 @@ PyObject*
 metalib_generate_network_descriptor(PyObject* self,
                                     PyObject* args);
 
+extern "C"
+PyObject*
+metalib_deserialize_network_descriptor(PyObject* self,
+                                       PyObject* args);
+
 #endif /* ! NETWORK_HH */
