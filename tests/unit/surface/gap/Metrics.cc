@@ -49,6 +49,7 @@ int main(void)
     elle::metrics::Reporter reporter{};
 
     elle::metrics::kissmetrics::register_service(reporter);
+    reporter.start();
     reporter.store("user_landing");
     reporter.store("user_signup");
     reporter.store("user_fullname");
