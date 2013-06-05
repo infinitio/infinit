@@ -240,6 +240,13 @@ namespace lune
   }
 
   void
+  Identity::load(boost::filesystem::path const& path)
+  {
+    // XXX: fs::path > elle::io::Path.
+    this->Fileable::load(elle::io::Path{path.string()});
+  }
+
+  void
   Identity::store() const
   {
     ELLE_TRACE("store identity %s", *this);
@@ -257,5 +264,4 @@ namespace lune
   {
     return (elle::os::path::exists(Identity::_path(user_id)));
   }
-
 }

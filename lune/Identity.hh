@@ -15,6 +15,8 @@ using namespace infinit;
 
 # include <lune/fwd.hh>
 
+# include <boost/filesystem/path.hpp>
+
 namespace lune
 {
 
@@ -97,6 +99,9 @@ namespace lune
 
     void
     load(elle::String const& user_id);
+
+    void
+    load(boost::filesystem::path const& path);
 
     void
     store() const;
