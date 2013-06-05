@@ -503,6 +503,7 @@ namespace plasma
                  device_name,
                  device_id);
       json::Dictionary request{};
+      request["transaction_id"] = transaction_id;
       request["device_id"] = device_id;
       request["device_name"] = device_name;
 
