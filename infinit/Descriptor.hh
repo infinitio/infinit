@@ -14,7 +14,6 @@ using namespace infinit;
 
 # include <lune/fwd.hh>
 
-# include <hole/Authority.hh>
 # include <hole/Model.hh>
 # include <hole/fwd.hh>
 
@@ -110,8 +109,11 @@ namespace infinit
   public:
     /// Return true if the whole descriptor is valid, including both the
     /// meta and data sections.
+    ///
+    /// Note that the _authority_ must provide a verify(signature, data) method.
+    template <typename T>
     elle::Boolean
-    validate(elle::Authority const& authority) const;
+    validate(T const& authority) const;
     /// Return the meta section.
     descriptor::Meta const&
     meta() const;
@@ -192,35 +194,43 @@ namespace infinit
     public:
       Meta(); // XXX[deserialization instead]
       /// Construct a meta section based on the given elements.
-      Meta(elle::String const& identifier,
-           cryptography::PublicKey const& administrator_K,
-           hole::Model const& model,
-           nucleus::proton::Address const& root,
-           nucleus::neutron::Group::Identity const& everybody,
+      Meta(elle::String identifier,
+           cryptography::PublicKey administrator_K,
+           hole::Model model,
+           nucleus::proton::Address root,
+           nucleus::neutron::Group::Identity everybody,
            elle::Boolean history,
            elle::Natural32 extent,
-           cryptography::Signature const& signature);
-      /// Construct a meta section based on the given elements whose
-      /// ownership is transferred to the descriptor.
-      Meta(elle::String&& identifier,
-           cryptography::PublicKey&& administrator_K,
-           hole::Model&& model,
-           nucleus::proton::Address&& root,
-           nucleus::neutron::Group::Identity&& everybody,
+           cryptography::Signature signature);
+      /// Construct a meta section based on the passed elements which will
+      /// be signed with the given authority.
+      ///
+      /// Note that, through this helper, the _authority_ must provide a
+      /// sign(data) method which returns a signature.
+      template <typename T>
+      Meta(elle::String identifier,
+           cryptography::PublicKey administrator_K,
+           hole::Model model,
+           nucleus::proton::Address root,
+           nucleus::neutron::Group::Identity everybody,
            elle::Boolean history,
            elle::Natural32 extent,
-           cryptography::Signature&& signature);
+           T const& authority);
       Meta(Meta const& other);
-      Meta(Meta&& other) = default;
+      Meta(Meta&& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Meta);
 
       /*--------.
       | Methods |
       `--------*/
     public:
-      /// Return trun if the descriptor is valid, false otherwise.
+      /// Return true if the descriptor is valid, false otherwise.
+      ///
+      /// Note that the _authority_ must provide a verify(signature, data)
+      /// method which returns true if the given signature is valid.
+      template <typename T>
       elle::Boolean
-      validate(elle::Authority const& authority) const;
+      validate(T const& authority) const;
       /// Return the subject representing the everybody's group.
       nucleus::neutron::Subject const&
       everybody_subject() const;
@@ -380,58 +390,62 @@ namespace infinit
     public:
       Data(); // XXX[deserialization instead]
       /// Construct a data section from the given elements.
-      Data(elle::String const& name,
-           hole::Openness const& openness,
-           horizon::Policy const& policy,
-           elle::Version const& version,
-           elle::serialize::Format const& format_block,
-           elle::serialize::Format const& format_content_hash_block,
-           elle::serialize::Format const& format_contents,
-           elle::serialize::Format const& format_immutable_block,
-           elle::serialize::Format const& format_imprint_block,
-           elle::serialize::Format const& format_mutable_block,
-           elle::serialize::Format const& format_owner_key_block,
-           elle::serialize::Format const& format_public_key_block,
-           elle::serialize::Format const& format_access,
-           elle::serialize::Format const& format_attributes,
-           elle::serialize::Format const& format_catalog,
-           elle::serialize::Format const& format_data,
-           elle::serialize::Format const& format_ensemble,
-           elle::serialize::Format const& format_group,
-           elle::serialize::Format const& format_object,
-           elle::serialize::Format const& format_reference,
-           elle::serialize::Format const& format_user,
-           elle::serialize::Format const& format_identity,
-           elle::serialize::Format const& format_descriptor,
-           cryptography::Signature const& signature);
-      /// Construct a data section by transferring the ownership of the
-      /// given elements.
-      Data(elle::String&& name,
-           hole::Openness&& openness,
-           horizon::Policy&& policy,
-           elle::Version&& version,
-           elle::serialize::Format&& format_block,
-           elle::serialize::Format&& format_content_hash_block,
-           elle::serialize::Format&& format_contents,
-           elle::serialize::Format&& format_immutable_block,
-           elle::serialize::Format&& format_imprint_block,
-           elle::serialize::Format&& format_mutable_block,
-           elle::serialize::Format&& format_owner_key_block,
-           elle::serialize::Format&& format_public_key_block,
-           elle::serialize::Format&& format_access,
-           elle::serialize::Format&& format_attributes,
-           elle::serialize::Format&& format_catalog,
-           elle::serialize::Format&& format_data,
-           elle::serialize::Format&& format_ensemble,
-           elle::serialize::Format&& format_group,
-           elle::serialize::Format&& format_object,
-           elle::serialize::Format&& format_reference,
-           elle::serialize::Format&& format_user,
-           elle::serialize::Format&& format_identity,
-           elle::serialize::Format&& format_descriptor,
-           cryptography::Signature&& signature);
-      Data(Data const& other) = default;
-      Data(Data&& other) = default;
+      Data(elle::String name,
+           hole::Openness openness,
+           horizon::Policy policy,
+           elle::Version version,
+           elle::serialize::Format format_block,
+           elle::serialize::Format format_content_hash_block,
+           elle::serialize::Format format_contents,
+           elle::serialize::Format format_immutable_block,
+           elle::serialize::Format format_imprint_block,
+           elle::serialize::Format format_mutable_block,
+           elle::serialize::Format format_owner_key_block,
+           elle::serialize::Format format_public_key_block,
+           elle::serialize::Format format_access,
+           elle::serialize::Format format_attributes,
+           elle::serialize::Format format_catalog,
+           elle::serialize::Format format_data,
+           elle::serialize::Format format_ensemble,
+           elle::serialize::Format format_group,
+           elle::serialize::Format format_object,
+           elle::serialize::Format format_reference,
+           elle::serialize::Format format_user,
+           elle::serialize::Format format_identity,
+           elle::serialize::Format format_descriptor,
+           cryptography::Signature signature);
+      /// Construct a data section based on the passed elements which will
+      /// be signed with the given private key.
+      ///
+      /// Note that, through this helper, the administrator must provide a
+      /// sign(data) method.
+      template <typename T>
+      Data(elle::String name,
+           hole::Openness openness,
+           horizon::Policy policy,
+           elle::Version version,
+           elle::serialize::Format format_block,
+           elle::serialize::Format format_content_hash_block,
+           elle::serialize::Format format_contents,
+           elle::serialize::Format format_immutable_block,
+           elle::serialize::Format format_imprint_block,
+           elle::serialize::Format format_mutable_block,
+           elle::serialize::Format format_owner_key_block,
+           elle::serialize::Format format_public_key_block,
+           elle::serialize::Format format_access,
+           elle::serialize::Format format_attributes,
+           elle::serialize::Format format_catalog,
+           elle::serialize::Format format_data,
+           elle::serialize::Format format_ensemble,
+           elle::serialize::Format format_group,
+           elle::serialize::Format format_object,
+           elle::serialize::Format format_reference,
+           elle::serialize::Format format_user,
+           elle::serialize::Format format_identity,
+           elle::serialize::Format format_descriptor,
+           T const& administrator);
+      Data(Data const& other);
+      Data(Data&& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Data);
 
       /*--------.
@@ -440,8 +454,12 @@ namespace infinit
     public:
       /// Return true if the data section is valid i.e has been signed with
       /// the administrator private key, false otherwise.
+      ///
+      /// Note that this method requires the _administrator_ to provide a
+      /// verify(signature, data) method.
+      template <typename T>
       elle::Boolean
-      validate(cryptography::PublicKey const& administrator_K) const;
+      validate(T const& administrator) const;
 
       /*----------.
       | Operators |

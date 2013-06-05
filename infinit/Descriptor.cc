@@ -9,7 +9,6 @@
 #include <cryptography/KeyPair.hh>
 #include <cryptography/oneway.hh>
 
-#include <hole/Authority.hh>
 #include <hole/Openness.hh>
 
 #include <lune/Identity.hh>
@@ -27,6 +26,10 @@ ELLE_LOG_COMPONENT("infinit.Descriptor");
 
 namespace infinit
 {
+  // XXX remove this constructor in favor of something like:
+  //       template <typename T>
+  //       Descriptor(elle::String const& path,
+  //                  T const& authority);
   Descriptor::Descriptor(elle::String const& user,
                          elle::String const& network)
   {
@@ -41,7 +44,7 @@ namespace infinit
 
     this->load(user, network);
 
-    if (this->validate(Infinit::authority()) == false)
+    if (this->validate(Infinit::authority().K()) == false)
       throw elle::Exception("unable to validate the descriptor");
   }
 
@@ -72,21 +75,6 @@ namespace infinit
   /*--------.
   | Methods |
   `--------*/
-
-  elle::Boolean
-  Descriptor::validate(elle::Authority const& authority) const
-  {
-    ELLE_ASSERT_NEQ(this->_meta, nullptr);
-    ELLE_ASSERT_NEQ(this->_data, nullptr);
-
-    if (this->_meta->validate(authority) == false)
-      return (false);
-
-    if (this->_data->validate(this->_meta->administrator_K()) == false)
-      return (false);
-
-    return (true);
-  }
 
   descriptor::Meta const&
   Descriptor::meta() const
@@ -197,40 +185,21 @@ namespace infinit
     {
     }
 
-    Meta::Meta(elle::String const& identifier,
-               cryptography::PublicKey const& administrator_K,
-               hole::Model const& model,
-               nucleus::proton::Address const& root,
-               nucleus::neutron::Group::Identity const& everybody,
+    Meta::Meta(elle::String identifier,
+               cryptography::PublicKey administrator_K,
+               hole::Model model,
+               nucleus::proton::Address root,
+               nucleus::neutron::Group::Identity everybody,
                elle::Boolean history,
                elle::Natural32 extent,
-               cryptography::Signature const& signature):
-      _identifier(identifier),
-      _administrator_K(administrator_K),
-      _model(model),
-      _root(root),
-      _everybody_identity(everybody),
-      _history(history),
-      _extent(extent),
-      _signature(signature)
-    {
-    }
-
-    Meta::Meta(elle::String&& identifier,
-               cryptography::PublicKey&& administrator_K,
-               hole::Model&& model,
-               nucleus::proton::Address&& root,
-               nucleus::neutron::Group::Identity&& everybody,
-               elle::Boolean history,
-               elle::Natural32 extent,
-               cryptography::Signature&& signature):
+               cryptography::Signature signature):
       _identifier(std::move(identifier)),
       _administrator_K(std::move(administrator_K)),
       _model(std::move(model)),
       _root(std::move(root)),
       _everybody_identity(std::move(everybody)),
-      _history(history),
-      _extent(extent),
+      _history(std::move(history)),
+      _extent(std::move(extent)),
       _signature(std::move(signature))
     {
     }
@@ -247,23 +216,21 @@ namespace infinit
     {
     }
 
+    Meta::Meta(Meta&& other):
+      _identifier(std::move(other._identifier)),
+      _administrator_K(std::move(other._administrator_K)),
+      _model(std::move(other._model)),
+      _root(std::move(other._root)),
+      _everybody_identity(std::move(other._everybody_identity)),
+      _history(std::move(other._history)),
+      _extent(std::move(other._extent)),
+      _signature(std::move(other._signature))
+    {
+    }
+
     /*--------.
     | Methods |
     `--------*/
-
-    elle::Boolean
-    Meta::validate(elle::Authority const& authority) const
-    {
-      return (authority.K().verify(
-                this->_signature,
-                meta::hash(this->_identifier,
-                           this->_administrator_K,
-                           this->_model,
-                           this->_root,
-                           this->_everybody_identity,
-                           this->_history,
-                           this->_extent)));
-    }
 
     nucleus::neutron::Subject const&
     Meta::everybody_subject() const
@@ -344,81 +311,30 @@ namespace infinit
     {
     }
 
-    Data::Data(elle::String const& name,
-               hole::Openness const& openness,
-               horizon::Policy const& policy,
-               elle::Version const& version,
-               elle::serialize::Format const& format_block,
-               elle::serialize::Format const& format_content_hash_block,
-               elle::serialize::Format const& format_contents,
-               elle::serialize::Format const& format_immutable_block,
-               elle::serialize::Format const& format_imprint_block,
-               elle::serialize::Format const& format_mutable_block,
-               elle::serialize::Format const& format_owner_key_block,
-               elle::serialize::Format const& format_public_key_block,
-               elle::serialize::Format const& format_access,
-               elle::serialize::Format const& format_attributes,
-               elle::serialize::Format const& format_catalog,
-               elle::serialize::Format const& format_data,
-               elle::serialize::Format const& format_ensemble,
-               elle::serialize::Format const& format_group,
-               elle::serialize::Format const& format_object,
-               elle::serialize::Format const& format_reference,
-               elle::serialize::Format const& format_user,
-               elle::serialize::Format const& format_identity,
-               elle::serialize::Format const& format_descriptor,
-               cryptography::Signature const& signature):
-      _name(name),
-      _openness(openness),
-      _policy(policy),
-      _version(version),
-      _format_block(format_block),
-      _format_content_hash_block(format_content_hash_block),
-      _format_contents(format_contents),
-      _format_immutable_block(format_immutable_block),
-      _format_imprint_block(format_imprint_block),
-      _format_mutable_block(format_mutable_block),
-      _format_owner_key_block(format_owner_key_block),
-      _format_public_key_block(format_public_key_block),
-      _format_access(format_access),
-      _format_attributes(format_attributes),
-      _format_catalog(format_catalog),
-      _format_data(format_data),
-      _format_ensemble(format_ensemble),
-      _format_group(format_group),
-      _format_object(format_object),
-      _format_reference(format_reference),
-      _format_user(format_user),
-      _format_identity(format_identity),
-      _format_descriptor(format_descriptor),
-      _signature(signature)
-    {
-    }
-
-    Data::Data(elle::String&& name,
-               hole::Openness&& openness,
-               horizon::Policy&& policy,
-               elle::Version&& version,
-               elle::serialize::Format&& format_block,
-               elle::serialize::Format&& format_content_hash_block,
-               elle::serialize::Format&& format_contents,
-               elle::serialize::Format&& format_immutable_block,
-               elle::serialize::Format&& format_imprint_block,
-               elle::serialize::Format&& format_mutable_block,
-               elle::serialize::Format&& format_owner_key_block,
-               elle::serialize::Format&& format_public_key_block,
-               elle::serialize::Format&& format_access,
-               elle::serialize::Format&& format_attributes,
-               elle::serialize::Format&& format_catalog,
-               elle::serialize::Format&& format_data,
-               elle::serialize::Format&& format_ensemble,
-               elle::serialize::Format&& format_group,
-               elle::serialize::Format&& format_object,
-               elle::serialize::Format&& format_reference,
-               elle::serialize::Format&& format_user,
-               elle::serialize::Format&& format_identity,
-               elle::serialize::Format&& format_descriptor,
-               cryptography::Signature&& signature):
+    Data::Data(elle::String name,
+               hole::Openness openness,
+               horizon::Policy policy,
+               elle::Version version,
+               elle::serialize::Format format_block,
+               elle::serialize::Format format_content_hash_block,
+               elle::serialize::Format format_contents,
+               elle::serialize::Format format_immutable_block,
+               elle::serialize::Format format_imprint_block,
+               elle::serialize::Format format_mutable_block,
+               elle::serialize::Format format_owner_key_block,
+               elle::serialize::Format format_public_key_block,
+               elle::serialize::Format format_access,
+               elle::serialize::Format format_attributes,
+               elle::serialize::Format format_catalog,
+               elle::serialize::Format format_data,
+               elle::serialize::Format format_ensemble,
+               elle::serialize::Format format_group,
+               elle::serialize::Format format_object,
+               elle::serialize::Format format_reference,
+               elle::serialize::Format format_user,
+               elle::serialize::Format format_identity,
+               elle::serialize::Format format_descriptor,
+               cryptography::Signature signature):
       _name(std::move(name)),
       _openness(std::move(openness)),
       _policy(std::move(policy)),
@@ -446,6 +362,62 @@ namespace infinit
     {
     }
 
+    Data::Data(Data const& other):
+      _name(other._name),
+      _openness(other._openness),
+      _policy(other._policy),
+      _version(other._version),
+      _format_block(other._format_block),
+      _format_content_hash_block(other._format_content_hash_block),
+      _format_contents(other._format_contents),
+      _format_immutable_block(other._format_immutable_block),
+      _format_imprint_block(other._format_imprint_block),
+      _format_mutable_block(other._format_mutable_block),
+      _format_owner_key_block(other._format_owner_key_block),
+      _format_public_key_block(other._format_public_key_block),
+      _format_access(other._format_access),
+      _format_attributes(other._format_attributes),
+      _format_catalog(other._format_catalog),
+      _format_data(other._format_data),
+      _format_ensemble(other._format_ensemble),
+      _format_group(other._format_group),
+      _format_object(other._format_object),
+      _format_reference(other._format_reference),
+      _format_user(other._format_user),
+      _format_identity(other._format_identity),
+      _format_descriptor(other._format_descriptor),
+      _signature(other._signature)
+    {
+    }
+
+    Data::Data(Data&& other):
+      _name(std::move(other._name)),
+      _openness(std::move(other._openness)),
+      _policy(std::move(other._policy)),
+      _version(std::move(other._version)),
+      _format_block(std::move(other._format_block)),
+      _format_content_hash_block(std::move(other._format_content_hash_block)),
+      _format_contents(std::move(other._format_contents)),
+      _format_immutable_block(std::move(other._format_immutable_block)),
+      _format_imprint_block(std::move(other._format_imprint_block)),
+      _format_mutable_block(std::move(other._format_mutable_block)),
+      _format_owner_key_block(std::move(other._format_owner_key_block)),
+      _format_public_key_block(std::move(other._format_public_key_block)),
+      _format_access(std::move(other._format_access)),
+      _format_attributes(std::move(other._format_attributes)),
+      _format_catalog(std::move(other._format_catalog)),
+      _format_data(std::move(other._format_data)),
+      _format_ensemble(std::move(other._format_ensemble)),
+      _format_group(std::move(other._format_group)),
+      _format_object(std::move(other._format_object)),
+      _format_reference(std::move(other._format_reference)),
+      _format_user(std::move(other._format_user)),
+      _format_identity(std::move(other._format_identity)),
+      _format_descriptor(std::move(other._format_descriptor)),
+      _signature(std::move(other._signature))
+    {
+    }
+
     ELLE_SERIALIZE_CONSTRUCT_DEFINE(Data /* XXX,
                                     openness, policy, version,
                                     format_block, format_content_hash_block,
@@ -459,40 +431,6 @@ namespace infinit
                                     format_user, format_identity,
                                     format_descriptor, format_signature */)
     {
-    }
-
-    /*--------.
-    | Methods |
-    `--------*/
-
-    elle::Boolean
-    Data::validate(cryptography::PublicKey const& administrator_K) const
-    {
-      return (administrator_K.verify(
-                this->_signature,
-                data::hash(this->_name,
-                           this->_openness,
-                           this->_policy,
-                           this->_version,
-                           this->_format_block,
-                           this->_format_content_hash_block,
-                           this->_format_contents,
-                           this->_format_immutable_block,
-                           this->_format_imprint_block,
-                           this->_format_mutable_block,
-                           this->_format_owner_key_block,
-                           this->_format_public_key_block,
-                           this->_format_access,
-                           this->_format_attributes,
-                           this->_format_catalog,
-                           this->_format_data,
-                           this->_format_ensemble,
-                           this->_format_group,
-                           this->_format_object,
-                           this->_format_reference,
-                           this->_format_user,
-                           this->_format_identity,
-                           this->_format_descriptor)));
     }
 
     /*----------.

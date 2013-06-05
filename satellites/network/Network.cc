@@ -10,6 +10,7 @@
 #include <hole/Authority.hh>
 #include <hole/Hole.hh>
 #include <hole/Openness.hh>
+#include <hole/storage/Memory.hh>
 #include <hole/storage/Directory.hh>
 
 #include <elle/io/Console.hh>
@@ -128,20 +129,13 @@ namespace satellite
     //
     // create an "everybody" group.
     //
-    nucleus::neutron::Group group(network,
+    std::unique_ptr<nucleus::neutron::Group> group(
+      new nucleus::neutron::Group(network,
                                   identity.pair().K(),
-                                  "everybody");
+                                  "everybody"));
+    group->seal(identity.pair().k());
 
-    elle::io::Path shelter_path(lune::Lune::Shelter);
-    shelter_path.Complete(elle::io::Piece{"%USER%", administrator},
-                          elle::io::Piece{"%NETWORK%", identifier});
-    hole::storage::Directory storage(network, shelter_path.string());
-
-    group.seal(identity.pair().k());
-
-    nucleus::proton::Address group_address(group.bind());
-
-    storage.store(group_address, group);
+    nucleus::proton::Address group_address(group->bind());
 
     // XXX[we should use a null nest in this case because no block should be loaded/unloded]
     etoile::nest::Nest nest(ACCESS_SECRET_KEY_LENGTH,
@@ -235,64 +229,52 @@ namespace satellite
     //
     // create the root directory.
     //
-    nucleus::neutron::Object directory(network,
-                                       identity.pair().K(),
-                                       nucleus::neutron::Genre::directory);
+    std::unique_ptr<nucleus::neutron::Object> directory(
+      new nucleus::neutron::Object(network,
+                                   identity.pair().K(),
+                                   nucleus::neutron::Genre::directory));
 
-    if (directory.Update(directory.author(),
-                         directory.contents(),
-                         directory.size(),
-                         *access_radix,
-                         directory.owner_token()) == elle::Status::Error)
+    if (directory->Update(directory->author(),
+                          directory->contents(),
+                          directory->size(),
+                          *access_radix,
+                          directory->owner_token()) == elle::Status::Error)
       throw elle::Exception("unable to update the directory");
 
     // seal the directory.
-    if (directory.Seal(identity.pair().k(), fingerprint) == elle::Status::Error)
-      throw elle::Exception("unable to seal the object");
+    directory->Seal(identity.pair().k(), fingerprint);
 
-    nucleus::proton::Address directory_address(directory.bind());
+    nucleus::proton::Address directory_address(directory->bind());
 
-    storage.store(directory_address, directory);
+    elle::io::Path shelter_path(lune::Lune::Shelter);
+    shelter_path.Complete(elle::io::Piece{"%USER%", administrator},
+                          elle::io::Piece{"%NETWORK%", identifier});
+
+    hole::storage::Directory storage(network, shelter_path.string());
+    storage.store(group_address, *group);
+    storage.store(directory_address, *directory);
 
     //
     // create the network's descriptor.
     //
     {
       // Create the meta section.
-      cryptography::Signature meta_signature =
-        authority.k().sign(
-          descriptor::meta::hash(identifier,
-                                 identity.pair().K(),
-                                 model,
-                                 directory_address,
-                                 group_address,
-                                 false,
-                                 1048576));
       descriptor::Meta meta_section(identifier,
                                     identity.pair().K(),
                                     model,
-                                    directory_address,
-                                    group_address,
+                                    std::move(directory_address),
+                                    std::move(group_address),
                                     false,
                                     1048576,
-                                    meta_signature);
-
+                                    authority.k());
       // Create the data section.
-      cryptography::Signature data_signature =
-        identity.pair().k().sign(
-          descriptor::data::hash(name,
-                                 openness,
-                                 policy,
-                                 Infinit::version,
-                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0, 0, 0, 0));
       descriptor::Data data_section(name,
                                     openness,
                                     policy,
                                     Infinit::version,
                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                     0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                    data_signature);
+                                    identity.pair().k());
 
       // Create the descriptor from both sections and store it.
       Descriptor descriptor(std::move(meta_section),
@@ -402,7 +384,7 @@ namespace satellite
     Descriptor descriptor(administrator, identifier);
 
     // validate the descriptor.
-    descriptor.validate(Infinit::authority());
+    descriptor.validate(Infinit::authority().K());
 
     std::cout << descriptor << std::endl;
 
