@@ -1,13 +1,16 @@
-#ifndef INFINIT_HEARBEAT_HH
-# define INFINIT_HEARBEAT_HH
+#ifndef INFINIT_HEARTBEAT_HH
+# define INFINIT_HEARTBEAT_HH
 
 # include <reactor/thread.hh>
 # include <reactor/network/udp-socket.hh>
 
-namespace heartbeat
+namespace infinit
 {
-  reactor::Thread*
-  start(reactor::network::UDPSocket& s);
+  namespace heartbeat
+  {
+    reactor::Thread*
+    start(reactor::network::UDPSocket& s);
+  } /* heartbeat */
 } /* infinit */
 
-#endif /* end of include guard: INFINIT_HEARBEAT_HH */
+#endif /* end of include guard: INFINIT_HEARTBEAT_HH */

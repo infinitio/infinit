@@ -11,51 +11,54 @@
 
 ELLE_LOG_COMPONENT("infinit.heartbeat");
 
-namespace heartbeat
+namespace infinit
 {
-  namespace network = reactor::network;
-
-  reactor::Thread*
-  start(network::UDPSocket& sock)
+  namespace heartbeat
   {
-    auto& sched = *reactor::Scheduler::scheduler();
-    auto heartbeat = [&]
+    namespace network = reactor::network;
+
+    reactor::Thread*
+    start(network::UDPSocket& sock)
     {
-      namespace network = reactor::network;
-
-      auto* ptr = &sock;
-      auto th_sleep = [&] (int sec)
+      auto& sched = *reactor::Scheduler::scheduler();
+      auto heartbeat = [&]
       {
-        reactor::Sleep s{sched, boost::posix_time::seconds{sec}};
-        s.run();
-      };
+        namespace network = reactor::network;
 
-      try
-      {
-        network::UDTSocket hsocket(sched,
-                                  *ptr,
-                                  "heartbeat.api.infinit.io", "9898");
-
-        for (int i = 0; i < 10; ++i)
+        auto* ptr = &sock;
+        auto th_sleep = [&] (int sec)
         {
-          std::string msg{"echo"};
-          hsocket.write(network::Buffer{msg});
-          msg.resize(512);
-          size_t bytes = hsocket.read_some(network::Buffer{msg});
-          msg.resize(bytes);
-          ELLE_DUMP("received %s", msg);
-          th_sleep(5);
+          reactor::Sleep s{sched, boost::posix_time::seconds{sec}};
+          s.run();
+        };
+
+        try
+        {
+          network::UDTSocket hsocket(sched,
+                                    *ptr,
+                                    "heartbeat.api.infinit.io", "9898");
+
+          for (int i = 0; i < 10; ++i)
+          {
+            std::string msg{"echo"};
+            hsocket.write(network::Buffer{msg});
+            msg.resize(512);
+            size_t bytes = hsocket.read_some(network::Buffer{msg});
+            msg.resize(bytes);
+            ELLE_DUMP("received %s", msg);
+            th_sleep(5);
+          }
         }
-      }
-      catch (network::ConnectionClosed const&)
-      {
-        ELLE_LOG("lose connection with %s", socket);
-      }
-      catch (elle::Exception const& e)
-      {
-        ELLE_LOG("exception handled: %s", e.what());
-      }
-    };
-    return new reactor::Thread{sched, "heartbeat", std::move(heartbeat)};
-  }
+        catch (network::ConnectionClosed const&)
+        {
+          ELLE_LOG("lose connection with %s", socket);
+        }
+        catch (elle::Exception const& e)
+        {
+          ELLE_LOG("exception handled: %s", e.what());
+        }
+      };
+      return new reactor::Thread{sched, "heartbeat", std::move(heartbeat)};
+    }
+  } /* heartbeat */
 } /* infinit */
