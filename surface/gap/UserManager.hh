@@ -77,7 +77,8 @@ namespace surface
 
       /// Device connection status
       bool
-      device_status(std::string const& device_id) const;
+      device_status(std::string const& user_id,
+                    std::string const& device_id);
 
       elle::Buffer
       icon(std::string const& id);

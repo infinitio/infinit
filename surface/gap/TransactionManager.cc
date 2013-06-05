@@ -432,7 +432,8 @@ namespace surface
         }
         else if (notif.status == plasma::TransactionStatus::started &&
                  notif.accepted &&
-                 this->_user_manager.device_status(notif.recipient_device_id))
+                 this->_user_manager.device_status(notif.recipient_id,
+                                                   notif.recipient_device_id))
         {
           ELLE_TRACE("sender start upload for %s", notif);
           this->_start_upload(notif);
@@ -456,7 +457,8 @@ namespace surface
         }
         if (notif.status == plasma::TransactionStatus::started &&
             notif.accepted &&
-            this->_user_manager.device_status(notif.sender_device_id))
+            this->_user_manager.device_status(notif.sender_id,
+                                              notif.sender_device_id))
         {
           ELLE_TRACE("recipient start download for %s", notif);
           this->_start_download(notif);
@@ -471,7 +473,8 @@ namespace surface
             reason = "transaction is terminated";
           else if (!notif.accepted)
             reason = "transaction not accepted yet";
-          else if (!this->_user_manager.device_status(notif.sender_device_id))
+          else if (!this->_user_manager.device_status(notif.sender_id,
+                                                      notif.sender_device_id))
             reason = "sender device_id is down";
           ELLE_DEBUG("recipient does nothing for %s (%s)", notif, reason);
 #endif

@@ -103,8 +103,10 @@ namespace surface
     }
 
     bool
-    UserManager::device_status(std::string const& device_id) const
+    UserManager::device_status(std::string const& user_id,
+                               std::string const& device_id)
     {
+      this->one(user_id); // Ensure the user is loaded.
       bool status = (this->_connected_devices.find(device_id) !=
                      this->_connected_devices.end());
       ELLE_DEBUG("device %s is %s", device_id, (status ? "up" : "down"));
