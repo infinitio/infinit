@@ -8,7 +8,9 @@
 
 #include <boost/preprocessor/cat.hpp>
 
+#include <fstream>
 #include <stdexcept>
+#include <string>
 #include <unordered_map>
 
 #include <pwd.h>
@@ -355,6 +357,19 @@ namespace common
             + ":" + elle::sprint(port())
       );
       return url;
+    }
+
+    std::string
+    token()
+    {
+      std::string token_path = elle::os::getenv("INFINIT_TOKEN_FILE", "");
+      std::string token;
+      if (!token_path.empty())
+      {
+        std::ifstream token_file{token_path};
+        std::getline(token_file, token);
+      }
+      return token;
     }
 
   } // !meta

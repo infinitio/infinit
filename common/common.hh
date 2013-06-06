@@ -115,6 +115,11 @@ namespace common
     /// value will be returned.
     std::string const&
     url();
+
+    /// Returns the path to the token file set into INFINIT_TOKEN_FILE. If the
+    /// variable is not set, it returns an empty string.
+    std::string
+    token();
   }
 
   namespace trophonius
