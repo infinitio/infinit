@@ -38,17 +38,11 @@ def show_status(state, transaction, new):
 def on_transaction(state, transaction, new):
     print("New transaction", transaction)
     state.current_transaction_id = transaction
-
-def on_started(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.started:
-        state.started = True
-
-def on_canceled(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.canceled:
-        state.running = False
-
-def on_finished(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.finished:
+    if state.transaction_status(transaction) in [
+       state.TransactionStatus.canceled,
+       state.TransactionStatus.finished,
+       state.TransactionStatus.failed,
+    ]:
         state.running = False
 
 def on_error(state, status, message, tid):

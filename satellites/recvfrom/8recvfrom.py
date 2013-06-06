@@ -23,22 +23,16 @@ You have to specify your user name in the INFINIT_USER env variable.
 def on_transaction(state, transaction, new):
     print("Transaction ({})".format(transaction),
           state.transaction_status(transaction))
-
-def on_started(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.started:
         if getattr(state, "started_transactions", None):
             state.started_transactions.append(transaction)
         else:
             state.started_transactions = [transaction]
-
-def on_canceled(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.canceled:
+    elif state.transaction_status(transaction) == state.TransactionStatus.canceled:
         state.number_of_transactions -= 1
         if state.number_of_transactions == 0:
             state.running = False
-
-def on_finished(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.finished:
+    elif state.transaction_status(transaction) == state.TransactionStatus.finished:
         cnt = state.transaction_files_count(transaction)
         if cnt == 1:
             filename = state.transaction_first_filename(transaction)
