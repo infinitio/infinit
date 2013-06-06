@@ -154,12 +154,6 @@ extern "C" {
   gap_transaction_callback(gap_State* state,
                            gap_transaction_callback_t cb);
 
-  /// Transaction status callback.
-  typedef void (*gap_transaction_status_callback_t)(char const*, int new_);
-  gap_Status
-  gap_transaction_status_callback(gap_State* state,
-                                  gap_transaction_status_callback_t cb);
-
   /// Transaction getters.
   char const*
   gap_transaction_sender_id(gap_State*,
