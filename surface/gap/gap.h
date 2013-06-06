@@ -106,7 +106,7 @@ extern "C" {
                        char const* hash_password);
 
   /// Check is user is already logged.
-  int
+  gap_Bool
   gap_logged_in(gap_State* state);
 
   /// Logout from meta.

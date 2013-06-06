@@ -281,7 +281,7 @@ extern "C"
     WRAP_CPP(state, login, email, password);
   }
 
-  int
+  gap_Bool
   gap_logged_in(gap_State* state)
   {
     assert(state != nullptr);
