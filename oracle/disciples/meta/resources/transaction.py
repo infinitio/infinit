@@ -414,7 +414,10 @@ class Update(Page):
         sender["fallback"] = receiver["fallback"] = [
             {"ip" : ip, "port" : port}
         ]
-        updated_network_id = database.networks().save(network)
+        network = database.networks().find_one(
+            database.ObjectId(transaction["network_id"]),
+        })
+        database.networks().save(network)
 
     def del_link(self, transaction):
         sender, receiver = self.network_endpoints(transaction)
