@@ -139,6 +139,6 @@ BOOST_AUTO_TEST_CASE(test_two_slugs_push_pull_async)
   reactor::Scheduler sched;
   reactor::Thread t(sched,
                     "main",
-                    &two_slugs_push_pull);
+                    &two_slugs_push_pull_async);
   sched.run();
 }
