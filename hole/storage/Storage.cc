@@ -54,6 +54,46 @@ namespace hole
     }
 
     void
+    Storage::store(nucleus::proton::Address const& address,
+                   nucleus::proton::Block const& block)
+    {
+      switch (address.family())
+      {
+        case nucleus::proton::Family::content_hash_block:
+        {
+          nucleus::proton::ImmutableBlock const* ib;
+
+          ELLE_ASSERT_NEQ(
+            dynamic_cast<const nucleus::proton::ImmutableBlock*>(&block),
+            nullptr);
+          ib = static_cast<const nucleus::proton::ImmutableBlock*>(&block);
+
+          this->store(address, *ib);
+
+          break;
+        }
+        case nucleus::proton::Family::public_key_block:
+        case nucleus::proton::Family::owner_key_block:
+        case nucleus::proton::Family::imprint_block:
+        {
+          nucleus::proton::MutableBlock const* mb;
+
+          ELLE_ASSERT_NEQ(
+            dynamic_cast<const nucleus::proton::MutableBlock*>(&block),
+            nullptr);
+          mb = static_cast<const nucleus::proton::MutableBlock*>(&block);
+
+          this->store(address, *mb);
+
+          break;
+        }
+      default:
+        throw Exception(
+          elle::sprintf("unknown block family '%u'", address.family()));
+      }
+    }
+
+    void
     Storage::store(const nucleus::proton::Address& address,
                    const nucleus::proton::ImmutableBlock& block)
     {

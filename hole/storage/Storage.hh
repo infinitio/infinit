@@ -48,6 +48,12 @@ namespace hole
       bool
       exist(Address const& identifier,
             Revision const& revision = Revision::Last) const;
+      /// Store a block, no matter its family.
+      ///
+      /// \throw if block already exists.
+      void
+      store(nucleus::proton::Address const& address,
+            nucleus::proton::Block const& block);
       /// Store an immutable block in the storage.
       //
       /// \throw if block already exists.
