@@ -1,9 +1,10 @@
-#ifndef  NUCLEUS_DERIVABLE_HXX
+#ifndef NUCLEUS_DERIVABLE_HXX
 # define NUCLEUS_DERIVABLE_HXX
 
 # include <stdexcept>
 
 # include <elle/serialize/Serializer.hh>
+# include <elle/log.hh>
 
 # include <nucleus/factory.hh>
 
@@ -13,9 +14,13 @@ ELLE_SERIALIZE_SPLIT(nucleus::Derivable);
 
 ELLE_SERIALIZE_SPLIT_LOAD(nucleus::Derivable, archive, value, version)
 {
+  ELLE_LOG_COMPONENT("nucleus.Derivable");
+
   enforce(value.kind == nucleus::Derivable::Kind::output);
   enforce(version == 0);
   archive >> value._component;
+
+  ELLE_DEBUG("extracted component: %s", value._component);
 
   if (value._dynamic_construct)
     {
@@ -33,8 +38,12 @@ ELLE_SERIALIZE_SPLIT_LOAD(nucleus::Derivable, archive, value, version)
 
 ELLE_SERIALIZE_SPLIT_SAVE(nucleus::Derivable, archive, value, version)
 {
+  ELLE_LOG_COMPONENT("nucleus.Derivable");
+
   enforce(version == 0);
   enforce(value._block != nullptr);
+
+  ELLE_DEBUG("serialize component: %s", value._component);
   archive << value._component;
   archive << *value._block;
 }
