@@ -36,7 +36,7 @@ namespace hole
       /// Delete a directory.
       ~Memory();
     private:
-      ELLE_ATTRIBUTE(Container, container);
+      ELLE_ATTRIBUTE_R(Container, container);
 
       /*--------.
       | Methods |

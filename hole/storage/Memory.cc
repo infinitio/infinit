@@ -11,6 +11,7 @@
 
 #include <nucleus/factory.hh>
 #include <nucleus/fwd.hh>
+#include <nucleus/Derivable.hh>
 
 #include <boost/format.hpp>
 
@@ -88,9 +89,10 @@ namespace hole
       elle::io::Unique unique_address{address.unique()};
 
       // Serialize the block.
+      nucleus::Derivable derivable(address.component(), block);
       elle::io::Unique value;
 
-      elle::serialize::to_string(value) << block;
+      elle::serialize::to_string(value) << derivable;
 
       // Insert in the container.
       auto result =
@@ -114,8 +116,10 @@ namespace hole
       elle::io::Unique unique_address{address.unique()};
 
       // Serialize the block.
+      nucleus::Derivable derivable(address.component(), block);
       std::string value;
-      elle::serialize::to_string(value) << block;
+
+      elle::serialize::to_string(value) << derivable;
 
       // Insert in the container.
       this->_container.erase(unique_address);
@@ -134,20 +138,15 @@ namespace hole
 
       ELLE_ASSERT(this->_exist(unique_address) == true);
 
-      // Create an empty block.
-      nucleus::proton::ImmutableBlock* block{
-        nucleus::factory::block().allocate<nucleus::proton::ImmutableBlock>(
-          address.component())};
-
-      ELLE_FINALLY_ACTION_DELETE(block);
-
       // Deserialize the block.
+      nucleus::Derivable derivable;
+
       elle::serialize::from_string(
-        this->_container.find(unique_address)->second) >> *block;
+        this->_container.find(unique_address)->second) >> derivable;
 
-      ELLE_FINALLY_ABORT(block);
+      ELLE_ASSERT_EQ(derivable.block().bind(), address);
 
-      return std::unique_ptr<nucleus::proton::Block>(block);
+      return derivable.release();
     }
 
     std::unique_ptr<nucleus::proton::Block>
@@ -166,20 +165,15 @@ namespace hole
 
       ELLE_ASSERT(this->_exist(unique_address));
 
-      // Create an empty block.
-      nucleus::proton::ImmutableBlock* block{
-        nucleus::factory::block().allocate<nucleus::proton::ImmutableBlock>(
-          address.component())};
-
-      ELLE_FINALLY_ACTION_DELETE(block);
-
       // Deserialize the block.
+      nucleus::Derivable derivable;
+
       elle::serialize::from_string(
-        this->_container.find(unique_address)->second) >> *block;
+        this->_container.find(unique_address)->second) >> derivable;
 
-      ELLE_FINALLY_ABORT(block);
+      ELLE_ASSERT_EQ(derivable.block().bind(), address);
 
-      return std::unique_ptr<nucleus::proton::Block>(block);
+      return derivable.release();
     }
 
     void
