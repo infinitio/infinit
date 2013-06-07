@@ -31,15 +31,10 @@ ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 
 //- Notification serializers --------------------------------------------------
 
-#define XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE()      \
-  int* n = (int*) &value;                                   \
-  ar & named("notification_type", *n)                       \
-  /**/
-
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::Notification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::Notification, ar, value, version)
 {
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
+  ar & named("notification_type", value.notification_type);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::UserStatusNotification);
@@ -110,32 +105,32 @@ namespace plasma
     //- Implementation --------------------------------------------------------
     struct Client::Impl
     {
-      boost::asio::io_service       io_service;
-      boost::asio::ip::tcp::socket  socket;
-      boost::asio::deadline_timer   connection_checker;
-      bool                          connected;
-      std::string                   server;
-      uint16_t                      port;
-      bool                          check_errors;
-      boost::asio::streambuf        request;
-      boost::asio::streambuf        response;
-      boost::system::error_code     last_error;
-      std::string                   user_id;
-      std::string                   user_token;
-      std::string                   user_device_id;
+      boost::asio::io_service io_service;
+      boost::asio::ip::tcp::socket socket;
+      boost::asio::deadline_timer connection_checker;
+      bool connected;
+      std::string server;
+      uint16_t port;
+      bool check_errors;
+      boost::asio::streambuf request;
+      boost::asio::streambuf response;
+      boost::system::error_code last_error;
+      std::string user_id;
+      std::string user_token;
+      std::string user_device_id;
 
       Impl(std::string const& server,
            uint16_t port,
-           bool check_errors)
-        : io_service{}
-        , socket{io_service}
-        , connection_checker{io_service}
-        , connected{false}
-        , server{server}
-        , port{port}
-        , check_errors{check_errors}
-        , request{}  // Use once to initiate connection.
-        , response{}
+           bool check_errors):
+        io_service{},
+        socket{io_service},
+        connection_checker{io_service},
+        connected{false},
+        server{server},
+        port{port},
+        check_errors{check_errors},
+        request{},
+        response{}
       {}
     };
 
