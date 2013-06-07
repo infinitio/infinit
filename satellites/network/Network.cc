@@ -18,6 +18,7 @@
 #include <elle/io/Piece.hh>
 #include <elle/io/Unique.hh>
 #include <elle/utility/Parser.hh>
+#include <elle/serialize/extract.hh>
 
 #include <cryptography/oneway.hh>
 #include <cryptography/random.hh>
@@ -38,6 +39,7 @@ using namespace infinit;
 #include <nucleus/neutron/Object.hh>
 #include <nucleus/neutron/Genre.hh>
 #include <nucleus/neutron/Access.hh>
+#include <nucleus/Derivable.hh>
 
 #include <horizon/Policy.hh>
 
@@ -244,52 +246,82 @@ namespace satellite
     // seal the directory.
     directory->Seal(identity.pair().k(), fingerprint);
 
-    nucleus::proton::Address directory_address(directory->bind());
-
-    elle::io::Path shelter_path(lune::Lune::Shelter);
-    shelter_path.Complete(elle::io::Piece{"%USER%", administrator},
-                          elle::io::Piece{"%NETWORK%", identifier});
+    nucleus::proton::Address directory_address = directory->bind();
 
     //
     // create the network's descriptor.
     //
     {
+      // Store the content blocks in a main memory storage.
+      //
+      // Ok for now, there is a single one but this is just to illustrate
+      // the logic behind the process.
+      hole::storage::Memory storage(network);
+      storage.store(group_address, *group);
+
+      // Iterate over the storage and convert the string-based representations
+      // into a vector of blocks.
+      std::vector<std::unique_ptr<nucleus::proton::Block>> vector;
+
+      for (auto const& pair: storage.container())
+      {
+        nucleus::Derivable derivable;
+
+        elle::serialize::from_string(pair.second) >> derivable;
+
+        vector.push_back(std::move(derivable.release()));
+      }
+
       // Create the meta section.
-      descriptor::Meta meta_section(identifier,
-                                    identity.pair().K(),
-                                    model,
-                                    std::move(directory_address),
-                                    std::move(directory),
-                                    std::move(group_address),
-                                    false,
-                                    1048576,
-                                    authority.k());
+      descriptor::Meta meta(identifier,
+                            identity.pair().K(),
+                            model,
+                            std::move(directory_address),
+                            std::move(directory),
+                            std::move(group_address),
+                            false,
+                            1048576,
+                            authority.k());
+
       // Create the data section.
-      descriptor::Data data_section(name,
-                                    openness,
-                                    policy,
-                                    Infinit::version,
-                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                    identity.pair().k());
+      descriptor::Data data(name,
+                            openness,
+                            policy,
+                            std::move(vector),
+                            Infinit::version,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            identity.pair().k());
 
       // Create the descriptor from both sections and store it.
-      Descriptor descriptor(std::move(meta_section),
-                            std::move(data_section));
+      Descriptor descriptor(std::move(meta), std::move(data));
 
       descriptor.store(identity);
     }
 
-    // Reload the descriptor just to make sure it is valid.
-    Descriptor descriptor(administrator, identifier);
-    descriptor.validate(authority.K());
+    // The following shows how to take a descriptor and initialize
+    // a local network so as to be mounted.
+    {
+      // Reload the descriptor just to make sure it is valid.
+      Descriptor descriptor(administrator, identifier);
+      descriptor.validate(authority.K());
 
-    // Finally, store the blocks on the disk.
-    hole::storage::Directory storage(network, shelter_path.string());
-    storage.store(descriptor.meta().everybody_identity(),
-                  *group);
-    storage.store(descriptor.meta().root_address(),
-                  descriptor.meta().root_object());
+      // Finally, store the blocks on the disk.
+      elle::io::Path shelter_path(lune::Lune::Shelter);
+      shelter_path.Complete(elle::io::Piece{"%USER%", administrator},
+                            elle::io::Piece{"%NETWORK%", identifier});
+
+      hole::storage::Directory storage(network, shelter_path.string());
+      storage.store(descriptor.meta().root_address(),
+                    descriptor.meta().root_object());
+
+      for (auto const& block: descriptor.data().blocks())
+      {
+        nucleus::proton::Address block_address = block->bind();
+
+        storage.store(block_address, *block);
+      }
+    }
 
     return elle::Status::Ok;
   }
