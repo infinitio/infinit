@@ -3,14 +3,16 @@
 
 # include <elle/serialize/Pointer.hh>
 # include <elle/serialize/StaticFormat.hh>
-# include <elle/Exception.hh>
 
 # include <cryptography/Signature.hh>
 
 # include <nucleus/proton/Address.hh>
 # include <nucleus/neutron/Object.hh>
+# include <nucleus/Derivable.hh>
 
 # include <hole/Model.hh>
+
+# include <infinit/Exception.hh>
 
 //
 // ---------- Descriptor ------------------------------------------------------
@@ -61,9 +63,10 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
     {
       // Set the meta format to zero instead of the latest
       // so as to make sure the attributes deserialized are
-      // consistent with the format.
-      value._meta.reset(new infinit::descriptor::Meta);
-      value._meta->version(0);
+      // consistent with the format at the time.
+      value._meta.reset(
+        new infinit::descriptor::Meta(elle::serialize::no_init));
+      value._meta->infinit::descriptor::Meta::DynamicFormat::version(0);
 
       archive >> value._meta->_identifier;
       archive >> value._meta->_administrator_K;
@@ -74,7 +77,12 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
       archive >> value._meta->_extent;
       archive >> value._meta->_signature;
 
-      value._data.reset(new infinit::descriptor::Data);
+      // Set the data format to zero instead of the latest
+      // so as to make sure the attributes deserialized are
+      // consistent with the format at the time.
+      value._data.reset(
+        new infinit::descriptor::Data(elle::serialize::no_init));
+      value._data->infinit::descriptor::Data::DynamicFormat::version(0);
 
       archive >> value._data->_name;
       archive >> value._data->_openness;
@@ -111,8 +119,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
       break;
     }
     default:
-      // XXX ::infinit::Exception
-      throw elle::Exception(
+      throw ::infinit::Exception(
         elle::sprintf("unknown format '%s'", format));
   }
 }
@@ -173,8 +180,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Descriptor,
       break;
     }
     default:
-      // XXX ::infinit::Exception
-      throw elle::Exception(
+      throw ::infinit::Exception(
         elle::sprintf("unknown format '%s'", format));
   }
 }
@@ -232,9 +238,10 @@ namespace infinit
       ELLE_LOG_COMPONENT("infinit.Descriptor");
       ELLE_TRACE_METHOD(authority);
 
-      ELLE_DEBUG("format: %s", this->version());
+      ELLE_DEBUG("format: %s",
+                 this->infinit::descriptor::Meta::DynamicFormat::version());
 
-      switch (this->version())
+      switch (this->infinit::descriptor::Meta::DynamicFormat::version())
       {
         case 0:
         {
@@ -262,9 +269,10 @@ namespace infinit
                                this->_extent)));
         }
         default:
-          // XXX ::infinit::Exception
-          throw elle::Exception(
-            elle::sprintf("unknown format '%s'", this->version()));
+          throw infinit::Exception(
+            elle::sprintf(
+              "unknown format '%s'",
+              this->infinit::descriptor::Meta::DynamicFormat::version()));
       }
     }
   }
@@ -311,8 +319,7 @@ ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Meta,
       break;
     }
     default:
-      // XXX ::infinit::Exception
-      throw elle::Exception(
+      throw ::infinit::Exception(
         elle::sprintf("unknown format '%s'", format));
   }
 }
@@ -333,6 +340,7 @@ namespace infinit
     Data::Data(elle::String name,
                hole::Openness openness,
                horizon::Policy policy,
+               Vector blocks,
                elle::Version version,
                elle::serialize::Format format_block,
                elle::serialize::Format format_content_hash_block,
@@ -357,6 +365,7 @@ namespace infinit
       Data(std::move(name),
            std::move(openness),
            std::move(policy),
+           std::move(blocks),
            std::move(version),
            std::move(format_block),
            std::move(format_content_hash_block),
@@ -381,6 +390,7 @@ namespace infinit
              data::hash(name,
                         openness,
                         policy,
+                        blocks,
                         version,
                         format_block,
                         format_content_hash_block,
@@ -412,31 +422,77 @@ namespace infinit
     elle::Boolean
     Data::validate(T const& administrator) const
     {
-      return (administrator.verify(
-                this->_signature,
-                data::hash(this->_name,
-                           this->_openness,
-                           this->_policy,
-                           this->_version,
-                           this->_format_block,
-                           this->_format_content_hash_block,
-                           this->_format_contents,
-                           this->_format_immutable_block,
-                           this->_format_imprint_block,
-                           this->_format_mutable_block,
-                           this->_format_owner_key_block,
-                           this->_format_public_key_block,
-                           this->_format_access,
-                           this->_format_attributes,
-                           this->_format_catalog,
-                           this->_format_data,
-                           this->_format_ensemble,
-                           this->_format_group,
-                           this->_format_object,
-                           this->_format_reference,
-                           this->_format_user,
-                           this->_format_identity,
-                           this->_format_descriptor)));
+      ELLE_LOG_COMPONENT("infinit.Descriptor");
+      ELLE_TRACE_METHOD(administrator);
+
+      ELLE_DEBUG("format: %s",
+                 this->infinit::descriptor::Data::DynamicFormat::version());
+
+      switch (this->infinit::descriptor::Data::DynamicFormat::version())
+      {
+        case 0:
+        {
+          return (administrator.verify(
+                    this->_signature,
+                    data::hash_0(this->_name,
+                                 this->_openness,
+                                 this->_policy,
+                                 this->_version,
+                                 this->_format_block,
+                                 this->_format_content_hash_block,
+                                 this->_format_contents,
+                                 this->_format_immutable_block,
+                                 this->_format_imprint_block,
+                                 this->_format_mutable_block,
+                                 this->_format_owner_key_block,
+                                 this->_format_public_key_block,
+                                 this->_format_access,
+                                 this->_format_attributes,
+                                 this->_format_catalog,
+                                 this->_format_data,
+                                 this->_format_ensemble,
+                                 this->_format_group,
+                                 this->_format_object,
+                                 this->_format_reference,
+                                 this->_format_user,
+                                 this->_format_identity,
+                                 this->_format_descriptor)));
+        }
+        case 1:
+        {
+          return (administrator.verify(
+                    this->_signature,
+                    data::hash(this->_name,
+                               this->_openness,
+                               this->_policy,
+                               this->_blocks,
+                               this->_version,
+                               this->_format_block,
+                               this->_format_content_hash_block,
+                               this->_format_contents,
+                               this->_format_immutable_block,
+                               this->_format_imprint_block,
+                               this->_format_mutable_block,
+                               this->_format_owner_key_block,
+                               this->_format_public_key_block,
+                               this->_format_access,
+                               this->_format_attributes,
+                               this->_format_catalog,
+                               this->_format_data,
+                               this->_format_ensemble,
+                               this->_format_group,
+                               this->_format_object,
+                               this->_format_reference,
+                               this->_format_user,
+                               this->_format_identity,
+                               this->_format_descriptor)));
+        }
+        default:
+          throw ::infinit::Exception(
+            elle::sprintf(
+              "unknown format '%s'",
+              this->infinit::descriptor::Data::DynamicFormat::version()));
+      }
     }
   }
 }
@@ -445,37 +501,122 @@ namespace infinit
 | Serializer |
 `-----------*/
 
+ELLE_SERIALIZE_STATIC_FORMAT(infinit::descriptor::Data, 1);
+
 ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Data,
                       archive,
                       value,
                       format)
 {
-  enforce(format == 0);
+  switch (format)
+  {
+    case 0:
+    {
+      archive & value._name;
+      archive & value._openness;
+      archive & value._policy;
+      archive & value._version;
+      archive & value._format_block;
+      archive & value._format_content_hash_block;
+      archive & value._format_contents;
+      archive & value._format_immutable_block;
+      archive & value._format_imprint_block;
+      archive & value._format_mutable_block;
+      archive & value._format_owner_key_block;
+      archive & value._format_public_key_block;
+      archive & value._format_access;
+      archive & value._format_attributes;
+      archive & value._format_catalog;
+      archive & value._format_data;
+      archive & value._format_ensemble;
+      archive & value._format_group;
+      archive & value._format_object;
+      archive & value._format_reference;
+      archive & value._format_user;
+      archive & value._format_identity;
+      archive & value._format_descriptor;
+      archive & value._signature;
 
-  archive & value._name;
-  archive & value._openness;
-  archive & value._policy;
-  archive & value._version;
-  archive & value._format_block;
-  archive & value._format_content_hash_block;
-  archive & value._format_contents;
-  archive & value._format_immutable_block;
-  archive & value._format_imprint_block;
-  archive & value._format_mutable_block;
-  archive & value._format_owner_key_block;
-  archive & value._format_public_key_block;
-  archive & value._format_access;
-  archive & value._format_attributes;
-  archive & value._format_catalog;
-  archive & value._format_data;
-  archive & value._format_ensemble;
-  archive & value._format_group;
-  archive & value._format_object;
-  archive & value._format_reference;
-  archive & value._format_user;
-  archive & value._format_identity;
-  archive & value._format_descriptor;
-  archive & value._signature;
+      break;
+    }
+    case 1:
+    {
+      archive & value._name;
+      archive & value._openness;
+      archive & value._policy;
+      archive & value._blocks;
+      archive & value._version;
+      archive & value._format_block;
+      archive & value._format_content_hash_block;
+      archive & value._format_contents;
+      archive & value._format_immutable_block;
+      archive & value._format_imprint_block;
+      archive & value._format_mutable_block;
+      archive & value._format_owner_key_block;
+      archive & value._format_public_key_block;
+      archive & value._format_access;
+      archive & value._format_attributes;
+      archive & value._format_catalog;
+      archive & value._format_data;
+      archive & value._format_ensemble;
+      archive & value._format_group;
+      archive & value._format_object;
+      archive & value._format_reference;
+      archive & value._format_user;
+      archive & value._format_identity;
+      archive & value._format_descriptor;
+      archive & value._signature;
+
+      break;
+    }
+    default:
+      throw ::infinit::Exception(
+        elle::sprintf("unknown format '%s'", format));
+  }
+}
+
+// XXX to merge into a simple serializer when the serialization
+//     mechanism will be able to support polymorphic types by
+//     embedding an identifier for reconstructing it on the other end.
+ELLE_SERIALIZE_NO_FORMAT(infinit::descriptor::Data::Vector);
+
+ELLE_SERIALIZE_SPLIT(infinit::descriptor::Data::Vector);
+
+ELLE_SERIALIZE_SPLIT_SAVE(infinit::descriptor::Data::Vector,
+                          archive,
+                          value,
+                          format)
+{
+  typename Archive::SequenceSizeType size = value.size();
+  archive << size;
+
+  for (auto const& pointer: value)
+  {
+    nucleus::proton::Address address = pointer->bind();
+    nucleus::Derivable derivable(address.component(), *pointer);
+
+    archive << derivable;
+  }
+}
+
+ELLE_SERIALIZE_SPLIT_LOAD(infinit::descriptor::Data::Vector,
+                          archive,
+                          value,
+                          format)
+{
+  typename Archive::SequenceSizeType size;
+  archive >> size;
+
+  for (elle::Natural32 i = 0; i < size; ++i)
+  {
+    nucleus::Derivable derivable;
+
+    archive >> derivable;
+
+    std::unique_ptr<nucleus::proton::Block> block = derivable.release();
+
+    value.push_back(std::move(block));
+  }
 }
 
 #endif

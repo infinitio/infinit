@@ -26,6 +26,10 @@ ELLE_LOG_COMPONENT("infinit.Descriptor");
 
 namespace infinit
 {
+  /*-------------.
+  | Construction |
+  `-------------*/
+
   // XXX remove this constructor in favor of something like:
   //       template <typename T>
   //       Descriptor(elle::String const& path,
@@ -38,25 +42,18 @@ namespace infinit
                common::infinit::descriptor_path(user, network));
 
     if (Descriptor::exists(user, network) == false)
-      throw elle::Exception(
+      throw infinit::Exception(
         elle::sprintf("network %s does not seem to exist for user %s",
                       network, user));
 
     this->load(user, network);
 
     if (this->validate(Infinit::authority().K()) == false)
-      throw elle::Exception("unable to validate the descriptor");
+      throw infinit::Exception("unable to validate the descriptor");
   }
 
-  Descriptor::Descriptor(descriptor::Meta const& meta,
-                         descriptor::Data const& data):
-    _meta(new descriptor::Meta(meta)),
-    _data(new descriptor::Data(data))
-  {
-  }
-
-  Descriptor::Descriptor(descriptor::Meta&& meta,
-                         descriptor::Data&& data):
+  Descriptor::Descriptor(descriptor::Meta meta,
+                         descriptor::Data data):
     _meta(new descriptor::Meta(std::move(meta))),
     _data(new descriptor::Data(std::move(data)))
   {
@@ -65,6 +62,12 @@ namespace infinit
   Descriptor::Descriptor(Descriptor const& other):
     _meta(new descriptor::Meta(*other._meta)),
     _data(new descriptor::Data(*other._data))
+  {
+  }
+
+  Descriptor::Descriptor(Descriptor&& other):
+    _meta(std::move(other._meta)),
+    _data(std::move(other._data))
   {
   }
 
@@ -93,19 +96,19 @@ namespace infinit
   }
 
   void
-  Descriptor::data(descriptor::Data const& data)
-  {
-    ELLE_ASSERT_NEQ(this->_data, nullptr);
-
-    this->_data.reset(new descriptor::Data(data));
-  }
-
-  void
-  Descriptor::data(descriptor::Data&& data)
+  Descriptor::update(descriptor::Data data)
   {
     ELLE_ASSERT_NEQ(this->_data, nullptr);
 
     this->_data.reset(new descriptor::Data(std::move(data)));
+  }
+
+  void
+  Descriptor::update(std::unique_ptr<descriptor::Data>&& data)
+  {
+    ELLE_ASSERT_NEQ(this->_data, nullptr);
+
+    this->_data = std::move(data);
   }
 
   /*---------.
@@ -180,10 +183,6 @@ namespace infinit
     /*-------------.
     | Construction |
     `-------------*/
-
-    Meta::Meta()
-    {
-    }
 
     Meta::Meta(elle::String identifier,
                cryptography::PublicKey administrator_K,
@@ -343,13 +342,10 @@ namespace infinit
     | Construction |
     `-------------*/
 
-    Data::Data()
-    {
-    }
-
     Data::Data(elle::String name,
                hole::Openness openness,
                horizon::Policy policy,
+               Vector blocks,
                elle::Version version,
                elle::serialize::Format format_block,
                elle::serialize::Format format_content_hash_block,
@@ -374,6 +370,7 @@ namespace infinit
       _name(std::move(name)),
       _openness(std::move(openness)),
       _policy(std::move(policy)),
+      _blocks(std::move(blocks)),
       _version(std::move(version)),
       _format_block(std::move(format_block)),
       _format_content_hash_block(std::move(format_content_hash_block)),
@@ -424,12 +421,17 @@ namespace infinit
       _format_descriptor(other._format_descriptor),
       _signature(other._signature)
     {
+      // XXX[iterate over the other's set of blocks and for every one,
+      //     call the factory with the block as argument so as to trigger
+      //     the copy constructor]
+      ELLE_ENFORCE(false);
     }
 
     Data::Data(Data&& other):
       _name(std::move(other._name)),
       _openness(std::move(other._openness)),
       _policy(std::move(other._policy)),
+      _blocks(std::move(other._blocks)),
       _version(std::move(other._version)),
       _format_block(std::move(other._format_block)),
       _format_content_hash_block(std::move(other._format_content_hash_block)),
@@ -479,6 +481,7 @@ namespace infinit
       stream << this->_name << "("
              << this->_openness << ", "
              << this->_policy << ", "
+             << this->_blocks.size() << ", "
              << this->_version << ")";
     }
 
@@ -492,6 +495,7 @@ namespace infinit
       hash(elle::String const& name,
            hole::Openness const& openness,
            horizon::Policy const& policy,
+           Data::Vector const& blocks,
            elle::Version const& version,
            elle::serialize::Format const& format_block,
            elle::serialize::Format const& format_content_hash_block,
@@ -512,6 +516,60 @@ namespace infinit
            elle::serialize::Format const& format_user,
            elle::serialize::Format const& format_identity,
            elle::serialize::Format const& format_descriptor)
+      {
+        return (cryptography::oneway::hash(
+                  elle::serialize::make_tuple(
+                    name,
+                    openness,
+                    policy,
+                    blocks,
+                    version,
+                    format_block,
+                    format_content_hash_block,
+                    format_contents,
+                    format_immutable_block,
+                    format_imprint_block,
+                    format_mutable_block,
+                    format_owner_key_block,
+                    format_public_key_block,
+                    format_access,
+                    format_attributes,
+                    format_catalog,
+                    format_data,
+                    format_ensemble,
+                    format_group,
+                    format_object,
+                    format_reference,
+                    format_user,
+                    format_identity,
+                    format_descriptor),
+                  cryptography::KeyPair::oneway_algorithm));
+      }
+
+      cryptography::Digest
+      hash_0(elle::String const& name,
+             hole::Openness const& openness,
+             horizon::Policy const& policy,
+             elle::Version const& version,
+             elle::serialize::Format const& format_block,
+             elle::serialize::Format const& format_content_hash_block,
+             elle::serialize::Format const& format_contents,
+             elle::serialize::Format const& format_immutable_block,
+             elle::serialize::Format const& format_imprint_block,
+             elle::serialize::Format const& format_mutable_block,
+             elle::serialize::Format const& format_owner_key_block,
+             elle::serialize::Format const& format_public_key_block,
+             elle::serialize::Format const& format_access,
+             elle::serialize::Format const& format_attributes,
+             elle::serialize::Format const& format_catalog,
+             elle::serialize::Format const& format_data,
+             elle::serialize::Format const& format_ensemble,
+             elle::serialize::Format const& format_group,
+             elle::serialize::Format const& format_object,
+             elle::serialize::Format const& format_reference,
+             elle::serialize::Format const& format_user,
+             elle::serialize::Format const& format_identity,
+             elle::serialize::Format const& format_descriptor)
       {
         return (cryptography::oneway::hash(
                   elle::serialize::make_tuple(

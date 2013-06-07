@@ -57,14 +57,21 @@ namespace infinit
   ///
   /// The following details the process of creating such a descriptor.
   ///
-  ///   Meta meta_section(id, admin_K, model, root_address, ...,
-  ///                     authority.k());
-  ///   Data data_section(name, openness, policy, version, format_...,
-  ///                     administrator_k());
+  ///   Meta meta(id, admin_K, model, root_address, ...,
+  ///             authority.k());
+  ///   Data data(name, openness, policy, version, format_...,
+  ///             administrator_k());
   ///
-  /// Finally, a descriptor is instantiated from both the sections.
+  /// Finally, a descriptor is instantiated from both the sections which
+  /// could be moved for example:
   ///
-  ///   Descriptor descriptor(meta_section, data_section);
+  ///   Descriptor descriptor(std::move(meta_section), std::move(data_section));
+  ///
+  /// Note that the network administrator can then modify the descriptor
+  /// by providing an updated data section:
+  ///
+  ///   Data data(...);
+  ///   descriptor.update(std::move(data));
   class Descriptor:
     public elle::Printable,
     public elle::concept::MakeFileable<Descriptor>,
@@ -79,14 +86,10 @@ namespace infinit
     Descriptor(elle::String const& user,
                elle::String const& network);
     /// Construct a descriptor from both its meta and data sections.
-    Descriptor(descriptor::Meta const& meta,
-               descriptor::Data const& data);
-    /// Construct a descriptor from both its meta and data sections whose
-    /// ownership is transferred to the descriptor.
-    Descriptor(descriptor::Meta&& meta,
-               descriptor::Data&& data);
+    Descriptor(descriptor::Meta meta,
+               descriptor::Data data);
     Descriptor(Descriptor const& other);
-    Descriptor(Descriptor&& other) = default;
+    Descriptor(Descriptor&& other);
     ELLE_SERIALIZE_CONSTRUCT_DECLARE(Descriptor);
 
     /*--------.
@@ -96,7 +99,8 @@ namespace infinit
     /// Return true if the whole descriptor is valid, including both the
     /// meta and data sections.
     ///
-    /// Note that the _authority_ must provide a verify(signature, data) method.
+    /// Note that the _authority_ must provide a verify(signature, data)
+    /// method.
     template <typename T>
     elle::Boolean
     validate(T const& authority) const;
@@ -108,10 +112,10 @@ namespace infinit
     data() const;
     /// Update the data section.
     void
-    data(descriptor::Data const& data);
+    update(descriptor::Data data);
     /// Update the data section by transferring the ownership of the given one.
     void
-    data(descriptor::Data&& data);
+    update(std::unique_ptr<descriptor::Data>&& data);
 
     /*----------.
     | Operators |
@@ -149,7 +153,11 @@ namespace infinit
     | Attributes |
     `-----------*/
   private:
+    /// The meta section contains whatever information should not change
+    /// over time.
     ELLE_ATTRIBUTE(std::unique_ptr<descriptor::Meta>, meta);
+    /// Unlike the meta section, the elements in the data section can be
+    /// modified by the network administrator.
     ELLE_ATTRIBUTE(std::unique_ptr<descriptor::Data>, data);
   };
 }
@@ -175,11 +183,17 @@ namespace infinit
       // Required for the format 0.
       friend class Descriptor;
 
+      /*------.
+      | Types |
+      `------*/
+    public:
+      typedef elle::serialize::DynamicFormat<Meta> DynamicFormat;
+
       /*-------------.
       | Construction |
       `-------------*/
     public:
-      Meta(); // XXX[deserialization instead]
+      Meta() {} // XXX[to remove when the new serialization will be fixed]
       /// Construct a meta section based on the given elements.
       Meta(elle::String identifier,
            cryptography::PublicKey administrator_K,
@@ -250,17 +264,30 @@ namespace infinit
       | Attributes |
       `-----------*/
     private:
+      /// A unique identifier across all the networks created throughout
+      /// the world.
       ELLE_ATTRIBUTE_R(elle::String, identifier);
+      /// The public key of the network owner. Only the private key associated
+      /// with it can re-sign the data section.
       ELLE_ATTRIBUTE_R(cryptography::PublicKey, administrator_K);
+      /// The storage layer implementation.
       ELLE_ATTRIBUTE_R(hole::Model, model);
+      /// The address of the root directory.
       ELLE_ATTRIBUTE_R(nucleus::proton::Address, root_address);
+      /// The root directory in its initial form i.e empty.
       ELLE_ATTRIBUTE(std::unique_ptr<nucleus::neutron::Object>, root_object);
+      /// This attribute is created should someone request it so as to ease
+      /// the process of access control since the subject is the entity used
+      /// to identify both users and groups.
       ELLE_ATTRIBUTE_R(nucleus::neutron::Group::Identity, everybody_identity);
       ELLE_ATTRIBUTE_P(std::unique_ptr<nucleus::neutron::Subject>,
                        everybody_subject,
                        mutable);
+      /// Indicate whether or not this network supports history i.e versioning.
       ELLE_ATTRIBUTE_R(elle::Boolean, history);
+      /// The maximum size of the blocks stored on the storage layer.
       ELLE_ATTRIBUTE_R(elle::Natural32, extent);
+      /// A signature issued by the authority guaranteeing its validity.
       ELLE_ATTRIBUTE(cryptography::Signature, signature);
     };
 
@@ -379,6 +406,7 @@ namespace infinit
     /// impropriety of forcing the user to update the Infinit software should
     /// not be too important.
     struct Data:
+      public elle::serialize::DynamicFormat<Data>,
       public elle::Printable
     {
       /*--------.
@@ -388,15 +416,36 @@ namespace infinit
       // Required for the format 0.
       friend class Descriptor;
 
+      /*------.
+      | Types |
+      `------*/
+    public:
+      typedef elle::serialize::DynamicFormat<Data> DynamicFormat;
+      // XXX required so as to provide a specific serializer: to remove
+      //     when the serialization mechanism will handle polymorphic
+      //     types by embedding an identifier for the reconstruction on the
+      //     other end.
+      class Vector:
+        public std::vector<std::unique_ptr<nucleus::proton::Block>>
+      {
+      public:
+        template <typename... T>
+        Vector(T&&... args):
+          std::vector<std::unique_ptr<nucleus::proton::Block>>(
+            std::forward<T>(args)...)
+        {}
+      };
+
       /*-------------.
       | Construction |
       `-------------*/
     public:
-      Data(); // XXX[deserialization instead]
+      Data() {} // XXX[to remove when the new serialization will be fixed]
       /// Construct a data section from the given elements.
       Data(elle::String name,
            hole::Openness openness,
            horizon::Policy policy,
+           Vector blocks,
            elle::Version version,
            elle::serialize::Format format_block,
            elle::serialize::Format format_content_hash_block,
@@ -427,6 +476,7 @@ namespace infinit
       Data(elle::String name,
            hole::Openness openness,
            horizon::Policy policy,
+           Vector blocks,
            elle::Version version,
            elle::serialize::Format format_block,
            elle::serialize::Format format_content_hash_block,
@@ -487,9 +537,23 @@ namespace infinit
       | Attributes |
       `-----------*/
     private:
+      /// A human-readable name for the network.
       ELLE_ATTRIBUTE_R(elle::String, name);
+      /// The way other computers, i.e nodes, can connect to this network.
       ELLE_ATTRIBUTE_R(hole::Openness, openness);
+      /// The default sharing behavior for every file system object
+      /// being created.
       ELLE_ATTRIBUTE_R(horizon::Policy, policy);
+      /// The set of initial blocks in the storage layer.
+      ELLE_ATTRIBUTE_R(Vector, blocks);
+      /// The most recent version of the Infinit software supported by the
+      /// network.
+      ///
+      /// Nodes with a more recent version should operate with the formats
+      /// below so as to be sure not to create blocks in formats that other
+      /// nodes will not be able to understand. Likewise, any node whose
+      /// software is behind should immediately be updated so as to be sure
+      /// to understand every format being created.
       ELLE_ATTRIBUTE_R(elle::Version, version);
       ELLE_ATTRIBUTE_R(elle::serialize::Format, format_block);
       ELLE_ATTRIBUTE_R(elle::serialize::Format, format_content_hash_block);
@@ -525,6 +589,7 @@ namespace infinit
       hash(elle::String const& name,
            hole::Openness const& openness,
            horizon::Policy const& policy,
+           Data::Vector const& blocks,
            elle::Version const& version,
            elle::serialize::Format const& format_block,
            elle::serialize::Format const& format_content_hash_block,
@@ -545,6 +610,31 @@ namespace infinit
            elle::serialize::Format const& format_user,
            elle::serialize::Format const& format_identity,
            elle::serialize::Format const& format_descriptor);
+      /// Compatibility with format 0.
+      cryptography::Digest
+      hash_0(elle::String const& name,
+             hole::Openness const& openness,
+             horizon::Policy const& policy,
+             elle::Version const& version,
+             elle::serialize::Format const& format_block,
+             elle::serialize::Format const& format_content_hash_block,
+             elle::serialize::Format const& format_contents,
+             elle::serialize::Format const& format_immutable_block,
+             elle::serialize::Format const& format_imprint_block,
+             elle::serialize::Format const& format_mutable_block,
+             elle::serialize::Format const& format_owner_key_block,
+             elle::serialize::Format const& format_public_key_block,
+             elle::serialize::Format const& format_access,
+             elle::serialize::Format const& format_attributes,
+             elle::serialize::Format const& format_catalog,
+             elle::serialize::Format const& format_data,
+             elle::serialize::Format const& format_ensemble,
+             elle::serialize::Format const& format_group,
+             elle::serialize::Format const& format_object,
+             elle::serialize::Format const& format_reference,
+             elle::serialize::Format const& format_user,
+             elle::serialize::Format const& format_identity,
+             elle::serialize::Format const& format_descriptor);
     }
   }
 }
