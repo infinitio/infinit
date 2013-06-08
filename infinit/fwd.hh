@@ -4,6 +4,7 @@
 namespace infinit
 {
   class Descriptor;
+  class Identity;
 }
 
 #endif

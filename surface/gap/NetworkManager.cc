@@ -10,11 +10,11 @@
 #include <hole/storage/Directory.hh>
 
 // This should be outside.
-#include <lune/Identity.hh>
 #include <lune/Lune.hh>
 #include <lune/Phrase.hh>
 #include <lune/Set.hh>
 
+#include <infinit/Identity.hh>
 #include <infinit/Descriptor.hh>
 
 #include <nucleus/neutron/Access.hh>
@@ -72,7 +72,7 @@ namespace
     nucleus::proton::Network network(id);
 
     //- identity ---------------------------------------------------------------
-    lune::Identity        identity;
+    infinit::Identity        identity;
     if (identity.Restore(identity_) == e)
       throw std::runtime_error("Couldn't restore the identity.");
 
@@ -311,7 +311,7 @@ namespace surface
         //  static_assert(false, "migrate the descriptor here & send to meta");
         //}
 
-        lune::Identity identity;
+        infinit::Identity identity;
         identity.Restore(this->_meta.identity());
 
         ELLE_DEBUG("Storing the descriptor of %s for user %s",

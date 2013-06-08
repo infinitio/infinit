@@ -1,5 +1,5 @@
-#ifndef LUNE_IDENTITY_HXX
-# define LUNE_IDENTITY_HXX
+#ifndef INFINIT_IDENTITY_HXX
+# define INFINIT_IDENTITY_HXX
 
 # include <elle/serialize/Pointer.hh>
 
@@ -7,7 +7,7 @@
 # include <cryptography/Signature.hh>
 # include <cryptography/KeyPair.hh>
 
-ELLE_SERIALIZE_SIMPLE(lune::Identity,
+ELLE_SERIALIZE_SIMPLE(infinit::Identity,
                       archive,
                       value,
                       version)

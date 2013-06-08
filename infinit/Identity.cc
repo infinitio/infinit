@@ -1,3 +1,5 @@
+#include <infinit/Identity.hh>
+
 #include <elle/os/path.hh>
 #include <elle/io/File.hh>
 #include <elle/io/Piece.hh>
@@ -9,18 +11,15 @@
 
 #include <hole/Authority.hh>
 
-#include <lune/Identity.hh>
-#include <lune/Lune.hh>
-
 #include <common/common.hh>
 
+// XXX
 namespace path = elle::os::path;
 
-namespace lune
+ELLE_LOG_COMPONENT("infinit.Identity");
+
+namespace infinit
 {
-
-  ELLE_LOG_COMPONENT("infinit.lune.Identity");
-
 //
 // ---------- constructors & destructors --------------------------------------
 //

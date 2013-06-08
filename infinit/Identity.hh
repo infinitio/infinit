@@ -1,5 +1,5 @@
-#ifndef LUNE_IDENTITY_HH
-# define LUNE_IDENTITY_HH
+#ifndef INFINIT_IDENTITY_HH
+# define INFINIT_IDENTITY_HH
 
 # include <elle/attribute.hh>
 # include <elle/operator.hh>
@@ -13,11 +13,9 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-# include <lune/fwd.hh>
+# include <infinit/fwd.hh>
 
-# include <boost/filesystem/path.hpp>
-
-namespace lune
+namespace infinit
 {
 
   ///
@@ -119,6 +117,6 @@ namespace lune
 
 }
 
-#include <lune/Identity.hxx>
+#include <infinit/Identity.hxx>
 
 #endif

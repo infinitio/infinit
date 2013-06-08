@@ -11,7 +11,7 @@ using namespace infinit;
 
 #include <hole/Model.hh>
 
-#include <lune/Identity.hh>
+#include <infinit/Identity.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>
@@ -75,7 +75,7 @@ generate_network_descriptor(elle::String const& id,
   if (group_address.Restore(group_address_) != elle::Status::Ok)
     throw std::runtime_error("Unable to restore group address");
 
-  lune::Identity identity;
+  infinit::Identity identity;
   if (identity.Restore(identity_) != elle::Status::Ok)
     throw std::runtime_error("Unable to restore the identity");
 

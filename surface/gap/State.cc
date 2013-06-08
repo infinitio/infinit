@@ -3,7 +3,6 @@
 #include <common/common.hh>
 
 // #include <etoile/portal/Portal.hh>
-#include <lune/Identity.hh>
 #include <lune/Dictionary.hh>
 
 #include <elle/log.hh>
@@ -16,6 +15,7 @@
 #include <metrics/_details/google.hh>
 #include <metrics/_details/kissmetrics.hh>
 
+#include <infinit/Identity.hh>
 
 // #include <elle/memory.hh>
 #include <boost/filesystem.hpp>
@@ -213,7 +213,7 @@ namespace surface
 
       std::string identity_clear;
 
-      lune::Identity identity;
+      infinit::Identity identity;
 
       // Decrypt the identity
       if (identity.Restore(res.identity)    == elle::Status::Error ||

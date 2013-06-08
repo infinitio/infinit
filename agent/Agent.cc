@@ -22,7 +22,7 @@ namespace agent
   ///
   /// the user's identity.
   ///
-  lune::Identity                Agent::Identity;
+  infinit::Identity                Agent::Identity;
 
   ///
   /// this variable represents the user subject.
@@ -47,7 +47,7 @@ namespace agent
     //
     {
       // does the identity exist.
-      if (lune::Identity::exists(Infinit::User) == false)
+      if (infinit::Identity::exists(Infinit::User) == false)
         throw elle::Exception("the user identity does not seem to exist");
 
       std::ifstream identity_file(common::infinit::identity_path(Infinit::User));

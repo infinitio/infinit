@@ -7,7 +7,6 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <lune/Identity.hh>
 #include <hole/Authority.hh>
 
 // XXX When Qt is out, remove this
@@ -18,25 +17,25 @@ using namespace infinit;
 # undef slot
 #endif
 
+#include <infinit/Identity.hh>
 
 #include "identity.hh"
-
 
 ///
 /// this method creates a new user by generating a new key pair and
 /// storing a user block.
 ///
-static lune::Identity create_identity(elle::String const& id,
-                                      elle::String const& authority_file,
-                                      elle::String const& authority_password,
-                                      elle::String const& login,
-                                      elle::String const& password)
+static infinit::Identity create_identity(elle::String const& id,
+                                         elle::String const& authority_file,
+                                         elle::String const& authority_password,
+                                         elle::String const& login,
+                                         elle::String const& password)
 {
   cryptography::KeyPair pair =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    lune::Identity::keypair_length);
+                                    infinit::Identity::keypair_length);
   elle::io::Path                    authority_path;
-  lune::Identity                    identity;
+  infinit::Identity                    identity;
 
   // check the argument.
   if (login.empty() == true)

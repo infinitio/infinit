@@ -10,6 +10,8 @@
 # include <elle/serialize/DynamicFormat.hh>
 # include <elle/serialize/construct.hh>
 
+# include <infinit/fwd.hh>
+
 # include <cryptography/Signature.hh>
 // XXX[temporary: for cryptography]
 using namespace infinit;
@@ -134,13 +136,12 @@ namespace infinit
     ELLE_SERIALIZE_FRIEND_FOR(Descriptor);
     // fileable
     ELLE_CONCEPT_FILEABLE_METHODS();
+    // XXX to remove in favor of a path-based constructor
     void
     load(elle::String const& user,
          elle::String const& network);
     void
-    store(lune::Identity const& identity) const;
-    void
-    store(elle::io::Path const& path) const;
+    store(infinit::Identity const& identity) const;
     static
     void
     erase(elle::String const& user,
@@ -551,6 +552,9 @@ namespace infinit
       ELLE_ATTRIBUTE_R(horizon::Policy, policy);
       /// The set of initial blocks in the storage layer.
       ELLE_ATTRIBUTE_R(Vector, blocks);
+      /// The set of IP addresses referencing the stable nodes of the network
+      /// which can be used for boostraping i.e discovering the network.
+      // XXX ELLE_ATTRIBUTE_R(XXX, XXX);
       /// The most recent version of the Infinit software supported by the
       /// network.
       ///

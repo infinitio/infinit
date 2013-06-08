@@ -9,7 +9,6 @@
 
 #include <lune/Lune.hh>
 #include <lune/Configuration.hh>
-#include <lune/Identity.hh>
 #include <lune/Dictionary.hh>
 #include <lune/Set.hh>
 #include <lune/Phrase.hh>

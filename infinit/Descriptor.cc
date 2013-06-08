@@ -11,12 +11,12 @@
 
 #include <hole/Openness.hh>
 
-#include <lune/Identity.hh>
-
 #include <nucleus/proton/Address.hh>
 
 #include <Infinit.hh>
+
 #include <infinit/Descriptor.hh>
+#include <infinit/Identity.hh>
 
 ELLE_LOG_COMPONENT("infinit.Descriptor");
 
@@ -130,7 +130,7 @@ namespace infinit
   }
 
   void
-  Descriptor::store(lune::Identity const& identity) const
+  Descriptor::store(infinit::Identity const& identity) const
   {
     ELLE_TRACE_METHOD(identity);
 

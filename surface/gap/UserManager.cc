@@ -6,7 +6,6 @@
 #include <common/common.hh>
 
 #include <lune/Dictionary.hh>
-#include <lune/Identity.hh>
 
 #include <boost/filesystem.hpp>
 
