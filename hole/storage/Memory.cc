@@ -138,11 +138,10 @@ namespace hole
 
       ELLE_ASSERT(this->_exist(unique_address) == true);
 
-      // Deserialize the block.
       nucleus::Derivable derivable;
 
-      elle::serialize::from_string(
-        this->_container.find(unique_address)->second) >> derivable;
+      elle::serialize::from_string(this->_container.at(unique_address)) >>
+        derivable;
 
       ELLE_ASSERT_EQ(derivable.block().bind(), address);
 
@@ -155,25 +154,8 @@ namespace hole
     {
       ELLE_TRACE_METHOD(address, revision);
 
-      // Convert the address to a string.
-      elle::io::Unique unique_address{address.unique()};
-
-      static boost::format format("%s#%s");
-      elle::String unique(str(boost::format(format)
-                              % unique_address
-                              % revision.number));
-
-      ELLE_ASSERT(this->_exist(unique_address));
-
-      // Deserialize the block.
-      nucleus::Derivable derivable;
-
-      elle::serialize::from_string(
-        this->_container.find(unique_address)->second) >> derivable;
-
-      ELLE_ASSERT_EQ(derivable.block().bind(), address);
-
-      return derivable.release();
+      // Since the storage does not handle revisions.
+      return (this->_load(address));
     }
 
     void
