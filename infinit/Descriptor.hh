@@ -4,7 +4,6 @@
 # include <elle/Version.hh>
 # include <elle/Printable.hh>
 # include <elle/concept/Fileable.hh>
-# include <elle/concept/Uniquable.hh>
 # include <elle/serialize/fwd.hh>
 # include <elle/serialize/Format.hh>
 # include <elle/serialize/DynamicFormat.hh>
@@ -137,6 +136,7 @@ namespace infinit
     // fileable
     ELLE_CONCEPT_FILEABLE_METHODS();
     // XXX to remove in favor of a path-based constructor
+    // XXX maybe store the networks by id
     void
     load(elle::String const& user,
          elle::String const& network);

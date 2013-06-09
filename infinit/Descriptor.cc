@@ -1,6 +1,7 @@
 #include <elle/io/File.hh>
 #include <elle/io/Piece.hh>
 #include <elle/os/path.hh>
+#include <elle/utility/Factory.hh>
 #include <elle/log.hh>
 
 #include <common/common.hh>
@@ -12,6 +13,7 @@
 #include <hole/Openness.hh>
 
 #include <nucleus/proton/Address.hh>
+#include <nucleus/proton/Block.hh>
 
 #include <Infinit.hh>
 
@@ -435,10 +437,23 @@ namespace infinit
       _format_descriptor(other._format_descriptor),
       _signature(other._signature)
     {
-      // XXX[iterate over the other's set of blocks and for every one,
-      //     call the factory with the block as argument so as to trigger
-      //     the copy constructor]
-      ELLE_ENFORCE(false);
+      /* XXX will call Object(Block&) but we do not want that
+         -> on peut imaginer soit une methode clone() soit que chaque block
+            fournisse un T(Block&) et T(Block&&) qui cast et appelle le bon
+            constructeur: copy/move
+
+      auto const& factory = nucleus::proton::block::factory<>();
+
+      for (auto const& pointer: other._blocks)
+      {
+        std::unique_ptr<nucleus::proton::Block> block(
+          factory.allocate<nucleus::proton::Block>(pointer->component(),
+                                                   *pointer));
+
+        this->_blocks.push_back(std::move(block));
+      }
+      */
+      ELLE_ASSERT(false);
     }
 
     Data::Data(Data&& other):
