@@ -7,7 +7,6 @@
 
 #include <nucleus/proton/Block.hh>
 #include <nucleus/proton/Address.hh>
-#include <nucleus/factory.hh>
 
 #include <common/common.hh>
 
@@ -107,8 +106,10 @@ namespace satellite
     ELLE_DEBUG("component '%s'", component);
 
     // Create an empty block.
+    auto const& factory = nucleus::proton::block::factory<>();
+
     nucleus::proton::Block* block =
-      nucleus::factory::block().allocate<nucleus::proton::Block>(component);
+      factory.allocate<nucleus::proton::Block>(component);
 
     ELLE_FINALLY_ACTION_DELETE(block);
 

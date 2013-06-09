@@ -4,9 +4,10 @@
 # include <stdexcept>
 
 # include <elle/serialize/Serializer.hh>
+# include <elle/utility/Factory.hh>
 # include <elle/log.hh>
 
-# include <nucleus/factory.hh>
+# include <nucleus/proton/Block.hh>
 
 ELLE_SERIALIZE_NO_FORMAT(nucleus::Derivable);
 
@@ -26,9 +27,9 @@ ELLE_SERIALIZE_SPLIT_LOAD(nucleus::Derivable, archive, value, version)
     {
       enforce(value._block == nullptr);
 
-      value._block =
-        nucleus::factory::block().allocate<nucleus::proton::Block>(
-          value._component);
+      auto const& factory = nucleus::proton::block::factory<>();
+
+      value._block = factory.allocate<nucleus::proton::Block>(value._component);
     }
   enforce(value._block != nullptr);
   typedef typename elle::serialize::SerializableFor<Archive>::Type interface_t;

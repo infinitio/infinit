@@ -6,12 +6,13 @@
 #include <elle/serialize/Serializable.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
+#include <elle/utility/Factory.hh>
 
 #include <hole/storage/Directory.hh>
 #include <hole/Exception.hh>
 
-#include <nucleus/factory.hh>
 #include <nucleus/fwd.hh>
+#include <nucleus/proton/Block.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.storage.Directory");
 
@@ -104,9 +105,10 @@ namespace hole
       elle::io::Path path(this->path(address));
 
       // Create an empty block.
-      nucleus::proton::ImmutableBlock* block{
-        nucleus::factory::block().allocate<nucleus::proton::ImmutableBlock>(
-          address.component())};
+      auto const& factory = nucleus::proton::block::factory<>();
+
+      nucleus::proton::ImmutableBlock* block =
+        factory.allocate<nucleus::proton::ImmutableBlock>(address.component());
 
       ELLE_FINALLY_ACTION_DELETE(block);
 
@@ -126,9 +128,10 @@ namespace hole
       elle::io::Path path(this->path(address, revision));
 
       // Create an empty block.
-      nucleus::proton::MutableBlock* block{
-        nucleus::factory::block().allocate<nucleus::proton::MutableBlock>(
-          address.component())};
+      auto const& factory = nucleus::proton::block::factory<>();
+
+      nucleus::proton::MutableBlock* block =
+        factory.allocate<nucleus::proton::MutableBlock>(address.component());
 
       ELLE_FINALLY_ACTION_DELETE(block);
 

@@ -23,27 +23,6 @@ namespace nucleus
   {
     namespace setup
     {
-      /*----------.
-      | Functions |
-      `----------*/
-
-      static
-      elle::utility::Factory<neutron::Component> const*
-      _block()
-      {
-        elle::utility::Factory<neutron::Component>* factory =
-          new elle::utility::Factory<neutron::Component>;
-
-        ELLE_TRACE("setting up the nucleus block factory");
-
-        factory->record<neutron::Object>(neutron::ComponentObject);
-        // XXX[shouldn't be in neutron?]
-        factory->record<proton::Contents>(neutron::ComponentContents);
-        factory->record<neutron::Group>(neutron::ComponentGroup);
-
-        return (factory);
-      }
-
       static
       elle::utility::Factory<proton::Nature> const*
       _node()
@@ -100,17 +79,6 @@ namespace nucleus
     /*----------.
     | Functions |
     `----------*/
-
-    elle::utility::Factory<neutron::Component> const&
-    block()
-    {
-      static elle::utility::Factory<neutron::Component> const* factory =
-        setup::_block();
-
-      ELLE_ASSERT(factory != nullptr);
-
-      return (*factory);
-    }
 
     elle::utility::Factory<proton::Nature> const&
     node()

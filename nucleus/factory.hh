@@ -5,19 +5,18 @@
 # include <elle/utility/Factory.hh>
 
 # include <nucleus/proton/Nature.hh>
-# include <nucleus/neutron/Component.hh>
 
 namespace nucleus
 {
   namespace factory
   {
+
     /*----------.
     | Functions |
     `----------*/
 
-    /// Return the factory capable of building nucleus block instances.
-    elle::utility::Factory<neutron::Component> const&
-    block();
+    // XXX move this to Node.hh
+
     /// Return the factory capable of building tree node instances.
     elle::utility::Factory<proton::Nature> const&
     node();

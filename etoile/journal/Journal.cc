@@ -9,7 +9,7 @@
 #include <etoile/gear/Action.hh>
 #include <etoile/Exception.hh>
 
-#include <nucleus/factory.hh>
+#include <nucleus/proton/Block.hh>
 
 #include <Infinit.hh>
 
@@ -264,9 +264,10 @@ namespace etoile
         const&>(block).serialize(stream);
 
       // Allocate a new block.
-      nucleus::proton::Block* _block{
-        nucleus::factory::block().allocate<
-          nucleus::proton::ImmutableBlock>(component)};
+      auto const& factory = nucleus::proton::block::factory<>();
+
+      nucleus::proton::Block* _block =
+        factory.allocate<nucleus::proton::Block>(component);
 
       ELLE_FINALLY_ACTION_DELETE(_block);
 
