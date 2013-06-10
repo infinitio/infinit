@@ -63,6 +63,7 @@ BOOST_AUTO_TEST_CASE(heartbeat_test)
     elle::system::Process p{std::move(pc), "bin/heartbeat", {"--port=9090"}};
     heartbeat::run();
     p.interrupt();
+    p.wait();
   };
   reactor::Thread t(sched, "test", fn);
   sched.run();
