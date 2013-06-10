@@ -11,11 +11,15 @@
 
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>
+# include <elle/attribute.hh>
 
 # include <plasma/plasma.hh>
 
 # include <elle/HttpClient.hh>
 
+# include <cryptography/KeyPair.hh>
+// XXX[temporary: for cryptography]
+using namespace infinit;
 
 namespace plasma
 {
@@ -271,6 +275,7 @@ namespace plasma
       std::string _email;
       std::string _token;
       std::string _user_agent;
+      ELLE_ATTRIBUTE(std::unique_ptr<cryptography::KeyPair>, keypair);
 
     public:
       Client(std::string const& server,
@@ -497,6 +502,8 @@ namespace plasma
       void identity(std::string const& str);
       std::string const& email() const;
       void email(std::string const& str);
+      cryptography::KeyPair const&
+      keypair() const;
     };
 
     std::ostream&

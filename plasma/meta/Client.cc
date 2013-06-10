@@ -4,6 +4,10 @@
 #include <elle/format/json/Dictionary.hxx>
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/MapSerializer.hxx>
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/Base64Archive.hh>
+
+#include <infinit/Identity.hh>
 
 #include "Client.hh"
 #include <curly/curly.hh>
@@ -378,6 +382,13 @@ namespace plasma
           this->_token = res.token;
           this->_identity = res.identity;
           this->_email = email;
+
+          auto extractor =
+            elle::serialize::from_string<
+              elle::serialize::InputBase64Archive>(res.identity);
+          infinit::Identity identity(extractor);
+          this->_keypair.reset(
+            new cryptography::KeyPair(identity.decrypt(password)));
         }
       return res;
     }
@@ -959,6 +970,14 @@ namespace plasma
     Client::email(std::string const& str)
     {
       _email = str;
+    }
+
+    cryptography::KeyPair const&
+    Client::keypair() const
+    {
+      ELLE_ASSERT_NEQ(this->_keypair, nullptr);
+
+      return (*this->_keypair);
     }
 
     std::ostream&
