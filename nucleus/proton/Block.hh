@@ -140,24 +140,6 @@ namespace nucleus
       /// example. This attribute is never serialized.
       ELLE_ATTRIBUTE_RW(State, state);
     };
-
-    namespace block
-    {
-      /*----------.
-      | Functions |
-      `----------*/
-
-      /// Return the factory capable of building nucleus block instances
-      /// by calling the constructor matching the given type sequence.
-      template <typename... A>
-      elle::utility::Factory<neutron::Component, A...> const&
-      factory();
-      /// Return the factory capable of building nucleus block instances
-      /// for the given arguments
-      template <typename... A>
-      elle::utility::Factory<neutron::Component, A...> const&
-      factory(A&&... arguments);
-    }
   }
 }
 

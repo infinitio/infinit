@@ -1,6 +1,10 @@
 #ifndef NUCLEUS_PROTON_BLOCK_HXX
 # define NUCLEUS_PROTON_BLOCK_HXX
 
+/*-------------.
+| Serializable |
+`-------------*/
+
 # include <elle/serialize/Serializer.hh>
 
 ELLE_SERIALIZE_SIMPLE(nucleus::proton::Block,

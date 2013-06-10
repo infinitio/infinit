@@ -3,23 +3,9 @@
 
 #include <nucleus/proton/Block.hh>
 #include <nucleus/proton/Address.hh>
-#include <nucleus/proton/Contents.hh>
-#include <nucleus/proton/Seam.hh>
-#include <nucleus/proton/Quill.hh>
-#include <nucleus/neutron/Object.hh>
-#include <nucleus/neutron/Data.hh>
-#include <nucleus/neutron/Catalog.hh>
-#include <nucleus/neutron/Reference.hh>
-#include <nucleus/neutron/Access.hh>
-#include <nucleus/neutron/Group.hh>
-#include <nucleus/neutron/Ensemble.hh>
-#include <nucleus/neutron/Attributes.hh>
 #include <nucleus/Exception.hh>
 
 #include <elle/utility/Factory.hh>
-#include <elle/log.hh>
-
-ELLE_LOG_COMPONENT("infinit.nucleus.proton.Block");
 
 namespace nucleus
 {
@@ -59,6 +45,7 @@ namespace nucleus
 
     ELLE_SERIALIZE_CONSTRUCT_DEFINE(Block)
     {
+      // XXX attributes
     }
 
     Block::~Block()
@@ -115,48 +102,6 @@ namespace nucleus
              << ", "
              << this->_state
              << "}";
-    }
-
-    namespace block
-    {
-      /*----------.
-      | Functions |
-      `----------*/
-
-      template <typename... A>
-      static
-      void
-      _setup(elle::utility::Factory<neutron::Component, A...>& factory)
-      {
-        ELLE_DEBUG_FUNCTION(factory);
-
-        factory.template record<neutron::Object>(neutron::ComponentObject);
-        // XXX[shouldn't be in neutron?]
-        factory.template record<proton::Contents>(neutron::ComponentContents);
-        factory.template record<neutron::Group>(neutron::ComponentGroup);
-      }
-
-      template <typename... A>
-      elle::utility::Factory<neutron::Component, A...> const&
-      factory()
-      {
-        ELLE_TRACE_FUNCTION("");
-
-        static elle::utility::Factory<neutron::Component, A...> factory;
-
-        _setup<A...>(factory);
-
-        return (factory);
-      }
-
-      template <typename... A>
-      elle::utility::Factory<neutron::Component, A...> const&
-      factory(A&&... arguments)
-      {
-        ELLE_TRACE_FUNCTION("");
-
-        return (factory<A...>());
-      }
     }
   }
 }
