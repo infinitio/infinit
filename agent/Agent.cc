@@ -1,16 +1,17 @@
 #include <agent/Agent.hh>
 
 #include <elle/io/Console.hh>
+#include <elle/serialize/extract.hh>
 
 #include <lune/Lune.hh>
 
 #include <common/common.hh>
 
-#include <boost/filesystem.hpp>
+#include <infinit/Identity.hh>
 
 #include <Infinit.hh>
 
-ELLE_LOG_COMPONENT("infinit.agent.Agent");
+#include <boost/filesystem.hpp>
 
 namespace agent
 {
@@ -19,86 +20,113 @@ namespace agent
 // ---------- definitions -----------------------------------------------------
 //
 
-  ///
-  /// the user's identity.
-  ///
-  infinit::Identity                Agent::Identity;
-
-  ///
-  /// this variable represents the user subject.
-  ///
-  nucleus::neutron::Subject Agent::Subject;
-
-  elle::String                  Agent::meta_token;
+  elle::String Agent::meta_token;
+  elle::String Agent::identity_passphrase;
 
 //
 // ---------- methods ---------------------------------------------------------
 //
+
+  infinit::Identity
+  _identity()
+  {
+    // XXX to improve so as not to use Infinit::User or Infinit::authority()
+
+    elle::String path(common::infinit::identity_path(Infinit::User));
+
+    infinit::Identity identity(elle::serialize::from_file(path));
+
+    if (identity.validate(Infinit::authority().K()) == false)
+      throw infinit::Exception(
+        elle::sprintf("the identity '%s' is invalid", identity));
+
+    return (identity);
+  }
+
+  infinit::Identity const&
+  Agent::identity()
+  {
+    static infinit::Identity identity = _identity();
+
+    return (identity);
+  }
+
+  cryptography::KeyPair
+  _pair()
+  {
+    // XXX to improve so as not to use the Agent::identity_passphrase.
+
+    infinit::Identity const& identity = Agent::identity();
+
+    cryptography::KeyPair pair = identity.decrypt(Agent::identity_passphrase);
+
+    return (pair);
+  }
+
+  cryptography::KeyPair const&
+  Agent::pair()
+  {
+    static cryptography::KeyPair pair = _pair();
+
+    return (pair);
+  }
+
+  nucleus::neutron::Subject const&
+  Agent::subject()
+  {
+    static nucleus::neutron::Subject subject(Agent::pair().K());
+
+    return (subject);
+  }
 
   ///
   /// this method initializes the agent.
   ///
   elle::Status          Agent::Initialize()
   {
-    elle::String        prompt;
-
-    //
-    // load the identity.
-    //
+    // Load the tokpass which contains both the meta token
+    // and the identity passphrase.
     {
-      // does the identity exist.
-      if (infinit::Identity::exists(Infinit::User) == false)
-        throw elle::Exception("the user identity does not seem to exist");
+      boost::filesystem::path identity_path(
+        common::infinit::identity_path(Infinit::User));
 
-      std::ifstream identity_file(common::infinit::identity_path(Infinit::User));
-      if (identity_file.good())
+      if (boost::filesystem::exists(identity_path) == false)
+        throw infinit::Exception(
+          elle::sprintf("the identity does to seem to exist: '%s'",
+                        identity_path.string()));
+
+      boost::filesystem::path tokpass_path(
+        common::infinit::tokpass_path(Infinit::User));
+
+      if (boost::filesystem::exists(tokpass_path) == true)
+      {
+        std::ifstream tokpass_content(tokpass_path.string());
+        if (tokpass_content.good())
         {
-          std::getline(identity_file, Agent::meta_token);
-          std::string clear_identity;
-          std::getline(identity_file, clear_identity);
-          ELLE_TRACE("got token: %s", Agent::meta_token);
-          if (Agent::Identity.Restore(clear_identity) == elle::Status::Error)
-            throw elle::Exception("unable to restore the identity");
+          std::getline(tokpass_content, Agent::meta_token);
+          std::getline(tokpass_content, Agent::identity_passphrase);
         }
+      }
       else
-        {
-          ELLE_TRACE("Cannot load identity from  %s",
-                     common::infinit::identity_path(Infinit::User));
-          elle::String        pass;
-          // prompt the user for the passphrase.
-          /* XXX[to change to a better version where we retrieve the passphrase
-           * from the watchdog]
-          prompt = "Enter passphrase for keypair '" + Infinit::User + "': ";
+      {
+        // XXX temporary: we assume the passphrase to be empty!
+        Agent::identity_passphrase = "";
 
-          if (elle::io::Console::Input(
-                pass,
-                prompt,
-                elle::io::Console::OptionPassword) == elle::Status::Error)
-            throw elle::Exception("unable to read the input");
-          */
-          // XXX[temporary fix]
+        // prompt the user for the passphrase.
+        /* XXX[to change to a better version where we retrieve the passphrase
+         * from the watchdog]
+         elle::String        prompt;
 
-          // load the identity.
-          Agent::Identity.load(Infinit::User);
+         prompt = "Enter passphrase for keypair '" + Infinit::User + "': ";
 
-          // verify the identity.
-          if (Agent::Identity.Validate(Infinit::authority())
-              == elle::Status::Error)
-            throw elle::Exception("the identity seems to be invalid");
-
-          // decrypt the identity.
-          if (Agent::Identity.Decrypt(pass) == elle::Status::Error)
-            throw elle::Exception("unable to decrypt the identity");
-        }
-    }
-
-    //
-    // create a subject representing the user.
-    //
-    {
-      // create the subject.
-      if (Agent::Subject.Create(Agent::Identity.pair().K()) == elle::Status::Error)
-        throw elle::Exception("unable to create the user's subject");
+         if (elle::io::Console::Input(
+         pass,
+         prompt,
+         elle::io::Console::OptionPassword) == elle::Status::Error)
+         throw elle::Exception("unable to read the input");
+        */
+        // XXX[temporary fix]
+      }
     }
 
     return elle::Status::Ok;

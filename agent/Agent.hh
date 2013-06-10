@@ -30,12 +30,29 @@ namespace agent
     static elle::Status         Initialize();
     static elle::Status         Clean();
 
+    /*---------------.
+    | Static Methods |
+    `---------------*/
+  public:
+    /// Return the identity associated with the current user.
+    static
+    infinit::Identity const&
+    identity();
+    /// Return the key pair associated with the current user.
+    static
+    cryptography::KeyPair const&
+    pair();
+    /// Return the subject referencing the current user: useful for
+    /// managing access credentials.
+    static
+    nucleus::neutron::Subject const&
+    subject();
+
     //
     // static attributes
     //
-    static infinit::Identity Identity;
-    static nucleus::neutron::Subject Subject;
-    static elle::String         meta_token;
+    static elle::String meta_token;
+    static elle::String identity_passphrase;
   };
 
 }
