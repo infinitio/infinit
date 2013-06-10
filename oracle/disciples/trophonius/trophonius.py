@@ -113,6 +113,7 @@ class Trophonius(basic.LineReceiver):
         {
             "token": <token>,
             "device_id": <device_id>,
+            "user_id": <user_id>,
         }
         """
         try:
@@ -120,11 +121,11 @@ class Trophonius(basic.LineReceiver):
             self.device_id = req["device_id"]
 
             # Authentication
-            res = python.Client(session={'token': req['token']}).get('/self')
+            res = pythia.Client(session={'token': req['token']}).get('/self')
             if not res['success']:
                 raise Exception("Meta error: %s" % res.get('error', ''))
-            self.id = res["user_id"]
-            self.token = res["token"]
+            self.id = res["_id"]
+            self.token = req["token"]
 
             self.meta_client = pythia.Admin()
             res = self.meta_client.post('/user/connect', {

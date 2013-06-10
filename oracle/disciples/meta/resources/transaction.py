@@ -339,8 +339,8 @@ class Update(Page):
             )
 
         # Check that user has rights on the transaction
-        bool is_sender = self.user['_id'] == transaction['sender_id']
-        bool is_receiver = self.user['_id'] == transaction['receiver_id']
+        is_sender = self.user['_id'] == transaction['sender_id']
+        is_receiver = self.user['_id'] == transaction['recipient_id']
         if not (is_sender or is_receiver):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
@@ -360,14 +360,15 @@ class Update(Page):
 
         new_status = transaction['status'] != status
         if status == STARTED:
-            if not transaction['accepted']:
-                return self.error(
-                    error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                    "Cannot start a transaction not accepted."
-                )
-            if not new_status:
-                self.del_link(transaction) # Try to delete the link when restarting
-            self.add_link(transaction)
+            #if not transaction['accepted']:
+            #    return self.error(
+            #        error.TRANSACTION_OPERATION_NOT_PERMITTED,
+            #        "Cannot start a transaction not accepted."
+            #    )
+            if transaction['accepted']:
+              if not new_status:
+                  self.del_link(transaction) # Try to delete the link when restarting
+              self.add_link(transaction)
         elif status in [CANCELED, FINISHED, FAILED]:
             self.del_link(transaction)
 
@@ -385,20 +386,25 @@ class Update(Page):
         })
 
 
-    def network(self, transaction):
+    def network_endpoints(self, transaction):
         network = database.networks().find_one(
             database.ObjectId(transaction["network_id"]),
-        })
+        )
         if not network:
             self.raise_error(error.NETWORK_NOT_FOUND)
 
         if network['owner'] != self.user['_id'] and \
            self.user['_id'] not in network['users']:
             self.raise_error(error.OPERATION_NOT_PERMITTED)
-        return (
-            network["nodes"][str(transaction["sender_device_id"])],
-            network["nodes"][str(transaction["recipient_device_id"])],
-        )
+
+        nodes = network.get("nodes")
+        if nodes:
+          devices = tuple(
+              transaction[v + "_device_id"] for v  in ["sender", "recipient"]
+          )
+          if all(str(d) in nodes for d in devices):
+              return tuple(nodes[str(d)] for d in devices)
+        return None
 
     def add_link(self, transaction):
         sender, receiver = self.network_endpoints(transaction)
@@ -420,7 +426,10 @@ class Update(Page):
         database.networks().save(network)
 
     def del_link(self, transaction):
-        sender, receiver = self.network_endpoints(transaction)
+        endpoints = self.network_endpoints(transaction)
+        if not endpoints:
+            return
+        sender, receiver = endpoints
         self.apertus.del_link(
             str(transaction["network_id"]),
             sender["externals"],

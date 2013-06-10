@@ -246,7 +246,7 @@ class Self(Page):
             'public_key': self.user['public_key'],
             'accounts': self.user['accounts'],
             'remaining_invitations': self.user.get('remaining_invitations', 0),
-            'status': self.user.get('connected', False) and meta.page.CONNECTED or meta.page.DISCONNECTED,
+            'status': self.user.get('connected', False),
             'token_generation_key': self.user.get('token_generation_key', ''),
         })
 
@@ -311,7 +311,7 @@ class One(Page):
             'fullname': user.get('fullname', ''),
             'handle': user.get('handle', ''),
             'connected_devices': user.get('connected_devices', []),
-            'status': bool(user.get('connected_devices', [])) ,
+            'status': user['connected'] ,
         })
 
 class Avatar(Page):
@@ -443,6 +443,7 @@ class Register(Page):
                 {'type':'email', 'id': user['email']}
             ],
             remaining_invitations = 3, #XXX
+            status = False,
         )
         if user['activation_code'] != 'bitebite': #XXX
             invitation['status'] = 'activated'
@@ -551,27 +552,28 @@ class _DeviceAccess(Page):
     def is_connected(self, user_id):
         return database.users().find_one(user_id)['connected']
 
-    status_map = {
-        True: meta.page.CONNECTED,
-        False: meta.page.DISCONNECTED,
-    }
-
     def __set_connected(self, value, user_id, device_id):
+        assert database.users().find_one(user_id)
+        assert database.devices().find_one(device_id)
+
         device = self.__get_device(user_id, device_id)
         connected_before = self.is_connected(user_id)
 
         # Add / remove device from db
-        database.users().update(user_id, {
-            (value and '$push' or '$pull'): {
-                'connected_devices': device['_id'],
+        req = {'_id': user_id}
+        update_action = value and '$push' or '$pull'
+        database.users().update(
+            req,
+            {
+                update_action: {'connected_devices': device['_id']},
             },
             multi = False,
-        })
+        )
 
-        req = {'_id': user_id}
         # Disconnect only user with an empty list of connected device.
         if value is False:
             req['connected_devices'] = []
+        req = {'_id': user_id}
         database.users().update(
             req,
             {"$set": {"connected": value}},
@@ -581,9 +583,9 @@ class _DeviceAccess(Page):
         self.notifySwaggers(
             notifier.USER_STATUS,
             {
-                'status': self.status_map[self.is_connected(user_id)],
+                'status': self.is_connected(user_id),
                 'device_id': device_id,
-                'device_status': self.status_map[value],
+                'device_status': value,
             },
             user_id = user_id,
         )
@@ -599,8 +601,8 @@ class _DeviceAccess(Page):
         if self.data['admin_token'] != pythia.constants.ADMIN_TOKEN:
             return self.error(error.UNKNOWN, "You're not admin")
         self.action(
-            database.ObjectId(self.data['device_id']),
             database.ObjectId(self.data['user_id']),
+            database.ObjectId(self.data['device_id']),
         )
         return self.success()
 
@@ -621,9 +623,9 @@ class Connect(_DeviceAccess):
 
     __pattern__ = "/user/connect"
 
-    action = self.connect
+    action = _DeviceAccess.connect
 
-class Disconnect(Page):
+class Disconnect(_DeviceAccess):
     """
     Should only be called by Trophonius: remove the given device from the list
     of connected devices. This means that notification won't be sent to that
@@ -640,7 +642,7 @@ class Disconnect(Page):
 
     __pattern__ = "/user/disconnect"
 
-    action = self.disconnect
+    action = _DeviceAccess.disconnect
 
 class Connection(Page):
     """
