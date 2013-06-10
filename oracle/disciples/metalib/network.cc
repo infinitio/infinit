@@ -326,6 +326,7 @@ metalib_deserialize_network_descriptor(PyObject* self,
       // WARNING: restore state before setting exception !
       PyEval_RestoreThread(_save);
 
+      ret = PyDict_New();
       PyDict_SetItemString(ret, "id", PyString_FromString(descriptor.meta().identifier().c_str()));
       PyDict_SetItemString(ret, "adminK", PyString_FromString("bite")); //descriptor.meta().administrator_K().c_str()));
       PyDict_SetItemString(ret, "name", PyString_FromString(descriptor.data().name().c_str()));
