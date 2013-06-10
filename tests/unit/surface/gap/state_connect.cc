@@ -16,20 +16,17 @@ ELLE_LOG_COMPONENT("test.State");
 using State = surface::gap::State;
 using TransactionNotification =
   ::plasma::trophonius::TransactionNotification;
-using TransactionStatusNotification =
-  ::plasma::trophonius::TransactionStatusNotification;
 
 int fail_counter = 0;
 
 void
 auto_accept_transaction_cb(TransactionNotification const &tn, State &s)
 {
-  s.transaction_manager().update(tn.transaction.id,
-                                 gap_transaction_status_accepted);
+  s.transaction_manager().update(tn.id, gap_transaction_status_started);
 }
 
 void
-close_on_finished_transaction_cb(TransactionStatusNotification const &tn,
+close_on_finished_transaction_cb(TransactionNotification const &tn,
                                  State &,
                                  bool& finish_test)
 {
@@ -43,8 +40,7 @@ close_on_finished_transaction_cb(TransactionStatusNotification const &tn,
     finish_test = true;
 }
 
-auto make_login = []
-(State &s, std::string user, std::string email)
+void make_login(State &s, std::string user, std::string email)
 {
   try
   {

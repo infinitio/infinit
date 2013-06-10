@@ -82,8 +82,9 @@ namespace hole
           {
             // XXX: for now rebinding a socket is only available with UDT.
             ELLE_ASSERT_EQ(this->protocol(), reactor::network::Protocol::udt);
-            this->_server = elle::make_unique<reactor::network::UDTRendezVousServer>(
-              *reactor::Scheduler::scheduler(), std::move(socket));
+            this->_server =
+              elle::make_unique<reactor::network::UDTRendezVousServer>(
+                  *reactor::Scheduler::scheduler(), std::move(socket));
           }
           else
           {

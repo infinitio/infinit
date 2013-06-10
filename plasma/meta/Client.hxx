@@ -1,8 +1,11 @@
-#ifndef  PLASMA_META_CLIENT_HXX
+#ifndef PLASMA_META_CLIENT_HXX
 # define PLASMA_META_CLIENT_HXX
 
 # include <curly/curly.hh>
 # include <plasma/meta/Client.hh>
+
+# include <elle/serialize/JSONArchive.hh>
+
 # include <boost/algorithm/string/split.hpp>
 # include <boost/algorithm/string/classification.hpp>
 
@@ -199,4 +202,4 @@ namespace plasma
   }
 }
 
-#endif /* end of include guard:  PLASMA_META_CLIENT_HXX */
+#endif

@@ -1,3 +1,4 @@
+# -*- encoding: utf-8 -*-
 
 import json
 import web
@@ -33,7 +34,9 @@ def TRANSACTION_STATUS(name, value):
     globals()[name.upper()] = value
     _status_to_string[value] = str(name)
 
-filepath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'transaction_status.hh.inc'))
+filepath = os.path.abspath(
+  os.path.join(os.path.dirname(__file__), 'transaction_status.hh.inc')
+)
 
 configfile = open(filepath, 'r')
 for line in configfile:
@@ -46,24 +49,22 @@ class Create(Page):
     create a 'ghost' in the database, waiting for him to register.
 
     POST {
-              'recipient_id_or_email': "email@pif.net", #required
-              'first_filename': "The first file name",
-              'files_count': 32
-              'total_size': 42 (ko)
-              'is_directory': bool
-              'device_id': The device from where the file is get
-              'network_id': "The network name", #required
-              'message': 'a message to the recipient'
-         }
-         -> {
-                'created_transaction_id':
-                'remaining_invitations':
-            }
-
+        'recipient_id_or_email': "email@pif.net", #required
+        'first_filename': "The first file name",
+        'files_count': 32
+        'total_size': 42 (ko)
+        'is_directory': bool
+        'device_id': The device from where the file is get
+        'network_id': "The network name", #required
+        'message': 'a message to the recipient'
+     }
+     -> {
+        'created_transaction_id': <string>,
+        'remaining_invitations': <int>
+    }
 
     Errors:
         Using an id that doesn't exist.
-
     """
     __pattern__ = "/transaction/create"
 
@@ -163,8 +164,8 @@ class Create(Page):
             'is_directory': self.data['is_directory'],
 
             'timestamp': time.time(),
-            'status': PENDING,
-            'early_accepted': False,
+            'status': CREATED,
+            'accepted': False,
         }
 
         transaction_id = database.transactions().insert(transaction)
@@ -176,7 +177,9 @@ class Create(Page):
         # XXX: MAIL DESACTIVATED
         if not self.connected(recipient_id):
             if not invitee_email:
-                invitee_email = database.users().find_one({'_id': database.ObjectId(id_or_email)})['email']
+                invitee_email = database.users().find_one(
+                    {'_id': database.ObjectId(id_or_email)}
+                )['email']
 
             if new_user:
                 meta.invitation.invite_user(
@@ -189,9 +192,11 @@ class Create(Page):
                 )
 
 
+        # XXX: notification should be sent by device_id for the sender (The
+        # transaction can be initiated only on the sender's device_id).
         self.notifier.notify_some(
             notifier.TRANSACTION,
-            [database.ObjectId(recipient_id), database.ObjectId(_id)], # sender and recipient.
+            [database.ObjectId(recipient_id), database.ObjectId(_id)],
             transaction
         )
 
@@ -200,81 +205,19 @@ class Create(Page):
             'remaining_invitations': self.user.get('remaining_invitations', 0),
         })
 
-class FullyCreated(Page):
-    """
-    XXX
-    """
-    __pattern__ = "/transaction/fully_created"
-
-    _validators = [
-        ('transaction_id', regexp.TransactionValidator),
-    ]
-
-    def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
-
-        transaction =  database.transactions().find_one(
-            database.ObjectId(self.data['transaction_id'].strip())
-        )
-
-        if not transaction:
-            return self.error(error.TRANSACTION_DOESNT_EXIST)
-
-        if self.user['_id'] != transaction['sender_id']:
-            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
-        if transaction['status'] not in (PENDING, ACCEPTED):
-            return self.error(
-              error.TRANSACTION_OPERATION_NOT_PERMITTED,
-              "This transaction can't be %s. Current status : %s" % (
-                _status_to_string[CREATED],
-                _status_to_string[transaction['status']]
-              )
-            )
-
-        sender = database.users().find_one(
-          database.ObjectId(transaction['sender_id'])
-        )
-
-        assert sender is not None
-
-        transaction.update({
-            'status': transaction['status'] == ACCEPTED and ACCEPTED or CREATED,
-        })
-
-        updated_transaction_id = database.transactions().save(transaction);
-
-        self.notifier.notify_some(
-            notifier.TRANSACTION_STATUS,
-            [transaction['sender_id'], transaction['recipient_id']],
-            {
-                'transaction_id': str(updated_transaction_id),
-
-                # Status.
-                'status': CREATED,
-            }
-        )
-
-        return self.success({
-            'updated_transaction_id': str(updated_transaction_id),
-        })
-
 class Accept(Page):
     """
     Use to accept a file transfer.
     Maybe more in the future but be careful, for the moment, user MUST be the recipient.
     POST {
-           'transaction_id' : the id of the transaction.
-           'device_id': the device id on which the user accepted the transaction.
-           'device_name': the device name on which the user accepted the transaction.
-         }
-         -> {
-                 'updated_transaction_id': the network id or empty string if refused.
-            }
+        'transaction_id' : the id of the transaction.
+        'device_id': the device id on which the user accepted the transaction.
+        'device_name': the device name on which the user accepted the transaction.
+    }
+    -> {
+        'updated_transaction_id': the network id or empty string if refused.
+    }
+    *-> TransactionNotification
 
     Errors:
         The transaction doesn't exists.
@@ -296,29 +239,34 @@ class Accept(Page):
         if status:
             return self.error(status)
 
-        transaction =  database.transactions().find_one(
-            database.ObjectId(self.data['transaction_id'].strip()))
+        tr_id = database.ObjectId(self.data['transaction_id'])
+
+        transaction =  database.transactions().find_one(tr_id)
 
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
 
+        device_id = database.ObjectId(self.data["device_id"])
+        if device_id not in self.user['devices']:
+            return self.error(error.DEVICE_NOT_VALID)
+
         if self.user['_id'] != transaction['recipient_id']:
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
-        if self.data['device_id'] == transaction['sender_device_id']:
+        if device_id == transaction['sender_device_id']:
             return self.error(
               error.TRANSACTION_CANT_BE_ACCEPTED,
               "Sender and recipient devices are the same."
             )
 
-        if transaction['status'] not in (PENDING, CREATED):
-            return self.error(
-                error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                "This transaction can't be %s. Current status : %s" % (
-                    _status_to_string[ACCEPTED],
-                    _status_to_string[transaction['status']]
-                )
-            )
+        transaction.update({
+            'recipient_fullname': self.user['fullname'],
+            'recipient_device_name' : self.data['device_name'],
+            'recipient_device_id': device_id,
+            'accepted': True,
+        })
+
+        updated_transaction_id = database.transactions().save(transaction);
 
         sender = database.users().find_one(
           database.ObjectId(transaction['sender_id'])
@@ -328,443 +276,220 @@ class Accept(Page):
         # We should turn all his transaction to canceled.
         assert sender is not None
 
-        transaction.update({
-            'recipient_fullname': self.user['fullname'],
-            'recipient_device_name' : self.data['device_name'],
-            'recipient_device_id': database.ObjectId(self.data['device_id']),
-            'status': ACCEPTED,
-            'early_accepted': bool(transaction['status'] == PENDING)
-        })
-
-        updated_transaction_id = database.transactions().save(transaction);
-
         # If transfer is accepted, increase popularity of each user.
         if self.user['_id'] != sender['_id']:
-            # XXX: probably not optimized, we should maybe use database.find_and_modify and increase
-            # the value.
-            sender['swaggers'][str(self.user['_id'])] = sender['swaggers'].setdefault(str(self.user['_id']), 0) + 1;
-            self.user['swaggers'][str(sender['_id'])] = self.user['swaggers'].setdefault(str(sender['_id']), 0) + 1;
+            # XXX: probably not optimized, we should maybe use database.
+            # find_and_modify and increase the value.
+            sender['swaggers'][str(self.user['_id'])] = \
+                sender['swaggers'].setdefault(str(self.user['_id']), 0) + 1;
+            self.user['swaggers'][str(sender['_id'])] = \
+                self.user['swaggers'].setdefault(str(sender['_id']), 0) + 1;
             database.users().save(sender)
             database.users().save(self.user)
 
         self.notifier.notify_some(
-            notifier.TRANSACTION_STATUS,
+            notifier.TRANSACTION,
             [transaction['sender_id'], transaction['recipient_id']],
-            {
-                'transaction_id': str(updated_transaction_id),
-
-                # Status.
-                'status': ACCEPTED,
-            }
+            transaction
         )
 
         return self.success({
             'updated_transaction_id': str(updated_transaction_id),
         })
 
-class Prepare(Page):
+
+class Update(Page):
     """
-    Notify the user that everything is ok and he can prepare downloading file.
-    POST {
-             'transaction_id' : the id
-         }
-         -> {
-                 'updated_transaction_id' : the (new) id
-            }
+    Update the transaction status. Accepted values:
+        * from sender: [started, canceled, failed]
+        * from receiver: [canceled, finished]
+
+        If the sender send the status STARTED while the transaction is already
+        started, a notification will be sent again, as to restart the
+        connection.
+
+        POST {
+            'transaction_id': <string>,
+            'status': <TransactionStatus>,
+        }
+        -> {
+            'updated_transaction_id' : the (new) id
+        }
 
     Errors:
-        The transaction doesn't exist.
-        The user is not the sender.
-        The transaction is not in a state in which it can be prepareed.
+        The transaction is not valid.
+        You are not involved in this transaction.
     """
-    __pattern__ = "/transaction/prepare"
-
-    _validators = [
-        ('transaction_id', regexp.TransactionValidator),
-    ]
+    __pattern__ = "/transaction/update"
 
     def POST(self):
         self.requireLoggedIn()
 
-        status = self.validate()
-        if status:
-            return self.error(status)
-
-        transaction =  database.transactions().find_one(
-            database.ObjectId(self.data['transaction_id'].strip())
-        )
-
+        # Find the transaction
+        tr_id = database.ObjectId(self.data['transaction_id'])
+        transaction = database.transactions().find_one(tr_id)
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
 
-        if self.user['_id'] != transaction['sender_id']:
-            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
-        if transaction['status'] != ACCEPTED:
+        # Check if status is mutable
+        if transaction['status'] not in [CREATED, STARTED]:
             return self.error(
                 error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                "This transaction can't be %s. Current status : %s" % (
-                    _status_to_string[PREPARED],
-                    _status_to_string[transaction['status']]
-                )
+                "Cannot change status of an ended transaction."
             )
 
-        transaction.update({
-            'status': PREPARED, # prepareed.
-        })
+        # Check that user has rights on the transaction
+        bool is_sender = self.user['_id'] == transaction['sender_id']
+        bool is_receiver = self.user['_id'] == transaction['receiver_id']
+        if not (is_sender or is_receiver):
+            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
-        updated_transaction_id = database.transactions().save(transaction)
+        # Check input fied
+        if 'status' not in self.data:
+            return self.error(
+                error.TRANSACTION_OPERATION_NOT_PERMITTED,
+                "'status' key is missing"
+            )
 
-        self.notifier.notify_some(
-            notifier.TRANSACTION_STATUS,
-            [transaction['sender_id'], transaction['recipient_id']],
-            {
-                'transaction_id': str(updated_transaction_id),
+        # Validate status value
+        status = int(self.data['status'])
+        if is_sender and status not in [STARTED, CANCELED, FAILED]:
+            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
+        elif is_receiver and status not in [CANCELED, FINISHED]:
+            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
 
-                # Status.
-                'status': PREPARED,
-            }
-        )
+        new_status = transaction['status'] != status
+        if status == STARTED:
+            if not transaction['accepted']:
+                return self.error(
+                    error.TRANSACTION_OPERATION_NOT_PERMITTED,
+                    "Cannot start a transaction not accepted."
+                )
+            if not new_status:
+                self.del_link(transaction) # Try to delete the link when restarting
+            self.add_link(transaction)
+        elif status in [CANCELED, FINISHED, FAILED]:
+            self.del_link(transaction)
 
+        if new_status:
+            transaction["status"] = status
+            updated_transaction_id = database.transactions().save(transaction)
+        if new_status or status == STARTED:
+            self.notifier.notify_some(
+                notifier.TRANSACTION,
+                [transaction['sender_id'], transaction['recipient_id']],
+                transaction,
+            )
         return self.success({
             'updated_transaction_id': str(updated_transaction_id),
         })
 
-class Start(Page):
-    """
-    Notify the user that everything is ok and he can start downloading file.
-    POST {
-             'transaction_id' : the id
-         }
-         -> {
-                 'updated_transaction_id' : the (new) id
-            }
 
-    Errors:
-        The transaction doesn't exist.
-        The user is not the sender.
-        The transaction is not in a state in which it can be started.
-    """
-    __pattern__ = "/transaction/start"
-
-    _validators = [
-        ('transaction_id', regexp.TransactionValidator),
-    ]
-
-    def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
-
-        transaction =  database.transactions().find_one(
-            database.ObjectId(self.data['transaction_id'].strip()))
-
-        if not transaction:
-            return self.error(error.TRANSACTION_DOESNT_EXIST)
-
-        if self.user['_id'] != transaction['recipient_id']:
-            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
-        if transaction['status'] != PREPARED:
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                              "This transaction can't be %s. Current status : %s"
-                              % (_status_to_string[STARTED], _status_to_string[transaction['status']])
-            )
-
-        network = database.networks().find_one({
-            '_id': database.ObjectId(transaction["network_id"]),
+    def network(self, transaction):
+        network = database.networks().find_one(
+            database.ObjectId(transaction["network_id"]),
         })
         if not network:
-            return self.forbidden("Couldn't find any network with this id")
+            self.raise_error(error.NETWORK_NOT_FOUND)
+
         if network['owner'] != self.user['_id'] and \
            self.user['_id'] not in network['users']:
-            return self.forbidden("This network does not belong to you")
+            self.raise_error(error.OPERATION_NOT_PERMITTED)
+        return (
+            network["nodes"][str(transaction["sender_device_id"])],
+            network["nodes"][str(transaction["recipient_device_id"])],
+        )
 
-        send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
-        recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
+    def add_link(self, transaction):
+        sender, receiver = self.network_endpoints(transaction)
+        ap_endpoint = self.apertus.add_link(
+            str(transaction["network_id"]),
+            sender["externals"],
+            receiver["externals"]
+        )
 
-        ap_endpoint = self.apertus.add_link(str(transaction["network_id"]),
-                send_endpoints["externals"],
-                recv_endpoints["externals"])
-
-        # Add the current apertus endpoint to the externals adddresses of the
+        # Add the current apertus endpoint to the externals addresses of the
         # devices.
         ip, port = ap_endpoint.split(":")
-        send_endpoints["fallback"] = [{"ip" : ip, "port" : port}]
-        recv_endpoints["fallback"] = [{"ip" : ip, "port" : port}]
-
-        updated_network_id = database.networks().save(network)
-
-        transaction.update({
-            'status': STARTED, # started.
+        sender["fallback"] = receiver["fallback"] = [
+            {"ip" : ip, "port" : port}
+        ]
+        network = database.networks().find_one(
+            database.ObjectId(transaction["network_id"]),
         })
-        updated_transaction_id = database.transactions().save(transaction)
+        database.networks().save(network)
 
-        self.notifier.notify_some(
-            notifier.TRANSACTION_STATUS,
-            [transaction['sender_id'], transaction['recipient_id']],
-            {
-                'transaction_id': str(updated_transaction_id),
-
-                # Status.
-                'status': STARTED,
-            }
-        )
-
-
-        return self.success({
-            'updated_transaction_id': str(updated_transaction_id),
-        })
-
-class Finish(Page):
-    """
-    Notify the sender that the transaction is complete.
-    POST {
-             'transaction_id' : the id
-         }
-         -> {
-                 'updated_transaction_id' : the (new) id
-            }
-
-    Errors:
-        The transaction doesn't exist.
-        The user is not the recipient.
-    """
-    __pattern__ = "/transaction/finish"
-
-    _validators = [
-        ('transaction_id', regexp.TransactionValidator)
-    ]
-
-    def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
-
-        transaction =  database.transactions().find_one(
-            database.ObjectId(self.data['transaction_id'].strip()))
-
-        if not transaction:
-            return self.error(error.TRANSACTION_DOESNT_EXIST)
-
-        if self.user['_id'] != transaction['recipient_id']:
-            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
-        if transaction['status'] != STARTED :
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                              "This transaction can't be %s. Current status : %s"
-                              % (_status_to_string[FINISHED], _status_to_string[transaction['status']])
-            )
-
-        transaction.update({
-            'status': FINISHED, # finished.
-        })
-
-        # This transaction should be move to a 'finished_transaction' collection.
-        updated_transaction_id = database.transactions().save(transaction);
-
-        self.notifier.notify_some(
-            notifier.TRANSACTION_STATUS,
-            [transaction['sender_id'], transaction['recipient_id']],
-            {
-                'transaction_id': str(transaction['_id']),
-
-                # Status.
-                'status': FINISHED,
-            }
-        )
-
-        network = database.networks().find_one({
-            '_id' : database.ObjectId(transaction["network_id"])
-        })
-        if not network:
-            return self.forbidden("Couldn't find any network with this id")
-        if network['owner'] != self.user['_id'] and \
-           self.user['_id'] not in network['users']:
-            return self.forbidden("This network does not belong to you")
-
-        send_endpoints = network["nodes"][str(transaction["sender_device_id"])]
-        recv_endpoints = network["nodes"][str(transaction["recipient_device_id"])]
-
+    def del_link(self, transaction):
+        sender, receiver = self.network_endpoints(transaction)
         self.apertus.del_link(
             str(transaction["network_id"]),
-            send_endpoints["externals"],
-            recv_endpoints["externals"]
+            sender["externals"],
+            receiver["externals"]
         )
 
-        return self.success({
-            'updated_transaction_id': str(updated_transaction_id),
-        })
 
-
-class Cancel(Page):
-    """
-    Delete the transaction that has been rejected or you may want to delete it by your self.
-    POST {
-              'transaction_id': the id
-         }
-         -> {
-                 'updated_transaction_id'
-            }
-
-    Errors:
-        The transaction doesn't exist.
-        The user is not the sender.
-        The transaction is not in a state in which it can be deleted.
-    """
-    __pattern__ = "/transaction/cancel"
-
-    _validators = [
-        ('transaction_id', regexp.TransactionValidator)
-    ]
-
-    def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
-
-        transaction =  database.transactions().find_one(
-            database.ObjectId(self.data['transaction_id'].strip()))
-
-        if not transaction:
-            return self.error(error.TRANSACTION_DOESNT_EXIST)
-
-        if transaction['status'] == CANCELED:
-            return self.success({'updated_transaction_id': str(transaction['_id']) })
-
-        if self.user['_id'] not in (transaction['sender_id'], transaction['recipient_id']):
-            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
-        if not transaction['status'] in (ACCEPTED, PENDING, STARTED, PREPARED, CREATED):
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                              "This transaction can't be %s. Current status : %s"
-                              % (_status_to_string[CANCELED], _status_to_string[transaction['status']])
-            )
-
-        transaction.update({
-            'status': CANCELED, # canceled.
-        })
-
-        updated_transaction_id = database.transactions().save(transaction)
-
-        self.notifier.notify_some(
-            notifier.TRANSACTION_STATUS,
-            [transaction['sender_id'], transaction['recipient_id']],
-            {
-                'transaction_id': str(transaction['_id']),
-
-                # Status.
-                'status': CANCELED,
-            }
-        )
-        network = database.networks().find_one({
-            '_id' : database.ObjectId(transaction["network_id"])
-        })
-
-        if transaction['recipient_device_id'] == "":
-            return self.success({'updated_transaction_id': str(updated_transaction_id), })
-
-        if not network:
-            return self.forbidden("Couldn't find any network with this id")
-
-        if network['owner'] != self.user['_id'] and \
-           self.user['_id'] not in network['users']:
-            return self.forbidden("This network does not belong to you")
-
-        send_endpoints = getattr(network["nodes"], str(transaction["sender_device_id"]), [])
-        recv_endpoints = getattr(network["nodes"], str(transaction["recipient_device_id"]), [])
-
-        self.apertus.del_link(str(transaction["network_id"]),
-                              getattr(send_endpoints, "externals", []),
-                              getattr(recv_endpoints, "externals", []),
-                              )
-
-        return self.success({
-            'updated_transaction_id': str(updated_transaction_id),
-        })
 
 class All(Page):
     """
     Get all transaction involving user (as sender or recipient).
     GET
-         {
-             # optionnal
-             'transaction_filter' : CANCELED
-         }
-         -> {
-                 [id0, id1, ...]
-            }
+    -> {
+        [id0, id1, ...]
+    }
     """
     __pattern__ = "/transactions"
 
     def GET(self):
         self.requireLoggedIn()
-
-        filter_ = [CANCELED, FINISHED]  #'transaction_filter' in self.data and self.data['transaction_filter'] or CANCELED
-
-        transactions = list(database.transactions().find(
-            {
-                '$or':
-                    [
-                        {'recipient_id': self.user['_id']},
-                        {'sender_id': self.user['_id']}
-                    ],
-                'status':
-                    {
-                        '$nin': filter_
-                    }
-            },
-            ['_id'] #Take only id field.
-        ))
-
-        transactions = [str(t['_id']) for t in transactions]
-
-        return self.success({'transactions': transactions})
+        transaction_ids = (
+            t['_id'] for t in database.transactions().find({
+                '$or':[
+                    {'recipient_id': self.user['_id']},
+                    {'sender_id': self.user['_id']}
+                ],
+                'status': {
+                    '$nin': [CANCELED, FINISHED, FAILED]
+                }
+            }, fields = ['_id'])
+        )
+        return self.success({
+            'transactions': list(transaction_ids)
+        })
 
 class One(Page):
     """
-    Get details of a specific transaction.
-        Get
-            -> {
-                    'transaction_id' : The id of the transaction.
+    Fetch one transaction.
+        GET /transaction/_id/view
+        -> {
+            '_id' : The id of the transaction.
+            'sender_id' :
+            'sender_fullname' :
+            'sender_device_id' :
 
-                    'sender_id' :
-                    'sender_fullname' :
-                    'sender_device_id' :
+            'recipient_id' :
+            'recipient_fullname' :
+            'recipient_device_id' :
+            'recipient_device_name' :
 
-                    'recipient_id' :
-                    'recipient_fullname' :
-                    'recipient_device_id' :
-                    'recipient_device_name' :
+            'network_id' :
 
-                    'network_id' :
+            'first_filename' :
+            'files_count' :
+            'total_size' :
+            'is_directory' :
 
-                    'first_filename' :
-                    'files_count' :
-                    'total_size' :
-                    'is_directory' :
-
-                    'status' :
-            }
+            'status' : <TransactionStatus>,
+            'accepted': <bool>
+        }
     """
 
     __pattern__ = "/transaction/(.+)/view"
 
     def GET(self, _id):
         self.requireLoggedIn()
-
         transaction = database.transactions().find_one(database.ObjectId(_id))
-
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
-
         if not self.user['_id'] in (transaction['sender_id'], transaction['recipient_id']):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
         return self.success(transaction)

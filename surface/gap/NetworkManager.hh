@@ -136,8 +136,12 @@ namespace surface
       void
       notify_8infinit(std::string const& network_id,
                       std::string const& sender_device_id,
-                      std::string const& recipient_device_id,
-                      reactor::Scheduler& sched);
+                      std::string const& recipient_device_id);
+      void
+      _notify_8infinit(std::string const& network_id,
+                       std::string const& sender_device_id,
+                       std::string const& recipient_device_id,
+                       reactor::Scheduler& sched);
 
       /// Give the recipient the write on the root of the network.
       void

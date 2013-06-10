@@ -1,20 +1,19 @@
+#include <surface/gap/gap.h> // XXX remove dependency
+
+#include "Client.hh"
+
+#include <plasma/plasma.hh>
+
+#include <elle/assert.hh>
 #include <elle/log.hh>
+#include <elle/print.hh>
 #include <elle/serialize/JSONArchive.hh>
+#include <elle/serialize/extract.hh>
 #include <elle/format/json/Dictionary.hxx>
 #include <elle/format/json/Parser.hh>
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/Serializer.hh>
 #include <elle/serialize/NamedValue.hh>
-
-#include <surface/gap/gap.h>
-
-#include "Client.hh"
-
-#include <iostream>
-#include <fstream>
-
-#include <elle/print.hh>
-#include <elle/assert.hh>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/read_until.hpp>
@@ -23,100 +22,62 @@
 #include <boost/asio/write.hpp>
 #include <boost/asio/deadline_timer.hpp>
 
+#include <iostream>
+#include <fstream>
+
 #include <fcntl.h>
 
 ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 
 //- Notification serializers --------------------------------------------------
 
-#define XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE()      \
-  int* n = (int*) &value;                                   \
-  ar & named("notification_type", *n)                       \
-  /**/
-
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::Notification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::Notification, ar, value, version)
 {
-  enforce(version == 0);
-
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
+  ar & named("notification_type", value.notification_type);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::UserStatusNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification, ar, value, version)
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification,
+                      ar,
+                      value,
+                      version)
 {
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
+  ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("user_id", value.user_id);
   ar & named("status", value.status);
+  ar & named("device_id", value.device_id);
+  ar & named("device_status", value.device_status);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::TransactionNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification, ar, value, version)
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification,
+                      ar,
+                      value,
+                      version)
 {
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
-  try
-  {
-    ar & named("_id", value.transaction.id);
-  }
-  catch (...)
-  {
-    ar & named("transaction_id", value.transaction.id);
-  }
-
-  ar & named("sender_id", value.transaction.sender_id);
-  ar & named("sender_fullname", value.transaction.sender_fullname);
-  ar & named("sender_device_id", value.transaction.sender_device_id);
-  ar & named("recipient_id", value.transaction.recipient_id);
-  ar & named("recipient_fullname", value.transaction.recipient_fullname);
-  ar & named("recipient_device_id", value.transaction.recipient_device_id);
-  ar & named("recipient_device_name", value.transaction.recipient_device_name);
-  ar & named("network_id", value.transaction.network_id);
-  ar & named("message", value.transaction.message);
-  ar & named("first_filename", value.transaction.first_filename);
-  ar & named("files_count", value.transaction.files_count);
-  ar & named("total_size", value.transaction.total_size);
-  ar & named("status", value.transaction.status);
-
-  DEFAULT_FILL_VALUE(ar, value.transaction, is_directory, false);
-  DEFAULT_FILL_VALUE(ar, value.transaction, timestamp, 0.0f);
-  DEFAULT_FILL_VALUE(ar, value.transaction, early_accepted, false);
-}
-
-ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::TransactionStatusNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionStatusNotification, ar, value, version)
-{
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
-  ar & named("transaction_id", value.transaction_id);
-  ar & named("status", value.status);
+  ar & base_class<plasma::trophonius::Notification>(value);
+  ar & base_class<plasma::Transaction>(value);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::NetworkUpdateNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification, ar, value, version)
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification,
+                      ar,
+                      value,
+                      version)
 {
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
+  ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("network_id", value.network_id);
   ar & named("what", value.what);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::MessageNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::MessageNotification, ar, value, version)
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::MessageNotification,
+                      ar,
+                      value,
+                      version)
 {
-  enforce(version == 0);
-
-  //ar & base_class<plasma::trophonius::Notification>(value);
-  XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE();
+  ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("sender_id", value.sender_id);
   ar & named("message", value.message);
 }
@@ -125,35 +86,67 @@ namespace plasma
 {
   namespace trophonius
   {
+    Notification::~Notification()
+    {}
+
+    std::unique_ptr<Notification>
+    notification_from_dict(json::Dictionary const& dict)
+    {
+      ELLE_DEBUG("convert json %s to Notification instance", dict.repr());
+      NotificationType notification_type = dict["notification_type"]
+        .as<NotificationType>();
+      using namespace elle::serialize;
+      auto extractor = from_string<InputJSONArchive>(dict.repr());
+      typedef std::unique_ptr<Notification> Ptr;
+      switch (notification_type)
+      {
+      case NotificationType::transaction:
+        return Ptr{new TransactionNotification{extractor}};
+      case NotificationType::user_status:
+        return Ptr{new UserStatusNotification{extractor}};
+      case NotificationType::message:
+        return Ptr{new MessageNotification{extractor}};
+      case NotificationType::network_update:
+        return Ptr{new NetworkUpdateNotification{extractor}};
+      case NotificationType::connection_enabled:
+        return Ptr{new Notification{extractor}};
+      default:
+        throw elle::Exception{
+          elle::sprint("Unknown notification type", notification_type)};
+      }
+      elle::unreachable();
+      return Ptr{nullptr};
+    }
 
     //- Implementation --------------------------------------------------------
     struct Client::Impl
     {
-      boost::asio::io_service       io_service;
-      boost::asio::ip::tcp::socket  socket;
-      boost::asio::deadline_timer   connection_checker;
-      bool                          connected;
-      std::string                   server;
-      uint16_t                      port;
-      bool                          check_errors;
-      boost::asio::streambuf        request;
-      boost::asio::streambuf        response;
-      boost::system::error_code     last_error;
-      std::string                   user_id;
-      std::string                   user_token;
+      boost::asio::io_service io_service;
+      boost::asio::ip::tcp::socket socket;
+      boost::asio::deadline_timer connection_checker;
+      bool connected;
+      std::string server;
+      uint16_t port;
+      bool check_errors;
+      boost::asio::streambuf request;
+      boost::asio::streambuf response;
+      boost::system::error_code last_error;
+      std::string user_id;
+      std::string user_token;
+      std::string user_device_id;
 
       Impl(std::string const& server,
            uint16_t port,
-           bool check_errors)
-        : io_service{}
-        , socket{io_service}
-        , connection_checker{io_service}
-        , connected{false}
-        , server{server}
-        , port{port}
-        , check_errors{check_errors}
-        , request{}  // Use once to initiate connection.
-        , response{}
+           bool check_errors):
+        io_service{},
+        socket{io_service},
+        connection_checker{io_service},
+        connected{false},
+        server{server},
+        port{port},
+        check_errors{check_errors},
+        request{},
+        response{}
       {}
     };
 
@@ -200,7 +193,9 @@ namespace plasma
         try
         {
           ELLE_DEBUG("trying to reconnect to tropho now");
-          this->connect(_impl->user_id, _impl->user_token);
+          this->connect(_impl->user_id,
+                        _impl->user_token,
+                        _impl->user_device_id);
           _impl->last_error = boost::system::error_code{};
           ELLE_DEBUG("reconnect to tropho successfully");
         }
@@ -271,81 +266,30 @@ namespace plasma
           _impl->last_error = err;
           //_impl->connected = false;
         }
-        ELLE_WARN("Something went wrong while reading from socket: %s", err);
+        ELLE_WARN("something went wrong while reading from socket: %s", err);
         return;
       }
 
-      ELLE_TRACE("Read %s bytes from the socket (%s available)",
+      ELLE_TRACE("read %s bytes from the socket (%s available)",
                  bytes_transferred,
                  _impl->response.in_avail());
 
-      try
-        {
-          ELLE_DEBUG("Received stream from trophonius.");
+      // Bind stream to response.
+      std::istream is(&(_impl->response));
 
-          // Bind stream to response.
-          std::istream is(&(_impl->response));
+      // Transfer socket stream to stringstream that ensure there are no
+      // encoding troubles (and make the stream human readable).
+      std::unique_ptr<char[]> data{new char[bytes_transferred]};
+      if (!data)
+        throw std::bad_alloc{};
+      is.read(data.get(), bytes_transferred);
+      std::string msg{data.get(), bytes_transferred};
+      ELLE_DEBUG("Got message: %s", msg);
 
-          // Transfer socket stream to stringstream that ensure there are no
-          // encoding troubles (and make the stream human readable).
-          std::unique_ptr<char[]> data{new char[bytes_transferred]};
-          if (!data)
-            throw std::bad_alloc{};
-          is.read(data.get(), bytes_transferred);
-          std::string msg{data.get(), bytes_transferred};
-          ELLE_DEBUG("Got message: %s", msg);
+      this->_notifications.push(
+        notification_from_dict(json::parse(msg)->as_dictionary()));
 
-          plasma::trophonius::NotificationType notification_type =
-            plasma::trophonius::NotificationType::none; // Invalid notification type.
-
-          {
-            std::stringstream ss{msg};
-
-            Notification notification;
-            elle::serialize::InputJSONArchive ar(ss, notification);
-            notification_type = notification.notification_type;
-          }
-
-          std::unique_ptr<Notification> notification;
-          {
-            std::stringstream ss{msg};
-            elle::serialize::InputJSONArchive ar{ss};
-            switch (notification_type)
-              {
-              case NotificationType::user_status:
-                notification = std::move(ar.Construct<UserStatusNotification>());
-                break;
-              case NotificationType::transaction:
-                notification = std::move(ar.Construct<TransactionNotification>());
-                break;
-              case NotificationType::transaction_status:
-                notification = std::move(ar.Construct<TransactionStatusNotification>());
-                break;
-              case NotificationType::message:
-                notification = std::move(ar.Construct<MessageNotification>());
-                break;
-              case NotificationType::network_update:
-                notification = std::move(ar.Construct<NetworkUpdateNotification>());
-                break;
-              case NotificationType::connection_enabled:
-                notification = std::move(ar.Construct<Notification>());
-                break;
-              default:
-                ELLE_WARN("unknown notification %s", notification_type);
-              };
-          }
-
-          if (notification)
-            this->_notifications.push(std::move(notification));
-
-          this->_read_socket();
-        }
-      catch (std::runtime_error const& err)
-        {
-          throw elle::HTTPException{
-            elle::ResponseCode::bad_content, err.what()
-          };
-        }
+      this->_read_socket();
     }
 
     void
@@ -362,15 +306,19 @@ namespace plasma
 
     bool
     Client::connect(std::string const& _id,
-                    std::string const& token)
+                    std::string const& token,
+                    std::string const& device_id)
     {
       _impl->user_id = _id;
       _impl->user_token = token;
+      _impl->user_device_id = device_id;
       this->_connect();
 
-      json::Dictionary connection_request{std::map<std::string, std::string>{
-        {"_id", _id},
-        {"token", token},
+      json::Dictionary connection_request{
+        std::map<std::string, std::string>{
+          {"user_id", _id},
+          {"token", token},
+          {"device_id", device_id},
       }};
 
       std::ostream request_stream(&_impl->request);

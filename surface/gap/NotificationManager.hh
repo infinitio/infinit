@@ -1,16 +1,18 @@
 #ifndef NOTIFICATIONMANAGER_HH
 # define NOTIFICATIONMANAGER_HH
 
+# include "Exception.hh"
+
+# include <plasma/trophonius/Client.hh>
+# include <plasma/meta/Client.hh>
+
+# include <elle/attribute.hh>
+# include <elle/format/json/fwd.hh>
+
 # include <vector>
 # include <functional>
 # include <list>
 # include <map>
-
-# include <plasma/trophonius/Client.hh>
-# include <plasma/meta/Client.hh>
-# include <surface/gap/Exception.hh>
-# include <elle/format/json/fwd.hh>
-
 
 namespace surface
 {
@@ -18,12 +20,12 @@ namespace surface
   {
     using ::plasma::trophonius::Notification;
     using ::plasma::trophonius::TransactionNotification;
-    using ::plasma::trophonius::TransactionStatusNotification;
     using ::plasma::trophonius::UserStatusNotification;
     using ::plasma::trophonius::MessageNotification;
     using ::plasma::trophonius::NetworkUpdateNotification;
     using ::plasma::trophonius::NotificationType;
     using Self = ::plasma::meta::SelfResponse;
+    using Device = ::plasma::meta::Device;
 
     namespace json = elle::format::json;
 
@@ -31,8 +33,8 @@ namespace surface
 
     class NotificationManager
     {
-      // XXX:
-      class Exception: public surface::gap::Exception
+      class Exception:
+        public surface::gap::Exception
       {
       public:
         Exception(std::string const& what):
@@ -44,20 +46,23 @@ namespace surface
         {}
       };
 
-      std::unique_ptr<plasma::trophonius::Client> _trophonius;
-      plasma::meta::Client& _meta;
-      Self const& _self;
+      ELLE_ATTRIBUTE(std::unique_ptr<plasma::trophonius::Client>,
+                     trophonius);
+      ELLE_ATTRIBUTE(plasma::meta::Client&, meta);
+      ELLE_ATTRIBUTE(Self const&, self);
+      ELLE_ATTRIBUTE(Device const&, device);
 
     public:
       NotificationManager(plasma::meta::Client& meta,
-                          Self const& self);
+                          Self const& self,
+                          Device const& device);
 
       virtual
       ~NotificationManager();
 
     private:
       void
-      _connect(std::string const& _id, std::string const& token);
+      _connect();
 
       void
       _check_trophonius();
@@ -82,10 +87,6 @@ namespace surface
         TransactionNotificationCallback;
 
       typedef
-        std::function<void (TransactionStatusNotification const&, bool)>
-        TransactionStatusNotificationCallback;
-
-      typedef
         std::function<void (MessageNotification const&)>
         MessageNotificationCallback;
 
@@ -101,17 +102,10 @@ namespace surface
       transaction_callback(TransactionNotificationCallback const& cb);
 
       void
-      transaction_status_callback(TransactionStatusNotificationCallback const& cb);
-
-      void
       message_callback(MessageNotificationCallback const& cb);
 
       void
       network_update_callback(NetworkUpdateNotificationCallback const& cb);
-
-      template<NotificationType type>
-      void
-      detach(NotificationHandler const& to_remove);
 
     public:
       size_t
@@ -160,7 +154,5 @@ namespace surface
     };
   }
 }
-
-#include "NotificationManager.hxx"
 
 #endif

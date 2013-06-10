@@ -5,6 +5,8 @@
 # include <surface/gap/NotificationManager.hh>
 # include <plasma/meta/Client.hh>
 
+# include <unordered_set>
+
 namespace surface
 {
   namespace gap
@@ -55,6 +57,7 @@ namespace surface
       `------*/
     private:
       std::map<std::string, User*> _users;
+      std::unordered_set<std::string> _connected_devices;
 
       /*-------.
       | Access |
@@ -68,9 +71,14 @@ namespace surface
       User const&
       from_public_key(std::string const& public_key);
 
-      // Search users
+      /// Search users
       std::map<std::string, User const*>
       search(std::string const& text);
+
+      /// Device connection status
+      bool
+      device_status(std::string const& user_id,
+                    std::string const& device_id);
 
       elle::Buffer
       icon(std::string const& id);
@@ -91,15 +99,15 @@ namespace surface
       | Storage |
       `--------*/
     private:
-      typedef std::map<std::string, User const*> SwaggersMap;
-      SwaggersMap _swaggers;
+      typedef std::unordered_set<std::string> SwaggersSet;
+      SwaggersSet _swaggers;
       bool _swaggers_dirty;
 
       /*-------.
       | Access |
       `-------*/
     public:
-      SwaggersMap const&
+      SwaggersSet const&
       swaggers();
 
       User const&

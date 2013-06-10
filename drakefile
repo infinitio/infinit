@@ -526,7 +526,7 @@ def configure(cxx_toolkit = None,
     'Program.hh',
     'common/common.cc',
     ) + [version]
-  infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources,
+  infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources + [reactor_lib],
                                  cxx_toolkit, cxx_config)
 
   # Hole
@@ -962,80 +962,39 @@ def configure(cxx_toolkit = None,
                              tropho_sources,
                              cxx_toolkit, cxx_config)
   ## GAP:
-  gap_operation_sources = drake.nodes(
+  gap_sources = drake.nodes(
+    'surface/gap/CreateTransactionOperation.cc',
+    'surface/gap/CreateTransactionOperation.hh',
+    'surface/gap/device.cc',
+    'surface/gap/DownloadOperation.cc',
+    'surface/gap/DownloadOperation.hh',
     'surface/gap/Exception.hh',
-    'surface/gap/OperationManager.cc',
-    'surface/gap/OperationManager.hh')
-
-  gap_operation_lib = drake.cxx.DynLib('lib/gap_operation',
-                                      gap_operation_sources + infinit_libs,
-                                      cxx_toolkit, cxx_config_libs);
-
-  build << gap_operation_lib
-
-
-  gap_infinit_instance_sources = drake.nodes(
-    'surface/gap/Exception.hh',
+    'surface/gap/gap.cc',
+    'surface/gap/gap.h',
     'surface/gap/InfinitInstanceManager.cc',
-    'surface/gap/InfinitInstanceManager.hh')
-
-  gap_infinit_instance_lib = drake.cxx.DynLib('lib/gap_infinit_instance',
-                                              gap_infinit_instance_sources + infinit_libs,
-                                              cxx_toolkit, cxx_config_libs);
-
-  build << gap_infinit_instance_lib
-
-  gap_notification_sources = drake.nodes(
-    'surface/gap/Exception.hh',
-    'surface/gap/NotificationManager.cc',
-    'surface/gap/NotificationManager.hh',
-    'surface/gap/NotificationManager.hxx')
-
-  gap_notification_lib = drake.cxx.DynLib('lib/gap_notification',
-                                          gap_notification_sources + infinit_libs,
-                                          cxx_toolkit, cxx_config_libs);
-
-  build << gap_notification_lib;
-
-  gap_network_sources = drake.nodes(
-    'surface/gap/Exception.hh',
+    'surface/gap/InfinitInstanceManager.hh',
+    'surface/gap/metrics.cc',
+    'surface/gap/metrics.hh',
     'surface/gap/NetworkManager.cc',
     'surface/gap/NetworkManager.hh',
-    'surface/gap/metrics.hh')
-
-  gap_network_lib = drake.cxx.DynLib('lib/gap_network',
-                                     gap_network_sources + infinit_libs + [gap_infinit_instance_lib,],
-                                     cxx_toolkit, cxx_config_libs);
-
-  build << gap_network_lib
-
-  gap_transaction_sources = drake.nodes(
-    'surface/gap/Exception.hh',
+    'surface/gap/NotificationManager.cc',
+    'surface/gap/NotificationManager.hh',
+    'surface/gap/Operation.cc',
+    'surface/gap/Operation.hh',
+    'surface/gap/OperationManager.cc',
+    'surface/gap/OperationManager.hh',
+    'surface/gap/OperationManager.hxx',
+    'surface/gap/PrepareTransactionOperation.cc',
+    'surface/gap/PrepareTransactionOperation.hh',
+    'surface/gap/State.cc',
+    'surface/gap/State.hh',
+    'surface/gap/status.hh',
     'surface/gap/TransactionManager.cc',
     'surface/gap/TransactionManager.hh',
-    'surface/gap/metrics.hh')
-
-  gap_transaction_lib = drake.cxx.DynLib('lib/gap_transaction',
-                                         gap_transaction_sources + infinit_libs + [gap_network_lib,],
-                                         cxx_toolkit, cxx_config_libs);
-  build << gap_transaction_lib
-
-  gap_user_sources = drake.nodes(
-     'surface/gap/Exception.hh',
+    'surface/gap/UploadOperation.cc',
+    'surface/gap/UploadOperation.hh',
     'surface/gap/UserManager.cc',
     'surface/gap/UserManager.hh')
-
-  gap_user_lib = drake.cxx.DynLib('lib/gap_user',
-                                  gap_user_sources + infinit_libs,
-                                  cxx_toolkit, cxx_config_libs);
-  build << gap_user_lib;
-
-  manager_libs = [gap_operation_lib,
-                  gap_infinit_instance_lib,
-                  gap_notification_lib,
-                  gap_network_lib,
-                  gap_transaction_lib,
-                  gap_user_lib, ]
 
   # GAP
   gap_generator = drake.node('surface/gap/metrics_generator.py')
@@ -1053,20 +1012,12 @@ def configure(cxx_toolkit = None,
     def generated(self):
       return self.__targets
 
-  gap_sources = drake.nodes(
-    'surface/gap/Exception.hh',
-    'surface/gap/State.cc',
-    'surface/gap/State.hh',
-    'surface/gap/device.cc',
-    'surface/gap/gap.cc',
-    'surface/gap/gap.h',
-    'surface/gap/metrics.hh',
-  ) + GAPGenerator(gap_generator, 'surface/gap/gen_metrics').generated
+  gap_sources += GAPGenerator(gap_generator, 'surface/gap/gen_metrics').generated
 
   gap_ccx_config_libs = cxx_config_libs
   gap_ccx_config_libs.lib_path_runtime('../../lib/_gap')
   gap_lib = drake.cxx.DynLib('lib/gap',
-                             gap_sources + infinit_libs + manager_libs,
+                             gap_sources + infinit_libs,
                              cxx_toolkit, gap_ccx_config_libs)
 
   build << gap_lib
@@ -1259,9 +1210,9 @@ def configure(cxx_toolkit = None,
     # ('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc',  [elle_lib, plasma_lib, curly_lib]),
     ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib]),
-    ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib] + udt_libs),
-    ('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    ('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     # ('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
     ('tests/unit/hole/slug.cc', infinit_libs),
     (('tests/unit/heartbeat.cc', 'Heartbeat.cc', 'common/common.cc'), [reactor_lib, elle_lib] + udt_libs),
