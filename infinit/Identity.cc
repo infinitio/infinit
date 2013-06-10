@@ -6,10 +6,6 @@
 #include <cryptography/Code.hh>
 #include <cryptography/SecretKey.hh>
 
-#include <hole/Authority.hh>
-
-#include <common/common.hh>
-
 ELLE_LOG_COMPONENT("infinit.Identity");
 
 namespace infinit
