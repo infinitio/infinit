@@ -7,6 +7,7 @@
 # include <map>
 # include <memory>
 # include <stdexcept>
+# include <string>
 
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>

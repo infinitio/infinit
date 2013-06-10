@@ -6,7 +6,7 @@
 #include <elle/serialize/MapSerializer.hxx>
 
 #include "Client.hh"
-#include "curly.hh"
+#include <curly/curly.hh>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -844,6 +844,7 @@ namespace plasma
     {
       return _email;
     }
+
     void
     Client::email(std::string const& str)
     {
