@@ -11,6 +11,7 @@
 using namespace infinit;
 
 # include <elle/attribute.hh>
+# include <elle/serialize/construct.hh>
 
 namespace nucleus
 {
@@ -60,6 +61,7 @@ namespace nucleus
       Contents(Network const& network,
                cryptography::PublicKey const& creator_K,
                T* node);
+      ELLE_SERIALIZE_CONSTRUCT_DECLARE(Contents);
       /// Destructor.
       ~Contents();
 

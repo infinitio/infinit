@@ -28,7 +28,8 @@ namespace nucleus
     {
     }
 
-    ELLE_SERIALIZE_CONSTRUCT_DEFINE(ContentHashBlock, ImmutableBlock)
+    ELLE_SERIALIZE_CONSTRUCT_DEFINE(ContentHashBlock,
+                                    ImmutableBlock)
     {
     }
 

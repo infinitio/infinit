@@ -34,6 +34,13 @@ namespace nucleus
     {
     }
 
+    ELLE_SERIALIZE_CONSTRUCT_DEFINE(Contents,
+                                    proton::ContentHashBlock)
+    {
+      this->_node = nullptr;
+      this->_code = nullptr;
+    }
+
     Contents::~Contents()
     {
       delete this->_node;

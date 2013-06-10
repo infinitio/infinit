@@ -27,7 +27,8 @@ namespace nucleus
     {
     }
 
-    ELLE_SERIALIZE_CONSTRUCT_DEFINE(ImmutableBlock, Block)
+    ELLE_SERIALIZE_CONSTRUCT_DEFINE(ImmutableBlock,
+                                    Block)
     {
     }
 
