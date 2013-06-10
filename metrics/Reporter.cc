@@ -1,19 +1,14 @@
 #include <common/common.hh>
 
-#include <boost/algorithm/string/replace.hpp>
-
+#include <elle/Buffer.hh>
+#include <elle/container/map.hh>
+#include <elle/format/hexadecimal.hh>
+#include <elle/serialize/BinaryArchive.hh>
+#include <elle/serialize/ListSerializer.hxx>
+#include <elle/serialize/PairSerializer.hxx>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
-#include <elle/serialize/BinaryArchive.hh>
-#include <elle/serialize/PairSerializer.hxx>
-#include <elle/serialize/ListSerializer.hxx>
-
 #include <elle/utility/Time.hh>
-#include <elle/Buffer.hh>
-#include <elle/format/hexadecimal.hh>
-#include <cryptography/Digest.hh>
-#include <cryptography/Plain.hh>
-#include <cryptography/oneway.hh>
 
 #include <version.hh>
 #include "Reporter.hh"
@@ -43,7 +38,13 @@ namespace elle
 #else
 # warning "machine not supported"
 #endif
-
+    //- Key --------------------------------------------------------------------
+    std::ostream&
+    operator <<(std::ostream& out,
+                Key k)
+    {
+      return out << (int) k;
+    }
     //- Service ----------------------------------------------------------------
     Reporter::Service::Service(std::string const& host,
                                uint16_t port,
@@ -51,7 +52,7 @@ namespace elle
                                std::string const& pretty_name)
       : _user_id{user}
       , _server{new elle::HTTPClient{host, port, Reporter::user_agent}}
-      , name{pretty_name}
+      , _name{pretty_name}
     {}
 
     Reporter::Service::~Service()
@@ -118,45 +119,64 @@ namespace elle
     void
     Reporter::store(TimeMetricPair const& metric)
     {
-      for (auto& serv: this->_services)
-      {
-        try
+      ELLE_TRACE("metric: %s", metric);
+
+      this->_services(
+        [metric, this] (ServicesMap& services) -> void
         {
-          serv.second->_send(metric);
-        }
-        catch (std::runtime_error const& e)
-        {
-          ELLE_ERR("something went wrong while storing metric: %s", e.what());
-          this->_fallback(metric);
-        }
-      }
+          for (auto& service: services)
+          {
+            this->_flusher_sched.io_service().post([&service, metric, this] {
+                try
+                {
+                  service.second->_send(metric);
+                }
+                catch (std::runtime_error const& e)
+                {
+                  ELLE_ERR("error while storing metric %s %s", metric, e.what());
+                  // XXX: Fallback is not threadsafe.
+                  this->_fallback(service.first, metric);
+                }
+              });
+          }
+        });
     }
 
     void
-    Reporter::_fallback(TimeMetricPair const& metric)
-    {}
+    Reporter::_fallback(std::string const& name, TimeMetricPair const& metric)
+    {
+
+    }
 
     void
     Reporter::add_service(std::unique_ptr<Service> service)
     {
-      this->_services.emplace(service->name, std::move(service));
+      this->_services(
+        [&] (ServicesMap& services) -> void
+        {
+          services.emplace(service->name(), std::move(service));
+        });
     }
 
     Reporter::Service&
-    Reporter::service(std::string const& name)
+    Reporter::_service(std::string const& name)
     {
-      auto& service = _services.at(name);
-
-      ELLE_ASSERT(service != nullptr);
-
-      return *service;
+      return this->_services(
+        [&] (ServicesMap& services) -> Reporter::Service&
+        {
+          return *services.at(name);
+        });
     }
 
     void
     Reporter::update_user(std::string const& user)
     {
-      for (auto& serv: this->_services)
-        serv.second->update_user(user);
+      this->_services(
+        [&] (ServicesMap& services) -> void
+        {
+          for (auto& serv: services)
+            serv.second->update_user(user);
+        });
     }
 
     Reporter&

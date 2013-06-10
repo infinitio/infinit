@@ -74,8 +74,8 @@ namespace nucleus
       //
     public:
       Subject();
-      Subject(typename User::Identity const& identity);
-      Subject(typename Group::Identity const& identity);
+      Subject(User::Identity const& identity);
+      Subject(Group::Identity const& identity);
       Subject(Subject const& other);
       ~Subject();
 
@@ -85,18 +85,18 @@ namespace nucleus
     public:
       /// XXX[to remove in favour of the constructor]
       elle::Status
-      Create(typename User::Identity const& identity);
+      Create(User::Identity const& identity);
       /// XXX[to remove in favour of the constructor]
       elle::Status
-      Create(typename Group::Identity const& identity);
+      Create(Group::Identity const& identity);
       /// Returns the subject type: user or group.
       Type
       type() const;
       /// Returns the user's identity i.e public key.
-      typename User::Identity const&
+      User::Identity const&
       user() const;
       /// Returns the group's identity i.e address.
-      typename Group::Identity const&
+      Group::Identity const&
       group() const;
 
       //
@@ -132,8 +132,8 @@ namespace nucleus
 
       union
       {
-        typename User::Identity* _user;
-        typename Group::Identity* _group;
+        User::Identity* _user;
+        Group::Identity* _group;
       };
     };
 

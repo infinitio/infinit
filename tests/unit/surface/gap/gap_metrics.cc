@@ -5,24 +5,24 @@ main(void)
 {
   gap_State* state = gap_new();
 
-  gap_metrics_connect_google_attempt(state);
-  gap_metrics_connect_google_succeed(state);
-  gap_metrics_connect_google_fail(state);
-  gap_metrics_connect_facebook_attempt(state);
-  gap_metrics_connect_facebook_succeed(state);
-  gap_metrics_connect_facebook_fail(state);
-  gap_metrics_login_google_attempt(state);
-  gap_metrics_login_google_succeed(state);
-  gap_metrics_login_google_fail(state);
-  gap_metrics_login_facebook_attempt(state);
-  gap_metrics_login_facebook_succeed(state);
-  gap_metrics_login_facebook_fail(state);
-  gap_metrics_import_google_attempt(state);
-  gap_metrics_import_google_succeed(state);
-  gap_metrics_import_google_fail(state);
-  gap_metrics_import_facebook_attempt(state);
-  gap_metrics_import_facebook_succeed(state);
-  gap_metrics_import_facebook_fail(state);
+  gap_metrics_google_connect_attempt(state);
+  gap_metrics_google_connect_succeed(state);
+  gap_metrics_google_connect_fail(state);
+  gap_metrics_facebook_connect_attempt(state);
+  gap_metrics_facebook_connect_succeed(state);
+  gap_metrics_facebook_connect_fail(state);
+  gap_metrics_google_login_attempt(state);
+  gap_metrics_google_login_succeed(state);
+  gap_metrics_google_login_fail(state);
+  gap_metrics_facebook_login_attempt(state);
+  gap_metrics_facebook_login_succeed(state);
+  gap_metrics_facebook_login_fail(state);
+  gap_metrics_google_import_attempt(state);
+  gap_metrics_google_import_succeed(state);
+  gap_metrics_google_import_fail(state);
+  gap_metrics_facebook_import_attempt(state);
+  gap_metrics_facebook_import_succeed(state);
+  gap_metrics_facebook_import_fail(state);
   gap_metrics_google_invite_attempt(state);
   gap_metrics_google_invite_succeed(state);
   gap_metrics_google_invite_fail(state);
@@ -45,6 +45,7 @@ main(void)
   gap_metrics_transfer_user(state);
   gap_metrics_transfer_social(state);
   gap_metrics_transfer_email(state);
+  gap_metrics_transfer_ghost(state);
   gap_metrics_panel_open(state, "panel");
   gap_metrics_panel_close(state, "panel");
   gap_metrics_panel_accept(state, "panel");
@@ -61,7 +62,7 @@ main(void)
   gap_metrics_searchbar_share(state, "input");
   gap_metrics_select_user(state, "input");
   gap_metrics_select_social(state, "input");
-  gap_metrics_select_other(state, "input");
+  gap_metrics_select_ghost(state, "input");
   gap_metrics_select_close(state, "input");
 
   gap_free(state);

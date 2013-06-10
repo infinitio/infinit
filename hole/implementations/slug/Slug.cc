@@ -9,7 +9,7 @@
 
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/udp-socket.hh>
-#include <reactor/network/udt-server.hh>
+#include <reactor/network/udt-rdv-server.hh>
 
 #include <hole/Exception.hh>
 #include <hole/implementations/slug/Host.hh>
@@ -48,19 +48,18 @@ namespace hole
         _acceptor()
       {
         ELLE_TRACE_SCOPE("launch slug");
-        auto& sched = *reactor::Scheduler::scheduler();
         try
         {
           ELLE_TRACE("try connecting to peers")
           {
             // FIXME: use builtin support for subcoroutines when available.
             std::vector<reactor::Thread*> connections;
+            auto& sched = *reactor::Scheduler::scheduler();
             for (elle::network::Locus const& locus: this->members())
             {
               auto action = [&, locus] { this->_connect_try(locus); };
-              auto thread = new reactor::Thread
-                (sched, elle::sprintf("connect %s", locus), action);
-              connections.push_back(thread);
+              auto name = elle::sprintf("connect %s", locus);
+              connections.push_back(new reactor::Thread{sched, name, action});
             }
             for (reactor::Thread* t: connections)
             {
@@ -83,14 +82,18 @@ namespace hole
           {
             // XXX: for now rebinding a socket is only available with UDT.
             ELLE_ASSERT_EQ(this->protocol(), reactor::network::Protocol::udt);
-            this->_server = elle::make_unique<reactor::network::UDTServer>(
+            this->_server = elle::make_unique<reactor::network::UDTRendezVousServer>(
               *reactor::Scheduler::scheduler(), std::move(socket));
           }
           else
           {
-            this->_server = reactor::network::Server::create(
-              this->protocol(), sched);
+            using reactor::network::Server;
+            auto& sched = *reactor::Scheduler::scheduler();
+
+            this->_server = Server::create(this->protocol(), sched);
+            this->_server->listen(0);
           }
+          this->_port = this->_server->port();
 
           // Finally, listen for incoming connections.
           ELLE_TRACE("serve on port %s", this->_port);
@@ -99,10 +102,8 @@ namespace hole
             elle::network::Host host(elle::network::Host::TypeAny);
             try
             {
-              _server->listen(this->_port);
               // In case we asked for a random port to be picked up (by using 0)
               // or hole punching happened, retrieve the actual listening port.
-              this->_port = this->_server->port();
               ELLE_ASSERT(this->_port != 0);
               ELLE_DEBUG("listening on port %s", this->_port);
               _acceptor.reset(new reactor::Thread(
@@ -129,7 +130,6 @@ namespace hole
 
       Slug::~Slug()
       {
-        ELLE_TRACE_SCOPE("%s: terminating", *this);
         for (auto host: Hosts(_hosts))
           this->_remove(host.second);
 
@@ -1082,7 +1082,7 @@ namespace hole
       void
       Slug::_connect(elle::network::Locus const& locus)
       {
-        ELLE_TRACE_SCOPE("try connecting to %s", locus);
+        ELLE_TRACE_SCOPE("try connecting to %s(%s)", this->protocol(), locus);
         std::string hostname;
         locus.host.Convert(hostname);
         std::unique_ptr<reactor::network::Socket> socket(
@@ -1097,6 +1097,7 @@ namespace hole
       Slug::_connect(std::unique_ptr<reactor::network::Socket> socket,
                         elle::network::Locus const& locus, bool opener)
       {
+        (void)opener;
         // Beware: do not yield between the host creation and the
         // authentication, or we might face a race condition.
         Host* host = new Host(*this, locus, std::move(socket));
@@ -1128,26 +1129,38 @@ namespace hole
       Slug::_connect_try(elle::network::Locus const& locus)
       {
         try
-          {
-            _connect(locus);
-          }
-        catch (reactor::network::Exception& err)
-          {
-            ELLE_TRACE("ignore host %s: %s", locus, err.what());
-          }
+        {
+          _connect(locus);
+        }
+      catch (reactor::network::Exception& err)
+        {
+          ELLE_TRACE("ignore host %s: %s", locus, err.what());
+        }
+      }
+
+      void
+      Slug::_remove(elle::network::Locus locus)
+      {
+        ELLE_LOG("%s: remove host at %s", *this, locus);
+        auto it_host = this->_hosts.find(locus);
+        // If the Host didn't take care of erasing himself from the list:
+        if (it_host != end(this->_hosts))
+        {
+          auto host_ptr = it_host->second;
+          this->_hosts.erase(it_host);
+
+          // delete the host if it's still in the map.
+          // This line can yield, so we need to make sure that the host is
+          // erased from the list before calling its destructor.
+          delete host_ptr;
+        }
       }
 
       void
       Slug::_remove(Host* host)
       {
-        elle::network::Locus locus(host->locus());
-        // Stopping the RPCS will call this recursively. Break the loop.
-        auto it = this->_hosts.find(locus);
-        if (it == this->_hosts.end())
-          return;
-        ELLE_LOG_SCOPE("%s: remove host: %s", *this, *host);
-        std::unique_ptr<Host> guard(host);
-        this->_hosts.erase(locus);
+        ELLE_LOG("%s: remove host: %s", *this, *host);
+        this->_remove(host->locus());
       }
 
       /*-------.
@@ -1256,18 +1269,20 @@ namespace hole
               ELLE_DEBUG("passport: %s", pass);
 
               // We compare each passport with the one of the host.
-              // If there is only one host with this passport, n shall be 1
-              int n = 0;
+              // If there is only one host with this passport.
+              int i = 0;
               for (auto const& p: _hosts)
               {
-                ELLE_DEBUG("value of n: %d", n);
                 if (p.second->remote_passport() == pass)
-                  n++;
-                // Stop iteration if we know that the host is forbidden.
-                if (n > 1)
-                  goto error;
+                {
+                  ELLE_DEBUG("already have this passport");
+                  i++;
+                }
               }
-              ELLE_DEBUG("%s found", locus);
+              if (i > 1)
+                goto error;
+
+              ELLE_DEBUG("new connection from %s", locus);
               return true;
             }
             else
@@ -1279,14 +1294,13 @@ namespace hole
         error:
         ELLE_DEBUG("out of portal_wait(%s, %s) (%s)",
                    host, port, this->_hosts.size())
-          this->_hosts.erase(locus);
+          this->_remove(locus);
         return false;
       }
 
-      /*----------.
-      | Printable |
-      `----------*/
-
+      /*---------.
+      | Dumpable |
+      `---------*/
       void
       Slug::print(std::ostream& stream) const
       {

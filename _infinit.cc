@@ -17,7 +17,9 @@
 
 #include <hole/Hole.hh>
 #include <hole/storage/Directory.hh>
-#include <horizon/Horizon.hh>
+#ifdef INFINIT_HORIZON
+# include <horizon/Horizon.hh>
+#endif
 
 #include <lune/Lune.hh>
 

@@ -928,7 +928,7 @@ namespace etoile
       catch (std::exception const& err)
       {
         throw Exception(elle::sprintf("the shutdown process failed: %s",
-                                      err.what()));
+                                      elle::exception_string()));
       }
 
       return elle::Status::Ok;

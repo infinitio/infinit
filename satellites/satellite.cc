@@ -1,8 +1,8 @@
 #include <reactor/scheduler.hh>
-#include <reactor/exception.hh>
 
 #include <elle/system/signal.hh>
 #include <elle/system/Process.hh>
+#include <elle/Exception.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
 #include <elle/os/getenv.hh>
@@ -98,7 +98,7 @@ namespace infinit
                                      "-c", elle::sprintf("/cores/core.%d", pid),
 #endif
                                      "-s", common::infinit::binary_path(name),
-                                     "-x", common::infinit::binary_path("gdbmacro"));
+                                     "-x", common::infinit::binary_path("gdbmacro.py"));
         std::ofstream debuginfo{
           elle::sprintf("/tmp/crash-%s-%d.txt", name, pid)};
         debuginfo << ss.str();
@@ -168,7 +168,7 @@ namespace infinit
         sched.run();
         return main.result();
       }
-      catch (reactor::Exception const& e)
+      catch (elle::Exception const& e)
       {
         ELLE_ERR("%s: fatal error: %s", name, e);
         std::cerr << name << ": fatal error: " << e << std::endl;

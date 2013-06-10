@@ -78,6 +78,9 @@ namespace surface
     //- Login & register ------------------------------------------------------
       std::unique_ptr<Self> mutable _me;
 
+      void
+      _self_load() const;
+
       Self&
       me();
 

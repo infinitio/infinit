@@ -124,8 +124,16 @@ def configure(cxx_toolkit = None,
       dependencies_prefix = 'dependencies/platforms/macosx64/work/'
     else:
       raise Exception("architecture %s not supported" % architecture)
+  elif cxx_toolkit.os == drake.os.windows:
+    if architecture_wordsize == 32:
+      dependencies_prefix = 'dependencies/platforms/win32/work/'
+    elif architecture_wordsize == 64:
+      dependencies_prefix = 'dependencies/platforms/win64/work/'
+    else:
+      raise Exception("architecture %s not supported" % architecture)
   else:
-    raise Exception("operating system %s not supported" % cxx_toolkit.os)
+    raise Exception(
+      'operating system %s not supported' % cxx_toolkit.os)
 
   openssl = drake.cxx.LibraryConfiguration(
     'openssl/opensslconf.h',
@@ -135,6 +143,18 @@ def configure(cxx_toolkit = None,
   curl = drake.cxx.LibraryConfiguration(
     'curl/curl.h',
     prefix = dependencies_prefix,
+  )
+
+  stun_common = drake.cxx.LibraryConfiguration(
+    'commonincludes.hpp',
+    prefix = dependencies_prefix,
+    include_dir = "include/stun/common/",
+  )
+
+  stun_core = drake.cxx.LibraryConfiguration(
+    'stuncore.h',
+    prefix = dependencies_prefix,
+    include_dir = "include/stun/stuncore/",
   )
 
   if cxx_toolkit.os == drake.os.macos:
@@ -164,7 +184,27 @@ def configure(cxx_toolkit = None,
     curl.libraries_path
   )
 
+  stun_core_lib = drake.copy(
+    drake.nodes(
+      stun_core.libraries_path / ('libstuncore.a'),
+    ),
+    'lib',
+    stun_core.libraries_path
+  )
+
+  stun_common_lib = drake.copy(
+    drake.nodes(
+      stun_common.libraries_path / ('libstuncommon.a'),
+    ),
+    'lib',
+    stun_common.libraries_path
+  )
+
+  cxx_config += openssl.config()
+
   cxx_config += curl.config()
+  cxx_config += stun_core.config()
+  cxx_config += stun_common.config()
 
   # Boost
   boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
@@ -191,9 +231,12 @@ def configure(cxx_toolkit = None,
   elle = drake.include('elle',
                        cxx_toolkit,
                        cxx_config,
+                       prefix = prefix,
                        boost = boost,
+                       stuntman = stun_core,
                        openssl = openssl.config(),
                        curl = curl.config())
+
   elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
   cryptography_lib = drake.copy(elle.cryptography_dynamic, 'lib', elle.cryptography_dynamic.path().dirname())
   reactor_lib = drake.copy(elle.reactor_dynamic, 'lib', elle.reactor_dynamic.path().dirname())
@@ -477,6 +520,8 @@ def configure(cxx_toolkit = None,
     'infinit/Exception.cc',
     'infinit/Exception.hh',
     'HoleFactory.cc',
+    'Heartbeat.cc',
+    'Heartbeat.hh',
     'Infinit.cc',
     'Program.cc',
     'Program.hh',
@@ -764,6 +809,7 @@ def configure(cxx_toolkit = None,
   ## ----- ##
 
   tests = drake.Rule('tests')
+  tests << elle.rule_tests
 
   ## ----- ##
   ## Build ##
@@ -772,6 +818,8 @@ def configure(cxx_toolkit = None,
   build = drake.Rule('build')
   build << openssl_lib
   build << curl_lib
+  build << stun_core_lib
+  build << stun_common_lib
 
   ## -------- ##
   ## Programs ##
@@ -817,7 +865,7 @@ def configure(cxx_toolkit = None,
 
   # GdbMacro
   gdbmacro_files = drake.nodes(
-    'default/gdbmacro',
+    'default/gdbmacro.py',
     )
   macro_copy = drake.copy(gdbmacro_files, 'bin', 'default')
 
@@ -1071,7 +1119,6 @@ def configure(cxx_toolkit = None,
     oracles = drake.Rule('oracle')
 
     oracle_sources = drake.nodes(
-      'oracle/disciples/creosus-server',
       'oracle/disciples/erginus-server',
       'oracle/disciples/longinus-server',
       'oracle/disciples/meta-server',
@@ -1149,8 +1196,32 @@ def configure(cxx_toolkit = None,
                                  'lib/python',
                                  'oracle/disciples')
 
+    heartbeat_config = drake.cxx.Config(cxx_config)
+    heartbeat_config += boost.config_program()
+    heartbeat_config.lib('udt')
+    heartbeat_config.lib_path_runtime('../lib')
+    heartbeat_config.add_local_include_path('oracle/disciples/')
+    heartbeat_config.add_local_include_path('.')
+    heartbeat_config.lib('reactor')
+    heartbeat_config.lib('elle')
+
+    heartbeat_sources = drake.nodes(
+      'oracle/disciples/heartbeat/heartbeat.cc',
+      'satellites/satellite.cc',
+      'satellites/satellite.hh',
+      'common/common.cc',
+      'common/common.hh',
+      'CrashReporter.cc',
+      'CrashReporter.hh',
+      )
+
+    heartbeat = drake.cxx.Executable('bin/heartbeat',
+        heartbeat_sources + [reactor_lib, elle_lib] + udt_libs,
+        cxx_toolkit, heartbeat_config)
+
     oracles << oracle_source_copy
     oracles << oracle_lib_copy
+    oracles << heartbeat
 
     # Oracle/metalib
     if python_enabled:
@@ -1185,42 +1256,40 @@ def configure(cxx_toolkit = None,
   tests_cxx_config = drake.cxx.Config(cxx_config)
   tests_cxx_config.lib_path_runtime('../../../../lib')
   tests_cxx_config.lib_path_runtime('../../../lib')
+  tests_cxx_config.lib_path_runtime('../../lib')
   tests_cxx_config += boost.config_test()
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib] + udt_libs
+
   tests_src_n_lib = [
     ('tests/testing_tests.cc', []),
     ('tests/unit/nucleus/neutron/nn_Group.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Object.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
-    ('tests/unit/nucleus/proton/Porcupine.cc', [hole_lib] + infinit_libs + [elle_lib, hole_lib]),
-    # ('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc',
-    #  [elle_lib, plasma_lib, curly_lib]),
-    ('tests/unit/protocol/rpc.cc',
-     [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
+    ('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
+    # ('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc',  [elle_lib, plasma_lib, curly_lib]),
+    ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib]),
-    ('tests/unit/surface/gap/Metrics.cc', 'common/common.cc',
-     [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib,
-       curly_lib] +
-     udt_libs),
-    ('tests/unit/surface/gap/state_connect.cc',
-     [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
-    ('tests/unit/surface/gap/gap_metrics.cc',
-     [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
-    # ('tests/unit/surface/gap/state_ctor.cc',
-    #  [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
-    ('tests/unit/hole/slug.cc', infinit_libs)
+    ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib] + udt_libs),
+    ('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    # ('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    ('tests/unit/hole/slug.cc', infinit_libs),
+    (('tests/unit/heartbeat.cc', 'Heartbeat.cc', 'common/common.cc'), [reactor_lib, elle_lib] + udt_libs),
   ]
 
   check = drake.Rule('check')
   check << elle.rule_check
-  for test in tests_src_n_lib:
-    bin_path = drake.Path(test[0])
-    bin_path.extension = ''
-    path = drake.Path(test[0])
-    path.extension = ''
-    test_bin = drake.cxx.Executable(path,
-                                    drake.nodes(*test[:-1]) + test[-1],
+  for test, deps in tests_src_n_lib:
+    if isinstance(test, str):
+      bin_name, ext = os.path.splitext(test)
+      sources = [test]
+    else:
+      first, *others = test
+      bin_name, ext = os.path.splitext(first)
+      sources = test
+    test_bin = drake.cxx.Executable(bin_name,
+                                    drake.nodes(*sources) + deps,
                                     cxx_toolkit, tests_cxx_config)
     tests << test_bin
     runner = drake.Runner(test_bin)
@@ -1229,5 +1298,3 @@ def configure(cxx_toolkit = None,
   #Check
   rule_check = drake.Rule('check')
   rule_check << elle.rule_check
-
-# vim: set sw=2 ts=2 sts=2 expandtab:
