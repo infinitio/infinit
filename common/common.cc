@@ -278,10 +278,8 @@ namespace common
     std::string
     identity_path(std::string const& user_id)
     {
-      return path::join(
-        infinit::user_directory(user_id),
-        "identity"
-      );
+      return path::join(user_directory(user_id), user_id + ".idy");
+    }
     }
 
   } // !infinit
