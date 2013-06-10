@@ -75,7 +75,7 @@ main(int ac, const char *av[])
   po::options_description cli("Heartbeat options");
   cli.add_options()
     ("help", "help message")
-    ("port", po::value<int>(0), "port")
+    ("port", po::value<int>()->default_value(9998), "port")
   ;
 
   po::variables_map vm;
