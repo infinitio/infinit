@@ -9,7 +9,6 @@
 #include <elle/serialize/extract.hh>
 #include <elle/io/Unique.hh>
 
-#include <nucleus/factory.hh>
 #include <nucleus/fwd.hh>
 #include <nucleus/Derivable.hh>
 

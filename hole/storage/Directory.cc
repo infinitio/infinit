@@ -13,6 +13,7 @@
 
 #include <nucleus/fwd.hh>
 #include <nucleus/proton/Block.hh>
+#include <nucleus/factory.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.storage.Directory");
 
@@ -104,20 +105,17 @@ namespace hole
       // Get block path.
       elle::io::Path path(this->path(address));
 
-      // Create an empty block.
-      auto const& factory = nucleus::proton::block::factory<>();
+      // Deserialize the block through the factory.
+      auto const& factory =
+        nucleus::factory::block<elle::serialize::NoInit>();
+      std::unique_ptr<nucleus::proton::Block> block(
+        factory.allocate<nucleus::proton::ImmutableBlock>(
+          address.component(),
+          elle::serialize::no_init));
 
-      nucleus::proton::ImmutableBlock* block =
-        factory.allocate<nucleus::proton::ImmutableBlock>(address.component());
-
-      ELLE_FINALLY_ACTION_DELETE(block);
-
-      // Deserialize the block.
       elle::serialize::from_file(path.string()) >> *block;
 
-      ELLE_FINALLY_ABORT(block);
-
-      return std::unique_ptr<nucleus::proton::Block>(block);
+      return block;
     }
 
     std::unique_ptr<nucleus::proton::Block>
@@ -127,20 +125,17 @@ namespace hole
       // Get block path.
       elle::io::Path path(this->path(address, revision));
 
-      // Create an empty block.
-      auto const& factory = nucleus::proton::block::factory<>();
+      // Deserialize the block through the factory.
+      auto const& factory =
+        nucleus::factory::block<elle::serialize::NoInit>();
+      std::unique_ptr<nucleus::proton::Block> block(
+        factory.allocate<nucleus::proton::MutableBlock>(
+          address.component(),
+          elle::serialize::no_init));
 
-      nucleus::proton::MutableBlock* block =
-        factory.allocate<nucleus::proton::MutableBlock>(address.component());
-
-      ELLE_FINALLY_ACTION_DELETE(block);
-
-      // Deserialize the block.
       elle::serialize::from_file(path.string()) >> *block;
 
-      ELLE_FINALLY_ABORT(block);
-
-      return std::unique_ptr<nucleus::proton::Block>(block);
+      return block;
     }
 
     void
