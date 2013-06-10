@@ -285,6 +285,40 @@ SERIALIZE_RESPONSE(plasma::meta::VerifySignatureResponse, ar, res)
   ar & named("verified", res.verified);
 }
 
+SERIALIZE_RESPONSE(plasma::meta::PublishDescriptorResponse, ar, res)
+{
+  ar & named("id", res.id);
+}
+
+SERIALIZE_RESPONSE(plasma::meta::UnpublishDescriptorResponse, ar, res)
+{
+  (void) ar;
+  (void) res;
+}
+
+ELLE_SERIALIZE_SIMPLE(plasma::meta::Descriptor, ar, res, version)
+{
+  (void) version;
+
+  ar & named("_id", res.id);
+  ar & named("descriptor", res.descriptor);
+}
+
+SERIALIZE_RESPONSE(plasma::meta::DescriptorResponse, ar, res)
+{
+  ar & base_class<plasma::meta::Descriptor>(res);
+}
+
+// SERIALIZE_RESPONSE(plasma::meta::DescriptorsResponse, ar, res)
+// {
+//   ar & named("descriptors", res.descriptors);
+// }
+
+SERIALIZE_RESPONSE(plasma::meta::DescriptorListResponse, ar, res)
+{
+  ar & named("descriptors", res.descriptors);
+}
+
 namespace plasma
 {
   namespace meta
@@ -312,7 +346,8 @@ namespace plasma
      // - Ctor & dtor ----------------------------------------------------------
     Client::Client(std::string const& server,
                    uint16_t port,
-                   bool check_errors):
+                   bool check_errors,
+                   std::string const& token_seed):
       _root_url{elle::sprintf("http://%s:%d", server, port)},
       _check_errors{check_errors},
       _identity{},
@@ -320,14 +355,12 @@ namespace plasma
       _token{},
       _user_agent{"MetaClient"}
     {
-
+      if (!token_seed.empty())
+        this->generate_token(token_seed);
     }
 
     Client::~Client()
-    {
-    }
-
-
+    {}
 
     // - API calls ------------------------------------------------------------
     // XXX add login with token method.
@@ -690,6 +723,54 @@ namespace plasma
       return this->_post<VerifySignatureResponse>("/authority/verify", request);
     }
 
+    PublishDescriptorResponse
+    Client::descriptor_publish(std::string const& dsc) const
+    {
+      json::Dictionary request{std::map<std::string, std::string>{
+          {"d_e_s_c_r_i_p_t_o_r", ""},
+      }};
+      return this->_post<PublishDescriptorResponse>("/descriptor/publish", request);
+    }
+
+    UnpublishDescriptorResponse
+    Client::descriptor_unpublish(std::string const& id) const
+    {
+      json::Dictionary request{std::map<std::string, std::string>{
+          {"id", id},
+      }};
+      return this->_post<UnpublishDescriptorResponse>("/descriptor/unpublish", request);
+    }
+
+    DescriptorResponse
+    Client::descriptor(std::string const& id) const
+    {
+      json::Dictionary request{std::map<std::string, std::string>{
+          {"id", id},
+      }};
+
+      return this->_post<DescriptorResponse>("/descriptor/get", request);
+    }
+
+    DescriptorsResponse
+    Client::descriptors(Client::DescriptorList filter) const
+    {
+      json::Dictionary request{std::map<std::string, std::string>{
+          {"filter", std::to_string((int) filter)}
+      }};
+
+      //return this->_get<DescriptorsResponse>("/descriptor/all");
+      return DescriptorsResponse{};
+    }
+
+    DescriptorListResponse
+    Client::descriptor_list(Client::DescriptorList filter) const
+    {
+      json::Dictionary request{std::map<std::string, std::string>{
+          {"filter", std::to_string((int) filter)}
+      }};
+      return this->_post<DescriptorListResponse>("/descriptor/list", request);
+    }
+
     DeleteNetworkResponse
     Client::delete_network(std::string const& network_id,
                            bool force) const
@@ -714,8 +795,7 @@ namespace plasma
       }};
       if (name != nullptr)
         request["name"] = *name;
-
-      assert(((root_block == nullptr && root_address == nullptr) ||
+        assert(((root_block == nullptr && root_address == nullptr) ||
               (root_block != nullptr && root_address != nullptr)) &&
              "Give both root block and root address or none of them");
       if (root_block != nullptr)

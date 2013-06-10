@@ -222,6 +222,33 @@ namespace plasma
       bool verified;
     };
 
+    struct PublishDescriptorResponse: Response
+    {
+      std::string id;
+    };
+
+    struct UnpublishDescriptorResponse: Response
+    {};
+
+    struct Descriptor
+    {
+      std::string id;
+      std::string descriptor;
+    };
+
+    struct DescriptorResponse: Response, Descriptor
+    {};
+
+    struct DescriptorsResponse: Response
+    {
+      std::vector<Descriptor> descriptors;
+    };
+
+    struct DescriptorListResponse: Response
+    {
+      std::vector<std::string> descriptors;
+    };
+
     /// Callbacks for API calls.
     typedef std::function<void(LoginResponse const&)> LoginCallback;
     typedef std::function<void(RegisterResponse const&)> RegisterCallback;
@@ -248,7 +275,8 @@ namespace plasma
     public:
       Client(std::string const& server,
              uint16_t port,
-             bool check_errors = true);
+             bool check_errors = true,
+             std::string const& token_seed = "");
       ~Client();
 
       template <typename T>
@@ -365,6 +393,28 @@ namespace plasma
       VerifySignatureResponse
       verify_signature(std::string const& signature,
                        std::string const& hash) const;
+
+      PublishDescriptorResponse
+      descriptor_publish(std::string const& dsc) const;
+
+      UnpublishDescriptorResponse
+      descriptor_unpublish(std::string const& id) const;
+
+      DescriptorResponse
+      descriptor(std::string const& id) const;
+
+      enum class DescriptorList: int
+      {
+        all,
+        mine,
+        other,
+      };
+
+      DescriptorListResponse
+      descriptor_list(DescriptorList list) const;
+
+      DescriptorsResponse
+      descriptors(DescriptorList list) const;
 
       DeleteNetworkResponse
       delete_network(std::string const& network_id,
