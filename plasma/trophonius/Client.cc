@@ -38,7 +38,10 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::Notification, ar, value, version)
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::UserStatusNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification, ar, value, version)
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification,
+                      ar,
+                      value,
+                      version)
 {
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("user_id", value.user_id);
@@ -48,14 +51,20 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification, ar, value, ver
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::TransactionNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification, ar, value, version)
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification,
+                      ar,
+                      value,
+                      version)
 {
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & base_class<plasma::Transaction>(value);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::NetworkUpdateNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification, ar, value, version)
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification,
+                      ar,
+                      value,
+                      version)
 {
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("network_id", value.network_id);
@@ -63,7 +72,10 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification, ar, value, 
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::MessageNotification);
-ELLE_SERIALIZE_SIMPLE(plasma::trophonius::MessageNotification, ar, value, version)
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::MessageNotification,
+                      ar,
+                      value,
+                      version)
 {
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("sender_id", value.sender_id);
@@ -74,6 +86,9 @@ namespace plasma
 {
   namespace trophonius
   {
+    Notification::~Notification()
+    {}
+
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict)
     {
@@ -82,24 +97,25 @@ namespace plasma
         .as<NotificationType>();
       using namespace elle::serialize;
       auto extractor = from_string<InputJSONArchive>(dict.repr());
+      typedef std::unique_ptr<Notification> Ptr;
       switch (notification_type)
       {
       case NotificationType::transaction:
-        return std::move(extractor.Construct<TransactionNotification>());
+        return Ptr{new TransactionNotification{extractor}};
       case NotificationType::user_status:
-        return std::move(extractor.Construct<UserStatusNotification>());
+        return Ptr{new UserStatusNotification{extractor}};
       case NotificationType::message:
-        return std::move(extractor.Construct<MessageNotification>());
+        return Ptr{new MessageNotification{extractor}};
       case NotificationType::network_update:
-        return std::move(extractor.Construct<NetworkUpdateNotification>());
+        return Ptr{new NetworkUpdateNotification{extractor}};
       case NotificationType::connection_enabled:
-        return std::move(extractor.Construct<Notification>());
+        return Ptr{new Notification{extractor}};
       default:
         throw elle::Exception{
           elle::sprint("Unknown notification type", notification_type)};
       }
       elle::unreachable();
-      return {nullptr};
+      return Ptr{nullptr};
     }
 
     //- Implementation --------------------------------------------------------

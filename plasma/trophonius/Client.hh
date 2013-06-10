@@ -34,6 +34,10 @@ namespace plasma
     struct Notification
     {
       NotificationType notification_type;
+
+      ELLE_SERIALIZE_CONSTRUCT(Notification)
+      {}
+      virtual ~Notification();
     };
 
     namespace json = elle::format::json;
@@ -45,12 +49,21 @@ namespace plasma
       bool status;
       std::string device_id;
       bool device_status;
+
+      ELLE_SERIALIZE_CONSTRUCT(UserStatusNotification,
+                               Notification)
+      {}
     };
 
     struct TransactionNotification:
       public Notification,
       public Transaction
-    {};
+    {
+      ELLE_SERIALIZE_CONSTRUCT(TransactionNotification,
+                               Notification,
+                               Transaction)
+      {}
+    };
 
 
     struct NetworkUpdateNotification:
@@ -58,6 +71,9 @@ namespace plasma
     {
       std::string network_id;
       /* NetworkUpdate */ int what;
+      ELLE_SERIALIZE_CONSTRUCT(NetworkUpdateNotification,
+                               Notification)
+      {}
     };
 
     struct MessageNotification:
@@ -65,6 +81,9 @@ namespace plasma
     {
       std::string sender_id;
       std::string message;
+      ELLE_SERIALIZE_CONSTRUCT(MessageNotification,
+                               Notification)
+      {}
     };
 
     /// Build a notification object from a dictionnary.

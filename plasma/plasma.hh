@@ -1,6 +1,8 @@
 #ifndef PLASMA_PLASMA_HH
 # define PLASMA_PLASMA_HH
 
+# include <elle/serialize/construct.hh>
+
 # include <iosfwd>
 # include <string>
 
@@ -17,6 +19,14 @@ namespace plasma
 
   struct Transaction
   {
+  public:
+    Transaction();
+    ELLE_SERIALIZE_CONSTRUCT(Transaction)
+    {}
+    virtual
+    ~Transaction();
+
+  public:
     std::string id;
     std::string sender_id;
     std::string sender_fullname;
