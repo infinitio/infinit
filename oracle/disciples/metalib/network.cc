@@ -75,9 +75,10 @@ generate_network_descriptor(elle::String const& id,
   if (group_address.Restore(group_address_) != elle::Status::Ok)
     throw std::runtime_error("Unable to restore group address");
 
-  infinit::Identity identity;
-  if (identity.Restore(identity_) != elle::Status::Ok)
-    throw std::runtime_error("Unable to restore the identity");
+  auto extractor =
+    elle::serialize::from_string<
+      elle::serialize::InputBase64Archive>(identity_);
+  infinit::Identity identity(extractor);
 
   /* XXX[to adapt to the new descriptor]
   Descriptor descriptor(id,

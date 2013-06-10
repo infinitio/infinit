@@ -1,7 +1,9 @@
 #include "metalib.hh"
 
-#include <elle/io/Path.hh>
 #include <elle/types.hh>
+#include <elle/io/Path.hh>
+#include <elle/serialize/insert.hh>
+#include <elle/serialize/Base64Archive.hh>
 
 #include <cryptography/KeyPair.hh>
 // XXX[temporary: for cryptography]
@@ -31,11 +33,7 @@ static infinit::Identity create_identity(elle::String const& id,
                                          elle::String const& login,
                                          elle::String const& password)
 {
-  cryptography::KeyPair pair =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    infinit::Identity::keypair_length);
-  elle::io::Path                    authority_path;
-  infinit::Identity                    identity;
+  elle::io::Path authority_path;
 
   // check the argument.
   if (login.empty() == true)
@@ -51,17 +49,10 @@ static infinit::Identity create_identity(elle::String const& id,
   if (authority.Decrypt(authority_password) == elle::Status::Error)
     throw std::runtime_error("unable to decrypt the authority");
 
-  // create the identity.
-  if (identity.Create(id, login, pair) == elle::Status::Error)
-    throw std::runtime_error("unable to create the identity");
-
-  // encrypt the identity.
-  if (identity.Encrypt(password) == elle::Status::Error)
-    throw std::runtime_error("unable to encrypt the identity");
-
-  // seal the identity.
-  if (identity.Seal(authority) == elle::Status::Error)
-    throw std::runtime_error("unable to seal the identity");
+  cryptography::KeyPair keypair =
+    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
+                                    infinit::Identity::keypair_length);
+  infinit::Identity identity(id, login, keypair, password, authority.k());
 
   return identity;
 }
@@ -91,34 +82,29 @@ metalib_generate_identity(PyObject*,
 
   try
     {
-      auto identity = create_identity(id, auth_path, auth_password, login, password);
-      elle::String all, pub;
-      bool res = (
-          identity.Save(all) != elle::Status::Error &&
-          identity.pair().K().Save(pub) != elle::Status::Error
-      );
+      auto identity =
+        create_identity(id, auth_path, auth_password, login, password);
+
+      elle::String all;
+      elle::serialize::to_string<elle::serialize::OutputBase64Archive>(all) <<
+        identity;
+
+      auto keypair = identity.decrypt(password);
+      elle::String pub;
+      elle::serialize::to_string<elle::serialize::OutputBase64Archive>(pub) <<
+        keypair.K();
+
       // WARNING: restore state before setting exception !
       PyEval_RestoreThread(_save);
 
-      if (res)
-        {
-          ret = Py_BuildValue("(ss)", all.c_str(), pub.c_str());
-        }
-      else
-        {
-          PyErr_SetString(
-              metalib_MetaError,
-              "Cannot convert the identity to string"
-          );
-        }
+      ret = Py_BuildValue("(ss)", all.c_str(), pub.c_str());
     }
-  catch (std::exception const& err)
+  catch (...)
     {
       // WARNING: restore state before setting exception !
       PyEval_RestoreThread(_save);
       //show();
-      char const* error_string = err.what();
-      PyErr_SetString(metalib_MetaError, error_string);
+      PyErr_SetString(metalib_MetaError, elle::exception_string().c_str());
     }
 
   return ret;
