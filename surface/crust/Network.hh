@@ -8,9 +8,12 @@
 # include <surface/crust/Authority.hh>
 # include <surface/crust/MetaAuthority.hh>
 
+# include <common/common.hh>
+
 # include <elle/serialize/Base64Archive.hh>
 # include <elle/serialize/insert.hh>
 # include <elle/serialize/extract.hh>
+# include <elle/attribute.hh>
 
 # include <boost/filesystem/path.hpp>
 
@@ -39,6 +42,9 @@ public:
   }
 
 public:
+  /*-------------.
+  | Construction |
+  `-------------*/
   /// Main constructor.
   Network(std::string const& name,
           lune::Identity const& identity,
@@ -66,59 +72,105 @@ public:
           infinit::Authority const& authority = infinit::MetaAuthority{});
 
   /// Load constructor, using local descriptor.
-  Network(std::string const& descriptor_path);
+  Network(boost::filesystem::path const& descriptor_path);
 
   /// Load constructor, using descriptor from remote meta.
   // XXX: Should I put a dependencie to common by setting default value for meta
   // host and port?
   Network(std::string const& id,
-          std::string const& host,
-          int16_t port);
+          std::string const& host = common::meta::host(),
+          uint16_t port = common::meta::port(),
+          std::string const& token = common::meta::token());
 
   /// Copy constructor, usefull for python binding. Should be remove.
   Network(Network const& other);
 
+  /*------.
+  | Local |
+  `------*/
   /// Store descriptor localy.
   void
   store(std::string const& descriptor_path) const;
-
-  /// Publish descriptor to the remote meta.
-  void
-  publish(std::string const& host,
-          int16_t port) const;
 
   /// Delete local descritor.
   void
   delete_(std::string const& descriptor_path);
 
+  /// Mount.
+  void
+  mount(std::string const& network_path,
+        bool run = true) const;
+
+  /// Unmount.
+  void
+  unmount() const;
+
+  /*------------.
+  | Publication |
+  `------------*/
+  /// Publish descriptor to the remote meta.
+  void
+  publish(std::string const& host = common::meta::host(),
+          uint16_t port = common::meta::port(),
+          std::string const& token = common::meta::token()) const;
+
   /// Remove descriptor from remote meta.
-  // XXX: Should I put a dependencie to common by setting default value for meta
-  // host and port?
   void
   unpublish(std::string const& id,
-            std::string const& host,
-            int16_t port);
+            std::string const& host = common::meta::host(),
+            uint16_t port = common::meta::port(),
+            std::string const& token = common::meta::token()) const;
 
   ///
   // void
   // update();
 
+  /*-----.
+  | List |
+  `-----*/
   /// Explore the given path and return all the (verified) .dsc.
+  static
   std::vector<std::string>
   list(std::string const& path,
        bool verify = true);
 
-  enum NetworkList
-  {
-    all,
-    mine,
-    other,
-  };
   /// Get the list of descriptor stored on the network.
-  // std::vector<std::string>
-  // list(std::string const& host,
-  //      uint16_t port,
-  //      NetworkList list);
+  static
+  std::vector<std::string>
+  list(plasma::meta::Client::DescriptorList const& list,
+       std::string const& host = common::meta::host(),
+       uint16_t port = common::meta::port(),
+       std::string const& token = common::meta::token());
+
+  /*--------.
+  | Members |
+  `--------*/
+
+  /*-------------------.
+  | Descriptor Getters |
+  `-------------------*/
+#define WRAP_DESCRIPTOR(_section_, _type_, _name_)                             \
+  ELLE_ATTRIBUTE_r_ACCESSOR(_type_, _name_)                                    \
+  {                                                                            \
+    return this->_descriptor->_section_()._name_();                            \
+  }
+
+#define WRAP_META_DESCRIPTOR(_type_, _name_)                                   \
+  WRAP_DESCRIPTOR(meta, _type_,  _name_)
+
+#define WRAP_DATA_DESCRIPTOR(_type_, _name_)                                   \
+  WRAP_DESCRIPTOR(data, _type_,  _name_)
+
+  WRAP_META_DESCRIPTOR(elle::String, identifier);
+  WRAP_META_DESCRIPTOR(cryptography::PublicKey, administrator_K);
+  WRAP_META_DESCRIPTOR(hole::Model, model);
+  WRAP_META_DESCRIPTOR(nucleus::neutron::Group::Identity, everybody_identity);
+  WRAP_META_DESCRIPTOR(elle::Boolean, history);
+  WRAP_META_DESCRIPTOR(elle::Natural32, extent);
+
+
+#undef WRAP_DESCRIPTOR
+
 };
 
 #endif
