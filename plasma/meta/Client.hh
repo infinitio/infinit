@@ -90,12 +90,12 @@ namespace plasma
 
     struct User
     {
-      string id;
-      string fullname;
-      string handle;
-      string public_key;
+      std::string id;
+      std::string fullname;
+      std::string handle;
+      std::string public_key;
       bool status;
-      list<string> connected_devices;
+      std::list<string> connected_devices;
     };
 
     struct UserResponse : User, Response
