@@ -39,10 +39,12 @@
 #include <elle/serialize/insert.hh>
 #include <elle/system/Process.hh>
 
+# include <cryptography/KeyPair.hh>
+// XXX[temporary: for cryptography]
+using namespace infinit;
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string.hpp>
-
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.Network");
 
@@ -58,9 +60,9 @@ namespace
 
   NetworkBlocks
   create_network_root_block(std::string const& id,
-                            std::string const& identity_)
+                            cryptography::KeyPair const& keypair)
   {
-    ELLE_TRACE_FUNCTION(id, identity_);
+    ELLE_TRACE_FUNCTION(id, keypair);
     // XXX this value depends on the network policy and openness.
     static nucleus::neutron::Permissions permissions =
       nucleus::neutron::permissions::read;
@@ -71,14 +73,9 @@ namespace
     ELLE_DEBUG("Create proton network from id '%s'.", id);
     nucleus::proton::Network network(id);
 
-    //- identity ---------------------------------------------------------------
-    infinit::Identity        identity;
-    if (identity.Restore(identity_) == e)
-      throw std::runtime_error("Couldn't restore the identity.");
-
     //- group ------------------------------------------------------------------
-    nucleus::neutron::Group group(network, identity.pair().K(), "everybody");
-    group.seal(identity.pair().k());
+    nucleus::neutron::Group group(network, keypair.K(), "everybody");
+    group.seal(keypair.k());
 
     //- group address ----------------------------------------------------------
     nucleus::proton::Address  group_address(group.bind());
@@ -120,7 +117,7 @@ namespace
     //- directory --------------------------------------------------------------
     nucleus::neutron::Object directory{
       network,
-      identity.pair().K(),
+      keypair.K(),
       genreDirectory
     };
 
@@ -131,7 +128,7 @@ namespace
                          directory.owner_token()) == e)
       throw std::runtime_error("unable to update the directory");
 
-    if (directory.Seal(identity.pair().k(), access_fingerprint) == e)
+    if (directory.Seal(keypair.k(), access_fingerprint) == e)
       throw std::runtime_error("Cannot seal the access");
 
     //- directory address ------------------------------------------------------
@@ -243,7 +240,7 @@ namespace surface
         if (this->one(network_id).descriptor.empty())
         {
           auto nb = create_network_root_block(network_id,
-                                              this->_meta.identity());
+                                              this->_meta.keypair());
 
           this->_meta.update_network(network_id,
                                      nullptr,
@@ -311,12 +308,15 @@ namespace surface
         //  static_assert(false, "migrate the descriptor here & send to meta");
         //}
 
-        infinit::Identity identity;
-        identity.Restore(this->_meta.identity());
+        auto extractor =
+          elle::serialize::from_string<
+            elle::serialize::InputBase64Archive>(this->_meta.identity());
+        infinit::Identity identity(extractor);
 
-        ELLE_DEBUG("Storing the descriptor of %s for user %s",
+        ELLE_DEBUG("storing the descriptor of %s for user %s",
                    network_id, this->_self.id);
-        descriptor.store(identity);
+        elle::serialize::to_file(
+          common::infinit::identity_path(this->_self.id)) << identity;
 
         nucleus::neutron::Object directory{
           from_string<InputBase64Archive>(network.root_block)

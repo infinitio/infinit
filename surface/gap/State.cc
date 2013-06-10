@@ -87,24 +87,29 @@ namespace surface
         this->_meta.generate_token(token_genkey);
         this->_me.reset(new Self{this->_meta.self()});
 
-        std::ofstream identity_infos{
-          common::infinit::identity_path(this->me().id)};
-
-        if (!identity_infos.good())
+        // tokpass
+        /* XXX we need to know the password at this point
+               or better, a way to contact an Infinit agent (as for the
+               SSH agent) to ask it for the key pair associated with the
+               user.
         {
-          ELLE_ERR("Cannot open identity file");
-        }
+          std::ofstream tokpass{common::infinit::tokpass_path(res.id)};
 
-        identity_infos << this->_meta.token() << "\n"
-                       << this->me().identity << "\n"
-                       << this->me().email << "\n"
-                       << this->me().id << "\n"
-        ;
-        if (!identity_infos.good())
-        {
-          ELLE_ERR("Cannot write identity file");
+          if (!tokpass.good())
+          {
+            ELLE_ERR("Cannot open tokpass file");
+          }
+
+          tokpass << this->_meta.token() << "\n"
+                  << password << "\n";
+
+          if (!tokpass.good())
+          {
+            ELLE_ERR("Cannot write tokpass file");
+          }
+          tokpass.close();
         }
-        identity_infos.close();
+        */
       }
 
       // Initialize google metrics.
@@ -211,49 +216,39 @@ namespace surface
                  this->me().fullname,
                  this->me().email);
 
-      std::string identity_clear;
+      // user.idy
+      auto extractor =
+        elle::serialize::from_string<
+          elle::serialize::InputBase64Archive>(res.identity);
+      infinit::Identity identity(extractor);
+      // XXX we should be able to validate the identity: where is
+      //     the authority?
+      // identity.validate(authority.K());
+      elle::serialize::to_file(
+        common::infinit::identity_path(identity.identifier())) << identity;
 
-      infinit::Identity identity;
+      // user.dic
+      lune::Dictionary dictionary;
+      dictionary.store(res.id);
 
-      // Decrypt the identity
-      if (identity.Restore(res.identity)    == elle::Status::Error ||
-          identity.Decrypt(password)        == elle::Status::Error ||
-          identity.Clear()                  == elle::Status::Error ||
-          identity.Save(identity_clear)     == elle::Status::Error)
-        throw Exception(gap_internal_error,
-                        "Couldn't decrypt the identity file !");
-
-      // Store the identity
+      // tokpass
       {
-        if (identity.Restore(identity_clear)  == elle::Status::Error)
-          throw Exception(gap_internal_error,
-                          "Cannot save the identity file.");
+        std::ofstream tokpass{common::infinit::tokpass_path(res.id)};
 
-        identity.store();
+        if (!tokpass.good())
+        {
+          ELLE_ERR("Cannot open tokpass file");
+        }
 
-        // user.dic
-        lune::Dictionary dictionary;
+        tokpass << res.token << "\n"
+                << password << "\n";
 
-        dictionary.store(res.id);
+        if (!tokpass.good())
+        {
+          ELLE_ERR("Cannot write tokpass file");
+        }
+        tokpass.close();
       }
-
-      std::ofstream identity_infos{common::infinit::identity_path(res.id)};
-
-      if (!identity_infos.good())
-      {
-        ELLE_ERR("Cannot open identity file");
-      }
-
-      identity_infos << res.token << "\n"
-                     << res.identity << "\n"
-                     << res.email << "\n"
-                     << res.id << "\n"
-                     ;
-      if (!identity_infos.good())
-      {
-        ELLE_ERR("Cannot write identity file");
-      }
-      identity_infos.close();
     }
 
     void
