@@ -242,10 +242,18 @@ def configure(cxx_toolkit = None,
   cryptography_lib = drake.copy(elle.cryptography_dynamic, 'lib', elle.cryptography_dynamic.path().dirname())
   reactor_lib = drake.copy(elle.reactor_dynamic, 'lib', elle.reactor_dynamic.path().dirname())
   curly_lib = drake.copy(elle.curly_dynamic, 'lib', elle.curly_dynamic.path().dirname())
+  curly_sched_lib = drake.copy(elle.curly_sched_dynamic, 'lib', elle.curly_sched_dynamic.path().dirname())
+  curly_asio_lib = drake.copy(elle.curly_asio_dynamic, 'lib', elle.curly_asio_dynamic.path().dirname())
   cxx_config += elle.config
   asio_udt_lib = drake.copy(elle.reactor.asio_udt.library,'lib', 'elle/reactor/asio-udt/lib')
   udt_lib = drake.copy(elle.reactor.asio_udt.udt.library,'lib', 'elle/reactor/asio-udt/udt/lib')
   cxx_config.add_local_include_path('.')
+
+  curly_libs = [
+    curly_lib,
+    curly_asio_lib,
+    curly_sched_lib,
+  ]
 
   # Fuse
   if enable_horizon:
@@ -837,12 +845,12 @@ def configure(cxx_toolkit = None,
     reactor_lib,
     elle_lib,
     metrics_lib,
-    curly_lib,
   ]
   if enable_horizon:
     infinit_libs.append(horizon_slib)
   udt_libs = [asio_udt_lib, udt_lib]
   infinit_libs += udt_libs # FIXME: no need to depend on UDT
+  infinit_libs += curly_libs
 
   # 8infinit
   infinit_bin_config = drake.cxx.Config(cxx_config)
@@ -1197,6 +1205,7 @@ def configure(cxx_toolkit = None,
   tests_cxx_config.lib_path_runtime('../../../../lib')
   tests_cxx_config.lib_path_runtime('../../../lib')
   tests_cxx_config.lib_path_runtime('../../lib')
+  tests_cxx_config.lib_path_runtime('../lib')
   tests_cxx_config += boost.config_test()
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib] + udt_libs
 
