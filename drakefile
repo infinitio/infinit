@@ -861,48 +861,23 @@ def configure(cxx_toolkit = None,
     ]:
     satellite(name)
 
-  # infinit-agent
-  agent_sources = drake.nodes(
-    'satellites/agent/infinit-agent.py'
-    )
-  agent_copy = drake.copy(agent_sources, 'bin', 'satellites/agent')
-  build << agent_copy
+  def pysatellite(name):
+    fmt = (name, name)
+    sources = [
+      'satellites/%s/%s.py' % fmt
+    ]
+    sources = drake.nodes(*sources)
+    copy = drake.copy(sources, "bin", "satellites/%s" % name)
+    if name in satellites:
+      build << copy
 
-  # 8search
-  search_sources = drake.nodes(
-    'satellites/search/8search.py',
-    )
-  search_copy = drake.copy(search_sources, 'bin', 'satellites/search')
-
-  if "search" in satellites:
-      build << search_copy
-
-  # 8d00m
-  d00m_sources = drake.nodes(
-    'satellites/d00m/8d00m.py'
-    )
-  d00m_copy = drake.copy(d00m_sources, 'bin', 'satellites/d00m')
-
-  if "d00m" in satellites:
-      build << d00m_copy
-
-  # 8sendto
-  sendto_sources = drake.nodes(
-    'satellites/sendto/8sendto.py',
-    )
-  sendto_copy = drake.copy(sendto_sources, 'bin', 'satellites/sendto')
-
-  if "sendto" in satellites:
-      build << sendto_copy
-
-  # 8recvfrom
-  recvfrom_sources = drake.nodes(
-    'satellites/recvfrom/8recvfrom.py',
-    )
-  recvfrom_copy = drake.copy(recvfrom_sources, 'bin', 'satellites/recvfrom')
-
-  if "recvfrom" in satellites:
-      build << recvfrom_copy
+  for name in [
+    'agent',
+    'search',
+    'd00m',
+    'sendto',
+    'recvfrom',
+  ]: pysatellite(name)
 
   # Trophonius
 
