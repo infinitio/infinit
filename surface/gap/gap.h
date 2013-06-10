@@ -113,10 +113,12 @@ extern "C" {
 
   /// Get the current token, if any.
   gap_Status
-  gap_token(gap_State* state, char** token);
+  gap_token(gap_State* state,
+            char** token);
 
   gap_Status
-  gap_generation_key(gap_State* state, char** token);
+  gap_generation_key(gap_State* state,
+                     char** token);
 
   /// @brief Register to meta.
   ///
