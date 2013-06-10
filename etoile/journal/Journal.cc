@@ -1,6 +1,8 @@
 #include <boost/foreach.hpp>
 
 #include <elle/log.hh>
+#include <elle/serialize/insert.hh>
+#include <elle/serialize/extract.hh>
 
 #include <etoile/journal/Journal.hh>
 #include <etoile/depot/Depot.hh>
@@ -10,6 +12,7 @@
 #include <etoile/Exception.hh>
 
 #include <nucleus/proton/Block.hh>
+#include <nucleus/factory.hh>
 
 #include <Infinit.hh>
 
@@ -252,35 +255,21 @@ namespace etoile
       //     values (which are not serialized such as state) are
       //     thus reinitialized]
 
-      std::stringstream stream(std::ios_base::in |
-                               std::ios_base::out |
-                               std::ios_base::binary);
+      elle::String archive;
 
       // Serialize the block.
-      // XXX[to improve: contact Raphael or cf. hole/storage/]
-      static_cast<
-        elle::serialize::Serializable<
-          elle::serialize::BinaryArchive>
-        const&>(block).serialize(stream);
+      elle::serialize::to_string(archive) << block;
 
-      // Allocate a new block.
-      auto const& factory = nucleus::proton::block::factory<>();
+      // Deserialize the block through the factory.
+      auto const& factory =
+        nucleus::factory::block<elle::serialize::NoInit>();
+      std::unique_ptr<nucleus::proton::Block> _block(
+        factory.allocate<nucleus::proton::Block>(component,
+                                                 elle::serialize::no_init));
 
-      nucleus::proton::Block* _block =
-        factory.allocate<nucleus::proton::Block>(component);
+      elle::serialize::from_string(archive) >> *_block;
 
-      ELLE_FINALLY_ACTION_DELETE(_block);
-
-      // Deserialize the archive into a new block.
-      // XXX[to improve: contact Raphael or cf. hole/storage/]
-      static_cast<
-        elle::serialize::Serializable<
-          elle::serialize::BinaryArchive>
-        *>(_block)->deserialize(stream);
-
-      ELLE_FINALLY_ABORT(_block);
-
-      return (std::unique_ptr<nucleus::proton::Block>(_block));
+      return (_block);
     }
   }
 }
