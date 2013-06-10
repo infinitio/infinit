@@ -100,9 +100,9 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Identity,
       // Generate a key pair because the format 0 used to contain
       // the key pair in clear.
       //
-      // So rather than keeping the actual key pair (which represents a security
-      // breach), generate a useless key pair just for the serialization
-      // mechanism to function.
+      // So rather than keeping the actual key pair (which represents a
+      // security breach), generate a useless key pair just for the
+      // serialization mechanism to function.
       cryptography::KeyPair keypair =
         cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                         1024);
