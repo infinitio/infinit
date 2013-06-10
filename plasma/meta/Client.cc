@@ -673,7 +673,7 @@ namespace plasma
     SignHashResponse
     Client::sign_hash(std::string const& hash) const
     {
-      json::Dictionary request{map<string, string>{
+      json::Dictionary request{std::map<std::string, std::string>{
           {"hash", hash},
       }};
       return this->_post<SignHashResponse>("/authority/sign", request);
@@ -683,7 +683,7 @@ namespace plasma
     Client::verify_signature(std::string const& signature,
                              std::string const& hash) const
     {
-      json::Dictionary request{map<string, string>{
+      json::Dictionary request{std::map<std::string, std::string>{
           {"hash", hash},
           {"signature", signature},
       }};
