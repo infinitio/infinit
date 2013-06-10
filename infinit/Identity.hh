@@ -49,6 +49,7 @@ namespace infinit
     `-------------*/
   public:
     /// Construct an identity based on the given elements.
+    explicit
     Identity(elle::String identifier,
              elle::String name,
              cryptography::Code code,
@@ -59,6 +60,7 @@ namespace infinit
     /// Note that, through this helper, the _authority_ must provide a
     /// sign(data) method which returns a signature.
     template <typename T>
+    explicit
     Identity(elle::String identifier,
              elle::String name,
              cryptography::KeyPair const& pair,
@@ -71,6 +73,7 @@ namespace infinit
     /// An intermediate constructor which takes a secret key for encrypting
     /// the given key pair.
     template <typename T>
+    explicit
     Identity(elle::String identifier,
              elle::String name,
              cryptography::KeyPair const& pair,
@@ -79,6 +82,7 @@ namespace infinit
     /// An intermediate constructor for signing the elements with the
     /// authority.
     template <typename T>
+    explicit
     Identity(elle::String identifier,
              elle::String name,
              cryptography::Code code,

@@ -86,10 +86,13 @@ namespace infinit
     `-------------*/
   public:
     /// XXX[should we keep this?]
+    explicit
     Descriptor(elle::String const& user,
                elle::String const& network);
+    explicit
     Descriptor(elle::io::Path const& path);
     /// Construct a descriptor from both its meta and data sections.
+    explicit
     Descriptor(descriptor::Meta meta,
                descriptor::Data data);
     Descriptor(Descriptor const& other);
