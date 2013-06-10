@@ -1298,9 +1298,10 @@ namespace hole
         return false;
       }
 
-      /*---------.
-      | Pritable |
-      `---------*/
+      /*----------.
+      | Printable |
+      `----------*/
+
       void
       Slug::print(std::ostream& stream) const
       {
@@ -1313,6 +1314,7 @@ namespace hole
       /*---------.
       | Dumpable |
       `---------*/
+
       elle::Status
       Slug::Dump(const elle::Natural32 margin) const
       {
