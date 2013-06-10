@@ -68,6 +68,11 @@ namespace common
     /// The path to the identity file.
     std::string
     identity_path(std::string const& user_id);
+
+    // XXX temporary: use a token file and make Infinit classes
+    //                instantiable instead.
+    std::string
+    tokpass_path(std::string const& user_id);
   }
 
   /// System and Operating System related stuffs

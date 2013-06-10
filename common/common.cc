@@ -280,6 +280,11 @@ namespace common
     {
       return path::join(user_directory(user_id), user_id + ".idy");
     }
+
+    std::string
+    tokpass_path(std::string const& user_id)
+    {
+      return path::join(user_directory(user_id), "tokpass");
     }
 
   } // !infinit
