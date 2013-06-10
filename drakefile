@@ -1080,7 +1080,17 @@ def configure(cxx_toolkit = None,
                                         crust_python_sources + [crust_lib, tropho_lib] + infinit_libs,
                                         cxx_toolkit, crust_python_cxx_config)
 
+    crust_python_pyfiles = drake.nodes(
+      'surface/crust/python/crust.py',
+      'surface/crust/python/pycrust.py',
+      )
+
+    crust_python_pyfile_copy = drake.copy(crust_python_pyfiles,
+                                        'lib/python',
+                                        'surface/crust/python')
+
     build << crust_python_lib
+    build << crust_python_pyfile_copy
 
     # Gap
     gap_python_cxx_config = cxx_config + python3
