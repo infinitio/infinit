@@ -95,7 +95,7 @@ namespace plasma
       std::string handle;
       std::string public_key;
       bool status;
-      std::list<string> connected_devices;
+      std::list<std::string> connected_devices;
     };
 
     struct UserResponse : User, Response
