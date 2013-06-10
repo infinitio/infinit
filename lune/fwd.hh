@@ -4,6 +4,7 @@
 namespace lune
 {
   class Configuration;
+  class Identity;
   class Log;
   template <typename T>
   class Map;
