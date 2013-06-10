@@ -759,6 +759,8 @@ def configure(cxx_toolkit = None,
       'horizon/Handle.hh',
       'horizon/Horizon.cc',
       'horizon/Horizon.hh',
+      'horizon/Policy.cc',
+      'horizon/Policy.hh',
       'horizon/operations.hh',
       )
     if cxx_toolkit.os == drake.os.linux:
