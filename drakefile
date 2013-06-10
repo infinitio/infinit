@@ -1236,7 +1236,8 @@ def configure(cxx_toolkit = None,
     check << runner.status
 
   build << drake.cxx.Executable("bin/pass",
-          drake.nodes('tests/unit/pass.cc', 'common/common.cc') + infinit_libs,
+          drake.nodes('tests/unit/pass.cc', 'common/common.cc') + [reactor_lib,
+              elle_lib] + udt_libs,
           cxx_toolkit, tests_cxx_config)
   #Check
   rule_check = drake.Rule('check')
