@@ -322,7 +322,7 @@ namespace plasma
                          std::string const& device_id) const;
 
       UpdateTransactionResponse
-      update_transaction(string const& transaction_id,
+      update_transaction(std::string const& transaction_id,
                          plasma::TransactionStatus status) const;
 
       UpdateTransactionResponse

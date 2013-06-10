@@ -479,7 +479,7 @@ namespace plasma
     }
 
     UpdateTransactionResponse
-    Client::update_transaction(string const& transaction_id,
+    Client::update_transaction(std::string const& transaction_id,
                                plasma::TransactionStatus status) const
     {
       ELLE_TRACE("update %s transaction with new status %s",
