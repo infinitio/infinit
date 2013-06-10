@@ -305,6 +305,8 @@ namespace infinit
 
       /// Return a digest of the most fondamental elements composing the meta
       /// section.
+      ///
+      /// These are the elements which must be signed by the authority.
       cryptography::Digest
       hash(elle::String const& identifier,
            cryptography::PublicKey const& administrator_K,
@@ -594,6 +596,9 @@ namespace infinit
 
       /// Return a digest of the most fondamental elements composing a data
       /// section.
+      ///
+      /// These are the elements which must be signed by the network
+      /// administrator.
       cryptography::Digest
       hash(elle::String const& name,
            hole::Openness const& openness,

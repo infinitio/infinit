@@ -1,5 +1,6 @@
 #include <elle/io/File.hh>
 #include <elle/io/Piece.hh>
+#include <elle/io/Path.hh>
 #include <elle/os/path.hh>
 #include <elle/utility/Factory.hh>
 #include <elle/log.hh>
@@ -66,12 +67,14 @@ namespace infinit
   }
 
   Descriptor::Descriptor(Descriptor const& other):
+    elle::serialize::DynamicFormat<Descriptor>(other),
     _meta(new descriptor::Meta(*other._meta)),
     _data(new descriptor::Data(*other._data))
   {
   }
 
   Descriptor::Descriptor(Descriptor&& other):
+    elle::serialize::DynamicFormat<Descriptor>(std::move(other)),
     _meta(std::move(other._meta)),
     _data(std::move(other._data))
   {
@@ -140,7 +143,7 @@ namespace infinit
 
     this->store(
       elle::io::Path{
-        common::infinit::descriptor_path(identity.id(),
+        common::infinit::descriptor_path(identity.identifier(),
                                          this->_meta->identifier())});
   }
 
@@ -223,6 +226,7 @@ namespace infinit
     }
 
     Meta::Meta(Meta const& other):
+      elle::serialize::DynamicFormat<Meta>(other),
       _identifier(other._identifier),
       _administrator_K(other._administrator_K),
       _model(other._model),
@@ -236,6 +240,7 @@ namespace infinit
     }
 
     Meta::Meta(Meta&& other):
+      elle::serialize::DynamicFormat<Meta>(std::move(other)),
       _identifier(std::move(other._identifier)),
       _administrator_K(std::move(other._administrator_K)),
       _model(std::move(other._model)),
@@ -412,6 +417,7 @@ namespace infinit
     }
 
     Data::Data(Data const& other):
+      elle::serialize::DynamicFormat<Data>(other),
       _name(other._name),
       _openness(other._openness),
       _policy(other._policy),
@@ -457,6 +463,7 @@ namespace infinit
     }
 
     Data::Data(Data&& other):
+      elle::serialize::DynamicFormat<Data>(std::move(other)),
       _name(std::move(other._name)),
       _openness(std::move(other._openness)),
       _policy(std::move(other._policy)),
