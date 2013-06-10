@@ -128,7 +128,7 @@ namespace satellite
 
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      Transfer::rpcs->accesslookup(directory, agent::Agent::Subject));
+      Transfer::rpcs->accesslookup(directory, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||
@@ -143,7 +143,7 @@ namespace satellite
       nucleus::neutron::permissions::write;
 
     // Set the owner permissions.
-    Transfer::rpcs->accessgrant(object, agent::Agent::Subject, permissions);
+    Transfer::rpcs->accessgrant(object, agent::Agent::subject(), permissions);
 
     // Grant read permission for 'everybody' group.
     switch (Transfer::descriptor->data().policy())

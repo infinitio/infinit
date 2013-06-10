@@ -55,7 +55,7 @@ namespace etoile
             new etoile::nest::Nest(ATTRIBUTES_SECRET_KEY_LENGTH,
                                    context.attributes_limits,
                                    depot::hole().storage().network(),
-                                   agent::Agent::Subject.user(),
+                                   agent::Agent::subject().user(),
                                    context.attributes_threshold);
 
           // Instanciate a porcupine.
@@ -72,7 +72,7 @@ namespace etoile
             new etoile::nest::Nest(ATTRIBUTES_SECRET_KEY_LENGTH,
                                    context.attributes_limits,
                                    depot::hole().storage().network(),
-                                   agent::Agent::Subject.user(),
+                                   agent::Agent::subject().user(),
                                    context.attributes_threshold);
 
           // otherwise create a new empty porcupine.

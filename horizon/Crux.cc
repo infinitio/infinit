@@ -1,4 +1,3 @@
-
 #include <elle/log.hh>
 #include <elle/Buffer.hh>
 
@@ -331,7 +330,7 @@ namespace horizon
     {
       nucleus::neutron::Record record(
         etoile::wall::Access::lookup(handle->identifier,
-                                     agent::Agent::Subject));
+                                     agent::Agent::subject()));
 
       if ((record == nucleus::neutron::Record::null()) ||
           ((record.permissions() & nucleus::neutron::permissions::read) !=
@@ -437,7 +436,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(directory, agent::Agent::Subject));
+      etoile::wall::Access::lookup(directory, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||
@@ -460,7 +459,7 @@ namespace horizon
 
     // Set the owner permissions.
     if (etoile::wall::Access::Grant(subdirectory,
-                                    agent::Agent::Subject,
+                                    agent::Agent::subject(),
                                     permissions) == elle::Status::Error)
       return (-EPERM);
 
@@ -539,7 +538,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(directory, agent::Agent::Subject));
+      etoile::wall::Access::lookup(directory, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||
@@ -567,7 +566,7 @@ namespace horizon
       return (-EPERM);
 
     // Check that the subject is the owner of the object.
-    if (agent::Agent::Subject != subject)
+    if (agent::Agent::subject() != subject)
       return (-EACCES);
 #endif
 
@@ -615,7 +614,7 @@ namespace horizon
 
     // Retrieve the user's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(identifier, agent::Agent::Subject));
+      etoile::wall::Access::lookup(identifier, agent::Agent::subject()));
 
     // Check the record.
     if (record == nucleus::neutron::Record::null())
@@ -757,7 +756,7 @@ namespace horizon
       return (-EPERM);
 
     // Check that the subject is the owner of the object.
-    if (agent::Agent::Subject != subject)
+    if (agent::Agent::subject() != subject)
       return (-EACCES);
 #endif
 
@@ -794,7 +793,7 @@ namespace horizon
         // the caller is the object's owner! if not, an error will
         // occur anyway, so why bother checking.
         if (etoile::wall::Access::Grant(identifier,
-                                        agent::Agent::Subject,
+                                        agent::Agent::subject(),
                                         permissions) == elle::Status::Error)
           return (-EPERM);
       }
@@ -879,7 +878,7 @@ namespace horizon
       return (-EPERM);
 
     // Check that the subject is the owner of the object.
-    if (agent::Agent::Subject != subject)
+    if (agent::Agent::subject() != subject)
       return (-EACCES);
 #endif
 
@@ -1039,7 +1038,7 @@ namespace horizon
       return (-EPERM);
 
     // Check that the subject is the owner of the object.
-    if (agent::Agent::Subject != subject)
+    if (agent::Agent::subject() != subject)
       return (-EACCES);
 #endif
 
@@ -1091,7 +1090,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(directory, agent::Agent::Subject));
+      etoile::wall::Access::lookup(directory, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||
@@ -1189,7 +1188,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(identifier, agent::Agent::Subject));
+      etoile::wall::Access::lookup(identifier, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||
@@ -1242,7 +1241,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(directory, agent::Agent::Subject));
+      etoile::wall::Access::lookup(directory, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||
@@ -1263,7 +1262,7 @@ namespace horizon
 
     // Set the owner permissions.
     if (etoile::wall::Access::Grant(file,
-                                    agent::Agent::Subject,
+                                    agent::Agent::subject(),
                                     permissions) == elle::Status::Error)
       return (-EPERM);
 
@@ -1413,7 +1412,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(handle->identifier, agent::Agent::Subject));
+      etoile::wall::Access::lookup(handle->identifier, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||
@@ -1450,7 +1449,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(handle->identifier, agent::Agent::Subject));
+      etoile::wall::Access::lookup(handle->identifier, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||
@@ -1526,7 +1525,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(handle->identifier, agent::Agent::Subject));
+      etoile::wall::Access::lookup(handle->identifier, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||
@@ -1577,7 +1576,7 @@ namespace horizon
           // Set the owner permissions.
           if (etoile::wall::Access::Grant(
                 handle->identifier,
-                agent::Agent::Subject,
+                agent::Agent::subject(),
                 handle->permissions) == elle::Status::Error)
             {
               ELLE_WARN("unable to grant permissions on the released object");
@@ -1679,7 +1678,7 @@ namespace horizon
 
         nucleus::neutron::Record record(
           etoile::wall::Access::lookup(directory,
-                                       agent::Agent::Subject));
+                                       agent::Agent::subject()));
 
         ELLE_TRACE("check the record");
 
@@ -1752,7 +1751,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
         // Retrieve the subject's permissions on the object.
         nucleus::neutron::Record record_to(
-          etoile::wall::Access::lookup(identifier_to, agent::Agent::Subject));
+          etoile::wall::Access::lookup(identifier_to, agent::Agent::subject()));
 
         // Check the record.
         if ((record_to == nucleus::neutron::Record::null()) ||
@@ -1774,7 +1773,7 @@ namespace horizon
         // Retrieve the subject's permissions on the object.
         nucleus::neutron::Record record_from(
           etoile::wall::Access::lookup(
-            identifier_from, agent::Agent::Subject));
+            identifier_from, agent::Agent::subject()));
 
         // Check the record.
         if ((record_from == nucleus::neutron::Record::null()) ||
@@ -1870,7 +1869,7 @@ namespace horizon
       return (-EPERM);
 
     // Check that the subject is the owner of the object.
-    if (agent::Agent::Subject != subject)
+    if (agent::Agent::subject() != subject)
       return (-EACCES);
 #endif
 
@@ -1886,7 +1885,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(identifier_parent, agent::Agent::Subject));
+      etoile::wall::Access::lookup(identifier_parent, agent::Agent::subject()));
 
     // Check the record.
     if ((record == nucleus::neutron::Record::null()) ||

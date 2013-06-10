@@ -57,7 +57,7 @@ namespace etoile
             if (Access::Open(context) == elle::Status::Error)
               throw Exception("unable to open the access");
 
-            auto pair = context.access_porcupine->find(agent::Agent::Subject);
+            auto pair = context.access_porcupine->find(agent::Agent::subject());
             auto& door = pair.first;
             auto& capacity = pair.second;
 
@@ -65,7 +65,7 @@ namespace etoile
 
             // lookup the user's subject in the access records.
             nucleus::neutron::Index index =
-              capacity + door().seek(agent::Agent::Subject);
+              capacity + door().seek(agent::Agent::subject());
 
             door.close();
 

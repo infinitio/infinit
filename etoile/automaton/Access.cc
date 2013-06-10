@@ -59,7 +59,7 @@ namespace etoile
             new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
                                    depot::hole().storage().network(),
-                                   agent::Agent::Subject.user(),
+                                   agent::Agent::subject().user(),
                                    context.access_threshold);
 
           // Instanciate a porcupine.
@@ -76,7 +76,7 @@ namespace etoile
             new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
                                    depot::hole().storage().network(),
-                                   agent::Agent::Subject.user(),
+                                   agent::Agent::subject().user(),
                                    context.access_threshold);
 
           // otherwise create a new empty porcupine.
@@ -339,7 +339,7 @@ namespace etoile
         throw Exception("unable to audit the object");
 
       // is the target subject the user i.e the object owner in this case.
-      if (agent::Agent::Subject == subject)
+      if (agent::Agent::subject() == subject)
         {
           // update the context rights.
           if (Rights::Update(context, permissions) == elle::Status::Error)
@@ -364,7 +364,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(context, subject);
 
       // try to make the best of this call.
-      if (agent::Agent::Subject == subject)
+      if (agent::Agent::subject() == subject)
         {
           //
           // indeed, if the target subject is the current user, determine
@@ -588,7 +588,7 @@ namespace etoile
         throw Exception("unable to audit the object");
 
       // is the target subject the user i.e the object owner in this case.
-      if (agent::Agent::Subject == subject)
+      if (agent::Agent::subject() == subject)
         {
           // update the context rights.
           if (Rights::Update(context,

@@ -38,7 +38,7 @@ namespace etoile
 
       context.group.reset(
         new nucleus::neutron::Group(nucleus::proton::Network(Infinit::Network),
-                                    agent::Agent::Subject.user(),
+                                    agent::Agent::subject().user(),
                                     description));
 
       // Manually set the group as dirty for the automata to consider it
@@ -159,7 +159,7 @@ namespace etoile
         }
 
       // is the target subject the user i.e the group manager in this case.
-      if (agent::Agent::Subject == subject)
+      if (agent::Agent::subject() == subject)
         {
           // recompute the context rights.
           if (Rights::Recompute(context) == elle::Status::Error)
@@ -180,7 +180,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(context, subject);
 
       // Ty to make the best of this call.
-      if (agent::Agent::Subject == subject)
+      if (agent::Agent::subject() == subject)
         {
           // Indeed, if the target subject is the current user, determine
           // the user's rights so that this is not to be done later.
@@ -359,7 +359,7 @@ namespace etoile
         }
 
       // is the target subject the user i.e the group manager in this case.
-      if (agent::Agent::Subject == subject)
+      if (agent::Agent::subject() == subject)
         {
           // recompute the context rights.
           if (Rights::Recompute(context) == elle::Status::Error)
@@ -435,7 +435,7 @@ namespace etoile
 
           ELLE_TRACE_SCOPE("the group is dirty");
 
-          context.group->seal(agent::Agent::Identity.pair().k());
+          context.group->seal(agent::Agent::pair().k());
 
           // mark the block as needing to be stored.
           context.transcript().record(
