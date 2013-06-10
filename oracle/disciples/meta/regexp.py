@@ -14,6 +14,7 @@ DeviceID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
 NetworkID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
 TransactionID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
 NotNull = re.compile(r'^.+$')
+DescriptorID=re.compile(r'[a-zA-Z0-9+/]{64}')
 
 class Validator:
     def __init__(self, rexp, error_code = error.UNKNOWN):
@@ -40,3 +41,4 @@ FilenameValidator = Validator(NotNull, error.FILE_NAME_EMPTY)
 NetworkValidator = Validator(NetworkID, error.NETWORK_ID_NOT_VALID)
 TransactionValidator = Validator(TransactionID, error.TRANSACTION_ID_NOT_VALID)
 UserIDValidator = Validator(ID, error.USER_ID_NOT_VALID)
+DescriptorValidator = Validator(DescriptorID, error.NETWORK_ID_NOT_VALID)
