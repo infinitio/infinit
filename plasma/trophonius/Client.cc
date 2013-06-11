@@ -137,7 +137,7 @@ namespace plasma
 
       Impl(std::string const& server,
            uint16_t port,
-           std::function<void()> connect_callback)
+           std::function<void()> connect_callback):
         io_service{},
         socket{io_service},
         connection_checker{io_service},
