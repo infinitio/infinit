@@ -184,7 +184,9 @@ namespace surface
     private:
       /// @brief Callback when recieving an new transaction.
       void
-      _on_transaction(TransactionNotification const& notif, bool is_new);
+      _on_transaction(plasma::Transaction const& notif);
+      void
+      _on_user_status(UserStatusNotification const& notif);
     };
   }
 }

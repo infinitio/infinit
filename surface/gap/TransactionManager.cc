@@ -63,9 +63,13 @@ namespace surface
       this->_notification_manager.transaction_callback(
         [&] (TransactionNotification const &n, bool is_new) -> void
         {
-          this->_on_transaction(n, is_new);
-        }
-      );
+          this->_on_transaction(n);
+        });
+      this->_notification_manager.user_status_callback(
+        [&] (UserStatusNotification const &n) -> void
+        {
+          this->_on_user_status(n);
+        });
     }
 
     TransactionManager::~TransactionManager()
@@ -409,88 +413,106 @@ namespace surface
     }
 
     void
-    TransactionManager::_on_transaction(TransactionNotification const& notif,
-                                        bool is_new)
+    TransactionManager::_on_transaction(plasma::Transaction const& tr)
     {
-      ELLE_TRACE_FUNCTION(notif, is_new);
-
-      if (notif.sender_id == this->_self.id)
+      ELLE_TRACE("Check transaction %s", tr);
+      if (tr.sender_id == this->_self.id)
       {
-        if (notif.sender_device_id != this->_device.id)
+        if (tr.sender_device_id != this->_device.id)
         {
           // ELLE_ASSERT(
           //     false,
-          //     "got a transaction notif that does not involve my device: %s",
-          //     notif);
-          ELLE_WARN("XXX Should be an assert: got device unrelated notif");
+          //     "got a transaction tr that does not involve my device: %s",
+          //     tr);
+          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
           return;
         }
-        if (notif.status == plasma::TransactionStatus::created)
+        if (tr.status == plasma::TransactionStatus::created)
         {
-          ELLE_TRACE("sender prepare upload for %s", notif);
-          this->_prepare_upload(notif);
+          ELLE_TRACE("sender prepare upload for %s", tr);
+          this->_prepare_upload(tr);
         }
-        else if (notif.status == plasma::TransactionStatus::started &&
-                 notif.accepted &&
-                 this->_user_manager.device_status(notif.recipient_id,
-                                                   notif.recipient_device_id))
+        else if (tr.status == plasma::TransactionStatus::started &&
+                 tr.accepted &&
+                 this->_user_manager.device_status(tr.recipient_id,
+                                                   tr.recipient_device_id))
         {
-          ELLE_TRACE("sender start upload for %s", notif);
-          this->_start_upload(notif);
+          ELLE_TRACE("sender start upload for %s", tr);
+          this->_start_upload(tr);
 
         }
         else
         {
-          ELLE_DEBUG("sender does nothing for %s", notif);
+          ELLE_DEBUG("sender does nothing for %s", tr);
         }
       }
-      else if (notif.recipient_id == this->_self.id)
+      else if (tr.recipient_id == this->_self.id)
       {
-        if (notif.recipient_device_id != this->_device.id)
+        if (tr.recipient_device_id != this->_device.id)
         {
           // ELLE_ASSERT(
           //     false,
-          //     "got a transaction notif that does not involve my device: %s",
-          //     notif);
-          ELLE_WARN("XXX Should be an assert: got device unrelated notif");
+          //     "got a transaction tr that does not involve my device: %s",
+          //     tr);
+          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
           return;
         }
-        if (notif.status == plasma::TransactionStatus::started &&
-            notif.accepted &&
-            this->_user_manager.device_status(notif.sender_id,
-                                              notif.sender_device_id))
+        if (tr.status == plasma::TransactionStatus::started &&
+            tr.accepted &&
+            this->_user_manager.device_status(tr.sender_id,
+                                              tr.sender_device_id))
         {
-          ELLE_TRACE("recipient start download for %s", notif);
-          this->_start_download(notif);
+          ELLE_TRACE("recipient start download for %s", tr);
+          this->_start_download(tr);
         }
         else
         {
 #ifdef DEBUG
           std::string reason;
-          if (notif.status == plasma::TransactionStatus::created)
+          if (tr.status == plasma::TransactionStatus::created)
             reason = "transaction not started yet";
-          else if (notif.status != plasma::TransactionStatus::started)
+          else if (tr.status != plasma::TransactionStatus::started)
             reason = "transaction is terminated";
-          else if (!notif.accepted)
+          else if (!tr.accepted)
             reason = "transaction not accepted yet";
-          else if (!this->_user_manager.device_status(notif.sender_id,
-                                                      notif.sender_device_id))
+          else if (!this->_user_manager.device_status(tr.sender_id,
+                                                      tr.sender_device_id))
             reason = "sender device_id is down";
-          ELLE_DEBUG("recipient does nothing for %s (%s)", notif, reason);
+          ELLE_DEBUG("recipient does nothing for %s (%s)", tr, reason);
 #endif
         }
       }
       else
       {
-        ELLE_WARN("got a transaction notif not related to me: %s", notif);
+        ELLE_WARN("got a transaction tr not related to me: %s", tr);
         return;
       }
       // Ensure map is not null
       this->all();
 
-      this->_transactions([&notif] (TransactionMapPtr& ptr) {
-          (*ptr)[notif.id] = notif;
+      this->_transactions([&tr] (TransactionMapPtr& ptr) {
+          (*ptr)[tr.id] = tr;
       });
+    }
+
+    void
+    TransactionManager::_on_user_status(UserStatusNotification const& notif)
+    {
+      // Search for user related transactions.
+      auto to_check = this->_transactions(
+        [&] (TransactionMapPtr& map_ptr) -> std::vector<plasma::Transaction>
+        {
+          std::vector<plasma::Transaction> found;
+          if (map_ptr != nullptr)
+            for (auto const& pair: *map_ptr)
+              if (pair.second.recipient_id == notif.user_id or
+                  pair.second.sender_id == notif.user_id)
+                found.push_back(pair.second);
+          return found;
+        });
+      // Check again if something should happen.
+      for (auto const& tr: to_check)
+        this->_on_transaction(tr);
     }
 
     void
@@ -498,7 +520,7 @@ namespace surface
     {
       auto s = this->_states[transaction.id];
 
-      if (s.state == State::none)
+      if (s.state == State::none) // XXX and user is not a ghost
       {
         ELLE_DEBUG("prepare transaction %s", transaction)
         s.operation = this->_add<PrepareTransactionOperation>(
