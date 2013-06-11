@@ -260,6 +260,7 @@ namespace infinit
                hole::Openness openness,
                horizon::Policy policy,
                Vector blocks,
+               std::vector<Endpoint> nodes,
                elle::Version version,
                elle::serialize::Format format_block,
                elle::serialize::Format format_content_hash_block,
@@ -285,6 +286,7 @@ namespace infinit
       _openness(std::move(openness)),
       _policy(std::move(policy)),
       _blocks(std::move(blocks)),
+      _nodes(std::move(nodes)),
       _version(std::move(version)),
       _format_block(std::move(format_block)),
       _format_content_hash_block(std::move(format_content_hash_block)),
@@ -315,6 +317,7 @@ namespace infinit
       _openness(std::move(other._openness)),
       _policy(std::move(other._policy)),
       _blocks(std::move(other._blocks)),
+      _nodes(std::move(other._nodes)),
       _version(std::move(other._version)),
       _format_block(std::move(other._format_block)),
       _format_content_hash_block(std::move(other._format_content_hash_block)),
@@ -363,8 +366,20 @@ namespace infinit
     {
       stream << this->_name << "("
              << this->_openness << ", "
-             << this->_policy << ", "
-             << this->_blocks.size() << ", "
+             << this->_policy << ", ";
+
+      elle::Boolean first = true;
+      stream << "[";
+      for (auto const& pair: this->_nodes)
+      {
+        if (!first)
+          stream << ", ";
+        stream << pair.first << ":" << pair.second;
+        first = false;
+      }
+      stream << "], ";
+
+      stream << this->_blocks.size() << ", "
              << this->_version << ")";
     }
 
@@ -379,6 +394,7 @@ namespace infinit
            hole::Openness const& openness,
            horizon::Policy const& policy,
            Data::Vector const& blocks,
+           std::vector<Data::Endpoint> const& nodes,
            elle::Version const& version,
            elle::serialize::Format const& format_block,
            elle::serialize::Format const& format_content_hash_block,
@@ -406,6 +422,7 @@ namespace infinit
                     openness,
                     policy,
                     blocks,
+                    nodes,
                     version,
                     format_block,
                     format_content_hash_block,

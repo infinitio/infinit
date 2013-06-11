@@ -2,6 +2,8 @@
 # define INFINIT_DESCRIPTOR_HXX
 
 # include <elle/serialize/Pointer.hh>
+# include <elle/serialize/PairSerializer.hxx>
+# include <elle/serialize/VectorSerializer.hxx>
 # include <elle/serialize/StaticFormat.hh>
 
 # include <cryptography/Signature.hh>
@@ -341,6 +343,7 @@ namespace infinit
                hole::Openness openness,
                horizon::Policy policy,
                Vector blocks,
+               std::vector<Endpoint> nodes,
                elle::Version version,
                elle::serialize::Format format_block,
                elle::serialize::Format format_content_hash_block,
@@ -366,6 +369,7 @@ namespace infinit
            std::move(openness),
            std::move(policy),
            std::move(blocks),
+           std::move(nodes),
            std::move(version),
            std::move(format_block),
            std::move(format_content_hash_block),
@@ -391,6 +395,7 @@ namespace infinit
                         openness,
                         policy,
                         blocks,
+                        nodes,
                         version,
                         format_block,
                         format_content_hash_block,
@@ -466,6 +471,7 @@ namespace infinit
                                this->_openness,
                                this->_policy,
                                this->_blocks,
+                               this->_nodes,
                                this->_version,
                                this->_format_block,
                                this->_format_content_hash_block,
@@ -545,6 +551,7 @@ ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Data,
       archive & value._openness;
       archive & value._policy;
       archive & value._blocks;
+      archive & value._nodes;
       archive & value._version;
       archive & value._format_block;
       archive & value._format_content_hash_block;

@@ -410,6 +410,9 @@ namespace infinit
       `------*/
     public:
       typedef elle::serialize::DynamicFormat<Data> DynamicFormat;
+      /// Represent a hostname, IP address or else, coupled with a port
+      /// on which the node's hole is listening to.
+      typedef std::pair<elle::String, elle::String> Endpoint;
       // XXX required so as to provide a specific serializer: to remove
       //     when the serialization mechanism will handle polymorphic
       //     types by embedding an identifier for the reconstruction on the
@@ -435,6 +438,7 @@ namespace infinit
            hole::Openness openness,
            horizon::Policy policy,
            Vector blocks,
+           std::vector<Endpoint> nodes,
            elle::Version version,
            elle::serialize::Format format_block,
            elle::serialize::Format format_content_hash_block,
@@ -466,6 +470,7 @@ namespace infinit
            hole::Openness openness,
            horizon::Policy policy,
            Vector blocks,
+           std::vector<Endpoint> nodes,
            elle::Version version,
            elle::serialize::Format format_block,
            elle::serialize::Format format_content_hash_block,
@@ -536,9 +541,10 @@ namespace infinit
       ELLE_ATTRIBUTE_R(horizon::Policy, policy);
       /// The set of initial blocks in the storage layer.
       ELLE_ATTRIBUTE_R(Vector, blocks);
-      /// The set of IP addresses referencing the stable nodes of the network
-      /// which can be used for boostraping i.e discovering the network.
-      // XXX ELLE_ATTRIBUTE_R(XXX, XXX);
+      /// The set of endpoints (IP addresses, hosts etc. and port) referencing
+      /// the stable nodes of the network which can be used for boostraping
+      /// i.e discovering the network.
+      ELLE_ATTRIBUTE_R(std::vector<Endpoint>, nodes);
       /// The most recent version of the Infinit software supported by the
       /// network.
       ///
@@ -586,6 +592,7 @@ namespace infinit
            hole::Openness const& openness,
            horizon::Policy const& policy,
            Data::Vector const& blocks,
+           std::vector<Data::Endpoint> const& nodes,
            elle::Version const& version,
            elle::serialize::Format const& format_block,
            elle::serialize::Format const& format_content_hash_block,
