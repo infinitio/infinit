@@ -10,7 +10,7 @@
 
 # include <cryptography/fwd.hh>
 # include <cryptography/Code.hh>
-# include <cryptography/Cipher.hh>
+# include <cryptography/cipher.hh>
 # include <cryptography/KeyPair.hh>
 # include <cryptography/Signature.hh>
 // XXX[temporary: for cryptography]
