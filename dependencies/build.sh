@@ -16,8 +16,9 @@
 # ---------- globals ----------------------------------------------------------
 #
 
+
 SCRIPT=$(basename "$0")
-ROOTDIR=$(dirname $(realpath "$0"))
+ROOTDIR=$(python -c "import os;print(os.path.abspath(os.path.dirname('$0')))")
 
 PLATFORM="${1}"
 
