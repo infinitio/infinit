@@ -402,6 +402,7 @@ class Update(Page):
           devices = tuple(
               transaction[v + "_device_id"] for v  in ["sender", "recipient"]
           )
+          # sender and receiver have set their devices
           if all(str(d) in nodes for d in devices):
               return tuple(nodes[str(d)] for d in devices)
         return None
@@ -423,6 +424,8 @@ class Update(Page):
         network = database.networks().find_one(
             database.ObjectId(transaction["network_id"]),
         )
+        network["nodes"][transaction["sender_device_id"]] = sender
+        network["nodes"][transaction["recipient_device_id"]] = receiver
         database.networks().save(network)
 
     def del_link(self, transaction):
@@ -435,8 +438,6 @@ class Update(Page):
             sender["externals"],
             receiver["externals"]
         )
-
-
 
 class All(Page):
     """
