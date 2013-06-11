@@ -424,8 +424,8 @@ class Update(Page):
         network = database.networks().find_one(
             database.ObjectId(transaction["network_id"]),
         )
-        network["nodes"][transaction["sender_device_id"]] = sender
-        network["nodes"][transaction["recipient_device_id"]] = receiver
+        network["nodes"][str(transaction["sender_device_id"])] = sender
+        network["nodes"][str(transaction["recipient_device_id"])] = receiver
         database.networks().save(network)
 
     def del_link(self, transaction):
