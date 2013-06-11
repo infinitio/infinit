@@ -1026,11 +1026,11 @@ def configure(cxx_toolkit = None,
 
   gap_sources += GAPGenerator(gap_generator, 'surface/gap/gen_metrics').generated
 
-  gap_ccx_config_libs = cxx_config_libs
-  gap_ccx_config_libs.lib_path_runtime('../../lib/_gap')
+  gap_cxx_config_libs = cxx_config_libs
+  gap_cxx_config_libs.lib_path_runtime('../../lib/_gap')
   gap_lib = drake.cxx.DynLib('lib/gap',
                              gap_sources + infinit_libs,
-                             cxx_toolkit, gap_ccx_config_libs)
+                             cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib
 
