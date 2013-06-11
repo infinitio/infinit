@@ -282,6 +282,7 @@ namespace plasma
              uint16_t port,
              bool check_errors = true,
              std::string const& token_seed = "");
+      Client(Client&& other) = default;
       ~Client();
 
       template <typename T>
