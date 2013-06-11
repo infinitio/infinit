@@ -106,7 +106,8 @@ def main(argv):
         processes.append(
             subprocess.Popen([
                 STUN_BIN,
-                '--primaryport', str(args.stun_port)
+                '--primaryport', str(args.stun_port),
+                '--mode', 'full'
             ]) 
         )
 
@@ -114,6 +115,7 @@ def main(argv):
         print("INFINIT_META_PORT=%s" % args.meta_port)
         print("INFINIT_LONGINUS_PORT=%s" % args.longinus_port)
         print("INFINIT_HEARTBEAT_PORT=%s" % args.heartbeat_port)
+        print("INFINIT_STUN_PORT=%s" % args.stun_port)
 
         running = True
         while running:
