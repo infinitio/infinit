@@ -6,6 +6,7 @@
 #include <elle/io/Path.hh>
 #include <elle/io/Unique.hh>
 #include <elle/finally.hh>
+#include <elle/serialize/extract.hh>
 
 #include <reactor/exception.hh>
 #include <reactor/network/tcp-socket.hh>
@@ -403,7 +404,9 @@ namespace satellite
         throw elle::Exception("unable to retrieve the network name");
       }
 
-    Descriptor descriptor(Infinit::User, Infinit::Network);
+    Descriptor descriptor(
+      elle::serialize::from_file(
+        common::infinit::descriptor_path(Infinit::User, Infinit::Network)));
 
     // check the mutually exclusive options.
     if ((Infinit::Parser->Test("Information") == true) &&

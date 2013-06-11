@@ -1,5 +1,6 @@
 #include <elle/log.hh>
 #include <elle/Buffer.hh>
+#include <elle/serialize/extract.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -37,6 +38,8 @@
 #include <nucleus/neutron/Trait.hh>
 #include <nucleus/neutron/Subject.hh>
 #include <nucleus/neutron/Range.hh>
+
+#include <common/common.hh>
 
 ELLE_LOG_COMPONENT("infinit.horizon.Crux");
 
@@ -464,7 +467,9 @@ namespace horizon
       return (-EPERM);
 
     // FIXME: do not re-parse the descriptor every time.
-    infinit::Descriptor descriptor(Infinit::User, Infinit::Network);
+    infinit::Descriptor descriptor(
+      elle::serialize::from_file(
+        common::infinit::descriptor_path(Infinit::User, Infinit::Network)));
 
     switch (descriptor.data().policy())
       {
@@ -1105,7 +1110,9 @@ namespace horizon
     HORIZON_FINALLY_ACTION_DISCARD(link);
 
     // FIXME: do not re-parse the descriptor every time.
-    infinit::Descriptor descriptor(Infinit::User, Infinit::Network);
+    infinit::Descriptor descriptor(
+      elle::serialize::from_file(
+        common::infinit::descriptor_path(Infinit::User, Infinit::Network)));
 
     switch (descriptor.data().policy())
       {
@@ -1273,7 +1280,9 @@ namespace horizon
 
 
     // FIXME: do not re-parse the descriptor every time.
-    infinit::Descriptor descriptor(Infinit::User, Infinit::Network);
+    infinit::Descriptor descriptor(
+      elle::serialize::from_file(
+        common::infinit::descriptor_path(Infinit::User, Infinit::Network)));
 
     switch (descriptor.data().policy())
       {

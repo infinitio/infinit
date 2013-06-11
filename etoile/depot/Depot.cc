@@ -12,6 +12,9 @@
 #include <hole/Hole.hh>
 
 #include <elle/assert.hh>
+#include <elle/serialize/extract.hh>
+
+#include <common/common.hh>
 
 #include <Infinit.hh>
 
@@ -58,8 +61,12 @@ namespace etoile
     elle::Status        Depot::Origin(nucleus::proton::Address& address)
     {
       // FIXME: do not re-parse the descriptor every time.
-      Descriptor descriptor(Infinit::User, Infinit::Network);
+      Descriptor descriptor(
+        elle::serialize::from_file(
+          common::infinit::descriptor_path(Infinit::User, Infinit::Network)));
+
       address = descriptor.meta().root_address();
+
       return elle::Status::Ok;
     }
 

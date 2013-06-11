@@ -7,6 +7,7 @@
 
 #include <nucleus/proton/Block.hh>
 #include <nucleus/proton/Address.hh>
+#include <nucleus/factory.hh>
 
 #include <common/common.hh>
 
@@ -106,12 +107,11 @@ namespace satellite
     ELLE_DEBUG("component '%s'", component);
 
     // Create an empty block.
-    auto const& factory = nucleus::proton::block::factory<>();
+    auto const& factory = nucleus::factory::block<elle::serialize::NoInit>();
 
-    nucleus::proton::Block* block =
-      factory.allocate<nucleus::proton::Block>(component);
-
-    ELLE_FINALLY_ACTION_DELETE(block);
+    std::unique_ptr<nucleus::proton::Block> block(
+      factory.allocate<nucleus::proton::Block>(component,
+                                               elle::serialize::no_init));
 
     // Deserialize the block.
     elle::serialize::from_file(path) >> *block;

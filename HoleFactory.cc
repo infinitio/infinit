@@ -1,6 +1,7 @@
 #include <memory>
 
 #include <elle/network/Interface.hh>
+#include <elle/serialize/extract.hh>
 
 #include <reactor/network/nat.hh>
 #include <reactor/network/resolve.hh>
@@ -68,7 +69,9 @@ namespace infinit
                elle::Passport const& passport,
                elle::Authority const& authority)
   {
-    Descriptor descriptor(Infinit::User, Infinit::Network);
+    Descriptor descriptor(
+      elle::serialize::from_file(
+        common::infinit::descriptor_path(Infinit::User, Infinit::Network)));
 
     lune::Set set;
     if (lune::Set::exists(Infinit::User, Infinit::Network) == true)

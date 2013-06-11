@@ -877,7 +877,9 @@ namespace satellite
 
     // FIXME: do not re-parse the descriptor every time.
     Transfer::descriptor =
-      new Descriptor(Infinit::User, Infinit::Network);
+      new Descriptor(
+        elle::serialize::from_file(
+          common::infinit::descriptor_path(Infinit::User, Infinit::Network)));
 
     elle::String path;
 
