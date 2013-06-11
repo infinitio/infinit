@@ -422,7 +422,7 @@ class Update(Page):
         ]
         network = database.networks().find_one(
             database.ObjectId(transaction["network_id"]),
-        })
+        )
         database.networks().save(network)
 
     def del_link(self, transaction):
