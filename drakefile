@@ -158,6 +158,10 @@ def configure(cxx_toolkit = None,
     include_dir = "include/stun/stuncore/",
   )
 
+  stun_server_path = os.path.join(dependencies_prefix, 'bin', 'stun-server')
+  stun_server = drake.copy(drake.nodes(stun_server_path), 'bin',
+          os.path.dirname(stun_server_path))
+
   if cxx_toolkit.os == drake.os.macos:
     ssl_suffix = '.1.0.0.dylib'
     curl_suffix = '.4.dylib'
@@ -1165,7 +1169,7 @@ def configure(cxx_toolkit = None,
       'CrashReporter.hh',
       )
 
-    heartbeat = drake.cxx.Executable('bin/heartbeat',
+    heartbeat = drake.cxx.Executable('bin/heartbeat-server',
         heartbeat_sources + [reactor_lib, elle_lib] + udt_libs,
         cxx_toolkit, heartbeat_config)
 
@@ -1193,6 +1197,7 @@ def configure(cxx_toolkit = None,
 
       oracles << metalib_lib
 
+    oracles << stun_server
     build << oracles
 
   # Install
@@ -1216,7 +1221,7 @@ def configure(cxx_toolkit = None,
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
-    # ('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc',  [elle_lib, plasma_lib, curly_lib]),
+    #(('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc'),  [elle_lib, plasma_lib, curly_lib]),
     ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib]),
     ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),

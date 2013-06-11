@@ -42,4 +42,5 @@ uptodate "${STUN_LIBRARIES}" ||
     cp -r ./common/*.h ./common/*.hpp ${COMMON_DIR}
     cp ./stuncore/libstuncore.a ${WORKDIR}/lib/
     cp ./common/libcommon.a ${WORKDIR}/lib/libstuncommon.a
+    cp ./stunserver ${WORKDIR}/bin/stun-server
 )
