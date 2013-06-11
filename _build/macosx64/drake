@@ -42,5 +42,5 @@ drake.run(
     ),
     python3 = '/opt/local/Library/Frameworks/Python.framework/Versions/3.2',
     build_type = os.environ.get('BUILD_TYPE', 'Development'),
-    enable_horizon = False,
+#    enable_horizon = False,
 )
