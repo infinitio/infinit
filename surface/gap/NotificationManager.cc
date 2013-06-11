@@ -21,6 +21,7 @@ namespace surface
     NotificationManager::NotificationManager(plasma::meta::Client& meta,
                                              Self const& self,
                                              Device const& device):
+      _trophonius{nullptr},
       _meta(meta),
       _self(self),
       _device(device)
@@ -93,8 +94,7 @@ namespace surface
             common::trophonius::host(),
             common::trophonius::port(),
             std::bind(&NotificationManager::_on_trophonius_connected, this),
-          }
-        );
+          });
       }
       catch (...)
       {
@@ -123,10 +123,7 @@ namespace surface
     void
     NotificationManager::_on_trophonius_connected()
     {
-      ELLE_LOG("connected to tropho: id = %s token = %s device_id = %s",
-               this->_self.id,
-               this->_meta.token(),
-               this->_device.id);
+      ELLE_LOG("Successfully reconnected to trophonius");
       this->pull(-1, 0, true);
     }
 
