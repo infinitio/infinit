@@ -1,6 +1,8 @@
 #include <cassert>
 #include <sstream>
 
+#include <elle/Buffer.hh>
+
 #include <protocol/Packet.hh>
 
 namespace infinit
