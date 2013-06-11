@@ -90,16 +90,16 @@ namespace plasma
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict);
 
-    class Client:
-      private boost::noncopyable
+    class Client
     {
-    public:
+    private:
       struct Impl;
-      Impl* _impl;
+      std::unique_ptr<Impl> _impl;
 
+    public:
       Client(std::string const& server,
              uint16_t port,
-             bool check_error = true);
+             std::function<void()> connect_callback);
 
       ~Client();
 

@@ -127,34 +127,35 @@ namespace plasma
       bool connected;
       std::string server;
       uint16_t port;
-      bool check_errors;
       boost::asio::streambuf request;
       boost::asio::streambuf response;
       boost::system::error_code last_error;
       std::string user_id;
       std::string user_token;
       std::string user_device_id;
+      std::function<void()> connect_callback;
 
       Impl(std::string const& server,
            uint16_t port,
-           bool check_errors):
+           std::function<void()> connect_callback)
         io_service{},
         socket{io_service},
         connection_checker{io_service},
         connected{false},
         server{server},
         port{port},
-        check_errors{check_errors},
         request{},
-        response{}
+        response{},
+        connect_callback{connect_callback}
       {}
     };
 
     Client::Client(std::string const& server,
                    uint16_t port,
-                   bool check_errors)
-      : _impl{new Impl{server, port, check_errors}}
+                   std::function<void()> connect_callback):
+      _impl{new Impl{server, port, connect_callback}}
     {
+      ELLE_ASSERT(connect_callback != nullptr);
       _impl->connection_checker.expires_from_now(
         boost::posix_time::seconds(10)
       );
@@ -164,10 +165,7 @@ namespace plasma
     }
 
     Client::~Client()
-    {
-      delete _impl;
-      _impl = nullptr;
-    }
+    {}
 
     void
     Client::_check_connection(boost::system::error_code const& err)
@@ -197,7 +195,8 @@ namespace plasma
                         _impl->user_token,
                         _impl->user_device_id);
           _impl->last_error = boost::system::error_code{};
-          ELLE_DEBUG("reconnect to tropho successfully");
+          ELLE_DEBUG("reconnected to tropho successfully");
+          _impl->connect_callback();
         }
         catch (std::exception const& e)
         {
@@ -338,7 +337,8 @@ namespace plasma
       );
 
       if (err)
-        throw elle::HTTPException(elle::ResponseCode::error, "Writting socket error");
+        throw elle::HTTPException{
+          elle::ResponseCode::error, "Writing socket error"};
 
       this->_read_socket();
       return true;
