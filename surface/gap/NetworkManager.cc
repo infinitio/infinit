@@ -891,7 +891,7 @@ namespace surface
             {
               for (auto const& addr: round.addresses())
               {
-                ELLE_DEBUG("-- %s", addr);
+                ELLE_TRACE("-- %s", addr);
               }
             }
           }
