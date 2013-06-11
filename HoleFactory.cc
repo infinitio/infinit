@@ -26,6 +26,8 @@
 #include <Infinit.hh>
 #include <Portal.hh>
 
+ELLE_LOG_COMPONENT("infinit.HoleFactory");
+
 namespace infinit
 {
   class PortaledSlug:
@@ -129,14 +131,15 @@ namespace infinit
           try
           {
             reactor::nat::NAT nat(sched);
+            std::string stun_host = common::stun::host(),
+              stun_port = std::to_string(common::stun::port());
 
-            auto host = reactor::network::resolve_udp(sched,
-                                                      common::longinus::host(),
-                                                      std::to_string(3478));
+            ELLE_DEBUG("connecting to stun host %s:%s", stun_host, stun_port);
+            auto host = reactor::network::resolve_udp(sched, stun_host,
+                                                      stun_port);
             auto breach = nat.map(host);
 
             using reactor::nat::Breach;
-
             if (breach.nat_behavior() == Breach::NatBehavior::EndpointIndependentMapping ||
                 breach.nat_behavior() == Breach::NatBehavior::DirectMapping)
             {
@@ -153,9 +156,11 @@ namespace infinit
             ELLE_TRACE("punch failed: %s", e.what());
           }
 
-          // If the punch succeed, we start the heartbite thread.
+          // If the punch succeed, we start the heartbeat thread.
           if (socket)
-            heartbeat::start(*socket);
+            heartbeat::start(*socket,
+                             common::heartbeat::host(),
+                             common::heartbeat::port());
 
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,

@@ -22,10 +22,12 @@ namespace infinit
     namespace network = reactor::network;
 
     reactor::Thread*
-    start(network::UDPSocket& sock)
+    start(network::UDPSocket& sock,
+          std::string const& host,
+          int port)
     {
       auto& sched = *reactor::Scheduler::scheduler();
-      auto heartbeat = [&]
+      auto heartbeat = [&, port, host]
       {
         namespace network = reactor::network;
 
@@ -38,10 +40,8 @@ namespace infinit
 
         try
         {
-          network::UDTSocket hsocket(sched,
-                                    *ptr,
-                                    common::heartbeat::host(),
-                                    std::to_string(common::heartbeat::port()));
+          ELLE_DEBUG("%s:%s", host, port);
+          network::UDTSocket hsocket(sched, *ptr, host, std::to_string(port));
 
           int tries = max_tries;
           for (int i = 0; i < tries; ++i)
