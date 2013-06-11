@@ -3,7 +3,6 @@
 #include <elle/io/Path.hh>
 #include <elle/os/path.hh>
 #include <elle/utility/Factory.hh>
-#include <elle/log.hh>
 
 #include <common/common.hh>
 
@@ -21,8 +20,6 @@
 #include <infinit/Descriptor.hh>
 #include <infinit/Identity.hh>
 
-ELLE_LOG_COMPONENT("infinit.Descriptor");
-
 //
 // ---------- Descriptor ------------------------------------------------------
 //
@@ -32,44 +29,11 @@ namespace infinit
   /*-------------.
   | Construction |
   `-------------*/
-  Descriptor::Descriptor(elle::io::Path const& path)
-  {
-    this->load(path);
-  }
-
-  // XXX remove this constructor in favor of something like:
-  //       template <typename T>
-  //       Descriptor(elle::String const& path,
-  //                  T const& authority);
-  Descriptor::Descriptor(elle::String const& user,
-                         elle::String const& network)
-  {
-    ELLE_TRACE("creating descriptor of network %s from %s",
-               network,
-               common::infinit::descriptor_path(user, network));
-
-    if (Descriptor::exists(user, network) == false)
-      throw infinit::Exception(
-        elle::sprintf("network %s does not seem to exist for user %s",
-                      network, user));
-
-    this->load(user, network);
-
-    if (this->validate(Infinit::authority().K()) == false)
-      throw infinit::Exception("unable to validate the descriptor");
-  }
 
   Descriptor::Descriptor(descriptor::Meta meta,
                          descriptor::Data data):
     _meta(new descriptor::Meta(std::move(meta))),
     _data(new descriptor::Data(std::move(data)))
-  {
-  }
-
-  Descriptor::Descriptor(Descriptor const& other):
-    elle::serialize::DynamicFormat<Descriptor>(other),
-    _meta(new descriptor::Meta(*other._meta)),
-    _data(new descriptor::Data(*other._data))
   {
   }
 
@@ -120,63 +84,6 @@ namespace infinit
     this->_data = std::move(data);
   }
 
-  /*---------.
-  | Fileable |
-  `---------*/
-
-  void
-  Descriptor::load(elle::String const& user,
-                   elle::String const& network)
-  {
-    ELLE_TRACE_FUNCTION(user, network);
-
-    this->load(
-      elle::io::Path{common::infinit::descriptor_path(user, network)});
-  }
-
-  void
-  Descriptor::store(infinit::Identity const& identity) const
-  {
-    ELLE_TRACE_METHOD(identity);
-
-    ELLE_ASSERT_NEQ(this->_meta, nullptr);
-
-    this->store(
-      elle::io::Path{
-        common::infinit::descriptor_path(identity.identifier(),
-                                         this->_meta->identifier())});
-  }
-
-  void
-  Descriptor::store(elle::io::Path const& path) const
-  {
-    ELLE_TRACE_METHOD(path);
-
-    ELLE_ASSERT_NEQ(this->_meta, nullptr);
-
-    elle::concept::Fileable<>::store(elle::io::Path{path.string()});
-  }
-
-  void
-  Descriptor::erase(elle::String const& user,
-                    elle::String const& network)
-  {
-    ELLE_TRACE_FUNCTION(user, network);
-
-    elle::concept::Fileable<>::erase(
-      elle::io::Path{common::infinit::descriptor_path(user, network)});
-  }
-
-  elle::Boolean
-  Descriptor::exists(elle::String const& user,
-                     elle::String const& network)
-  {
-    ELLE_TRACE_FUNCTION(user, network);
-
-    return (elle::os::path::exists(
-              common::infinit::descriptor_path(user, network)));
-  }
-
   /*----------.
   | Printable |
   `----------*/
@@ -223,20 +130,6 @@ namespace infinit
       _signature(std::move(signature))
     {
       ELLE_ASSERT_NEQ(this->_root_object, nullptr);
-    }
-
-    Meta::Meta(Meta const& other):
-      elle::serialize::DynamicFormat<Meta>(other),
-      _identifier(other._identifier),
-      _administrator_K(other._administrator_K),
-      _model(other._model),
-      _root_address(other._root_address),
-      _root_object(new nucleus::neutron::Object(*other._root_object)),
-      _everybody_identity(other._everybody_identity),
-      _history(other._history),
-      _extent(other._extent),
-      _signature(other._signature)
-    {
     }
 
     Meta::Meta(Meta&& other):
@@ -414,52 +307,6 @@ namespace infinit
       _format_descriptor(std::move(format_descriptor)),
       _signature(std::move(signature))
     {
-    }
-
-    Data::Data(Data const& other):
-      elle::serialize::DynamicFormat<Data>(other),
-      _name(other._name),
-      _openness(other._openness),
-      _policy(other._policy),
-      _version(other._version),
-      _format_block(other._format_block),
-      _format_content_hash_block(other._format_content_hash_block),
-      _format_contents(other._format_contents),
-      _format_immutable_block(other._format_immutable_block),
-      _format_imprint_block(other._format_imprint_block),
-      _format_mutable_block(other._format_mutable_block),
-      _format_owner_key_block(other._format_owner_key_block),
-      _format_public_key_block(other._format_public_key_block),
-      _format_access(other._format_access),
-      _format_attributes(other._format_attributes),
-      _format_catalog(other._format_catalog),
-      _format_data(other._format_data),
-      _format_ensemble(other._format_ensemble),
-      _format_group(other._format_group),
-      _format_object(other._format_object),
-      _format_reference(other._format_reference),
-      _format_user(other._format_user),
-      _format_identity(other._format_identity),
-      _format_descriptor(other._format_descriptor),
-      _signature(other._signature)
-    {
-      /* XXX will call Object(Block&) but we do not want that
-         -> on peut imaginer soit une methode clone() soit que chaque block
-            fournisse un T(Block&) et T(Block&&) qui cast et appelle le bon
-            constructeur: copy/move
-
-      auto const& factory = nucleus::proton::block::factory<>();
-
-      for (auto const& pointer: other._blocks)
-      {
-        std::unique_ptr<nucleus::proton::Block> block(
-          factory.allocate<nucleus::proton::Block>(pointer->component(),
-                                                   *pointer));
-
-        this->_blocks.push_back(std::move(block));
-      }
-      */
-      ELLE_ASSERT(false);
     }
 
     Data::Data(Data&& other):

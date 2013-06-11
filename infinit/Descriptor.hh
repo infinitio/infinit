@@ -3,7 +3,6 @@
 
 # include <elle/Version.hh>
 # include <elle/Printable.hh>
-# include <elle/concept/Fileable.hh>
 # include <elle/serialize/fwd.hh>
 # include <elle/serialize/Format.hh>
 # include <elle/serialize/DynamicFormat.hh>
@@ -68,7 +67,7 @@ namespace infinit
   /// Finally, a descriptor is instantiated from both the sections which
   /// could be moved for example:
   ///
-  ///   Descriptor descriptor(std::move(meta_section), std::move(data_section));
+  ///   Descriptor descriptor(std::move(meta), std::move(data));
   ///
   /// Note that the network administrator can then modify the descriptor
   /// by providing an updated data section:
@@ -77,27 +76,20 @@ namespace infinit
   ///   descriptor.update(std::move(data));
   class Descriptor:
     public elle::Printable,
-    public elle::concept::MakeFileable<Descriptor>,
-    public elle::concept::MakeUniquable<Descriptor>,
     public elle::serialize::DynamicFormat<Descriptor>
   {
     /*-------------.
     | Construction |
     `-------------*/
   public:
-    /// XXX[should we keep this?]
-    explicit
-    Descriptor(elle::String const& user,
-               elle::String const& network);
-    explicit
-    Descriptor(elle::io::Path const& path);
     /// Construct a descriptor from both its meta and data sections.
     explicit
     Descriptor(descriptor::Meta meta,
                descriptor::Data data);
-    Descriptor(Descriptor const& other);
     Descriptor(Descriptor&& other);
     ELLE_SERIALIZE_CONSTRUCT_DECLARE(Descriptor);
+  private:
+    Descriptor(Descriptor const&);
 
     /*--------.
     | Methods |
@@ -136,23 +128,6 @@ namespace infinit
   public:
     // serializable
     ELLE_SERIALIZE_FRIEND_FOR(Descriptor);
-    // fileable
-    ELLE_CONCEPT_FILEABLE_METHODS();
-    // XXX to remove in favor of a path-based constructor
-    // XXX maybe store the networks by id
-    void
-    load(elle::String const& user,
-         elle::String const& network);
-    void
-    store(infinit::Identity const& identity) const;
-    static
-    void
-    erase(elle::String const& user,
-          elle::String const& network);
-    static
-    elle::Boolean
-    exists(elle::String const& user,
-           elle::String const& network);
     // printable
     virtual
     void
@@ -228,9 +203,10 @@ namespace infinit
            elle::Boolean history,
            elle::Natural32 extent,
            T const& authority);
-      Meta(Meta const& other);
       Meta(Meta&& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Meta);
+    private:
+      Meta(Meta const&);
 
       /*--------.
       | Methods |
@@ -342,11 +318,12 @@ namespace infinit
   {
     /// Represent the descriptor elements which are controlled by the network
     /// administrator. This means that this section can be modified (i.e
-    /// recreated) should the administrator want to change the network behavior.
+    /// recreated) should the administrator want to change the network
+    /// behavior.
     ///
     /// Let us recall that every block when manipulated, lives in main memory
-    /// but when transmitted over the network or stored is serialized (i.e in an
-    /// architecture-independent format) so as to be rebuilt by any other
+    /// but when transmitted over the network or stored is serialized (i.e in
+    /// an architecture-independent format) so as to be rebuilt by any other
     /// computer no matter its platform, operating system etc. Besides, since
     /// the Infinit software evolves, a block, say the ContentHashBlock for
     /// explanatory puroposes, could embed an additional attribute, for example
@@ -361,8 +338,8 @@ namespace infinit
     /// version, say 10. X decides to update a block B and therefore publish it
     /// to the network to replicate it. Since X runs Infinit in its version 8,
     /// the block B has been serialized in the latest ContentHashBlock's format
-    /// supported by Infinit version 8. Let us say this version of Infinit has a
-    /// ContentHashBlock serializer which produces blocks in the format 2.
+    /// supported by Infinit version 8. Let us say this version of Infinit has
+    /// a ContentHashBlock serializer which produces blocks in the format 2.
     /// However, Infinit version 10 embeds an additional attribute so that such
     /// blocks are now serialized in format 3. Therefore, when the block B,
     /// serialized in format 2, is received, the node Y must be able to
@@ -379,39 +356,40 @@ namespace infinit
     /// signature (generated in format 2) failing to match the current content
     /// (recently upgraded to format 3 with an additional field which did not
     /// exist in format 2). Consequently, the operation consisting in upgrading
-    /// a block from a format to the next should be performed at a very specific
-    /// moment, depending on the nature of the block. For a ContentHashBlock
-    /// (such as B) for instance, since such a block's address is function of
-    /// its content, upgrading the block would modify its content and therefore
-    /// its address. Thus, any other block referencing B would have to be
-    /// updated as well. This is too difficult since we do not know which block
-    /// references it. Besides, for some blocks, especially the ones which embed
-    /// signatures, these signatures must be re-generated. Since only certain
-    /// users can re-generate the signatures (often the block owner), the
-    /// upgrading process can only be performed by the right user. As a example,
-    /// for a ContentHashBlock, the system will perform the upgrading process
-    /// if (i) the block has been modified so as to minimize the network
-    /// communications, (ii) the user is the block owner (iii) and right before
-    /// the call to bind() which computes the block address so as to take all
-    /// the modifications (the upgrade) into account.
+    /// a block from a format to the next should be performed at a very
+    /// specific moment, depending on the nature of the block. For a
+    /// ContentHashBlock (such as B) for instance, since such a block's address
+    /// is function of its content, upgrading the block would modify its
+    /// content and therefore its address. Thus, any other block referencing B
+    /// would have to be updated as well. This is too difficult since we do not
+    /// know which block references it. Besides, for some blocks, especially
+    /// the ones which embed signatures, these signatures must be re-generated.
+    /// Since only certain users can re-generate the signatures (often the
+    /// block owner), the upgrading process can only be performed by the right
+    /// user. As a example, for a ContentHashBlock, the system will perform the
+    /// upgrading process if (i) the block has been modified so as to minimize
+    /// the network communications, (ii) the user is the block owner (iii) and
+    /// right before the call to bind() which computes the block address so as
+    /// to take all the modifications (the upgrade) into account.
     ///
     /// In order to counter attacks from malicious nodes, the descriptor embeds
     /// the reference formats which are the ones supported by the version of
-    /// Infinit also provided in the descriptor. As a rule of thumb, the network
-    /// administrator uses its own Infinit version as a reference. Thus,
-    /// whenever the administrator updates the Infinit software, its version
-    /// along with the supported format are recorded in the descriptor which is
-    /// upgraded and re-sealed. These reference formats are used whenever a node
-    /// receives a block in an unkown format e.g a format higher than the one
-    /// supported by the user's Infinit version. In this case, either the
-    /// version of Infinit is too old to understand this format or the block is
-    /// invalid: embedding a format 12345 for example though this format is
-    /// supported by no Infinit version. Should a node receive such a block, it
-    /// would check the format against the reference format of the given block
-    /// type e.g ContentHashBlock. If the format is higher that the reference,
-    /// the node would discard the block as invalid and would continue.
-    /// Otherwise, a warning would be displayed asking the user to update the
-    /// Infinit software in order to be able to understand the latest formats.
+    /// Infinit also provided in the descriptor. As a rule of thumb, the
+    /// network administrator uses its own Infinit version as a reference.
+    /// Thus, whenever the administrator updates the Infinit software, its
+    /// version along with the supported format are recorded in the descriptor
+    /// which is upgraded and re-sealed. These reference formats are used
+    /// whenever a node receives a block in an unkown format e.g a format
+    /// higher than the one supported by the user's Infinit version. In this
+    /// case, either the version of Infinit is too old to understand this
+    /// format or the block is invalid: embedding a format 12345 for example
+    /// though this format is supported by no Infinit version. Should a node
+    /// receive such a block, it would check the format against the reference
+    /// format of the given block type e.g ContentHashBlock. If the format is
+    /// higher that the reference, the node would discard the block as invalid
+    /// and would continue. Otherwise, a warning would be displayed asking the
+    /// user to update the Infinit software in order to be able to understand
+    /// the latest formats.
     ///
     /// Noteworthy is that formats should evolve quite rarely. Thus, the
     /// impropriety of forcing the user to update the Infinit software should
@@ -509,9 +487,10 @@ namespace infinit
            elle::serialize::Format format_identity,
            elle::serialize::Format format_descriptor,
            T const& administrator);
-      Data(Data const& other);
       Data(Data&& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Data);
+    private:
+      Data(Data const&);
 
       /*--------.
       | Methods |
