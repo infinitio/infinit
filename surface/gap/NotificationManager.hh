@@ -128,6 +128,8 @@ namespace surface
       void
       _handle_notification(Notification const& notif, bool _new = true);
 
+      void
+      _on_trophonius_connected();
     public:
       typedef
       std::function<void (gap_Status, std::string const&, std::string const&)>

@@ -70,7 +70,11 @@ namespace surface
             file >> port;
             ELLE_DEBUG("erginus port is %s", port);
             this->_trophonius.reset(
-              new plasma::trophonius::Client{"localhost", port, true});
+              new plasma::trophonius::Client{
+                "localhost",
+                port,
+                std::bind(&NotificationManager::_on_trophonius_connected, this),
+              });
             ELLE_DEBUG("successfully connected to erginus");
           }
           return ;
@@ -88,7 +92,7 @@ namespace surface
           new plasma::trophonius::Client{
             common::trophonius::host(),
             common::trophonius::port(),
-            true,
+            std::bind(&NotificationManager::_on_trophonius_connected, this),
           }
         );
       }
@@ -97,16 +101,16 @@ namespace surface
         std::string err = elle::sprint("couldn't connect to trophonius:",
                                        elle::exception_string());
         ELLE_ERR("%s", err);
-        throw NotificationManager::Exception{gap_error, err};
+        throw Exception{gap_error, err};
       }
+      ELLE_LOG("trying to connect to tropho: id = %s token = %s device_id = %s",
+               this->_self.id,
+               this->_meta.token(),
+               this->_device.id);
       this->_trophonius->connect(this->_self.id,
                                  this->_meta.token(),
                                  this->_device.id);
 
-      ELLE_LOG("connect to trophonius: id = %s token = %s device_id = %s",
-               this->_self.id,
-               this->_meta.token(),
-               this->_device.id);
     }
 
     void
@@ -114,6 +118,16 @@ namespace surface
     {
       if (this->_trophonius == nullptr)
         throw Exception{gap_error, "Trophonius is not connected"};
+    }
+
+    void
+    NotificationManager::_on_trophonius_connected()
+    {
+      ELLE_LOG("connected to tropho: id = %s token = %s device_id = %s",
+               this->_self.id,
+               this->_meta.token(),
+               this->_device.id);
+      this->pull(-1, 0, true);
     }
 
     size_t
