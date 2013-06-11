@@ -11,8 +11,6 @@
 # include <protocol/RPC.hh>
 # include <protocol/Serializer.hh>
 
-ELLE_LOG_COMPONENT("Portal");
-
 namespace infinit
 {
   /*-------------.
@@ -29,6 +27,8 @@ namespace infinit
     _server(),
     _acceptor()
   {
+    ELLE_LOG_COMPONENT("Portal");
+
     ELLE_TRACE_SCOPE("start portal");
     this->_server.reset(new reactor::network::TCPServer(
                           *reactor::Scheduler::scheduler()));
@@ -68,6 +68,8 @@ namespace infinit
   void
   Portal<RPC>::_accept()
   {
+    ELLE_LOG_COMPONENT("Portal");
+
     int i = 0;
     reactor::Scope scope;
 
