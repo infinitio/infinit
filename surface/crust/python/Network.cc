@@ -26,7 +26,7 @@ BOOST_PYTHON_MODULE(_crust)
     .value("mine", plasma::meta::Client::DescriptorList::mine)
     .value("other", plasma::meta::Client::DescriptorList::other)
   ;
-  py::class_<Network>(
+  py::class_<Network, boost::noncopyable>(
     "_Network",
     // Constructor with name, user, passphrase, model, policy, opennes.
     py::init<std::string const&,

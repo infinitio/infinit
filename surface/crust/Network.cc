@@ -3,7 +3,7 @@
 #include <hole/storage/Memory.hh>
 #include <hole/storage/Directory.hh>
 
-#include <lune/Identity.hh>
+#include <infinit/Identity.hh>
 
 #include <etoile/automaton/Access.hh>
 #include <etoile/nest/Nest.hh>
@@ -180,11 +180,18 @@ create_root(std::string const& uid,
 
       ELLE_DEBUG("radix from access '%s'", access);
       access_radix.reset(new nucleus::proton::Radix{access.seal(secret_key)});
+
+      ELLE_ASSERT_EQ(access_radix->strategy(),
+                     nucleus::proton::Strategy::value);
+
       break;
     }
     case horizon::Policy::confidential:
     {
       access_radix.reset(new nucleus::proton::Radix{});
+
+      ELLE_ASSERT_EQ(access_radix->strategy(),
+                     nucleus::proton::Strategy::none);
 
       break;
     }
@@ -197,10 +204,6 @@ create_root(std::string const& uid,
   ELLE_DEBUG("digest from access '%s'", access);
   cryptography::Digest fingerprint =
     nucleus::neutron::access::fingerprint(access);
-
-  ELLE_ASSERT_NEQ(access_radix,  nullptr);
-  // XXX: if policy == confidential, this assert will fail.
-  ELLE_ASSERT_EQ(access_radix->strategy(), nucleus::proton::Strategy::value);
 
   ELLE_DEBUG("directory from network '%s' and key '%s'", network, key_pair);
   nucleus::neutron::Object directory(network,
@@ -249,26 +252,8 @@ _blocks(std::string const& uid,
                 std::move(root.second));
 }
 
-static
-lune::Identity
-identity(boost::filesystem::path const& path,
-         std::string const& passphrase)
-{
-  ELLE_TRACE_FUNCTION(path);
-  lune::Identity identity;
-  {
-    // Load the identity.
-    identity.load(path);
-
-    // decrypt the authority.
-    if (identity.Decrypt(passphrase) == elle::Status::Error)
-      throw elle::Exception("unable to decrypt the identity");
-  }
-  return identity;
-}
-
 Network::Network(std::string const& name,
-                 lune::Identity const& identity,
+                 cryptography::KeyPair const& keypair,
                  hole::Model const& model,
                  hole::Openness const& openness,
                  horizon::Policy const& policy,
@@ -279,32 +264,32 @@ Network::Network(std::string const& name,
     cryptography::random::generate<elle::Buffer>(48));
 
   // Create both root and group address.
-  auto blocks = _blocks(uid, policy, identity.pair());
+  auto blocks = _blocks(uid, policy, keypair);
 
-  descriptor::Meta meta_section(uid,
-                                identity.pair().K(),
-                                model,
-                                std::move(blocks.directory_address()),
-                                std::move(blocks.directory),
-                                std::move(blocks.group_address()),
-                                false,
-                                1048576,
-                                identity.pair().k());
+  descriptor::Meta meta(uid,
+                        keypair.K(),
+                        model,
+                        std::move(blocks.directory_address()),
+                        std::move(blocks.directory),
+                        std::move(blocks.group_address()),
+                        false,
+                        1048576,
+                        keypair.k());
 
   elle::Version version(INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
 
-  descriptor::Data data_section(name,
-                                openness,
-                                policy,
-                                std::move(blocks.blocks),
-                                version,
-                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                identity.pair().k());
+  descriptor::Data data(name,
+                        openness,
+                        policy,
+                        std::move(blocks.blocks),
+                        version,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        keypair.k());
 
   // Create the descriptor from both sections and store it.
-  this->_descriptor.reset(new infinit::Descriptor(std::move(meta_section),
-                                                  std::move(data_section)));
+  this->_descriptor.reset(new infinit::Descriptor(std::move(meta),
+                                                  std::move(data)));
 }
 
 Network::Network(std::string const& name,
@@ -315,7 +300,8 @@ Network::Network(std::string const& name,
                  horizon::Policy const& policy,
                  Authority const& authority):
   Network(name,
-          identity(identity_path, passphrase),
+          infinit::Identity(
+            elle::serialize::from_file(identity_path)).decrypt(passphrase),
           model,
           openness,
           policy,
@@ -330,7 +316,8 @@ Network::Network(std::string const& name,
                  std::string const& policy,
                  Authority const& authority):
   Network(name,
-          identity(identity_path, passphrase),
+          infinit::Identity(
+            elle::serialize::from_file(identity_path)).decrypt(passphrase),
           hole::Model(model),
           hole::openness_from_name(openness),
           horizon::policy_from_name(policy),
@@ -340,13 +327,8 @@ Network::Network(std::string const& name,
 Network::Network(boost::filesystem::path const& descriptor_path)
 {
   this->_descriptor.reset(
-    new infinit::Descriptor(elle::io::Path{descriptor_path.string()}));
-}
-
-Network::Network(Network const& other)
-{
-  ELLE_ASSERT_EQ(this->_descriptor, nullptr);
-  this->_descriptor.reset(new infinit::Descriptor(*other._descriptor));
+    new infinit::Descriptor(
+      elle::serialize::from_file(descriptor_path.string())));
 }
 
 Network::Network(std::string const& id,
@@ -365,7 +347,8 @@ void
 Network::store(std::string const& descriptor_path) const
 {
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
-  this->_descriptor->store(elle::io::Path{descriptor_path + ".dsc"});
+
+  elle::serialize::to_file(descriptor_path);
 }
 
 void

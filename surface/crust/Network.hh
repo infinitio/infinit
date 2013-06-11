@@ -47,7 +47,7 @@ public:
   `-------------*/
   /// Main constructor.
   Network(std::string const& name,
-          lune::Identity const& identity,
+          cryptography::KeyPair const& keypair,
           const hole::Model& model,
           hole::Openness const& openness,
           horizon::Policy const& policy,
@@ -81,9 +81,6 @@ public:
           std::string const& host = common::meta::host(),
           uint16_t port = common::meta::port(),
           std::string const& token = common::meta::token());
-
-  /// Copy constructor, usefull for python binding. Should be remove.
-  Network(Network const& other);
 
   /*------.
   | Local |
