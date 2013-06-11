@@ -9,3 +9,8 @@ set_rpath()
   install_name_tool -delete_rpath "${rpath}" "${path}"
   install_name_tool -add_rpath "${rpath}" "${path}"
 }
+
+md5sum()
+{
+	md5 $* | cut -d '=' -f 2 | tr -d ' '
+}
