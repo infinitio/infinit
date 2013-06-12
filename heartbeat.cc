@@ -43,8 +43,7 @@ namespace infinit
           ELLE_DEBUG("%s:%s", host, port);
           network::UDTSocket hsocket(sched, *ptr, host, std::to_string(port));
 
-          int tries = max_tries;
-          for (int i = 0; i < tries; ++i)
+          while (true)
           {
             std::string msg{"echo"};
             hsocket.write(network::Buffer{msg});
