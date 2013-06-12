@@ -1,4 +1,4 @@
-#include <Heartbeat.hh>
+#include <heartbeat.hh>
 
 #include <elle/log.hh>
 

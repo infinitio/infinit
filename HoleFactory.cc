@@ -21,7 +21,7 @@
 
 #include <plasma/meta/Client.hh>
 
-#include <Heartbeat.hh>
+#include <heartbeat.hh>
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Portal.hh>
