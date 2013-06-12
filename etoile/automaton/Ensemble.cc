@@ -239,7 +239,7 @@ namespace etoile
 
             cryptography::PrivateKey k(
               token.extract<cryptography::PrivateKey>(
-                agent::Agent::pair().k()));
+                agent::Agent::keypair().k()));
 
             pass = new cryptography::KeyPair(context.group->pass_K(), k);
           }
