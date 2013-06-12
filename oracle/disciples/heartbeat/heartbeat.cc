@@ -68,6 +68,17 @@ start(int port)
 
 } /* heartbeat */
 
+/// Returns the signal value if process has been signaled.
+static
+int
+sig_value(int status)
+{
+  if (status > 127)
+    return status - 127;
+  else
+    return status;
+}
+
 int
 main(int ac, const char *av[])
 {
@@ -92,6 +103,19 @@ main(int ac, const char *av[])
   {
     heartbeat::start(vm["port"].as<int>());
   };
-  return infinit::satellite_main("heartbeat", std::move(Main));
+
+  bool restart = true;
+  do
+  {
+    int status = infinit::satellite_main("heartbeat", std::move(Main));
+
+    // If we SIGINT the process or if there is no error, then everything is ok,
+    // otherwise, the process crashed, and we can restart it.
+    if (status == 0 ||
+        sig_value(status) == SIGINT)
+      restart = false;
+  }
+  while (restart);
+
 }
 
