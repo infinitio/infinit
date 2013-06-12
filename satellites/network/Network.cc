@@ -18,6 +18,7 @@
 #include <elle/io/Piece.hh>
 #include <elle/io/Unique.hh>
 #include <elle/utility/Parser.hh>
+#include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
 
 #include <cryptography/oneway.hh>
@@ -26,8 +27,8 @@
 using namespace infinit;
 
 #include <lune/Lune.hh>
-#include <lune/Identity.hh>
 
+#include <infinit/Identity.hh>
 #include <infinit/Descriptor.hh>
 
 #include <nucleus/proton/Network.hh>
@@ -46,6 +47,10 @@ using namespace infinit;
 #include <Infinit.hh>
 #include <Program.hh>
 
+#include <common/common.hh>
+
+#include <boost/filesystem.hpp>
+
 namespace satellite
 {
 //
@@ -63,23 +68,20 @@ namespace satellite
                                         const elle::String&     administrator)
   {
     elle::String identifier(name);
-    lune::Identity identity;
 
     //
     // test the arguments.
     //
     {
-      // does the network already exist.
-      if (Descriptor::exists(administrator, identifier) == true)
+      boost::filesystem::path path(
+        common::infinit::descriptor_path(administrator, identifier));
+
+      if (boost::filesystem::exists(path) == true)
         throw elle::Exception("this network seems to already exist");
 
       // check the model.
       if (model == hole::Model::Null)
         throw elle::Exception("please specify the model of the network");
-
-      // does the administrator user exist.
-      if (lune::Identity::exists(administrator) == false)
-        throw elle::Exception("the administrator user does not seem to exist");
     }
 
     // Retrieve the authority.
@@ -105,25 +107,27 @@ namespace satellite
     //
     // retrieve the administrator's identity.
     //
+    std::unique_ptr<cryptography::KeyPair> keypair;
     {
-      elle::String              prompt;
-      elle::String              pass;
+      boost::filesystem::path path(
+        common::infinit::identity_path(administrator));
 
-      // prompt the user for the passphrase.
-      prompt = "Enter passphrase for keypair '" + administrator + "': ";
+      if (boost::filesystem::exists(path) == false)
+        throw elle::Exception("the administrator user does not seem to exist");
+
+      elle::String prompt =
+        "Enter passphrase for keypair '" + administrator + "': ";
+      elle::String passphrase;
 
       if (elle::io::Console::Input(
-            pass,
+            passphrase,
             prompt,
             elle::io::Console::OptionPassword) == elle::Status::Error)
         throw elle::Exception("unable to read the input");
 
-      // load the identity.
-      identity.load(administrator);
+      infinit::Identity identity(elle::serialize::from_file(path.string()));
 
-      // decrypt the authority.
-      if (identity.Decrypt(pass) == elle::Status::Error)
-        throw elle::Exception("unable to decrypt the identity");
+      keypair.reset(new cryptography::KeyPair(identity.decrypt(passphrase)));
     }
 
     nucleus::proton::Network network(identifier);
@@ -133,9 +137,9 @@ namespace satellite
     //
     std::unique_ptr<nucleus::neutron::Group> group(
       new nucleus::neutron::Group(network,
-                                  identity.pair().K(),
+                                  keypair->K(),
                                   "everybody"));
-    group->seal(identity.pair().k());
+    group->seal(keypair->k());
 
     nucleus::proton::Address group_address(group->bind());
 
@@ -145,7 +149,7 @@ namespace satellite
                                                     nucleus::proton::limits::Node{1024, 0.5, 0.2},
                                                     nucleus::proton::limits::Node{1024, 0.5, 0.2}),
                             network,
-                            identity.pair().K());
+                            keypair->K());
     nucleus::proton::Porcupine<nucleus::neutron::Access> access(nest);
     nucleus::proton::Radix* access_radix = nullptr;
 
@@ -233,7 +237,7 @@ namespace satellite
     //
     std::unique_ptr<nucleus::neutron::Object> directory(
       new nucleus::neutron::Object(network,
-                                   identity.pair().K(),
+                                   keypair->K(),
                                    nucleus::neutron::Genre::directory));
 
     if (directory->Update(directory->author(),
@@ -244,7 +248,7 @@ namespace satellite
       throw elle::Exception("unable to update the directory");
 
     // seal the directory.
-    directory->Seal(identity.pair().k(), fingerprint);
+    directory->Seal(keypair->k(), fingerprint);
 
     nucleus::proton::Address directory_address = directory->bind();
 
@@ -272,9 +276,9 @@ namespace satellite
         vector.push_back(std::move(derivable.release()));
       }
 
-      // Create the meta section.
+      // Create the meta and data sections.
       descriptor::Meta meta(identifier,
-                            identity.pair().K(),
+                            keypair->K(),
                             model,
                             std::move(directory_address),
                             std::move(directory),
@@ -282,8 +286,6 @@ namespace satellite
                             false,
                             1048576,
                             authority.k());
-
-      // Create the data section.
       descriptor::Data data(name,
                             openness,
                             policy,
@@ -292,26 +294,29 @@ namespace satellite
                             Infinit::version,
                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                             0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            identity.pair().k());
+                            keypair->k());
 
       // Create the descriptor from both sections and store it.
       Descriptor descriptor(std::move(meta), std::move(data));
 
-      descriptor.store(identity);
+      elle::serialize::to_file(
+        common::infinit::descriptor_path(administrator, identifier)) <<
+          descriptor;
     }
 
     // The following shows how to take a descriptor and initialize
     // a local network so as to be mounted.
     {
       // Reload the descriptor just to make sure it is valid.
-      Descriptor descriptor(administrator, identifier);
+      Descriptor descriptor(
+        elle::serialize::from_file(
+          common::infinit::descriptor_path(administrator, identifier)));
       descriptor.validate(authority.K());
 
       // Finally, store the blocks on the disk.
       elle::io::Path shelter_path(lune::Lune::Shelter);
       shelter_path.Complete(elle::io::Piece{"%USER%", administrator},
                             elle::io::Piece{"%NETWORK%", identifier});
-
       hole::storage::Directory storage(network, shelter_path.string());
       storage.store(descriptor.meta().root_address(),
                     descriptor.meta().root_object());
@@ -339,11 +344,11 @@ namespace satellite
     // remove the descriptor.
     //
     {
-      elle::io::Path        path;
+      boost::filesystem::path path(
+        common::infinit::descriptor_path(administrator, identifier));
 
-      // does the network exist.
-      if (Descriptor::exists(administrator, identifier) == true)
-        Descriptor::erase(administrator, identifier);
+      if (boost::filesystem::exists(path) == false)
+        throw elle::Exception("this network does not seem to exist");
     }
 
     //
@@ -417,12 +422,16 @@ namespace satellite
     // test the arguments.
     //
     {
-      // does the network exist.
-      if (Descriptor::exists(administrator, identifier) == false)
+      boost::filesystem::path path(
+        common::infinit::descriptor_path(administrator, identifier));
+
+      if (boost::filesystem::exists(path) == false)
         throw elle::Exception("this network does not seem to exist");
     }
 
-    Descriptor descriptor(administrator, identifier);
+    Descriptor descriptor(
+      elle::serialize::from_file(
+        common::infinit::descriptor_path(administrator, identifier)));
 
     // validate the descriptor.
     descriptor.validate(Infinit::authority().K());

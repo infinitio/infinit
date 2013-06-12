@@ -3,7 +3,7 @@
 
 #include <Infinit.hh>
 
-#include <lune/Identity.hh>
+#include <infinit/Identity.hh>
 
 #include <elle/io/Console.hh>
 #include <elle/io/Path.hh>
@@ -19,6 +19,8 @@ using namespace infinit;
 #include <hole/Passport.hh>
 
 #include <lune/Lune.hh>
+
+#include <common/common.hh>
 
 #include <Program.hh>
 
@@ -75,11 +77,13 @@ namespace satellite
         cryptography::random::generate<elle::String>(id_length)
       };
 
-      lune::Identity identity{};
-      identity.load(user);
+      infinit::Identity identity(
+        elle::serialize::from_file(common::infinit::identity_path(user)));
+
+      cryptography::KeyPair keypair = identity.decrypt(pass);
 
       elle::Passport passport{
-        id, passport_name, identity.pair().K(), authority
+        id, passport_name, keypair.K(), authority
       };
 
       elle::io::Path passport_path(lune::Lune::Passport);

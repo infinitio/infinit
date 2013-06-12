@@ -2,24 +2,30 @@
 #include <elle/io/Directory.hh>
 #include <elle/io/Piece.hh>
 #include <elle/utility/Parser.hh>
+#include <elle/serialize/insert.hh>
 
 #include <cryptography/PublicKey.hh>
+// XXX[temporary: for cryptography]
+using namespace infinit;
 
 #include <common/common.hh>
+
 #include <etoile/Etoile.hh>
+
 #include <hole/Authority.hh>
+
 #include <lune/Dictionary.hh>
-#include <lune/Identity.hh>
 #include <lune/Lune.hh>
+
+#include <infinit/Identity.hh>
+
 #include <satellites/satellite.hh>
 #include <satellites/user/User.hh>
 
 #include <Infinit.hh>
 #include <Program.hh>
 
-
-// XXX[temporary: for cryptography]
-using namespace infinit;
+#include <boost/filesystem.hpp>
 
 namespace satellite
 {
@@ -27,20 +33,22 @@ namespace satellite
   /// this method creates a new user by generating a new key pair and
   /// storing a user block.
   ///
-  elle::Status          User::Create(elle::String const&        id,
+  elle::Status          User::Create(elle::String const&        identifier,
                                      const elle::String&        name)
   {
     elle::String        prompt;
     elle::String        pass;
-    lune::Identity      identity;
     lune::Dictionary    dictionary;
+
+    boost::filesystem::path path(
+      common::infinit::identity_path(identifier));
 
     // check the argument.
     if (name.empty() == true)
       throw elle::Exception("unable to create a user without a user name");
 
     // check if the user already exists.
-    if (lune::Identity::exists(name) == true)
+    if (boost::filesystem::exists(path) == true)
       throw elle::Exception("this user seems to already exist");
 
     // prompt the user for the passphrase.
@@ -68,25 +76,14 @@ namespace satellite
           elle::io::Console::OptionPassword) == elle::Status::Error)
       throw elle::Exception("unable to read the input");
 
-    // create the identity.
-    if (identity.Create(
-          id,
-          name,
-          cryptography::KeyPair::generate(
-            cryptography::Cryptosystem::rsa,
-            lune::Identity::keypair_length)) == elle::Status::Error)
-      throw elle::Exception("unable to create the identity");
+    infinit::Identity identity(identifier, name,
+                               cryptography::KeyPair::generate(
+                                 cryptography::Cryptosystem::rsa,
+                                 infinit::Identity::keypair_length),
+                               pass,
+                               authority.k());
 
-    // encrypt the identity.
-    if (identity.Encrypt(pass) == elle::Status::Error)
-      throw elle::Exception("unable to encrypt the identity");
-
-    // seal the identity.
-    if (identity.Seal(authority) == elle::Status::Error)
-      throw elle::Exception("unable to seal the identity");
-
-    // store the identity.
-    identity.store();
+    elle::serialize::to_file(path.string()) << identity;
 
     // store an empty dictionary.
     dictionary.store(name);
@@ -99,22 +96,25 @@ namespace satellite
   ///
   elle::Status          User::Destroy(const elle::String&       name)
   {
+    elle::String identifier(name);
+
+    boost::filesystem::path path(
+      common::infinit::identity_path(identifier));
+
     //
     // remove the identity.
     //
     {
-      lune::Identity    identity;
-
       // check the argument.
       if (name.empty() == true)
         throw elle::Exception("unable to destroy a user without a user name");
 
       // check if the user already exists.
-      if (lune::Identity::exists(name) == false)
+      if (boost::filesystem::exists(identifier) == false)
         throw elle::Exception("this user does not seem to exist");
 
       // destroy the identity.
-      lune::Identity::erase(name);
+      elle::io::File::Erase(elle::io::Path{path.string()});
     }
 
     //
@@ -161,16 +161,19 @@ namespace satellite
   {
     elle::String        prompt;
     elle::String        pass;
-    lune::Identity      identity;
     cryptography::PublicKey     K;
-    elle::io::Unique        unique;
+
+    elle::String identifier(name);
+
+    boost::filesystem::path path(
+      common::infinit::identity_path(identifier));
 
     // check the argument.
     if (name.empty() == true)
       throw elle::Exception("unable to create a user without a user name");
 
     // check if the user already exists.
-    if (lune::Identity::exists(name) == false)
+    if (boost::filesystem::exists(path.string()) == false)
       throw elle::Exception("this user does not seem to exist");
 
     // prompt the user for the passphrase.
@@ -182,26 +185,23 @@ namespace satellite
           elle::io::Console::OptionPassword) == elle::Status::Error)
       throw elle::Exception("unable to read the input");
 
-    // load the identity.
-    identity.load(name);
+    infinit::Identity identity(
+      elle::serialize::from_file(
+        common::infinit::identity_path(identifier)));
 
     // verify the identity.
-    if (identity.Validate(Infinit::authority()) == elle::Status::Error)
-      throw elle::Exception("the identity seems to be invalid");
+    if (identity.validate(Infinit::authority().K()) == false)
+      throw elle::Exception("invalid identity");
 
-    // decrypt the identity.
-    if (identity.Decrypt(pass) == elle::Status::Error)
-      throw elle::Exception("unable to decrypt the identity");
+    cryptography::KeyPair keypair = identity.decrypt(pass);
 
     // dump the identity.
-    if (identity.Dump() == elle::Status::Error)
-      throw elle::Exception("unable to dump the identity");
+    std::cout << identity << std::endl;
 
-    // retrieve the user's public key unique.
-    if (identity.pair().K().Save(unique) == elle::Status::Error)
-      throw elle::Exception("unable to save the public key's unique");
+    elle::String unique;
+    elle::serialize::to_string<elle::serialize::OutputBase64Archive>(unique) <<
+      identity;
 
-    // display the unique.
     std::cout << "[Unique] " << unique << std::endl;
 
     return elle::Status::Ok;
