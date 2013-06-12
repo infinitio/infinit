@@ -41,7 +41,7 @@ namespace agent
     /// Return the key pair associated with the current user.
     static
     cryptography::KeyPair const&
-    pair();
+    keypair();
     /// Return the subject referencing the current user: useful for
     /// managing access credentials.
     static

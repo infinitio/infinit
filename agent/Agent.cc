@@ -52,29 +52,30 @@ namespace agent
   }
 
   cryptography::KeyPair
-  _pair()
+  _keypair()
   {
     // XXX to improve so as not to use the Agent::identity_passphrase.
 
     infinit::Identity const& identity = Agent::identity();
 
-    cryptography::KeyPair pair = identity.decrypt(Agent::identity_passphrase);
+    cryptography::KeyPair keypair =
+      identity.decrypt(Agent::identity_passphrase);
 
-    return (pair);
+    return (keypair);
   }
 
   cryptography::KeyPair const&
-  Agent::pair()
+  Agent::keypair()
   {
-    static cryptography::KeyPair pair = _pair();
+    static cryptography::KeyPair keypair = _keypair();
 
-    return (pair);
+    return (keypair);
   }
 
   nucleus::neutron::Subject const&
   Agent::subject()
   {
-    static nucleus::neutron::Subject subject(Agent::pair().K());
+    static nucleus::neutron::Subject subject(Agent::keypair().K());
 
     return (subject);
   }
