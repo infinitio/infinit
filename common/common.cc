@@ -139,13 +139,14 @@ namespace
   _built_binary_relative_path(std::string const& name)
   {
     static std::unordered_map<std::string, std::string> paths{
-      {"8access",   "bin/8access"},
-      {"8group",    "bin/8group"},
-      {"8infinit",  "bin/8infinit"},
-      {"8watchdog", "bin/8watchdog"},
-      {"8transfer", "bin/8transfer"},
-      {"8progress", "bin/8progress"},
-      {"gdbmacro.py",  "bin/gdbmacro.py"},
+      {"8access",     "bin/8access"},
+      {"8group",      "bin/8group"},
+      {"8infinit",    "bin/8infinit"},
+      {"8watchdog",   "bin/8watchdog"},
+      {"8transfer",   "bin/8transfer"},
+      {"8progress",   "bin/8progress"},
+      {"gdbmacro.py", "bin/gdbmacro.py"},
+      {"heartbeat-server", "bin/heartbeat-server"},
     };
     auto it = paths.find(name);
     if (it == paths.end())

@@ -107,7 +107,7 @@ main(int ac, const char *av[])
   bool restart = true;
   do
   {
-    int status = infinit::satellite_main("heartbeat", std::move(Main));
+    int status = infinit::satellite_main("heartbeat-server", std::move(Main));
 
     // If we SIGINT the process or if there is no error, then everything is ok,
     // otherwise, the process crashed, and we can restart it.
