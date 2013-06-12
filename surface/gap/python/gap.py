@@ -54,6 +54,7 @@ class _State:
             'set_output_dir',
             'get_output_dir',
             'update_transaction',
+            'accept_transaction',
             'transactions',
             'transaction_progress',
             'transaction_sender_id',
@@ -67,6 +68,7 @@ class _State:
             'transaction_files_count',
             'transaction_total_size',
             'transaction_is_directory',
+            'transaction_accepted',
             'transaction_status',
 
             # Notifications
@@ -76,7 +78,6 @@ class _State:
 
             # Callback.
             'transaction_callback',
-            'transaction_status_callback',
             'message_callback',
 
             # Operation.

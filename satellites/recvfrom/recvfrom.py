@@ -20,25 +20,19 @@ You have to specify your user name in the INFINIT_USER env variable.
 
 """
 
-def show_status(state, transaction, new):
+def on_transaction(state, transaction, new):
     print("Transaction ({})".format(transaction),
           state.transaction_status(transaction))
-
-def on_started(state, transaction, new):
     if state.transaction_status(transaction) == state.TransactionStatus.started:
         if getattr(state, "started_transactions", None):
             state.started_transactions.append(transaction)
         else:
             state.started_transactions = [transaction]
-
-def on_canceled(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.canceled:
+    elif state.transaction_status(transaction) == state.TransactionStatus.canceled:
         state.number_of_transactions -= 1
         if state.number_of_transactions == 0:
             state.running = False
-
-def on_finished(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.finished:
+    elif state.transaction_status(transaction) == state.TransactionStatus.finished:
         cnt = state.transaction_files_count(transaction)
         if cnt == 1:
             filename = state.transaction_first_filename(transaction)
@@ -81,7 +75,7 @@ def select_transactions(state, l_transactions, sender):
     # select pending transactions matching the sender id (if not None)
     enumeration = list(enumerate(
             l for l in l_transactions
-            if state.transaction_status(l) in [state.TransactionStatus.pending, state.TransactionStatus.created, ]
+            if state.transaction_status(l) in [state.TransactionStatus.started, state.TransactionStatus.created, ]
             and (sender is None or state.transaction_sender_id(l) == sender_id)
     ))
 
@@ -130,11 +124,8 @@ def main(state, sender):
     state.running = True
     transactions = state.transactions()
 
-    state.transaction_status_callback(partial(on_finished, state))
-    state.transaction_status_callback(partial(on_canceled, state))
-    state.transaction_status_callback(partial(on_started, state))
-    state.transaction_status_callback(partial(show_status, state))
     state.on_error_callback(partial(on_error, state))
+    state.transaction_callback(partial(on_transaction, state))
 
     if len(transactions) > 1:
         to_handle = list(select_transactions(state, transactions, sender))
@@ -150,7 +141,7 @@ def main(state, sender):
     for transaction_id in to_handle:
         print("accept transaction {}".format(transaction_id))
         state.current_transaction_id = transaction_id
-        state.update_transaction(transaction_id, state.TransactionStatus.accepted)
+        state.accept_transaction(transaction_id)
 
         while state.running:
             if getattr(state, "started_transactions", None):

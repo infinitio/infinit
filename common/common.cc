@@ -29,6 +29,8 @@
 #define COMMON_DEFAULT_LONGINUS_PORT 9999
 #define COMMON_DEFAULT_HEARTBEAT_HOST "heartbeat.development.infinit.io"
 #define COMMON_DEFAULT_HEARTBEAT_PORT 9898
+#define COMMON_DEFAULT_STUN_HOST "punch.api.development.infinit.io"
+#define COMMON_DEFAULT_STUN_PORT 3478
 
 #define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
 #define COMMON_PRODUCTION_META_PROTOCOL "http"
@@ -42,6 +44,8 @@
 #define COMMON_PRODUCTION_LONGINUS_PORT 9999
 #define COMMON_PRODUCTION_HEARTBEAT_HOST "heartbeat.production.infinit.io"
 #define COMMON_PRODUCTION_HEARTBEAT_PORT 9898
+#define COMMON_PRODUCTION_STUN_HOST "punch.api.development.infinit.io"
+#define COMMON_PRODUCTION_STUN_PORT 3478
 
 #ifdef INFINIT_PRODUCTION_BUILD
 # define VAR_PREFIX COMMON_PRODUCTION
@@ -84,6 +88,12 @@
 /**/
 # define COMMON_HEARTBEAT_PORT \
   BOOST_PP_CAT(VAR_PREFIX, _HEARTBEAT_PORT) \
+/**/
+# define COMMON_STUN_HOST \
+  BOOST_PP_CAT(VAR_PREFIX, _STUN_HOST) \
+/**/
+# define COMMON_STUN_PORT \
+  BOOST_PP_CAT(VAR_PREFIX, _STUN_PORT) \
 /**/
 
 
@@ -581,4 +591,27 @@ namespace common
       return std::stoi(port_string);
     }
   }
+
+  namespace stun
+  {
+    std::string const&
+    host()
+    {
+      static std::string const host_string = elle::os::getenv(
+        "INFINIT_STUN_HOST",
+        COMMON_STUN_HOST
+      );
+      return host_string;
+    }
+
+    int
+    port()
+    {
+      static std::string const port_string = elle::os::getenv(
+        "INFINIT_STUN_PORT",
+        std::to_string(COMMON_STUN_PORT)
+      );
+      return std::stoi(port_string);
+    }
+  } /* stun */
 }

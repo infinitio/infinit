@@ -49,7 +49,9 @@ class Trophonius(basic.LineReceiver):
         self.devices = None
         self.id = None
         self.token = None
+        self.device_id = None
         self.state = 'HELLO'
+        self.meta_client = None
 
     def __str__(self):
         if hasattr(self, "id"):
@@ -74,11 +76,11 @@ class Trophonius(basic.LineReceiver):
         except Exception as e:
             log.msg('self.factory.clients.remove(self) failed')
         finally:
-            pythia.Admin().post('/user/disconnected', {
-                'user_id': self.id,
-                'user_token': self.token,
-                'full': self.devices and len(self.devices) or 0,
-            })
+            if self.meta_client is not None:
+                self.meta_client.post('/user/disconnect', {
+                    'user_id': self.id,
+                    'device_id': self.device_id,
+                })
 
     def _send_res(self, res, msg=""):
         if isinstance(res, dict):
@@ -109,20 +111,29 @@ class Trophonius(basic.LineReceiver):
         This function handle the first message of the client
         It waits for a json object with:
         {
-                "token" : <token>
+            "token": <token>,
+            "device_id": <device_id>,
+            "user_id": <user_id>,
         }
         """
         try:
-            js_req = json.loads(line)
-            cl = pythia.Client(session={"token": js_req["token"]})
+            req = json.loads(line)
+            self.device_id = req["device_id"]
 
-            res = cl.get('/self')
-            # The authentication succeeded
+            # Authentication
+            res = pythia.Client(session={'token': req['token']}).get('/self')
             if not res['success']:
                 raise Exception("Meta error: %s" % res.get('error', ''))
-
             self.id = res["_id"]
-            self.token = js_req["token"]
+            self.token = req["token"]
+
+            self.meta_client = pythia.Admin()
+            res = self.meta_client.post('/user/connect', {
+                'user_id': self.id,
+                'device_id': self.device_id,
+            })
+
+
             # Add the current client to the client list
             assert isinstance(self.factory.clients, dict)
             self.factory.clients.setdefault(self.id, set()).add(self)

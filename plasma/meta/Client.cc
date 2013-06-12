@@ -14,11 +14,6 @@
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
-#define XXX_UGLY_SERIALIZATION_FOR_NOTIFICATION_TYPE()      \
-  int* n = (int*) &value;                                   \
-  ar & named("notification_type", *n)                       \
-  /**/
-
 // - API responses serializers ------------------------------------------------
 #define SERIALIZE_RESPONSE(type, archive, value)                              \
   ELLE_SERIALIZE_NO_FORMAT(type);                                             \
@@ -27,18 +22,18 @@ ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
     enforce(version == 0);                                                    \
     archive & named("success", value._success);                               \
     if (!value.success())                                                     \
-    {                                                                   \
-      int* n = (int*) &value.error_code;                                \
-      archive & named("error_code", *n);                                \
-      archive & named("error_details", value.error_details);            \
-      return;                                                           \
-    }                                                                   \
-    ResponseSerializer<type>::serialize(archive, value);                \
-  }                                                                     \
-  template<> template<typename Archive, typename Value>                 \
+    {                                                                         \
+      int* n = (int*) &value.error_code;                                      \
+      archive & named("error_code", *n);                                      \
+      archive & named("error_details", value.error_details);                  \
+      return;                                                                 \
+    }                                                                         \
+    ResponseSerializer<type>::serialize(archive, value);                      \
+  }                                                                           \
+  template<> template<typename Archive, typename Value>                       \
   void elle::serialize::ResponseSerializer<type>::serialize(Archive& archive, \
-                                                            Value& value) \
-  /**/
+                                                            Value& value)     \
+/**/
 
 namespace elle
 {
@@ -90,15 +85,8 @@ SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
   ar & named("handle", res.handle);
   ar & named("public_key", res.public_key);
   ar & named("status", res.status);
+  ar & named("connected_devices", res.connected_devices);
 }
-
-// SERIALIZE_RESPONSE(plasma::meta::SwaggerResponse, ar, res)
-// {
-//   ar & named("_id", res._id);
-//   ar & named("fullname", res.fullname);
-//   ar & named("email", res.email);
-//   ar & named("public_key", res.public_key);
-// }
 
 SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
 {
@@ -157,32 +145,7 @@ SERIALIZE_RESPONSE(plasma::meta::InviteUserResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionResponse, ar, res)
 {
-  try
-  {
-    ar & named("_id", res.id);
-  }
-  catch (...)
-  {
-    ar & named("transaction_id", res.id);
-  }
-
-  ar & named("sender_id", res.sender_id);
-  ar & named("sender_fullname", res.sender_fullname);
-  ar & named("sender_device_id", res.sender_device_id);
-  ar & named("recipient_id", res.recipient_id);
-  ar & named("recipient_fullname", res.recipient_fullname);
-  ar & named("recipient_device_id", res.recipient_device_id);
-  ar & named("recipient_device_name", res.recipient_device_name);
-  ar & named("network_id", res.network_id);
-  ar & named("message", res.message);
-  ar & named("first_filename", res.first_filename);
-  ar & named("files_count", res.files_count);
-  ar & named("total_size", res.total_size);
-  ar & named("status", res.status);
-
-  DEFAULT_FILL_VALUE(ar, res, is_directory, false);
-  DEFAULT_FILL_VALUE(ar, res, timestamp, 0.0f);
-  DEFAULT_FILL_VALUE(ar, res, early_accepted, false);
+  ar & static_cast<plasma::Transaction&>(res);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::TransactionsResponse, ar, res)
@@ -573,54 +536,35 @@ namespace plasma
 
     UpdateTransactionResponse
     Client::update_transaction(std::string const& transaction_id,
-                               plasma::TransactionStatus status,
+                               plasma::TransactionStatus status) const
+    {
+      ELLE_TRACE("update %s transaction with new status %s",
+                 transaction_id,
+                 status);
+      json::Dictionary request{};
+      request["transaction_id"] = transaction_id;
+      request["status"] = (int) status;
+
+      return this->_post<UpdateTransactionResponse>("/transaction/update",
+                                                    request);
+    }
+
+    UpdateTransactionResponse
+    Client::accept_transaction(std::string const& transaction_id,
                                std::string const& device_id,
                                std::string const& device_name) const
     {
-      json::Dictionary request{std::map<std::string, std::string>
-        {
-          {"transaction_id", transaction_id},
-        }};
-
-      request["status"] = (int) status;
-      if (device_id.length() > 0)
-        request["device_id"] = device_id;
-      if (device_name.length() > 0)
-        request["device_name"] = device_name;
-
-      ELLE_DEBUG("Update '%s' transaction with device '%s'. New status '%s'",
+      ELLE_TRACE("accept %s transaction on device %s (%s)",
                  transaction_id,
                  device_name,
-                 status);
+                 device_id);
+      json::Dictionary request{};
+      request["transaction_id"] = transaction_id;
+      request["device_id"] = device_id;
+      request["device_name"] = device_name;
 
-      UpdateTransactionResponse res;
-
-      switch(status)
-      {
-        case plasma::TransactionStatus::created:
-          res = this->_post<UpdateTransactionResponse>("/transaction/fully_created", request);
-          break;
-        case plasma::TransactionStatus::accepted:
-          res = this->_post<UpdateTransactionResponse>("/transaction/accept", request);
-          break;
-        case plasma::TransactionStatus::started:
-          res = this->_post<UpdateTransactionResponse>("/transaction/start", request);
-          break;
-        case plasma::TransactionStatus::canceled:
-          res = this->_post<UpdateTransactionResponse>("/transaction/cancel", request);
-          break;
-        case plasma::TransactionStatus::finished:
-          res = this->_post<UpdateTransactionResponse>("/transaction/finish", request);
-          break;
-        case plasma::TransactionStatus::prepared:
-          res = this->_post<UpdateTransactionResponse>("/transaction/prepare", request);
-          break;
-        default:
-          ELLE_WARN("You are not able to change transaction status to '%s'.",
-            status);
-      }
-
-      return res;
+      return this->_post<UpdateTransactionResponse>("/transaction/accept",
+                                                    request);
     }
 
     TransactionResponse

@@ -1,5 +1,5 @@
-#ifndef ERROR_HH
-# define ERROR_HH
+#ifndef SURFACE_GAP_STATUS_HH
+# define SURFACE_GAP_STATUS_HH
 
 typedef enum
 {

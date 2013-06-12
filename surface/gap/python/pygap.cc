@@ -282,22 +282,11 @@ namespace
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-        wrap_call(cb)(notif.transaction.id.c_str(), is_new);
+        wrap_call(cb)(notif.id.c_str(), is_new);
     };
 
-    reinterpret_cast<surface::gap::State*>(state)->notification_manager().transaction_callback(cpp_cb);
-  }
-
-  void
-  _gap_transaction_status_callback(gap_State* state,
-                                  boost::python::object cb)
-  {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (TransactionStatusNotification const& notif, bool is_new) {
-        wrap_call(cb)(notif.transaction_id.c_str(), is_new);
-    };
-
-    reinterpret_cast<surface::gap::State*>(state)->notification_manager().transaction_status_callback(cpp_cb);
+    reinterpret_cast<surface::gap::State*>(state)
+      ->notification_manager().transaction_callback(cpp_cb);
   }
 
   void
@@ -406,11 +395,6 @@ BOOST_PYTHON_MODULE(_gap)
   );
 
   py::def(
-    "transaction_status_callback",
-    &_gap_transaction_status_callback
-  );
-
-  py::def(
     "message_callback",
     &_gap_message_callback
   );
@@ -465,6 +449,7 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transactions", &_get_transactions);
   py::def("send_files", &_send_files);
   py::def("update_transaction", &gap_update_transaction);
+  py::def("accept_transaction", &gap_accept_transaction);
   py::def("set_output_dir", &gap_set_output_dir);
   py::def("get_output_dir", &gap_get_output_dir);
   py::def("transaction_progress", &gap_transaction_progress);
@@ -479,6 +464,7 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transaction_files_count", &gap_transaction_files_count);
   py::def("transaction_total_size", &gap_transaction_total_size);
   py::def("transaction_is_directory", &gap_transaction_is_directory);
+  py::def("transaction_accepted", &gap_transaction_accepted);
   py::def("transaction_status", &gap_transaction_status);
   py::def("transaction_message", &gap_transaction_message);
 

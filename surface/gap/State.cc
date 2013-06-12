@@ -382,7 +382,8 @@ namespace surface
       return this->_notification_manager(
         [this] (NotificationManagerPtr& manager) -> NotificationManager& {
           if (manager == nullptr)
-            manager.reset(new NotificationManager{this->_meta, this->me()});
+            manager.reset(
+              new NotificationManager{this->_meta, this->me(), this->device()});
           return *manager;
         });
     }

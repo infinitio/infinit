@@ -98,14 +98,12 @@ namespace plasma
       std::string fullname;
       std::string handle;
       std::string public_key;
-      int    status;
+      bool status;
+      std::list<std::string> connected_devices;
     };
 
     struct UserResponse : User, Response
     {};
-
-    // struct SwaggerResponse : UserResponse
-    // {};
 
     struct SelfResponse : UserResponse
     {
@@ -369,9 +367,12 @@ namespace plasma
 
       UpdateTransactionResponse
       update_transaction(std::string const& transaction_id,
-                         plasma::TransactionStatus status,
-                         std::string const& device_id = "",
-                         std::string const& device_name = "") const;
+                         plasma::TransactionStatus status) const;
+
+      UpdateTransactionResponse
+      accept_transaction(std::string const& transaction_id,
+                         std::string const& device_id,
+                         std::string const& device_name) const;
 
       MessageResponse
       send_message(std::string const& recipient_id,
@@ -513,6 +514,6 @@ namespace plasma
   }
 }
 
-#include "plasma/meta/Client.hxx"
+#include "Client.hxx"
 
 #endif

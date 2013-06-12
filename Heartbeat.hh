@@ -9,7 +9,9 @@ namespace infinit
   namespace heartbeat
   {
     reactor::Thread*
-    start(reactor::network::UDPSocket& s);
+    start(reactor::network::UDPSocket& s,
+          std::string const& host,
+          int port);
   } /* heartbeat */
 } /* infinit */
 

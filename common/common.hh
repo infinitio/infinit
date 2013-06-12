@@ -159,6 +159,15 @@ namespace common
     port();
   }
 
+  namespace stun
+  {
+    std::string const&
+    host();
+
+    int
+    port();
+  }
+
   /// All resources URIs
   namespace resources
   {

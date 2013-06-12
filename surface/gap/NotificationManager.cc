@@ -4,7 +4,7 @@
 #include <elle/printf.hh>
 #include <elle/format/json.hh>
 #include <elle/format/json/Dictionary.hxx>
-#include <reactor/exception.hh>
+#include <elle/Exception.hh>
 
 #include <fstream>
 
@@ -19,12 +19,15 @@ namespace surface
     namespace json = elle::format::json;
 
     NotificationManager::NotificationManager(plasma::meta::Client& meta,
-                                             Self const& self)
-      : _meta(meta)
-      , _self(self)
+                                             Self const& self,
+                                             Device const& device):
+      _trophonius{nullptr},
+      _meta(meta),
+      _self(self),
+      _device(device)
     {
       ELLE_TRACE_METHOD("");
-      this->_connect(_self.id, meta.token());
+      this->_connect();
     }
 
     NotificationManager::~NotificationManager()
@@ -46,18 +49,15 @@ namespace surface
     //    - if it's not: we start it TODO
     //  - We use common::trophonius::{port, host} if the file is not there
     void
-    NotificationManager::_connect(std::string const& id,
-                                  std::string const& token)
+    NotificationManager::_connect()
     {
-      ELLE_TRACE_FUNCTION(id, token);
-
       ELLE_ASSERT_EQ(this->_trophonius, nullptr);
 
       try
       {
         uint16_t port;
         std::string port_file_path = elle::os::path::join(
-            common::infinit::user_directory(_self.id),
+            common::infinit::user_directory(this->_self.id),
             "erginus.sock");
 
         if (elle::os::path::exists(port_file_path))
@@ -71,20 +71,20 @@ namespace surface
             file >> port;
             ELLE_DEBUG("erginus port is %s", port);
             this->_trophonius.reset(
-              new plasma::trophonius::Client{"localhost",
-                  port,
-                  true
-                  }
-              );
+              new plasma::trophonius::Client{
+                "localhost",
+                port,
+                std::bind(&NotificationManager::_on_trophonius_connected, this),
+              });
+            ELLE_DEBUG("successfully connected to erginus");
           }
-          ELLE_DEBUG("successfully connected to erginus");
           return ;
         }
         ELLE_DEBUG("erginus port file not found");
       }
       catch (std::runtime_error const& err)
       {
-        ELLE_DEBUG("couldn't connect to erginus");
+        ELLE_DEBUG("couldn't connect to erginus: %s", err.what());
       }
 
       try
@@ -93,18 +93,24 @@ namespace surface
           new plasma::trophonius::Client{
             common::trophonius::host(),
             common::trophonius::port(),
-            true,
-          }
-        );
+            std::bind(&NotificationManager::_on_trophonius_connected, this),
+          });
       }
-      catch (std::runtime_error const& err)
+      catch (...)
       {
-        throw NotificationManager::Exception(gap_error,
-                                             "Couldn't connect to trophonius");
+        std::string err = elle::sprint("couldn't connect to trophonius:",
+                                       elle::exception_string());
+        ELLE_ERR("%s", err);
+        throw Exception{gap_error, err};
       }
-      this->_trophonius->connect(id, token);
+      ELLE_LOG("trying to connect to tropho: id = %s token = %s device_id = %s",
+               this->_self.id,
+               this->_meta.token(),
+               this->_device.id);
+      this->_trophonius->connect(this->_self.id,
+                                 this->_meta.token(),
+                                 this->_device.id);
 
-      ELLE_LOG("Connect to trophonius: id:<%s> and token:<%s>", id, token);
     }
 
     void
@@ -112,6 +118,13 @@ namespace surface
     {
       if (this->_trophonius == nullptr)
         throw Exception{gap_error, "Trophonius is not connected"};
+    }
+
+    void
+    NotificationManager::_on_trophonius_connected()
+    {
+      ELLE_LOG("Successfully reconnected to trophonius");
+      this->pull(-1, 0, true);
     }
 
     size_t
@@ -131,20 +144,12 @@ namespace surface
 
           if (!notif)
             break;
+
           // Try to retrieve Transaction ID if possible
+          if (notif->notification_type == NotificationType::transaction)
           {
-            if (notif->notification_type ==
-                NotificationType::transaction_status)
-            {
-              auto ptr =
-                static_cast<TransactionStatusNotification*>(notif.get());
-              transaction_id = ptr->transaction_id;
-            }
-            else if (notif->notification_type == NotificationType::transaction)
-            {
-              auto ptr = static_cast<TransactionNotification*>(notif.get());
-              transaction_id = ptr->transaction.id;
-            }
+            auto ptr = static_cast<TransactionNotification*>(notif.get());
+            transaction_id = ptr->id;
           }
 
           this->_handle_notification(*notif);
@@ -155,145 +160,18 @@ namespace surface
       }
       catch (...)
       {
-        if (notif)
-        {
-          ELLE_WARN("poll: %s %s",
-                    notif->notification_type,
-                    elle::exception_string());
-          this->_call_error_handlers(gap_error,
-                                     elle::sprintf("%s: %s",
-                                                   notif->notification_type,
-                                                   elle::exception_string()),
-                                     transaction_id);
-        }
-        else
-        {
-          ELLE_WARN("poll: unknown %s", elle::exception_string());
-          this->_call_error_handlers(gap_error,
-                                     elle::sprintf("unknown: %s",
-                                                   elle::exception_string()),
-                                     transaction_id);
-        }
+        std::string error = elle::sprintf(
+          "%s: %s",
+          (
+            notif != nullptr ?
+            elle::sprint(notif->notification_type) :
+            "no notification available"
+          ),
+          elle::exception_string());
+        ELLE_ERR("got error while polling: %s", error);
+        this->_call_error_handlers(gap_unknown, error, transaction_id);
       }
-
       return count;
-    }
-
-    static
-    std::unique_ptr<Notification>
-    _xxx_dict_to_notification(json::Dictionary const& d)
-    {
-      std::unique_ptr<Notification> res;
-      NotificationType notification_type =
-        (NotificationType) d["notification_type"].as_integer().value();
-
-      std::unique_ptr<UserStatusNotification> user_status{
-          new UserStatusNotification
-      };
-
-      std::unique_ptr<TransactionNotification> transaction{
-          new TransactionNotification
-      };
-      std::unique_ptr<TransactionStatusNotification> transaction_status{
-          new TransactionStatusNotification
-      };
-      std::unique_ptr<MessageNotification> message{
-          new MessageNotification
-      };
-
-      switch (notification_type)
-        {
-        case NotificationType::user_status:
-          user_status->user_id = d["user_id"].as_string();
-          user_status->status = d["status"].as_integer();
-          res = std::move(user_status);
-          break;
-
-        case NotificationType::transaction:
-
-#define GET_TR_FIELD_RENAME_DEFAULT(_if_, _of_, _type_, _default_)             \
-          try                                                                  \
-          {                                                                    \
-            ELLE_DEBUG("get transaction field " #_if_);                        \
-            transaction->transaction._of_ = d[#_if_].as_ ## _type_ ();         \
-          }                                                                    \
-          catch (...)                                                          \
-          {                                                                    \
-            ELLE_ERR("couldn't get field " #_if_ " default: %s", _default_);   \
-            transaction->transaction._of_ = _default_;                         \
-          }                                                                    \
-
-#define GET_TR_FIELD_RENAME(_if_, _of_, _type_)                                \
-          try                                                                  \
-          {                                                                    \
-            ELLE_DEBUG("get transaction field " #_if_);                        \
-            transaction->transaction._of_ = d[#_if_].as_ ## _type_ ();         \
-          }                                                                    \
-          catch (...)                                                          \
-          {                                                                    \
-            ELLE_ERR("couldn't get field " #_if_);                             \
-          }                                                                    \
-
-#define GET_TR_FIELD(_f_, _type_)                                              \
-          GET_TR_FIELD_RENAME(_f_, _f_, _type_)
-
-#define GET_TR_FIELD_DEFAULT(_f_, _type_, _default_)                           \
-          GET_TR_FIELD_RENAME_DEFAULT(_f_, _f_, _type_, _default_)
-
-          try
-          {
-            transaction->transaction.id = d["_id"].as_string();
-          }
-          catch (...)
-          {
-            transaction->transaction.id =
-              d["transaction_id"].as_string();
-          }
-
-          GET_TR_FIELD(sender_id, string);
-          GET_TR_FIELD(sender_fullname, string);
-          GET_TR_FIELD(sender_device_id, string);
-          GET_TR_FIELD(recipient_id, string);
-          GET_TR_FIELD(recipient_fullname, string);
-          GET_TR_FIELD(recipient_device_id, string);
-          GET_TR_FIELD(recipient_device_name, string);
-          GET_TR_FIELD(network_id, string);
-          GET_TR_FIELD(message, string);
-          GET_TR_FIELD(first_filename, string);
-          GET_TR_FIELD(files_count, integer);
-          GET_TR_FIELD(total_size, integer);
-          GET_TR_FIELD_DEFAULT(timestamp, float, 0.0f);
-          GET_TR_FIELD_DEFAULT(is_directory, bool, false);
-          GET_TR_FIELD_DEFAULT(early_accepted, bool, false);
-          GET_TR_FIELD(status, integer);
-          // GET_TR_FIELD(already_accepted, integer);
-          // GET_TR_FIELD(early_accepted, integer);
-          res = std::move(transaction);
-          break;
-
-        case NotificationType::transaction_status:
-          transaction_status->transaction_id = d["transaction_id"].as_string();
-          transaction_status->status = d["status"].as_integer();
-          res = std::move(transaction_status);
-          break;
-
-        case NotificationType::message:
-          message->sender_id = d["sender_id"].as_string();
-          message->message = d["message"].as_string();
-          res = std::move(message);
-          break;
-
-        case NotificationType::connection_enabled:
-          res.reset(new Notification);
-          break;
-
-        default:
-          throw elle::Exception{
-              elle::sprintf("Unknown notification type %s", notification_type)
-          };
-        }
-      res->notification_type = notification_type;
-      return res;
     }
 
     void
@@ -331,25 +209,15 @@ namespace surface
 
       try
       {
-        this->_handle_notification(*_xxx_dict_to_notification(dict), new_);
-      }
-      catch (std::bad_cast const&)
-      {
-        ELLE_ERR("couldn't cast: %s", dict.repr());
-      }
-      catch (std::ios_base::failure const&)
-      {
-        ELLE_ERR("ios failure: %s", dict.repr());
-      }
-      catch (std::exception const& e)
-      {
-        ELLE_ERR("exception: %s: %s", dict.repr(), e.what());
+        this->_handle_notification(
+          *plasma::trophonius::notification_from_dict(dict), new_);
       }
       catch (...)
       {
-        ELLE_ERR("couldn't handle: %s", dict.repr());
+        ELLE_ERR("couldn't handle notification: %s: %s",
+                 dict.repr(),
+                 elle::exception_string());
       }
-
       ELLE_DEBUG("End of notification pull");
     }
 
@@ -408,20 +276,6 @@ namespace surface
     }
 
     void
-    NotificationManager::transaction_status_callback(
-      TransactionStatusNotificationCallback const& cb)
-    {
-      auto fn = [cb] (Notification const& notif, bool is_new) -> void {
-        return cb(static_cast<TransactionStatusNotification const&>(notif),
-                  is_new);
-      };
-
-      using Type = NotificationType;
-      this->_notification_handlers[Type::transaction_status]
-        .push_back(fn);
-    }
-
-    void
     NotificationManager::message_callback(MessageNotificationCallback const& cb)
     {
       auto fn = [cb] (Notification const& notif, bool) -> void {
@@ -457,28 +311,16 @@ namespace surface
     {
       this->_check_trophonius();
 
-      try
-      {
-        for (auto const& c: this->_error_handlers)
+      for (auto const& c: this->_error_handlers)
+        try
         {
-          c(status, s, tid);
+            c(status, s, tid);
         }
-      }
-      catch (surface::gap::Exception const& e)
-      {
-        ELLE_WARN("error handlers: %s", e.what());
-      }
-      catch (elle::Exception const& e)
-      {
-        ELLE_WARN("error handlers: %s", e.what());
-        auto bt = e.backtrace();
-        for (auto const& f: bt)
-          ELLE_WARN("%s", f);
-      }
-      catch (...)
-      {
-        ELLE_ERR("error handlers: unknown error");
-      }
+        catch (...)
+        {
+          ELLE_ERR("error handler threw an error: %s",
+                   elle::exception_string());
+        }
     }
 
     Notifiable::Notifiable(NotificationManager& notification_manager):

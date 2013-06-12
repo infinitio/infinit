@@ -47,12 +47,26 @@ parser.add_argument(
     default = meta.conf.LONGINUS_PORT,
 )
 
+parser.add_argument(
+    '--heartbeat-port',
+    type = int,
+    default = meta.conf.HEARTBEAT_PORT,
+)
+
+parser.add_argument(
+    '--stun-port',
+    type = int,
+    default = meta.conf.STUN_PORT,
+)
+
 DIR = os.path.abspath(os.path.dirname(__file__))
 
 META_BIN = os.path.join(DIR, 'meta-server')
 APERTUS_BIN = os.path.join(DIR, 'apertus-server')
 TROPHONIUS_BIN = os.path.join(DIR, 'trophonius-server')
 LONGINUS_BIN = os.path.join(DIR, 'longinus-server')
+HEARTBEAT_BIN = os.path.join(DIR, 'heartbeat-server')
+STUN_BIN = os.path.join(DIR, 'stun-server')
 
 def main(argv):
     args = parser.parse_args(argv)
@@ -83,9 +97,26 @@ def main(argv):
                 '--control-port', str(args.apertus_control_port)
             ])
         )
+        processes.append(
+            subprocess.Popen([
+                HEARTBEAT_BIN,
+                '--port', str(args.heartbeat_port)
+            ]) 
+        )
+        processes.append(
+            subprocess.Popen([
+                STUN_BIN,
+                '--primaryport', str(args.stun_port),
+                '--mode', 'full'
+            ]) 
+        )
+
         print("INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port)
         print("INFINIT_META_PORT=%s" % args.meta_port)
         print("INFINIT_LONGINUS_PORT=%s" % args.longinus_port)
+        print("INFINIT_HEARTBEAT_PORT=%s" % args.heartbeat_port)
+        print("INFINIT_STUN_PORT=%s" % args.stun_port)
+
         running = True
         while running:
             for p in processes:
