@@ -6,6 +6,7 @@
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
 #include <elle/os/getenv.hh>
+#include <elle/os/path.hh>
 #include <common/common.hh>
 #include <satellites/satellite.hh>
 #include <CrashReporter.hh>
@@ -88,15 +89,19 @@ namespace infinit
 #if defined WCOREDUMP
       if (WCOREDUMP(status))
       {
+        std::string core_path;
+        if (elle::os::path::exists("core"))
+          core_path = "core";
+        else if (elle::os::path::exists(elle::sprintf("/cores/core.%d", pid)))
+          core_path = elle::sprintf("/cores/core.%d", pid);
+        else if (elle::os::path::exists(elle::sprintf("core.%d", pid)))
+          core_path = elle::sprintf("core.%d", pid);
+
         ELLE_LOG("%s[%d]: core dumped", name, pid);
         ss <<
           elle::system::check_output("gdb",
                                      "-e", common::infinit::binary_path(name),
-#if defined INFINIT_LINUX
-                                     "-c", "core",
-#elif defined INFINIT_MACOSX
-                                     "-c", elle::sprintf("/cores/core.%d", pid),
-#endif
+                                     "-c", core_path,
                                      "-s", common::infinit::binary_path(name),
                                      "-x", common::infinit::binary_path("gdbmacro.py"));
         std::ofstream debuginfo{
