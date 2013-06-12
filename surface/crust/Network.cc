@@ -39,92 +39,51 @@
 ELLE_LOG_COMPONENT("infinit.crust.Network");
 
 static
-plasma::meta::Client
+plasma::meta::Client const&
 meta(std::string const& host,
      uint16_t port,
      std::string const& token)
 {
-  return plasma::meta::Client(host, port, true, token);
+  static std::string last_host = host;
+  static uint16_t last_port = port;
+  static std::string last_token = token;
+  static std::unique_ptr<plasma::meta::Client> client;
+
+  if (!client || last_host != host || last_port != port || last_token != token)
+  {
+    ELLE_TRACE("creating a new meta: %s %s %s", host, port, token);
+    client.reset(new plasma::meta::Client(host, port, true, token));
+  }
+
+  ELLE_ASSERT_NEQ(client, nullptr);
+  return *client;
 }
 
-class Blocks
-{
-public:
-  Blocks(nucleus::proton::Address&& group_address,
-         std::vector<std::unique_ptr<nucleus::proton::Block>>&& blocks,
-         std::unique_ptr<nucleus::neutron::Object>&& directory,
-         nucleus::proton::Address&& directory_address):
-    _group_address(std::move(group_address)),
-    blocks(std::move(blocks)),
-    directory(std::move(directory)),
-    _directory_address(std::move(directory_address))
-  {}
-
-  ELLE_ATTRIBUTE_R(nucleus::proton::Address, group_address);
-  std::vector<std::unique_ptr<nucleus::proton::Block>> blocks;
-  std::unique_ptr<nucleus::neutron::Object> directory;
-  ELLE_ATTRIBUTE_R(nucleus::proton::Address, directory_address);
-};
-
 static
-std::pair<std::vector<std::unique_ptr<nucleus::proton::Block>>,
-          nucleus::proton::Address>
-create_groups(nucleus::proton::Network const& network,
-              cryptography::KeyPair const& key_pair)
+std::unique_ptr<nucleus::neutron::Group>
+create_group(nucleus::proton::Network const& network,
+             cryptography::KeyPair const& key_pair)
 {
   ELLE_TRACE_FUNCTION(network, key_pair);
 
   ELLE_DEBUG("create group from key '%s' and network '%s'", key_pair, network);
-  nucleus::neutron::Group group(network, key_pair.K(), "everybody");
+  std::unique_ptr<nucleus::neutron::Group> group(
+    new nucleus::neutron::Group(network, key_pair.K(), "everybody"));
 
-  ELLE_DEBUG("seal group '%s'", group);
-  group.seal(key_pair.k());
+  ELLE_DEBUG("seal group '%s'", *group);
+  group->seal(key_pair.k());
 
-  nucleus::proton::Address address(group.bind());
-  // Store the content blocks in a main memory storage.
-  //
-  // Ok for now, there is a single one but this is just to illustrate the logic
-  // behind the process.
-  hole::storage::Memory storage(network);
-  storage.store(address, group);
-
-  // Iterate over the storage and convert the string-based representations into
-  // a vector of blocks.
-  std::vector<std::unique_ptr<nucleus::proton::Block>> blocks;
-
-  for (auto const& pair: storage.container())
-  {
-    nucleus::Derivable derivable;
-
-    elle::serialize::from_string(pair.second) >> derivable;
-
-    blocks.push_back(std::move(derivable.release()));
-  }
-
-  return std::make_pair(std::move(blocks), address);
+  return group;
 }
 
 static
-std::pair<std::vector<std::unique_ptr<nucleus::proton::Block>>,
-          nucleus::proton::Address>
-create_groups(std::string const& uid,
-              cryptography::KeyPair const& key_pair)
-{
-  return create_groups(nucleus::proton::Network(uid),
-                       key_pair);
-}
-
-static
-std::pair<std::unique_ptr<nucleus::neutron::Object>, nucleus::proton::Address>
-create_root(std::string const& uid,
+std::unique_ptr<nucleus::neutron::Object>
+create_root(nucleus::proton::Network const& network,
             horizon::Policy policy,
             cryptography::KeyPair const& key_pair,
             nucleus::proton::Address const& group_address)
 {
-  ELLE_TRACE_FUNCTION(uid, policy, key_pair, group_address);
-
-  ELLE_DEBUG("network with uid '%s'", uid);
-  nucleus::proton::Network network(uid);
+  ELLE_TRACE_FUNCTION(network, policy, key_pair, group_address);
 
   ELLE_DEBUG("nest with network '%s' and key '%s'", network, key_pair);
   // XXX[we should use a null nest in this case because no block should be loaded/unloded]
@@ -206,50 +165,21 @@ create_root(std::string const& uid,
     nucleus::neutron::access::fingerprint(access);
 
   ELLE_DEBUG("directory from network '%s' and key '%s'", network, key_pair);
-  nucleus::neutron::Object directory(network,
-                                     key_pair.K(),
-                                     nucleus::neutron::Genre::directory);
+  std::unique_ptr<nucleus::neutron::Object> directory(
+    new nucleus::neutron::Object(network,
+                                 key_pair.K(),
+                                 nucleus::neutron::Genre::directory));
 
   ELLE_DEBUG("update directory");
-  if (directory.Update(directory.author(),
-                       directory.contents(),
-                       directory.size(),
-                       *access_radix,
-                       directory.owner_token()) == elle::Status::Error)
+  if (directory->Update(directory->author(),
+                        directory->contents(),
+                        directory->size(),
+                        *access_radix,
+                        directory->owner_token()) == elle::Status::Error)
     throw elle::Exception("unable to update the object");
-  if (directory.Seal(key_pair.k(), fingerprint) == elle::Status::Error)
+  if (directory->Seal(key_pair.k(), fingerprint) == elle::Status::Error)
     throw elle::Exception("unable to seal the object");
-
-  ELLE_DEBUG("return blocks");
-  return std::make_pair(std::unique_ptr<nucleus::neutron::Object>(new nucleus::neutron::Object(directory)), // XXX: move?
-                        nucleus::proton::Address(directory.bind()));
-}
-
-static
-std::pair<std::unique_ptr<nucleus::neutron::Object>, nucleus::proton::Address>
-create_root(std::string const& uid,
-            cryptography::KeyPair const& key_pair,
-            horizon::Policy policy)
-{
-  return create_root(uid,
-                     policy,
-                     key_pair,
-                     create_groups(uid, key_pair).second);
-}
-
-static
-Blocks
-_blocks(std::string const& uid,
-        horizon::Policy policy,
-        cryptography::KeyPair const& key_pair)
-{
-  auto group = create_groups(uid, key_pair);
-  auto root = create_root(uid, key_pair, policy);
-
-  return Blocks(std::move(group.second),
-                std::move(group.first),
-                std::move(root.first),
-                std::move(root.second));
+  return directory;
 }
 
 Network::Network(std::string const& name,
@@ -259,37 +189,70 @@ Network::Network(std::string const& name,
                  horizon::Policy const& policy,
                  Authority const& authority)
 {
+  ELLE_TRACE_METHOD(name, model, openness, policy);
+
   std::string uid = elle::format::hexadecimal::encode(
     cryptography::random::generate<elle::Buffer>(64));
 
-  // Create both root and group address.
-  auto blocks = _blocks(uid, policy, keypair);
+  ELLE_DEBUG("network uid: '%s'", uid);
+  nucleus::proton::Network network(uid);
 
-  descriptor::Meta meta(uid,
-                        keypair.K(),
-                        model,
-                        std::move(blocks.directory_address()),
-                        std::move(blocks.directory),
-                        std::move(blocks.group_address()),
-                        false,
-                        1048576,
-                        keypair.k());
+  ELLE_DEBUG("group from '%s' and '%s'", network, keypair);
+  auto group = create_group(network, keypair);
+  ELLE_DEBUG("group address for '%s'", *group);
+  nucleus::proton::Address group_address(group->bind());
+
+  // Store the content blocks in a main memory storage.
+  //
+  // Ok for now, there is a single one but this is just to illustrate the logic
+  // behind the process.
+  ELLE_DEBUG("memory storage from '%s'", network);
+  hole::storage::Memory storage(network);
+  ELLE_DEBUG("store group '%s' and '%s'", group_address, *group);
+  storage.store(group_address, *group);
+
+  // Iterate over the storage and convert the string-based representations into
+  // a vector of blocks.
+  std::vector<std::unique_ptr<nucleus::proton::Block>> blocks;
+  ELLE_DEBUG("storage: %s, container: %s", storage, storage.container());
+  for (auto const& pair: storage.container())
+  {
+    nucleus::Derivable derivable;
+
+    elle::serialize::from_string(pair.second) >> derivable;
+
+    blocks.push_back(std::move(derivable.release()));
+  }
+
+  std::unique_ptr<nucleus::neutron::Object> directory(
+    std::move(create_root(network, policy, keypair, group_address)));
+  nucleus::proton::Address directory_address(directory->bind());
 
   elle::Version version(INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
+  {
+    // Create the descriptor from both sections and store it.
+    auto meta = descriptor::Meta(uid,
+                                 keypair.K(),
+                                 model,
+                                 std::move(directory_address),
+                                 std::move(directory),
+                                 std::move(group_address),
+                                 false,
+                                 1048576,
+                                 keypair.k());
 
-  descriptor::Data data(name,
-                        openness,
-                        policy,
-                        std::move(blocks.blocks),
-                        {},
-                        version,
-                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0, 0,
-                        keypair.k());
-
-  // Create the descriptor from both sections and store it.
-  this->_descriptor.reset(new infinit::Descriptor(std::move(meta),
-                                                  std::move(data)));
+    auto data = descriptor::Data(name,
+                                 openness,
+                                 policy,
+                                 std::move(blocks),
+                                 {},
+                                 version,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                 keypair.k());
+    this->_descriptor.reset(
+      new infinit::Descriptor{std::move(meta), std::move(data)});
+  }
 }
 
 Network::Network(std::string const& name,
@@ -329,6 +292,7 @@ Network::Network(boost::filesystem::path const& descriptor_path)
   this->_descriptor.reset(
     new infinit::Descriptor(
       elle::serialize::from_file(descriptor_path.string())));
+  this->_descriptor_path = descriptor_path;
 }
 
 Network::Network(std::string const& id,
@@ -342,20 +306,33 @@ Network::Network(std::string const& id,
   this->_descriptor.reset(new infinit::Descriptor(from_string<InputBase64Archive>(descriptor)));
 }
 
-
 void
-Network::store(std::string const& descriptor_path) const
+Network::store(boost::filesystem::path const& descriptor_path,
+               bool overwrite) const
 {
+  ELLE_TRACE_METHOD(descriptor_path);
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
 
-  elle::serialize::to_file(descriptor_path);
+  if (!overwrite && boost::filesystem::exists(descriptor_path))
+    throw elle::Exception(elle::sprintf("File %s already exists",
+                                        descriptor_path));
+
+  elle::serialize::to_file(descriptor_path.string());
+  this->_descriptor_path = descriptor_path;
 }
 
 void
-Network::delete_(std::string const& descriptor_path)
+Network::erase(boost::filesystem::path const& descriptor_path)
 {
+  ELLE_TRACE_METHOD(descriptor_path);
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
-  // rm.
+
+  if (!this->_descriptor_path.empty() && descriptor_path.empty())
+    boost::filesystem::remove(this->_descriptor_path);
+  else if (!descriptor_path.empty())
+    boost::filesystem::remove(descriptor_path);
+  else
+    throw elle::Exception("No path given");
 }
 
 void
@@ -433,7 +410,6 @@ Network::list(std::string const& path_str,
     }
     else
     {
-      std::cerr << itr->path() << std::endl;
       if (itr->path().extension() == ".dsc" && Network::validate(itr->path().string()))
         dsc.push_back(itr->path().string());
     }
@@ -450,3 +426,11 @@ Network::list(plasma::meta::Client::DescriptorList const& list,
 {
   return meta(host, port, token).descriptor_list(list).descriptors;
 }
+
+// std::vector<plasma::meta::Descriptor>
+// descriptors(plasma::meta::Client::DescriptorList const& list,
+//             std::string const& host = common::meta::host(),
+//             uint16_t port = common::meta::port(),
+//             std::string const& token = common::meta::token())
+// {
+// }

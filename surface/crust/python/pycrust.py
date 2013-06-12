@@ -1,5 +1,6 @@
 import _crust
 from os import getenv
+
 class MetaData():
   @property
   def host(self):
@@ -17,18 +18,23 @@ class MetaData():
         return token_file.readline()
     return ""
 
-metadata = MetaData()
-
 class Network(_crust._Network):
+  __hostdata__ = MetaData()
+
   # Properties
-  properties = (
+  __properties__ = (
     "identifier",
     "administrator_K",
     "model",
     "root",
     "everybody_identity",
     "history",
-    "extent"
+    "extent",
+
+    "name",
+    "openness",
+    "policy",
+    "version",
   )
 
   # Forward all the arguments to _Network contructor.
@@ -41,13 +47,9 @@ class Network(_crust._Network):
   def store(self, path):
     self._store(path)
 
-  # Store the descriptor on the given remote.
-  def store(self, host = metadata.host, port = metadata.port, token = metadata.token):
-    self._store(host, port, token)
-
   # Delete the descriptor to the given path.
-  def delete(self, path):
-    self._delete(path)
+  def erase(self, path):
+    self._erase(path)
 
   # Mount the descritor to the given folder.
   def mount(self, path):
@@ -55,13 +57,13 @@ class Network(_crust._Network):
 
   # Unmount the descritor to the given folder.
   def unmount(self, path):
-    self._mount(path)
+    self._unmount(path)
 
-  # Publish the descriptor to the network.
+  # Store the descriptor on the given remote.
   def publish(self,
-              host = metadata.host,
-              port = metadata.port,
-              token = metadata.token):
+              host = __hostdata__.host,
+              port = __hostdata__.port,
+              token = __hostdata__.token):
     self._publish(host, port, token)
 
   # Unpublish the descriptor to the network.
@@ -71,9 +73,12 @@ class Network(_crust._Network):
                 token = metadata.token):
     self._unpublish(host, port, token)
 
+  # List the local descriptors.
+  @staticmethod
   def list(path):
     return _crust.list(path)
 
+  @staticmethod
   def list(filter_,
            host = metadata.host,
            port = metadata.port,

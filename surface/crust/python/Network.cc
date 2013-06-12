@@ -1,14 +1,12 @@
 #include <wrappers/boost/python.hh>
 #include <surface/crust/Network.hh>
 
-//static _list(Args&&... args)
 template <typename... Args>
 boost::python::object
 _list(Args const&... args)
 {
   boost::python::list networks_;
 
-  // XXX: No move, no forward.
   for (auto const& net: Network::list(args...))
     networks_.append(boost::python::str(net));
 
@@ -26,6 +24,7 @@ BOOST_PYTHON_MODULE(_crust)
     .value("mine", plasma::meta::Client::DescriptorList::mine)
     .value("other", plasma::meta::Client::DescriptorList::other)
   ;
+
   py::class_<Network, boost::noncopyable>(
     "_Network",
     // Constructor with name, user, passphrase, model, policy, opennes.
@@ -54,7 +53,7 @@ BOOST_PYTHON_MODULE(_crust)
     // Store the descriptor to the given path.
     .def("_store", &Network::store)
     // Delete the given descriptor. (rm descriptor).
-    .def("_delete", &Network::delete_)
+    .def("_erase", &Network::erase)
     //
     .def("_mount", &Network::mount)
     //
@@ -71,6 +70,10 @@ BOOST_PYTHON_MODULE(_crust)
     .add_property("_history", py::make_function(&Network::history, by_value()))
     .add_property("_extent", py::make_function(&Network::extent, by_value()))
 
+    .add_property("_name", py::make_function(&Network::name, by_value()))
+    .add_property("_openness", py::make_function(&Network::openness, by_value()))
+    .add_property("_policy", py::make_function(&Network::policy, by_value()))
+    .add_property("_version", py::make_function(&Network::version, by_value()))
   ;
   // List local descriptor from a given path.
   py::def("list", &_list<std::string const&>);

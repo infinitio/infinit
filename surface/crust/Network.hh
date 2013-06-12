@@ -22,6 +22,7 @@
 class Network
 {
   ELLE_ATTRIBUTE(std::unique_ptr<infinit::Descriptor>, descriptor);
+  ELLE_ATTRIBUTE_P(boost::filesystem::path, descriptor_path, mutable);
 public:
   static
   bool
@@ -46,6 +47,7 @@ public:
   | Construction |
   `-------------*/
   /// Main constructor.
+  explicit
   Network(std::string const& name,
           cryptography::KeyPair const& keypair,
           const hole::Model& model,
@@ -54,29 +56,33 @@ public:
           infinit::Authority const& authority);
 
   /// Constructor with identity_path and passphrase.
+  explicit
   Network(std::string const& name,
           std::string const& identity_path,
           std::string const& identity_passphrase,
           const hole::Model& model = hole::Model(hole::Model::Type::TypeSlug),
           hole::Openness const& openness = hole::Openness::open,
-          horizon::Policy const& policy = horizon::Policy::editable,
+          horizon::Policy const& policy = horizon::Policy::accessible,
           infinit::Authority const& authority = infinit::MetaAuthority{});
 
   /// String only constructor to make python binding easier.
+  explicit
   Network(std::string const& name,
           std::string const& identity_path,
-          std::string const& passphrase,
+          std::string const& identity_passphrase,
           std::string const& model = "slug",
           std::string const& openness = "open",
-          std::string const& policy = "editable",
+          std::string const& policy = "accessible",
           infinit::Authority const& authority = infinit::MetaAuthority{});
 
   /// Load constructor, using local descriptor.
+  explicit
   Network(boost::filesystem::path const& descriptor_path);
 
   /// Load constructor, using descriptor from remote meta.
   // XXX: Should I put a dependencie to common by setting default value for meta
   // host and port?
+  explicit
   Network(std::string const& id,
           std::string const& host = common::meta::host(),
           uint16_t port = common::meta::port(),
@@ -87,11 +93,12 @@ public:
   `------*/
   /// Store descriptor localy.
   void
-  store(std::string const& descriptor_path) const;
+  store(boost::filesystem::path const& descriptor_path,
+        bool overwrite = false) const;
 
   /// Delete local descritor.
   void
-  delete_(std::string const& descriptor_path);
+  erase(boost::filesystem::path const& descriptor_path = "");
 
   /// Mount.
   void
@@ -131,13 +138,23 @@ public:
   list(std::string const& path,
        bool verify = true);
 
-  /// Get the list of descriptor stored on the network.
+  /// Get the list of descriptor id stored on the network.
   static
   std::vector<std::string>
   list(plasma::meta::Client::DescriptorList const& list,
        std::string const& host = common::meta::host(),
        uint16_t port = common::meta::port(),
        std::string const& token = common::meta::token());
+
+  /// Get the list of descriptor stored on the network.
+  // XXX: This should return a list of Descriptor data, and the wrapper would
+  // be able to create py::Object* representing networks.
+  // static
+  // std::vector<plasma::meta::Descriptor>
+  // descriptors(plasma::meta::Client::DescriptorList const& list,
+  //             std::string const& host = common::meta::host(),
+  //             uint16_t port = common::meta::port(),
+  //             std::string const& token = common::meta::token());
 
   /*--------.
   | Members |
@@ -165,6 +182,10 @@ public:
   WRAP_META_DESCRIPTOR(elle::Boolean, history);
   WRAP_META_DESCRIPTOR(elle::Natural32, extent);
 
+  WRAP_DATA_DESCRIPTOR(elle::String, name);
+  WRAP_DATA_DESCRIPTOR(hole::Openness, openness);
+  WRAP_DATA_DESCRIPTOR(horizon::Policy, policy);
+  WRAP_DATA_DESCRIPTOR(elle::Version, version);
 
 #undef WRAP_DESCRIPTOR
 
