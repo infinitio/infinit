@@ -1,0 +1,53 @@
+import drake
+import drake.cxx
+
+config = None
+infinit_dynamic = None
+infinit_static = None
+rule_check = None
+rule_tests = None
+
+def configure(cxx_toolkit = None,
+              cxx_config = None,
+              boost = None,
+              elle = None,
+              prefix = '/usr'):
+
+  global config
+  global infinit_dynamic, infinit_static
+
+  prefix = drake.Path(prefix)
+  if not prefix.absolute():
+    prefix = drake.Path('..') / prefix
+
+  cxx_config = drake.cxx.Config(cxx_config)
+  cxx_config.export_dynamic = True
+  cxx_config.warnings.parentheses = False
+  cxx_config.warnings.empty_body = False
+
+  infinit = drake.include('infinit',
+                          cxx_toolkit = cxx_toolkit,
+                          cxx_config = cxx_config,
+                          boost = boost,
+                          elle = elle,
+                          prefix = prefix)
+
+  config = drake.cxx.Config()
+  config += infinit.config
+
+  infinit_dynamic = infinit.lib_dynamic
+  infinit_static = infinit.lib_static
+
+  build = drake.Rule('build')
+  build << infinit.rule_build
+
+  global rule_tests
+  rule_tests = drake.Rule('tests')
+  rule_tests << infinit.rule_tests
+
+  global rule_check
+  rule_check = drake.Rule('check')
+  rule_check << infinit.rule_check
+
+  install = drake.Rule('install')
+  install << infinit.rule_install

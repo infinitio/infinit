@@ -1,0 +1,97 @@
+import drake
+import drake.cxx
+import drake.cxx.boost
+
+config = None
+lib_static = None
+lib_dynamic = None
+
+rule_build = None
+rule_check = None
+rule_install = None
+rule_tests = None
+
+def configure(cxx_toolkit = None,
+              cxx_config = None,
+              boost = None,
+              elle = None,
+              prefix = '/usr'):
+
+  global config, lib_static, lib_dynamic, rule_build, rule_install
+
+  # Toolkit
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+
+  # Libraries
+  boost = boost or drake.cxx.boost.Boost()
+  elle = drake.cxx.find_library('elle/elle.hh', elle)
+
+  # Global Configuration
+  config = drake.cxx.Config()
+  config.standard = drake.cxx.Config.cxx_11
+  config.add_local_include_path('sources')
+  config.lib_path('lib')
+
+  # Local Configuration
+  cxx_config = cxx_config or drake.cxx.Config()
+  cxx_config.standard = drake.cxx.Config.cxx_11
+  cxx_config += config
+  cxx_config += boost.config()
+  cxx_config += boost.config_system()
+  cxx_config += elle.config
+  cxx_config.lib_path_runtime('.')
+
+  # Sources
+  sources = drake.nodes(
+    'sources/infinit/Descriptor.cc',
+    'sources/infinit/Descriptor.hh',
+    'sources/infinit/Descriptor.hxx',
+    'sources/infinit/Exception.hh',
+    'sources/infinit/Exception.cc',
+    'sources/infinit/Identity.cc',
+    'sources/infinit/Identity.hh',
+    'sources/infinit/Identity.hxx',
+    'sources/infinit/fwd.hh',
+    )
+
+  lib_static = drake.cxx.StaticLib('lib/infinit', sources, cxx_toolkit, cxx_config)
+  lib_dynamic = drake.cxx.DynLib('lib/infinit', sources, cxx_toolkit, cxx_config)
+
+  # Build
+  rule_build = drake.Rule('build')
+  rule_build << lib_static
+  rule_build << lib_dynamic
+
+  # Tests
+  tests = [
+# XXX
+     ]
+
+  tests_cxx_config = drake.cxx.Config(cxx_config)
+  tests_cxx_config += config
+  tests_cxx_config += boost.config()
+  tests_cxx_config += boost.config_test()
+  tests_cxx_config += elle.config
+
+  global rule_check, rule_tests
+  rule_check = drake.Rule('check')
+  rule_tests = drake.Rule('tests')
+  for test in tests:
+    import os
+    config_test = drake.cxx.Config(tests_cxx_config)
+    config_test.lib_path_runtime('%s../../lib' % ('../' * test.count('/')))
+    path = drake.Path('tests/infinit/%s' % test)
+    bin_path = drake.Path('tests/infinit/%s' % os.path.splitext(test)[0])
+    bin = drake.cxx.Executable(bin_path,
+                               drake.nodes(path) +
+                               [lib_dynamic, elle.lib_dynamic],
+                               cxx_toolkit, config_test)
+    rule_tests << bin
+    rule_check << drake.Runner(bin).status
+
+  # Install
+  rule_install = drake.Rule('install')
+  prefix = drake.Path(prefix)
+  rule_install << drake.copy(lib_dynamic, prefix)
+  rule_install << drake.copy(lib_static, prefix)
+  rule_install << drake.copy(list(filter(lambda n: isinstance(n, drake.cxx.Header), sources)), prefix / 'include', 'sources')

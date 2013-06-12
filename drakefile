@@ -507,18 +507,21 @@ def configure(cxx_toolkit = None,
   agent_lib = drake.cxx.DynLib('lib/agent', agent_sources,
                                cxx_toolkit, cxx_config)
 
+  # XXX temporary until infinit has its own drakefile
+  cxx_config.add_local_include_path('infinit/infinit/sources/')
+  cxx_config_libs.add_local_include_path('infinit/infinit/sources/')
   # Infinit
   infinit_sources = drake.nodes(
     'CrashReporter.cc',
     'CrashReporter.hh',
-    'infinit/Descriptor.cc',
-    'infinit/Descriptor.hh',
-    'infinit/Descriptor.hxx',
-    'infinit/Exception.cc',
-    'infinit/Exception.hh',
-    'infinit/Identity.cc',
-    'infinit/Identity.hh',
-    'infinit/Identity.hxx',
+    'infinit/infinit/sources/infinit/Descriptor.cc',
+    'infinit/infinit/sources/infinit/Descriptor.hh',
+    'infinit/infinit/sources/infinit/Descriptor.hxx',
+    'infinit/infinit/sources/infinit/Exception.cc',
+    'infinit/infinit/sources/infinit/Exception.hh',
+    'infinit/infinit/sources/infinit/Identity.cc',
+    'infinit/infinit/sources/infinit/Identity.hh',
+    'infinit/infinit/sources/infinit/Identity.hxx',
     'HoleFactory.cc',
     'Heartbeat.cc',
     'Heartbeat.hh',
