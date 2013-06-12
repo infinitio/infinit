@@ -23,11 +23,11 @@ namespace infinit
 
   Identity::Identity(elle::String identifier,
                      elle::String name,
-                     cryptography::Code code,
+                     cryptography::Code keypair,
                      cryptography::Signature signature):
     _identifier(std::move(identifier)),
     _name(std::move(name)),
-    _code(std::move(code)),
+    _keypair(std::move(keypair)),
     _signature(std::move(signature))
   {
   }
@@ -36,7 +36,7 @@ namespace infinit
     elle::serialize::DynamicFormat<Identity>(other),
     _identifier(other._identifier),
     _name(other._name),
-    _code(other._code),
+    _keypair(other._keypair),
     _signature(other._signature)
   {
   }
@@ -45,13 +45,13 @@ namespace infinit
     elle::serialize::DynamicFormat<Identity>(std::move(other)),
     _identifier(std::move(other._identifier)),
     _name(std::move(other._name)),
-    _code(std::move(other._code)),
+    _keypair(std::move(other._keypair)),
     _signature(std::move(other._signature))
   {
   }
 
   ELLE_SERIALIZE_CONSTRUCT_DEFINE(Identity,
-                                  _code, _signature)
+                                  _keypair, _signature)
   {
   }
 
@@ -67,7 +67,7 @@ namespace infinit
     cryptography::SecretKey key(Identity::Constants::cipher_algorithm,
                                 passphrase);
 
-    return (key.decrypt<cryptography::KeyPair>(this->_code));
+    return (key.decrypt<cryptography::KeyPair>(this->_keypair));
   }
 
   /*----------.
@@ -80,7 +80,7 @@ namespace infinit
     stream << "("
            << this->_identifier << ", "
            << this->_name << ", "
-           << this->_code
+           << this->_keypair
            << ")";
   }
 
@@ -93,13 +93,13 @@ namespace infinit
     cryptography::Digest
     hash(elle::String const& identifier,
          elle::String const& name,
-         cryptography::Code const& code)
+         cryptography::Code const& keypair)
     {
       return (cryptography::oneway::hash(
                 elle::serialize::make_tuple(
                   identifier,
                   name,
-                  code),
+                  keypair),
                 cryptography::KeyPair::oneway_algorithm));
     }
   }

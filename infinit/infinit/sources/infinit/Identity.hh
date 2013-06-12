@@ -52,7 +52,7 @@ namespace infinit
     explicit
     Identity(elle::String identifier,
              elle::String name,
-             cryptography::Code code,
+             cryptography::Code keypair,
              cryptography::Signature signature);
     /// Construct an identity based on the passed elements which will
     /// be signed with the given authority.
@@ -85,7 +85,7 @@ namespace infinit
     explicit
     Identity(elle::String identifier,
              elle::String name,
-             cryptography::Code code,
+             cryptography::Code keypair,
              T const& authority);
 
     /*--------.
@@ -132,7 +132,7 @@ namespace infinit
     /// A human-readable name.
     ELLE_ATTRIBUTE_R(elle::String, name);
     /// The user's key pair in its encrypted form.
-    ELLE_ATTRIBUTE(cryptography::Code, code);
+    ELLE_ATTRIBUTE(cryptography::Code, keypair);
     /// A signature issued by the authority certifying the identity's
     /// validity.
     ELLE_ATTRIBUTE(cryptography::Signature, signature);
@@ -150,7 +150,7 @@ namespace infinit
     cryptography::Digest
     hash(elle::String const& identifier,
          elle::String const& name,
-         cryptography::Code const& code);
+         cryptography::Code const& keypair);
   }
 }
 

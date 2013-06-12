@@ -40,12 +40,12 @@ namespace infinit
   template <typename T>
   Identity::Identity(elle::String identifier,
                      elle::String name,
-                     cryptography::Code code,
+                     cryptography::Code keypair,
                      T const& authority):
     Identity(std::move(identifier),
              std::move(name),
-             std::move(code),
-             authority.sign(identity::hash(identifier, name, code)))
+             std::move(keypair),
+             authority.sign(identity::hash(identifier, name, keypair)))
   {
   }
 
@@ -60,7 +60,7 @@ namespace infinit
     return (authority.verify(this->_signature,
                              identity::hash(this->_identifier,
                                             this->_name,
-                                            this->_code)));
+                                            this->_keypair)));
   }
 }
 
@@ -94,8 +94,8 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Identity,
       // XXX remove the temporary variables when the serialization mechanism
       //     will be able to handle const rvalues.
 
-      cryptography::Code const* _code = &value._code;
-      archive << elle::serialize::pointer(_code);
+      cryptography::Code const* _keypair = &value._keypair;
+      archive << elle::serialize::pointer(_keypair);
 
       // Generate a key pair because the format 0 used to contain
       // the key pair in clear.
@@ -103,11 +103,11 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Identity,
       // So rather than keeping the actual key pair (which represents a
       // security breach), generate a useless key pair just for the
       // serialization mechanism to function.
-      cryptography::KeyPair keypair =
+      cryptography::KeyPair random =
         cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                         1024);
-      cryptography::KeyPair const* _keypair(&keypair);
-      archive << elle::serialize::alive_pointer(_keypair);
+      cryptography::KeyPair const* _random(&random);
+      archive << elle::serialize::alive_pointer(_random);
 
       archive << value._identifier;
       archive << value._name;
@@ -121,7 +121,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Identity,
     {
       archive << value._identifier;
       archive << value._name;
-      archive << value._code;
+      archive << value._keypair;
       archive << value._signature;
 
       break;
@@ -141,21 +141,21 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Identity,
   {
     case 0:
     {
-      cryptography::Code* code_pointer = nullptr;
-      archive >> elle::serialize::pointer(code_pointer);
-      std::unique_ptr<cryptography::Code> code(code_pointer);
+      cryptography::Code* keypair_pointer = nullptr;
+      archive >> elle::serialize::pointer(keypair_pointer);
+      std::unique_ptr<cryptography::Code> keypair(keypair_pointer);
 
-      // Re-serialize the code and deserialize it in the _code
+      // Re-serialize the coded keypair and deserialize it in the _keypair
       // attribute so as to transform a pointer into a value.
-      enforce(code != nullptr,
-              "unable to support identity with no code");
-      elle::String code_archive;
-      elle::serialize::to_string(code_archive) << *code;
-      elle::serialize::from_string(code_archive) >> value._code;
+      enforce(keypair != nullptr,
+              "unable to support identity with no coded keypair");
+      elle::String keypair_archive;
+      elle::serialize::to_string(keypair_archive) << *keypair;
+      elle::serialize::from_string(keypair_archive) >> value._keypair;
 
-      cryptography::KeyPair* keypair_pointer = nullptr;
-      archive >> elle::serialize::alive_pointer(keypair_pointer);
-      std::unique_ptr<cryptography::KeyPair> keypair(keypair_pointer);
+      cryptography::KeyPair* forget_pointer = nullptr;
+      archive >> elle::serialize::alive_pointer(forget_pointer);
+      std::unique_ptr<cryptography::KeyPair> forget(forget_pointer);
       // Forget the pair as we should never have had access to
       // it from the archive anyway.
       (void)keypair;
@@ -179,7 +179,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Identity,
     {
       archive >> value._identifier;
       archive >> value._name;
-      archive >> value._code;
+      archive >> value._keypair;
       archive >> value._signature;
 
       break;
