@@ -25,16 +25,15 @@ ELLE_SERIALIZE_SPLIT_LOAD(nucleus::Derivable, archive, value, version)
   ELLE_DEBUG("extracted component: %s", value._component);
 
   if (value._dynamic_construct)
-    {
-      enforce(value._block == nullptr);
+  {
+    enforce(value._block == nullptr);
 
-      auto const& factory =
-        nucleus::factory::block<elle::serialize::NoInit>();
-      value._block =
-        factory.allocate<nucleus::proton::Block>(value._component,
-                                                 elle::serialize::no_init);
-      archive >> *value._block;
-    }
+    auto const& factory =
+      nucleus::factory::block<elle::serialize::NoInit>();
+    value._block =
+      factory.allocate<nucleus::proton::Block>(value._component,
+                                               elle::serialize::no_init);
+  }
   enforce(value._block != nullptr);
   typedef typename elle::serialize::SerializableFor<Archive>::Type interface_t;
   enforce(dynamic_cast<interface_t*>(value._block) != nullptr);
