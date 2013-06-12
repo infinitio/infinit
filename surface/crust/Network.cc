@@ -29,7 +29,7 @@
 #include <cryptography/Cryptosystem.hh>
 #include <cryptography/random.hh>
 
-#include <elle/format/base64.hh>
+#include <elle/format/hexadecimal.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/io/Piece.hh>
@@ -259,9 +259,8 @@ Network::Network(std::string const& name,
                  horizon::Policy const& policy,
                  Authority const& authority)
 {
-  // Generate a 64 character long base 64 string.
-  std::string uid = elle::format::base64::encode(
-    cryptography::random::generate<elle::Buffer>(48));
+  std::string uid = elle::format::hexadecimal::encode(
+    cryptography::random::generate<elle::Buffer>(64));
 
   // Create both root and group address.
   auto blocks = _blocks(uid, policy, keypair);
