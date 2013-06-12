@@ -1,5 +1,7 @@
-#include <elle/print.hh>
 #include <elle/log.hh>
+#include <elle/print.hh>
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
 
 #include <cryptography/KeyPair.hh>
 // XXX[temporary: for cryptography]
@@ -104,11 +106,19 @@ void test2()
   nucleus::proton::Network network("test");
 
   nucleus::neutron::Group group(network, owner.K(), "suce mon cul");
+  group.seal(owner.k());
 
   nucleus::neutron::Token token(group.manager_token());
 
   cryptography::PrivateKey k{
     token.extract<cryptography::PrivateKey>(owner.k())};
+
+  {
+    std::string bande;
+    elle::serialize::to_string(bande) << group;
+    nucleus::neutron::Group g;
+    elle::serialize::from_string(bande) >> g;
+  }
 }
 
 int main(int, char** argv)
