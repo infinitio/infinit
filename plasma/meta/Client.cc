@@ -276,10 +276,10 @@ SERIALIZE_RESPONSE(plasma::meta::DescriptorResponse, ar, res)
   ar & base_class<plasma::meta::Descriptor>(res);
 }
 
-// SERIALIZE_RESPONSE(plasma::meta::DescriptorsResponse, ar, res)
-// {
-//   ar & named("descriptors", res.descriptors);
-// }
+SERIALIZE_RESPONSE(plasma::meta::DescriptorsResponse, ar, res)
+{
+  ar & named("descriptors", res.descriptors);
+}
 
 SERIALIZE_RESPONSE(plasma::meta::DescriptorListResponse, ar, res)
 {
@@ -713,8 +713,7 @@ namespace plasma
           {"filter", std::to_string((int) filter)}
       }};
 
-      //return this->_get<DescriptorsResponse>("/descriptor/all");
-      return DescriptorsResponse{};
+      return this->_get<DescriptorsResponse>("/descriptor/all");
     }
 
     DescriptorListResponse
