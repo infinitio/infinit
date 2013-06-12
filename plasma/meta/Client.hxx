@@ -117,11 +117,14 @@ namespace plasma
       }
       else if (type == CURLINFO_DATA_IN || type == CURLINFO_DATA_OUT)
       {
-        ELLE_DEBUG("%s %s", sym, msg);
+        ELLE_TRACE("%s %s", sym, msg);
       }
       else if (type == CURLINFO_HEADER_IN)
       {
-        ELLE_TRACE("%s %s", sym, msg);
+        if (msg.find("HTTP") == 0) // starts with
+          ELLE_TRACE("%s %s", sym, msg);
+        else
+          ELLE_DUMP("%s %s", sym, msg);
       }
       return 0;
     }
