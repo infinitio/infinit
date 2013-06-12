@@ -81,8 +81,8 @@ namespace nucleus
     }
 
     Address::Address(Address&& other):
-      _type(other._type),
-      _valid(other._valid)
+      _type(std::move(other._type)),
+      _valid(std::move(other._valid))
     {
       // Reset the pointer since the value has been moved.
       other._valid = nullptr;
