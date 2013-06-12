@@ -9,6 +9,7 @@
 #include <elle/log.hh>
 #include <elle/elle.hh>
 #include <elle/HttpClient.hh>
+#include <elle/container/list.hh>
 #include <CrashReporter.hh>
 
 #include <plasma/meta/Client.hh>
@@ -952,6 +953,7 @@ extern "C"
         for (auto const& transaction_pair : transactions_map)
           res.push_back(transaction_pair.first);
 
+        ELLE_DEBUG("gap_transactions() = %s", res);
         return _cpp_stringlist_to_c_stringlist(res);
       }
     CATCH_ALL(transactions);
