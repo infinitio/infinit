@@ -33,7 +33,7 @@ namespace etoile
 
       context.object.reset(
         new nucleus::neutron::Object(nucleus::proton::Network(Infinit::Network),
-                                     agent::Agent::pair().K(),
+                                     agent::Agent::keypair().K(),
                                      nucleus::neutron::Genre::link));
 
       nucleus::proton::Address address(context.object->bind());

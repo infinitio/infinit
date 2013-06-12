@@ -31,10 +31,10 @@ namespace elle
       this->_code = new cryptography::Code(*from._code);
   }
 
-  Authority::Authority(cryptography::KeyPair const& pair):
+  Authority::Authority(cryptography::KeyPair const& keypair):
     type(Authority::TypePair),
-    _K(pair.K()),
-    _k(new cryptography::PrivateKey{pair.k()}),
+    _K(keypair.K()),
+    _k(new cryptography::PrivateKey{keypair.k()}),
     _code(nullptr)
   {}
 

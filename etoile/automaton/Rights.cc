@@ -79,7 +79,7 @@ namespace etoile
                 new cryptography::SecretKey{
                   context.object->owner_token().
                     extract<cryptography::SecretKey>(
-                      agent::Agent::pair().k())};
+                      agent::Agent::keypair().k())};
             }
 
           // set the record for ease purpose.
@@ -142,7 +142,7 @@ namespace etoile
                     new cryptography::SecretKey{
                       context.rights.record->token().
                         extract<cryptography::SecretKey>(
-                          agent::Agent::pair().k())};
+                          agent::Agent::keypair().k())};
                 }
             }
           else
@@ -231,7 +231,7 @@ namespace etoile
                                   // manager's fellow.
                                   cryptography::PrivateKey pass_k =
                                     token.extract<cryptography::PrivateKey>(
-                                      agent::Agent::pair().k());
+                                      agent::Agent::keypair().k());
 
                                   ELLE_TRACE("decrypting the access token");
 
@@ -327,7 +327,7 @@ namespace etoile
                                       // from the fellow.
                                       cryptography::PrivateKey pass_k =
                                         token.extract<cryptography::PrivateKey>(
-                                          agent::Agent::pair().k());
+                                          agent::Agent::keypair().k());
 
                                       // With the private pass, one can decrypt
                                       // the access token associated with the

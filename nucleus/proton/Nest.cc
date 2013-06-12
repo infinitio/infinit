@@ -32,10 +32,10 @@ namespace nucleus
           limits::Node{1048576, 0.5, 0.2},
           limits::Node{1048576, 0.5, 0.2}};
         static Network network{"none"};
-        static cryptography::KeyPair pair =
+        static cryptography::KeyPair keypair =
           cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                           1024);
-        static None none{limits, network, pair.K()};
+        static None none{limits, network, keypair.K()};
 
         return (none);
       }

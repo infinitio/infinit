@@ -46,12 +46,12 @@ namespace nucleus
         Network const& network,
         neutron::Component const component,
         cryptography::PublicKey const& creator_K,
-        cryptography::KeyPair const& block_pair):
+        cryptography::KeyPair const& block_keypair):
       MutableBlock(network, Family::owner_key_block, component, creator_K),
 
-      _block_K(block_pair.K()),
+      _block_K(block_keypair.K()),
       _owner_K(creator_K),
-      _owner_signature(block_pair.k().sign(this->_owner_K)),
+      _owner_signature(block_keypair.k().sign(this->_owner_K)),
       _owner_subject(nullptr)
     {
     }

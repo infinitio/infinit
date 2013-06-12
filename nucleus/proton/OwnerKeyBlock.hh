@@ -64,7 +64,7 @@ namespace nucleus
       OwnerKeyBlock(Network const& network,
                     neutron::Component component,
                     cryptography::PublicKey const& creator_K,
-                    cryptography::KeyPair const& block_pair);
+                    cryptography::KeyPair const& block_keypair);
 
       //
       // methods

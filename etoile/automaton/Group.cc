@@ -435,7 +435,7 @@ namespace etoile
 
           ELLE_TRACE_SCOPE("the group is dirty");
 
-          context.group->seal(agent::Agent::pair().k());
+          context.group->seal(agent::Agent::keypair().k());
 
           // mark the block as needing to be stored.
           context.transcript().record(

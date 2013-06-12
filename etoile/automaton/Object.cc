@@ -159,7 +159,7 @@ namespace etoile
 
           // seal the object alone with the access block.
           if (context.object->Seal(
-                agent::Agent::pair().k(),
+                agent::Agent::keypair().k(),
                 fingerprint) == elle::Status::Error)
             throw Exception("unable to seal the object");
 
