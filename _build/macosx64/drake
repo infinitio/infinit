@@ -35,11 +35,6 @@ drake.run(
     cxx_config,
     boost = boost,
     qt = None,
-    satellites = (
-        "access", "group", "transfer",
-        "sendto", "recvfrom", "progress",
-        "d00m", "dump",
-    ),
     python3 = '/opt/local/Library/Frameworks/Python.framework/Versions/3.2',
     build_type = os.environ.get('BUILD_TYPE', 'Development'),
 )
