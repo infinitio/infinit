@@ -267,7 +267,7 @@ Network::Network(std::string const& name,
                                  std::move(group_address),
                                  false,
                                  1048576,
-                                 keypair.k());
+                                 authority);
 
     auto data = descriptor::Data(name,
                                  openness,
@@ -277,7 +277,7 @@ Network::Network(std::string const& name,
                                  version,
                                  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                  0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                 keypair.k());
+                                 authority);
     this->_descriptor.reset(
       new infinit::Descriptor{std::move(meta), std::move(data)});
   }
