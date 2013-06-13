@@ -137,6 +137,10 @@ namespace infinit
       ELLE_DEBUG("quiting %s", name);
       return 0;
     }
+    catch (Exit const& e)
+    {
+      return e.value();
+    }
     catch (std::runtime_error const& e)
     {
       ELLE_ERR("%s: fatal error: %s", name, e.what());
@@ -146,6 +150,11 @@ namespace infinit
       return 1;
     }
   }
+
+  Exit::Exit(int value):
+    elle::Exception("exit"),
+    _value(value)
+  {}
 
   int
   satellite_main(std::string const& name, std::function<void ()> const& action)
@@ -173,6 +182,10 @@ namespace infinit
         sched.run();
         return main.result();
       }
+      catch (Exit const& e)
+      {
+        return e.value();
+      }
       catch (elle::Exception const& e)
       {
         ELLE_ERR("%s: fatal error: %s", name, e);
@@ -191,5 +204,4 @@ namespace infinit
       }
     }
   }
-
 }
