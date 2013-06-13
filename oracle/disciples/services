@@ -81,8 +81,8 @@ def main(argv):
             '--apertus-control-port', str(args.apertus_control_port),
         ],
         stdout=open("meta.stdout", "w"),
-        stderr=open("meta.stderr", "w")
-        ))
+        stderr=open("meta.stderr", "w"))
+        )
 
         processes.append(
             subprocess.Popen([
@@ -90,9 +90,9 @@ def main(argv):
                 str(args.longinus_port)
             ],
             stdout=open("longinus.stdout", "w"),
-            stderr=open("longinus.stderr", "w")) 
-            )
+            stderr=open("longinus.stderr", "w"))
         )
+
         processes.append(
             subprocess.Popen([
                 TROPHONIUS_BIN,
@@ -103,6 +103,7 @@ def main(argv):
             stdout=open("tropho.stdout", "w"),
             stderr=open("tropho.stderr", "w"))
         )
+
         processes.append(
             subprocess.Popen([
                 APERTUS_BIN,
