@@ -77,6 +77,7 @@ namespace infinit
                                           err, ::strerror(_errno))};
     }
     ELLE_DEBUG("finished waiting %s", pid);
+
     if (WIFEXITED(status))
     {
       retval = WEXITSTATUS(status);
@@ -86,8 +87,9 @@ namespace infinit
     {
       std::stringstream ss;
       int signum = WTERMSIG(status);
-      ELLE_ERR("%s[%d]: stopped by signal %s(%d)", name, pid,
-               elle::system::strsignal(signum), signum);
+      ss << elle::sprintf("%s[%d]: stopped by signal %s(%d)", name, pid,
+                          elle::system::strsignal(signum), signum);
+      ELLE_ERR("%s", ss.str());
       retval = 128 + signum;
 #if defined WCOREDUMP
       if (WCOREDUMP(status))
