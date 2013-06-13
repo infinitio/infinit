@@ -101,9 +101,9 @@ class Trophonius(basic.LineReceiver):
         """
         Echo.
         """
-        if getattr(self, "_alive_service"):
+        if getattr(self, "_alive_service", None):
             self._alive_service.cancel()
-        self._alive_service = self.callLater(65, self.transport.abortConnection)
+        self._alive_service = reactor.callLater(65, self.transport.loseConnection)
 
     def handle_HELLO(self, line):
         """
@@ -162,6 +162,7 @@ class Trophonius(basic.LineReceiver):
     def lineReceived(self, line):
         hdl = getattr(self, "handle_{}".format(self.state), None)
         if hdl is not None:
+            log.msg("call", hdl)
             hdl(line)
 
 class MetaTropho(basic.LineReceiver):
