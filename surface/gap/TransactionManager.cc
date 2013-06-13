@@ -140,20 +140,14 @@ namespace surface
       auto const& tr = this->one(id);
       auto const& instance_manager =
         this->_network_manager.infinit_instance_manager();
-
       if (tr.status == plasma::TransactionStatus::finished)
         return 1.0f;
-      else if (tr.status == plasma::TransactionStatus::canceled)
-        return 0.0f;
       else if (tr.status != plasma::TransactionStatus::started)
         return 0.0f;
-      else if (!instance_manager.exists(tr.network_id))
-      {
-        throw Exception{
-          gap_network_not_found,
-          "Cannot launch 8progress without infinit instance",
-        };
-      }
+      else if (this->_states[id].state != State::running)
+        return 0.0f;
+      else if (not instance_manager.exists(tr.id))
+        return 0.0f;
 
       auto& progress = this->_progresses(
         [&id] (TransactionProgressMap& map) -> TransactionProgress&
