@@ -167,6 +167,8 @@ namespace plasma
     Client::~Client()
     {}
 
+    static char const* ping_msg = "PING\n";
+
     void
     Client::_check_connection(boost::system::error_code const& err)
     {
@@ -176,16 +178,22 @@ namespace plasma
         return;
       }
 
-      static char const* ping = "PING";
-
-      boost::asio::async_write(
-        _impl->socket,
-        boost::asio::buffer(ping, 4),
-        std::bind(
-          &Client::_on_write_check, this,
-          std::placeholders::_1, std::placeholders::_2
-        )
-      );
+      try
+      {
+        ELLE_TRACE("send ping to %s", _impl->socket.remote_endpoint());
+        boost::asio::async_write(
+          _impl->socket,
+          boost::asio::buffer(ping_msg, strlen(ping_msg)),
+          std::bind(
+            &Client::_on_write_check, this,
+            std::placeholders::_1, std::placeholders::_2
+          )
+        );
+      }
+      catch (std::runtime_error const& e)
+      {
+        this->_impl->connected = false;
+      }
       if (_impl->connected == false)
       {
         try
@@ -215,8 +223,11 @@ namespace plasma
         _impl->connected = false;
         ELLE_WARN("trophonius has been disconnected, re-try in 10 seconds");
       }
-      else if (bytes_transferred == 4)
+      else if (bytes_transferred == strlen(ping_msg))
+      {
+        ELLE_TRACE("trophonius connected");
         _impl->connected = true;
+      }
       _impl->connection_checker.expires_from_now(
         boost::posix_time::seconds(10)
       );
