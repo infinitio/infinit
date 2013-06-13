@@ -38,12 +38,15 @@ namespace infinit
   static int st_pid = -1;
 
   void
-  sighdl(int signum)
+  forward_signal(int signum)
   {
     ELLE_DEBUG_SCOPE("received signal %s(%d)",
                      elle::system::strsignal(signum), signum);
     if (st_pid != -1)
     {
+      // If we are asked to terminate, transform the SIGTERM into SIGKILL.
+      if (signum == SIGTERM)
+        signum = SIGKILL;
       ELLE_DEBUG("kill(%d, %s(%d))",
                  st_pid, elle::system::strsignal(signum), signum);
       kill(st_pid, signum);
@@ -60,9 +63,9 @@ namespace infinit
     int retval = -1;
 
     st_pid = pid;
-    signal(SIGINT, sighdl);
-    signal(SIGTERM, sighdl);
-    signal(SIGQUIT, sighdl);
+    signal(SIGINT, forward_signal);
+    signal(SIGTERM, forward_signal);
+    signal(SIGQUIT, forward_signal);
 
     ELLE_DEBUG("%s[%d]: start tracing", name, pid);
     while ((err = waitpid(pid, &status, 0)) != pid)
