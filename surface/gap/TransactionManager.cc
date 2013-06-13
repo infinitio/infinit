@@ -232,24 +232,9 @@ namespace surface
     }
 
     void
-    TransactionManager::_ensure_ownership(Transaction const& transaction,
-                                          bool check_devices)
-    {
-      ELLE_ASSERT(this->_self.id == transaction.sender_id ||
-                  this->_self.id == transaction.recipient_id);
-
-      if (check_devices)
-      {
-        ELLE_ASSERT(this->_device.id == transaction.sender_device_id ||
-                    this->_device.id == transaction.recipient_device_id);
-      }
-    }
-
-    void
     TransactionManager::accept_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-      this->_ensure_ownership(transaction);
       ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
       this->_add<LambdaOperation>(
           "accept_" + transaction.id,
@@ -399,9 +384,45 @@ namespace surface
     }
 
     void
+    TransactionManager::_clean_transaction(Transaction const& tr)
+    {
+      ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::created);
+      ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::started);
+      auto s = this->_states[tr.id];
+      if (s.state != State::none)
+        try
+        {
+          this->finalize(s.operation);
+        }
+        catch (std::exception const&)
+        {
+          ELLE_DEBUG("couldn't finalize operation: %s",
+                     elle::exception_string());
+        }
+      this->_states->erase(tr.id);
+      this->_cancel_all(tr.id);
+      this->_network_manager.delete_(tr.network_id);
+    }
+
+    void
     TransactionManager::_on_transaction(plasma::Transaction const& tr)
     {
-      ELLE_TRACE("Check transaction %s", tr);
+      ELLE_TRACE("received transaction %s, update local copy", tr)
+      {
+        // Ensure map is not null
+        this->all();
+        this->_transactions([&tr] (TransactionMapPtr& ptr) {
+            (*ptr)[tr.id] = tr;
+        });
+      }
+      if (tr.status != plasma::TransactionStatus::created and
+          tr.status != plasma::TransactionStatus::started)
+      {
+        ELLE_DEBUG("Cleaning up finished transaction %s", tr);
+        this->_clean_transaction(tr);
+        return;
+      }
+
       if (tr.sender_id == this->_self.id)
       {
         if (tr.sender_device_id != this->_device.id)
@@ -415,16 +436,16 @@ namespace surface
         }
         if (tr.status == plasma::TransactionStatus::created)
         {
-          ELLE_TRACE("sender prepare upload for %s", tr);
-          this->_prepare_upload(tr);
+          ELLE_TRACE("sender prepare upload for %s", tr)
+            this->_prepare_upload(tr);
         }
         else if (tr.status == plasma::TransactionStatus::started &&
                  tr.accepted &&
                  this->_user_manager.device_status(tr.recipient_id,
                                                    tr.recipient_device_id))
         {
-          ELLE_TRACE("sender start upload for %s", tr);
-          this->_start_upload(tr);
+          ELLE_TRACE("sender start upload for %s", tr)
+            this->_start_upload(tr);
 
         }
         else
@@ -448,8 +469,8 @@ namespace surface
             this->_user_manager.device_status(tr.sender_id,
                                               tr.sender_device_id))
         {
-          ELLE_TRACE("recipient start download for %s", tr);
-          this->_start_download(tr);
+          ELLE_TRACE("recipient start download for %s", tr)
+            this->_start_download(tr);
         }
         else
         {
@@ -473,12 +494,6 @@ namespace surface
         ELLE_WARN("got a transaction tr not related to me: %s", tr);
         return;
       }
-      // Ensure map is not null
-      this->all();
-
-      this->_transactions([&tr] (TransactionMapPtr& ptr) {
-          (*ptr)[tr.id] = tr;
-      });
     }
 
     void

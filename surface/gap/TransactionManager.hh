@@ -120,11 +120,9 @@ namespace surface
       sync(std::string const& id);
 
     private:
-      /// @brief Ensure the transaction belongs to the user, as sender or
-      /// recipient. May also check if involved devices are the good ones.
+      // Remove processes, states and operations related to a transaction.
       void
-      _ensure_ownership(Transaction const& transaction,
-                        bool check_devices = false);
+      _clean_transaction(Transaction const& transaction);
 
       /*-------------------.
       | Transaction update |
