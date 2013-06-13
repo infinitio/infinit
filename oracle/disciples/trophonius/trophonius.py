@@ -99,12 +99,11 @@ class Trophonius(basic.LineReceiver):
 
     def handle_CHAT(self, line):
         """
-        Just a dummy function
+        Echo.
         """
-        for c in (_c for _c in self.factory.clients if _c is not self):
-            log.msg("sending {} to <{}>".format(line, c.transport.getPeer()))
-            c.sendLine("{}".format(line))
-        self._send_res(200)
+        if getattr(self, "_alive_service"):
+            self._alive_service.cancel()
+        self._alive_service = self.callLater(65, self.transport.abortConnection)
 
     def handle_HELLO(self, line):
         """
