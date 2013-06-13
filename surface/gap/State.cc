@@ -147,13 +147,14 @@ namespace surface
     void
     State::_self_load() const
     {
-      ELLE_TRACE_METHOD("");
-
       if (!this->logged_in())
         throw Exception{gap_internal_error, "you must be logged in"};
 
       if (this->_me == nullptr)
-        this->_me.reset(new Self{this->_meta.self()});
+      {
+        ELLE_TRACE("loading self info")
+          this->_me.reset(new Self{this->_meta.self()});
+      }
     }
 
     Self const&
