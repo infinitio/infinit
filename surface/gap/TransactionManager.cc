@@ -144,7 +144,7 @@ namespace surface
         return 0.0f;
       else if (this->_states[id].state != State::running)
         return 0.0f;
-      else if (not instance_manager.exists(tr.id))
+      else if (not instance_manager.exists(tr.network_id))
         return 0.0f;
 
       auto& progress = this->_progresses(
