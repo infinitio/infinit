@@ -7,11 +7,11 @@ import web
 import metalib
 
 from meta import conf, database
-from meta.page import Page
+from meta.page import Page, requireLoggedIn
 from meta import error
 from meta import regexp
 
-
+@requireLoggedIn
 class All(Page):
     """
     Return all user's device ids
@@ -24,7 +24,6 @@ class All(Page):
     __pattern__ = "/devices"
 
     def GET(self):
-        self.requireLoggedIn()
         return self.success({'devices': self.user.get('devices', [])})
 
 
@@ -41,8 +40,8 @@ class One(Page):
 
     __pattern__ = "/device/(.+)/view"
 
+    @requireLoggedIn
     def GET(self, id):
-        self.requireLoggedIn()
         device = database.devices().find_one({
             '_id': database.ObjectId(id),
             'owner': self.user['_id'],
@@ -65,16 +64,13 @@ class Create(Page):
     """
     __pattern__ = "/device/create"
 
-    _validators = [
+    __validators__ = [
         ('name', regexp.Validator(regexp.Device, error.DEVICE_NOT_VALID)),
     ]
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         device = self.data
 
@@ -125,17 +121,14 @@ class Update(Page):
 
     __pattern__ = "/device/update"
 
-    _validators = [
+    __validators__ = [
         ('name', regexp.Validator(regexp.Device, error.DEVICE_NOT_VALID)),
         ('_id', regexp.Validator(regexp.NetworkID, error.DEVICE_ID_NOT_VALID)),
     ]
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         device = self.data
 
@@ -168,16 +161,13 @@ class Delete(Page):
 
     __pattern__ = "/device/delete"
 
-    _validators = [
+    __validators__ = [
         ('_id', regexp.Validator(regexp.NotNull, error.DEVICE_ID_NOT_VALID)),
     ]
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         _id = database.ObjectId(self.data['_id'])
         try:

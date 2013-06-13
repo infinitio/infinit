@@ -6,7 +6,7 @@ import os.path
 import sys
 import time
 
-from meta.page import Page
+from meta.page import Page, requireLoggedIn
 from meta import notifier
 from meta import database
 from meta import error
@@ -68,13 +68,13 @@ class Create(Page):
     """
     __pattern__ = "/transaction/create"
 
-    _validators = [
+    __validators__ = [
         ('recipient_id_or_email', regexp.NonEmptyValidator),
         ('network_id', regexp.NetworkValidator),
         ('device_id', regexp.DeviceIDValidator),
     ]
 
-    _mendatory_fields = [
+    __mendatory_fields__ = [
         ('first_filename', basestring),
         ('files_count', int),
         ('total_size', int),
@@ -82,12 +82,9 @@ class Create(Page):
 #        ('message', str)
     ]
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         message = 'message' in self.data and self.data['message'] or ""
 
@@ -226,18 +223,15 @@ class Accept(Page):
     """
     __pattern__ = "/transaction/accept"
 
-    _validators = [
+    __validators__ = [
         ('transaction_id', regexp.TransactionValidator),
         ('device_id', regexp.DeviceIDValidator),
         ('device_name', regexp.NonEmptyValidator),
     ]
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         tr_id = database.ObjectId(self.data['transaction_id'])
 
@@ -322,8 +316,8 @@ class Update(Page):
     """
     __pattern__ = "/transaction/update"
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
 
         # Find the transaction
         tr_id = database.ObjectId(self.data['transaction_id'])
@@ -449,8 +443,8 @@ class All(Page):
     """
     __pattern__ = "/transactions"
 
+    @requireLoggedIn
     def GET(self):
-        self.requireLoggedIn()
         transaction_ids = (
             t['_id'] for t in database.transactions().find({
                 '$or':[
@@ -495,8 +489,8 @@ class One(Page):
 
     __pattern__ = "/transaction/(.+)/view"
 
+    @requireLoggedIn
     def GET(self, _id):
-        self.requireLoggedIn()
         transaction = database.transactions().find_one(database.ObjectId(_id))
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)

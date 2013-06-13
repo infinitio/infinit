@@ -19,7 +19,7 @@ import unicodedata
 import web
 import sys
 
-from meta.page import Page
+from meta.page import Page, requireLoggedIn
 from meta import notifier
 from meta import conf, database
 from meta import error
@@ -34,8 +34,8 @@ import pythia
 class Search(Page):
     __pattern__ = "/user/search"
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
 
         text = self.data["text"]
         count = 'count' in self.data and self.data['count'] or 5
@@ -107,8 +107,8 @@ class GenerateHandle(Page):
 class Message(Page):
     __pattern__ = "/debug"
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
         self.notifier.notify_one(
             notifier.MESSAGE,
             self.data["recipient_id"],
@@ -123,23 +123,23 @@ class Message(Page):
 class GetSwaggers(Page):
     __pattern__ =  "/user/swaggers"
 
+    @requireLoggedIn
     def GET(self):
-        self.requireLoggedIn()
         return self.success({"swaggers" : self.user["swaggers"].keys()})
 
 class AddSwagger(Page):
     __pattern__ = "/user/add_swagger"
 
-    _validators = [
+    __validators__ = [
         ('email', regexp.EmailValidator),
         ('fullname', regexp.HandleValidator),
     ]
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
         try:
             if "email" in self.data:
-                error_code = _validators['email'](self.data['email'])
+                error_code = __validators__['email'](self.data['email'])
                 if error_code:
                     return self.error(error_code)
                 user = database.users().find_and_modify(
@@ -165,8 +165,8 @@ class AddSwagger(Page):
 class RemoveSwagger(Page):
     __pattern__ = "/user/remove_swagger"
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
         swagez = database.users().find_and_modify(
             {"_id": database.ObjectId(self.user["_id"])},
             {"$pull": {"swaggers": self.data["_id"]}},
@@ -233,8 +233,8 @@ class Self(Page):
 
     __pattern__ = "/self"
 
+    @requireLoggedIn
     def GET(self):
-        self.requireLoggedIn()
         return self.success({
             '_id': self.user['_id'],
             'fullname': self.user['fullname'],
@@ -260,8 +260,8 @@ class Invitations(Page):
     """
     __pattern__ = "/user/remaining_invitations"
 
+    @requireLoggedIn
     def GET(self):
-        self.requireLoggedIn()
         return self.success({
                 'remaining_invitations': self.user.get('remaining_invitations', 0)
         })
@@ -278,8 +278,8 @@ class MinimumSelf(Page):
 
     __pattern__ = "/minimumself"
 
+    @requireLoggedIn
     def GET(self):
-        self.requireLoggedIn() # scary
         return self.success({
             'email': self.user['email'],
             'identity': self.user['identity'],
@@ -342,8 +342,8 @@ class Avatar(Page):
                     break
 
 
+    @requireLoggedIn
     def POST(self, _id):
-        self.requireLoggedIn()
         raw_data = StringIO.StringIO(web.data())
         image = Image.open(raw_data)
         out = StringIO.StringIO()
@@ -366,7 +366,7 @@ class Register(Page):
 
     __pattern__ = "/user/register"
 
-    _validators = [
+    __validators__ = [
         ('email', regexp.EmailValidator),
         ('fullname', regexp.HandleValidator),
         ('password', regexp.PasswordValidator),
@@ -375,10 +375,7 @@ class Register(Page):
     def POST(self):
         if self.user is not None:
             return self.error(error.ALREADY_LOGGED_IN)
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         user = self.data
 
@@ -500,7 +497,7 @@ class Login(Page):
     """
     __pattern__ = "/user/login"
 
-    _validators = [
+    __validators__ = [
         ('email', regexp.EmailValidator),
         ('password', regexp.PasswordValidator),
     ]
@@ -508,10 +505,7 @@ class Login(Page):
     def POST(self):
         if self.user is not None:
             return self.error(error.ALREADY_LOGGED_IN)
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         loggin_info = self.data
         loggin_info['email']= loggin_info['email'].lower()
@@ -657,7 +651,7 @@ class Connection(Page):
 
     __pattern__ = "/user/connected"
 
-    _validators = [
+    __validators__ = [
         ('user_id', regexp.UserIDValidator),
     ]
 

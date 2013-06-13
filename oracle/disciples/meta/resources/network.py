@@ -10,7 +10,7 @@ import os.path
 import sys
 
 from meta import mail
-from meta.page import Page
+from meta.page import Page, requireLoggedIn
 from meta import database, conf
 from meta import error
 from meta import regexp
@@ -36,6 +36,7 @@ for line in configfile:
 class _Page(Page):
     """Common tools for network calls."""
 
+    @requireLoggedIn
     def network(self, _id):
         self.requireLoggedIn()
         network = database.networks().find_one({
@@ -43,7 +44,7 @@ class _Page(Page):
         })
         if not network:
             return self.forbidden("Couldn't find any network with this id")
-        if len(network) == 1:
+        if len(network) == 1: # Only contains _id.
             raise web.ok(data = self.error(error.NETWORK_NOT_FOUND, "Network cleared"))
         if network['owner'] != self.user['_id'] and \
            self.user['_id'] not in network['users']:
@@ -102,24 +103,21 @@ class AddUser(_Page):
 
     __pattern__ = "/network/add_user"
 
-    _validators = [
+    __validators__ = [
         ('_id', regexp.Validator(regexp.NetworkID, error.NETWORK_ID_NOT_VALID)),
         ('user_id', regexp.Validator(regexp.ID, error.USER_ID_NOT_VALID)),
     ]
 
     def POST(self):
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         network = self.network(self.data['_id'])
         if network['owner'] != self.user['_id']:
             return self.forbidden("You cannot add a user in a network that does "
-                           "not belong to you")
+                                  "not belong to you")
 
         to_add_user_id = database.ObjectId(self.data['user_id'])
-        #XXX users should invited instead of added
+        #XXX Users should be invited instead of added.
         if to_add_user_id in network['users']:
             return self.error(error.USER_ALREADY_IN_NETWORK)
         to_add_user = database.byId(database.users(), to_add_user_id)
@@ -161,8 +159,8 @@ class All(_Page):
 
     __pattern__ = "/networks"
 
+    @requireLoggedIn
     def GET(self):
-        self.requireLoggedIn()
         return self.success({'networks': self.user.get('networks', [])})
 
 class One(_Page):
@@ -240,8 +238,8 @@ class Endpoints(_Page):
     """
     __pattern__ = "/network/(.+)/endpoints"
 
+    @requireLoggedIn
     def POST(self, network_id):
-        self.requireLoggedIn()
 
         device_id = self.data['device_id']
         self_device_id = self.data['self_device_id']
@@ -299,21 +297,18 @@ class Update(_Page):
             }
     """
 
-    _validators = [
+    __validators__ = [
         ('_id', regexp.Validator(regexp.NetworkID, error.NETWORK_ID_NOT_VALID)),
     ]
 
     __pattern__ = "/network/update"
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
         for k in ['devices', 'users']:
             if k in self.data:
                 return self.error(error.DEPRECATED, "Key %s is deprecated." % k)
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         _id = database.ObjectId(self.data['_id'])
         to_save = self.network(_id)
@@ -397,18 +392,15 @@ class AddDevice(_Page):
     """
     __pattern__ = '/network/add_device'
 
-    _validators = [
+    __validators__ = [
         ('_id', regexp.Validator(regexp.NetworkID, error.NETWORK_ID_NOT_VALID)),
         ('device_id', regexp.Validator(regexp.DeviceID, error.DEVICE_ID_NOT_VALID)),
     ]
 
+    @requireLoggedIn
     def POST(self):
         # XXX What are security check requirement ?
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         network_id = database.ObjectId(self.data["_id"])
         device_id = database.ObjectId(self.data["device_id"])
@@ -455,17 +447,14 @@ class ConnectDevice(_Page):
     """
     __pattern__ = '/network/connect_device'
 
-    _validators = [
+    __validators__ = [
         ('_id', regexp.Validator(regexp.ID, error.NETWORK_ID_NOT_VALID)),
         ('device_id', regexp.Validator(regexp.DeviceID, error.DEVICE_ID_NOT_VALID)),
     ]
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         network_id = database.ObjectId(self.data["_id"])
         device_id = database.ObjectId(self.data["device_id"])
@@ -533,16 +522,13 @@ class Create(_Page):
 
     __pattern__ = "/network/create"
 
-    _validators = [
+    __validators__ = [
         ('name', regexp.Validator(regexp.NotNull, error.DEVICE_NOT_VALID)),
     ]
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
+        self.validate()
 
         name = self.data.get('name', '').strip()
         try:
@@ -579,7 +565,6 @@ class Create(_Page):
             'created_network_id': _id
         })
 
-
 class Delete(_Page):
     """
     Delete a network
@@ -594,16 +579,16 @@ class Delete(_Page):
 
     __pattern__ = "/network/delete"
 
-    _validators = [
+    __validators__ = [
         ('network_id', regexp.Validator(regexp.NetworkID, error.NETWORK_ID_NOT_VALID))
     ]
 
-    _mendatory_fields = [
+    __mendatory_fields__ = [
         ('force', bool)
     ]
 
+    @requireLoggedIn
     def POST(self):
-        self.requireLoggedIn()
 
         status = self.validate()
         if status:

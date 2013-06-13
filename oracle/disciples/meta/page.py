@@ -1,4 +1,3 @@
-
 # -*- encoding: utf-8 -*-
 
 import web
@@ -33,6 +32,13 @@ configfile = open(filepath, 'r')
 for line in configfile:
     eval(_macro_matcher.sub(replacer, line))
 
+# Decorator for loggin requirement.
+def requireLoggedIn(method):
+    def wrapper(self, *args, **kwargs):
+        self.requireLoggedIn()
+        return method(self, *args, **kwargs)
+    return wrapper
+
 class Page(object):
     """
     Base class for all page, simplifies the use of viewers.
@@ -44,9 +50,9 @@ class Page(object):
 
     __apertus = None
 
-    _validators = []
+    __validators__ = []
 
-    _mendatory_fields = []
+    __mendatory_fields__ = []
 
     def __init__(self):
         self._input = None
@@ -79,7 +85,6 @@ class Page(object):
                 return self.__notifier
         return self.__notifier
 
-
     @property
     def apertus(self):
         if self.__apertus is None:
@@ -94,17 +99,17 @@ class Page(object):
         return self._input
 
     def validate(self):
-        for (field, validator) in self._validators:
+        for (field, validator) in self.__validators__:
             if not field in self.data.keys():
-                return (error.BAD_REQUEST[0], "Field %s is mandatory" % field)
+                return self.error(error.BAD_REQUEST[0], "Field %s is mandatory" % field)
             else:
                 error_code = validator(self.data[field])
                 if error_code:
-                    return error_code
-        for (field, type_) in self._mendatory_fields:
+                    return self.error(error_code)
+        for (field, type_) in self.__mendatory_fields__:
             if not field in self.data.keys() or not isinstance(self.data[field], type_):
-                return (error.BAD_REQUEST[0], "Field %s is mandatory and must be an %s" % (field, type_))
-        return ()
+                return self.error(error.BAD_REQUEST[0], "Field %s is mandatory and must be an %s" % (field, type_))
+        return
 
     def logout(self):
         self.session.kill()
