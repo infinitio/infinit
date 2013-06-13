@@ -42,7 +42,8 @@ def on_transaction(state, transaction, new):
        state.TransactionStatus.failed,
     ):
         state.running = False
-    elif state.transaction_accepted(transaction):
+    elif state.transaction_accepted(transaction)\
+        and status == state.TransactionStatus.started:
         state.started = True
 
 def on_error(state, status, message, tid):
