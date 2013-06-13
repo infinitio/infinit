@@ -239,21 +239,24 @@ namespace surface
 
       std::ofstream identity_infos{common::infinit::identity_path(res.id)};
 
-      if (!identity_infos.good())
+      if (identity_infos.good())
       {
-        ELLE_ERR("Cannot open identity file");
+        identity_infos << res.token << "\n"
+                       << res.identity << "\n"
+                       << res.email << "\n"
+                       << res.id << "\n"
+                       ;
+        identity_infos.close();
       }
 
-      identity_infos << res.token << "\n"
-                     << res.identity << "\n"
-                     << res.email << "\n"
-                     << res.id << "\n"
-                     ;
-      if (!identity_infos.good())
-      {
-        ELLE_ERR("Cannot write identity file");
-      }
-      identity_infos.close();
+
+      auto log_path =
+        fs::path(common::infinit::user_directory(this->me().id)) / "state.log";
+
+      elle::log::logger(std::unique_ptr<elle::log::Logger>{
+        new elle::log::TextLogger{
+          *(new std::ofstream{log_path.string(),
+                              std::fstream::trunc | std::fstream::out})}});
     }
 
     void
