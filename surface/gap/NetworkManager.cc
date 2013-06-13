@@ -1,7 +1,8 @@
-#include <surface/gap/NetworkManager.hh>
-#include <surface/gap/metrics.hh>
-// XXX: Only requiered by gep_exec...
-#include <surface/gap/gap.h>
+#include "NetworkManager.hh"
+
+#include "binary_config.hh"
+#include "gap.h"
+#include "metrics.hh"
 
 #include <common/common.hh>
 
@@ -487,29 +488,12 @@ namespace surface
         ELLE_DEBUG("LAUNCH: %s %s",
                    group_binary,
                    boost::algorithm::join(arguments, " "));
-        auto pc = elle::system::process_config(elle::system::normal_config);
-        {
-          std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-
-          if (!log_file.empty())
-          {
-            if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-            {
-              log_file += ".";
-              log_file += std::to_string(::getpid());
-            }
-            log_file += ".group.log";
-            pc.setenv("ELLE_LOG_FILE", log_file);
-          }
-        }
+        auto pc = binary_config("8group",
+                                this->_self.id,
+                                network._id);
         elle::system::Process p{std::move(pc), group_binary, arguments};
         if (p.wait_status() != 0)
           throw Exception(gap_internal_error, "8group binary failed");
-
-        ELLE_DEBUG("set user in network in meta.");
-
-        auto res = this->_meta.network_add_user(network_id, user_id);
-        this->sync(network_id);
       }
       CATCH_FAILURE_TO_METRICS("network_adduser");
 
@@ -569,21 +553,9 @@ namespace surface
         ELLE_WARN("XXX: setting executable permissions not yet implemented");
       }
 
-      auto pc = elle::system::process_config(elle::system::normal_config);
-      {
-        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-
-        if (!log_file.empty())
-        {
-          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-          {
-            log_file += ".";
-            log_file += std::to_string(::getpid());
-          }
-          log_file += ".access.log";
-          pc.setenv("ELLE_LOG_FILE", log_file);
-        }
-      }
+      auto pc = binary_config("8access",
+                              this->_self.id,
+                              network_id);
       elle::system::Process p{std::move(pc), access_binary, arguments};
       if (p.wait_status() != 0)
         throw Exception(gap_internal_error, "8access binary failed");

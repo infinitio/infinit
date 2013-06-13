@@ -1,10 +1,10 @@
 #include "TransactionManager.hh"
 
+#include "binary_config.hh"
 #include "CreateTransactionOperation.hh"
-#include "PrepareTransactionOperation.hh"
 #include "DownloadOperation.hh"
+#include "PrepareTransactionOperation.hh"
 #include "UploadOperation.hh"
-
 #include "metrics.hh"
 
 #include <plasma/meta/Client.hh>
@@ -177,26 +177,11 @@ namespace surface
         ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
                    boost::algorithm::join(arguments, " "));
 
-        auto pc = elle::system::process_config(elle::system::check_output_config);
-        {
-          std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-
-          if (!log_file.empty())
-          {
-            if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-            {
-              log_file += ".";
-              log_file += std::to_string(::getpid());
-            }
-            log_file += ".progress.log";
-            pc.setenv("ELLE_LOG_FILE", log_file);
-          }
-        }
         this->_progresses(
           [&] (TransactionProgressMap&)
           {
             progress.process = elle::make_unique<elle::system::Process>(
-              std::move(pc),
+              process_config(elle::system::pipe_stdout_config),
               progress_binary,
               arguments);
           });

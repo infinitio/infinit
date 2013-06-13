@@ -1,4 +1,5 @@
 #include "PrepareTransactionOperation.hh"
+#include "binary_config.hh"
 
 #include <common/common.hh>
 
@@ -89,20 +90,9 @@ namespace surface
                      transfer_binary,
                      boost::algorithm::join(arguments, " "));
 
-          auto pc = elle::system::process_config(elle::system::normal_config);
-          {
-            std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-            if (!log_file.empty())
-            {
-              if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-              {
-                log_file += ".";
-                log_file += std::to_string(::getpid());
-              }
-              log_file += ".to.transfer.log";
-              pc.setenv("ELLE_LOG_FILE", log_file);
-            }
-          }
+          auto pc = binary_config("8transfer",
+                                  this->_self.id,
+                                  this->_transaction.network_id);
           // set the environment and start the transfer
           elle::system::Process p{std::move(pc), transfer_binary, arguments};
           while (p.running())
