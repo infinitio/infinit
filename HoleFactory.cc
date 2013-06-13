@@ -68,7 +68,8 @@ namespace infinit
   std::unique_ptr<hole::Hole>
   hole_factory(hole::storage::Storage& storage,
                elle::Passport const& passport,
-               elle::Authority const& authority)
+               elle::Authority const& authority,
+               std::vector<elle::network::Locus> const& members)
   {
     lune::Descriptor descriptor(Infinit::User, Infinit::Network);
 
@@ -101,10 +102,6 @@ namespace infinit
         }
         case hole::Model::TypeSlug:
         {
-          std::vector<elle::network::Locus> members;
-          // FIXME: Restore sets at some point. Maybe.
-          // for (elle::network::Locus const& locus: set.loci)
-          //   members.push_back(locus);
           int port = Infinit::Configuration["hole"].Get("slug.port", 0);
           int timeout_int =
             Infinit::Configuration["hole"].Get("slug.timeout", 5000);

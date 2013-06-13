@@ -7,6 +7,7 @@
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
 #include <elle/network/Interface.hh>
+#include <elle/network/Locus.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/utility/Parser.hh>
 
@@ -45,7 +46,9 @@ parse_options(int argc, char** argv)
     ("help,h", "display the help")
     ("user,u", value<std::string>(), "specify the name of the user")
     ("network,n", value<std::string>(), "specify the name of the network")
-    ("mountpoint,m", value<std::string>(), "specify the mount point");
+    ("mountpoint,m", value<std::string>(), "specify the mount point")
+    ("peer", value<std::vector<std::string>>(),
+     "specify the peers to connect to");
 
   variables_map vm;
   store(parse_command_line(argc, argv, options), vm);
@@ -91,6 +94,11 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
     // Nothing to do, keep the mounpoint empty.
     // XXX[to fix later though]
   }
+
+  std::vector<elle::network::Locus> members;
+  if (options.count("peer"))
+    for (auto const& peer: options["peer"].as<std::vector<std::string>>())
+      members.push_back(elle::network::Locus(peer));
 
   // initialize the Lune library.
   if (lune::Lune::Initialize() == elle::Status::Error)
@@ -139,7 +147,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
 
   ELLE_DEBUG("constructing hole");
   std::unique_ptr<hole::Hole> hole(
-    infinit::hole_factory(storage, passport, Infinit::authority()));
+    infinit::hole_factory(storage, passport, Infinit::authority(), members));
   etoile::depot::hole(hole.get());
   ELLE_DEBUG("hole constructed");
 #ifdef INFINIT_HORIZON
