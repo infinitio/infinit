@@ -34,10 +34,7 @@ def login(state, email = None):
 
 def on_transaction(state, transaction, new):
     status = state.transaction_status(transaction)
-    if new:
-        print("New transaction", transaction)
-    else:
-        print("Transaction ({})".format(transaction), status)
+    print("{}Transaction ({})".format(new and "New " or "", transaction), status)
     state.current_transaction_id = transaction
     if status in (
        state.TransactionStatus.canceled,
