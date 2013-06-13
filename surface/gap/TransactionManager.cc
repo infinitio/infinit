@@ -511,29 +511,30 @@ namespace surface
     }
 
     void
-    TransactionManager::_prepare_upload(Transaction const& transaction)
+    TransactionManager::_prepare_upload(Transaction const& tr)
     {
-      auto s = this->_states[transaction.id];
+      auto s = this->_states[tr.id];
 
-      if (s.state == State::none) // XXX and user is not a ghost
+      if (s.state == State::none and
+          not this->_user_manager.one(tr.recipient_id).public_key.empty())
       {
-        ELLE_DEBUG("prepare transaction %s", transaction)
+        ELLE_DEBUG("prepare transaction %s", tr)
         s.operation = this->_add<PrepareTransactionOperation>(
           *this,
           this->_network_manager,
           this->_meta,
           this->_reporter,
           this->_self,
-          transaction,
+          tr,
           s.files);
         s.state = State::preparing;
         this->_states(
-          [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
+          [&tr, &s] (StateMap& map) {map[tr.id] = s;});
       }
       else
       {
         ELLE_DEBUG("do not prepare %s, already in state %d",
-                   transaction,
+                   tr,
                    s.state);
       }
     }
