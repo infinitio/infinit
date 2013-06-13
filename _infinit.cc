@@ -51,8 +51,15 @@ parse_options(int argc, char** argv)
      "specify the peers to connect to");
 
   variables_map vm;
-  store(parse_command_line(argc, argv, options), vm);
-  notify(vm);
+  try
+  {
+    store(parse_command_line(argc, argv, options), vm);
+    notify(vm);
+  }
+  catch (invalid_command_line_syntax const& e)
+  {
+    throw elle::Exception(elle::sprintf("command line error: %s", e.what()));
+  }
 
   if (vm.count("help"))
   {
