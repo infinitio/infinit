@@ -29,6 +29,7 @@
 #include <cryptography/Cryptosystem.hh>
 #include <cryptography/random.hh>
 
+#include <elle/attribute.hh>
 #include <elle/format/hexadecimal.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
@@ -57,6 +58,34 @@ meta(std::string const& host,
 
   ELLE_ASSERT_NEQ(client, nullptr);
   return *client;
+}
+
+/*---.
+| ID |
+`---*/
+ID::ID(size_t size):
+  _value(elle::format::hexadecimal::encode(
+           cryptography::random::generate<elle::Buffer>(size)))
+{}
+
+ID::ID(ID const& id):
+  _value(id._value)
+{}
+
+ID::ID(std::string const& id):
+  _value(id)
+{}
+
+bool
+ID::operator ==(std::string const& rhs)
+{
+  return this->_value == rhs;
+}
+
+bool
+ID::operator <(std::string const& rhs)
+{
+  return this->_value < rhs;
 }
 
 static
@@ -191,11 +220,10 @@ Network::Network(std::string const& name,
 {
   ELLE_TRACE_METHOD(name, model, openness, policy);
 
-  std::string uid = elle::format::hexadecimal::encode(
-    cryptography::random::generate<elle::Buffer>(64));
+  ID uid(64);
 
   ELLE_DEBUG("network uid: '%s'", uid);
-  nucleus::proton::Network network(uid);
+  nucleus::proton::Network network(uid.value());
 
   ELLE_DEBUG("group from '%s' and '%s'", network, keypair);
   auto group = create_group(network, keypair);
@@ -231,7 +259,7 @@ Network::Network(std::string const& name,
   elle::Version version(INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
   {
     // Create the descriptor from both sections and store it.
-    auto meta = descriptor::Meta(uid,
+    auto meta = descriptor::Meta(uid.value(),
                                  keypair.K(),
                                  model,
                                  std::move(directory_address),
@@ -256,7 +284,7 @@ Network::Network(std::string const& name,
 }
 
 Network::Network(std::string const& name,
-                 std::string const& identity_path,
+                 boost::filesystem::path const& identity_path,
                  std::string const& passphrase,
                  const hole::Model& model,
                  hole::Openness const& openness,
@@ -264,63 +292,58 @@ Network::Network(std::string const& name,
                  Authority const& authority):
   Network(name,
           infinit::Identity(
-            elle::serialize::from_file(identity_path)).decrypt(passphrase),
+            elle::serialize::from_file(identity_path.string())).decrypt(passphrase),
           model,
           openness,
           policy,
           authority)
 {}
 
-Network::Network(std::string const& name,
-                 std::string const& identity_path,
-                 std::string const& passphrase,
-                 std::string const& model,
-                 std::string const& openness,
-                 std::string const& policy,
-                 Authority const& authority):
-  Network(name,
-          infinit::Identity(
-            elle::serialize::from_file(identity_path)).decrypt(passphrase),
-          hole::Model(model),
-          hole::openness_from_name(openness),
-          horizon::policy_from_name(policy),
-          authority)
-{}
-
 Network::Network(boost::filesystem::path const& descriptor_path)
 {
+  if (!boost::filesystem::exists(descriptor_path))
+    throw elle::Exception(
+      elle::sprintf("File %s doesn't exist", descriptor_path));
+
   this->_descriptor.reset(
     new infinit::Descriptor(
       elle::serialize::from_file(descriptor_path.string())));
   this->_descriptor_path = descriptor_path;
 }
 
-Network::Network(std::string const& id,
+Network::Network(ID const& id,
                  std::string const& host,
                  uint16_t port,
                  std::string const& token)
 {
   using namespace elle::serialize;
 
-  auto descriptor = meta(host, port, token).descriptor(id).descriptor;
-  this->_descriptor.reset(new infinit::Descriptor(from_string<InputBase64Archive>(descriptor)));
+  auto descriptor = meta(host, port, token).descriptor(id.value()).descriptor;
+  this->_descriptor.reset(
+    new infinit::Descriptor(from_string<InputBase64Archive>(descriptor)));
 }
 
+// Should we do something like:
+// descriptor_path = "/tmp" -> /tmp/(network_name).dsc.
 void
-Network::store(boost::filesystem::path const& descriptor_path,
-               bool overwrite) const
+Network::store(boost::filesystem::path const& descriptor_path) const
 {
   ELLE_TRACE_METHOD(descriptor_path);
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
 
-  if (!overwrite && boost::filesystem::exists(descriptor_path))
+  if (descriptor_path.empty())
+    throw elle::Exception("descriptor path is empty");
+
+  if (boost::filesystem::exists(descriptor_path))
     throw elle::Exception(elle::sprintf("File %s already exists",
                                         descriptor_path));
 
-  elle::serialize::to_file(descriptor_path.string());
+  elle::serialize::to_file(descriptor_path.string()) << *this->_descriptor;
   this->_descriptor_path = descriptor_path;
 }
 
+// Should we do something like:
+// descriptor_path = "/tmp" -> /tmp/(network_name).dsc.
 void
 Network::erase(boost::filesystem::path const& descriptor_path)
 {
@@ -336,14 +359,54 @@ Network::erase(boost::filesystem::path const& descriptor_path)
 }
 
 void
-Network::mount(std::string const& mount_point,
+Network::install(boost::filesystem::path const& install_path) const
+{
+  ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
+
+  if (boost::filesystem::exists(install_path))
+    throw elle::Exception(
+      elle::sprintf("Couldn't create %s cause it already exists",
+                    install_path));
+
+  hole::storage::Directory storage(
+    nucleus::proton::Network(this->_descriptor->meta().identifier()),
+    (install_path / "shelter").string());
+
+  storage.store(this->_descriptor->meta().root_address(),
+                this->_descriptor->meta().root_object());
+
+  for (auto const& block: this->_descriptor->data().blocks())
+  {
+    nucleus::proton::Address block_address = block->bind();
+
+    storage.store(block_address, *block);
+  }
+
+  this->_install_path = install_path;
+}
+
+void
+Network::uninstall(boost::filesystem::path const& install_path) const
+{
+  ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
+
+  if (!this->_install_path.empty() && install_path.empty())
+    boost::filesystem::remove(this->_install_path);
+  else if (!install_path.empty())
+    boost::filesystem::remove_all(install_path);
+  else
+    throw elle::Exception("No path given");
+}
+
+uint16_t
+Network::mount(boost::filesystem::path const& mount_point,
                bool run) const
 {
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
 
   hole::storage::Directory storage(
     nucleus::proton::Network(this->_descriptor->meta().identifier()),
-    mount_point);
+    (mount_point / this->identifier()).string());
 
   storage.store(this->_descriptor->meta().root_address(),
                 this->_descriptor->meta().root_object());
@@ -359,7 +422,11 @@ Network::mount(std::string const& mount_point,
   {
     // XXX: Run 8infinit
 
+    uint16_t pid = 0;
+    return pid;
   }
+
+  return 0;
 }
 
 void
@@ -384,14 +451,13 @@ Network::publish(std::string const& host,
 }
 
 void
-Network::unpublish(std::string const& id,
-                   std::string const& host,
+Network::unpublish(std::string const& host,
                    uint16_t port,
                    std::string const& token) const
 {
-  using namespace elle::serialize;
+  ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
 
-  meta(host, port, token).descriptor_unpublish(id);
+  meta(host, port, token).descriptor_unpublish(this->identifier());
 }
 
 std::vector<std::string>

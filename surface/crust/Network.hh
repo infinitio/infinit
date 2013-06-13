@@ -19,10 +19,29 @@
 
 # include <memory>
 
+// ID represents a richer class than a simple string and avoid conflicts in the
+// API.
+class ID
+{
+public:
+  ID(size_t size);
+  ID(ID const& id);
+  ID(std::string const& id);
+
+  bool
+  operator ==(std::string const& rhs);
+
+  bool
+  operator <(std::string const& rhs);
+
+  ELLE_ATTRIBUTE_R(std::string, value);
+};
+
 class Network
 {
   ELLE_ATTRIBUTE(std::unique_ptr<infinit::Descriptor>, descriptor);
   ELLE_ATTRIBUTE_P(boost::filesystem::path, descriptor_path, mutable);
+  ELLE_ATTRIBUTE_P(boost::filesystem::path, install_path, mutable);
 public:
   static
   bool
@@ -58,32 +77,21 @@ public:
   /// Constructor with identity_path and passphrase.
   explicit
   Network(std::string const& name,
-          std::string const& identity_path,
+          boost::filesystem::path const& identity_path,
           std::string const& identity_passphrase,
-          const hole::Model& model = hole::Model(hole::Model::Type::TypeSlug),
-          hole::Openness const& openness = hole::Openness::open,
-          horizon::Policy const& policy = horizon::Policy::accessible,
-          infinit::Authority const& authority = infinit::MetaAuthority{});
-
-  /// String only constructor to make python binding easier.
-  explicit
-  Network(std::string const& name,
-          std::string const& identity_path,
-          std::string const& identity_passphrase,
-          std::string const& model = "slug",
-          std::string const& openness = "open",
-          std::string const& policy = "accessible",
+          const hole::Model& model,
+          hole::Openness const& openness,
+          horizon::Policy const& policy,
           infinit::Authority const& authority = infinit::MetaAuthority{});
 
   /// Load constructor, using local descriptor.
-  explicit
   Network(boost::filesystem::path const& descriptor_path);
 
   /// Load constructor, using descriptor from remote meta.
   // XXX: Should I put a dependencie to common by setting default value for meta
   // host and port?
   explicit
-  Network(std::string const& id,
+  Network(ID const& id,
           std::string const& host = common::meta::host(),
           uint16_t port = common::meta::port(),
           std::string const& token = common::meta::token());
@@ -93,16 +101,23 @@ public:
   `------*/
   /// Store descriptor localy.
   void
-  store(boost::filesystem::path const& descriptor_path,
-        bool overwrite = false) const;
+  store(boost::filesystem::path const& descriptor_path = common::infinit::home()) const;
 
   /// Delete local descritor.
   void
   erase(boost::filesystem::path const& descriptor_path = "");
 
-  /// Mount.
+  /// Install.
   void
-  mount(std::string const& network_path,
+  install(boost::filesystem::path const& path = common::infinit::home()) const;
+
+  /// Uninstall.
+  void
+  uninstall(boost::filesystem::path const& path = "") const;
+
+  /// Mount.
+  uint16_t
+  mount(boost::filesystem::path const& path,
         bool run = true) const;
 
   /// Unmount.
@@ -120,8 +135,7 @@ public:
 
   /// Remove descriptor from remote meta.
   void
-  unpublish(std::string const& id,
-            std::string const& host = common::meta::host(),
+  unpublish(std::string const& host = common::meta::host(),
             uint16_t port = common::meta::port(),
             std::string const& token = common::meta::token()) const;
 
@@ -166,6 +180,7 @@ public:
 #define WRAP_DESCRIPTOR(_section_, _type_, _name_)                             \
   ELLE_ATTRIBUTE_r_ACCESSOR(_type_, _name_)                                    \
   {                                                                            \
+    ELLE_ASSERT_NEQ(this->_descriptor, nullptr);                               \
     return this->_descriptor->_section_()._name_();                            \
   }
 
