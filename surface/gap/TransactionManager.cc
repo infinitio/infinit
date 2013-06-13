@@ -135,7 +135,7 @@ namespace surface
     float
     TransactionManager::progress(std::string const& id)
     {
-      ELLE_TRACE("Retrieve progress of transaction %s", id);
+      ELLE_DEBUG("Retrieve progress of transaction %s", id);
 
       auto const& tr = this->one(id);
       auto const& instance_manager =
