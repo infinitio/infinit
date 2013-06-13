@@ -215,9 +215,6 @@ namespace surface
         this->_meta.network_add_device(response.created_network_id,
                                        this->_device.id);
 
-      // Fetch network.
-      this->one(response.created_network_id);
-
       return response.created_network_id;
     }
 
@@ -273,7 +270,7 @@ namespace surface
       using elle::serialize::from_string;
       using elle::serialize::InputBase64Archive;
 
-      auto& network = this->one(network_id);
+      auto network = this->one(network_id);
 
       elle::io::Path shelter_path(path);
       nucleus::proton::Network proton_network(network_id);
@@ -347,115 +344,80 @@ namespace surface
     std::string
     NetworkManager::delete_(std::string const& network_id, bool force)
     {
-      ELLE_TRACE_METHOD(network_id);
-      this->_all()([&network_id] (NetworkMapPtr& map) {
-          map->at(network_id).reset();
-      });
 
-      this->_infinit_instance_manager.stop(network_id);
-
-      this->_reporter.store("network_delete_attempt",
-                            {{MKey::value,  network_id}});
-
-      plasma::meta::DeleteNetworkResponse response;
-      try
+      if (force or
+          this->_networks->find(network_id) != this->_networks->end())
       {
-        response = this->_meta.delete_network(network_id, force);
-      }
-      CATCH_FAILURE_TO_METRICS("network_delete");
+        this->_reporter.store("network_delete_attempt",
+                              {{MKey::value,  network_id}});
+        ELLE_TRACE("remove network %s from meta", network_id)
+          try
+          {
+            this->_meta.delete_network(network_id, force);
+          }
+          CATCH_FAILURE_TO_METRICS("network_delete");
 
-      this->_reporter.store("network_delete_succeed",
-                            {{MKey::value,  response.deleted_network_id}});
-
-      if (this->infinit_instance_manager().exists(response.deleted_network_id))
-      {
-        this->_infinit_instance_manager.stop(response.deleted_network_id);
+        this->_reporter.store("network_delete_succeed",
+                              {{MKey::value, network_id}});
+        this->_networks->erase(network_id);
       }
 
+      // Remove
+      if (this->infinit_instance_manager().exists(network_id))
+      {
+        ELLE_TRACE("killing infinit instance for network %s", network_id)
+          this->_infinit_instance_manager.stop(network_id);
+      }
+
+      // Remove all files.
       std::string network_path =
         common::infinit::network_directory(this->_self.id, network_id);
-
       if (elle::os::path::exists(network_path))
-        elle::os::path::remove_directory(network_path);
-
-      return response.deleted_network_id;
-    }
-
-    NetworkManager::NetworkMapMonitor&
-    NetworkManager::_all()
-    {
-      if (this->_networks->get() != nullptr)
-        return this->_networks;
-
-      this->_networks->reset(new NetworkManager::NetworkMap{});
-
-      auto response = this->_meta.networks();
-      for (auto const& id: response.networks)
       {
-        auto network = this->_meta.network(id);
-        this->_networks([&id, &network] (NetworkMapPtr& map) {
-          (*map)[id].reset(new Network{network});
-        });
+        ELLE_TRACE("remove network %s directory %s", network_id, network_path)
+          elle::os::path::remove_directory(network_path);
       }
 
-      return this->_networks;
+      return network_id;
     }
 
     std::vector<std::string>
     NetworkManager::all_ids()
     {
-      return this->_all()([](NetworkMapPtr const& map) {
-          std::vector<std::string> res{map->size()};
-          for (auto const& pair: *map)
+      return this->_networks([](NetworkMap const& map) {
+          std::vector<std::string> res{map.size()};
+          for (auto const& pair: map)
             res.emplace_back(pair.first);
           return res;
       });
     }
 
-    Network const&
+    Network
     NetworkManager::one(std::string const& id)
     {
-      auto ptr = this->_all()([&id] (NetworkMapPtr& map) -> Network const*{
-        auto it = map->find(id);
-        if (it != map->end())
-        {
-          if (it->second == nullptr)
-            throw Exception("getting a deleted network");
-          return it->second.get();
-        }
-        return nullptr;
-      });
-      if (ptr != nullptr)
-        return *ptr;
-      return this->sync(id);
+      if (this->_networks->find(id) == this->_networks->end())
+        return this->sync(id);
+      return this->_networks[id];
     }
 
-    Network const&
+    Network
     NetworkManager::sync(std::string const& id)
     {
-      ELLE_TRACE_METHOD(id);
-      this->_all()([id] (NetworkMapPtr& map) {
-        auto it = map->find(id);
-        if (it != map->end())
+      ELLE_DEBUG("synch network %s", id)
+        try
         {
-          if (it->second == nullptr)
-            throw Exception("Sync a delete nework");
+          auto network = this->_meta.network(id);
+          return this->_networks(
+            [&id, &network] (NetworkMap& map) -> Network
+            {
+              return (map[id] = network);
+            });
         }
-      });
-
-      try
-      {
-        auto network = this->_meta.network(id);
-        ELLE_DEBUG("Synched %s", id);
-        return this->_all()([&id, &network] (NetworkMapPtr& map) -> Network const& {
-          (*map)[id].reset(new Network{network});
-          return *(map->at(id));
-        });
-      }
-      catch (std::runtime_error const& e)
-      {
-        throw Exception{gap_network_error, e.what()};
-      }
+        catch (std::runtime_error const& e)
+        {
+          throw Exception{gap_network_error, e.what()};
+        }
+      elle::unreachable();
     }
 
     void
@@ -471,12 +433,8 @@ namespace surface
 
       try
       {
-        Network const& network = this->one(network_id);
-
-        ELLE_DEBUG("locating 8 group");
-        std::string const& group_binary =
-          common::infinit::binary_path("8group");
-
+        Network network = this->one(network_id);
+        auto const& group_binary = common::infinit::binary_path("8group");
         std::list<std::string> arguments{
           "--user", owner,
           "--type", "user",
@@ -717,9 +675,7 @@ namespace surface
 
       /// Check if network is valid
       {
-        auto network = this->_all()->get()->find(network_id);
-
-        if (network == this->_all()->get()->end())
+        if (this->_networks->find(network_id) == this->_networks->end())
           throw gap::Exception{gap_internal_error, "Unable to find network"};
       }
 
