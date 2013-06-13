@@ -4,6 +4,7 @@
 # include "OperationManager.hh"
 # include "TransactionManager.hh"
 # include "NetworkManager.hh"
+# include "UserManager.hh"
 
 # include <plasma/meta/Client.hh>
 
@@ -21,6 +22,7 @@ namespace surface
     {
       TransactionManager& _transaction_manager;
       NetworkManager& _network_manager;
+      UserManager& _user_manager;
       elle::metrics::Reporter& _reporter;
       plasma::meta::Client& _meta;
       plasma::meta::SelfResponse& _me;
@@ -34,6 +36,7 @@ namespace surface
     public:
       CreateTransactionOperation(TransactionManager& transaction_manager,
                                  NetworkManager& network_manager,
+                                 UserManager& user_manager,
                                  plasma::meta::Client& meta,
                                  elle::metrics::Reporter& reporter,
                                  plasma::meta::SelfResponse& me,

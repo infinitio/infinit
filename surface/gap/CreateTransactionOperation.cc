@@ -37,6 +37,7 @@ namespace surface
     CreateTransactionOperation::CreateTransactionOperation(
         TransactionManager& transaction_manager,
         NetworkManager& network_manager,
+        UserManager& user_manager,
         plasma::meta::Client& meta,
         elle::metrics::Reporter& reporter,
         plasma::meta::SelfResponse& me,
@@ -47,6 +48,7 @@ namespace surface
       Operation{"create_transaction_"},
       _transaction_manager(transaction_manager),
       _network_manager(network_manager),
+      _user_manager(user_manager),
       _reporter(reporter),
       _meta(meta),
       _me(me),
@@ -70,20 +72,25 @@ namespace surface
                                                this->_recipient_id_or_email,
                                                time.nanoseconds);
       this->_network_id = this->_network_manager.create(network_name);
-      plasma::meta::CreateTransactionResponse res;
 
+      auto recipient = this->_user_manager.one(this->_recipient_id_or_email);
+      ELLE_TRACE("Add user %s to network %s", recipient, this->_network_id)
+        this->_meta.network_add_user(this->_network_id, recipient.id);
+      // XXX add locally
+
+      plasma::meta::CreateTransactionResponse res;
       ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
                  this->_device_id,
                  this->_files.size(),
                  first_file,
                  size,
-                 this->_recipient_id_or_email,
+                 recipient.id,
                  network_name,
                  this->_network_id);
 
       try
       {
-        res = this->_meta.create_transaction(this->_recipient_id_or_email,
+        res = this->_meta.create_transaction(recipient.id,
                                              first_file,
                                              this->_files.size(),
                                              size,

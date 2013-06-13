@@ -118,6 +118,7 @@ namespace surface
       return this->_add<CreateTransactionOperation>(
           *this,
           this->_network_manager,
+          this->_user_manager,
           this->_meta,
           this->_reporter,
           this->_self,
