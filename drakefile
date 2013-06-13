@@ -853,6 +853,7 @@ def configure(cxx_toolkit = None,
   # 8infinit
   infinit_bin_config = drake.cxx.Config(cxx_config)
   infinit_bin_config += boost.config_thread()
+  infinit_bin_config += boost.config_program()
   infinit_bin_config.lib_path_runtime('../lib')
   if enable_horizon:
     infinit_bin_config.lib('fuse')
