@@ -47,7 +47,7 @@ def main(state, email):
     state.pull_notifications(0, 0)
     transactions = state.transactions()
     state.number_of_transactions = len(transactions)
-    state.transaction_status_callback(partial(on_canceled, state))
+    state.transaction_callback(partial(on_canceled, state))
 
     for transaction_id in transactions:
         tid = transaction_id
