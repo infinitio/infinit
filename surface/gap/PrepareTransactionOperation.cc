@@ -8,7 +8,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
 
-ELLE_LOG_COMPONENT("surface.gap.PrepareTransactionOperation");
+ELLE_LOG_COMPONENT("infinit.surface.gap.PrepareTransactionOperation");
 
 namespace surface
 {

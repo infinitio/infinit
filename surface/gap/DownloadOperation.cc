@@ -12,7 +12,7 @@
 #include <list>
 #include <string>
 
-ELLE_LOG_COMPONENT("surface.gap.DownloadOperation");
+ELLE_LOG_COMPONENT("infinit.surface.gap.DownloadOperation");
 
 namespace surface
 {

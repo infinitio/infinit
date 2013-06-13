@@ -3,7 +3,7 @@
 #include <elle/log.hh>
 #include <elle/Exception.hh>
 
-ELLE_LOG_COMPONENT("surface.gap.UploadOperation");
+ELLE_LOG_COMPONENT("infinit.surface.gap.UploadOperation");
 
 namespace surface
 {
