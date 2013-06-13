@@ -230,11 +230,14 @@ namespace plasma
     };
 
     struct UnpublishDescriptorResponse: Response
-    {};
+    {
+      std::string id;
+    };
 
     struct Descriptor
     {
       std::string id;
+      std::string name;
       std::string descriptor;
     };
 

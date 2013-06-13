@@ -254,13 +254,12 @@ SERIALIZE_RESPONSE(plasma::meta::VerifySignatureResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::PublishDescriptorResponse, ar, res)
 {
-  ar & named("id", res.id);
+  ar & named("_id", res.id);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UnpublishDescriptorResponse, ar, res)
 {
-  (void) ar;
-  (void) res;
+  ar & named("_id", res.id);
 }
 
 ELLE_SERIALIZE_SIMPLE(plasma::meta::Descriptor, ar, res, version)
@@ -682,7 +681,7 @@ namespace plasma
     Client::descriptor_publish(std::string const& dsc) const
     {
       json::Dictionary request{std::map<std::string, std::string>{
-          {"d_e_s_c_r_i_p_t_o_r", ""},
+          {"descriptor", dsc},
       }};
       return this->_post<PublishDescriptorResponse>("/descriptor/publish", request);
     }
