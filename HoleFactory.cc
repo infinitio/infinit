@@ -3,6 +3,7 @@
 #include <elle/network/Interface.hh>
 
 #include <reactor/network/nat.hh>
+#include <reactor/network/resolve.hh>
 
 #include <agent/Agent.hh>
 
@@ -20,9 +21,12 @@
 
 #include <plasma/meta/Client.hh>
 
+#include <heartbeat.hh>
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Portal.hh>
+
+ELLE_LOG_COMPONENT("infinit.HoleFactory");
 
 namespace infinit
 {
@@ -64,7 +68,8 @@ namespace infinit
   std::unique_ptr<hole::Hole>
   hole_factory(hole::storage::Storage& storage,
                elle::Passport const& passport,
-               elle::Authority const& authority)
+               elle::Authority const& authority,
+               std::vector<elle::network::Locus> const& members)
   {
     lune::Descriptor descriptor(Infinit::User, Infinit::Network);
 
@@ -97,10 +102,6 @@ namespace infinit
         }
         case hole::Model::TypeSlug:
         {
-          std::vector<elle::network::Locus> members;
-          // FIXME: Restore sets at some point. Maybe.
-          // for (elle::network::Locus const& locus: set.loci)
-          //   members.push_back(locus);
           int port = Infinit::Configuration["hole"].Get("slug.port", 0);
           int timeout_int =
             Infinit::Configuration["hole"].Get("slug.timeout", 5000);
@@ -121,25 +122,42 @@ namespace infinit
               (elle::sprintf("invalid transport protocol: %s", protocol_str));
 
           // Punch NAT.
+          auto& sched = *reactor::Scheduler::scheduler();
           std::unique_ptr<reactor::network::UDPSocket> socket;
           boost::asio::ip::udp::endpoint pub;
           try
           {
-            reactor::nat::NAT nat(*reactor::Scheduler::scheduler());
+            reactor::nat::NAT nat(sched);
+            std::string stun_host = common::stun::host(),
+              stun_port = std::to_string(common::stun::port());
 
-            auto pokey = nat.punch(common::longinus::host(),
-                                   common::longinus::port(),
-                                   port);
+            ELLE_DEBUG("connecting to stun host %s:%s", stun_host, stun_port);
+            auto host = reactor::network::resolve_udp(sched, stun_host,
+                                                      stun_port);
+            auto breach = nat.map(host);
 
-            ELLE_TRACE("punch done: %s", pokey.public_endpoint());
-            socket = std::move(pokey.handle());
-            pub = pokey.public_endpoint();
+            using reactor::nat::Breach;
+            if (breach.nat_behavior() == Breach::NatBehavior::EndpointIndependentMapping ||
+                breach.nat_behavior() == Breach::NatBehavior::DirectMapping)
+            {
+              ELLE_TRACE("breach done: %s", breach.mapped_endpoint());
+              socket = std::move(breach.take_handle());
+              pub = breach.mapped_endpoint();
+            }
+            else
+              throw elle::Exception{"invalid mapping behavior"};
           }
           catch (elle::Exception const& e)
           {
             // Nat punching failed
             ELLE_TRACE("punch failed: %s", e.what());
           }
+
+          // If the punch succeed, we start the heartbeat thread.
+          if (socket)
+            heartbeat::start(*socket,
+                             common::heartbeat::host(),
+                             common::heartbeat::port());
 
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,
@@ -169,9 +187,10 @@ namespace infinit
                   }
                 ELLE_DEBUG("addresses: %s", addresses);
               std::vector<std::pair<std::string, uint16_t>> public_addresses;
-              public_addresses.push_back(std::pair<std::string, uint16_t>
-                                         (pub.address().to_string(),
-                                          pub.port()));
+              if (pub.port() != 0)
+                public_addresses.push_back(std::pair<std::string, uint16_t>
+                                           (pub.address().to_string(),
+                                            pub.port()));
               client.token(agent::Agent::meta_token);
 
               ELLE_DEBUG("public_addresses: %s", public_addresses);

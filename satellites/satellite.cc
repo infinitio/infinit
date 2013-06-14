@@ -1,11 +1,12 @@
 #include <reactor/scheduler.hh>
-#include <reactor/exception.hh>
 
 #include <elle/system/signal.hh>
 #include <elle/system/Process.hh>
+#include <elle/Exception.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
 #include <elle/os/getenv.hh>
+#include <elle/os/path.hh>
 #include <common/common.hh>
 #include <satellites/satellite.hh>
 #include <CrashReporter.hh>
@@ -40,7 +41,7 @@ namespace infinit
   sighdl(int signum)
   {
     ELLE_DEBUG_SCOPE("received signal %s(%d)",
-               elle::system::strsignal(signum), signum);
+                     elle::system::strsignal(signum), signum);
     if (st_pid != -1)
     {
       ELLE_DEBUG("kill(%d, %s(%d))",
@@ -88,17 +89,21 @@ namespace infinit
 #if defined WCOREDUMP
       if (WCOREDUMP(status))
       {
+        std::string core_path;
+        if (elle::os::path::exists("core"))
+          core_path = "core";
+        else if (elle::os::path::exists(elle::sprintf("/cores/core.%d", pid)))
+          core_path = elle::sprintf("/cores/core.%d", pid);
+        else if (elle::os::path::exists(elle::sprintf("core.%d", pid)))
+          core_path = elle::sprintf("core.%d", pid);
+
         ELLE_LOG("%s[%d]: core dumped", name, pid);
         ss <<
           elle::system::check_output("gdb",
                                      "-e", common::infinit::binary_path(name),
-#if defined INFINIT_LINUX
-                                     "-c", "core",
-#elif defined INFINIT_MACOSX
-                                     "-c", elle::sprintf("/cores/core.%d", pid),
-#endif
+                                     "-c", core_path,
                                      "-s", common::infinit::binary_path(name),
-                                     "-x", common::infinit::binary_path("gdbmacro"));
+                                     "-x", common::infinit::binary_path("gdbmacro.py"));
         std::ofstream debuginfo{
           elle::sprintf("/tmp/crash-%s-%d.txt", name, pid)};
         debuginfo << ss.str();
@@ -132,6 +137,10 @@ namespace infinit
       ELLE_DEBUG("quiting %s", name);
       return 0;
     }
+    catch (Exit const& e)
+    {
+      return e.value();
+    }
     catch (std::runtime_error const& e)
     {
       ELLE_ERR("%s: fatal error: %s", name, e.what());
@@ -141,6 +150,11 @@ namespace infinit
       return 1;
     }
   }
+
+  Exit::Exit(int value):
+    elle::Exception("exit"),
+    _value(value)
+  {}
 
   int
   satellite_main(std::string const& name, std::function<void ()> const& action)
@@ -168,7 +182,11 @@ namespace infinit
         sched.run();
         return main.result();
       }
-      catch (reactor::Exception const& e)
+      catch (Exit const& e)
+      {
+        return e.value();
+      }
+      catch (elle::Exception const& e)
       {
         ELLE_ERR("%s: fatal error: %s", name, e);
         std::cerr << name << ": fatal error: " << e << std::endl;
@@ -186,5 +204,4 @@ namespace infinit
       }
     }
   }
-
 }

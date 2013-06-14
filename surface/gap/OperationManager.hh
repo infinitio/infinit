@@ -1,13 +1,12 @@
 #ifndef SURFACE_GAP_STATE_OPERATION_HH
 # define SURFACE_GAP_STATE_OPERATION_HH
 
+# include "Operation.hh"
+
 # include <elle/log.hh>
 # include <elle/Exception.hh>
 
 # include <functional>
-# include <stdexcept>
-# include <string>
-# include <thread>
 
 namespace surface
 {
@@ -16,11 +15,6 @@ namespace surface
     /// Base class for specialized operation managers.
     class OperationManager
     {
-    public:
-      /// Base class for any operation kind. It only requires the override of
-      /// the method `void _run()`.
-      class Operation;
-
     private:
       // Glue to manage thread creation and destruction.
       template <typename T>
@@ -81,74 +75,77 @@ namespace surface
      _cancel_all();
     };
 
-    class OperationManager::Operation
+    /// Shortcut for lambda and bound functions.
+    /// Accept `void()`, `void(Operation*)` and `void(Operation&)` prototypes.
+    class LambdaOperation:
+      public Operation
     {
-    protected:
-      std::string _name;
-      bool _done;
-      bool _succeeded;
-      bool _cancelled;
-      bool _delete_later;
-      bool _rethrown;
-      std::exception_ptr _exception;
-      std::string _failure_reason;
+    private:
+      union
+      {
+        std::function<void()> _simple;
+        std::function<void(Operation*)> _with_op;
+        std::function<void(Operation&)> _with_op_ref;
+      };
+      enum
+      {
+        simple,
+        with_op,
+        with_op_ref,
+      } _kind;
 
     public:
-      Operation(std::string const& name);
-      virtual
-      ~Operation();
+      LambdaOperation(std::string const& name,
+                      std::function<void()> func):
+        Operation{name},
+        _simple{func},
+        _kind{simple}
+      {}
 
-     public:
-       std::string const& name() const { return this->_name; }
-       bool done() const { return this->_done; }
-       bool succeeded() const { return this->_succeeded; }
-       bool cancelled() const { return this->_cancelled; }
-       bool scheduled_for_deletion() const { return this->_delete_later; }
-       void delete_later(bool flag = true) { this->_delete_later = flag; }
+      LambdaOperation(std::string const& name,
+                      std::function<void(Operation*)> func):
+        Operation{name},
+        _with_op{func},
+        _kind{with_op}
+      {}
 
-     protected:
-       /// Body of the operation. If the operation is cancellable, a check of
-       /// the protected member _cancelled should be done as often as possible.
-       virtual
-       void
-       _run() = 0;
+      LambdaOperation(std::string const& name,
+                      std::function<void(Operation&)> func):
+        Operation{name},
+        _with_op_ref{func},
+        _kind{with_op_ref}
+      {}
 
-       //- Cancelletion -------------------------------------------------------
-     public:
-       /// Cancel the transaction by setting _cancelled to true. The inherited
-       /// class has to implement other cancelletion behaviors by overriding
-       /// the method `void _cancel()`.
-       void
-       cancel();
+      LambdaOperation(LambdaOperation const&) = delete;
+      LambdaOperation& operator =(LambdaOperation const&) = delete;
 
-     protected:
-       /// Allow user to create special behavior when the operation is
-       /// cancelled. The body of this function is deliberately empty.
-       virtual
-       void
-       _cancel();
+      ~LambdaOperation()
+      {
+        switch (this->_kind)
+        {
+        case simple:
+          this->_simple.~function();
+        case with_op:
+          this->_with_op.~function();
+        case with_op_ref:
+          this->_with_op_ref.~function();
+        }
+      }
 
-       //- Deletion -------------------------------------------------------------
-     public:
-       /// This method is used to notify that the process is scheduled for
-       /// deletion.
-
-       /// Rethrow the catched exception that may occured during _run.
-       void
-       rethrow();
-
-     protected:
-        // XXX put this in elle ?
-        /// Try to obtain a string from the exception pointer e or the current
-        /// exception when none is given.
-        std::string
-        _exception_string(std::exception_ptr eptr = std::exception_ptr{});
-
-     public:
-        /// When succeeded is false, returns the stored exception string.
-        std::string
-        failure_reason();
-     };
+    protected:
+      void _run() override
+      {
+        switch (this->_kind)
+        {
+        case simple:
+          return this->_simple();
+        case with_op:
+          return this->_with_op(this);
+        case with_op_ref:
+          return this->_with_op_ref(*this);
+        }
+      }
+    };
   }
 }
 

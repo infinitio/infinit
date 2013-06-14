@@ -9,11 +9,12 @@ extern "C" {
 
 #include <surface/gap/status.hh>
 
-  typedef enum
-  {
-    gap_true = 1,
-    gap_false = 0,
-  } gap_Bool;
+  //typedef enum
+  //{
+  //  gap_true = 1,
+  //  gap_false = 0,
+  //} gap_Bool;
+  typedef int gap_Bool; // XXX Use the previous enum.
 
   /// gap_State is an opaque structure used in every calls.
   struct gap_State;
@@ -105,7 +106,7 @@ extern "C" {
                        char const* hash_password);
 
   /// Check is user is already logged.
-  int
+  gap_Bool
   gap_logged_in(gap_State* state);
 
   /// Logout from meta.
@@ -153,12 +154,6 @@ extern "C" {
   gap_transaction_callback(gap_State* state,
                            gap_transaction_callback_t cb);
 
-  /// Transaction status callback.
-  typedef void (*gap_transaction_status_callback_t)(char const*, int new_);
-  gap_Status
-  gap_transaction_status_callback(gap_State* state,
-                                  gap_transaction_status_callback_t cb);
-
   /// Transaction getters.
   char const*
   gap_transaction_sender_id(gap_State*,
@@ -204,10 +199,13 @@ extern "C" {
   gap_transaction_timestamp(gap_State* state,
                             char const* transaction_id);
 
-  // gap_Bool
-  int
+  gap_Bool
   gap_transaction_is_directory(gap_State*,
                                char const*);
+
+  gap_Bool
+  gap_transaction_accepted(gap_State* state,
+                           char const* transaction_id);
 
   gap_TransactionStatus
   gap_transaction_status(gap_State*,
@@ -393,6 +391,13 @@ extern "C" {
                          char const* transaction_id,
                          gap_TransactionStatus status);
 
+  /// Accept a transaction.
+  /// This function can only be used by the recipient of the transaction, if
+  /// not already accepted.
+  gap_Status
+  gap_accept_transaction(gap_State* state,
+                         char const* transaction_id);
+
   // Set output directory.
   gap_Status
   gap_set_output_dir(gap_State* state,
@@ -404,6 +409,10 @@ extern "C" {
   void
   gap_send_file_crash_report(char const* module,
                              char const* filename);
+
+  // Generated file.
+  #include <surface/gap/gen_metrics.h>
+
 # ifdef __cplusplus
 } // ! extern "C"
 # endif

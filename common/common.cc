@@ -25,6 +25,10 @@
 #define COMMON_DEFAULT_RESOURCES_ROOT_URL "http://download.development.infinit.io"
 #define COMMON_DEFAULT_LONGINUS_HOST "longinus.api.development.infinit.io"
 #define COMMON_DEFAULT_LONGINUS_PORT 9999
+#define COMMON_DEFAULT_HEARTBEAT_HOST "heartbeat.development.infinit.io"
+#define COMMON_DEFAULT_HEARTBEAT_PORT 9898
+#define COMMON_DEFAULT_STUN_HOST "punch.api.development.infinit.io"
+#define COMMON_DEFAULT_STUN_PORT 3478
 
 #define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
 #define COMMON_PRODUCTION_META_PROTOCOL "http"
@@ -36,6 +40,10 @@
 #define COMMON_PRODUCTION_RESOURCES_ROOT_URL "http://download.production.infinit.io"
 #define COMMON_PRODUCTION_LONGINUS_HOST "v1.longinus.api.production.infinit.io"
 #define COMMON_PRODUCTION_LONGINUS_PORT 9999
+#define COMMON_PRODUCTION_HEARTBEAT_HOST "heartbeat.production.infinit.io"
+#define COMMON_PRODUCTION_HEARTBEAT_PORT 9898
+#define COMMON_PRODUCTION_STUN_HOST "punch.api.development.infinit.io"
+#define COMMON_PRODUCTION_STUN_PORT 3478
 
 #ifdef INFINIT_PRODUCTION_BUILD
 # define VAR_PREFIX COMMON_PRODUCTION
@@ -72,6 +80,18 @@
 /**/
 # define COMMON_LONGINUS_PORT \
   BOOST_PP_CAT(VAR_PREFIX, _LONGINUS_PORT) \
+/**/
+# define COMMON_HEARTBEAT_HOST \
+  BOOST_PP_CAT(VAR_PREFIX, _HEARTBEAT_HOST) \
+/**/
+# define COMMON_HEARTBEAT_PORT \
+  BOOST_PP_CAT(VAR_PREFIX, _HEARTBEAT_PORT) \
+/**/
+# define COMMON_STUN_HOST \
+  BOOST_PP_CAT(VAR_PREFIX, _STUN_HOST) \
+/**/
+# define COMMON_STUN_PORT \
+  BOOST_PP_CAT(VAR_PREFIX, _STUN_PORT) \
 /**/
 
 
@@ -119,13 +139,14 @@ namespace
   _built_binary_relative_path(std::string const& name)
   {
     static std::unordered_map<std::string, std::string> paths{
-      {"8access",   "bin/8access"},
-      {"8group",    "bin/8group"},
-      {"8infinit",  "bin/8infinit"},
-      {"8watchdog", "bin/8watchdog"},
-      {"8transfer", "bin/8transfer"},
-      {"8progress", "bin/8progress"},
-      {"gdbmacro",  "bin/gdbmacro"},
+      {"8access",     "bin/8access"},
+      {"8group",      "bin/8group"},
+      {"8infinit",    "bin/8infinit"},
+      {"8watchdog",   "bin/8watchdog"},
+      {"8transfer",   "bin/8transfer"},
+      {"8progress",   "bin/8progress"},
+      {"gdbmacro.py", "bin/gdbmacro.py"},
+      {"heartbeat-server", "bin/heartbeat-server"},
     };
     auto it = paths.find(name);
     if (it == paths.end())
@@ -530,4 +551,50 @@ namespace common
       return std::stoi(port_string);
     }
   }
+
+  namespace heartbeat
+  {
+    std::string const&
+    host()
+    {
+      static std::string const host_string = elle::os::getenv(
+        "INFINIT_HEARTBEAT_HOST",
+        COMMON_HEARTBEAT_HOST
+      );
+      return host_string;
+    }
+
+    int
+    port()
+    {
+      static std::string const port_string = elle::os::getenv(
+        "INFINIT_HEARTBEAT_PORT",
+        std::to_string(COMMON_HEARTBEAT_PORT)
+      );
+      return std::stoi(port_string);
+    }
+  }
+
+  namespace stun
+  {
+    std::string const&
+    host()
+    {
+      static std::string const host_string = elle::os::getenv(
+        "INFINIT_STUN_HOST",
+        COMMON_STUN_HOST
+      );
+      return host_string;
+    }
+
+    int
+    port()
+    {
+      static std::string const port_string = elle::os::getenv(
+        "INFINIT_STUN_PORT",
+        std::to_string(COMMON_STUN_PORT)
+      );
+      return std::stoi(port_string);
+    }
+  } /* stun */
 }

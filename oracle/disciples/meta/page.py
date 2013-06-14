@@ -107,7 +107,6 @@ class Page(object):
         return ()
 
     def logout(self):
-        print("user %s logged out.", self.user)
         self.session.kill()
 
     def authenticate_with_token(self, token_genkey):
@@ -153,6 +152,7 @@ class Page(object):
 
     def forbidden(self, msg):
         raise web.HTTPError("403 {}".format(msg))
+
     def requireLoggedIn(self):
         if not self.user:
             self.forbidden("Authentication required.")
@@ -178,16 +178,20 @@ class Page(object):
         d.update(data)
         self.notifier.notify_some(notification_id, swaggers, d, store = False)
 
-    def error(self, err=error.UNKNOWN, msg=""):
-        assert isinstance(err, tuple)
+    def error(self, error_code = error.UNKNOWN, msg = None):
+        assert isinstance(error_code, tuple)
+        assert len(error_code) == 2
+        if msg is None:
+            msg = error_code[1]
         assert isinstance(msg, str)
-        if not msg:
-            msg = err[1]
         return json.dumps({
             'success': False,
-            'error_code': err[0],
-            'error_details': str(msg),
+            'error_code': error_code[0],
+            'error_details': msg,
         })
+
+    def raise_error(self, error_code, msg = None):
+        raise web.ok(data = self.error(error_code, msg))
 
     def success(self, obj={}):
         assert(isinstance(obj, dict))

@@ -3,7 +3,7 @@
 INFINIT_SOURCE_DIR=$(git rev-parse --show-toplevel)
 INFINIT_BUILD_DIR=$PWD
 
-ELLE_LOG_LEVEL="infinit.*:DUMP,reactor.network.*:DUMP"
+ELLE_LOG_LEVEL="TRACE"
 
 DISTCC_HOSTS="development.infinit.io"
 

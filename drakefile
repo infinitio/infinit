@@ -11,8 +11,8 @@ satellite_path = str(drake.path_src("satellites"))
 satellite_default = [s for s in os.listdir(satellite_path) \
                      if os.path.isdir(os.path.join(satellite_path, s))]
 
-def configure(cxx_toolkit,
-              cxx_config,
+def configure(cxx_toolkit = None,
+              cxx_config = None,
               enable_horizon = True,
               satellites = satellite_default,
               optimization = True,
@@ -25,6 +25,9 @@ def configure(cxx_toolkit,
               enable_debug = True):
 
   prefix = drake.Path(prefix)
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
 
   if enable_debug:
     cxx_config.define("DEBUG")
@@ -59,7 +62,7 @@ def configure(cxx_toolkit,
   elif sys.platform == 'darwin':
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   else:
-    raise Exception("platform {} not supported".format(sys.platform))
+    raise Exception("platform %s not supported" % sys.platform)
   for define in platform_defines:
     cxx_config.define(define)
 
@@ -106,7 +109,7 @@ def configure(cxx_toolkit,
   elif architecture == "64bit":
     architecture_wordsize = 64
   else:
-    raise Exception("architecture {} not supported".format(architecture))
+    raise Exception("architecture %s not supported" % architecture)
 
   if cxx_toolkit.os == drake.os.linux:
     if architecture_wordsize == 32:
@@ -114,16 +117,24 @@ def configure(cxx_toolkit,
     elif architecture_wordsize == 64:
       dependencies_prefix = 'dependencies/platforms/linux64/work/'
     else:
-      raise Exception("architecture {} not supported".format(architecture))
+      raise Exception("architecture %s not supported" % architecture)
   elif cxx_toolkit.os == drake.os.macos:
     if architecture_wordsize == 32:
       dependencies_prefix = 'dependencies/platforms/macosx32/work/'
     elif architecture_wordsize == 64:
       dependencies_prefix = 'dependencies/platforms/macosx64/work/'
     else:
-      raise Exception("architecture {} not supported".format(architecture))
+      raise Exception("architecture %s not supported" % architecture)
+  elif cxx_toolkit.os == drake.os.windows:
+    if architecture_wordsize == 32:
+      dependencies_prefix = 'dependencies/platforms/win32/work/'
+    elif architecture_wordsize == 64:
+      dependencies_prefix = 'dependencies/platforms/win64/work/'
+    else:
+      raise Exception("architecture %s not supported" % architecture)
   else:
-    raise Exception("operating system {} not supported".format(cxx_toolkit.os))
+    raise Exception(
+      'operating system %s not supported' % cxx_toolkit.os)
 
   openssl = drake.cxx.LibraryConfiguration(
     'openssl/opensslconf.h',
@@ -134,6 +145,22 @@ def configure(cxx_toolkit,
     'curl/curl.h',
     prefix = dependencies_prefix,
   )
+
+  stun_common = drake.cxx.LibraryConfiguration(
+    'commonincludes.hpp',
+    prefix = dependencies_prefix,
+    include_dir = "include/stun/common/",
+  )
+
+  stun_core = drake.cxx.LibraryConfiguration(
+    'stuncore.h',
+    prefix = dependencies_prefix,
+    include_dir = "include/stun/stuncore/",
+  )
+
+  stun_server_path = os.path.join(dependencies_prefix, 'bin', 'stun-server')
+  stun_server = drake.copy(drake.nodes(stun_server_path), 'bin',
+          os.path.dirname(stun_server_path))
 
   if cxx_toolkit.os == drake.os.macos:
     ssl_suffix = '.1.0.0.dylib'
@@ -162,38 +189,69 @@ def configure(cxx_toolkit,
     curl.libraries_path
   )
 
+  stun_core_lib = drake.copy(
+    drake.nodes(
+      stun_core.libraries_path / ('libstuncore.a'),
+    ),
+    'lib',
+    stun_core.libraries_path
+  )
+
+  stun_common_lib = drake.copy(
+    drake.nodes(
+      stun_common.libraries_path / ('libstuncommon.a'),
+    ),
+    'lib',
+    stun_common.libraries_path
+  )
+
   cxx_config += openssl.config()
+
   cxx_config += curl.config()
+  cxx_config += stun_core.config()
+  cxx_config += stun_common.config()
 
   # Boost
-  boost = boost or drake.cxx.boost.Boost()
+  boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
   cxx_config += boost.config()
-  cxx_config += boost.config_signals()
-  cxx_config += boost.config_system()
-  cxx_config.define('BOOST_PP_VARIADICS')
-  cxx_config += boost.config_filesystem(static = (cxx_toolkit.os is drake.os.macos))
-  cxx_config.define('BOOST_FILESYSTEM_NO_DEPRECATED', '1')
-  cxx_config += boost.config_thread()
 
   # Python
-  python2 = drake.cxx.find_library('pyconfig.h', prefix = python2,
-                                   include_dir = ['include/python2.7',
-                                                  'include/python2.7m'])
-  python3 = drake.cxx.find_library('pyconfig.h', prefix = python3,
-                                   include_dir = ['include/python3.2',
-                                                  'include/python3.2m',
-                                                  'include/python3.3m'])
+  python_enabled = cxx_toolkit.os != drake.os.windows
+  if python_enabled:
+    python2 = drake.cxx.find_library('pyconfig.h', prefix = python2,
+                                     include_dir = ['include/python2.7',
+                                                    'include/python2.7m'])
+    python3 = drake.cxx.find_library('pyconfig.h', prefix = python3,
+                                     include_dir = ['include/python3.2',
+                                                    'include/python3.2m',
+                                                    'include/python3.3m'])
 
   # Elle
-  elle = drake.include('elle', cxx_toolkit, cxx_config, boost = boost)
+  elle = drake.include('elle',
+                       cxx_toolkit,
+                       cxx_config,
+                       prefix = prefix,
+                       boost = boost,
+                       stuntman = stun_core,
+                       openssl = openssl.config(),
+                       curl = curl.config())
+
   elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
   cryptography_lib = drake.copy(elle.cryptography_dynamic, 'lib', elle.cryptography_dynamic.path().dirname())
   reactor_lib = drake.copy(elle.reactor_dynamic, 'lib', elle.reactor_dynamic.path().dirname())
   curly_lib = drake.copy(elle.curly_dynamic, 'lib', elle.curly_dynamic.path().dirname())
+  curly_sched_lib = drake.copy(elle.curly_sched_dynamic, 'lib', elle.curly_sched_dynamic.path().dirname())
+  curly_asio_lib = drake.copy(elle.curly_asio_dynamic, 'lib', elle.curly_asio_dynamic.path().dirname())
   cxx_config += elle.config
   asio_udt_lib = drake.copy(elle.reactor.asio_udt.library,'lib', 'elle/reactor/asio-udt/lib')
   udt_lib = drake.copy(elle.reactor.asio_udt.udt.library,'lib', 'elle/reactor/asio-udt/udt/lib')
   cxx_config.add_local_include_path('.')
+
+  curly_libs = [
+    curly_lib,
+    curly_asio_lib,
+    curly_sched_lib,
+  ]
 
   # Fuse
   if enable_horizon:
@@ -467,12 +525,14 @@ def configure(cxx_toolkit,
     'CrashReporter.cc',
     'CrashReporter.hh',
     'HoleFactory.cc',
+    'heartbeat.cc',
+    'heartbeat.hh',
     'Infinit.cc',
     'Program.cc',
     'Program.hh',
     'common/common.cc',
     ) + [version]
-  infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources,
+  infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources + [reactor_lib],
                                  cxx_toolkit, cxx_config)
 
   # Hole
@@ -729,7 +789,7 @@ def configure(cxx_toolkit,
         'horizon/macosx/fwd.hh',
         )
     else:
-      raise Exception('unsupport os')
+      raise Exception('cannot compile horizon: unsupported os')
 
     horizon_lib = drake.cxx.DynLib('lib/horizon', horizon_sources,
                                    cxx_toolkit, cxx_config)
@@ -754,6 +814,7 @@ def configure(cxx_toolkit,
   ## ----- ##
 
   tests = drake.Rule('tests')
+  tests << elle.rule_tests
 
   ## ----- ##
   ## Build ##
@@ -762,6 +823,8 @@ def configure(cxx_toolkit,
   build = drake.Rule('build')
   build << openssl_lib
   build << curl_lib
+  build << stun_core_lib
+  build << stun_common_lib
 
   ## -------- ##
   ## Programs ##
@@ -780,16 +843,17 @@ def configure(cxx_toolkit,
     reactor_lib,
     elle_lib,
     metrics_lib,
-    curly_lib,
   ]
   if enable_horizon:
     infinit_libs.append(horizon_slib)
   udt_libs = [asio_udt_lib, udt_lib]
   infinit_libs += udt_libs # FIXME: no need to depend on UDT
+  infinit_libs += curly_libs
 
   # 8infinit
   infinit_bin_config = drake.cxx.Config(cxx_config)
   infinit_bin_config += boost.config_thread()
+  infinit_bin_config += boost.config_program()
   infinit_bin_config.lib_path_runtime('../lib')
   if enable_horizon:
     infinit_bin_config.lib('fuse')
@@ -807,7 +871,7 @@ def configure(cxx_toolkit,
 
   # GdbMacro
   gdbmacro_files = drake.nodes(
-    'default/gdbmacro',
+    'default/gdbmacro.py',
     )
   macro_copy = drake.copy(gdbmacro_files, 'bin', 'default')
 
@@ -905,242 +969,235 @@ def configure(cxx_toolkit,
                              tropho_sources,
                              cxx_toolkit, cxx_config)
   ## GAP:
-  gap_operation_sources = drake.nodes(
+  gap_sources = drake.nodes(
+    'surface/gap/binary_config.hh',
+    'surface/gap/binary_config.cc',
+    'surface/gap/CreateTransactionOperation.cc',
+    'surface/gap/CreateTransactionOperation.hh',
+    'surface/gap/device.cc',
+    'surface/gap/DownloadOperation.cc',
+    'surface/gap/DownloadOperation.hh',
     'surface/gap/Exception.hh',
-    'surface/gap/OperationManager.cc',
-    'surface/gap/OperationManager.hh')
-
-  gap_operation_lib = drake.cxx.DynLib('lib/gap_operation',
-                                      gap_operation_sources + infinit_libs,
-                                      cxx_toolkit, cxx_config_libs);
-
-  build << gap_operation_lib
-
-
-  gap_infinit_instance_sources = drake.nodes(
-    'surface/gap/Exception.hh',
+    'surface/gap/gap.cc',
+    'surface/gap/gap.h',
     'surface/gap/InfinitInstanceManager.cc',
-    'surface/gap/InfinitInstanceManager.hh')
-
-  gap_infinit_instance_lib = drake.cxx.DynLib('lib/gap_infinit_instance',
-                                              gap_infinit_instance_sources + infinit_libs,
-                                              cxx_toolkit, cxx_config_libs);
-
-  build << gap_infinit_instance_lib
-
-  gap_notification_sources = drake.nodes(
-    'surface/gap/Exception.hh',
-    'surface/gap/NotificationManager.cc',
-    'surface/gap/NotificationManager.hh',
-    'surface/gap/NotificationManager.hxx')
-
-  gap_notification_lib = drake.cxx.DynLib('lib/gap_notification',
-                                          gap_notification_sources + infinit_libs,
-                                          cxx_toolkit, cxx_config_libs);
-
-  build << gap_notification_lib;
-
-  gap_network_sources = drake.nodes(
-    'surface/gap/Exception.hh',
+    'surface/gap/InfinitInstanceManager.hh',
+    'surface/gap/metrics.cc',
+    'surface/gap/metrics.hh',
     'surface/gap/NetworkManager.cc',
     'surface/gap/NetworkManager.hh',
-    'surface/gap/metrics.hh')
-
-  gap_network_lib = drake.cxx.DynLib('lib/gap_network',
-                                     gap_network_sources + infinit_libs + [gap_infinit_instance_lib,],
-                                     cxx_toolkit, cxx_config_libs);
-
-  build << gap_network_lib
-
-  gap_transaction_sources = drake.nodes(
-    'surface/gap/Exception.hh',
+    'surface/gap/NotificationManager.cc',
+    'surface/gap/NotificationManager.hh',
+    'surface/gap/Operation.cc',
+    'surface/gap/Operation.hh',
+    'surface/gap/OperationManager.cc',
+    'surface/gap/OperationManager.hh',
+    'surface/gap/OperationManager.hxx',
+    'surface/gap/PrepareTransactionOperation.cc',
+    'surface/gap/PrepareTransactionOperation.hh',
+    'surface/gap/State.cc',
+    'surface/gap/State.hh',
+    'surface/gap/status.hh',
     'surface/gap/TransactionManager.cc',
     'surface/gap/TransactionManager.hh',
-    'surface/gap/metrics.hh')
-
-  gap_transaction_lib = drake.cxx.DynLib('lib/gap_transaction',
-                                         gap_transaction_sources + infinit_libs + [gap_network_lib,],
-                                         cxx_toolkit, cxx_config_libs);
-  build << gap_transaction_lib
-
-  gap_user_sources = drake.nodes(
-     'surface/gap/Exception.hh',
+    'surface/gap/UploadOperation.cc',
+    'surface/gap/UploadOperation.hh',
     'surface/gap/UserManager.cc',
     'surface/gap/UserManager.hh')
 
-  gap_user_lib = drake.cxx.DynLib('lib/gap_user',
-                                  gap_user_sources + infinit_libs,
-                                  cxx_toolkit, cxx_config_libs);
-  build << gap_user_lib;
-
-  manager_libs = [gap_operation_lib,
-                  gap_infinit_instance_lib,
-                  gap_notification_lib,
-                  gap_network_lib,
-                  gap_transaction_lib,
-                  gap_user_lib, ]
-
   # GAP
-  gap_sources = drake.nodes(
-    'surface/gap/Exception.hh',
-    'surface/gap/State.cc',
-    'surface/gap/State.hh',
-    'surface/gap/device.cc',
-    'surface/gap/error.hh',
-    'surface/gap/gap.cc',
-    'surface/gap/gap.h',
-    'surface/gap/metrics.hh',
-  )
+  gap_generator = drake.node('surface/gap/metrics_generator.py')
+  class GAPGenerator(drake.Builder):
+    def __init__(self, script, path):
+      self.__script = script
+      self.__path = path
+      self.__targets = drake.nodes('%s.hh' % path, '%s.h' % path)
+      drake.Builder.__init__(self, [self.__script], self.__targets)
 
-  gap_ccx_config_libs = cxx_config_libs
-  gap_ccx_config_libs.lib_path_runtime('../../lib/_gap')
+    def execute(self):
+      return self.cmd('Generate %s' % ', '.join(map(str, self.__targets)), [self.__script.path(), self.__path])
+
+    @property
+    def generated(self):
+      return self.__targets
+
+  gap_sources += GAPGenerator(gap_generator, 'surface/gap/gen_metrics').generated
+
+  gap_cxx_config_libs = drake.cxx.Config(cxx_config_libs)
+  gap_cxx_config_libs.lib_path_runtime('../../lib/_gap')
+  gap_cxx_config_libs += boost.config_filesystem(
+    static = (cxx_toolkit.os is drake.os.macos))
   gap_lib = drake.cxx.DynLib('lib/gap',
-                             gap_sources + infinit_libs + manager_libs,
-                             cxx_toolkit, gap_ccx_config_libs)
+                             gap_sources + infinit_libs,
+                             cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib
 
   # GAP python
-  gap_python_cxx_config = cxx_config + python3
-  gap_python_cxx_config += boost.config_python()
-  gap_python_cxx_config.lib_path_runtime('..')
-  gap_python_sources = drake.nodes(
-    'surface/gap/python/pygap.cc',
-    )
-  gap_python_lib = drake.cxx.Module('lib/python/_gap',
-                                    # FIXME: sooooo many libs ...
-                                    gap_python_sources + [gap_lib, tropho_lib] + infinit_libs,
-                                    cxx_toolkit, gap_python_cxx_config)
+  if python_enabled:
+    gap_python_cxx_config = cxx_config + python3
+    gap_python_cxx_config += boost.config_python()
+    gap_python_cxx_config.lib_path_runtime('..')
+    gap_python_sources = drake.nodes(
+      'surface/gap/python/pygap.cc',
+      )
+    gap_python_lib = drake.cxx.Module('lib/python/_gap',
+                                      # FIXME: sooooo many libs ...
+                                      gap_python_sources + [gap_lib, tropho_lib] + infinit_libs,
+                                      cxx_toolkit, gap_python_cxx_config)
 
-  gap_python_pyfiles = drake.nodes(
-    'surface/gap/python/gap.py',
-    )
+    gap_python_pyfiles = drake.nodes(
+      'surface/gap/python/gap.py',
+      )
 
-  gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
-                                      'lib/python',
-                                      'surface/gap/python')
+    gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
+                                        'lib/python',
+                                        'surface/gap/python')
 
-  infinit_cli_sources = drake.nodes(
-    'surface/cli/infinit-cli'
-    )
+    infinit_cli_sources = drake.nodes(
+      'surface/cli/infinit-cli'
+      )
 
-  infinit_cli_copy = drake.copy(infinit_cli_sources,
-                                'bin',
-                                'surface/cli')
+    infinit_cli_copy = drake.copy(infinit_cli_sources,
+                                  'bin',
+                                  'surface/cli')
 
-  build << gap_python_lib
-  build << gap_python_pyfile_copy
-  build << infinit_cli_copy
+    build << gap_python_lib
+    build << gap_python_pyfile_copy
+    build << infinit_cli_copy
 
   # Oracles
 
-  oracles = drake.Rule('oracle')
+  oracles_enabled = cxx_toolkit.os != drake.os.windows
+  if oracles_enabled:
+    oracles = drake.Rule('oracle')
 
-  oracle_sources = drake.nodes(
-    'oracle/disciples/creosus-server',
-    'oracle/disciples/erginus-server',
-    'oracle/disciples/longinus-server',
-    'oracle/disciples/meta-server',
-    'oracle/disciples/trophonius-server',
-    'oracle/disciples/admin-console',
-    'oracle/disciples/apertus-server',
-    'oracle/disciples/services',
-    )
+    oracle_sources = drake.nodes(
+      'oracle/disciples/erginus-server',
+      'oracle/disciples/longinus-server',
+      'oracle/disciples/meta-server',
+      'oracle/disciples/trophonius-server',
+      'oracle/disciples/admin-console',
+      'oracle/disciples/apertus-server',
+      'oracle/disciples/services',
+      )
 
-  oracle_source_copy = drake.copy(oracle_sources,
-                                  'bin',
-                                  'oracle/disciples')
-  oracle_lib = drake.nodes(
-    'oracle/disciples/longinus/application.py',
-    'oracle/disciples/longinus/__init__.py',
-    'oracle/disciples/longinus/longinus.py',
-    )
+    oracle_source_copy = drake.copy(oracle_sources,
+                                    'bin',
+                                    'oracle/disciples')
+    oracle_lib = drake.nodes(
+      'oracle/disciples/longinus/application.py',
+      'oracle/disciples/longinus/__init__.py',
+      'oracle/disciples/longinus/longinus.py',
+      )
 
-  oracle_lib += drake.nodes(
-    'oracle/disciples/apertus/__init__.py',
-    'oracle/disciples/apertus/apertus.py',
-    'oracle/disciples/apertus/application.py',
-    'oracle/disciples/apertus/conf.py',
-    )
+    oracle_lib += drake.nodes(
+      'oracle/disciples/apertus/__init__.py',
+      'oracle/disciples/apertus/apertus.py',
+      'oracle/disciples/apertus/application.py',
+      'oracle/disciples/apertus/conf.py',
+      )
 
-  oracle_lib += drake.nodes(
-    'oracle/disciples/meta/__init__.py',
-    'oracle/disciples/meta/apertus.py',
-    'oracle/disciples/meta/application.py',
-    'oracle/disciples/meta/conf.py',
-    'oracle/disciples/meta/database.py',
-    'oracle/disciples/meta/apertus.py',
-    'oracle/disciples/meta/invitation.py',
-    'oracle/disciples/meta/error.py',
-    'oracle/disciples/meta/error_code.hh.inc',
-    'oracle/disciples/meta/mail.py',
-    'oracle/disciples/meta/notification_type.hh.inc',
-    'oracle/disciples/meta/notifier.py',
-    'oracle/disciples/meta/page.py',
-    'oracle/disciples/meta/regexp.py',
-    'oracle/disciples/meta/resources/__init__.py',
-    'oracle/disciples/meta/resources/device.py',
-    'oracle/disciples/meta/resources/network.py',
-    'oracle/disciples/meta/resources/network_update.hh.inc',
-    'oracle/disciples/meta/resources/notification.py',
-    'oracle/disciples/meta/resources/place_holder_avatar.png',
-    'oracle/disciples/meta/resources/root.py',
-    'oracle/disciples/meta/resources/transaction.py',
-    'oracle/disciples/meta/resources/transaction_status.hh.inc',
-    'oracle/disciples/meta/resources/user.py',
-    'oracle/disciples/meta/session.py',
-    'oracle/disciples/meta/session_store.py',
-    'oracle/disciples/meta/user_status.hh.inc',
-    )
+    oracle_lib += drake.nodes(
+      'oracle/disciples/meta/__init__.py',
+      'oracle/disciples/meta/apertus.py',
+      'oracle/disciples/meta/application.py',
+      'oracle/disciples/meta/conf.py',
+      'oracle/disciples/meta/database.py',
+      'oracle/disciples/meta/apertus.py',
+      'oracle/disciples/meta/invitation.py',
+      'oracle/disciples/meta/error.py',
+      'oracle/disciples/meta/error_code.hh.inc',
+      'oracle/disciples/meta/mail.py',
+      'oracle/disciples/meta/notification_type.hh.inc',
+      'oracle/disciples/meta/notifier.py',
+      'oracle/disciples/meta/page.py',
+      'oracle/disciples/meta/regexp.py',
+      'oracle/disciples/meta/resources/__init__.py',
+      'oracle/disciples/meta/resources/device.py',
+      'oracle/disciples/meta/resources/network.py',
+      'oracle/disciples/meta/resources/network_update.hh.inc',
+      'oracle/disciples/meta/resources/notification.py',
+      'oracle/disciples/meta/resources/place_holder_avatar.png',
+      'oracle/disciples/meta/resources/root.py',
+      'oracle/disciples/meta/resources/transaction.py',
+      'oracle/disciples/meta/resources/transaction_status.hh.inc',
+      'oracle/disciples/meta/resources/user.py',
+      'oracle/disciples/meta/session.py',
+      'oracle/disciples/meta/session_store.py',
+      'oracle/disciples/meta/user_status.hh.inc',
+      )
 
-  oracle_lib += drake.nodes(
-    'oracle/disciples/pythia/admin.py',
-    'oracle/disciples/pythia/client.py',
-    'oracle/disciples/pythia/constants.py',
-    'oracle/disciples/pythia/__init__.py',
-    )
+    oracle_lib += drake.nodes(
+      'oracle/disciples/pythia/admin.py',
+      'oracle/disciples/pythia/client.py',
+      'oracle/disciples/pythia/constants.py',
+      'oracle/disciples/pythia/__init__.py',
+      )
 
 
-  oracle_lib += drake.nodes(
-    'oracle/disciples/trophonius/application.py',
-    'oracle/disciples/trophonius/clients.py',
-    'oracle/disciples/trophonius/conf.py',
-    'oracle/disciples/trophonius/constants.py',
-    'oracle/disciples/trophonius/__init__.py',
-    'oracle/disciples/trophonius/trophonius.py',
-    )
+    oracle_lib += drake.nodes(
+      'oracle/disciples/trophonius/application.py',
+      'oracle/disciples/trophonius/clients.py',
+      'oracle/disciples/trophonius/conf.py',
+      'oracle/disciples/trophonius/constants.py',
+      'oracle/disciples/trophonius/__init__.py',
+      'oracle/disciples/trophonius/trophonius.py',
+      )
 
-  oracle_lib_copy = drake.copy(oracle_lib,
-                               'lib/python',
-                               'oracle/disciples')
+    oracle_lib_copy = drake.copy(oracle_lib,
+                                 'lib/python',
+                                 'oracle/disciples')
 
-  oracles << oracle_source_copy
-  oracles << oracle_lib_copy
+    heartbeat_config = drake.cxx.Config(cxx_config)
+    heartbeat_config += boost.config_program()
+    heartbeat_config.lib('udt')
+    heartbeat_config.lib_path_runtime('../lib')
+    heartbeat_config.add_local_include_path('oracle/disciples/')
+    heartbeat_config.add_local_include_path('.')
+    heartbeat_config.lib('reactor')
+    heartbeat_config.lib('elle')
 
-  # Oracle/metalib
+    heartbeat_sources = drake.nodes(
+      'oracle/disciples/heartbeat/heartbeat.cc',
+      'satellites/satellite.cc',
+      'satellites/satellite.hh',
+      'common/common.cc',
+      'common/common.hh',
+      'CrashReporter.cc',
+      'CrashReporter.hh',
+      )
 
-  metalib_config = cxx_config + python2
-  metalib_config.lib_path_runtime('..')
+    heartbeat = drake.cxx.Executable('bin/heartbeat-server',
+        heartbeat_sources + [reactor_lib, elle_lib] + udt_libs,
+        cxx_toolkit, heartbeat_config)
 
-  metalib_sources = drake.nodes(
-    'oracle/disciples/metalib/identity.cc',
-    'oracle/disciples/metalib/metalib.cc',
-    'oracle/disciples/metalib/network.cc',
-    'oracle/disciples/metalib/passport.cc',
+    oracles << oracle_source_copy
+    oracles << oracle_lib_copy
+    oracles << heartbeat
 
-    'oracle/disciples/metalib/identity.hh',
-    'oracle/disciples/metalib/metalib.hh',
-    'oracle/disciples/metalib/network.hh',
-    'oracle/disciples/metalib/passport.hh',
-    )
+    # Oracle/metalib
+    if python_enabled:
+      metalib_config = cxx_config + python2
+      metalib_config.lib_path_runtime('..')
+      metalib_sources = drake.nodes(
+        'oracle/disciples/metalib/identity.cc',
+        'oracle/disciples/metalib/identity.hh',
+        'oracle/disciples/metalib/metalib.cc',
+        'oracle/disciples/metalib/metalib.hh',
+        'oracle/disciples/metalib/network.cc',
+        'oracle/disciples/metalib/network.hh',
+        'oracle/disciples/metalib/passport.cc',
+        'oracle/disciples/metalib/passport.hh',
+        )
+      metalib_lib = drake.cxx.Module('lib/python/metalib',
+                                     metalib_sources + infinit_libs,
+                                     cxx_toolkit, metalib_config)
 
-  metalib_lib = drake.cxx.Module('lib/python/metalib',
-                                 metalib_sources + infinit_libs,
-                                 cxx_toolkit, metalib_config)
+      oracles << metalib_lib
 
-  oracles << metalib_lib
-
-  build << oracles
+    oracles << stun_server
+    build << oracles
 
   # Install
   install = drake.Rule('install')
@@ -1151,8 +1208,11 @@ def configure(cxx_toolkit,
   tests_cxx_config = drake.cxx.Config(cxx_config)
   tests_cxx_config.lib_path_runtime('../../../../lib')
   tests_cxx_config.lib_path_runtime('../../../lib')
+  tests_cxx_config.lib_path_runtime('../../lib')
+  tests_cxx_config.lib_path_runtime('../lib')
   tests_cxx_config += boost.config_test()
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib] + udt_libs
+
   tests_src_n_lib = [
     ('tests/testing_tests.cc', []),
     ('tests/unit/etoile/Shrub.cc', infinit_libs),
@@ -1160,39 +1220,39 @@ def configure(cxx_toolkit,
     ('tests/unit/nucleus/neutron/nn_Object.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
-    ('tests/unit/nucleus/proton/Porcupine.cc', [hole_lib] + infinit_libs + [elle_lib, hole_lib]),
-    # ('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc',
-    #  [elle_lib, plasma_lib, curly_lib]),
-    ('tests/unit/protocol/rpc.cc',
-     [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
+    ('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
+    #(('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc'),  [elle_lib, plasma_lib, curly_lib]),
+    ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib]),
-    ('tests/unit/surface/gap/Metrics.cc', 'common/common.cc',
-     [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib,
-       curly_lib] +
-     udt_libs),
-    ('tests/unit/surface/gap/state_connect.cc',
-     [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
-    # ('tests/unit/surface/gap/state_ctor.cc',
-    #  [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
-    ('tests/unit/hole/hole.cc', infinit_libs)
+    ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
+    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib] + udt_libs),
+    #('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
+    # ('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    ('tests/unit/hole/slug.cc', infinit_libs),
+    (('tests/unit/heartbeat.cc', 'heartbeat.cc', 'heartbeat.hh', 'common/common.cc'), [reactor_lib, elle_lib] + udt_libs),
   ]
 
   check = drake.Rule('check')
   check << elle.rule_check
-  for test in tests_src_n_lib:
-    bin_path = drake.Path(test[0])
-    bin_path.extension = ''
-    path = drake.Path(test[0])
-    path.extension = ''
-    test_bin = drake.cxx.Executable(path,
-                                    drake.nodes(*test[:-1]) + test[-1],
+  for test, deps in tests_src_n_lib:
+    if isinstance(test, str):
+      bin_name, ext = os.path.splitext(test)
+      sources = [test]
+    else:
+      first, *others = test
+      bin_name, ext = os.path.splitext(first)
+      sources = test
+    test_bin = drake.cxx.Executable(bin_name,
+                                    drake.nodes(*sources) + deps,
                                     cxx_toolkit, tests_cxx_config)
     tests << test_bin
     runner = drake.Runner(test_bin)
     check << runner.status
 
+  build << drake.cxx.Executable("bin/pass",
+          drake.nodes('tests/unit/pass.cc', 'common/common.cc') + [reactor_lib,
+              elle_lib] + udt_libs,
+          cxx_toolkit, tests_cxx_config)
   #Check
   rule_check = drake.Rule('check')
   rule_check << elle.rule_check
-
-# vim: set sw=2 ts=2 sts=2 expandtab:

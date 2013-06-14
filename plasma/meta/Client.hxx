@@ -1,8 +1,11 @@
-#ifndef  PLASMA_META_CLIENT_HXX
+#ifndef PLASMA_META_CLIENT_HXX
 # define PLASMA_META_CLIENT_HXX
 
-# include "curly.hh"
+# include <curly/curly.hh>
 # include <plasma/meta/Client.hh>
+
+# include <elle/serialize/JSONArchive.hh>
+
 # include <boost/algorithm/string/split.hpp>
 # include <boost/algorithm/string/classification.hpp>
 
@@ -93,12 +96,17 @@ namespace plasma
       {
         sym = "*";
       }
-      if (type == CURLINFO_HEADER_IN ||
-          type == CURLINFO_HEADER_OUT)
+
+      if (type == CURLINFO_TEXT)
+      {
+        ELLE_DUMP("%s %s", sym, msg);
+      }
+      else if (type == CURLINFO_HEADER_OUT)
       {
         std::vector<std::string> v;
+
         boost::split(v, msg, boost::algorithm::is_any_of("\n"));
-        ELLE_DEBUG_SCOPE("%s %s", sym, v[0]);
+        ELLE_TRACE_SCOPE("%s %s", sym, v[0]);
         int i = 0;
         for (auto const&s : v)
         {
@@ -107,8 +115,17 @@ namespace plasma
           ELLE_DEBUG("%s %s", sym, s);
         }
       }
-      else
-        ELLE_DEBUG("%s %s", sym, msg);
+      else if (type == CURLINFO_DATA_IN || type == CURLINFO_DATA_OUT)
+      {
+        ELLE_TRACE("%s %s", sym, msg);
+      }
+      else if (type == CURLINFO_HEADER_IN)
+      {
+        if (msg.find("HTTP") == 0) // starts with
+          ELLE_TRACE("%s %s", sym, msg);
+        else
+          ELLE_DUMP("%s %s", sym, msg);
+      }
       return 0;
     }
 
@@ -188,4 +205,4 @@ namespace plasma
   }
 }
 
-#endif /* end of include guard:  PLASMA_META_CLIENT_HXX */
+#endif

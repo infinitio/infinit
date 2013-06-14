@@ -81,18 +81,10 @@ namespace surface
       |  Attributes |
       `------------*/
     protected:
-      typedef std::unique_ptr<Network> NetworkPtr;
-      typedef std::map<std::string, NetworkPtr> NetworkMap;
-      typedef std::unique_ptr<NetworkMap> NetworkMapPtr;
-      typedef elle::threading::Monitor<NetworkMapPtr> NetworkMapMonitor;
+      typedef std::map<std::string, Network> NetworkMap;
+      typedef elle::threading::Monitor<NetworkMap> NetworkMapMonitor;
     protected:
       NetworkMapMonitor _networks;
-
-
-    protected:
-      /// Retreive all networks, ensuring the map is initialized.
-      NetworkMapMonitor&
-      _all();
 
     public:
       /// Retrieve all networks.
@@ -100,10 +92,10 @@ namespace surface
       all_ids();
 
       /// Retrieve a network.
-      Network const&
+      Network
       one(std::string const& id);
 
-      Network const&
+      Network
       sync(std::string const& id);
 
       /// Create a new network.
@@ -136,8 +128,12 @@ namespace surface
       void
       notify_8infinit(std::string const& network_id,
                       std::string const& sender_device_id,
-                      std::string const& recipient_device_id,
-                      reactor::Scheduler& sched);
+                      std::string const& recipient_device_id);
+      void
+      _notify_8infinit(std::string const& network_id,
+                       std::string const& sender_device_id,
+                       std::string const& recipient_device_id,
+                       reactor::Scheduler& sched);
 
       /// Give the recipient the write on the root of the network.
       void

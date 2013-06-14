@@ -1,6 +1,10 @@
 #ifndef SURFACE_GAP_OPERATIONMANAGER_HXX
 # define SURFACE_GAP_OPERATIONMANAGER_HXX
 
+# include "OperationManager.hh"
+
+# include <thread>
+
 namespace surface
 {
   namespace gap

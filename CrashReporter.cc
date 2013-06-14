@@ -1,4 +1,4 @@
-#include "CrashReporter.hh"
+#include <CrashReporter.hh>
 
 #include <elle/format/json.hh>
 #include <elle/os/path.hh>

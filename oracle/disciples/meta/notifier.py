@@ -58,31 +58,18 @@ class TrophoniusNotify(Notifier):
     def send_notification(self, message):
         if isinstance(message, dict):
             msg = json.dumps(message, default = str)
-        # elif isinstance(message, str):
-        #     msg = message + json.dumps(_dict, default = str)
         else:
             log.err('Notification was bad formed.')
-        # XXX: Log to remove.
-        print("{}\n".format(msg))
-        self.conn.send("{}\n".format(msg))
+        self.conn.send(msg + "\n")
 
-    def _add_notif_to_db(self, recipient_id, notif):
-        recipient = database.users().find_one(
-            database.ObjectId(recipient_id));
-
-        if not recipient:
-            return None
-
-        #Timestamp in ms.
-        notif['timestamp'] = int(time.time() * 1000)
-
-        recipient['notifications'].append(notif)
-        database.users().save(recipient)
-
-        return recipient
+    def fill(self, message, notification_type, recipient):
+        message['notification_type'] = notification_type
+        message['timestamp'] = time.time() #timestamp in s.
+        message['to'] = recipient
 
     def notify_one(self, notification_type, recipient_id, message, store = True):
-        message['notification_type'] = notification_type;
+#      assert isinstance(recipient, database.ObjectId)
+        self.fill(message, notification_type, str(recipient_id))
 
         user_ = self._add_notif_to_db(recipient_id, message)
 
@@ -91,24 +78,24 @@ class TrophoniusNotify(Notifier):
             return
 
         if user_['connected']:
-            message.update({'to': str(recipient_id)})
             self.send_notification(message)
 
     def notify_some(self, notification_type, recipients_id, message, store = True):
         if not isinstance(recipients_id, list):
             return self.notify_one(notification_type, recipients_id, message)
 
-        print("Notifying some", recipients_id)
         # Recipients empty.
         if not recipients_id:
             return
 
-        message.update({'notification_type' : notification_type})
+        self.fill(message, notification_type, recipients_id)
 
-        if store:
-            for _id in recipients_id:
-                self._add_notif_to_db(_id, message)
-
-        message.update({'to': recipients_id})
+        for _id in recipients_id:
+            _id = database.ObjectId(_id)
+            assert isinstance(_id, database.ObjectId)
+            if store:
+                user = database.users().find_one(_id)
+                user['notifications'].append(message)
+                database.users().save(user)
 
         self.send_notification(message)

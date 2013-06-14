@@ -304,20 +304,7 @@ namespace horizon
     ///
     elle::Status        FUker::Initialize()
     {
-      switch (hole().state())
-        {
-        case hole::Hole::State::offline:
-          {
-            hole().ready_hook(&FUker::run);
-            break;
-          }
-        case hole::Hole::State::online:
-          {
-            FUker::run();
-            break;
-          }
-        }
-
+      FUker::run();
       return elle::Status::Ok;
     }
 

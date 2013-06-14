@@ -1,6 +1,7 @@
 ERR_CODE(not_logged_in,                       -101,    "You must be logged in.")
 ERR_CODE(already_logged_in,                   -102,    "You are already logged in.")
 ERR_CODE(unknown_user,                        -103,    "This user doesn't seems to exist.")
+ERR_CODE(operation_not_permitted,             -104,    "Operation not permitted.")
 ERR_CODE(bad_request,                         -200,    "This request is bad formed.")
 ERR_CODE(field_is_empty,                      -201,    "This field is empty.")
 ERR_CODE(email_not_valid,                     -210,    "This email is not valid.")

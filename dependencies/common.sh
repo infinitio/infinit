@@ -7,7 +7,7 @@ PACKAGESDIR="${BASEDIR}/packages"
 PLATFORMDIR="${BASEDIR}/platforms/${PLATFORM}"
 BUILDDIR="${PLATFORMDIR}/build"
 WORKDIR="${PLATFORMDIR}/work"
-DEPENDENCIES="openssl curl"
+DEPENDENCIES="openssl curl stunserver"
 
 #
 # ---------- imports ----------------------------------------------------------
@@ -37,6 +37,15 @@ CURL_SNAPSHOT="http://curl.haxx.se/download/${CURL_TARBALL}"
 CURL_FINGERPRINT="60bb6ff558415b73ba2f00163fd307c5"
 CURL_LIBRARIES="${WORKDIR}/lib/libcurl.${PLATFORM_LIBRARY_EXTENSION}"
 
+# stunserver
+STUN_VERSION="1.2.3"
+STUN_BUILDDIR="stunserver-${STUN_VERSION}"
+STUN_NAME="stunserver-${STUN_VERSION}"
+STUN_TARBALL="${STUN_NAME}.tgz"
+STUN_SNAPSHOT="http://stunprotocol.org/${STUN_TARBALL}"
+STUN_FINGERPRINT="cde94f76923bfeb421e5254f47965de4"
+STUN_LIBRARIES="${WORKDIR}/lib/libstun.${PLATFORM_LIBRARY_EXTENSION} ${WORKDIR}/lib/libcommon.${PLATFORM_LIBRARY_EXTENSION}"
+
 #
 # ---------- functions --------------------------------------------------------
 #
@@ -61,7 +70,7 @@ download()
             die "unable to download the snapshot"
         fi
 
-        checksum=$(openssl dgst -md5 "${tarball}" | cut -d' ' -f2)
+        checksum=$(md5sum "${tarball}" | cut -d ' ' -f 1)
 
         test "${fingerprint}" = "${checksum}" &&
         return

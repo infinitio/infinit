@@ -4,7 +4,6 @@
 # include <plasma/plasma.hh>
 
 # include <elle/HttpClient.hh>
-# include <elle/serialize/JSONArchive.hh>
 
 # include <boost/system/error_code.hpp>
 
@@ -35,6 +34,10 @@ namespace plasma
     struct Notification
     {
       NotificationType notification_type;
+
+      ELLE_SERIALIZE_CONSTRUCT(Notification)
+      {}
+      virtual ~Notification();
     };
 
     namespace json = elle::format::json;
@@ -43,27 +46,34 @@ namespace plasma
       public Notification
     {
       std::string user_id;
-      int         status;
+      bool status;
+      std::string device_id;
+      bool device_status;
+
+      ELLE_SERIALIZE_CONSTRUCT(UserStatusNotification,
+                               Notification)
+      {}
     };
 
     struct TransactionNotification:
-      public Notification
+      public Notification,
+      public Transaction
     {
-      Transaction transaction;
+      ELLE_SERIALIZE_CONSTRUCT(TransactionNotification,
+                               Notification,
+                               Transaction)
+      {}
     };
 
-    struct TransactionStatusNotification:
-      public Notification
-    {
-      std::string transaction_id;
-      int         status;
-    };
 
     struct NetworkUpdateNotification:
       public Notification
     {
       std::string network_id;
       /* NetworkUpdate */ int what;
+      ELLE_SERIALIZE_CONSTRUCT(NetworkUpdateNotification,
+                               Notification)
+      {}
     };
 
     struct MessageNotification:
@@ -71,25 +81,33 @@ namespace plasma
     {
       std::string sender_id;
       std::string message;
+      ELLE_SERIALIZE_CONSTRUCT(MessageNotification,
+                               Notification)
+      {}
     };
 
-    class Client:
-      private boost::noncopyable
-    {
-    public:
-      struct Impl;
-      Impl* _impl;
+    /// Build a notification object from a dictionnary.
+    std::unique_ptr<Notification>
+    notification_from_dict(json::Dictionary const& dict);
 
+    class Client
+    {
+    private:
+      struct Impl;
+      std::unique_ptr<Impl> _impl;
+
+    public:
       Client(std::string const& server,
              uint16_t port,
-             bool check_error = true);
+             std::function<void()> connect_callback);
 
       ~Client();
 
     public:
       bool
       connect(std::string const& _id,
-              std::string const& token);
+              std::string const& token,
+              std::string const& device_id);
 
       //GenericNotification
       std::unique_ptr<Notification>
@@ -128,7 +146,5 @@ namespace plasma
                 NetworkUpdate n);
   }
 }
-
-#undef _PLASMA_TROPHONIUS_GENERATE_HANDLERS
 
 #endif

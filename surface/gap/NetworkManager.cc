@@ -1,7 +1,8 @@
-#include <surface/gap/NetworkManager.hh>
-#include <surface/gap/metrics.hh>
-// XXX: Only requiered by gep_exec...
-#include <surface/gap/gap.h>
+#include "NetworkManager.hh"
+
+#include "binary_config.hh"
+#include "gap.h"
+#include "metrics.hh"
 
 #include <common/common.hh>
 
@@ -194,8 +195,7 @@ namespace surface
     {
       ELLE_TRACE("creating network %s", name);
 
-      this->_reporter.store("network_create", {{MKey::status, "attempt"}});
-
+      this->_reporter.store("network_create_attempt");
       this->_google_reporter.store("network:create:attempt");
 
       plasma::meta::CreateNetworkResponse response;
@@ -205,9 +205,8 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("network_create");
 
-      this->_reporter.store("network_create",
-                            {{MKey::status, "succeed"},
-                             {MKey::value, response.created_network_id}});
+      this->_reporter.store("network_create_succeed",
+                            {{MKey::value, response.created_network_id}});
 
       this->_google_reporter.store("network:create:succeed");
 
@@ -215,9 +214,6 @@ namespace surface
       if (auto_add)
         this->_meta.network_add_device(response.created_network_id,
                                        this->_device.id);
-
-      // Fetch network.
-      this->one(response.created_network_id);
 
       return response.created_network_id;
     }
@@ -274,7 +270,7 @@ namespace surface
       using elle::serialize::from_string;
       using elle::serialize::InputBase64Archive;
 
-      auto& network = this->one(network_id);
+      auto network = this->one(network_id);
 
       elle::io::Path shelter_path(path);
       nucleus::proton::Network proton_network(network_id);
@@ -348,117 +344,80 @@ namespace surface
     std::string
     NetworkManager::delete_(std::string const& network_id, bool force)
     {
-      ELLE_TRACE_METHOD(network_id);
-      this->_all()([&network_id] (NetworkMapPtr& map) {
-          map->at(network_id).reset();
-      });
 
-      this->_infinit_instance_manager.stop(network_id);
-
-      this->_reporter.store("network_delete",
-                            {{MKey::status, "attempt"},
-                             {MKey::value,  network_id}});
-
-      plasma::meta::DeleteNetworkResponse response;
-      try
+      if (force or
+          this->_networks->find(network_id) != this->_networks->end())
       {
-        response = this->_meta.delete_network(network_id, force);
-      }
-      CATCH_FAILURE_TO_METRICS("network_delete");
+        this->_reporter.store("network_delete_attempt",
+                              {{MKey::value,  network_id}});
+        ELLE_TRACE("remove network %s from meta", network_id)
+          try
+          {
+            this->_meta.delete_network(network_id, force);
+          }
+          CATCH_FAILURE_TO_METRICS("network_delete");
 
-      this->_reporter.store("network_delete",
-                            {{MKey::status, "succeed"},
-                             {MKey::value,  response.deleted_network_id}});
-
-      if (this->infinit_instance_manager().exists(response.deleted_network_id))
-      {
-        this->_infinit_instance_manager.stop(response.deleted_network_id);
+        this->_reporter.store("network_delete_succeed",
+                              {{MKey::value, network_id}});
+        this->_networks->erase(network_id);
       }
 
+      // Remove
+      if (this->infinit_instance_manager().exists(network_id))
+      {
+        ELLE_TRACE("killing infinit instance for network %s", network_id)
+          this->_infinit_instance_manager.stop(network_id);
+      }
+
+      // Remove all files.
       std::string network_path =
         common::infinit::network_directory(this->_self.id, network_id);
-
       if (elle::os::path::exists(network_path))
-        elle::os::path::remove_directory(network_path);
-
-      return response.deleted_network_id;
-    }
-
-    NetworkManager::NetworkMapMonitor&
-    NetworkManager::_all()
-    {
-      if (this->_networks->get() != nullptr)
-        return this->_networks;
-
-      this->_networks->reset(new NetworkManager::NetworkMap{});
-
-      auto response = this->_meta.networks();
-      for (auto const& id: response.networks)
       {
-        auto network = this->_meta.network(id);
-        this->_networks([&id, &network] (NetworkMapPtr& map) {
-          (*map)[id].reset(new Network{network});
-        });
+        ELLE_TRACE("remove network %s directory %s", network_id, network_path)
+          elle::os::path::remove_directory(network_path);
       }
 
-      return this->_networks;
+      return network_id;
     }
 
     std::vector<std::string>
     NetworkManager::all_ids()
     {
-      return this->_all()([](NetworkMapPtr const& map) {
-          std::vector<std::string> res{map->size()};
-          for (auto const& pair: *map)
+      return this->_networks([](NetworkMap const& map) {
+          std::vector<std::string> res{map.size()};
+          for (auto const& pair: map)
             res.emplace_back(pair.first);
           return res;
       });
     }
 
-    Network const&
+    Network
     NetworkManager::one(std::string const& id)
     {
-      auto ptr = this->_all()([&id] (NetworkMapPtr& map) -> Network const*{
-        auto it = map->find(id);
-        if (it != map->end())
-        {
-          if (it->second == nullptr)
-            throw Exception("getting a deleted network");
-          return it->second.get();
-        }
-        return nullptr;
-      });
-      if (ptr != nullptr)
-        return *ptr;
-      return this->sync(id);
+      if (this->_networks->find(id) == this->_networks->end())
+        return this->sync(id);
+      return this->_networks[id];
     }
 
-    Network const&
+    Network
     NetworkManager::sync(std::string const& id)
     {
-      ELLE_TRACE_METHOD(id);
-      this->_all()([&id] (NetworkMapPtr& map) {
-        auto it = map->find(id);
-        if (it != map->end())
+      ELLE_DEBUG("synch network %s", id)
+        try
         {
-          if (it->second == nullptr)
-            throw Exception("Sync a delete nework");
+          auto network = this->_meta.network(id);
+          return this->_networks(
+            [&id, &network] (NetworkMap& map) -> Network
+            {
+              return (map[id] = network);
+            });
         }
-      });
-
-      try
-      {
-        auto network = this->_meta.network(id);
-        ELLE_DEBUG("Synched %s", id);
-        return this->_all()([&id, &network] (NetworkMapPtr& map) -> Network const& {
-          (*map)[id].reset(new Network{network});
-          return *(map->at(id));
-        });
-      }
-      catch (std::runtime_error const& e)
-      {
-        throw Exception{gap_network_error, e.what()};
-      }
+        catch (std::runtime_error const& e)
+        {
+          throw Exception{gap_network_error, e.what()};
+        }
+      elle::unreachable();
     }
 
     void
@@ -469,18 +428,13 @@ namespace surface
     {
       ELLE_TRACE_METHOD(network_id, user_id);
 
-      this->_reporter.store("network_adduser",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, network_id}});
+      this->_reporter.store("network_adduser_attempt",
+                            {{MKey::value, network_id}});
 
       try
       {
-        Network const& network = this->one(network_id);
-
-        ELLE_DEBUG("locating 8 group");
-        std::string const& group_binary =
-          common::infinit::binary_path("8group");
-
+        Network network = this->one(network_id);
+        auto const& group_binary = common::infinit::binary_path("8group");
         std::list<std::string> arguments{
           "--user", owner,
           "--type", "user",
@@ -492,35 +446,17 @@ namespace surface
         ELLE_DEBUG("LAUNCH: %s %s",
                    group_binary,
                    boost::algorithm::join(arguments, " "));
-        auto pc = elle::system::process_config(elle::system::normal_config);
-        {
-          std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-
-          if (!log_file.empty())
-          {
-            if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-            {
-              log_file += ".";
-              log_file += std::to_string(::getpid());
-            }
-            log_file += ".group.log";
-            pc.setenv("ELLE_LOG_FILE", log_file);
-          }
-        }
+        auto pc = binary_config("8group",
+                                this->_self.id,
+                                network._id);
         elle::system::Process p{std::move(pc), group_binary, arguments};
         if (p.wait_status() != 0)
           throw Exception(gap_internal_error, "8group binary failed");
-
-        ELLE_DEBUG("set user in network in meta.");
-
-        auto res = this->_meta.network_add_user(network_id, user_id);
-        this->sync(network_id);
       }
       CATCH_FAILURE_TO_METRICS("network_adduser");
 
-      this->_reporter.store("network_adduser",
-                            {{MKey::status, "succeed"},
-                              {MKey::value, network_id}});
+      this->_reporter.store("network_adduser_succeed",
+                            {{MKey::value, network_id}});
     }
 
     void
@@ -575,21 +511,9 @@ namespace surface
         ELLE_WARN("XXX: setting executable permissions not yet implemented");
       }
 
-      auto pc = elle::system::process_config(elle::system::normal_config);
-      {
-        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-
-        if (!log_file.empty())
-        {
-          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-          {
-            log_file += ".";
-            log_file += std::to_string(::getpid());
-          }
-          log_file += ".access.log";
-          pc.setenv("ELLE_LOG_FILE", log_file);
-        }
-      }
+      auto pc = binary_config("8access",
+                              this->_self.id,
+                              network_id);
       elle::system::Process p{std::move(pc), access_binary, arguments};
       if (p.wait_status() != 0)
         throw Exception(gap_internal_error, "8access binary failed");
@@ -653,7 +577,7 @@ namespace surface
         if (vt.result() == true)
         {
           i++;
-          ELLE_WARN("connection to %s succeed", t.second);
+          ELLE_LOG("connection to %s succeed", t.second);
         }
         else
         {
@@ -700,8 +624,48 @@ namespace surface
     void
     NetworkManager::notify_8infinit(std::string const& network_id,
                                     std::string const& sender_device_id,
-                                    std::string const& recipient_device_id,
-                                    reactor::Scheduler& sched)
+                                    std::string const& recipient_device_id)
+    {
+      std::exception_ptr exception;
+      {
+        reactor::Scheduler sched;
+        reactor::Thread sync{sched, "notify_8infinit", [&] {
+            try
+            {
+              this->_notify_8infinit(network_id,
+                                     sender_device_id,
+                                     recipient_device_id,
+                                     sched);
+            }
+            // A parsing bug in gcc (fixed in 4.8.3) make this block
+            // mandatory.
+            catch (std::exception const&)
+            {
+              exception = std::current_exception();
+            }
+            catch (...)
+            {
+              exception = std::current_exception();
+            }
+          }
+        };
+
+        sched.run();
+        ELLE_DEBUG("notify finished");
+      }
+      if (exception != std::exception_ptr{})
+      {
+        ELLE_ERR("cannot connect infinit instances: %s",
+                 elle::exception_string(exception));
+        std::rethrow_exception(exception);
+      }
+    }
+
+    void
+    NetworkManager::_notify_8infinit(std::string const& network_id,
+                                     std::string const& sender_device_id,
+                                     std::string const& recipient_device_id,
+                                     reactor::Scheduler& sched)
     {
       ELLE_TRACE_METHOD(network_id, sender_device_id, recipient_device_id);
       ELLE_ASSERT(this->_device.id == sender_device_id ||
@@ -711,9 +675,7 @@ namespace surface
 
       /// Check if network is valid
       {
-        auto network = this->_all()->get()->find(network_id);
-
-        if (network == this->_all()->get()->end())
+        if (this->_networks->find(network_id) == this->_networks->end())
           throw gap::Exception{gap_internal_error, "Unable to find network"};
       }
 
@@ -767,13 +729,28 @@ namespace surface
         std::for_each(begin(fallback), end(fallback), _print);
 
       // Very sophisticated heuristic to deduce the addresses to try first.
-      std::vector<std::vector<std::string>> rounds;
+      class Round
+      {
+        typedef std::vector<std::string> Addresses;
+      public:
+        explicit
+        Round(std::string const& name, Addresses const& addresses):
+          _name(name),
+          _addresses(addresses)
+        {}
+
+        ELLE_ATTRIBUTE_R(std::string, name);
+        ELLE_ATTRIBUTE_R(Addresses, addresses);
+      };
+
+      static std::string _nat = "nat";
+      static std::string _local = "local";
+      static std::string _forwarder = "forwarder";
+
+      std::vector<Round> rounds;
       {
         std::vector<std::string> common = _find_commond_addr(externals,
                                                              my_externals);
-        std::vector<std::string> first_round;
-        std::vector<std::string> second_round;
-
         // sort the list, in order to have a deterministic behavior
         std::sort(begin(externals), end(externals));
         std::sort(begin(locals), end(locals));
@@ -781,23 +758,15 @@ namespace surface
 
         if (externals.empty() || my_externals.empty())
         {
-          for (auto const& s: locals)
-            first_round.push_back(s);
-          rounds.push_back(first_round);
-          for (auto const& s: fallback)
-            second_round.push_back(s);
-          rounds.push_back(second_round);
+          rounds.emplace_back(_local, locals);
+          rounds.emplace_back(_forwarder, fallback);
         }
         else if (common.empty())
         {
           // if there is no common external address, then we can try them first.
-          for (auto const& s: externals)
-            first_round.push_back(s);
-          rounds.push_back(first_round);
+          rounds.emplace_back(_nat, externals);
           // then, we know we can not connect locally, so try to fallback
-          for (auto const& s: fallback)
-            second_round.push_back(s);
-          rounds.push_back(second_round);
+          rounds.emplace_back(_forwarder, fallback);
         }
         else
         {
@@ -806,23 +775,13 @@ namespace surface
           std::vector<std::string> addr = _find_commond_addr(locals,
                                                              my_locals);
 
-          if (!addr.empty())
+          rounds.emplace_back(_local, locals);
+          if (addr.empty())
           {
             // wtf, you are trying to do a local exchange, this is stupid, but
             // let it be.
-            first_round.push_back(locals.front());
-            rounds.push_back(first_round);
-            if (addr.size() > 1)
-            {
-              second_round.push_back(locals.back());
-              rounds.push_back(second_round);
-            }
-          }
-          else
-          {
-            rounds.push_back(locals);
-            rounds.push_back(externals);
-            rounds.push_back(fallback);
+            rounds.emplace_back(_nat, externals);
+            rounds.emplace_back(_forwarder, fallback);
           }
         }
       }
@@ -850,34 +809,46 @@ namespace surface
         proto::ChanneledStream channels{sched, serializer};
         hole::implementations::slug::control::RPC rpcs{channels};
 
-        int i = 1;
-        ELLE_DEBUG("DEBUG ROUNDS")
+        ELLE_DEBUG("connection rounds:")
         {
+          int i = 0;
           for (auto const& round: rounds)
           {
-            ELLE_DEBUG("- ROUND %s", i++)
+            ++i;
+            ELLE_TRACE("- round[%s]: %s", i, round.name())
             {
-              for (auto const& addr: round)
+              for (auto const& addr: round.addresses())
               {
-                ELLE_DEBUG("-- %s", addr);
+                ELLE_TRACE("-- %s", addr);
               }
             }
           }
         }
 
-        int round_number = 1;
+        int round_number = 0;
         bool success = false;
         for (auto const& round: rounds)
         {
-          ELLE_DEBUG("ROUND %s:", round_number++)
+          ++round_number;
+          ELLE_TRACE("round[%s]: %s", round_number, round.name())
           {
-            for (auto const&s : round)
-              ELLE_DEBUG("-- %s", s);
+            for (auto const& addr : round.addresses())
+              ELLE_DEBUG("-- %s", addr);
           }
-          if (_connect_try(sched, rpcs, round) > 0)
+
+          this->_reporter.store("connection_method_attempt",
+                                {{MKey::value, round.name()}});
+          if (_connect_try(sched, rpcs, round.addresses()) > 0)
           {
+            this->_reporter.store("connection_method_succeed",
+                                  {{MKey::value, round.name()}});
             success = true;
             break;
+          }
+          else
+          {
+            this->_reporter.store("connection_method_fail",
+                                  {{MKey::value, round.name()}});
           }
         }
         if (!success)

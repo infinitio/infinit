@@ -1,3 +1,5 @@
+#include <boost/program_options.hpp>
+
 #include <common/common.hh>
 
 #include <elle/cast.hh>
@@ -5,6 +7,7 @@
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
 #include <elle/network/Interface.hh>
+#include <elle/network/Locus.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/utility/Parser.hh>
 
@@ -17,7 +20,9 @@
 
 #include <hole/Hole.hh>
 #include <hole/storage/Directory.hh>
-#include <horizon/Horizon.hh>
+#ifdef INFINIT_HORIZON
+# include <horizon/Horizon.hh>
+#endif
 
 #include <lune/Descriptor.hh>
 #include <lune/Lune.hh>
@@ -28,8 +33,47 @@
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Program.hh>
+#include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit");
+
+boost::program_options::variables_map
+parse_options(int argc, char** argv)
+{
+  using namespace boost::program_options;
+  options_description options("Allowed options");
+  options.add_options()
+    ("help,h", "display the help")
+    ("user,u", value<std::string>(), "specify the name of the user")
+    ("network,n", value<std::string>(), "specify the name of the network")
+    ("mountpoint,m", value<std::string>(), "specify the mount point")
+    ("peer", value<std::vector<std::string>>(),
+     "specify the peers to connect to");
+
+  variables_map vm;
+  try
+  {
+    store(parse_command_line(argc, argv, options), vm);
+    notify(vm);
+  }
+  catch (invalid_command_line_syntax const& e)
+  {
+    throw elle::Exception(elle::sprintf("command line error: %s", e.what()));
+  }
+
+  if (vm.count("help"))
+  {
+    std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
+    std::cout << std::endl;
+    std::cout << options;
+    std::cout << std::endl;
+    std::cout << "Infinit " INFINIT_VERSION
+      " Copyright (c) 2013 infinit.io All rights reserved." << std::endl;
+    throw infinit::Exit(0);
+  }
+
+  return vm;
+}
 
 void
 Infinit(elle::Natural32 argc, elle::Character* argv[])
@@ -38,95 +82,30 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   if (elle::concurrency::Program::Setup("Infinit") == elle::Status::Error)
     throw elle::Exception("unable to set up the program");
 
-  // allocate a new parser.
-  Infinit::Parser = new elle::utility::Parser(argc, argv);
+  auto options = parse_options(argc, argv);
 
-  // specify a program description.
-  if (Infinit::Parser->Description(Infinit::Copyright) == elle::Status::Error)
-    throw elle::Exception("unable to set the description");
-
-  // register the options.
-  if (Infinit::Parser->Register(
-        "Help",
-        'h',
-        "help",
-        "display the help",
-        elle::utility::Parser::KindNone) == elle::Status::Error)
-    throw elle::Exception("unable to register the option");
-
-  // register the option.
-  if (Infinit::Parser->Register(
-        "User",
-        'u',
-        "user",
-        "specifies the name of the user",
-        elle::utility::Parser::KindRequired) == elle::Status::Error)
-    throw elle::Exception("unable to register the option");
-
-  // register the option.
-  if (Infinit::Parser->Register(
-        "Network",
-        'n',
-        "network",
-        "specifies the name of the network",
-        elle::utility::Parser::KindRequired) == elle::Status::Error)
-    throw elle::Exception("unable to register the option");
-
-  // register the option.
-  if (Infinit::Parser->Register(
-        "Mountpoint",
-        'm',
-        "mountpoint",
-        "specifies the mount point",
-        elle::utility::Parser::KindRequired) == elle::Status::Error)
-    throw elle::Exception("unable to register the option");
-
-  // parse.
-  if (Infinit::Parser->Parse() == elle::Status::Error)
-    throw elle::Exception("unable to parse the command line");
-
-  // test the option.
-  if (Infinit::Parser->Test("Help") == true)
-    {
-      // display the usage.
-      Infinit::Parser->Usage();
-
-      // quit.
-      return;
-    }
-
-  // retrieve the user name.
-  if (Infinit::Parser->Value("User",
-                             Infinit::User) == elle::Status::Error)
-    {
-      // display the usage.
-      Infinit::Parser->Usage();
-
-      throw elle::Exception("unable to retrieve the user name");
-    }
-
-  // retrieve the network name.
-  if (Infinit::Parser->Value("Network",
-                             Infinit::Network) == elle::Status::Error)
-    {
-      // display the usage.
-      Infinit::Parser->Usage();
-
-      throw elle::Exception("unable to retrieve the network name");
-    }
-
-  // Retrieve the mount point.
-  if (Infinit::Parser->Test("Mountpoint") == true)
-    {
-      if (Infinit::Parser->Value("Mountpoint",
-                                 Infinit::Mountpoint) == elle::Status::Error)
-        throw elle::Exception("unable to retrieve the mountpoint");
-    }
+  if (options.count("user"))
+    Infinit::User = options["user"].as<std::string>();
   else
-    {
-      // Nothing to do, keep the mounpoint empty.
-      // XXX[to fix later though]
-    }
+    throw elle::Exception("missing command line option: user");
+
+  if (options.count("network"))
+    Infinit::Network = options["network"].as<std::string>();
+  else
+    throw elle::Exception("missing command line option: network");
+
+  if (options.count("mountpoint"))
+    Infinit::Mountpoint = options["mountpoint"].as<std::string>();
+  else
+  {
+    // Nothing to do, keep the mounpoint empty.
+    // XXX[to fix later though]
+  }
+
+  std::vector<elle::network::Locus> members;
+  if (options.count("peer"))
+    for (auto const& peer: options["peer"].as<std::vector<std::string>>())
+      members.push_back(elle::network::Locus(peer));
 
   // initialize the Lune library.
   if (lune::Lune::Initialize() == elle::Status::Error)
@@ -175,15 +154,13 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
 
   ELLE_DEBUG("constructing hole");
   std::unique_ptr<hole::Hole> hole(
-    infinit::hole_factory(storage, passport, Infinit::authority()));
+    infinit::hole_factory(storage, passport, Infinit::authority(), members));
   etoile::depot::hole(hole.get());
   ELLE_DEBUG("hole constructed");
 #ifdef INFINIT_HORIZON
   ELLE_DEBUG("INFINIT_HORIZON enable");
   horizon::hole(hole.get());
 #endif
-  ELLE_DEBUG("joining hole");
-  hole->join();
 
   // initialize the Etoile library.
   if (etoile::Etoile::Initialize() == elle::Status::Error)
@@ -220,7 +197,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   if (agent::Agent::Clean() == elle::Status::Error)
     throw elle::Exception("unable to clean Agent");
 
-  hole->leave();
   hole.reset(nullptr);
 
   // clean Infinit.

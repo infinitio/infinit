@@ -1,5 +1,7 @@
 #include "InfinitInstanceManager.hh"
 
+#include "binary_config.hh"
+
 #include <common/common.hh>
 
 #include <elle/Exception.hh>
@@ -93,15 +95,11 @@ namespace surface
       std::string command;
       std::list<std::string> args;
 
-      auto pc = elle::system::process_config(elle::system::normal_config);
+      auto pc = binary_config("8infinit",
+                              this->_user_id,
+                              network_id);
       if (elle::os::getenv("INFINIT_DEBUG_WITH_VALGRIND", "") == "1")
       {
-        pc.pipe_file(elle::system::ProcessChannelStream::out,
-                     "/tmp/infinit.out",
-                     "a+");
-        pc.pipe_file(elle::system::ProcessChannelStream::err,
-                     "/tmp/infinit.out",
-                     "a+");
         command = "/opt/local/bin/valgrind";
         args = {
           "--dsymutil=yes",
@@ -113,19 +111,6 @@ namespace surface
       }
       else
       {
-        std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
-
-        if (!log_file.empty())
-        {
-          if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
-          {
-            log_file += ".";
-            log_file += std::to_string(::getpid());
-          }
-          log_file += ".infinit.log";
-
-          pc.setenv("INFINIT_LOG_FILE", log_file);
-        }
         command = common::infinit::binary_path("8infinit");
         args = {
           "-n", network_id,
@@ -182,7 +167,7 @@ namespace surface
       }
       catch (elle::Exception const& e)
       {
-        ELLE_WARN("Couldn't interrupt 8infinit instance of %s: %s",
+        ELLE_WARN("couldn't interrupt 8infinit instance of %s: %s",
                   network_id, e);
       }
       if (status_code != 0)

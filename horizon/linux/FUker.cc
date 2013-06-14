@@ -286,19 +286,7 @@ namespace horizon
     FUker::Initialize(reactor::Scheduler& sched)
     {
       _scheduler = &sched;
-      switch (horizon::hole().state())
-      {
-        case hole::Hole::State::offline:
-        {
-          hole().ready_hook(&FUker::run);
-          break;
-        }
-        case hole::Hole::State::online:
-        {
-          FUker::run();
-          break;
-        }
-      }
+      FUker::run();
     }
 
     ///

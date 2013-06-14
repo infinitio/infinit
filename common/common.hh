@@ -1,6 +1,7 @@
 #ifndef  COMMON_COMMON_HH
 # define COMMON_COMMON_HH
 
+# include <stdint.h>
 # include <string>
 
 namespace common
@@ -137,6 +138,24 @@ namespace common
     /// value will be returned.
     std::string const&
     url();
+  }
+
+  namespace heartbeat
+  {
+    std::string const&
+    host();
+
+    int
+    port();
+  }
+
+  namespace stun
+  {
+    std::string const&
+    host();
+
+    int
+    port();
   }
 
   /// All resources URIs

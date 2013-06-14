@@ -9,6 +9,7 @@
 #include <elle/log.hh>
 #include <elle/elle.hh>
 #include <elle/HttpClient.hh>
+#include <elle/container/list.hh>
 #include <CrashReporter.hh>
 
 #include <plasma/meta/Client.hh>
@@ -281,7 +282,7 @@ extern "C"
     WRAP_CPP(state, login, email, password);
   }
 
-  int
+  gap_Bool
   gap_logged_in(gap_State* state)
   {
     assert(state != nullptr);
@@ -733,8 +734,8 @@ extern "C"
       {
         auto swaggers = __TO_CPP(state)->user_manager().swaggers();
         std::list<std::string> result;
-        for (auto const& pair : swaggers)
-          result.push_back(pair.first);
+        for (auto const& id : swaggers)
+          result.push_back(id);
         return _cpp_stringlist_to_c_stringlist(result);
       }
     CATCH_ALL(get_swaggers);
@@ -782,7 +783,7 @@ extern "C"
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-        cb(notif.transaction.id.c_str(), is_new);
+        cb(notif.id.c_str(), is_new);
     };
 
     gap_Status ret = gap_ok;
@@ -791,25 +792,6 @@ extern "C"
       __TO_CPP(state)->notification_manager().transaction_callback(cpp_cb);
     }
     CATCH_ALL(transaction_callback);
-
-    return ret;
-  }
-
-  gap_Status
-  gap_transaction_status_callback(gap_State* state,
-                                  gap_transaction_status_callback_t cb)
-  {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (TransactionStatusNotification const& notif, bool is_new) {
-        cb(notif.transaction_id.c_str(), is_new);
-    };
-
-    gap_Status ret = gap_ok;
-    try
-    {
-      __TO_CPP(state)->notification_manager().transaction_status_callback(cpp_cb);
-    }
-    CATCH_ALL(transaction_status_callback);
 
     return ret;
   }
@@ -848,239 +830,59 @@ extern "C"
   }
 
   /// Transaction getters.
-  // Macroify all of this.
-  char const*
-  gap_transaction_sender_id(gap_State* state,
-                            char const* _id)
-  {
-    assert(_id != nullptr);
-    gap_Status ret = gap_ok;
-    try
-    {
-      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-      return transaction.sender_id.c_str();
-    }
-    CATCH_ALL(transaction_sender_id);
+#define DEFINE_TRANSACTION_GETTER(_type_, _field_, _transform_)               \
+  _type_                                                                      \
+  gap_transaction_ ## _field_(gap_State* state,                               \
+                              char const* _id)                                \
+  {                                                                           \
+    assert(_id != nullptr);                                                   \
+    gap_Status ret = gap_ok;                                                  \
+    try                                                                       \
+    { \
+      return _transform_( \
+        __TO_CPP(state)->transaction_manager().one(_id)._field_); \
+    } \
+    CATCH_ALL(transaction_ ## _field_); \
+ \
+    (void) ret; \
+    return (_type_) 0; \
+  } \
+  /**/
 
-    (void) ret;
-    return nullptr;
-  }
+#define NO_TRANSFORM
+#define GET_CSTR(_expr_) (_expr_).c_str()
 
-  char const*
-  gap_transaction_sender_fullname(gap_State* state,
-                                  char const* _id)
-  {
-    assert(_id != nullptr);
-    gap_Status ret = gap_ok;
-    try
-    {
-      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-      return transaction.sender_fullname.c_str();
-    }
-    CATCH_ALL(transaction_sender_fullname);
+#define DEFINE_TRANSACTION_GETTER_STR(_field_)                                \
+  DEFINE_TRANSACTION_GETTER(char const*, _field_, GET_CSTR)                   \
+/**/
+#define DEFINE_TRANSACTION_GETTER_INT(_field_)                                \
+  DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                       \
+/**/
+#define DEFINE_TRANSACTION_GETTER_DOUBLE(_field_)                             \
+  DEFINE_TRANSACTION_GETTER(double, _field_, NO_TRANSFORM)                    \
+/**/
+#define DEFINE_TRANSACTION_GETTER_BOOL(_field_)                               \
+  DEFINE_TRANSACTION_GETTER(gap_Bool, _field_, NO_TRANSFORM)                  \
+/**/
 
-    (void) ret;
-    return nullptr;
-  }
-
-  char const*
-  gap_transaction_sender_device_id(gap_State* state,
-                                   char const* _id)
-  {
-    assert(_id != nullptr);
-    gap_Status ret = gap_ok;
-    try
-    {
-      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-      return transaction.sender_device_id.c_str();
-    }
-    CATCH_ALL(transaction_device_id);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  char const*
-  gap_transaction_recipient_id(gap_State* state,
-                               char const* _id)
-  {
-    assert(_id != nullptr);
-    gap_Status ret = gap_ok;
-    try
-    {
-      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-      return transaction.recipient_id.c_str();
-    }
-    CATCH_ALL(transaction_recipient_id);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  char const*
-  gap_transaction_recipient_fullname(gap_State* state,
-                                     char const* _id)
-  {
-    assert(_id != nullptr);
-    gap_Status ret = gap_ok;
-    try
-    {
-      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-      return transaction.recipient_fullname.c_str();
-    }
-    CATCH_ALL(transaction_recipient_fullname);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  char const*
-  gap_transaction_recipient_device_id(gap_State* state,
-                                      char const* _id)
-  {
-    assert(_id != nullptr);
-    gap_Status ret = gap_ok;
-    try
-    {
-      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-      return transaction.recipient_device_id.c_str();
-    }
-    CATCH_ALL(transaction_recipient_device_id);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  char const*
-  gap_transaction_network_id(gap_State* state,
-                             char const* _id)
-  {
-    gap_Status ret = gap_ok;
-    try
-    {
-      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-      return transaction.network_id.c_str();
-    }
-    CATCH_ALL(transaction_network_id);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  char const*
-  gap_transaction_first_filename(gap_State* state,
-                                 char const* _id)
-  {
-    gap_Status ret = gap_ok;
-    try
-    {
-      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-      return transaction.first_filename.c_str();
-    }
-    CATCH_ALL(transaction_first_filename);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  int
-  gap_transaction_files_count(gap_State* state,
-                              char const* _id)
-  {
-    gap_Status ret = gap_ok;
-    try
-    {
-      auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-      return transaction.files_count;
-    }
-    CATCH_ALL(transaction_files_count);
-
-    return ret;
-  }
-
-  int
-  gap_transaction_total_size(gap_State* state,
-                             char const* _id)
-  {
-    gap_Status ret = gap_ok;
-    try
-      {
-        auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-        return transaction.total_size;
-      }
-    CATCH_ALL(transaction_total_size);
-
-    return ret;
-  }
-
-  double
-  gap_transaction_timestamp(gap_State* state,
-                            char const* transaction_id)
-  {
-    gap_Status ret = gap_ok;
-    try
-      {
-        auto const& transaction =
-          __TO_CPP(state)->transaction_manager().one(transaction_id);
-        return transaction.timestamp / 1000.0;
-      }
-    CATCH_ALL(transaction_timestamp);
-    (void) ret;
-    return 0.0;
-  }
-
-  // gap_Bool
-  int
-  gap_transaction_is_directory(gap_State* state,
-                               char const* _id)
-  {
-    gap_Status ret = gap_ok;
-    try
-      {
-        auto const& transaction = __TO_CPP(state)->transaction_manager().one(_id);
-        return transaction.is_directory;
-      }
-    CATCH_ALL(transaction_is_directory);
-
-    return ret;
-  }
-
-  gap_TransactionStatus
-  gap_transaction_status(gap_State* state,
-                         char const* transaction_id)
-  {
-    assert(state != nullptr);
-    assert(transaction_id != nullptr);
-    gap_Status ret;
-
-    try
-      {
-        auto const& transaction = __TO_CPP(state)->transaction_manager().one(transaction_id);
-        return (gap_TransactionStatus) transaction.status;
-      }
-    CATCH_ALL(transaction_status);
-
-    (void) ret;
-    return gap_TransactionStatus::gap_transaction_status_none;
-  }
-
-  char const*
-  gap_transaction_message(gap_State* state,
-                          char const* transaction_id)
-  {
-    assert(state != nullptr);
-    assert(transaction_id != nullptr);
-    gap_Status ret = gap_ok;
-    try
-      {
-        auto const& transaction = __TO_CPP(state)->transaction_manager().one(transaction_id);
-        return transaction.message.c_str();
-      }
-    CATCH_ALL(transaction_message);
-
-    (void) ret;
-    return nullptr;
-  }
+  DEFINE_TRANSACTION_GETTER_STR(sender_id)
+  DEFINE_TRANSACTION_GETTER_STR(sender_fullname)
+  DEFINE_TRANSACTION_GETTER_STR(sender_device_id)
+  DEFINE_TRANSACTION_GETTER_STR(recipient_id)
+  DEFINE_TRANSACTION_GETTER_STR(recipient_fullname)
+  DEFINE_TRANSACTION_GETTER_STR(recipient_device_id)
+  DEFINE_TRANSACTION_GETTER_STR(network_id)
+  DEFINE_TRANSACTION_GETTER_STR(first_filename)
+  DEFINE_TRANSACTION_GETTER_STR(message)
+  DEFINE_TRANSACTION_GETTER_INT(files_count)
+  DEFINE_TRANSACTION_GETTER_INT(total_size)
+  DEFINE_TRANSACTION_GETTER_DOUBLE(timestamp)
+  DEFINE_TRANSACTION_GETTER_BOOL(is_directory)
+  DEFINE_TRANSACTION_GETTER_BOOL(accepted)
+  // _transform_ is a cast from plasma::TransactionStatus
+  DEFINE_TRANSACTION_GETTER(gap_TransactionStatus,
+                            status,
+                            (gap_TransactionStatus))
 
   float
   gap_transaction_progress(gap_State* state,
@@ -1113,6 +915,7 @@ extern "C"
     CATCH_ALL(transaction_update);
     return ret;
   }
+
   // - Notifications -----------------------------------------------------------
 
   gap_Status
@@ -1150,6 +953,7 @@ extern "C"
         for (auto const& transaction_pair : transactions_map)
           res.push_back(transaction_pair.first);
 
+        ELLE_DEBUG("gap_transactions() = %s", res);
         return _cpp_stringlist_to_c_stringlist(res);
       }
     CATCH_ALL(transactions);
@@ -1206,8 +1010,23 @@ extern "C"
                          transaction_manager,
                          update,
                          transaction_id,
-                         status);
+                         static_cast<plasma::TransactionStatus>(status));
 
+    return ret;
+  }
+
+  gap_Status
+  gap_accept_transaction(gap_State* state,
+                         char const* transaction_id)
+  {
+    assert(state != nullptr);
+    assert(transaction_id != nullptr);
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->transaction_manager().accept_transaction(transaction_id);
+    }
+    CATCH_ALL(accept_transaction);
     return ret;
   }
 
@@ -1268,5 +1087,8 @@ extern "C"
                         elle::Backtrace::current(),
                         file_content);
   }
+
+  // Generated file.
+  #include <surface/gap/gen_metrics.hh>
 
 } // ! extern "C"

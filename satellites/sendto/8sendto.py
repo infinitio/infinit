@@ -32,24 +32,19 @@ def login(state, email = None):
     import socket
     state.set_device_name(socket.gethostname().strip())
 
-def show_status(state, transaction, new):
-    print("Transaction ({})".format(transaction), state.transaction_status(transaction))
-
 def on_transaction(state, transaction, new):
-    print("New transaction", transaction)
+    status = state.transaction_status(transaction)
+    print("{}Transaction ({})".format(new and "New " or "", transaction), status)
     state.current_transaction_id = transaction
-
-def on_started(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.started:
+    if status in (
+       state.TransactionStatus.canceled,
+       state.TransactionStatus.finished,
+       state.TransactionStatus.failed,
+    ):
+        state.running = False
+    elif state.transaction_accepted(transaction)\
+        and status == state.TransactionStatus.started:
         state.started = True
-
-def on_canceled(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.canceled:
-        state.running = False
-
-def on_finished(state, transaction, new):
-    if state.transaction_status(transaction) == state.TransactionStatus.finished:
-        state.running = False
 
 def on_error(state, status, message, tid):
     if tid:
@@ -63,33 +58,23 @@ def main(state, user, files):
     id = state.send_files(user, files)
 
     state.transaction_callback(partial(on_transaction, state))
-    state.transaction_status_callback(partial(on_finished, state))
-    state.transaction_status_callback(partial(on_started, state))
-    state.transaction_status_callback(partial(on_canceled, state))
-    state.transaction_status_callback(partial(show_status, state))
     state.on_error_callback(partial(on_error, state))
     state.running = True
-
-    while True:
-        state.poll()
-        time.sleep(1)
-        status = state.operation_status(id)
-        if status == state.OperationStatus.running:
-            print(".", end="", file=sys.stdout)
-            sys.stdout.flush()
-        if status == state.OperationStatus.success:
-            print("Preparation finished, waiting for receiver")
-            break
-        if status == state.OperationStatus.failure:
-            print("Failure to prepare the transfer.")
-            return
+    state.started = False
+    state.current_transaction_id = None
 
     while state.running:
-        if getattr(state, "current_transaction_id", None) and getattr(state, "started", None):
+        if state.current_transaction_id is not None and state.started:
             tid = state.current_transaction_id
             progress = state.transaction_progress(tid)
-            print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, tid, state.transaction_first_filename(tid)), end=" "),
-            print("\r", end="")
+            filename = state.transaction_first_filename(tid)
+            print(
+               "\rProgress {2}: [{0:50s}] {1:.1f}% of {3}".format(
+                   '#' * int(progress * 50), progress * 100,
+                   tid, filename
+               ),
+               end=""
+            )
         time.sleep(1)
         state.poll()
 

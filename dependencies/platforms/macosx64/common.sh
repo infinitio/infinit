@@ -1,7 +1,16 @@
 # extension
 PLATFORM_LIBRARY_EXTENSION="dylib"
+
 set_rpath()
 {
-  echo install_name_tool -add_rpath $1 $2
-  install_name_tool -add_rpath $1 $2
+  rpath="${1}"
+  path="${2}"
+
+  install_name_tool -delete_rpath "${rpath}" "${path}"
+  install_name_tool -add_rpath "${rpath}" "${path}"
+}
+
+md5sum()
+{
+	md5 $* | cut -d '=' -f 2 | tr -d ' '
 }

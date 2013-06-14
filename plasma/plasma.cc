@@ -4,6 +4,12 @@
 
 namespace plasma
 {
+  Transaction::Transaction()
+  {}
+
+  Transaction::~Transaction()
+  {}
+
   std::ostream&
   operator <<(std::ostream& out,
               plasma::TransactionStatus t)

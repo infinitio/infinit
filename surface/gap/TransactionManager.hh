@@ -1,18 +1,21 @@
-#ifndef TRANSACTIONMANAGER_HH
-# define TRANSACTIONMANAGER_HH
+#ifndef SURFACE_GAP_TRANSACTIONMANAGER_HH
+# define SURFACE_GAP_TRANSACTIONMANAGER_HH
+
+# include "status.hh"
+# include "NetworkManager.hh"
+# include "NotificationManager.hh"
+# include "OperationManager.hh"
+# include "UserManager.hh"
+# include "metrics.hh"
 
 # include <plasma/plasma.hh>
-# include <unordered_set>
-# include <surface/gap/status.hh>
-
-# include <surface/gap/NetworkManager.hh>
-# include <surface/gap/NotificationManager.hh>
-# include <surface/gap/OperationManager.hh>
-# include <surface/gap/UserManager.hh> // Could be avoid using accept response.
-# include <surface/gap/metrics.hh>
-
 # include <plasma/trophonius/Client.hh>
 # include <plasma/meta/Client.hh>
+
+# include <elle/attribute.hh>
+
+# include <string>
+# include <unordered_set>
 
 namespace surface
 {
@@ -81,11 +84,6 @@ namespace surface
                  std::unordered_set<std::string> const& files);
 
     private:
-      /// @brief Start the transfer process on recipient.
-      ///
-      OperationId
-      _download_files(std::string const& transaction_id);
-
       /*---------.
       | Progress |
       `---------*/
@@ -122,48 +120,61 @@ namespace surface
       sync(std::string const& id);
 
     private:
-      /// @brief Ensure the transaction belongs to the user, as sender or
-      /// recipient. May also check if involved devices are the good ones.
+      // Remove processes, states and operations related to a transaction.
       void
-      _ensure_ownership(Transaction const& transaction,
-                        bool check_devices = false);
+      _clean_transaction(Transaction const& transaction);
 
       /*-------------------.
-      | Transcation update |
+      | Transaction update |
       `-------------------*/
+    private:
+      struct State
+      {
+        enum
+        {
+          none,     // Unknown transaction.
+          preparing,
+          running,
+        } state;
+        int tries;
+        OperationId operation;
+        std::unordered_set<std::string> files;
+        State():
+          state{none},
+          tries{0},
+          operation{0}
+        {}
+      };
+      typedef std::map<std::string, State> StateMap;
+      elle::threading::Monitor<StateMap> _states;
+
     public:
       /// @brief Update transaction status.
       void
       update(std::string const& transaction_id,
-             gap_TransactionStatus status);
+             plasma::TransactionStatus status);
+
+      void
+      accept_transaction(Transaction const& transaction);
+      void
+      accept_transaction(std::string const& transaction_id);
+
+      void
+      cancel_transaction(Transaction const& transaction);
 
     private:
-      /// @brief Use to launch the process if the recipient already accepted
-      // the transaction.
       void
-      _create_transaction(Transaction const& transaction);
+      _accept_transaction(Transaction const& transaction,
+                          Operation& operation);
+    private:
+      void
+      _prepare_upload(Transaction const& transaction);
 
-      /// @brief Use to accept the transaction for the recipient.
       void
-      _accept_transaction(Transaction const& transaction);
+      _start_upload(Transaction const& transaction);
 
-      /// @brief Use to inform recipient that everything is ok and he can
-      /// prepare for downloading.
       void
-      _prepare_transaction(Transaction const& transaction);
-
-      /// @brief Use to inform recipient that everything is ok and he can start
-      /// downloading.
-      void
-      _start_transaction(Transaction const& transaction);
-
-      /// @brief Use to inform the sender that download is complete.
-      void
-      _close_transaction(Transaction const& transaction);
-
-      /// @brief Use to cancel a pending transaction or an unfinished one.
-      void
-      _cancel_transaction(Transaction const& transaction);
+      _start_download(Transaction const& transaction);
 
       /*----------.
       | Callbacks |
@@ -171,35 +182,9 @@ namespace surface
     private:
       /// @brief Callback when recieving an new transaction.
       void
-      _on_transaction(TransactionNotification const& notif, bool is_new);
-
-      /// @brief Calback when recieving an update for a transaction.
+      _on_transaction(plasma::Transaction const& notif);
       void
-      _on_transaction_status(TransactionStatusNotification const& notif);
-
-      /// @brief Use to created the transaction for the recipient.
-      void
-      _on_transaction_created(Transaction const& transaction);
-
-      /// @brief Use to add rights on network when the recipient accepts.
-      void
-      _on_transaction_accepted(Transaction const& transaction);
-
-      /// @brief Use to .
-      void
-      _on_transaction_prepared(Transaction const& transaction);
-
-      /// @brief Use to .
-      void
-      _on_transaction_started(Transaction const& transaction);
-
-      /// @brief Use to close network.
-      void
-      _on_transaction_closed(Transaction const& transaction);
-
-      /// @brief Use to destroy network if transaction has been canceled.
-      void
-      _on_transaction_canceled(Transaction const& transaction);
+      _on_user_status(UserStatusNotification const& notif);
     };
   }
 }

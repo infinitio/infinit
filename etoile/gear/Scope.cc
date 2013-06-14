@@ -926,17 +926,10 @@ namespace etoile
           }
         }
       catch (std::exception const& err)
-        {
-          if (this->actors.empty())
-            {
-              ELLE_DEBUG("destroy the scope %s", *this);
-              if (Scope::Relinquish(this) == elle::Status::Error)
-                throw Exception("unable to relinquish the scope");
-            }
-          std::string what{err.what()};
-          throw Exception(elle::sprintf("the shutdown process failed: %s",
-                                              what));
-        }
+      {
+        throw Exception(elle::sprintf("the shutdown process failed: %s",
+                                      elle::exception_string()));
+      }
 
       return elle::Status::Ok;
     }

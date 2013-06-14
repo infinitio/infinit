@@ -1,4 +1,3 @@
-
 # -*- encoding: utf-8 -*-
 
 import json
@@ -487,18 +486,25 @@ class ConnectDevice(_Page):
             # Generate a list of dictionary ip:port.
             # We can not take the local_addresses content directly:
             # it's not checked before this point. Therefor, it's insecure.
-            node['locals'] = [{"ip" : v["ip"], "port" : v["port"]} for v in local_addresses if v["ip"] != "0.0.0.0"]
+            node['locals'] = [
+                {"ip" : v["ip"], "port" : v["port"]}
+                for v in local_addresses if v["ip"] != "0.0.0.0"
+            ]
         else:
             node['locals'] = []
 
         external_addresses = self.data.get('externals')
 
         if external_addresses is not None:
-            node['externals'] = [{"ip" : v["ip"], "port" : v["port"]} for v in external_addresses if v["ip"] != "0.0.0.0"]
+            node['externals'] = [
+                {"ip" : v["ip"], "port" : v["port"]}
+                for v in external_addresses if v["ip"] != "0.0.0.0"
+            ]
         else:
             node['externals'] = []
 
-        # By default we have no fallback. Fallback will be set while trying to connected the 2 devices.
+        # By default we have no fallback. Fallback will be set while trying to
+        # connect the 2 devices.
         node['fallback'] = []
 
         database.networks().save(network)

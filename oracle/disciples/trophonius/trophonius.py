@@ -49,7 +49,9 @@ class Trophonius(basic.LineReceiver):
         self.devices = None
         self.id = None
         self.token = None
+        self.device_id = None
         self.state = 'HELLO'
+        self.meta_client = None
 
     def __str__(self):
         if hasattr(self, "id"):
@@ -74,11 +76,11 @@ class Trophonius(basic.LineReceiver):
         except Exception as e:
             log.msg('self.factory.clients.remove(self) failed')
         finally:
-            pythia.Admin().post('/user/disconnected', {
-                'user_id': self.id,
-                'user_token': self.token,
-                'full': self.devices and len(self.devices) or 0,
-            })
+            if self.meta_client is not None:
+                self.meta_client.post('/user/disconnect', {
+                    'user_id': self.id,
+                    'device_id': self.device_id,
+                })
 
     def _send_res(self, res, msg=""):
         if isinstance(res, dict):
@@ -97,46 +99,58 @@ class Trophonius(basic.LineReceiver):
 
     def handle_CHAT(self, line):
         """
-        Just a dummy function
+        Echo.
         """
-        for c in (_c for _c in self.factory.clients if _c is not self):
-            log.msg("sending {} to <{}>".format(line, c.transport.getPeer()))
-            c.sendLine("{}".format(line))
-        self._send_res(200)
+        if getattr(self, "_alive_service", None):
+            self._alive_service.cancel()
+        self._alive_service = reactor.callLater(65, self.transport.loseConnection)
 
     def handle_HELLO(self, line):
         """
         This function handle the first message of the client
         It waits for a json object with:
         {
-                "token" : <token>
+            "token": <token>,
+            "device_id": <device_id>,
+            "user_id": <user_id>,
         }
         """
         try:
-            js_req = json.loads(line)
-            cl = pythia.Client(session={"token": js_req["token"]})
+            req = json.loads(line)
+            self.device_id = req["device_id"]
 
-            res = cl.get('/self')
-            # The authentication succeeded
+            # Authentication
+            res = pythia.Client(session={'token': req['token']}).get('/self')
             if not res['success']:
                 raise Exception("Meta error: %s" % res.get('error', ''))
-
             self.id = res["_id"]
-            self.token = js_req["token"]
+            self.token = req["token"]
+
+            self.meta_client = pythia.Admin()
+            res = self.meta_client.post('/user/connect', {
+                'user_id': self.id,
+                'device_id': self.device_id,
+            })
+
+
             # Add the current client to the client list
             assert isinstance(self.factory.clients, dict)
             self.factory.clients.setdefault(self.id, set()).add(self)
             self.devices = self.factory.clients[self.id]
-            print("client {}: current devices {}".format(self.id, self.devices));
-            for d in self.devices:
-                print(self.transport.getPeer())
+
+            pythia.Admin().post(
+                '/user/connected',
+                {
+                    'user_id': self.id,
+                    'user_token': self.token,
+                }
+            )
 
             # Enable the notifications for the current client
             self.state = "CHAT"
-            print("Switching state to", self.state)
 
             # Send the success to the client
-            self._send_res(res=200)
+            self._send_res(res = 200)
         except (ValueError, KeyError) as ve:
             log.err("Handled exception {} in state {}: {}".format(
                                         ve.__class__.__name__,
@@ -148,6 +162,7 @@ class Trophonius(basic.LineReceiver):
     def lineReceived(self, line):
         hdl = getattr(self, "handle_{}".format(self.state), None)
         if hdl is not None:
+            log.msg("call", hdl)
             hdl(line)
 
 class MetaTropho(basic.LineReceiver):
@@ -238,4 +253,3 @@ class MetaTrophoFactory(protocol.Factory):
 
     def buildProtocol(self, addr):
         return MetaTropho(self)
-

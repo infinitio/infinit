@@ -60,10 +60,9 @@ namespace surface
       ///- Servers -------------------------------------------------------------
       plasma::meta::Client _meta;
 
-      elle::metrics::Reporter _reporter;
-      elle::metrics::Reporter _google_reporter;
+      ELLE_ATTRIBUTE_X(elle::metrics::Reporter, reporter);
+      ELLE_ATTRIBUTE(elle::metrics::Reporter, google_reporter);
 
-    public:
       ///- Construction --------------------------------------------------------
     public:
       State();
@@ -78,6 +77,9 @@ namespace surface
 
     //- Login & register ------------------------------------------------------
       std::unique_ptr<Self> mutable _me;
+
+      void
+      _self_load() const;
 
       Self&
       me();

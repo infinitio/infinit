@@ -1,16 +1,18 @@
 #ifndef GAP_ANALIZER_HH
 # define GAP_ANALIZER_HH
 
-# include <elle/types.hh>
-# include <elle/print.hh>
 # include <elle/HttpClient.hh>
+# include <elle/print.hh>
+# include <elle/threading/Monitor.hh>
+# include <elle/types.hh>
 # include <elle/utility/Time.hh>
-# include <queue>
-# include <unordered_map>
+
 # include <fstream>
-# include <reactor/scheduler.hh>
 # include <memory>
+# include <queue>
+# include <reactor/scheduler.hh>
 # include <thread>
+# include <unordered_map>
 
 namespace elle
 {
@@ -33,6 +35,10 @@ namespace elle
       panel,
       input,
     };
+
+    std::ostream&
+    operator <<(std::ostream& out,
+                Key k);
 
     class Reporter
     {
@@ -71,8 +77,7 @@ namespace elle
         std::string _user_id;
         std::unique_ptr<elle::HTTPClient> _server;
 
-      public:
-         std::string name;
+        ELLE_ATTRIBUTE_R(std::string, name);
 
         friend Reporter;
       };
@@ -115,16 +120,18 @@ namespace elle
       void
       add_service(std::unique_ptr<Service> service);
 
-      Reporter::Service&
-      service(std::string const& name);
-
       void
       update_user(std::string const& user);
 
     protected:
       virtual
       void
-      _fallback(Reporter::TimeMetricPair const& metric);
+      _fallback(std::string const& name,
+                Reporter::TimeMetricPair const& metric);
+
+    private:
+      Reporter::Service&
+      _service(std::string const& name);
 
     public:
       static std::string version;
@@ -136,7 +143,9 @@ namespace elle
       std::unique_ptr<boost::asio::io_service::work> _keep_alive;
       std::unique_ptr<std::thread> _run_thread;
       std::ofstream _fallback_stream;
-      std::unordered_map<std::string, std::unique_ptr<Service>> _services;
+      typedef std::unordered_map<std::string, std::unique_ptr<Service>> ServicesMap;
+      ELLE_ATTRIBUTE(elle::threading::Monitor<ServicesMap>, services);
+      ELLE_ATTRIBUTE(std::mutex, mutex);
     };
 
     Reporter&
