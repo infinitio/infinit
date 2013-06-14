@@ -161,12 +161,7 @@ namespace plasma
       _impl{new Impl{server, port, connect_callback}}
     {
       ELLE_ASSERT(connect_callback != nullptr);
-      _impl->connection_checker.expires_from_now(
-        boost::posix_time::seconds(10)
-      );
-      _impl->connection_checker.async_wait(
-          std::bind(&Client::_check_connection, this, std::placeholders::_1)
-      );
+      this->_restart_timer();
     }
 
     Client::~Client()
@@ -179,7 +174,8 @@ namespace plasma
     {
       if (err)
       {
-        ELLE_WARN("timer failed, stopping connection checks");
+        if (err.value() != boost::asio::error::operation_aborted)
+          ELLE_WARN("timer failed (%s), stopping connection checks", err);
         return;
       }
 
@@ -195,8 +191,10 @@ namespace plasma
           )
         );
       }
-      catch (std::runtime_error const& e)
+      catch (std::exception const&)
       {
+        ELLE_WARN("couldn't send ping to tropho: %s",
+                  elle::exception_string());
         this->_impl->connected = false;
       }
       if (_impl->connected == false)
@@ -211,12 +209,13 @@ namespace plasma
           ELLE_DEBUG("reconnected to tropho successfully");
           _impl->connect_callback();
         }
-        catch (std::exception const& e)
+        catch (std::exception const&)
         {
-          ELLE_WARN("Couldn't reconnect to tropho: %s", e.what());
+          ELLE_WARN("Couldn't reconnect to tropho: %s",
+                    elle::exception_string());
         }
       }
-
+      this->_restart_timer();
     }
 
     void
@@ -233,12 +232,15 @@ namespace plasma
         ELLE_TRACE("trophonius connected");
         _impl->connected = true;
       }
+    }
+
+    void
+    Client::_restart_timer()
+    {
       _impl->connection_checker.expires_from_now(
-        boost::posix_time::seconds(10)
-      );
+        boost::posix_time::seconds(10));
       _impl->connection_checker.async_wait(
-          std::bind(&Client::_check_connection, this, std::placeholders::_1)
-      );
+          std::bind(&Client::_check_connection, this, std::placeholders::_1));
     }
 
     void
@@ -295,8 +297,6 @@ namespace plasma
       // Transfer socket stream to stringstream that ensure there are no
       // encoding troubles (and make the stream human readable).
       std::unique_ptr<char[]> data{new char[bytes_transferred]};
-      if (!data)
-        throw std::bad_alloc{};
       is.read(data.get(), bytes_transferred);
       std::string msg{data.get(), bytes_transferred};
       ELLE_DEBUG("Got message: %s", msg);

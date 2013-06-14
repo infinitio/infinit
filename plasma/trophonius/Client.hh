@@ -126,6 +126,9 @@ namespace plasma
       _read_socket();
 
       void
+      _restart_timer();
+
+      void
       _on_read_socket(boost::system::error_code const& err,
                       size_t bytes_transferred);
 
