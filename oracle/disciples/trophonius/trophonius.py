@@ -41,7 +41,7 @@ class InvalidID(Exception):
 class Trophonius(basic.LineReceiver):
 
     states = ('HELLO',
-              'CHAT')
+              'PING')
 
     delimiter = "\n"
     def __init__(self, factory):
@@ -97,13 +97,15 @@ class Trophonius(basic.LineReceiver):
             print("sending message from", self, "to", self.transport.getPeer(), ":", message)
             self.sendLine("{}".format(message))
 
-    def handle_CHAT(self, line):
+    def handle_PING(self, line):
         """
         Echo.
         """
+        assert line == "PING"
         if getattr(self, "_alive_service", None):
             self._alive_service.cancel()
         self._alive_service = reactor.callLater(65, self.transport.loseConnection)
+        self.sendLine("PONG")
 
     def handle_HELLO(self, line):
         """
@@ -147,7 +149,7 @@ class Trophonius(basic.LineReceiver):
             )
 
             # Enable the notifications for the current client
-            self.state = "CHAT"
+            self.state = "PING"
 
             # Send the success to the client
             self._send_res(res = 200)
