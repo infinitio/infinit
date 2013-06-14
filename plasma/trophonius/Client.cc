@@ -299,11 +299,17 @@ namespace plasma
       std::unique_ptr<char[]> data{new char[bytes_transferred]};
       is.read(data.get(), bytes_transferred);
       std::string msg{data.get(), bytes_transferred};
-      ELLE_DEBUG("Got message: %s", msg);
-
-      this->_notifications.push(
-        notification_from_dict(json::parse(msg)->as_dictionary()));
-
+      ELLE_DEBUG("got message: %s", msg);
+      try
+      {
+        if (msg != "PONG\n")
+          this->_notifications.push(
+              notification_from_dict(json::parse(msg)->as_dictionary()));
+      }
+      catch (std::exception const&)
+      {
+        ELLE_WARN("couldn't handle %s: %s", msg, elle::exception_string());
+      }
       this->_read_socket();
     }
 
