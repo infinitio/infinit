@@ -16,43 +16,37 @@
 
 namespace etoile
 {
-  ///
-  /// this namespace contains everything related to the shrub i.e the
+  /// This namespace contains everything related to the shrub i.e the
   /// path-specific cache.
-  ///
   namespace shrub
   {
     extern Shrub* global_shrub;
 
+    /// The shrub i.e path cache relies on the LRU algorithm by keeping two data
+    /// structures: a map for looking up and a queue for removing the least
+    /// recently used riffles quickly.
     ///
-    /// the shrub i.e path cache relies on the LRU algorithm by keeping two
-    /// data structures: a map for looking up and a queue for removing the
-    /// least recently used riffles quickly.
+    /// To avoid using too much memory for these data structures, both point to
+    /// the same data: riffles.
     ///
-    /// to avoid using too much memory for these data structures, both point
-    /// to the same data: riffles.
+    /// Noteworthy is that, since this cache is used for paths and that paths
+    /// follow a pattern where /music/meshuggah is a subset of /music, the data
+    /// structure for storing the paths is a tree.  Indeed, the Riffle class
+    /// keeps a name such as 'meshuggah' along with a map of all the child
+    /// entries.
     ///
-    /// noteworthy is that, since this cache is used for paths and that paths
-    /// follow a pattern where /music/meshuggah is a subset of /music, the
-    /// data structure for storing the paths is hierachical.
-    ///
-    /// indeed, the Riffle class keeps a name such as 'meshuggah' along with
-    /// a map of all the child entries.
-    ///
-    /// this design has been chosen to speed up the resolution process. indeed,
+    /// This design has been chosen to speed up the resolution process. Indeed,
     /// this cache is used when a path must be resolved into a venue. the
-    /// objective of the cache is thus to find the longest part of a given
-    /// path.
+    /// objective of the cache is thus to find the longest part of a given path.
     ///
-    /// for example, given /music/meshuggah/nothing/, the objective is to
-    /// find the corresponding address of this directory object. instead of
-    /// trying /music/meshuggah/nothing/, then /music/meshuggah/, then
-    /// /music/ etc. the designed cache is capable of returning the longest
-    /// match within a single pass because riffles are hierarchically
-    /// organised.
+    /// For example, given /music/meshuggah/nothing/, the objective is to find
+    /// the corresponding address of this directory object. instead of trying
+    /// /music/meshuggah/nothing/, then /music/meshuggah/, then /music/ etc. the
+    /// designed cache is capable of returning the longest match within a single
+    /// pass because riffles are hierarchically organised.
     ///
-    /// note that several parameters can be configured through the
-    /// configuration file:
+    /// Note that several parameters can be configured through the configuration
+    /// file:
     ///
     ///   o status: indicates whether the shrub should be used for
     ///             caching paths.
@@ -103,8 +97,8 @@ namespace etoile
       /// Remove the \param route from the Shrub.
       void
       evict(const path::Route& route);
-      void
       /// Dump the whole shrub.
+      void
       show(const elle::Natural32 = 0);
       /// Remove all routes from the Shrub.
       void

@@ -1,3 +1,4 @@
+#include <boost/filesystem.hpp>
 
 #include <elle/log.hh>
 #include <elle/Buffer.hh>
@@ -7,7 +8,6 @@
 #include <agent/Agent.hh>
 
 #include <etoile/gear/Identifier.hh>
-#include <etoile/path/Way.hh>
 #include <etoile/path/Slab.hh>
 #include <etoile/path/Chemin.hh>
 #include <etoile/wall/Object.hh>
@@ -51,6 +51,15 @@ ELLE_LOG_COMPONENT("infinit.horizon.Crux");
 
 namespace horizon
 {
+  std::string
+  _dirname(std::string const& path, etoile::path::Slab& basename)
+  {
+    boost::filesystem::path p(path);
+    basename = p.filename().generic_string();
+    return p.parent_path().generic_string();
+  }
+
+
   /// The number of directory entries to fetch from etoile when
   /// performing a readdir().
   const nucleus::neutron::Size Crux::Range = 128;
@@ -63,7 +72,7 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, stat);
 
-    etoile::path::Way         way(path);
+    std::string way(path);
     struct ::fuse_file_info   info;
     int                       result;
 
@@ -291,10 +300,8 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, info);
 
-    etoile::path::Way         way(path);
-
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Load the directory.
     etoile::gear::Identifier identifier(etoile::wall::Directory::load(chemin));
@@ -416,18 +423,18 @@ namespace horizon
 
   /// This method creates a directory.
   int
-  Crux::mkdir(const char* path,
+  Crux::mkdir(const char* path_,
               mode_t mode)
   {
-    ELLE_TRACE_FUNCTION(path, std::oct, mode);
+    ELLE_TRACE_FUNCTION(path_, std::oct, mode);
 
     nucleus::neutron::Permissions permissions =
       nucleus::neutron::permissions::none;
-    etoile::path::Slab        name;
-    etoile::path::Way         way(etoile::path::Way(path), name);
+    etoile::path::Slab name;
+    std::string path = _dirname(path_, name);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Load the directory.
     etoile::gear::Identifier directory(etoile::wall::Directory::load(chemin));
@@ -522,9 +529,9 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path);
 
-    etoile::path::Slab                name;
-    etoile::path::Way                 child(path);
-    etoile::path::Way                 parent(child, name);
+    std::string child(path);
+    etoile::path::Slab name;
+    std::string parent = _dirname(path, name);
     nucleus::neutron::Subject subject;
 
     // Resolve the path.
@@ -598,10 +605,8 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, mask);
 
-    etoile::path::Way way(path);
-
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Optimisation: if the mask is equal to F_OK i.e there is nothing else
     // to check but the existence of the path, return righ away.
@@ -710,7 +715,6 @@ namespace horizon
   {
     nucleus::neutron::Permissions permissions =
       nucleus::neutron::permissions::none;
-    etoile::path::Way                 way(path);
     nucleus::neutron::Subject subject;
 
     ELLE_TRACE_FUNCTION(path, std::oct, mode);
@@ -740,7 +744,7 @@ namespace horizon
       permissions |= nucleus::neutron::permissions::write;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -858,11 +862,10 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, name, value, size, std::hex, flags);
 
-    etoile::path::Way way(path);
     nucleus::neutron::Subject subject;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -906,10 +909,8 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, name, size);
 
-    etoile::path::Way way(path);
-
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -954,11 +955,10 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, size);
 
-    etoile::path::Way way(path);
     size_t offset;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -1018,11 +1018,10 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, name);
 
-    etoile::path::Way way(path);
     nucleus::neutron::Subject subject;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -1077,8 +1076,8 @@ namespace horizon
     ELLE_TRACE_FUNCTION(target, source);
 
     etoile::path::Slab name;
-    etoile::path::Way from(etoile::path::Way(source), name);
-    etoile::path::Way to(target);
+    std::string from = _dirname(source, name);
+    std::string to(target);
 
     // Resolve the path.
     etoile::path::Chemin chemin(etoile::wall::Path::resolve(from));
@@ -1175,10 +1174,9 @@ namespace horizon
     ELLE_TRACE_FUNCTION(path, buffer, static_cast<elle::Natural64>(size));
 
     etoile::gear::Identifier  identifier;
-    etoile::path::Way         way(path);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Load the link.
     if (etoile::wall::Link::Load(chemin, identifier) == elle::Status::Error)
@@ -1199,7 +1197,7 @@ namespace horizon
 #endif
 
     // Resolve the link.
-    etoile::path::Way target(etoile::wall::Link::resolve(identifier));
+    std::string target(etoile::wall::Link::resolve(identifier));
 
     // Discard the link.
     if (etoile::wall::Link::Discard(identifier) == elle::Status::Error)
@@ -1210,9 +1208,9 @@ namespace horizon
     // Copy as much as possible of the target into the output
     // buffer.
     ::strncpy(buffer,
-              target.path.c_str(),
-              (target.path.length() + 1) < size ?
-              target.path.length() + 1 :
+              target.c_str(),
+              (target.length() + 1) < size ?
+              target.length() + 1 :
               size);
 
     return (0);
@@ -1228,11 +1226,12 @@ namespace horizon
 
     nucleus::neutron::Permissions permissions =
       nucleus::neutron::permissions::none;
-    etoile::path::Slab        name;
-    etoile::path::Way         way(etoile::path::Way(path), name);
+
+    etoile::path::Slab name;
+    std::string parent = _dirname(path, name);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(parent));
 
     // Load the directory.
     etoile::gear::Identifier directory(etoile::wall::Directory::load(chemin));
@@ -1330,7 +1329,7 @@ namespace horizon
     HORIZON_FINALLY_ABORT(directory);
 
     // Resolve the path.
-    chemin = etoile::wall::Path::resolve(etoile::path::Way(path));
+    chemin = etoile::wall::Path::resolve(path);
 
     // Finally, the file is reopened.
     etoile::gear::Identifier identifier(etoile::wall::File::load(chemin));
@@ -1353,7 +1352,7 @@ namespace horizon
     ELLE_FINALLY_ACTION_DELETE(handle);
 
     // Add the created and opened file in the crib.
-    if (Crib::Add(elle::String(path), handle) == elle::Status::Error)
+    if (Crib::Add(path, handle) == elle::Status::Error)
       return (-EBADF);
 
     info->fh = reinterpret_cast<uint64_t>(handle);
@@ -1370,11 +1369,10 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, info);
 
-    etoile::path::Way         way(path);
     etoile::path::Chemin      chemin;
 
     // Resolve the path.
-    chemin = (etoile::wall::Path::resolve(way));
+    chemin = (etoile::wall::Path::resolve(path));
 
     // Load the file.
     etoile::gear::Identifier identifier(etoile::wall::File::load(chemin));
@@ -1479,12 +1477,11 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, static_cast<elle::Natural64>(size));
 
-    etoile::path::Way         way(path);
     struct ::fuse_file_info   info;
     int                       result;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
 
     // Load the file.
     etoile::gear::Identifier identifier(etoile::wall::File::load(chemin));
@@ -1545,10 +1542,10 @@ namespace horizon
 
   /// XXX
   void
-  _release(etoile::path::Way const way,
+  _release(std::string const& path,
            Handle* handle)
   {
-    ELLE_DEBUG_FUNCTION(way, handle);
+    ELLE_DEBUG_FUNCTION(path, handle);
 
     ELLE_FINALLY_ACTION_DELETE(handle);
 
@@ -1558,7 +1555,7 @@ namespace horizon
       case Handle::OperationCreate:
         {
           // Remove the created and opened file in the crib.
-          if (Crib::Remove(way.path) == elle::Status::Error)
+          if (Crib::Remove(path) == elle::Status::Error)
             {
               ELLE_WARN("unable to remove the path from the crib");
               return;
@@ -1610,7 +1607,6 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path, info);
 
-    etoile::path::Way way(path);
     Handle* handle;
 
     // Retrieve the handle.
@@ -1626,7 +1622,7 @@ namespace horizon
         // return value release().
         new reactor::Thread(*reactor::Scheduler::scheduler(),
                             "_release",
-                            std::bind(&_release, way, handle),
+                            std::bind(&_release, std::string(path), handle),
                             true);
 
         ELLE_FINALLY_ABORT(handle);
@@ -1651,9 +1647,9 @@ namespace horizon
     ELLE_TRACE_FUNCTION(source, target);
 
     etoile::path::Slab f;
-    etoile::path::Way from(etoile::path::Way(source), f);
+    std::string from = _dirname(source, f);
     etoile::path::Slab t;
-    etoile::path::Way to(etoile::path::Way(target), t);
+    std::string to = _dirname(target, t);
 
     // If the source and target directories are identical.
     if (from == to)
@@ -1727,12 +1723,11 @@ namespace horizon
         // The process goes as follows: the object is loaded, an
         // entry in the _to_ directory is added while the entry in
         // the _from_ directory is removed.
-        etoile::path::Way way(source);
         etoile::gear::Identifier identifier_object;
         nucleus::neutron::Entry const* entry;
 
         // Resolve the path.
-        etoile::path::Chemin chemin(etoile::wall::Path::resolve(way));
+        etoile::path::Chemin chemin(etoile::wall::Path::resolve(source));
 
         // Load the object even though we don't know its genre as we
         // do not need to know to perform this operation.
@@ -1844,9 +1839,9 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path);
 
-    etoile::path::Slab                name;
-    etoile::path::Way                 child(path);
-    etoile::path::Way                 parent(child, name);
+    etoile::path::Slab name;
+    std::string parent = _dirname(path, name);
+    std::string child(path);
     etoile::path::Chemin chemin_child;
     etoile::path::Chemin chemin_parent;
     nucleus::neutron::Subject subject;

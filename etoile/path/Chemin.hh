@@ -18,8 +18,6 @@ namespace etoile
 {
   namespace path
   {
-
-    ///
     /// this class contains both a logical and physical path referred to
     /// as a chemin i.e path in French.
     ///

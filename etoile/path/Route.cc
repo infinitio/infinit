@@ -2,7 +2,6 @@
 
 #include <etoile/path/Path.hh>
 #include <etoile/path/Route.hh>
-#include <etoile/path/Way.hh>
 #include <etoile/Exception.hh>
 
 #include <agent/Agent.hh>
@@ -36,7 +35,7 @@ namespace etoile
     ///
     elle::Status        Route::Initialize()
     {
-      Way               root(elle::system::path::separator);
+      std::string root(1, elle::system::path::separator);
 
       // create the reference root route.
       if (Route::Root.Create(root) == elle::Status::Error)
@@ -91,32 +90,34 @@ namespace etoile
     /// if the first non-empty slab starts with '@[0-9]+', then this slab is
     /// used as the root one with the appropriate revision number.
     ///
-    elle::Status        Route::Create(const Way&                way)
+    elle::Status
+    Route::Create(std::string const& path)
     {
       elle::String::size_type   start;
       elle::String::size_type   end;
       Slab                      slab;
 
-      // check that the way starts with a leading '/'
-      if (way.path[0] != elle::system::path::separator)
+      // check that the path starts with a leading '/'
+      if (path[0] != elle::system::path::separator)
         throw Exception
-          (elle::sprintf("the path must contain the leading path separator '%c'",
-                         elle::system::path::separator));
+          (elle::sprintf("the path must contain "
+                         "the leading path separator '%c': %s",
+                         elle::system::path::separator, path));
 
       // clear the elements.
       this->elements.clear();
 
       // compute the next offsets.
       start =
-        way.path.find_first_not_of(elle::system::path::separator);
+        path.find_first_not_of(elle::system::path::separator);
       end =
-        way.path.find_first_of(elle::system::path::separator, start);
+        path.find_first_of(elle::system::path::separator, start);
 
       // check if at least one slab is present.
-      if (start < way.path.length())
+      if (start < path.length())
         {
           // create the slab.
-          slab = way.path.substr(start, end - start);
+          slab = path.substr(start, end - start);
 
           // XXX: restore history handling
           // // check if the slab represents the root directory i.e starts
@@ -135,9 +136,9 @@ namespace etoile
 
           //     // compute the next offsets.
           //     start =
-          //       way.path.find_first_not_of(elle::system::path::separator, end);
+          //       path.find_first_not_of(elle::system::path::separator, end);
           //     end =
-          //       way.path.find_first_of(elle::system::path::separator, start);
+          //       path.find_first_of(elle::system::path::separator, start);
           //   }
         }
 
@@ -151,19 +152,19 @@ namespace etoile
         }
 
       // then, go through the string.
-      while (start < way.path.length())
+      while (start < path.length())
         {
           // create the slab.
-          slab = way.path.substr(start, end - start);
+          slab = path.substr(start, end - start);
 
           // add the section to the container.
           this->elements.push_back(slab);
 
           // compute the next offsets.
           start =
-            way.path.find_first_not_of(elle::system::path::separator, end);
+            path.find_first_not_of(elle::system::path::separator, end);
           end =
-            way.path.find_first_of(elle::system::path::separator, start);
+            path.find_first_of(elle::system::path::separator, start);
         }
 
       return elle::Status::Ok;

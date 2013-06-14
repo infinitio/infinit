@@ -13,16 +13,13 @@ namespace etoile
 {
   namespace path
   {
-
-    ///
-    /// a route is a sequence of slabs forming a path, each slab representing
+    /// A route is a sequence of slabs forming a path, each slab representing
     /// the name of subdirectory down to the target object along with their
     /// revision numbers.
     ///
-    /// note that this class also contains the revision number of the root
-    /// directory. indeed, the first slab is always used for representing
-    /// the root directory even though its slab is empty.
-    ///
+    /// Note that this class also contains the revision number of the root
+    /// directory. indeed, the first slab is always used for representing the
+    /// root directory even though its slab is empty.
     class Route
     {
     public:
@@ -54,7 +51,8 @@ namespace etoile
       //
       // methods
       //
-      elle::Status              Create(const Way&);
+      elle::Status
+      Create(std::string const& path);
       elle::Status              Create(const Route&,
                                        const Slab&);
 

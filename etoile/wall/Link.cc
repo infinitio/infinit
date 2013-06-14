@@ -11,7 +11,6 @@
 #include <etoile/automaton/Link.hh>
 #include <etoile/automaton/Rights.hh>
 #include <etoile/journal/Journal.hh>
-#include <etoile/path/Way.hh>
 #include <etoile/Exception.hh>
 
 #include <Infinit.hh>
@@ -139,7 +138,7 @@ namespace etoile
 
     void
     Link::bind(gear::Identifier const& identifier,
-               path::Way const& target)
+               std::string const& target)
     {
       ELLE_TRACE_FUNCTION(identifier, target);
 
@@ -171,7 +170,7 @@ namespace etoile
       }
     }
 
-    path::Way
+    std::string
     Link::resolve(gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
@@ -187,7 +186,7 @@ namespace etoile
       // retrieve the scope.
       scope = actor->scope;
 
-      path::Way target;
+      std::string target;
 
       // Declare a critical section.
       {

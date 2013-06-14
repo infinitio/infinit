@@ -6,7 +6,6 @@
 
 # include <etoile/fwd.hh>
 # include <etoile/path/Chemin.hh>
-# include <etoile/path/Way.hh>
 # include <etoile/abstract/Object.hh>
 
 # include <nucleus/neutron/fwd.hh>
@@ -43,11 +42,11 @@ namespace etoile
       | Path |
       `-----*/
       RemoteProcedure<etoile::path::Chemin,
-                      etoile::path::Way const&> pathresolve;
+                      std::string const&> pathresolve;
       RemoteProcedure<void,
-                      etoile::path::Way const&> pathlocate;
+                      std::string const&> pathlocate;
       RemoteProcedure<void,
-                      etoile::path::Way const&> pathway;
+                      std::string const&> pathway;
 
       /*-------.
       | Object |
@@ -128,8 +127,8 @@ namespace etoile
                       etoile::path::Chemin&> linkload;
       RemoteProcedure<void,
                       etoile::gear::Identifier const&,
-                      etoile::path::Way const&> linkbind;
-      RemoteProcedure<etoile::path::Way,
+                      std::string const&> linkbind;
+      RemoteProcedure<std::string,
                       etoile::gear::Identifier const&> linkresolve;
       RemoteProcedure<void,
                       etoile::gear::Identifier const&> linkdiscard;

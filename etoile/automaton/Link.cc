@@ -3,7 +3,6 @@
 #include <etoile/automaton/Contents.hh>
 #include <etoile/automaton/Rights.hh>
 #include <etoile/gear/Link.hh>
-#include <etoile/path/Way.hh>
 #include <etoile/Exception.hh>
 
 #include <agent/Agent.hh>
@@ -78,9 +77,10 @@ namespace etoile
     ///
     /// this method binds a new target to the link.
     ///
-    elle::Status        Link::Bind(
-                          gear::Link&                           context,
-                          const path::Way&                      way)
+    elle::Status
+    Link::Bind(
+      gear::Link& context,
+      std::string const& way)
     {
       ELLE_TRACE_FUNCTION(context, way);
 
@@ -132,9 +132,9 @@ namespace etoile
     ///
     /// this method returns the way associated with this link.
     ///
-    elle::Status        Link::Resolve(
-                          gear::Link&                           context,
-                          path::Way&                            way)
+    elle::Status
+    Link::Resolve(gear::Link& context,
+                  std::string& path)
     {
       ELLE_TRACE_FUNCTION(context);
 

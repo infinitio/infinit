@@ -19,7 +19,6 @@ using namespace infinit;
 #include <etoile/portal/Portal.hh>
 #include <etoile/portal/Manifest.hh>
 #include <etoile/depot/Depot.hh>
-#include <etoile/path/Way.hh>
 #include <etoile/path/Chemin.hh>
 #include <etoile/path/Path.hh>
 #include <etoile/gear/Identifier.hh>

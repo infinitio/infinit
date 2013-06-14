@@ -60,7 +60,7 @@ namespace satellite
     /// Infinit to the local file system.
     static
     void
-    from_traverse(etoile::path::Way const& way,
+    from_traverse(std::string const& way,
                   elle::String const& target);
     /// Transfer everything from Infinit to the local file system.
     static

@@ -9,12 +9,9 @@ namespace etoile
 {
   namespace path
   {
-
     class Chemin;
     class Route;
     class Venue;
-    class Way;
-
   }
 }
 

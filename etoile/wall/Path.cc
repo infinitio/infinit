@@ -1,6 +1,5 @@
 #include <etoile/wall/Path.hh>
 #include <etoile/path/Path.hh>
-#include <etoile/path/Way.hh>
 #include <etoile/path/Chemin.hh>
 #include <etoile/Exception.hh>
 
@@ -15,7 +14,7 @@ namespace etoile
   namespace wall
   {
     path::Chemin
-    Path::resolve(const path::Way& way)
+    Path::resolve(std::string const& way)
     {
       ELLE_TRACE_FUNCTION(way);
 
@@ -39,7 +38,7 @@ namespace etoile
 
     // XXX[to move somewhere else]
     NoSuchFileOrDirectory::NoSuchFileOrDirectory(reactor::Scheduler& sched,
-                                                 path::Way const& path):
+                                                 std::string const& path):
       reactor::Exception(elle::sprintf("no such file or directory: %s", path)),
       _path(path)
     {}

@@ -33,10 +33,10 @@ namespace etoile
       static
       void
       bind(gear::Identifier const& identifier,
-           path::Way const& target);
+           std::string const& target);
       /// Return the path to which the link is bound.
       static
-      path::Way
+      std::string
       resolve(gear::Identifier const& identifier);
 
       static elle::Status       Discard(const gear::Identifier&);
