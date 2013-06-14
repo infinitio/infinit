@@ -68,6 +68,9 @@ class Trophonius(basic.LineReceiver):
         if self.id is None:
             return
 
+        if getattr(self, "_alive_service", None):
+            self._alive_service.cancel()
+
         print("Disconnect user: id=%s" % self.id)
 
         try:
@@ -164,7 +167,6 @@ class Trophonius(basic.LineReceiver):
     def lineReceived(self, line):
         hdl = getattr(self, "handle_{}".format(self.state), None)
         if hdl is not None:
-            log.msg("call", hdl)
             hdl(line)
 
 class MetaTropho(basic.LineReceiver):
