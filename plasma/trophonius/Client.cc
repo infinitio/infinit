@@ -34,6 +34,7 @@ ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::Notification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::Notification, ar, value, version)
 {
+  (void)version;
   ar & named("notification_type", value.notification_type);
 }
 
@@ -43,6 +44,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification,
                       value,
                       version)
 {
+  (void)version;
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("user_id", value.user_id);
   ar & named("status", value.status);
@@ -56,6 +58,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification,
                       value,
                       version)
 {
+  (void)version;
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & base_class<plasma::Transaction>(value);
 }
@@ -66,6 +69,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification,
                       value,
                       version)
 {
+  (void)version;
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("network_id", value.network_id);
   ar & named("what", value.what);
@@ -77,6 +81,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::MessageNotification,
                       value,
                       version)
 {
+  (void)version;
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("sender_id", value.sender_id);
   ar & named("message", value.message);
