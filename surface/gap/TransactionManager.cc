@@ -545,6 +545,13 @@ namespace surface
       if (s.state == State::preparing &&
           this->status(s.operation) == OperationStatus::success)
       {
+        if (s.tries == 10) //XXX variable for that
+        {
+          this->_meta.update_transaction(transaction.id,
+                                         plasma::TransactionStatus::failed);
+          this->_states->erase(transaction.id);
+          return;
+        }
         s.operation = this->_add<UploadOperation>(
           transaction,
           this->_network_manager, [this, transaction] {
