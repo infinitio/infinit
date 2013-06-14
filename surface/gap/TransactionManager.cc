@@ -393,7 +393,8 @@ namespace surface
         }
       this->_states->erase(tr.id);
       this->_cancel_all(tr.id);
-      this->_network_manager.delete_(tr.network_id);
+      if (tr.status != plasma::TransactionStatus::failed)
+        this->_network_manager.delete_(tr.network_id);
     }
 
     void
