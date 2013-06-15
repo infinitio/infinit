@@ -43,6 +43,7 @@ namespace nucleus
 
     ELLE_SERIALIZE_CONSTRUCT_DEFINE(Block)
     {
+      this->_state = State::clean;
     }
 
     Block::~Block()
