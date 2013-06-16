@@ -1051,6 +1051,7 @@ def configure(cxx_toolkit = None,
       'surface/crust/python/pycrust.py',
       'surface/crust/python/infinit-network-create.py',
       'surface/crust/python/infinit-network-destroy.py',
+      'surface/crust/python/infinit-network-publish.py',
       )
 
     crust_python_pyfile_copy = drake.copy(crust_python_pyfiles,
