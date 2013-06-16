@@ -1054,7 +1054,7 @@ def configure(cxx_toolkit = None,
       'surface/crust/python/infinit-network-publish.py',
       'surface/crust/python/infinit-network-unpublish.py',
       'surface/crust/python/infinit-network-install.py',
-#      'surface/crust/python/infinit-network-uninstall.py',
+      'surface/crust/python/infinit-network-uninstall.py',
       'surface/crust/python/infinit-network-list.py',
       'surface/crust/python/infinit-network-print.py',
       )
