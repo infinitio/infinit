@@ -1049,6 +1049,7 @@ def configure(cxx_toolkit = None,
     crust_python_pyfiles = drake.nodes(
       'surface/crust/python/crust.py',
       'surface/crust/python/pycrust.py',
+      'surface/crust/python/infinit-network-create.py',
       )
 
     crust_python_pyfile_copy = drake.copy(crust_python_pyfiles,
@@ -1141,6 +1142,7 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/meta/resources/authority.py',
       'oracle/disciples/meta/resources/device.py',
       'oracle/disciples/meta/resources/network.py',
+      'oracle/disciples/meta/resources/descriptor.py',
       'oracle/disciples/meta/resources/network_update.hh.inc',
       'oracle/disciples/meta/resources/notification.py',
       'oracle/disciples/meta/resources/place_holder_avatar.png',
