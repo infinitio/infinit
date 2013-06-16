@@ -382,14 +382,29 @@ namespace common
       return url;
     }
 
+    std::string const&
+    token_path()
+    {
+      static std::string const token_path =
+        elle::os::getenv("INFINIT_TOKEN_PATH", "");
+
+      return token_path;
+    }
+
     std::string
     token()
     {
-      std::string token_path = elle::os::getenv("INFINIT_TOKEN_FILE", "");
-      std::string token;
-      if (!token_path.empty())
       {
-        std::ifstream token_file{token_path};
+        static std::string const token = elle::os::getenv("INFINIT_TOKEN", "");
+        if (!token.empty())
+          return token;
+      }
+
+      std::string const& _token_path = token_path();
+      std::string token;
+      if (!_token_path.empty())
+      {
+        std::ifstream token_file{_token_path};
         std::getline(token_file, token);
       }
       return token;

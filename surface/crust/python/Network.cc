@@ -1,16 +1,30 @@
 #include <wrappers/boost/python.hh>
 #include <surface/crust/Network.hh>
 
-template <typename... Args>
 boost::python::object
-_list(Args const&... args)
+_local_list(std::string const& path)
 {
-  boost::python::list networks_;
+  boost::python::list networks;
 
-  for (auto const& net: Network::list(args...))
-    networks_.append(boost::python::str(net));
+  for (auto const& net: Network::list(boost::filesystem::path{path}))
+    networks.append(boost::python::str(net));
 
-  return networks_;
+  return networks;
+}
+
+boost::python::object
+_remote_list(std::string const& host,
+             uint16_t port,
+             std::string const& token_path)
+{
+  boost::python::list networks;
+
+  for (auto const& net: Network::list(host,
+                                      port,
+                                      boost::filesystem::path{token_path}))
+    networks.append(boost::python::str(net));
+
+  return networks;
 }
 
 uint16_t
@@ -135,12 +149,9 @@ BOOST_PYTHON_MODULE(_crust)
     .add_property("version", py::make_function(&Network::version, by_value()))
   ;
   // List local descriptor from a given path.
-  py::def("list", &_list<std::string const&>);
+  py::def("_local_list", py::make_function(&_local_list));
   // List the descriptor stored on the remote.
-  py::def("list", &_list<plasma::meta::Client::DescriptorList const&,
-                         std::string const&,
-                         uint16_t,
-                         std::string const&>);
+  py::def("_remote_list", py::make_function(&_remote_list));
 
   //py::def("validate", &Network::validate);
 }

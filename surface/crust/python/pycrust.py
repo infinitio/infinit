@@ -68,13 +68,10 @@ class Network(_crust._Network):
     # List the local descriptors.
     @staticmethod
     def local_list(path):
-        return _crust.list(path)
+        return _crust._local_list(path)
 
     @staticmethod
-    def remote_list(filter_,
-                    host = __hostdata__.host,
+    def remote_list(host = __hostdata__.host,
                     port = __hostdata__.port,
                     token = __hostdata__.token):
-        if not isinstance(filter_, _crust.descriptor_list):
-            raise "unknown filter type"
-        return _crust.list(filter_, host, port, token)
+        return _crust._remote_list(host, port, token)

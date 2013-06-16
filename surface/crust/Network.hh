@@ -149,16 +149,17 @@ public:
   /// Explore the given path and return all the (verified) .dsc.
   static
   std::vector<std::string>
-  list(std::string const& path,
+  list(boost::filesystem::path const& path,
        bool verify = true);
 
   /// Get the list of descriptor id stored on the network.
   static
   std::vector<std::string>
-  list(plasma::meta::Client::DescriptorList const& list,
-       std::string const& host = common::meta::host(),
+  list(std::string const& host = common::meta::host(),
        uint16_t port = common::meta::port(),
-       std::string const& token = common::meta::token());
+       boost::filesystem::path const& token_path = common::meta::token_path(),
+       plasma::meta::Client::DescriptorList const& list =
+         plasma::meta::Client::DescriptorList::all);
 
   /// Get the list of descriptor stored on the network.
   // XXX: This should return a list of Descriptor data, and the wrapper would

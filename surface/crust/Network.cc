@@ -465,12 +465,11 @@ Network::unpublish(std::string const& host,
 }
 
 std::vector<std::string>
-Network::list(std::string const& path_str,
+Network::list(boost::filesystem::path const& path,
               bool verify)
 {
   std::vector<std::string> dsc;
 
-  boost::filesystem::path path(path_str);
   boost::filesystem::directory_iterator end_itr;
   for (boost::filesystem::directory_iterator itr(path); itr != end_itr; ++itr)
   {
@@ -480,8 +479,19 @@ Network::list(std::string const& path_str,
     }
     else
     {
-      if (itr->path().extension() == ".dsc" && Network::validate(itr->path().string()))
-        dsc.push_back(itr->path().string());
+      if (itr->path().extension() == ".dsc" ||
+          itr->path().filename() == "descriptor")
+      {
+        try
+        {
+          Network net(itr->path());
+          dsc.push_back(net.identifier());
+        }
+        catch (elle::Exception const&)
+        {
+          ELLE_WARN("%s is not a descriptor", itr->path().string());
+        }
+      }
     }
   }
 
@@ -489,12 +499,12 @@ Network::list(std::string const& path_str,
 }
 
 std::vector<std::string>
-Network::list(plasma::meta::Client::DescriptorList const& list,
-              std::string const& host,
+Network::list(std::string const& host,
               uint16_t port,
-              std::string const& token)
+              boost::filesystem::path const& token_path,
+              plasma::meta::Client::DescriptorList const& list)
 {
-  return meta(host, port, token).descriptor_list(list).descriptors;
+  return meta(host, port, token_path).descriptor_list(list).descriptors;
 }
 
 // std::vector<plasma::meta::Descriptor>

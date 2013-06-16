@@ -121,8 +121,14 @@ namespace common
     std::string const&
     url();
 
-    /// Returns the path to the token file set into INFINIT_TOKEN_FILE. If the
+    /// Returns the path to the token file set into INFINIT_TOKEN_PATH. If the
     /// variable is not set, it returns an empty string.
+    std::string const&
+    token_path();
+
+    /// Returns the path to the token file set into INFINIT_TOKEN. If it's not,
+    /// try to read the file INFINIT_TOKEN_PATH. It neither INFINIT_TOKEN nor
+    /// INFINIT_TOKEN_PATH are set, it returns an empty string.
     std::string
     token();
   }
