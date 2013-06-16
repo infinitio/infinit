@@ -4,19 +4,15 @@ import os
 class MetaData():
     @property
     def host(self):
-        return os.getenv("INFINIT_META_HOST")
+        return os.getenv("INFINIT_REMOTE_HOST")
 
     @property
     def port(self):
-        return int(os.getenv("INFINIT_META_PORT"))
+        return int(os.getenv("INFINIT_REMOTE_PORT", '0'))
 
     @property
     def token(self):
-        token_file_path = os.getenv("INFINIT_TOKEN_FILE")
-        if token_file_path:
-            with open(token_file_path) as token_file:
-                return token_file.readline()
-            return ""
+        return os.getenv("INFINIT_REMOTE_TOKEN_PATH")
 
 class ID(_crust.ID):
     def __init__(self, *args, **kwargs):
@@ -59,6 +55,7 @@ class Network(_crust._Network):
                 host = __hostdata__.host,
                 port = __hostdata__.port,
                 token = __hostdata__.token):
+
         self._publish(host, port, token)
 
     # Unpublish the descriptor to the network.
