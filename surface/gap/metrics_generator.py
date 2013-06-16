@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- encoding: utf-8 -*-
+
 """
 Generate the C api for metrics.
 
@@ -145,13 +147,11 @@ def main(argv = None):
   with open("%s.h" % dest, "w") as dest_h, open("%s.hh" % dest, "w") as dest_c:
 
     dest_h.write(header_header % (generated_file,
-                                  "\n".join([gen_definition(proto[0],
-                                                            keys = proto[1:])
-                                             for proto in prototypes])))
+                                  "\n".join([gen_definition(name, keys = keys)
+                                             for name, *keys in prototypes])))
     dest_c.write(source_header % (generated_file,
-                                  "\n".join([gen_declaration(proto[0],
-                                                             keys = proto[1:])
-                                             for proto in prototypes])))
+                                  "\n".join([gen_declaration(name, keys = keys)
+                                             for name, *keys in prototypes])))
 
 if __name__ == "__main__":
   sys.exit(main())
