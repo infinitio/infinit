@@ -1,23 +1,25 @@
 #ifndef  PLASMA_META_CLIENT_HH
 # define PLASMA_META_CLIENT_HH
 
+# include <plasma/plasma.hh>
+
+# include <cryptography/KeyPair.hh>
+
+# include <elle/HttpClient.hh>
+# include <elle/attribute.hh>
+# include <elle/format/json/fwd.hh>
+# include <elle/log.hh>
+
+# include <boost/filesystem.hpp>
+
 # include <functional>
 # include <list>
-# include <vector>
 # include <map>
 # include <memory>
 # include <stdexcept>
 # include <string>
+# include <vector>
 
-# include <elle/format/json/fwd.hh>
-# include <elle/log.hh>
-# include <elle/attribute.hh>
-
-# include <plasma/plasma.hh>
-
-# include <elle/HttpClient.hh>
-
-# include <cryptography/KeyPair.hh>
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
@@ -283,6 +285,11 @@ namespace plasma
              uint16_t port,
              bool check_errors = true,
              std::string const& token_seed = "");
+      explicit
+      Client(std::string const& server,
+             uint16_t port,
+             bool check_errors,
+             boost::filesystem::path const& tokenpath);
       Client(Client&& other) = default;
       ~Client();
 

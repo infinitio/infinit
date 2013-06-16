@@ -1,3 +1,7 @@
+#include "Client.hh"
+
+#include <infinit/Identity.hh>
+
 #include <elle/log.hh>
 #include <elle/print.hh>
 #include <elle/serialize/JSONArchive.hh>
@@ -7,10 +11,9 @@
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/Base64Archive.hh>
 
-#include <infinit/Identity.hh>
-
-#include "Client.hh"
 #include <curly/curly.hh>
+
+#include <fstream>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -309,11 +312,27 @@ namespace plasma
 
     namespace json = elle::format::json;
 
+    static
+    std::string
+    token_from_file(boost::filesystem::path const& tokenpath)
+    {
+        std::string _token_genkey;
+        if (!tokenpath.empty() && boost::filesystem::exists(tokenpath))
+        {
+          ELLE_DEBUG("read generation token from %s", tokenpath);
+          std::ifstream token_file{tokenpath.string()};
+
+          std::getline(token_file, _token_genkey);
+        }
+
+        return _token_genkey;
+    }
+
      // - Ctor & dtor ----------------------------------------------------------
     Client::Client(std::string const& server,
                    uint16_t port,
                    bool check_errors,
-                   std::string const& token_seed):
+                   std::string const& token_path):
       _root_url{elle::sprintf("http://%s:%d", server, port)},
       _check_errors{check_errors},
       _identity{},
@@ -321,9 +340,16 @@ namespace plasma
       _token{},
       _user_agent{"MetaClient"}
     {
-      if (!token_seed.empty())
-        this->generate_token(token_seed);
+      if (!token_path.empty())
+        this->generate_token(token_path);
     }
+
+    Client::Client(std::string const& server,
+                   uint16_t port,
+                   bool check_errors,
+                   boost::filesystem::path const& token_path):
+      Client(server, port, check_errors, token_from_file(token_path))
+    {}
 
     Client::~Client()
     {}
