@@ -20,9 +20,6 @@
 
 #include <plasma/meta/Client.hh>
 
-#include <protocol/Serializer.hh>
-#include <protocol/ChanneledStream.hh>
-
 #include <version.hh>
 
 #include <cryptography/KeyPair.hh>
@@ -38,27 +35,6 @@
 #include <boost/filesystem.hpp>
 
 ELLE_LOG_COMPONENT("infinit.crust.Network");
-
-static
-plasma::meta::Client const&
-meta(std::string const& host,
-     uint16_t port,
-     std::string const& token)
-{
-  static std::string last_host = host;
-  static uint16_t last_port = port;
-  static std::string last_token = token;
-  static std::unique_ptr<plasma::meta::Client> client;
-
-  if (!client || last_host != host || last_port != port || last_token != token)
-  {
-    ELLE_TRACE("creating a new meta: %s %s %s", host, port, token);
-    client.reset(new plasma::meta::Client(host, port, true, token));
-  }
-
-  ELLE_ASSERT_NEQ(client, nullptr);
-  return *client;
-}
 
 /*---.
 | ID |
@@ -88,6 +64,32 @@ ID::operator <(std::string const& rhs)
   return this->_value < rhs;
 }
 
+/*-----.
+| Meta |
+`-----*/
+static
+plasma::meta::Client const&
+meta(std::string const& host,
+     uint16_t port,
+     boost::filesystem::path const& tokenpath)
+{
+  static std::string last_host = host;
+  static uint16_t last_port = port;
+  static std::unique_ptr<plasma::meta::Client> client;
+
+  if (!client || last_host != host || last_port != port)
+  {
+    ELLE_TRACE("creating a new meta: %s %s %s", host, port, tokenpath);
+    client.reset(new plasma::meta::Client(host, port, true, tokenpath));
+  }
+
+  ELLE_ASSERT_NEQ(client, nullptr);
+  return *client;
+}
+
+/*----------------.
+| Block creations |
+`----------------*/
 static
 std::unique_ptr<nucleus::neutron::Group>
 create_group(nucleus::proton::Network const& network,
@@ -211,6 +213,9 @@ create_root(nucleus::proton::Network const& network,
   return directory;
 }
 
+/*--------.
+| Network |
+`--------*/
 Network::Network(std::string const& name,
                  cryptography::KeyPair const& keypair,
                  hole::Model const& model,
