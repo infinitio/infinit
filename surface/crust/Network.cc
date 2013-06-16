@@ -328,8 +328,6 @@ Network::Network(ID const& id,
     new infinit::Descriptor(from_string<InputBase64Archive>(descriptor)));
 }
 
-// Should we do something like:
-// descriptor_path = "/tmp" -> /tmp/(network_name).dsc.
 void
 Network::store(boost::filesystem::path const& descriptor_path) const
 {
@@ -347,8 +345,6 @@ Network::store(boost::filesystem::path const& descriptor_path) const
   this->_descriptor_path = descriptor_path;
 }
 
-// Should we do something like:
-// descriptor_path = "/tmp" -> /tmp/(network_name).dsc.
 void
 Network::erase(boost::filesystem::path const& descriptor_path)
 {
@@ -372,6 +368,9 @@ Network::install(boost::filesystem::path const& install_path) const
     throw elle::Exception(
       elle::sprintf("Couldn't create %s cause it already exists",
                     install_path));
+
+  boost::filesystem::create_directory(install_path);
+  this->store(install_path / "descriptor");
 
   hole::storage::Directory storage(
     nucleus::proton::Network(this->_descriptor->meta().identifier()),
