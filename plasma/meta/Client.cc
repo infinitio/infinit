@@ -265,6 +265,11 @@ SERIALIZE_RESPONSE(plasma::meta::UnpublishDescriptorResponse, ar, res)
   ar & named("_id", res.id);
 }
 
+SERIALIZE_RESPONSE(plasma::meta::LookupDescriptorResponse, ar, res)
+{
+  ar & named("_id", res.id);
+}
+
 ELLE_SERIALIZE_SIMPLE(plasma::meta::Descriptor, ar, res, version)
 {
   (void) version;
@@ -719,6 +724,17 @@ namespace plasma
           {"id", id},
       }};
       return this->_post<UnpublishDescriptorResponse>("/descriptor/unpublish", request);
+    }
+
+    LookupDescriptorResponse
+    Client::descriptor_lookup(std::string const& owner,
+                              std::string const& name) const
+    {
+      json::Dictionary request{std::map<std::string, std::string>{
+          {"owner", owner},
+          {"name", name},
+      }};
+      return this->_post<LookupDescriptorResponse>("/descriptor/lookup", request);
     }
 
     DescriptorResponse

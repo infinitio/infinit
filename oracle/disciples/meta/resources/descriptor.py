@@ -1,11 +1,13 @@
 # -*- encoding: utf-8 -*-
 
-import metalib
-
 from meta.page import Page, requireLoggedIn
 from meta import database, conf
 from meta import error
 from meta import regexp
+
+import metalib
+
+import web
 
 class Visibility:
     PUBLIC = 0
@@ -64,6 +66,7 @@ class PublishDescriptor(_Page):
             'descriptor': desc,
             'name': descriptor['name'],
             'owner': self.user['_id'],
+            'owner_handle': self.user['lw_handle'],
             'visibility': Visibility.PUBLIC,
         }
         database.networks().update({"_id": _id},
@@ -109,6 +112,31 @@ class UnpublishDescriptor(_Page):
         database.users().save(self.user)
 
         return self.success({'_id': _id})
+
+class LookupDescriptor(_Page):
+    """
+    Get the descriptor id from owner and name.
+    """
+
+    __pattern__ = "/descriptor/lookup"
+
+    def POST(self):
+        handle = self.data['owner'].lower()
+        name = self.data['name']
+
+        network = database.networks().find_one(
+            {
+                'owner_handle': handle,
+                'name': name,
+                'visibility': Visibility.PUBLIC
+            },
+            fields=['_id'],
+        )
+
+        if network is None:
+            return self.error(error.NETWORK_NOT_FOUND)
+
+        return self.success({"_id": network['_id']})
 
 class GetDescriptor(_Page):
     """

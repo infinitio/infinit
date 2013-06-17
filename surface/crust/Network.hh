@@ -161,6 +161,18 @@ public:
        plasma::meta::Client::DescriptorList const& list =
          plasma::meta::Client::DescriptorList::all);
 
+  /*--------.
+  | Look up |
+  `--------*/
+  static
+  std::string
+  lookup(std::string const& owner_handle,
+         std::string const& network_name,
+         std::string const& host = common::meta::host(),
+         uint16_t port = common::meta::port(),
+         boost::filesystem::path const& token_path = common::meta::token_path());
+
+
   /// Get the list of descriptor stored on the network.
   // XXX: This should return a list of Descriptor data, and the wrapper would
   // be able to create py::Object* representing networks.

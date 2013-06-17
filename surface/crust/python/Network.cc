@@ -1,6 +1,7 @@
 #include <wrappers/boost/python.hh>
 #include <surface/crust/Network.hh>
 
+static
 boost::python::object
 _local_list(std::string const& path)
 {
@@ -12,6 +13,7 @@ _local_list(std::string const& path)
   return networks;
 }
 
+static
 boost::python::object
 _remote_list(std::string const& host,
              uint16_t port,
@@ -25,6 +27,21 @@ _remote_list(std::string const& host,
     networks.append(boost::python::str(net));
 
   return networks;
+}
+
+static
+std::string
+_lookup(std::string const& owner_handle,
+        std::string const& network_name,
+        std::string const& host,
+        uint16_t port,
+        std::string const& token_path)
+{
+  return Network::lookup(owner_handle,
+                         network_name,
+                         host,
+                         port,
+                         boost::filesystem::path{token_path});
 }
 
 uint16_t
@@ -152,6 +169,9 @@ BOOST_PYTHON_MODULE(_crust)
   py::def("_local_list", py::make_function(&_local_list));
   // List the descriptor stored on the remote.
   py::def("_remote_list", py::make_function(&_remote_list));
+  // Lookup descriptor id from owner handle and network name.
+  py::def("_lookup", py::make_function(&_lookup));
+
 
   //py::def("validate", &Network::validate);
 }

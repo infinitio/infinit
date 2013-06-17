@@ -507,6 +507,20 @@ Network::list(std::string const& host,
   return meta(host, port, token_path).descriptor_list(list).descriptors;
 }
 
+/*--------.
+| Look up |
+`--------*/
+std::string
+Network::lookup(std::string const& owner_handle,
+                std::string const& network_name,
+                std::string const& host,
+                uint16_t port,
+                boost::filesystem::path const& token_path)
+{
+  return meta(host, port, token_path).descriptor_lookup(owner_handle,
+                                                        network_name).id;
+}
+
 // std::vector<plasma::meta::Descriptor>
 // descriptors(plasma::meta::Client::DescriptorList const& list,
 //             std::string const& host = common::meta::host(),

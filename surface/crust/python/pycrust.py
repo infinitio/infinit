@@ -75,3 +75,15 @@ class Network(_crust._Network):
                     port = __hostdata__.port,
                     token = __hostdata__.token):
         return _crust._remote_list(host, port, token)
+
+    @staticmethod
+    def lookup(owner_handle,
+               network_name,
+               host = __hostdata__.host,
+               port = __hostdata__.port,
+               token = __hostdata__.token):
+        return _crust._lookup(owner_handle,
+                              network_name,
+                              host,
+                              port,
+                              token)

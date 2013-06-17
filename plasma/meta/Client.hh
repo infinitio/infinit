@@ -236,6 +236,11 @@ namespace plasma
       std::string id;
     };
 
+    struct LookupDescriptorResponse: Response
+    {
+      std::string id;
+    };
+
     struct Descriptor
     {
       std::string id;
@@ -416,6 +421,10 @@ namespace plasma
 
       UnpublishDescriptorResponse
       descriptor_unpublish(std::string const& id) const;
+
+      LookupDescriptorResponse
+      descriptor_lookup(std::string const& owner,
+                        std::string const& name) const;
 
       DescriptorResponse
       descriptor(std::string const& id) const;
