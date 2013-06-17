@@ -1203,9 +1203,12 @@ namespace etoile
       ELLE_ASSERT_EQ(handle.phase(), nucleus::proton::Handle::Phase::nested);
     }
 
+#if defined(DEBUG) || !defined(NDEBUG)
     void
     Nest::_check() const
     {
+      ELLE_DEBUG_METHOD("");
+
       // Check that the consistent blocks account for all the blocks
       // in the history queue.
 
@@ -1216,6 +1219,8 @@ namespace etoile
         auto pod = pair.second;
 
         ELLE_ASSERT_NEQ(pod->egg(), nullptr);
+
+        ELLE_DEBUG("considering the pod '%s'", *pod);
 
         // Act depending on the pod's attachment.
         switch (pod->attachment())
@@ -1246,6 +1251,9 @@ namespace etoile
                 ELLE_ASSERT_NEQ(pod->position(), this->_history.end());
                 ELLE_ASSERT(pod->mutex().locked() == false);
                 ELLE_ASSERT(pod->mutex().write().locked() == false);
+
+                ELLE_DEBUG("block's state: '%s'",
+                           pod->egg()->block()->state());
 
                 // Note that only consistent blocks need to be published onto
                 // the storage layer.
@@ -1295,5 +1303,6 @@ namespace etoile
 
       ELLE_ASSERT_EQ(this->_size, size);
     }
+#endif
   }
 }
