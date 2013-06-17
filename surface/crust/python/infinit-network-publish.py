@@ -12,13 +12,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("LOCAL_DESCRIPTOR_PATH",
-                        help="The path to the descriptor to publish.")
+                        help = "The path to the descriptor to publish.")
     parser.add_argument("--remote-host",
-                        help="XXX: The host. You can also export INFINIT_REMOTE_HOST.")
+                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
     parser.add_argument("--remote-port",
-                        help="XXX: The port. You can also export INFINIT_REMOTE_PORT.")
+                        type = int,
+                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
     parser.add_argument("--remote-token-path",
-                        help="XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
+                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
 
     args = parser.parse_args()
 

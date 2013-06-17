@@ -14,13 +14,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--remote-host",
-                        help="XXX: The host. You can also export INFINIT_REMOTE_HOST.")
+                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
     parser.add_argument("--remote-port",
-                        help="XXX: The port. You can also export INFINIT_REMOTE_PORT.")
+                        type = int,
+                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
     parser.add_argument("--remote-token-path",
-                        help="XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
+                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
     parser.add_argument("--local-repository",
-                        help="XXX: The path where you use to store your networks.")
+                        help = "XXX: The path where you use to store your networks.")
 
     args = parser.parse_args()
 

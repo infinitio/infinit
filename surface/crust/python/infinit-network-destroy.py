@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     # Destroy
     parser.add_argument("LOCAL_DESCRIPTOR_PATH",
-                        help="The path to the descriptor to destroy.")
+                        help = "The path to the descriptor to destroy.")
 
     args = parser.parse_args()
     destroy(args.LOCAL_DESCRIPTOR_PATH)

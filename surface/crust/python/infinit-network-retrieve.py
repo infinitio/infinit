@@ -17,22 +17,23 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--remote-network-identifier",
-                        help="The identifier of the network")
+                        help = "The identifier of the network")
     parser.add_argument("--remote-host",
-                        help="XXX: The host. You can also export INFINIT_REMOTE_HOST.")
+                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
     parser.add_argument("--remote-port",
-                        help="XXX: The port. You can also export INFINIT_REMOTE_PORT.")
+                        type = int,
+                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
     parser.add_argument("--remote-token-path",
-                        help="XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
+                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
 
     parser.add_argument("--local-network-path",
-                        help="XXX: The path to the network directory")
+                        help = "XXX: The path to the network directory")
 
     parser.add_argument("--store-local-descriptor-path",
-                        help="The path where the descriptor will be save.")
+                        help = "The path where the descriptor will be save.")
     parser.add_argument("--force",
-                        action='store_true',
-                        help="Erase the file given with --store-local-descriptor-path if it already exists.")
+                        action = 'store_true',
+                        help = "Erase the file given with --store-local-descriptor-path if it already exists.")
 
     args = parser.parse_args()
 

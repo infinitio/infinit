@@ -12,9 +12,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("LOCAL_DESCRIPTOR_PATH",
-                        help="The path to the descriptor to destroy.")
+                        help = "The path to the descriptor to destroy.")
     parser.add_argument("--infinit-network-path",
-                        help="The path where install your network.")
+                        help = "The path where install your network.")
 
     args = parser.parse_args()
 

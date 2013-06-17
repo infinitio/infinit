@@ -20,25 +20,26 @@ if __name__ == "__main__":
 
     # Create
     parser.add_argument("NAME",
-                        help="The name of the network you want to create. It has to be unique for you.")
+                        help = "The name of the network you want to create. It has to be unique for you.")
     parser.add_argument("--identity-path",
-                        help="The path to your identity file. You can also export INFINIT_IDENTITY_PATH.")
+                        help = "The path to your identity file. You can also export INFINIT_IDENTITY_PATH.")
     parser.add_argument("--model",
-                        choices=['slug', 'local', 'remote', 'cirkle', 'kool'],
-                        default='slug',
-                        help="The model of the network.")
+                        choices = ['slug', 'local', 'remote', 'cirkle', 'kool'],
+                        default = 'slug',
+                        help = "The model of the network.")
     parser.add_argument("--policy",
-                        choices=['accessible', 'editable', 'confidential'],
-                        default='accessible',
-                        help="The policy of the network.")
+                        choices = ['accessible', 'editable', 'confidential'],
+                        default = 'accessible',
+                        help = "The policy of the network.")
     parser.add_argument("--openness",
-                        choices=['open', 'community', 'closed'],
-                        default='open',
-                        help="The openess of the network.")
+                        choices = ['open', 'community', 'closed'],
+                        default = 'open',
+                        help = "The openess of the network.")
     parser.add_argument("--store-local-descriptor-path",
-                        help="The path where the descriptor will be save.")
+                        help = "The path where the descriptor will be save.")
     parser.add_argument("--force",
-                        help="Erase the file given with --store-local-descriptor-path if it already exists.")
+                        action = 'store_true',
+                        help = "Erase the file given with --store-local-descriptor-path if it already exists.")
 
     args = parser.parse_args()
 

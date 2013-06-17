@@ -21,26 +21,27 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--remote-network-identifier",
-                        help="XXX: The identifier of the network.")
+                        help = "XXX: The identifier of the network.")
     parser.add_argument("--remote-host",
-                        help="XXX: The host. You can also export INFINIT_REMOTE_HOST.")
+                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
     parser.add_argument("--remote-port",
-                        help="XXX: The port. You can also export INFINIT_REMOTE_PORT.")
+                        type = int,
+                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
     parser.add_argument("--remote-token-path",
-                        help="XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
+                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
 
     parser.add_argument("--local-network-path",
-                        help="XXX:")
+                        help = "XXX:")
     parser.add_argument("--local-descriptor-path",
-                        help="XXX:")
+                        help = "XXX:")
 
     parser.add_argument("--attributes",
-                        nargs='+',
+                        nargs = '+',
                         choices = ['identifier', 'administrator_K', 'model',
                                    'everybody_identity', 'history', 'extent',
                                    'name', 'openness', 'policy', 'version'],
-                        default=default_attributes,
-                        help="The list of attributes to display.")
+                        default = default_attributes,
+                        help = "The list of attributes to display.")
 
     args = parser.parse_args()
 
