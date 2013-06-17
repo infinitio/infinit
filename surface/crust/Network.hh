@@ -101,7 +101,8 @@ public:
   `------*/
   /// Store descriptor localy.
   void
-  store(boost::filesystem::path const& descriptor_path = common::infinit::home()) const;
+  store(boost::filesystem::path const& descriptor_path = common::infinit::home(),
+        bool force = false) const;
 
   /// Delete local descritor.
   void

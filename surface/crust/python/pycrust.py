@@ -27,8 +27,8 @@ class Network(_crust._Network):
         _crust._Network.__init__(self, *args, **kwargs)
 
     # Store the descriptor to the given path.
-    def store(self, path):
-        self._store(path)
+    def store(self, path, force = False):
+        self._store(path, force)
 
     # Delete the descriptor to the given path.
     def erase(self, path = ""):

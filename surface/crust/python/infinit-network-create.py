@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 
-def create(name, identity_path, model, openness, policy, descriptor_path):
+def create(name, identity_path, model, openness, policy, descriptor_path, force):
     from getpass import getpass
     password = getpass("Identity password: ")
     from pycrust import Network
@@ -9,7 +9,7 @@ def create(name, identity_path, model, openness, policy, descriptor_path):
     net = Network(name, identity_path, password, model, openness, policy)
 
     if descriptor_path:
-      net.store(descriptor_path)
+      net.store(descriptor_path, force or False)
 
     return net.identifier
 
@@ -26,7 +26,8 @@ def main(args):
                 model = args.model,
                 openness = args.openness,
                 policy = args.policy,
-                descriptor_path = args.store_local_descriptor_path)
+                descriptor_path = args.store_local_descriptor_path,
+                force = args.force)
 
     print(id)
 

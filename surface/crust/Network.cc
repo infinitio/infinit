@@ -329,7 +329,8 @@ Network::Network(ID const& id,
 }
 
 void
-Network::store(boost::filesystem::path const& descriptor_path) const
+Network::store(boost::filesystem::path const& descriptor_path,
+               bool force) const
 {
   ELLE_TRACE_METHOD(descriptor_path);
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
@@ -337,7 +338,7 @@ Network::store(boost::filesystem::path const& descriptor_path) const
   if (descriptor_path.empty())
     throw elle::Exception("descriptor path is empty");
 
-  if (boost::filesystem::exists(descriptor_path))
+  if (!force and boost::filesystem::exists(descriptor_path))
     throw elle::Exception(elle::sprintf("File %s already exists",
                                         descriptor_path));
 

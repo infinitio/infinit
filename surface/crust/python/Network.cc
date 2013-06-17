@@ -54,9 +54,10 @@ _mount(Network* net,
 
 void
 _store(Network* net,
-       std::string const& path)
+       std::string const& path,
+       bool force)
 {
-  net->store(boost::filesystem::path(path));
+  net->store(boost::filesystem::path(path), force);
 }
 
 void
