@@ -6,18 +6,7 @@ def install(descriptor_path, network_path):
     net = Network(descriptor_path)
     net.install(network_path)
 
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("LOCAL_DESCRIPTOR_PATH",
-                        help = "The path to the descriptor to destroy.")
-    parser.add_argument("--infinit-network-path",
-                        help = "The path where install your network.")
-
-    args = parser.parse_args()
-
+def main(args):
     if not args.infinit_network_path:
         raise Exception("You must provide --infinit-network-path")
     from os import path
@@ -26,3 +15,21 @@ if __name__ == "__main__":
 
     install(descriptor_path = args.LOCAL_DESCRIPTOR_PATH,
             network_path = args.infinit_network_path)
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("LOCAL_DESCRIPTOR_PATH",
+                        help = "The path to the descriptor to destroy.")
+    parser.add_argument("--infinit-network-path",
+                        help = "The path where install your network.")
+
+    import sys
+    try:
+        args = parser.parse_args()
+        main(args)
+        sys.exit(0)
+    except Exception as e:
+        print(e)
+        sys.exit(1)

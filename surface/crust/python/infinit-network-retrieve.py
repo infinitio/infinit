@@ -12,31 +12,7 @@ def remote_retrieve(identifier, host, port, token_path, descriptor_path):
 
     network.store(descriptor_path)
 
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--remote-network-identifier",
-                        help = "The identifier of the network")
-    parser.add_argument("--remote-host",
-                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
-    parser.add_argument("--remote-port",
-                        type = int,
-                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
-    parser.add_argument("--remote-token-path",
-                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
-
-    parser.add_argument("--local-network-path",
-                        help = "XXX: The path to the network directory")
-
-    parser.add_argument("--store-local-descriptor-path",
-                        help = "The path where the descriptor will be save.")
-    parser.add_argument("--force",
-                        action = 'store_true',
-                        help = "Erase the file given with --store-local-descriptor-path if it already exists.")
-
-    args = parser.parse_args()
-
+def main(args):
     from os import path
     if not args.store_local_descriptor_path:
         raise Exception("You must provide a --store-local-descriptor-path")
@@ -72,3 +48,35 @@ if __name__ == "__main__":
 
     else:
         raise Exception("Neither --local-network-path nor --remote-network-identifier given")
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--remote-network-identifier",
+                        help = "The identifier of the network")
+    parser.add_argument("--remote-host",
+                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
+    parser.add_argument("--remote-port",
+                        type = int,
+                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
+    parser.add_argument("--remote-token-path",
+                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
+
+    parser.add_argument("--local-network-path",
+                        help = "XXX: The path to the network directory")
+
+    parser.add_argument("--store-local-descriptor-path",
+                        help = "The path where the descriptor will be save.")
+    parser.add_argument("--force",
+                        action = 'store_true',
+                        help = "Erase the file given with --store-local-descriptor-path if it already exists.")
+
+    import sys
+    try:
+        args = parser.parse_args()
+        main(args)
+        sys.exit(0)
+    except Exception as e:
+        print(e)
+        sys.exit(1)

@@ -7,22 +7,7 @@ def unpublish(identifier, host, port, token_path):
     network = Network(ID(identifier), host, port, token_path)
     network.unpublish(host, port, token_path)
 
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("REMOTE_NETWORK_IDENTIFIER",
-                        help = "The identifier of the network")
-    parser.add_argument("--remote-host",
-                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
-    parser.add_argument("--remote-port",
-                        type = int,
-                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
-    parser.add_argument("--remote-token-path",
-                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
-
-    args = parser.parse_args()
-
+def main(args):
     from os import getenv
     remote_host = args.remote_host or getenv("INFINIT_REMOTE_HOST")
     remote_port = args.remote_port or getenv("INFINIT_REMOTE_PORT")
@@ -39,3 +24,26 @@ if __name__ == "__main__":
               host = remote_host,
               port = int(remote_port),
               token_path = remote_token_path)
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("REMOTE_NETWORK_IDENTIFIER",
+                        help = "The identifier of the network")
+    parser.add_argument("--remote-host",
+                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
+    parser.add_argument("--remote-port",
+                        type = int,
+                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
+    parser.add_argument("--remote-token-path",
+                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
+
+    import sys
+    try:
+        args = parser.parse_args()
+        main(args)
+        sys.exit(0)
+    except Exception as e:
+        print(e)
+        sys.exit(1)

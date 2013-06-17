@@ -9,22 +9,7 @@ def remote_list(host, port, token_path):
     from pycrust import Network
     return Network.remote_list(host, port, token_path)
 
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--remote-host",
-                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
-    parser.add_argument("--remote-port",
-                        type = int,
-                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
-    parser.add_argument("--remote-token-path",
-                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
-    parser.add_argument("--local-repository",
-                        help = "XXX: The path where you use to store your networks.")
-
-    args = parser.parse_args()
-
+def main(args):
     if args.local_repository:
         from os import path
         if not path.exists(args.local_repository):
@@ -48,3 +33,26 @@ if __name__ == "__main__":
         print(remote_list(host = remote_host,
                           port = int(remote_port),
                           token_path = remote_token_path))
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--remote-host",
+                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
+    parser.add_argument("--remote-port",
+                        type = int,
+                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
+    parser.add_argument("--remote-token-path",
+                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
+    parser.add_argument("--local-repository",
+                        help = "XXX: The path where you use to store your networks.")
+
+    import sys
+    try:
+        args = parser.parse_args()
+        main(args)
+        sys.exit(0)
+    except Exception as e:
+        print(e)
+        sys.exit(1)

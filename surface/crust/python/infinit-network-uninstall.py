@@ -6,16 +6,7 @@ def uninstall(network_path):
     net = Network(network_path + "/descriptor")
     net.uninstall(network_path)
 
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("LOCAL_NETWORK_PATH",
-                        help = "The path to the network to destroy.")
-
-    args = parser.parse_args()
-
+def main(args):
     from os import path
     if not path.exists(args.LOCAL_NETWORK_PATH):
         raise Exception("Network path %s doesn't exist" % args.LOCAL_NETWORK_PATH)
@@ -23,3 +14,20 @@ if __name__ == "__main__":
         raise Exception("The network doesn't contains descriptor file. Use rm -rf.")
 
     uninstall(args.LOCAL_NETWORK_PATH)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("LOCAL_NETWORK_PATH",
+                        help = "The path to the network to destroy.")
+
+    import sys
+    try:
+        args = parser.parse_args()
+        main(args)
+        sys.exit(0)
+    except Exception as e:
+        print(e)
+        sys.exit(1)

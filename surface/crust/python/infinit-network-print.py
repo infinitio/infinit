@@ -37,40 +37,8 @@ def print_remote(id_, host, port, token_path, attributes = default_attributes, f
     network = Network(ID(id_), host, port, token_path)
     print_network(network, attributes, format_)
 
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--remote-network-identifier",
-                        help = "XXX: The identifier of the network.")
-    parser.add_argument("--remote-host",
-                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
-    parser.add_argument("--remote-port",
-                        type = int,
-                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
-    parser.add_argument("--remote-token-path",
-                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
-
-    parser.add_argument("--local-network-path",
-                        help = "XXX:")
-    parser.add_argument("--local-descriptor-path",
-                        help = "XXX:")
-
-    parser.add_argument("--attributes",
-                        nargs = '+',
-                        choices = ['identifier', 'administrator_K', 'model',
-                                   'everybody_identity', 'history', 'extent',
-                                   'name', 'openness', 'policy', 'version'],
-                        default = default_attributes,
-                        help = "The list of attributes to display.")
-    parser.add_argument("--format",
-                        choices = ['csv', 'json', 'xml'],
-                        default = 'csv',
-                        help = "The format to the print in.")
-
-    args = parser.parse_args()
-
-    attributes = args.attributes or []
+def main(args):
+attributes = args.attributes or []
 
     if args.local_network_path or args.local_descriptor_path:
         if args.remote_host or args.remote_port or args.remote_token_path:
@@ -111,3 +79,44 @@ if __name__ == "__main__":
                      format_ = args.format)
     else:
         raise Exception("Neither --local-network-path, --local-descriptor-path nor --remote-network-identifier given")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--remote-network-identifier",
+                        help = "XXX: The identifier of the network.")
+    parser.add_argument("--remote-host",
+                        help = "XXX: The host. You can also export INFINIT_REMOTE_HOST.")
+    parser.add_argument("--remote-port",
+                        type = int,
+                        help = "XXX: The port. You can also export INFINIT_REMOTE_PORT.")
+    parser.add_argument("--remote-token-path",
+                        help = "XXX: The token path. You can also export INFINIT_REMOTE_TOKEN_PATH.")
+
+    parser.add_argument("--local-network-path",
+                        help = "XXX:")
+    parser.add_argument("--local-descriptor-path",
+                        help = "XXX:")
+
+    parser.add_argument("--attributes",
+                        nargs = '+',
+                        choices = ['identifier', 'administrator_K', 'model',
+                                   'everybody_identity', 'history', 'extent',
+                                   'name', 'openness', 'policy', 'version'],
+                        default = default_attributes,
+                        help = "The list of attributes to display.")
+    parser.add_argument("--format",
+                        choices = ['csv', 'json', 'xml'],
+                        default = 'csv',
+                        help = "The format to the print in.")
+
+    import sys
+    try:
+        args = parser.parse_args()
+        main(args)
+        sys.exit(0)
+    except Exception as e:
+        print(e)
+        sys.exit(1)

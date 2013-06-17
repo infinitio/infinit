@@ -6,14 +6,21 @@ def destroy(descriptor_path):
     net = Network(descriptor_path)
     net.erase()
 
+def main(args):
+    destroy(args.LOCAL_DESCRIPTOR_PATH)
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-
-    # Destroy
     parser.add_argument("LOCAL_DESCRIPTOR_PATH",
                         help = "The path to the descriptor to destroy.")
 
-    args = parser.parse_args()
-    destroy(args.LOCAL_DESCRIPTOR_PATH)
+    import sys
+    try:
+        args = parser.parse_args()
+        main(args)
+        sys.exit(0)
+    except Exception as e:
+        print(e)
+        sys.exit(1)
