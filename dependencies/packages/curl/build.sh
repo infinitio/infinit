@@ -36,15 +36,18 @@ uptodate "${CURL_LIBRARIES}" ||
     ./configure                                         \
         --prefix="${WORKDIR}"                           \
         --with-ssl="${WORKDIR}"                         \
+        --enable-hidden-symbols                         \
         --enable-optimize                               \
         --enable-warnings                               \
         --enable-threaded-resolver                      \
+        --disable-static                                \
         --disable-ldap                                  \
         --disable-ldaps                                 \
         --disable-rtmp                                  \
         --disable-sspi                                  \
         --disable-ssh                                   \
         --disable-rtsp                                  \
+        --with-gssapi                                   \
         --without-libidn                                \
         --disable-rtmp || die "unable to configure"
     make all install || die "unable to build"
