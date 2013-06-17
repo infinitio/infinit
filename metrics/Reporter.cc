@@ -38,14 +38,19 @@ namespace elle
 #else
 # warning "machine not supported"
 #endif
-    //- Key --------------------------------------------------------------------
+    /*----.
+    | Key |
+    `----*/
     std::ostream&
     operator <<(std::ostream& out,
                 Key k)
     {
       return out << (int) k;
     }
-    //- Service ----------------------------------------------------------------
+
+    /*--------.
+    | Service |
+    `--------*/
     Reporter::Service::Service(std::string const& host,
                                uint16_t port,
                                std::string const& user,
@@ -64,8 +69,9 @@ namespace elle
       this->_user_id = user;
     }
 
-
-    //- Reporter ---------------------------------------------------------------
+    /*---------.
+    | Reporter |
+    `---------*/
     Reporter::Reporter()
       : _flusher_sched{}
       , _fallback_stream{common::metrics::fallback_path()}
