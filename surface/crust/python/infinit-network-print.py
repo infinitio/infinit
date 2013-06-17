@@ -12,7 +12,7 @@ def to_xml(network, attributes):
 json = """{
 %s
 }"""
-json_entry = """{"%s": "%s"}"""
+json_entry = """{"%s": "%s"},"""
 
 def to_json(network, attributes):
     print(json % "\n".join([json_entry % (attr, getattr(network, attr)) for attr in attributes]))
@@ -20,7 +20,10 @@ def to_json(network, attributes):
 def to_csv(network, attributes):
     print(",".join(["%s" % getattr(network, attr) for attr in attributes]))
 
-formats = {"xml": to_xml, "json": to_json, "csv": to_csv}
+def to_raw(network, attributes):
+    print("\n".join(["%s" % getattr(network, attr) for attr in attributes]))
+
+formats = {"csv": to_csv, "json": to_json, "raw": to_raw, "xml": to_xml}
 
 default_attributes = ('identifier', 'name')
 
@@ -32,7 +35,7 @@ def print_local(path, attributes=default_attributes, format_ = "bite"):
     network = Network(path)
     print_network(network, attributes, format_)
 
-def print_remote(id_, host, port, token_path, attributes = default_attributes, format_= "csv"):
+def print_remote(id_, host, port, token_path, attributes = default_attributes, format_= "raw"):
     from pycrust import Network, ID
     network = Network(ID(id_), host, port, token_path)
     print_network(network, attributes, format_)
@@ -108,8 +111,8 @@ if __name__ == "__main__":
                         default = default_attributes,
                         help = "The list of attributes to display.")
     parser.add_argument("--format",
-                        choices = ['csv', 'json', 'xml'],
-                        default = 'csv',
+                        choices = ['csv', 'json', 'raw', 'xml'],
+                        default = 'raw',
                         help = "The format to the print in.")
 
     import sys
