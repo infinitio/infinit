@@ -74,7 +74,7 @@ class Create(Page):
         ('device_id', regexp.DeviceIDValidator),
     ]
 
-    __mendatory_fields__ = [
+    __mandatory_fields__ = [
         ('first_filename', basestring),
         ('files_count', int),
         ('total_size', int),

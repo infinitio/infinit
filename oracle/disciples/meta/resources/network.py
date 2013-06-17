@@ -583,7 +583,7 @@ class Delete(_Page):
         ('network_id', regexp.Validator(regexp.NetworkID, error.NETWORK_ID_NOT_VALID))
     ]
 
-    __mendatory_fields__ = [
+    __mandatory_fields__ = [
         ('force', bool)
     ]
 

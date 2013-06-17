@@ -7,7 +7,7 @@ import metalib
 class Sign(Page):
   __pattern__ = "/authority/sign"
 
-  __mendatory_fields__ = [
+  __mandatory_fields__ = [
     ('hash', str),
   ]
 
@@ -26,7 +26,7 @@ class Sign(Page):
 class Verify(Page):
   __pattern__ = "/authority/verify"
 
-  __mendatory_fields__ = [
+  __mandatory_fields__ = [
     ('signature', str),
     ('hash', str),
   ]

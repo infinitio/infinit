@@ -52,7 +52,7 @@ class Page(object):
 
     __validators__ = []
 
-    __mendatory_fields__ = []
+    __mandatory_fields__ = []
 
     def __init__(self):
         self._input = None
@@ -106,7 +106,7 @@ class Page(object):
                 error_code = validator(self.data[field])
                 if error_code:
                     return self.error(error_code)
-        for (field, type_) in self.__mendatory_fields__:
+        for (field, type_) in self.__mandatory_fields__:
             if not field in self.data.keys() or not isinstance(self.data[field], type_):
                 return self.error(error.BAD_REQUEST[0], "Field %s is mandatory and must be an %s" % (field, type_))
         return
