@@ -64,6 +64,7 @@ if __name__ == "__main__":
             print_local(args.local_network_path + "/descriptor",
                         attributes)
     elif args.remote_network_identifier:
+        from os import getenv
         remote_host = args.remote_host or getenv("INFINIT_REMOTE_HOST")
         remote_port = args.remote_port or getenv("INFINIT_REMOTE_PORT")
         remote_token_path = args.remote_token_path or getenv("INFINIT_REMOTE_TOKEN_PATH")
