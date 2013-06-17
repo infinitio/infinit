@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 
+import infinit_utils
+
 def local_retrieve(path, descriptor_path):
     from pycrust import Network
     network = Network(path + "/descriptor")
