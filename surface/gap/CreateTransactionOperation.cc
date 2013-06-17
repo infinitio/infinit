@@ -74,7 +74,7 @@ namespace surface
       this->_network_id = this->_network_manager.create(network_name);
 
       auto recipient = this->_user_manager.one(this->_recipient_id_or_email);
-      ELLE_TRACE("Add user %s to network %s", recipient, this->_network_id)
+      ELLE_TRACE("add user %s to network %s", recipient, this->_network_id)
         this->_meta.network_add_user(this->_network_id, recipient.id);
       // XXX add locally
 
