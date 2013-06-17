@@ -59,42 +59,42 @@ class PublishDescriptor(_Page):
 
         digest = self.data['descriptor']
         visibility = Visibility.PUBLIC
-        with metalib.deserialze_descriptor(digest) as descriptor:
-            _id = descriptor['id']
+        descriptor = metalib.deserialze_descriptor(digest)
+        _id = descriptor['id']
 
-            network = database.networks().find_one(
-                {"$or" :
-                     [
-                        {'_id': _id},
-                        {'name': descriptor['name'], 'owner': self.user['_id']},
-                     ]
-                }
-            )
-
-            if network and len(network) > 2:
-                return self.error(error.NETWORK_ALREADY_EXISTS,
-                                  "a network with the same %s already exists" % (network['_id'] == _id and 'id' or 'name'))
-            # Someone else than the user try to republish the network.
-            elif network and network.get('owner') != self.user['_id']:
-                return self.error(error.NETWORK_ALREADY_EXISTS)
-
-            network = {
-                '_id': _id,
-                'descriptor': desc,
-                'name': descriptor['name'],
-                'owner': self.user['_id'],
-                'owner_handle': self.user['lw_handle'],
-                'visibility': Visibility.PUBLIC,
+        network = database.networks().find_one(
+            {"$or" :
+                 [
+                    {'_id': _id},
+                    {'name': descriptor['name'], 'owner': self.user['_id']},
+                 ]
             }
-            database.networks().update({"_id": _id},
-                                       network,
-                                       upsert = True)
-            # The best should be find_and_modify.
-            # database.user().find_and_modify(self.user, {'$push': {'owned_networks': _id}})
-            self.user.setdefault('owned_networks', []).append(_id)
-            database.users().save(self.user)
+        )
 
-            return self.success({'_id': _id})
+        if network and len(network) > 2:
+            return self.error(error.NETWORK_ALREADY_EXISTS,
+                              "a network with the same %s already exists" % (network['_id'] == _id and 'id' or 'name'))
+        # Someone else than the user try to republish the network.
+        elif network and network.get('owner') != self.user['_id']:
+            return self.error(error.NETWORK_ALREADY_EXISTS)
+
+        network = {
+            '_id': _id,
+            'descriptor': digest,
+            'name': descriptor['name'],
+            'owner': self.user['_id'],
+            'owner_handle': self.user['lw_handle'],
+            'visibility': Visibility.PUBLIC,
+        }
+        database.networks().update({"_id": _id},
+                                   network,
+                                   upsert = True)
+        # The best should be find_and_modify.
+        # database.user().find_and_modify(self.user, {'$push': {'owned_networks': _id}})
+        self.user.setdefault('owned_networks', []).append(_id)
+        database.users().save(self.user)
+
+        return self.success({'_id': _id})
 
 class UnpublishDescriptor(_Page):
     """
