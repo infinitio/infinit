@@ -1057,6 +1057,7 @@ def configure(cxx_toolkit = None,
       'surface/crust/python/infinit-network-uninstall.py',
       'surface/crust/python/infinit-network-list.py',
       'surface/crust/python/infinit-network-print.py',
+      'surface/crust/python/infinit-network-retrieve.py',
       )
 
     crust_python_pyfile_copy = drake.copy(crust_python_pyfiles,
