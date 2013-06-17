@@ -30,7 +30,7 @@ default_attributes = ('identifier', 'name')
 def print_network(network, attributes, format_):
     formats[format_](network, attributes)
 
-def print_local(path, attributes=default_attributes, format_ = "bite"):
+def print_local(path, attributes=default_attributes, format_ = "raw"):
     from pycrust import Network
     network = Network(path)
     print_network(network, attributes, format_)
