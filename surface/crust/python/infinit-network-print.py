@@ -38,7 +38,7 @@ def print_remote(id_, host, port, token_path, attributes = default_attributes, f
     print_network(network, attributes, format_)
 
 def main(args):
-attributes = args.attributes or []
+    attributes = args.attributes or []
 
     if args.local_network_path or args.local_descriptor_path:
         if args.remote_host or args.remote_port or args.remote_token_path:
