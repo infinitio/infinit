@@ -16,7 +16,6 @@
 #include <hole/implementations/remote/Implementation.hh>
 #include <hole/implementations/slug/Manifest.hh>
 #include <hole/implementations/slug/Slug.hh>
-#include <hole/Authority.hh>
 #include <hole/Passport.hh>
 
 #include <plasma/meta/Client.hh>
@@ -38,13 +37,13 @@ namespace infinit
     typedef hole::implementations::slug::Slug Super;
     PortaledSlug(hole::storage::Storage& storage,
                  elle::Passport const& passport,
-                 elle::Authority const& authority,
+                 cryptography::PublicKey const& authority_K,
                  reactor::network::Protocol protocol,
                  std::vector<elle::network::Locus> const& members,
                  int port,
                  reactor::Duration connection_timeout,
                  std::unique_ptr<reactor::network::UDPSocket> socket):
-      Super(storage, passport, authority,
+      Super(storage, passport, authority_K,
             protocol, members, port, connection_timeout, std::move(socket)),
       _portal(
         "slug",
@@ -69,7 +68,7 @@ namespace infinit
   std::unique_ptr<hole::Hole>
   hole_factory(hole::storage::Storage& storage,
                elle::Passport const& passport,
-               elle::Authority const& authority)
+               cryptography::PublicKey const& authority_K)
   {
     Descriptor descriptor(
       elle::serialize::from_file(
@@ -85,7 +84,7 @@ namespace infinit
         {
           return std::unique_ptr<hole::Hole>(
             new hole::implementations::local::Implementation(
-              storage, passport, authority));
+              storage, passport, authority_K));
           break;
         }
         case hole::Model::TypeRemote:
@@ -100,7 +99,7 @@ namespace infinit
           elle::network::Locus locus = *set.loci.begin();
           return std::unique_ptr<hole::Hole>(
             new hole::implementations::remote::Implementation(
-              storage, passport, authority, locus));
+              storage, passport, authority_K, locus));
         }
         case hole::Model::TypeSlug:
         {
@@ -165,7 +164,7 @@ namespace infinit
                              common::heartbeat::host(),
                              common::heartbeat::port());
 
-          auto* slug = new PortaledSlug(storage, passport, authority,
+          auto* slug = new PortaledSlug(storage, passport, authority_K,
                                         protocol, members, port, timeout,
                                         std::move(socket));
 

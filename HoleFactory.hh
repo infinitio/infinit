@@ -10,7 +10,7 @@ namespace infinit
   std::unique_ptr<hole::Hole>
   hole_factory(hole::storage::Storage& storage,
                elle::Passport const& passport,
-               elle::Authority const& authority);
+               cryptography::PublicKey const& authority_K);
 }
 
 #endif
