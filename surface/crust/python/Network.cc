@@ -44,6 +44,7 @@ _lookup(std::string const& owner_handle,
                          boost::filesystem::path{token_path});
 }
 
+static
 uint16_t
 _mount(Network* net,
        std::string const& path,
@@ -52,6 +53,7 @@ _mount(Network* net,
   return net->mount(boost::filesystem::path(path), run);
 }
 
+static
 void
 _store(Network* net,
        std::string const& path,
@@ -60,6 +62,7 @@ _store(Network* net,
   net->store(boost::filesystem::path(path), force);
 }
 
+static
 void
 _erase(Network* net,
        std::string const& path)
@@ -67,6 +70,7 @@ _erase(Network* net,
   net->erase(boost::filesystem::path(path));
 }
 
+static
 void
 _install(Network* net,
          std::string const& path)
@@ -74,6 +78,7 @@ _install(Network* net,
   net->install(boost::filesystem::path(path));
 }
 
+static
 void
 _uninstall(Network* net,
            std::string const& path)
@@ -81,13 +86,14 @@ _uninstall(Network* net,
   net->uninstall(boost::filesystem::path(path));
 }
 
-
+static
 Network*
 _new_network_from_path(std::string const& path)
 {
   return new Network(boost::filesystem::path(path));
 }
 
+static
 Network*
 _new_network(std::string const& name,
              std::string const& identity_path,
