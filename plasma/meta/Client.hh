@@ -8,6 +8,7 @@
 # include <memory>
 # include <stdexcept>
 # include <string>
+# include <mutex>
 
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>
@@ -232,6 +233,8 @@ namespace plasma
       std::string _email;
       std::string _token;
       std::string _user_agent;
+      // XXX Curl is supposed to be thread-safe.
+      std::mutex mutable _mutex;
 
     public:
       Client(std::string const& server,

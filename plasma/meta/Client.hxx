@@ -62,11 +62,11 @@ namespace plasma
 
     static inline
     int
-    curl_debug_callback (CURL *handle,
-                         curl_infotype type,
-                         char *what,
-                         size_t what_size,
-                         void *userptr)
+    curl_debug_callback(CURL *handle,
+                        curl_infotype type,
+                        char *what,
+                        size_t what_size,
+                        void *userptr)
     {
       ELLE_LOG_COMPONENT("infinit.plasma.meta.Client.curl");
 
@@ -134,6 +134,8 @@ namespace plasma
     Client::_post(std::string const& url,
                   elle::format::json::Object const& req) const
     {
+      // XXX Curl is supposed to be thread-safe.
+      std::unique_lock<std::mutex> lock(this->_mutex);
       std::stringstream in;
       std::stringstream out;
       curly::request_configuration c = curly::make_post();
@@ -160,6 +162,8 @@ namespace plasma
     T
     Client::_get(std::string const& url) const
     {
+      // XXX Curl is supposed to be thread-safe.
+      std::unique_lock<std::mutex> lock(this->_mutex);
       std::stringstream resp;
       curly::request_configuration c = curly::make_get();
 
