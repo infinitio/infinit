@@ -1,20 +1,41 @@
 #!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 
+xml = """<network>
+%s
+</network>"""
+xml_entry = "<%s>%s</%s>"
+
+def to_xml(network, attributes):
+    print(xml % "\n".join([xml_entry % (attr, getattr(network, attr), attr) for attr in attributes]))
+
+json = """{
+%s
+}"""
+json_entry = """{"%s": "%s"}"""
+
+def to_json(network, attributes):
+    print(json % "\n".join([json_entry % (attr, getattr(network, attr)) for attr in attributes]))
+
+def to_csv(network, attributes):
+    print(",".join(["%s" % getattr(network, attr) for attr in attributes]))
+
+formats = {"xml": to_xml, "json": to_json, "csv": to_csv}
+
 default_attributes = ('identifier', 'name')
 
-def print_network(network, attributes):
-    print("\n".join(["%s: %s" % (attr, getattr(network, attr)) for attr in attributes]))
+def print_network(network, attributes, format_):
+    formats[format_](network, attributes)
 
-def print_local(path, attributes=default_attributes):
+def print_local(path, attributes=default_attributes, format_ = "bite"):
     from pycrust import Network
     network = Network(path)
-    print_network(network, attributes)
+    print_network(network, attributes, format_)
 
-def print_remote(id_, host, port, token_path, attributes=default_attributes):
+def print_remote(id_, host, port, token_path, attributes = default_attributes, format_= "csv"):
     from pycrust import Network, ID
     network = Network(ID(id_), host, port, token_path)
-    print_network(network, attributes)
+    print_network(network, attributes, format_)
 
 if __name__ == "__main__":
     import argparse
@@ -42,6 +63,10 @@ if __name__ == "__main__":
                                    'name', 'openness', 'policy', 'version'],
                         default = default_attributes,
                         help = "The list of attributes to display.")
+    parser.add_argument("--format",
+                        choices = ['csv', 'json', 'xml'],
+                        default = 'csv',
+                        help = "The format to the print in.")
 
     args = parser.parse_args()
 
@@ -57,12 +82,14 @@ if __name__ == "__main__":
             if args.local_network_path:
                 print("WARNING: You set both --local_descriptor_path and --local_network_path. Descriptor taken by default")
             print_local(args.local_descriptor_path,
-                        attributes)
+                        attributes,
+                        args.format)
         else:
             if not path.exists(args.local_network_path):
                 raise Exception("Given path %s for --local_network_path doesn't exist" % args.local_repository)
             print_local(args.local_network_path + "/descriptor",
-                        attributes)
+                        attributes,
+                        args.format)
     elif args.remote_network_identifier:
         from os import getenv
         remote_host = args.remote_host or getenv("INFINIT_REMOTE_HOST")
@@ -80,6 +107,7 @@ if __name__ == "__main__":
                      host = remote_host,
                      port = int(remote_port),
                      token_path = remote_token_path,
-                     attributes = attributes)
+                     attributes = attributes,
+                     format_ = args.format)
     else:
         raise Exception("Neither --local-network-path, --local-descriptor-path nor --remote-network-identifier given")
