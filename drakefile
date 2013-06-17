@@ -931,7 +931,7 @@ def configure(cxx_toolkit = None,
     sources = [
       'satellites/%s/%s.py' % fmt
     ]
-    sources = drake.nodes(*sources)
+    sources = drake.node(*sources)
     copy = drake.copy(sources, "bin", "satellites/%s" % name)
     if name in satellites:
       build << copy
