@@ -25,11 +25,5 @@ if __name__ == "__main__":
     parser.add_argument("--infinit-network-path",
                         help = "The path where install your network.")
 
-    import sys
-    try:
-        args = parser.parse_args()
-        main(args)
-        sys.exit(0)
-    except Exception as e:
-        print(str(e).capitalize())
-        sys.exit(1)
+    from infinit_utils import run
+    run(parser, main)
