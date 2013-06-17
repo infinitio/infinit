@@ -4,7 +4,6 @@
 #include <cryptography/PrivateKey.hh>
 
 #include <hole/Passport.hh>
-#include <hole/Authority.hh>
 
 namespace elle
 {
@@ -18,15 +17,14 @@ namespace elle
   Passport::Passport(elle::String const& id,
                      elle::String const& name,
                      cryptography::PublicKey const& owner_K,
-                     elle::Authority const& authority)
+                     cryptography::PrivateKey const& authority)
     : _id{id}
     , _name{name}
     , _owner_K{owner_K}
-    , _signature{authority.k().sign(elle::serialize::make_tuple(id, owner_K))}
+    , _signature{authority.sign(elle::serialize::make_tuple(id, owner_K))}
   {
     ELLE_ASSERT(id.size() > 0);
     ELLE_ASSERT(name.size() > 0);
-    ELLE_ASSERT(this->validate(authority));
   }
 
 
@@ -34,10 +32,10 @@ namespace elle
   /// this method verifies the validity of the passport.
   ///
   bool
-  Passport::validate(elle::Authority const& authority) const
+  Passport::validate(cryptography::PublicKey const& authority) const
   {
-    return (authority.K().verify(this->_signature,
-                                 elle::serialize::make_tuple(_id, _owner_K)));
+    return (authority.verify(this->_signature,
+                             elle::serialize::make_tuple(_id, _owner_K)));
   }
 
 //

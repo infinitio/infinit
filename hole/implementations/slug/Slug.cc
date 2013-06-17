@@ -32,13 +32,13 @@ namespace hole
 
       Slug::Slug(hole::storage::Storage& storage,
                  elle::Passport const& passport,
-                 elle::Authority const& authority,
+                 cryptography::PublicKey const& authority_K,
                  reactor::network::Protocol protocol,
                  std::vector<elle::network::Locus> const& members,
                  int port,
                  reactor::Duration connection_timeout,
                  std::unique_ptr<reactor::network::UDPSocket> socket):
-        Hole(storage, passport, authority),
+        Hole(storage, passport, authority_K),
         _protocol(protocol),
         _members(members),
         _connection_timeout(connection_timeout),

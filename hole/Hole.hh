@@ -6,11 +6,12 @@
 # include <elle/attribute.hh>
 # include <elle/types.hh>
 
+# include <cryptography/PublicKey.hh>
+
 # include <nucleus/proton/fwd.hh>
 
-# include <hole/Passport.hh>
-
 # include <hole/fwd.hh>
+# include <hole/Passport.hh>
 # include <hole/storage/Storage.hh>
 
 namespace hole
@@ -24,7 +25,7 @@ namespace hole
   public:
     Hole(storage::Storage& storage,
          elle::Passport const& passport,
-         elle::Authority const& authority);
+         cryptography::PublicKey const& authority_K);
     virtual ~Hole();
 
   /*--------.
@@ -72,7 +73,7 @@ namespace hole
   `-----------*/
   private:
     ELLE_ATTRIBUTE_R(elle::Passport, passport);
-    ELLE_ATTRIBUTE_R(elle::Authority, authority);
+    ELLE_ATTRIBUTE_R(cryptography::PublicKey, authority_K);
   };
 }
 

@@ -144,7 +144,7 @@ namespace hole
             return this->_slug.loci();
         }
 
-        if (!passport.validate(this->_slug.authority()))
+        if (!passport.validate(this->_slug.authority_K()))
           throw Exception("unable to validate the passport");
         else
           this->_authenticated = true;

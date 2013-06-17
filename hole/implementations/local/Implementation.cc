@@ -23,8 +23,8 @@ namespace hole
 
       Implementation::Implementation(storage::Storage& storage,
                                      elle::Passport const& passport,
-                                     elle::Authority const& authority):
-        Hole(storage, passport, authority)
+                                     cryptography::PublicKey const& authority_K):
+        Hole(storage, passport, authority_K)
       {
         Local::Computer = new Machine(*this);
       }

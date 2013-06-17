@@ -33,7 +33,7 @@ namespace hole
       public:
         Slug(hole::storage::Storage& storage,
              elle::Passport const& passport,
-             elle::Authority const& authority,
+             cryptography::PublicKey const& authority_K,
              reactor::network::Protocol protocol,
              std::vector<elle::network::Locus> const& members,
              int port,

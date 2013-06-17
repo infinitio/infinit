@@ -17,9 +17,9 @@ namespace hole
 
       Implementation::Implementation(hole::storage::Storage& storage,
                                      elle::Passport const& passport,
-                                     elle::Authority const& authority,
+                                     cryptography::PublicKey const& authority_K,
                                      elle::network::Locus const& server):
-        Hole(storage, passport, authority),
+        Hole(storage, passport, authority_K),
         _server_locus(server)
       {
         Remote::Computer = new Machine(*this);

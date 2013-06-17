@@ -22,12 +22,12 @@ namespace hole
 
   Hole::Hole(storage::Storage& storage,
              elle::Passport const& passport,
-             elle::Authority const& authority):
+             cryptography::PublicKey const& authority_K):
     _storage(storage),
     _passport(passport),
-    _authority(authority)
+    _authority_K(authority_K)
   {
-    if (!_passport.validate(this->authority()))
+    if (!_passport.validate(this->_authority_K))
       throw Exception("unable to validate the passport");
   }
 

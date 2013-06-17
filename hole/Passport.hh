@@ -3,14 +3,13 @@
 
 # include <elle/attribute.hh>
 # include <elle/Printable.hh>
+# include <elle/io/Dumpable.hh>
 # include <elle/concept/Fileable.hh>
 # include <elle/concept/Uniquable.hh>
 # include <elle/serialize/construct.hh>
 
 # include <cryptography/Signature.hh>
-
-# include <hole/Authority.hh>
-
+# include <cryptography/PublicKey.hh>
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
@@ -42,16 +41,17 @@ namespace elle
     /// @param id Unique identifier.
     /// @param name Represented device name.
     /// @param owner_K Owning user keys.
-    /// @param
+    // XXX to improve with a template
     Passport(elle::String const& id,
              elle::String const& name,
              cryptography::PublicKey const& owner_K,
-             elle::Authority const& authority);
+             cryptography::PrivateKey const& authority);
 
   public:
     /// Check the passport signature.
+    // XXX to improve with a template
     bool
-    validate(elle::Authority const&) const;
+    validate(cryptography::PublicKey const& authority) const;
 
     /// Dump the passport.
     void
