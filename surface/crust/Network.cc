@@ -308,7 +308,7 @@ Network::Network(boost::filesystem::path const& descriptor_path)
 {
   if (!boost::filesystem::exists(descriptor_path))
     throw elle::Exception(
-      elle::sprintf("File %s doesn't exist", descriptor_path));
+      elle::sprintf("file %s doesn't exist", descriptor_path));
 
   this->_descriptor.reset(
     new infinit::Descriptor(
@@ -338,9 +338,9 @@ Network::store(boost::filesystem::path const& descriptor_path,
   if (descriptor_path.empty())
     throw elle::Exception("descriptor path is empty");
 
-  if (!force and boost::filesystem::exists(descriptor_path))
-    throw elle::Exception(elle::sprintf("File %s already exists",
-                                        descriptor_path));
+  if (!force && boost::filesystem::exists(descriptor_path))
+    throw elle::Exception(
+      elle::sprintf("file %s already exists", descriptor_path));
 
   elle::serialize::to_file(descriptor_path.string()) << *this->_descriptor;
   this->_descriptor_path = descriptor_path;
@@ -357,7 +357,7 @@ Network::erase(boost::filesystem::path const& descriptor_path)
   else if (!descriptor_path.empty())
     boost::filesystem::remove(descriptor_path);
   else
-    throw elle::Exception("No path given");
+    throw elle::Exception("no path given");
 }
 
 void
@@ -367,7 +367,7 @@ Network::install(boost::filesystem::path const& install_path) const
 
   if (boost::filesystem::exists(install_path))
     throw elle::Exception(
-      elle::sprintf("Couldn't create %s cause it already exists",
+      elle::sprintf("couldn't create %s cause it already exists",
                     install_path));
 
   boost::filesystem::create_directory(install_path);
@@ -400,7 +400,7 @@ Network::uninstall(boost::filesystem::path const& install_path) const
   else if (!install_path.empty())
     boost::filesystem::remove_all(install_path);
   else
-    throw elle::Exception("No path given");
+    throw elle::Exception("no path given");
 }
 
 uint16_t
