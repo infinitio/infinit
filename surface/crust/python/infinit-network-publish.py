@@ -45,5 +45,5 @@ if __name__ == "__main__":
         main(args)
         sys.exit(0)
     except Exception as e:
-        print(e)
+        print(str(e).capitalize())
         sys.exit(1)
