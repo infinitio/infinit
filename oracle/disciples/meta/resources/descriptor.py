@@ -9,6 +9,7 @@ import metalib
 
 import web
 
+#The visibility represents
 class Visibility:
     PUBLIC = 0
     PRIVATE = 1
@@ -33,54 +34,85 @@ class _Page(Page):
         return network
 
 class PublishDescriptor(_Page):
-    """XXX"""
+    """
+    Store the descriptor into the database.
+    It requieres to be logged in.
+    The metalib deserializes the descriptor, validates the ownership.
+    It also validate the descriptor signature it self.
+    XXX: This means that only the local authority can be used to
+    sign the descriptor.
+
+    POST {
+             'descriptor': The digest of the descriptor.
+         }
+         ->
+         {
+             '_id': The identifier of the network.
+         }
+
+    """
 
     __pattern__ = "/descriptor/publish"
 
     @requireLoggedIn
     def POST(self):
 
-        desc = self.data['descriptor']
-        visibility = self.data['descriptor']
-        descriptor = metalib.deserialze_descriptor(desc)
-        _id = descriptor['id']
+        digest = self.data['descriptor']
+        visibility = Visibility.PUBLIC
+        with metalib.deserialze_descriptor(digest) as descriptor:
+            _id = descriptor['id']
 
-        network = database.networks().find_one(
-            {"$or" :
-                 [
-                    {'_id': _id},
-                    {'name': descriptor['name'], 'owner': self.user['_id']},
-                 ]
+            network = database.networks().find_one(
+                {"$or" :
+                     [
+                        {'_id': _id},
+                        {'name': descriptor['name'], 'owner': self.user['_id']},
+                     ]
+                }
+            )
+
+            if network and len(network) > 2:
+                return self.error(error.NETWORK_ALREADY_EXISTS,
+                                  "a network with the same %s already exists" % (network['_id'] == _id and 'id' or 'name'))
+            # Someone else than the user try to republish the network.
+            elif network and network.get('owner') != self.user['_id']:
+                return self.error(error.NETWORK_ALREADY_EXISTS)
+
+            network = {
+                '_id': _id,
+                'descriptor': desc,
+                'name': descriptor['name'],
+                'owner': self.user['_id'],
+                'owner_handle': self.user['lw_handle'],
+                'visibility': Visibility.PUBLIC,
             }
-        )
+            database.networks().update({"_id": _id},
+                                       network,
+                                       upsert = True)
+            # The best should be find_and_modify.
+            # database.user().find_and_modify(self.user, {'$push': {'owned_networks': _id}})
+            self.user.setdefault('owned_networks', []).append(_id)
+            database.users().save(self.user)
 
-        if network and len(network) > 2:
-            return self.error(error.NETWORK_ALREADY_EXISTS,
-                              "a network with the same %s already exists" % (network['_id'] == _id and 'id' or 'name'))
-        # Someone else than the user try to republish the network.
-        elif network and network.get('owner') != self.user['_id']:
-            return self.error(error.NETWORK_ALREADY_EXISTS)
-
-        network = {
-            '_id': _id,
-            'descriptor': desc,
-            'name': descriptor['name'],
-            'owner': self.user['_id'],
-            'owner_handle': self.user['lw_handle'],
-            'visibility': Visibility.PUBLIC,
-        }
-        database.networks().update({"_id": _id},
-                                   network,
-                                   upsert = True)
-        # The best should be find_and_modify.
-        # database.user().find_and_modify(self.user, {'$push': {'owned_networks': _id}})
-        self.user.setdefault('owned_networks', []).append(_id)
-        database.users().save(self.user)
-
-        return self.success({'_id': _id})
+            return self.success({'_id': _id})
 
 class UnpublishDescriptor(_Page):
-    """XXX"""
+    """
+    Unstore the descriptor into the database.
+    It requieres to be logged in.
+    This function reset most the fields except owner and id, allowing the user
+    to republish a deleted descriptor. To avoid database growing we can check
+    the last update of the entry and delete it after a specific duration.
+
+    POST {
+             '_id': The identifier of the network.
+         }
+         ->
+         {
+             '_id': The identifier of the network.
+         }
+
+    """
 
     __pattern__ = "/descriptor/unpublish"
 
@@ -95,13 +127,14 @@ class UnpublishDescriptor(_Page):
         _id = self.data['id']
         network = self.network(_id)
 
-        # Only the owner can unpublish a publish.
+        # Only the owner can unpublish a published descriptor.
         if network['owner'] != self.user['_id']:
             return self.error(error.NETWORK_DOESNT_BELONG_TO_YOU)
 
         # Instead of deleting a network, we just reset it. With that we can
-        # can differenciate deleted network id from new id ir order to create
-        # smarter behavior than: "Network doesn't exist.".
+        # differenciate deleted network id from new id in order to create
+        # smarter behavior "The owner unpublished this descriptor" instead of
+        # "Network doesn't exist.".
         # We keep tracking the _id and the owner.
         database.networks().update(network, {key: network[key] for key in ['owner', '_id',] })
 
@@ -116,6 +149,16 @@ class UnpublishDescriptor(_Page):
 class LookupDescriptor(_Page):
     """
     Get the descriptor id from owner and name.
+
+    POST {
+             'owner': The owner of the handle (not case sensitiv).
+             'name': The name of the network to lookup.
+         }
+         ->
+         {
+             '_id': The identifier of the network.
+         }
+
     """
 
     __pattern__ = "/descriptor/lookup"
@@ -124,14 +167,17 @@ class LookupDescriptor(_Page):
         handle = self.data['owner'].lower()
         name = self.data['name']
 
-        network = database.networks().find_one(
-            {
-                'owner_handle': handle,
-                'name': name,
-                'visibility': Visibility.PUBLIC
-            },
-            fields=['_id'],
-        )
+        req = {
+                  'owner_handle': handle,
+                  'name': name
+              }
+
+        # The user can lookup all networks. The other can only
+        # lookup the public ones.
+        if not self.user or self.user['lw_handle'] != handle:
+            res['visibility'] = Visibility.PUBLIC
+
+        network = database.networks().find_one(req, fields=['_id'])
 
         if network is None:
             return self.error(error.NETWORK_NOT_FOUND)
@@ -141,6 +187,17 @@ class LookupDescriptor(_Page):
 class GetDescriptor(_Page):
     """
     Get the descriptor from _id.
+
+
+    POST {
+             '_id': The network id
+         }
+         ->
+         {
+             'name': The name of the network.
+             '_id': The identifier of the network.
+             'descriptor': The digest of the descriptor.
+         }
     """
 
     __pattern__ = "/descriptor/get"
@@ -172,6 +229,13 @@ class ListDescriptor(_Page):
     """
     Return the list of descriptor ids according to the given filter.
 
+    POST {
+             'filter': The filter for the list. Not used for the moment.
+         }
+         ->
+         {
+             'descriptors': The list of the network identifier matching the filter.
+         }
     """
 
     __pattern__ = "/descriptor/list"
