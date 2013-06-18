@@ -4,6 +4,7 @@
 #include <Infinit.hh>
 
 #include <infinit/Identity.hh>
+#include <infinit/Authority.hh>
 
 #include <elle/io/Console.hh>
 #include <elle/io/Path.hh>
@@ -14,7 +15,6 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <hole/Authority.hh>
 #include <hole/Hole.hh>
 #include <hole/Passport.hh>
 
@@ -23,6 +23,8 @@ using namespace infinit;
 #include <common/common.hh>
 
 #include <Program.hh>
+
+#include <boost/filesystem.hpp>
 
 namespace satellite
 {
@@ -35,15 +37,15 @@ namespace satellite
   ///
   void
   Passport::Create(elle::String const& user,
-                   elle::String const& passport_name)
+                   elle::String const& passport_name,
+                   elle::String const& authority_path)
   {
+    boost::filesystem::path path(authority_path);
     //
     // test the arguments.
     //
     {
-      // check if the authority exists.
-      if (elle::Authority::exists(elle::io::Path(lune::Lune::Authority))
-          == false)
+      if (boost::filesystem::exists(path) == false)
         throw elle::Exception("unable to locate the authority file");
     }
 
@@ -61,11 +63,9 @@ namespace satellite
       throw elle::Exception("unable to read the input");
 
     // load the authority.
-    elle::Authority authority(elle::io::Path{lune::Lune::Authority});
+    infinit::Authority authority(elle::serialize::from_file(authority_path));
 
-    // decrypt the authority.
-    if (authority.Decrypt(pass) == elle::Status::Error)
-      throw elle::Exception("unable to decrypt the authority");
+    cryptography::PrivateKey authority_k = authority.decrypt(pass);
 
     //
     // create the passport.
@@ -83,7 +83,7 @@ namespace satellite
       cryptography::KeyPair keypair = identity.decrypt(pass);
 
       elle::Passport passport{
-        id, passport_name, keypair.K(), authority
+        id, passport_name, keypair.K(), authority_k
       };
 
       elle::io::Path passport_path(lune::Lune::Passport);
@@ -136,7 +136,7 @@ namespace satellite
       passport.load(passport_path);
 
       // validate the passport.
-      if (passport.validate(Infinit::authority()) == false)
+      if (passport.validate(common::meta::certificate().subject_K()) == false)
         throw elle::Exception("unable to validate the passport");
     }
 
@@ -164,10 +164,6 @@ namespace satellite
     // initialize the Lune library.
     if (lune::Lune::Initialize() == elle::Status::Error)
       throw elle::Exception("unable to initialize Lune");
-
-    // initialize Infinit.
-    if (Infinit::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize Infinit");
 
     // initialize the operation.
     operation = Passport::OperationUnknown;
@@ -232,6 +228,15 @@ namespace satellite
           elle::utility::Parser::KindRequired) == elle::Status::Error)
       throw elle::Exception("unable to register the option");
 
+    // register the options.
+    if (Infinit::Parser->Register(
+          "Authority",
+          'A',
+          "authority",
+          "specify the path to the authority file",
+          elle::utility::Parser::KindRequired) == elle::Status::Error)
+      throw elle::Exception("unable to register the option");
+
     // parse.
     if (Infinit::Parser->Parse() == elle::Status::Error)
       throw elle::Exception("unable to parse the command line");
@@ -293,8 +298,13 @@ namespace satellite
               throw elle::Exception("unable to retrieve the passport name");
             }
 
+          elle::String authority_path;
+          if (Infinit::Parser->Value("Authority",
+                                     authority_path) == elle::Status::Error)
+            throw elle::Exception("unable to retrieve the model value");
+
           // create the passport.
-          Passport::Create(Infinit::User, passport_name);
+          Passport::Create(Infinit::User, passport_name, authority_path);
 
           // display a message.
           std::cout << "The passport has been created successfully!"
@@ -335,10 +345,6 @@ namespace satellite
     // delete the parser.
     delete Infinit::Parser;
     Infinit::Parser = nullptr;
-
-    // clean Infinit.
-    if (Infinit::Clean() == elle::Status::Error)
-      throw elle::Exception("unable to clean Infinit");
 
     // clean Lune
     if (lune::Lune::Clean() == elle::Status::Error)

@@ -12,12 +12,11 @@ using namespace infinit;
 
 #include <etoile/Etoile.hh>
 
-#include <hole/Authority.hh>
-
 #include <lune/Dictionary.hh>
 #include <lune/Lune.hh>
 
 #include <infinit/Identity.hh>
+#include <infinit/Authority.hh>
 
 #include <satellites/satellite.hh>
 #include <satellites/user/User.hh>
@@ -34,7 +33,8 @@ namespace satellite
   /// storing a user block.
   ///
   elle::Status          User::Create(elle::String const&        identifier,
-                                     const elle::String&        name)
+                                     const elle::String&        name,
+                                     elle::String const& authority_path)
   {
     elle::String        prompt;
     elle::String        pass;
@@ -61,11 +61,9 @@ namespace satellite
       throw elle::Exception("unable to read the input");
 
     // load the authority.
-    elle::Authority authority(elle::io::Path{lune::Lune::Authority});
+    infinit::Authority authority(elle::serialize::from_file(authority_path));
 
-    // decrypt the authority.
-    if (authority.Decrypt(pass) == elle::Status::Error)
-      throw elle::Exception("unable to decrypt the authority");
+    cryptography::PrivateKey authority_k = authority.decrypt(pass);
 
     // prompt the user for the passphrase.
     prompt = "Enter passphrase for keypair '" + name + "': ";
@@ -81,7 +79,7 @@ namespace satellite
                                  cryptography::Cryptosystem::rsa,
                                  infinit::Identity::keypair_length),
                                pass,
-                               authority.k());
+                               authority_k);
 
     elle::serialize::to_file(path.string()) << identity;
 
@@ -190,7 +188,7 @@ namespace satellite
         common::infinit::identity_path(identifier)));
 
     // verify the identity.
-    if (identity.validate(Infinit::authority().K()) == false)
+    if (identity.validate(common::meta::certificate().subject_K()) == false)
       throw elle::Exception("invalid identity");
 
     cryptography::KeyPair keypair = identity.decrypt(pass);
@@ -219,10 +217,6 @@ namespace satellite
     // initialize the Lune library.
     if (lune::Lune::Initialize() == elle::Status::Error)
       throw std::runtime_error("unable to initialize Lune");
-
-    // initialize Infinit.
-    if (Infinit::Initialize() == elle::Status::Error)
-      throw std::runtime_error("unable to initialize Infinit");
 
     // initialize the operation.
     operation = User::OperationUnknown;
@@ -288,6 +282,15 @@ namespace satellite
           elle::utility::Parser::KindRequired) == elle::Status::Error)
       throw std::runtime_error("unable to register the option");
 
+    // register the options.
+    if (Infinit::Parser->Register(
+          "Authority",
+          'A',
+          "authority",
+          "specify the path to the authority file",
+          elle::utility::Parser::KindRequired) == elle::Status::Error)
+      throw elle::Exception("unable to register the option");
+
     // parse.
     if (Infinit::Parser->Parse() == elle::Status::Error)
       throw std::runtime_error("unable to parse the command line");
@@ -340,8 +343,13 @@ namespace satellite
           if (Infinit::Parser->Value("Identifier", identifier, name) == elle::Status::Error)
             throw std::runtime_error("unable to retrieve the identifier");
 
+          elle::String authority_path;
+          if (Infinit::Parser->Value("Authority",
+                                     authority_path) == elle::Status::Error)
+            throw elle::Exception("unable to retrieve the model value");
+
           // create a user.
-          if (User::Create(identifier, name) == elle::Status::Error)
+          if (User::Create(identifier, name, authority_path) == elle::Status::Error)
             throw std::runtime_error("unable to create the user");
 
           // display a message.
@@ -395,10 +403,6 @@ namespace satellite
     // delete the parser.
     delete Infinit::Parser;
     Infinit::Parser = nullptr;
-
-    // clean Infinit.
-    if (Infinit::Clean() == elle::Status::Error)
-      throw std::runtime_error("unable to clean Infinit");
 
     // clean Lune
     if (lune::Lune::Clean() == elle::Status::Error)

@@ -48,7 +48,8 @@ namespace satellite
     static
     void
     Create(elle::String const& user_id,
-           elle::String const& passport_name);
+           elle::String const& passport_name,
+           elle::String const& authority_path);
     static elle::Status         Destroy(elle::String const& user);
     static elle::Status         Information(elle::String const& user);
   };

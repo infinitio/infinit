@@ -43,9 +43,9 @@ namespace satellite
     //
     // static methods
     //
-    static elle::Status         Create();
-    static elle::Status         Destroy();
-    static elle::Status         Information();
+    static elle::Status         Create(elle::String const& authority_path);
+    static elle::Status         Destroy(elle::String const& authority_path);
+    static elle::Status         Information(elle::String const& authority_path);
   };
 
 }

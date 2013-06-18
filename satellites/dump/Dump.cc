@@ -31,10 +31,6 @@ namespace satellite
     if (elle::concurrency::Program::Setup("Dump") == elle::Status::Error)
       throw elle::Exception("unable to set up the program");
 
-    // initialize Infinit.
-    if (Infinit::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize Infinit");
-
     // allocate a new parser.
     Infinit::Parser = new elle::utility::Parser(argc, argv);
 
@@ -143,10 +139,6 @@ namespace satellite
     // delete the parser.
     delete Infinit::Parser;
     Infinit::Parser = nullptr;
-
-    // clean Infinit.
-    if (Infinit::Clean() == elle::Status::Error)
-      throw elle::Exception("unable to clean Infinit");
   }
 }
 

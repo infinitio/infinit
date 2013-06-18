@@ -3,6 +3,11 @@
 #include <elle/io/Unique.hh>
 #include <elle/utility/Parser.hh>
 #include <elle/serialize/TupleSerializer.hxx>
+#include <elle/serialize/Base64Archive.hh>
+#include <elle/serialize/insert.hh>
+#include <elle/serialize/extract.hh>
+#include <elle/io/File.hh>
+#include <elle/io/Path.hh>
 
 #include <cryptography/PublicKey.hh>
 #include <cryptography/KeyPair.hh>
@@ -11,6 +16,8 @@ using namespace infinit;
 
 #include <satellites/satellite.hh>
 #include <satellites/authority/Authority.hh>
+
+#include <infinit/Authority.hh>
 
 // XXX
 #include <cryptography/all.hh>
@@ -31,7 +38,7 @@ namespace satellite
 
   /// Create a new authority.
   elle::Status
-  Authority::Create()
+  Authority::Create(elle::String const& authority_path)
   {
     // Prompt the user for the passphrase.
     elle::String prompt = "Enter passphrase for the authority keypair: ";
@@ -43,27 +50,25 @@ namespace satellite
       throw elle::Exception("unable to read the input");
 
     // Create the authority with the generated key pair.
-    elle::Authority authority{
-      cryptography::KeyPair::generate(
-        cryptography::Cryptosystem::rsa,
-        Authority::Length)};
+    auto keypair = cryptography::KeyPair::generate(
+      cryptography::Cryptosystem::rsa,
+      Authority::Length);
+    infinit::Authority authority("root authority",
+                                 keypair.K(),
+                                 keypair.k(),
+                                 pass);
 
-    // Encrypt the authority.
-    if (authority.Encrypt(pass) == elle::Status::Error)
-      throw elle::Exception("unable to encrypt the authority");
-
-    // Store the authority.
-    authority.store(elle::io::Path(lune::Lune::Authority));
+    elle::serialize::to_file(authority_path) << authority;
 
     return elle::Status::Ok;
   }
 
   /// Destroy the existing authority.
   elle::Status
-  Authority::Destroy()
+  Authority::Destroy(elle::String const& authority_path)
   {
     // Erase the authority file.
-    elle::Authority::erase(elle::io::Path(lune::Lune::Authority));
+    elle::io::File::Erase(elle::io::Path(authority_path));
 
     return elle::Status::Ok;
   }
@@ -71,43 +76,19 @@ namespace satellite
   ///
   /// this method retrieves and displays information on the authority.
   ///
-  elle::Status          Authority::Information()
+  elle::Status          Authority::Information(
+    elle::String const& authority_path)
   {
-    elle::String        prompt;
-    elle::String        pass;
-    elle::io::Unique        unique;
-
-    // check if the authority exists.
-    if (elle::Authority::exists(elle::io::Path(lune::Lune::Authority)) == false)
-      throw elle::Exception("unable to locate the authority file");
-
-    // prompt the user for the passphrase.
-    prompt = "Enter passphrase for the authority keypair: ";
-
-    if (elle::io::Console::Input(
-          pass,
-          prompt,
-          elle::io::Console::OptionPassword) == elle::Status::Error)
-      throw elle::Exception("unable to read the input");
-
     // Load the authority.
-    elle::Authority authority{elle::io::Path(lune::Lune::Authority)};
+    infinit::Authority authority(elle::serialize::from_file(authority_path));
 
-    // decrypt the authority.
-    if (authority.Decrypt(pass) == elle::Status::Error)
-      throw elle::Exception("unable to decrypt the authority");
+    std::cout << authority << std::endl;
 
-    // dump the authority.
-    if (authority.Dump() == elle::Status::Error)
-      throw elle::Exception("unable to dump the authority");
+    elle::String archive;
+    elle::serialize::to_string<
+      elle::serialize::OutputBase64Archive>(archive) << authority.K();
 
-    // retrive the public key's unique.
-    if (authority.K().Save(unique) == elle::Status::Error)
-      throw elle::Exception("unable to save the authority's public key");
-
-    // dump the public key's unique so that it can be easily hard-coded in the
-    // infinit software sources.
-    std::cout << "[Unique] " << unique << std::endl;
+    std::cout << "[Unique] " << archive << std::endl;
 
     return elle::Status::Ok;
   }
@@ -134,10 +115,6 @@ namespace satellite
     // initialize the Lune library.
     if (lune::Lune::Initialize() == elle::Status::Error)
       throw elle::Exception("unable to initialize Lune");
-
-    // initialize Infinit.
-    if (Infinit::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize Infinit");
 
     // initialize the operation.
     operation = Authority::OperationUnknown;
@@ -185,6 +162,15 @@ namespace satellite
           elle::utility::Parser::KindNone) == elle::Status::Error)
       throw elle::Exception("unable to register the option");
 
+    // register the options.
+    if (Infinit::Parser->Register(
+          "Path",
+          'p',
+          "path",
+          "specify the path to the authority file",
+          elle::utility::Parser::KindRequired) == elle::Status::Error)
+      throw elle::Exception("unable to register the option");
+
     // parse.
     if (Infinit::Parser->Parse() == elle::Status::Error)
       throw elle::Exception("unable to parse the command line");
@@ -223,13 +209,18 @@ namespace satellite
     if (Infinit::Parser->Test("Information") == true)
       operation = Authority::OperationInformation;
 
+    elle::String authority_path;
+    if (Infinit::Parser->Value("Path",
+                               authority_path) == elle::Status::Error)
+      throw elle::Exception("unable to retrieve the model value");
+
     // trigger the operation.
     switch (operation)
       {
       case Authority::OperationCreate:
         {
           // create the authority.
-          if (Authority::Create() == elle::Status::Error)
+          if (Authority::Create(authority_path) == elle::Status::Error)
             throw elle::Exception("unable to create the authority");
 
           // display a message.
@@ -241,7 +232,7 @@ namespace satellite
       case Authority::OperationDestroy:
         {
           // destroy the authority.
-          if (Authority::Destroy() == elle::Status::Error)
+          if (Authority::Destroy(authority_path) == elle::Status::Error)
             throw elle::Exception("unable to destroy the authority");
 
           // display a message.
@@ -253,7 +244,7 @@ namespace satellite
       case Authority::OperationInformation:
         {
           // get information on the authority.
-          if (Authority::Information() == elle::Status::Error)
+          if (Authority::Information(authority_path) == elle::Status::Error)
             throw elle::Exception("unable to retrieve information on the authority");
 
           break;
@@ -271,10 +262,6 @@ namespace satellite
     // delete the parser.
     delete Infinit::Parser;
     Infinit::Parser = nullptr;
-
-    // clean Infinit.
-    if (Infinit::Clean() == elle::Status::Error)
-      throw elle::Exception("unable to clean Infinit");
 
     // clean Lune
     if (lune::Lune::Clean() == elle::Status::Error)

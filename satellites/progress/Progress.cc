@@ -204,10 +204,6 @@ namespace satellite
     if (lune::Lune::Initialize() == elle::Status::Error)
       throw elle::Exception("unable to initialize Lune");
 
-    // initialize Infinit.
-    if (Infinit::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize Infinit");
-
     // allocate a new parser.
     Infinit::Parser = new elle::utility::Parser(argc, argv);
 
@@ -289,10 +285,6 @@ namespace satellite
     // clean the Agent library.
     if (agent::Agent::Clean() == elle::Status::Error)
       throw elle::Exception("unable to clean Agent");
-
-    // clean Infinit.
-    if (Infinit::Clean() == elle::Status::Error)
-      throw elle::Exception("unable to clean Infinit");
 
     // clean Lune
     if (lune::Lune::Clean() == elle::Status::Error)

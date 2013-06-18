@@ -41,7 +41,8 @@ namespace satellite
                                        const hole::Model&,
                                        hole::Openness const& openness,
                                        horizon::Policy const& policy,
-                                       const elle::String&);
+                                       const elle::String&,
+                                       elle::String const& authority_path);
     static elle::Status         Destroy(const elle::String&,
                                         const elle::String&);
     static elle::Status         Information(const elle::String&,

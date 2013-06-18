@@ -218,10 +218,6 @@ namespace satellite
     if (lune::Lune::Initialize() == elle::Status::Error)
       throw elle::Exception("unable to initialize Lune");
 
-    // initialize Infinit.
-    if (Infinit::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize Infinit");
-
     // initialize the operation.
     operation = Access::OperationUnknown;
 
@@ -651,10 +647,6 @@ namespace satellite
     // delete the parser.
     delete Infinit::Parser;
     Infinit::Parser = nullptr;
-
-    // clean Infinit.
-    if (Infinit::Clean() == elle::Status::Error)
-      throw elle::Exception("unable to clean Infinit");
 
     // clean Lune
     if (lune::Lune::Clean() == elle::Status::Error)

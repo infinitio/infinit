@@ -7,7 +7,8 @@
 #include <etoile/nest/Nest.hh>
 #include <etoile/automaton/Access.hh>
 
-#include <hole/Authority.hh>
+#include <infinit/Authority.hh>
+
 #include <hole/Hole.hh>
 #include <hole/Openness.hh>
 #include <hole/storage/Memory.hh>
@@ -65,7 +66,8 @@ namespace satellite
                                         const hole::Model&      model,
                                         hole::Openness const& openness,
                                         horizon::Policy const& policy,
-                                        const elle::String&     administrator)
+                                        const elle::String&     administrator,
+                                        elle::String const& authority_path)
   {
     elle::String identifier(name);
 
@@ -85,7 +87,8 @@ namespace satellite
     }
 
     // Retrieve the authority.
-    elle::Authority authority(elle::io::Path{lune::Lune::Authority});
+    infinit::Authority authority(elle::serialize::from_file(authority_path));
+    std::unique_ptr<cryptography::PrivateKey> authority_k;
     {
       elle::String              prompt;
       elle::String              pass;
@@ -100,8 +103,7 @@ namespace satellite
         throw elle::Exception("unable to read the input");
 
       // decrypt the authority.
-      if (authority.Decrypt(pass) == elle::Status::Error)
-        throw elle::Exception("unable to decrypt the authority");
+      authority_k.reset(new cryptography::PrivateKey(authority.decrypt(pass)));
     }
 
     //
@@ -285,7 +287,7 @@ namespace satellite
                             std::move(group_address),
                             false,
                             1048576,
-                            authority.k());
+                            *authority_k);
       descriptor::Data data(name,
                             openness,
                             policy,
@@ -434,7 +436,7 @@ namespace satellite
         common::infinit::descriptor_path(administrator, identifier)));
 
     // validate the descriptor.
-    descriptor.validate(Infinit::authority().K());
+    descriptor.validate(common::meta::certificate().subject_K());
 
     std::cout << descriptor << std::endl;
 
@@ -463,10 +465,6 @@ namespace satellite
     // initialize the Lune library.
     if (lune::Lune::Initialize() == elle::Status::Error)
       throw elle::Exception("unable to initialize Lune");
-
-    // initialize Infinit.
-    if (Infinit::Initialize() == elle::Status::Error)
-      throw elle::Exception("unable to initialize Infinit");
 
     // initialize the operation.
     operation = Network::OperationUnknown;
@@ -541,6 +539,15 @@ namespace satellite
           elle::utility::Parser::KindRequired) == elle::Status::Error)
       throw elle::Exception("unable to register the option");
 
+    // register the options.
+    if (Infinit::Parser->Register(
+          "Authority",
+          'A',
+          "authority",
+          "specify the path to the authority file",
+          elle::utility::Parser::KindRequired) == elle::Status::Error)
+      throw elle::Exception("unable to register the option");
+
     if (Infinit::Parser->Example(
           "-c -n test -m slug -a fistouille") == elle::Status::Error)
       throw elle::Exception("unable to register the example");
@@ -609,6 +616,11 @@ namespace satellite
           if (Infinit::Parser->Value("Model", string) == elle::Status::Error)
             throw elle::Exception("unable to retrieve the model value");
 
+          elle::String authority_path;
+          if (Infinit::Parser->Value("Authority",
+                                     authority_path) == elle::Status::Error)
+            throw elle::Exception("unable to retrieve the model value");
+
           // build the model.
           if (model.Create(string) == elle::Status::Error)
             throw elle::Exception("unable to create the model");
@@ -623,7 +635,8 @@ namespace satellite
                               model,
                               hole::Openness::closed, // XXX[make an option]
                               horizon::Policy::accessible, // XXX[make an option]
-                              administrator) == elle::Status::Error)
+                              administrator,
+                              authority_path) == elle::Status::Error)
             throw elle::Exception("unable to create the network");
 
           // display a message.
@@ -689,10 +702,6 @@ namespace satellite
     // delete the parser.
     delete Infinit::Parser;
     Infinit::Parser = nullptr;
-
-    // clean Infinit.
-    if (Infinit::Clean() == elle::Status::Error)
-      throw elle::Exception("unable to clean Infinit");
 
     // clean Lune
     if (lune::Lune::Clean() == elle::Status::Error)
