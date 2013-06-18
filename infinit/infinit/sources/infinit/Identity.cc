@@ -5,6 +5,7 @@
 #include <cryptography/KeyPair.hh>
 #include <cryptography/Code.hh>
 #include <cryptography/SecretKey.hh>
+#include <cryptography/Exception.hh>
 
 ELLE_LOG_COMPONENT("infinit.Identity");
 
@@ -21,12 +22,14 @@ namespace infinit
   | Construction |
   `-------------*/
 
-  Identity::Identity(elle::String identifier,
-                     elle::String name,
+  Identity::Identity(cryptography::PublicKey issuer_K,
+                     elle::String identifier,
+                     elle::String description,
                      cryptography::Code keypair,
                      cryptography::Signature signature):
+    _issuer_K(std::move(issuer_K)),
     _identifier(std::move(identifier)),
-    _name(std::move(name)),
+    _description(std::move(description)),
     _keypair(std::move(keypair)),
     _signature(std::move(signature))
   {
@@ -34,8 +37,9 @@ namespace infinit
 
   Identity::Identity(Identity const& other):
     elle::serialize::DynamicFormat<Identity>(other),
+    _issuer_K(other._issuer_K),
     _identifier(other._identifier),
-    _name(other._name),
+    _description(other._description),
     _keypair(other._keypair),
     _signature(other._signature)
   {
@@ -43,15 +47,16 @@ namespace infinit
 
   Identity::Identity(Identity&& other):
     elle::serialize::DynamicFormat<Identity>(std::move(other)),
+    _issuer_K(std::move(other._issuer_K)),
     _identifier(std::move(other._identifier)),
-    _name(std::move(other._name)),
+    _description(std::move(other._description)),
     _keypair(std::move(other._keypair)),
     _signature(std::move(other._signature))
   {
   }
 
   ELLE_SERIALIZE_CONSTRUCT_DEFINE(Identity,
-                                  _keypair, _signature)
+                                  _issuer_K, _keypair, _signature)
   {
   }
 
@@ -67,7 +72,19 @@ namespace infinit
     cryptography::SecretKey key(Identity::Constants::cipher_algorithm,
                                 passphrase);
 
-    return (key.decrypt<cryptography::KeyPair>(this->_keypair));
+    try
+    {
+      cryptography::KeyPair keypair =
+        key.decrypt<cryptography::KeyPair>(this->_keypair);
+
+      return (keypair);
+    }
+    catch (cryptography::Exception const& e)
+    {
+      throw Exception(elle::sprintf("unable to decrypt the identity: %s", e));
+    }
+
+    elle::unreachable();
   }
 
   /*----------.
@@ -79,7 +96,7 @@ namespace infinit
   {
     stream << "("
            << this->_identifier << ", "
-           << this->_name << ", "
+           << this->_description << ", "
            << this->_keypair
            << ")";
   }
@@ -91,14 +108,29 @@ namespace infinit
     `----------*/
 
     cryptography::Digest
-    hash(elle::String const& identifier,
-         elle::String const& name,
+    hash(cryptography::PublicKey const& issuer_K,
+         elle::String const& identifier,
+         elle::String const& description,
          cryptography::Code const& keypair)
     {
       return (cryptography::oneway::hash(
                 elle::serialize::make_tuple(
+                  issuer_K,
                   identifier,
-                  name,
+                  description,
+                  keypair),
+                cryptography::KeyPair::oneway_algorithm));
+    }
+
+    cryptography::Digest
+    hash_0(elle::String const& identifier,
+           elle::String const& description,
+           cryptography::Code const& keypair)
+    {
+      return (cryptography::oneway::hash(
+                elle::serialize::make_tuple(
+                  identifier,
+                  description,
                   keypair),
                 cryptography::KeyPair::oneway_algorithm));
     }

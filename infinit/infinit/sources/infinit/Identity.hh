@@ -30,11 +30,6 @@ namespace infinit
     public elle::Printable,
     public elle::serialize::DynamicFormat<Identity>
   {
-    // XXX to remove once the code has been factored: there should not
-    //     be a default length.
-  public:
-    static elle::Natural32 const keypair_length = 2048;
-
     /*----------.
     | Constants |
     `----------*/
@@ -50,8 +45,9 @@ namespace infinit
   public:
     /// Construct an identity based on the given elements.
     explicit
-    Identity(elle::String identifier,
-             elle::String name,
+    Identity(cryptography::PublicKey issuer_K,
+             elle::String identifier,
+             elle::String description,
              cryptography::Code keypair,
              cryptography::Signature signature);
     /// Construct an identity based on the passed elements which will
@@ -61,8 +57,9 @@ namespace infinit
     /// sign(data) method which returns a signature.
     template <typename T>
     explicit
-    Identity(elle::String identifier,
-             elle::String name,
+    Identity(cryptography::PublicKey issuer_K,
+             elle::String identifier,
+             elle::String description,
              cryptography::KeyPair const& pair,
              elle::String const& passphrase,
              T const& authority);
@@ -74,8 +71,9 @@ namespace infinit
     /// the given key pair.
     template <typename T>
     explicit
-    Identity(elle::String identifier,
-             elle::String name,
+    Identity(cryptography::PublicKey issuer_K,
+             elle::String identifier,
+             elle::String description,
              cryptography::KeyPair const& pair,
              cryptography::SecretKey const& key,
              T const& authority);
@@ -83,8 +81,9 @@ namespace infinit
     /// authority.
     template <typename T>
     explicit
-    Identity(elle::String identifier,
-             elle::String name,
+    Identity(cryptography::PublicKey issuer_K,
+             elle::String identifier,
+             elle::String description,
              cryptography::Code keypair,
              T const& authority);
 
@@ -126,11 +125,15 @@ namespace infinit
     | Attributes |
     `-----------*/
   private:
+    /// The public key of the issuing authority.
+    ELLE_ATTRIBUTE_R(cryptography::PublicKey, issuer_K);
     /// The identifier uniquely identifying the user within a
     /// given authority's scope.
     ELLE_ATTRIBUTE_R(elle::String, identifier);
-    /// A human-readable name.
-    ELLE_ATTRIBUTE_R(elle::String, name);
+    /// A human-readable description of the user. This string could include
+    /// the real name, email, postal address, country or whatever information
+    /// that the user wishes to share with the other users of a network.
+    ELLE_ATTRIBUTE_R(elle::String, description);
     /// The user's key pair in its encrypted form.
     ELLE_ATTRIBUTE(cryptography::Code, keypair);
     /// A signature issued by the authority certifying the identity's
@@ -148,9 +151,15 @@ namespace infinit
     ///
     /// These are the elements which must be signed by the authority.
     cryptography::Digest
-    hash(elle::String const& identifier,
-         elle::String const& name,
+    hash(cryptography::PublicKey const& issuer_K,
+         elle::String const& identifier,
+         elle::String const& description,
          cryptography::Code const& keypair);
+    /// Compatibility with format 0.
+    cryptography::Digest
+    hash_0(elle::String const& identifier,
+           elle::String const& description,
+           cryptography::Code const& keypair);
   }
 }
 
