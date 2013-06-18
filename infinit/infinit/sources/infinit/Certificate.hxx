@@ -13,8 +13,8 @@ namespace infinit
   Certificate::Certificate(cryptography::PublicKey issuer_K,
                            cryptography::PublicKey subject_K,
                            certificate::Operations operations,
-                           std::chrono::system_clock::time_point valid_from,
-                           std::chrono::system_clock::time_point valid_until,
+                           infinit::certificate::time_point valid_from,
+                           infinit::certificate::time_point valid_until,
                            T const& authority):
     Certificate(std::move(issuer_K),
                 std::move(subject_K),

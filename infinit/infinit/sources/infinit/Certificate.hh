@@ -33,6 +33,11 @@ namespace infinit
     /// e.g sign/certify.
     typedef elle::Natural16 Operations;
 
+    /// On g++4.7, overload is missing for nanoseconds so operator += doesn't
+    /// work with std::chrono::nanoseconds.
+    typedef std::chrono::time_point<std::chrono::system_clock,
+                                    std::chrono::nanoseconds> time_point;
+
     /*-------.
     | Values |
     `-------*/
@@ -74,8 +79,8 @@ namespace infinit
     Certificate(cryptography::PublicKey issuer_K,
                 cryptography::PublicKey subject_K,
                 certificate::Operations operations,
-                std::chrono::system_clock::time_point valid_from,
-                std::chrono::system_clock::time_point valid_until,
+                infinit::certificate::time_point valid_from,
+                infinit::certificate::time_point valid_until,
                 cryptography::Signature signature);
     /// A helper for generating the signature automatically.
     ///
@@ -86,8 +91,8 @@ namespace infinit
     Certificate(cryptography::PublicKey issuer_K,
                 cryptography::PublicKey subject_K,
                 certificate::Operations operations,
-                std::chrono::system_clock::time_point valid_from,
-                std::chrono::system_clock::time_point valid_until,
+                infinit::certificate::time_point valid_from,
+                infinit::certificate::time_point valid_until,
                 T const& authority);
     Certificate(Certificate const& other);
     Certificate(Certificate&& other);
@@ -133,9 +138,9 @@ namespace infinit
     /// perform.
     ELLE_ATTRIBUTE_R(certificate::Operations, operations);
     /// The date from which the certificate is valid.
-    ELLE_ATTRIBUTE_R(std::chrono::system_clock::time_point, valid_from);
+    ELLE_ATTRIBUTE_R(infinit::certificate::time_point, valid_from);
     /// The date after which the certificate can be considered invalid.
-    ELLE_ATTRIBUTE_R(std::chrono::system_clock::time_point, valid_until);
+    ELLE_ATTRIBUTE_R(infinit::certificate::time_point, valid_until);
     /// The signature issued by the issuer authority.
     ELLE_ATTRIBUTE(cryptography::Signature, signature);
   };
@@ -170,8 +175,8 @@ namespace infinit
     hash(cryptography::PublicKey const& issuer_K,
          cryptography::PublicKey const& subject_K,
          certificate::Operations const& operations,
-         std::chrono::system_clock::time_point const& valid_from,
-         std::chrono::system_clock::time_point const& valid_until);
+         infinit::certificate::time_point const& valid_from,
+         infinit::certificate::time_point const& valid_until);
   }
 }
 

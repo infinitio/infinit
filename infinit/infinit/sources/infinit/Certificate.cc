@@ -32,8 +32,8 @@ namespace infinit
   Certificate::Certificate(cryptography::PublicKey issuer_K,
                            cryptography::PublicKey subject_K,
                            certificate::Operations operations,
-                           std::chrono::system_clock::time_point valid_from,
-                           std::chrono::system_clock::time_point valid_until,
+                           infinit::certificate::time_point valid_from,
+                           infinit::certificate::time_point valid_until,
                            cryptography::Signature signature):
     _issuer_K(std::move(issuer_K)),
     _subject_K(std::move(subject_K)),
@@ -81,7 +81,7 @@ namespace infinit
     ELLE_TRACE_METHOD(pool);
 
     // XXX
-    throw Excpetion("not implemented yet");
+    throw elle::Exception("not implemented yet");
   }
 
   /*----------.
@@ -181,8 +181,8 @@ namespace infinit
     hash(cryptography::PublicKey const& issuer_K,
          cryptography::PublicKey const& subject_K,
          certificate::Operations const& operations,
-         std::chrono::system_clock::time_point const& valid_from,
-         std::chrono::system_clock::time_point const& valid_until)
+         infinit::certificate::time_point const& valid_from,
+         infinit::certificate::time_point const& valid_until)
     {
       elle::Natural64 _valid_from =
         static_cast<elle::Natural64>(
