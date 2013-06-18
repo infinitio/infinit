@@ -167,7 +167,7 @@ BOOST_PYTHON_MODULE(_crust)
     .add_property("history", py::make_function(&Network::history, by_value()))
     .add_property("extent", py::make_function(&Network::extent, by_value()))
 
-    .add_property("name", py::make_function(&Network::name, by_value()))
+    .add_property("description", py::make_function(&Network::description, by_value()))
     .add_property("openness", py::make_function(&Network::openness, by_value()))
     .add_property("policy", py::make_function(&Network::policy, by_value()))
     .add_property("version", py::make_function(&Network::version, by_value()))

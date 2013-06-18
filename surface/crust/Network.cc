@@ -216,14 +216,14 @@ create_root(nucleus::proton::Network const& network,
 /*--------.
 | Network |
 `--------*/
-Network::Network(std::string const& name,
+Network::Network(std::string const& description,
                  cryptography::KeyPair const& keypair,
                  hole::Model const& model,
                  hole::Openness const& openness,
                  horizon::Policy const& policy,
                  Authority const& authority)
 {
-  ELLE_TRACE_METHOD(name, model, openness, policy);
+  ELLE_TRACE_METHOD(description, model, openness, policy);
 
   ID uid(64);
 
@@ -274,7 +274,7 @@ Network::Network(std::string const& name,
                                  1048576,
                                  authority);
 
-    auto data = descriptor::Data(name,
+    auto data = descriptor::Data(description,
                                  openness,
                                  policy,
                                  std::move(blocks),
@@ -288,14 +288,14 @@ Network::Network(std::string const& name,
   }
 }
 
-Network::Network(std::string const& name,
+Network::Network(std::string const& description,
                  boost::filesystem::path const& identity_path,
                  std::string const& passphrase,
                  const hole::Model& model,
                  hole::Openness const& openness,
                  horizon::Policy const& policy,
                  Authority const& authority):
-  Network(name,
+  Network(description,
           infinit::Identity(
             elle::serialize::from_file(identity_path.string())).decrypt(passphrase),
           model,

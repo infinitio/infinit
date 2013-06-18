@@ -42,7 +42,7 @@ static
 elle::io::Unique
 generate_network_descriptor(elle::String const& id,
                             elle::String const& identity_,
-                            elle::String const& name,
+                            elle::String const& description,
                             elle::String const& model_name,
                             elle::io::Unique const& directory_address_,
                             elle::io::Unique const& group_address_,
@@ -81,7 +81,7 @@ generate_network_descriptor(elle::String const& id,
                         model,
                         directory_address,
                         group_address,
-                        name,
+                        description,
                         openness,
                         policy,
                         false,
@@ -109,7 +109,7 @@ metalib_generate_network_descriptor(PyObject* self, PyObject* args)
   (void) self;
   char const* network_id = nullptr,
             * user_identity = nullptr,
-            * network_name = nullptr,
+            * network_description = nullptr,
             * network_model = nullptr,
             * directory_address = nullptr,
             * group_address = nullptr,
@@ -120,7 +120,7 @@ metalib_generate_network_descriptor(PyObject* self, PyObject* args)
   if (!PyArg_ParseTuple(args, "ssssssss:generate_network_descriptor",
                         &network_id,
                         &user_identity,
-                        &network_name,
+                        &network_description,
                         &network_model,
                         &directory_address,
                         &group_address,
@@ -136,7 +136,7 @@ metalib_generate_network_descriptor(PyObject* self, PyObject* args)
       elle::io::Unique descriptor = generate_network_descriptor(
           network_id,
           user_identity,
-          network_name,
+          network_description,
           network_model,
           directory_address,
           group_address,
@@ -325,7 +325,7 @@ metalib_deserialize_network_descriptor(PyObject* self,
       ret = PyDict_New();
       PyDict_SetItemString(ret, "id", PyString_FromString(descriptor.meta().identifier().c_str()));
       PyDict_SetItemString(ret, "adminK", PyString_FromString("bite")); //descriptor.meta().administrator_K().c_str()));
-      PyDict_SetItemString(ret, "name", PyString_FromString(descriptor.data().name().c_str()));
+      PyDict_SetItemString(ret, "description", PyString_FromString(descriptor.data().description().c_str()));
 
       Py_INCREF(ret);
     }

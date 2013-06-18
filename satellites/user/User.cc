@@ -8,6 +8,8 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
+#include <infinit/Certificate.hh>
+
 #include <common/common.hh>
 
 #include <etoile/Etoile.hh>
@@ -74,10 +76,12 @@ namespace satellite
           elle::io::Console::OptionPassword) == elle::Status::Error)
       throw elle::Exception("unable to read the input");
 
-    infinit::Identity identity(identifier, name,
+    infinit::Identity identity(authority.K(),
+                               identifier,
+                               name,
                                cryptography::KeyPair::generate(
                                  cryptography::Cryptosystem::rsa,
-                                 infinit::Identity::keypair_length),
+                                 2048), // XXX make an option for that
                                pass,
                                authority_k);
 

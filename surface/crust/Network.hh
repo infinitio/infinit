@@ -67,7 +67,7 @@ public:
   `-------------*/
   /// Main constructor.
   explicit
-  Network(std::string const& name,
+  Network(std::string const& description,
           cryptography::KeyPair const& keypair,
           const hole::Model& model,
           hole::Openness const& openness,
@@ -76,7 +76,7 @@ public:
 
   /// Constructor with identity_path and passphrase.
   explicit
-  Network(std::string const& name,
+  Network(std::string const& description,
           boost::filesystem::path const& identity_path,
           std::string const& identity_passphrase,
           const hole::Model& model,
@@ -211,7 +211,7 @@ public:
   WRAP_META_DESCRIPTOR(elle::Boolean, history);
   WRAP_META_DESCRIPTOR(elle::Natural32, extent);
 
-  WRAP_DATA_DESCRIPTOR(elle::String, name);
+  WRAP_DATA_DESCRIPTOR(elle::String, description);
   WRAP_DATA_DESCRIPTOR(hole::Openness, openness);
   WRAP_DATA_DESCRIPTOR(horizon::Policy, policy);
   WRAP_DATA_DESCRIPTOR(elle::Version, version);

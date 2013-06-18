@@ -42,8 +42,13 @@ static infinit::Identity create_identity(elle::String const& id,
 
   cryptography::KeyPair keypair =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    infinit::Identity::keypair_length);
-  infinit::Identity identity(id, login, keypair, password, authority_k);
+                                    2048); // XXX make an option for that
+  infinit::Identity identity(authority.K(),
+                             id,
+                             login,
+                             keypair,
+                             password,
+                             authority_k);
 
   return identity;
 }
@@ -94,7 +99,6 @@ metalib_generate_identity(PyObject*,
     {
       // WARNING: restore state before setting exception !
       PyEval_RestoreThread(_save);
-      //show();
       PyErr_SetString(metalib_MetaError, elle::exception_string().c_str());
     }
 
