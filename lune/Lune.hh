@@ -36,7 +36,6 @@ namespace lune
     static elle::io::Pattern User;
     static elle::io::Pattern Dictionary;
     static elle::io::Pattern Passport;
-    static elle::io::Pattern Configuration;
     static elle::io::Pattern Networks;
     static elle::io::Pattern Network;
     static elle::io::Pattern Phrase;
