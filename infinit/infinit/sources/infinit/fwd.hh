@@ -7,6 +7,7 @@ namespace infinit
   class Descriptor;
   class Certificate;
   class Exception;
+  class Identifier;
   class Identity;
 }
 
