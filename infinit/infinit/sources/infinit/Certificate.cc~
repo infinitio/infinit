@@ -80,7 +80,12 @@ namespace infinit
   {
     ELLE_TRACE_METHOD(pool);
 
+    // XXX
+<<<<<<< HEAD
+    throw elle::Exception("not implemented yet");
+=======
     throw Exception("not implemented yet");
+>>>>>>> infinit.Certificate: Fix typo in Exception.
   }
 
   /*----------.
