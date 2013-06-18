@@ -10,6 +10,4 @@ namespace infinit
   class Identity;
 }
 
-# include <infinit/infinit.hh>
-
 #endif

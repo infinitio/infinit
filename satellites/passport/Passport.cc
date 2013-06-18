@@ -5,6 +5,7 @@
 
 #include <infinit/Identity.hh>
 #include <infinit/Authority.hh>
+#include <infinit/Certificate.hh>
 
 #include <elle/io/Console.hh>
 #include <elle/io/Path.hh>

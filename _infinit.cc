@@ -15,6 +15,8 @@
 #include <etoile/Etoile.hh>
 #include <etoile/depot/Depot.hh>
 
+#include <infinit/Certificate.hh>
+
 #include <hole/Hole.hh>
 #include <hole/storage/Directory.hh>
 #ifdef INFINIT_HORIZON

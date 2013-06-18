@@ -8,6 +8,7 @@
 #include <common/common.hh>
 
 #include <infinit/Identity.hh>
+#include <infinit/Certificate.hh>
 
 #include <Infinit.hh>
 

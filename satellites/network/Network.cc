@@ -8,6 +8,7 @@
 #include <etoile/automaton/Access.hh>
 
 #include <infinit/Authority.hh>
+#include <infinit/Certificate.hh>
 
 #include <hole/Hole.hh>
 #include <hole/Openness.hh>
