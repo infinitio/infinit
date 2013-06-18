@@ -179,6 +179,7 @@ namespace infinit
     public:
       Meta() {} // XXX[to remove when the new serialization will be fixed]
       /// Construct a meta section based on the given elements.
+      explicit
       Meta(elle::String identifier,
            cryptography::PublicKey administrator_K,
            hole::Model model,
@@ -194,6 +195,7 @@ namespace infinit
       /// Note that, through this helper, the _authority_ must provide a
       /// sign(data) method which returns a signature.
       template <typename T>
+      explicit
       Meta(elle::String identifier,
            cryptography::PublicKey administrator_K,
            hole::Model model,
@@ -434,6 +436,7 @@ namespace infinit
     public:
       Data() {} // XXX[to remove when the new serialization will be fixed]
       /// Construct a data section from the given elements.
+      explicit
       Data(elle::String name,
            hole::Openness openness,
            horizon::Policy policy,
@@ -466,6 +469,7 @@ namespace infinit
       /// Note that, through this helper, the administrator must provide a
       /// sign(data) method.
       template <typename T>
+      explicit
       Data(elle::String name,
            hole::Openness openness,
            horizon::Policy policy,
