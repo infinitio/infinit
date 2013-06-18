@@ -1,5 +1,7 @@
-#ifndef  COMMON_COMMON_HH
+#ifndef COMMON_COMMON_HH
 # define COMMON_COMMON_HH
+
+# include <infinit/fwd.hh>
 
 # include <stdint.h>
 # include <string>
@@ -68,7 +70,6 @@ namespace common
     /// The path to the identity file.
     std::string
     identity_path(std::string const& user_id);
-
     // XXX temporary: use a token file and make Infinit classes
     //                instantiable instead.
     std::string
@@ -131,6 +132,9 @@ namespace common
     /// INFINIT_TOKEN_PATH are set, it returns an empty string.
     std::string
     token();
+    /// The certificate corresponding to the meta server.
+    ::infinit::Certificate const&
+    certificate();
   }
 
   namespace trophonius

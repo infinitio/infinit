@@ -1,7 +1,5 @@
 #include <elle/utility/Time.hh>
 
-#include <cryptography/PublicKey.hh>
-
 #include <Infinit.hh>
 #include <version.hh>
 
@@ -31,28 +29,6 @@ const elle::String              Infinit::Copyright(
                                   " "
                                   "Copyright (c) 2013 "
                                   "infinit.io All rights reserved.");
-
-// XXX[temporary: for cryptography]
-using namespace infinit;
-
-static
-elle::Authority
-_authority()
-{
-  cryptography::PublicKey K;
-
-  assert(!Infinit::Key.empty());
-  if (K.Restore(Infinit::Key) == elle::Status::Error)
-    throw elle::Exception("unable to restore the authority's public key");
-  return elle::Authority(K);
-}
-
-elle::Authority
-Infinit::authority()
-{
-  static elle::Authority authority(_authority());
-  return authority;
-}
 
 ///
 /// this variable contains the program's parser.

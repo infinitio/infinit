@@ -5,7 +5,6 @@
 #include <elle/types.hh>
 #include <elle/utility/fwd.hh>
 
-#include <hole/Authority.hh>
 class Infinit
 {
 public:
@@ -19,7 +18,6 @@ public:
   //
   // globals
   //
-  static elle::Authority authority();
   static elle::utility::Parser*         Parser;
 
   static elle::String                   User;

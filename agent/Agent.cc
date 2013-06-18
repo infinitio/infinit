@@ -13,6 +13,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include <fstream>
+
 namespace agent
 {
 
@@ -36,7 +38,7 @@ namespace agent
 
     infinit::Identity identity(elle::serialize::from_file(path));
 
-    if (identity.validate(Infinit::authority().K()) == false)
+    if (identity.validate(common::meta::certificate().subject_K()) == false)
       throw infinit::Exception(
         elle::sprintf("the identity '%s' is invalid", identity));
 
