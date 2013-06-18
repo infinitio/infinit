@@ -57,6 +57,7 @@ namespace nucleus
     /// this method verifies that the signature has been issued by the
     /// oracle.
     ///
+    /* XXX
     elle::Status
     Stamp::Validate(elle::Authority const& authority)
     {
@@ -71,6 +72,7 @@ namespace nucleus
 
       return elle::Status::Ok;
     }
+    */
 
 //
 // ---------- operators -------------------------------------------------------

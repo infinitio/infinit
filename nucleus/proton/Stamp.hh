@@ -8,8 +8,6 @@
 # include <cryptography/fwd.hh>
 # include <cryptography/Signature.hh>
 
-# include <hole/Authority.hh>
-
 # include <nucleus/proton/Location.hh>
 
 // XXX[temporary: for cryptography]
@@ -54,8 +52,11 @@ namespace nucleus
                                const Location&);
 
       elle::Status      Seal(cryptography::PrivateKey const&);
+
+      /* XXX
       elle::Status
       Validate(elle::Authority const& authority);
+      */
 
       //
       // operators
