@@ -42,14 +42,12 @@ namespace etoile
     ///
     elle::Status        Shrub::Initialize()
     {
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
+      // XXX to make configurable.
+      elle::Natural32 frequency = 120000;
 
-      reactor::Scheduler::scheduler()->every
-        (&Shrub::Sweeper, "Shrub sweeper",
-         boost::posix_time::milliseconds
-         (Infinit::Configuration.etoile.shrub.frequency));
+      reactor::Scheduler::scheduler()->every(
+        &Shrub::Sweeper, "Shrub sweeper",
+        boost::posix_time::milliseconds(frequency));
 
       return elle::Status::Ok;
     }
@@ -57,9 +55,6 @@ namespace etoile
     void
     Shrub::clear()
     {
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return;
-
       // delete the shrub content, if present.
       if (Shrub::Riffles != nullptr)
         {
@@ -83,10 +78,6 @@ namespace etoile
     ///
     elle::Status        Shrub::Clean()
     {
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
-
       // delete the shrub content, if present.
       if (Shrub::Riffles != nullptr)
         {
@@ -113,6 +104,9 @@ namespace etoile
     ///
     elle::Status        Shrub::Allocate(const elle::Natural32   size)
     {
+      // XXX to make configurable.
+      elle::Natural32 capacity = 1024;
+
       elle::Natural32   i;
 
       // release as many riffle as requested and possible.
@@ -129,8 +123,7 @@ namespace etoile
           Riffle*                       riffle;
 
           // stop if there are enough available slots to proceed.
-          if ((Infinit::Configuration.etoile.shrub.capacity -
-               Shrub::Queue.container.size()) >= size)
+          if ((capacity - Shrub::Queue.container.size()) >= size)
             break;
 
           // stop if the shrub is empty.
@@ -191,17 +184,15 @@ namespace etoile
     elle::Status        Shrub::Resolve(const path::Route&       route,
                                        path::Venue&             venue)
     {
-      Riffle*                   riffle;
-      path::Route::Scoutor      scoutor;
+      // XXX to make configurable.
       elle::utility::Duration            lifespan(
         elle::utility::Duration::UnitSeconds,
-        Infinit::Configuration.etoile.shrub.lifespan);
+        300);
+
+      Riffle*                   riffle;
+      path::Route::Scoutor      scoutor;
       elle::utility::Time                current;
       elle::utility::Time                threshold;
-
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
 
       // make sure this root riffle is present.
       if (Shrub::Riffles == nullptr)
@@ -290,10 +281,6 @@ namespace etoile
       path::Route::Scoutor      r;
       path::Venue::Scoutor      v;
 
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
-
       //
       // first, try to resolve the given route in order to know how
       // many slabs are unresolved and will thus be added to the shrub.
@@ -368,10 +355,6 @@ namespace etoile
     {
       Riffle*                   riffle;
       path::Route::Scoutor      scoutor;
-
-      // make sure the shrub has been activated, return otherwise.
-      if (Infinit::Configuration.etoile.shrub.status == false)
-        return elle::Status::Ok;
 
       // make sure the root riffle is present.
       if (Shrub::Riffles == nullptr)
@@ -474,14 +457,13 @@ namespace etoile
     ///
     elle::Status        Shrub::Sweeper()
     {
-      elle::utility::Duration    lifespan(elle::utility::Duration::UnitSeconds,
-                                          Infinit::Configuration.etoile.shrub.lifespan);
+      // XXX to make configurable.
+      elle::utility::Duration            lifespan(
+        elle::utility::Duration::UnitSeconds,
+        300);
+
       elle::utility::Time        current;
       elle::utility::Time        threshold;
-
-      // debug.
-      if (Infinit::Configuration.etoile.debug == true)
-        printf("[etoile] shrub::Shrub::Sweeper()\n");
 
       // retrieve the current timestamp.
       if (current.Current() == elle::Status::Error)

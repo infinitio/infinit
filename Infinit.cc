@@ -55,11 +55,6 @@ Infinit::authority()
 }
 
 ///
-/// this variable contains the system configuration
-///
-lune::Configuration             Infinit::Configuration;
-
-///
 /// this variable contains the program's parser.
 ///
 elle::utility::Parser*                   Infinit::Parser;
@@ -78,33 +73,3 @@ elle::String                    Infinit::Network;
 /// this variable holds the mountpoint.
 ///
 elle::String                    Infinit::Mountpoint;
-
-//
-// ---------- methods ---------------------------------------------------------
-//
-
-///
-/// this method initializes Infinit.
-///
-elle::Status            Infinit::Initialize()
-{
-  // if the configuration file exists...
-  if (lune::Configuration::exists(Infinit::User) == true)
-    Infinit::Configuration.load(Infinit::User);
-
-  // pull the parameters.
-  if (Infinit::Configuration.Pull() == elle::Status::Error)
-    throw elle::Exception("unable to pull the configuration parameters");
-
-  return elle::Status::Ok;
-}
-
-///
-/// this method cleans Infinit.
-///
-elle::Status            Infinit::Clean()
-{
-  // nothing to do.
-
-  return elle::Status::Ok;
-}

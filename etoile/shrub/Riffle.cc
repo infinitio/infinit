@@ -74,6 +74,9 @@ namespace etoile
     elle::Status        Riffle::Update(const path::Slab&        slab,
                                        const nucleus::proton::Location& location)
     {
+      // XXX to make configurable.
+      elle::Natural32 capacity = 1024;
+
       auto it = this->children.find(slab);
 
       // try to look up the element in the current riffle.
@@ -82,8 +85,7 @@ namespace etoile
           // check that available slots remain i.e it is possible that
           // the whole shrub's capacity is not large enough to hold
           // all the the route's slabs.
-          if (Shrub::Queue.container.size() >=
-              Infinit::Configuration.etoile.shrub.capacity)
+          if (Shrub::Queue.container.size() >= capacity)
             return elle::Status::Ok;
 
           // allocate a new riffle.

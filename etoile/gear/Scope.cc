@@ -946,10 +946,6 @@ namespace etoile
     template <typename T>
     elle::Status        Scope::Refresh()
     {
-      // debug.
-      if (Infinit::Configuration.etoile.debug == true)
-        printf("[etoile] gear::Scope::Refresh()\n");
-
       // lock the current scope in order to make sure it does not get
       // relinquished or simply modified.
       //
@@ -1009,10 +1005,6 @@ namespace etoile
     template <typename T>
     elle::Status        Scope::Disclose()
     {
-      // debug.
-      if (Infinit::Configuration.etoile.debug == true)
-        printf("[etoile] gear::Scope::Disclose()\n");
-
       reactor::Lock lock(mutex.write());
       {
         Scope*          scope = nullptr;
@@ -1117,10 +1109,6 @@ namespace etoile
     ///
     elle::Status        Scope::Supervisor()
     {
-      // debug.
-      if (Infinit::Configuration.etoile.debug == true)
-        printf("[etoile] gear::Scope::Supervisor()\n");
-
       // XXX
       return elle::Status::Ok;
 

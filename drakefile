@@ -270,8 +270,6 @@ def configure(cxx_toolkit = None,
 
   # Lune
   lune_sources = drake.nodes(
-    'lune/Configuration.cc',
-    'lune/Configuration.hh',
     'lune/Dictionary.cc',
     'lune/Dictionary.hh',
     'lune/Dictionary.hxx',

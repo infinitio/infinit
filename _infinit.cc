@@ -133,10 +133,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   if (lune::Lune::Initialize() == elle::Status::Error)
     throw elle::Exception("unable to initialize Lune");
 
-  // initialize Infinit.
-  if (Infinit::Initialize() == elle::Status::Error)
-    throw elle::Exception("unable to initialize Infinit");
-
   // initialize the Agent library.
   if (agent::Agent::Initialize() == elle::Status::Error)
     throw elle::Exception("unable to initialize Agent");
@@ -220,10 +216,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
     throw elle::Exception("unable to clean Agent");
 
   hole.reset(nullptr);
-
-  // clean Infinit.
-  if (Infinit::Clean() == elle::Status::Error)
-    throw elle::Exception("unable to clean Infinit");
 
   // clean Lune
   if (lune::Lune::Clean() == elle::Status::Error)

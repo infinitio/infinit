@@ -107,16 +107,15 @@ namespace infinit
           // FIXME: Restore sets at some point. Maybe.
           // for (elle::network::Locus const& locus: set.loci)
           //   members.push_back(locus);
-          int port = Infinit::Configuration["hole"].Get("slug.port", 0);
-          int timeout_int =
-            Infinit::Configuration["hole"].Get("slug.timeout", 5000);
+          // XXX: Restore the possibility to choose the port on which
+          //      to listen to.
+          int port = 0;
+          // XXX: Restore the possibility to choose the timeout.
+          int timeout_int = 5000;
           reactor::Duration timeout =
             boost::posix_time::milliseconds(timeout_int);
-          std::string protocol_str =
-            Infinit::Configuration["hole"].Get<std::string>("protocol", "udt");
-          protocol_str =
-            Infinit::Configuration["hole"].Get<std::string>("slug.protocol",
-                                                            protocol_str);
+          // XXX: Restore the possibility to choose the protocol.
+          std::string protocol_str = "udt";
           reactor::network::Protocol protocol;
           if (protocol_str == "tcp")
             protocol = reactor::network::Protocol::tcp;
