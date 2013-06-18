@@ -18,22 +18,21 @@ namespace elle
 {
   namespace metrics
   {
-
-    //XXX lake of genericity here.
-    enum class Key: int
+    enum class Key
     {
       author,
       count,
       height,
+      input,
+      panel,
       session,
       size,
       status,
       step,
       tag,
+      timestamp,
       value,
       width,
-      panel,
-      input,
     };
 
     std::ostream&

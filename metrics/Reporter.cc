@@ -43,7 +43,21 @@ namespace elle
     operator <<(std::ostream& out,
                 Key k)
     {
-      return out << (int) k;
+      static std::map<Key, std::string> const map{
+        {Key::author,     "author"},
+        {Key::count,      "count"},
+        {Key::height,     "height"},
+        {Key::input,      "input"},
+        {Key::panel,      "panel"},
+        {Key::session,    "session"},
+        {Key::size,       "size"},
+        {Key::status,     "status"},
+        {Key::step,       "step"},
+        {Key::tag,        "tag"},
+        {Key::timestamp,  "timestamp"},
+        {Key::value,      "value"},
+        {Key::width,      "width"},};
+      return out << map.at(k);
     }
     //- Service ----------------------------------------------------------------
     Reporter::Service::Service(std::string const& host,
