@@ -1,158 +1,94 @@
-#include <elle/log.hh>
-#include <elle/serialize/TupleSerializer.hxx>
-#include <elle/io/File.hh>
+#include <infinit/Authority.hh>
 
-#include <cryptography/PublicKey.hh>
 #include <cryptography/PrivateKey.hh>
-#include <cryptography/KeyPair.hh>
-#include <cryptography/Code.hh>
 #include <cryptography/SecretKey.hh>
 
-#include <hole/Authority.hh>
-#include <hole/Exception.hh>
+#include <elle/log.hh>
 
-ELLE_LOG_COMPONENT("infinit.lune.Authority")
+ELLE_LOG_COMPONENT("infinit.Authority")
 
-namespace elle
+namespace infinit
 {
+  /*----------.
+  | Constants |
+  `----------*/
+
+  cryptography::cipher::Algorithm const
+  Authority::Constants::cipher_algorithm =
+    cryptography::cipher::Algorithm::aes256;
+
   /*-------------.
   | Construction |
   `-------------*/
 
-  Authority::Authority(Authority const& from):
-    type(from.type),
-    _K(from._K),
-    _k(nullptr),
-    _code(nullptr)
+  Authority::Authority(elle::String description,
+                       cryptography::PublicKey K,
+                       cryptography::PrivateKey k,
+                       elle::String const& passphrase):
+    Authority(std::move(description),
+              std::move(K),
+              std::move(k),
+              cryptography::SecretKey(Authority::Constants::cipher_algorithm,
+                                      passphrase))
   {
-    if (from._k)
-      this->_k = new cryptography::PrivateKey(*from._k);
-    if (from._code)
-      this->_code = new cryptography::Code(*from._code);
   }
 
-  Authority::Authority(cryptography::KeyPair const& keypair):
-    type(Authority::TypePair),
-    _K(keypair.K()),
-    _k(new cryptography::PrivateKey{keypair.k()}),
-    _code(nullptr)
-  {}
-
-  Authority::Authority(cryptography::PublicKey const& K):
-    type(Authority::TypePublic),
-    _K(K),
-    _k(nullptr),
-    _code(nullptr)
-  {}
-
-  Authority::Authority(elle::io::Path const& path):
-    _k(nullptr),
-    _code(nullptr)
+  Authority::Authority(elle::String description,
+                       cryptography::PublicKey K,
+                       cryptography::PrivateKey k,
+                       cryptography::SecretKey const& key):
+    _description(std::move(description)),
+    _K(std::move(K)),
+    _k(key.encrypt(k))
   {
-    if (!elle::Authority::exists(path))
-      throw Exception
-        (elle::sprintf("unable to locate the authority file %s", path));
-    this->load(path);
   }
 
-  Authority::~Authority()
+  Authority::Authority(Authority const& other):
+    elle::serialize::DynamicFormat<Authority>(other),
+    _description(other._description),
+    _K(other._K),
+    _k(other._k)
   {
-    delete this->_k;
-    delete this->_code;
   }
 
-//
-// ---------- methods ---------------------------------------------------------
-//
-
-  /// this method encrypts the keys.
-  ///
-  elle::Status          Authority::Encrypt(const elle::String&          pass)
+  Authority::Authority(Authority&& other):
+    elle::serialize::DynamicFormat<Authority>(std::move(other)),
+    _description(std::move(other._description)),
+    _K(std::move(other._K)),
+    _k(std::move(other._k))
   {
-    ELLE_TRACE_METHOD(pass);
-
-    // XXX[setter l'algo en constant pour eviter la duplication avec decrypt()]
-    cryptography::SecretKey key{cryptography::cipher::Algorithm::aes256, pass};
-
-    ELLE_ASSERT(this->type == Authority::TypePair);
-
-    delete this->_code;
-    this->_code = nullptr;
-    this->_code = new cryptography::Code{key.encrypt(this->k())};
-
-    return elle::Status::Ok;
   }
 
-  ///
-  /// this method decrypts the keys.
-  ///
-  elle::Status          Authority::Decrypt(const elle::String&          pass)
+  ELLE_SERIALIZE_CONSTRUCT_DEFINE(Authority,
+                                  _K, _k)
   {
-    ELLE_TRACE_METHOD(pass);
-
-    ELLE_ASSERT(this->type == Authority::TypePair);
-    ELLE_ASSERT(this->_code != nullptr);
-
-    cryptography::SecretKey key{cryptography::cipher::Algorithm::aes256, pass};
-
-    delete this->_k;
-    this->_k = nullptr;
-    this->_k =
-      new cryptography::PrivateKey{
-        key.decrypt<cryptography::PrivateKey>(*this->_code)};
-
-    return elle::Status::Ok;
   }
 
-//
-// ---------- dumpable --------------------------------------------------------
-//
+  /*--------.
+  | Methods |
+  `--------*/
 
-  ///
-  /// this method dumps a authority.
-  ///
-  elle::Status          Authority::Dump(const elle::Natural32   margin) const
+  cryptography::PrivateKey
+  Authority::decrypt(elle::String const& passphrase) const
   {
-    elle::String        alignment(margin, ' ');
-    elle::String        unique;
+    ELLE_TRACE_METHOD(passphrase);
 
-    std::cout << alignment << "[Authority]" << std::endl;
+    cryptography::SecretKey key(Authority::Constants::cipher_algorithm,
+                                passphrase);
 
-    // dump the type.
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Type] " << this->type << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[K] " << this->_K << std::endl;
-
-    // if present...
-    if (this->_k != nullptr)
-      {
-        std::cout << alignment << elle::io::Dumpable::Shift
-                  << "[k] " << this->k() << std::endl;
-      }
-
-    // dump the code.
-    if (this->_code != nullptr)
-      {
-        std::cout << alignment << elle::io::Dumpable::Shift
-                  << "[Code] " << this->code() << std::endl;
-      }
-
-    return elle::Status::Ok;
+    return (key.decrypt<cryptography::PrivateKey>(this->_k));
   }
 
-  cryptography::PrivateKey const&
-  Authority::k() const
-  {
-    ELLE_ASSERT_NEQ(this->_k, nullptr);
-    return *this->_k;
-  }
+  /*----------.
+  | Printable |
+  `----------*/
 
-  cryptography::Code const&
-  Authority::code() const
+  void
+  Authority::print(std::ostream& stream) const
   {
-    ELLE_ASSERT_NEQ(this->_code, nullptr);
-    return *this->_code;
+    stream << "("
+           << "'" << this->_description << "', "
+           << this->_K
+           << ")";
   }
 }
