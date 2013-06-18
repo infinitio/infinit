@@ -1207,7 +1207,7 @@ def configure(cxx_toolkit = None,
       )
 
     heartbeat = drake.cxx.Executable('bin/heartbeat-server',
-        heartbeat_sources + [reactor_lib, elle_lib] + udt_libs,
+        heartbeat_sources + [reactor_lib, elle_lib, cryptography_lib] + infinit_libs + udt_libs,
         cxx_toolkit, heartbeat_config)
 
     oracles << oracle_source_copy
@@ -1290,7 +1290,7 @@ def configure(cxx_toolkit = None,
 
   build << drake.cxx.Executable("bin/pass",
           drake.nodes('tests/unit/pass.cc', 'common/common.cc') + [reactor_lib,
-              elle_lib] + udt_libs,
+              elle_lib] + infinit_libs + udt_libs,
           cxx_toolkit, tests_cxx_config)
   #Check
   rule_check = drake.Rule('check')
