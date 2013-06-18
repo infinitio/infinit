@@ -7,6 +7,8 @@
 # include <elle/Printable.hh>
 # include <elle/fwd.hh>
 
+# include <elle/serialize/construct.hh>
+
 namespace infinit
 {
   /// XXX
@@ -19,7 +21,7 @@ namespace infinit
   public:
     struct Constants
     {
-      static elle::Natural const default_size;
+      static elle::Natural32 const default_size;
     };
 
     /*-------------.

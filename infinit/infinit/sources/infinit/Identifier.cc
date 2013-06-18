@@ -21,12 +21,12 @@ namespace infinit
     Identifier(Identifier::Constants::default_size)
   {}
 
-  Identifier::Identifer(elle::Natural32 const size):
+  Identifier::Identifier(elle::Natural32 const size):
     _value(elle::format::hexadecimal::encode(
              cryptography::random::generate<elle::Buffer>(size)))
   {}
 
-  Identifier::Identifer(elle::String const& string):
+  Identifier::Identifier(elle::String const& string):
     Identifier(elle::ConstWeakBuffer(string.c_str(), string.length()))
   {}
 
@@ -38,7 +38,7 @@ namespace infinit
     _value(other._value)
   {}
 
-  Identifier::Identifier(Identifier& other):
+  Identifier::Identifier(Identifier&& other):
     _value(std::move(other._value))
   {}
 
