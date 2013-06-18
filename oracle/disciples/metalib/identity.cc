@@ -9,8 +9,6 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <hole/Authority.hh>
-
 // XXX When Qt is out, remove this
 #ifdef slots
 # undef slots
@@ -20,6 +18,7 @@ using namespace infinit;
 #endif
 
 #include <infinit/Identity.hh>
+#include <infinit/Authority.hh>
 
 #include "identity.hh"
 
@@ -28,31 +27,23 @@ using namespace infinit;
 /// storing a user block.
 ///
 static infinit::Identity create_identity(elle::String const& id,
-                                         elle::String const& authority_file,
+                                         elle::String const& authority_path,
                                          elle::String const& authority_password,
                                          elle::String const& login,
                                          elle::String const& password)
 {
-  elle::io::Path authority_path;
-
   // check the argument.
   if (login.empty() == true)
     throw std::runtime_error("unable to create a user without a user name");
 
-  if (authority_path.Create(authority_file) == elle::Status::Error)
-    throw std::runtime_error("unable to create authority path");
+  infinit::Authority authority(elle::serialize::from_file(authority_path));
 
-  // Load the authority file.
-  elle::Authority authority(authority_path);
-
-  // decrypt the authority.
-  if (authority.Decrypt(authority_password) == elle::Status::Error)
-    throw std::runtime_error("unable to decrypt the authority");
+  auto authority_k = authority.decrypt(authority_password);
 
   cryptography::KeyPair keypair =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     infinit::Identity::keypair_length);
-  infinit::Identity identity(id, login, keypair, password, authority.k());
+  infinit::Identity identity(id, login, keypair, password, authority_k);
 
   return identity;
 }

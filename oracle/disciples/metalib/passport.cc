@@ -2,6 +2,8 @@
 
 #include <elle/io/Path.hh>
 #include <elle/types.hh>
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/Base64Archive.hh>
 
 #include <cryptography/random.hh>
 #include <cryptography/PublicKey.hh>
@@ -9,7 +11,8 @@
 using namespace infinit;
 
 #include <hole/Passport.hh>
-#include <hole/Authority.hh>
+
+#include <infinit/Authority.hh>
 
 // XXX When Qt is out, remove this
 #ifdef slots
@@ -27,23 +30,19 @@ using namespace infinit;
 
 static elle::Passport create_passport(elle::String const& id,
                                       elle::String const& name,
-                                      elle::String const& user_pubkey,
-                                      elle::String const& authority_file,
+                                      elle::String const& user_K,
+                                      elle::String const& authority_path,
                                       elle::String const& authority_password)
 {
-  // Load the authority file.
-  elle::Authority authority{elle::io::Path{authority_file}};
+  infinit::Authority authority(elle::serialize::from_file(authority_path));
 
-  // decrypt the authority.
-  if (authority.Decrypt(authority_password) == elle::Status::Error)
-    throw std::runtime_error("unable to decrypt the authority");
+  cryptography::PrivateKey authority_k =
+    authority.decrypt(authority_password);
 
-  cryptography::PublicKey pubkey{};
-  pubkey.Restore(user_pubkey);
+  cryptography::PublicKey _user_K(
+    elle::serialize::from_string<elle::serialize::InputBase64Archive>(user_K));
 
-  elle::Passport passport{
-      id, name, pubkey, authority
-  };
+  elle::Passport passport(id, name, _user_K, authority_k);
 
   return passport;
 }
@@ -55,13 +54,13 @@ metalib_generate_passport(PyObject*, PyObject* args)
   PyObject* ret = nullptr;
   char const* id = nullptr,
             * name = nullptr,
-            * pubkey = nullptr,
-            * authority_file = nullptr,
+            * user_K = nullptr,
+            * authority_path = nullptr,
             * authority_password = nullptr;
   if (!PyArg_ParseTuple(args, "sssss:generate_passport",
-                        &id, &name, &pubkey, &authority_file, &authority_password))
+                        &id, &name, &user_K, &authority_path, &authority_password))
     return nullptr;
-  if (!id || !authority_file || !name || !pubkey || !authority_password)
+  if (!id || !authority_path || !name || !user_K || !authority_password)
     return nullptr;
 
   Py_BEGIN_ALLOW_THREADS;
@@ -69,7 +68,7 @@ metalib_generate_passport(PyObject*, PyObject* args)
   try
     {
       auto passport = create_passport(
-          id, name, pubkey, authority_file, authority_password
+        id, name, user_K, authority_path, authority_password
       );
       elle::String passport_string;
       if (passport.Save(passport_string) != elle::Status::Error)

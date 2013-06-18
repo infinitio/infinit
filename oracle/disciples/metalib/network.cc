@@ -11,20 +11,20 @@ using namespace infinit;
 
 #include <hole/Model.hh>
 
-#include <infinit/Identity.hh>
-
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>
 #include <nucleus/neutron/Object.hh>
 #include <nucleus/neutron/Trait.hh>
 
 #include <hole/Openness.hh>
-#include <hole/Authority.hh>
 
 #include <horizon/Policy.hh>
 
 #include <Infinit.hh>
 #include <infinit/Descriptor.hh>
+#include <infinit/Identity.hh>
+#include <infinit/Authority.hh>
+#include <infinit/infinit.hh>
 
 // XXX When Qt is out, remove this
 #ifdef slots
@@ -46,7 +46,7 @@ generate_network_descriptor(elle::String const& id,
                             elle::String const& model_name,
                             elle::io::Unique const& directory_address_,
                             elle::io::Unique const& group_address_,
-                            elle::String const& authority_file,
+                            elle::String const& authority_path,
                             elle::String const& authority_password)
 {
   // XXX should be configurable.
@@ -54,15 +54,10 @@ generate_network_descriptor(elle::String const& id,
   static hole::Openness openness = hole::Openness::closed;
 
   hole::Model model;
-  elle::io::Path authority_path;
 
-  if (authority_path.Create(authority_file) == elle::Status::Error)
-    throw std::runtime_error("unable to create authority path");
+  infinit::Authority authority(elle::serialize::from_file(authority_path));
 
-  elle::Authority authority(authority_path);
-
-  if (authority.Decrypt(authority_password) == elle::Status::Error)
-    throw std::runtime_error("unable to decrypt the authority");
+  cryptography::PrivateKey authority_k = authority.decrypt(authority_password);
 
   if (model.Create(model_name) != elle::Status::Ok)
     throw std::runtime_error("unable to create model");
@@ -92,7 +87,7 @@ generate_network_descriptor(elle::String const& id,
                         false,
                         1048576,
                         Infinit::version,
-                        authority);
+                        authority_k);
 
   descriptor.seal(identity.pair().k());
 
@@ -118,7 +113,7 @@ metalib_generate_network_descriptor(PyObject* self, PyObject* args)
             * network_model = nullptr,
             * directory_address = nullptr,
             * group_address = nullptr,
-            * authority_file = nullptr,
+            * authority_path = nullptr,
             * authority_password = nullptr;
   PyObject* ret = nullptr;
 
@@ -129,7 +124,7 @@ metalib_generate_network_descriptor(PyObject* self, PyObject* args)
                         &network_model,
                         &directory_address,
                         &group_address,
-                        &authority_file,
+                        &authority_path,
                         &authority_password))
     return nullptr;
 
@@ -145,7 +140,7 @@ metalib_generate_network_descriptor(PyObject* self, PyObject* args)
           network_model,
           directory_address,
           group_address,
-          authority_file,
+          authority_path,
           authority_password
       );
 
