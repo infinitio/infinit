@@ -5,6 +5,8 @@
 
 #include <Infinit.hh>
 
+#include <cstring>
+
 namespace horizon
 {
   namespace macosx
