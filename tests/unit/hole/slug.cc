@@ -25,8 +25,6 @@
 infinit::cryptography::KeyPair authority_keys =
   infinit::cryptography::KeyPair::generate(
   infinit::cryptography::Cryptosystem::rsa, 1024);
-elle::Authority authority(authority_keys);
-
 
 struct Slug
 {
@@ -41,10 +39,10 @@ public:
     passport(elle::sprintf("passport_%s", name),
              elle::sprintf("host_%s", name),
              keys.K(),
-             authority),
+             authority_keys.k()),
     slug(storage,
          passport,
-         authority,
+         authority_keys.K(),
          reactor::network::Protocol::tcp,
          members,
          0,

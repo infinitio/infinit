@@ -635,7 +635,6 @@ Main(elle::Natural32,
       // XXX
       Infinit::Network = "test";
       lune::Lune::Initialize();
-      Infinit::Initialize();
       // XXX
 
       _network.reset(new nucleus::proton::Network(Infinit::Network));
@@ -647,19 +646,19 @@ Main(elle::Natural32,
 
 #ifdef PORCUPINE_SERIALIZE_TEST
       cryptography::KeyPair pair_authority{
-        cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa, 1024)};
-      elle::Authority authority(pair_authority);
+        cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
+                                        1024)};
 
       elle::Passport passport(elle::String{"node"},
                               elle::String{"me"},
                               _user->K(),
-                              authority);
+                              pair_authority.k());
 
       _storage.reset(new hole::storage::Memory(*_network));
 
       hole::Hole* hole =
         new hole::implementations::local::Implementation(
-          *_storage, passport, authority);
+          *_storage, passport, pair_authority.K());
 
       ELLE_FINALLY_ACTION_DELETE(hole);
 
@@ -681,7 +680,6 @@ Main(elle::Natural32,
 #endif
 
       // XXX
-      Infinit::Clean();
       lune::Lune::Clean();
       // XXX
 
