@@ -21,6 +21,20 @@ namespace nucleus
     {
     }
 
+    Root::Root(Root const& other):
+      _address(other._address),
+      _height(other._height),
+      _capacity(other._capacity)
+    {
+    }
+
+    Root::Root(Root&& other):
+      _address(std::move(other._address)),
+      _height(std::move(other._height)),
+      _capacity(std::move(other._capacity))
+    {
+    }
+
     /*----------.
     | Printable |
     `----------*/
