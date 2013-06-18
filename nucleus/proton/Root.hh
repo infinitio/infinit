@@ -27,6 +27,8 @@ namespace nucleus
       Root(Address const& address,
            Height const& height,
            Capacity const& capacity);
+      Root(Root const& root);
+      Root(Root&& other);
 
       /*-----------.
       | Interfaces |
