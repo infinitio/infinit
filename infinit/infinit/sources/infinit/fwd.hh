@@ -3,8 +3,13 @@
 
 namespace infinit
 {
+  class Authority;
   class Descriptor;
+  class Certificate;
+  class Exception;
   class Identity;
 }
+
+# include <infinit/infinit.hh>
 
 #endif
