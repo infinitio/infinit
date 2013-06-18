@@ -256,7 +256,7 @@ namespace infinit
     | Construction |
     `-------------*/
 
-    Data::Data(elle::String name,
+    Data::Data(elle::String description,
                hole::Openness openness,
                horizon::Policy policy,
                Vector blocks,
@@ -282,7 +282,7 @@ namespace infinit
                elle::serialize::Format format_identity,
                elle::serialize::Format format_descriptor,
                cryptography::Signature signature):
-      _name(std::move(name)),
+      _description(std::move(description)),
       _openness(std::move(openness)),
       _policy(std::move(policy)),
       _blocks(std::move(blocks)),
@@ -313,7 +313,7 @@ namespace infinit
 
     Data::Data(Data&& other):
       elle::serialize::DynamicFormat<Data>(std::move(other)),
-      _name(std::move(other._name)),
+      _description(std::move(other._description)),
       _openness(std::move(other._openness)),
       _policy(std::move(other._policy)),
       _blocks(std::move(other._blocks)),
@@ -364,7 +364,7 @@ namespace infinit
     void
     Data::print(std::ostream& stream) const
     {
-      stream << this->_name << "("
+      stream << this->_description << "("
              << this->_openness << ", "
              << this->_policy << ", ";
 
@@ -390,7 +390,7 @@ namespace infinit
       `----------*/
 
       cryptography::Digest
-      hash(elle::String const& name,
+      hash(elle::String const& description,
            hole::Openness const& openness,
            horizon::Policy const& policy,
            Data::Vector const& blocks,
@@ -418,7 +418,7 @@ namespace infinit
       {
         return (cryptography::oneway::hash(
                   elle::serialize::make_tuple(
-                    name,
+                    description,
                     openness,
                     policy,
                     blocks,
@@ -447,7 +447,7 @@ namespace infinit
       }
 
       cryptography::Digest
-      hash_0(elle::String const& name,
+      hash_0(elle::String const& description,
              hole::Openness const& openness,
              horizon::Policy const& policy,
              elle::Version const& version,
@@ -473,7 +473,7 @@ namespace infinit
       {
         return (cryptography::oneway::hash(
                   elle::serialize::make_tuple(
-                    name,
+                    description,
                     openness,
                     policy,
                     version,

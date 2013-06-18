@@ -86,7 +86,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
         new infinit::descriptor::Data(elle::serialize::no_init));
       value._data->infinit::descriptor::Data::DynamicFormat::version(0);
 
-      archive >> value._data->_name;
+      archive >> value._data->_description;
       archive >> value._data->_openness;
       archive >> value._data->_policy;
       archive >> value._data->_version;
@@ -147,7 +147,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Descriptor,
       archive << value._meta->_extent;
       archive << value._meta->_signature;
 
-      archive << value._data->_name;
+      archive << value._data->_description;
       archive << value._data->_openness;
       archive << value._data->_policy;
       archive << value._data->_version;
@@ -339,7 +339,7 @@ namespace infinit
     `-------------*/
 
     template <typename T>
-    Data::Data(elle::String name,
+    Data::Data(elle::String description,
                hole::Openness openness,
                horizon::Policy policy,
                Vector blocks,
@@ -365,7 +365,7 @@ namespace infinit
                elle::serialize::Format format_identity,
                elle::serialize::Format format_descriptor,
                T const& administrator):
-      Data(std::move(name),
+      Data(std::move(description),
            std::move(openness),
            std::move(policy),
            std::move(blocks),
@@ -391,7 +391,7 @@ namespace infinit
            std::move(format_identity),
            std::move(format_descriptor),
            administrator.sign(
-             data::hash(name,
+             data::hash(description,
                         openness,
                         policy,
                         blocks,
@@ -439,7 +439,7 @@ namespace infinit
         {
           return (administrator.verify(
                     this->_signature,
-                    data::hash_0(this->_name,
+                    data::hash_0(this->_description,
                                  this->_openness,
                                  this->_policy,
                                  this->_version,
@@ -467,7 +467,7 @@ namespace infinit
         {
           return (administrator.verify(
                     this->_signature,
-                    data::hash(this->_name,
+                    data::hash(this->_description,
                                this->_openness,
                                this->_policy,
                                this->_blocks,
@@ -499,6 +499,8 @@ namespace infinit
               "unknown format '%s'",
               this->infinit::descriptor::Data::DynamicFormat::version()));
       }
+
+      elle::unreachable();
     }
   }
 }
@@ -518,7 +520,7 @@ ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Data,
   {
     case 0:
     {
-      archive & value._name;
+      archive & value._description;
       archive & value._openness;
       archive & value._policy;
       archive & value._version;
@@ -547,7 +549,7 @@ ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Data,
     }
     case 1:
     {
-      archive & value._name;
+      archive & value._description;
       archive & value._openness;
       archive & value._policy;
       archive & value._blocks;

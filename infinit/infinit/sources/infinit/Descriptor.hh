@@ -61,7 +61,7 @@ namespace infinit
   ///
   ///   Meta meta(id, admin_K, model, root_address, ...,
   ///             authority.k());
-  ///   Data data(name, openness, policy, version, format_...,
+  ///   Data data(description, openness, policy, version, format_...,
   ///             administrator_k());
   ///
   /// Finally, a descriptor is instantiated from both the sections which
@@ -437,7 +437,7 @@ namespace infinit
       Data() {} // XXX[to remove when the new serialization will be fixed]
       /// Construct a data section from the given elements.
       explicit
-      Data(elle::String name,
+      Data(elle::String description,
            hole::Openness openness,
            horizon::Policy policy,
            Vector blocks,
@@ -470,7 +470,7 @@ namespace infinit
       /// sign(data) method.
       template <typename T>
       explicit
-      Data(elle::String name,
+      Data(elle::String description,
            hole::Openness openness,
            horizon::Policy policy,
            Vector blocks,
@@ -536,8 +536,8 @@ namespace infinit
       | Attributes |
       `-----------*/
     private:
-      /// A human-readable name for the network.
-      ELLE_ATTRIBUTE_R(elle::String, name);
+      /// A human-readable description for the network.
+      ELLE_ATTRIBUTE_R(elle::String, description);
       /// The way other computers, i.e nodes, can connect to this network.
       ELLE_ATTRIBUTE_R(hole::Openness, openness);
       /// The default sharing behavior for every file system object
@@ -592,7 +592,7 @@ namespace infinit
       /// These are the elements which must be signed by the network
       /// administrator.
       cryptography::Digest
-      hash(elle::String const& name,
+      hash(elle::String const& decsription,
            hole::Openness const& openness,
            horizon::Policy const& policy,
            Data::Vector const& blocks,
@@ -619,7 +619,7 @@ namespace infinit
            elle::serialize::Format const& format_descriptor);
       /// Compatibility with format 0.
       cryptography::Digest
-      hash_0(elle::String const& name,
+      hash_0(elle::String const& description,
              hole::Openness const& openness,
              horizon::Policy const& policy,
              elle::Version const& version,
