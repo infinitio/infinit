@@ -2,7 +2,6 @@
 
 #include <string>
 #include <elle/io/Path.hh>
-#include <hole/Authority.hh>
 #include <elle/types.hh>
 #include <cryptography/Signature.hh>
 #include <cryptography/PrivateKey.hh>
@@ -13,40 +12,39 @@
 #include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
 
+#include <infinit/Authority.hh>
+
 #include "authority.hh"
 
 static
-elle::Authority
-authority(std::string const& authority_file,
-          std::string const& authority_password)
+cryptography::KeyPair
+authority_keypair(std::string const& authority_path,
+                  std::string const& authority_password)
 {
-  elle::io::Path authority_path;
+  infinit::Authority authority(elle::serialize::from_file(authority_path));
 
-  if (authority_path.Create(authority_file) == elle::Status::Error)
-    throw std::runtime_error("unable to create authority path");
-
-  elle::Authority authority(authority_path);
-
-  if (authority.Decrypt(authority_password) == elle::Status::Error)
-    throw std::runtime_error("unable to decrypt the authority");
-
-  return authority;
+  return cryptography::KeyPair(authority.K(),
+                               authority.decrypt(authority_password));
 }
 
 static
 std::string
-sign(std::string const& to_sign,
-     std::string const& authority_file,
+sign(std::string const& digest,
+     std::string const& authority_path,
      std::string const& authority_password)
 {
-  cryptography::Signature signature =
-    authority(authority_file, authority_password).k().sign(to_sign);
+  auto digest_extractor =
+    elle::serialize::from_string<elle::serialize::InputBase64Archive>(digest);
+  cryptography::Digest _digest(digest_extractor);
 
-  std::string hashed;
-  elle::serialize::to_string<elle::serialize::OutputBase64Archive>(hashed) <<
-    signature;
+  auto keypair = authority_keypair(authority_path, authority_password);
+  cryptography::Signature _signature = keypair.k().sign(_digest);
 
-  return hashed;
+  std::string signature;
+  elle::serialize::to_string<
+    elle::serialize::OutputBase64Archive>(signature) << _signature;
+
+  return signature;
 }
 
 extern "C"
@@ -55,16 +53,16 @@ metalib_sign(PyObject* self,
              PyObject* args)
 {
   (void) self;
-  char const* to_sign = nullptr;
-  char const* authority_file = nullptr;
+  char const* digest = nullptr;
+  char const* authority_path = nullptr;
   char const* authority_password = nullptr;
 
   PyObject* ret = nullptr;
 
   if (!PyArg_ParseTuple(args,
                         "sss:sign",
-                        &to_sign,
-                        &authority_file,
+                        &digest,
+                        &authority_path,
                         &authority_password))
     return nullptr;
 
@@ -73,8 +71,8 @@ metalib_sign(PyObject* self,
 
   try
   {
-    std::string signature = sign(to_sign,
-                                 authority_file,
+    std::string signature = sign(digest,
+                                 authority_path,
                                  authority_password);
 
     // WARNING: restore state before setting exception !
@@ -95,17 +93,23 @@ metalib_sign(PyObject* self,
 
 static
 bool
-verify(std::string const& hash,
-       std::string const& signature_str,
-       std::string const& authority_file,
-       std::string const& password)
+verify(std::string const& digest,
+       std::string const& signature,
+       std::string const& authority_path,
+       std::string const& authority_password)
 {
-  cryptography::Signature signature;
-  elle::serialize::from_string<elle::serialize::InputBase64Archive>(hash) >>
-    signature;
+  auto digest_extractor =
+    elle::serialize::from_string<elle::serialize::InputBase64Archive>(digest);
+  cryptography::Digest _digest(digest_extractor);
 
-  return authority(authority_file, password).K().verify(signature,
-                                                        signature_str);
+  auto signature_extractor =
+    elle::serialize::from_string<
+      elle::serialize::InputBase64Archive>(signature);
+  cryptography::Signature _signature(signature_extractor);
+
+  auto keypair = authority_keypair(authority_path, authority_password);
+
+  return keypair.K().verify(_signature, _digest);
 }
 
 extern "C"
@@ -114,18 +118,18 @@ metalib_verify(PyObject* self,
                PyObject* args)
 {
   (void) self;
-  char const* hash = nullptr;
+  char const* digest = nullptr;
   char const* signature = nullptr;
-  char const* authority_file = nullptr;
+  char const* authority_path = nullptr;
   char const* authority_password = nullptr;
 
   PyObject* ret = nullptr;
 
   if (!PyArg_ParseTuple(args,
                         "ssss:verify",
-                        &hash,
+                        &digest,
                         &signature,
-                        &authority_file,
+                        &authority_path,
                         &authority_password))
     return nullptr;
 
@@ -134,9 +138,9 @@ metalib_verify(PyObject* self,
 
   try
   {
-    bool verified = verify(hash,
+    bool verified = verify(digest,
                            signature,
-                           authority_file,
+                           authority_path,
                            authority_password);
 
     // WARNING: restore state before setting exception !
