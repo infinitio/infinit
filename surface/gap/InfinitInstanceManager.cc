@@ -143,7 +143,7 @@ namespace surface
       ELLE_TRACE_METHOD(network_id);
       if (this->_instances.find(network_id) == this->_instances.end())
       {
-        ELLE_DEBUG("no network %s found, no 8infinit to kill", network_id);
+        ELLE_DEBUG("no network %s found, no 8infinit to stop", network_id);
         return;
       }
 
