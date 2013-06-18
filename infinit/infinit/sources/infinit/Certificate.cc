@@ -81,6 +81,7 @@ namespace infinit
     ELLE_TRACE_METHOD(pool);
 
     // XXX
+    throw Excpetion("not implemented yet");
   }
 
   /*----------.
