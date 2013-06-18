@@ -21,8 +21,8 @@ namespace infinit
   /// Represent a user identity issued by an authority.
   ///
   /// The identity contains a unique identifier, a human-readable
-  /// (potentially non-unique) name along with the user's key pair
-  /// encrypted with a password known from the user only.
+  /// description along with the user's key pair encrypted with a
+  /// password known from the user only.
   ///
   /// The decrypt() method can be used to retrieve the actual key
   /// pair providing the given password is valid.

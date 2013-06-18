@@ -45,13 +45,13 @@ namespace infinit
   /// a network's parameters such as the administrator's public key, the
   /// network unique identifier etc. along with configuration values which
   /// could change over time should the administrator decide so. These
-  /// configuration values include a network name, an openness which defines
-  /// how open the network is to other users and the policy which defines the
-  /// sharing behaviour i.e are files/directories/etc. shared in read-only with
-  /// everybody by default, in read-write or kept private to the object owner.
-  /// Finally the configuration embeds the reference version of the Infinit
-  /// software and the reference formats of the blocks. These are provided in
-  /// order to overcome/ the issue described below.
+  /// configuration values include a network description, an openness which
+  /// defines how open the network is to other users and the policy which
+  /// defines the sharing behaviour i.e are files/directories/etc. shared in
+  /// read-only with everybody by default, in read-write or kept private to the
+  /// object owner. Finally the configuration embeds the reference version of
+  /// the Infinit software and the reference formats of the blocks. These are
+  /// provided in order to overcome/ the issue described below.
   ///
   /// One can quite easily create a descriptor from both a meta section, which
   /// is sealed by an authority, and a data section which is signed by the
