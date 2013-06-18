@@ -40,14 +40,14 @@ namespace infinit
   void
   forward_signal(int signum)
   {
-    ELLE_DEBUG_SCOPE("received signal %s(%d)",
+    ELLE_TRACE_SCOPE("received signal %s(%d)",
                      elle::system::strsignal(signum), signum);
     if (st_pid != -1)
     {
       // If we are asked to terminate, transform the SIGTERM into SIGKILL.
       if (signum == SIGTERM)
         signum = SIGKILL;
-      ELLE_DEBUG("kill(%d, %s(%d))",
+      ELLE_TRACE("kill(%d, %s(%d))",
                  st_pid, elle::system::strsignal(signum), signum);
       kill(st_pid, signum);
     }
