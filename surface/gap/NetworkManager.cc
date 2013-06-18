@@ -350,13 +350,20 @@ namespace surface
       {
         this->_reporter.store("network_delete_attempt",
                               {{MKey::value,  network_id}});
-        ELLE_TRACE("remove network %s from meta", network_id)
-          try
-          {
-            this->_meta.delete_network(network_id, force);
-          }
-          CATCH_FAILURE_TO_METRICS("network_delete");
-
+        // XXX must handle catch better
+        try
+        {
+          ELLE_TRACE("remove network %s from meta", network_id)
+            try
+            {
+              this->_meta.delete_network(network_id, force);
+            }
+            CATCH_FAILURE_TO_METRICS("network_delete");
+        }
+        catch (...)
+        {
+          ELLE_WARN("%s", elle::exception_string());
+        }
         this->_reporter.store("network_delete_succeed",
                               {{MKey::value, network_id}});
         this->_networks->erase(network_id);
