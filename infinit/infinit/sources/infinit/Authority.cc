@@ -87,7 +87,7 @@ namespace infinit
   Authority::print(std::ostream& stream) const
   {
     stream << "("
-           << "'" << this->_description << "', "
+           << this->_description << ", "
            << this->_K
            << ")";
   }
