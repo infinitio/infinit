@@ -15,16 +15,9 @@ namespace etoile
     shrub::Shrub* global_shrub = nullptr;
 
 
-//           ___________________________________ ,--.__
-//      ,-""                                   '\     '\
-//     /  "          Construction                 \      '\
-//    /                                            '\     |
-//   | "   "   "                                     '\,  /
-//   |           " , =_______________________________,--""
-//   |  "    "    /"/'
-//   \  "      ",/ /
-//    \   ",",_/,-'
-//     '-;.__:-'//
+    /*-------------.
+    | Construction |
+    `-------------*/
 
     Shrub::Shrub(elle::Size capacity,
                  boost::posix_time::time_duration const& lifespan,
@@ -266,18 +259,9 @@ namespace etoile
         throw Exception("unable to dump the queue");
     }
 
-
-//           ___________________________________ ,--.__
-//      ,-""                                   '\     '\
-//     /  "              Cache                    \      '\
-//    /                                            '\     |
-//   | "   "   "                                     '\,  /
-//   |           " , =_______________________________,--""
-//   |  "    "    /"/'
-//   \  "      ",/ /
-//    \   ",",_/,-'
-//     '-;.__:-'//
-
+    /*------.
+    | Cache |
+    `------*/
 
     // This callback is triggered on a periodic basis in order to evict the
     // expired riffle. Note that most riffles are removed during the resolving
