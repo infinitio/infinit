@@ -1,7 +1,7 @@
 import _crust
 import os
 
-class MetaData():
+class Env():
     @property
     def host(self):
         return os.getenv("INFINIT_REMOTE_HOST")
@@ -14,17 +14,27 @@ class MetaData():
     def token(self):
         return os.getenv("INFINIT_REMOTE_TOKEN_PATH")
 
+    @property
+    def home(self):
+        return os.getenv("INFINIT_HOME")
+
+#
+# Id
+#
 class ID(_crust.ID):
     def __init__(self, *args, **kwargs):
-        _crust.ID.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
+#
+# Network
+#
 class Network(_crust._Network):
-    __hostdata__ = MetaData()
+    __env__ = Env()
     descriptor_list = _crust.descriptor_list
 
     # Forward all the arguments to _Network contructor.
     def __init__(self, *args, **kwargs):
-        _crust._Network.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     # Store the descriptor to the given path.
     def store(self, path, force = False):
@@ -35,12 +45,18 @@ class Network(_crust._Network):
         self._erase(path)
 
     # Install.
-    def install(self, path):
-        self._install(path)
+    def install(self,
+                network_name,
+                owner_name,
+                home = __env__.home):
+        self._install(network_name, owner_name, home)
 
     # Uninstall.
-    def uninstall(self, path):
-        self._uninstall(path)
+    def uninstall(self,
+                  network_name,
+                  owner_name,
+                  home = __env__.home):
+        self._uninstall(network_name, owner_name, home)
 
     # Mount the descritor to the given folder.
     def mount(self, path):
@@ -52,38 +68,68 @@ class Network(_crust._Network):
 
     # Store the descriptor on the given remote.
     def publish(self,
-                host = __hostdata__.host,
-                port = __hostdata__.port,
-                token = __hostdata__.token):
+                host = __env__.host,
+                port = __env__.port,
+                token = __env__.token):
 
         self._publish(host, port, token)
 
     # Unpublish the descriptor to the network.
     def unpublish(self,
-                  host = __hostdata__.host,
-                  port = __hostdata__.port,
-                  token = __hostdata__.token):
+                  host = __env__.host,
+                  port = __env__.port,
+                  token = __env__.token):
         self._unpublish(host, port, token)
 
     # List the local descriptors.
     @staticmethod
     def local_list(path):
-        return _crust._local_list(path)
+        return _crust._Network_local_list(path)
 
     @staticmethod
-    def remote_list(host = __hostdata__.host,
-                    port = __hostdata__.port,
-                    token = __hostdata__.token):
-        return _crust._remote_list(host, port, token)
+    def remote_list(host = __env__.host,
+                    port = __env__.port,
+                    token = __env__.token):
+        return _crust._Network_remote_list(host, port, token)
 
     @staticmethod
     def lookup(owner_handle,
                network_name,
-               host = __hostdata__.host,
-               port = __hostdata__.port,
-               token = __hostdata__.token):
-        return _crust._lookup(owner_handle,
-                              network_name,
-                              host,
-                              port,
-                              token)
+               host = __env__.host,
+               port = __env__.port,
+               token = __env__.token):
+        return _crust._Network_lookup(owner_handle,
+                                      network_name,
+                                      host,
+                                      port,
+                                      token)
+
+#
+# User
+#
+class User(_crust._User):
+    __env__ = Env()
+
+    # Forward all the arguments to _User contructor.
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    # Store the identity to the given path.
+    def store(self, path, force = False):
+        self._store(path, force)
+
+    # Delete the identity to the given path.
+    def erase(self, path = ""):
+        self._erase(path)
+
+    # Install.
+    def install(self,
+                user_name,
+                home = __env__.home):
+        self._install(user_name, home)
+
+    # Uninstall.
+    def uninstall(self,
+                  user_name,
+                  home = __env__.home):
+        self._uninstall(user_name, home)

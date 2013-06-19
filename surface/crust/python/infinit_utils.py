@@ -13,11 +13,11 @@ def meta_values(args):
     meta_port = args.meta_port or getenv("INFINIT_META_PORT")
     meta_token_path = args.meta_token_path or getenv("INFINIT_META_TOKEN_PATH")
 
-    if not meta_host:
+    if meta_host is None:
         raise Exception("You neither provided --meta-host nor exported INFINIT_META_HOST.")
-    if not meta_port:
+    if meta_port is None:
         raise Exception("You neither provided --meta-port nor exported INFINIT_META_PORT.")
-    if not meta_token_path:
+    if meta_token_path is None:
         raise Exception("You neither provided --meta-token-path nor exported INFINIT_META_TOKEN_PATH.")
 
     return meta_host, int(meta_port), meta_token_path
