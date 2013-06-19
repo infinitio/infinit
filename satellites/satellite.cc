@@ -140,15 +140,15 @@ namespace infinit
       elle::signal::ScopedGuard sigint{*sched, {SIGINT}, sig_fn};
       action();
       ELLE_DEBUG("quiting %s", name);
-      return 0;
+      return EXIT_SUCCESS;
     }
     catch (std::runtime_error const& e)
     {
-      ELLE_ERR("%s: fatal error: %s", name, e.what());
+     ELLE_ERR("%s: fatal error: %s", name, e.what());
       std::cerr << name << ": fatal error: " << e.what() << std::endl;
       elle::crash::report(common::meta::host(), common::meta::port(),
                           name, e.what());
-      return 1;
+      return EXIT_FAILURE;
     }
   }
 
@@ -165,10 +165,12 @@ namespace infinit
     std::string shallfork = elle::os::getenv("INFINIT_NO_FORK", "");
     if (shallfork.empty() && (pid = fork()))
     {
+      // Parent.
       return _satellite_trace(pid, name);
     }
     else
     {
+      // Child.
       ELLE_LOG_COMPONENT("infinit.satellite.child");
       reactor::Scheduler sched;
       try
@@ -176,7 +178,7 @@ namespace infinit
         reactor::VThread<int> main(sched, name, std::bind(_satellite_wrapper,
                                                           name, action));
         sched.run();
-        return main.result();
+        exit(main.result());
       }
       catch (elle::Exception const& e)
       {
@@ -184,7 +186,7 @@ namespace infinit
         std::cerr << name << ": fatal error: " << e << std::endl;
         elle::crash::report(common::meta::host(),common::meta::port(),
                             name, e.what());
-        return 1;
+        exit(EXIT_FAILURE);
       }
       catch (std::runtime_error const& e)
       {
@@ -192,7 +194,7 @@ namespace infinit
         std::cerr << name << ": fatal error: " << e.what() << std::endl;
         elle::crash::report(common::meta::host(),common::meta::port(),
                             name, e.what());
-        return 1;
+        exit(EXIT_FAILURE);
       }
     }
   }
