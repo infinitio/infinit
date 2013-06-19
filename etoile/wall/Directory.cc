@@ -139,7 +139,7 @@ namespace etoile
 
     void
     Directory::add(gear::Identifier const& parent,
-                   path::Slab const& name,
+                   std::string const& name,
                    gear::Identifier const& child)
     {
       ELLE_TRACE_FUNCTION(parent, name, child);
@@ -198,10 +198,10 @@ namespace etoile
     /// target entry is returned. should this entry be destroyed by another
     /// actor's operation, accessing it could make the system crash.
     ///
-    elle::Status        Directory::Lookup(
-                          const gear::Identifier&               identifier,
-                          const path::Slab&                     name,
-                          nucleus::neutron::Entry const*& entry)
+    elle::Status
+    Directory::Lookup(const gear::Identifier& identifier,
+                      const std::string& name,
+                      nucleus::neutron::Entry const*& entry)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
@@ -276,10 +276,10 @@ namespace etoile
     ///
     /// this method renames a directory entry.
     ///
-    elle::Status        Directory::Rename(
-                          const gear::Identifier&               identifier,
-                          const path::Slab&                     from,
-                          const path::Slab&                     to)
+    elle::Status
+    Directory::Rename(const gear::Identifier& identifier,
+                      const std::string& from,
+                      const std::string& to)
     {
       ELLE_TRACE_FUNCTION(identifier, from, to);
 
@@ -388,9 +388,9 @@ namespace etoile
     ///
     /// this method removes a directory entry.
     ///
-    elle::Status        Directory::Remove(
-                          const gear::Identifier&               identifier,
-                          const path::Slab&                     name)
+    elle::Status
+    Directory::Remove(const gear::Identifier& identifier,
+                      const std::string& name)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
@@ -619,8 +619,8 @@ namespace etoile
     ///
     /// this method destroys a directory.
     ///
-    elle::Status        Directory::Destroy(
-                          const gear::Identifier&               identifier)
+    elle::Status
+    Directory::Destroy(const gear::Identifier& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 

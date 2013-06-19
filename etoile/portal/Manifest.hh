@@ -94,11 +94,11 @@ namespace etoile
                       etoile::path::Chemin&> directoryload;
       RemoteProcedure<void,
                       etoile::gear::Identifier const&,
-                      etoile::path::Slab const&,
+                      std::string const&,
                       etoile::gear::Identifier const&> directoryadd;
       RemoteProcedure<void,
                       etoile::gear::Identifier const&,
-                      etoile::path::Slab&> directorylookup;
+                      std::string&> directorylookup;
       RemoteProcedure<void,
                       nucleus::neutron::Entry&> directoryentry;
       RemoteProcedure<nucleus::neutron::Range<nucleus::neutron::Entry>,
@@ -107,11 +107,11 @@ namespace etoile
                       nucleus::neutron::Size const&> directoryconsult;
       RemoteProcedure<void,
                       etoile::gear::Identifier const&,
-                      etoile::path::Slab&,
-                      etoile::path::Slab&> directoryrename;
+                      std::string&,
+                      std::string&> directoryrename;
       RemoteProcedure<void,
                       etoile::gear::Identifier const&,
-                      etoile::path::Slab&> directoryremove;
+                      std::string&> directoryremove;
       RemoteProcedure<void,
                       etoile::gear::Identifier const&> directorydiscard;
       RemoteProcedure<void,

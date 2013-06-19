@@ -8,7 +8,6 @@
 #include <agent/Agent.hh>
 
 #include <etoile/gear/Identifier.hh>
-#include <etoile/path/Slab.hh>
 #include <etoile/path/Chemin.hh>
 #include <etoile/wall/Object.hh>
 #include <etoile/wall/File.hh>
@@ -52,7 +51,7 @@ ELLE_LOG_COMPONENT("infinit.horizon.Crux");
 namespace horizon
 {
   std::string
-  _dirname(std::string const& path, etoile::path::Slab& basename)
+  _dirname(std::string const& path, std::string& basename)
   {
     boost::filesystem::path p(path);
     basename = p.filename().generic_string();
@@ -430,7 +429,7 @@ namespace horizon
 
     nucleus::neutron::Permissions permissions =
       nucleus::neutron::permissions::none;
-    etoile::path::Slab name;
+    std::string name;
     std::string path = _dirname(path_, name);
 
     // Resolve the path.
@@ -530,7 +529,7 @@ namespace horizon
     ELLE_TRACE_FUNCTION(path);
 
     std::string child(path);
-    etoile::path::Slab name;
+    std::string name;
     std::string parent = _dirname(path, name);
     nucleus::neutron::Subject subject;
 
@@ -1075,7 +1074,7 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(target, source);
 
-    etoile::path::Slab name;
+    std::string name;
     std::string from = _dirname(source, name);
     std::string to(target);
 
@@ -1227,7 +1226,7 @@ namespace horizon
     nucleus::neutron::Permissions permissions =
       nucleus::neutron::permissions::none;
 
-    etoile::path::Slab name;
+    std::string name;
     std::string parent = _dirname(path, name);
 
     // Resolve the path.
@@ -1646,9 +1645,9 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(source, target);
 
-    etoile::path::Slab f;
+    std::string f;
     std::string from = _dirname(source, f);
-    etoile::path::Slab t;
+    std::string t;
     std::string to = _dirname(target, t);
 
     // If the source and target directories are identical.
@@ -1839,7 +1838,7 @@ namespace horizon
   {
     ELLE_TRACE_FUNCTION(path);
 
-    etoile::path::Slab name;
+    std::string name;
     std::string parent = _dirname(path, name);
     std::string child(path);
     etoile::path::Chemin chemin_child;

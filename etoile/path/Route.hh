@@ -5,7 +5,6 @@
 # include <elle/operator.hh>
 
 # include <etoile/path/fwd.hh>
-# include <etoile/path/Slab.hh>
 
 # include <vector>
 
@@ -38,9 +37,9 @@ namespace etoile
       //
       // types
       //
-      typedef std::vector<Slab>                 Container;
-      typedef Container::iterator               Iterator;
-      typedef Container::const_iterator         Scoutor;
+      typedef std::vector<std::string> Container;
+      typedef Container::iterator Iterator;
+      typedef Container::const_iterator Scoutor;
 
       //
       // constructors & destructors
@@ -48,13 +47,12 @@ namespace etoile
       Route();
       Route(Route const&) = default;
 
-      //
-      // methods
-      //
       elle::Status
       Create(std::string const& path);
-      elle::Status              Create(const Route&,
-                                       const Slab&);
+      /// Create a route by appending a name to an existing route.
+      elle::Status
+      Create(const Route& route,
+             const std::string& slab);
 
       elle::Boolean             Derives(const Route&) const;
 

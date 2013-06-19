@@ -13,7 +13,7 @@ namespace etoile
     `-------------*/
 
     Riffle::Riffle(Shrub& owner,
-                   const path::Slab& slab,
+                   const std::string& slab,
                    const nucleus::proton::Location& location,
                    Riffle* parent):
       _shrub(owner),
@@ -28,7 +28,7 @@ namespace etoile
     }
 
     void
-    Riffle::resolve(const path::Slab& slab,
+    Riffle::resolve(const std::string& slab,
                     Riffle*& riffle)
     {
       Riffle::Scoutor scoutor;
@@ -39,7 +39,7 @@ namespace etoile
     }
 
     void
-    Riffle::update(const path::Slab& slab,
+    Riffle::update(const std::string& slab,
                    const nucleus::proton::Location& location)
     {
       auto it = this->_children.find(slab);
@@ -81,7 +81,7 @@ namespace etoile
     }
 
     void
-    Riffle::destroy(const path::Slab&       slab)
+    Riffle::destroy(const std::string& slab)
     {
       Riffle::Iterator iterator;
       if ((iterator = this->_children.find(slab)) == this->_children.end())

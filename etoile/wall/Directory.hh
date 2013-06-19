@@ -34,12 +34,14 @@ namespace etoile
       static
       void
       add(gear::Identifier const& parent,
-          path::Slab const& name,
+          std::string const& name,
           gear::Identifier const& child);
 
-      static elle::Status       Lookup(const gear::Identifier&,
-                                       const path::Slab&,
-                                       nucleus::neutron::Entry const*&);
+      static
+      elle::Status
+      Lookup(const gear::Identifier&,
+             const std::string&,
+             nucleus::neutron::Entry const*&);
 
       /// Return a set of entries located in [index, index + size[.
       static
@@ -48,11 +50,15 @@ namespace etoile
               nucleus::neutron::Index const& index,
               nucleus::neutron::Size const& size);
 
-      static elle::Status       Rename(const gear::Identifier&,
-                                       const path::Slab&,
-                                       const path::Slab&);
-      static elle::Status       Remove(const gear::Identifier&,
-                                       const path::Slab&);
+      static
+      elle::Status
+      Rename(const gear::Identifier&,
+             const std::string&,
+             const std::string&);
+      static
+      elle::Status
+      Remove(const gear::Identifier&,
+             const std::string&);
 
       /// Discard the scope, potentially ignoring some modifications.
       static
@@ -63,7 +69,9 @@ namespace etoile
       void
       store(gear::Identifier const& identifier);
 
-      static elle::Status       Destroy(const gear::Identifier&);
+      static
+      elle::Status
+      Destroy(const gear::Identifier&);
     };
 
   }

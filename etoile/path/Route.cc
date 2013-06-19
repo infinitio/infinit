@@ -93,9 +93,9 @@ namespace etoile
     elle::Status
     Route::Create(std::string const& path)
     {
-      elle::String::size_type   start;
-      elle::String::size_type   end;
-      Slab                      slab;
+      elle::String::size_type start;
+      elle::String::size_type end;
+      std::string slab;
 
       // check that the path starts with a leading '/'
       if (path[0] != elle::system::path::separator)
@@ -170,11 +170,9 @@ namespace etoile
       return elle::Status::Ok;
     }
 
-    ///
-    /// this method creates a route by appending a name to an existing route.
-    ///
-    elle::Status        Route::Create(const Route&              route,
-                                      const Slab&               slab)
+    elle::Status
+    Route::Create(const Route& route,
+                  const std::string& slab)
     {
       // copy the elements.
       this->elements = route.elements;

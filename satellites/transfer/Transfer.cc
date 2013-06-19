@@ -116,7 +116,7 @@ namespace satellite
 
     boost::filesystem::path p(path);
     std::string way = p.parent_path().generic_string();
-    etoile::path::Slab name = p.filename().generic_string();
+    std::string name = p.filename().generic_string();
 
     // Resolve parent directory.
     etoile::path::Chemin chemin(Transfer::rpcs->pathresolve(way));

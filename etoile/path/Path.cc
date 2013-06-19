@@ -26,48 +26,25 @@ namespace etoile
 {
   namespace path
   {
-
-//
-// ---------- static methods --------------------------------------------------
-//
-
-    ///
-    /// this method initializes the path system.
-    ///
-    elle::Status        Path::Initialize()
+    elle::Status
+    Path::Initialize()
     {
-      // initialize the route.
       if (Route::Initialize() == elle::Status::Error)
         throw Exception("unable to initialize the route");
-
       return elle::Status::Ok;
     }
 
-    ///
-    /// this method cleans the path system.
-    ///
-    elle::Status        Path::Clean()
+    elle::Status
+    Path::Clean()
     {
-      // clean the route.
       if (Route::Clean() == elle::Status::Error)
         throw Exception("unable to clean the route");
-
       return elle::Status::Ok;
     }
 
-    ///
-    /// this method takes a route and returns the address of the
-    /// referenced object.
-    ///
-    /// this method starts by resolving the route by looking up in the
-    /// shrub. then, the resolving process retrieved the uncached directory
-    /// objects and explore them.
-    ///
-    /// note that this method only processes absolute paths. paths being
-    /// composed of links will fail to be resolved for instance.
-    ///
-    elle::Status        Path::Resolve(const Route&              route,
-                                      Venue&                    venue)
+    elle::Status
+    Path::Resolve(const Route& route,
+                  Venue& venue)
     {
       nucleus::proton::Address address;
       nucleus::proton::Revision revision;
@@ -180,17 +157,10 @@ namespace etoile
       return elle::Status::Ok;
     }
 
-    ///
-    /// this method takes a slice and tries to extract both the real
-    /// slice and the revision number.
-    ///
-    /// for instance the slice 'teton.txt%42'---assuming the regexp '%[0-9]+'
-    /// is used for revision numbers---would be split into 'teton.txt' and
-    /// the revision number 42.
-    ///
-    elle::Status        Path::Parse(const Slab&                 slab,
-                                    Slice&                      slice,
-                                    nucleus::proton::Revision& revision)
+    elle::Status
+    Path::Parse(const std::string& slab,
+                Slice& slice,
+                nucleus::proton::Revision& revision)
     {
       // set the slice as being the entire slab.
       slice = slab;
