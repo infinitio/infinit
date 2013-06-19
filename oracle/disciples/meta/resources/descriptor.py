@@ -19,19 +19,43 @@ class _Page(Page):
 
     # Smart getter for network in database.
     @requireLoggedIn
-    def network(self, _id):
-        network = database.networks().find_one({'_id': _id})
-        if not network:
-            return self.forbidden("Couldn't find any network with this id")
-        if len(network) == 2: # Only contains _id and owner.
-            raise web.ok(data = self.error(error.NETWORK_NOT_FOUND,
-                                           "Network cleared"))
+    def check_visiblity(self, network):
         # If visibility is private, only owner and users can access it.
         if network.get('visibility', Visibility.PRIVATE) == Visibility.PRIVATE \
                 and network['owner'] != self.user['_id'] \
                 and self.user['_id'] not in network['users']:
             return self.forbidden("This network does not belong to you")
+
+    def _network(self, network):
+        if not network:
+            return self.forbidden("Couldn't find any network with this id")
+        if len(network) == 2: # Only contains _id and owner.
+            raise web.ok(data = self.error(error.NETWORK_NOT_FOUND,
+                                           "Network cleared"))
+        self.check_visiblity(network)
         return network
+
+    @requireLoggedIn
+    def network_by_id(self, _id):
+        return self._network(database.networks().find_one({'_id': _id}))
+
+    @requireLoggedIn
+    def network_by_name(self, owner_handle, network_name):
+
+        if owner_handle is None or owner_handle == "":
+            owner_handle = self.user['lw_handle']
+
+        req = {
+            'owner_handle': owner_handle,
+            'name': network_name
+        }
+
+        # The user can lookup all networks. The other can only
+        # lookup the public ones.
+        if not self.user or self.user['lw_handle'] != owner_handle:
+            req['visibility'] = Visibility.PUBLIC
+
+        return self._network(database.networks().find_one(req))
 
 class PublishDescriptor(_Page):
     """
@@ -124,8 +148,7 @@ class UnpublishDescriptor(_Page):
     def POST(self):
         self.validate()
 
-        _id = self.data['id']
-        network = self.network(_id)
+        network = self.network_by_id(self.data['id'])
 
         # Only the owner can unpublish a published descriptor.
         if network['owner'] != self.user['_id']:
@@ -167,22 +190,9 @@ class LookupDescriptor(_Page):
         handle = self.data['owner'].lower()
         name = self.data['name']
 
-        req = {
-                  'owner_handle': handle,
-                  'name': name
-              }
 
-        # The user can lookup all networks. The other can only
-        # lookup the public ones.
-        if not self.user or self.user['lw_handle'] != handle:
-            res['visibility'] = Visibility.PUBLIC
 
-        network = database.networks().find_one(req, fields=['_id'])
-
-        if network is None:
-            return self.error(error.NETWORK_NOT_FOUND)
-
-        return self.success({"_id": network['_id']})
+        return self.success({"_id": self.network_by_name(handle, name)['_id']})
 
 class GetDescriptor(_Page):
     """
@@ -204,9 +214,13 @@ class GetDescriptor(_Page):
 
     @requireLoggedIn
     def POST(self):
-        _id = self.data['id']
-        network = self.network(_id)
-        return self.success({ key: network[key] for key in ['descriptor', '_id', 'name']})
+        if 'id' in self.data:
+            network = self.network_by_id(self.data['id'])
+        elif 'owner_handle' in self.data and 'network_name' in self.data:
+            network = self.network_by_name(self.data['owner_handle'], self.data['network_name'])
+        else:
+            return self.error(error.BAD_REQUEST)
+        return self.success({ key: network[key] for key in ['descriptor', '_id', 'name'] })
 
 class NetworkFilter:
     ALL_ = 0
