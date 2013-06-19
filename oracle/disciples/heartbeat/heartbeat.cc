@@ -12,11 +12,13 @@
 
 #include <satellites/satellite.hh>
 
+#include <boost/program_options.hpp>
+
 #include <sstream>
 #include <algorithm>
 #include <memory>
 
-#include <boost/program_options.hpp>
+#include <unistd.h>
 
 ELLE_LOG_COMPONENT("oracle.disciple.heartbeat");
 
@@ -104,7 +106,7 @@ main(int ac, const char *av[])
     heartbeat::start(vm["port"].as<int>());
   };
 
-  bool restart = true;
+  int tries = 0;
   do
   {
     int status = infinit::satellite_main("heartbeat-server", std::move(Main));
@@ -113,9 +115,10 @@ main(int ac, const char *av[])
     // otherwise, the process crashed, and we can restart it.
     if (status == 0 ||
         sig_value(status) == SIGINT)
-      restart = false;
+      return EXIT_SUCCESS;
   }
-  while (restart);
+  while (tries++ < 10);
 
+  return EXIT_FAILURE;
 }
 
