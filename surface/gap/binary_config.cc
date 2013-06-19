@@ -26,7 +26,7 @@ namespace surface
       config.setenv("ELLE_LOG_PID", "1");
       config.setenv("ELLE_LOG_TID", "1");
       config.setenv("ELLE_LOG_TIME", "1");
-      config.setenv("ELLE_LOG_LEVEL", "DEBUG,elle.*:LOG");
+      config.setenv("ELLE_LOG_LEVEL", "DEBUG,elle.*:LOG,reactor.*:LOG");
       return config;
     }
   }
