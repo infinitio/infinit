@@ -19,9 +19,6 @@ namespace etoile
   ///
   elle::Status          Etoile::Initialize()
   {
-    if (path::Path::Initialize() == elle::Status::Error)
-      throw Exception("unable to initialize the path");
-
     if (gear::Gear::Initialize() == elle::Status::Error)
       throw Exception("unable to initialize the gear");
 
@@ -58,9 +55,6 @@ namespace etoile
 
     if (gear::Gear::Clean() == elle::Status::Error)
       throw Exception("unable to clean the gear");
-
-    if (path::Path::Clean() == elle::Status::Error)
-      throw Exception("unable to clean the path");
 
     return elle::Status::Ok;
   }

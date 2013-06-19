@@ -19,28 +19,6 @@ namespace etoile
     const Route Route::Null;
     Route Route::Root(std::string(1, elle::system::path::separator));
 
-//
-// ---------- static methods --------------------------------------------------
-//
-
-    ///
-    /// this method initializes the path system.
-    ///
-    elle::Status        Route::Initialize()
-    {
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method cleans the path system.
-    ///
-    elle::Status        Route::Clean()
-    {
-      // nothing to do.
-
-      return elle::Status::Ok;
-    }
-
     /*-------------.
     | Construction |
     `-------------*/

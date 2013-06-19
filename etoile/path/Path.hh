@@ -15,16 +15,6 @@ namespace etoile
     class Path
     {
     public:
-      /// Initialize the path system.
-      static
-      elle::Status
-      Initialize();
-
-      /// Clean the path system.
-      static
-      elle::Status
-      Clean();
-
       /// Take a route and returns the address of the referenced object.
       ///
       /// Start by resolving the route by looking up in the shrub, retreive the

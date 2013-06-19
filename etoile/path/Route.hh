@@ -27,12 +27,6 @@ namespace etoile
       /// The root directory.
       static Route                      Root;
 
-      //
-      // static methods
-      //
-      static elle::Status       Initialize();
-      static elle::Status       Clean();
-
     /*------.
     | Types |
     `------*/

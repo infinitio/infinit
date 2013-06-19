@@ -27,22 +27,6 @@ namespace etoile
   namespace path
   {
     elle::Status
-    Path::Initialize()
-    {
-      if (Route::Initialize() == elle::Status::Error)
-        throw Exception("unable to initialize the route");
-      return elle::Status::Ok;
-    }
-
-    elle::Status
-    Path::Clean()
-    {
-      if (Route::Clean() == elle::Status::Error)
-        throw Exception("unable to clean the route");
-      return elle::Status::Ok;
-    }
-
-    elle::Status
     Path::Resolve(const Route& route,
                   Venue& venue)
     {
