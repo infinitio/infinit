@@ -17,6 +17,7 @@
 #include <sstream>
 #include <algorithm>
 #include <memory>
+#include <unistd.h>
 
 #include <unistd.h>
 
