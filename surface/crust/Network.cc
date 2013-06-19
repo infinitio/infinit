@@ -65,7 +65,7 @@ meta(std::string const& host,
 static
 std::unique_ptr<nucleus::neutron::Group>
 create_group(nucleus::proton::Network const& network,
-             cryptography::KeyPair const& key_pair)
+             infinit::cryptography::KeyPair const& key_pair)
 {
   ELLE_TRACE_FUNCTION(network, key_pair);
 
@@ -83,7 +83,7 @@ static
 std::unique_ptr<nucleus::neutron::Object>
 create_root(nucleus::proton::Network const& network,
             horizon::Policy policy,
-            cryptography::KeyPair const& key_pair,
+            infinit::cryptography::KeyPair const& key_pair,
             nucleus::proton::Address const& group_address)
 {
   ELLE_TRACE_FUNCTION(network, policy, key_pair, group_address);
@@ -136,8 +136,8 @@ create_root(nucleus::proton::Network const& network,
 
       // XXX
       ELLE_DEBUG("generate secret key");
-      static cryptography::SecretKey secret_key(
-        cryptography::cipher::Algorithm::aes256,
+      static infinit::cryptography::SecretKey secret_key(
+        infinit::cryptography::cipher::Algorithm::aes256,
         ACCESS_SECRET_KEY);
 
       ELLE_DEBUG("radix from access '%s'", access);
@@ -164,7 +164,7 @@ create_root(nucleus::proton::Network const& network,
   }
 
   ELLE_DEBUG("digest from access '%s'", access);
-  cryptography::Digest fingerprint =
+  infinit::cryptography::Digest fingerprint =
     nucleus::neutron::access::fingerprint(access);
 
   ELLE_DEBUG("directory from network '%s' and key '%s'", network, key_pair);
