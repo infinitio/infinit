@@ -110,7 +110,7 @@ namespace surface
       /// Delete a new network.
       std::string
       delete_(std::string const& name,
-              bool force = false);
+              bool remove_directory = true);
 
       /// Add a user to a network with its mail or id.
       void

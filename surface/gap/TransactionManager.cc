@@ -391,10 +391,12 @@ namespace surface
           ELLE_DEBUG("couldn't finalize operation: %s",
                      elle::exception_string());
         }
+
       this->_states->erase(tr.id);
       this->_cancel_all(tr.id);
-      if (tr.status != plasma::TransactionStatus::failed)
-        this->_network_manager.delete_(tr.network_id);
+      this->_network_manager.delete_(
+        tr.network_id,
+        tr.status == plasma::TransactionStatus::failed);
     }
 
     void

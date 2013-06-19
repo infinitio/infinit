@@ -342,48 +342,45 @@ namespace surface
     }
 
     std::string
-    NetworkManager::delete_(std::string const& network_id, bool force)
+    NetworkManager::delete_(std::string const& network_id,
+                            bool remove_directory)
     {
+      ELLE_SCOPE_EXIT([&] {
+        if (this->infinit_instance_manager().exists(network_id))
+        {
+          ELLE_TRACE("stoping infinit instance for network %s", network_id)
+            this->_infinit_instance_manager.stop(network_id);
+        }
+      });
 
-      if (force or
-          this->_networks->find(network_id) != this->_networks->end())
+      ELLE_SCOPE_EXIT([&] {
+        if (not remove_directory)
+          return;
+        auto path = common::infinit::network_directory(this->_self.id,
+                                                       network_id);
+        if (elle::os::path::exists(path))
+        {
+          ELLE_TRACE("remove network %s directory %s", network_id, path)
+            elle::os::path::remove_directory(path);
+        }
+      });
+
+      if (this->_networks->find(network_id) != this->_networks->end())
       {
         this->_reporter.store("network_delete_attempt",
                               {{MKey::value,  network_id}});
-        // XXX must handle catch better
-        try
-        {
-          ELLE_TRACE("remove network %s from meta", network_id)
-            try
-            {
-              this->_meta.delete_network(network_id, force);
-            }
-            CATCH_FAILURE_TO_METRICS("network_delete");
-        }
-        catch (...)
-        {
-          ELLE_WARN("%s", elle::exception_string());
-        }
+        ELLE_TRACE("remove network %s from meta", network_id)
+          try
+          {
+            this->_meta.delete_network(network_id, true);
+          }
+          CATCH_FAILURE_TO_METRICS("network_delete");
         this->_reporter.store("network_delete_succeed",
                               {{MKey::value, network_id}});
+      }
+
+      if (this->_networks->find(network_id) != this->_networks->end())
         this->_networks->erase(network_id);
-      }
-
-      // Remove
-      if (this->infinit_instance_manager().exists(network_id))
-      {
-        ELLE_TRACE("stoping infinit instance for network %s", network_id)
-          this->_infinit_instance_manager.stop(network_id);
-      }
-
-      // Remove all files.
-      std::string network_path =
-        common::infinit::network_directory(this->_self.id, network_id);
-      if (elle::os::path::exists(network_path))
-      {
-        ELLE_TRACE("remove network %s directory %s", network_id, network_path)
-          elle::os::path::remove_directory(network_path);
-      }
 
       return network_id;
     }
