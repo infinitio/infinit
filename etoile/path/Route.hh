@@ -22,8 +22,6 @@ namespace etoile
     class Route
     {
     public:
-      /// The null Route.
-      static const Route                Null;
       /// The root directory.
       static Route                      Root;
 
@@ -39,7 +37,7 @@ namespace etoile
     | Construction |
     `-------------*/
     public:
-      /// Create a null Route.
+      /// Create a Route representing the root.
       Route();
       /// Clone a Route.
       Route(Route const&) = default;

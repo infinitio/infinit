@@ -12,11 +12,6 @@ namespace etoile
   namespace path
   {
 
-//
-// ---------- definitions -----------------------------------------------------
-//
-
-    const Route Route::Null;
     Route Route::Root(std::string(1, elle::system::path::separator));
 
     /*-------------.
