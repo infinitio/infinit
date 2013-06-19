@@ -252,6 +252,8 @@ def configure(cxx_toolkit = None,
   cxx_config.warnings.empty_body = False
   cxx_config.warnings.missing_declarations = \
     drake.cxx.Config.Warnings.Error
+  cxx_config.warnings.return_type = \
+    drake.cxx.Config.Warnings.Error
 
   curly_libs = [
     curly_lib,

@@ -61,6 +61,7 @@ std::unique_ptr<cryptography::KeyPair> _user(nullptr);
 // ---------- Catalog ---------------------------------------------------------
 //
 
+static
 std::vector<elle::String>
 test_porcupine_catalog_prepare(elle::Natural32 const n)
 {
@@ -79,6 +80,7 @@ test_porcupine_catalog_prepare(elle::Natural32 const n)
   return (vector);
 }
 
+static
 void
 test_porcupine_catalog_vector_dump(std::vector<elle::String> const& vector)
 {
@@ -86,6 +88,7 @@ test_porcupine_catalog_vector_dump(std::vector<elle::String> const& vector)
     std::cout << s << std::endl;
 }
 
+static
 void
 test_porcupine_catalog_add(
   nucleus::proton::Porcupine<nucleus::neutron::Catalog>& porcupine,
@@ -133,6 +136,7 @@ test_porcupine_catalog_add(
     nucleus::proton::flags::state);
 }
 
+static
 void
 test_porcupine_catalog_lookup(
   nucleus::proton::Porcupine<nucleus::neutron::Catalog>& porcupine,
@@ -175,6 +179,7 @@ test_porcupine_catalog_lookup(
     nucleus::proton::flags::state);
 }
 
+static
 nucleus::proton::Radix
 test_porcupine_catalog_seal(
   nucleus::proton::Porcupine<nucleus::neutron::Catalog>& porcupine,
@@ -190,6 +195,7 @@ test_porcupine_catalog_seal(
   return (radix);
 }
 
+static
 void
 test_porcupine_catalog_seek(
   nucleus::proton::Porcupine<nucleus::neutron::Catalog>& porcupine,
@@ -239,6 +245,7 @@ test_porcupine_catalog_seek(
     nucleus::proton::flags::all);
 }
 
+static
 nucleus::proton::Porcupine<nucleus::neutron::Catalog>*
 test_porcupine_catalog_serialize(
   nucleus::proton::Radix radix1,
@@ -286,6 +293,7 @@ test_porcupine_catalog_serialize(
   return (porcupine2);
 }
 
+static
 void
 test_porcupine_catalog_remove(
   nucleus::proton::Porcupine<nucleus::neutron::Catalog>& porcupine,
@@ -334,6 +342,7 @@ test_porcupine_catalog_remove(
   ELLE_ASSERT(porcupine.state() == nucleus::proton::State::dirty);
 }
 
+static
 void
 test_porcupine_catalog()
 {
@@ -434,6 +443,7 @@ test_porcupine_catalog()
 // ---------- Data ------------------------------------------------------------
 //
 
+static
 void
 test_porcupine_data_write(
   nucleus::proton::Porcupine<nucleus::neutron::Data>& porcupine)
@@ -494,6 +504,7 @@ test_porcupine_data_write(
   ELLE_ASSERT(input == output);
 }
 
+static
 void
 test_porcupine_data_resize(
   nucleus::proton::Porcupine<nucleus::neutron::Data>& porcupine)
@@ -549,6 +560,7 @@ test_porcupine_data_resize(
     nucleus::proton::flags::state);
 }
 
+static
 void
 test_porcupine_data()
 {
@@ -577,6 +589,7 @@ test_porcupine_data()
 // ---------- Attributes ------------------------------------------------------
 //
 
+static
 void
 test_porcupine_attributes()
 {
@@ -625,6 +638,7 @@ test_porcupine_attributes()
 // ---------- Main ------------------------------------------------------------
 //
 
+static
 int
 Main(elle::Natural32,
      elle::Character* argv[],

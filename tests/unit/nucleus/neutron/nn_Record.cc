@@ -10,6 +10,7 @@
 
 #define CHECK(call) if (call != elle::Status::Ok) { assert(false); } else
 
+static
 void
 test()
 {
@@ -24,7 +25,8 @@ test()
   assert(record == nucleus::neutron::Record::null());
 }
 
-int main(int, char** argv)
+int
+main(int, char** argv)
 {
   try
     {

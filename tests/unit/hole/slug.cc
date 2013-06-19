@@ -57,6 +57,7 @@ public:
   hole::implementations::slug::Slug slug;
 };
 
+static
 void
 slug_push_pull()
 {
@@ -83,6 +84,7 @@ BOOST_AUTO_TEST_CASE(test_slug_push_pull)
   sched.run();
 }
 
+static
 void
 two_slugs_push_pull()
 {
@@ -113,6 +115,7 @@ BOOST_AUTO_TEST_CASE(test_two_slugs_push_pull)
   sched.run();
 }
 
+static
 void
 two_slugs_push_pull_async()
 {
@@ -139,6 +142,6 @@ BOOST_AUTO_TEST_CASE(test_two_slugs_push_pull_async)
   reactor::Scheduler sched;
   reactor::Thread t(sched,
                     "main",
-                    &two_slugs_push_pull);
+                    &two_slugs_push_pull_async);
   sched.run();
 }

@@ -21,7 +21,9 @@ TEST_SERIALIZE_FINALIZE(nucleus::proton, ImprintBlock)
 
 namespace test
 {
-  void test()
+  static
+  void
+  test()
   {
     {
       nucleus::proton::Network network("test");
