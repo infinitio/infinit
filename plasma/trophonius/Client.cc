@@ -130,6 +130,7 @@ namespace plasma
       boost::asio::ip::tcp::socket socket;
       boost::asio::deadline_timer connection_checker;
       bool connected;
+      bool pong_expected;
       std::string server;
       uint16_t port;
       boost::asio::streambuf request;
@@ -147,6 +148,7 @@ namespace plasma
         socket{io_service},
         connection_checker{io_service},
         connected{false},
+        pong_expected{false},
         server{server},
         port{port},
         request{},
@@ -179,24 +181,33 @@ namespace plasma
         return;
       }
 
-      try
+      if (_impl->pong_expected)
       {
-        ELLE_TRACE("send ping to %s", _impl->socket.remote_endpoint());
-        boost::asio::async_write(
-          _impl->socket,
-          boost::asio::buffer(ping_msg, strlen(ping_msg)),
-          std::bind(
-            &Client::_on_write_check, this,
-            std::placeholders::_1, std::placeholders::_2
-          )
-        );
+        _impl->connected = false;
+        _impl->pong_expected = false;
       }
-      catch (std::exception const&)
+      else
       {
-        ELLE_WARN("couldn't send ping to tropho: %s",
-                  elle::exception_string());
-        this->_impl->connected = false;
+        try
+        {
+          ELLE_DEBUG("send ping to %s", _impl->socket.remote_endpoint());
+          boost::asio::async_write(
+            _impl->socket,
+            boost::asio::buffer(ping_msg, strlen(ping_msg)),
+            std::bind(
+              &Client::_on_write_check, this,
+              std::placeholders::_1, std::placeholders::_2
+            )
+          );
+        }
+        catch (std::exception const&)
+        {
+          ELLE_WARN("couldn't send ping to tropho: %s",
+                    elle::exception_string());
+          this->_impl->connected = false;
+        }
       }
+
       if (_impl->connected == false)
       {
         try
@@ -222,15 +233,17 @@ namespace plasma
     Client::_on_write_check(boost::system::error_code const& err,
                             size_t const bytes_transferred)
     {
-      if (err)
+      if (bytes_transferred == strlen(ping_msg))
+      {
+        ELLE_DEBUG("trophonius connected");
+        _impl->connected = true;
+        _impl->pong_expected = true;
+      }
+      else
       {
         _impl->connected = false;
-        ELLE_WARN("trophonius has been disconnected, re-try in 10 seconds");
-      }
-      else if (bytes_transferred == strlen(ping_msg))
-      {
-        ELLE_TRACE("trophonius connected");
-        _impl->connected = true;
+        ELLE_WARN("trophonius has been disconnected (%s), retry in 10 seconds",
+                  err);
       }
     }
 
@@ -287,7 +300,7 @@ namespace plasma
         return;
       }
 
-      ELLE_TRACE("read %s bytes from the socket (%s available)",
+      ELLE_DEBUG("read %s bytes from the socket (%s available)",
                  bytes_transferred,
                  _impl->response.in_avail());
 
@@ -302,7 +315,9 @@ namespace plasma
       ELLE_DEBUG("got message: %s", msg);
       try
       {
-        if (msg != "PONG\n")
+        if (msg == "PONG\n")
+          _impl->pong_expected = false;
+        else
           this->_notifications.push(
               notification_from_dict(json::parse(msg)->as_dictionary()));
       }
