@@ -108,14 +108,5 @@ namespace surface
         throw;
       }
     }
-
-    void
-    DownloadOperation::_cancel()
-    {
-      ELLE_DEBUG("cancelling %s name", this->name());
-      this->_transaction_manager.update(
-        this->_transaction.id,
-        plasma::TransactionStatus::canceled);
-    }
   }
 }
