@@ -36,34 +36,6 @@
 
 ELLE_LOG_COMPONENT("infinit.crust.Network");
 
-/*---.
-| ID |
-`---*/
-ID::ID(size_t size):
-  _value(elle::format::hexadecimal::encode(
-           cryptography::random::generate<elle::Buffer>(size)))
-{}
-
-ID::ID(ID const& id):
-  _value(id._value)
-{}
-
-ID::ID(std::string const& id):
-  _value(id)
-{}
-
-bool
-ID::operator ==(std::string const& rhs)
-{
-  return this->_value == rhs;
-}
-
-bool
-ID::operator <(std::string const& rhs)
-{
-  return this->_value < rhs;
-}
-
 /*-----.
 | Meta |
 `-----*/
@@ -216,16 +188,16 @@ create_root(nucleus::proton::Network const& network,
 /*--------.
 | Network |
 `--------*/
-Network::Network(std::string const& description,
-                 cryptography::KeyPair const& keypair,
+Network::Network(cryptography::KeyPair const& keypair,
                  hole::Model const& model,
                  hole::Openness const& openness,
                  horizon::Policy const& policy,
+                 std::string const& description,
                  Authority const& authority)
 {
   ELLE_TRACE_METHOD(description, model, openness, policy);
 
-  ID uid(64);
+  infinit::Identifier uid(32);
 
   ELLE_DEBUG("network uid: '%s'", uid);
   nucleus::proton::Network network(uid.value());
@@ -317,7 +289,7 @@ Network::Network(boost::filesystem::path const& descriptor_path)
   this->_descriptor_path = descriptor_path;
 }
 
-Network::Network(ID const& id,
+Network::Network(infinit::Identifier const& id,
                  std::string const& host,
                  uint16_t port,
                  std::string const& token)

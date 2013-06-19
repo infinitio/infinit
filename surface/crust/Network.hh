@@ -1,6 +1,8 @@
 #ifndef NETWORK_HH
 # define NETWORK_HH
 
+# include <infinit/Identifier.hh>
+
 # include <plasma/meta/Client.hh>
 
 # include <version.hh>
@@ -18,24 +20,6 @@
 # include <boost/filesystem/path.hpp>
 
 # include <memory>
-
-// ID represents a richer class than a simple string and avoid conflicts in the
-// API.
-class ID
-{
-public:
-  ID(size_t size);
-  ID(ID const& id);
-  ID(std::string const& id);
-
-  bool
-  operator ==(std::string const& rhs);
-
-  bool
-  operator <(std::string const& rhs);
-
-  ELLE_ATTRIBUTE_R(std::string, value);
-};
 
 class Network
 {
@@ -91,7 +75,7 @@ public:
   // XXX: Should I put a dependencie to common by setting default value for meta
   // host and port?
   explicit
-  Network(ID const& id,
+  Network(infinit::Identifier const& id,
           std::string const& host = common::meta::host(),
           uint16_t port = common::meta::port(),
           std::string const& token = common::meta::token());
