@@ -1045,7 +1045,7 @@ def configure(cxx_toolkit = None,
     crust_python_cxx_config += boost.config_python()
     crust_python_cxx_config.lib_path_runtime('..')
     crust_python_sources = drake.nodes(
-      'surface/crust/python/Network.cc',
+      'surface/crust/python/crust.cc',
     )
     crust_python_lib = drake.cxx.Module('lib/python/_crust',
                                         # FIXME: sooooo many libs ...
@@ -1053,7 +1053,6 @@ def configure(cxx_toolkit = None,
                                         cxx_toolkit, crust_python_cxx_config)
 
     crust_python_pyfiles = drake.nodes(
-      'surface/crust/python/crust.py',
       'surface/crust/python/pycrust.py',
       'surface/crust/python/infinit_utils.py',
       'surface/crust/python/infinit-network-create.py',
