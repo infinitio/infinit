@@ -1064,6 +1064,7 @@ def configure(cxx_toolkit = None,
       'surface/crust/python/infinit-network-list.py',
       'surface/crust/python/infinit-network-print.py',
       'surface/crust/python/infinit-network-retrieve.py',
+      'surface/crust/python/infinit-network-extract.py',
       'surface/crust/python/infinit-network-lookup.py',
       )
 
