@@ -28,6 +28,6 @@ namespace hole
     for (auto pair: openness_to_string)
       if (pair.second == name)
         return pair.first;
-    throw elle::Exception(elle::sprintf("unknown model name: %s", name));
+    throw elle::Exception(elle::sprintf("unknown openness name: %s", name));
   }
 }
