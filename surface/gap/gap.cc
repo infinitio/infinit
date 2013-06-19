@@ -452,7 +452,9 @@ extern "C"
     return nullptr;
   }
 
-  char** gap_network_users(gap_State* state, char const* id)
+  static
+  char**
+  gap_network_users(gap_State* state, char const* id)
   {
     assert(state != nullptr);
     assert(id != nullptr);
@@ -468,7 +470,9 @@ extern "C"
     return nullptr;
   }
 
-  void gap_network_users_free(char** users)
+  static
+  void
+  gap_network_users_free(char** users)
   {
     ::free(users);
   }
@@ -751,7 +755,9 @@ extern "C"
   }
 
   /// - Permissions ---------------------------------------------------------
-  void gap_file_users_free(char** users)
+  static
+  void
+  gap_file_users_free(char** users)
   {
     ::free(users);
   }

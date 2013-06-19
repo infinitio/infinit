@@ -37,6 +37,7 @@ namespace infinit
 {
   static int st_pid = -1;
 
+  static
   void
   sighdl(int signum)
   {

@@ -1544,6 +1544,7 @@ namespace horizon
   }
 
   /// XXX
+  static
   void
   _release(etoile::path::Way const way,
            Handle* handle)

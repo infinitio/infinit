@@ -207,6 +207,7 @@ namespace satellite
     return elle::Status::Ok;
   }
 
+  static
   void
   User(elle::Natural32 argc, elle::Character* argv[])
   {
