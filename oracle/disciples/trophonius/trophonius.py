@@ -52,6 +52,7 @@ class Trophonius(basic.LineReceiver):
         self.device_id = None
         self.state = 'HELLO'
         self.meta_client = None
+        self._alive_service = None
 
     def __str__(self):
         if hasattr(self, "id"):
@@ -61,6 +62,7 @@ class Trophonius(basic.LineReceiver):
 
     def connectionMade(self):
         log.msg("New connection from", self.transport.getPeer())
+        self._alive_service = reactor.callLater(30, self.transport.loseConnection)
 
     def connectionLost(self, reason):
         log.msg("Connection lost with", self.transport.getPeer(), reason)
@@ -68,7 +70,7 @@ class Trophonius(basic.LineReceiver):
         if self.id is None:
             return
 
-        if getattr(self, "_alive_service", None):
+        if self._alive_service is not None and self._alive_service.active()
             self._alive_service.cancel()
 
         print("Disconnect user: id=%s" % self.id)
@@ -101,14 +103,10 @@ class Trophonius(basic.LineReceiver):
             self.sendLine("{}".format(message))
 
     def handle_PING(self, line):
-        """
-        Echo.
-        """
         assert line == "PING"
-        if getattr(self, "_alive_service", None):
-            self._alive_service.cancel()
-        self._alive_service = reactor.callLater(65, self.transport.loseConnection)
         self.sendLine("PONG")
+        if self._alive_service is not None and self._alive_service.active():
+            self._alive_service.reset(11)
 
     def handle_HELLO(self, line):
         """
