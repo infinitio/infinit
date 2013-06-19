@@ -963,6 +963,8 @@ def configure(cxx_toolkit = None,
   crust_sources = drake.nodes(
     'surface/crust/Network.cc',
     'surface/crust/Network.hh',
+    'surface/crust/User.cc',
+    'surface/crust/User.hh',
     'surface/crust/Authority.hh',
     'surface/crust/Authority.hxx',
     'surface/crust/MetaAuthority.cc',
