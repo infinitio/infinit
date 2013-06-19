@@ -130,8 +130,8 @@ namespace etoile
         elle::utility::Duration::UnitMilliseconds,
         this->_lifespan.total_milliseconds());
       for (riffle = this->_riffles,
-             scoutor = route.elements.begin() + 1;
-           scoutor != route.elements.end();
+             scoutor = route.elements().begin() + 1;
+           scoutor != route.elements().end();
            scoutor++)
       {
         // Check whether the riffle has expired.
@@ -177,7 +177,7 @@ namespace etoile
       if (this->_riffles == nullptr)
       {
         std::unique_ptr<Riffle> riffle(new Riffle(*this,
-                                                  route.elements[0],
+                                                  route.elements()[0],
                                                   venue.elements[0]));
         if (this->_queue.Insert(riffle->timestamp(),
                                 riffle.get()) == elle::Status::Error)
@@ -189,8 +189,8 @@ namespace etoile
 
       Riffle* riffle;
       for (riffle = this->_riffles,
-             r = route.elements.begin() + 1, v = venue.elements.begin() + 1;
-           (r != route.elements.end()) && (v != venue.elements.end());
+             r = route.elements().begin() + 1, v = venue.elements.begin() + 1;
+           (r != route.elements().end()) && (v != venue.elements.end());
            r++, v++)
       {
         riffle->update(*r, *v);
@@ -213,8 +213,8 @@ namespace etoile
         return;
 
       for (riffle = this->_riffles,
-             scoutor = route.elements.begin() + 1;
-           scoutor < route.elements.end();
+             scoutor = route.elements().begin() + 1;
+           scoutor < route.elements().end();
            scoutor++)
       {
         // Try to resolve within this riffle. If this process fails, it would

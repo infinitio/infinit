@@ -35,9 +35,6 @@ namespace etoile
                          "the leading path separator '%c': %s",
                          elle::system::path::separator, path));
 
-      // clear the elements.
-      this->elements.clear();
-
       // compute the next offsets.
       start =
         path.find_first_not_of(elle::system::path::separator);
@@ -76,10 +73,10 @@ namespace etoile
       // if no slab is present or the first slab does not represent the
       // root directory---i.e the elements container is empty---register
       // an empty root slab.
-      if (this->elements.empty() == true)
+      if (this->elements().empty() == true)
       {
         // record an empty root slab.
-        this->elements.push_back("");
+        this->elements().push_back("");
       }
 
       // then, go through the string.
@@ -89,7 +86,7 @@ namespace etoile
         slab = path.substr(start, end - start);
 
         // add the section to the container.
-        this->elements.push_back(slab);
+        this->elements().push_back(slab);
 
         // compute the next offsets.
         start =
@@ -102,8 +99,8 @@ namespace etoile
     Route::Route(const Route& route,
                  const std::string& slab)
     {
-      this->elements = route.elements;
-      this->elements.push_back(slab);
+      this->elements() = route.elements();
+      this->elements().push_back(slab);
     }
 
     ///
@@ -112,11 +109,11 @@ namespace etoile
     ///
     elle::Boolean       Route::Derives(const Route&             base) const
     {
-      auto              i = base.elements.begin();
-      auto              j = this->elements.begin();
-      auto              end = base.elements.end();
+      auto              i = base.elements().begin();
+      auto              j = this->elements().begin();
+      auto              end = base.elements().end();
 
-      if (base.elements.size() > this->elements.size())
+      if (base.elements().size() > this->elements().size())
         return (false);
 
       for(; i != end; ++i, ++j)
@@ -126,17 +123,6 @@ namespace etoile
         }
 
       return (true);
-    }
-
-    ///
-    /// this method clears the route's content.
-    ///
-    elle::Status        Route::Clear()
-    {
-      // clear the container.
-      this->elements.clear();
-
-      return elle::Status::Ok;
     }
 
 //
@@ -156,12 +142,12 @@ namespace etoile
         return true;
 
       // compare the size.
-      if (this->elements.size() != element.elements.size())
+      if (this->elements().size() != element.elements().size())
         return false;
 
       // for every element.
-      for (s = this->elements.begin(), t = element.elements.begin();
-           s != this->elements.end();
+      for (s = this->elements().begin(), t = element.elements().begin();
+           s != this->elements().end();
            s++, t++)
         if (*s != *t)
           return false;
@@ -182,14 +168,14 @@ namespace etoile
         return false;
 
       // compare the size.
-      if (this->elements.size() < element.elements.size())
+      if (this->elements().size() < element.elements().size())
         return true;
-      else if (this->elements.size() > element.elements.size())
+      else if (this->elements().size() > element.elements().size())
         return false;
 
       // for every element.
-      for (s = this->elements.begin(), t = element.elements.begin();
-           s != this->elements.end();
+      for (s = this->elements().begin(), t = element.elements().begin();
+           s != this->elements().end();
            s++, t++)
         {
           if (*s < *t)
@@ -216,11 +202,11 @@ namespace etoile
 
       std::cout << alignment << "[Route] " << this
                 << " #" << std::dec
-                << this->elements.size() << std::endl;
+                << this->elements().size() << std::endl;
 
       // for every element.
-      for (scoutor = this->elements.begin();
-           scoutor != this->elements.end();
+      for (scoutor = this->elements().begin();
+           scoutor != this->elements().end();
            scoutor++)
         {
           // dump the slab.
@@ -234,7 +220,7 @@ namespace etoile
     std::ostream&
     operator << (std::ostream& stream, Route const& r)
     {
-      for (auto elt: r.elements)
+      for (auto elt: r.elements())
         stream << elt << "/";
       return stream;
     }

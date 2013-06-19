@@ -50,6 +50,7 @@ ELLE_LOG_COMPONENT("infinit.horizon.Crux");
 
 namespace horizon
 {
+  static
   std::string
   _dirname(std::string const& path, std::string& basename)
   {

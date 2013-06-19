@@ -37,10 +37,10 @@ namespace etoile
       // first ask the shrub i.e path cache to resolve as much as it can.
       shrub::global_shrub->resolve(route, venue);
 
-      assert(venue.elements.size() <= route.elements.size());
+      assert(venue.elements.size() <= route.elements().size());
 
       // if complete, return the address i.e without updating the cache.
-      if (route.elements.size() == venue.elements.size())
+      if (route.elements().size() == venue.elements.size())
         return elle::Status::Ok;
 
       // if the cache did not resolve anything.
@@ -55,7 +55,7 @@ namespace etoile
           // parse the very first slab i.e the root slab in order
           // to extract the revision number. note that the root slab is
           // always empty.
-          if (Path::Parse(route.elements[0],
+          if (Path::Parse(route.elements()[0],
                           slice, revision) == elle::Status::Error)
             throw Exception("unable to extract the revision number from the root slab");
 
@@ -74,8 +74,8 @@ namespace etoile
       revision = venue.elements[venue.elements.size() - 1].revision();
 
       // otherwise, resolve manually by retrieving the directory object.
-      for (scoutor = route.elements.begin() + venue.elements.size();
-           scoutor != route.elements.end();
+      for (scoutor = route.elements().begin() + venue.elements.size();
+           scoutor != route.elements().end();
            scoutor++)
         {
           Chemin                chemin;

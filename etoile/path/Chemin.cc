@@ -39,16 +39,12 @@ namespace etoile
     ///
     /// this method creates a chemin.
     ///
-    elle::Status        Chemin::Create(const Route&             route,
-                                       const Venue&             venue,
-                                       const nucleus::neutron::Size size)
+    elle::Status
+    Chemin::Create(Route const& route,
+                   Venue const& venue,
+                   nucleus::neutron::Size size)
     {
-      // clear the route because the chemin may have been used for
-      // something else before.
-      if (this->route.Clear() == elle::Status::Error)
-        throw Exception("unable to clear the route");
-
-      // do the same for the venue.
+      this->route.elements().clear();
       if (this->venue.Clear() == elle::Status::Error)
         throw Exception("unable to clear the venue");
 
@@ -60,13 +56,10 @@ namespace etoile
         nucleus::neutron::Size i;
 
         // go through the route.
-        for (scoutor = route.elements.begin(), i = 0;
-             (scoutor != route.elements.end()) && (i < size);
+        for (scoutor = route.elements().begin(), i = 0;
+             (scoutor != route.elements().end()) && (i < size);
              scoutor++, i++)
-          {
-            // record the route element.
-            this->route.elements.push_back(*scoutor);
-          }
+          this->route.elements().push_back(*scoutor);
       }
 
       //

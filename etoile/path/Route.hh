@@ -63,8 +63,6 @@ namespace etoile
 
       elle::Boolean             Derives(const Route&) const;
 
-      elle::Status              Clear();
-
       //
       // interfaces
       //
@@ -74,13 +72,18 @@ namespace etoile
       elle::Boolean             operator==(const Route&) const;
       elle::Boolean             operator<(const Route&) const;
 
-      // dumpable
-      elle::Status              Dump(const elle::Natural32 = 0) const;
+    /*---------.
+    | Dumpable |
+    `---------*/
+    public:
+      elle::Status
+      Dump(const elle::Natural32 = 0) const;
 
-      //
-      // attributes
-      //
-      Container                 elements;
+    /*---------.
+    | Elements |
+    `---------*/
+    public:
+      ELLE_ATTRIBUTE_RX(Container, elements);
     };
 
     std::ostream&

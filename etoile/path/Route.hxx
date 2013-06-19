@@ -10,7 +10,7 @@ ELLE_SERIALIZE_SIMPLE(etoile::path::Route,
 {
   enforce(version == 0);
 
-  archive & value.elements;
+  archive & value.elements();
 }
 
 #endif
