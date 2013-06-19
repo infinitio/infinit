@@ -70,7 +70,7 @@ class Trophonius(basic.LineReceiver):
         if self.id is None:
             return
 
-        if self._alive_service is not None and self._alive_service.active()
+        if self._alive_service is not None and self._alive_service.active():
             self._alive_service.cancel()
 
         print("Disconnect user: id=%s" % self.id)
