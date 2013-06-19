@@ -22,10 +22,9 @@ namespace etoile
     class Route
     {
     public:
-      //
-      // constants
-      //
+      /// The null Route.
       static const Route                Null;
+      /// The root directory.
       static Route                      Root;
 
       //
@@ -34,25 +33,41 @@ namespace etoile
       static elle::Status       Initialize();
       static elle::Status       Clean();
 
-      //
-      // types
-      //
+    /*------.
+    | Types |
+    `------*/
+    public:
       typedef std::vector<std::string> Container;
       typedef Container::iterator Iterator;
       typedef Container::const_iterator Scoutor;
 
-      //
-      // constructors & destructors
-      //
+    /*-------------.
+    | Construction |
+    `-------------*/
+    public:
+      /// Create a null Route.
       Route();
+      /// Clone a Route.
       Route(Route const&) = default;
-
-      elle::Status
-      Create(std::string const& path);
-      /// Create a route by appending a name to an existing route.
-      elle::Status
-      Create(const Route& route,
-             const std::string& slab);
+      /// Create a route from a string by splitting it according to the path
+      /// separator.
+      ///
+      /// Note that the first slab is always empty in order to represent the
+      /// root directory.  The following assumes the root revision indicator is
+      /// '@' while the slab revision indicator is '%'.
+      ///
+      /// Note that the ways can embed revision numbers as shown next:
+      ///
+      ///   /suce%42/avale/leche.txt%3
+      ///
+      /// However, the format '%[0-9]+' cannot be used with the root directory
+      /// since the way always starts with '/...'.  In order to provide this
+      /// functionality, the following check is made: if the first non-empty
+      /// slab starts with '@[0-9]+', then this slab is used as the root one
+      /// with the appropriate revision number.
+      Route(std::string const& path);
+      /// Create a route by appending a component to an existing route.
+      Route(const Route& route, const std::string& component);
 
       elle::Boolean             Derives(const Route&) const;
 

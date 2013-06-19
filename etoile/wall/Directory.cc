@@ -312,29 +312,8 @@ namespace etoile
 
         actor->state = gear::Actor::StateUpdated;
 
-        struct
-        {
-          path::Route           from;
-          path::Route           to;
-        }                       routes;
-
-        // Create routes for both the _from_ and _to_ since these
-        // routes are going to be used below several times.
-        ELLE_TRACE("build the route for the previous revision of the entry")
-          {
-            if (routes.from.Create(scope->chemin.route, from) ==
-                elle::Status::Error)
-              throw Exception("unable to create the route");
-            ELLE_TRACE("route: %s", routes.from);
-          }
-
-        ELLE_TRACE("build the route for the new revision of the entry")
-          {
-            if (routes.to.Create(scope->chemin.route, to) ==
-                elle::Status::Error)
-              throw Exception("unable to create the route");
-            ELLE_TRACE("route: %s", routes.to);
-          }
+        path::Route route_from(scope->chemin.route, from);
+        path::Route route_to(scope->chemin.route, to);
 
         // Update the scopes should some reference the renamed entry.
         //
@@ -355,12 +334,12 @@ namespace etoile
             path::Chemin        to;
           }                     chemins;
 
-          if (chemins.from.Create(routes.from, venue) == elle::Status::Error)
+          if (chemins.from.Create(route_from, venue) == elle::Status::Error)
             throw Exception("unable to create the chemin");
 
           // create the new chemin which includes the new route and
           // the venue, which has not changed since.
-          if (chemins.to.Create(routes.to, venue) == elle::Status::Error)
+          if (chemins.to.Create(route_to, venue) == elle::Status::Error)
             throw Exception("unable to create the chemin");
 
           // Update the scope so as to update all the scopes whose
@@ -377,8 +356,8 @@ namespace etoile
         //
         {
           // evict the route from the shrub.
-          shrub::global_shrub->evict(routes.from);
-          shrub::global_shrub->evict(routes.to);
+          shrub::global_shrub->evict(route_from);
+          shrub::global_shrub->evict(route_to);
         }
       }
 
@@ -397,7 +376,6 @@ namespace etoile
       gear::Actor*      actor;
       gear::Scope*      scope;
       gear::Directory*  context;
-      path::Route       route;
 
       // select the actor.
       if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
@@ -422,15 +400,9 @@ namespace etoile
         // set the actor's state.
         actor->state = gear::Actor::StateUpdated;
 
-        //
-        // invalidate the route in the shrub.
-        //
+        // Invalidate the route in the shrub.
         {
-          // build the route associated with the removed entry.
-          if (route.Create(scope->chemin.route, name) == elle::Status::Error)
-            throw Exception("unable to create the route");
-
-          // evict the route from the shrub.
+          path::Route route(scope->chemin.route, name);
           shrub::global_shrub->evict(route);
         }
       }

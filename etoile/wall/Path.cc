@@ -18,12 +18,8 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(way);
 
-      path::Route       route;
-      path::Venue       venue;
-
-      // Create a route from the way.
-      if (route.Create(way) == elle::Status::Error)
-        throw Exception("unable to create the route");
+      path::Route route(way);
+      path::Venue venue;
 
       // Resolve the route.
       if (path::Path::Resolve(route, venue) == elle::Status::Error)

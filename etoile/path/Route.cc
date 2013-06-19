@@ -16,15 +16,8 @@ namespace etoile
 // ---------- definitions -----------------------------------------------------
 //
 
-    ///
-    /// this route represents a null route.
-    ///
-    const Route                         Route::Null;
-
-    ///
-    /// this route represents the root directory.
-    ///
-    Route                               Route::Root;
+    const Route Route::Null;
+    Route Route::Root(std::string(1, elle::system::path::separator));
 
 //
 // ---------- static methods --------------------------------------------------
@@ -35,12 +28,6 @@ namespace etoile
     ///
     elle::Status        Route::Initialize()
     {
-      std::string root(1, elle::system::path::separator);
-
-      // create the reference root route.
-      if (Route::Root.Create(root) == elle::Status::Error)
-        throw Exception("unable to create the route");
-
       return elle::Status::Ok;
     }
 
@@ -54,44 +41,15 @@ namespace etoile
       return elle::Status::Ok;
     }
 
-//
-// ---------- constructors & destructors --------------------------------------
-//
+    /*-------------.
+    | Construction |
+    `-------------*/
 
-    ///
-    /// default constructor.
-    ///
-    Route::Route()
-    {
-    }
+    Route::Route():
+      Route(std::string(1, elle::system::path::separator))
+    {}
 
-//
-// ---------- methods ---------------------------------------------------------
-//
-
-    ///
-    /// this method creates a route from a string by splitting it according
-    /// to the path separator.
-    ///
-    /// note that the first slab is always empty in order to represent
-    /// the root directory.
-    ///
-    /// the following assumes the root revision indicator is '@' while the
-    /// slab revision indicator is '%'.
-    ///
-    /// note that the ways can embed revision numbers as shown next:
-    ///
-    ///   /suce%42/avale/leche.txt%3
-    ///
-    /// however, the format '%[0-9]+' cannot be used with the root directory
-    /// since the way always starts with '/...'.
-    ///
-    /// in order to provide this functionality, the following check is made:
-    /// if the first non-empty slab starts with '@[0-9]+', then this slab is
-    /// used as the root one with the appropriate revision number.
-    ///
-    elle::Status
-    Route::Create(std::string const& path)
+    Route::Route(std::string const& path)
     {
       elle::String::size_type start;
       elle::String::size_type end;
@@ -115,72 +73,64 @@ namespace etoile
 
       // check if at least one slab is present.
       if (start < path.length())
-        {
-          // create the slab.
-          slab = path.substr(start, end - start);
+      {
+        // create the slab.
+        slab = path.substr(start, end - start);
 
-          // XXX: restore history handling
-          // // check if the slab represents the root directory i.e starts
-          // // with '@' and follows with a possible revision number, should
-          // // the network support history though.
-          // if ((hole::Hole::instance().descriptor().meta().history() == true) &&
-          //     (Infinit::Configuration.etoile.history.status == true) &&
-          //     (slab[0] ==
-          //      Infinit::Configuration.etoile.history.indicator.root))
-          //   {
-          //     // modify the '@' character with the revision indicator '%'.
-          //     slab[0] = Infinit::Configuration.etoile.history.indicator.slab;
+        // XXX: restore history handling
+        // // check if the slab represents the root directory i.e starts
+        // // with '@' and follows with a possible revision number, should
+        // // the network support history though.
+        // if ((hole::Hole::instance().descriptor().meta().history() == true) &&
+        //     (Infinit::Configuration.etoile.history.status == true) &&
+        //     (slab[0] ==
+        //      Infinit::Configuration.etoile.history.indicator.root))
+        //   {
+        //     // modify the '@' character with the revision indicator '%'.
+        //     slab[0] = Infinit::Configuration.etoile.history.indicator.slab;
 
-          //     // record the slab.
-          //     this->elements.push_back(slab);
+        //     // record the slab.
+        //     this->elements.push_back(slab);
 
-          //     // compute the next offsets.
-          //     start =
-          //       path.find_first_not_of(elle::system::path::separator, end);
-          //     end =
-          //       path.find_first_of(elle::system::path::separator, start);
-          //   }
-        }
+        //     // compute the next offsets.
+        //     start =
+        //       path.find_first_not_of(elle::system::path::separator, end);
+        //     end =
+        //       path.find_first_of(elle::system::path::separator, start);
+        //   }
+      }
 
       // if no slab is present or the first slab does not represent the
       // root directory---i.e the elements container is empty---register
       // an empty root slab.
       if (this->elements.empty() == true)
-        {
-          // record an empty root slab.
-          this->elements.push_back("");
-        }
+      {
+        // record an empty root slab.
+        this->elements.push_back("");
+      }
 
       // then, go through the string.
       while (start < path.length())
-        {
-          // create the slab.
-          slab = path.substr(start, end - start);
+      {
+        // create the slab.
+        slab = path.substr(start, end - start);
 
-          // add the section to the container.
-          this->elements.push_back(slab);
+        // add the section to the container.
+        this->elements.push_back(slab);
 
-          // compute the next offsets.
-          start =
-            path.find_first_not_of(elle::system::path::separator, end);
-          end =
-            path.find_first_of(elle::system::path::separator, start);
-        }
-
-      return elle::Status::Ok;
+        // compute the next offsets.
+        start =
+          path.find_first_not_of(elle::system::path::separator, end);
+        end =
+          path.find_first_of(elle::system::path::separator, start);
+      }
     }
 
-    elle::Status
-    Route::Create(const Route& route,
-                  const std::string& slab)
+    Route::Route(const Route& route,
+                 const std::string& slab)
     {
-      // copy the elements.
       this->elements = route.elements;
-
-      // add the slab.
       this->elements.push_back(slab);
-
-      return elle::Status::Ok;
     }
 
     ///
