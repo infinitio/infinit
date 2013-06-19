@@ -197,7 +197,10 @@ class Page(object):
         assert(isinstance(obj, dict))
         d = {'success': True}
         d.update(obj)
-        return json.dumps(d, default=str)
+        res = json.dumps(d, default=str)
+        web.header('Content-Type', 'application/json')
+        web.header('Content-Length', str(len(res)))
+        return res
 
     _data = None
     @property
