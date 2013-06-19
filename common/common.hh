@@ -30,50 +30,73 @@ namespace common
     binary_path(std::string const& name,
                 bool ensure = true);
 
-    /// Returns the default path of every director.
-    std::string
-    networks_directory(std::string const& user_id);
+    /// Functions returning the path for the given user and network.
+    /// Arguments user and network can be handle or id as long as you are
+    /// consistent.
 
-    /// Returns network directory path.
-    std::string
-    network_directory(std::string const& user_id,
-                      std::string const& network_id);
-
-    /// Returns passport path.
-    std::string
-    passport_path(std::string const& user);
-
-    /// Returns log file path.
-    std::string
-    log_path(std::string const& user_id,
-             std::string const& network_id);
-
-    /// The path to the descriptor.
-    std::string
-    descriptor_path(std::string const& user_id,
-                    std::string const& network_id);
-
-    // Returns the path to the shelter.
-    std::string
-    network_shelter(std::string const& user_id,
-                    std::string const& network_id);
-
-    /// Returns portal file path.
-    std::string
-    portal_path(std::string const& user_id,
-                std::string const& network_id);
+    /*-----.
+    | User |
+    `-----*/
 
     /// Returns user directory path.
     std::string
-    user_directory(std::string const& user_id);
+    user_directory(std::string const& user,
+                   std::string const& home = home());
+
+    /// Returns passport path.
+    std::string
+    passport_path(std::string const& user,
+                  std::string const& home = home());
 
     /// The path to the identity file.
     std::string
-    identity_path(std::string const& user_id);
+    identity_path(std::string const& user,
+                  std::string const& home = home());
     // XXX temporary: use a token file and make Infinit classes
     //                instantiable instead.
     std::string
-    tokpass_path(std::string const& user_id);
+    tokpass_path(std::string const& user,
+                 std::string const& home = home());
+
+    /*--------.
+    | Network |
+    `--------*/
+
+    /// Returns the default path of every director.
+    std::string
+    networks_directory(std::string const& user,
+                       std::string const& home = home());
+
+    /// Returns network directory path.
+    std::string
+    network_directory(std::string const& user,
+                      std::string const& network,
+                      std::string const& home = home());
+
+    /// The path to the descriptor.
+    std::string
+    descriptor_path(std::string const& user,
+                    std::string const& network,
+                    std::string const& home = home());
+
+    // Returns the path to the shelter.
+    std::string
+    network_shelter(std::string const& user,
+                    std::string const& network,
+                    std::string const& home = home());
+
+    /// Returns portal file path.
+    std::string
+    portal_path(std::string const& user,
+                std::string const& network,
+                std::string const& home = home());
+
+    /// Returns log file path.
+    std::string
+    log_path(std::string const& user,
+             std::string const& network,
+             std::string const& home = home());
+
   }
 
   /// System and Operating System related stuffs
@@ -95,7 +118,6 @@ namespace common
     /// Returns the architecture in bits.
     unsigned int
     architecture();
-
   }
 
   /// URLs to access meta server

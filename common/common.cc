@@ -234,76 +234,96 @@ namespace common
       return (binaries[name] = path);
     }
 
+    /*-----.
+    | User |
+    `-----*/
+
     std::string
-    networks_directory(std::string const& user_id)
+    user_directory(std::string const& user,
+                   std::string const& home)
     {
-      return path::join(user_directory(user_id), "networks");
+      return path::join(home, "users", user);
     }
 
     std::string
-    descriptor_path(std::string const& user_id,
-                    std::string const& network_id)
+    passport_path(std::string const& user,
+                  std::string const& home)
     {
-      return path::join(
-        network_directory(user_id, network_id),
-        network_id + ".dsc");
+      return path::join(infinit::user_directory(user, home), "passport");
     }
 
     std::string
-    network_directory(std::string const& user_id,
-                      std::string const& network_id)
+    identity_path(std::string const& user,
+                  std::string const& home)
+    {
+      return path::join(user_directory(user, home), "identity");
+    }
+
+    std::string
+    tokpass_path(std::string const& user,
+                 std::string const& home)
+    {
+      return path::join(user_directory(user, home), "tokpass");
+    }
+
+    /*--------.
+    | Netowrk |
+    `--------*/
+
+    std::string
+    networks_directory(std::string const& user,
+                       std::string const& home)
+    {
+      return path::join(user_directory(user, home), "networks");
+    }
+
+
+    std::string
+    network_directory(std::string const& user,
+                      std::string const& network,
+                      std::string const& home)
     {
       return path::join(
-        networks_directory(user_id),
-        network_id
+        networks_directory(user, home),
+        network
       );
     }
 
     std::string
-    network_shelter(std::string const& user_id,
-                    std::string const& network_id)
+    descriptor_path(std::string const& user,
+                    std::string const& network,
+                    std::string const& home)
     {
       return path::join(
-        network_directory(user_id, network_id), "shelter");
+        network_directory(user, network, home),
+        "descriptor");
     }
 
     std::string
-    passport_path(std::string const& user)
-    {
-      return path::join(infinit::user_directory(user), user + ".ppt");
-    }
-
-    std::string
-    log_path(std::string const& user_id,
-             std::string const& network_id)
+    network_shelter(std::string const& user,
+                    std::string const& network,
+                    std::string const& home)
     {
       return path::join(
-        networks_directory(user_id), network_id + ".log");
+        network_directory(user, network, home), "shelter");
     }
 
     std::string
-    portal_path(std::string const& user_id,
-                std::string const& network_id)
+    portal_path(std::string const& user,
+                std::string const& network,
+                std::string const& home)
     {
-      return path::join(network_directory(user_id, network_id), "portal.phr");
+      return path::join(
+        network_directory(user, network, home), "portal");
     }
 
     std::string
-    user_directory(std::string const& user_id)
+    log_path(std::string const& user,
+             std::string const& network,
+             std::string const& home)
     {
-      return path::join(home(), "users", user_id);
-    }
-
-    std::string
-    identity_path(std::string const& user_id)
-    {
-      return path::join(user_directory(user_id), user_id + ".idy");
-    }
-
-    std::string
-    tokpass_path(std::string const& user_id)
-    {
-      return path::join(user_directory(user_id), "tokpass");
+      return path::join(
+        networks_directory(user, home), network + ".log");
     }
 
   } // !infinit
