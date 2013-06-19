@@ -260,20 +260,20 @@ Network::Network(cryptography::KeyPair const& keypair,
   }
 }
 
-Network::Network(std::string const& description,
-                 boost::filesystem::path const& identity_path,
+Network::Network(boost::filesystem::path const& identity_path,
                  std::string const& passphrase,
                  const hole::Model& model,
                  hole::Openness const& openness,
                  horizon::Policy const& policy,
+                 std::string const& description,
                  Authority const& authority):
   Network(description,
           infinit::Identity(
-            elle::serialize::from_file(
-              identity_path.string())).decrypt_0(passphrase),
+            elle::serialize::from_file(identity_path.string())).decrypt_0(passphrase),
           model,
           openness,
           policy,
+          description,
           authority)
 {}
 
@@ -288,6 +288,14 @@ Network::Network(boost::filesystem::path const& descriptor_path)
       elle::serialize::from_file(descriptor_path.string())));
   this->_descriptor_path = descriptor_path;
 }
+
+Network::Network(std::string const& administrator_name,
+                 std::string const& network_name,
+                 boost::filesystem::path const& home_path):
+  Network(common::infinit::descriptor_path(administrator_name,
+                                           network_name,
+                                           home_path.string()))
+{}
 
 Network::Network(infinit::Identifier const& id,
                  std::string const& host,
@@ -334,21 +342,61 @@ Network::erase(boost::filesystem::path const& descriptor_path)
 }
 
 void
-Network::install(boost::filesystem::path const& install_path) const
+Network::install(std::string const& user_name,
+                 std::string const& network_name,
+                 boost::filesystem::path const& home_path) const
 {
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
+
+  if (!boost::filesystem::exists(home_path))
+    throw elle::Exception(
+      elle::sprintf("directory %s set as infinit_home doesn't exist",
+                    home_path));
+
+  // To ensure the infinit home is good, we check if their is an identity in the
+  // given infinit home architecture, deserialize it.
+  {
+    auto const& identity_path =
+      common::infinit::identity_path(user_name,
+                                     home_path.string());
+
+    if (!boost::filesystem::exists(identity_path))
+      throw elle::Exception(
+        elle::sprintf("no identity file at %s", identity_path));
+
+    try
+    {
+
+      infinit::Identity{elle::serialize::from_file(identity_path)};
+    }
+    catch (elle::Exception const&)
+    {
+      throw elle::Exception(
+        elle::sprintf("identity at %s is not an identity", identity_path));
+    }
+  }
+
+  auto install_path =
+    common::infinit::network_directory(user_name,
+                                       network_name,
+                                       home_path.string());
 
   if (boost::filesystem::exists(install_path))
     throw elle::Exception(
       elle::sprintf("couldn't create %s cause it already exists",
                     install_path));
 
-  boost::filesystem::create_directory(install_path);
-  this->store(install_path / "descriptor");
+  boost::filesystem::create_directories(install_path);
+
+  this->store(common::infinit::descriptor_path(user_name,
+                                               network_name,
+                                               home_path.string()));
 
   hole::storage::Directory storage(
     nucleus::proton::Network(this->_descriptor->meta().identifier()),
-    (install_path / "shelter").string());
+    common::infinit::network_shelter(user_name,
+                                     network_name,
+                                     home_path.string()));
 
   storage.store(this->_descriptor->meta().root_address(),
                 this->_descriptor->meta().root_object());
@@ -364,16 +412,25 @@ Network::install(boost::filesystem::path const& install_path) const
 }
 
 void
-Network::uninstall(boost::filesystem::path const& install_path) const
+Network::uninstall(std::string const& administrator_name,
+                   std::string const& network_name,
+                   boost::filesystem::path const& home_path) const
 {
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
 
-  if (!this->_install_path.empty() && install_path.empty())
-    boost::filesystem::remove(this->_install_path);
-  else if (!install_path.empty())
-    boost::filesystem::remove_all(install_path);
-  else
-    throw elle::Exception("no path given");
+  auto install_path =
+    common::infinit::network_directory(administrator_name,
+                                       network_name,
+                                       home_path.string());
+
+  if (!this->_install_path.empty() && this->_install_path != install_path)
+    throw elle::Exception(
+      elle::sprintf("try to uninstall at %s instead of %s where it has "       \
+                    "previously been installed",
+                    install_path,
+                    this->_install_path));
+
+  boost::filesystem::remove_all(install_path);
 }
 
 uint16_t

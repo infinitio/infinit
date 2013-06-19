@@ -51,25 +51,31 @@ public:
   `-------------*/
   /// Main constructor.
   explicit
-  Network(std::string const& description,
-          cryptography::KeyPair const& keypair,
+  Network(cryptography::KeyPair const& keypair,
           const hole::Model& model,
           hole::Openness const& openness,
           horizon::Policy const& policy,
-          infinit::Authority const& authority);
+          std::string const& description = "No network descriptior",
+          infinit::Authority const& authority = infinit::MetaAuthority{});
 
   /// Constructor with identity_path and passphrase.
   explicit
-  Network(std::string const& description,
-          boost::filesystem::path const& identity_path,
+  Network(boost::filesystem::path const& identity_path,
           std::string const& identity_passphrase,
           const hole::Model& model,
           hole::Openness const& openness,
           horizon::Policy const& policy,
+          std::string const& description = "No network descriptior",
           infinit::Authority const& authority = infinit::MetaAuthority{});
 
   /// Load constructor, using local descriptor.
   Network(boost::filesystem::path const& descriptor_path);
+
+  explicit
+  /// Load constructor from network_name and home.
+  Network(std::string const& administrator_name,
+          std::string const& network_name,
+          boost::filesystem::path const& home_path = common::infinit::home());
 
   /// Load constructor, using descriptor from remote meta.
   // XXX: Should I put a dependencie to common by setting default value for meta
@@ -92,13 +98,17 @@ public:
   void
   erase(boost::filesystem::path const& descriptor_path = "");
 
-  /// Install.
+  // Install.
   void
-  install(boost::filesystem::path const& path = common::infinit::home()) const;
+  install(std::string const& administrator_name,
+          std::string const& network_name,
+          boost::filesystem::path const& home_path = common::infinit::home()) const;
 
   /// Uninstall.
   void
-  uninstall(boost::filesystem::path const& path = "") const;
+  uninstall(std::string const& administrator_name,
+            std::string const& network_name,
+            boost::filesystem::path const& home_path = "") const;
 
   /// Mount.
   uint16_t
@@ -112,7 +122,7 @@ public:
   /*------------.
   | Publication |
   `------------*/
-  /// Publish descriptor to the remote meta.
+   /// Publish descriptor to the remote meta.
   void
   publish(std::string const& host = common::meta::host(),
           uint16_t port = common::meta::port(),
@@ -200,6 +210,8 @@ public:
   WRAP_DATA_DESCRIPTOR(horizon::Policy, policy);
   WRAP_DATA_DESCRIPTOR(elle::Version, version);
 
+#undef WRAP_DATA_DESCRIPTOR
+#undef WRAP_META_DESCRIPTOR
 #undef WRAP_DESCRIPTOR
 
 };
