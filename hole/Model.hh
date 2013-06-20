@@ -5,6 +5,7 @@
 # include <elle/attribute.hh>
 # include <elle/operator.hh>
 # include <elle/serialize/fwd.hh>
+# include <elle/serialize/construct.hh>
 # include <elle/types.hh>
 
 namespace hole
@@ -65,6 +66,7 @@ namespace hole
     Model(std::string const& type);
     Model(Model const& other);
     Model(Model&& other);
+    ELLE_SERIALIZE_CONSTRUCT_DECLARE(Model);
 
     //
     // methods

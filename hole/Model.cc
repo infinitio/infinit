@@ -149,6 +149,9 @@ namespace hole
     _type(std::move(other._type))
   {}
 
+  ELLE_SERIALIZE_CONSTRUCT_DEFINE(Model)
+  {}
+
 //
 // ---------- methods ---------------------------------------------------------
 //
