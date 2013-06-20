@@ -551,16 +551,26 @@ namespace surface
     TransactionManager::_start_upload(Transaction const& transaction)
     {
       auto s = this->_states[transaction.id];
+
+      if (s.tries == 10) //XXX variable for that
+      {
+        this->_meta.update_transaction(transaction.id,
+                                       plasma::TransactionStatus::failed);
+        this->_states->erase(transaction.id);
+        return;
+      }
+
+      // If the transaction is running, cancel it.
+      if (s.state == State::running)
+      {
+        this->cancel_operation(s.operation);
+        s.state = State::preparing;
+        s.operation = 0;
+      }
+
       if (s.state == State::preparing &&
           this->status(s.operation) == OperationStatus::success)
       {
-        if (s.tries == 10) //XXX variable for that
-        {
-          this->_meta.update_transaction(transaction.id,
-                                         plasma::TransactionStatus::failed);
-          this->_states->erase(transaction.id);
-          return;
-        }
         s.operation = this->_add<UploadOperation>(
           transaction,
           this->_network_manager, [this, transaction] {
@@ -593,6 +603,19 @@ namespace surface
     TransactionManager::_start_download(Transaction const& transaction)
     {
       auto state = this->_states[transaction.id];
+      if (state.state == State::running)
+      {
+        this->cancel_operation(state.operation);
+        this->_network_manager.delete_local(transaction.network_id);
+        this->_network_manager.prepare(transaction.network_id);
+        this->_network_manager.to_directory(
+          transaction.network_id,
+          common::infinit::network_shelter(this->_self.id,
+                                           transaction.network_id));
+        this->_network_manager.wait_portal(transaction.network_id);
+        state.state = State::none;
+      }
+
       if (state.state == State::none)
       {
         state.operation = this->_add<DownloadOperation>(
