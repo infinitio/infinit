@@ -46,6 +46,11 @@ namespace infinit
     explicit
     Authority(elle::String description,
               cryptography::PublicKey K,
+              cryptography::Code k);
+    /// Construct and encrypt the given private key with the passphrase.
+    explicit
+    Authority(elle::String description,
+              cryptography::PublicKey K,
               cryptography::PrivateKey k,
               elle::String const& passphrase);
     Authority(Authority const& other);

@@ -23,6 +23,15 @@ namespace infinit
 
   Authority::Authority(elle::String description,
                        cryptography::PublicKey K,
+                       cryptography::Code k):
+    _description(std::move(description)),
+    _K(std::move(K)),
+    _k(std::move(k))
+  {
+  }
+
+  Authority::Authority(elle::String description,
+                       cryptography::PublicKey K,
                        cryptography::PrivateKey k,
                        elle::String const& passphrase):
     Authority(std::move(description),
@@ -37,9 +46,9 @@ namespace infinit
                        cryptography::PublicKey K,
                        cryptography::PrivateKey k,
                        cryptography::SecretKey const& key):
-    _description(std::move(description)),
-    _K(std::move(K)),
-    _k(key.encrypt(k))
+    Authority(std::move(description),
+              std::move(K),
+              key.encrypt(k))
   {
   }
 
