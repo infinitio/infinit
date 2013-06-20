@@ -70,14 +70,12 @@ namespace satellite
                                         const elle::String&     administrator,
                                         elle::String const& authority_path)
   {
-    elle::String identifier(name);
-
     //
     // test the arguments.
     //
     {
       boost::filesystem::path path(
-        common::infinit::descriptor_path(administrator, identifier));
+        common::infinit::descriptor_path(administrator, name));
 
       if (boost::filesystem::exists(path) == true)
         throw elle::Exception("this network seems to already exist");
@@ -133,7 +131,8 @@ namespace satellite
       keypair.reset(new cryptography::KeyPair(identity.decrypt_0(passphrase)));
     }
 
-    nucleus::proton::Network network(identifier);
+    infinit::Identifier identifier;
+    nucleus::proton::Network network(identifier.value());
 
     //
     // create an "everybody" group.
@@ -280,7 +279,7 @@ namespace satellite
       }
 
       // Create the meta and data sections.
-      descriptor::Meta meta(identifier,
+      descriptor::Meta meta(authority.K(),
                             keypair->K(),
                             model,
                             std::move(directory_address),
@@ -288,7 +287,8 @@ namespace satellite
                             std::move(group_address),
                             false,
                             1048576,
-                            *authority_k);
+                            *authority_k,
+                            identifier);
       descriptor::Data data(name,
                             openness,
                             policy,
@@ -303,7 +303,7 @@ namespace satellite
       Descriptor descriptor(std::move(meta), std::move(data));
 
       elle::serialize::to_file(
-        common::infinit::descriptor_path(administrator, identifier)) <<
+        common::infinit::descriptor_path(administrator, name)) <<
           descriptor;
     }
 
@@ -313,13 +313,13 @@ namespace satellite
       // Reload the descriptor just to make sure it is valid.
       Descriptor descriptor(
         elle::serialize::from_file(
-          common::infinit::descriptor_path(administrator, identifier)));
+          common::infinit::descriptor_path(administrator, name)));
       descriptor.validate(authority.K());
 
       // Finally, store the blocks on the disk.
       elle::io::Path shelter_path(lune::Lune::Shelter);
       shelter_path.Complete(elle::io::Piece{"%USER%", administrator},
-                            elle::io::Piece{"%NETWORK%", identifier});
+                            elle::io::Piece{"%NETWORK%", name});
       hole::storage::Directory storage(network, shelter_path.string());
       storage.store(descriptor.meta().root_address(),
                     descriptor.meta().root_object());
@@ -341,14 +341,12 @@ namespace satellite
   elle::Status          Network::Destroy(const elle::String& administrator,
                                          const elle::String&    name)
   {
-    elle::String identifier(name);
-
     //
     // remove the descriptor.
     //
     {
       boost::filesystem::path path(
-        common::infinit::descriptor_path(administrator, identifier));
+        common::infinit::descriptor_path(administrator, name));
 
       if (boost::filesystem::exists(path) == false)
         throw elle::Exception("this network does not seem to exist");
@@ -366,7 +364,7 @@ namespace satellite
 
       // complete the path with the network name.
       if (path.Complete(elle::io::Piece("%USER%", administrator),
-                        elle::io::Piece("%NETWORK%", identifier)) == elle::Status::Error)
+                        elle::io::Piece("%NETWORK%", name)) == elle::Status::Error)
         throw elle::Exception("unable to complete the path");
 
       // if the shelter exists, clear it and remove it.
@@ -394,7 +392,7 @@ namespace satellite
 
       // complete the path with the network name.
       if (path.Complete(elle::io::Piece("%USER%", administrator),
-                        elle::io::Piece("%NETWORK%", identifier)) == elle::Status::Error)
+                        elle::io::Piece("%NETWORK%", name)) == elle::Status::Error)
         throw elle::Exception("unable to complete the path");
 
       // if the network exists, clear it and remove it.
@@ -419,14 +417,12 @@ namespace satellite
   elle::Status          Network::Information(const elle::String& administrator,
                                              const elle::String& name)
   {
-    elle::String identifier(name);
-
     //
     // test the arguments.
     //
     {
       boost::filesystem::path path(
-        common::infinit::descriptor_path(administrator, identifier));
+        common::infinit::descriptor_path(administrator, name));
 
       if (boost::filesystem::exists(path) == false)
         throw elle::Exception("this network does not seem to exist");
@@ -434,7 +430,7 @@ namespace satellite
 
     Descriptor descriptor(
       elle::serialize::from_file(
-        common::infinit::descriptor_path(administrator, identifier)));
+        common::infinit::descriptor_path(administrator, name)));
 
     // validate the descriptor.
     descriptor.validate(common::meta::certificate().subject_K());
