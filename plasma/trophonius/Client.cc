@@ -97,7 +97,7 @@ namespace plasma
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict)
     {
-      ELLE_DEBUG("convert json %s to Notification instance", dict.repr());
+      ELLE_TRACE("convert json %s to Notification instance", dict.repr());
       NotificationType notification_type = dict["notification_type"]
         .as<NotificationType>();
       using namespace elle::serialize;
@@ -214,12 +214,12 @@ namespace plasma
       {
         try
         {
-          ELLE_DEBUG("trying to reconnect to tropho now");
+          ELLE_TRACE("trying to reconnect to tropho now");
           this->connect(_impl->user_id,
                         _impl->user_token,
                         _impl->user_device_id);
           _impl->last_error = boost::system::error_code{};
-          ELLE_DEBUG("reconnected to tropho successfully");
+          ELLE_TRACE("reconnected to tropho successfully");
           _impl->connect_callback();
         }
         catch (std::exception const&)
@@ -396,7 +396,7 @@ namespace plasma
 
       if (!_notifications.empty())
         {
-          ELLE_TRACE("Pop notification dictionnary to be handle.");
+          ELLE_DEBUG("Pop notification dictionnary to be handled.");
 
           // Fill dictionary.
           ret.reset(_notifications.front().release());
