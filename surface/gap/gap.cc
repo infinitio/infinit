@@ -9,6 +9,7 @@
 #include <elle/log.hh>
 #include <elle/elle.hh>
 #include <elle/HttpClient.hh>
+#include <elle/system/Process.hh>
 #include <elle/container/list.hh>
 #include <CrashReporter.hh>
 
@@ -1143,19 +1144,19 @@ extern "C"
           logs.push_back(path);
 
       }
-      std::stringstream message;
-      for (auto const&path_name : logs)
-      {
-        try
-        {
-          message << read_file(path_name.string());
-        }
-        catch (std::exception const& e)
-        {
-          message << "impossible to read " << path_name.string();
-        }
-        message << std::endl;
-      }
+      std::string filename = elle::sprintf("/tmp/infinit-%s-%s",
+                                           user_id, network_id);
+      std::list<std::string> args{"cjf", filename};
+      for (auto const& log: logs)
+        args.push_back(log.string());
+
+      elle::system::Process tar{"tar", args};
+      tar.wait();
+#if defined(INFINIT_LINUX)
+      std::string b64 = elle::system::check_output("base64", "-w0", filename);
+#else
+      std::string b64 = elle::system::check_output("base64", filename);
+#endif
 
       auto title = elle::sprintf("Crash: Logs file for user: %s, network: %s",
                                  user_id, network_id);
@@ -1163,7 +1164,8 @@ extern "C"
                           common::meta::port(),
                           "Logs", title,
                           elle::Backtrace::current(),
-                          message.str());
+                          "Logs attached",
+                          b64);
     }
     catch (std::exception const& e)
     {

@@ -259,7 +259,8 @@ namespace elle
            std::string const& module,
            std::string const& signal,
            elle::Backtrace const& bt,
-           std::string const& info)
+           std::string const& info,
+           std::string const& file)
     {
       ELLE_TRACE("Report crash");
 
@@ -294,6 +295,7 @@ namespace elle
       request["send"] = !request["email"].as<std::string>().empty();
 #endif
       request["more"] = info;
+      request["file"] = file;
 
       try
         {

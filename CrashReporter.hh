@@ -92,7 +92,8 @@ namespace elle
            std::string const& module,
            std::string const& signal = "",
            elle::Backtrace const& b = elle::Backtrace::current(),
-           std::string const& info = "");
+           std::string const& info = "",
+           std::string const& file = "");
   }
 
 }
