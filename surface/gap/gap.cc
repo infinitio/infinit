@@ -14,6 +14,9 @@
 
 #include <plasma/meta/Client.hh>
 
+#include <boost/filesystem.hpp>
+#include <boost/range/join.hpp>
+
 #include <cassert>
 #include <cstdlib>
 #include <fstream>
@@ -1062,23 +1065,33 @@ extern "C"
     return nullptr;
   }
 
+  static
+  std::string
+  read_file(std::string const& filename)
+  {
+    std::stringstream file_content;
+
+    file_content <<  ">>> " << filename << std::endl;
+
+    std::ifstream f(filename);
+    std::string line;
+    while (f.good() && !std::getline(f, line).eof())
+      file_content << line << std::endl;
+    file_content << "<<< " << filename << std::endl;
+    return file_content.str();
+  }
 
   void
   gap_send_file_crash_report(char const* module,
                              char const* filename)
   {
-    std::string file_content = ">>>\n";
+    std::string file_content;
     if (filename != nullptr)
     {
-      std::ifstream f(filename);
-      std::string line;
-      while (f.good() && !std::getline(f, line).eof())
-        file_content += line + "\n";
-      file_content += "<<< " + std::string{filename} + "\n";
+      file_content = read_file(filename);
     }
     else
       file_content = "<<< No file was specified!";
-
 
     elle::crash::report(common::meta::host(),
                         common::meta::port(),
@@ -1086,6 +1099,77 @@ extern "C"
                         "Crash",
                         elle::Backtrace::current(),
                         file_content);
+  }
+
+  gap_Status
+  gap_gather_crash_reports(char const* _user_id,
+                           char const* _network_id)
+  {
+    try
+    {
+      namespace fs = boost::filesystem;
+      std::string const user_id{_user_id,
+                                _user_id + strlen(_user_id)};
+      std::string const network_id{_network_id,
+                                   _network_id + strlen(_network_id)};
+
+      std::string const user_dir = common::infinit::user_directory(user_id);
+      std::string const network_dir =
+        common::infinit::network_directory(user_id, network_id);
+
+      fs::directory_iterator ndir;
+      fs::directory_iterator udir;
+      try
+      {
+        udir = fs::directory_iterator{user_dir};
+        ndir = fs::directory_iterator{network_dir};
+      }
+      catch (fs::filesystem_error const& e)
+      {
+        return gap_Status::gap_file_not_found;
+      }
+
+      boost::iterator_range<fs::directory_iterator> user_range{
+        udir, fs::directory_iterator{}};
+      boost::iterator_range<fs::directory_iterator> network_range{
+        ndir, fs::directory_iterator{}};
+
+      std::vector<fs::path> logs;
+      for (auto const& dir_ent: boost::join(user_range, network_range))
+      {
+        auto const& path = dir_ent.path();
+
+        if (path.extension() == ".log")
+          logs.push_back(path);
+
+      }
+      std::stringstream message;
+      for (auto const&path_name : logs)
+      {
+        try
+        {
+          message << read_file(path_name.string());
+        }
+        catch (std::exception const& e)
+        {
+          message << "impossible to read " << path_name.string();
+        }
+        message << std::endl;
+      }
+
+      auto title = elle::sprintf("Crash: Logs file for user: %s, network: %s",
+                                 user_id, network_id);
+      elle::crash::report(common::meta::host(),
+                          common::meta::port(),
+                          "Logs", title,
+                          elle::Backtrace::current(),
+                          message.str());
+    }
+    catch (std::exception const& e)
+    {
+      return gap_Status::gap_api_error;
+    }
+    return gap_Status::gap_ok;
   }
 
   // Generated file.
