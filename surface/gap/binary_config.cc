@@ -26,7 +26,13 @@ namespace surface
       config.setenv("ELLE_LOG_PID", "1");
       config.setenv("ELLE_LOG_TID", "1");
       config.setenv("ELLE_LOG_TIME", "1");
-      config.setenv("ELLE_LOG_LEVEL", "DEBUG,elle.*:LOG,reactor.*:LOG");
+      config.setenv("INFINIT_NO_FORK", "1");
+      config.setenv("ELLE_LOG_LEVEL",
+                    "TRACE,"
+                    "infinit.surface.*:DEBUG,"
+                    "elle.*:LOG,"
+                    "reactor.*:LOG,"
+                    "reactor.network.*:TRACE");
       return config;
     }
   }
