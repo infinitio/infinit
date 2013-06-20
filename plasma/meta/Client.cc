@@ -381,7 +381,7 @@ namespace plasma
               elle::serialize::InputBase64Archive>(res.identity);
           infinit::Identity identity(extractor);
           this->_keypair.reset(
-            new cryptography::KeyPair(identity.decrypt(password)));
+            new cryptography::KeyPair(identity.decrypt_0(password)));
         }
       return res;
     }

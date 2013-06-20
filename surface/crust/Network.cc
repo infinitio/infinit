@@ -297,7 +297,8 @@ Network::Network(std::string const& description,
                  Authority const& authority):
   Network(description,
           infinit::Identity(
-            elle::serialize::from_file(identity_path.string())).decrypt(passphrase),
+            elle::serialize::from_file(
+              identity_path.string())).decrypt_0(passphrase),
           model,
           openness,
           policy,

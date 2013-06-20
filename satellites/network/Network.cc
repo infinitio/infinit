@@ -130,7 +130,7 @@ namespace satellite
 
       infinit::Identity identity(elle::serialize::from_file(path.string()));
 
-      keypair.reset(new cryptography::KeyPair(identity.decrypt(passphrase)));
+      keypair.reset(new cryptography::KeyPair(identity.decrypt_0(passphrase)));
     }
 
     nucleus::proton::Network network(identifier);

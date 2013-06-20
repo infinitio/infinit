@@ -76,14 +76,17 @@ namespace satellite
           elle::io::Console::OptionPassword) == elle::Status::Error)
       throw elle::Exception("unable to read the input");
 
+    auto keypair =
+      cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
+                                      2048); // XXX make an option for that
+
     infinit::Identity identity(authority.K(),
-                               identifier,
+                               keypair.K(),
                                name,
-                               cryptography::KeyPair::generate(
-                                 cryptography::Cryptosystem::rsa,
-                                 2048), // XXX make an option for that
+                               keypair.k(),
                                pass,
-                               authority_k);
+                               authority_k,
+                               infinit::Identifier(identifier));
 
     elle::serialize::to_file(path.string()) << identity;
 
@@ -195,7 +198,7 @@ namespace satellite
     if (identity.validate(common::meta::certificate().subject_K()) == false)
       throw elle::Exception("invalid identity");
 
-    cryptography::KeyPair keypair = identity.decrypt(pass);
+    cryptography::KeyPair keypair = identity.decrypt_0(pass);
 
     // dump the identity.
     std::cout << identity << std::endl;

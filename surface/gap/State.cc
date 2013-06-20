@@ -225,7 +225,8 @@ namespace surface
       //     the authority?
       // identity.validate(authority.K());
       elle::serialize::to_file(
-        common::infinit::identity_path(identity.identifier())) << identity;
+        common::infinit::identity_path(
+          identity.identifier().value())) << identity;
 
       // user.dic
       lune::Dictionary dictionary;

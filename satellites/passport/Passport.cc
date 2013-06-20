@@ -81,7 +81,7 @@ namespace satellite
       infinit::Identity identity(
         elle::serialize::from_file(common::infinit::identity_path(user)));
 
-      cryptography::KeyPair keypair = identity.decrypt(pass);
+      cryptography::KeyPair keypair = identity.decrypt_0(pass);
 
       elle::Passport passport{
         id, passport_name, keypair.K(), authority_k

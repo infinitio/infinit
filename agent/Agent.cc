@@ -62,7 +62,7 @@ namespace agent
     infinit::Identity const& identity = Agent::identity();
 
     cryptography::KeyPair keypair =
-      identity.decrypt(Agent::identity_passphrase);
+      identity.decrypt_0(Agent::identity_passphrase);
 
     return (keypair);
   }

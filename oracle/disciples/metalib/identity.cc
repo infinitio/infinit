@@ -44,11 +44,12 @@ static infinit::Identity create_identity(elle::String const& id,
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     2048); // XXX make an option for that
   infinit::Identity identity(authority.K(),
-                             id,
+                             keypair.K(),
                              login,
-                             keypair,
+                             keypair.k(),
                              password,
-                             authority_k);
+                             authority_k,
+                             infinit::Identifier(id));
 
   return identity;
 }
@@ -85,7 +86,7 @@ metalib_generate_identity(PyObject*,
       elle::serialize::to_string<elle::serialize::OutputBase64Archive>(all) <<
         identity;
 
-      auto keypair = identity.decrypt(password);
+      auto keypair = identity.decrypt_0(password);
       elle::String pub;
       elle::serialize::to_string<elle::serialize::OutputBase64Archive>(pub) <<
         keypair.K();
