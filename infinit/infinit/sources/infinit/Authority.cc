@@ -21,55 +21,63 @@ namespace infinit
   | Construction |
   `-------------*/
 
-  Authority::Authority(elle::String description,
-                       cryptography::PublicKey K,
-                       cryptography::Code k):
-    _description(std::move(description)),
+  Authority::Authority(cryptography::PublicKey K,
+                       elle::String description,
+                       cryptography::Code k,
+                       Identifier identifier):
+    _identifier(std::move(identifier)),
     _K(std::move(K)),
+    _description(std::move(description)),
     _k(std::move(k))
   {
   }
 
-  Authority::Authority(elle::String description,
-                       cryptography::PublicKey K,
+  Authority::Authority(cryptography::PublicKey K,
+                       elle::String description,
                        cryptography::PrivateKey k,
-                       elle::String const& passphrase):
-    Authority(std::move(description),
-              std::move(K),
+                       elle::String const& passphrase,
+                       Identifier identifier):
+    Authority(std::move(K),
+              std::move(description),
               std::move(k),
               cryptography::SecretKey(Authority::Constants::cipher_algorithm,
-                                      passphrase))
+                                      passphrase),
+              std::move(identifier))
   {
   }
 
-  Authority::Authority(elle::String description,
-                       cryptography::PublicKey K,
+  Authority::Authority(cryptography::PublicKey K,
+                       elle::String description,
                        cryptography::PrivateKey k,
-                       cryptography::SecretKey const& key):
-    Authority(std::move(description),
-              std::move(K),
-              key.encrypt(k))
+                       cryptography::SecretKey const& key,
+                       Identifier identifier):
+    Authority(std::move(K),
+              std::move(description),
+              key.encrypt(k),
+              std::move(identifier))
   {
   }
 
   Authority::Authority(Authority const& other):
     elle::serialize::DynamicFormat<Authority>(other),
-    _description(other._description),
+    _identifier(other._identifier),
     _K(other._K),
+    _description(other._description),
     _k(other._k)
   {
   }
 
   Authority::Authority(Authority&& other):
     elle::serialize::DynamicFormat<Authority>(std::move(other)),
-    _description(std::move(other._description)),
+    _identifier(std::move(other._identifier)),
     _K(std::move(other._K)),
+    _description(std::move(other._description)),
     _k(std::move(other._k))
   {
   }
 
   ELLE_SERIALIZE_CONSTRUCT_DEFINE(Authority,
-                                  _K, _k)
+                                  _identifier, _K, _k)
   {
   }
 
@@ -85,7 +93,21 @@ namespace infinit
     cryptography::SecretKey key(Authority::Constants::cipher_algorithm,
                                 passphrase);
 
-    return (key.decrypt<cryptography::PrivateKey>(this->_k));
+    try
+    {
+      cryptography::PrivateKey k =
+        key.decrypt<cryptography::PrivateKey>(this->_k);
+
+      return (k);
+    }
+    catch (cryptography::Exception const& e)
+    {
+      throw Exception(
+        elle::sprintf("unable to decrypt the authority's private key: %s",
+                      e));
+    }
+
+    elle::unreachable();
   }
 
   /*----------.
@@ -96,8 +118,8 @@ namespace infinit
   Authority::print(std::ostream& stream) const
   {
     stream << "("
-           << this->_description << ", "
-           << this->_K
+           << this->_K << ", "
+           << this->_description
            << ")";
   }
 }

@@ -16,6 +16,8 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
+# include <infinit/Identifier.hh>
+
 namespace infinit
 {
   /// Represent an authority capable of signing objects such as identities,
@@ -44,25 +46,28 @@ namespace infinit
     /// Construct an authority given a description and, mosty importantly,
     /// the key pair and the passphrase for encrypting it.
     explicit
-    Authority(elle::String description,
-              cryptography::PublicKey K,
-              cryptography::Code k);
+    Authority(cryptography::PublicKey K,
+              elle::String description,
+              cryptography::Code k,
+              Identifier identifier = Identifier());
     /// Construct and encrypt the given private key with the passphrase.
     explicit
-    Authority(elle::String description,
-              cryptography::PublicKey K,
+    Authority(cryptography::PublicKey K,
+              elle::String description,
               cryptography::PrivateKey k,
-              elle::String const& passphrase);
+              elle::String const& passphrase,
+              Identifier identifier = Identifier());
     Authority(Authority const& other);
     Authority(Authority&& other);
     ELLE_SERIALIZE_CONSTRUCT_DECLARE(Authority);
   private:
     /// Intermediate secret-key-based constructor.
     explicit
-    Authority(elle::String description,
-              cryptography::PublicKey K,
+    Authority(cryptography::PublicKey K,
+              elle::String description,
               cryptography::PrivateKey k,
-              cryptography::SecretKey const& key);
+              cryptography::SecretKey const& key,
+              Identifier identifier);
 
     /*--------.
     | Methods |
@@ -93,10 +98,12 @@ namespace infinit
     | Attributes |
     `-----------*/
   public:
-    /// A description of the purpose of this authority.
-    ELLE_ATTRIBUTE_R(elle::String, description);
+    /// An identifier theoretically uniquely identifying the authority.
+    ELLE_ATTRIBUTE_R(Identifier, identifier);
     /// The public key of the authority.
     ELLE_ATTRIBUTE_R(cryptography::PublicKey, K);
+    /// A description of the purpose of this authority.
+    ELLE_ATTRIBUTE_R(elle::String, description);
     /// The authority's private key which is encrypted with
     /// a passphrase known to the owner only.
     ELLE_ATTRIBUTE(cryptography::Code, k);

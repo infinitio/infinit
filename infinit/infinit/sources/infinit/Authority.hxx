@@ -39,8 +39,9 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Authority,
     }
     case 1:
     {
-      archive << value._description;
+      archive << value._identifier;
       archive << value._K;
+      archive << value._description;
       archive << value._k;
 
       break;
@@ -79,8 +80,9 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Authority,
     }
     case 1:
     {
-      archive >> value._description;
+      archive >> value._identifier;
       archive >> value._K;
+      archive >> value._description;
       archive >> value._k;
 
       break;
