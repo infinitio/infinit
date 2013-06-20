@@ -38,19 +38,17 @@ def send_via_mailchimp(mail,
     finally:
         smtp_server.quit()
 
-def send(email,
+def send(mail,
          subject,
          content,
          from_="Infinit <no-reply@infinit.io>",
          reply_to=None,
-         encoding='utf8',
-         attached=None):
-    mail = MIMEMultipart()
-    mail['Subject'] = Header(subject, encoding)
-    mail['From'] = Header(from_, encoding)
+         encoding='utf8'):
+    msg = MIMEText(content, _charset=encoding)
+    msg['Subject'] = Header(subject, encoding)
+    msg['From'] = Header(from_, encoding)
     # Got troubles with Header for recipient.
-    mail['To'] = email #formataddr(("", email))
-    mail.attach(MIMEText(content, _charset=encoding))
+    msg['To'] = mail #formataddr(("", mail))
     if reply_to is not None:
         mail['Reply-To'] = "Infinit <{}>".format(reply_to)
 
@@ -64,7 +62,7 @@ def send(email,
     smtp_server = smtplib.SMTP(conf.MANDRILL_SMTP_HOST, conf.MANDRILL_SMTP_PORT)
     try:
         smtp_server.login(conf.MANDRILL_USERNAME, conf.MANDRILL_PASSWORD)
-        smtp_server.sendmail(mail['From'], [mail['To']], mail.as_string())
+        smtp_server.sendmail(msg['From'], [msg['To']], msg.as_string())
     finally:
         smtp_server.quit()
 
