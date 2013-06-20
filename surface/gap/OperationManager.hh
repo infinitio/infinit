@@ -38,7 +38,7 @@ namespace surface
       ~OperationManager();
 
     public:
-      /// Retreive the status of an existing operation.
+      /// Retreive the status of an existing operation or success if the id is 0.
       OperationStatus
       status(OperationId const id) const;
 
@@ -47,6 +47,10 @@ namespace surface
       /// @throw if the operation does not exist or if it is still running.
       void
       finalize(OperationId const id);
+
+      /// @brief Cancel an operation if running.
+      void
+      cancel_operation(OperationId const id);
 
       /// Clean all terminated operations.
       void

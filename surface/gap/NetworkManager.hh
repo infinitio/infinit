@@ -112,6 +112,10 @@ namespace surface
       delete_(std::string const& name,
               bool remove_directory = true);
 
+      /// Remove local directories (and kill any infinit instances).
+      void
+      delete_local(std::string const& name);
+
       /// Add a user to a network with its mail or id.
       void
       add_user(std::string const& network_id,

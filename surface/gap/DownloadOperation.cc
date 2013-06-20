@@ -108,5 +108,12 @@ namespace surface
         throw;
       }
     }
+
+    void
+    DownloadOperation::_on_error(Operation&)
+    {
+      this->_transaction_manager.update(this->_transaction.id,
+                                        plasma::TransactionStatus::started);
+    }
   }
 }

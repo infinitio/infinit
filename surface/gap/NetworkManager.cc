@@ -346,23 +346,8 @@ namespace surface
                             bool remove_directory)
     {
       ELLE_SCOPE_EXIT([&] {
-        if (this->infinit_instance_manager().exists(network_id))
-        {
-          ELLE_TRACE("stoping infinit instance for network %s", network_id)
-            this->_infinit_instance_manager.stop(network_id);
-        }
-      });
-
-      ELLE_SCOPE_EXIT([&] {
-        if (not remove_directory)
-          return;
-        auto path = common::infinit::network_directory(this->_self.id,
-                                                       network_id);
-        if (elle::os::path::exists(path))
-        {
-          ELLE_TRACE("remove network %s directory %s", network_id, path)
-            elle::os::path::remove_directory(path);
-        }
+        if (remove_directory)
+          this->delete_local(network_id);
       });
 
       if (this->_networks->find(network_id) != this->_networks->end())
@@ -383,6 +368,24 @@ namespace surface
         this->_networks->erase(network_id);
 
       return network_id;
+    }
+
+    void
+    NetworkManager::delete_local(std::string const& network_id)
+    {
+      if (this->infinit_instance_manager().exists(network_id))
+      {
+        ELLE_TRACE("stoping infinit instance for network %s", network_id)
+          this->_infinit_instance_manager.stop(network_id);
+      }
+
+      auto path = common::infinit::network_directory(this->_self.id,
+                                                     network_id);
+      if (elle::os::path::exists(path))
+      {
+        ELLE_TRACE("remove network %s directory %s", network_id, path)
+          elle::os::path::remove_directory(path);
+      }
     }
 
     std::vector<std::string>

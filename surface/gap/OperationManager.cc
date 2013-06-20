@@ -16,6 +16,8 @@ namespace surface
     OperationManager::OperationStatus
     OperationManager::status(OperationId const id) const
     {
+      if (id == 0)
+        return OperationStatus::success;
       auto it = _operations.find(id);
       if (it == _operations.end())
         throw elle::Exception{
@@ -27,6 +29,18 @@ namespace surface
       if (it->second->succeeded())
         return OperationStatus::success;
       return OperationStatus::failure;
+    }
+
+    void
+    OperationManager::cancel_operation(OperationId const id)
+    {
+      auto it = _operations.find(id);
+      if (it == _operations.end())
+        throw elle::Exception{
+            "Couldn't find any operation with id " + std::to_string(id)
+        };
+      if (!it->second->done())
+        it->second->cancel();
     }
 
     OperationManager::~OperationManager()
@@ -51,7 +65,7 @@ namespace surface
     OperationManager::OperationId
     OperationManager::_next_operation_id()
     {
-      static OperationManager::OperationId id = 0;
+      static OperationManager::OperationId id = 0; // XXX not thread safe
       return ++id;
     }
 

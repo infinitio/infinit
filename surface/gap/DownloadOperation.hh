@@ -34,6 +34,8 @@ namespace surface
     protected:
       void
       _run() override;
+      void
+      _on_error(Operation&);
     };
   }
 }
