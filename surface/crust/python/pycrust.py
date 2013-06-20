@@ -68,29 +68,32 @@ class Network(_crust._Network):
 
     # Store the descriptor on the given remote.
     def publish(self,
+                network_name,
                 host = __env__.host,
                 port = __env__.port,
                 token = __env__.token):
 
-        self._publish(host, port, token)
+        self._publish(network_name, host, port, token)
 
     # Unpublish the descriptor to the network.
-    def unpublish(self,
+    @staticmethod
+    def unpublish(identifier,
                   host = __env__.host,
                   port = __env__.port,
                   token = __env__.token):
-        self._unpublish(host, port, token)
+        _crust._Network_unpublish(identifier, host, port, token)
 
     # List the local descriptors.
     @staticmethod
-    def local_list(path):
-        return _crust._Network_local_list(path)
+    def list(user_name, infinit_home):
+        return _crust._Network_list(user_name,
+                                    infinit_home)
 
     @staticmethod
-    def remote_list(host = __env__.host,
-                    port = __env__.port,
-                    token = __env__.token):
-        return _crust._Network_remote_list(host, port, token)
+    def fetch(host = __env__.host,
+              port = __env__.port,
+              token = __env__.token):
+        return _crust._Network_fetch(host, port, token)
 
     @staticmethod
     def lookup(owner_handle,

@@ -102,13 +102,15 @@ public:
   void
   install(std::string const& administrator_name,
           std::string const& network_name,
-          boost::filesystem::path const& home_path = common::infinit::home()) const;
+          boost::filesystem::path const& home_path = common::infinit::home())
+    const;
 
   /// Uninstall.
   void
   uninstall(std::string const& administrator_name,
             std::string const& network_name,
-            boost::filesystem::path const& home_path = "") const;
+            boost::filesystem::path const& home_path  = common::infinit::home())
+    const;
 
   /// Mount.
   uint16_t
@@ -124,15 +126,18 @@ public:
   `------------*/
    /// Publish descriptor to the remote meta.
   void
-  publish(std::string const& host = common::meta::host(),
+  publish(std::string const& network_name,
+          std::string const& host = common::meta::host(),
           uint16_t port = common::meta::port(),
           std::string const& token = common::meta::token()) const;
 
   /// Remove descriptor from remote meta.
+  static
   void
-  unpublish(std::string const& host = common::meta::host(),
+  unpublish(infinit::Identifier const& identifier,
+            std::string const& host = common::meta::host(),
             uint16_t port = common::meta::port(),
-            std::string const& token = common::meta::token()) const;
+            std::string const& token = common::meta::token());
 
   ///
   // void
@@ -144,17 +149,18 @@ public:
   /// Explore the given path and return all the (verified) .dsc.
   static
   std::vector<std::string>
-  list(boost::filesystem::path const& path,
+  list(std::string const& user_name,
+       boost::filesystem::path const& home_path = common::infinit::home(),
        bool verify = true);
 
   /// Get the list of descriptor id stored on the network.
   static
   std::vector<std::string>
-  list(std::string const& host = common::meta::host(),
-       uint16_t port = common::meta::port(),
-       boost::filesystem::path const& token_path = common::meta::token_path(),
-       plasma::meta::Client::DescriptorList const& list =
-         plasma::meta::Client::DescriptorList::all);
+  fetch(std::string const& host = common::meta::host(),
+        uint16_t port = common::meta::port(),
+        boost::filesystem::path const& token_path = common::meta::token_path(),
+        plasma::meta::Client::DescriptorList const& list =
+          plasma::meta::Client::DescriptorList::all);
 
   /*--------.
   | Look up |

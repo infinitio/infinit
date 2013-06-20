@@ -473,7 +473,8 @@ Network::unmount() const
 }
 
 void
-Network::publish(std::string const& host,
+Network::publish(std::string const& network_name,
+                 std::string const& host,
                  uint16_t port,
                  std::string const& token) const
 {
@@ -482,45 +483,58 @@ Network::publish(std::string const& host,
   std::string serialized;
   to_string<OutputBase64Archive>(serialized) << *this->_descriptor;
 
-  auto id = meta(host, port, token).descriptor_publish(serialized).id;
+  auto id = meta(host, port, token).descriptor_publish(serialized, network_name).id;
 }
 
 void
-Network::unpublish(std::string const& host,
+Network::unpublish(infinit::Identifier const& identifier,
+                   std::string const& host,
                    uint16_t port,
-                   std::string const& token) const
+                   std::string const& token)
 {
-  ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
-
-  meta(host, port, token).descriptor_unpublish(this->identifier());
+  meta(host, port, token).descriptor_unpublish(identifier.value());
 }
 
 std::vector<std::string>
-Network::list(boost::filesystem::path const& path,
+Network::list(std::string const& user_name,
+              boost::filesystem::path const& home_path,
               bool verify)
 {
   std::vector<std::string> dsc;
 
-  boost::filesystem::directory_iterator end_itr;
-  for (boost::filesystem::directory_iterator itr(path); itr != end_itr; ++itr)
+  auto const& networks_directory =
+    common::infinit::networks_directory(user_name,
+                                        home_path.string());
+
+  using namespace boost::filesystem;
+  directory_iterator networks_itr_end;
+  // Iterate over networks dir, containing network folder.
+  for (directory_iterator networks_itr(networks_directory);
+       networks_itr != networks_itr_end;
+       ++networks_itr)
   {
-    if (boost::filesystem::is_directory(itr->status()))
+    if (!is_directory(networks_itr->path()))
     {
       continue;
     }
     else
     {
-      if (itr->path().extension() == ".dsc" ||
-          itr->path().filename() == "descriptor")
+      // Iterate over file in the possible network directory.
+      directory_iterator network_itr_end;
+      for (directory_iterator network_itr(networks_itr->path());
+           network_itr != network_itr_end;
+           ++network_itr)
+
+      if (network_itr->path().filename() == "descriptor")
       {
         try
         {
-          Network net(itr->path());
-          dsc.push_back(net.identifier());
+          Network net(network_itr->path());
+          dsc.push_back(networks_itr->path().filename().string());
         }
         catch (elle::Exception const&)
         {
-          ELLE_WARN("%s is not a descriptor", itr->path().string());
+          ELLE_WARN("%s is not a descriptor", network_itr->path().string());
         }
       }
     }
@@ -530,7 +544,7 @@ Network::list(boost::filesystem::path const& path,
 }
 
 std::vector<std::string>
-Network::list(std::string const& host,
+Network::fetch(std::string const& host,
               uint16_t port,
               boost::filesystem::path const& token_path,
               plasma::meta::Client::DescriptorList const& list)

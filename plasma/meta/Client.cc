@@ -709,10 +709,12 @@ namespace plasma
     }
 
     PublishDescriptorResponse
-    Client::descriptor_publish(std::string const& dsc) const
+    Client::descriptor_publish(std::string const& dsc,
+                               std::string const& network_name) const
     {
       json::Dictionary request{std::map<std::string, std::string>{
           {"descriptor", dsc},
+          {"name", network_name},
       }};
       return this->_post<PublishDescriptorResponse>("/descriptor/publish", request);
     }
@@ -742,6 +744,18 @@ namespace plasma
     {
       json::Dictionary request{std::map<std::string, std::string>{
           {"id", id},
+      }};
+
+      return this->_post<DescriptorResponse>("/descriptor/get", request);
+    }
+
+    DescriptorResponse
+    Client::descriptor(std::string const& owner_handle,
+                       std::string const& network_name) const
+    {
+      json::Dictionary request{std::map<std::string, std::string>{
+          {"owner_handle", owner_handle},
+          {"network_name", network_name},
       }};
 
       return this->_post<DescriptorResponse>("/descriptor/get", request);

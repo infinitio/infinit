@@ -48,11 +48,13 @@ _Network_new_from_home(std::string const& network_name,
 
 static
 boost::python::object
-_Network_local_list(std::string const& path)
+_Network_list(std::string const& network_name,
+                    std::string const& infinit_home)
 {
   boost::python::list networks;
 
-  for (auto const& net: Network::list(boost::filesystem::path{path}))
+  for (auto const& net: Network::list(network_name,
+                                      boost::filesystem::path{infinit_home}))
     networks.append(boost::python::str(net));
 
   return networks;
@@ -60,15 +62,15 @@ _Network_local_list(std::string const& path)
 
 static
 boost::python::object
-_Network_remote_list(std::string const& host,
+_Network_fetch(std::string const& host,
                      uint16_t port,
                      std::string const& token_path)
 {
   boost::python::list networks;
 
-  for (auto const& net: Network::list(host,
-                                      port,
-                                      boost::filesystem::path{token_path}))
+  for (auto const& net: Network::fetch(host,
+                                       port,
+                                       boost::filesystem::path{token_path}))
     networks.append(boost::python::str(net));
 
   return networks;
@@ -250,8 +252,6 @@ BOOST_PYTHON_MODULE(_crust)
     .def("_unmount", &Network::unmount)
     // Publish the descriptor to the remote.
     .def("_publish", &Network::publish)
-    // Unpublish the descriptor from the remote.
-    .def("_unpublish", &Network::unpublish)
 
     .add_property("identifier",
                   py::make_function(&Network::identifier, by_value()))
@@ -275,10 +275,13 @@ BOOST_PYTHON_MODULE(_crust)
     .add_property("version",
                   py::make_function(&Network::version, by_value()))
   ;
+
+  // Unpublish the descriptor from the remote.
+  py::def("_Network_unpublish", py::make_function(&Network::unpublish));
   // List local descriptor from a given path.
-  py::def("_Network_local_list", py::make_function(&_Network_local_list));
+  py::def("_Network_list", py::make_function(&_Network_list));
   // List the descriptor stored on the remote.
-  py::def("_Network_remote_list", py::make_function(&_Network_remote_list));
+  py::def("_Network_fetch", py::make_function(&_Network_fetch));
   // Lookup descriptor id from owner handle and network name.
   py::def("_Network_lookup", py::make_function(&_Network_lookup));
 

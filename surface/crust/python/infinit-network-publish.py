@@ -3,27 +3,30 @@
 
 import infinit_utils
 
-def publish(descriptor_path, host, port, token_path):
+def publish(descriptor_path, network_name, host, port, token_path):
     from pycrust import Network
 
     network = Network(descriptor_path)
-    network.publish(host, port, token_path)
+    network.publish(network_name, host, port, token_path)
 
 def main(args):
-    meta_host, meta_port, meta_token_path = infinit_utils.meta_values(args)
+    if not args.network_name:
+        raise Exception("You must provide a --network-name.")
 
     publish(descriptor_path = args.LOCAL_DESCRIPTOR_PATH,
-            host = meta_host,
-            port = meta_port,
-            token_path = meta_token_path)
+            network_name = args.network_name,
+            host = args.meta_host,
+            port = args.meta_port,
+            token_path = args.meta_token_path)
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser()
+    parser = infinit_utils.RemoteParser()
     parser.add_argument("LOCAL_DESCRIPTOR_PATH",
                         help = "The path to the descriptor to publish.")
-    infinit_utils.meta_to_parser(parser)
+    parser.add_argument("--network-name",
+                        help = "The name as which you want to store this network.")
 
     # Parse arguments and handle errors.
     infinit_utils.run(parser, main)

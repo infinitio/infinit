@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 
-def install(descriptor_path, network_path):
+import infinit_utils
+
+def install(descriptor_path, network_name, user_name, home):
     from pycrust import Network
     net = Network(descriptor_path)
-    net.install(network_path)
+    net.install(user_name, network_name, home)
 
 def main(args):
-    if not args.infinit_network_path:
-        raise Exception("You must provide --infinit-network-path")
-    from os import path
-    if path.exists(args.infinit_network_path):
-        raise Exception("Destination path %s provided via --infinit-network-path already exists" % args.infinit_network_path)
+    if not args.network_name:
+        raise Exception("You must provide a --network-name.")
 
     install(descriptor_path = args.LOCAL_DESCRIPTOR_PATH,
-            network_path = args.infinit_network_path)
+            network_name = args.network_name,
+            user_name = args.user_name,
+            home = args.infinit_home)
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser()
+    parser = infinit_utils.LocalParser()
     parser.add_argument("LOCAL_DESCRIPTOR_PATH",
                         help = "The path to the descriptor to destroy.")
-    parser.add_argument("--infinit-network-path",
-                        help = "The path where install your network.")
+    parser.add_argument("--network-name",
+                        help = "XXX: The name you gave to the network")
 
-    from infinit_utils import run
-    run(parser, main)
+    infinit_utils.run(parser, main)

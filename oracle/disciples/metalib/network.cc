@@ -316,26 +316,31 @@ metalib_deserialize_network_descriptor(PyObject* self,
   _save = PyEval_SaveThread();
 
   try
-    {
-      auto descriptor = deserialize_descriptor(descriptor_str);
+  {
+    auto descriptor = deserialize_descriptor(descriptor_str);
 
-      // WARNING: restore state before setting exception !
-      PyEval_RestoreThread(_save);
+    // WARNING: restore state before setting exception !
+    PyEval_RestoreThread(_save);
 
-      ret = PyDict_New();
-      PyDict_SetItemString(ret, "id", PyString_FromString(descriptor.meta().identifier().c_str()));
-      PyDict_SetItemString(ret, "adminK", PyString_FromString("bite")); //descriptor.meta().administrator_K().c_str()));
-      PyDict_SetItemString(ret, "description", PyString_FromString(descriptor.data().description().c_str()));
+    ret = PyDict_New();
+    PyDict_SetItemString(ret,
+                         "id",
+                         PyString_FromString(
+                           descriptor.meta().identifier().c_str()));
+    PyDict_SetItemString(ret,
+                         "description",
+                         PyString_FromString(
+                           descriptor.data().description().c_str()));
 
-      Py_INCREF(ret);
-    }
+    Py_INCREF(ret);
+  }
   catch (std::exception const& err)
-    {
-      // WARNING: restore state before setting exception !
-      PyEval_RestoreThread(_save);
-      char const* error_string = err.what();
-      PyErr_SetString(metalib_MetaError, error_string);
-    }
+  {
+    // WARNING: restore state before setting exception !
+    PyEval_RestoreThread(_save);
+    char const* error_string = err.what();
+    PyErr_SetString(metalib_MetaError, error_string);
+  }
 
   return ret;
 }

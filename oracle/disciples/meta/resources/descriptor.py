@@ -82,15 +82,17 @@ class PublishDescriptor(_Page):
     def POST(self):
 
         digest = self.data['descriptor']
+        name = self.data['name']
+
         visibility = Visibility.PUBLIC
         descriptor = metalib.deserialze_descriptor(digest)
-        _id = descriptor['id']
+        _id = unicode(descriptor['id'])
 
         network = database.networks().find_one(
             {"$or" :
                  [
                     {'_id': _id},
-                    {'name': descriptor['name'], 'owner': self.user['_id']},
+                    {'name': name, 'owner': self.user['_id']},
                  ]
             }
         )
@@ -105,7 +107,7 @@ class PublishDescriptor(_Page):
         network = {
             '_id': _id,
             'descriptor': digest,
-            'name': descriptor['name'],
+            'name': name,
             'owner': self.user['_id'],
             'owner_handle': self.user['lw_handle'],
             'visibility': Visibility.PUBLIC,
@@ -115,7 +117,7 @@ class PublishDescriptor(_Page):
                                    upsert = True)
         # The best should be find_and_modify.
         # database.user().find_and_modify(self.user, {'$push': {'owned_networks': _id}})
-        self.user.setdefault('owned_networks', []).append(_id)
+        self.user.setdefault('owned_networks', []).append((_id, name))
         database.users().save(self.user)
 
         return self.success({'_id': _id})
@@ -154,6 +156,9 @@ class UnpublishDescriptor(_Page):
         if network['owner'] != self.user['_id']:
             return self.error(error.NETWORK_DOESNT_BELONG_TO_YOU)
 
+        _id = network['_id']
+        name = network['name']
+
         # Instead of deleting a network, we just reset it. With that we can
         # differenciate deleted network id from new id in order to create
         # smarter behavior "The owner unpublished this descriptor" instead of
@@ -164,7 +169,9 @@ class UnpublishDescriptor(_Page):
         # The best should be find_and_modify.
         # database.user().find_and_modify(self.user, {'$pull': {'owned_networks': _id}})
         assert 'owned_networks' in self.user
-        self.user['owned_networks'].remove(_id)
+
+        # Mongo can't store tuple, which are automaticly converted into list.
+        self.user['owned_networks'].remove(list((_id, name)))
         database.users().save(self.user)
 
         return self.success({'_id': _id})
@@ -189,8 +196,6 @@ class LookupDescriptor(_Page):
     def POST(self):
         handle = self.data['owner'].lower()
         name = self.data['name']
-
-
 
         return self.success({"_id": self.network_by_name(handle, name)['_id']})
 
@@ -257,7 +262,7 @@ class ListDescriptor(_Page):
     @requireLoggedIn
     def POST(self):
         return self.success(
-            { "descriptors" : filtred_list(self.user, int(self.data['filter'])) }
+            { "descriptors" : [pair[1] for pair in filtred_list(self.user, int(self.data['filter']))] }
         )
 
 class AllDescriptor(_Page):

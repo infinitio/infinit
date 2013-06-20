@@ -417,7 +417,8 @@ namespace plasma
                        std::string const& hash) const;
 
       PublishDescriptorResponse
-      descriptor_publish(std::string const& dsc) const;
+      descriptor_publish(std::string const& dsc,
+                         std::string const& name) const;
 
       UnpublishDescriptorResponse
       descriptor_unpublish(std::string const& id) const;
@@ -428,6 +429,10 @@ namespace plasma
 
       DescriptorResponse
       descriptor(std::string const& id) const;
+
+      DescriptorResponse
+      descriptor(std::string const& owner_handle,
+                 std::string const& network_name) const;
 
       enum class DescriptorList: int
       {

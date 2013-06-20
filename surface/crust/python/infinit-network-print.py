@@ -2,6 +2,7 @@
 # -*- encoding: utf-8 -*-
 
 import infinit_utils
+from pycrust import Network
 
 #
 xml = """<network>
@@ -28,67 +29,49 @@ def to_raw(network, attributes):
 
 formats = {"csv": to_csv, "json": to_json, "raw": to_raw, "xml": to_xml}
 
-default_attributes = ('identifier', 'name')
+default_attributes = ('identifier', 'description')
 
-def print_network(network, attributes, format_):
+def print_network(network, attributes, format_ = "raw"):
     formats[format_](network, attributes)
-
-def print_local(path, attributes=default_attributes, format_ = "raw"):
-    from pycrust import Network
-    network = Network(path)
-    print_network(network, attributes, format_)
-
-def print_remote(id_, host, port, token_path, attributes = default_attributes, format_= "raw"):
-    from pycrust import Network, ID
-    network = Network(ID(id_), host, port, token_path)
-    print_network(network, attributes, format_)
 
 def main(args):
     attributes = args.attributes or []
 
-    if args.local_network_path or args.local_descriptor_path:
-        if args.meta_host or args.meta_port or args.meta_token_path:
-            print("Warning: You provided both local and meta data. Local used.")
+    if args.local_descriptor_path:
         from os import path
         if args.local_descriptor_path:
             if not path.exists(args.local_descriptor_path):
                 raise Exception("Given path %s for local_descriptor_path doesn't exist" % args.local_descriptor_path)
-            if args.local_network_path:
-                print("WARNING: You set both --local_descriptor_path and --local_network_path. Descriptor taken by default")
-            print_local(args.local_descriptor_path,
-                        attributes,
-                        args.format)
-        else:
-            if not path.exists(args.local_network_path):
-                raise Exception("Given path %s for --local_network_path doesn't exist" % args.local_repository)
-            print_local(args.local_network_path + "/descriptor",
-                        attributes,
-                        args.format)
-    elif args.meta_network_identifier:
-        meta_host, meta_port, meta_token_path = infinit_utils.meta_values(args)
-
-        print_remote(id_ = args.meta_network_identifier,
-                     host = meta_host,
-                     port = meta_port,
-                     token_path = meta_token_path,
-                     attributes = attributes,
-                     format_ = args.format)
+            print_network(Network(args.local_descriptor_path), attributes, args.format)
     else:
-        raise Exception("Neither --local-network-path, --local-descriptor-path nor --meta-network-identifier given")
+        from os import path
+        home = args.infinit_home or getenv("INFINIT_HOME")
+        if not home:
+            raise Exception("You must provide a home directory, with --infinit-home or env INFINIT_HOME")
+        if not args.network_name:
+            raise Exception("You must provide a --network-name.")
+        if not args.user_name:
+            raise Exception("You must provide a --user-name, it's tempory.")
+
+        print_network(Network(args.user_name, args.network_name, home),
+                      attributes,
+                      args.format)
 
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    # Remote.
-    parser.add_argument("--meta-network-identifier",
-                        help = "XXX: The identifier of the network.")
-    infinit_utils.meta_to_parser(parser)
 
-    # Local.
-    parser.add_argument("--local-network-path",
+    # Home.
+    parser.add_argument("--network-name",
                         help = "XXX:")
+    parser.add_argument("--user-name",
+                        help = "XXX:")
+    parser.add_argument("--infinit-home",
+                        help = "XXX:")
+
+    # Direct.
     parser.add_argument("--local-descriptor-path",
                         help = "XXX:")
 
@@ -97,7 +80,7 @@ if __name__ == "__main__":
                         nargs = '+',
                         choices = ['identifier', 'administrator_K', 'model',
                                    'everybody_identity', 'history', 'extent',
-                                   'name', 'openness', 'policy', 'version'],
+                                   'description', 'openness', 'policy', 'version'],
                         default = default_attributes,
                         help = "The list of attributes to display.")
     parser.add_argument("--format",
