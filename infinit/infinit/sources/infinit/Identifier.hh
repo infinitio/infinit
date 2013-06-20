@@ -11,7 +11,8 @@
 
 namespace infinit
 {
-  /// XXX
+  /// Represent a theoretically unique identifier which can be used
+  /// to identify entities.
   class Identifier:
     public elle::Printable
   {
@@ -36,13 +37,13 @@ namespace infinit
     /// Construct an identifier based on a string.
     explicit
     Identifier(elle::String const& string);
-    /// Construct an identifier by encoding the content of the buffer
-    /// in a given format.
-    explicit
-    Identifier(elle::ConstWeakBuffer const& buffer);
     Identifier(Identifier const& other);
     Identifier(Identifier&& other);
     ELLE_SERIALIZE_CONSTRUCT_DECLARE(Identifier);
+  private:
+    /// An intermediate constructor following the generation of a buffer.
+    explicit
+    Identifier(elle::Buffer const& buffer);
 
     /*----------.
     | Operators |

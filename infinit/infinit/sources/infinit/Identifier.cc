@@ -2,7 +2,7 @@
 
 #include <cryptography/random.hh>
 
-#include <elle/format/hexadecimal.hh>
+#include <elle/format/base64url.hh>
 #include <elle/Buffer.hh>
 
 namespace infinit
@@ -11,7 +11,7 @@ namespace infinit
   | Constants |
   `----------*/
 
-  elle::Natural32 const Identifier::Constants::default_size = 64;
+  elle::Natural32 const Identifier::Constants::default_size = 48;
 
   /*-------------.
   | Construction |
@@ -22,16 +22,11 @@ namespace infinit
   {}
 
   Identifier::Identifier(elle::Natural32 const size):
-    _value(elle::format::hexadecimal::encode(
-             cryptography::random::generate<elle::Buffer>(size)))
+    Identifier(cryptography::random::generate<elle::Buffer>(size))
   {}
 
   Identifier::Identifier(elle::String const& string):
     _value(string)
-  {}
-
-  Identifier::Identifier(elle::ConstWeakBuffer const& buffer):
-    _value(elle::format::hexadecimal::encode(buffer))
   {}
 
   Identifier::Identifier(Identifier const& other):
@@ -44,6 +39,11 @@ namespace infinit
 
   ELLE_SERIALIZE_CONSTRUCT_DEFINE(Identifier)
   {}
+
+  Identifier::Identifier(elle::Buffer const& buffer):
+    _value(elle::format::base64url::encode<elle::String>(buffer))
+  {
+  }
 
   /*----------.
   | Printable |
