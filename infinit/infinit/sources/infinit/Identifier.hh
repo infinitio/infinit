@@ -36,7 +36,8 @@ namespace infinit
     /// Construct an identifier based on a string.
     explicit
     Identifier(elle::String const& string);
-    /// Construct an identifier based on a buffer.
+    /// Construct an identifier by encoding the content of the buffer
+    /// in a given format.
     explicit
     Identifier(elle::ConstWeakBuffer const& buffer);
     Identifier(Identifier const& other);
@@ -67,5 +68,7 @@ namespace infinit
     ELLE_ATTRIBUTE_R(elle::String, value);
   };
 }
+
+# include <infinit/Identifier.hxx>
 
 #endif

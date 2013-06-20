@@ -27,7 +27,7 @@ namespace infinit
   {}
 
   Identifier::Identifier(elle::String const& string):
-    Identifier(elle::ConstWeakBuffer(string.c_str(), string.length()))
+    _value(string)
   {}
 
   Identifier::Identifier(elle::ConstWeakBuffer const& buffer):
