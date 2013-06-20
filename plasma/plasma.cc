@@ -32,13 +32,17 @@ namespace plasma
               plasma::Transaction const& t)
   {
     out
-      << "{"
-      << "tr: " << t.id << ", net: " << t.network_id << ", "
-      << "s: {id: " << t.sender_id << ", dev: " << t.sender_device_id << "}, "
-      << "f: " << t.first_filename << ", "
-      << "r: {id: " << t.recipient_id << ", dev: " << t.recipient_device_id << "},"
-      << " st: " << (plasma::TransactionStatus) t.status
-      << "}";
+      << "<Transaction(" << t.id
+      << ", net=" << t.network_id
+      << ", t=" << t.timestamp
+      << ", file=" << t.first_filename
+      << ", status=" << (plasma::TransactionStatus) t.status
+      << ", accepted=" <<  t.accepted
+      << ") "
+      << "from " << t.sender_fullname << " (" << t.sender_id << ") "
+      << "on device " << t.sender_device_id << ", "
+      << "to " << t.recipient_fullname << " (" << t.recipient_id << ") "
+      << "on device " << t.recipient_device_id << '>';
 
     return out;
   }
