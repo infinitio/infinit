@@ -23,40 +23,47 @@ namespace infinit
   `-------------*/
 
   Identity::Identity(cryptography::PublicKey issuer_K,
-                     elle::String identifier,
+                     cryptography::PublicKey subject_K,
                      elle::String description,
-                     cryptography::Code keypair,
-                     cryptography::Signature signature):
-    _issuer_K(std::move(issuer_K)),
+                     cryptography::Code subject_k,
+                     cryptography::Signature signature,
+                     Identifier identifier):
     _identifier(std::move(identifier)),
+    _issuer_K(std::move(issuer_K)),
+    _subject_K(std::move(subject_K)),
     _description(std::move(description)),
-    _keypair(std::move(keypair)),
+    _subject_k(std::move(subject_k)),
     _signature(std::move(signature))
   {
   }
 
   Identity::Identity(Identity const& other):
     elle::serialize::DynamicFormat<Identity>(other),
-    _issuer_K(other._issuer_K),
     _identifier(other._identifier),
+    _issuer_K(other._issuer_K),
+    _subject_K(other._subject_K),
     _description(other._description),
-    _keypair(other._keypair),
-    _signature(other._signature)
+    _subject_k(other._subject_k),
+    _signature(other._signature),
+    _subject_keypair_0(new cryptography::Code(*other._subject_keypair_0))
   {
   }
 
   Identity::Identity(Identity&& other):
     elle::serialize::DynamicFormat<Identity>(std::move(other)),
-    _issuer_K(std::move(other._issuer_K)),
     _identifier(std::move(other._identifier)),
+    _issuer_K(std::move(other._issuer_K)),
+    _subject_K(std::move(other._subject_K)),
     _description(std::move(other._description)),
-    _keypair(std::move(other._keypair)),
-    _signature(std::move(other._signature))
+    _subject_k(std::move(other._subject_k)),
+    _signature(std::move(other._signature)),
+    _subject_keypair_0(std::move(other._subject_keypair_0))
   {
   }
 
   ELLE_SERIALIZE_CONSTRUCT_DEFINE(Identity,
-                                  _issuer_K, _keypair, _signature)
+                                  _identifier, _issuer_K, _subject_K,
+                                  _subject_k, _signature)
   {
   }
 
@@ -64,7 +71,7 @@ namespace infinit
   | Methods |
   `--------*/
 
-  cryptography::KeyPair
+  cryptography::PrivateKey
   Identity::decrypt(elle::String const& passphrase) const
   {
     ELLE_TRACE_METHOD(passphrase);
@@ -72,16 +79,128 @@ namespace infinit
     cryptography::SecretKey key(Identity::Constants::cipher_algorithm,
                                 passphrase);
 
-    try
+    switch (this->infinit::Identity::DynamicFormat::version())
     {
-      cryptography::KeyPair keypair =
-        key.decrypt<cryptography::KeyPair>(this->_keypair);
+      case 0:
+      {
+        try
+        {
+          ELLE_ASSERT_NEQ(this->_subject_keypair_0, nullptr);
 
-      return (keypair);
+          cryptography::KeyPair keypair =
+            key.decrypt<cryptography::KeyPair>(*this->_subject_keypair_0);
+
+          return (keypair.k());
+        }
+        catch (cryptography::Exception const& e)
+        {
+          throw Exception(
+            elle::sprintf("unable to decrypt the identity's key pair: %s", e));
+        }
+
+        break;
+      }
+      case 1:
+      {
+        try
+        {
+          cryptography::PrivateKey k =
+            key.decrypt<cryptography::PrivateKey>(this->_subject_k);
+
+          return (k);
+        }
+        catch (cryptography::Exception const& e)
+        {
+          throw Exception(
+            elle::sprintf("unable to decrypt the identity's private key: %s",
+                          e));
+        }
+
+        break;
+      }
+      default:
+        throw ::infinit::Exception(
+          elle::sprintf(
+            "unknown format '%s'",
+            this->infinit::Identity::DynamicFormat::version()));
     }
-    catch (cryptography::Exception const& e)
+
+    elle::unreachable();
+  }
+
+  cryptography::KeyPair
+  Identity::decrypt_0(elle::String const& passphrase) const
+  {
+    ELLE_TRACE_METHOD(passphrase);
+
+    cryptography::SecretKey key(Identity::Constants::cipher_algorithm,
+                                passphrase);
+
+    switch (this->infinit::Identity::DynamicFormat::version())
     {
-      throw Exception(elle::sprintf("unable to decrypt the identity: %s", e));
+      case 0:
+      {
+        try
+        {
+          ELLE_ASSERT_NEQ(this->_subject_keypair_0, nullptr);
+
+          cryptography::KeyPair keypair =
+            key.decrypt<cryptography::KeyPair>(*this->_subject_keypair_0);
+
+          return (keypair);
+        }
+        catch (cryptography::Exception const& e)
+        {
+          throw Exception(
+            elle::sprintf("unable to decrypt the identity's key pair: %s", e));
+        }
+
+        break;
+      }
+      case 1:
+      {
+        try
+        {
+          cryptography::PrivateKey k =
+            key.decrypt<cryptography::PrivateKey>(this->_subject_k);
+
+          return (cryptography::KeyPair(this->_subject_K, k));
+        }
+        catch (cryptography::Exception const& e)
+        {
+          throw Exception(
+            elle::sprintf("unable to decrypt the identity's private key: %s",
+                          e));
+        }
+
+        break;
+      }
+      default:
+        throw ::infinit::Exception(
+          elle::sprintf(
+            "unknown format '%s'",
+            this->infinit::Identity::DynamicFormat::version()));
+    }
+
+    elle::unreachable();
+  }
+
+  cryptography::PublicKey
+  Identity::subject_K() const
+  {
+    switch (this->infinit::Identity::DynamicFormat::version())
+    {
+      case 0:
+        throw Exception("unable to retrieve the subject's public key from an "
+                        "identity in format 0; instead use the decrypt_0() "
+                        "method which returns a key pair");
+      case 1:
+        return (this->_subject_K);
+      default:
+        throw ::infinit::Exception(
+          elle::sprintf(
+            "unknown format '%s'",
+            this->infinit::Identity::DynamicFormat::version()));
     }
 
     elle::unreachable();
@@ -94,11 +213,32 @@ namespace infinit
   void
   Identity::print(std::ostream& stream) const
   {
-    stream << "("
-           << this->_identifier << ", "
-           << this->_description << ", "
-           << this->_keypair
-           << ")";
+    switch (this->infinit::Identity::DynamicFormat::version())
+    {
+      case 0:
+      {
+        stream << "("
+               << this->_identifier << ", "
+               << this->_description
+               << ")";
+
+        break;
+      }
+      case 1:
+      {
+        stream << "("
+               << this->_subject_K << ", "
+               << this->_description
+               << ")";
+
+        break;
+      }
+      default:
+        throw ::infinit::Exception(
+          elle::sprintf(
+            "unknown format '%s'",
+            this->infinit::Identity::DynamicFormat::version()));
+    }
   }
 
   namespace identity
@@ -108,17 +248,19 @@ namespace infinit
     `----------*/
 
     cryptography::Digest
-    hash(cryptography::PublicKey const& issuer_K,
-         elle::String const& identifier,
+    hash(Identifier const& identifier,
+         cryptography::PublicKey const& issuer_K,
+         cryptography::PublicKey const& subject_K,
          elle::String const& description,
-         cryptography::Code const& keypair)
+         cryptography::Code const& subject_k)
     {
       return (cryptography::oneway::hash(
                 elle::serialize::make_tuple(
-                  issuer_K,
                   identifier,
+                  issuer_K,
+                  subject_K,
                   description,
-                  keypair),
+                  subject_k),
                 cryptography::KeyPair::oneway_algorithm));
     }
 
