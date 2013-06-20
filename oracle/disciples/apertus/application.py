@@ -86,9 +86,20 @@ class Application(object):
     def run(self):
         log.startLogging(sys.stderr)
 
-        iface = netifaces.ifaddresses('eth0')
-        l_addr4 = iface[netifaces.AF_INET]
-        l_addr6 = iface[netifaces.AF_INET6]
+        interface_names = ['eth0', 'en0', 'en1', 'eno1', 'eno2']
+        found = False
+        for name in interface_names:
+            try:
+                iface = netifaces.ifaddresses(name)
+                l_addr4 = iface[netifaces.AF_INET]
+                l_addr6 = iface[netifaces.AF_INET6]
+            except:
+                pass
+            else:
+                found = True
+                break
+        if not found:
+            raise Exception("Cannot find valid interface")
 
         factory = apertus.Factory(l_addr4[0]['addr'])
 
