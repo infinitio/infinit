@@ -63,6 +63,7 @@ class GetBacktrace(Page):
         env = self.data.get('env', [])
         spec = self.data.get('spec', [])
         more = self.data.get('more', [])
+        file = self.data.get('file', "")
         if not isinstance(more, list):
             more = [more]
 
@@ -93,4 +94,6 @@ class GetBacktrace(Page):
                     "env":  '\n'.join('{}'.format(l) for l in env),
                     "spec": '\n'.join('{}'.format(l) for l in spec),
                     "more": '\n'.join('{}'.format(l) for l in more),
-                })
+                },
+                attached = file
+                )
