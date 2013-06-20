@@ -177,7 +177,9 @@ namespace plasma
       if (err)
       {
         if (err.value() != boost::asio::error::operation_aborted)
+        {
           ELLE_WARN("timer failed (%s), stopping connection checks", err);
+        }
         return;
       }
 
