@@ -186,16 +186,23 @@ namespace surface
             return 0.0f;
           if (!progress.process->running())
           {
-            int current_size = 0;
-            int total_size = 0;
-            std::stringstream ss;
-            ss << progress.process->read();
-            ss >> current_size >> total_size;
+            if (progress.process->status() != 0)
+            {
+              progress.last_value = 0.0f;
+            }
+            else
+            {
+              int current_size = 0;
+              int total_size = 0;
+              std::stringstream ss;
+              ss << progress.process->read();
+              ss >> current_size >> total_size;
+              if (total_size == 0)
+                progress.last_value = 0.0f;
+              else
+                progress.last_value = float(current_size) / float(total_size);
+            }
             progress.process.reset();
-
-            if (total_size == 0)
-              return 0.f;
-            progress.last_value = float(current_size) / float(total_size);
 
             if (progress.last_value < 0)
             {
