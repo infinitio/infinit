@@ -136,9 +136,11 @@ namespace surface
          }
 
          if (!this->_succeeded)
+         {
            ELLE_ERR("operation %s threw an exception: %s (not rethrown yet)",
                     this->_name,
                     this->failure_reason());
+         }
 
 
          this->_done = true;
