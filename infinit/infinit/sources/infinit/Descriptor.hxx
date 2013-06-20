@@ -5,6 +5,8 @@
 # include <elle/serialize/PairSerializer.hxx>
 # include <elle/serialize/VectorSerializer.hxx>
 # include <elle/serialize/StaticFormat.hh>
+# include <elle/serialize/insert.hh>
+# include <elle/serialize/extract.hh>
 
 # include <cryptography/Signature.hh>
 
@@ -51,81 +53,6 @@ ELLE_SERIALIZE_STATIC_FORMAT(infinit::Descriptor, 1);
 
 ELLE_SERIALIZE_SPLIT(infinit::Descriptor);
 
-ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
-                          archive,
-                          value,
-                          format)
-{
-  ELLE_ASSERT_EQ(value._meta, nullptr);
-  ELLE_ASSERT_EQ(value._data, nullptr);
-
-  switch (format)
-  {
-    case 0:
-    {
-      // Set the meta format to zero instead of the latest
-      // so as to make sure the attributes deserialized are
-      // consistent with the format at the time.
-      value._meta.reset(
-        new infinit::descriptor::Meta(elle::serialize::no_init));
-      value._meta->infinit::descriptor::Meta::DynamicFormat::version(0);
-
-      archive >> value._meta->_identifier;
-      archive >> value._meta->_administrator_K;
-      archive >> value._meta->_model;
-      archive >> value._meta->_root_address;
-      archive >> value._meta->_everybody_identity;
-      archive >> value._meta->_history;
-      archive >> value._meta->_extent;
-      archive >> value._meta->_signature;
-
-      // Set the data format to zero instead of the latest
-      // so as to make sure the attributes deserialized are
-      // consistent with the format at the time.
-      value._data.reset(
-        new infinit::descriptor::Data(elle::serialize::no_init));
-      value._data->infinit::descriptor::Data::DynamicFormat::version(0);
-
-      archive >> value._data->_description;
-      archive >> value._data->_openness;
-      archive >> value._data->_policy;
-      archive >> value._data->_version;
-      archive >> value._data->_format_block;
-      archive >> value._data->_format_content_hash_block;
-      archive >> value._data->_format_contents;
-      archive >> value._data->_format_immutable_block;
-      archive >> value._data->_format_imprint_block;
-      archive >> value._data->_format_mutable_block;
-      archive >> value._data->_format_owner_key_block;
-      archive >> value._data->_format_public_key_block;
-      archive >> value._data->_format_access;
-      archive >> value._data->_format_attributes;
-      archive >> value._data->_format_catalog;
-      archive >> value._data->_format_data;
-      archive >> value._data->_format_ensemble;
-      archive >> value._data->_format_group;
-      archive >> value._data->_format_object;
-      archive >> value._data->_format_reference;
-      archive >> value._data->_format_user;
-      archive >> value._data->_format_identity;
-      archive >> value._data->_format_descriptor;
-      archive >> value._data->_signature;
-
-      break;
-    }
-    case 1:
-    {
-      archive >> value._meta;
-      archive >> value._data;
-
-      break;
-    }
-    default:
-      throw ::infinit::Exception(
-        elle::sprintf("unknown format '%s'", format));
-  }
-}
-
 ELLE_SERIALIZE_SPLIT_SAVE(infinit::Descriptor,
                           archive,
                           value,
@@ -138,7 +65,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Descriptor,
   {
     case 0:
     {
-      archive << value._meta->_identifier;
+      archive << value._meta->_identifier.value();
       archive << value._meta->_administrator_K;
       archive << value._meta->_model;
       archive << value._meta->_root_address;
@@ -187,6 +114,89 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Descriptor,
   }
 }
 
+ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
+                          archive,
+                          value,
+                          format)
+{
+  ELLE_ASSERT_EQ(value._meta, nullptr);
+  ELLE_ASSERT_EQ(value._data, nullptr);
+
+  switch (format)
+  {
+    case 0:
+    {
+      value._meta.reset(
+        new infinit::descriptor::Meta(elle::serialize::no_init));
+
+      // Extract the string-based identifier, create a real
+      // identifier and serialize so as to deserialize it in
+      // the existing attribute.
+      elle::String identifier_value;
+      archive >> identifier_value;
+      infinit::Identifier identifier(identifier_value);
+      elle::String identifier_archive;
+      elle::serialize::to_string(identifier_archive) << identifier;
+      elle::serialize::from_string(identifier_archive) >>
+        value._meta->_identifier;
+
+      // Load the public key of the authority which was used at the time
+      // for signing descriptors.
+      elle::String issuer_K("AAAAAAAAAAAAAgAAwvtjO51oHrOMK/K33ajUm4lnYKWW5dUtyK5Pih7gDrtlpEPy7QWAiYjY8Kinlctca2owzcPXrvFE34gxQE/xz11KLzw4ypn4/ABdzjaTgGoCNLJ2OX99IPk6sEjIHwFxR9YcewD6uED2FQgv4OfOROHaL8hmHzRc0/BxjKwtI6fT7Y/e1v2LMig6r30abqcLrZN+v+3rPHN4hb8n1Jz7kRxRbtglFPLDpvI5LUKEGmu3FPKWWZiJsyFuuLUoC9WsheDDZoHYjyrzMD0k7Sp5YVGBBDthZc6SQDp1ktPSTou1Opk+1IxHp/we1/HNhULvGvr6B1KYZJhb/R55H0k6GcaRQmNEKgiLcF6Z9lA5asK49CC/tlZjKRkXkLBKR9zGIODsweY+O9y3AeGX+Pfk9itPals2egsxc/q2mbRaC9svY2TXMwiSO4EPiedqvpuTKj1KTcRbQrp5mSxG1nzaCGyCmUeGzoBJZLNVJHpytAfwf0oYWfo9NOD9dkKkkL5jxfW3+MOwEx4i0tP3xdKmt6wC6CSXedFVm55oOcz2YgARG3hw0vBdLtl3jxfbXAFjCNnpkMrCEMfjzs5ecFVwhmM8OEPqHpyYJYO/9ipwXAKRPugFzMvoyggSA6G5JfVEwuCgOp2v82ldsKl0sC34/mBeKrJvjaZAXm39f6jTw/sAAAMAAAABAAE=");
+      elle::serialize::from_string<elle::serialize::InputBase64Archive>(
+        issuer_K) >> value._meta->_issuer_K;
+
+      archive >> value._meta->_administrator_K;
+      archive >> value._meta->_model;
+      archive >> value._meta->_root_address;
+      archive >> value._meta->_everybody_identity;
+      archive >> value._meta->_history;
+      archive >> value._meta->_extent;
+      archive >> value._meta->_signature;
+
+      value._data.reset(
+        new infinit::descriptor::Data(elle::serialize::no_init));
+
+      archive >> value._data->_description;
+      archive >> value._data->_openness;
+      archive >> value._data->_policy;
+      archive >> value._data->_version;
+      archive >> value._data->_format_block;
+      archive >> value._data->_format_content_hash_block;
+      archive >> value._data->_format_contents;
+      archive >> value._data->_format_immutable_block;
+      archive >> value._data->_format_imprint_block;
+      archive >> value._data->_format_mutable_block;
+      archive >> value._data->_format_owner_key_block;
+      archive >> value._data->_format_public_key_block;
+      archive >> value._data->_format_access;
+      archive >> value._data->_format_attributes;
+      archive >> value._data->_format_catalog;
+      archive >> value._data->_format_data;
+      archive >> value._data->_format_ensemble;
+      archive >> value._data->_format_group;
+      archive >> value._data->_format_object;
+      archive >> value._data->_format_reference;
+      archive >> value._data->_format_user;
+      archive >> value._data->_format_identity;
+      archive >> value._data->_format_descriptor;
+      archive >> value._data->_signature;
+
+      break;
+    }
+    case 1:
+    {
+      archive >> value._meta;
+      archive >> value._data;
+
+      break;
+    }
+    default:
+      throw ::infinit::Exception(
+        elle::sprintf("unknown format '%s'", format));
+  }
+}
+
 //
 // ---------- Meta ------------------------------------------------------------
 //
@@ -200,7 +210,7 @@ namespace infinit
     `-------------*/
 
     template <typename T>
-    Meta::Meta(elle::String identifier,
+    Meta::Meta(cryptography::PublicKey issuer_K,
                cryptography::PublicKey administrator_K,
                hole::Model model,
                nucleus::proton::Address root_address,
@@ -208,8 +218,9 @@ namespace infinit
                nucleus::neutron::Group::Identity everybody_identity,
                elle::Boolean history,
                elle::Natural32 extent,
-               T const& authority):
-      Meta(std::move(identifier),
+               T const& authority,
+               Identifier identifier):
+      Meta(std::move(issuer_K),
            std::move(administrator_K),
            std::move(model),
            std::move(root_address),
@@ -219,13 +230,15 @@ namespace infinit
            std::move(extent),
            authority.sign(
              meta::hash(identifier,
+                        issuer_K,
                         administrator_K,
                         model,
                         root_address,
                         root_object,
                         everybody_identity,
                         history,
-                        extent)))
+                        extent)),
+           std::move(identifier))
     {
     }
 
@@ -240,42 +253,17 @@ namespace infinit
       ELLE_LOG_COMPONENT("infinit.Descriptor");
       ELLE_TRACE_METHOD(authority);
 
-      ELLE_DEBUG("format: %s",
-                 this->infinit::descriptor::Meta::DynamicFormat::version());
-
-      switch (this->infinit::descriptor::Meta::DynamicFormat::version())
-      {
-        case 0:
-        {
-          return (authority.verify(
-                    this->_signature,
-                    meta::hash_0(this->_identifier,
-                                 this->_administrator_K,
-                                 this->_model,
-                                 this->_root_address,
-                                 this->_everybody_identity,
-                                 this->_history,
-                                 this->_extent)));
-        }
-        case 1:
-        {
-          return (authority.verify(
-                    this->_signature,
-                    meta::hash(this->_identifier,
-                               this->_administrator_K,
-                               this->_model,
-                               this->_root_address,
-                               this->_root_object,
-                               this->_everybody_identity,
-                               this->_history,
-                               this->_extent)));
-        }
-        default:
-          throw infinit::Exception(
-            elle::sprintf(
-              "unknown format '%s'",
-              this->infinit::descriptor::Meta::DynamicFormat::version()));
-      }
+      return (authority.verify(
+                this->_signature,
+                meta::hash(this->_identifier,
+                           this->_issuer_K,
+                           this->_administrator_K,
+                           this->_model,
+                           this->_root_address,
+                           this->_root_object,
+                           this->_everybody_identity,
+                           this->_history,
+                           this->_extent)));
     }
   }
 }
@@ -284,46 +272,23 @@ namespace infinit
 | Serializer |
 `-----------*/
 
-ELLE_SERIALIZE_STATIC_FORMAT(infinit::descriptor::Meta, 1);
-
 ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Meta,
                       archive,
                       value,
                       format)
 {
-  switch (format)
-  {
-    case 0:
-    {
-      archive & value._identifier;
-      archive & value._administrator_K;
-      archive & value._model;
-      archive & value._root_address;
-      archive & value._everybody_identity;
-      archive & value._history;
-      archive & value._extent;
-      archive & value._signature;
+  enforce(format == 0, "unknown format");
 
-      break;
-    }
-    case 1:
-    {
-      archive & value._identifier;
-      archive & value._administrator_K;
-      archive & value._model;
-      archive & value._root_address;
-      archive & value._root_object;
-      archive & value._everybody_identity;
-      archive & value._history;
-      archive & value._extent;
-      archive & value._signature;
-
-      break;
-    }
-    default:
-      throw ::infinit::Exception(
-        elle::sprintf("unknown format '%s'", format));
-  }
+  archive & value._identifier;
+  archive & value._issuer_K;
+  archive & value._administrator_K;
+  archive & value._model;
+  archive & value._root_address;
+  archive & value._root_object;
+  archive & value._everybody_identity;
+  archive & value._history;
+  archive & value._extent;
+  archive & value._signature;
 }
 
 //
@@ -430,77 +395,33 @@ namespace infinit
       ELLE_LOG_COMPONENT("infinit.Descriptor");
       ELLE_TRACE_METHOD(administrator);
 
-      ELLE_DEBUG("format: %s",
-                 this->infinit::descriptor::Data::DynamicFormat::version());
-
-      switch (this->infinit::descriptor::Data::DynamicFormat::version())
-      {
-        case 0:
-        {
-          return (administrator.verify(
-                    this->_signature,
-                    data::hash_0(this->_description,
-                                 this->_openness,
-                                 this->_policy,
-                                 this->_version,
-                                 this->_format_block,
-                                 this->_format_content_hash_block,
-                                 this->_format_contents,
-                                 this->_format_immutable_block,
-                                 this->_format_imprint_block,
-                                 this->_format_mutable_block,
-                                 this->_format_owner_key_block,
-                                 this->_format_public_key_block,
-                                 this->_format_access,
-                                 this->_format_attributes,
-                                 this->_format_catalog,
-                                 this->_format_data,
-                                 this->_format_ensemble,
-                                 this->_format_group,
-                                 this->_format_object,
-                                 this->_format_reference,
-                                 this->_format_user,
-                                 this->_format_identity,
-                                 this->_format_descriptor)));
-        }
-        case 1:
-        {
-          return (administrator.verify(
-                    this->_signature,
-                    data::hash(this->_description,
-                               this->_openness,
-                               this->_policy,
-                               this->_blocks,
-                               this->_nodes,
-                               this->_version,
-                               this->_format_block,
-                               this->_format_content_hash_block,
-                               this->_format_contents,
-                               this->_format_immutable_block,
-                               this->_format_imprint_block,
-                               this->_format_mutable_block,
-                               this->_format_owner_key_block,
-                               this->_format_public_key_block,
-                               this->_format_access,
-                               this->_format_attributes,
-                               this->_format_catalog,
-                               this->_format_data,
-                               this->_format_ensemble,
-                               this->_format_group,
-                               this->_format_object,
-                               this->_format_reference,
-                               this->_format_user,
-                               this->_format_identity,
-                               this->_format_descriptor)));
-        }
-        default:
-          throw ::infinit::Exception(
-            elle::sprintf(
-              "unknown format '%s'",
-              this->infinit::descriptor::Data::DynamicFormat::version()));
-      }
-
-      elle::unreachable();
+      return (administrator.verify(
+                this->_signature,
+                data::hash(this->_description,
+                           this->_openness,
+                           this->_policy,
+                           this->_blocks,
+                           this->_nodes,
+                           this->_version,
+                           this->_format_block,
+                           this->_format_content_hash_block,
+                           this->_format_contents,
+                           this->_format_immutable_block,
+                           this->_format_imprint_block,
+                           this->_format_mutable_block,
+                           this->_format_owner_key_block,
+                           this->_format_public_key_block,
+                           this->_format_access,
+                           this->_format_attributes,
+                           this->_format_catalog,
+                           this->_format_data,
+                           this->_format_ensemble,
+                           this->_format_group,
+                           this->_format_object,
+                           this->_format_reference,
+                           this->_format_user,
+                           this->_format_identity,
+                           this->_format_descriptor)));
     }
   }
 }
@@ -509,79 +430,39 @@ namespace infinit
 | Serializer |
 `-----------*/
 
-ELLE_SERIALIZE_STATIC_FORMAT(infinit::descriptor::Data, 1);
-
 ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Data,
                       archive,
                       value,
                       format)
 {
-  switch (format)
-  {
-    case 0:
-    {
-      archive & value._description;
-      archive & value._openness;
-      archive & value._policy;
-      archive & value._version;
-      archive & value._format_block;
-      archive & value._format_content_hash_block;
-      archive & value._format_contents;
-      archive & value._format_immutable_block;
-      archive & value._format_imprint_block;
-      archive & value._format_mutable_block;
-      archive & value._format_owner_key_block;
-      archive & value._format_public_key_block;
-      archive & value._format_access;
-      archive & value._format_attributes;
-      archive & value._format_catalog;
-      archive & value._format_data;
-      archive & value._format_ensemble;
-      archive & value._format_group;
-      archive & value._format_object;
-      archive & value._format_reference;
-      archive & value._format_user;
-      archive & value._format_identity;
-      archive & value._format_descriptor;
-      archive & value._signature;
+  enforce(format == 0, "unknown format");
 
-      break;
-    }
-    case 1:
-    {
-      archive & value._description;
-      archive & value._openness;
-      archive & value._policy;
-      archive & value._blocks;
-      archive & value._nodes;
-      archive & value._version;
-      archive & value._format_block;
-      archive & value._format_content_hash_block;
-      archive & value._format_contents;
-      archive & value._format_immutable_block;
-      archive & value._format_imprint_block;
-      archive & value._format_mutable_block;
-      archive & value._format_owner_key_block;
-      archive & value._format_public_key_block;
-      archive & value._format_access;
-      archive & value._format_attributes;
-      archive & value._format_catalog;
-      archive & value._format_data;
-      archive & value._format_ensemble;
-      archive & value._format_group;
-      archive & value._format_object;
-      archive & value._format_reference;
-      archive & value._format_user;
-      archive & value._format_identity;
-      archive & value._format_descriptor;
-      archive & value._signature;
-
-      break;
-    }
-    default:
-      throw ::infinit::Exception(
-        elle::sprintf("unknown format '%s'", format));
-  }
+  archive & value._description;
+  archive & value._openness;
+  archive & value._policy;
+  archive & value._blocks;
+  archive & value._nodes;
+  archive & value._version;
+  archive & value._format_block;
+  archive & value._format_content_hash_block;
+  archive & value._format_contents;
+  archive & value._format_immutable_block;
+  archive & value._format_imprint_block;
+  archive & value._format_mutable_block;
+  archive & value._format_owner_key_block;
+  archive & value._format_public_key_block;
+  archive & value._format_access;
+  archive & value._format_attributes;
+  archive & value._format_catalog;
+  archive & value._format_data;
+  archive & value._format_ensemble;
+  archive & value._format_group;
+  archive & value._format_object;
+  archive & value._format_reference;
+  archive & value._format_user;
+  archive & value._format_identity;
+  archive & value._format_descriptor;
+  archive & value._signature;
 }
 
 // XXX to merge into a simple serializer when the serialization

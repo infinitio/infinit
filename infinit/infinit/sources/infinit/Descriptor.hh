@@ -9,6 +9,7 @@
 # include <elle/serialize/construct.hh>
 
 # include <infinit/fwd.hh>
+# include <infinit/Identifier.hh>
 
 # include <cryptography/Signature.hh>
 // XXX[temporary: for cryptography]
@@ -157,7 +158,6 @@ namespace infinit
     /// Represent the descriptor elements which cannot change over time because
     /// sealed by the authority.
     class Meta:
-      public elle::serialize::DynamicFormat<Meta>,
       public elle::Printable
     {
       /*--------.
@@ -167,12 +167,6 @@ namespace infinit
       // Required for the format 0.
       friend class Descriptor;
 
-      /*------.
-      | Types |
-      `------*/
-    public:
-      typedef elle::serialize::DynamicFormat<Meta> DynamicFormat;
-
       /*-------------.
       | Construction |
       `-------------*/
@@ -180,7 +174,7 @@ namespace infinit
       Meta() {} // XXX[to remove when the new serialization will be fixed]
       /// Construct a meta section based on the given elements.
       explicit
-      Meta(elle::String identifier,
+      Meta(cryptography::PublicKey issuer_K,
            cryptography::PublicKey administrator_K,
            hole::Model model,
            nucleus::proton::Address root_address,
@@ -188,7 +182,8 @@ namespace infinit
            nucleus::neutron::Group::Identity everybody_identity,
            elle::Boolean history,
            elle::Natural32 extent,
-           cryptography::Signature signature);
+           cryptography::Signature signature,
+           Identifier identifier = Identifier());
       /// Construct a meta section based on the passed elements which will
       /// be signed with the given authority.
       ///
@@ -196,7 +191,7 @@ namespace infinit
       /// sign(data) method which returns a signature.
       template <typename T>
       explicit
-      Meta(elle::String identifier,
+      Meta(cryptography::PublicKey issuer_K,
            cryptography::PublicKey administrator_K,
            hole::Model model,
            nucleus::proton::Address root_address,
@@ -204,7 +199,8 @@ namespace infinit
            nucleus::neutron::Group::Identity everybody_identity,
            elle::Boolean history,
            elle::Natural32 extent,
-           T const& authority);
+           T const& authority,
+           Identifier identifier = Identifier());
       Meta(Meta&& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Meta);
     private:
@@ -253,7 +249,9 @@ namespace infinit
     private:
       /// A unique identifier across all the networks created throughout
       /// the world.
-      ELLE_ATTRIBUTE_R(elle::String, identifier);
+      ELLE_ATTRIBUTE_R(Identifier, identifier);
+      /// The public key of the authority which has issued this descriptor.
+      ELLE_ATTRIBUTE_R(cryptography::PublicKey, issuer_K);
       /// The public key of the network owner. Only the private key associated
       /// with it can re-sign the data section.
       ELLE_ATTRIBUTE_R(cryptography::PublicKey, administrator_K);
@@ -261,12 +259,14 @@ namespace infinit
       ELLE_ATTRIBUTE_R(hole::Model, model);
       /// The address of the root directory.
       ELLE_ATTRIBUTE_R(nucleus::proton::Address, root_address);
-      /// The root directory in its initial form i.e empty.
+      /// The root directory in its initial state i.e probably empty.
       ELLE_ATTRIBUTE(std::unique_ptr<nucleus::neutron::Object>, root_object);
+      /// The address, within the network, of the everybody group which is
+      /// supposed to contain all the users of the network.
+      ELLE_ATTRIBUTE_R(nucleus::neutron::Group::Identity, everybody_identity);
       /// This attribute is created should someone request it so as to ease
       /// the process of access control since the subject is the entity used
       /// to identify both users and groups.
-      ELLE_ATTRIBUTE_R(nucleus::neutron::Group::Identity, everybody_identity);
       ELLE_ATTRIBUTE_P(std::unique_ptr<nucleus::neutron::Subject>,
                        everybody_subject,
                        mutable);
@@ -289,7 +289,8 @@ namespace infinit
       ///
       /// These are the elements which must be signed by the authority.
       cryptography::Digest
-      hash(elle::String const& identifier,
+      hash(Identifier const& identifier,
+           cryptography::PublicKey const& issuer_K,
            cryptography::PublicKey const& administrator_K,
            hole::Model const& model,
            nucleus::proton::Address const& root_address,
@@ -297,15 +298,6 @@ namespace infinit
            nucleus::neutron::Group::Identity const& everybody_identity,
            elle::Boolean history,
            elle::Natural32 extent);
-      /// Compatibility with format 0.
-      cryptography::Digest
-      hash_0(elle::String const& identifier,
-             cryptography::PublicKey const& administrator_K,
-             hole::Model const& model,
-             nucleus::proton::Address const& root_address,
-             nucleus::neutron::Group::Identity const& everybody_identity,
-             elle::Boolean history,
-             elle::Natural32 extent);
     }
   }
 }
@@ -397,7 +389,6 @@ namespace infinit
     /// impropriety of forcing the user to update the Infinit software should
     /// not be too important.
     struct Data:
-      public elle::serialize::DynamicFormat<Data>,
       public elle::Printable
     {
       /*--------.
@@ -411,7 +402,6 @@ namespace infinit
       | Types |
       `------*/
     public:
-      typedef elle::serialize::DynamicFormat<Data> DynamicFormat;
       /// Represent a hostname, IP address or else, coupled with a port
       /// on which the node's hole is listening to.
       typedef std::pair<elle::String, elle::String> Endpoint;
@@ -617,31 +607,6 @@ namespace infinit
            elle::serialize::Format const& format_user,
            elle::serialize::Format const& format_identity,
            elle::serialize::Format const& format_descriptor);
-      /// Compatibility with format 0.
-      cryptography::Digest
-      hash_0(elle::String const& description,
-             hole::Openness const& openness,
-             horizon::Policy const& policy,
-             elle::Version const& version,
-             elle::serialize::Format const& format_block,
-             elle::serialize::Format const& format_content_hash_block,
-             elle::serialize::Format const& format_contents,
-             elle::serialize::Format const& format_immutable_block,
-             elle::serialize::Format const& format_imprint_block,
-             elle::serialize::Format const& format_mutable_block,
-             elle::serialize::Format const& format_owner_key_block,
-             elle::serialize::Format const& format_public_key_block,
-             elle::serialize::Format const& format_access,
-             elle::serialize::Format const& format_attributes,
-             elle::serialize::Format const& format_catalog,
-             elle::serialize::Format const& format_data,
-             elle::serialize::Format const& format_ensemble,
-             elle::serialize::Format const& format_group,
-             elle::serialize::Format const& format_object,
-             elle::serialize::Format const& format_reference,
-             elle::serialize::Format const& format_user,
-             elle::serialize::Format const& format_identity,
-             elle::serialize::Format const& format_descriptor);
     }
   }
 }

@@ -110,7 +110,7 @@ namespace infinit
     | Construction |
     `-------------*/
 
-    Meta::Meta(elle::String identifier,
+    Meta::Meta(cryptography::PublicKey issuer_K,
                cryptography::PublicKey administrator_K,
                hole::Model model,
                nucleus::proton::Address root_address,
@@ -118,8 +118,10 @@ namespace infinit
                nucleus::neutron::Group::Identity everybody_identity,
                elle::Boolean history,
                elle::Natural32 extent,
-               cryptography::Signature signature):
+               cryptography::Signature signature,
+               Identifier identifier):
       _identifier(std::move(identifier)),
+      _issuer_K(std::move(issuer_K)),
       _administrator_K(std::move(administrator_K)),
       _model(std::move(model)),
       _root_address(std::move(root_address)),
@@ -133,8 +135,8 @@ namespace infinit
     }
 
     Meta::Meta(Meta&& other):
-      elle::serialize::DynamicFormat<Meta>(std::move(other)),
       _identifier(std::move(other._identifier)),
+      _issuer_K(std::move(other._issuer_K)),
       _administrator_K(std::move(other._administrator_K)),
       _model(std::move(other._model)),
       _root_address(std::move(other._root_address)),
@@ -147,9 +149,10 @@ namespace infinit
       ELLE_ASSERT_NEQ(this->_root_object, nullptr);
     }
 
-    ELLE_SERIALIZE_CONSTRUCT_DEFINE(Meta /* XXX,
-                                    administrator_K, model, root_address, root_object,
-                                    everybody_identity, signature */)
+    ELLE_SERIALIZE_CONSTRUCT_DEFINE(Meta,
+                                    _identifier, _issuer_K, _administrator_K,
+                                    _model, _root_address, _everybody_identity,
+                                    _signature)
     {
     }
 
@@ -185,8 +188,7 @@ namespace infinit
     void
     Meta::print(std::ostream& stream) const
     {
-      stream << this->_identifier << "("
-             << this->_administrator_K << ", "
+      stream << this->_administrator_K << ", "
              << this->_model << ", "
              << this->_root_address << ", "
              << this->_history << ", "
@@ -200,7 +202,8 @@ namespace infinit
       `----------*/
 
       cryptography::Digest
-      hash(elle::String const& identifier,
+      hash(Identifier const& identifier,
+           cryptography::PublicKey const& issuer_K,
            cryptography::PublicKey const& administrator_K,
            hole::Model const& model,
            nucleus::proton::Address const& root_address,
@@ -211,30 +214,11 @@ namespace infinit
       {
         return (cryptography::oneway::hash(
                   elle::serialize::make_tuple(identifier,
+                                              issuer_K,
                                               administrator_K,
                                               model,
                                               root_address,
                                               root_object,
-                                              everybody_identity,
-                                              history,
-                                              extent),
-                  cryptography::KeyPair::oneway_algorithm));
-      }
-
-      cryptography::Digest
-      hash_0(elle::String const& identifier,
-             cryptography::PublicKey const& administrator_K,
-             hole::Model const& model,
-             nucleus::proton::Address const& root_address,
-             nucleus::neutron::Group::Identity const& everybody_identity,
-             elle::Boolean history,
-             elle::Natural32 extent)
-      {
-        return (cryptography::oneway::hash(
-                  elle::serialize::make_tuple(identifier,
-                                              administrator_K,
-                                              model,
-                                              root_address,
                                               everybody_identity,
                                               history,
                                               extent),
@@ -312,7 +296,6 @@ namespace infinit
     }
 
     Data::Data(Data&& other):
-      elle::serialize::DynamicFormat<Data>(std::move(other)),
       _description(std::move(other._description)),
       _openness(std::move(other._openness)),
       _policy(std::move(other._policy)),
@@ -423,59 +406,6 @@ namespace infinit
                     policy,
                     blocks,
                     nodes,
-                    version,
-                    format_block,
-                    format_content_hash_block,
-                    format_contents,
-                    format_immutable_block,
-                    format_imprint_block,
-                    format_mutable_block,
-                    format_owner_key_block,
-                    format_public_key_block,
-                    format_access,
-                    format_attributes,
-                    format_catalog,
-                    format_data,
-                    format_ensemble,
-                    format_group,
-                    format_object,
-                    format_reference,
-                    format_user,
-                    format_identity,
-                    format_descriptor),
-                  cryptography::KeyPair::oneway_algorithm));
-      }
-
-      cryptography::Digest
-      hash_0(elle::String const& description,
-             hole::Openness const& openness,
-             horizon::Policy const& policy,
-             elle::Version const& version,
-             elle::serialize::Format const& format_block,
-             elle::serialize::Format const& format_content_hash_block,
-             elle::serialize::Format const& format_contents,
-             elle::serialize::Format const& format_immutable_block,
-             elle::serialize::Format const& format_imprint_block,
-             elle::serialize::Format const& format_mutable_block,
-             elle::serialize::Format const& format_owner_key_block,
-             elle::serialize::Format const& format_public_key_block,
-             elle::serialize::Format const& format_access,
-             elle::serialize::Format const& format_attributes,
-             elle::serialize::Format const& format_catalog,
-             elle::serialize::Format const& format_data,
-             elle::serialize::Format const& format_ensemble,
-             elle::serialize::Format const& format_group,
-             elle::serialize::Format const& format_object,
-             elle::serialize::Format const& format_reference,
-             elle::serialize::Format const& format_user,
-             elle::serialize::Format const& format_identity,
-             elle::serialize::Format const& format_descriptor)
-      {
-        return (cryptography::oneway::hash(
-                  elle::serialize::make_tuple(
-                    description,
-                    openness,
-                    policy,
                     version,
                     format_block,
                     format_content_hash_block,
