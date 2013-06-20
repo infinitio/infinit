@@ -40,6 +40,7 @@ namespace satellite
   elle::Status
   Authority::Create(elle::String const& authority_path)
   {
+    /* XXX
     // Prompt the user for the passphrase.
     elle::String prompt = "Enter passphrase for the authority keypair: ";
     elle::String pass;
@@ -59,6 +60,7 @@ namespace satellite
                                  pass);
 
     elle::serialize::to_file(authority_path) << authority;
+    */
 
     return elle::Status::Ok;
   }
