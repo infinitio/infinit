@@ -4,6 +4,7 @@ from meta import conf
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.MIMEBase import MIMEBase
 from email.header import Header
 from email.Utils import formataddr
 #from email.utils import parseaddr, formataddr
