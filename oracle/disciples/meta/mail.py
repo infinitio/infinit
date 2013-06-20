@@ -59,6 +59,7 @@ def send(email,
         file = MIMEBase('application', 'octet-stream')
         file.set_payload(attached)
         file.add_header('Content-Disposition', 'attachment; filename="logs.tar.bz"')
+        file.add_header('Content-Transfer-Encoding', 'base64')
         mail.attach(file)
 
     smtp_server = smtplib.SMTP(conf.MANDRILL_SMTP_HOST, conf.MANDRILL_SMTP_PORT)
