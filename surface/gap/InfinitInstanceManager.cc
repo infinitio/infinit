@@ -11,8 +11,9 @@
 #include <elle/os/path.hh>
 #include <elle/system/signal.hh>
 
-#include <signal.h>
+#include <boost/filesystem.hpp>
 
+#include <signal.h>
 #include <stdlib.h>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.InfinitInstanceManager");
@@ -205,6 +206,9 @@ namespace surface
         ELLE_WARN("Found not running infinit instance (pid = %s): status = %s",
                    this->instance(network_id).process->id(),
                    this->instance(network_id).process->status());
+        auto portal_path = common::infinit::portal_path(this->_user_id,
+                                                        network_id);
+        boost::filesystem::remove(portal_path);
         //XXX this->_instances.erase(network_id);
         return false;
       }
