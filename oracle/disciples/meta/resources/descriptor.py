@@ -164,7 +164,8 @@ class UnpublishDescriptor(_Page):
         # smarter behavior "The owner unpublished this descriptor" instead of
         # "Network doesn't exist.".
         # We keep tracking the _id and the owner.
-        database.networks().update(network, {key: network[key] for key in ['owner', '_id',] })
+        # database.networks().update(network, {key: network[key] for key in ['owner', '_id',] })
+        database.networks().remove(network)
 
         # The best should be find_and_modify.
         # database.user().find_and_modify(self.user, {'$pull': {'owned_networks': _id}})
