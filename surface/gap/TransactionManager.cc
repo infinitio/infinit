@@ -554,7 +554,7 @@ namespace surface
     {
       auto s = this->_states[transaction.id];
 
-      if (s.tries == 10) //XXX variable for that
+      if (s.tries == 3) //XXX variable for that
       {
         this->_meta.update_transaction(transaction.id,
                                        plasma::TransactionStatus::failed);
