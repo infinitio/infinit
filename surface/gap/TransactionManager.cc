@@ -563,6 +563,7 @@ namespace surface
       // If the transaction is running, cancel it.
       if (s.state == State::running)
       {
+        ELLE_LOG("transfer %s met an error, restarting", transaction.id);
         this->cancel_operation(s.operation);
         s.state = State::preparing;
         s.operation = 0;
@@ -605,6 +606,7 @@ namespace surface
       auto state = this->_states[transaction.id];
       if (state.state == State::running)
       {
+        ELLE_LOG("transfer %s met an error, restarting", transaction.id);
         this->cancel_operation(state.operation);
         this->_network_manager.delete_local(transaction.network_id);
         this->_network_manager.prepare(transaction.network_id);

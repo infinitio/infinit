@@ -34,6 +34,20 @@ namespace surface
     }
 
     void
+    Operation::_on_error()
+    {
+      ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
+      ELLE_TRACE_FUNCTION(this->_name);
+    }
+
+    void
+    Operation::_on_success()
+    {
+      ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
+      ELLE_TRACE_FUNCTION(this->_name);
+    }
+
+    void
     Operation::_cancel()
     {
       ELLE_TRACE_FUNCTION(this->_name);

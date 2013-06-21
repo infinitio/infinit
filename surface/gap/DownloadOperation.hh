@@ -34,8 +34,12 @@ namespace surface
     protected:
       void
       _run() override;
-      void
-      _on_error(Operation&);
+
+      virtual void
+      _on_error();
+
+      virtual void
+      _on_success();
     };
   }
 }

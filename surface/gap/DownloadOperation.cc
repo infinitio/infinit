@@ -110,8 +110,9 @@ namespace surface
     }
 
     void
-    DownloadOperation::_on_error(Operation&)
+    DownloadOperation::_on_error()
     {
+      ELLE_TRACE("restarting %s", this->name());
       this->_transaction_manager.update(this->_transaction.id,
                                         plasma::TransactionStatus::started);
     }

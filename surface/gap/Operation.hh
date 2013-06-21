@@ -56,6 +56,14 @@ namespace surface
        void
        _cancel();
 
+       virtual
+       void
+       _on_error();
+
+       virtual
+       void
+       _on_success();
+
        //- Deletion -------------------------------------------------------------
      public:
        /// This method is used to notify that the process is scheduled for
