@@ -96,9 +96,6 @@ namespace surface
                    this->_transaction.files_count,
                    this->_transaction_manager.output_dir());
         }
-
-        this->_transaction_manager.update(this->_transaction.id,
-                                          plasma::TransactionStatus::finished);
       }
       catch (...)
       {
@@ -110,11 +107,18 @@ namespace surface
     }
 
     void
+    DownloadOperation::_on_success()
+    {
+      this->_transaction_manager.update(this->_transaction.id,
+                                        plasma::TransactionStatus::finished);
+    }
+
+    void
     DownloadOperation::_on_error()
     {
-      ELLE_TRACE("restarting %s", this->name());
-      this->_transaction_manager.update(this->_transaction.id,
-                                        plasma::TransactionStatus::started);
+      ELLE_TRACE("restarting transfer %s", this->_transaction)
+        this->_transaction_manager.update(this->_transaction.id,
+                                          plasma::TransactionStatus::started);
     }
   }
 }

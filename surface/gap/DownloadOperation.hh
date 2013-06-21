@@ -35,10 +35,12 @@ namespace surface
       void
       _run() override;
 
-      virtual void
+      virtual
+      void
       _on_error();
 
-      virtual void
+      virtual
+      void
       _on_success();
     };
   }
