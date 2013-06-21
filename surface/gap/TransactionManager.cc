@@ -61,7 +61,7 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
       this->_notification_manager.transaction_callback(
-        [&] (TransactionNotification const &n, bool is_new) -> void
+        [&] (TransactionNotification const &n, bool) -> void
         {
           this->_on_transaction(n);
         });
@@ -254,6 +254,7 @@ namespace surface
     TransactionManager::_accept_transaction(Transaction const& transaction,
                                             Operation& operation)
     {
+      (void)operation;
       this->_reporter.store("transaction_accept",
                             {{MKey::status, "attempt"},
                              {MKey::value, transaction.id}});

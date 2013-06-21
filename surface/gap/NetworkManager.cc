@@ -487,6 +487,7 @@ namespace surface
                                     std::string const& user_identity,
                                     nucleus::neutron::Permissions permissions)
     {
+      (void)user_id;
       ELLE_TRACE("setting permissions");
 
       // TODO: Do this only on the current device for sender and recipient.
