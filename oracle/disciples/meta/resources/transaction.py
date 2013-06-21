@@ -442,7 +442,7 @@ class Update(_UpdateTransaction):
                 transaction,
             )
         return self.success({
-            'updated_transaction_id': transaction['_id']),
+            'updated_transaction_id': transaction['_id'],
         })
 
 class All(Page):
