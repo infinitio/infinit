@@ -434,7 +434,7 @@ class Update(_UpdateTransaction):
 
         if new_status:
             transaction["status"] = status
-            updated_transaction_id = database.transactions().save(transaction)
+            database.transactions().save(transaction)
         if new_status or status == STARTED:
             self.notifier.notify_some(
                 notifier.TRANSACTION,
@@ -442,7 +442,7 @@ class Update(_UpdateTransaction):
                 transaction,
             )
         return self.success({
-            'updated_transaction_id': str(updated_transaction_id),
+            'updated_transaction_id': transaction['_id']),
         })
 
 class All(Page):
