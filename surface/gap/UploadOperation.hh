@@ -3,6 +3,7 @@
 
 # include "OperationManager.hh"
 # include "NetworkManager.hh"
+# include "TransactionManager.hh"
 
 # include <plasma/plasma.hh>
 
@@ -22,11 +23,15 @@ namespace surface
     private:
       ELLE_ATTRIBUTE(NotifyFunc, notify);
       ELLE_ATTRIBUTE(NetworkManager&, network_manager);
-      ELLE_ATTRIBUTE(plasma::Transaction, transaction);
+      ELLE_ATTRIBUTE(TransactionManager&, transaction_manager);
+      ELLE_ATTRIBUTE(InfinitInstanceManager&, infinit_instance_manager);
+      ELLE_ATTRIBUTE(std::string const, transaction_id);
 
     public:
-      UploadOperation(plasma::Transaction const& transaction,
+      UploadOperation(std::string const& transaction_id,
                       NetworkManager& network_manager,
+                      TransactionManager& transaction_manager,
+                      InfinitInstanceManager& infinit_instance_manager,
                       NotifyFunc _notify_func);
 
       void

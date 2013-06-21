@@ -54,7 +54,7 @@ namespace surface
       elle::metrics::Reporter& _google_reporter;
       Self const& _self;
       Device const& _device;
-      ELLE_ATTRIBUTE_R(InfinitInstanceManager, infinit_instance_manager);
+      ELLE_ATTRIBUTE_X(InfinitInstanceManager, infinit_instance_manager);
 
       /*-------------.
       | Construction |

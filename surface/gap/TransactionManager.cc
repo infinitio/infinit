@@ -561,7 +561,8 @@ namespace surface
       }
 
       // If the transaction is running, cancel it.
-      if (s.state == State::running)
+      if (s.state == State::running &&
+          this->status(s.operation) != OperationStatus::running)
       {
         ELLE_LOG("transfer %s met an error, restarting", transaction.id);
         this->cancel_operation(s.operation);
@@ -573,8 +574,11 @@ namespace surface
           this->status(s.operation) == OperationStatus::success)
       {
         s.operation = this->_add<UploadOperation>(
-          transaction,
-          this->_network_manager, [this, transaction] {
+          transaction.id,
+          this->_network_manager,
+          *this,
+          this->_network_manager.infinit_instance_manager(),
+          [this, transaction] {
             this->_network_manager.notify_8infinit(
               transaction.network_id,
               transaction.sender_device_id,

@@ -29,7 +29,6 @@ namespace surface
       config.setenv("INFINIT_NO_FORK", "1");
       config.setenv("ELLE_LOG_LEVEL",
                     "TRACE,"
-                    "infinit.surface.*:DEBUG,"
                     "elle.*:LOG,"
                     "reactor.*:LOG,"
                     "reactor.network.*:TRACE");
