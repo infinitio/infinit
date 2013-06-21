@@ -713,7 +713,7 @@ namespace plasma
                                std::string const& network_name) const
     {
       json::Dictionary request{std::map<std::string, std::string>{
-          {"descriptor", dsc},
+          {"descriptor_digest", digest},
           {"name", network_name},
       }};
       return this->_post<PublishDescriptorResponse>("/descriptor/publish", request);

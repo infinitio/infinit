@@ -81,7 +81,7 @@ class PublishDescriptor(_Page):
     @requireLoggedIn
     def POST(self):
 
-        digest = self.data['descriptor']
+        digest = self.data['descriptor_digest']
         name = self.data['name']
 
         visibility = Visibility.PUBLIC
