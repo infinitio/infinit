@@ -173,7 +173,8 @@ namespace surface
           [&] (TransactionProgressMap&)
           {
             progress.process = elle::make_unique<elle::system::Process>(
-              process_config(elle::system::pipe_stdout_config),
+              binary_check_output_config("8progress", this->_self.id,
+                                         tr.network_id),
               progress_binary,
               arguments);
           });
