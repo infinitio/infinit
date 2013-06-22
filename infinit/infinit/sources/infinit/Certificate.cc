@@ -18,10 +18,11 @@ namespace infinit
 
     namespace operations
     {
-      Operations const identity = 0;
-      Operations const descriptor = (1 << 0);
-      Operations const passport = (1 << 1);
-      Operations const certificate = (1 << 2);
+      Operations const none = 0;
+      Operations const identity = (1 << 1);
+      Operations const descriptor = (1 << 2);
+      Operations const passport = (1 << 3);
+      Operations const certificate = (1 << 4);
     }
   }
 
@@ -31,12 +32,16 @@ namespace infinit
 
   Certificate::Certificate(cryptography::PublicKey issuer_K,
                            cryptography::PublicKey subject_K,
+                           elle::String description,
                            certificate::Operations operations,
-                           infinit::certificate::time_point valid_from,
-                           infinit::certificate::time_point valid_until,
-                           cryptography::Signature signature):
+                           std::chrono::system_clock::time_point valid_from,
+                           std::chrono::system_clock::time_point valid_until,
+                           cryptography::Signature signature,
+                           Identifier identifier):
+    _identifier(std::move(identifier)),
     _issuer_K(std::move(issuer_K)),
     _subject_K(std::move(subject_K)),
+    _description(std::move(description)),
     _operations(std::move(operations)),
     _valid_from(std::move(valid_from)),
     _valid_until(std::move(valid_until)),
@@ -45,9 +50,10 @@ namespace infinit
   }
 
   Certificate::Certificate(Certificate const& other):
-    elle::serialize::DynamicFormat<Certificate>(other),
+    _identifier(other._identifier),
     _issuer_K(other._issuer_K),
     _subject_K(other._subject_K),
+    _description(other._description),
     _operations(other._operations),
     _valid_from(other._valid_from),
     _valid_until(other._valid_until),
@@ -56,9 +62,10 @@ namespace infinit
   }
 
   Certificate::Certificate(Certificate&& other):
-    elle::serialize::DynamicFormat<Certificate>(std::move(other)),
+    _identifier(std::move(other._identifier)),
     _issuer_K(std::move(other._issuer_K)),
     _subject_K(std::move(other._subject_K)),
+    _description(std::move(other._description)),
     _operations(std::move(other._operations)),
     _valid_from(std::move(other._valid_from)),
     _valid_until(std::move(other._valid_until)),
@@ -67,7 +74,8 @@ namespace infinit
   }
 
   ELLE_SERIALIZE_CONSTRUCT_DEFINE(Certificate,
-                                  _issuer_K, _subject_K, _signature)
+                                  _identifier, _issuer_K, _subject_K,
+                                  _signature)
   {
   }
 
@@ -80,6 +88,7 @@ namespace infinit
   {
     ELLE_TRACE_METHOD(pool);
 
+    // XXX
     throw Exception("not implemented yet");
   }
 
@@ -92,8 +101,45 @@ namespace infinit
   {
     stream << "("
            << this->_subject_K << ", "
-           << this->_operations
-           << ")";
+           << this->_description << ", ";
+
+    stream << "[";
+    elle::Boolean first = true;
+
+    if (this->_operations & certificate::operations::identity)
+    {
+      if (!first)
+        stream << " | ";
+      stream << "identity";
+      first = false;
+    }
+
+    if (this->_operations & certificate::operations::descriptor)
+    {
+      if (!first)
+        stream << " | ";
+      stream << "descriptor";
+      first = false;
+    }
+
+    if (this->_operations & certificate::operations::passport)
+    {
+      if (!first)
+        stream << " | ";
+      stream << "passport";
+      first = false;
+    }
+
+    if (this->_operations & certificate::operations::certificate)
+    {
+      if (!first)
+        stream << " | ";
+      stream << "certificate";
+      first = false;
+    }
+    stream << "]";
+
+    stream << ")";
   }
 
   /*----------.
@@ -124,78 +170,36 @@ namespace infinit
   namespace certificate
   {
     /*----------.
-    | Operators |
-    `----------*/
-
-    std::ostream&
-    operator <<(std::ostream& stream,
-                Operations const operations)
-    {
-      elle::Boolean first = true;
-
-      stream << "(";
-
-      if (operations & operations::identity)
-      {
-        if (!first)
-          stream << " | ";
-        stream << "identity";
-        first = false;
-      }
-
-      if (operations & operations::descriptor)
-      {
-        if (!first)
-          stream << " | ";
-        stream << "descriptor";
-        first = false;
-      }
-
-      if (operations & operations::passport)
-      {
-        if (!first)
-          stream << " | ";
-        stream << "passport";
-        first = false;
-      }
-
-      if (operations & operations::certificate)
-      {
-        if (!first)
-          stream << " | ";
-        stream << "certificate";
-        first = false;
-      }
-
-      stream << ")";
-
-      return (stream);
-    }
-
-    /*----------.
     | Functions |
     `----------*/
 
     cryptography::Digest
-    hash(cryptography::PublicKey const& issuer_K,
+    hash(Identifier const& identifier,
+         cryptography::PublicKey const& issuer_K,
          cryptography::PublicKey const& subject_K,
+         elle::String const& description,
          certificate::Operations const& operations,
-         infinit::certificate::time_point const& valid_from,
-         infinit::certificate::time_point const& valid_until)
+         std::chrono::system_clock::time_point const& valid_from,
+         std::chrono::system_clock::time_point const& valid_until)
     {
-      elle::Natural64 _valid_from =
-        static_cast<elle::Natural64>(
-          std::chrono::duration_cast<std::chrono::nanoseconds>(
+      ELLE_TRACE_FUNCTION(identifier, issuer_K, subject_K, description,
+                          operations, valid_from, valid_until);
+
+      elle::Natural32 _valid_from =
+        static_cast<elle::Natural32>(
+          std::chrono::duration_cast<std::chrono::minutes>(
             valid_from.time_since_epoch()).count());
-      elle::Natural64 _valid_until =
-        static_cast<elle::Natural64>(
-          std::chrono::duration_cast<std::chrono::nanoseconds>(
+      elle::Natural32 _valid_until =
+        static_cast<elle::Natural32>(
+          std::chrono::duration_cast<std::chrono::minutes>(
             valid_until.time_since_epoch()).count());
 
       return (cryptography::oneway::hash(
                 elle::serialize::make_tuple(
+                  identifier,
                   issuer_K,
                   subject_K,
+                  description,
                   operations,
                   _valid_from,
                   _valid_until),

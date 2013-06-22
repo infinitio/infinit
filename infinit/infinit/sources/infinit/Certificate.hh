@@ -6,7 +6,6 @@
 # include <elle/operator.hh>
 # include <elle/Printable.hh>
 # include <elle/serialize/Format.hh>
-# include <elle/serialize/DynamicFormat.hh>
 # include <elle/serialize/construct.hh>
 
 # include <cryptography/fwd.hh>
@@ -14,6 +13,8 @@
 # include <cryptography/Signature.hh>
 // XXX[temporary: for cryptography]
 using namespace infinit;
+
+# include <infinit/Identifier.hh>
 
 # include <chrono>
 
@@ -33,17 +34,13 @@ namespace infinit
     /// e.g sign/certify.
     typedef elle::Natural16 Operations;
 
-    /// On g++4.7, overload is missing for nanoseconds so operator += doesn't
-    /// work with std::chrono::nanoseconds.
-    typedef std::chrono::time_point<std::chrono::system_clock,
-                                    std::chrono::nanoseconds> time_point;
-
     /*-------.
     | Values |
     `-------*/
 
     namespace operations
     {
+      extern Operations const none;
       extern Operations const identity;
       extern Operations const descriptor;
       extern Operations const passport;
@@ -57,8 +54,7 @@ namespace infinit
   /// Note that the nature of the objects the certified authority is allowed
   /// to sign may depend on its level i.e. root or intermediate.
   class Certificate:
-    public elle::Printable,
-    public elle::serialize::DynamicFormat<Certificate>
+    public elle::Printable
   {
     /*------.
     | Types |
@@ -78,10 +74,12 @@ namespace infinit
     explicit
     Certificate(cryptography::PublicKey issuer_K,
                 cryptography::PublicKey subject_K,
+                elle::String description,
                 certificate::Operations operations,
-                infinit::certificate::time_point valid_from,
-                infinit::certificate::time_point valid_until,
-                cryptography::Signature signature);
+                std::chrono::system_clock::time_point valid_from,
+                std::chrono::system_clock::time_point valid_until,
+                cryptography::Signature signature,
+                Identifier identifier = Identifier());
     /// A helper for generating the signature automatically.
     ///
     /// Note that the _authority_ must provide a sign(data) method
@@ -90,10 +88,12 @@ namespace infinit
     explicit
     Certificate(cryptography::PublicKey issuer_K,
                 cryptography::PublicKey subject_K,
+                elle::String description,
                 certificate::Operations operations,
-                infinit::certificate::time_point valid_from,
-                infinit::certificate::time_point valid_until,
-                T const& authority);
+                std::chrono::system_clock::time_point valid_from,
+                std::chrono::system_clock::time_point valid_until,
+                T const& authority,
+                Identifier identifier = Identifier());
     Certificate(Certificate const& other);
     Certificate(Certificate&& other);
     ELLE_SERIALIZE_CONSTRUCT_DECLARE(Certificate);
@@ -130,17 +130,21 @@ namespace infinit
     | Attributes |
     `-----------*/
   public:
+    /// An identifier theoretically uniquely identifying the certificate.
+    ELLE_ATTRIBUTE_R(Identifier, identifier);
     /// The public key of the authority which issued the certificate.
     ELLE_ATTRIBUTE_R(cryptography::PublicKey, issuer_K);
     /// The public key of the certified authority i.e subject authority.
     ELLE_ATTRIBUTE_R(cryptography::PublicKey, subject_K);
+    /// A human-readable description of the certificate's purpose.
+    ELLE_ATTRIBUTE_R(elle::String, description);
     /// The set of operations the certified authority is allowed to
     /// perform.
     ELLE_ATTRIBUTE_R(certificate::Operations, operations);
     /// The date from which the certificate is valid.
-    ELLE_ATTRIBUTE_R(infinit::certificate::time_point, valid_from);
+    ELLE_ATTRIBUTE_R(std::chrono::system_clock::time_point, valid_from);
     /// The date after which the certificate can be considered invalid.
-    ELLE_ATTRIBUTE_R(infinit::certificate::time_point, valid_until);
+    ELLE_ATTRIBUTE_R(std::chrono::system_clock::time_point, valid_until);
     /// The signature issued by the issuer authority.
     ELLE_ATTRIBUTE(cryptography::Signature, signature);
   };
@@ -156,14 +160,6 @@ namespace infinit
   namespace certificate
   {
     /*----------.
-    | Operators |
-    `----------*/
-
-    std::ostream&
-    operator <<(std::ostream& stream,
-                Operations const& operations);
-
-    /*----------.
     | Functions |
     `----------*/
 
@@ -172,11 +168,13 @@ namespace infinit
     ///
     /// These are the elements which must be signed by the issuer authority.
     cryptography::Digest
-    hash(cryptography::PublicKey const& issuer_K,
+    hash(Identifier const& identifier,
+         cryptography::PublicKey const& issuer_K,
          cryptography::PublicKey const& subject_K,
+         elle::String const& description,
          certificate::Operations const& operations,
-         infinit::certificate::time_point const& valid_from,
-         infinit::certificate::time_point const& valid_until);
+         std::chrono::system_clock::time_point const& valid_from,
+         std::chrono::system_clock::time_point const& valid_until);
   }
 }
 

@@ -12,21 +12,27 @@ namespace infinit
   template <typename T>
   Certificate::Certificate(cryptography::PublicKey issuer_K,
                            cryptography::PublicKey subject_K,
+                           elle::String description,
                            certificate::Operations operations,
-                           infinit::certificate::time_point valid_from,
-                           infinit::certificate::time_point valid_until,
-                           T const& authority):
+                           std::chrono::system_clock::time_point valid_from,
+                           std::chrono::system_clock::time_point valid_until,
+                           T const& authority,
+                           Identifier identifier):
     Certificate(std::move(issuer_K),
                 std::move(subject_K),
+                std::move(description),
                 std::move(operations),
                 std::move(valid_from),
                 std::move(valid_until),
                 authority.sign(
-                  certificate::hash(issuer_K,
+                  certificate::hash(identifier,
+                                    issuer_K,
                                     subject_K,
+                                    description,
                                     operations,
                                     valid_from,
-                                    valid_until)))
+                                    valid_until)),
+                std::move(identifier))
   {
   }
 }
@@ -44,19 +50,21 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Certificate,
 {
   enforce(format == 0, "unknown format");
 
+  archive << value._identifier;
   archive << value._issuer_K;
   archive << value._subject_K;
+  archive << value._description;
   archive << value._operations;
 
-  elle::Natural64 valid_from =
-    static_cast<elle::Natural64>(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(
+  elle::Natural32 valid_from =
+    static_cast<elle::Natural32>(
+      std::chrono::duration_cast<std::chrono::minutes>(
         value._valid_from.time_since_epoch()).count());
   archive << valid_from;
 
-  elle::Natural64 valid_until =
-    static_cast<elle::Natural64>(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(
+  elle::Natural32 valid_until =
+    static_cast<elle::Natural32>(
+      std::chrono::duration_cast<std::chrono::minutes>(
         value._valid_until.time_since_epoch()).count());
   archive << valid_until;
 
@@ -70,18 +78,20 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Certificate,
 {
   enforce(format == 0, "unknown format");
 
+  archive >> value._identifier;
   archive >> value._issuer_K;
   archive >> value._subject_K;
+  archive >> value._description;
   archive >> value._operations;
 
-  elle::Natural64 valid_from;
+  elle::Natural32 valid_from;
   archive >> valid_from;
-  std::chrono::nanoseconds _valid_from(valid_from);
+  std::chrono::minutes _valid_from(valid_from);
   value._valid_from += _valid_from;
 
-  elle::Natural64 valid_until;
+  elle::Natural32 valid_until;
   archive >> valid_until;
-  std::chrono::nanoseconds _valid_until(valid_until);
+  std::chrono::minutes _valid_until(valid_until);
   value._valid_until += _valid_until;
 
   archive >> value._signature;
