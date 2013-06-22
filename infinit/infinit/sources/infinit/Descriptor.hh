@@ -60,7 +60,7 @@ namespace infinit
   ///
   /// The following details the process of creating such a descriptor.
   ///
-  ///   Meta meta(id, admin_K, model, root_address, ...,
+  ///   Meta meta(admin_K, model, root_address, ...,
   ///             authority.k());
   ///   Data data(description, openness, policy, version, format_...,
   ///             administrator_k());
