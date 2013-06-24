@@ -135,6 +135,7 @@ namespace infinit
     }
 
     Meta::Meta(Meta&& other):
+      elle::serialize::DynamicFormat<Meta>(std::move(other)),
       _identifier(std::move(other._identifier)),
       _issuer_K(std::move(other._issuer_K)),
       _administrator_K(std::move(other._administrator_K)),
@@ -150,8 +151,12 @@ namespace infinit
     }
 
     ELLE_SERIALIZE_CONSTRUCT_DEFINE(Meta,
-                                    _identifier, _issuer_K, _administrator_K,
-                                    _model, _root_address, _everybody_identity,
+                                    _identifier,
+                                    _issuer_K,
+                                    _administrator_K,
+                                    _model,
+                                    _root_address,
+                                    _everybody_identity,
                                     _signature)
     {
     }
@@ -296,6 +301,7 @@ namespace infinit
     }
 
     Data::Data(Data&& other):
+      elle::serialize::DynamicFormat<Data>(std::move(other)),
       _description(std::move(other._description)),
       _openness(std::move(other._openness)),
       _policy(std::move(other._policy)),
@@ -325,18 +331,28 @@ namespace infinit
     {
     }
 
-    ELLE_SERIALIZE_CONSTRUCT_DEFINE(Data /* XXX,
-                                    openness, policy, version,
-                                    format_block, format_content_hash_block,
-                                    format_contents, format_immutable_block,
-                                    format_imprint_block, format_mutable_block,
-                                    format_owner_key_block,
-                                    format_public_key_block, format_access,
-                                    format_attributes, format_catalog,
-                                    format_data, format_ensemble, format_group,
-                                    format_object, format_reference,
-                                    format_user, format_identity,
-                                    format_descriptor, format_signature */)
+    ELLE_SERIALIZE_CONSTRUCT_DEFINE(Data,
+                                    _version,
+                                    _format_block,
+                                    _format_content_hash_block,
+                                    _format_contents,
+                                    _format_immutable_block,
+                                    _format_imprint_block,
+                                    _format_mutable_block,
+                                    _format_owner_key_block,
+                                    _format_public_key_block,
+                                    _format_access,
+                                    _format_attributes,
+                                    _format_catalog,
+                                    _format_data,
+                                    _format_ensemble,
+                                    _format_group,
+                                    _format_object,
+                                    _format_reference,
+                                    _format_user,
+                                    _format_identity,
+                                    _format_descriptor,
+                                    _signature)
     {
     }
 

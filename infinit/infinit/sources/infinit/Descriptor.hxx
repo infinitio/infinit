@@ -128,6 +128,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
     {
       value._meta.reset(
         new infinit::descriptor::Meta(elle::serialize::no_init));
+      value._meta->infinit::descriptor::Meta::DynamicFormat::version(0);
 
       // Extract the string-based identifier, create a real
       // identifier and serialize so as to deserialize it in
@@ -156,6 +157,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
 
       value._data.reset(
         new infinit::descriptor::Data(elle::serialize::no_init));
+      value._data->infinit::descriptor::Data::DynamicFormat::version(0);
 
       archive >> value._data->_description;
       archive >> value._data->_openness;

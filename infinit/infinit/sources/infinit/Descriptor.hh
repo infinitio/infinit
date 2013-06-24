@@ -158,6 +158,7 @@ namespace infinit
     /// Represent the descriptor elements which cannot change over time because
     /// sealed by the authority.
     class Meta:
+      public elle::serialize::DynamicFormat<Meta>,
       public elle::Printable
     {
       /*--------.
@@ -166,6 +167,12 @@ namespace infinit
     public:
       // Required for the format 0.
       friend class Descriptor;
+
+      /*------.
+      | Types |
+      `------*/
+    public:
+      typedef elle::serialize::DynamicFormat<Meta> DynamicFormat;
 
       /*-------------.
       | Construction |
@@ -389,6 +396,7 @@ namespace infinit
     /// impropriety of forcing the user to update the Infinit software should
     /// not be too important.
     struct Data:
+      public elle::serialize::DynamicFormat<Data>,
       public elle::Printable
     {
       /*--------.
@@ -402,6 +410,7 @@ namespace infinit
       | Types |
       `------*/
     public:
+      typedef elle::serialize::DynamicFormat<Data> DynamicFormat;
       /// Represent a hostname, IP address or else, coupled with a port
       /// on which the node's hole is listening to.
       typedef std::pair<elle::String, elle::String> Endpoint;
