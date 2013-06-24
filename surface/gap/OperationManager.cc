@@ -123,6 +123,7 @@ namespace surface
            !pair.second->done() &&
             boost::algorithm::ends_with(pair.second->name(), name))
         {
+          ELLE_LOG("cancelling %s", pair.second->name());
           pair.second->cancel();
         }
       }

@@ -44,10 +44,13 @@ namespace elle
                 Key k)
     {
       static std::map<Key, std::string> const map{
+        {Key::attempt,    "attempt"},
         {Key::author,     "author"},
         {Key::count,      "count"},
+        {Key::duration,   "duration"},
         {Key::height,     "height"},
         {Key::input,      "input"},
+        {Key::network,    "network"},
         {Key::panel,      "panel"},
         {Key::session,    "session"},
         {Key::size,       "size"},

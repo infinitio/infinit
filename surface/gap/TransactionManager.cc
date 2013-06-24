@@ -21,6 +21,8 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
 
+#include <chrono>
+
 ELLE_LOG_COMPONENT("infinit.surface.gap.Transaction");
 
 namespace surface
@@ -255,10 +257,6 @@ namespace surface
     TransactionManager::_accept_transaction(Transaction const& transaction,
                                             Operation& operation)
     {
-      (void)operation;
-      this->_reporter.store("transaction_accept",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, transaction.id}});
       try
       {
 
@@ -276,38 +274,40 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_accept");
 
-      this->_reporter.store("transaction_accept_succeed",
-                            {{MKey::value, transaction.id}});
+      if (transaction.status == plasma::TransactionStatus::created)
+      {
+        this->_reporter.store("transaction_accept_preparing",
+                              {{MKey::value, transaction.id}});
+      }
+      else if (transaction.status == plasma::TransactionStatus::started)
+      {
+        this->_reporter.store("transaction_accept_prepared",
+                              {{MKey::value, transaction.id}});
+      }
+
     }
 
     void
-    TransactionManager::cancel_transaction(Transaction const& transaction)
+    TransactionManager::cancel_transaction(std::string const& transaction_id)
+    {
+      this->_cancel_transaction(this->one(transaction_id));
+    }
+
+    void
+    TransactionManager::_cancel_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
       this->_add<LambdaOperation>(
         "cancel_" + transaction.id,
         std::function<void()>{
           [&]
           {
-            std::string author = (
-              transaction.sender_id == this->_self.id ? "sender" : "recipient"
-            );
-
-            this->_reporter.store(
-              "transaction_cancel",
-              {{MKey::status, "attempt"},
-               {MKey::author, author},
-               {MKey::step, elle::sprint(transaction.status)},
-               {MKey::value, transaction.id}});
-
-            ELLE_SCOPE_EXIT(
-              [&]
-              {
-                this->_cancel_all(transaction.id);
-                this->_network_manager.delete_(transaction.network_id, true);
-              }
-            );
+            auto scope_exit = [&, transaction]
+            {
+              this->_cancel_all(transaction.id);
+              this->_network_manager.delete_(transaction.network_id, true);
+            };
+            ELLE_SCOPE_EXIT(scope_exit);
 
             try
             {
@@ -316,12 +316,84 @@ namespace surface
             }
             CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-            this->_reporter.store(
-              "transaction_cancel",
-              {{MKey::status, "succeed"},
-               {MKey::author, author},
-               {MKey::step, elle::sprint(transaction.status)},
-               {MKey::value, transaction.id}});
+            std::string author = (
+              transaction.sender_id == this->_self.id ? "sender" : "recipient");
+
+            auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch());
+            auto timestamp_tr = std::chrono::duration<double>(
+              transaction.timestamp);
+            double duration = timestamp_now.count() - timestamp_tr.count();
+
+            if (transaction.status == plasma::TransactionStatus::created)
+            {
+              if (transaction.accepted)
+              {
+                this->_reporter.store("transaction_cancel_preparing_accepted",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+              else
+              {
+                this->_reporter.store("transaction_cancel_preparing_unaccepted",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+            }
+            else if (transaction.status == plasma::TransactionStatus::started)
+            {
+              if (transaction.accepted &&
+                  this->_user_manager.device_status(
+                    transaction.recipient_id,
+                    transaction.recipient_device_id))
+              {
+                this->_reporter.store("transaction_cancel_transferring",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+              else if (transaction.accepted &&
+                       !this->_user_manager.device_status(
+                         transaction.recipient_id,
+                         transaction.recipient_device_id))
+              {
+                this->_reporter.store("transaction_cancel_offline",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+              else if (!transaction.accepted)
+              {
+                this->_reporter.store("transaction_cancel_prepared_unaccepted",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+            }
+          }
+        }
+      );
+    }
+
+    void
+    TransactionManager::_on_cancel_transaction(Transaction const& transaction)
+    {
+      ELLE_TRACE_METHOD(transaction);
+
+      this->_add<LambdaOperation>(
+        "cancel_" + transaction.id,
+        std::function<void()>{
+          [&]
+          {
+            this->_cancel_all(transaction.id);
+            this->_network_manager.delete_(transaction.network_id, true);
           }
         }
       );
@@ -419,7 +491,12 @@ namespace surface
             (*ptr)[tr.id] = tr;
         });
       }
-      if (tr.status != plasma::TransactionStatus::created and
+      if (tr.status == plasma::TransactionStatus::canceled)
+      {
+        this->_on_cancel_transaction(tr);
+        return;
+      }
+      else if (tr.status != plasma::TransactionStatus::created and
           tr.status != plasma::TransactionStatus::started)
       {
         ELLE_DEBUG("Cleaning up finished transaction %s", tr);
@@ -529,6 +606,11 @@ namespace surface
           not this->_user_manager.one(tr.recipient_id).public_key.empty())
       {
         ELLE_DEBUG("prepare transaction %s", tr)
+        this->_reporter.store("transaction_preparing",
+                              {{MKey::count, std::to_string(tr.files_count)},
+                               {MKey::network, tr.network_id},
+                               {MKey::size, std::to_string(tr.total_size)},
+                               {MKey::value, tr.id}});
         s.operation = this->_add<PrepareTransactionOperation>(
           *this,
           this->_network_manager,
@@ -559,6 +641,15 @@ namespace surface
         this->_meta.update_transaction(transaction.id,
                                        plasma::TransactionStatus::failed);
         this->_states->erase(transaction.id);
+        auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+          std::chrono::system_clock::now().time_since_epoch());
+        auto timestamp_tr = std::chrono::duration<double>(transaction.timestamp);
+        double duration = timestamp_now.count() - timestamp_tr.count();
+        this->_reporter.store("transaction_transferring_fail",
+                              {{MKey::attempt, std::to_string(s.tries)},
+                               {MKey::duration, std::to_string(duration)},
+                               {MKey::network,transaction.network_id},
+                               {MKey::value, transaction.id}});
         return;
       }
 
@@ -590,6 +681,10 @@ namespace surface
         s.tries += 1;
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
+        this->_reporter.store("transaction_transferring",
+                              {{MKey::attempt, std::to_string(s.tries)},
+                               {MKey::network,transaction.network_id},
+                               {MKey::value, transaction.id}});
       }
       else
       {
@@ -630,6 +725,7 @@ namespace surface
             *this,
             this->_network_manager,
             this->_self,
+            this->_reporter,
             transaction,
             std::bind(&NetworkManager::notify_8infinit,
                       &(this->_network_manager),

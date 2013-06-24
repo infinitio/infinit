@@ -160,12 +160,19 @@ namespace surface
       accept_transaction(std::string const& transaction_id);
 
       void
-      cancel_transaction(Transaction const& transaction);
+      cancel_transaction(std::string const& transaction_id);
 
     private:
       void
       _accept_transaction(Transaction const& transaction,
                           Operation& operation);
+
+      void
+      _cancel_transaction(Transaction const& transaction);
+
+      void
+      _on_cancel_transaction(Transaction const& transaction);
+
     private:
       void
       _prepare_upload(Transaction const& transaction);

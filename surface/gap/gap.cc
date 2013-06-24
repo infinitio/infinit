@@ -1020,6 +1020,18 @@ extern "C"
   }
 
   gap_Status
+  gap_cancel_transaction(gap_State* state,
+                         char const* transaction_id)
+  {
+    assert(transaction_id != nullptr);
+    WRAP_CPP_MANAGER_RET(state,
+                         transaction_manager,
+                         cancel_transaction,
+                         transaction_id);
+    return ret;
+  }
+
+  gap_Status
   gap_accept_transaction(gap_State* state,
                          char const* transaction_id)
   {

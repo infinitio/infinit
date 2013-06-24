@@ -20,10 +20,13 @@ namespace elle
   {
     enum class Key
     {
+      attempt,
       author,
       count,
+      duration,
       height,
       input,
+      network,
       panel,
       session,
       size,

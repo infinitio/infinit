@@ -110,12 +110,6 @@ namespace surface
       this->_name += this->_transaction_id;
       this->_me.remaining_invitations = res.remaining_invitations;
 
-      this->_reporter.store(
-        "transaction_create",
-        {{MKey::status, "attempt"},
-         {MKey::value, this->_transaction_id},
-         {MKey::count, std::to_string(this->_files.size())},
-         {MKey::size, std::to_string(size)}});
       if (this->_on_transaction != nullptr)
         this->_on_transaction(this->_transaction_id);
     }
@@ -125,8 +119,10 @@ namespace surface
     {
       ELLE_DEBUG("cancelling %s", this->name());
       if (this->_transaction_id.size() > 0)
+      {
         this->_transaction_manager.update(this->_transaction_id,
                                           plasma::TransactionStatus::canceled);
+      }
     }
   }
 }

@@ -23,10 +23,13 @@ namespace elle
       static std::string pretty_name = "Google";
       static const std::map<elle::metrics::Key, std::string> keymap
       {
+        {elle::metrics::Key::attempt,   "cm10"},
         {elle::metrics::Key::author,    "cm8"},
         {elle::metrics::Key::count,     "cm2"},
+        {elle::metrics::Key::duration,  "cm12"},
         {elle::metrics::Key::height,    "cm4"},
         {elle::metrics::Key::input,     "cm6"},
+        {elle::metrics::Key::network,   "cm11"},
         {elle::metrics::Key::panel,     "cm7"},
         {elle::metrics::Key::session,   "cs"},
         {elle::metrics::Key::size,      "cm1"},
