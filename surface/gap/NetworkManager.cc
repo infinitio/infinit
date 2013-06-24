@@ -383,8 +383,9 @@ namespace surface
                                                      network_id);
       if (elle::os::path::exists(path))
       {
-        ELLE_TRACE("remove network %s directory %s", network_id, path)
-          elle::os::path::remove_directory(path);
+        // ELLE_TRACE("remove network %s directory %s", network_id, path)
+        //   elle::os::path::remove_directory(path);
+        ELLE_WARN("not removing network %s directory %s", network_id, path);
       }
     }
 

@@ -22,7 +22,7 @@ namespace surface
                     "TRACE,"
                     "elle.*:LOG,"
                     "reactor.*:LOG,"
-                    "reactor.network.*:TRACE");
+                    "reactor.network.*:DUMP");
     }
 
     /// @brief Return a valid config process for an infinit binary.
