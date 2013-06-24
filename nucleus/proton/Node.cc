@@ -27,6 +27,8 @@ namespace nucleus
     ELLE_SERIALIZE_CONSTRUCT_DEFINE(Node)
     {
       this->_nest = nullptr;
+      this->_footprint = 0;
+      this->_state = State::clean;
     }
 
     Node::~Node()
