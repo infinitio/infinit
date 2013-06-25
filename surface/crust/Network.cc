@@ -3,6 +3,7 @@
 #include <hole/storage/Memory.hh>
 #include <hole/storage/Directory.hh>
 
+#include <infinit/Certificate.hh>
 #include <infinit/Identity.hh>
 
 #include <etoile/automaton/Access.hh>
@@ -185,6 +186,53 @@ create_root(nucleus::proton::Network const& network,
   return directory;
 }
 
+static
+void
+require_infinit_home(boost::filesystem::path const& home_path)
+{
+  if (!boost::filesystem::exists(home_path))
+    throw elle::Exception(
+      elle::sprintf("directory %s set as infinit_home doesn't exist",
+                    home_path));
+}
+
+static
+void
+require_network_directory(std::string const& user_name,
+                          boost::filesystem::path const& home_path)
+{
+  require_infinit_home(home_path);
+
+  // To ensure the infinit home is good, we check if their is an identity in the
+  // given infinit home architecture, deserialize it.
+  {
+    auto const& identity_path =
+      common::infinit::identity_path(user_name,
+                                     home_path.string());
+
+    if (!boost::filesystem::exists(identity_path))
+      throw elle::Exception(
+        elle::sprintf("no identity file at %s", identity_path));
+
+    try
+    {
+
+      infinit::Identity{elle::serialize::from_file(identity_path)};
+    }
+    catch (elle::Exception const&)
+    {
+      throw elle::Exception(
+        elle::sprintf("identity at %s is not an identity", identity_path));
+    }
+  }
+
+  auto const& networks_directory =
+    common::infinit::networks_directory(user_name,
+                                        home_path.string());
+
+  boost::filesystem::create_directory(networks_directory);
+}
+
 /*--------.
 | Network |
 `--------*/
@@ -236,7 +284,7 @@ Network::Network(cryptography::KeyPair const& keypair,
   elle::Version version(INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
   {
     // Create the descriptor from both sections and store it.
-    auto meta = descriptor::Meta(uid.value(),
+    auto meta = descriptor::Meta(common::meta::certificate().subject_K(),
                                  keypair.K(),
                                  model,
                                  std::move(directory_address),
@@ -244,7 +292,8 @@ Network::Network(cryptography::KeyPair const& keypair,
                                  std::move(group_address),
                                  false,
                                  1048576,
-                                 authority);
+                                 authority,
+                                 uid);
 
     auto data = descriptor::Data(description,
                                  openness,
@@ -267,8 +316,7 @@ Network::Network(boost::filesystem::path const& identity_path,
                  horizon::Policy const& policy,
                  std::string const& description,
                  Authority const& authority):
-  Network(description,
-          infinit::Identity(
+  Network(infinit::Identity(
             elle::serialize::from_file(identity_path.string())).decrypt_0(passphrase),
           model,
           openness,
@@ -286,7 +334,6 @@ Network::Network(boost::filesystem::path const& descriptor_path)
   this->_descriptor.reset(
     new infinit::Descriptor(
       elle::serialize::from_file(descriptor_path.string())));
-  this->_descriptor_path = descriptor_path;
 }
 
 Network::Network(std::string const& administrator_name,
@@ -297,14 +344,16 @@ Network::Network(std::string const& administrator_name,
                                            home_path.string()))
 {}
 
-Network::Network(infinit::Identifier const& id,
+Network::Network(std::string const& owner_handle,
+                 std::string const& network_name,
                  std::string const& host,
                  uint16_t port,
-                 std::string const& token)
+                 std::string const& token_path)
 {
   using namespace elle::serialize;
 
-  auto descriptor = meta(host, port, token).descriptor(id.value()).descriptor;
+  auto descriptor = meta(host, port, token_path).descriptor(owner_handle,
+                                                            network_name).descriptor;
   this->_descriptor.reset(
     new infinit::Descriptor(from_string<InputBase64Archive>(descriptor)));
 }
@@ -324,21 +373,22 @@ Network::store(boost::filesystem::path const& descriptor_path,
       elle::sprintf("file %s already exists", descriptor_path));
 
   elle::serialize::to_file(descriptor_path.string()) << *this->_descriptor;
-  this->_descriptor_path = descriptor_path;
 }
 
 void
 Network::erase(boost::filesystem::path const& descriptor_path)
 {
-  ELLE_TRACE_METHOD(descriptor_path);
-  ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
+  ELLE_TRACE_FUNCTION(descriptor_path);
 
-  if (!this->_descriptor_path.empty() && descriptor_path.empty())
-    boost::filesystem::remove(this->_descriptor_path);
-  else if (!descriptor_path.empty())
-    boost::filesystem::remove(descriptor_path);
-  else
-    throw elle::Exception("no path given");
+  if (!boost::filesystem::exists(descriptor_path))
+    throw elle::Exception(
+      elle::sprintf("descriptor path %s doesn't exists", descriptor_path));
+
+  // Check if the given path represents an descriptor.
+  // XXX: Does this code works (optimisation).
+  Network{descriptor_path};
+
+  boost::filesystem::remove(descriptor_path);
 }
 
 void
@@ -346,35 +396,9 @@ Network::install(std::string const& user_name,
                  std::string const& network_name,
                  boost::filesystem::path const& home_path) const
 {
+  ELLE_TRACE_METHOD(user_name, network_name, home_path);
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
-
-  if (!boost::filesystem::exists(home_path))
-    throw elle::Exception(
-      elle::sprintf("directory %s set as infinit_home doesn't exist",
-                    home_path));
-
-  // To ensure the infinit home is good, we check if their is an identity in the
-  // given infinit home architecture, deserialize it.
-  {
-    auto const& identity_path =
-      common::infinit::identity_path(user_name,
-                                     home_path.string());
-
-    if (!boost::filesystem::exists(identity_path))
-      throw elle::Exception(
-        elle::sprintf("no identity file at %s", identity_path));
-
-    try
-    {
-
-      infinit::Identity{elle::serialize::from_file(identity_path)};
-    }
-    catch (elle::Exception const&)
-    {
-      throw elle::Exception(
-        elle::sprintf("identity at %s is not an identity", identity_path));
-    }
-  }
+  require_network_directory(user_name, home_path);
 
   auto install_path =
     common::infinit::network_directory(user_name,
@@ -386,14 +410,14 @@ Network::install(std::string const& user_name,
       elle::sprintf("couldn't create %s cause it already exists",
                     install_path));
 
-  boost::filesystem::create_directories(install_path);
+  boost::filesystem::create_directory(install_path);
 
   this->store(common::infinit::descriptor_path(user_name,
                                                network_name,
                                                home_path.string()));
 
   hole::storage::Directory storage(
-    nucleus::proton::Network(this->_descriptor->meta().identifier()),
+    nucleus::proton::Network(this->_descriptor->meta().identifier().value()),
     common::infinit::network_shelter(user_name,
                                      network_name,
                                      home_path.string()));
@@ -407,30 +431,34 @@ Network::install(std::string const& user_name,
 
     storage.store(block_address, *block);
   }
-
-  this->_install_path = install_path;
 }
 
 void
-Network::uninstall(std::string const& administrator_name,
+Network::uninstall(std::string const& user_name,
                    std::string const& network_name,
-                   boost::filesystem::path const& home_path) const
+                   boost::filesystem::path const& home_path)
 {
-  ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
+  ELLE_TRACE_FUNCTION(user_name, network_name, home_path);
+  require_infinit_home(home_path);
 
-  auto install_path =
-    common::infinit::network_directory(administrator_name,
+  auto const& network_directory =
+    common::infinit::network_directory(user_name,
                                        network_name,
                                        home_path.string());
 
-  if (!this->_install_path.empty() && this->_install_path != install_path)
+  if (!boost::filesystem::exists(network_directory))
     throw elle::Exception(
-      elle::sprintf("try to uninstall at %s instead of %s where it has "       \
-                    "previously been installed",
-                    install_path,
-                    this->_install_path));
+      elle::sprintf("network path %s is empty", network_directory));
 
-  boost::filesystem::remove_all(install_path);
+  // Check if the given path represents an descriptor.
+  // XXX: Does this code work (optimisation)?
+  Network{
+    boost::filesystem::path{
+      common::infinit::descriptor_path(user_name,
+                                       network_name,
+                                       home_path.string())}};
+
+  boost::filesystem::remove_all(network_directory);
 }
 
 uint16_t
@@ -440,8 +468,8 @@ Network::mount(boost::filesystem::path const& mount_point,
   ELLE_ASSERT_NEQ(this->_descriptor, nullptr);
 
   hole::storage::Directory storage(
-    nucleus::proton::Network(this->_descriptor->meta().identifier()),
-    (mount_point / this->identifier()).string());
+    nucleus::proton::Network(this->_descriptor->meta().identifier().value()),
+    (mount_point / this->identifier().value()).string());
 
   storage.store(this->_descriptor->meta().root_address(),
                 this->_descriptor->meta().root_object());
@@ -476,29 +504,28 @@ void
 Network::publish(std::string const& network_name,
                  std::string const& host,
                  uint16_t port,
-                 std::string const& token) const
+                 std::string const& token_path) const
 {
   using namespace elle::serialize;
 
   std::string serialized;
   to_string<OutputBase64Archive>(serialized) << *this->_descriptor;
 
-  auto id = meta(host, port, token).descriptor_publish(serialized, network_name).id;
+  meta(host, port, token_path).descriptor_publish(serialized, network_name);
 }
 
 void
-Network::unpublish(infinit::Identifier const& identifier,
+Network::unpublish(std::string const& network_name,
                    std::string const& host,
                    uint16_t port,
-                   std::string const& token)
+                   std::string const& token_path)
 {
-  meta(host, port, token).descriptor_unpublish(identifier.value());
+  meta(host, port, token_path).descriptor_unpublish(network_name);
 }
 
 std::vector<std::string>
 Network::list(std::string const& user_name,
-              boost::filesystem::path const& home_path,
-              bool verify)
+              boost::filesystem::path const& home_path)
 {
   std::vector<std::string> dsc;
 
@@ -546,30 +573,8 @@ Network::list(std::string const& user_name,
 std::vector<std::string>
 Network::fetch(std::string const& host,
               uint16_t port,
-              boost::filesystem::path const& token_path,
+              boost::filesystem::path const& token_path_path,
               plasma::meta::Client::DescriptorList const& list)
 {
-  return meta(host, port, token_path).descriptor_list(list).descriptors;
+  return meta(host, port, token_path_path).descriptor_list(list).descriptors;
 }
-
-/*--------.
-| Look up |
-`--------*/
-std::string
-Network::lookup(std::string const& owner_handle,
-                std::string const& network_name,
-                std::string const& host,
-                uint16_t port,
-                boost::filesystem::path const& token_path)
-{
-  return meta(host, port, token_path).descriptor_lookup(owner_handle,
-                                                        network_name).id;
-}
-
-// std::vector<plasma::meta::Descriptor>
-// descriptors(plasma::meta::Client::DescriptorList const& list,
-//             std::string const& host = common::meta::host(),
-//             uint16_t port = common::meta::port(),
-//             std::string const& token = common::meta::token())
-// {
-// }

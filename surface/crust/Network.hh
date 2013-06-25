@@ -24,8 +24,7 @@
 class Network
 {
   ELLE_ATTRIBUTE(std::unique_ptr<infinit::Descriptor>, descriptor);
-  ELLE_ATTRIBUTE_P(boost::filesystem::path, descriptor_path, mutable);
-  ELLE_ATTRIBUTE_P(boost::filesystem::path, install_path, mutable);
+
 public:
   static
   bool
@@ -71,8 +70,8 @@ public:
   /// Load constructor, using local descriptor.
   Network(boost::filesystem::path const& descriptor_path);
 
-  explicit
   /// Load constructor from network_name and home.
+  explicit
   Network(std::string const& administrator_name,
           std::string const& network_name,
           boost::filesystem::path const& home_path = common::infinit::home());
@@ -81,10 +80,11 @@ public:
   // XXX: Should I put a dependencie to common by setting default value for meta
   // host and port?
   explicit
-  Network(infinit::Identifier const& id,
+  Network(std::string const& owner_handle,
+          std::string const& network_name,
           std::string const& host = common::meta::host(),
           uint16_t port = common::meta::port(),
-          std::string const& token = common::meta::token());
+          std::string const& token_path = common::meta::token_path());
 
   /*------.
   | Local |
@@ -95,8 +95,9 @@ public:
         bool force = false) const;
 
   /// Delete local descritor.
+  static
   void
-  erase(boost::filesystem::path const& descriptor_path = "");
+  erase(boost::filesystem::path const& descriptor_path);
 
   // Install.
   void
@@ -106,11 +107,11 @@ public:
     const;
 
   /// Uninstall.
+  static
   void
   uninstall(std::string const& administrator_name,
             std::string const& network_name,
-            boost::filesystem::path const& home_path  = common::infinit::home())
-    const;
+            boost::filesystem::path const& home_path = common::infinit::home());
 
   /// Mount.
   uint16_t
@@ -129,15 +130,15 @@ public:
   publish(std::string const& network_name,
           std::string const& host = common::meta::host(),
           uint16_t port = common::meta::port(),
-          std::string const& token = common::meta::token()) const;
+          std::string const& token_path = common::meta::token_path()) const;
 
   /// Remove descriptor from remote meta.
   static
   void
-  unpublish(infinit::Identifier const& identifier,
+  unpublish(std::string const& name,
             std::string const& host = common::meta::host(),
             uint16_t port = common::meta::port(),
-            std::string const& token = common::meta::token());
+            std::string const& token_path = common::meta::token_path());
 
   ///
   // void
@@ -150,15 +151,15 @@ public:
   static
   std::vector<std::string>
   list(std::string const& user_name,
-       boost::filesystem::path const& home_path = common::infinit::home(),
-       bool verify = true);
+       boost::filesystem::path const& home_path = common::infinit::home());
 
   /// Get the list of descriptor id stored on the network.
   static
   std::vector<std::string>
   fetch(std::string const& host = common::meta::host(),
         uint16_t port = common::meta::port(),
-        boost::filesystem::path const& token_path = common::meta::token_path(),
+        boost::filesystem::path const& token_path =
+          common::meta::token_path(),
         plasma::meta::Client::DescriptorList const& list =
           plasma::meta::Client::DescriptorList::all);
 
@@ -171,22 +172,8 @@ public:
          std::string const& network_name,
          std::string const& host = common::meta::host(),
          uint16_t port = common::meta::port(),
-         boost::filesystem::path const& token_path = common::meta::token_path());
-
-
-  /// Get the list of descriptor stored on the network.
-  // XXX: This should return a list of Descriptor data, and the wrapper would
-  // be able to create py::Object* representing networks.
-  // static
-  // std::vector<plasma::meta::Descriptor>
-  // descriptors(plasma::meta::Client::DescriptorList const& list,
-  //             std::string const& host = common::meta::host(),
-  //             uint16_t port = common::meta::port(),
-  //             std::string const& token = common::meta::token());
-
-  /*--------.
-  | Members |
-  `--------*/
+         boost::filesystem::path const& token_path =
+           common::meta::token_path());
 
   /*-------------------.
   | Descriptor Getters |
@@ -204,7 +191,7 @@ public:
 #define WRAP_DATA_DESCRIPTOR(_type_, _name_)                                   \
   WRAP_DESCRIPTOR(data, _type_,  _name_)
 
-  WRAP_META_DESCRIPTOR(elle::String, identifier);
+  WRAP_META_DESCRIPTOR(infinit::Identifier, identifier);
   WRAP_META_DESCRIPTOR(cryptography::PublicKey, administrator_K);
   WRAP_META_DESCRIPTOR(hole::Model, model);
   WRAP_META_DESCRIPTOR(nucleus::neutron::Group::Identity, everybody_identity);
