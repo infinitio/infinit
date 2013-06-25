@@ -19,6 +19,7 @@
 #include <elle/io/Directory.hh>
 #include <elle/io/Piece.hh>
 #include <elle/io/Unique.hh>
+#include <elle/io/Path.hh>
 #include <elle/utility/Parser.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
@@ -322,7 +323,7 @@ namespace satellite
                             elle::io::Piece{"%NETWORK%", name});
       hole::storage::Directory storage(network, shelter_path.string());
       storage.store(descriptor.meta().root_address(),
-                    descriptor.meta().root_object());
+                    *descriptor.meta().root_object());
 
       for (auto const& block: descriptor.data().blocks())
       {
@@ -433,7 +434,7 @@ namespace satellite
         common::infinit::descriptor_path(administrator, name)));
 
     // validate the descriptor.
-    descriptor.validate(common::meta::certificate().subject_K());
+    descriptor.validate(common::meta::repository_certificate().subject_K());
 
     std::cout << descriptor << std::endl;
 

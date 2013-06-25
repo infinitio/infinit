@@ -153,7 +153,7 @@ namespace satellite
           // grant the read permission to the 'everybody' group.
           Transfer::rpcs->accessgrant(
             object,
-            Transfer::descriptor->meta().everybody_subject(),
+            Transfer::descriptor->meta().everybody_group_subject(),
             nucleus::neutron::permissions::read);
 
           break;

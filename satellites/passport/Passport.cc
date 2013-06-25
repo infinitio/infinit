@@ -65,7 +65,7 @@ namespace satellite
         identity.decrypt(identity_passphrase);
 
       hole::Passport passport(authority.K(),
-                              identity.subject_K(),
+                              identity.user_K(),
                               description,
                               identity_k,
                               authority_k);

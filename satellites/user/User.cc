@@ -195,7 +195,8 @@ namespace satellite
         common::infinit::identity_path(identifier)));
 
     // verify the identity.
-    if (identity.validate(common::meta::certificate().subject_K()) == false)
+    if (identity.validate(
+          common::meta::repository_certificate().subject_K()) == false)
       throw elle::Exception("invalid identity");
 
     cryptography::KeyPair keypair = identity.decrypt_0(pass);

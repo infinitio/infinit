@@ -466,7 +466,7 @@ namespace satellite
           else
             {
 
-              group = descriptor.meta().everybody_identity();
+              group = descriptor.meta().everybody_group_identity();
             }
 
           Group::information(group);
@@ -508,7 +508,7 @@ namespace satellite
             }
           else
             {
-              group = descriptor.meta().everybody_identity();
+              group = descriptor.meta().everybody_group_identity();
             }
 
           // retrieve the type.
@@ -584,7 +584,7 @@ namespace satellite
             }
           else
             {
-              group = descriptor.meta().everybody_identity();
+              group = descriptor.meta().everybody_group_identity();
             }
 
           // retrieve the type.
@@ -657,7 +657,7 @@ namespace satellite
             }
           else
             {
-              group = descriptor.meta().everybody_identity();
+              group = descriptor.meta().everybody_group_identity();
             }
 
           Group::consult(group);
@@ -686,7 +686,7 @@ namespace satellite
             }
           else
             {
-              group = descriptor.meta().everybody_identity();
+              group = descriptor.meta().everybody_group_identity();
             }
 
           // retrieve the type.
@@ -759,7 +759,7 @@ namespace satellite
             }
           else
             {
-              group = descriptor.meta().everybody_identity();
+              group = descriptor.meta().everybody_group_identity();
             }
 
           Group::destroy(group);
