@@ -42,7 +42,6 @@ class AskChallenge(_Page):
     def POST(self):
         if self.user is not None:
             return self.error(error.ALREADY_LOGGED_IN)
-
         user = self.user_by_K(self.data['K'])
 
         challenge, nonce = metalib.generate_challenge(user['K'])
@@ -127,8 +126,8 @@ class Signout(_Page):
         # database.users().remove(self.user)
         # For the moment, we must remove all the networks the user own.
 
-        for network_name in self.get("owned_networks", []):
-            database.networks().remove({"name": network_name, "owner": self['_id']})
+        for network_name in self.user.get("owned_networks", []):
+            database.networks().remove({"name": network_name, "owner": self.user['_id']})
         database.users().remove(self.user)
 
         return self.success({})
