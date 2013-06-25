@@ -50,7 +50,8 @@ namespace etoile
       elle::Status
       Record(nucleus::proton::Address const& addr,
              nucleus::proton::Revision const& rev);
-      elle::Boolean             Derives(const Venue&) const;
+      bool
+      derives(const Venue&) const;
       elle::Status              Clear();
 
     /*-----------.

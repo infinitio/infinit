@@ -94,7 +94,7 @@ namespace etoile
     elle::Boolean       Chemin::Derives(const Chemin&            base) const
     {
       if ((this->route.derives(base.route) == true) &&
-          (this->venue.Derives(base.venue) == true))
+          (this->venue.derives(base.venue) == true))
         return (true);
 
       return (false);

@@ -32,23 +32,18 @@ namespace etoile
       return elle::Status::Ok;
     }
 
+    // FIXME: factor with route::derives
     bool
-    Venue::Derives(const Venue& base) const
+    Venue::derives(const Venue& base) const
     {
-      auto              i = base.elements().begin();
-      auto              j = this->elements().begin();
-      auto              end = base.elements().end();
-
       if (base.elements().size() > this->elements().size())
-        return (false);
+        return false;
 
-      for(; i != end; ++i, ++j)
-        {
-          if (*i != *j)
-            return (false);
-        }
-
-      return (true);
+      auto self = this->elements().begin();
+      for (auto const& chunk: base.elements())
+        if (*(self++) != chunk)
+          return false;
+      return true;
     }
 
     elle::Status
