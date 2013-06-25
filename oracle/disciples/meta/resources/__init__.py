@@ -12,10 +12,11 @@ from meta.resources import transaction
 from meta.resources import notification
 from meta.resources import authority
 from meta.resources import descriptor
+from meta.resources import identity
 
 from meta.page import Page
 
-_modules = [root, user, device, network, transaction, notification, authority, descriptor]
+_modules = [root, user, device, network, transaction, notification, authority, descriptor, identity]
 
 ALL = []
 
