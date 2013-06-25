@@ -132,9 +132,9 @@ namespace common
     /// INFINIT_TOKEN_PATH are set, it returns an empty string.
     std::string
     token();
-    /// The certificate corresponding to the meta server.
+    /// The certificate corresponding to the meta server's repository.
     ::infinit::Certificate const&
-    certificate();
+    repository_certificate();
   }
 
   namespace trophonius

@@ -175,7 +175,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   ELLE_DEBUG("constructing hole");
   std::unique_ptr<hole::Hole> hole(
     infinit::hole_factory(storage, passport,
-                          common::meta::certificate().subject_K()));
+                          common::meta::repository_certificate().subject_K()));
   etoile::depot::hole(hole.get());
   ELLE_DEBUG("hole constructed");
 #ifdef INFINIT_HORIZON

@@ -39,7 +39,8 @@ namespace agent
 
     infinit::Identity identity(elle::serialize::from_file(path));
 
-    if (identity.validate(common::meta::certificate().subject_K()) == false)
+    if (identity.validate(
+          common::meta::repository_certificate().subject_K()) == false)
       throw infinit::Exception(
         elle::sprintf("the identity '%s' is invalid", identity));
 
