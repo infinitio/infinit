@@ -284,7 +284,7 @@ Network::Network(cryptography::KeyPair const& keypair,
   elle::Version version(INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
   {
     // Create the descriptor from both sections and store it.
-    auto meta = descriptor::Meta(common::meta::certificate().subject_K(),
+    auto meta = descriptor::Meta(common::meta::repository_certificate().subject_K(),
                                  keypair.K(),
                                  model,
                                  std::move(directory_address),

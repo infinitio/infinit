@@ -310,7 +310,8 @@ BOOST_PYTHON_MODULE(_crust)
     .add_property("model",
                   py::make_function(&Network::model, by_value()))
     .add_property("everybody_identity",
-                  py::make_function(&Network::everybody_identity, by_value()))
+                  py::make_function(&Network::everybody_group_identity,
+                                    by_value()))
     .add_property("history",
                   py::make_function(&Network::history, by_value()))
     .add_property("extent",

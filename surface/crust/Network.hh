@@ -194,7 +194,8 @@ public:
   WRAP_META_DESCRIPTOR(infinit::Identifier, identifier);
   WRAP_META_DESCRIPTOR(cryptography::PublicKey, administrator_K);
   WRAP_META_DESCRIPTOR(hole::Model, model);
-  WRAP_META_DESCRIPTOR(nucleus::neutron::Group::Identity, everybody_identity);
+  WRAP_META_DESCRIPTOR(nucleus::neutron::Group::Identity,
+                       everybody_group_identity);
   WRAP_META_DESCRIPTOR(elle::Boolean, history);
   WRAP_META_DESCRIPTOR(elle::Natural32, extent);
 
