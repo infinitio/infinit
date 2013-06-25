@@ -470,12 +470,7 @@ class GenerateToken(Page):
 
         if self.authenticate_with_token(self.data['token_generation_key']):
             return self.success({
-                "_id" : self.user["_id"],
                 'token': self.session.session_id,
-                'fullname': self.user['fullname'],
-                'email': self.user['email'],
-                'handle': self.user['handle'],
-                'identity': self.user['identity'],
             })
         return self.error(error.ALREADY_LOGGED_IN)
 
@@ -508,7 +503,7 @@ class Login(Page):
         self.validate()
 
         loggin_info = self.data
-        loggin_info['email']= loggin_info['email'].lower()
+        loggin_info['email'] = loggin_info['email'].lower()
 
         if self.authenticate(loggin_info['email'], loggin_info['password']):
             return self.success({
@@ -520,8 +515,6 @@ class Login(Page):
                 'identity': self.user['identity'],
             })
         return self.error(error.EMAIL_PASSWORD_DONT_MATCH)
-
-
 
 class _DeviceAccess(Page):
     """
