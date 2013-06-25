@@ -460,7 +460,7 @@ namespace plasma
                          std::string const& name) const;
 
       UnpublishDescriptorResponse
-      descriptor_unpublish(std::string const& id) const;
+      descriptor_unpublish(std::string const& network_name) const;
 
       DescriptorResponse
       descriptor(std::string const& id) const;

@@ -822,10 +822,10 @@ namespace plasma
     }
 
     UnpublishDescriptorResponse
-    Client::descriptor_unpublish(std::string const& id) const
+    Client::descriptor_unpublish(std::string const& network_name) const
     {
       json::Dictionary request{std::map<std::string, std::string>{
-          {"id", id},
+          {"network_name", network_name},
       }};
       return this->_post<UnpublishDescriptorResponse>("/descriptor/unpublish", request);
     }
