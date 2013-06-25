@@ -635,7 +635,7 @@ namespace surface
     {
       auto s = this->_states[transaction.id];
 
-      if (s.tries == 3) //XXX variable for that
+      if (s.tries == 1) //XXX variable for that
       {
         this->_meta.update_transaction(transaction.id,
                                        plasma::TransactionStatus::failed);
@@ -653,17 +653,18 @@ namespace surface
       }
 
       // If the transaction is running, cancel it.
-      if (s.state == State::running &&
-          this->status(s.operation) != OperationStatus::running)
+      if (s.state == State::running)
       {
-        ELLE_LOG("transfer %s met an error, restarting", transaction.id);
-        this->cancel_operation(s.operation);
+        if (this->status(s.operation) == OperationStatus::running)
+        {
+          ELLE_LOG("transfer %s had an error, restarting", transaction.id);
+          this->cancel_operation(s.operation);
+        }
         s.state = State::preparing;
         s.operation = 0;
       }
 
-      if (s.state == State::preparing &&
-          this->status(s.operation) == OperationStatus::success)
+      if (s.state == State::preparing)
       {
         s.operation = this->_add<UploadOperation>(
           transaction.id,
