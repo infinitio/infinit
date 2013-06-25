@@ -24,7 +24,7 @@ namespace hole
   `-------------*/
   public:
     Hole(storage::Storage& storage,
-         elle::Passport const& passport,
+         Passport const& passport,
          cryptography::PublicKey const& authority_K);
     virtual ~Hole();
 
@@ -72,7 +72,7 @@ namespace hole
   | Attributes |
   `-----------*/
   private:
-    ELLE_ATTRIBUTE_R(elle::Passport, passport);
+    ELLE_ATTRIBUTE_R(Passport, passport);
     ELLE_ATTRIBUTE_R(cryptography::PublicKey, authority_K);
   };
 }

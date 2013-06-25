@@ -52,19 +52,19 @@ namespace hole
         ELLE_ATTRIBUTE_R(State, state);
         /// Whether the remote host is authenticated.
         ELLE_ATTRIBUTE_R(elle::Boolean, authenticated);
-        std::unique_ptr<elle::Passport> _remote_passport;
+        std::unique_ptr<Passport> _remote_passport;
         std::unique_ptr<reactor::network::Socket> _socket;
         infinit::protocol::Serializer _serializer;
         infinit::protocol::ChanneledStream _channels;
 
       public:
         inline
-        elle::Passport const&
+        Passport const&
         remote_passport() const;
 
         inline
         void
-        remote_passport(elle::Passport const&);
+        remote_passport(Passport const&);
       /*----.
       | RPC |
       `----*/
@@ -78,7 +78,7 @@ namespace hole
       `----*/
       public:
         std::vector<elle::network::Locus>
-        authenticate(elle::Passport const& passport);
+        authenticate(Passport const& passport);
         std::unique_ptr<nucleus::proton::Block>
         pull(nucleus::proton::Address const& address,
              nucleus::proton::Revision const& revision);
@@ -89,7 +89,7 @@ namespace hole
         wipe(nucleus::proton::Address const& address);
       private:
         std::vector<elle::network::Locus>
-        _authenticate(elle::Passport const& passport);
+        _authenticate(Passport const& passport);
         void
         _push(nucleus::proton::Address const& address,
               nucleus::Derivable& derivable);

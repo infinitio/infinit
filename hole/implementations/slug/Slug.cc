@@ -31,7 +31,7 @@ namespace hole
       `-------------*/
 
       Slug::Slug(hole::storage::Storage& storage,
-                 elle::Passport const& passport,
+                 Passport const& passport,
                  cryptography::PublicKey const& authority_K,
                  reactor::network::Protocol protocol,
                  std::vector<elle::network::Locus> const& members,
@@ -1265,7 +1265,7 @@ namespace hole
             if (it != end(_hosts))
             {
               // Check if this is the second host with the same passport
-              elle::Passport const& pass = it->second->remote_passport();
+              Passport const& pass = it->second->remote_passport();
 
               ELLE_DEBUG("passport: %s", pass);
 

@@ -121,7 +121,7 @@ namespace hole
       }
 
       std::vector<elle::network::Locus>
-      Host::authenticate(elle::Passport const& passport)
+      Host::authenticate(Passport const& passport)
       {
         assert(this->state() == State::connected);
         ELLE_TRACE_SCOPE("%s: authenticate with %s", *this, passport);
@@ -132,7 +132,7 @@ namespace hole
       }
 
       std::vector<elle::network::Locus>
-      Host::_authenticate(elle::Passport const& passport)
+      Host::_authenticate(Passport const& passport)
       {
         ELLE_TRACE_SCOPE("%s: peer authenticates with %s", *this, passport);
 

@@ -3,6 +3,7 @@
 
 #include <hole/Hole.hh>
 #include <hole/Exception.hh>
+#include <hole/Passport.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/ImmutableBlock.hh>
@@ -21,7 +22,7 @@ namespace hole
   `-------------*/
 
   Hole::Hole(storage::Storage& storage,
-             elle::Passport const& passport,
+             Passport const& passport,
              cryptography::PublicKey const& authority_K):
     _storage(storage),
     _passport(passport),

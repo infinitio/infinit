@@ -26,7 +26,7 @@ namespace hole
       | Construction |
       `-------------*/
 
-      Client::Client(elle::Passport const& passport,
+      Client::Client(Passport const& passport,
                      std::string const& host,
                      int port)
         : _state(State::connected)

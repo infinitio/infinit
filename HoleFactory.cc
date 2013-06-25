@@ -36,7 +36,7 @@ namespace infinit
   public:
     typedef hole::implementations::slug::Slug Super;
     PortaledSlug(hole::storage::Storage& storage,
-                 elle::Passport const& passport,
+                 hole::Passport const& passport,
                  cryptography::PublicKey const& authority_K,
                  reactor::network::Protocol protocol,
                  std::vector<elle::network::Locus> const& members,
@@ -67,7 +67,7 @@ namespace infinit
 
   std::unique_ptr<hole::Hole>
   hole_factory(hole::storage::Storage& storage,
-               elle::Passport const& passport,
+               hole::Passport const& passport,
                cryptography::PublicKey const& authority_K)
   {
     Descriptor descriptor(
@@ -199,7 +199,7 @@ namespace infinit
               ELLE_DEBUG("public_addresses: %s", public_addresses);
               client.network_connect_device(
                 descriptor.meta().identifier().value(),
-                passport.id(),
+                passport.identifier().value(),
                 addresses,
                 public_addresses);
             }

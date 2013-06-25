@@ -16,7 +16,7 @@ namespace hole
       `-------------*/
 
       Implementation::Implementation(hole::storage::Storage& storage,
-                                     elle::Passport const& passport,
+                                     Passport const& passport,
                                      cryptography::PublicKey const& authority_K,
                                      elle::network::Locus const& server):
         Hole(storage, passport, authority_K),

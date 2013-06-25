@@ -23,7 +23,7 @@ namespace hole
       `-------------*/
       public:
         Implementation(storage::Storage& storage,
-                       elle::Passport const& passport,
+                       Passport const& passport,
                        cryptography::PublicKey const& authority_K);
         ~Implementation();
 

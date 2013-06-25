@@ -83,7 +83,7 @@ namespace hole
       `----*/
 
       bool
-      Customer::challenge(elle::Passport const& passport)
+      Customer::challenge(Passport const& passport)
       {
         ELLE_TRACE_SCOPE("%s: challenge", *this);
         if (!passport.validate(this->_server.hole().authority_K()))

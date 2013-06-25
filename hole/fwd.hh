@@ -8,6 +8,7 @@ namespace hole
   class Hole;
   class Label;
   class Model;
+  class Passport;
 }
 
 #endif

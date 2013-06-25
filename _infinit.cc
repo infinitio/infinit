@@ -168,7 +168,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   };
 
   ELLE_DEBUG("loading passport");
-  elle::Passport passport{
+  hole::Passport passport{
     elle::serialize::from_file(common::infinit::passport_path(Infinit::User))
   };
 

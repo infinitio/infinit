@@ -24,7 +24,7 @@ namespace hole
       `-------------*/
       public:
         Implementation(hole::storage::Storage& storage,
-                       elle::Passport const& passport,
+                       Passport const& passport,
                        cryptography::PublicKey const& authority_K,
                        elle::network::Locus const& server);
         ~Implementation();
