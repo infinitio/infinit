@@ -281,33 +281,26 @@ namespace surface
     }
 
     void
-    TransactionManager::cancel_transaction(Transaction const& transaction)
+    TransactionManager::cancel_transaction(std::string const& transaction_id)
+    {
+      this->_cancel_transaction(this->one(transaction_id));
+    }
+
+    void
+    TransactionManager::_cancel_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
-
       this->_add<LambdaOperation>(
         "cancel_" + transaction.id,
         std::function<void()>{
           [&]
           {
-            std::string author = (
-              transaction.sender_id == this->_self.id ? "sender" : "recipient"
-            );
-
-            this->_reporter.store(
-              "transaction_cancel",
-              {{MKey::status, "attempt"},
-               {MKey::author, author},
-               {MKey::step, elle::sprint(transaction.status)},
-               {MKey::value, transaction.id}});
-
-            ELLE_SCOPE_EXIT(
-              [&]
-              {
-                this->_cancel_all(transaction.id);
-                this->_network_manager.delete_(transaction.network_id, true);
-              }
-            );
+            auto scope_exit = [&, transaction]
+            {
+              this->_cancel_all(transaction.id);
+              this->_network_manager.delete_(transaction.network_id, true);
+            };
+            ELLE_SCOPE_EXIT(scope_exit);
 
             try
             {
@@ -324,6 +317,22 @@ namespace surface
                {MKey::value, transaction.id}});
           }
         }
+      );
+    }
+
+    void
+    TransactionManager::_on_cancel_transaction(Transaction const& transaction)
+    {
+      ELLE_TRACE_METHOD(transaction);
+
+      std::function<void()> scope_exit = [&, transaction]
+      {
+        this->_cancel_all(transaction.id);
+        this->_network_manager.delete_(transaction.network_id, true);
+      };
+      this->_add<LambdaOperation>(
+        "cancel_" + transaction.id,
+        scope_exit
       );
     }
 
@@ -419,7 +428,12 @@ namespace surface
             (*ptr)[tr.id] = tr;
         });
       }
-      if (tr.status != plasma::TransactionStatus::created and
+      if (tr.status == plasma::TransactionStatus::canceled)
+      {
+        this->_on_cancel_transaction(tr);
+        return;
+      }
+      else if (tr.status != plasma::TransactionStatus::created and
           tr.status != plasma::TransactionStatus::started)
       {
         ELLE_DEBUG("Cleaning up finished transaction %s", tr);

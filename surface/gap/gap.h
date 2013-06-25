@@ -391,6 +391,11 @@ extern "C" {
                          char const* transaction_id,
                          gap_TransactionStatus status);
 
+  /// Cancel transaction.
+  gap_Status
+  gap_cancel_transaction(gap_State* state,
+                         char const* transaction_id);
+
   /// Accept a transaction.
   /// This function can only be used by the recipient of the transaction, if
   /// not already accepted.
