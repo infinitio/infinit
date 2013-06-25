@@ -61,18 +61,14 @@ namespace etoile
       /// Create a route by appending a component to an existing route.
       Route(const Route& route, const std::string& component);
 
+    /*-----------.
+    | Operations |
+    `-----------*/
+    public:
       /// Whether this starts with \param base.
       bool
       derives(Route const& base) const;
 
-      //
-      // interfaces
-      //
-
-      ELLE_OPERATOR_ASSIGNMENT(Route); // XXX
-
-      elle::Boolean             operator==(const Route&) const;
-      elle::Boolean             operator<(const Route&) const;
 
     /*---------.
     | Dumpable |

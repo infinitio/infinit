@@ -116,67 +116,20 @@ namespace etoile
       return true;
     }
 
-//
-// ---------- object ----------------------------------------------------------
-//
+    /*----------.
+    | Orderable |
+    `----------*/
 
-    ///
-    /// this operator compares two objects.
-    ///
-    elle::Boolean       Route::operator==(const Route&          element) const
+    bool
+    Route::operator==(Route const& other) const
     {
-      Route::Scoutor    s;
-      Route::Scoutor    t;
-
-      // check the address as this may actually be the same object.
-      if (this == &element)
-        return true;
-
-      // compare the size.
-      if (this->elements().size() != element.elements().size())
-        return false;
-
-      // for every element.
-      for (s = this->elements().begin(), t = element.elements().begin();
-           s != this->elements().end();
-           s++, t++)
-        if (*s != *t)
-          return false;
-
-      return true;
+      return this->elements() == other.elements();
     }
 
-    ///
-    /// this operator compares two objects.
-    ///
-    elle::Boolean       Route::operator<(const Route&           element) const
+    bool
+    Route::operator<(Route const& other) const
     {
-      Route::Scoutor    s;
-      Route::Scoutor    t;
-
-      // check the address as this may actually be the same object.
-      if (this == &element)
-        return false;
-
-      // compare the size.
-      if (this->elements().size() < element.elements().size())
-        return true;
-      else if (this->elements().size() > element.elements().size())
-        return false;
-
-      // for every element.
-      for (s = this->elements().begin(), t = element.elements().begin();
-           s != this->elements().end();
-           s++, t++)
-        {
-          if (*s < *t)
-            return true;
-          else if (*s > *t)
-            return false;
-        }
-
-      // at this point, both routes seem identical.
-      return false;
+      return this->elements() < other.elements();
     }
 
 //
