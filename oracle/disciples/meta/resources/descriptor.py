@@ -84,13 +84,14 @@ class PublishDescriptor(_Page):
 
     @requireLoggedIn
     def POST(self):
+        self.validate()
 
-        descriptor = self.data['descriptor']
+        descriptor_digest = self.data['descriptor_digest']
 
-        if len(descriptor) > self.DESCRIPTOR_MAX_SIZE:
+        if len(descriptor_digest) > self.DESCRIPTOR_MAX_SIZE:
             return self.error(error.UNKNOWN_ERROR, "Descriptor is too big.")
 
-        name = self.data['network_name']
+        name = self.data['name']
         visibility = Visibility.PUBLIC
 
         network = database.networks().find_one(
@@ -98,7 +99,7 @@ class PublishDescriptor(_Page):
         )
 
         network = {
-            'descriptor': descriptor,
+            'descriptor': descriptor_digest,
             'name': name,
             'owner': self.user['_id'],
             'visibility': Visibility.PUBLIC,
@@ -138,7 +139,9 @@ class UnpublishDescriptor(_Page):
 
     @requireLoggedIn
     def POST(self):
-        network_name = network['network_name']
+        self.validate()
+
+        network_name = self.data['network_name']
 
         network = self.network_by_name(network_name = network_name)
 
@@ -159,10 +162,10 @@ class UnpublishDescriptor(_Page):
         assert 'owned_networks' in self.user
 
         # Mongo can't store tuple, which are automaticly converted into list.
-        self.user['owned_networks'].remove(name)
+        self.user['owned_networks'].remove(network_name)
         database.users().save(self.user)
 
-        return self.success({'name': name})
+        return self.success()
 
 class GetDescriptor(_Page):
     """
@@ -189,8 +192,10 @@ class GetDescriptor(_Page):
 
     @requireLoggedIn
     def POST(self):
+        self.validate()
+
         network = self.network_by_name(network_name = self.data['network_name'],
-                                       owner_handle = self.data['owner_handle'])
+                                       owner_lw_handle = self.data['owner_handle'].lower())
 
         return self.success({ key: network[key] for key in ['descriptor', 'name'] })
 
