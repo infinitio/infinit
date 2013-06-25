@@ -8,6 +8,7 @@
 #include "passport.hh"
 #include "network.hh"
 #include "authority.hh"
+#include "challenge.hh"
 
 // XXX When Qt is out, remove this
 #ifdef slots
@@ -113,6 +114,27 @@ static PyMethodDef _metalib_methods[] = {
     ":param authority_password: Password to decrypt the authority file\n"
     ":rtype: Boolean\n"
     ":return: Wether or not the signature is valid\n"
+  },
+  {
+    "generate_challenge",
+    &metalib_generate_challenge,
+    METH_VARARGS,
+    "Create a challenge for a giver user public key"
+    "\n"
+    ":param base64_K: base64 encoded challengee public key\n"
+    ":rtype: String\n"
+    ":return: The nonce of the challenge.\n"
+  },
+  {
+    "verify_challenge",
+    &metalib_verify_challenge,
+    METH_VARARGS,
+    "Verify the response to a challenge."
+    "\n"
+    ":param response: The challengee response\n"
+    ":param nonce: The nonce\n"
+    ":rtype: Boolean\n"
+    ":return: The result\n"
   },
   {NULL, NULL, 0, NULL}        /* Sentinel */
 };
