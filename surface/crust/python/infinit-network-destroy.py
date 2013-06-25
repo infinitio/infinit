@@ -3,8 +3,7 @@
 
 def destroy(descriptor_path):
     from pycrust import Network
-    net = Network(descriptor_path)
-    net.erase()
+    Network.erase(descriptor_path)
 
 def main(args):
     destroy(args.LOCAL_DESCRIPTOR_PATH)

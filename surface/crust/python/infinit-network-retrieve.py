@@ -5,9 +5,7 @@ import infinit_utils
 
 def retrieve(owner_name, network_name, host, port, token_path, descriptor_path):
     from pycrust import Network, ID
-
-    identifier = Network.lookup(owner_name, network_name, host, port, token_path)
-    network = Network(ID(identifier), host, port, token_path)
+    network = Network(owner_name, network_name, host, port, token_path)
 
     if descriptor_path:
         network.store(descriptor_path)

@@ -5,8 +5,7 @@ import infinit_utils
 
 def uninstall(user_name, network_name, home):
     from pycrust import Network
-    net = Network(user_name, network_name, home)
-    net.uninstall(user_name, network_name, home)
+    Network.uninstall(user_name, network_name, home)
 
 def main(args):
     uninstall(args.user_name,
