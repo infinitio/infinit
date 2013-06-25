@@ -2,6 +2,10 @@
 
 #include <infinit/Identity.hh>
 
+#include <common/common.hh>
+
+#include <cryptography/challenge.hh>
+
 #include <elle/log.hh>
 #include <elle/print.hh>
 #include <elle/serialize/JSONArchive.hh>
@@ -9,6 +13,7 @@
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/MapSerializer.hxx>
 #include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
 #include <elle/serialize/Base64Archive.hh>
 
 #include <curly/curly.hh>
@@ -259,27 +264,57 @@ SERIALIZE_RESPONSE(plasma::meta::VerifySignatureResponse, ar, res)
   ar & named("verified", res.verified);
 }
 
+SERIALIZE_RESPONSE(plasma::meta::SigninResponse, ar, res)
+{
+  (void) ar;
+  (void) res;
+}
+
+SERIALIZE_RESPONSE(plasma::meta::SignoutResponse, ar, res)
+{
+  (void) ar;
+  (void) res;
+}
+
+SERIALIZE_RESPONSE(plasma::meta::AskChallengeResponse, ar, res)
+{
+  ar & named("challenge", res.challenge);
+}
+
+SERIALIZE_RESPONSE(plasma::meta::ChallengeLoginResponse, ar, res)
+{
+  ar & named("token_generation_key", res.token_generation_key);
+}
+
+SERIALIZE_RESPONSE(plasma::meta::PublishIdentityResponse, ar, res)
+{
+  (void) ar;
+  (void) res;
+}
+
+SERIALIZE_RESPONSE(plasma::meta::UnpublishIdentityResponse, ar, res)
+{
+  (void) ar;
+  (void) res;
+}
+
 SERIALIZE_RESPONSE(plasma::meta::PublishDescriptorResponse, ar, res)
 {
-  ar & named("_id", res.id);
+  (void) ar;
+  (void) res;
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UnpublishDescriptorResponse, ar, res)
 {
-  ar & named("_id", res.id);
-}
-
-SERIALIZE_RESPONSE(plasma::meta::LookupDescriptorResponse, ar, res)
-{
-  ar & named("_id", res.id);
+  (void) ar;
+  (void) res;
 }
 
 ELLE_SERIALIZE_SIMPLE(plasma::meta::Descriptor, ar, res, version)
 {
   (void) version;
-
-  ar & named("_id", res.id);
   ar & named("descriptor", res.descriptor);
+  ar & named("name", res.descriptor);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::DescriptorResponse, ar, res)
@@ -329,9 +364,7 @@ namespace plasma
         if (!tokenpath.empty() && boost::filesystem::exists(tokenpath))
         {
           ELLE_DEBUG("read generation token from %s", tokenpath);
-          std::ifstream token_file{tokenpath.string()};
-
-          std::getline(token_file, _token_genkey);
+          elle::serialize::from_file(tokenpath.string()) >> _token_genkey;
         }
 
         return _token_genkey;
@@ -705,8 +738,80 @@ namespace plasma
       return this->_post<VerifySignatureResponse>("/authority/verify", request);
     }
 
+    /*---------.
+    | Identity |
+    `---------*/
+
+    SigninResponse
+    Client::signin(std::string const& public_key,
+                   std::string const& handle) const
+    {
+      json::Dictionary request{std::map<std::string, std::string>{
+          {"public_key", public_key},
+          {"handle", handle},
+      }};
+
+      return this->_post<SigninResponse>("/identity/signin", request);
+    }
+
+    SignoutResponse
+    Client::signout() const
+    {
+      return this->_get<SignoutResponse>("/identity/signout");
+    }
+
+    // XXX
+    ChallengeLoginResponse
+    Client::challenge_login(infinit::cryptography::KeyPair const& keypair) const
+    {
+      std::string serialized_K;
+      elle::serialize::to_string<elle::serialize::OutputBase64Archive>(
+        serialized_K) << keypair.K();
+
+      json::Dictionary ask{std::map<std::string, std::string>{
+          {"K", serialized_K},
+      }};
+
+      elle::String challenge =
+        this->_post<AskChallengeResponse>("/identity/ask_challenge",
+                                          ask).challenge;
+      elle::String response =
+        infinit::cryptography::challenge::accept(
+          challenge,
+          keypair,
+          common::meta::K());
+
+      json::Dictionary res{std::map<std::string, std::string>{
+          {"K", serialized_K},
+          {"challenge", challenge},
+          {"response", response},
+      }};
+
+      return this->_post<ChallengeLoginResponse>("/identity/answer_challenge",
+                                                 res);
+    }
+
+    PublishIdentityResponse
+    Client::identity_publish(std::string const& identity) const
+    {
+      json::Dictionary request{std::map<std::string, std::string>{
+          {"identity", identity},
+      }};
+      return this->_post<PublishIdentityResponse>("/identity/publish", request);
+    }
+
+    UnpublishIdentityResponse
+    Client::identity_unpublish() const
+    {
+      return this->_get<UnpublishIdentityResponse>("/identity/unpublish");
+    }
+
+    /*-----------.
+    | Descriptor |
+    `-----------*/
+
     PublishDescriptorResponse
-    Client::descriptor_publish(std::string const& dsc,
+    Client::descriptor_publish(std::string const& digest,
                                std::string const& network_name) const
     {
       json::Dictionary request{std::map<std::string, std::string>{
@@ -723,17 +828,6 @@ namespace plasma
           {"id", id},
       }};
       return this->_post<UnpublishDescriptorResponse>("/descriptor/unpublish", request);
-    }
-
-    LookupDescriptorResponse
-    Client::descriptor_lookup(std::string const& owner,
-                              std::string const& name) const
-    {
-      json::Dictionary request{std::map<std::string, std::string>{
-          {"owner", owner},
-          {"name", name},
-      }};
-      return this->_post<LookupDescriptorResponse>("/descriptor/lookup", request);
     }
 
     DescriptorResponse

@@ -231,24 +231,36 @@ namespace plasma
       bool verified;
     };
 
-    struct PublishDescriptorResponse: Response
+    struct SigninResponse: Response
+    {};
+
+    struct SignoutResponse: Response
+    {};
+
+    struct AskChallengeResponse: Response
     {
-      std::string id;
+      std::string challenge;
     };
+
+    struct ChallengeLoginResponse: Response
+    {
+      std::string token_generation_key;
+    };
+
+    struct PublishIdentityResponse: Response
+    {};
+
+    struct UnpublishIdentityResponse: Response
+    {};
+
+    struct PublishDescriptorResponse: Response
+    {};
 
     struct UnpublishDescriptorResponse: Response
-    {
-      std::string id;
-    };
-
-    struct LookupDescriptorResponse: Response
-    {
-      std::string id;
-    };
+    {};
 
     struct Descriptor
     {
-      std::string id;
       std::string name;
       std::string descriptor;
     };
@@ -419,16 +431,36 @@ namespace plasma
       verify_signature(std::string const& signature,
                        std::string const& hash) const;
 
+      /*---------.
+      | Identity |
+      `---------*/
+
+      SigninResponse
+      signin(std::string const& public_key,
+             std::string const& name) const;
+
+      SignoutResponse
+      signout() const;
+
+      ChallengeLoginResponse
+      challenge_login(infinit::cryptography::KeyPair const& keypair) const;
+
+      PublishIdentityResponse
+      identity_publish(std::string const& identity) const;
+
+      UnpublishIdentityResponse
+      identity_unpublish() const;
+
+      /*-----------.
+      | Descriptor |
+      `-----------*/
+
       PublishDescriptorResponse
-      descriptor_publish(std::string const& dsc,
+      descriptor_publish(std::string const& digest,
                          std::string const& name) const;
 
       UnpublishDescriptorResponse
       descriptor_unpublish(std::string const& id) const;
-
-      LookupDescriptorResponse
-      descriptor_lookup(std::string const& owner,
-                        std::string const& name) const;
 
       DescriptorResponse
       descriptor(std::string const& id) const;
