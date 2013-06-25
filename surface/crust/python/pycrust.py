@@ -117,7 +117,7 @@ class User(_crust._User):
     # Uninstall.
     def uninstall(user_name,
                   home = __env__.home):
-        _crust._User_uninstall(user_name, home)
+        _crust._User._uninstall(user_name, home)
 
     # Sign in
     def signin(self,
