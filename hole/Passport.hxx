@@ -20,8 +20,7 @@ namespace hole
     Passport(std::move(authority_K),
              std::move(owner_K),
              std::move(description),
-             owner.sign(passport::hash(identifier,
-                                       description)),
+             owner.sign(passport::hash(description)),
              authority,
              std::move(identifier))
   {}
@@ -37,7 +36,8 @@ namespace hole
              std::move(owner_K),
              std::move(description),
              std::move(owner_signature),
-             authority.sign(passport::hash(owner_K,
+             authority.sign(passport::hash(identifier,
+                                           owner_K,
                                            owner_signature)),
              std::move(identifier))
   {}
@@ -70,13 +70,13 @@ namespace hole
       case 1:
       {
         if (authority.verify(this->_authority_signature,
-                             passport::hash(this->_owner_K,
+                             passport::hash(this->_identifier,
+                                            this->_owner_K,
                                             this->_owner_signature)) == false)
           return (false);
 
         if (this->_owner_K.verify(this->_owner_signature,
-                                  passport::hash(this->_identifier,
-                                                 this->_description)) == false)
+                                  passport::hash(this->_description)) == false)
           return (false);
 
         return (true);
@@ -124,8 +124,8 @@ ELLE_SERIALIZE_SPLIT_SAVE(hole::Passport,
     case 1:
     {
       archive << value._authority_K;
-      archive << value._owner_K;
       archive << value._identifier;
+      archive << value._owner_K;
       archive << value._description;
       archive << value._owner_signature;
       archive << value._authority_signature;
@@ -183,8 +183,8 @@ ELLE_SERIALIZE_SPLIT_LOAD(hole::Passport,
     case 1:
     {
       archive >> value._authority_K;
-      archive >> value._owner_K;
       archive >> value._identifier;
+      archive >> value._owner_K;
       archive >> value._description;
       archive >> value._owner_signature;
       archive >> value._authority_signature;

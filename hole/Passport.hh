@@ -31,12 +31,12 @@ namespace hole
   /// The owner's signature therefore includes the following attributes:
   ///
   ///   owner_signature:
-  ///     | identifier
   ///     | description
   ///
   /// Then, the authority's signature embeds:
   ///
   ///   authority_signature:
+  ///     | identifier
   ///     | owner_K
   ///     | owner_signature
   class Passport:
@@ -122,11 +122,11 @@ namespace hole
   private:
     /// The public key of the authority which issued the passport.
     ELLE_ATTRIBUTE_R(cryptography::PublicKey, authority_K);
-    /// The public key of the owner of the device which the passport identifies.
-    ELLE_ATTRIBUTE_R(cryptography::PublicKey, owner_K);
     /// A theoretically unique identifier which can be used to distinguish
     /// passports.
     ELLE_ATTRIBUTE_R(Identifier, identifier);
+    /// The public key of the owner of the device which the passport identifies.
+    ELLE_ATTRIBUTE_R(cryptography::PublicKey, owner_K);
     /// A description of the passport's purpose such as the device name or else.
     ///
     /// Note that this description is not confidential since passports are
@@ -150,13 +150,13 @@ namespace hole
     ///
     /// These are the elements which must be signed by the owner.
     cryptography::Digest
-    hash(Identifier const& identifier,
-         elle::String const& description);
+    hash(elle::String const& description);
     /// Return a digest of the elements identifying the owner and its signature.
     ///
     /// These are the elements which must be signed by the authority.
     cryptography::Digest
-    hash(cryptography::PublicKey const& owner_K,
+    hash(Identifier const& identifier,
+         cryptography::PublicKey const& owner_K,
          cryptography::Signature const& owner_signature);
     /// Compatibility with format 0.
     cryptography::Digest
