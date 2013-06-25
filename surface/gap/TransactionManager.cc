@@ -305,7 +305,7 @@ namespace surface
             auto scope_exit = [&, transaction]
             {
               this->_cancel_all(transaction.id);
-              this->_network_manager.delete_(transaction.network_id, true);
+              this->_network_manager.delete_(transaction.network_id, false);
             };
             ELLE_SCOPE_EXIT(scope_exit);
 
@@ -390,7 +390,7 @@ namespace surface
       std::function<void()> scope_exit = [&, transaction]
       {
         this->_cancel_all(transaction.id);
-        this->_network_manager.delete_(transaction.network_id, true);
+        this->_network_manager.delete_(transaction.network_id, false);
       };
       this->_add<LambdaOperation>(
         "cancel_" + transaction.id,
