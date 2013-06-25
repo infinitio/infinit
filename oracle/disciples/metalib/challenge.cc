@@ -6,13 +6,14 @@
 #include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
 
+// XXX
 // THIS IS TEMPORARY. IN THE FUTURE, THE KEYPAIR WILL BE PART OF A CERTIFICATE.
 static
 infinit::cryptography::KeyPair const&
 keypair()
 {
   static infinit::cryptography::KeyPair challenger(
-    elle::serialize::from_file("meta_keypair"));
+    elle::serialize::from_file("/tmp/meta_keypair"));
   return challenger;
 }
 
