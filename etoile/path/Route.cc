@@ -103,6 +103,10 @@ namespace etoile
       this->elements().push_back(slab);
     }
 
+    /*-----------.
+    | Operations |
+    `-----------*/
+
     bool
     Route::derives(Route const& base) const
     {
@@ -132,14 +136,12 @@ namespace etoile
       return this->elements() < other.elements();
     }
 
-//
-// ---------- dumpable --------------------------------------------------------
-//
+    /*---------.
+    | Dumpable |
+    `---------*/
 
-    ///
-    /// this method dumps a route.
-    ///
-    elle::Status        Route::Dump(const elle::Natural32       margin) const
+    elle::Status
+    Route::Dump(const elle::Natural32 margin) const
     {
       elle::String      alignment(margin, ' ');
       Route::Scoutor    scoutor;
@@ -148,21 +150,20 @@ namespace etoile
                 << " #" << std::dec
                 << this->elements().size() << std::endl;
 
-      // for every element.
-      for (scoutor = this->elements().begin();
-           scoutor != this->elements().end();
-           scoutor++)
-        {
-          // dump the slab.
-          std::cout << alignment << elle::io::Dumpable::Shift
-                    << *scoutor << std::endl;
-        }
+      for (auto const& chunk: this->elements())
+        std::cout << alignment << elle::io::Dumpable::Shift
+                  << chunk << std::endl;
 
       return elle::Status::Ok;
     }
 
+    /*----------.
+    | Printable |
+    `----------*/
+
     std::ostream&
-    operator << (std::ostream& stream, Route const& r)
+    operator << (std::ostream& stream,
+                 Route const& r)
     {
       for (auto elt: r.elements())
         stream << elt << "/";

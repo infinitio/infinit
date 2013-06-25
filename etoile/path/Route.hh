@@ -23,7 +23,7 @@ namespace etoile
     {
     public:
       /// The root directory.
-      static Route                      Root;
+      static Route Root;
 
     /*------.
     | Types |
@@ -60,6 +60,8 @@ namespace etoile
       Route(std::string const& path);
       /// Create a route by appending a component to an existing route.
       Route(const Route& route, const std::string& component);
+      // XXX: should not be assignable.
+      ELLE_OPERATOR_ASSIGNMENT(Route);
 
     /*-----------.
     | Operations |
@@ -69,6 +71,14 @@ namespace etoile
       bool
       derives(Route const& base) const;
 
+    /*----------.
+    | Orderable |
+    `----------*/
+    public:
+      bool
+      operator==(const Route&) const;
+      bool
+      operator<(const Route&) const;
 
     /*---------.
     | Dumpable |
