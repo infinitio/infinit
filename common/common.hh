@@ -2,6 +2,7 @@
 # define COMMON_COMMON_HH
 
 # include <infinit/fwd.hh>
+# include <cryptography/fwd.hh>
 
 # include <stdint.h>
 # include <string>
@@ -157,6 +158,10 @@ namespace common
     /// The certificate corresponding to the meta server's repository.
     ::infinit::Certificate const&
     repository_certificate();
+
+    /// The K of the server.
+    ::infinit::cryptography::PublicKey const&
+    K();
   }
 
   namespace trophonius
