@@ -56,7 +56,7 @@ User::User(std::string const& passphrase,
     infinit::cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa, 1024);
 
   this->_identity.reset(
-    new infinit::Identity(common::meta::certificate().subject_K(),
+    new infinit::Identity(common::meta::repository_certificate().subject_K(),
                           key_pair.K(),
                           description,
                           key_pair.k(),
@@ -171,7 +171,7 @@ User::signin(std::string const& name,
   using namespace elle::serialize;
 
   std::string serialized;
-  to_string<OutputBase64Archive>(serialized) << this->_identity->subject_K();
+  to_string<OutputBase64Archive>(serialized) << this->_identity->user_K();
 
   meta(host, port).signin(serialized, name);
 }
