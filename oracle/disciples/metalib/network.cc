@@ -326,7 +326,7 @@ metalib_deserialize_network_descriptor(PyObject* self,
     PyDict_SetItemString(ret,
                          "id",
                          PyString_FromString(
-                           descriptor.meta().identifier().c_str()));
+                           descriptor.meta().identifier().value().c_str()));
     PyDict_SetItemString(ret,
                          "description",
                          PyString_FromString(
