@@ -20,39 +20,38 @@ namespace infinit
     | Construction |
     `-------------*/
 
-    static
     bool
-    handshake(Stream& backend)
+    ChanneledStream::_handshake(Stream& backend)
     {
-      ELLE_TRACE_SCOPE("determining master");
+      ELLE_TRACE_SCOPE("%s: determining master", *this);
       while (true)
+      {
+        char mine = infinit::cryptography::random::generate<char>();
+        char his;
         {
-          char mine = infinit::cryptography::random::generate<char>();
-          char his;
-          {
-            Packet p;
-            p << mine;
-            backend.write(p);
-            ELLE_DEBUG("my roll: %d", (int)mine);
-          }
-          {
-            Packet p(backend.read());
-            p >> his;
-            ELLE_DEBUG("his roll: %d", (int)his);
-          }
-          if (mine != his)
-            {
-              bool master = mine > his;
-              ELLE_TRACE(master ? "master" : "slave");
-              return master;
-            }
+          Packet p;
+          p << mine;
+          backend.write(p);
+          ELLE_DEBUG("%s: my roll: %d", *this, (int)mine);
         }
+        {
+          Packet p(backend.read());
+          p >> his;
+          ELLE_DEBUG("%s: his roll: %d", *this, (int)his);
+        }
+        if (mine != his)
+        {
+          bool master = mine > his;
+          ELLE_TRACE("%s: %s", *this, master ? "master" : "slave");
+          return master;
+        }
+      }
     }
 
     ChanneledStream::ChanneledStream(reactor::Scheduler& scheduler,
                                      Stream& backend)
       : Super(scheduler)
-      , _master(handshake(backend))
+      , _master(this->_handshake(backend))
       , _id_current(0)
       , _reading(false)
       , _backend(backend)

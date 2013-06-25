@@ -33,6 +33,8 @@ namespace infinit
       int  _id_generate();
       bool _master;
       int  _id_current;
+      bool
+      _handshake(Stream& backend);
 
     /*----------.
     | Receiving |
