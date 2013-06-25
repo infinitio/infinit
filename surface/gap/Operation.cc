@@ -30,6 +30,7 @@ namespace surface
       if (this->_done || this->_cancelled)
         return;
       this->_cancelled = true;
+      this->_done = true;
       this->_cancel();
     }
 

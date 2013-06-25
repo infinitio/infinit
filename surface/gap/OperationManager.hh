@@ -129,10 +129,13 @@ namespace surface
         {
         case simple:
           this->_simple.~function();
+          break;
         case with_op:
           this->_with_op.~function();
+          break;
         case with_op_ref:
           this->_with_op_ref.~function();
+          break;
         }
       }
 

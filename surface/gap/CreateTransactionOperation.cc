@@ -125,8 +125,10 @@ namespace surface
     {
       ELLE_DEBUG("cancelling %s", this->name());
       if (this->_transaction_id.size() > 0)
+      {
         this->_transaction_manager.update(this->_transaction_id,
                                           plasma::TransactionStatus::canceled);
+      }
     }
   }
 }

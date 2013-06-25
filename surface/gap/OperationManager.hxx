@@ -54,16 +54,16 @@ namespace surface
        ~OperationAdaptor()
        {
          ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
-         ELLE_TRACE_FUNCTION(this->_name);
 
          try
          {
-           if (this->_done && !this->_succeeded && !this->_rethrown)
+           if (this->_done && !this->_succeeded && !this->_cancelled &&
+               !this->_rethrown)
            {
              ELLE_WARN("operation %s deleted without having been checked: %s",
                        this->_name, this->failure_reason());
            }
-           else if (!this->_done)
+           else if (!this->_done && !this->_cancelled)
            {
              ELLE_WARN("destroying running operation %s", this->_name);
            }
