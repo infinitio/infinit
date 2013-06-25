@@ -20,9 +20,11 @@ namespace surface
       config.setenv("INFINIT_NO_FORK", "1");
       config.setenv("ELLE_LOG_LEVEL",
                     "TRACE,"
-                    "elle.*:LOG,"
-                    "reactor.*:LOG,"
-                    "reactor.network.*:TRACE");
+                    "elle*:LOG,"
+                    "infinit.cryptography*:LOG,"
+                    "infinit.protocol*:DEBUG,"
+                    "reactor*:LOG,"
+                    "reactor.network*:TRACE");
     }
 
     /// @brief Return a valid config process for an infinit binary.
