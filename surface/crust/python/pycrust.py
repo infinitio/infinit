@@ -11,19 +11,12 @@ class Env():
         return int(os.getenv("INFINIT_REMOTE_PORT", '0'))
 
     @property
-    def token(self):
+    def token_path(self):
         return os.getenv("INFINIT_REMOTE_TOKEN_PATH")
 
     @property
     def home(self):
         return os.getenv("INFINIT_HOME")
-
-#
-# Id
-#
-class ID(_crust.ID):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
 #
 # Network
@@ -41,8 +34,9 @@ class Network(_crust._Network):
         self._store(path, force)
 
     # Delete the descriptor to the given path.
-    def erase(self, path = ""):
-        self._erase(path)
+    @staticmethod
+    def erase(path):
+        _crust._Network._erase(path)
 
     # Install.
     def install(self,
@@ -52,11 +46,11 @@ class Network(_crust._Network):
         self._install(network_name, owner_name, home)
 
     # Uninstall.
-    def uninstall(self,
-                  network_name,
+    @staticmethod
+    def uninstall(network_name,
                   owner_name,
                   home = __env__.home):
-        self._uninstall(network_name, owner_name, home)
+        _crust._Network._uninstall(network_name, owner_name, home)
 
     # Mount the descritor to the given folder.
     def mount(self, path):
@@ -71,41 +65,29 @@ class Network(_crust._Network):
                 network_name,
                 host = __env__.host,
                 port = __env__.port,
-                token = __env__.token):
+                token_path = __env__.token_path):
 
-        self._publish(network_name, host, port, token)
+        self._publish(network_name, host, port, token_path)
 
     # Unpublish the descriptor to the network.
     @staticmethod
     def unpublish(identifier,
                   host = __env__.host,
                   port = __env__.port,
-                  token = __env__.token):
-        _crust._Network_unpublish(identifier, host, port, token)
+                  token_path = __env__.token_path):
+        _crust._Network._unpublish(identifier, host, port, token_path)
 
     # List the local descriptors.
     @staticmethod
     def list(user_name, infinit_home):
-        return _crust._Network_list(user_name,
+        return _Network._list(user_name,
                                     infinit_home)
 
     @staticmethod
     def fetch(host = __env__.host,
               port = __env__.port,
-              token = __env__.token):
-        return _crust._Network_fetch(host, port, token)
-
-    @staticmethod
-    def lookup(owner_handle,
-               network_name,
-               host = __env__.host,
-               port = __env__.port,
-               token = __env__.token):
-        return _crust._Network_lookup(owner_handle,
-                                      network_name,
-                                      host,
-                                      port,
-                                      token)
+              token_path = __env__.token_path):
+        return _Network._fetch(host, port, token_path)
 
 #
 # User
@@ -121,9 +103,10 @@ class User(_crust._User):
     def store(self, path, force = False):
         self._store(path, force)
 
-    # Delete the identity to the given path.
-    def erase(self, path = ""):
-        self._erase(path)
+    # Delete the descriptor to the given path.
+    @staticmethod
+    def erase(path):
+        _crust._User._erase(path)
 
     # Install.
     def install(self,
@@ -132,7 +115,34 @@ class User(_crust._User):
         self._install(user_name, home)
 
     # Uninstall.
-    def uninstall(self,
-                  user_name,
+    def uninstall(user_name,
                   home = __env__.home):
-        self._uninstall(user_name, home)
+        _crust._User_uninstall(user_name, home)
+
+    # Sign in
+    def signin(self,
+               user_name,
+               host = __env__.host,
+               port = __env__.port):
+        self._signin(user_name, host, port)
+
+    # Sign in
+    @staticmethod
+    def signout(host = __env__.host,
+                port = __env__.port,
+                token_path = __env__.token_path):
+        _crust._User._signout(host, port, token_path)
+
+    # Login.
+    def login(self,
+              password,
+              host = __env__.host,
+              port = __env__.port):
+        return self._login(password, host, port)
+
+    # Store token.
+    @staticmethod
+    def store_token(token,
+                    user_name,
+                    home):
+       return _crust._User._store_token(token, user_name, home)

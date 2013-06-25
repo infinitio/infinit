@@ -1,7 +1,95 @@
 #include <wrappers/boost/python.hh>
 
+#include <surface/crust/MetaAuthority.hh>
 #include <surface/crust/Network.hh>
 #include <surface/crust/User.hh>
+
+/*---.
+| ID |
+`---*/
+
+static
+boost::python::str
+_ID_print(infinit::Identifier* id)
+{
+  boost::python::str str(id->value());
+  return str;
+}
+
+/*-----.
+| User |
+`-----*/
+
+static
+User*
+_User_new_from_path(std::string const& path)
+{
+  return new User(boost::filesystem::path(path));
+}
+
+static
+User*
+_User_new_from_home(std::string const& user_name,
+                    std::string const& infinit_home_path,
+                    bool)
+{
+  return new User(user_name, boost::filesystem::path{infinit_home_path});
+}
+
+static
+User*
+_User_new(std::string const& password,
+          std::string const& description)
+{
+  return new User(password, description);
+}
+
+static
+void
+_User_store(User* user,
+            std::string const& path,
+            bool force)
+{
+  user->store(boost::filesystem::path(path), force);
+}
+
+static
+void
+_User_erase(std::string const& path)
+{
+  User::erase(boost::filesystem::path(path));
+}
+
+static
+void
+_User_install(User* user,
+              std::string const& name,
+              std::string const& infinit_home_path)
+{
+  user->install(name, boost::filesystem::path(infinit_home_path));
+}
+
+static
+void
+_User_uninstall(std::string const& name,
+                std::string const& infinit_home_path)
+{
+  User::uninstall(name,
+                  boost::filesystem::path(infinit_home_path));
+
+}
+
+static
+std::string
+_User_store_token(std::string const& token,
+                  std::string const& user_name,
+                  std::string const& infinit_home_path)
+{
+  return User::store_token(token,
+                           user_name,
+                           boost::filesystem::path{infinit_home_path});
+}
+
 
 /*--------.
 | Network |
@@ -77,21 +165,6 @@ _Network_fetch(std::string const& host,
 }
 
 static
-std::string
-_Network_lookup(std::string const& owner_handle,
-                std::string const& network_name,
-                std::string const& host,
-                uint16_t port,
-                std::string const& token_path)
-{
-  return Network::lookup(owner_handle,
-                         network_name,
-                         host,
-                         port,
-                         boost::filesystem::path{token_path});
-}
-
-static
 uint16_t
 _Network_mount(Network* net,
                std::string const& path,
@@ -111,12 +184,10 @@ _Network_store(Network* net,
 
 static
 void
-_Network_erase(Network* net,
-               std::string const& path)
+_Network_erase_s(std::string const& path)
 {
-  net->erase(boost::filesystem::path(path));
+  Network::erase(boost::filesystem::path(path));
 }
-
 static
 void
 _Network_install(Network* net,
@@ -131,64 +202,13 @@ _Network_install(Network* net,
 
 static
 void
-_Network_uninstall(Network* net,
-                   std::string const& network_name,
-                   std::string const& administrator_name,
-                   std::string const& infinit_home_path)
+_Network_uninstall_s(std::string const& network_name,
+                     std::string const& administrator_name,
+                     std::string const& infinit_home_path)
 {
-  net->uninstall(network_name,
-                 administrator_name,
-                 boost::filesystem::path(infinit_home_path));
-}
-
-/*-----.
-| User |
-`-----*/
-
-static
-User*
-_User_new_from_path(std::string const& path)
-{
-  return new User(boost::filesystem::path(path));
-}
-
-static
-void
-_User_store(User* user,
-            std::string const& path,
-            bool force)
-{
-  user->store(boost::filesystem::path(path), force);
-}
-
-static
-void
-_User_erase(User* user,
-            std::string const& path)
-{
-  user->erase(boost::filesystem::path(path));
-}
-
-
-static
-void
-_User_install(User* user,
-              std::string const& name,
-              std::string const& infinit_home_path)
-{
-  user->install(name,
-                boost::filesystem::path(infinit_home_path));
-}
-
-static
-void
-_User_uninstall(User* user,
-                std::string const& name,
-                std::string const& infinit_home_path)
-{
-  user->uninstall(name,
-                  boost::filesystem::path(infinit_home_path));
-
+  Network::uninstall(network_name,
+                     administrator_name,
+                     boost::filesystem::path(infinit_home_path));
 }
 
 //
@@ -206,8 +226,54 @@ BOOST_PYTHON_MODULE(_crust)
 
   py::class_<infinit::Identifier>("ID",
                                   py::init<size_t>())
+    // Constructor with string format of the identifier.
     .def(py::init<std::string const&>())
+    // Pretty printer.
+    .def("__str__", py::make_function(&_ID_print))
+
+    .add_property("value", py::make_function(&infinit::Identifier::value, by_value()))
   ;
+
+
+
+  /*-----.
+  | User |
+  `-----*/
+  py::class_<User, boost::noncopyable>("_User", py::no_init)
+    // Constructor with password.
+    .def("__init__", py::make_constructor(&_User_new))
+    // Constructor with user_name and home.
+    .def("__init__", py::make_constructor(&_User_new_from_home))
+    // Constructor with descritpor path.
+    .def("__init__", py::make_constructor(&_User_new_from_path))
+    // Store the identity to the given path.
+    .def("_store", py::make_function(&_User_store))
+    // Create the directory containing the user data.
+    .def("_install", py::make_function(&_User_install))
+    // Create the directory containing the user data.
+    .def("_signin", &User::signin)
+    // Create the directory containing the user data.
+    .def("_login", &User::login)
+
+    .add_property("identifier",
+                  py::make_function(&User::identifier, by_value()))
+    .add_property("description",
+                  py::make_function(&User::description, by_value()))
+
+    // Delete the directory containing the user data including his networks.
+    .def("_uninstall", py::make_function(&_User_uninstall))
+    .staticmethod("_uninstall")
+
+    .def("_erase", py::make_function(&_User_erase))
+    .staticmethod("_erase")
+
+    .def("_signout", &User::signout)
+    .staticmethod("_signout")
+
+    .def("_store_token", py::make_function(&_User_store_token))
+    .staticmethod("_store_token")
+  ;
+
 
   /*--------.
   | Network |
@@ -219,33 +285,17 @@ BOOST_PYTHON_MODULE(_crust)
     .value("OTHER", plasma::meta::Client::DescriptorList::other)
   ;
 
-  py::class_<Network, boost::noncopyable>(
-    "_Network",
-    // Constructor with id, meta host, port and token.
-    py::init<infinit::Identifier const&,
-             std::string const&,
-             int16_t,
-             std::string const&>())
-    // Constructor with id, meta host and port.
-    .def(py::init<infinit::Identifier const&, std::string const&, int16_t>())
-    // Constructor with id and meta host.
-    .def(py::init<infinit::Identifier const&, std::string const&>())
-    // Constructor with id and meta host.
-    .def(py::init<infinit::Identifier const&>())
+  py::class_<Network, boost::noncopyable>("_Network", py::no_init)
     // Constructor with name, user, passphrase, model, policy, opennes.
-    .def("__init__", boost::python::make_constructor(&_Network_new))
+    .def("__init__", py::make_constructor(&_Network_new))
     // Constructor with descritpor path.
-    .def("__init__", boost::python::make_constructor(&_Network_new_from_path))
+    .def("__init__", py::make_constructor(&_Network_new_from_path))
     // Constructor with name, owner and home.
-    .def("__init__", boost::python::make_constructor(&_Network_new_from_home))
+    .def("__init__", py::make_constructor(&_Network_new_from_home))
     // Store the descriptor to the given path.
     .def("_store", py::make_function(&_Network_store))
-    // Delete the given descriptor. (rm descriptor).
-    .def("_erase", py::make_function(&_Network_erase))
     // Create the directory containing the network shelter.
     .def("_install", py::make_function(&_Network_install))
-    // Delete the directory containing the network shelter (rm -r networkpath).
-    .def("_uninstall", py::make_function(&_Network_uninstall))
     // Prepare the mount point and launch infinit if asked.
     .def("_mount", py::make_function(&_Network_mount))
     // Unmount infinit.
@@ -274,40 +324,21 @@ BOOST_PYTHON_MODULE(_crust)
                   py::make_function(&Network::policy, by_value()))
     .add_property("version",
                   py::make_function(&Network::version, by_value()))
+
+    // Delete the given descriptor. (rm descriptor).
+    .def("_erase", py::make_function(&_Network_erase_s))
+    .staticmethod("_erase")
+    // Delete the directory containing the network shelter (rm -r networkpath).
+    .def("_uninstall", py::make_function(&_Network_uninstall_s))
+    .staticmethod("_uninstall")
+    // Unpublish the descriptor from the remote.
+    .def("_unpublish", py::make_function(&Network::unpublish))
+    .staticmethod("_unpublish")
+    // List local descriptor from a given path.
+    .def("_list", py::make_function(&_Network_list))
+    .staticmethod("_list")
+    // List the descriptor stored on the remote.
+    .def("_fetch", py::make_function(&_Network_fetch))
+    .staticmethod("_fetch")
   ;
-
-  // Unpublish the descriptor from the remote.
-  py::def("_Network_unpublish", py::make_function(&Network::unpublish));
-  // List local descriptor from a given path.
-  py::def("_Network_list", py::make_function(&_Network_list));
-  // List the descriptor stored on the remote.
-  py::def("_Network_fetch", py::make_function(&_Network_fetch));
-  // Lookup descriptor id from owner handle and network name.
-  py::def("_Network_lookup", py::make_function(&_Network_lookup));
-
-  /*-----.
-  | User |
-  `-----*/
-  py::class_<User, boost::noncopyable>(
-    "_User",
-    // Constructor with name and password.
-    py::init<std::string const&, std::string const&>())
-    // Constructor with descritpor path.
-    .def("__init__", boost::python::make_constructor(&_User_new_from_path))
-    // Store the identity to the given path.
-    .def("_store", py::make_function(&_User_store))
-    // Delete the given identity. (rm identity).
-    .def("_erase", py::make_function(&_User_erase))
-    // Create the directory containing the user data.
-    .def("_install", py::make_function(&_User_install))
-    // Delete the directory containing the user data including his networks.
-    .def("_uninstall", py::make_function(&_User_uninstall))
-
-    .add_property("identifier",
-                  py::make_function(&User::identifier, by_value()))
-    .add_property("description",
-                  py::make_function(&User::description, by_value()))
-  ;
-
-
 }
