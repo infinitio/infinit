@@ -11,6 +11,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 
+#include <chrono>
 #include <list>
 #include <string>
 
@@ -24,12 +25,14 @@ namespace surface
         TransactionManager& transaction_manager,
         NetworkManager& network_manager,
         plasma::meta::SelfResponse const& me,
+        elle::metrics::Reporter& reporter,
         plasma::Transaction const& transaction,
         std::function<void()> notify):
       Operation{"download_files_for_" + transaction.id},
       _transaction_manager(transaction_manager),
       _network_manager(network_manager),
       _me(me),
+      _reporter(reporter),
       _transaction(transaction),
       _notify{notify}
     {}
@@ -111,6 +114,18 @@ namespace surface
     {
       this->_transaction_manager.update(this->_transaction.id,
                                         plasma::TransactionStatus::finished);
+      auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+      auto timestamp_tr = std::chrono::duration<double>(
+        this->_transaction.timestamp);
+      double duration = timestamp_now.count() - timestamp_tr.count();
+      this->_reporter.store(
+        "transaction_transferred",
+        {{MKey::duration, std::to_string(duration)},
+         {MKey::value, this->_transaction.id},
+         {MKey::network, this->_transaction.network_id},
+         {MKey::count, std::to_string(this->_transaction.files_count)},
+         {MKey::size, std::to_string(this->_transaction.total_size)}});
     }
 
     void

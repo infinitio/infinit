@@ -114,12 +114,12 @@ namespace surface
           }
         }
       }
-      CATCH_FAILURE_TO_METRICS("transaction_create");
+      CATCH_FAILURE_TO_METRICS("transaction_preparing");
 
       this->_reporter.store(
-        "transaction_create",
-        {{MKey::status, "succeed"},
-         {MKey::value, this->_transaction.id},
+        "transaction_prepared",
+        {{MKey::value, this->_transaction.id},
+         {MKey::network, this->_transaction.network_id},
          {MKey::count, std::to_string(this->_transaction.files_count)},
          {MKey::size, std::to_string(this->_transaction.total_size)}});
 
