@@ -323,7 +323,7 @@ namespace satellite
                             elle::io::Piece{"%NETWORK%", name});
       hole::storage::Directory storage(network, shelter_path.string());
       storage.store(descriptor.meta().root_address(),
-                    *descriptor.meta().root_object());
+                    descriptor.meta().root_object());
 
       for (auto const& block: descriptor.data().blocks())
       {

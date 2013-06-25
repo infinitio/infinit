@@ -178,6 +178,14 @@ namespace infinit
       return (*this->_everybody_group_subject);
     }
 
+    nucleus::neutron::Object const&
+    Meta::root_object() const
+    {
+      ELLE_ASSERT_NEQ(this->_root_object, nullptr);
+
+      return (*this->_root_object);
+    }
+
     /*----------.
     | Printable |
     `----------*/

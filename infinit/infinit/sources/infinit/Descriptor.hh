@@ -243,6 +243,9 @@ namespace infinit
       /// Return the subject representing the everybody's group.
       nucleus::neutron::Subject const&
       everybody_group_subject() const;
+      /// Return the root object.
+      nucleus::neutron::Object const&
+      root_object() const;
 
       /*----------.
       | Operators |
@@ -279,7 +282,7 @@ namespace infinit
       /// The address of the root directory.
       ELLE_ATTRIBUTE_R(nucleus::proton::Address, root_address);
       /// The root directory in its initial state i.e probably empty.
-      ELLE_ATTRIBUTE_R(std::unique_ptr<nucleus::neutron::Object>, root_object);
+      ELLE_ATTRIBUTE(std::unique_ptr<nucleus::neutron::Object>, root_object);
       /// The address, within the network, of the everybody group which is
       /// supposed to contain all the users of the network.
       ELLE_ATTRIBUTE_R(nucleus::neutron::Group::Identity,
