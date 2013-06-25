@@ -26,9 +26,5 @@ if __name__ == "__main__":
                         help = "XXX: The path to your infinit home directory")
     parser.add_argument("--user-name",
                         help = "XXX: WILL BE REMOVE, IT'S YOU, IT'S YOUR NAME")
-
-    parser.add_argument("META_USER_NAME",
-                        help = "The name meta will reference you.")
-
     # Parse arguments and handle errors.
     infinit_utils.run(parser, main)
