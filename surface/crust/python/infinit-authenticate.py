@@ -12,6 +12,7 @@ def login(user_name, home, host, port):
     return User.store_token(user.login(password, host, port), user_name, home)
 
 def main(args):
+    from os import getenv
     home = args.infinit_home or getenv("INFINIT_HOME")
     if not home:
         raise Exception("You must provide a home directory, with --infinit-home or env INFINIT_HOME")
@@ -26,5 +27,6 @@ if __name__ == "__main__":
                         help = "XXX: The path to your infinit home directory")
     parser.add_argument("--user-name",
                         help = "XXX: WILL BE REMOVE, IT'S YOU, IT'S YOUR NAME")
+
     # Parse arguments and handle errors.
     infinit_utils.run(parser, main)
