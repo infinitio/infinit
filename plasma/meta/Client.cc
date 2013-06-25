@@ -59,6 +59,10 @@ SERIALIZE_RESPONSE(plasma::meta::DebugResponse, ar, res)
   (void) res;
 }
 
+SERIALIZE_RESPONSE(plasma::meta::GenerateTokenResponse, ar, res)
+{
+  ar & named("token", res.token);
+}
 
 SERIALIZE_RESPONSE(plasma::meta::LoginResponse, ar, res)
 {
@@ -340,8 +344,6 @@ namespace plasma
                    std::string const& token_path):
       _root_url{elle::sprintf("http://%s:%d", server, port)},
       _check_errors{check_errors},
-      _identity{},
-      _email{},
       _token{},
       _user_agent{"MetaClient"}
     {
@@ -373,8 +375,6 @@ namespace plasma
       if (res.success())
         {
           this->_token = res.token;
-          this->_identity = res.identity;
-          this->_email = email;
 
           auto extractor =
             elle::serialize::from_string<
@@ -386,18 +386,17 @@ namespace plasma
       return res;
     }
 
-    LoginResponse
+    GenerateTokenResponse
     Client::generate_token(std::string const& token_genkey)
     {
       json::Dictionary request;
       request["token_generation_key"] = token_genkey;
 
-      auto res = this->_post<LoginResponse>("/user/generate_token", request);
+      auto res = this->_post<GenerateTokenResponse>("/user/generate_token",
+                                                    request);
       if (res.success())
       {
         this->_token = res.token;
-        this->_identity = res.identity;
-        this->_email = res.email;
       }
       return res;
     }
@@ -409,8 +408,6 @@ namespace plasma
       if (res.success())
         {
           this->_token = "";
-          this->_identity = "";
-          this->_email = "";
         }
       return res;
     }
@@ -944,30 +941,6 @@ namespace plasma
     Client::token() const
     {
       return this->_token;
-    }
-
-    std::string const&
-    Client::identity() const
-    {
-      return _identity;
-    }
-
-    void
-    Client::identity(std::string const& str)
-    {
-      _identity = str;
-    }
-
-    std::string const&
-    Client::email() const
-    {
-      return _email;
-    }
-
-    void
-    Client::email(std::string const& str)
-    {
-      _email = str;
     }
 
     cryptography::KeyPair const&

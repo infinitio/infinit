@@ -66,6 +66,11 @@ namespace plasma
     {
     };
 
+    struct GenerateTokenResponse: Response
+    {
+      std::string token;
+    };
+
     struct LoginResponse : Response
     {
       std::string token;
@@ -279,8 +284,6 @@ namespace plasma
     private:
       std::string _root_url;
       bool _check_errors;
-      std::string _identity;
-      std::string _email;
       std::string _token;
       std::string _user_agent;
       ELLE_ATTRIBUTE(std::unique_ptr<cryptography::KeyPair>, keypair);
@@ -319,7 +322,7 @@ namespace plasma
       login(std::string const& email,
             std::string const& password);
 
-      LoginResponse
+      GenerateTokenResponse
       generate_token(std::string const& token_genkey);
 
       LogoutResponse
