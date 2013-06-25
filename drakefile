@@ -922,6 +922,7 @@ def configure(cxx_toolkit = None,
   for name in [
     'access',
     'authority',
+    'certificate',
     'group',
     'network',
     'passport',
