@@ -14,6 +14,9 @@ using namespace infinit;
 
 // XXX si on depend sur Identifier, autant mettre Passport dans infinit avec
 //     Identity, Descriptor etc.
+//     ou alors on pourrait utiliser une string:
+//       Identifier identifier();
+//       Passport passport(..., identifier.value());
 # include <infinit/Identifier.hh>
 
 ELLE_OPERATOR_RELATIONALS();
