@@ -4,7 +4,7 @@
 import infinit_utils
 
 def retrieve(owner_name, network_name, host, port, token_path, descriptor_path):
-    from pycrust import Network, ID
+    from pycrust import Network
     network = Network(owner_name, network_name, host, port, token_path)
 
     if descriptor_path:
