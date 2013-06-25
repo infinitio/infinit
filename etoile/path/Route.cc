@@ -103,26 +103,17 @@ namespace etoile
       this->elements().push_back(slab);
     }
 
-    ///
-    /// this method returns true if the current route derives the
-    /// given base i.e the base's elements appear in the route.
-    ///
-    elle::Boolean       Route::Derives(const Route&             base) const
+    bool
+    Route::derives(Route const& base) const
     {
-      auto              i = base.elements().begin();
-      auto              j = this->elements().begin();
-      auto              end = base.elements().end();
-
       if (base.elements().size() > this->elements().size())
-        return (false);
+        return false;
 
-      for(; i != end; ++i, ++j)
-        {
-          if (*i != *j)
-            return (false);
-        }
-
-      return (true);
+      auto self = this->elements().begin();
+      for (auto const& chunk: base.elements())
+        if (*(self++) != chunk)
+          return false;
+      return true;
     }
 
 //
