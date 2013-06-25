@@ -9,6 +9,8 @@
 
 # include <elle/serialize/construct.hh>
 
+ELLE_OPERATOR_RELATIONALS();
+
 namespace infinit
 {
   /// Represent a theoretically unique identifier which can be used
@@ -50,6 +52,10 @@ namespace infinit
     `----------*/
   public:
     ELLE_OPERATOR_NO_ASSIGNMENT(Identifier);
+    elle::Boolean
+    operator ==(Identifier const& rhs) const;
+    elle::Boolean
+    operator <(Identifier const& rhs) const;
 
     /*-----------.
     | Interfaces |

@@ -46,6 +46,22 @@ namespace infinit
   }
 
   /*----------.
+  | Operators |
+  `----------*/
+
+  elle::Boolean
+  Identifier::operator ==(Identifier const& rhs) const
+  {
+    return (this->_value == rhs._value);
+  }
+
+  elle::Boolean
+  Identifier::operator <(Identifier const& rhs) const
+  {
+    return (this->_value < rhs._value);
+  }
+
+  /*----------.
   | Printable |
   `----------*/
 
