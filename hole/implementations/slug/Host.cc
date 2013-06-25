@@ -268,7 +268,7 @@ namespace hole
       Host::_pull(nucleus::proton::Address const& address,
                   nucleus::proton::Revision const& revision)
       {
-        ELLE_TRACE_SCOPE("%s: peer retreives block at address %s for revision %s",
+        ELLE_TRACE_SCOPE("%s: peer retrieves block at address %s for revision %s",
                          *this, address, revision);
 
         using nucleus::proton::Block;
