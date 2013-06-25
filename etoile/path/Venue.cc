@@ -5,16 +5,6 @@ namespace etoile
 {
   namespace path
   {
-
-//
-// ---------- definitions -----------------------------------------------------
-//
-
-    ///
-    /// this constant is used a null definition.
-    ///
-    const Venue                 Venue::Null;
-
 //
 // ---------- constructors & destructors --------------------------------------
 //

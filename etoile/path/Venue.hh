@@ -24,11 +24,6 @@ namespace etoile
     {
     public:
       //
-      // constants
-      //
-      static const Venue                Null;
-
-      //
       // types
       //
       typedef std::vector<nucleus::proton::Location> Container;

@@ -44,7 +44,7 @@ namespace etoile
         return elle::Status::Ok;
 
       // if the cache did not resolve anything.
-      if (venue == Venue::Null)
+      if (venue.elements().empty())
         {
           Slice         slice;
 
