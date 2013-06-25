@@ -58,6 +58,8 @@ namespace satellite
 
     elle::String passport_path("XXX");
 
+    // ---
+
     infinit::Authority authority(elle::serialize::from_file(authority_path));
     // XXX validate
     cryptography::PrivateKey authority_k =
