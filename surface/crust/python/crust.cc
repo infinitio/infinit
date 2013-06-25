@@ -135,6 +135,23 @@ _Network_new_from_home(std::string const& network_name,
 }
 
 static
+Network*
+_Network_new_from_remote(std::string const& network_name,
+                         std::string const& owner_name,
+                         std::string const& host,
+                         uint16_t port,
+                         std::string const& token_path)
+{
+  // XXX: For the moment, I choosed to remove the Authority, taking meta by
+  // default. This could be improved.
+  return new Network(network_name,
+                     owner_name,
+                     host,
+                     port,
+                     boost::filesystem::path(token_path));
+}
+
+static
 boost::python::object
 _Network_list(std::string const& network_name,
                     std::string const& infinit_home)
@@ -292,6 +309,8 @@ BOOST_PYTHON_MODULE(_crust)
     .def("__init__", py::make_constructor(&_Network_new_from_path))
     // Constructor with name, owner and home.
     .def("__init__", py::make_constructor(&_Network_new_from_home))
+    // Constructor from remote.
+    .def("__init__", py::make_constructor(&_Network_new_from_remote))
     // Store the descriptor to the given path.
     .def("_store", py::make_function(&_Network_store))
     // Create the directory containing the network shelter.

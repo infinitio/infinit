@@ -348,7 +348,7 @@ Network::Network(std::string const& owner_handle,
                  std::string const& network_name,
                  std::string const& host,
                  uint16_t port,
-                 std::string const& token_path)
+                 boost::filesystem::path const& token_path)
 {
   using namespace elle::serialize;
 

@@ -84,7 +84,7 @@ public:
           std::string const& network_name,
           std::string const& host = common::meta::host(),
           uint16_t port = common::meta::port(),
-          std::string const& token_path = common::meta::token_path());
+          boost::filesystem::path const& token_path = common::meta::token_path());
 
   /*------.
   | Local |
