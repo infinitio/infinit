@@ -1541,6 +1541,7 @@ namespace horizon
   }
 
   /// XXX
+  static
   void
   _release(std::string const& path,
            Handle* handle)

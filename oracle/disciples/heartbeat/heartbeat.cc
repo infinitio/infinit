@@ -25,6 +25,7 @@ namespace network = reactor::network;
 namespace heartbeat
 {
 
+static
 void
 start(int port)
 {
@@ -118,4 +119,3 @@ main(int ac, const char *av[])
   while (restart);
 
 }
-

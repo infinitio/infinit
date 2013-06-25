@@ -722,6 +722,7 @@ namespace satellite
     Transfer::to_update(size);
   }
 
+  static
   void
   Transfer(elle::Natural32 argc,
        elle::Character* argv[])

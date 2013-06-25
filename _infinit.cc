@@ -37,6 +37,7 @@
 
 ELLE_LOG_COMPONENT("infinit");
 
+static
 boost::program_options::variables_map
 parse_options(int argc, char** argv)
 {
@@ -75,6 +76,7 @@ parse_options(int argc, char** argv)
   return vm;
 }
 
+static
 void
 Infinit(elle::Natural32 argc, elle::Character* argv[])
 {

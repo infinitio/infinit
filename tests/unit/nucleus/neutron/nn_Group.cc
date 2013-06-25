@@ -15,6 +15,7 @@ using namespace infinit;
 
 #define CHECK(call) if (call != elle::Status::Ok) { assert(false); } else
 
+static
 void test1()
 {
   cryptography::KeyPair owner =
@@ -96,6 +97,7 @@ void test1()
   */
 }
 
+static
 void test2()
 {
   cryptography::KeyPair owner =

@@ -229,7 +229,7 @@ def configure(cxx_toolkit = None,
   # Elle
   elle = drake.include('elle',
                        cxx_toolkit,
-                       cxx_config,
+                       drake.cxx.Config(cxx_config),
                        prefix = prefix,
                        boost = boost,
                        stuntman = stun_core,
@@ -246,6 +246,14 @@ def configure(cxx_toolkit = None,
   asio_udt_lib = drake.copy(elle.reactor.asio_udt.library,'lib', 'elle/reactor/asio-udt/lib')
   udt_lib = drake.copy(elle.reactor.asio_udt.udt.library,'lib', 'elle/reactor/asio-udt/udt/lib')
   cxx_config.add_local_include_path('.')
+
+  # Warnings
+  cxx_config.warnings.parentheses = False
+  cxx_config.warnings.empty_body = False
+  cxx_config.warnings.missing_declarations = \
+    drake.cxx.Config.Warnings.Error
+  cxx_config.warnings.return_type = \
+    drake.cxx.Config.Warnings.Error
 
   curly_libs = [
     curly_lib,

@@ -319,6 +319,7 @@ namespace
 extern "C"
 {
   struct gap_State { /* dummy declaration for boost::python */ };
+  PyObject* PyInit__gap(); // Pacify -Wmissing-declarations.
 }
 
 BOOST_PYTHON_MODULE(_gap)

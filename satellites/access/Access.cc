@@ -65,6 +65,7 @@ namespace satellite
     bool _clean;
   };
 
+  static
   void
   display(nucleus::neutron::Record const& record)
   {
@@ -201,6 +202,7 @@ namespace satellite
     ward.release();
   }
 
+  static
   elle::Status
   Access(elle::Natural32 argc,
          elle::Character* argv[])

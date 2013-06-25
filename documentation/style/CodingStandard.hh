@@ -310,6 +310,20 @@ namespace package
       _inner_action(String const& left,
                     Natural32 const right);
 
+      /*----------.
+      | Operators |
+      `----------*/
+    public:
+      /*
+       * As for other methods the return type of operators is to be put on
+       * its own line along with every argument.
+       *
+       * Note that there is no space preceding the open parenthesis.
+       */
+      Boolean
+      operator ==(CodingStandard const& lhs,
+                  CodingStandard const& rhs) const;
+
       /*-----------.
       | Interfaces |
       `-----------*/

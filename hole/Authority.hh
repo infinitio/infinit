@@ -80,8 +80,8 @@ namespace elle
 
     ELLE_ATTRIBUTE_R(cryptography::PublicKey, K);
   private:
-    cryptography::PrivateKey* _k;
-    cryptography::Code* _code;
+    ELLE_ATTRIBUTE(cryptography::PrivateKey*, k);
+    ELLE_ATTRIBUTE(cryptography::Code*, code);
 
   public:
     cryptography::PrivateKey const&

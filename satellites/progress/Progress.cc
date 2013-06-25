@@ -187,6 +187,7 @@ namespace satellite
     std::cout << _progress << " " << _size << std::endl;
   }
 
+  static
   void
   Progress(elle::Natural32 argc,
            elle::Character* argv[])
