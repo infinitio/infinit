@@ -76,6 +76,16 @@ namespace infinit
   };
 }
 
+namespace std
+{
+  /*---------------------.
+  | Type Specializations |
+  `---------------------*/
+
+  template <>
+  struct hash<::infinit::Identifier>;
+}
+
 # include <infinit/Identifier.hxx>
 
 #endif
