@@ -27,6 +27,10 @@ using namespace infinit;
 
 #include <boost/filesystem.hpp>
 
+// XXX
+#include <elle/serialize/insert.hh>
+#include <elle/serialize/extract.hh>
+
 namespace satellite
 {
 //
@@ -39,9 +43,40 @@ namespace satellite
   void
   Passport::Create(elle::String const& user,
                    elle::String const& passport_name,
-                   elle::String const& authority_path)
+                   elle::String const& _authority_path)
   {
-    boost::filesystem::path path(authority_path);
+    // Example for Antony: infinit-passport-create
+
+    elle::String authority_path("XXX");
+    elle::String authority_passphrase("XXX");
+
+    elle::String identity_path("XXX");
+    elle::String identity_passphrase("XXX");
+
+    // By default we could use gethostname() to retrieve the device's name.
+    elle::String description("XXX");
+
+    elle::String passport_path("XXX");
+
+    infinit::Authority authority(elle::serialize::from_file(authority_path));
+    // XXX validate
+    cryptography::PrivateKey authority_k =
+      authority.decrypt(authority_passphrase);
+
+    infinit::Identity identity(elle::serialize::from_file(identity_path));
+    // XXX validate
+    cryptography::PrivateKey identity_k =
+      identity.decrypt(identity_passphrase);
+
+    hole::Passport passport(authority.K(),
+                            identity.subject_K(),
+                            description,
+                            identity_k,
+                            authority_k);
+
+    elle::serialize::to_file(passport_path) << passport;
+
+    /* XXX
     //
     // test the arguments.
     //
@@ -93,6 +128,7 @@ namespace satellite
       // store the passport.
       passport.store(passport_path);
     }
+    */
   }
 
   ///
@@ -100,12 +136,14 @@ namespace satellite
   ///
   elle::Status          Passport::Destroy(elle::String const& user)
   {
+    /* XXX
     elle::io::Path passport_path(lune::Lune::Passport);
     passport_path.Complete(elle::io::Piece{"%USER%", user});
 
     // does the passport exist.
     if (elle::Passport::exists(passport_path) == true)
       elle::Passport::erase(passport_path);
+    */
 
     return elle::Status::Ok;
   }
@@ -115,6 +153,7 @@ namespace satellite
   ///
   elle::Status          Passport::Information(elle::String const& user)
   {
+    /* XXX
     elle::io::Path passport_path(lune::Lune::Passport);
     passport_path.Complete(elle::io::Piece{"%USER%", user});
 
@@ -142,6 +181,7 @@ namespace satellite
     }
 
     passport.dump();
+    */
 
     return elle::Status::Ok;
   }
