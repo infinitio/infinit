@@ -12,17 +12,17 @@ namespace infinit
   `--------------*/
 
   template <typename T>
-  Identity::Identity(cryptography::PublicKey issuer_K,
-                     cryptography::PublicKey subject_K,
+  Identity::Identity(cryptography::PublicKey authority_K,
+                     cryptography::PublicKey user_K,
                      elle::String description,
-                     cryptography::PrivateKey const& subject_k,
+                     cryptography::PrivateKey const& user_k,
                      elle::String const& passphrase,
                      T const& authority,
                      Identifier identifier):
-    Identity(std::move(issuer_K),
-             std::move(subject_K),
+    Identity(std::move(authority_K),
+             std::move(user_K),
              std::move(description),
-             subject_k,
+             user_k,
              cryptography::SecretKey(Identity::Constants::cipher_algorithm,
                                      passphrase),
              authority,
@@ -31,38 +31,37 @@ namespace infinit
   }
 
   template <typename T>
-  Identity::Identity(cryptography::PublicKey issuer_K,
-                     cryptography::PublicKey subject_K,
+  Identity::Identity(cryptography::PublicKey authority_K,
+                     cryptography::PublicKey user_K,
                      elle::String description,
-                     cryptography::PrivateKey const& subject_k,
+                     cryptography::PrivateKey const& user_k,
                      cryptography::SecretKey const& key,
                      T const& authority,
                      Identifier identifier):
-    Identity(std::move(issuer_K),
-             std::move(subject_K),
+    Identity(std::move(authority_K),
+             std::move(user_K),
              std::move(description),
-             key.encrypt(subject_k),
+             key.encrypt(user_k),
              authority,
              std::move(identifier))
   {
   }
 
   template <typename T>
-  Identity::Identity(cryptography::PublicKey issuer_K,
-                     cryptography::PublicKey subject_K,
+  Identity::Identity(cryptography::PublicKey authority_K,
+                     cryptography::PublicKey user_K,
                      elle::String description,
-                     cryptography::Code subject_k,
+                     cryptography::Code user_k,
                      T const& authority,
                      Identifier identifier):
-    Identity(std::move(issuer_K),
-             std::move(subject_K),
+    Identity(std::move(authority_K),
+             std::move(user_K),
              std::move(description),
-             std::move(subject_k),
+             std::move(user_k),
              authority.sign(identity::hash(identifier,
-                                           issuer_K,
-                                           subject_K,
+                                           user_K,
                                            description,
-                                           subject_k)),
+                                           user_k)),
              std::move(identifier))
   {
   }
@@ -88,21 +87,20 @@ namespace infinit
     {
       case 0:
       {
-        ELLE_ASSERT_NEQ(this->_subject_keypair_0, nullptr);
+        ELLE_ASSERT_NEQ(this->_user_keypair_0, nullptr);
 
-        return (authority.verify(this->_signature,
+        return (authority.verify(this->_authority_signature,
                                  identity::hash_0(this->_identifier.value(),
                                                   this->_description,
-                                                  *this->_subject_keypair_0)));
+                                                  *this->_user_keypair_0)));
       }
       case 1:
       {
-        return (authority.verify(this->_signature,
+        return (authority.verify(this->_authority_signature,
                                  identity::hash(this->_identifier,
-                                                this->_issuer_K,
-                                                this->_subject_K,
+                                                this->_user_K,
                                                 this->_description,
-                                                this->_subject_k)));
+                                                this->_user_k)));
       }
       default:
         throw ::infinit::Exception(
@@ -145,7 +143,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Identity,
       // XXX remove the temporary variables when the serialization mechanism
       //     will be able to handle const rvalues.
 
-      cryptography::Code const* _keypair = value._subject_keypair_0.get();
+      cryptography::Code const* _keypair = value._user_keypair_0.get();
       archive << elle::serialize::pointer(_keypair);
 
       // Generate a key pair because the format 0 used to contain
@@ -166,19 +164,20 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Identity,
       archive << value._identifier.value();
       archive << value._description;
 
-      cryptography::Signature const* _signature(&value._signature);
-      archive << elle::serialize::alive_pointer(_signature);
+      cryptography::Signature const* _authority_signature =
+        &value._authority_signature;
+      archive << elle::serialize::alive_pointer(_authority_signature);
 
       break;
     }
     case 1:
     {
+      archive << value._authority_K;
       archive << value._identifier;
-      archive << value._issuer_K;
-      archive << value._subject_K;
+      archive << value._user_K;
       archive << value._description;
-      archive << value._subject_k;
-      archive << value._signature;
+      archive << value._user_k;
+      archive << value._authority_signature;
 
       break;
     }
@@ -199,13 +198,13 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Identity,
     {
       // Load the public key of the authority which was used at the time
       // for signing identities.
-      elle::String issuer_K("AAAAAAAAAAAAAgAAwvtjO51oHrOMK/K33ajUm4lnYKWW5dUtyK5Pih7gDrtlpEPy7QWAiYjY8Kinlctca2owzcPXrvFE34gxQE/xz11KLzw4ypn4/ABdzjaTgGoCNLJ2OX99IPk6sEjIHwFxR9YcewD6uED2FQgv4OfOROHaL8hmHzRc0/BxjKwtI6fT7Y/e1v2LMig6r30abqcLrZN+v+3rPHN4hb8n1Jz7kRxRbtglFPLDpvI5LUKEGmu3FPKWWZiJsyFuuLUoC9WsheDDZoHYjyrzMD0k7Sp5YVGBBDthZc6SQDp1ktPSTou1Opk+1IxHp/we1/HNhULvGvr6B1KYZJhb/R55H0k6GcaRQmNEKgiLcF6Z9lA5asK49CC/tlZjKRkXkLBKR9zGIODsweY+O9y3AeGX+Pfk9itPals2egsxc/q2mbRaC9svY2TXMwiSO4EPiedqvpuTKj1KTcRbQrp5mSxG1nzaCGyCmUeGzoBJZLNVJHpytAfwf0oYWfo9NOD9dkKkkL5jxfW3+MOwEx4i0tP3xdKmt6wC6CSXedFVm55oOcz2YgARG3hw0vBdLtl3jxfbXAFjCNnpkMrCEMfjzs5ecFVwhmM8OEPqHpyYJYO/9ipwXAKRPugFzMvoyggSA6G5JfVEwuCgOp2v82ldsKl0sC34/mBeKrJvjaZAXm39f6jTw/sAAAMAAAABAAE=");
+      elle::String authority_K("AAAAAAAAAAAAAgAAwvtjO51oHrOMK/K33ajUm4lnYKWW5dUtyK5Pih7gDrtlpEPy7QWAiYjY8Kinlctca2owzcPXrvFE34gxQE/xz11KLzw4ypn4/ABdzjaTgGoCNLJ2OX99IPk6sEjIHwFxR9YcewD6uED2FQgv4OfOROHaL8hmHzRc0/BxjKwtI6fT7Y/e1v2LMig6r30abqcLrZN+v+3rPHN4hb8n1Jz7kRxRbtglFPLDpvI5LUKEGmu3FPKWWZiJsyFuuLUoC9WsheDDZoHYjyrzMD0k7Sp5YVGBBDthZc6SQDp1ktPSTou1Opk+1IxHp/we1/HNhULvGvr6B1KYZJhb/R55H0k6GcaRQmNEKgiLcF6Z9lA5asK49CC/tlZjKRkXkLBKR9zGIODsweY+O9y3AeGX+Pfk9itPals2egsxc/q2mbRaC9svY2TXMwiSO4EPiedqvpuTKj1KTcRbQrp5mSxG1nzaCGyCmUeGzoBJZLNVJHpytAfwf0oYWfo9NOD9dkKkkL5jxfW3+MOwEx4i0tP3xdKmt6wC6CSXedFVm55oOcz2YgARG3hw0vBdLtl3jxfbXAFjCNnpkMrCEMfjzs5ecFVwhmM8OEPqHpyYJYO/9ipwXAKRPugFzMvoyggSA6G5JfVEwuCgOp2v82ldsKl0sC34/mBeKrJvjaZAXm39f6jTw/sAAAMAAAABAAE=");
       elle::serialize::from_string<elle::serialize::InputBase64Archive>(
-        issuer_K) >> value._issuer_K;
+        authority_K) >> value._authority_K;
 
       cryptography::Code* keypair_pointer = nullptr;
       archive >> elle::serialize::pointer(keypair_pointer);
-      value._subject_keypair_0.reset(keypair_pointer);
+      value._user_keypair_0.reset(keypair_pointer);
 
       if (keypair_pointer != nullptr)
       {
@@ -229,25 +228,29 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Identity,
 
       archive >> value._description;
 
-      // Re-serialize the signature and deserialize it in the _signature
-      // attribute so as to transform a pointer into a value.
-      cryptography::Signature* signature_pointer = nullptr;
-      archive >> elle::serialize::alive_pointer(signature_pointer);
-      std::unique_ptr<cryptography::Signature> signature(signature_pointer);
-      elle::String signature_archive;
-      elle::serialize::to_string(signature_archive) << *signature;
-      elle::serialize::from_string(signature_archive) >> value._signature;
+      // Re-serialize the signature and deserialize it in the
+      // _authority_signature attribute so as to transform a pointer into
+      // a value.
+      cryptography::Signature* authority_signature_pointer = nullptr;
+      archive >> elle::serialize::alive_pointer(authority_signature_pointer);
+      std::unique_ptr<cryptography::Signature> authority_signature(
+        authority_signature_pointer);
+      elle::String authority_signature_archive;
+      elle::serialize::to_string(authority_signature_archive) <<
+        *authority_signature;
+      elle::serialize::from_string(authority_signature_archive) >>
+        value._authority_signature;
 
       break;
     }
     case 1:
     {
+      archive >> value._authority_K;
       archive >> value._identifier;
-      archive >> value._issuer_K;
-      archive >> value._subject_K;
+      archive >> value._user_K;
       archive >> value._description;
-      archive >> value._subject_k;
-      archive >> value._signature;
+      archive >> value._user_k;
+      archive >> value._authority_signature;
 
       break;
     }

@@ -47,10 +47,10 @@ namespace infinit
   public:
     /// Construct an identity based on the given elements.
     explicit
-    Identity(cryptography::PublicKey issuer_K,
-             cryptography::PublicKey subject_K,
+    Identity(cryptography::PublicKey authority_K,
+             cryptography::PublicKey user_K,
              elle::String description,
-             cryptography::Code subject_k,
+             cryptography::Code user_k,
              cryptography::Signature signature,
              Identifier identifier = Identifier());
     /// Construct an identity based on the passed elements which will
@@ -60,10 +60,10 @@ namespace infinit
     /// sign(data) method which returns a signature.
     template <typename T>
     explicit
-    Identity(cryptography::PublicKey issuer_K,
-             cryptography::PublicKey subject_K,
+    Identity(cryptography::PublicKey authority_K,
+             cryptography::PublicKey user_K,
              elle::String description,
-             cryptography::PrivateKey const& subject_k,
+             cryptography::PrivateKey const& user_k,
              elle::String const& passphrase,
              T const& authority,
              Identifier identifier = Identifier());
@@ -75,10 +75,10 @@ namespace infinit
     /// the given key pair.
     template <typename T>
     explicit
-    Identity(cryptography::PublicKey issuer_K,
-             cryptography::PublicKey subject_K,
+    Identity(cryptography::PublicKey authority_K,
+             cryptography::PublicKey user_K,
              elle::String description,
-             cryptography::PrivateKey const& subject_k,
+             cryptography::PrivateKey const& user_k,
              cryptography::SecretKey const& key,
              T const& authority,
              Identifier identifier);
@@ -86,10 +86,10 @@ namespace infinit
     /// authority.
     template <typename T>
     explicit
-    Identity(cryptography::PublicKey issuer_K,
-             cryptography::PublicKey subject_K,
+    Identity(cryptography::PublicKey authority_K,
+             cryptography::PublicKey user_K,
              elle::String description,
-             cryptography::Code subject_k,
+             cryptography::Code user_k,
              T const& authority,
              Identifier identifier);
 
@@ -114,7 +114,7 @@ namespace infinit
     decrypt_0(elle::String const& passphrase) const;
     /// For compatibility with format 0.
     cryptography::PublicKey
-    subject_K() const;
+    user_K() const;
 
     /*----------.
     | Operators |
@@ -137,24 +137,24 @@ namespace infinit
     | Attributes |
     `-----------*/
   private:
+    /// The public key of the issuing authority.
+    ELLE_ATTRIBUTE_R(cryptography::PublicKey, authority_K);
     /// An identifier theoretically uniquely identifying the identity.
     ELLE_ATTRIBUTE_R(Identifier, identifier);
-    /// The public key of the issuing authority.
-    ELLE_ATTRIBUTE_R(cryptography::PublicKey, issuer_K);
     /// The public key of the user associated with this identity.
-    ELLE_ATTRIBUTE(cryptography::PublicKey, subject_K);
+    ELLE_ATTRIBUTE(cryptography::PublicKey, user_K);
     /// A human-readable description of the user. This string could include
     /// the real name, email, postal address, country or whatever information
     /// that the user wishes to share with the other users of a network.
     ELLE_ATTRIBUTE_R(elle::String, description);
     /// The user's private key in its encrypted form.
-    ELLE_ATTRIBUTE(cryptography::Code, subject_k);
+    ELLE_ATTRIBUTE(cryptography::Code, user_k);
     /// A signature issued by the authority certifying the identity's
     /// validity.
-    ELLE_ATTRIBUTE(cryptography::Signature, signature);
+    ELLE_ATTRIBUTE(cryptography::Signature, authority_signature);
 
     /// Compatibility with format 0.
-    ELLE_ATTRIBUTE(std::unique_ptr<cryptography::Code>, subject_keypair_0);
+    ELLE_ATTRIBUTE(std::unique_ptr<cryptography::Code>, user_keypair_0);
   };
 
   namespace identity
@@ -168,10 +168,9 @@ namespace infinit
     /// These are the elements which must be signed by the authority.
     cryptography::Digest
     hash(Identifier const& identifier,
-         cryptography::PublicKey const& issuer_K,
-         cryptography::PublicKey const& subject_K,
+         cryptography::PublicKey const& user_K,
          elle::String const& description,
-         cryptography::Code const& subject_k);
+         cryptography::Code const& user_k);
     /// Compatibility with format 0.
     cryptography::Digest
     hash_0(elle::String const& identifier,
