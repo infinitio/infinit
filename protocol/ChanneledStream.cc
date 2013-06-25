@@ -120,37 +120,38 @@ namespace infinit
     }
 
     void
-    ChanneledStream::_read(bool channel, int requested_channel)
+    ChanneledStream::_read(bool new_channel, int requested_channel)
     {
-      ELLE_DEBUG_SCOPE("%s: reading packets.", *this);
+      ELLE_TRACE_SCOPE("%s: reading packets.", *this);
       while (true)
+      {
+        _reading = true;
+        Packet p(_backend.read());
+        int channel_id = _uint32_get(p);
+        // FIXME: The size of the packet isn't
+        // adjusted. This is cosmetic though.
+        auto it = _channels.find(channel_id);
+        if (it != _channels.end())
         {
-          _reading = true;
-          Packet p(_backend.read());
-          int channel_id = _uint32_get(p);
-          // FIXME: The size of the packet isn't
-          // adjusted. This is cosmetic though.
-          ELLE_DEBUG("%s: received %s on channel %s.", *this, p, channel_id);
-          auto it = _channels.find(channel_id);
-          if (it != _channels.end())
-            {
-              it->second->_packets.push_back(std::move(p));
-              if (channel_id == requested_channel)
-                break;
-              else
-                  it->second->_available.signal_one();
-            }
+          ELLE_DEBUG("%s: received %s on existing %s.", *this, p, it->second);
+          it->second->_packets.push_back(std::move(p));
+          if (channel_id == requested_channel)
+            break;
           else
-            {
-              Channel res(*this, channel_id);
-              res._packets.push_back(std::move(p));
-              _channels_new.push_back(std::move(res));
-              if (channel)
-                break;
-              else
-                _channel_available.signal_one();
-            }
+            it->second->_available.signal_one();
         }
+        else
+        {
+          Channel res(*this, channel_id);
+          ELLE_DEBUG("%s: received %s on brand new %s.", *this, p, res);
+          res._packets.push_back(std::move(p));
+          _channels_new.push_back(std::move(res));
+          if (new_channel)
+            break;
+          else
+            _channel_available.signal_one();
+        }
+      }
       // Wake another thread so it can read future packets.
       _reading = false;
       for (auto channel: _channels)
@@ -179,7 +180,7 @@ namespace infinit
       // FIXME: use helper to pop
       Channel res = std::move(_channels_new.front());
       _channels_new.pop_front();
-      ELLE_TRACE("%s: got channel %s", *this, res);
+      ELLE_TRACE("%s: got %s", *this, res);
       return res;
     }
 
