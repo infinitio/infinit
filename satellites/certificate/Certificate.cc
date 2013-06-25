@@ -19,6 +19,13 @@ namespace satellite
 
     // Example for Antony: infinit-certificate-create
     {
+
+      /* Examples of authorities
+        @: the absolute origin authority
+        @infinit.meta.repository: the meta authority for signing identities etc.
+        @infinit.meta.authentication: the meta authority for challenging
+      */
+
       elle::String issuer_path("XXX");
       elle::String issuer_passphrase("XXX");
 
