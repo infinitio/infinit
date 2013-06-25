@@ -1,95 +1,120 @@
-#include <elle/io/File.hh>
-#include <elle/serialize/TupleSerializer.hxx>
-
-#include <cryptography/PrivateKey.hh>
-
 #include <hole/Passport.hh>
 
-namespace elle
-{
+#include <elle/serialize/TupleSerializer.hxx>
 
+#include <cryptography/KeyPair.hh>
+
+namespace hole
+{
   /*-------------.
   | Construction |
   `-------------*/
 
-  Passport::Passport() {} //XXX to remove
+  Passport::Passport()
+  {}
 
-  Passport::Passport(elle::String const& id,
-                     elle::String const& name,
-                     cryptography::PublicKey const& owner_K,
-                     cryptography::PrivateKey const& authority)
-    : _id{id}
-    , _name{name}
-    , _owner_K{owner_K}
-    , _signature{authority.sign(elle::serialize::make_tuple(id, owner_K))}
+  Passport::Passport(cryptography::PublicKey authority_K,
+                     cryptography::PublicKey owner_K,
+                     elle::String description,
+                     cryptography::Signature owner_signature,
+                     cryptography::Signature authority_signature,
+                     Identifier identifier):
+    _authority_K(std::move(authority_K)),
+    _owner_K(std::move(owner_K)),
+    _identifier(std::move(identifier)),
+    _description(std::move(description)),
+    _owner_signature(std::move(owner_signature)),
+    _authority_signature(std::move(authority_signature))
+  {}
+
+  Passport::Passport(Passport const& other):
+    elle::serialize::DynamicFormat<Passport>(other),
+    _authority_K(other._authority_K),
+    _owner_K(other._owner_K),
+    _identifier(other._identifier),
+    _description(other._description),
+    _owner_signature(other._owner_signature),
+    _authority_signature(other._authority_signature)
+  {}
+
+  Passport::Passport(Passport&& other):
+    elle::serialize::DynamicFormat<Passport>(std::move(other)),
+    _authority_K(std::move(other._authority_K)),
+    _owner_K(std::move(other._owner_K)),
+    _identifier(std::move(other._identifier)),
+    _description(std::move(other._description)),
+    _owner_signature(std::move(other._owner_signature)),
+    _authority_signature(std::move(other._authority_signature))
+  {}
+
+  ELLE_SERIALIZE_CONSTRUCT_DEFINE(Passport,
+                                  _authority_K, _owner_K, _identifier,
+                                  _owner_signature, _authority_signature)
+  {}
+
+  /*----------.
+  | Operators |
+  `----------*/
+
+  elle::Boolean
+  Passport::operator ==(Passport const& other) const
   {
-    ELLE_ASSERT(id.size() > 0);
-    ELLE_ASSERT(name.size() > 0);
+    return (this->_identifier == other._identifier);
   }
 
-
-  ///
-  /// this method verifies the validity of the passport.
-  ///
-  bool
-  Passport::validate(cryptography::PublicKey const& authority) const
+  elle::Boolean
+  Passport::operator <(Passport const& other) const
   {
-    return (authority.verify(this->_signature,
-                             elle::serialize::make_tuple(_id, _owner_K)));
+    return (this->_identifier < other._identifier);
   }
 
-//
-// ---------- dumpable --------------------------------------------------------
-//
-
-  ///
-  /// this method dumps a passport.
-  ///
-  void
-  Passport::dump(const elle::Natural32    margin) const
-  {
-    elle::String        alignment(margin, ' ');
-
-    std::cout << alignment << "[Passport]" << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift << "[Id] "
-              << this->_id << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift << "[Name] "
-              << this->_name << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Owner K] " << this->_owner_K << std::endl;
-
-    std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Signature] " << this->_signature << std::endl;
-  }
+  /*----------.
+  | Printable |
+  `----------*/
 
   void
   Passport::print(std::ostream& stream) const
   {
-    stream << "Passport(";
-    std::string u;
-    this->Save(u);
-    if (u.size() < 16)
-      stream << u;
-    else
-    {
-      stream << u.substr(0, 8);
-      stream << "...";
-      stream << u.substr(u.size() - 8, std::string::npos);
-    }
-    stream << ")";
+    stream << "(" << this->_identifier << ", " << this->_description << ")";
   }
 
-  bool
-  Passport::operator ==(Passport const& passport) const
+  namespace passport
   {
-    elle::io::Unique theirs;
-    elle::io::Unique ours;
+    /*----------.
+    | Functions |
+    `----------*/
 
-    this->Save(ours);
-    passport.Save(theirs);
-    return ours == theirs;
+    cryptography::Digest
+    hash(Identifier const& identifier,
+         elle::String const& description)
+    {
+      return (cryptography::oneway::hash(
+                elle::serialize::make_tuple(
+                  identifier,
+                  description),
+                cryptography::KeyPair::oneway_algorithm));
+    }
+
+    cryptography::Digest
+    hash(cryptography::PublicKey const& owner_K,
+         cryptography::Signature const& owner_signature)
+    {
+      return (cryptography::oneway::hash(
+                elle::serialize::make_tuple(
+                  owner_K,
+                  owner_signature),
+                cryptography::KeyPair::oneway_algorithm));
+    }
+
+    cryptography::Digest
+    hash_0(elle::String const& identifier,
+           cryptography::PublicKey const& owner_K)
+    {
+      return (cryptography::oneway::hash(
+                elle::serialize::make_tuple(
+                  identifier,
+                  owner_K),
+                cryptography::KeyPair::oneway_algorithm));
+    }
   }
 }
