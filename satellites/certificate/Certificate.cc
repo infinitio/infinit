@@ -21,9 +21,9 @@ namespace satellite
     {
 
       /* Examples of authorities
-        @: the absolute origin authority
-        @infinit.meta.repository: the meta authority for signing identities etc.
-        @infinit.meta.authentication: the meta authority for challenging
+        infinit: the absolute origin authority
+        infinit.meta.repository: the meta authority for signing identities etc.
+        infinit.meta.authentication: the meta authority for challenging
       */
 
       elle::String issuer_path("XXX");
@@ -38,7 +38,9 @@ namespace satellite
       infinit::certificate::Permissions permissions =
         infinit::certificate::permissions::none; // XXX
 
+      // Two years before current time.
       std::chrono::minutes minutes_in_the_past(2 * 365 * 24 * 60);
+      // Three years after current time.
       std::chrono::minutes minutes_in_the_future(3 * 365 * 24 * 60);
 
       // ---
@@ -66,6 +68,11 @@ namespace satellite
                                        issuer_k);
 
       elle::serialize::to_file(certificate_path) << certificate;
+
+      elle::String archive;
+      elle::serialize::to_string<
+        elle::serialize::OutputBase64Archive>(archive) << certificate;
+      elle::printf("%s\n", archive);
     }
 
     if (lune::Lune::Clean() == elle::Status::Error)
