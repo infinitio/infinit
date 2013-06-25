@@ -43,7 +43,13 @@ namespace infinit
       virtual Packet read();
       Channel accept();
     private:
-      void _read(bool channel, int requested_channel);
+      /// Read and dispatch packets until one that fit our needs is found.
+      ///
+      /// @param new_channel Whether to return when and only when a new channel
+      ///                    is opened.
+      /// @param channel Id of the channel receiving a packet on will cause the
+      ///                function to return. Ignored if new_channel is true.
+      void _read(bool new_channel, int channel);
       Packet _read(Channel* channel);
       bool _reading;
 
