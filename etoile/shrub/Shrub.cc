@@ -171,26 +171,26 @@ namespace etoile
       {
         path::Venue             _venue;
         global_shrub->resolve(route, _venue);
-        this->allocate(_venue.elements.size());
+        this->allocate(_venue.elements().size());
       }
 
       if (this->_riffles == nullptr)
       {
         std::unique_ptr<Riffle> riffle(new Riffle(*this,
                                                   route.elements()[0],
-                                                  venue.elements[0]));
+                                                  venue.elements()[0]));
         if (this->_queue.Insert(riffle->timestamp(),
                                 riffle.get()) == elle::Status::Error)
           throw Exception("unable to add the riffle");
         this->_riffles = riffle.release();
       }
       else
-        this->_riffles->location(venue.elements[0]);
+        this->_riffles->location(venue.elements()[0]);
 
       Riffle* riffle;
       for (riffle = this->_riffles,
-             r = route.elements().begin() + 1, v = venue.elements.begin() + 1;
-           (r != route.elements().end()) && (v != venue.elements.end());
+             r = route.elements().begin() + 1, v = venue.elements().begin() + 1;
+           (r != route.elements().end()) && (v != venue.elements().end());
            r++, v++)
       {
         riffle->update(*r, *v);

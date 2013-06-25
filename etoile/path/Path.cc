@@ -37,10 +37,10 @@ namespace etoile
       // first ask the shrub i.e path cache to resolve as much as it can.
       shrub::global_shrub->resolve(route, venue);
 
-      assert(venue.elements.size() <= route.elements().size());
+      assert(venue.elements().size() <= route.elements().size());
 
       // if complete, return the address i.e without updating the cache.
-      if (route.elements().size() == venue.elements.size())
+      if (route.elements().size() == venue.elements().size())
         return elle::Status::Ok;
 
       // if the cache did not resolve anything.
@@ -70,11 +70,11 @@ namespace etoile
         }
 
       // set the address/revision with the address of the last resolved element.
-      address = venue.elements[venue.elements.size() - 1].address();
-      revision = venue.elements[venue.elements.size() - 1].revision();
+      address = venue.elements()[venue.elements().size() - 1].address();
+      revision = venue.elements()[venue.elements().size() - 1].revision();
 
       // otherwise, resolve manually by retrieving the directory object.
-      for (scoutor = route.elements().begin() + venue.elements.size();
+      for (scoutor = route.elements().begin() + venue.elements().size();
            scoutor != route.elements().end();
            scoutor++)
         {
@@ -95,7 +95,7 @@ namespace etoile
 
           // create the chemin.
           if (chemin.Create(route, venue,
-                            venue.elements.size()) == elle::Status::Error)
+                            venue.elements().size()) == elle::Status::Error)
             throw Exception("unable to create the chemin");
 
           // load the directory.

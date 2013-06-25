@@ -70,12 +70,12 @@ namespace etoile
         nucleus::neutron::Size i;
 
         // go through the venue.
-        for (scoutor = venue.elements.begin(), i = 0;
-             (scoutor != venue.elements.end()) && (i < size);
+        for (scoutor = venue.elements().begin(), i = 0;
+             (scoutor != venue.elements().end()) && (i < size);
              scoutor++, i++)
           {
             // record the venue element.
-            this->venue.elements.push_back(*scoutor);
+            this->venue.elements().push_back(*scoutor);
           }
       }
 
@@ -106,11 +106,11 @@ namespace etoile
     elle::Status        Chemin::Locate(nucleus::proton::Location& location) const
     {
       // check the size of the venue.
-      if (this->venue.elements.size() == 0)
+      if (this->venue.elements().size() == 0)
         throw Exception("the venue seems to be empty");
 
       // set the location's attributes according to the venue last element.
-      location = this->venue.elements[this->venue.elements.size() - 1];
+      location = this->venue.elements()[this->venue.elements().size() - 1];
 
       return elle::Status::Ok;
     }

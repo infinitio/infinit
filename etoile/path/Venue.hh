@@ -22,46 +22,49 @@ namespace etoile
     ///
     class Venue
     {
+    /*------.
+    | Types |
+    `------*/
     public:
-      //
-      // types
-      //
       typedef std::vector<nucleus::proton::Location> Container;
       typedef Container::iterator               Iterator;
       typedef Container::const_iterator         Scoutor;
 
-      //
-      // constructors & destructors
-      //
+    /*-------------.
+    | Construction |
+    `-------------*/
+    public:
       Venue();
       Venue(Venue const&) = default;
+      // XXX: should not be assignable.
+      ELLE_OPERATOR_ASSIGNMENT(Venue);
+    private:
+      ELLE_ATTRIBUTE_RX(Container, elements);
 
-      //
-      // methods
-      //
-      elle::Status              Record(const nucleus::proton::Location&);
-      elle::Status              Record(const nucleus::proton::Address&,
-                                       const nucleus::proton::Revision&);
-
+    /*-----------.
+    | Operations |
+    `-----------*/
+    public:
+      elle::Status
+      Record(nucleus::proton::Location const& location);
+      elle::Status
+      Record(nucleus::proton::Address const& addr,
+             nucleus::proton::Revision const& rev);
       elle::Boolean             Derives(const Venue&) const;
-
       elle::Status              Clear();
 
-      //
-      // interfaces
-      //
-
-      ELLE_OPERATOR_ASSIGNMENT(Venue); // XXX
-
+    /*-----------.
+    | Comparable |
+    `-----------*/
+    public:
       elle::Boolean             operator==(const Venue&) const;
 
-      // dumpable
+    /*---------.
+    | Dumpable |
+    `---------*/
+    public:
       elle::Status              Dump(const elle::Natural32 = 0) const;
 
-      //
-      // attributes
-      //
-      Container                 elements;
     };
 
   }
