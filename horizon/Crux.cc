@@ -478,7 +478,7 @@ namespace horizon
           // grant the read permission to the 'everybody' group.
           if (etoile::wall::Access::Grant(
                 subdirectory,
-                descriptor.meta().everybody_subject(),
+                descriptor.meta().everybody_group_subject(),
                 nucleus::neutron::permissions::read) == elle::Status::Error)
             return (-EPERM);
 
@@ -1121,7 +1121,7 @@ namespace horizon
           // grant the read permission to the 'everybody' group.
           if (etoile::wall::Access::Grant(
                 link,
-                descriptor.meta().everybody_subject(),
+                descriptor.meta().everybody_group_subject(),
                 nucleus::neutron::permissions::read) == elle::Status::Error)
             return (-EPERM);
 
@@ -1291,7 +1291,7 @@ namespace horizon
           // grant the read permission to the 'everybody' group.
           if (etoile::wall::Access::Grant(
                 file,
-                descriptor.meta().everybody_subject(),
+                descriptor.meta().everybody_group_subject(),
                 nucleus::neutron::permissions::read) == elle::Status::Error)
             return (-EPERM);
 
