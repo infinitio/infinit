@@ -69,10 +69,10 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Descriptor,
       archive << value._meta->_administrator_K;
       archive << value._meta->_model;
       archive << value._meta->_root_address;
-      archive << value._meta->_everybody_identity;
+      archive << value._meta->_everybody_group_identity;
       archive << value._meta->_history;
       archive << value._meta->_extent;
-      archive << value._meta->_signature;
+      archive << value._meta->_authority_signature;
 
       archive << value._data->_description;
       archive << value._data->_openness;
@@ -97,7 +97,7 @@ ELLE_SERIALIZE_SPLIT_SAVE(infinit::Descriptor,
       archive << value._data->_format_user;
       archive << value._data->_format_identity;
       archive << value._data->_format_descriptor;
-      archive << value._data->_signature;
+      archive << value._data->_administrator_signature;
 
       break;
     }
@@ -143,17 +143,17 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
 
       // Load the public key of the authority which was used at the time
       // for signing descriptors.
-      elle::String issuer_K("AAAAAAAAAAAAAgAAwvtjO51oHrOMK/K33ajUm4lnYKWW5dUtyK5Pih7gDrtlpEPy7QWAiYjY8Kinlctca2owzcPXrvFE34gxQE/xz11KLzw4ypn4/ABdzjaTgGoCNLJ2OX99IPk6sEjIHwFxR9YcewD6uED2FQgv4OfOROHaL8hmHzRc0/BxjKwtI6fT7Y/e1v2LMig6r30abqcLrZN+v+3rPHN4hb8n1Jz7kRxRbtglFPLDpvI5LUKEGmu3FPKWWZiJsyFuuLUoC9WsheDDZoHYjyrzMD0k7Sp5YVGBBDthZc6SQDp1ktPSTou1Opk+1IxHp/we1/HNhULvGvr6B1KYZJhb/R55H0k6GcaRQmNEKgiLcF6Z9lA5asK49CC/tlZjKRkXkLBKR9zGIODsweY+O9y3AeGX+Pfk9itPals2egsxc/q2mbRaC9svY2TXMwiSO4EPiedqvpuTKj1KTcRbQrp5mSxG1nzaCGyCmUeGzoBJZLNVJHpytAfwf0oYWfo9NOD9dkKkkL5jxfW3+MOwEx4i0tP3xdKmt6wC6CSXedFVm55oOcz2YgARG3hw0vBdLtl3jxfbXAFjCNnpkMrCEMfjzs5ecFVwhmM8OEPqHpyYJYO/9ipwXAKRPugFzMvoyggSA6G5JfVEwuCgOp2v82ldsKl0sC34/mBeKrJvjaZAXm39f6jTw/sAAAMAAAABAAE=");
+      elle::String authority_K("AAAAAAAAAAAAAgAAwvtjO51oHrOMK/K33ajUm4lnYKWW5dUtyK5Pih7gDrtlpEPy7QWAiYjY8Kinlctca2owzcPXrvFE34gxQE/xz11KLzw4ypn4/ABdzjaTgGoCNLJ2OX99IPk6sEjIHwFxR9YcewD6uED2FQgv4OfOROHaL8hmHzRc0/BxjKwtI6fT7Y/e1v2LMig6r30abqcLrZN+v+3rPHN4hb8n1Jz7kRxRbtglFPLDpvI5LUKEGmu3FPKWWZiJsyFuuLUoC9WsheDDZoHYjyrzMD0k7Sp5YVGBBDthZc6SQDp1ktPSTou1Opk+1IxHp/we1/HNhULvGvr6B1KYZJhb/R55H0k6GcaRQmNEKgiLcF6Z9lA5asK49CC/tlZjKRkXkLBKR9zGIODsweY+O9y3AeGX+Pfk9itPals2egsxc/q2mbRaC9svY2TXMwiSO4EPiedqvpuTKj1KTcRbQrp5mSxG1nzaCGyCmUeGzoBJZLNVJHpytAfwf0oYWfo9NOD9dkKkkL5jxfW3+MOwEx4i0tP3xdKmt6wC6CSXedFVm55oOcz2YgARG3hw0vBdLtl3jxfbXAFjCNnpkMrCEMfjzs5ecFVwhmM8OEPqHpyYJYO/9ipwXAKRPugFzMvoyggSA6G5JfVEwuCgOp2v82ldsKl0sC34/mBeKrJvjaZAXm39f6jTw/sAAAMAAAABAAE=");
       elle::serialize::from_string<elle::serialize::InputBase64Archive>(
-        issuer_K) >> value._meta->_issuer_K;
+        authority_K) >> value._meta->_authority_K;
 
       archive >> value._meta->_administrator_K;
       archive >> value._meta->_model;
       archive >> value._meta->_root_address;
-      archive >> value._meta->_everybody_identity;
+      archive >> value._meta->_everybody_group_identity;
       archive >> value._meta->_history;
       archive >> value._meta->_extent;
-      archive >> value._meta->_signature;
+      archive >> value._meta->_authority_signature;
 
       value._data.reset(
         new infinit::descriptor::Data(elle::serialize::no_init));
@@ -182,7 +182,7 @@ ELLE_SERIALIZE_SPLIT_LOAD(infinit::Descriptor,
       archive >> value._data->_format_user;
       archive >> value._data->_format_identity;
       archive >> value._data->_format_descriptor;
-      archive >> value._data->_signature;
+      archive >> value._data->_administrator_signature;
 
       break;
     }
@@ -212,32 +212,31 @@ namespace infinit
     `-------------*/
 
     template <typename T>
-    Meta::Meta(cryptography::PublicKey issuer_K,
+    Meta::Meta(cryptography::PublicKey authority_K,
                cryptography::PublicKey administrator_K,
                hole::Model model,
                nucleus::proton::Address root_address,
                std::unique_ptr<nucleus::neutron::Object> root_object,
-               nucleus::neutron::Group::Identity everybody_identity,
+               nucleus::neutron::Group::Identity everybody_group_identity,
                elle::Boolean history,
                elle::Natural32 extent,
                T const& authority,
                Identifier identifier):
-      Meta(std::move(issuer_K),
+      Meta(std::move(authority_K),
            std::move(administrator_K),
            std::move(model),
            std::move(root_address),
            std::move(root_object),
-           std::move(everybody_identity),
+           std::move(everybody_group_identity),
            std::move(history),
            std::move(extent),
            authority.sign(
              meta::hash(identifier,
-                        issuer_K,
                         administrator_K,
                         model,
                         root_address,
                         root_object,
-                        everybody_identity,
+                        everybody_group_identity,
                         history,
                         extent)),
            std::move(identifier))
@@ -256,14 +255,13 @@ namespace infinit
       ELLE_TRACE_METHOD(authority);
 
       return (authority.verify(
-                this->_signature,
+                this->_authority_signature,
                 meta::hash(this->_identifier,
-                           this->_issuer_K,
                            this->_administrator_K,
                            this->_model,
                            this->_root_address,
                            this->_root_object,
-                           this->_everybody_identity,
+                           this->_everybody_group_identity,
                            this->_history,
                            this->_extent)));
     }
@@ -281,16 +279,16 @@ ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Meta,
 {
   enforce(format == 0, "unknown format");
 
+  archive & value._authority_K;
   archive & value._identifier;
-  archive & value._issuer_K;
   archive & value._administrator_K;
   archive & value._model;
   archive & value._root_address;
   archive & value._root_object;
-  archive & value._everybody_identity;
+  archive & value._everybody_group_identity;
   archive & value._history;
   archive & value._extent;
-  archive & value._signature;
+  archive & value._authority_signature;
 }
 
 //
@@ -398,7 +396,7 @@ namespace infinit
       ELLE_TRACE_METHOD(administrator);
 
       return (administrator.verify(
-                this->_signature,
+                this->_administrator_signature,
                 data::hash(this->_description,
                            this->_openness,
                            this->_policy,
@@ -464,7 +462,7 @@ ELLE_SERIALIZE_SIMPLE(infinit::descriptor::Data,
   archive & value._format_user;
   archive & value._format_identity;
   archive & value._format_descriptor;
-  archive & value._signature;
+  archive & value._administrator_signature;
 }
 
 // XXX to merge into a simple serializer when the serialization

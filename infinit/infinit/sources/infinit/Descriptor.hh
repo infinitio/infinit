@@ -157,6 +157,22 @@ namespace infinit
   {
     /// Represent the descriptor elements which cannot change over time because
     /// sealed by the authority.
+    ///
+    /// Note that the authority's signature can be verified with its public key
+    /// which is embedded in the Meta class.
+    ///
+    /// This signature encapsulates all the attributes except the authority's
+    /// public key:
+    ///
+    ///   authority_signature:
+    ///     | identifier
+    ///     | administrator_K
+    ///     | model
+    ///     | root_address
+    ///     | root_object
+    ///     | everybody_group_identity
+    ///     | history
+    ///     | extent
     class Meta:
       public elle::serialize::DynamicFormat<Meta>,
       public elle::Printable
@@ -181,12 +197,12 @@ namespace infinit
       Meta() {} // XXX[to remove when the new serialization will be fixed]
       /// Construct a meta section based on the given elements.
       explicit
-      Meta(cryptography::PublicKey issuer_K,
+      Meta(cryptography::PublicKey authority_K,
            cryptography::PublicKey administrator_K,
            hole::Model model,
            nucleus::proton::Address root_address,
            std::unique_ptr<nucleus::neutron::Object> root_object,
-           nucleus::neutron::Group::Identity everybody_identity,
+           nucleus::neutron::Group::Identity everybody_group_identity,
            elle::Boolean history,
            elle::Natural32 extent,
            cryptography::Signature signature,
@@ -198,12 +214,12 @@ namespace infinit
       /// sign(data) method which returns a signature.
       template <typename T>
       explicit
-      Meta(cryptography::PublicKey issuer_K,
+      Meta(cryptography::PublicKey authority_K,
            cryptography::PublicKey administrator_K,
            hole::Model model,
            nucleus::proton::Address root_address,
            std::unique_ptr<nucleus::neutron::Object> root_object,
-           nucleus::neutron::Group::Identity everybody_identity,
+           nucleus::neutron::Group::Identity everybody_group_identity,
            elle::Boolean history,
            elle::Natural32 extent,
            T const& authority,
@@ -226,11 +242,7 @@ namespace infinit
       validate(T const& authority) const;
       /// Return the subject representing the everybody's group.
       nucleus::neutron::Subject const&
-      everybody_subject() const;
-      /// Return the original (i.e at the network creation) content of the
-      /// root directory object.
-      nucleus::neutron::Object const&
-      root_object() const;
+      everybody_group_subject() const;
 
       /*----------.
       | Operators |
@@ -254,11 +266,11 @@ namespace infinit
       | Attributes |
       `-----------*/
     private:
+      /// The public key of the authority which has issued this descriptor.
+      ELLE_ATTRIBUTE_R(cryptography::PublicKey, authority_K);
       /// A unique identifier across all the networks created throughout
       /// the world.
       ELLE_ATTRIBUTE_R(Identifier, identifier);
-      /// The public key of the authority which has issued this descriptor.
-      ELLE_ATTRIBUTE_R(cryptography::PublicKey, issuer_K);
       /// The public key of the network owner. Only the private key associated
       /// with it can re-sign the data section.
       ELLE_ATTRIBUTE_R(cryptography::PublicKey, administrator_K);
@@ -267,22 +279,23 @@ namespace infinit
       /// The address of the root directory.
       ELLE_ATTRIBUTE_R(nucleus::proton::Address, root_address);
       /// The root directory in its initial state i.e probably empty.
-      ELLE_ATTRIBUTE(std::unique_ptr<nucleus::neutron::Object>, root_object);
+      ELLE_ATTRIBUTE_R(std::unique_ptr<nucleus::neutron::Object>, root_object);
       /// The address, within the network, of the everybody group which is
       /// supposed to contain all the users of the network.
-      ELLE_ATTRIBUTE_R(nucleus::neutron::Group::Identity, everybody_identity);
+      ELLE_ATTRIBUTE_R(nucleus::neutron::Group::Identity,
+                       everybody_group_identity);
       /// This attribute is created should someone request it so as to ease
       /// the process of access control since the subject is the entity used
       /// to identify both users and groups.
       ELLE_ATTRIBUTE_P(std::unique_ptr<nucleus::neutron::Subject>,
-                       everybody_subject,
+                       everybody_group_subject,
                        mutable);
       /// Indicate whether or not this network supports history i.e versioning.
       ELLE_ATTRIBUTE_R(elle::Boolean, history);
       /// The maximum size of the blocks stored on the storage layer.
       ELLE_ATTRIBUTE_R(elle::Natural32, extent);
       /// A signature issued by the authority guaranteeing its validity.
-      ELLE_ATTRIBUTE(cryptography::Signature, signature);
+      ELLE_ATTRIBUTE(cryptography::Signature, authority_signature);
     };
 
     namespace meta
@@ -297,12 +310,11 @@ namespace infinit
       /// These are the elements which must be signed by the authority.
       cryptography::Digest
       hash(Identifier const& identifier,
-           cryptography::PublicKey const& issuer_K,
            cryptography::PublicKey const& administrator_K,
            hole::Model const& model,
            nucleus::proton::Address const& root_address,
            std::unique_ptr<nucleus::neutron::Object> const& root_object,
-           nucleus::neutron::Group::Identity const& everybody_identity,
+           nucleus::neutron::Group::Identity const& everybody_group_identity,
            elle::Boolean history,
            elle::Natural32 extent);
     }
@@ -461,7 +473,7 @@ namespace infinit
            elle::serialize::Format format_user,
            elle::serialize::Format format_identity,
            elle::serialize::Format format_descriptor,
-           cryptography::Signature signature);
+           cryptography::Signature administrator_signature);
       /// Construct a data section based on the passed elements which will
       /// be signed with the given private key.
       ///
@@ -576,7 +588,7 @@ namespace infinit
       ELLE_ATTRIBUTE_R(elle::serialize::Format, format_user);
       ELLE_ATTRIBUTE_R(elle::serialize::Format, format_identity);
       ELLE_ATTRIBUTE_R(elle::serialize::Format, format_descriptor);
-      ELLE_ATTRIBUTE_R(cryptography::Signature, signature);
+      ELLE_ATTRIBUTE_R(cryptography::Signature, administrator_signature);
     };
 
     namespace data

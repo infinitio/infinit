@@ -110,54 +110,54 @@ namespace infinit
     | Construction |
     `-------------*/
 
-    Meta::Meta(cryptography::PublicKey issuer_K,
+    Meta::Meta(cryptography::PublicKey authority_K,
                cryptography::PublicKey administrator_K,
                hole::Model model,
                nucleus::proton::Address root_address,
                std::unique_ptr<nucleus::neutron::Object> root_object,
-               nucleus::neutron::Group::Identity everybody_identity,
+               nucleus::neutron::Group::Identity everybody_group_identity,
                elle::Boolean history,
                elle::Natural32 extent,
-               cryptography::Signature signature,
+               cryptography::Signature authority_signature,
                Identifier identifier):
+      _authority_K(std::move(authority_K)),
       _identifier(std::move(identifier)),
-      _issuer_K(std::move(issuer_K)),
       _administrator_K(std::move(administrator_K)),
       _model(std::move(model)),
       _root_address(std::move(root_address)),
       _root_object(std::move(root_object)),
-      _everybody_identity(std::move(everybody_identity)),
+      _everybody_group_identity(std::move(everybody_group_identity)),
       _history(std::move(history)),
       _extent(std::move(extent)),
-      _signature(std::move(signature))
+      _authority_signature(std::move(authority_signature))
     {
       ELLE_ASSERT_NEQ(this->_root_object, nullptr);
     }
 
     Meta::Meta(Meta&& other):
       elle::serialize::DynamicFormat<Meta>(std::move(other)),
+      _authority_K(std::move(other._authority_K)),
       _identifier(std::move(other._identifier)),
-      _issuer_K(std::move(other._issuer_K)),
       _administrator_K(std::move(other._administrator_K)),
       _model(std::move(other._model)),
       _root_address(std::move(other._root_address)),
       _root_object(std::move(other._root_object)),
-      _everybody_identity(std::move(other._everybody_identity)),
+      _everybody_group_identity(std::move(other._everybody_group_identity)),
       _history(std::move(other._history)),
       _extent(std::move(other._extent)),
-      _signature(std::move(other._signature))
+      _authority_signature(std::move(other._authority_signature))
     {
       ELLE_ASSERT_NEQ(this->_root_object, nullptr);
     }
 
     ELLE_SERIALIZE_CONSTRUCT_DEFINE(Meta,
+                                    _authority_K,
                                     _identifier,
-                                    _issuer_K,
                                     _administrator_K,
                                     _model,
                                     _root_address,
-                                    _everybody_identity,
-                                    _signature)
+                                    _everybody_group_identity,
+                                    _authority_signature)
     {
     }
 
@@ -166,24 +166,16 @@ namespace infinit
     `--------*/
 
     nucleus::neutron::Subject const&
-    Meta::everybody_subject() const
+    Meta::everybody_group_subject() const
     {
       // Create the subject corresponding to the everybody group, if necessary.
       // Note that this subject will never be serialized but is used to ease
       // the process of access control since most methods manipulate subjects.
-      if (this->_everybody_subject == nullptr)
-        this->_everybody_subject.reset(
-          new nucleus::neutron::Subject(this->_everybody_identity));
+      if (this->_everybody_group_subject == nullptr)
+        this->_everybody_group_subject.reset(
+          new nucleus::neutron::Subject(this->_everybody_group_identity));
 
-      return (*this->_everybody_subject);
-    }
-
-    nucleus::neutron::Object const&
-    Meta::root_object() const
-    {
-      ELLE_ASSERT(this->_root_object != nullptr);
-
-      return (*this->_root_object);
+      return (*this->_everybody_group_subject);
     }
 
     /*----------.
@@ -208,23 +200,21 @@ namespace infinit
 
       cryptography::Digest
       hash(Identifier const& identifier,
-           cryptography::PublicKey const& issuer_K,
            cryptography::PublicKey const& administrator_K,
            hole::Model const& model,
            nucleus::proton::Address const& root_address,
            std::unique_ptr<nucleus::neutron::Object> const& root_object,
-           nucleus::neutron::Group::Identity const& everybody_identity,
+           nucleus::neutron::Group::Identity const& everybody_group_identity,
            elle::Boolean history,
            elle::Natural32 extent)
       {
         return (cryptography::oneway::hash(
                   elle::serialize::make_tuple(identifier,
-                                              issuer_K,
                                               administrator_K,
                                               model,
                                               root_address,
                                               root_object,
-                                              everybody_identity,
+                                              everybody_group_identity,
                                               history,
                                               extent),
                   cryptography::KeyPair::oneway_algorithm));
@@ -270,7 +260,7 @@ namespace infinit
                elle::serialize::Format format_user,
                elle::serialize::Format format_identity,
                elle::serialize::Format format_descriptor,
-               cryptography::Signature signature):
+               cryptography::Signature administrator_signature):
       _description(std::move(description)),
       _openness(std::move(openness)),
       _policy(std::move(policy)),
@@ -296,7 +286,7 @@ namespace infinit
       _format_user(std::move(format_user)),
       _format_identity(std::move(format_identity)),
       _format_descriptor(std::move(format_descriptor)),
-      _signature(std::move(signature))
+      _administrator_signature(std::move(administrator_signature))
     {
     }
 
@@ -327,7 +317,7 @@ namespace infinit
       _format_user(std::move(other._format_user)),
       _format_identity(std::move(other._format_identity)),
       _format_descriptor(std::move(other._format_descriptor)),
-      _signature(std::move(other._signature))
+      _administrator_signature(std::move(other._administrator_signature))
     {
     }
 
@@ -352,7 +342,7 @@ namespace infinit
                                     _format_user,
                                     _format_identity,
                                     _format_descriptor,
-                                    _signature)
+                                    _administrator_signature)
     {
     }
 
