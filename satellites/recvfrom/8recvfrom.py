@@ -175,10 +175,10 @@ if __name__ == "__main__":
                 tid = state.current_transaction_id
                 print("Interupted.")
                 print("Cancel the outgoing transaction ({})".format(tid))
-                state.update_transaction(tid, state.TransactionStatus.canceled)
+                state.cancel_transaction(tid)
         except Exception as e:
             if getattr(state, "current_transaction_id", None):
                 tid = state.current_transaction_id
                 print("Interupted. Cancel the outgoing transaction ({})".format(tid))
-                state.update_transaction(tid, state.TransactionStatus.canceled)
+                state.cancel_transaction(tid)
             raise e
