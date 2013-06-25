@@ -32,27 +32,42 @@ namespace infinit
 
     /// The list of entity which an authority may be allowed to operate
     /// e.g sign/certify.
-    typedef elle::Natural16 Operations;
+    typedef elle::Natural16 Permissions;
 
     /*-------.
     | Values |
     `-------*/
 
-    namespace operations
+    namespace permissions
     {
-      extern Operations const none;
-      extern Operations const identity;
-      extern Operations const descriptor;
-      extern Operations const passport;
-      extern Operations const certificate;
+      extern Permissions const none;
+      extern Permissions const identity;
+      extern Permissions const descriptor;
+      extern Permissions const passport;
+      extern Permissions const certificate;
+      extern Permissions const all;
     }
   }
 
   /// A certificate is issued by an authority and certifies that another
   /// authority, of a sub-level, is allowed to sign objects.
   ///
+  /// Thus both issuer and subject reference authorities in this context.
+  ///
   /// Note that the nature of the objects the certified authority is allowed
-  /// to sign may depend on its level i.e. root or intermediate.
+  /// to sign depends on the permissions it has been granted by the authority
+  /// issuing the certificate.
+  ///
+  /// The signature issued by the granting authority embeds every field but
+  /// its public key which will be used to verify the aforementioned signature:
+  ///
+  ///   issuer_signature:
+  ///     | identifier
+  ///     | subject_K
+  ///     | description
+  ///     | permissions
+  ///     | valid_from
+  ///     | valid_until
   class Certificate:
     public elle::Printable
   {
@@ -75,24 +90,24 @@ namespace infinit
     Certificate(cryptography::PublicKey issuer_K,
                 cryptography::PublicKey subject_K,
                 elle::String description,
-                certificate::Operations operations,
+                certificate::Permissions permissions,
                 std::chrono::system_clock::time_point valid_from,
                 std::chrono::system_clock::time_point valid_until,
-                cryptography::Signature signature,
+                cryptography::Signature issuer_signature,
                 Identifier identifier = Identifier());
     /// A helper for generating the signature automatically.
     ///
-    /// Note that the _authority_ must provide a sign(data) method
+    /// Note that the _issuer_ must provide a sign(data) method
     /// which returns a signature.
     template <typename T>
     explicit
     Certificate(cryptography::PublicKey issuer_K,
                 cryptography::PublicKey subject_K,
                 elle::String description,
-                certificate::Operations operations,
+                certificate::Permissions permissions,
                 std::chrono::system_clock::time_point valid_from,
                 std::chrono::system_clock::time_point valid_until,
-                T const& authority,
+                T const& issuer,
                 Identifier identifier = Identifier());
     Certificate(Certificate const& other);
     Certificate(Certificate&& other);
@@ -130,23 +145,22 @@ namespace infinit
     | Attributes |
     `-----------*/
   public:
-    /// An identifier theoretically uniquely identifying the certificate.
-    ELLE_ATTRIBUTE_R(Identifier, identifier);
     /// The public key of the authority which issued the certificate.
     ELLE_ATTRIBUTE_R(cryptography::PublicKey, issuer_K);
+    /// An identifier theoretically uniquely identifying the certificate.
+    ELLE_ATTRIBUTE_R(Identifier, identifier);
     /// The public key of the certified authority i.e subject authority.
     ELLE_ATTRIBUTE_R(cryptography::PublicKey, subject_K);
     /// A human-readable description of the certificate's purpose.
     ELLE_ATTRIBUTE_R(elle::String, description);
-    /// The set of operations the certified authority is allowed to
-    /// perform.
-    ELLE_ATTRIBUTE_R(certificate::Operations, operations);
+    /// The set of permissions granted to the certified authority.
+    ELLE_ATTRIBUTE_R(certificate::Permissions, permissions);
     /// The date from which the certificate is valid.
     ELLE_ATTRIBUTE_R(std::chrono::system_clock::time_point, valid_from);
     /// The date after which the certificate can be considered invalid.
     ELLE_ATTRIBUTE_R(std::chrono::system_clock::time_point, valid_until);
     /// The signature issued by the issuer authority.
-    ELLE_ATTRIBUTE(cryptography::Signature, signature);
+    ELLE_ATTRIBUTE(cryptography::Signature, issuer_signature);
   };
 
   /*----------.
@@ -169,10 +183,9 @@ namespace infinit
     /// These are the elements which must be signed by the issuer authority.
     cryptography::Digest
     hash(Identifier const& identifier,
-         cryptography::PublicKey const& issuer_K,
          cryptography::PublicKey const& subject_K,
          elle::String const& description,
-         certificate::Operations const& operations,
+         certificate::Permissions const& permissions,
          std::chrono::system_clock::time_point const& valid_from,
          std::chrono::system_clock::time_point const& valid_until);
   }

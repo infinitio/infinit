@@ -16,13 +16,14 @@ namespace infinit
     | Values |
     `-------*/
 
-    namespace operations
+    namespace permissions
     {
-      Operations const none = 0;
-      Operations const identity = (1 << 1);
-      Operations const descriptor = (1 << 2);
-      Operations const passport = (1 << 3);
-      Operations const certificate = (1 << 4);
+      Permissions const none = 0;
+      Permissions const identity = (1 << 1);
+      Permissions const descriptor = (1 << 2);
+      Permissions const passport = (1 << 3);
+      Permissions const certificate = (1 << 4);
+      Permissions const all = identity | descriptor | passport | certificate;
     }
   }
 
@@ -33,49 +34,51 @@ namespace infinit
   Certificate::Certificate(cryptography::PublicKey issuer_K,
                            cryptography::PublicKey subject_K,
                            elle::String description,
-                           certificate::Operations operations,
+                           certificate::Permissions permissions,
                            std::chrono::system_clock::time_point valid_from,
                            std::chrono::system_clock::time_point valid_until,
-                           cryptography::Signature signature,
+                           cryptography::Signature issuer_signature,
                            Identifier identifier):
-    _identifier(std::move(identifier)),
     _issuer_K(std::move(issuer_K)),
+    _identifier(std::move(identifier)),
     _subject_K(std::move(subject_K)),
     _description(std::move(description)),
-    _operations(std::move(operations)),
+    _permissions(std::move(permissions)),
     _valid_from(std::move(valid_from)),
     _valid_until(std::move(valid_until)),
-    _signature(std::move(signature))
+    _issuer_signature(std::move(issuer_signature))
   {
   }
 
   Certificate::Certificate(Certificate const& other):
-    _identifier(other._identifier),
     _issuer_K(other._issuer_K),
+    _identifier(other._identifier),
     _subject_K(other._subject_K),
     _description(other._description),
-    _operations(other._operations),
+    _permissions(other._permissions),
     _valid_from(other._valid_from),
     _valid_until(other._valid_until),
-    _signature(other._signature)
+    _issuer_signature(other._issuer_signature)
   {
   }
 
   Certificate::Certificate(Certificate&& other):
-    _identifier(std::move(other._identifier)),
     _issuer_K(std::move(other._issuer_K)),
+    _identifier(std::move(other._identifier)),
     _subject_K(std::move(other._subject_K)),
     _description(std::move(other._description)),
-    _operations(std::move(other._operations)),
+    _permissions(std::move(other._permissions)),
     _valid_from(std::move(other._valid_from)),
     _valid_until(std::move(other._valid_until)),
-    _signature(std::move(other._signature))
+    _issuer_signature(std::move(other._issuer_signature))
   {
   }
 
   ELLE_SERIALIZE_CONSTRUCT_DEFINE(Certificate,
-                                  _identifier, _issuer_K, _subject_K,
-                                  _signature)
+                                  _issuer_K,
+                                  _identifier,
+                                  _subject_K,
+                                  _issuer_signature)
   {
   }
 
@@ -106,7 +109,7 @@ namespace infinit
     stream << "[";
     elle::Boolean first = true;
 
-    if (this->_operations & certificate::operations::identity)
+    if (this->_permissions & certificate::permissions::identity)
     {
       if (!first)
         stream << " | ";
@@ -114,7 +117,7 @@ namespace infinit
       first = false;
     }
 
-    if (this->_operations & certificate::operations::descriptor)
+    if (this->_permissions & certificate::permissions::descriptor)
     {
       if (!first)
         stream << " | ";
@@ -122,7 +125,7 @@ namespace infinit
       first = false;
     }
 
-    if (this->_operations & certificate::operations::passport)
+    if (this->_permissions & certificate::permissions::passport)
     {
       if (!first)
         stream << " | ";
@@ -130,7 +133,7 @@ namespace infinit
       first = false;
     }
 
-    if (this->_operations & certificate::operations::certificate)
+    if (this->_permissions & certificate::permissions::certificate)
     {
       if (!first)
         stream << " | ";
@@ -175,15 +178,14 @@ namespace infinit
 
     cryptography::Digest
     hash(Identifier const& identifier,
-         cryptography::PublicKey const& issuer_K,
          cryptography::PublicKey const& subject_K,
          elle::String const& description,
-         certificate::Operations const& operations,
+         certificate::Permissions const& permissions,
          std::chrono::system_clock::time_point const& valid_from,
          std::chrono::system_clock::time_point const& valid_until)
     {
-      ELLE_TRACE_FUNCTION(identifier, issuer_K, subject_K, description,
-                          operations, valid_from, valid_until);
+      ELLE_TRACE_FUNCTION(identifier, subject_K, description,
+                          permissions, valid_from, valid_until);
 
       elle::Natural32 _valid_from =
         static_cast<elle::Natural32>(
@@ -197,10 +199,9 @@ namespace infinit
       return (cryptography::oneway::hash(
                 elle::serialize::make_tuple(
                   identifier,
-                  issuer_K,
                   subject_K,
                   description,
-                  operations,
+                  permissions,
                   _valid_from,
                   _valid_until),
                 cryptography::KeyPair::oneway_algorithm));
