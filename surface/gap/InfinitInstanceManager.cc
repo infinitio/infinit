@@ -203,8 +203,6 @@ namespace surface
     bool
     InfinitInstanceManager::exists(std::string const& network_id) const
     {
-      ELLE_TRACE_METHOD(network_id);
-
       if (this->_instances.find(network_id) == this->_instances.end())
         return false;
 
@@ -225,8 +223,6 @@ namespace surface
     InfinitInstance const&
     InfinitInstanceManager::instance(std::string const& network_id) const
     {
-      ELLE_TRACE_METHOD(network_id);
-
       auto it = this->_instances.find(network_id);
       if (it == this->_instances.end())
         throw elle::Exception{"Cannot find any network " + network_id};

@@ -177,7 +177,7 @@ namespace surface
           "-u", this->_self.id,
         };
 
-        ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
+        ELLE_DEBUG("launching: %s %s", progress_binary,
                    boost::algorithm::join(arguments, " "));
 
         this->_progresses(
@@ -419,8 +419,6 @@ namespace surface
     TransactionManager::TransactionsMap const&
     TransactionManager::all()
     {
-      ELLE_TRACE_METHOD("");
-
       if (this->_transactions->get() != nullptr)
         return *this->_transactions->get();
 
@@ -444,8 +442,6 @@ namespace surface
     Transaction const&
     TransactionManager::one(std::string const& id)
     {
-      ELLE_TRACE_METHOD(id);
-
       auto it = this->all().find(id);
       if (it != this->all().end())
         return it->second;
