@@ -119,8 +119,7 @@ namespace etoile
 
       if (this->_riffles == nullptr)
         return;
-      if (venue.Record(this->_riffles->location()) == elle::Status::Error)
-        throw Exception("unable to record the location");
+      venue.append(this->_riffles->location());
       if (current.Current() == elle::Status::Error)
         throw Exception("unable to retrieve the current time");
 
@@ -154,8 +153,7 @@ namespace etoile
         riffle->resolve(*scoutor, riffle);
         if (riffle == nullptr)
           break;
-        if (venue.Record(riffle->location()) == elle::Status::Error)
-          throw Exception("unable to record the location");
+        venue.append(riffle->location());
       }
     }
 

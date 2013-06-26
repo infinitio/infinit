@@ -64,9 +64,7 @@ namespace etoile
           if (slice.empty() == false)
             throw Exception("the root slice should always be empty");
 
-          // record the root directory in the venue.
-          if (venue.Record(address, revision) == elle::Status::Error)
-            throw Exception("unable to record the root directory in the venue");
+          venue.append(address, revision);
         }
 
       // set the address/revision with the address of the last resolved element.
@@ -129,10 +127,7 @@ namespace etoile
           if (entry == nullptr)
             throw wall::NoSuchFileOrDirectory(*reactor::Scheduler::scheduler(),
                                               slice);
-
-          // first, record the address/revision in the venue.
-          if (venue.Record(address, revision) == elle::Status::Error)
-            throw Exception("unable to record the venue address");
+          venue.append(address, revision);
         }
 
       // update the shrub with the resolved path.

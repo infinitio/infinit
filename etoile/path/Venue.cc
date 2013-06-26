@@ -12,24 +12,21 @@ namespace etoile
     Venue::Venue()
     {}
 
-    elle::Status
-    Venue::Record(nucleus::proton::Location const& location)
+    /*-----------.
+    | Operations |
+    `-----------*/
+
+    void
+    Venue::append(nucleus::proton::Location const& location)
     {
       this->elements().push_back(location);
-
-      return elle::Status::Ok;
     }
 
-    elle::Status
-    Venue::Record(nucleus::proton::Address const& address,
+    void
+    Venue::append(nucleus::proton::Address const& address,
                   nucleus::proton::Revision const& revision)
     {
-      nucleus::proton::Location location(address, revision);
-
-      if (this->Record(location) == elle::Status::Error)
-        throw Exception("unable to record the location");
-
-      return elle::Status::Ok;
+      this->append(nucleus::proton::Location(address, revision));
     }
 
     // FIXME: factor with route::derives

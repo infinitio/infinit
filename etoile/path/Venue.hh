@@ -41,10 +41,10 @@ namespace etoile
     | Operations |
     `-----------*/
     public:
-      elle::Status
-      Record(nucleus::proton::Location const& location);
-      elle::Status
-      Record(nucleus::proton::Address const& addr,
+      void
+      append(nucleus::proton::Location const& location);
+      void
+      append(nucleus::proton::Address const& addr,
              nucleus::proton::Revision const& rev);
       bool
       derives(const Venue&) const;
