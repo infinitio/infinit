@@ -58,27 +58,9 @@ namespace etoile
     `-----------*/
 
     bool
-    Venue::operator==(Venue const& element) const
+    Venue::operator==(Venue const& other) const
     {
-      Venue::Scoutor    s;
-      Venue::Scoutor    t;
-
-      // check the address as this may actually be the same object.
-      if (this == &element)
-        return true;
-
-      // compare the size.
-      if (this->elements().size() != element.elements().size())
-        return false;
-
-      // for every element.
-      for (s = this->elements().begin(), t = element.elements().begin();
-           s != this->elements().end();
-           s++, t++)
-        if (*s != *t)
-          return false;
-
-      return true;
+      return this->elements() == other.elements();
     }
 
     /*---------.

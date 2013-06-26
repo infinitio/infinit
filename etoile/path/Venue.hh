@@ -58,7 +58,8 @@ namespace etoile
     | Comparable |
     `-----------*/
     public:
-      elle::Boolean             operator==(const Venue&) const;
+      bool
+      operator==(const Venue&) const;
 
     /*---------.
     | Dumpable |
