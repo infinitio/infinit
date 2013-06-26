@@ -58,7 +58,7 @@ namespace etoile
           context.access_nest =
             new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
-                                   depot::hole().storage().network(),
+                                   depot::global_depot->network(),
                                    agent::Agent::Subject.user(),
                                    context.access_threshold);
 
@@ -75,7 +75,7 @@ namespace etoile
           context.access_nest =
             new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
-                                   depot::hole().storage().network(),
+                                   depot::global_depot->network(),
                                    agent::Agent::Subject.user(),
                                    context.access_threshold);
 
@@ -219,7 +219,7 @@ namespace etoile
                         // XXX[the context should make use of unique_ptr instead
                         //     of releasing here.]
                         group =
-                          depot::Depot::pull_group(
+                          depot::global_depot->pull_group(
                             subject.group(),
                             nucleus::proton::Revision::Last);
 
@@ -280,7 +280,7 @@ namespace etoile
                     // XXX[the context should make use of unique_ptr instead
                     //     of releasing here.]
                     group =
-                      depot::Depot::pull_group(
+                      depot::global_depot->pull_group(
                         subject.group(),
                         nucleus::proton::Revision::Last);
 
@@ -687,7 +687,7 @@ namespace etoile
                     // XXX[the context should make use of unique_ptr instead
                     //     of releasing here.]
                     group =
-                      depot::Depot::pull_group(
+                      depot::global_depot->pull_group(
                         record->subject().group(),
                         nucleus::proton::Revision::Last);
 

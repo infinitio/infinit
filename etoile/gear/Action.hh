@@ -49,7 +49,7 @@ namespace etoile
       ///     Depot to become instantiable]
       template <typename T>
       void
-      apply() const;
+      apply(T& storage) const;
 
       /*-----------.
       | Attributes |

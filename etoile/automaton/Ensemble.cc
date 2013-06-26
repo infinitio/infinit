@@ -47,7 +47,7 @@ namespace etoile
           context.ensemble_nest =
             new etoile::nest::Nest(ENSEMBLE_SECRET_KEY_LENGTH,
                                    context.ensemble_limits,
-                                   depot::hole().storage().network(),
+                                   depot::global_depot->network(),
                                    agent::Agent::Subject.user(),
                                    context.ensemble_threshold);
 
@@ -64,7 +64,7 @@ namespace etoile
           context.ensemble_nest =
             new etoile::nest::Nest(ENSEMBLE_SECRET_KEY_LENGTH,
                                    context.ensemble_limits,
-                                   depot::hole().storage().network(),
+                                   depot::global_depot->network(),
                                    agent::Agent::Subject.user(),
                                    context.ensemble_threshold);
 

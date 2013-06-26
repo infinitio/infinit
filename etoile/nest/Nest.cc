@@ -619,7 +619,7 @@ namespace etoile
 
       // Otherwise, load the block from the depot.
       auto contents =
-        depot::Depot::pull<nucleus::proton::Contents>(
+        depot::global_depot->pull<nucleus::proton::Contents>(
           pod->egg()->address(),
           nucleus::proton::Revision::Last);
 

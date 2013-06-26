@@ -15,7 +15,7 @@ namespace etoile
 
     template <typename T>
     void
-    Action::apply() const
+    Action::apply(T& storage) const
     {
       switch (this->_type)
         {
@@ -25,7 +25,7 @@ namespace etoile
             action::Push const* action = static_cast<action::Push const*>(this);
 
             // XXX[to change by calling a method on an object]
-            T::Push(action->address(), action->block());
+            storage.Push(action->address(), action->block());
 
             break;
           }
@@ -35,7 +35,7 @@ namespace etoile
             action::Wipe const* action = static_cast<action::Wipe const*>(this);
 
             // XXX[to change by calling a method on an object]
-            T::Wipe(action->address());
+            storage.Wipe(action->address());
 
             break;
           }

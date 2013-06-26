@@ -76,7 +76,7 @@ namespace etoile
       ELLE_ASSERT(context.group == nullptr);
 
       context.group.reset(
-        depot::Depot::pull_group(
+        depot::global_depot->pull_group(
           context.location.address(),
           context.location.revision()).release());
 

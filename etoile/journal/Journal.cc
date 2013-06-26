@@ -206,7 +206,7 @@ namespace etoile
             {
             case gear::Action::Type::push:
               {
-                action->apply<depot::Depot>();
+                action->apply<depot::Depot>(*etoile::depot::global_depot);
                 break;
               }
             case gear::Action::Type::wipe:
@@ -225,7 +225,7 @@ namespace etoile
               break;
             case gear::Action::Type::wipe:
               {
-                action->apply<depot::Depot>();
+                action->apply<depot::Depot>(*etoile::depot::global_depot);
                 break;
               }
             }

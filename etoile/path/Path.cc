@@ -49,7 +49,7 @@ namespace etoile
           std::string         slice;
 
           // retrieve the root directory's address.
-          if (depot::Depot::Origin(address) == elle::Status::Error)
+          if (depot::global_depot->Origin(address) == elle::Status::Error)
             throw Exception("unable to retrieve the address of the root directory");
 
           // parse the very first slab i.e the root slab in order
