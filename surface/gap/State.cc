@@ -405,12 +405,16 @@ namespace surface
       return this->_network_manager(
         [this] (NetworkManagerPtr& manager) -> NetworkManager& {
           if (manager == nullptr)
+          {
+            ELLE_TRACE("allocating a new network manager");
+
             manager.reset(
               new NetworkManager{this->_meta,
                                  this->_reporter,
                                  this->_google_reporter,
                                  this->me(),
                                  this->device()});
+          }
           return *manager;
         });
     }
@@ -423,8 +427,12 @@ namespace surface
       return this->_notification_manager(
         [this] (NotificationManagerPtr& manager) -> NotificationManager& {
           if (manager == nullptr)
+          {
+            ELLE_TRACE("allocating a new notification manager");
+
             manager.reset(
               new NotificationManager{this->_meta, this->me(), this->device()});
+          }
           return *manager;
         });
     }
@@ -432,15 +440,17 @@ namespace surface
     UserManager&
     State::user_manager()
     {
-      ELLE_TRACE_METHOD("");
-
       return this->_user_manager(
         [this] (UserManagerPtr& manager) -> UserManager& {
           if (manager == nullptr)
+          {
+            ELLE_TRACE("allocating a new user manager");
+
             manager.reset(
               new UserManager{this->notification_manager(),
                               this->_meta,
                               this->me()});
+          }
           return *manager;
         });
     }
@@ -448,11 +458,12 @@ namespace surface
     TransactionManager&
     State::transaction_manager()
     {
-      ELLE_TRACE_METHOD("");
-
       return this->_transaction_manager(
         [this] (TransactionManagerPtr& manager) -> TransactionManager& {
           if (manager == nullptr)
+          {
+            ELLE_TRACE("allocating a new transaction manager");
+
             manager.reset(
               new TransactionManager{this->notification_manager(),
                                      this->network_manager(),
@@ -461,6 +472,7 @@ namespace surface
                                      this->_reporter,
                                      this->me(),
                                      this->device()});
+          }
           return *manager;
         });
     }
