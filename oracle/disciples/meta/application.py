@@ -13,9 +13,25 @@ class Application(object):
     """
     Application class wrap web.application.run method
     """
-    def __init__(self, ip='127.0.0.1', port=conf.META_PORT):
-        self.ip = ip
-        self.port = port
+    def __init__(self, meta_host=None, meta_port=None,
+                 mongo_host=None, mongo_port=None,
+                 port_file=None):
+        conf.META_HOST = meta_host
+        conf.META_PORT = meta_port
+        conf.MONGO_HOST = mongo_host
+        conf.MONGO_PORT = mongo_port
+
+        assert(port_file)
+        f = open(port_file, 'w')
+        f.write('meta_host:' + meta_host + '\n')
+        f.write('meta_port:' + str(meta_port) + '\n')
+        f.write('mongo_host:' + mongo_host + '\n')
+        f.write('mongo_port:' + str(mongo_port) + '\n')
+        f.close()
+
+
+        self.ip = meta_host
+        self.port = meta_port
 
         urls = []
         views = {}

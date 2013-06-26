@@ -19,7 +19,9 @@ Define database collections and their constraints
 """
 
 _connection = None
-def connection(host=conf.MONGO_HOST, port=conf.MONGO_PORT):
+def connection(host=None, port=None):
+    host = host or conf.MONGO_HOST
+    port = port or conf.MONGO_PORT
     global _connection
     if _connection is None:
         _connection = pymongo.Connection(host, port)
