@@ -175,8 +175,6 @@ namespace surface
     Self const&
     State::me() const
     {
-      ELLE_TRACE_METHOD("");
-
       this->_self_load();
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
@@ -185,8 +183,6 @@ namespace surface
     Self&
     State::me()
     {
-      ELLE_TRACE_METHOD("");
-
       this->_self_load();
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
@@ -422,8 +418,6 @@ namespace surface
     NotificationManager&
     State::notification_manager()
     {
-      ELLE_TRACE_METHOD("");
-
       return this->_notification_manager(
         [this] (NotificationManagerPtr& manager) -> NotificationManager& {
           if (manager == nullptr)

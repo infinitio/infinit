@@ -47,8 +47,6 @@ namespace surface
     User const&
     UserManager::one(std::string const& id)
     {
-      ELLE_TRACE_METHOD(id);
-
       auto it = this->_users.find(id);
       if (it != this->_users.end())
       {
