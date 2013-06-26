@@ -179,7 +179,7 @@ namespace surface
                               size_t offset,
                               bool only_new)
     {
-      ELLE_TRACE_FUNCTION(count, offset);
+      ELLE_TRACE_FUNCTION(count, offset, only_new);
 
       auto res = this->_meta.pull_notifications(count, offset);
 
