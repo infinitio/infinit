@@ -6,7 +6,6 @@
 #include <etoile/gear/Identifier.hh>
 #include <etoile/gear/Scope.hh>
 #include <etoile/gear/Object.hh>
-#include <etoile/gear/Gear.hh>
 #include <etoile/automaton/Attributes.hh>
 #include <etoile/Exception.hh>
 

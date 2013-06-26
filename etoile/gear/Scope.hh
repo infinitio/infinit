@@ -82,9 +82,6 @@ namespace etoile
       //
       // static methods
       //
-      static elle::Status       Initialize();
-      static elle::Status       Clean();
-
       static elle::Boolean      Exist(const path::Chemin&);
       static elle::Status       Add(const path::Chemin&,
                                     Scope*);

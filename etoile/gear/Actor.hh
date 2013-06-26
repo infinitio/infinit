@@ -59,9 +59,6 @@ namespace etoile
       //
       // static methods
       //
-      static elle::Status       Initialize();
-      static elle::Status       Clean();
-
       static elle::Status       Add(const Identifier&,
                                     Actor*);
       static elle::Status       Select(const Identifier&,

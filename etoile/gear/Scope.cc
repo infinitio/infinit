@@ -41,66 +41,6 @@ namespace etoile
 //
 
     ///
-    /// this method initializes the scope system.
-    ///
-    elle::Status        Scope::Initialize()
-    {
-      // nothing to do.
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method cleans the scope system.
-    ///
-    elle::Status        Scope::Clean()
-    {
-      //
-      // release the onymous scopes.
-      //
-      {
-        Scope::S::O::Scoutor    scoutor;
-
-        // go through the container.
-        for (scoutor = Scope::Scopes::Onymous.begin();
-             scoutor != Scope::Scopes::Onymous.end();
-             scoutor++)
-          {
-            Scope*              scope = scoutor->second;
-
-            // delete the scope.
-            delete scope;
-          }
-
-        // clear the container.
-        Scope::Scopes::Onymous.clear();
-      }
-
-      //
-      // release the anonymous scopes.
-      //
-      {
-        Scope::S::A::Scoutor    scoutor;
-
-        // go through the container.
-        for (scoutor = Scope::Scopes::Anonymous.begin();
-             scoutor != Scope::Scopes::Anonymous.end();
-             scoutor++)
-          {
-            Scope*              scope = *scoutor;
-
-            // delete the scope.
-            delete scope;
-          }
-
-        // clear the container.
-        Scope::Scopes::Anonymous.clear();
-      }
-
-      return elle::Status::Ok;
-    }
-
-    ///
     /// this method returns true if an anymous scope exists for
     /// the given chemin.
     ///

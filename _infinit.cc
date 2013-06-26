@@ -166,9 +166,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   horizon::hole(hole.get());
 #endif
 
-  // initialize the Etoile library.
-  if (etoile::Etoile::Initialize() == elle::Status::Error)
-    throw elle::Exception("unable to initialize Etoile");
+  std::unique_ptr<etoile::Etoile> etoile(new etoile::Etoile);
 
   // initialize the horizon.
   if (!Infinit::Mountpoint.empty())
@@ -193,9 +191,9 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
       throw elle::Exception("unable to clean the horizon");
 #endif
 
-  // clean the Etoile library.
-  if (etoile::Etoile::Clean() == elle::Status::Error)
-    throw elle::Exception("unable to clean Etoile");
+  etoile::depot::global_depot = nullptr;
+  depot.reset();
+  etoile.reset();
 
   // clean the Agent library.
   if (agent::Agent::Clean() == elle::Status::Error)

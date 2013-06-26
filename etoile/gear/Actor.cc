@@ -21,39 +21,6 @@ namespace etoile
 //
 
     ///
-    /// this method initializes the actor system.
-    ///
-    elle::Status        Actor::Initialize()
-    {
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method cleans the actor system.
-    ///
-    elle::Status        Actor::Clean()
-    {
-      Actor::Scoutor    scoutor;
-
-      // go through the container.
-      for (scoutor = Actor::Actors.begin();
-           scoutor != Actor::Actors.end();
-           scoutor++)
-        {
-          Actor*                actor = scoutor->second;
-
-          // delete the actor: this action will detach the actor from
-          // the scope.
-          delete actor;
-        }
-
-      // clear the container.
-      Actor::Actors.clear();
-
-      return elle::Status::Ok;
-    }
-
-    ///
     /// this method retrieves an actor according to its identifier.
     ///
     elle::Status        Actor::Add(const Identifier&            identifier,

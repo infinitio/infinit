@@ -67,7 +67,6 @@ namespace etoile
     /*------------------------------.
     | Global Depot instance (FIXME) |
     `------------------------------*/
-
     extern Depot* global_depot;
   }
 }

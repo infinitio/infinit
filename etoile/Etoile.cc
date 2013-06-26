@@ -1,27 +1,17 @@
 #include <etoile/Etoile.hh>
-#include <etoile/path/Path.hh>
-#include <etoile/gear/Gear.hh>
-#include <etoile/shrub/Shrub.hh>
-#include <etoile/portal/Portal.hh>
 #include <etoile/Exception.hh>
+#include <etoile/gear/Actor.hh>
+#include <etoile/gear/Scope.hh>
+#include <etoile/path/Path.hh>
+#include <etoile/portal/Portal.hh>
+#include <etoile/shrub/Shrub.hh>
 
 #include <Infinit.hh>
 
 namespace etoile
 {
-
-//
-// ---------- methods ---------------------------------------------------------
-//
-
-  ///
-  /// this method initializes Etoile.
-  ///
-  elle::Status          Etoile::Initialize()
+  Etoile::Etoile()
   {
-    if (gear::Gear::Initialize() == elle::Status::Error)
-      throw Exception("unable to initialize the gear");
-
     if (Infinit::Configuration.etoile.shrub.frequency)
     {
       auto capacity = Infinit::Configuration.etoile.shrub.capacity;
@@ -35,14 +25,9 @@ namespace etoile
 
     if (portal::Portal::Initialize() == elle::Status::Error)
       throw Exception("unable to initialize the portal");
-
-    return elle::Status::Ok;
   }
 
-  ///
-  /// this method cleans Etoile.
-  ///
-  elle::Status          Etoile::Clean()
+  Etoile::~Etoile()
   {
     if (portal::Portal::Clean() == elle::Status::Error)
       throw Exception("unable to clean the portal");
@@ -53,10 +38,23 @@ namespace etoile
       shrub::global_shrub = nullptr;
     }
 
-    if (gear::Gear::Clean() == elle::Status::Error)
-      throw Exception("unable to clean the gear");
+    // Clean Actor
+    {
+      gear::Actor::Scoutor    scoutor;
+      for (auto& actor: gear::Actor::Actors)
+        delete actor.second;
 
-    return elle::Status::Ok;
+      // clear the container.
+      gear::Actor::Actors.clear();
+    }
+
+    // Clean Scope.
+    {
+      gear::Scope::S::O::Scoutor    scoutor;
+      for (auto scope: gear::Scope::Scopes::Onymous)
+        delete scope.second;
+      gear::Scope::Scopes::Onymous.clear();
+    }
   }
 
 }
