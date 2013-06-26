@@ -77,19 +77,7 @@ class Application(object):
         open(self.ssl_key_path, "wt").write(
                 crypto.dump_privatekey(crypto.FILETYPE_PEM, k))
 
-
-    def reset_user_status(self):
-        """XXX We reset all user's status to be "disconnected". We know it's
-        true because there is only on trophonius instance at the moment.
-        The right way to do it is to disconnect all users (in the database)
-        when the trophonius instance goes down.
-        """
-        import meta.database
-        meta.database.users().update({}, {'$set': {'connected': False}})
-
     def run(self):
-        self.reset_user_status()
-
         if not all(os.path.exists(file) for file in (conf.SSL_KEY, conf.SSL_CERT)):
             self.create_self_signed_cert(".")
         log.startLogging(self.logfile)
