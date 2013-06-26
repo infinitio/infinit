@@ -17,10 +17,6 @@ namespace infinit
   | Construction |
   `-------------*/
 
-  Identifier::Identifier():
-    Identifier(Identifier::Constants::default_size)
-  {}
-
   Identifier::Identifier(elle::Natural32 const size):
     Identifier(cryptography::random::generate<elle::Buffer>(size))
   {}
