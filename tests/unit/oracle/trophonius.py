@@ -1,30 +1,60 @@
 import json
 import socket
 
+import os.path
 import pythia
 import argparse
+import subprocess
+import shlex
+import atexit
+import time
 
 parser = argparse.ArgumentParser(description="Trophonius test")
 
 parser.add_argument(
     '--port', type = int,
+    default = 4242
 )
 
 parser.add_argument(
     '--control-port', type = int,
+    default = 4343
 )
 
 parser.add_argument(
     '--host', type = str,
+    default = "localhost"
 )
 
 parser.add_argument(
     '--meta-url',
     type = str,
-    default = pythia.constants.DEFAULT_SERVER
+    default = "http://localhost:8080"
 )
 
+
+
 args = parser.parse_args()
+
+root_dir = subprocess.check_output(shlex.split("git rev-parse --show-toplevel"))
+root_dir = root_dir.strip()
+print(root_dir)
+ 
+meta = subprocess.Popen(["python",
+        os.path.join(root_dir, "tests", "unit", "oracle", "fake_meta.py")])
+
+tropho = subprocess.Popen(["python",
+        os.path.join(root_dir, "_build", "linux64", "bin", "trophonius-server"),
+        "--port", "4242",
+        "--control-port", "4343",
+        "--meta-url", "http://localhost:8080"])
+
+def kill_server():
+    tropho.terminate()
+    time.sleep(1)
+    meta.terminate()
+
+atexit.register(kill_server)
 
 class Client:
     def __init__(self, (server, port), user_id, device_id, token):
@@ -51,6 +81,7 @@ class Admin(Client):
         data.update(msg)
         self.sendline(data)
 
+time.sleep(1)
 meta_client = pythia.Client(server=args.meta_url)
 res = meta_client.post("/user/login", {
     "email": "pif@infinit.io",
@@ -73,3 +104,4 @@ if "msg" in resp and resp["msg"] == "coucou":
     exit(0)
 else:
     exit(1)
+
