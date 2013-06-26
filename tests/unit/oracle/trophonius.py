@@ -6,7 +6,6 @@ import socket
 
 import os.path
 import pythia
-import argparse
 import subprocess
 import shlex
 import atexit

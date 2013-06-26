@@ -36,13 +36,15 @@ class Application(object):
             port=conf.LISTEN_TCP_PORT,
             ssl_port=conf.LISTEN_SSL_PORT,
             logfile=sys.stderr,
-            meta_url=pythia.constants.DEFAULT_SERVER):
+            meta_url=pythia.constants.DEFAULT_SERVER,
+            runtime_dir=None):
         self.ip = ip
         self.port = port
         self.logfile = logfile
         self.ssl_port = ssl_port
         self.clients = dict()
         self.meta_url = meta_url
+        self.runtime_dir = runtime_dir
         if HAVE_SETPROCTITLE:
             setproctitle.setproctitle("Trophonius")
 
@@ -77,6 +79,14 @@ class Application(object):
         open(self.ssl_key_path, "wt").write(
                 crypto.dump_privatekey(crypto.FILETYPE_PEM, k))
 
+    def make_portfiles(self):
+        with open(os.path.join(self.runtime_dir, "trophonius.sock", ), 'w+') as f:
+            port = self.port.getHost().port
+            f.write(str(port))
+        with open(os.path.join(self.runtime_dir, "trophonius.csock", ), 'w+') as f:
+            port = self.control_port.getHost().port
+            f.write(str(port))
+
     def run(self):
         if not all(os.path.exists(file) for file in (conf.SSL_KEY, conf.SSL_CERT)):
             self.create_self_signed_cert(".")
@@ -84,6 +94,8 @@ class Application(object):
 
         factory = trophonius.TrophoFactory(self)
         meta_factory = trophonius.MetaTrophoFactory(self)
-        reactor.listenTCP(self.port, factory)
-        reactor.listenTCP(self.ssl_port, meta_factory)
+        self.port = reactor.listenTCP(self.port, factory)
+        self.control_port = reactor.listenTCP(self.ssl_port, meta_factory)
+        if self.runtime_dir is not None:
+            self.make_portfiles()
         reactor.run()

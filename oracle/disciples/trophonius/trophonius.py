@@ -7,6 +7,7 @@ from twisted.internet import protocol, reactor
 from twisted.protocols import basic
 from twisted.python import log
 
+import os
 import json
 import time
 import pythia
@@ -244,9 +245,11 @@ class TrophoFactory(protocol.Factory):
     def __init__(self, application):
         self.application = application
         self.clients = application.clients
+        self.sock_path = os.path.join(application.runtime_dir, "trophonius.sock")
 
-    def startFactory(self):
-        pass
+    def stopFactory(self):
+        if self.application.runtime_dir is not None:
+            os.remove(self.sock_path)
 
     def buildProtocol(self, addr):
         return Trophonius(self)
@@ -255,6 +258,11 @@ class MetaTrophoFactory(protocol.Factory):
     def __init__(self, application):
         self.application = application
         self.clients = application.clients
+        self.sock_path = os.path.join(application.runtime_dir, "trophonius.csock")
 
     def buildProtocol(self, addr):
         return MetaTropho(self)
+
+    def stopFactory(self):
+        if self.application.runtime_dir is not None:
+            os.remove(self.sock_path)
