@@ -56,12 +56,16 @@ namespace surface
       _recipient_id_or_email{recipient_id_or_email},
       _files{files},
       _on_transaction{cb}
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     void
     CreateTransactionOperation::_run()
     {
-      ELLE_TRACE_METHOD(this->_files);
+      ELLE_TRACE_METHOD("");
+
+      ELLE_TRACE("files: %s", this->_files);
 
       int size = total_size(this->_files);
 
@@ -117,6 +121,8 @@ namespace surface
     void
     CreateTransactionOperation::_cancel()
     {
+      ELLE_TRACE_METHOD("");
+
       ELLE_DEBUG("cancelling %s", this->name());
       if (this->_transaction_id.size() > 0)
       {

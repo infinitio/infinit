@@ -35,11 +35,15 @@ namespace surface
       _reporter(reporter),
       _transaction(transaction),
       _notify{notify}
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     void
     DownloadOperation::_run()
     {
+      ELLE_DEBUG_METHOD("");
+
       this->_network_manager.add_device(
         this->_transaction.network_id,
         this->_transaction.recipient_device_id);
@@ -112,6 +116,8 @@ namespace surface
     void
     DownloadOperation::_on_success()
     {
+      ELLE_DEBUG_METHOD("");
+
       this->_transaction_manager.update(this->_transaction.id,
                                         plasma::TransactionStatus::finished);
       auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
@@ -131,7 +137,8 @@ namespace surface
     void
     DownloadOperation::_on_error()
     {
-      ELLE_ERR("download failed");
+      ELLE_DEBUG_METHOD("");
+
       // ELLE_TRACE("restarting transfer %s", this->_transaction)
       //   this->_transaction_manager.update(this->_transaction.id,
       //                                     plasma::TransactionStatus::started);

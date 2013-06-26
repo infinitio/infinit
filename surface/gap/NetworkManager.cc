@@ -61,6 +61,7 @@ namespace
                             std::string const& identity_)
   {
     ELLE_TRACE_FUNCTION(id, identity_);
+
     // XXX this value depends on the network policy and openness.
     static nucleus::neutron::Permissions permissions =
       nucleus::neutron::permissions::read;
@@ -179,12 +180,15 @@ namespace surface
     NetworkManager::~NetworkManager()
     {
       ELLE_TRACE_METHOD("");
+
       this->clear();
     }
 
     void
     NetworkManager::clear()
     {
+      ELLE_TRACE_METHOD("");
+
       // XXX.
       this->_infinit_instance_manager.clear();
     }
@@ -193,7 +197,7 @@ namespace surface
     NetworkManager::create(std::string const& name,
                            bool auto_add)
     {
-      ELLE_TRACE("creating network %s", name);
+      ELLE_TRACE_METHOD(name, auto_add);
 
       this->_reporter.store("network_create_attempt");
       this->_google_reporter.store("network:create:attempt");
@@ -221,7 +225,8 @@ namespace surface
     void
     NetworkManager::prepare(std::string const& network_id)
     {
-      ELLE_TRACE("preparing network %s directory", network_id);
+      ELLE_TRACE_METHOD(network_id);
+
       std::string const network_dir = common::infinit::network_directory(
         this->_self.id,
         network_id);
@@ -345,6 +350,8 @@ namespace surface
     NetworkManager::delete_(std::string const& network_id,
                             bool remove_directory)
     {
+      ELLE_TRACE_METHOD(network_id, remove_directory);
+
       ELLE_SCOPE_EXIT([&] {
         if (remove_directory)
           this->delete_local(network_id);
@@ -373,6 +380,8 @@ namespace surface
     void
     NetworkManager::delete_local(std::string const& network_id)
     {
+      ELLE_TRACE_METHOD(network_id);
+
       if (this->infinit_instance_manager().exists(network_id))
       {
         ELLE_TRACE("stoping infinit instance for network %s", network_id)
@@ -391,6 +400,8 @@ namespace surface
     std::vector<std::string>
     NetworkManager::all_ids()
     {
+      ELLE_TRACE_METHOD("");
+
       return this->_networks([](NetworkMap const& map) {
           std::vector<std::string> res{map.size()};
           for (auto const& pair: map)
@@ -402,6 +413,8 @@ namespace surface
     Network
     NetworkManager::one(std::string const& id)
     {
+      ELLE_TRACE_METHOD("");
+
       if (this->_networks->find(id) == this->_networks->end())
         return this->sync(id);
       return this->_networks[id];
@@ -410,7 +423,8 @@ namespace surface
     Network
     NetworkManager::sync(std::string const& id)
     {
-      ELLE_DEBUG("synch network %s", id)
+      ELLE_TRACE_METHOD(id);
+
         try
         {
           auto network = this->_meta.network(id);
@@ -433,7 +447,7 @@ namespace surface
                              std::string const& user_id,
                              std::string const& user_identity)
     {
-      ELLE_TRACE_METHOD(network_id, user_id);
+      ELLE_TRACE_METHOD(network_id, owner, user_id, user_identity);
 
       this->_reporter.store("network_adduser_attempt",
                             {{MKey::value, network_id}});
@@ -470,6 +484,8 @@ namespace surface
     NetworkManager::add_device(std::string const& network_id,
                                std::string const& device_id)
     {
+      ELLE_TRACE_METHOD(network_id, device_id);
+
       this->_meta.network_add_device(network_id, device_id);
       this->sync(network_id);
     }
@@ -477,7 +493,8 @@ namespace surface
     void
     NetworkManager::_on_network_update(NetworkUpdateNotification const& notif)
     {
-      ELLE_TRACE("network %s updated %s", notif.network_id, notif.what);
+      ELLE_TRACE_METHOD(notif);
+
       // XXX do something
     }
 
@@ -487,8 +504,7 @@ namespace surface
                                     std::string const& user_identity,
                                     nucleus::neutron::Permissions permissions)
     {
-      (void)user_id;
-      ELLE_TRACE("setting permissions");
+      ELLE_TRACE_METHOD(network_id, user_id, user_identity, permissions);
 
       // TODO: Do this only on the current device for sender and recipient.
       this->wait_portal(network_id);
@@ -533,6 +549,8 @@ namespace surface
                  hole::implementations::slug::control::RPC& rpcs,
                  std::vector<std::string> const& addresses)
     {
+      ELLE_DEBUG_FUNCTION(sched, rpcs, addresses);
+
       typedef std::unique_ptr<reactor::VThread<bool>> VThreadBoolPtr;
       std::vector<std::pair<VThreadBoolPtr, std::string>> v;
 
@@ -601,6 +619,8 @@ namespace surface
     _find_commond_addr(std::vector<std::string> const &externals,
                        std::vector<std::string> const &my_externals)
     {
+      ELLE_DEBUG_FUNCTION(externals, my_externals);
+
       std::vector<std::string> theirs_addr;
       std::vector<std::string> ours_addr;
       std::vector<std::string> common_addr;
@@ -634,6 +654,8 @@ namespace surface
                                     std::string const& sender_device_id,
                                     std::string const& recipient_device_id)
     {
+      ELLE_TRACE_METHOD(network_id, sender_device_id, recipient_device_id);
+
       std::exception_ptr exception;
       {
         reactor::Scheduler sched;
@@ -675,7 +697,8 @@ namespace surface
                                      std::string const& recipient_device_id,
                                      reactor::Scheduler& sched)
     {
-      ELLE_TRACE_METHOD(network_id, sender_device_id, recipient_device_id);
+      ELLE_DEBUG_METHOD(network_id, sender_device_id, recipient_device_id);
+
       ELLE_ASSERT(this->_device.id == sender_device_id ||
                   this->_device.id == recipient_device_id);
 
@@ -868,6 +891,7 @@ namespace surface
     NetworkManager::wait_portal(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
+
       this->prepare(network_id);
       this->_infinit_instance_manager.wait_portal(network_id);
     }

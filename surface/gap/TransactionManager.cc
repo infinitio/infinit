@@ -62,6 +62,7 @@ namespace surface
       _output_dir{common::system::download_directory()}
     {
       ELLE_TRACE_METHOD("");
+
       this->_notification_manager.transaction_callback(
         [&] (TransactionNotification const &n, bool) -> void
         {
@@ -76,6 +77,8 @@ namespace surface
 
     TransactionManager::~TransactionManager()
     {
+      ELLE_TRACE_METHOD("");
+
       try
       {
         ELLE_TRACE("destroying the transaction manager");
@@ -91,12 +94,16 @@ namespace surface
     void
     TransactionManager::clear()
     {
+      ELLE_TRACE_METHOD("");
+
       this->_network_manager.clear();
     }
 
     void
     TransactionManager::output_dir(std::string const& dir)
     {
+      ELLE_TRACE_METHOD(dir);
+
       if (!fs::exists(dir))
         throw Exception{gap_error,
                         "directory doesn't exist."};
@@ -137,6 +144,8 @@ namespace surface
     float
     TransactionManager::progress(std::string const& id)
     {
+      ELLE_TRACE_METHOD(id);
+
       auto const& tr = this->one(id);
       auto const& instance_manager =
         this->_network_manager.infinit_instance_manager();
@@ -229,6 +238,8 @@ namespace surface
     TransactionManager::update(std::string const& transaction_id,
                                plasma::TransactionStatus status)
     {
+      ELLE_TRACE_METHOD(transaction_id, status);
+
       ELLE_TRACE("set status %s on transaction %s", status, transaction_id);
       this->_meta.update_transaction(transaction_id, status);
     }
@@ -237,6 +248,7 @@ namespace surface
     TransactionManager::accept_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
+
       ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
       this->_add<LambdaOperation>(
           "accept_" + transaction.id,
@@ -249,14 +261,17 @@ namespace surface
     void
     TransactionManager::accept_transaction(std::string const& transaction_id)
     {
+      ELLE_TRACE_METHOD(transaction_id);
+
       this->accept_transaction(this->one(transaction_id));
     }
-
 
     void
     TransactionManager::_accept_transaction(Transaction const& transaction,
                                             Operation& operation)
     {
+      ELLE_TRACE_METHOD(transaction, operation);
+
       try
       {
 
@@ -290,13 +305,16 @@ namespace surface
     void
     TransactionManager::cancel_transaction(std::string const& transaction_id)
     {
+      ELLE_TRACE_METHOD(transaction_id);
+
       this->_cancel_transaction(this->one(transaction_id));
     }
 
     void
     TransactionManager::_cancel_transaction(Transaction const& transaction)
     {
-      ELLE_TRACE_METHOD(transaction);
+      ELLE_DEBUG_METHOD(transaction);
+
       this->_add<LambdaOperation>(
         "cancel_" + transaction.id,
         std::function<void()>{
@@ -385,7 +403,7 @@ namespace surface
     void
     TransactionManager::_on_cancel_transaction(Transaction const& transaction)
     {
-      ELLE_TRACE_METHOD(transaction);
+      ELLE_DEBUG_METHOD(transaction);
 
       std::function<void()> scope_exit = [&, transaction]
       {
@@ -401,6 +419,7 @@ namespace surface
     TransactionManager::TransactionsMap const&
     TransactionManager::all()
     {
+      ELLE_TRACE_METHOD("");
 
       if (this->_transactions->get() != nullptr)
         return *this->_transactions->get();
@@ -425,6 +444,8 @@ namespace surface
     Transaction const&
     TransactionManager::one(std::string const& id)
     {
+      ELLE_TRACE_METHOD(id);
+
       auto it = this->all().find(id);
       if (it != this->all().end())
         return it->second;
@@ -434,6 +455,8 @@ namespace surface
     Transaction const&
     TransactionManager::sync(std::string const& id)
     {
+      ELLE_TRACE_METHOD(id);
+
       ELLE_TRACE("Synching transaction %s from _meta", id);
       this->all(); // ensure _transactions is not null;
       try
@@ -458,6 +481,8 @@ namespace surface
     void
     TransactionManager::_clean_transaction(Transaction const& tr)
     {
+      ELLE_DEBUG_METHOD(tr);
+
       ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::created);
       ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::started);
       auto s = this->_states[tr.id];
@@ -482,7 +507,9 @@ namespace surface
     void
     TransactionManager::_on_transaction(plasma::Transaction const& tr)
     {
-      ELLE_TRACE("received transaction %s, update local copy", tr)
+      ELLE_DEBUG_METHOD(tr);
+
+      ELLE_DEBUG("received transaction %s, update local copy", tr)
       {
         // Ensure map is not null
         this->all();
@@ -516,7 +543,7 @@ namespace surface
         }
         if (tr.status == plasma::TransactionStatus::created)
         {
-          ELLE_TRACE("sender prepare upload for %s", tr)
+          ELLE_DEBUG("sender prepare upload for %s", tr)
             this->_prepare_upload(tr);
         }
         else if (tr.status == plasma::TransactionStatus::started &&
@@ -524,7 +551,7 @@ namespace surface
                  this->_user_manager.device_status(tr.recipient_id,
                                                    tr.recipient_device_id))
         {
-          ELLE_TRACE("sender start upload for %s", tr)
+          ELLE_DEBUG("sender start upload for %s", tr)
             this->_start_upload(tr);
 
         }
@@ -549,7 +576,7 @@ namespace surface
             this->_user_manager.device_status(tr.sender_id,
                                               tr.sender_device_id))
         {
-          ELLE_TRACE("recipient start download for %s", tr)
+          ELLE_DEBUG("recipient start download for %s", tr)
             this->_start_download(tr);
         }
         else
@@ -579,6 +606,8 @@ namespace surface
     void
     TransactionManager::_on_user_status(UserStatusNotification const& notif)
     {
+      ELLE_DEBUG_METHOD(notif);
+
       // Search for user related transactions.
       auto to_check = this->_transactions(
         [&] (TransactionMapPtr& map_ptr) -> std::vector<plasma::Transaction>
@@ -599,6 +628,8 @@ namespace surface
     void
     TransactionManager::_prepare_upload(Transaction const& tr)
     {
+      ELLE_DEBUG_METHOD(tr);
+
       auto s = this->_states[tr.id];
 
       if (s.state == State::none and
@@ -633,6 +664,8 @@ namespace surface
     void
     TransactionManager::_start_upload(Transaction const& transaction)
     {
+      ELLE_DEBUG_METHOD(transaction);
+
       auto s = this->_states[transaction.id];
 
       // if (s.tries == 1) //XXX variable for that
@@ -689,21 +722,23 @@ namespace surface
       else
       {
         if (s.state != State::preparing)
-          ELLE_TRACE("cannot start upload of %s, state is not preparing: %s",
+          ELLE_DEBUG("cannot start upload of %s, state is not preparing: %s",
                      transaction, (int) s.state);
         else if (this->status(s.operation) == OperationStatus::failure)
-          ELLE_TRACE("cannot start upload of %s, prepare failed", transaction);
+          ELLE_DEBUG("cannot start upload of %s, prepare failed", transaction);
         else if (this->status(s.operation) == OperationStatus::running)
-          ELLE_TRACE("cannot start upload of %s, prepare still running",
+          ELLE_DEBUG("cannot start upload of %s, prepare still running",
                      transaction);
         else
-          ELLE_TRACE("XXX cannot start upload (should not be printed)");
+          ELLE_DEBUG("XXX cannot start upload (should not be printed)");
       }
     }
 
     void
     TransactionManager::_start_download(Transaction const& transaction)
     {
+      ELLE_DEBUG_METHOD(transaction);
+
       auto state = this->_states[transaction.id];
       // if (state.state == State::running)
       // {
