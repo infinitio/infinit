@@ -30,8 +30,10 @@ namespace etoile
     | Construction |
     `-------------*/
     public:
+      /// An empty venue.
       Venue();
-      Venue(Venue const&) = default;
+      /// A copy of \param source.
+      Venue(Venue const& source) = default;
       // XXX: should not be assignable.
       ELLE_OPERATOR_ASSIGNMENT(Venue);
     private:
@@ -41,13 +43,16 @@ namespace etoile
     | Operations |
     `-----------*/
     public:
+      /// Append the given location.
       void
       append(nucleus::proton::Location const& location);
+      /// Append a location composed of the given address and revision.
       void
       append(nucleus::proton::Address const& addr,
              nucleus::proton::Revision const& rev);
+      /// Whether this starts with \param base.
       bool
-      derives(const Venue&) const;
+      derives(const Venue& base) const;
       elle::Status              Clear();
 
     /*-----------.
@@ -61,10 +66,9 @@ namespace etoile
     | Dumpable |
     `---------*/
     public:
-      elle::Status              Dump(const elle::Natural32 = 0) const;
-
+      elle::Status
+      Dump(const elle::Natural32 = 0) const;
     };
-
   }
 }
 

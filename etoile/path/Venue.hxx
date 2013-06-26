@@ -1,4 +1,4 @@
-#ifndef  ETOILE_PATH_VENUE_HXX
+#ifndef ETOILE_PATH_VENUE_HXX
 # define ETOILE_PATH_VENUE_HXX
 
 # include <cassert>
