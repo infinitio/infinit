@@ -13,13 +13,9 @@ namespace etoile
 {
   namespace path
   {
-
-    ///
-    /// this class contains the addresses/revisions corresponding to a route.
-    ///
-    /// a venue is therefore composed of a sequence of Location, each
-    /// of which indicates the address and revision number of the component.
-    ///
+    /// A sequence of Location, each of which indicates the address and revision
+    /// number of the component. This is basically a Route in term of resolved
+    /// data blocks instead of string components.
     class Venue
     {
     /*------.
