@@ -130,34 +130,68 @@ extern "C"
 
   /// - gap ctor & dtor -----------------------------------------------------
 
-  gap_State* gap_new()
+  static
+  bool
+  initialize_lune()
   {
     static bool initialized = false;
     if (!initialized)
+    {
+      if (lune::Lune::Initialize() == elle::Status::Error)
       {
-        initialized = true;
-        if (lune::Lune::Initialize() == elle::Status::Error)
-          {
-            ELLE_ERR("Cannot initialize root components");
-            return nullptr;
-          }
+        ELLE_ERR("Cannot initialize root components");
+        return initialized;
       }
+      initialized = true;
+    }
+    return initialized;
+  }
+
+  gap_State* gap_new()
+  {
+    if (!initialize_lune())
+      return nullptr;
 
     try
-      {
-        return __TO_C(new surface::gap::State());
-      }
+    {
+      return __TO_C(new surface::gap::State());
+    }
     catch (std::exception const& err)
-      {
-        ELLE_ERR("Cannot initialize gap state: %s", err.what());
-        return nullptr;
-      }
+    {
+      ELLE_ERR("Cannot initialize gap state: %s", err.what());
+      return nullptr;
+    }
     catch (...)
-      {
-        ELLE_ERR("Cannot initialize gap state");
-        return nullptr;
-      }
+    {
+      ELLE_ERR("Cannot initialize gap state");
+      return nullptr;
+    }
   }
+
+  /// Create a new state.
+  /// Returns NULL on failure.
+  gap_State* gap_configurable_new(char const* host,
+                                  unsigned short port)
+  {
+    if (!initialize_lune())
+      return nullptr;
+
+    try
+    {
+      return __TO_C(new surface::gap::State(host, port));
+    }
+    catch (std::exception const& err)
+    {
+      ELLE_ERR("Cannot initialize gap state: %s", err.what());
+      return nullptr;
+    }
+    catch (...)
+    {
+      ELLE_ERR("Cannot initialize gap state");
+      return nullptr;
+    }
+  }
+
 
   void gap_free(gap_State* state)
   {

@@ -55,9 +55,10 @@ namespace surface
     }
 
     // - State ----------------------------------------------------------------
-    State::State():
+    State::State(std::string const& host,
+                 uint16_t port):
       _logger_intializer{},
-      _meta{common::meta::host(), common::meta::port(), true},
+      _meta{host, port, true},
       _reporter(),
       _google_reporter(),
       _me{nullptr},
