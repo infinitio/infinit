@@ -12,50 +12,52 @@ import shlex
 import atexit
 import time
 
-parser = argparse.ArgumentParser(description="Trophonius test")
-
-parser.add_argument(
-    '--port', type = int,
-    default = 4242
-)
-
-parser.add_argument(
-    '--control-port', type = int,
-    default = 4343
-)
-
-parser.add_argument(
-    '--host', type = str,
-    default = "localhost"
-)
-
-parser.add_argument(
-    '--meta-url',
-    type = str,
-    default = "http://localhost:8080"
-)
-
-args = parser.parse_args()
-
 root_dir = subprocess.check_output(shlex.split("git rev-parse --show-toplevel"))
 root_dir = root_dir.strip().decode('utf-8')
 print(root_dir)
- 
-meta = subprocess.Popen(["python",
-        os.path.join(root_dir, "tests", "unit", "oracle", "fake_meta.py")])
 
-tropho = subprocess.Popen(["python",
-        os.path.join(root_dir, "_build", "linux64", "bin", "trophonius-server"),
-        "--port", "4242",
-        "--control-port", "4343",
-        "--meta-url", "http://localhost:8080"])
+class Trophonius:
+    def __init__(self, host="0.0.0.0", port="4242", meta_url="http://localhost:8080"):
+        self.host = host
+        self.port = port
+        self.control_port = str(int(port) + 1)
+        self.meta_url = meta_url
+        self.instance = None
 
-def kill_server():
-    tropho.terminate()
-    time.sleep(1)
-    meta.terminate()
+    def __enter__(self):
+        self.instance = subprocess.Popen(
+                ["python",
+                    os.path.join(root_dir, "_build", "linux64", "bin", "trophonius-server"),
+                    "--port", self.port,
+                    "--control-port", self.control_port,
+                    "--meta-url", self.meta_url,
+                ]
+        )
+        return self
 
-atexit.register(kill_server)
+    def __exit__(self, exception, exception_type, backtrace):
+        assert self.instance is not None
+        self.instance.terminate()
+        time.sleep(1)
+
+class FakeMeta:
+    def __init__(self, host="0.0.0.0", port="8080"):
+        self.host = host
+        self.port = port
+        self.url = "http://{}:{}/".format(self.host, self.port)
+        self.instance = None
+
+    def __enter__(self):
+        self.instance = subprocess.Popen(
+                ["python",
+                    os.path.join(root_dir, "tests", "unit", "oracle", "fake_meta.py")
+                ]
+        )
+        return self
+
+    def __exit__(self, exception, exception_type, backtrace):
+        assert self.instance is not None
+        self.instance.terminate()
 
 class Client:
     def __init__(self, addr, user_id, device_id, token):
@@ -82,27 +84,31 @@ class Admin(Client):
         data.update(msg)
         self.sendline(data)
 
-time.sleep(1)
-meta_client = pythia.Client(server=args.meta_url)
-res = meta_client.post("/user/login", {
-    "email": "pif@infinit.io",
-    "password": "paf"
-    })
+res = 1
+with FakeMeta(port="8080") as fake_meta, Trophonius(port="4242") as tropho:
+    time.sleep(1)
+    meta_client = pythia.Client(server=fake_meta.url)
 
-c = Client((args.host, args.port), token=res["token"], device_id="pif", user_id=res["_id"])
-admin = Admin((args.host, args.control_port))
-admin.notify(to=c.user_id, msg={"msg": "coucou"})
+    res = meta_client.post("/user/login", {
+        "email": "pif@infinit.io",
+        "password": "paf"
+        })
 
-# First we received the message confirming the connection
-resp = json.loads(c.readline())
-if resp["response_code"] != 200:
-    exit(1)
+    c = Client((tropho.host, tropho.port), token=res["token"], device_id="pif", user_id=res["_id"])
+    admin = Admin((tropho.host, tropho.control_port))
 
-# Then, we wait for the notification we sent
-resp = json.loads(c.readline())
-print(resp)
-if "msg" in resp and resp["msg"] == "coucou":
-    exit(0)
-else:
-    exit(1)
+    admin.notify(to=c.user_id, msg={"msg": "coucou"})
 
+    # First we received the message confirming the connection
+    resp = json.loads(c.readline())
+    if resp["response_code"] != 200:
+        res = 1
+
+    # Then, we wait for the notification we sent
+    resp = json.loads(c.readline())
+    print(resp)
+    if "msg" in resp and resp["msg"] == "coucou":
+        res = 0
+    else:
+        res = 1
+exit(res)
