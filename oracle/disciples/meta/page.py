@@ -162,7 +162,7 @@ class Page(object):
         seasoned = seasoned.encode('utf-8')
         return hashlib.md5(seasoned).hexdigest()
 
-    def notifySwaggers(self, notification_id, data, user_id = None, all_ = False):
+    def notifySwaggers(self, notification_id, data, user_id = None, all_ = True):
         if user_id is None:
             user = self.user
             user_id = user['_id']
@@ -172,11 +172,11 @@ class Page(object):
 
         swaggers = list(
             swagger_id for swagger_id in user['swaggers'].keys()
-            if not all_ and self.connected(database.ObjectId(swagger_id))
+            if all_ and True or self.connected(database.ObjectId(swagger_id))
         )
         d = {"user_id" : user_id}
         d.update(data)
-        self.notifier.notify_some(notification_id, swaggers, d, store = False)
+        self.notifier.notify_some(notification_id, swaggers, d, store = True)
 
     def error(self, error_code = error.UNKNOWN, msg = None):
         assert isinstance(error_code, tuple)
