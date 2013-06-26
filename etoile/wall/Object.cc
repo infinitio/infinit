@@ -56,11 +56,8 @@ namespace etoile
         {
           // In this case, the object is manually loaded in order to determine
           // the genre.
-          nucleus::proton::Location location;
+          nucleus::proton::Location location = scope->chemin.locate();
           std::unique_ptr<nucleus::neutron::Object> object;
-
-          if (scope->chemin.Locate(location) == elle::Status::Error)
-            throw Exception("unable to locate the object");
 
           try
             {
@@ -71,21 +68,20 @@ namespace etoile
             {
               assert(scope != nullptr);
               ELLE_TRACE("clearing the cache in order to evict %s",
-                         scope->chemin.route)
+                         scope->chemin.route())
                 shrub::global_shrub->clear();
 
               ELLE_TRACE("try to resolve the route now that the "
                          "cache was cleaned")
               {
                 path::Venue venue;
-                if (path::Path::Resolve(scope->chemin.route,
+                if (path::Path::Resolve(scope->chemin.route(),
                                         venue) == elle::Status::Error)
                   throw Exception
                     (elle::sprintf("unable to resolve the route %s",
-                                   scope->chemin.route));
-                scope->chemin = path::Chemin(scope->chemin.route, venue);
-                if (scope->chemin.Locate(location) == elle::Status::Error)
-                  throw Exception("unable to locate the object");
+                                   scope->chemin.route()));
+                scope->chemin = path::Chemin(scope->chemin.route(), venue);
+                location = scope->chemin.locate();
               }
 
               ELLE_TRACE("trying to load the object again from %s", location)
@@ -181,8 +177,7 @@ namespace etoile
         gear::Identifier identifier = guard.actor()->identifier;
 
         // locate the object based on the chemin.
-        if (scope->chemin.Locate(context->location) == elle::Status::Error)
-          throw Exception("unable to locate the object");
+        context->location = scope->chemin.locate();
 
         try
           {

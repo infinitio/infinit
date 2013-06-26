@@ -108,8 +108,7 @@ namespace etoile
         identifier = guard.actor()->identifier;
 
         // locate the object based on the chemin.
-        if (chemin.Locate(context->location) == elle::Status::Error)
-          throw Exception("unable to locate the link");
+        context->location = chemin.locate();
 
         ELLE_DEBUG("about to load the directory from the location '%s'",
                    context->location);

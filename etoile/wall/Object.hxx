@@ -20,21 +20,21 @@ namespace etoile
         ELLE_TRACE_FUNCTION(scope);
 
         ELLE_TRACE("clearing the cache in order to evict %s",
-                   scope.chemin.route);
+                   scope.chemin.route());
 
         shrub::global_shrub->clear();
 
         ELLE_TRACE("try to resolve the route now that the cache was cleaned");
 
         path::Venue venue;
-        if (path::Path::Resolve(scope.chemin.route,
+        if (path::Path::Resolve(scope.chemin.route(),
                                 venue) == elle::Status::Error)
           throw Exception(elle::sprintf("unable to resolve the route %s",
-                                              scope.chemin.route));
-        scope.chemin = path::Chemin(scope.chemin.route, venue);
+                                        scope.chemin.route()));
+        scope.chemin = path::Chemin(scope.chemin.route(), venue);
 
         ELLE_DEBUG("route was successfully resolved into %s",
-                   scope.chemin.route);
+                   scope.chemin.route());
 
         ELLE_TRACE("loading object");
 
@@ -43,9 +43,7 @@ namespace etoile
           throw Exception("unable to use the context");
 
         // Reset location
-        nucleus::proton::Location location;
-        if (scope.chemin.Locate(location) == elle::Status::Error)
-          throw Exception("unable to locate the object");
+        nucleus::proton::Location location = scope.chemin.locate();
 
         context->location = location;
         // Force the loading.

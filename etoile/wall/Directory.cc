@@ -110,8 +110,7 @@ namespace etoile
         identifier = guard.actor()->identifier;
 
         // locate the object based on the chemin.
-        if (chemin.Locate(context->location) == elle::Status::Error)
-          throw Exception("unable to locate the directory");
+        context->location = chemin.locate();
 
         ELLE_DEBUG("about to load the directory from the location '%s'",
                    context->location);
@@ -297,7 +296,7 @@ namespace etoile
       {
         reactor::Lock lock(scope->mutex.write());
 
-        path::Venue venue(scope->chemin.venue);
+        path::Venue venue(scope->chemin.venue());
         ELLE_TRACE("old venue: %s", venue);
 
         ELLE_TRACE("retrieve the context")
@@ -312,8 +311,8 @@ namespace etoile
 
         actor->state = gear::Actor::StateUpdated;
 
-        path::Route route_from(scope->chemin.route, from);
-        path::Route route_to(scope->chemin.route, to);
+        path::Route route_from(scope->chemin.route(), from);
+        path::Route route_to(scope->chemin.route(), to);
 
         // Update the scopes should some reference the renamed entry.
         //
@@ -391,7 +390,7 @@ namespace etoile
 
         // Invalidate the route in the shrub.
         {
-          path::Route route(scope->chemin.route, name);
+          path::Route route(scope->chemin.route(), name);
           shrub::global_shrub->evict(route);
         }
       }

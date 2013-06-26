@@ -338,7 +338,7 @@ namespace etoile
         {
           Scope*        scope = iterator->second;
 
-          if (scope->chemin.Derives(from) == false)
+          if (scope->chemin.derives(from) == false)
             continue;
 
           //
@@ -955,8 +955,7 @@ namespace etoile
         auto context = std::unique_ptr<T>(new T);
 
         // locate the context based on the current scope's chemin.
-        if (this->chemin.Locate(context->location) == elle::Status::Error)
-          throw Exception("unable to locate the scope");
+        context->location = this->chemin.locate();
 
         // load the object.
         if (T::A::Load(*context) == elle::Status::Error)
@@ -1077,8 +1076,7 @@ namespace etoile
         //
 
         // locate the object based on the current scope's chemin.
-        if (this->chemin.Locate(context->location) == elle::Status::Error)
-          throw Exception("unable to locate the file");
+        context->location = this->chemin.locate();
 
         // load a fresh revision of the object which should happen to be
         // the one stored above.

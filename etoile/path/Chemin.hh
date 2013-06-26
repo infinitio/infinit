@@ -42,33 +42,40 @@ namespace etoile
              elle::Size size);
       /// A copy of \param source.
       Chemin(Chemin const& source) = default;
+      // XXX: should not be assignable.
+      ELLE_OPERATOR_ASSIGNMENT(Chemin);
+    private:
+      ELLE_ATTRIBUTE_RX(Route, route);
+      ELLE_ATTRIBUTE_RX(Venue, venue);
 
-      //
-      // methods
-      //
-      elle::Boolean             Derives(const Chemin&) const;
-
-      elle::Status              Locate(nucleus::proton::Location&) const;
+    /*-----------.
+    | Operations |
+    `-----------*/
+    public:
+      /// Whether this starts with \param base.
+      bool
+      derives(const Chemin& chemin) const;
+      /// Generate a Location based on the route and venue.
+      nucleus::proton::Location
+      locate() const;
+      /// Whether this Chemin is empty - default constructed.
       bool
       empty() const;
 
-      //
-      // interfaces
-      //
+    /*----------.
+    | Orderable |
+    `----------*/
+    public:
+      bool
+      operator==(const Chemin&) const;
+      bool
+      operator<(const Chemin&) const;
 
-      ELLE_OPERATOR_ASSIGNMENT(Chemin); // XXX
-
-      elle::Boolean             operator==(const Chemin&) const;
-      elle::Boolean             operator<(const Chemin&) const;
-
-      // dumpable
+    /*---------.
+    | Dumpable |
+    `---------*/
+    public:
       elle::Status              Dump(const elle::Natural32 = 0) const;
-
-      //
-      // attributes
-      //
-      Route                     route;
-      Venue                     venue;
     };
 
     std::ostream&

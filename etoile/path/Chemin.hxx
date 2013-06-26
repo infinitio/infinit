@@ -13,8 +13,8 @@ ELLE_SERIALIZE_SIMPLE(etoile::path::Chemin,
 {
   enforce(version == 0);
 
-  archive & value.route;
-  archive & value.venue;
+  archive & value.route();
+  archive & value.venue();
 }
 
 #endif
