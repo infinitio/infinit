@@ -14,51 +14,59 @@
 
 ELLE_LOG_COMPONENT("test.State");
 
-using State = surface::gap::State;
-using TransactionNotification =
-  ::plasma::trophonius::TransactionNotification;
-using TransactionStatusNotification =
-  ::plasma::trophonius::TransactionStatusNotification;
+typedef ::surface::gap::State State;
+typedef ::plasma::trophonius::TransactionNotification TransactionNotification;
+
+static std::string PASSWORD = "password";
+static std::string USER1 = "__Sender_handle";
+static std::string USER2 = "__Recipient_handle";
 
 int fail_counter = 0;
 
 void
-auto_accept_transaction_cb(TransactionNotification const &tn, State &s)
+transaction_cb(TransactionNotification const &transaction_notification,
+               State& state,
+               bool is_sender,
+               bool early_accept = false)
 {
-  s.transaction_manager().update(tn.transaction.id,
-                                 gap_transaction_status_accepted);
+  if (transaction_notification.status == plasma::TransactionStatus::canceled)
+  {
+    ELLE_WARN("Transaction %s had been canceled", transaction_notification);
+    state.logout();
+  }
+  else if (transaction_notification.status == plasma::TransactionStatus::finished)
+  {
+    ELLE_LOG("Transaction %s finished", transaction_notification);
+    state.logout();
+  }
+  else if (transaction_notification.status == plasma::TransactionStatus::failed)
+  {
+    ELLE_ERR("Transaction %s failed", transaction_notification);
+    state.logout();
+  }
+
+  if (!is_sender && !transaction_notification.accepted && transaction_notification.status == plasma::TransactionStatus::created)
+  {
+    ::sleep(3);
+    ELLE_WARN("XXX: accepting %s", transaction_notification);
+    state.transaction_manager().accept_transaction(transaction_notification.id);
+  }
 }
 
 void
-close_on_finished_transaction_cb(TransactionStatusNotification const &tn,
-                                 State &,
-                                 bool& finish_test)
-{
-  if (tn.status == gap_transaction_status_canceled)
-    {
-      ELLE_ERR("transaction canceled")
-        ++fail_counter;
-      finish_test = true;
-    }
-  else if (tn.status == gap_transaction_status_finished)
-    finish_test = true;
-}
-
-auto make_login = []
-(State &s, std::string user, std::string email)
+make_login(State &s,
+           std::string user,
+           std::string email)
 {
   try
   {
-    s.register_(user,
-                email,
-                s.hash_password(email, "bitebitebite"),
-                "bitebite");
+    s.register_(user, email, s.hash_password(email, PASSWORD), "bitebite");
   }
   catch (...)
   {
-    s.login(email,
-            s.hash_password(email, "bitebitebite"));
+    s.login(email, s.hash_password(email, PASSWORD));
   }
+
   s.update_device("device" + user);
 };
 
@@ -72,8 +80,8 @@ work(surface::gap::State& state)
   }
 }
 
-auto make_worker = []
-(State &s) -> std::thread
+std::thread
+make_worker(State &s)
 {
   return std::move(std::thread{[&] { work(s); }});
 };
@@ -87,8 +95,8 @@ error_cb(gap_Status s, std::string const& msg, std::string const& tid)
   std::cerr << "==========================================" << std::endl;
 }
 
-std::string email1 = elle::os::getenv("INFINIT_SENDER", "_sender01@infinit.io");
-std::string email2 = elle::os::getenv("INFINIT_RECIEVER", "_rec01@infinit.io");
+std::string email1 = elle::os::getenv("INFINIT_SENDER", "_sender1@infinit.io");
+std::string email2 = elle::os::getenv("INFINIT_RECIEVER", "_rec1@infinit.io");
 
 std::tuple<surface::gap::State*, std::thread*>
 init_sender(std::string const& to_send, unsigned int count = 10)
@@ -98,15 +106,12 @@ init_sender(std::string const& to_send, unsigned int count = 10)
   bool finish = false;
   unsigned int counter = 0;
 
-  make_login(state, "Bite", email1);
-  state.notification_manager().transaction_status_callback([&] (TransactionStatusNotification const& t,
-                                                                bool)
-                                                           {
-                                                             close_on_finished_transaction_cb(
-                                                               t, state, finish);
-                                                           });
-
-  state.notification_manager().on_error_callback(error_cb);
+  make_login(state, USER1, email1);
+  state.notification_manager().transaction_callback([&] (TransactionNotification const& t,
+                                                         bool)
+                                                    {
+                                                      transaction_cb(t, state, true, true);
+                                                    });
 
   static std::thread thread = make_worker(state);
 
@@ -131,11 +136,10 @@ init_sender(std::string const& to_send, unsigned int count = 10)
       state.transaction_manager().finalize(operation_id);
 
       timeout = 60;
-      while (!finish)
+      while (timeout > 0)
       {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        if (--timeout < 0)
-          throw std::runtime_error{"downloading files timed out"};
+        --timeout;
       }
 
       finish = false;
@@ -154,11 +158,13 @@ init_recipient()
 {
   static surface::gap::State state;
 
-  make_login(state, "Bite", email2);
-  state.notification_manager().transaction_callback([&] (TransactionNotification const& t, bool)
-                                                    { auto_accept_transaction_cb(t, state); });
-
-  state.notification_manager().on_error_callback(error_cb);
+  make_login(state, USER2, email2);
+  state.notification_manager().transaction_callback(
+    [&] (TransactionNotification const& t,
+         bool)
+    {
+      transaction_cb(t, state, false);
+    });
 
   static std::thread thread = make_worker(state);
 
@@ -177,8 +183,8 @@ main(int argc, char** argv)
     auto const& rstate = init_recipient();
     auto const& sstate = init_sender(to_send);
 
-    std::get<0>(rstate)->logout();
-    std::get<0>(sstate)->logout();
+    // std::get<0>(rstate)->logout();
+    // std::get<0>(sstate)->logout();
 
     std::get<1>(rstate)->join();
     std::get<1>(sstate)->join();
