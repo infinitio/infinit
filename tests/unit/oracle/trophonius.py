@@ -56,11 +56,20 @@ res = meta_client.post("/user/login", {
     "email": "pif@infinit.io",
     "password": "paf"
     })
-print(res["token"])
 
 c = Client((args.host, args.port), token=res["token"], device_id="pif", user_id=res["_id"])
 admin = Admin((args.host, args.control_port))
 admin.notify(to=c.user_id, msg={"msg": "coucou"})
 
-while 1:
-    print(c.readline())
+# First we received the message confirming the connection
+resp = json.loads(c.readline())
+if resp["response_code"] != 200:
+    exit(1)
+
+# Then, we wait for the notification we sent
+resp = json.loads(c.readline())
+print(resp)
+if "msg" in resp and resp["msg"] == "coucou":
+    exit(0)
+else:
+    exit(1)
