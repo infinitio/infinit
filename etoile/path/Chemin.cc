@@ -5,16 +5,6 @@ namespace etoile
 {
   namespace path
   {
-
-//
-// ---------- definitions -----------------------------------------------------
-//
-
-    ///
-    /// this defines a null chemin.
-    ///
-    const Chemin                        Chemin::Null;
-
 //
 // ---------- constructors & destructors --------------------------------------
 //
@@ -112,6 +102,12 @@ namespace etoile
       location = this->venue.elements()[this->venue.elements().size() - 1];
 
       return elle::Status::Ok;
+    }
+
+    bool
+    Chemin::empty() const
+    {
+      return this->route == Route::Root && this->venue.elements().empty();
     }
 
 //

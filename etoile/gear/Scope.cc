@@ -196,16 +196,16 @@ namespace etoile
     elle::Status        Scope::Inclose(Scope*                   scope)
     {
       // depending on the scope i.e its chemin.
-      if (scope->chemin == path::Chemin::Null)
-        {
-          if (Scope::Add(scope) == elle::Status::Error)
-            throw Exception("unable to add the anonymous scope");
-        }
+      if (scope->chemin.empty())
+      {
+        if (Scope::Add(scope) == elle::Status::Error)
+          throw Exception("unable to add the anonymous scope");
+      }
       else
-        {
-          if (Scope::Add(scope->chemin, scope) == elle::Status::Error)
-            throw Exception("unable to add the onymous scope");
-        }
+      {
+        if (Scope::Add(scope->chemin, scope) == elle::Status::Error)
+          throw Exception("unable to add the onymous scope");
+      }
 
       return elle::Status::Ok;
     }
@@ -276,24 +276,18 @@ namespace etoile
     elle::Status        Scope::Relinquish(Scope*                scope)
     {
       // depending on the scope type.
-      if (scope->chemin == path::Chemin::Null)
-        {
-          //
-          // in this case the scope is anonymous.
-          //
-
-          if (Scope::Remove(scope) == elle::Status::Error)
-            throw Exception("unable to remove the anonymous scope");
-        }
+      if (scope->chemin.empty())
+      {
+        // The scope is anonymous.
+        if (Scope::Remove(scope) == elle::Status::Error)
+          throw Exception("unable to remove the anonymous scope");
+      }
       else
-        {
-          //
-          // in this case, the scope is onymous.
-          //
-
-          if (Scope::Remove(scope->chemin) == elle::Status::Error)
-            throw Exception("unable to remove the onymous scope");
-        }
+      {
+        // The scope is onymous.
+        if (Scope::Remove(scope->chemin) == elle::Status::Error)
+          throw Exception("unable to remove the onymous scope");
+      }
 
       return elle::Status::Ok;
     }
@@ -1132,7 +1126,7 @@ namespace etoile
       // if this scope is anonymous, i.e has been created, there is no
       // need to refresh it nor too disclose its modifications since nobody
       // can load it but the actor having created it.
-      if (this->chemin == path::Chemin::Null)
+      if (this->chemin.empty())
         return elle::Status::Ok;
 
       // depending on the context's state.

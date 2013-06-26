@@ -220,7 +220,7 @@ namespace etoile
             // by another actor since it is not referenced yet by a chemin.
 
             // check the scope's nature i.e does it have a chemin.
-            if (this->scope->chemin != path::Chemin::Null)
+            if (!this->scope->chemin.empty())
               {
                 //
                 // the normal case: check that no modification has been

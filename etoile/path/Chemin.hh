@@ -28,11 +28,6 @@ namespace etoile
     {
     public:
       //
-      // constants
-      //
-      static const Chemin                       Null;
-
-      //
       // constructors & destructors
       //
       Chemin();
@@ -52,6 +47,8 @@ namespace etoile
       elle::Boolean             Derives(const Chemin&) const;
 
       elle::Status              Locate(nucleus::proton::Location&) const;
+      bool
+      empty() const;
 
       //
       // interfaces
