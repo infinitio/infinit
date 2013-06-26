@@ -1,4 +1,5 @@
 #include <elle/system/system.hh>
+#include <elle/assert.hh>
 
 #include <etoile/path/Path.hh>
 #include <etoile/path/Route.hh>
@@ -22,7 +23,22 @@ namespace etoile
       Route(std::string(1, elle::system::path::separator))
     {}
 
-    Route::Route(std::string const& path)
+    Route::Route(Route const& source,
+                 elle::Size size):
+      _elements()
+    {
+      ELLE_ASSERT_LTE(size, source.elements().size());
+      unsigned i = 0;
+      for (auto const& component: source.elements())
+      {
+        if (++i > size)
+          break;
+        this->_elements.push_back(component);
+      }
+    }
+
+    Route::Route(std::string const& path):
+      _elements()
     {
       elle::String::size_type start;
       elle::String::size_type end;

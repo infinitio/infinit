@@ -39,8 +39,10 @@ namespace etoile
     public:
       /// Create a Route representing the root.
       Route();
-      /// Clone a Route.
-      Route(Route const&) = default;
+      /// A copy of \param source.
+      Route(Route const& source) = default;
+      /// A copy of \param source limited to the first \param size components.
+      Route(Route const& source, elle::Size size);
       /// Create a route from a string by splitting it according to the path
       /// separator.
       ///

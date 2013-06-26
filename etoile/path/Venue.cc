@@ -12,6 +12,19 @@ namespace etoile
     Venue::Venue()
     {}
 
+    Venue::Venue(Venue const& source, elle::Size size):
+      _elements()
+    {
+      ELLE_ASSERT_LTE(size, source.elements().size());
+      unsigned i = 0;
+      for (auto const& component: source.elements())
+      {
+        if (++i > size)
+          break;
+        this->_elements.push_back(component);
+      }
+    }
+
     /*-----------.
     | Operations |
     `-----------*/

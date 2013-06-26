@@ -26,24 +26,26 @@ namespace etoile
     ///
     class Chemin
     {
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
-      //
-      // constructors & destructors
-      //
+      /// An empty Chemin.
       Chemin();
+      /// A Chemin composed of the given \param route and \param venue.
       Chemin(Route const& route,
              Venue const& venue);
-      Chemin(Chemin const&) = default;
+      /// A Chemin composed of the given \param route and \param venue limited
+      /// to \param size components.
+      Chemin(Route const& route,
+             Venue const& venue,
+             elle::Size size);
+      /// A copy of \param source.
+      Chemin(Chemin const& source) = default;
 
       //
       // methods
       //
-      elle::Status              Create(const Route&,
-                                       const Venue&,
-                                       const nucleus::neutron::Size =
-                                         std::numeric_limits<
-                                           nucleus::neutron::Size>::max());
-
       elle::Boolean             Derives(const Chemin&) const;
 
       elle::Status              Locate(nucleus::proton::Location&) const;

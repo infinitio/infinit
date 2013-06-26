@@ -5,71 +5,29 @@ namespace etoile
 {
   namespace path
   {
-//
-// ---------- constructors & destructors --------------------------------------
-//
+    /*-------------.
+    | Construction |
+    `-------------*/
 
-    ///
-    /// default constructor.
-    ///
     Chemin::Chemin()
-    {
-    }
+    {}
 
     Chemin::Chemin(Route const& route,
-                   Venue const& venue)
-    {
-      if (this->Create(route, venue) == elle::Status::Error)
-        throw Exception("Cannot create the chemin");
-    }
+                   Venue const& venue):
+      route(route),
+      venue(venue)
+    {}
+
+    Chemin::Chemin(Route const& route,
+                   Venue const& venue,
+                   elle::Size size):
+      route(route, size),
+      venue(venue, size)
+    {}
+
 //
 // ---------- methods ---------------------------------------------------------
 //
-
-    ///
-    /// this method creates a chemin.
-    ///
-    elle::Status
-    Chemin::Create(Route const& route,
-                   Venue const& venue,
-                   nucleus::neutron::Size size)
-    {
-      this->route.elements().clear();
-      this->venue.elements().clear();
-
-      //
-      // import the route.
-      //
-      {
-        Route::Scoutor  scoutor;
-        nucleus::neutron::Size i;
-
-        // go through the route.
-        for (scoutor = route.elements().begin(), i = 0;
-             (scoutor != route.elements().end()) && (i < size);
-             scoutor++, i++)
-          this->route.elements().push_back(*scoutor);
-      }
-
-      //
-      // import the venue.
-      //
-      {
-        Venue::Scoutor  scoutor;
-        nucleus::neutron::Size i;
-
-        // go through the venue.
-        for (scoutor = venue.elements().begin(), i = 0;
-             (scoutor != venue.elements().end()) && (i < size);
-             scoutor++, i++)
-          {
-            // record the venue element.
-            this->venue.elements().push_back(*scoutor);
-          }
-      }
-
-      return elle::Status::Ok;
-    }
 
     ///
     /// this method returns true if the current chemin derives the

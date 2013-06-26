@@ -25,11 +25,7 @@ namespace etoile
       if (path::Path::Resolve(route, venue) == elle::Status::Error)
         throw Exception("unable to resolve the route");
 
-      // Create the chemin.
-      path::Chemin chemin;
-      if (chemin.Create(route, venue) == elle::Status::Error)
-        throw Exception("unable to create the chemin");
-      return chemin;
+      return path::Chemin(route, venue);
     }
 
     // XXX[to move somewhere else]

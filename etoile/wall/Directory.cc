@@ -328,26 +328,15 @@ namespace etoile
         //
         // For this reason, the scopes must be updated.
         {
-          struct
-          {
-            path::Chemin        from;
-            path::Chemin        to;
-          }                     chemins;
-
-          if (chemins.from.Create(route_from, venue) == elle::Status::Error)
-            throw Exception("unable to create the chemin");
-
-          // create the new chemin which includes the new route and
-          // the venue, which has not changed since.
-          if (chemins.to.Create(route_to, venue) == elle::Status::Error)
-            throw Exception("unable to create the chemin");
+          path::Chemin chemin_from(route_from, venue);
+          path::Chemin chemin_to(route_to, venue);
 
           // Update the scope so as to update all the scopes whose
           // chemins are now inconsistent---i.e referencing the old
           // chemin _chemin.from_.
           ELLE_TRACE("update the scope")
-            if (gear::Scope::Update(chemins.from,
-                                    chemins.to) == elle::Status::Error)
+            if (gear::Scope::Update(chemin_from,
+                                    chemin_to) == elle::Status::Error)
               throw Exception("unable to update the scopes");
         }
 

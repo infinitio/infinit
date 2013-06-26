@@ -76,7 +76,6 @@ namespace etoile
            scoutor != route.elements().end();
            scoutor++)
         {
-          Chemin                chemin;
           std::string                 slice;
           nucleus::neutron::Entry const* entry;
 
@@ -91,10 +90,7 @@ namespace etoile
           if (slice.empty() == true)
             throw Exception("the slice should never be empty");
 
-          // create the chemin.
-          if (chemin.Create(route, venue,
-                            venue.elements().size()) == elle::Status::Error)
-            throw Exception("unable to create the chemin");
+          Chemin chemin(route, venue, venue.elements().size());
 
           // load the directory.
           gear::Identifier identifier(wall::Directory::load(chemin));

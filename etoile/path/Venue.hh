@@ -34,6 +34,8 @@ namespace etoile
       Venue();
       /// A copy of \param source.
       Venue(Venue const& source) = default;
+      /// A copy of \param source limited to the first \param size components.
+      Venue(Venue const& source, elle::Size size);
       // XXX: should not be assignable.
       ELLE_OPERATOR_ASSIGNMENT(Venue);
     private:
