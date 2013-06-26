@@ -53,7 +53,6 @@ namespace etoile
       /// Whether this starts with \param base.
       bool
       derives(const Venue& base) const;
-      elle::Status              Clear();
 
     /*-----------.
     | Comparable |

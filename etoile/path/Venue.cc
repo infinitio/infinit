@@ -43,13 +43,6 @@ namespace etoile
       return true;
     }
 
-    elle::Status
-    Venue::Clear()
-    {
-      this->elements().clear();
-      return elle::Status::Ok;
-    }
-
     /*-----------.
     | Comparable |
     `-----------*/

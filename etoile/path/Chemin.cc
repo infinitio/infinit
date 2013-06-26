@@ -45,8 +45,7 @@ namespace etoile
                    nucleus::neutron::Size size)
     {
       this->route.elements().clear();
-      if (this->venue.Clear() == elle::Status::Error)
-        throw Exception("unable to clear the venue");
+      this->venue.elements().clear();
 
       //
       // import the route.
