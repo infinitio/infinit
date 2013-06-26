@@ -635,34 +635,34 @@ namespace surface
     {
       auto s = this->_states[transaction.id];
 
-      if (s.tries == 1) //XXX variable for that
-      {
-        this->_meta.update_transaction(transaction.id,
-                                       plasma::TransactionStatus::failed);
-        this->_states->erase(transaction.id);
-        auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
-          std::chrono::system_clock::now().time_since_epoch());
-        auto timestamp_tr = std::chrono::duration<double>(transaction.timestamp);
-        double duration = timestamp_now.count() - timestamp_tr.count();
-        this->_reporter.store("transaction_transferring_fail",
-                              {{MKey::attempt, std::to_string(s.tries)},
-                               {MKey::duration, std::to_string(duration)},
-                               {MKey::network,transaction.network_id},
-                               {MKey::value, transaction.id}});
-        return;
-      }
+      // if (s.tries == 1) //XXX variable for that
+      // {
+      //   this->_meta.update_transaction(transaction.id,
+      //                                  plasma::TransactionStatus::failed);
+      //   this->_states->erase(transaction.id);
+      //   auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+      //     std::chrono::system_clock::now().time_since_epoch());
+      //   auto timestamp_tr = std::chrono::duration<double>(transaction.timestamp);
+      //   double duration = timestamp_now.count() - timestamp_tr.count();
+      //   this->_reporter.store("transaction_transferring_fail",
+      //                         {{MKey::attempt, std::to_string(s.tries)},
+      //                          {MKey::duration, std::to_string(duration)},
+      //                          {MKey::network,transaction.network_id},
+      //                          {MKey::value, transaction.id}});
+      //   return;
+      // }
 
-      // If the transaction is running, cancel it.
-      if (s.state == State::running)
-      {
-        if (this->status(s.operation) == OperationStatus::running)
-        {
-          ELLE_LOG("transfer %s had an error, restarting", transaction.id);
-          this->cancel_operation(s.operation);
-        }
-        s.state = State::preparing;
-        s.operation = 0;
-      }
+      // // If the transaction is running, cancel it.
+      // if (s.state == State::running)
+      // {
+      //   if (this->status(s.operation) == OperationStatus::running)
+      //   {
+      //     ELLE_LOG("transfer %s had an error, restarting", transaction.id);
+      //     this->cancel_operation(s.operation);
+      //   }
+      //   s.state = State::preparing;
+      //   s.operation = 0;
+      // }
 
       if (s.state == State::preparing)
       {
@@ -705,19 +705,19 @@ namespace surface
     TransactionManager::_start_download(Transaction const& transaction)
     {
       auto state = this->_states[transaction.id];
-      if (state.state == State::running)
-      {
-        ELLE_LOG("transfer %s met an error, restarting", transaction.id);
-        this->cancel_operation(state.operation);
-        this->_network_manager.delete_local(transaction.network_id);
-        this->_network_manager.prepare(transaction.network_id);
-        this->_network_manager.to_directory(
-          transaction.network_id,
-          common::infinit::network_shelter(this->_self.id,
-                                           transaction.network_id));
-        this->_network_manager.wait_portal(transaction.network_id);
-        state.state = State::none;
-      }
+      // if (state.state == State::running)
+      // {
+      //   ELLE_LOG("transfer %s met an error, restarting", transaction.id);
+      //   this->cancel_operation(state.operation);
+      //   this->_network_manager.delete_local(transaction.network_id);
+      //   this->_network_manager.prepare(transaction.network_id);
+      //   this->_network_manager.to_directory(
+      //     transaction.network_id,
+      //     common::infinit::network_shelter(this->_self.id,
+      //                                      transaction.network_id));
+      //   this->_network_manager.wait_portal(transaction.network_id);
+      //   state.state = State::none;
+      // }
 
       if (state.state == State::none)
       {
@@ -736,6 +736,14 @@ namespace surface
         state.tries += 1;
         this->_states(
           [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
+      }
+      else
+      {
+        if (state.state != State::none)
+          ELLE_TRACE("cannot start download of %s, state is not none: %s",
+                     transaction, (int) state.state);
+        else
+          ELLE_TRACE("XXX cannot start upload (should not be printed)");
       }
     }
   }

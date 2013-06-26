@@ -54,6 +54,7 @@ class Trophonius(basic.LineReceiver):
         self.state = 'HELLO'
         self.meta_client = None
         self._alive_service = None
+        self.reason = None
 
     def __str__(self):
         if hasattr(self, "id"):
@@ -63,10 +64,16 @@ class Trophonius(basic.LineReceiver):
 
     def connectionMade(self):
         log.msg("New connection from", self.transport.getPeer())
-        self._alive_service = reactor.callLater(30, self.transport.loseConnection)
+        self._alive_service = reactor.callLater(30, self._loseConnection)
+
+    def _loseConnection(self):
+        self.reason = "noPing"
+        self.transport.loseConnection()
 
     def connectionLost(self, reason):
-        log.msg("Connection lost with", self.transport.getPeer(), reason)
+        self.reason = self.reason or reason
+
+        log.msg("Connection lost with", self.transport.getPeer(), self.reason)
 
         if self.id is None:
             return
