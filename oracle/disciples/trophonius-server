@@ -15,6 +15,7 @@ import sys, os
 import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 import meta.conf
+import pythia.constants
 parser = argparse.ArgumentParser(description="Trophonius launcher")
 
 parser.add_argument(
@@ -32,6 +33,12 @@ parser.add_argument(
     default = meta.conf.TROPHONIUS_CONTROL_PORT
 )
 
+parser.add_argument(
+    '--meta-url',
+    type = str,
+    default = pythia.constants.DEFAULT_SERVER
+)
+
 if __name__ == '__main__':
     args = parser.parse_args()
     from trophonius.application import Application
@@ -39,5 +46,6 @@ if __name__ == '__main__':
         ip = args.host,
         port = args.port,
         ssl_port = args.control_port,
+        meta_url = args.meta_url,
     )
     application.run()

@@ -18,6 +18,7 @@ import trophonius
 import clients
 import os
 import os.path
+import pythia.constants
 
 try:
     import setproctitle
@@ -31,12 +32,17 @@ class Message(object):
         self.type = type
 
 class Application(object):
-    def __init__(self, ip="127.0.0.1", port=conf.LISTEN_TCP_PORT, ssl_port=conf.LISTEN_SSL_PORT, logfile=sys.stderr):
+    def __init__(self, ip="127.0.0.1",
+            port=conf.LISTEN_TCP_PORT,
+            ssl_port=conf.LISTEN_SSL_PORT,
+            logfile=sys.stderr,
+            meta_url=pythia.constants.DEFAULT_SERVER):
         self.ip = ip
         self.port = port
         self.logfile = logfile
         self.ssl_port = ssl_port
         self.clients = dict()
+        self.meta_url = meta_url
         if HAVE_SETPROCTITLE:
             setproctitle.setproctitle("Trophonius")
 

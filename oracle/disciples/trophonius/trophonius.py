@@ -123,25 +123,26 @@ class Trophonius(basic.LineReceiver):
             self.device_id = req["device_id"]
 
             # Authentication
-            res = pythia.Client(session={'token': req['token']}).get('/self')
+            client = pythia.Client(session={'token': req['token']},
+                    server=self.factory.application.meta_url)
+            res = client.get('/self')
             if not res['success']:
                 raise Exception("Meta error: %s" % res.get('error', ''))
             self.id = res["_id"]
             self.token = req["token"]
 
-            self.meta_client = pythia.Admin()
+            self.meta_client = pythia.Admin(server=self.factory.application.meta_url)
             res = self.meta_client.post('/user/connect', {
                 'user_id': self.id,
                 'device_id': self.device_id,
             })
-
 
             # Add the current client to the client list
             assert isinstance(self.factory.clients, dict)
             self.factory.clients.setdefault(self.id, set()).add(self)
             self.devices = self.factory.clients[self.id]
 
-            pythia.Admin().post(
+            self.meta_client.post(
                 '/user/connected',
                 {
                     'user_id': self.id,
@@ -241,6 +242,7 @@ class MetaTropho(basic.LineReceiver):
 
 class TrophoFactory(protocol.Factory):
     def __init__(self, application):
+        self.application = application
         self.clients = application.clients
 
     def startFactory(self):
@@ -250,8 +252,9 @@ class TrophoFactory(protocol.Factory):
         return Trophonius(self)
 
 class MetaTrophoFactory(protocol.Factory):
-    def __init__(self, app):
-        self.clients = app.clients
+    def __init__(self, application):
+        self.application = application
+        self.clients = application.clients
 
     def buildProtocol(self, addr):
         return MetaTropho(self)
