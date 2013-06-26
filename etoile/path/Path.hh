@@ -35,7 +35,7 @@ namespace etoile
       static
       elle::Status
       Parse(const std::string& slab,
-            Slice& slice,
+            std::string& slice,
             nucleus::proton::Revision& revision);
     };
   }

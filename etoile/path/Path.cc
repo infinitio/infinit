@@ -46,7 +46,7 @@ namespace etoile
       // if the cache did not resolve anything.
       if (venue.elements().empty())
         {
-          Slice         slice;
+          std::string         slice;
 
           // retrieve the root directory's address.
           if (depot::Depot::Origin(address) == elle::Status::Error)
@@ -77,7 +77,7 @@ namespace etoile
            scoutor++)
         {
           Chemin                chemin;
-          Slice                 slice;
+          std::string                 slice;
           nucleus::neutron::Entry const* entry;
 
           // extract the slice/revision from the current slab.
@@ -138,7 +138,7 @@ namespace etoile
 
     elle::Status
     Path::Parse(const std::string& slab,
-                Slice& slice,
+                std::string& slice,
                 nucleus::proton::Revision& revision)
     {
       // set the slice as being the entire slab.
