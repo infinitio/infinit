@@ -131,9 +131,10 @@ namespace surface
     void
     DownloadOperation::_on_error()
     {
-      ELLE_TRACE("restarting transfer %s", this->_transaction)
-        this->_transaction_manager.update(this->_transaction.id,
-                                          plasma::TransactionStatus::started);
+      ELLE_ERR("download failed");
+      // ELLE_TRACE("restarting transfer %s", this->_transaction)
+      //   this->_transaction_manager.update(this->_transaction.id,
+      //                                     plasma::TransactionStatus::started);
     }
   }
 }
