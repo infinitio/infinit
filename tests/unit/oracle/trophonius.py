@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import json
 import socket
 
@@ -32,12 +35,10 @@ parser.add_argument(
     default = "http://localhost:8080"
 )
 
-
-
 args = parser.parse_args()
 
 root_dir = subprocess.check_output(shlex.split("git rev-parse --show-toplevel"))
-root_dir = root_dir.strip()
+root_dir = root_dir.strip().decode('utf-8')
 print(root_dir)
  
 meta = subprocess.Popen(["python",
@@ -57,8 +58,8 @@ def kill_server():
 atexit.register(kill_server)
 
 class Client:
-    def __init__(self, (server, port), user_id, device_id, token):
-        self.connection = socket.create_connection((server, port)) 
+    def __init__(self, addr, user_id, device_id, token):
+        self.connection = socket.create_connection(addr) 
         self.socket = self.connection.makefile()
         self.device_id = device_id
         self.user_id = user_id
@@ -66,14 +67,14 @@ class Client:
 
     def sendline(self, data):
         message = json.dumps(data)
-        self.connection.sendall(message + "\n")
+        self.connection.sendall(bytes(message + "\n", encoding="utf-8"))
 
     def readline(self):
         return self.socket.readline()
 
 class Admin(Client):
-    def __init__(self, (server, port)):
-        self.connection = socket.create_connection((server, port))
+    def __init__(self, addr):
+        self.connection = socket.create_connection(addr)
         self.socket = self.connection.makefile()
 
     def notify(self, to, msg):
