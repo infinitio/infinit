@@ -20,7 +20,7 @@ namespace plasma
       case plasma::TransactionStatus::name:     \
         out << #name;                           \
         break;
-# include <oracle/disciples/meta/resources/transaction_status.hh.inc>
+# include <oracle/disciples/meta/src/meta/resources/transaction_status.hh.inc>
 # undef TRANSACTION_STATUS
     }
 

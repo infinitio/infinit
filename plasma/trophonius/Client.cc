@@ -330,7 +330,7 @@ namespace plasma
         case NotificationType::name:           \
           out << #name;                            \
           break;
-#include <oracle/disciples/meta/notification_type.hh.inc>
+#include <oracle/disciples/meta/src/meta/notification_type.hh.inc>
 #undef NOTIFICATION_TYPE
       }
 
@@ -347,7 +347,7 @@ namespace plasma
         case NetworkUpdate::name:           \
           out << #name;                            \
           break;
-#include <oracle/disciples/meta/resources/network_update.hh.inc>
+#include <oracle/disciples/meta/src/meta/resources/network_update.hh.inc>
 #undef NETWORK_UPDATE
       }
 
