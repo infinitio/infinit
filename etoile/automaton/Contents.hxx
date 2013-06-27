@@ -295,9 +295,11 @@ namespace etoile
                 context.object->owner_token()) == elle::Status::Error)
             throw Exception("unable to update the object");
 
-          // XXX[to slow without a nest optimization: to activate later]
+          // XXX[too slow without a nest optimization: to activate later]
+          /* XXX
           ELLE_STATEMENT(context.contents_porcupine->check(
                            nucleus::proton::flags::all));
+          */
 
           // mark the new/modified blocks as needing to be stored.
           context.transcript().merge(context.contents_nest->transcribe());
