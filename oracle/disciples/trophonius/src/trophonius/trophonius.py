@@ -66,7 +66,7 @@ class Trophonius(basic.LineReceiver):
         from functools import partial
         log.msg("New connection from", self.transport.getPeer())
         self._alive_service = task.LoopingCall(self.sendLine,
-                json.dumps({"notification_type": 666}))
+                json.dumps({"notification_type": 208}))
         self._alive_service.start(30)
 
     def _loseConnection(self):
