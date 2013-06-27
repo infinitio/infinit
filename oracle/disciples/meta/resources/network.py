@@ -123,16 +123,6 @@ class AddUser(_Page):
         if to_add_user_id in network['users']:
             return self.error(error.USER_ALREADY_IN_NETWORK)
         to_add_user = database.byId(database.users(), to_add_user_id)
-        if '@' in to_add_user['email']:
-            infos = {
-                'added_by': self.user['fullname'],
-                'recipient': to_add_user['fullname'],
-                'network_name': network['name'],
-                'space': ' ',
-            }
-            # subject = mail.NETWORK_INVITATION_SUBJECT % infos
-            # content = mail.NETWORK_INVITATION_CONTENT % infos
-            # mail.send(to_add_user['email'], subject, content) #XXX
         network['users'].append(to_add_user_id)
         database.networks().save(network)
         to_add_user['networks'].append(network['_id'])
