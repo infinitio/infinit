@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+import os
 import sys
 import web
 
@@ -16,23 +17,6 @@ class Application(object):
     def __init__(self, meta_host=None, meta_port=None,
                  mongo_host=None, mongo_port=None,
                  port_file=None):
-        conf.META_HOST = meta_host
-        conf.META_PORT = meta_port
-        conf.MONGO_HOST = mongo_host
-        conf.MONGO_PORT = mongo_port
-
-        assert(port_file)
-        f = open(port_file, 'w')
-        f.write('meta_host:' + meta_host + '\n')
-        f.write('meta_port:' + str(meta_port) + '\n')
-        f.write('mongo_host:' + mongo_host + '\n')
-        f.write('mongo_port:' + str(mongo_port) + '\n')
-        f.close()
-
-
-        self.ip = meta_host
-        self.port = meta_port
-
         urls = []
         views = {}
 
@@ -43,6 +27,29 @@ class Application(object):
             views[id_] = resource
 
         self.app = web.application(urls, views)
+
+        conf.META_HOST = meta_host
+
+        if meta_port == None:
+            from wsgiref.simple_server import make_server
+            httpd = make_server('', 0, app.wsgifunc())
+            meta_port = httpd.server_port
+
+        conf.META_PORT = meta_port
+        conf.MONGO_HOST = mongo_host
+        conf.MONGO_PORT = mongo_port
+
+        if port_file != None:
+            f = open(port_file, 'w')
+            f.write('meta_host:' + meta_host + '\n')
+            f.write('meta_port:' + str(meta_port) + '\n')
+            f.write('mongo_host:' + mongo_host + '\n')
+            f.write('mongo_port:' + str(mongo_port) + '\n')
+            f.close()
+
+        self.ip = meta_host
+        self.port = meta_port
+
         session = Session(self.app, SessionStore(database.sessions()))
         for cls in views.itervalues():
             cls.__session__ = session
