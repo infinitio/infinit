@@ -139,9 +139,8 @@ namespace surface
     {
       ELLE_DEBUG_METHOD("");
 
-      // ELLE_TRACE("restarting transfer %s", this->_transaction)
-      //   this->_transaction_manager.update(this->_transaction.id,
-      //                                     plasma::TransactionStatus::started);
+      this->_transaction_manager.update(this->_transaction.id,
+                                        plasma::TransactionStatus::failed);
     }
   }
 }
