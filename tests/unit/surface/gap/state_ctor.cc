@@ -1,9 +1,8 @@
 // For std::this_thread::sleep_for until gcc4.8
 #define _GLIBCXX_USE_NANOSLEEP 1
 
-#define BOOST_TEST_MODULE state_testor
-#define BOOST_TEST_DYN_LINK
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/unit_test.hpp>
+using namespace boost::unit_test;
 
 #include <surface/gap/State.hh>
 
@@ -136,7 +135,8 @@ init_recipient(StatePtr state,
   return thread;
 }
 
-BOOST_AUTO_TEST_CASE(state_creation)
+void
+state_creation()
 {
   std::string state_creator_email = "state_creator_email@lol.fr";
 
@@ -173,11 +173,11 @@ BOOST_AUTO_TEST_CASE(state_creation)
   ::sleep(6);
 
   recipient_state->logout();
-
   recipient_thread.join();
 }
 
-BOOST_AUTO_TEST_CASE(delayed_accept)
+void
+delayed_accept()
 {
   std::string to_send{"to_send"};
 
@@ -249,7 +249,8 @@ BOOST_AUTO_TEST_CASE(delayed_accept)
   BOOST_CHECK_EQUAL(success_counter, 2);
 }
 
-BOOST_AUTO_TEST_CASE(early_accept)
+void
+early_accept()
 {
   std::string to_send{"to_send"};
 
@@ -320,7 +321,8 @@ BOOST_AUTO_TEST_CASE(early_accept)
   BOOST_CHECK_EQUAL(success_counter, 2);
 }
 
-BOOST_AUTO_TEST_CASE(delayed_cancel)
+void
+delayed_cancel()
 {
   std::string to_send{"to_send"};
 
@@ -393,7 +395,8 @@ BOOST_AUTO_TEST_CASE(delayed_cancel)
   BOOST_CHECK_EQUAL(cancel_counter, 2);
 }
 
-BOOST_AUTO_TEST_CASE(early_cancel)
+void
+early_cancel()
 {
   std::string to_send{"to_send"};
 
@@ -464,4 +467,18 @@ BOOST_AUTO_TEST_CASE(early_cancel)
   sender_thread.join();
 
   BOOST_CHECK_EQUAL(cancel_counter, 2);
+}
+
+test_suite*
+init_unit_test_suite(int argc, char* argv[])
+{
+  test_suite* test_suite = BOOST_TEST_SUITE("state_contructor");
+  test_suite->add(BOOST_TEST_CASE(state_creation), 0, 20);
+  test_suite->add(BOOST_TEST_CASE(early_accept), 0, 120);
+  test_suite->add(BOOST_TEST_CASE(delayed_accept), 0, 120);
+  test_suite->add(BOOST_TEST_CASE(early_cancel), 0, 120);
+  test_suite->add(BOOST_TEST_CASE(delayed_cancel), 0, 120);
+
+  framework::master_test_suite().add(test_suite);
+  return 0;
 }
