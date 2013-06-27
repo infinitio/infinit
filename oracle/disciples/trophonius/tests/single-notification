@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import json
+
+import os.path
+import pythia
+import shlex
+import atexit
+import time
+import subprocess
+import tempfile
+import sys
+
+import trophonius
+
+root_dir = subprocess.check_output(shlex.split("git rev-parse --show-toplevel"))
+root_dir = root_dir.strip().decode('utf-8')
+
+
+class FakeMeta:
+
+    def __init__(self):
+        self.instance = None
+
+    def __enter__(self):
+        with tempfile.NamedTemporaryFile() as f:
+            self.instance = subprocess.Popen(
+                ["python",
+                 os.path.join(root_dir, "tests", "unit", "oracle", "fake_meta.py"),
+             ],
+                stdout = subprocess.PIPE,
+                stderr = subprocess.PIPE,
+            )
+            self.host = '0.0.0.0'
+            self.port = int(self.instance.stdout.readline())
+            self.url = "http://{}:{}/".format(self.host, self.port)
+        return self
+
+    def __exit__(self, exception, exception_type, backtrace):
+        assert self.instance is not None
+        self.instance.terminate()
+
+
+res = 1
+try:
+    with FakeMeta() as meta:
+        with trophonius.Trophonius(meta_port = meta.port) as tropho:
+            meta_client = pythia.Client(server = meta.url)
+
+            res = meta_client.post("/user/login", {
+                "email": "pif@infinit.io",
+                "password": "paf"
+                })
+
+            c = trophonius.Client((tropho.host, tropho.port),
+                                  token=res["token"],
+                                  device_id="pif",
+                                  user_id=res["_id"])
+            admin = trophonius.Admin((tropho.host,
+                                      tropho.control_port))
+
+            admin.notify(to=c.user_id, msg={"msg": "coucou"})
+
+            # First we received the message confirming the connection
+            answer = c.readline()
+            resp = json.loads(answer)
+            if resp["response_code"] != 200:
+                res = 1
+
+            # Then, we wait for the notification we sent
+            resp = json.loads(c.readline())
+            if "msg" in resp and resp["msg"] == "coucou":
+                res = 0
+            else:
+                res = 1
+except:
+    print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
+    print('Trophonius stderr:\n' + tropho.stderr, file = sys.stderr)
+    raise
+
+exit(res)
