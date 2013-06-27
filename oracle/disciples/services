@@ -6,7 +6,7 @@ import time
 import subprocess
 import argparse
 
-def reset_user_status(self):
+def reset_user_status():
     """XXX We reset all user's status to be "disconnected". We know it's
     true because there is only on trophonius instance at the moment.
     The right way to do it is to disconnect all users (in the database)
@@ -138,7 +138,7 @@ def main(argv):
                 '--mode', 'full'
             ],
             stdout=open("stunserver.stdout", "w"),
-            stderr=open("stunserver.stderr", "w")) 
+            stderr=open("stunserver.stderr", "w"))
         )
 
         print("INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port)

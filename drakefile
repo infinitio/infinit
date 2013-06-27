@@ -1153,6 +1153,7 @@ def configure(cxx_toolkit = None,
                                   'oracle/disciples/trophonius/src')
     rule_trophonius << drake.copy(trophonius_bin, 'bin',
                                   'oracle/disciples')
+    oracles << rule_trophonius
 
     rule_trophonius_check = drake.TestSuite('oracle/trophonius/check')
     for test in [
