@@ -45,7 +45,6 @@ class Meta:
                     content = f.readlines()
                     break
             except OSError as e:
-                print('file doesn\'t exist')
                 if e.errno is not errno.ENOENT:
                     raise
         for line in content:
@@ -61,8 +60,6 @@ class Meta:
 
 
     def __enter__(self):
-        print('__enter__')
-
         command = []
         command.append(os.path.join(root_dir, '..', '..', '..',
                                     'bin', 'meta-server'))
@@ -90,8 +87,6 @@ class Meta:
         return self
 
     def __exit__(self, exception, exception_type, backtrace):
-        traceback.print_exception(exception_type, exception, backtrace)
         assert self.instance is not None
-        print('__exit__')
         os.remove(self.port_file)
         self.instance.terminate()
