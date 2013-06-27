@@ -823,6 +823,13 @@ def configure(cxx_toolkit = None,
   tests << elle.rule_tests
 
   ## ----- ##
+  ## Check ##
+  ## ----- ##
+
+  check = drake.Rule('check')
+  check << elle.rule_check
+
+  ## ----- ##
   ## Build ##
   ## ----- ##
 
@@ -1078,7 +1085,6 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/erginus-server',
       'oracle/disciples/longinus-server',
       'oracle/disciples/meta-server',
-      'oracle/disciples/meta-tests',
       'oracle/disciples/admin-console',
       'oracle/disciples/apertus-server',
       'oracle/disciples/services',
@@ -1126,6 +1132,8 @@ def configure(cxx_toolkit = None,
         rule_check << runner.status
         return rule, rule_check
       oracles << rule
+      check << rule_check
+
 
     rule_trophonius, rule_trophonius_check = oracle('trophonius')
     rule_meta, rule_meta_check = oracle('meta')
@@ -1218,9 +1226,6 @@ def configure(cxx_toolkit = None,
     (('tests/unit/heartbeat.cc', 'heartbeat.cc', 'heartbeat.hh', 'common/common.cc'), [reactor_lib, elle_lib] + udt_libs),
   ]
 
-  check = drake.Rule('check')
-  check << elle.rule_check
-  check << rule_trophonius_check
   for test, deps in tests_src_n_lib:
     if isinstance(test, str):
       bin_name, ext = os.path.splitext(test)
