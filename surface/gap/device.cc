@@ -14,6 +14,8 @@ namespace surface
     bool
     State::has_device() const
     {
+      ELLE_TRACE_METHOD("");
+
       ELLE_ASSERT(this->me().id.size() > 0 && "not properly initialized");
       ELLE_DEBUG("Check for '%s' device existence at '%s'",
                  this->me().id,
@@ -24,6 +26,8 @@ namespace surface
     Device&
     State::device()
     {
+      ELLE_TRACE_METHOD("");
+
       if (!elle::os::path::exists(common::infinit::passport_path(this->me().id)))
         update_device("XXX");
       else if (this->_device == nullptr)
@@ -39,19 +43,23 @@ namespace surface
     std::string const&
     State::device_id()
     {
+      ELLE_TRACE_METHOD("");
+
       return this->device().id;
     }
 
     std::string const&
     State::device_name()
     {
+      ELLE_TRACE_METHOD("");
+
       return this->device().name;
     }
 
     void
     State::update_device(std::string const& name, bool force_create)
     {
-      ELLE_TRACE_FUNCTION(name, force_create);
+      ELLE_TRACE_METHOD(name, force_create);
 
       ELLE_DEBUG("update device name to %s", name);
       std::string passport_path = common::infinit::passport_path(this->me().id);

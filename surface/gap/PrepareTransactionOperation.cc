@@ -34,12 +34,16 @@ namespace surface
       _self(self),
       _transaction(transaction),
       _files{files}
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     void
     PrepareTransactionOperation::_run()
     {
-      ELLE_TRACE_METHOD(this->_transaction);
+      ELLE_DEBUG_METHOD("");
+
+      ELLE_DEBUG("running transaction '%s'", this->_transaction);
 
       this->_network_manager.prepare(this->_transaction.network_id);
       this->_network_manager.to_directory(
@@ -130,7 +134,9 @@ namespace surface
     void
     PrepareTransactionOperation::_cancel()
     {
-      ELLE_DEBUG("cancelling %s name", this->name());
+      ELLE_DEBUG_METHOD("");
+
+      ELLE_DEBUG("cancelling transaction '%s'", this->name());
     }
   }
 }

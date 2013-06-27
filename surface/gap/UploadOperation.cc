@@ -20,11 +20,15 @@ namespace surface
       _transaction_manager(transaction_manager),
       _infinit_instance_manager(infinit_instance_manager),
       _transaction_id(transaction_id)
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     void
     UploadOperation::_run()
     {
+      ELLE_DEBUG_METHOD("");
+
       auto tr = this->_transaction_manager.one(this->_transaction_id);
       auto network_id = tr.network_id;
       try

@@ -1,3 +1,7 @@
+// XXX
+#undef DEBUG
+#define NDEBUG
+
 #include <etoile/nest/Nest.hh>
 #include <etoile/gear/Transcript.hh>
 #include <etoile/gear/Action.hh>

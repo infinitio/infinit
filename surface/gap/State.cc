@@ -36,6 +36,8 @@ namespace surface
 
     LoggerInitializer::LoggerInitializer()
     {
+      ELLE_TRACE_METHOD("");
+
       std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
       if (!log_file.empty())
       {
@@ -117,18 +119,23 @@ namespace surface
     std::string const&
     State::token_generation_key() const
     {
+      ELLE_TRACE_METHOD("");
+
       return this->me().token_generation_key;
     }
 
     std::string
     State::user_directory()
     {
+      ELLE_TRACE_METHOD("");
+
       return common::infinit::user_directory(this->me().id);
     }
 
     State::~State()
     {
       ELLE_TRACE_METHOD("");
+
       ELLE_SCOPE_EXIT([&] {
         try
         {
@@ -154,6 +161,8 @@ namespace surface
     void
     State::_self_load() const
     {
+      ELLE_DEBUG_METHOD("");
+
       if (!this->logged_in())
         throw Exception{gap_internal_error, "you must be logged in"};
 
@@ -185,6 +194,7 @@ namespace surface
                  std::string const& password)
     {
       ELLE_TRACE_METHOD("");
+
       this->_meta.token("");
       this->_cleanup();
 
@@ -261,7 +271,8 @@ namespace surface
     void
     State::_cleanup()
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_DEBUG_METHOD("");
+
       this->_transaction_manager->reset();
       this->_network_manager->reset();
       this->_user_manager->reset();
@@ -275,6 +286,7 @@ namespace surface
     State::logout()
     {
       ELLE_TRACE_METHOD("");
+
       if (this->_meta.token().empty())
         return;
 
@@ -311,6 +323,9 @@ namespace surface
     State::hash_password(std::string const& email,
                          std::string const& password)
     {
+      // !WARNING! Do not log the password.
+      ELLE_TRACE_METHOD(email);
+
       std::string lower_email = email;
 
       std::transform(lower_email.begin(),
@@ -341,6 +356,9 @@ namespace surface
                      std::string const& password,
                      std::string const& activation_code)
     {
+      // !WARNING! Do not log the password.
+      ELLE_TRACE_METHOD(fullname, email, activation_code);
+
       // End session the session.
       this->_reporter.store("user_register_attempt");
 
@@ -370,15 +388,21 @@ namespace surface
     NetworkManager&
     State::network_manager()
     {
+      ELLE_TRACE_METHOD("");
+
       return this->_network_manager(
         [this] (NetworkManagerPtr& manager) -> NetworkManager& {
           if (manager == nullptr)
+          {
+            ELLE_TRACE("allocating a new network manager");
+
             manager.reset(
               new NetworkManager{this->_meta,
                                  this->_reporter,
                                  this->_google_reporter,
                                  this->me(),
                                  this->device()});
+          }
           return *manager;
         });
     }
@@ -389,8 +413,12 @@ namespace surface
       return this->_notification_manager(
         [this] (NotificationManagerPtr& manager) -> NotificationManager& {
           if (manager == nullptr)
+          {
+            ELLE_TRACE("allocating a new notification manager");
+
             manager.reset(
               new NotificationManager{this->_meta, this->me(), this->device()});
+          }
           return *manager;
         });
     }
@@ -401,10 +429,14 @@ namespace surface
       return this->_user_manager(
         [this] (UserManagerPtr& manager) -> UserManager& {
           if (manager == nullptr)
+          {
+            ELLE_TRACE("allocating a new user manager");
+
             manager.reset(
               new UserManager{this->notification_manager(),
                               this->_meta,
                               this->me()});
+          }
           return *manager;
         });
     }
@@ -415,6 +447,9 @@ namespace surface
       return this->_transaction_manager(
         [this] (TransactionManagerPtr& manager) -> TransactionManager& {
           if (manager == nullptr)
+          {
+            ELLE_TRACE("allocating a new transaction manager");
+
             manager.reset(
               new TransactionManager{this->notification_manager(),
                                      this->network_manager(),
@@ -423,6 +458,7 @@ namespace surface
                                      this->_reporter,
                                      this->me(),
                                      this->device()});
+          }
           return *manager;
         });
     }

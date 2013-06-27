@@ -29,14 +29,14 @@ namespace surface
       _self(self),
       _swaggers_dirty(true)
     {
+      ELLE_TRACE_METHOD("");
+
       this->_notification_manager.user_status_callback(
         [&] (UserStatusNotification const &n) -> void
         {
           this->_on_swagger_status_update(n);
         }
       );
-
-      ELLE_TRACE_METHOD("");
     }
 
     UserManager::~UserManager()
@@ -74,6 +74,8 @@ namespace surface
     User const&
     UserManager::from_public_key(std::string const& public_key)
     {
+      ELLE_TRACE_METHOD(public_key);
+
       for (auto const& pair : this->_users)
       {
         if (pair.second->public_key == public_key)
@@ -95,6 +97,8 @@ namespace surface
     std::map<std::string, User const*>
     UserManager::search(std::string const& text)
     {
+      ELLE_TRACE_METHOD(text);
+
       std::map<std::string, User const*> result;
       auto res = this->_meta.search_users(text);
       for (auto const& user_id : res.users)
@@ -108,6 +112,8 @@ namespace surface
     UserManager::device_status(std::string const& user_id,
                                std::string const& device_id)
     {
+      ELLE_TRACE_METHOD(user_id, device_id);
+
       this->one(user_id); // Ensure the user is loaded.
       bool status = (this->_connected_devices.find(device_id) !=
                      this->_connected_devices.end());
@@ -118,20 +124,26 @@ namespace surface
     elle::Buffer
     UserManager::icon(std::string const& id)
     {
+      ELLE_TRACE_METHOD(id);
+
       return this->_meta.user_icon(id);
     }
 
     std::string
     UserManager::invite(std::string const& email)
     {
+      ELLE_TRACE_METHOD(email);
+
       auto response = this->_meta.invite_user(email);
       return response._id;
     }
 
     void
     UserManager::send_message(std::string const& recipient_id,
-                        std::string const& message)
+                              std::string const& message)
     {
+      ELLE_TRACE_METHOD(recipient_id, message);
+
       this->_meta.send_message(recipient_id,
                                this->_self.id,
                                message);
@@ -141,6 +153,8 @@ namespace surface
     UserManager::SwaggersSet const&
     UserManager::swaggers()
     {
+      ELLE_TRACE_METHOD("");
+
       if (this->_swaggers_dirty)
       {
         auto response = this->_meta.get_swaggers();
@@ -156,6 +170,8 @@ namespace surface
     User const&
     UserManager::swagger(std::string const& id)
     {
+      ELLE_TRACE_METHOD(id);
+
       if (this->swaggers().find(id) == this->swaggers().end())
         throw Exception{
           gap_error,
@@ -166,6 +182,8 @@ namespace surface
     void
     UserManager::_on_swagger_status_update(UserStatusNotification const& notif)
     {
+      ELLE_DEBUG_METHOD(notif);
+
       auto swagger = this->one(notif.user_id);
       this->swaggers(); // force up-to-date swaggers
       this->_swaggers.insert(swagger.id);
@@ -189,6 +207,8 @@ namespace surface
    void
    UserManager::swaggers_dirty()
    {
+     ELLE_TRACE_METHOD("");
+
      this->_swaggers_dirty = true;
    }
 
