@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import hashlib
 import meta
@@ -10,7 +10,7 @@ with meta.Meta(port_file='port_file') as meta:
 
     email = 'testkaka@infinit.io'
     password = 'kittens'
-    password_hash = hashlib.sha256(password).hexdigest()
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
     fullname = 'Pif Pif'
     activation_code = 'bitebite'
 
@@ -33,13 +33,13 @@ with meta.Meta(port_file='port_file') as meta:
         })
 
         if not res['success']:
-            print res
+            print(res)
             raise Exception("Cannot login!")
     session['token'] = res['token']
-    print "Got token:", res['token']
+    print("Got token:", res['token'])
 
     account = client.get('/self')
-    print "account:", account
+    print("account:", account)
     assert account['success'] is True
 
     # Testing devices
@@ -50,21 +50,21 @@ with meta.Meta(port_file='port_file') as meta:
                 {"ip": "127.0.0.1", 'port':1234},
             ],
         })
-        print res
+        print(res)
         assert res['success'] is True
-        print "added device", res['created_device_id']
+        print("added device", res['created_device_id'])
 
     devices = client.get('/devices')['devices']
     assert len(devices) > 0
-    print "User devices:", devices
+    print("User devices:", devices)
     device = client.get('/device/' + devices[0])
-    print "Got device", device
+    print("Got device", device)
 
     device['name'] = "THIS IS A NEW NAME"
     res = client.post('/devices', device)
 
     device = client.get('/device/' + devices[0])
-    print "Got updated device", device
+    print("Got updated device", device)
 
     assert device['name'] == "THIS IS A NEW NAME"
 
@@ -75,23 +75,23 @@ with meta.Meta(port_file='port_file') as meta:
     if not client.get('/networks'):
         res = client.post('/networks', {'name': "New network"})
         assert res['success'] is True
-        print "added network", res['created_network_id']
+        print("added network", res['created_network_id'])
 
     networks = client.get('/networks')['networks']
     assert len(networks) > 0
-    print "user networks", networks
+    print("user networks", networks)
 
     # updating network
     network = client.get('/network/' + networks[0])
     network['name'] = "THIS IS A NEW `network` NAME"
     res = client.post('/networks', network)
     if res['success'] is False:
-        print "ERROR:", res["error"]
+        print("ERROR:", res["error"])
         assert False
 
     network = client.get('/network/' + networks[0])
     assert network['name'] == "THIS IS A NEW `network` NAME"
-    print "updated network", network
+    print("updated network", network)
 
     res = client.post('/user/register', {
         'fullname': 'Mister Test friend',

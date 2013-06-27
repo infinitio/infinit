@@ -16,7 +16,6 @@ import subprocess
 import shlex
 import time
 import traceback
-import web
 
 root_dir = subprocess.check_output(shlex.split('git rev-parse --show-toplevel'))
 root_dir = root_dir.strip().decode('utf-8')
