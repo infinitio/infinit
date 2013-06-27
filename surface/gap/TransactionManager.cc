@@ -627,6 +627,8 @@ namespace surface
 
       auto s = this->_states[tr.id];
 
+      // XXX ghost user doesn't have public key so check this before adding to
+      // network.
       if (s.state == State::none and
           not this->_user_manager.one(tr.recipient_id).public_key.empty())
       {
@@ -650,9 +652,18 @@ namespace surface
       }
       else
       {
-        ELLE_DEBUG("do not prepare %s, already in state %d",
-                   tr,
-                   s.state);
+        if (s.state == State::preparing)
+        {
+          ELLE_DEBUG("do not prepare %s, already in state %d",
+                     tr,
+                     s.state);
+        }
+
+        else if (this->_user_manager.one(tr.recipient_id).public_key.empty())
+        {
+          ELLE_DEBUG("do not prepare %s, recipient hasn't registered yet",
+                     tr);
+        }
       }
     }
 
