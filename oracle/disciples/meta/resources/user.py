@@ -434,7 +434,7 @@ class Register(Page):
             handle = handle,
             lw_handle = handle.lower(),
             swaggers = {},
-            networks = [],
+            networks = ghost and ghost['networks'] or [],
             devices = [],
             connected_devices = [],
             notifications = ghost and ghost['notifications'] or [],

@@ -182,6 +182,7 @@ class Create(Page):
                     email = invitee_email,
                     register_status = 'ghost',
                     notifications = [],
+                    networks = [],
                     accounts=[{'type':'email', 'id':invitee_email}]
                 )
                 recipient_fullname = id_or_email
