@@ -31,7 +31,7 @@ class Meta:
         self.port_file = port_file
         self.meta_host = meta_host
         self.meta_port = meta_port
-
+        self.spawn_db = spawn_db
         self.instance = None
 
     def __parse_line(self, line = None, item = None):
@@ -78,7 +78,7 @@ class Meta:
             command.append('--meta-port')
             command.append(self.meta_port)
 
-        if spawn_db == True:
+        if self.spawn_db:
           command.append('--spawn-db')
 
 
