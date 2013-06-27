@@ -25,12 +25,17 @@ try:
                                       tropho.control_port))
             admin.notify(to=c.user_id, msg={'msg': 'coucou'})
             # First we received the message confirming the connection
-            answer = c.readline()
-            resp = json.loads(answer)
-            assert resp['response_code'] == 200
-            # Then, we wait for the notification we sent
-            resp = json.loads(c.readline())
-            assert 'msg' in resp and resp['msg'] == 'coucou'
+            while True:
+                answer = c.readline()
+                resp = json.loads(answer)
+                # Ignore pings
+                if resp['notification_type'] == 208:
+                    continue
+                assert resp['response_code'] == 200
+                # Then, we wait for the notification we sent
+                resp = json.loads(c.readline())
+                assert 'msg' in resp and resp['msg'] == 'coucou'
+                break
 except:
     print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
     print('Trophonius stderr:\n' + tropho.stderr, file = sys.stderr)
