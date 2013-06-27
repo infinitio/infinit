@@ -1078,7 +1078,6 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/erginus-server',
       'oracle/disciples/longinus-server',
       'oracle/disciples/meta-server',
-      'oracle/disciples/trophonius-server',
       'oracle/disciples/admin-console',
       'oracle/disciples/apertus-server',
       'oracle/disciples/services',
@@ -1137,15 +1136,31 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/pythia/__init__.py',
       )
 
+    # Trophonius
 
-    oracle_lib += drake.nodes(
-      'oracle/disciples/trophonius/application.py',
-      'oracle/disciples/trophonius/clients.py',
-      'oracle/disciples/trophonius/conf.py',
-      'oracle/disciples/trophonius/constants.py',
-      'oracle/disciples/trophonius/__init__.py',
-      'oracle/disciples/trophonius/trophonius.py',
+    rule_trophonius = drake.Rule('trophonius/build')
+    trophonius_sources = drake.nodes(
+      'oracle/disciples/trophonius/src/trophonius/__init__.py',
+      'oracle/disciples/trophonius/src/trophonius/application.py',
+      'oracle/disciples/trophonius/src/trophonius/clients.py',
+      'oracle/disciples/trophonius/src/trophonius/conf.py',
+      'oracle/disciples/trophonius/src/trophonius/constants.py',
+      'oracle/disciples/trophonius/src/trophonius/trophonius.py',
       )
+    trophonius_bin = drake.node('oracle/disciples/trophonius-server')
+    rule_trophonius << drake.copy(trophonius_sources, 'lib/python',
+                                  'oracle/disciples/trophonius/src')
+    rule_trophonius << drake.copy(trophonius_bin, 'bin',
+                                  'oracle/disciples')
+
+    rule_trophonius_check = drake.TestSuite('trophonius/check')
+    for test in [
+        'single-notification'
+    ]:
+      root = drake.Path('oracle/disciples/trophonius/tests/')
+      test = drake.node(root / test)
+      runner = drake.Runner(test)
+      rule_trophonius_check << runner.status
 
     oracle_lib_copy = drake.copy(oracle_lib,
                                  'lib/python',

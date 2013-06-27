@@ -26,20 +26,18 @@ def connection(host=conf.MONGO_HOST, port=conf.MONGO_PORT):
     return _connection
 
 _database = None
-def database(conn=None):
+def database():
     global _database
-    if conn is not None:
-        return conn.meta
     if _database is None:
         _database = getattr(connection(), conf.COLLECTION_NAME)
     return _database
 
 # collections
 _users = None
-def users(conn=None):
+def users():
     global _users
     if _users is None:
-        _users = database(conn)['users']
+        _users = database()['users']
         # constraints
         _users.ensure_index(
             'email', pymongo.ASCENDING,
@@ -48,60 +46,60 @@ def users(conn=None):
     return _users
 
 _devices = None
-def devices(conn=None):
+def devices():
     global _devices
     if _devices is None:
-        _devices = database(conn)['devices']
+        _devices = database()['devices']
     return _devices
 
 _sessions = None
-def sessions(conn=None):
+def sessions():
     global _sessions
     if _sessions is None:
-        _sessions = database(conn)['sessions']
+        _sessions = database()['sessions']
     return _sessions
 
 _networks = None
-def networks(conn=None):
+def networks():
     global _networks
     if _networks is None:
-        _networks = database(conn)['networks']
+        _networks = database()['networks']
     return _networks
 
 _invitations = None
-def invitations(conn=None):
+def invitations():
     global _invitations
     if _invitations is None:
-        _invitations = database(conn)['invitations']
+        _invitations = database()['invitations']
     return _invitations
 
 _transactions = None
-def transactions(conn=None):
+def transactions():
     global _transactions
     if _transactions is None:
-        _transactions = database(conn)['transactions']
+        _transactions = database()['transactions']
     return _transactions
 
 # Collection that keep transaction history.
 _finished_transactions = None
-def finished_transactions(conn=None):
+def finished_transactions():
     global _finished_transactions
     if _finished_transactions is None:
-        _finished_transactions = database(conn)['finished_transactions']
+        _finished_transactions = database()['finished_transactions']
     return _finished_transactions
 
 _notifications = None
-def notifications(conn=None):
+def notifications():
     global _notifications
     if _notifications is None:
-        _notifications = database(conn)['notifications']
+        _notifications = database()['notifications']
     return _notifications
 
 _crashes = None
-def crashes(conn=None):
+def crashes():
     global _crashes
     if _crashes is None:
-        _crashes = database(conn)['crashes']
+        _crashes = database()['crashes']
     return _crashes
 
 # functions

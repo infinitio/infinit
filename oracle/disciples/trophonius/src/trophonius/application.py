@@ -18,6 +18,7 @@ import trophonius
 import clients
 import os
 import os.path
+import pythia.constants
 
 try:
     import setproctitle
@@ -31,12 +32,19 @@ class Message(object):
         self.type = type
 
 class Application(object):
-    def __init__(self, ip="127.0.0.1", port=conf.LISTEN_TCP_PORT, ssl_port=conf.LISTEN_SSL_PORT, logfile=sys.stderr):
+    def __init__(self, ip="127.0.0.1",
+            port=conf.LISTEN_TCP_PORT,
+            ssl_port=conf.LISTEN_SSL_PORT,
+            logfile=sys.stderr,
+            meta_url=pythia.constants.DEFAULT_SERVER,
+            runtime_dir=None):
         self.ip = ip
         self.port = port
         self.logfile = logfile
         self.ssl_port = ssl_port
         self.clients = dict()
+        self.meta_url = meta_url
+        self.runtime_dir = runtime_dir
         if HAVE_SETPROCTITLE:
             setproctitle.setproctitle("Trophonius")
 
@@ -71,25 +79,23 @@ class Application(object):
         open(self.ssl_key_path, "wt").write(
                 crypto.dump_privatekey(crypto.FILETYPE_PEM, k))
 
-
-    def reset_user_status(self):
-        """XXX We reset all user's status to be "disconnected". We know it's
-        true because there is only on trophonius instance at the moment.
-        The right way to do it is to disconnect all users (in the database)
-        when the trophonius instance goes down.
-        """
-        import meta.database
-        meta.database.users().update({}, {'$set': {'connected': False}})
+    def make_portfiles(self):
+        with open(os.path.join(self.runtime_dir, "trophonius.sock", ), 'w+') as f:
+            port = self.port.getHost().port
+            f.write(str(port))
+        with open(os.path.join(self.runtime_dir, "trophonius.csock", ), 'w+') as f:
+            port = self.control_port.getHost().port
+            f.write(str(port))
 
     def run(self):
-        self.reset_user_status()
-
         if not all(os.path.exists(file) for file in (conf.SSL_KEY, conf.SSL_CERT)):
             self.create_self_signed_cert(".")
         log.startLogging(self.logfile)
 
         factory = trophonius.TrophoFactory(self)
         meta_factory = trophonius.MetaTrophoFactory(self)
-        reactor.listenTCP(self.port, factory)
-        reactor.listenTCP(self.ssl_port, meta_factory)
+        self.port = reactor.listenTCP(self.port, factory)
+        self.control_port = reactor.listenTCP(self.ssl_port, meta_factory)
+        if self.runtime_dir is not None:
+            self.make_portfiles()
         reactor.run()
