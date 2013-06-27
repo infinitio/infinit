@@ -1129,6 +1129,8 @@ def configure(cxx_toolkit = None,
 
     rule_trophonius, rule_trophonius_check = oracle('trophonius')
     rule_meta, rule_meta_check = oracle('meta')
+    authority = drake.node('oracle/infinit.auth')
+    rule_meta << drake.copy(authority, 'oracle/meta', 'oracle')
 
     oracle_lib_copy = drake.copy(oracle_lib,
                                  'lib/python',

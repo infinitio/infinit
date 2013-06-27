@@ -26,7 +26,7 @@ if not os.path.exists(INFINIT_AUTHORITY_PATH):
     # When used in build dir
     INFINIT_AUTHORITY_PATH = os.path.join(
         os.path.abspath(os.path.dirname(__file__)),
-        "../../../oracle/infinit.auth"
+        "../../../oracle/meta/infinit.auth"
     )
 
 INFINIT_AUTHORITY_PASSWORD = ""
