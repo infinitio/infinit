@@ -531,7 +531,7 @@ namespace surface
         if (tr.sender_device_id != this->_device.id)
         {
           throw Exception(
-            device_not_valid,
+            gap_device_not_valid,
             elle::sprintf("received notification regarding a created "
                           "transaction which does not involve this "
                           "device: %s", tr));
@@ -561,7 +561,7 @@ namespace surface
         {
           if (tr.accepted)
             throw Exception(
-              device_not_valid,
+              gap_device_not_valid,
               elle::sprintf("received notification regarding a received "
                             "transaction which does not involve this "
                             "device: %s", tr));
