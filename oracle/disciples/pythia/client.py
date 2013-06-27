@@ -17,6 +17,14 @@ except:
         class Forbidden(BaseException): pass
         class NotFound(BaseException): pass
 
+# Python 2/3 compatibility
+try:
+    urlencode = urllib.urlencode
+except:
+    import urllib.parse
+    urlencode = urllib.parse.urlencode
+
+
 from pythia.constants import DEFAULT_SERVER
 
 class Client(object):
@@ -40,7 +48,7 @@ class Client(object):
         return self._req("DELETE", url, params, token or self._session.get('token'))
 
     def _req(self, method, url, params, token):
-        url = self._server + url.lstrip('/') + '?' + urllib.urlencode(params)
+        url = self._server + url.lstrip('/') + '?' + urlencode(params)
         client = httplib2.Http()
         headers = {}
         if token is not None:
