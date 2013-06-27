@@ -252,7 +252,8 @@ class TrophoFactory(protocol.Factory):
     def __init__(self, application):
         self.application = application
         self.clients = application.clients
-        self.sock_path = os.path.join(application.runtime_dir, "trophonius.sock")
+        if self.application.runtime_dir is not None:
+            self.sock_path = os.path.join(application.runtime_dir, "trophonius.sock")
 
     def stopFactory(self):
         if self.application.runtime_dir is not None:
@@ -265,7 +266,8 @@ class MetaTrophoFactory(protocol.Factory):
     def __init__(self, application):
         self.application = application
         self.clients = application.clients
-        self.sock_path = os.path.join(application.runtime_dir, "trophonius.csock")
+        if self.application.runtime_dir is not None:
+            self.sock_path = os.path.join(application.runtime_dir, "trophonius.csock")
 
     def buildProtocol(self, addr):
         return MetaTropho(self)
