@@ -98,30 +98,30 @@ namespace plasma
     notification_from_dict(json::Dictionary const& dict)
     {
       ELLE_TRACE("convert json %s to Notification instance", dict.repr());
-      NotificationType notification_type = dict["notification_type"]
-        .as<NotificationType>();
+      NotificationType type = dict["notification_type"].as<NotificationType>();
       using namespace elle::serialize;
       auto extractor = from_string<InputJSONArchive>(dict.repr());
       typedef std::unique_ptr<Notification> Ptr;
-      switch (notification_type)
+      switch (type)
       {
+      case NotificationType::ping:
+        return Ptr(new Notification{extractor});
       case NotificationType::transaction:
-        return Ptr{new TransactionNotification{extractor}};
+        return Ptr(new TransactionNotification{extractor});
       case NotificationType::user_status:
-        return Ptr{new UserStatusNotification{extractor}};
+        return Ptr(new UserStatusNotification{extractor});
       case NotificationType::message:
-        return Ptr{new MessageNotification{extractor}};
+        return Ptr(new MessageNotification{extractor});
       case NotificationType::network_update:
-        return Ptr{new NetworkUpdateNotification{extractor}};
+        return Ptr(new NetworkUpdateNotification{extractor});
       case NotificationType::connection_enabled:
-        return Ptr{new Notification{extractor}};
+        return Ptr(new Notification{extractor});
       default:
-        throw elle::Exception{
-          elle::sprint("Unknown notification type", notification_type)};
+        throw elle::Exception{elle::sprint("Unknown notification type", type)};
       }
       elle::unreachable();
-      return Ptr{nullptr};
     }
+
 
     //- Implementation --------------------------------------------------------
     struct Client::Impl
@@ -225,11 +225,13 @@ namespace plasma
       ELLE_DEBUG("got message: %s", msg);
       try
       {
-        if (msg == "PING\n")
-          _impl->pong_expected = false;
-        else
-          this->_notifications.push(
-              notification_from_dict(json::parse(msg)->as_dictionary()));
+        auto notif = notification_from_dict(json::parse(msg)->as_dictionary());
+        // While there is no reason to forward the ping notification to the user
+        // this notification is 'ignored', meaning that it's not pushed into the
+        // notification queue.
+        // If we want a behavior on it, just remove that condition.
+        if (notif->notification_type != NotificationType::ping)
+          this->_notifications.emplace(notif.release());
       }
       catch (std::exception const&)
       {
