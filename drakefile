@@ -1101,39 +1101,6 @@ def configure(cxx_toolkit = None,
       )
 
     oracle_lib += drake.nodes(
-      'oracle/disciples/meta/__init__.py',
-      'oracle/disciples/meta/apertus.py',
-      'oracle/disciples/meta/application.py',
-      'oracle/disciples/meta/conf.py',
-      'oracle/disciples/meta/database.py',
-      'oracle/disciples/meta/apertus.py',
-      'oracle/disciples/meta/invitation.py',
-      'oracle/disciples/meta/error.py',
-      'oracle/disciples/meta/error_code.hh.inc',
-      'oracle/disciples/meta/mail.py',
-      'oracle/disciples/meta/mongobox/mongobox/__init__.py',
-      'oracle/disciples/meta/mongobox/mongobox/mongobox.py',
-      'oracle/disciples/meta/mongobox/mongobox/utils.py',
-      'oracle/disciples/meta/notification_type.hh.inc',
-      'oracle/disciples/meta/notifier.py',
-      'oracle/disciples/meta/page.py',
-      'oracle/disciples/meta/regexp.py',
-      'oracle/disciples/meta/resources/__init__.py',
-      'oracle/disciples/meta/resources/device.py',
-      'oracle/disciples/meta/resources/network.py',
-      'oracle/disciples/meta/resources/network_update.hh.inc',
-      'oracle/disciples/meta/resources/notification.py',
-      'oracle/disciples/meta/resources/place_holder_avatar.png',
-      'oracle/disciples/meta/resources/root.py',
-      'oracle/disciples/meta/resources/transaction.py',
-      'oracle/disciples/meta/resources/transaction_status.hh.inc',
-      'oracle/disciples/meta/resources/user.py',
-      'oracle/disciples/meta/session.py',
-      'oracle/disciples/meta/session_store.py',
-      'oracle/disciples/meta/user_status.hh.inc',
-      )
-
-    oracle_lib += drake.nodes(
       'oracle/disciples/pythia/admin.py',
       'oracle/disciples/pythia/client.py',
       'oracle/disciples/pythia/constants.py',
@@ -1141,31 +1108,27 @@ def configure(cxx_toolkit = None,
       )
 
     # Trophonius
+    def oracle(name):
+      root = drake.Path('oracle/disciples/%s' % name)
+      rule = drake.Rule('oracle/%s/build' % name)
+      trophonius_sources = drake.nodes(
+        *git.ls_files(root / 'src' / name))
+      server = drake.node('oracle/disciples/%s-server' % name)
+      rule << drake.copy(trophonius_sources,
+                         'lib/python', root / 'src')
+      rule << drake.copy(server, 'bin', 'oracle/disciples')
 
-    rule_trophonius = drake.Rule('oracle/trophonius/build')
-    trophonius_sources = drake.nodes(
-      'oracle/disciples/trophonius/src/trophonius/__init__.py',
-      'oracle/disciples/trophonius/src/trophonius/application.py',
-      'oracle/disciples/trophonius/src/trophonius/clients.py',
-      'oracle/disciples/trophonius/src/trophonius/conf.py',
-      'oracle/disciples/trophonius/src/trophonius/constants.py',
-      'oracle/disciples/trophonius/src/trophonius/fake_meta.py',
-      'oracle/disciples/trophonius/src/trophonius/trophonius.py',
-      )
-    trophonius_bin = drake.node('oracle/disciples/trophonius-server')
-    rule_trophonius << drake.copy(trophonius_sources, 'lib/python',
-                                  'oracle/disciples/trophonius/src')
-    rule_trophonius << drake.copy(trophonius_bin, 'bin',
-                                  'oracle/disciples')
+      rule_check = drake.TestSuite('oracle/%s/check' % name)
+      for test in git.ls_files(root / 'tests'):
+        test = drake.node(test)
+        runner = drake.Runner(test)
+        runner.reporting = drake.Runner.Reporting.on_failure
+        rule_check << runner.status
+        return rule, rule_check
+      oracles << rule
 
-    rule_trophonius_check = drake.TestSuite('oracle/trophonius/check')
-    for test in [
-        'single-notification'
-    ]:
-      root = drake.Path('oracle/disciples/trophonius/tests/')
-      test = drake.node(root / test)
-      runner = drake.Runner(test)
-      rule_trophonius_check << runner.status
+    rule_trophonius, rule_trophonius_check = oracle('trophonius')
+    rule_meta, rule_meta_check = oracle('meta')
 
     oracle_lib_copy = drake.copy(oracle_lib,
                                  'lib/python',
@@ -1194,7 +1157,6 @@ def configure(cxx_toolkit = None,
         heartbeat_sources + [reactor_lib, elle_lib] + udt_libs,
         cxx_toolkit, heartbeat_config)
 
-    oracles << rule_trophonius
     oracles << oracle_source_copy
     oracles << oracle_lib_copy
     oracles << heartbeat
