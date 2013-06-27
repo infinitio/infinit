@@ -464,7 +464,7 @@ namespace surface
           "--identity", user_identity
         };
 
-        ELLE_DEBUG("LAUNCH: %s %s",
+        ELLE_DEBUG("launch: %s %s",
                    group_binary,
                    boost::algorithm::join(arguments, " "));
         auto pc = binary_config("8group",
@@ -526,7 +526,7 @@ namespace surface
       if (permissions & nucleus::neutron::permissions::write)
         arguments.push_back("--write");
 
-      ELLE_DEBUG("LAUNCH: %s %s",
+      ELLE_DEBUG("launch: %s %s",
                  access_binary,
                  boost::algorithm::join(arguments, " "));
 
