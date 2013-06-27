@@ -2,20 +2,36 @@
 Coding guidelines
 =================
 
-Add a license file in every library
------------------------------------
+Library structure
+-----------------
 
-### Rationale
+### XXX Directory structure
+
+src Vs source Vs srcs Vs sources
+
+### XXX drake and makefiles
+
+### XXX Add a `readme` file
+
+The library should contain at its top a file called README.md containing the
+following:
+
+ * Short description.
+ * A synopsis.
+ * Quick information on how to install it (and required dependencies).
+ * A short but useful sample.
+ * Some user manual (or a link to it).
+ * Some library reference (or a link to it).
+
+### Apply the B-BSD license (for an open source library)
 
 Default copyright is full ownership of Infinit when no license is mentioned.
 Thus, any library that is meant to be open source should indicate otherwise.
 
-### License to be applied for opened software.
-
 The suggested license is the Beer BSD, which is a 3-clause BSD license with the
 beer clause.
 
-### How to apply the license
+**How to apply the license**
 
  * Add the license in plain text in the root directory of the library.
  * Add an header in every source file
@@ -31,17 +47,18 @@ The header should contain the following:
 	See the LICENSE file for more information on the terms and
 	conditions.
 
-Replace `YEAR' with all years of application of the license, for example:
+Replace `YEAR` with all years of application of the license, for example:
 
 	Copyright (c) 2012-2017, 2019, infinit.io
 
-Use `ELLE_ASSERT` and `ELLE_ENFORCE`
-------------------------------------
+
+Contract programming
+--------------------
 
 ### Rationale
 
-Contract programming is not integrated in the language, so additional tools for
-that task must be provided to the programmer.
+Contract programming is not integrated into the language, so additional tools
+for that task must be provided to the programmer.
 
 ### Discussion
 
@@ -57,35 +74,74 @@ When applicable, prefer the use of specialized assert macros (like
 Use `ELLE_ENFORCE` for tests, or to ensure some conditions even for production
 code.
 
-### Discussion
+### Handling assertions
 
-XXX discuss assert implem (Implement ELLE_ASSERT with an exception ?)
--> opportunity to handle the assert case
--> incompatible with catch (...)
--> rely on others to write good try/except clauses
--> Should terminate the program.
+Assertions are generated as an exception of type `AssertError` that does not
+derive from `std::exception`. You should never catch that exception, but in the
+main function of the program. See [[#Exception]] handling for information on
+how to handle exceptions.
 
+How to log
+----------
 
-XXX How to log
---------------
+### Rationale
 
-### Discussion
+A good log system is of a great help when it comes to debug locally, or to
+reproduce a problem a client has. The log system should be coherently used
+accross the whole software, using the following levels:
 
-Should be logically added (more semantic): Only job related function
-Julien: use trace for function, debug for message
-Mefyl: TRACE is high level, should not reflect code.
+ * ERR
+ * WARN
+ * LOG
+ * TRACE
+ * DEBUG
+ * DUMP
+
+### Decision
+
+Each module should declare in each implementation file a *log component* of
+the form `complete.namespace.ClassName`.
+
+All logs are **relative to the module emitting them** (read this again), and an
+executable using them is responsible to select correct levels of each module.
+
+ 1. `ELLE_ERR`
+All errors that will be reported to the caller of your module should logged as
+errors.
+
+ 2. `ELLE_WARN`
+All errors or exception that are not propagated *must be* logged as warnings.
+
+ 3. `ELLE_LOG`
+Main information about the module, should be user-friendly.
+
+ 4. `ELLE_TRACE`
+Logical information about what the module is doing.
+
+ 5. `ELLE_DEBUG`
+Implementation information, like how many bytes have been read.
+
+ 6. `ELLE_DUMP`
+Data information, like the content of the buffer just read.
+
+To trace function and methods calls, use `ELLE_TRACE_FUNCTION/METHOD`.
+
+**Note:** `ELLE_TRACE_FUNCTION/METHOD` is not related to the `TRACE` level, it's
+activated or disabled as wanted.
+
+XXX `ELLE_TRACE` should be renamed
 
 Defining class attributes
 -------------------------
 
 ### Rationale
 
-The C++ language has no easy way to define properties (as C# and Python does).
+The C++ language has no easy way to define properties (as C# and Python do).
 The only pratical way to do it is by using macros that will dump appropriate
-function into the class itself.
+methods into the class itself.
 
-This could done by hand, but it would is tedious, error prone, and very
-verbose. In fact, there are countless examples when you want to give a
+This could be done by hand, but it would have been tedious, error prone, and
+very verbose. In fact, there are countless examples where you want to give a
 restricted access to an attribute that is privatly declared, even if it's only
 for debugging.
 
@@ -114,7 +170,7 @@ You should only implement the two comparison operators `<` and `==`. When using
 that class, you might want to use `std::rel_ops` namespace in order to have
 access to other operators.
 
-See http://www.cplusplus.com/reference/utility/rel_ops/ for more information.
+See [http://www.cplusplus.com/reference/utility/rel_ops/](http://www.cplusplus.com/reference/utility/rel_ops/) for more information.
 
 Documenting your code
 ---------------------
@@ -145,8 +201,8 @@ a function should be extremely rare. Prefer to add developer documentation
 below the function implementation, and refer to any external libraries
 documentation there.
 
-Derive and implement elle::Printable as much as possible
---------------------------------------------------------
+Make your types printable
+-------------------------
 
 ### Rationale
 
@@ -161,6 +217,9 @@ be the final one in the context of inheritance. The overload called will be the
 one of the compile time type.
 
 ### Discussion
+
+We considered carefully what are the advantages of using inheritance instead of
+the operator overload:
 
 #### Pros
  * Print always the final type
@@ -178,7 +237,8 @@ one of the compile time type.
 
 Always inherit from the class elle::Printable in every level of inheritance,
 even in the interfaces. The exceptions to that rule are POD objects or small
-and intensively used objects.
+and intensively used objects, in which cases you should use the traditional
+way to make that object printable (overloading of the operator << ).
 
 XXX What to print ? Example with the class Endpoint:
 
@@ -208,7 +268,6 @@ XXX Each header of the module should include it as the first include that
 appears in the file. That way, forward declaration are validated when
 confronted to their real declaration.
 
-
 Express ownership with smart pointers
 -------------------------------------
 
@@ -235,6 +294,7 @@ XXX **Note:** Usage of `new []` is forbidden.
 
 Sometimes, raw pointers must be used, especially when using external libraries.
 Even in these cases, you are encouraged to:
+
  * Write a `deleter` for any smart pointer
  * Use `ELLE_FINALLY`
  * Write explicit guards to manage these resources
@@ -266,16 +326,24 @@ An object is either copyable or non-copyable. In any cases, it have to be
 explicitly tagged as such:
 
 A fully copyable class should look like:
-<code lang="c++">struct A {
-  A(A const& other);
-  A& operator =(A const& other);
-};</code>
+<code lang="c++">
+
+	struct A
+	{
+	  A(A const& other);
+	  A& operator =(A const& other);
+	};
+</code>
 
 While a non copyable one
-<code lang="c++">struct A {
-  A(A const& other) = delete;
-  A& operator =(A const& other) = delete;
-};</code>
+<code lang="c++">
+
+	struct A
+	{
+	  A(A const& other) = delete;
+	  A& operator =(A const& other) = delete;
+	};
+</code>
 
 If you declare a type moveable, you shall not explicitely delete copy ctor and
 assignment, as it's the default behavior.
@@ -291,19 +359,27 @@ clear on your intent. Movability can be an optimization of the copy, or express
 precisely the opposite: the class is not copyable.
 
 A fully movable class should look like:
-<code lang="c++">struct A {
-  A(A&& other);
-  A& operator =(A&& other);
-  // The class is not copyable by default
-  // A(A const& other) = delete;
-  // A& operator =(A const& other) = delete;
-};</code>
+<code lang="c++">
+
+	struct A
+	{
+	  A(A&& other);
+	  A& operator =(A&& other);
+	  // The class is not copyable by default
+	  // A(A const& other) = delete;
+	  // A& operator =(A const& other) = delete;
+	};
+</code>
 
 While a non movable one
-<code lang="c++">struct A {
-  A(A&& other) = delete;
-  A& operator =(A&& other) = delete;
-};</code>
+<code lang="c++">
+
+	struct A
+	{
+	  A(A&& other) = delete;
+	  A& operator =(A&& other) = delete;
+	};
+</code>
 
 **Note:** A copyable object support the move syntax.
 
@@ -313,25 +389,26 @@ You are greatly encouraged to use scope blocks to limit visibility of a moved
 object.
 
 <code lang="c++">
-std::unique_ptr<int> func()
-{
-  std::unique_ptr<int> result;
-  {
-    std::unique_ptr<int> ptr(new int);
-    *ptr = 2;
-    result = std::move(ptr); // no more use of ptr
-  }
-  if (result != nullptr)
-    *result += 42;
-  return std::move(result); // no more use of result
-}
+
+	std::unique_ptr<int> func()
+	{
+	  std::unique_ptr<int> result;
+	  {
+	    std::unique_ptr<int> ptr(new int);
+	    *ptr = 2;
+	    result = std::move(ptr); // no more use of ptr
+	  }
+	  if (result != nullptr)
+	    *result += 42;
+	  return result; // no more use of result
+	}
 </code>
 
 ### Serializable types
 
 To be instanciated easily on the stack from an archiver, types must implement
-a deserialization constructor. A special care should be given about it: type
-should be "not initialized" but "yet destructible".
+a deserialization constructor. A special care should be given about it: the
+instance should be "not initialized" but "yet destructible".
 
 ### General constructors
 
@@ -342,36 +419,171 @@ should be `explicit` or documented as implicit on purpose.
 
 Any class of type T should have the following constructors and assignment
 operators:
+<code lang="c++">
 
-    T(T const& other)[ = default/delete ];
-    T& operator =(T const& other)[ = default/delete];
+	T(T const& other)[ = default/delete ];
+	T& operator =(T const& other)[ = default/delete];
+</code>
 
 and/or
+<code lang="c++">
 
-    T(T&& other)[ = default/delete]
-    T& operator =(T&& other)[ = default/delete]
+	T(T&& other)[ = default/delete]
+	T& operator =(T&& other)[ = default/delete]
+</code>
 
 Any (possible) single argument constructor should be explicit:
-
 <code lang="c++">
-    explicit
-    T(int i);
 
-    explicit
-    T(int i, int j = 0);
+	explicit
+	T(int i);
 
-    explicit
-    T(int i = 12, int j = 0);
+	explicit
+	T(int i, int j = 0);
 
-    // or documented as implicit:
-    /// Implicit construction from intptr_t;
-    T(intptr_t ptr);
+	explicit
+	T(int i = 12, int j = 0);
+
+	// or documented as implicit:
+	/// Implicit construction from intptr_t;
+	T(intptr_t ptr);
 </code>
 
 XXX Throwing exception from a destructor
 ----------------------------------------
 
+### Description
+
+When an exception is thrown from a destructor, many things can happen:
+
+ 1. If there is no try/catch block on the call path, the program instantly
+terminates.
+
+ 2. If there is one, it will continue to unwind the stack. However, if a second
+exception is thrown, the program instantly terminates.
+
+See [this excellent blog post](http://www.kolpackov.net/projects/c++/eh/dtor-1.xhtml)
+for a comprehensive guide to exceptions thrown in destructor.
+
+### Pros
+
+ * RAII easier to implement
+
+### Cons
+
+ * [Herb sutter][GOTW47], [Intel corporation][INTEL_EXCEPT],
+   [CERT][CERT_EXCEPT], [Parashift][PARASHIFT_EXCEPT] and [the creator of the
+   C++][STROUSTRUP_EXCEPT] strongly recommend against it.
+ * Not compatible with STL
+ * Not compatible with most external libraries (that don't throws in dtor)
+ * leaks memory when heap is used.
+ * Philosophically, in contract programming, post conditions should never throw
+   an exception, but asserts (std::thread asserts if the thread was not joined
+   before beeing destroyed).
+
+[GOTW47]: http://www.gotw.ca/gotw/047.htm
+[INTEL_EXCEPT]: http://software.intel.com/sites/products/documentation/doclib/iss/2013/sa-ptr/sa-ptr_win_lin/GUID-D2983B74-74E9-4868-90E0-D65A80F8F69F.htm
+[CERT_EXCEPT]: https://www.securecoding.cert.org/confluence/display/cplusplus/ERR33-CPP.+Destructors+must+not+throw+exceptions
+[PARASHIFT_EXCEPT]: http://www.parashift.com/c++-faq-lite/dtors-shouldnt-throw.html
+[STROUSTRUP_EXCEPT]: http://www.stroustrup.com/bs_faq2.html#ctor-exceptions
+
 ### Discussion
+
+#### Proposal 1: Checking if there is an exception on the fly
+<code lang="c++">
+
+	struct A
+	{
+		~A()
+		{
+			if (!std::uncaught_exception())
+				throw Exception{"I can safely throw"};
+		}
+	};
+</code>
+
+##### Pros
+
+ * Will do what you want *most of the time*.
+
+##### Cons
+
+ * Still not compatible with STL
+ * Still not compatible with most external libraries (that don't throws in dtor)
+ * Still leak.
+ * All destructor should use a special syntax to ensure exceptions are only
+thrown if `std::uncaught_exception()` is `false`.
+ * Not correct:
+
+<code lang="c++">
+
+	struct BankAccountOperation
+	{
+		~BankAccountOperation()
+		{
+			try
+			{
+				Transaction t(this->from, this->to);
+			}
+			catch (...)
+			{
+				// rollback and report error
+			}
+		}
+	};
+
+</code>
+
+If `Transaction` throws in its destructor, we can safely rollback the operation,
+but if there is already an uncaught exception, `Transaction` destructor won't
+throw, the rollback code won't be reached.
+
+#### Proposal 2: Never throw from destructors and use STL-like APIs
+
+Replace *flush* by *cleanup operation that must be done before destroying the
+object*.
+
+<code lang="c++">
+
+	struct Socket
+	{
+		Socket& operator << (std::string msg);
+		Socket& operator << (flush_type)
+		{ this->flush(); }
+		~Socket()
+		{
+			try
+			{
+				this->flush();
+			}
+			catch (...)
+			{
+				// log errors here
+			}
+		}
+	};
+
+	int main()
+	{
+		Socket s("some ip address");
+		s << "Hello" << std::flush;
+	}
+
+</code>
+
+##### Pros
+
+ * Compatible with STL and libraries that assume object don't throw in their dtor.
+ * Don't leak.
+ * Straight forward
+ * Still RAII
+ * STL streams work like that (flush is explicit).
+
+##### Cons
+
+ * It's the user's responsability to flush the stream *if* one wants to check
+errors.
+
 
 Calling virtual member function in constructors/destructors
 -----------------------------------------------------------
@@ -390,26 +602,32 @@ a `static` or `final` version of it. Lastly, if you really need to call a
 virtual function, document the call itself in ctor/dtor to explicitly show that
 you know what you're doing.
 
-XXX How to ship library
------------------------
+Exception
+---------
 
-### How to
+### Exception types
 
- * README file
- * LICENSE file
- * Makefile file
- * Sources files header
+The base exception of all exceptions defined in infinit softwares is
+`elle::Exception`, which you use any time you need to throw an exception.
 
-### Discussion
+A module might define its own exception types, but it should be only to add
+semantics into exceptions, not just to *catch everything that comes from this
+module*. Indeed, the module itself uses other modules that throws other kind of
+exceptions. Moreover, the only reason to catch special kind of exceptions, is
+to do a job related action, rarely a *module related* one. For example, an
+exception like `ConnectionClosed` is perfectly clear and useful for the user of
+the `reactor` library.
 
-Julien: I believe samples should be written right in the README file because
-users, especially on Github want to have access to all the information directly
-from the main page: how to build, install and write a test program in just a
-few minutes. If it works, I'll consider the library, otherwise I am frustrated
-with my first experience as a developer.
+### Handling exceptions
 
-XXX Exception handling
-----------------------
+If you want to prevent exceptions to propagate, you'll just want to catch
+`std::exception const&`. For logic errors or special errors, refer to the
+module you are using.
+
+**Warning:** You should never catch `...`, except in rare case where you need
+to do some cleanup operation before rethrowing the exception. Remember that
+assert throws an exception that should not be caught (AssertError) except in
+the `main()`.
 
 Usage of post-increment and post-decrement operators
 ----------------------------------------------------
@@ -432,12 +650,12 @@ rather than using more variables just to fit that rule.
 Be aware that in few cases, pre-increment operators forbid some CPU
 optimisations when the result of the incrementation is needed before another
 load/store operation.
-
 <code lang="c++">
-int array[42];
-int i = 0;
-while (i < 42)
-  array[i++] = 0; // increment and array store can be done in parallel
+
+	int array[42];
+	int i = 0;
+	while (i < 42)
+	  array[i++] = 0; // increment and array store can be done in parallel
 </code>
 
 Prefer the use of c++11 for-range loop
@@ -490,11 +708,6 @@ XXX Use of template should be considered twice (or more)
 
 XXX Rely on a DumpArchive for displaying a class internals (as Dump() does today)
 ---------------------------------------------------------------------------------
-
-### Discussion
-
-XXX Add a README file in every library explaining everything: purpose, build, install and samples
--------------------------------------------------------------------------------------------------
 
 ### Discussion
 
@@ -565,6 +778,16 @@ Raph: I agree with that for everything but `bool` type.
 Overriding a virtual method
 ---------------------------
 
+### Rationale
+
+Overriding a virtual method in C++ is done implicitly by using the exact same
+signature at any level of the inheritance tree. If the root method signature
+changes, one would have to change all overrides accordingly. The main problem
+is that no compilation time checks are made to verify that signatures are
+correct. However, the new explicit keywords `override` and `final` solve this
+problem by checking that a method qualified with one of this keywords actually
+overrides something.
+
 ### Decision
 
 You should always use the `override` or `final` keywords when overriding a
@@ -582,3 +805,7 @@ XXX How to include headers
 
 Raph: Use both, quote for module includes, angle brackets with absolute path
 for everything else.
+
+
+XXX Efficient argument passing
+------------------------------

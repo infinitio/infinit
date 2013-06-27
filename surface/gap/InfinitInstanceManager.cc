@@ -26,18 +26,21 @@ namespace surface
     InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id)
       : _user_id{user_id}
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_TRACE_METHOD(user_id);
     }
 
     InfinitInstanceManager::~InfinitInstanceManager()
     {
       ELLE_TRACE_METHOD("");
+
       this->clear();
     }
 
     void
     InfinitInstanceManager::clear()
     {
+      ELLE_TRACE_METHOD("");
+
       auto it = begin(this->_instances);
 
       while(it != end(this->_instances))
@@ -82,6 +85,7 @@ namespace surface
     InfinitInstanceManager::launch(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
+
       if (this->_instances.find(network_id) != this->_instances.end())
       {
         ELLE_ASSERT_NEQ(this->_instances[network_id], nullptr);
@@ -142,6 +146,7 @@ namespace surface
     InfinitInstanceManager::stop(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
+
       if (this->_instances.find(network_id) == this->_instances.end())
       {
         ELLE_DEBUG("no network %s found, no 8infinit to stop", network_id);
@@ -229,6 +234,7 @@ namespace surface
     InfinitInstanceManager::instance_for_file(std::string const& path)
     {
       ELLE_TRACE_METHOD(path);
+
       for (auto const& pair : this->_instances)
       {
         std::string mount_point = pair.second->mount_point;

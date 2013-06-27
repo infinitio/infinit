@@ -18,15 +18,22 @@ namespace surface
       _rethrown{false},
       _exception{},
       _failure_reason{}
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     Operation::~Operation()
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     void
     Operation::cancel()
     {
-      ELLE_TRACE_METHOD(this->_name);
+      ELLE_TRACE_METHOD("");
+
+      ELLE_TRACE("cancelling operations '%s'", this->_name);
+
       if (this->_done || this->_cancelled)
         return;
       this->_cancelled = true;
@@ -37,27 +44,33 @@ namespace surface
     void
     Operation::_on_error()
     {
-      ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
-      ELLE_TRACE_FUNCTION(this->_name);
+      ELLE_DEBUG_METHOD("");
+
+      ELLE_DEBUG("handling error for operation '%s'", this->_name);
     }
 
     void
     Operation::_on_success()
     {
-      ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
-      ELLE_TRACE_FUNCTION(this->_name);
+      ELLE_DEBUG_METHOD("");
+
+      ELLE_DEBUG("handling error for operation '%s'", this->_name);
     }
 
     void
     Operation::_cancel()
     {
-      ELLE_TRACE_FUNCTION(this->_name);
+      ELLE_DEBUG_METHOD("");
+
+      ELLE_DEBUG("handling cancel for operation '%s'", this->_name);
     }
 
     void
     Operation::rethrow()
     {
-      ELLE_TRACE_FUNCTION(this->_name);
+      ELLE_TRACE_METHOD("");
+
+      ELLE_DEBUG("handling rethrow for operation '%s'", this->_name);
 
       this->_rethrown = true;
       std::rethrow_exception(this->_exception);
@@ -66,6 +79,8 @@ namespace surface
     std::string
     Operation::_exception_string(std::exception_ptr eptr)
     {
+      ELLE_DEBUG_METHOD(eptr);
+
       if (!eptr)
         eptr = std::current_exception();
       if (!eptr)
@@ -93,6 +108,8 @@ namespace surface
     std::string
     Operation::failure_reason()
     {
+      ELLE_TRACE_METHOD("");
+
       if (!this->_exception)
         throw elle::Exception{"no current exception"};
 

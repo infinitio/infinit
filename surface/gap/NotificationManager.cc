@@ -27,6 +27,7 @@ namespace surface
       _device(device)
     {
       ELLE_TRACE_METHOD("");
+
       this->_connect();
     }
 
@@ -51,6 +52,8 @@ namespace surface
     void
     NotificationManager::_connect()
     {
+      ELLE_DEBUG_METHOD("");
+
       ELLE_ASSERT_EQ(this->_trophonius, nullptr);
 
       try
@@ -116,6 +119,8 @@ namespace surface
     void
     NotificationManager::_check_trophonius()
     {
+      ELLE_DEBUG_METHOD("");
+
       if (this->_trophonius == nullptr)
         throw Exception{gap_error, "Trophonius is not connected"};
     }
@@ -123,6 +128,8 @@ namespace surface
     void
     NotificationManager::_on_trophonius_connected()
     {
+      ELLE_DEBUG_METHOD("");
+
       ELLE_LOG("Successfully reconnected to trophonius");
       this->pull(-1, 0, true);
     }
@@ -130,6 +137,8 @@ namespace surface
     size_t
     NotificationManager::poll(size_t max)
     {
+      ELLE_TRACE_METHOD(max);
+
       std::unique_ptr<Notification> notif;
       std::string transaction_id = "";
       size_t count = 0;
@@ -179,7 +188,7 @@ namespace surface
                               size_t offset,
                               bool only_new)
     {
-      ELLE_TRACE_FUNCTION(count, offset);
+      ELLE_TRACE_METHOD(count, offset, only_new);
 
       auto res = this->_meta.pull_notifications(count, offset);
 
@@ -198,6 +207,8 @@ namespace surface
     void
     NotificationManager::read()
     {
+      ELLE_TRACE_METHOD("");
+
       this->_meta.notification_read();
     }
 
@@ -205,6 +216,8 @@ namespace surface
     NotificationManager::_handle_notification(json::Dictionary const& dict,
                                               bool new_)
     {
+      ELLE_TRACE_METHOD(dict, new_);
+
       this->_check_trophonius();
 
       try
@@ -225,7 +238,8 @@ namespace surface
     NotificationManager::_handle_notification(Notification const& notif,
                                               bool new_)
     {
-      ELLE_DEBUG_SCOPE("Handling notification");
+      ELLE_TRACE_METHOD(notif, new_);
+
       this->_check_trophonius();
 
       // Connexion established.
@@ -255,6 +269,8 @@ namespace surface
     NotificationManager::network_update_callback(
       NetworkUpdateNotificationCallback const& cb)
     {
+      ELLE_TRACE_METHOD(cb);
+
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<NetworkUpdateNotification const&>(notif));
       };
@@ -267,6 +283,8 @@ namespace surface
     NotificationManager::transaction_callback(
       TransactionNotificationCallback const& cb)
     {
+      ELLE_TRACE_METHOD(cb);
+
       auto fn = [cb] (Notification const& notif, bool is_new) -> void {
         return cb(static_cast<TransactionNotification const&>(notif), is_new);
       };
@@ -278,6 +296,8 @@ namespace surface
     void
     NotificationManager::message_callback(MessageNotificationCallback const& cb)
     {
+      ELLE_TRACE_METHOD(cb);
+
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<MessageNotification const&>(notif));
       };
@@ -290,6 +310,8 @@ namespace surface
     NotificationManager::user_status_callback(
       UserStatusNotificationCallback const& cb)
     {
+      ELLE_TRACE_METHOD(cb);
+
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<UserStatusNotification const&>(notif));
       };
@@ -301,7 +323,9 @@ namespace surface
     void
     NotificationManager::on_error_callback(OnErrorCallback const& cb)
     {
-       this->_error_handlers.push_back(cb);
+      ELLE_TRACE_METHOD(cb);
+
+      this->_error_handlers.push_back(cb);
     }
 
     void
@@ -309,6 +333,8 @@ namespace surface
                                               std::string const& s,
                                               std::string const& tid)
     {
+      ELLE_TRACE_METHOD(status, s, tid);
+
       this->_check_trophonius();
 
       for (auto const& c: this->_error_handlers)
@@ -325,6 +351,8 @@ namespace surface
 
     Notifiable::Notifiable(NotificationManager& notification_manager):
       _notification_manager(notification_manager)
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
   }
 }
