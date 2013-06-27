@@ -201,12 +201,19 @@ namespace plasma
     {
       if (err || bytes_transferred == 0)
       {
+        _impl->connected = false;
         if (err)
         {
+          ELLE_WARN("something went wrong while reading from socket: %s", err);
           _impl->last_error = err;
-          //_impl->connected = false;
         }
-        ELLE_WARN("something went wrong while reading from socket: %s", err);
+        if (err == boost::asio::error::eof)
+        {
+          ELLE_TRACE("disconnected from trophonius, trying to reconnect...");
+          this->connect(_impl->user_id,
+                        _impl->user_token,
+                        _impl->user_device_id);
+        }
         return;
       }
 
