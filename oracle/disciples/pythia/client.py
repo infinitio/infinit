@@ -29,7 +29,7 @@ class Client(object):
         404: web.NotFound,
     }
 
-    def __init__(self, server=DEFAULT_SERVER, session={}):
+    def __init__(self, server = DEFAULT_SERVER, session={}):
         self._session = session
         self._server = server.rstrip('/') + '/'
 
@@ -173,4 +173,3 @@ class Client(object):
             'Content-Length': str(len(start) + fsize + len(end)),
         }
         return form_headers, Yielder(start, to_send, end)
-

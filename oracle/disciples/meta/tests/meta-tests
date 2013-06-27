@@ -3,10 +3,13 @@
 import hashlib
 import meta
 import pythia
+import sys
 
-with meta.Meta(port_file='port_file') as meta:
+with meta.Meta(spawn_db = True) as meta:
     session = {}
-    client = pythia.Client(session=session)
+    print(meta.url)
+    client = pythia.Client(session = session,
+                           server = meta.url)
 
     email = 'testkaka@infinit.io'
     password = 'kittens'
@@ -19,12 +22,12 @@ with meta.Meta(port_file='port_file') as meta:
     })
 
     if not res['success']:
-        res = pythia.Admin().post('/user/register',
-                                  {'email': email,
-                                   'fullname': fullname,
-                                   'password': password_hash,
-                                   'activation_code': activation_code,
-        })
+        res = pythia.Admin(server = meta.url).post('/user/register',
+                                                   {'email': email,
+                                                    'fullname': fullname,
+                                                    'password': password_hash,
+                                                    'activation_code': activation_code,
+                                                })
 
         if not res['success']:
             raise Exception("Cannot register: " + res['error'])

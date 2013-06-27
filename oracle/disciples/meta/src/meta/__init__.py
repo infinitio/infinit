@@ -11,27 +11,24 @@ Meta webserver can be instancied with application.Application class.
 
 import errno
 import os
-import sys
 import subprocess
-import shlex
+import tempfile
 import time
-import traceback
+
 
 root_dir = os.path.realpath(os.path.dirname(__file__))
 
 class Meta:
     def __init__(self,
-                 meta_host = None,
-                 meta_port = None,
-                 port_file = None,
+                 meta_host = 'localhost',
+                 meta_port = 0,
                  spawn_db = False):
-
-        assert(port_file)
-        self.port_file = port_file
         self.meta_host = meta_host
         self.meta_port = meta_port
         self.spawn_db = spawn_db
         self.instance = None
+        self.__directory = tempfile.TemporaryDirectory()
+        self.__port_file = None
 
     def __parse_line(self, line = None, item = None):
         if line.startswith(item + ':'):
@@ -40,53 +37,42 @@ class Meta:
     def __read_port_file(self):
         while True:
             try:
-                time.sleep(1)
-                with open(os.path.abspath(self.port_file), 'r') as f:
+                with open(os.path.abspath(self.__port_file), 'r') as f:
                     content = f.readlines()
                     break
+                time.sleep(1)
             except OSError as e:
                 if e.errno is not errno.ENOENT:
                     raise
         for line in content:
-            if line.startswith('meta_host'):
-                self.meta_host = self.__parse_line(line, 'meta_host')
             if line.startswith('meta_port'):
                 self.meta_port = self.__parse_line(line, 'meta_port')
-            if line.startswith('mongo_host'):
-                self.mongo_host = self.__parse_line(line, 'mongo_host')
-            if line.startswith('mongo_port'):
-                self.mongo_port = self.__parse_line(line, 'mongo_port')
-        return
 
 
     def __enter__(self):
         command = []
         command.append(os.path.join(root_dir, '..', '..', '..',
                                     'bin', 'meta-server'))
-
-        if self.port_file != None:
-            command.append('--port-file')
-            command.append(self.port_file)
-        if self.meta_host != None:
-            command.append('--meta-host')
-            command.append(self.meta_host)
-        if self.meta_port != None:
-            command.append('--meta-port')
-            command.append(self.meta_port)
-
+        self.__directory.__enter__()
+        self.__port_file = '%s/port' % self.__directory.name
+        command.append('--port-file')
+        command.append(self.__port_file)
+        command.append('--meta-host')
+        command.append(self.meta_host)
+        command.append('--meta-port')
+        command.append(str(self.meta_port))
         if self.spawn_db:
           command.append('--spawn-db')
-
-
         self.instance = subprocess.Popen(
             command,
             # stdout = subprocess.PIPE,
             # stderr = subprocess.PIPE,
         )
         self.__read_port_file()
+        self.url = 'http://%s:%s' % (self.meta_host, self.meta_port)
         return self
 
-    def __exit__(self, exception, exception_type, backtrace):
+    def __exit__(self, *args):
         assert self.instance is not None
-        os.remove(self.port_file)
         self.instance.terminate()
+        self.__directory.__exit__(*args)
