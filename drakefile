@@ -1138,7 +1138,7 @@ def configure(cxx_toolkit = None,
 
     # Trophonius
 
-    rule_trophonius = drake.Rule('trophonius/build')
+    rule_trophonius = drake.Rule('oracle/trophonius/build')
     trophonius_sources = drake.nodes(
       'oracle/disciples/trophonius/src/trophonius/__init__.py',
       'oracle/disciples/trophonius/src/trophonius/application.py',
@@ -1154,7 +1154,7 @@ def configure(cxx_toolkit = None,
     rule_trophonius << drake.copy(trophonius_bin, 'bin',
                                   'oracle/disciples')
 
-    rule_trophonius_check = drake.TestSuite('trophonius/check')
+    rule_trophonius_check = drake.TestSuite('oracle/trophonius/check')
     for test in [
         'single-notification'
     ]:
@@ -1190,6 +1190,7 @@ def configure(cxx_toolkit = None,
         heartbeat_sources + [reactor_lib, elle_lib] + udt_libs,
         cxx_toolkit, heartbeat_config)
 
+    oracles << rule_trophonius
     oracles << oracle_source_copy
     oracles << oracle_lib_copy
     oracles << heartbeat
@@ -1251,6 +1252,7 @@ def configure(cxx_toolkit = None,
 
   check = drake.Rule('check')
   check << elle.rule_check
+  check << rule_trophonius_check
   for test, deps in tests_src_n_lib:
     if isinstance(test, str):
       bin_name, ext = os.path.splitext(test)
@@ -1264,6 +1266,7 @@ def configure(cxx_toolkit = None,
                                     cxx_toolkit, tests_cxx_config)
     tests << test_bin
     runner = drake.Runner(test_bin)
+    runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status
 
   build << drake.cxx.Executable("bin/pass",
