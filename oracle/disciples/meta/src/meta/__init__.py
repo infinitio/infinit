@@ -17,8 +17,7 @@ import shlex
 import time
 import traceback
 
-root_dir = subprocess.check_output(shlex.split('git rev-parse --show-toplevel'))
-root_dir = root_dir.strip().decode('utf-8')
+root_dir = os.path.realpath(os.path.dirname(__file__))
 
 class Meta:
     def __init__(self,
@@ -65,8 +64,8 @@ class Meta:
         print('__enter__')
 
         command = []
-        command.append('python2.7')
-        command.append(os.path.join(root_dir, '_build', 'macosx64', 'bin', 'meta-server'))
+        command.append(os.path.join(root_dir, '..', '..', '..',
+                                    'bin', 'meta-server'))
 
         if self.port_file != None:
             command.append('--port-file')
