@@ -26,7 +26,7 @@ if not os.path.exists(INFINIT_AUTHORITY_PATH):
     # When used in build dir
     INFINIT_AUTHORITY_PATH = os.path.join(
         os.path.abspath(os.path.dirname(__file__)),
-        "../../../oracle/infinit.auth"
+        "../../../oracle/meta/infinit.auth"
     )
 
 INFINIT_AUTHORITY_PASSWORD = ""
@@ -37,6 +37,7 @@ MANDRILL_SMTP_HOST = 'smtp.mandrillapp.com'
 MANDRILL_SMTP_PORT = 587
 MAILCHIMP_APIKEY = 'bffd6c617b533962e1441f0dc5e95225-us2'
 
+META_HOST = "127.0.0.1"
 META_PORT = 12345
 TROPHONIUS_PORT = 23456
 TROPHONIUS_CONTROL_PORT = 23457

@@ -803,7 +803,7 @@ namespace plasma
         case Error::name:                              \
           out << #name << "(" << #comment << ")";      \
           break;
-#include <oracle/disciples/meta/error_code.hh.inc>
+#include <oracle/disciples/meta/src/meta/error_code.hh.inc>
 #undef ERROR_CODE
       }
 

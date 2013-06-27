@@ -28,7 +28,7 @@ namespace plasma
     {
 # define ERR_CODE(name, value, comment)                                         \
       name = value,
-# include <oracle/disciples/meta/error_code.hh.inc>
+# include <oracle/disciples/meta/src/meta/error_code.hh.inc>
 # undef ERR_CODE
     };
 
