@@ -1145,6 +1145,7 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/trophonius/src/trophonius/clients.py',
       'oracle/disciples/trophonius/src/trophonius/conf.py',
       'oracle/disciples/trophonius/src/trophonius/constants.py',
+      'oracle/disciples/trophonius/src/trophonius/fake_meta.py',
       'oracle/disciples/trophonius/src/trophonius/trophonius.py',
       )
     trophonius_bin = drake.node('oracle/disciples/trophonius-server')

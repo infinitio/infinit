@@ -1,6 +1,6 @@
-import argparse
+#!/usr/bin/env python2
+
 import json
-import os
 import sys
 import web
 
@@ -8,6 +8,7 @@ urls = (
     '/(.*)', 'hello'
 )
 app = web.application(urls, globals())
+web.config.debug = False
 
 class hello:
     def GET(self, name):

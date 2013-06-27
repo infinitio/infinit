@@ -4,7 +4,6 @@ import os
 import os.path
 import socket
 import subprocess
-import sys
 import tempfile
 import time
 
@@ -108,3 +107,35 @@ class Admin(Client):
         data = {'to': to}
         data.update(msg)
         self.sendline(data)
+
+
+class FakeMeta:
+
+    def __init__(self):
+        self.instance = None
+
+    def __enter__(self):
+        with tempfile.NamedTemporaryFile() as f:
+            self.instance = subprocess.Popen(
+                [
+                    os.path.join(root_dir, 'fake_meta.py'),
+                ],
+                stdout = subprocess.PIPE,
+                stderr = subprocess.PIPE,
+            )
+            self.host = '0.0.0.0'
+            self.port = int(self.instance.stdout.readline())
+            self.url = "http://{}:{}/".format(self.host, self.port)
+        return self
+
+    def __exit__(self, exception, exception_type, backtrace):
+        assert self.instance is not None
+        self.instance.terminate()
+
+    @property
+    def stdout(self):
+      return self.instance.stdout.read().decode('utf-8')
+
+    @property
+    def stderr(self):
+      return self.instance.stderr.read().decode('utf-8')
