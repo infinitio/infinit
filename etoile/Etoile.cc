@@ -10,19 +10,11 @@
 
 namespace etoile
 {
-  Etoile::Etoile()
+  Etoile::Etoile():
+    _shrub(Infinit::Configuration.etoile.shrub.capacity,
+           boost::posix_time::milliseconds(Infinit::Configuration.etoile.shrub.lifespan),
+           boost::posix_time::milliseconds(Infinit::Configuration.etoile.shrub.frequency))
   {
-    if (Infinit::Configuration.etoile.shrub.frequency)
-    {
-      auto capacity = Infinit::Configuration.etoile.shrub.capacity;
-      auto lifespan = Infinit::Configuration.etoile.shrub.lifespan;
-      auto sweep_frequency = Infinit::Configuration.etoile.shrub.frequency;
-      shrub::global_shrub = new shrub::Shrub(
-        capacity,
-        boost::posix_time::milliseconds(lifespan),
-        boost::posix_time::milliseconds(sweep_frequency));
-    }
-
     if (portal::Portal::Initialize() == elle::Status::Error)
       throw Exception("unable to initialize the portal");
 
@@ -34,12 +26,6 @@ namespace etoile
   {
     if (portal::Portal::Clean() == elle::Status::Error)
       throw Exception("unable to clean the portal");
-
-    if (shrub::global_shrub)
-    {
-      delete shrub::global_shrub;
-      shrub::global_shrub = nullptr;
-    }
 
     for (auto& actor: this->_actors)
       delete actor.second;

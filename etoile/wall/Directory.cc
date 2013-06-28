@@ -312,8 +312,8 @@ namespace etoile
         //
         {
           // evict the route from the shrub.
-          shrub::global_shrub->evict(route_from);
-          shrub::global_shrub->evict(route_to);
+          Etoile::instance()->shrub().evict(route_from);
+          Etoile::instance()->shrub().evict(route_to);
         }
       }
 
@@ -352,7 +352,7 @@ namespace etoile
         // Invalidate the route in the shrub.
         {
           path::Route route(scope->chemin.route(), name);
-          shrub::global_shrub->evict(route);
+          Etoile::instance()->shrub().evict(route);
         }
       }
 

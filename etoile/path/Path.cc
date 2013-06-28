@@ -2,15 +2,16 @@
 
 #include <reactor/scheduler.hh>
 
-#include <etoile/path/Path.hh>
-#include <etoile/path/Venue.hh>
-#include <etoile/path/Route.hh>
-#include <etoile/path/Chemin.hh>
-#include <etoile/gear/Identifier.hh>
-#include <etoile/wall/Directory.hh>
-#include <etoile/depot/Depot.hh>
-#include <etoile/shrub/Shrub.hh>
+#include <etoile/Etoile.hh>
 #include <etoile/Exception.hh>
+#include <etoile/depot/Depot.hh>
+#include <etoile/gear/Identifier.hh>
+#include <etoile/path/Chemin.hh>
+#include <etoile/path/Path.hh>
+#include <etoile/path/Route.hh>
+#include <etoile/path/Venue.hh>
+#include <etoile/shrub/Shrub.hh>
+#include <etoile/wall/Directory.hh>
 
 #include <etoile/wall/Path.hh> // XXX
 
@@ -35,7 +36,7 @@ namespace etoile
       Route::Scoutor    scoutor;
 
       // first ask the shrub i.e path cache to resolve as much as it can.
-      shrub::global_shrub->resolve(route, venue);
+      Etoile::instance()->shrub().resolve(route, venue);
 
       assert(venue.elements().size() <= route.elements().size());
 
@@ -127,7 +128,7 @@ namespace etoile
         }
 
       // update the shrub with the resolved path.
-      shrub::global_shrub->update(route, venue);
+      Etoile::instance()->shrub().update(route, venue);
 
       return elle::Status::Ok;
     }

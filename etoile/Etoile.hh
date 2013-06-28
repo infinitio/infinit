@@ -5,6 +5,7 @@
 
 # include <etoile/gear/Actor.hh>
 # include <etoile/gear/Identifier.hh>
+# include <etoile/shrub/Shrub.hh>
 
 namespace etoile
 {
@@ -28,6 +29,12 @@ namespace etoile
   private:
     typedef std::map<gear::Identifier, gear::Actor*> Actors;
     ELLE_ATTRIBUTE(Actors, actors);
+
+  /*-----.
+  | Path |
+  `-----*/
+  private:
+    ELLE_ATTRIBUTE_RX(shrub::Shrub, shrub);
 
   /*----------------.
   | Global instance |

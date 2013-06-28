@@ -1,11 +1,12 @@
 #ifndef  ETOILE_WALL_OBJECT_HXX
 # define ETOILE_WALL_OBJECT_HXX
 
-# include <etoile/gear/Scope.hh>
-# include <etoile/shrub/Shrub.hh>
-# include <etoile/path/Path.hh>
-# include <etoile/path/Chemin.hh>
+# include <etoile/Etoile.hh>
 # include <etoile/Exception.hh>
+# include <etoile/gear/Scope.hh>
+# include <etoile/path/Chemin.hh>
+# include <etoile/path/Path.hh>
+# include <etoile/shrub/Shrub.hh>
 
 namespace etoile
 {
@@ -22,7 +23,7 @@ namespace etoile
         ELLE_TRACE("clearing the cache in order to evict %s",
                    scope.chemin.route());
 
-        shrub::global_shrub->clear();
+        Etoile::instance()->shrub().clear();
 
         ELLE_TRACE("try to resolve the route now that the cache was cleaned");
 

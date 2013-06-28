@@ -20,8 +20,6 @@ namespace etoile
   /// path-specific cache.
   namespace shrub
   {
-    extern Shrub* global_shrub;
-
     /// The shrub i.e path cache relies on the LRU algorithm by keeping two data
     /// structures: a map for looking up and a queue for removing the least
     /// recently used riffles quickly.

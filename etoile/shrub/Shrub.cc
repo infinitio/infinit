@@ -12,9 +12,6 @@ namespace etoile
 {
   namespace shrub
   {
-    shrub::Shrub* global_shrub = nullptr;
-
-
     /*-------------.
     | Construction |
     `-------------*/
@@ -167,7 +164,7 @@ namespace etoile
       // unresolved and will thus be added to the shrub.
       {
         path::Venue             _venue;
-        global_shrub->resolve(route, _venue);
+        this->resolve(route, _venue);
         this->allocate(_venue.elements().size());
       }
 

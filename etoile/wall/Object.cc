@@ -70,7 +70,7 @@ namespace etoile
               assert(scope != nullptr);
               ELLE_TRACE("clearing the cache in order to evict %s",
                          scope->chemin.route())
-                shrub::global_shrub->clear();
+                Etoile::instance()->shrub().clear();
 
               ELLE_TRACE("try to resolve the route now that the "
                          "cache was cleaned")
