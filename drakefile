@@ -1135,9 +1135,9 @@ def configure(cxx_toolkit = None,
         runner = drake.Runner(test)
         runner.reporting = drake.Runner.Reporting.on_failure
         rule_check << runner.status
-        return rule, rule_check
       oracles << rule
       check << rule_check
+      return rule, rule_check
 
 
     rule_trophonius, rule_trophonius_check = oracle('trophonius')
