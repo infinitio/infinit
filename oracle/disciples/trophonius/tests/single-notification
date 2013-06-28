@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import json
+import pythia
+import sys
+
+import trophonius
+
+try:
+    meta = trophonius.FakeMeta()
+    with meta:
+        tropho = trophonius.Trophonius(meta_port = meta.port)
+        with tropho:
+            meta_client = pythia.Client(server = meta.url)
+            res = meta_client.post('/user/login', {
+                'email': 'pif@infinit.io',
+                'password': 'paf'
+                })
+            c = trophonius.Client((tropho.host, tropho.port),
+                                  token = res['token'],
+                                  device_id = 'pif',
+                                  user_id = res['_id'])
+            admin = trophonius.Admin((tropho.host,
+                                      tropho.control_port))
+            admin.notify(to=c.user_id, msg={'msg': 'coucou'})
+            # First we received the message confirming the connection
+            while True:
+                answer = c.readline()
+                resp = json.loads(answer)
+                # Ignore pings
+                if resp['notification_type'] == 208:
+                    continue
+                assert resp['response_code'] == 200
+                # Then, we wait for the notification we sent
+                resp = json.loads(c.readline())
+                assert 'msg' in resp and resp['msg'] == 'coucou'
+                break
+except:
+    print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
+    print('Trophonius stderr:\n' + tropho.stderr, file = sys.stderr)
+    print('Meta stdout:\n' + meta.stdout, file = sys.stderr)
+    print('Meta stderr:\n' + meta.stderr, file = sys.stderr)
+    raise

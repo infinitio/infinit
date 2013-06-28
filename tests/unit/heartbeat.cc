@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(heartbeat_test)
   auto fn = [&]
   {
     auto pc = elle::system::process_config(elle::system::normal_config);
-    elle::system::Process p{std::move(pc), "bin/heartbeat", {"--port=9090"}};
+    elle::system::Process p{std::move(pc), "bin/heartbeat-server", {"--port=9090"}};
     heartbeat::run();
     p.interrupt();
     p.wait();

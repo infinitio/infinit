@@ -823,6 +823,13 @@ def configure(cxx_toolkit = None,
   tests << elle.rule_tests
 
   ## ----- ##
+  ## Check ##
+  ## ----- ##
+
+  check = drake.Rule('check')
+  check << elle.rule_check
+
+  ## ----- ##
   ## Build ##
   ## ----- ##
 
@@ -1083,7 +1090,6 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/erginus-server',
       'oracle/disciples/longinus-server',
       'oracle/disciples/meta-server',
-      'oracle/disciples/trophonius-server',
       'oracle/disciples/admin-console',
       'oracle/disciples/apertus-server',
       'oracle/disciples/services',
@@ -1106,51 +1112,38 @@ def configure(cxx_toolkit = None,
       )
 
     oracle_lib += drake.nodes(
-      'oracle/disciples/meta/__init__.py',
-      'oracle/disciples/meta/apertus.py',
-      'oracle/disciples/meta/application.py',
-      'oracle/disciples/meta/conf.py',
-      'oracle/disciples/meta/database.py',
-      'oracle/disciples/meta/apertus.py',
-      'oracle/disciples/meta/invitation.py',
-      'oracle/disciples/meta/error.py',
-      'oracle/disciples/meta/error_code.hh.inc',
-      'oracle/disciples/meta/mail.py',
-      'oracle/disciples/meta/notification_type.hh.inc',
-      'oracle/disciples/meta/notifier.py',
-      'oracle/disciples/meta/page.py',
-      'oracle/disciples/meta/regexp.py',
-      'oracle/disciples/meta/resources/__init__.py',
-      'oracle/disciples/meta/resources/device.py',
-      'oracle/disciples/meta/resources/network.py',
-      'oracle/disciples/meta/resources/network_update.hh.inc',
-      'oracle/disciples/meta/resources/notification.py',
-      'oracle/disciples/meta/resources/place_holder_avatar.png',
-      'oracle/disciples/meta/resources/root.py',
-      'oracle/disciples/meta/resources/transaction.py',
-      'oracle/disciples/meta/resources/transaction_status.hh.inc',
-      'oracle/disciples/meta/resources/user.py',
-      'oracle/disciples/meta/session.py',
-      'oracle/disciples/meta/session_store.py',
-      'oracle/disciples/meta/user_status.hh.inc',
-      )
-
-    oracle_lib += drake.nodes(
       'oracle/disciples/pythia/admin.py',
       'oracle/disciples/pythia/client.py',
       'oracle/disciples/pythia/constants.py',
       'oracle/disciples/pythia/__init__.py',
       )
 
+    # Trophonius
+    def oracle(name):
+      root = drake.Path('oracle/disciples/%s' % name)
+      rule = drake.Rule('oracle/%s/build' % name)
+      trophonius_sources = drake.nodes(
+        *git.ls_files(root / 'src' / name))
+      server = drake.node('oracle/disciples/%s-server' % name)
+      rule << drake.copy(trophonius_sources,
+                         'lib/python', root / 'src')
+      rule << drake.copy(server, 'bin', 'oracle/disciples')
 
-    oracle_lib += drake.nodes(
-      'oracle/disciples/trophonius/application.py',
-      'oracle/disciples/trophonius/clients.py',
-      'oracle/disciples/trophonius/conf.py',
-      'oracle/disciples/trophonius/constants.py',
-      'oracle/disciples/trophonius/__init__.py',
-      'oracle/disciples/trophonius/trophonius.py',
-      )
+      rule_check = drake.TestSuite('oracle/%s/check' % name)
+      for test in git.ls_files(root / 'tests'):
+        test = drake.node(test)
+        runner = drake.Runner(test)
+        runner.reporting = drake.Runner.Reporting.on_failure
+        rule_check << runner.status
+        return rule, rule_check
+      oracles << rule
+      check << rule_check
+
+
+    rule_trophonius, rule_trophonius_check = oracle('trophonius')
+    rule_meta, rule_meta_check = oracle('meta')
+    authority = drake.node('oracle/infinit.auth')
+    rule_meta << drake.copy(authority, 'oracle/meta', 'oracle')
 
     oracle_lib_copy = drake.copy(oracle_lib,
                                  'lib/python',
@@ -1227,6 +1220,7 @@ def configure(cxx_toolkit = None,
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
+    (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, reactor_lib]),
     #(('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc'),  [elle_lib, plasma_lib, curly_lib]),
     ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib]),
@@ -1238,8 +1232,6 @@ def configure(cxx_toolkit = None,
     (('tests/unit/heartbeat.cc', 'heartbeat.cc', 'heartbeat.hh', 'common/common.cc'), [reactor_lib, elle_lib] + udt_libs),
   ]
 
-  check = drake.Rule('check')
-  check << elle.rule_check
   for test, deps in tests_src_n_lib:
     if isinstance(test, str):
       bin_name, ext = os.path.splitext(test)
@@ -1253,6 +1245,7 @@ def configure(cxx_toolkit = None,
                                     cxx_toolkit, tests_cxx_config)
     tests << test_bin
     runner = drake.Runner(test_bin)
+    runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status
 
   build << drake.cxx.Executable("bin/pass",

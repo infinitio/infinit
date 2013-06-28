@@ -76,10 +76,6 @@ namespace surface
                                                this->_recipient_id_or_email,
                                                time.nanoseconds);
       this->_network_id = this->_network_manager.create(network_name);
-
-      auto recipient = this->_user_manager.one(this->_recipient_id_or_email);
-      ELLE_TRACE("add user %s to network %s", recipient, this->_network_id)
-        this->_meta.network_add_user(this->_network_id, recipient.id);
       // XXX add locally
 
       plasma::meta::CreateTransactionResponse res;
@@ -88,19 +84,23 @@ namespace surface
                  this->_files.size(),
                  first_file,
                  size,
-                 recipient.id,
+                 this->_recipient_id_or_email,
                  network_name,
                  this->_network_id);
 
       try
       {
-        res = this->_meta.create_transaction(recipient.id,
+        res = this->_meta.create_transaction(this->_recipient_id_or_email,
                                              first_file,
                                              this->_files.size(),
                                              size,
                                              fs::is_directory(first_file),
                                              this->_network_id,
                                              this->_device_id);
+        // Creating a transaction ensures that user has an id.
+        auto recipient = this->_user_manager.one(this->_recipient_id_or_email);
+        ELLE_TRACE("add user %s to network %s", recipient, this->_network_id)
+          this->_meta.network_add_user(this->_network_id, recipient.id);
       }
       catch (...)
       {

@@ -161,8 +161,6 @@ namespace surface
     void
     State::_self_load() const
     {
-      ELLE_DEBUG_METHOD("");
-
       if (!this->logged_in())
         throw Exception{gap_internal_error, "you must be logged in"};
 

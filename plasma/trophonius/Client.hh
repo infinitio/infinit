@@ -18,7 +18,7 @@ namespace plasma
     {
 # define NOTIFICATION_TYPE(name, value)         \
       name = value,
-# include <oracle/disciples/meta/notification_type.hh.inc>
+# include <oracle/disciples/meta/src/meta/notification_type.hh.inc>
 # undef NOTIFICATION_TYPE
     };
 
@@ -26,7 +26,7 @@ namespace plasma
     {
 # define NETWORK_UPDATE(name, value)         \
       name = value,
-# include <oracle/disciples/meta/resources/network_update.hh.inc>
+# include <oracle/disciples/meta/src/meta/resources/network_update.hh.inc>
 # undef NETWORK_UPDATE
     };
 
@@ -86,7 +86,9 @@ namespace plasma
       {}
     };
 
-    /// Build a notification object from a dictionnary.
+    /// Build a notification with the 'good' type from a dictionnary.
+    /// The notification type is determined by the "notification_type" field
+    /// presents in the dictionary.
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict);
 
@@ -126,18 +128,8 @@ namespace plasma
       _read_socket();
 
       void
-      _restart_timer();
-
-      void
       _on_read_socket(boost::system::error_code const& err,
                       size_t bytes_transferred);
-
-      void
-      _check_connection(boost::system::error_code const& err);
-
-      void
-      _on_write_check(boost::system::error_code const& err,
-                      size_t const bytes_transferred);
     };
 
     std::ostream&

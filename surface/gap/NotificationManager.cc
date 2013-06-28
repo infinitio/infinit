@@ -242,6 +242,11 @@ namespace surface
 
       this->_check_trophonius();
 
+      // Just a ping. We are not supposed to get one here, but if it's the case,
+      // nothing to do with it. If we want to be more strict, we should throw.
+      if (notif.notification_type == NotificationType::ping)
+        return;
+
       // Connexion established.
       if (notif.notification_type == NotificationType::connection_enabled)
         // XXX set _connection_enabled to true

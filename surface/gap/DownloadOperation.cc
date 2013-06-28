@@ -59,7 +59,7 @@ namespace surface
         "--from"
       };
 
-      ELLE_DEBUG("LAUNCH: %s %s",
+      ELLE_DEBUG("launch: %s %s",
                  transfer_binary,
                  boost::algorithm::join(arguments, " "));
 
@@ -139,9 +139,8 @@ namespace surface
     {
       ELLE_DEBUG_METHOD("");
 
-      // ELLE_TRACE("restarting transfer %s", this->_transaction)
-      //   this->_transaction_manager.update(this->_transaction.id,
-      //                                     plasma::TransactionStatus::started);
+      this->_transaction_manager.update(this->_transaction.id,
+                                        plasma::TransactionStatus::failed);
     }
   }
 }

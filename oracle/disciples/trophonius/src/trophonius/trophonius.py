@@ -3,10 +3,11 @@
 
 from __future__ import print_function
 
-from twisted.internet import protocol, reactor
+from twisted.internet import protocol, reactor, task
 from twisted.protocols import basic
 from twisted.python import log
 
+import os
 import json
 import time
 import pythia
@@ -62,8 +63,11 @@ class Trophonius(basic.LineReceiver):
         return "<{}()>".format(self.__class__.__name__)
 
     def connectionMade(self):
+        from functools import partial
         log.msg("New connection from", self.transport.getPeer())
-        self._alive_service = reactor.callLater(30, self._loseConnection)
+        self._alive_service = task.LoopingCall(self.sendLine,
+                json.dumps({"notification_type": 208}))
+        self._alive_service.start(30)
 
     def _loseConnection(self):
         self.reason = "noPing"
@@ -77,8 +81,8 @@ class Trophonius(basic.LineReceiver):
         if self.id is None:
             return
 
-        if self._alive_service is not None and self._alive_service.active():
-            self._alive_service.cancel()
+        if self._alive_service is not None:
+            self._alive_service.stop()
 
         print("Disconnect user: id=%s" % self.id)
 
@@ -110,10 +114,7 @@ class Trophonius(basic.LineReceiver):
             self.sendLine("{}".format(message))
 
     def handle_PING(self, line):
-        assert line == "PING"
-        self.sendLine("PONG")
-        if self._alive_service is not None and self._alive_service.active():
-            self._alive_service.reset(11)
+        pass
 
     def handle_HELLO(self, line):
         """
@@ -130,25 +131,26 @@ class Trophonius(basic.LineReceiver):
             self.device_id = req["device_id"]
 
             # Authentication
-            res = pythia.Client(session={'token': req['token']}).get('/self')
+            client = pythia.Client(session={'token': req['token']},
+                    server=self.factory.application.meta_url)
+            res = client.get('/self')
             if not res['success']:
                 raise Exception("Meta error: %s" % res.get('error', ''))
             self.id = res["_id"]
             self.token = req["token"]
 
-            self.meta_client = pythia.Admin()
+            self.meta_client = pythia.Admin(server=self.factory.application.meta_url)
             res = self.meta_client.post('/user/connect', {
                 'user_id': self.id,
                 'device_id': self.device_id,
             })
-
 
             # Add the current client to the client list
             assert isinstance(self.factory.clients, dict)
             self.factory.clients.setdefault(self.id, set()).add(self)
             self.devices = self.factory.clients[self.id]
 
-            pythia.Admin().post(
+            self.meta_client.post(
                 '/user/connected',
                 {
                     'user_id': self.id,
@@ -248,17 +250,28 @@ class MetaTropho(basic.LineReceiver):
 
 class TrophoFactory(protocol.Factory):
     def __init__(self, application):
+        self.application = application
         self.clients = application.clients
+        if self.application.runtime_dir is not None:
+            self.sock_path = os.path.join(application.runtime_dir, "trophonius.sock")
 
-    def startFactory(self):
-        pass
+    def stopFactory(self):
+        if self.application.runtime_dir is not None:
+            os.remove(self.sock_path)
 
     def buildProtocol(self, addr):
         return Trophonius(self)
 
 class MetaTrophoFactory(protocol.Factory):
-    def __init__(self, app):
-        self.clients = app.clients
+    def __init__(self, application):
+        self.application = application
+        self.clients = application.clients
+        if self.application.runtime_dir is not None:
+            self.sock_path = os.path.join(application.runtime_dir, "trophonius.csock")
 
     def buildProtocol(self, addr):
         return MetaTropho(self)
+
+    def stopFactory(self):
+        if self.application.runtime_dir is not None:
+            os.remove(self.sock_path)

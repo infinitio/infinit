@@ -530,14 +530,13 @@ namespace surface
       {
         if (tr.sender_device_id != this->_device.id)
         {
-          // ELLE_ASSERT(
-          //     false,
-          //     "got a transaction tr that does not involve my device: %s",
-          //     tr);
-          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
-          return;
+          throw Exception(
+            gap_device_not_valid,
+            elle::sprintf("received notification regarding a created "
+                          "transaction which does not involve this "
+                          "device: %s", tr));
         }
-        if (tr.status == plasma::TransactionStatus::created)
+        else if (tr.status == plasma::TransactionStatus::created)
         {
           ELLE_DEBUG("sender prepare upload for %s", tr)
             this->_prepare_upload(tr);
@@ -560,16 +559,16 @@ namespace surface
       {
         if (tr.recipient_device_id != this->_device.id)
         {
-          // ELLE_ASSERT(
-          //     false,
-          //     "got a transaction tr that does not involve my device: %s",
-          //     tr);
-          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
-          return;
+          if (tr.accepted)
+            throw Exception(
+              gap_device_not_valid,
+              elle::sprintf("received notification regarding a received "
+                            "transaction which does not involve this "
+                            "device: %s", tr));
         }
-        if (tr.status == plasma::TransactionStatus::started &&
-            tr.accepted &&
-            this->_user_manager.device_status(tr.sender_id,
+        else if (tr.status == plasma::TransactionStatus::started &&
+                 tr.accepted &&
+                 this->_user_manager.device_status(tr.sender_id,
                                               tr.sender_device_id))
         {
           ELLE_DEBUG("recipient start download for %s", tr)
@@ -628,6 +627,8 @@ namespace surface
 
       auto s = this->_states[tr.id];
 
+      // XXX ghost user doesn't have public key so check this before adding to
+      // network.
       if (s.state == State::none and
           not this->_user_manager.one(tr.recipient_id).public_key.empty())
       {
@@ -651,9 +652,18 @@ namespace surface
       }
       else
       {
-        ELLE_DEBUG("do not prepare %s, already in state %d",
-                   tr,
-                   s.state);
+        if (s.state == State::preparing)
+        {
+          ELLE_DEBUG("do not prepare %s, already in state %d",
+                     tr,
+                     s.state);
+        }
+
+        else if (this->_user_manager.one(tr.recipient_id).public_key.empty())
+        {
+          ELLE_DEBUG("do not prepare %s, recipient hasn't registered yet",
+                     tr);
+        }
       }
     }
 

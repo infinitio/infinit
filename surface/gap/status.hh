@@ -14,7 +14,7 @@ typedef enum
   gap_api_error = -10,
 # define ERR_CODE(name, value, comment)                                         \
   gap_ ## name = value,
-# include <oracle/disciples/meta/error_code.hh.inc>
+# include <oracle/disciples/meta/src/meta/error_code.hh.inc>
 # undef ERR_CODE
 } gap_Status;
 
@@ -23,7 +23,7 @@ typedef enum
 {
 # define TRANSACTION_STATUS(name, value)                                        \
   gap_transaction_status_ ## name = value,
-# include <oracle/disciples/meta/resources/transaction_status.hh.inc>
+# include <oracle/disciples/meta/src/meta/resources/transaction_status.hh.inc>
 # undef TRANSACTION_STATUS
 } gap_TransactionStatus;
 

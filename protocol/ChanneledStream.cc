@@ -23,9 +23,9 @@ namespace infinit
     bool
     ChanneledStream::_handshake(Stream& backend)
     {
-      ELLE_TRACE_SCOPE("%s: determining master", *this);
       while (true)
       {
+        ELLE_TRACE_SCOPE("%s: handshake to determine master", *this);
         char mine = infinit::cryptography::random::generate<char>();
         char his;
         {
@@ -45,6 +45,8 @@ namespace infinit
           ELLE_TRACE("%s: %s", *this, master ? "master" : "slave");
           return master;
         }
+        else
+          ELLE_DEBUG("rolls are equal, restart handshake");
       }
     }
 
@@ -127,6 +129,8 @@ namespace infinit
       {
         _reading = true;
         Packet p(_backend.read());
+        if (p.size() < 4)
+          throw elle::Exception("packet is too small for channel id");
         int channel_id = _uint32_get(p);
         // FIXME: The size of the packet isn't
         // adjusted. This is cosmetic though.

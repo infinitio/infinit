@@ -6,6 +6,15 @@ import time
 import subprocess
 import argparse
 
+def reset_user_status():
+    """XXX We reset all user's status to be "disconnected". We know it's
+    true because there is only on trophonius instance at the moment.
+    The right way to do it is to disconnect all users (in the database)
+    when the trophonius instance goes down.
+    """
+    import meta.database
+    meta.database.users().update({}, {'$set': {'connected': False}})
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 import meta.conf
 
@@ -74,6 +83,7 @@ def main(argv):
     processes = []
 
     try:
+        reset_user_status()
         processes.append(subprocess.Popen([
             META_BIN,
             '--meta-port', str(args.meta_port),
@@ -128,7 +138,7 @@ def main(argv):
                 '--mode', 'full'
             ],
             stdout=open("stunserver.stdout", "w"),
-            stderr=open("stunserver.stderr", "w")) 
+            stderr=open("stunserver.stderr", "w"))
         )
 
         print("INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port)
