@@ -80,7 +80,6 @@ namespace surface
         elle::sprintf("Unable to find portal for %s", network_id)};
     }
 
-
     void
     InfinitInstanceManager::launch(std::string const& network_id)
     {
@@ -158,7 +157,7 @@ namespace surface
       {
         using elle::system::ProcessTermination;
         typedef elle::system::Process::Milliseconds ms;
-        auto const& instance = this->instance(network_id);
+        auto const& instance = this->_instance(network_id);
         ELLE_ASSERT_NEQ(instance.process, nullptr);
         auto& process = *(instance.process);
         if (instance.process->running())
@@ -206,11 +205,11 @@ namespace surface
       if (this->_instances.find(network_id) == this->_instances.end())
         return false;
 
-      if (!this->instance(network_id).process->running())
+      if (!this->_instance(network_id).process->running())
       {
         ELLE_WARN("Found not running infinit instance (pid = %s): status = %s",
-                   this->instance(network_id).process->id(),
-                   this->instance(network_id).process->status());
+                  this->_instance(network_id).process->id(),
+                  this->_instance(network_id).process->status());
         auto portal_path = common::infinit::portal_path(this->_user_id,
                                                         network_id);
         boost::filesystem::remove(portal_path);
@@ -221,7 +220,7 @@ namespace surface
     }
 
     InfinitInstance const&
-    InfinitInstanceManager::instance(std::string const& network_id) const
+    InfinitInstanceManager::_instance(std::string const& network_id) const
     {
       auto it = this->_instances.find(network_id);
       if (it == this->_instances.end())
@@ -231,7 +230,7 @@ namespace surface
     }
 
     InfinitInstance const*
-    InfinitInstanceManager::instance_for_file(std::string const& path)
+    InfinitInstanceManager::_instance_for_file(std::string const& path)
     {
       ELLE_TRACE_METHOD(path);
 

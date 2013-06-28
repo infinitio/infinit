@@ -76,11 +76,12 @@ namespace surface
       void
       stop(std::string const& network_id);
 
+    private:
       InfinitInstance const&
-      instance(std::string const& network_id) const;
+      _instance(std::string const& network_id) const;
 
       InfinitInstance const*
-      instance_for_file(std::string const& path);
+      _instance_for_file(std::string const& path);
     };
 
   }
