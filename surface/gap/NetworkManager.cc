@@ -39,12 +39,10 @@
 #include <elle/serialize/insert.hh>
 #include <elle/system/Process.hh>
 
-
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string.hpp>
 
-
-ELLE_LOG_COMPONENT("infinit.surface.gap.Network");
+ELLE_LOG_COMPONENT("infinit.surface.gap.NetworkManager");
 
 namespace
 {
@@ -893,7 +891,10 @@ namespace surface
     {
       ELLE_TRACE_METHOD(network_id);
 
+      // XXX is this normal? at this point the network has
+      //     obviously been created and prepared!
       this->prepare(network_id);
+
       this->_infinit_instance_manager.wait_portal(network_id);
     }
   }
