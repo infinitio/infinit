@@ -57,9 +57,10 @@ namespace surface
     }
 
     // - State ----------------------------------------------------------------
-    State::State():
+    State::State(std::string const& host,
+                 uint16_t port):
       _logger_intializer{},
-      _meta{common::meta::host(), common::meta::port(), true},
+      _meta{host, port, true},
       _reporter(),
       _google_reporter(),
       _me{nullptr},
@@ -249,7 +250,7 @@ namespace surface
         // user.dic
         lune::Dictionary dictionary;
 
-        dictionary.store(res.id);
+        dictionary.store(this->me().id);
       }
 
       std::ofstream identity_infos{common::infinit::identity_path(res.id)};
@@ -263,15 +264,6 @@ namespace surface
                        ;
         identity_infos.close();
       }
-
-
-      auto log_path =
-        fs::path(common::infinit::user_directory(this->me().id)) / "state.log";
-
-      elle::log::logger(std::unique_ptr<elle::log::Logger>{
-        new elle::log::TextLogger{
-          *(new std::ofstream{log_path.string(),
-                              std::fstream::trunc | std::fstream::out})}});
     }
 
     void

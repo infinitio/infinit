@@ -137,7 +137,7 @@ namespace infinit
         auto it = _channels.find(channel_id);
         if (it != _channels.end())
         {
-          ELLE_DEBUG("%s: received %s on existing %s.", *this, p, it->second);
+          ELLE_DEBUG("%s: received %s on existing %s.", *this, p, *it->second);
           it->second->_packets.push_back(std::move(p));
           if (channel_id == requested_channel)
             break;

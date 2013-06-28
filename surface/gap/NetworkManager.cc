@@ -242,6 +242,7 @@ namespace surface
 
       if (!elle::os::path::exists(description_filename))
       {
+        // XXX: One or sync?
         if (this->one(network_id).descriptor.empty())
         {
           auto nb = create_network_root_block(network_id,

@@ -26,6 +26,11 @@ extern "C" {
   /// Returns NULL on failure.
   gap_State* gap_new();
 
+  /// Create a new state.
+  /// Returns NULL on failure.
+  gap_State* gap_configurable_new(char const* host,
+                                  unsigned short port);
+
   /// Release a state.
   void gap_free(gap_State* state);
 

@@ -3,6 +3,8 @@
 
 # include "gap.h"
 
+# include <common/common.hh>
+
 # include <surface/gap/Exception.hh>
 # include <surface/gap/NetworkManager.hh>
 # include <surface/gap/NotificationManager.hh>
@@ -65,7 +67,8 @@ namespace surface
 
       ///- Construction --------------------------------------------------------
     public:
-      State();
+      State(std::string const& host = common::meta::host(),
+            uint16_t = common::meta::port());
       ~State();
 
     public:
