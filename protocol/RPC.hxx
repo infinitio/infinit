@@ -388,6 +388,10 @@ namespace infinit
               ELLE_TRACE("%s: procedure %s succeeded", *this, name);
             }
           }
+          catch (reactor::Terminate const&)
+          {
+            throw;
+          }
           catch (elle::Exception& e)
           {
             ELLE_TRACE_SCOPE("%s: procedure failed: %s", *this, e.what());
