@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
+import os.path
 import hashlib
 import meta
 import pythia
-import sys
+import subprocess
+import importlib
+
+ROOT_DIR=subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip().decode('utf-8')
+META_TEST_DIR=os.path.join(ROOT_DIR, "oracle", "disciples", "meta", "tests")
 
 with meta.Meta(spawn_db = True) as meta:
     session = {}
@@ -17,7 +22,6 @@ with meta.Meta(spawn_db = True) as meta:
     fullname = 'Pif Pif'
     activation_code = 'bitebite'
 
-    print("==== Creating Users =====")
     res = client.post('/user/login', {'email': email,
                                       'password': password_hash,
     })
@@ -45,70 +49,26 @@ with meta.Meta(spawn_db = True) as meta:
     account = client.get('/self')
     print("account:", account)
     assert account['success'] is True
-    print("==========================", end="\n\n")
+    test_modules = list()
+    for path, dirs, files in os.walk(META_TEST_DIR):
+        for file in files:
+            if file.endswith(".py"):
+                module, ext = os.path.splitext(file)
+                test_modules.append(__import__(module))
 
-    # Testing devices
-    print("==== Testing Devices =====")
-    if not client.get('/devices')['devices']:
-        res = client.post('/device/create', {
-            'name': "New device",
-        })
-        print(res)
-        assert res['success'] is True
-        print("added device", res['created_device_id'])
+    for module in test_modules:
+        print("\n===== Testing {} {}".format(module.__name__,
+            "=" * (64 - len(module.__name__))))
+        try:
+            module.run(client)
+        except AssertionError:
+            print("Module {} failed: AssertionError".format(module.__name__))
+        except Exception as e:
+            print("Module {} failed: {}".format(module.__name__, e))
+        except BaseException as e:
+            print("Module {} failed: {}".format(module.__name__, e))
+        print("=" * 79, end='\n')
 
-    devices = client.get('/devices')['devices']
-    assert len(devices) > 0
-    print("User devices:", devices)
-    device = client.get('/device/{}/view'.format(devices[0]))
-    print("Got device", device)
-
-    device['name'] = "THIS IS A NEW NAME"
-    new_device = client.post('/device/create', device)
-
-    device = client.get('/device/{}/view'.format(new_device["created_device_id"]))
-    print("Got updated device", device)
-    assert device['name'] == "THIS IS A NEW NAME"
-
-    res = client.post('/device/delete', {"_id": devices[0]})
-    assert res['success'] is True
-    assert res["deleted_device_id"] == devices[0]
-    print("==========================", end="\n\n")
-
-    # Testing networks
-    print("==== Testing Network =====")
-    if not client.get('/networks')['networks']:
-        res = client.post('/network/create', {'name': "New network"})
-        assert res['success'] is True
-        print("added network", res['created_network_id'])
-
-    networks = client.get('/networks')['networks']
-    print("user networks", networks)
-    assert len(networks) > 0
-
-    # updating network
-    network = client.get('/network/{}/view'.format(networks[0]))
-    network['name'] = "THIS IS A NEW `network` NAME"
-    res = client.post('/network/update', {"_id": network['_id'], "name": network['name']})
-    if res['success'] is False:
-        print("ERROR:", res)
-        assert False
-
-    # Test for deprecation of the users key.
-    res = client.post('/network/create', {"name": "Net Stark", "users": ["idid"]})
-    print(res)
-    assert res['success'] is False and res['error_details'] == 'The key users is deprecated'
-
-    # Test for deprecation of the devices key.
-    res = client.post('/network/create', {"name": "Net Stark", "devices": ["devdev"]})
-    print(res)
-    assert res['success'] is False and res['error_details'] == 'The key devices is deprecated'
-
-
-    network = client.get('/network/{}/view'.format(networks[0]))
-    print(network)
-    assert network['name'] == "THIS IS A NEW `network` NAME"
-    print("updated network", network)
 
     res = client.post('/user/register', {
         'fullname': 'Mister Test friend',
@@ -116,5 +76,5 @@ with meta.Meta(spawn_db = True) as meta:
         'password': password
     })
 
+    assert res['success'] is False
     assert client.get('/user/logout')['success'] is True
-    print("==========================", end="\n\n")
