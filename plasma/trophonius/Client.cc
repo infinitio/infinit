@@ -94,6 +94,12 @@ namespace plasma
     Notification::~Notification()
     {}
 
+    void
+    Notification::print(std::ostream& stream) const
+    {
+      stream << this->notification_type;
+    }
+
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict)
     {

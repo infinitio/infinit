@@ -31,13 +31,17 @@ namespace plasma
     };
 
     /// Base class for all notifications.
-    struct Notification
+    struct Notification: public elle::Printable
     {
       NotificationType notification_type;
 
       ELLE_SERIALIZE_CONSTRUCT(Notification)
       {}
       virtual ~Notification();
+
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
 
     namespace json = elle::format::json;
