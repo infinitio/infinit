@@ -48,29 +48,16 @@ namespace etoile
           StateUpdated
         };
 
-      //
-      // types
-      //
-      typedef std::map<const Identifier,
-                       Actor*>                          Container;
-      typedef Container::iterator                       Iterator;
-      typedef Container::const_iterator                 Scoutor;
+      // //
+      // // static methods
+      // //
+      // static elle::Status       Add(const Identifier&,
+      //                               Actor*);
+      // static elle::Status       Select(const Identifier&,
+      //                                  Actor*&);
+      // static elle::Status       Remove(const Identifier&);
 
-      //
-      // static methods
-      //
-      static elle::Status       Add(const Identifier&,
-                                    Actor*);
-      static elle::Status       Select(const Identifier&,
-                                       Actor*&);
-      static elle::Status       Remove(const Identifier&);
-
-      static elle::Status       Show(const elle::Natural32 = 0);
-
-      //
-      // static attributes
-      //
-      static Container          Actors;
+      // static elle::Status       Show(const elle::Natural32 = 0);
 
       //
       // constructors & destructors

@@ -1,114 +1,105 @@
 #include <etoile/gear/Actor.hh>
 #include <etoile/gear/Scope.hh>
+#include <etoile/Etoile.hh>
 #include <etoile/Exception.hh>
 
 namespace etoile
 {
   namespace gear
   {
-
-//
-// ---------- definitions -----------------------------------------------------
-//
-
-    ///
-    /// this data structure holds all the living actors.
-    ///
-    Actor::Container            Actor::Actors;
-
 //
 // ---------- static methods --------------------------------------------------
 //
 
-    ///
-    /// this method retrieves an actor according to its identifier.
-    ///
-    elle::Status        Actor::Add(const Identifier&            identifier,
-                                   Actor*                       actor)
-    {
-      std::pair<Actor::Iterator, elle::Boolean> result;
+    // ///
+    // /// this method retrieves an actor according to its identifier.
+    // ///
+    // elle::Status        Actor::Add(const Identifier&            identifier,
+    //                                Actor*                       actor)
+    // {
+    //   std::pair<Actor::Iterator, elle::Boolean> result;
 
 
-      // check if this identifier has already been recorded.
-      if (Actor::Actors.find(identifier) != Actor::Actors.end())
-        throw Exception("this actor seems to have already been registered");
+    //   // check if this identifier has already been recorded.
+    //   if (Actor::Actors.find(identifier) != Actor::Actors.end())
+    //     throw Exception("this actor seems to have already been registered");
 
-      // insert the actor in the container.
-      result = Actor::Actors.insert(
-                 std::pair<const Identifier, Actor*>(identifier, actor));
+    //   // insert the actor in the container.
+    //   result = Actor::Actors.insert(
+    //              std::pair<const Identifier, Actor*>(identifier, actor));
 
-      // check the result.
-      if (result.second == false)
-        throw Exception("unable to insert the actor in the container");
+    //   // check the result.
+    //   if (result.second == false)
+    //     throw Exception("unable to insert the actor in the container");
 
-      return elle::Status::Ok;
-    }
+    //   return elle::Status::Ok;
+    // }
 
-    ///
-    /// this method returns the actor associated with the given identifier.
-    ///
-    elle::Status        Actor::Select(const Identifier&         identifier,
-                                      Actor*&                   actor)
-    {
-      Actor::Scoutor    scoutor;
-
-
-      // find the entry.
-      if ((scoutor = Actor::Actors.find(identifier)) == Actor::Actors.end())
-        throw Exception("unable to locate the actor associated with the identifier");
-
-      // return the actor.
-      actor = scoutor->second;
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method removes an actor from the container.
-    ///
-    elle::Status        Actor::Remove(const Identifier&         identifier)
-    {
-      Actor::Iterator   iterator;
+    // ///
+    // /// this method returns the actor associated with the given identifier.
+    // ///
+    // elle::Status        Actor::Select(const Identifier&         identifier,
+    //                                   Actor*&                   actor)
+    // {
+    //   Actor::Scoutor    scoutor;
 
 
-      // find the entry.
-      if ((iterator = Actor::Actors.find(identifier)) == Actor::Actors.end())
-        throw Exception("unable to locate the actor associated with the identifier");
+    //   // find the entry.
+    //   if ((scoutor = Actor::Actors.find(identifier)) == Actor::Actors.end())
+    //     throw Exception("unable to locate the actor associated with the identifier");
 
-      // erase the entry.
-      Actor::Actors.erase(iterator);
+    //   // return the actor.
+    //   actor = scoutor->second;
 
-      return elle::Status::Ok;
-    }
+    //   return elle::Status::Ok;
+    // }
 
-    ///
-    /// this method displays the actors data structure.
-    ///
-    elle::Status        Actor::Show(const elle::Natural32       margin)
-    {
-      elle::String      alignment(margin, ' ');
-      Actor::Scoutor    scoutor;
+    // ///
+    // /// this method removes an actor from the container.
+    // ///
+    // elle::Status        Actor::Remove(const Identifier&         identifier)
+    // {
+    //   Actor::Iterator   iterator;
 
 
-      std::cout << alignment << "[Actor]" << std::endl;
+    //   // find the entry.
+    //   if ((iterator = Actor::Actors.find(identifier)) == Actor::Actors.end())
+    //     throw Exception("unable to locate the actor associated with the identifier");
 
-      // go through the container.
-      for (scoutor = Actor::Actors.begin();
-           scoutor != Actor::Actors.end();
-           scoutor++)
-        {
-          // dump the identifier.
-          if (scoutor->first.Dump(margin + 2) == elle::Status::Error)
-            throw Exception("unable to dump the identifier");
+    //   // erase the entry.
+    //   Actor::Actors.erase(iterator);
 
-          // dump the actor.
-          if (scoutor->second->Dump(margin + 2) == elle::Status::Error)
-            throw Exception("unable to dump the actor");
+    //   return elle::Status::Ok;
+    // }
 
-        }
+    // ///
+    // /// this method displays the actors data structure.
+    // ///
+    // elle::Status        Actor::Show(const elle::Natural32       margin)
+    // {
+    //   elle::String      alignment(margin, ' ');
+    //   Actor::Scoutor    scoutor;
 
-      return elle::Status::Ok;
-    }
+
+    //   std::cout << alignment << "[Actor]" << std::endl;
+
+    //   // go through the container.
+    //   for (scoutor = Actor::Actors.begin();
+    //        scoutor != Actor::Actors.end();
+    //        scoutor++)
+    //     {
+    //       // dump the identifier.
+    //       if (scoutor->first.Dump(margin + 2) == elle::Status::Error)
+    //         throw Exception("unable to dump the identifier");
+
+    //       // dump the actor.
+    //       if (scoutor->second->Dump(margin + 2) == elle::Status::Error)
+    //         throw Exception("unable to dump the actor");
+
+    //     }
+
+    //   return elle::Status::Ok;
+    // }
 
 //
 // ---------- constructors & destructors --------------------------------------
@@ -124,10 +115,7 @@ namespace etoile
       // generate an identifier.
       if (this->identifier.Generate() == elle::Status::Error)
         return;
-
-      // register the actor.
-      if (Actor::Add(this->identifier, this) == elle::Status::Error)
-        return;
+      Etoile::instance()->actor_add(*this);
 
       // add the actor to the scope's set.
       if (scope->Attach(this) == elle::Status::Error)
@@ -143,9 +131,7 @@ namespace etoile
       if (this->scope->Detach(this) == elle::Status::Error)
         return;
 
-      // unregister the actor.
-      if (Actor::Remove(this->identifier) == elle::Status::Error)
-        return;
+      Etoile::instance()->actor_remove(*this);
     }
 
 //

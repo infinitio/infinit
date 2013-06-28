@@ -3,6 +3,7 @@
 
 #include <reactor/scheduler.hh>
 
+#include <etoile/Etoile.hh>
 #include <etoile/wall/File.hh>
 #include <etoile/gear/Identifier.hh>
 #include <etoile/gear/Scope.hh>
@@ -142,16 +143,9 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier, offset, data);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Scope* scope = actor->scope;
       gear::File* context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // declare a critical section.
       {
@@ -179,16 +173,9 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier, offset, size);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Scope* scope = actor->scope;
       gear::File* context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       elle::Buffer* buffer = nullptr;
 
@@ -224,16 +211,9 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier, size);
 
-      gear::Actor*      actor;
-      gear::Scope*      scope;
+      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Scope* scope = actor->scope;
       gear::File*       context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
@@ -260,18 +240,11 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Scope* scope = actor->scope;
       gear::File* context;
 
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
       gear::Guard guard(actor);
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
@@ -349,18 +322,11 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Scope* scope = actor->scope;
       gear::File* context;
 
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
       gear::Guard guard(actor);
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
@@ -441,18 +407,11 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor*      actor;
-      gear::Scope*      scope;
+      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Scope* scope = actor->scope;
       gear::File*       context;
 
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
       gear::Guard               guard(actor);
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {

@@ -25,6 +25,9 @@ namespace etoile
 
     if (portal::Portal::Initialize() == elle::Status::Error)
       throw Exception("unable to initialize the portal");
+
+    ELLE_ASSERT(!this->_instance);
+    this->_instance = this;
   }
 
   Etoile::~Etoile()
@@ -38,23 +41,61 @@ namespace etoile
       shrub::global_shrub = nullptr;
     }
 
-    // Clean Actor
-    {
-      gear::Actor::Scoutor    scoutor;
-      for (auto& actor: gear::Actor::Actors)
-        delete actor.second;
-
-      // clear the container.
-      gear::Actor::Actors.clear();
-    }
+    for (auto& actor: this->_actors)
+      delete actor.second;
+    this->_actors.clear();
 
     // Clean Scope.
     {
-      gear::Scope::S::O::Scoutor    scoutor;
       for (auto scope: gear::Scope::Scopes::Onymous)
         delete scope.second;
       gear::Scope::Scopes::Onymous.clear();
     }
+
+    this->_instance = nullptr;
   }
 
+  /*------.
+  | Actor |
+  `------*/
+
+  gear::Actor*
+  Etoile::actor_get(gear::Identifier const& id) const
+  {
+    auto it = this->_actors.find(id);
+    if (it == this->_actors.end())
+      throw elle::Exception(elle::sprintf("unkown actor %s", id));
+    return it->second;
+  }
+
+  void
+  Etoile::actor_add(gear::Actor& actor)
+  {
+    auto id = actor.identifier;
+    if (this->_actors.find(id) != this->_actors.end())
+      throw elle::Exception(elle::sprintf("duplicate actor %s", id));
+    this->_actors[id] = &actor;
+  }
+
+  void
+  Etoile::actor_remove(gear::Actor const& actor)
+  {
+    auto id = actor.identifier;
+    auto it = this->_actors.find(id);
+    if (it == this->_actors.end())
+      throw elle::Exception(elle::sprintf("unkown actor %s", id));
+    this->_actors.erase(it);
+  }
+
+  /*----------------.
+  | Global instance |
+  `----------------*/
+
+  Etoile*
+  Etoile::instance()
+  {
+    return Etoile::_instance;
+  }
+
+  Etoile* Etoile::_instance(nullptr);
 }
