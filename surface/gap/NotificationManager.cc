@@ -26,15 +26,11 @@ namespace surface
       _self(self),
       _device(device)
     {
-      ELLE_TRACE_METHOD("");
-
       this->_connect();
     }
 
     NotificationManager::~NotificationManager()
-    {
-      ELLE_TRACE_METHOD("");
-    }
+    {}
 
     // - TROPHONIUS ----------------------------------------------------
     /// Connect to trophonius
@@ -52,7 +48,7 @@ namespace surface
     void
     NotificationManager::_connect()
     {
-      ELLE_DEBUG_METHOD("");
+      ELLE_DEBUG("%s: connect", *this);
 
       ELLE_ASSERT_EQ(this->_trophonius, nullptr);
 
@@ -67,27 +63,27 @@ namespace surface
         {
           // we can read it and get the port number;
           std::ifstream file(port_file_path);
-          ELLE_DEBUG("erginus port file is at %s", port_file_path);
+          ELLE_DEBUG("%s: erginus port file is at %s", *this, port_file_path);
 
           if (file.good())
           {
             file >> port;
-            ELLE_DEBUG("erginus port is %s", port);
+            ELLE_DEBUG("%s: erginus port is %s", *this, port);
             this->_trophonius.reset(
               new plasma::trophonius::Client{
                 "localhost",
                 port,
                 std::bind(&NotificationManager::_on_trophonius_connected, this),
               });
-            ELLE_DEBUG("successfully connected to erginus");
+            ELLE_DEBUG("%s: successfully connected to erginus", *this);
           }
           return ;
         }
-        ELLE_DEBUG("erginus port file not found");
+        ELLE_DEBUG("%s: erginus port file not found", *this);
       }
       catch (std::runtime_error const& err)
       {
-        ELLE_DEBUG("couldn't connect to erginus: %s", err.what());
+        ELLE_DEBUG("%s: couldn't connect to erginus: %s", *this, err.what());
       }
 
       try
@@ -101,12 +97,14 @@ namespace surface
       }
       catch (...)
       {
-        std::string err = elle::sprint("couldn't connect to trophonius:",
-                                       elle::exception_string());
+        std::string err = elle::sprint("%s: couldn't connect to trophonius:",
+                                       *this, elle::exception_string());
         ELLE_ERR("%s", err);
         throw Exception{gap_error, err};
       }
-      ELLE_LOG("trying to connect to tropho: id = %s token = %s device_id = %s",
+      ELLE_LOG("%s: trying to connect to tropho: "
+               "id = %s token = %s device_id = %s",
+               *this,
                this->_self.id,
                this->_meta.token(),
                this->_device.id);
@@ -119,8 +117,6 @@ namespace surface
     void
     NotificationManager::_check_trophonius()
     {
-      ELLE_DEBUG_METHOD("");
-
       if (this->_trophonius == nullptr)
         throw Exception{gap_error, "Trophonius is not connected"};
     }
@@ -128,16 +124,14 @@ namespace surface
     void
     NotificationManager::_on_trophonius_connected()
     {
-      ELLE_DEBUG_METHOD("");
-
-      ELLE_LOG("Successfully reconnected to trophonius");
+      ELLE_LOG("%s: successfully reconnected to trophonius", *this);
       this->pull(-1, 0, true);
     }
 
     size_t
     NotificationManager::poll(size_t max)
     {
-      ELLE_TRACE_METHOD(max);
+      ELLE_TRACE("%s: polling at most %s notification", *this, max);
 
       std::unique_ptr<Notification> notif;
       std::string transaction_id = "";
@@ -177,7 +171,7 @@ namespace surface
             "no notification available"
           ),
           elle::exception_string());
-        ELLE_ERR("got error while polling: %s", error);
+        ELLE_ERR("%s: got error while polling: %s", *this, error);
         this->_call_error_handlers(gap_unknown, error, transaction_id);
       }
       return count;
@@ -188,11 +182,14 @@ namespace surface
                               size_t offset,
                               bool only_new)
     {
-      ELLE_TRACE_METHOD(count, offset, only_new);
+      ELLE_TRACE_SCOPE("%s: fetch at most %s notifications "
+                       "starting from %s (only new: %s)",
+                       *this, count, offset, only_new);
 
       auto res = this->_meta.pull_notifications(count, offset);
 
-      ELLE_DEBUG("pulled %s new and %s old notifications",
+      ELLE_DEBUG("%s: pulled %s new and %s old notifications",
+                 *this,
                  res.notifs.size(),
                  res.old_notifs.size());
 
@@ -207,7 +204,7 @@ namespace surface
     void
     NotificationManager::read()
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_TRACE_SCOPE("%s: read notifications", *this);
 
       this->_meta.notification_read();
     }
@@ -216,10 +213,6 @@ namespace surface
     NotificationManager::_handle_notification(json::Dictionary const& dict,
                                               bool new_)
     {
-      ELLE_TRACE_METHOD(dict, new_);
-
-      this->_check_trophonius();
-
       try
       {
         this->_handle_notification(
@@ -227,18 +220,20 @@ namespace surface
       }
       catch (...)
       {
-        ELLE_ERR("couldn't handle notification: %s: %s",
+        ELLE_ERR("%s: couldn't handle notification: %s: %s",
+                 *this,
                  dict.repr(),
                  elle::exception_string());
       }
-      ELLE_DEBUG("End of notification pull");
     }
 
     void
     NotificationManager::_handle_notification(Notification const& notif,
                                               bool new_)
     {
-      ELLE_TRACE_METHOD(notif, new_);
+      ELLE_TRACE_SCOPE("%s: handle notification", *this);
+      ELLE_DEBUG("%s: notification: %s", *this, notif);
+      ELLE_DEBUG("%s: notification is new: %s", *this, new_);
 
       this->_check_trophonius();
 
@@ -255,27 +250,26 @@ namespace surface
       auto handler_list = _notification_handlers.find(notif.notification_type);
 
       if (handler_list == _notification_handlers.end())
-        {
-          ELLE_DEBUG("Handler missing for notification '%u'",
-                     notif.notification_type);
-          return;
-        }
+      {
+        ELLE_DEBUG("%s: handler missing for notification '%u'",
+                   *this,
+                   notif.notification_type);
+        return;
+      }
 
       for (auto& handler: handler_list->second)
-        {
-          ELLE_DEBUG("Firing notification handler (piupiu)");
-          ELLE_ASSERT(handler != nullptr);
-          handler(notif, new_);
-          ELLE_DEBUG("Notification handler fired (piupiu done)");
-        }
+      {
+        ELLE_DEBUG("%s: firing notification handler (piupiu)", *this);
+        ELLE_ASSERT(handler != nullptr);
+        handler(notif, new_);
+        ELLE_DEBUG("%s: notification handler fired (piupiu done)", *this);
+      }
     }
 
     void
     NotificationManager::network_update_callback(
       NetworkUpdateNotificationCallback const& cb)
     {
-      ELLE_TRACE_METHOD(cb);
-
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<NetworkUpdateNotification const&>(notif));
       };
@@ -288,8 +282,6 @@ namespace surface
     NotificationManager::transaction_callback(
       TransactionNotificationCallback const& cb)
     {
-      ELLE_TRACE_METHOD(cb);
-
       auto fn = [cb] (Notification const& notif, bool is_new) -> void {
         return cb(static_cast<TransactionNotification const&>(notif), is_new);
       };
@@ -301,8 +293,6 @@ namespace surface
     void
     NotificationManager::message_callback(MessageNotificationCallback const& cb)
     {
-      ELLE_TRACE_METHOD(cb);
-
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<MessageNotification const&>(notif));
       };
@@ -315,8 +305,6 @@ namespace surface
     NotificationManager::user_status_callback(
       UserStatusNotificationCallback const& cb)
     {
-      ELLE_TRACE_METHOD(cb);
-
       auto fn = [cb] (Notification const& notif, bool) -> void {
         return cb(static_cast<UserStatusNotification const&>(notif));
       };
@@ -328,8 +316,6 @@ namespace surface
     void
     NotificationManager::on_error_callback(OnErrorCallback const& cb)
     {
-      ELLE_TRACE_METHOD(cb);
-
       this->_error_handlers.push_back(cb);
     }
 
@@ -338,26 +324,33 @@ namespace surface
                                               std::string const& s,
                                               std::string const& tid)
     {
-      ELLE_TRACE_METHOD(status, s, tid);
-
       this->_check_trophonius();
 
       for (auto const& c: this->_error_handlers)
         try
         {
-            c(status, s, tid);
+          c(status, s, tid);
         }
         catch (...)
         {
-          ELLE_ERR("error handler threw an error: %s",
+          ELLE_ERR("%s: error handler threw an error: %s",
+                   *this,
                    elle::exception_string());
         }
     }
 
+    /*----------.
+    | Printable |
+    `----------*/
+
+    void
+    NotificationManager::print(std::ostream& stream) const
+    {
+      stream << "NotificationManager(" << this->_meta.email() << ")";
+    }
+
     Notifiable::Notifiable(NotificationManager& notification_manager):
       _notification_manager(notification_manager)
-    {
-      ELLE_TRACE_METHOD("");
-    }
+    {}
   }
 }

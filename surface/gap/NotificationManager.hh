@@ -31,7 +31,7 @@ namespace surface
 
     class Notifiable;
 
-    class NotificationManager
+    class NotificationManager: public elle::Printable
     {
       class Exception:
         public surface::gap::Exception
@@ -145,6 +145,13 @@ namespace surface
       _call_error_handlers(gap_Status status,
                            std::string const& s,
                            std::string const& tid = "");
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      void
+      print(std::ostream& stream) const override;
     };
 
     class Notifiable
