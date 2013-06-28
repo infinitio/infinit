@@ -17,6 +17,7 @@ with meta.Meta(spawn_db = True) as meta:
     fullname = 'Pif Pif'
     activation_code = 'bitebite'
 
+    print("==== Creating Users =====")
     res = client.post('/user/login', {'email': email,
                                       'password': password_hash,
     })
@@ -44,14 +45,13 @@ with meta.Meta(spawn_db = True) as meta:
     account = client.get('/self')
     print("account:", account)
     assert account['success'] is True
+    print("==========================", end="\n\n")
 
     # Testing devices
+    print("==== Testing Devices =====")
     if not client.get('/devices')['devices']:
-        res = client.post('/devices', {
+        res = client.post('/device/create', {
             'name': "New device",
-            'addresses': [
-                {"ip": "127.0.0.1", 'port':1234},
-            ],
         })
         print(res)
         assert res['success'] is True
@@ -60,39 +60,53 @@ with meta.Meta(spawn_db = True) as meta:
     devices = client.get('/devices')['devices']
     assert len(devices) > 0
     print("User devices:", devices)
-    device = client.get('/device/' + devices[0])
+    device = client.get('/device/{}/view'.format(devices[0]))
     print("Got device", device)
 
     device['name'] = "THIS IS A NEW NAME"
-    res = client.post('/devices', device)
+    new_device = client.post('/device/create', device)
 
-    device = client.get('/device/' + devices[0])
+    device = client.get('/device/{}/view'.format(new_device["created_device_id"]))
     print("Got updated device", device)
-
     assert device['name'] == "THIS IS A NEW NAME"
 
-    res = client.delete('/device/' + devices[0])
+    res = client.post('/device/delete', {"_id": devices[0]})
     assert res['success'] is True
+    assert res["deleted_device_id"] == devices[0]
+    print("==========================", end="\n\n")
 
     # Testing networks
-    if not client.get('/networks'):
-        res = client.post('/networks', {'name': "New network"})
+    print("==== Testing Network =====")
+    if not client.get('/networks')['networks']:
+        res = client.post('/network/create', {'name': "New network"})
         assert res['success'] is True
         print("added network", res['created_network_id'])
 
     networks = client.get('/networks')['networks']
-    assert len(networks) > 0
     print("user networks", networks)
+    assert len(networks) > 0
 
     # updating network
-    network = client.get('/network/' + networks[0])
+    network = client.get('/network/{}/view'.format(networks[0]))
     network['name'] = "THIS IS A NEW `network` NAME"
-    res = client.post('/networks', network)
+    res = client.post('/network/update', {"_id": network['_id'], "name": network['name']})
     if res['success'] is False:
-        print("ERROR:", res["error"])
+        print("ERROR:", res)
         assert False
 
-    network = client.get('/network/' + networks[0])
+    # Test for deprecation of the users key.
+    res = client.post('/network/create', {"name": "Net Stark", "users": ["idid"]})
+    print(res)
+    assert res['success'] is False and res['error_details'] == 'The key users is deprecated'
+
+    # Test for deprecation of the devices key.
+    res = client.post('/network/create', {"name": "Net Stark", "devices": ["devdev"]})
+    print(res)
+    assert res['success'] is False and res['error_details'] == 'The key devices is deprecated'
+
+
+    network = client.get('/network/{}/view'.format(networks[0]))
+    print(network)
     assert network['name'] == "THIS IS A NEW `network` NAME"
     print("updated network", network)
 
@@ -103,3 +117,4 @@ with meta.Meta(spawn_db = True) as meta:
     })
 
     assert client.get('/user/logout')['success'] is True
+    print("==========================", end="\n\n")
