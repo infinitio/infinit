@@ -177,7 +177,7 @@ namespace surface
           "-u", this->_self.id,
         };
 
-        ELLE_DEBUG("launching: %s %s", progress_binary,
+        ELLE_DEBUG("launch: %s %s", progress_binary,
                    boost::algorithm::join(arguments, " "));
 
         this->_progresses(

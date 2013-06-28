@@ -90,7 +90,7 @@ namespace surface
             "--to",
           };
 
-          ELLE_DEBUG("LAUNCH: %s %s",
+          ELLE_DEBUG("launch: %s %s",
                      transfer_binary,
                      boost::algorithm::join(arguments, " "));
 
