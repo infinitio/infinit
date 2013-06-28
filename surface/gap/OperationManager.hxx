@@ -46,14 +46,14 @@ namespace surface
            std::bind(&OperationAdaptor<T>::_on_error, this)},
          _thread{std::bind(&OperationAdaptor<T>::_start, this)}
         {
-         ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
+         ELLE_LOG_COMPONENT("infinit.surface.gap.OperationManager");
          ELLE_TRACE_FUNCTION(this->_name);
         }
 
        virtual
        ~OperationAdaptor()
        {
-         ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
+         ELLE_LOG_COMPONENT("infinit.surface.gap.OperationManager");
 
          try
          {
@@ -101,7 +101,7 @@ namespace surface
        void
        _start()
        {
-         ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
+         ELLE_LOG_COMPONENT("infinit.surface.gap.OperationManager");
          ELLE_TRACE_FUNCTION(this->_name);
 
          try
