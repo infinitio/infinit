@@ -112,7 +112,7 @@ namespace etoile
       void
       _sweep();
       /// The thread running _sweep regularly.
-      ELLE_ATTRIBUTE(reactor::Thread*, sweeper);
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, sweeper);
       friend class Riffle;
       ELLE_ATTRIBUTE(Riffle*, riffles);
       ELLE_ATTRIBUTE(elle::container::timeline::Timeline<Riffle*>, queue);

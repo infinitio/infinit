@@ -28,15 +28,14 @@ namespace etoile
       _riffles(nullptr),
       _queue()
     {
-      _sweeper = reactor::Scheduler::scheduler()->every(
-        std::bind(&Shrub::_sweep, this),
-        "Shrub sweeper", sweep_frequency);
+      _sweeper.reset(reactor::Scheduler::scheduler()->every(
+                       std::bind(&Shrub::_sweep, this),
+                       "Shrub sweeper", sweep_frequency));
     }
 
     Shrub::~Shrub()
     {
       this->_sweeper->terminate_now();
-      this->_sweeper = nullptr;
       if (this->_riffles != nullptr)
       {
         this->_riffles->flush();
