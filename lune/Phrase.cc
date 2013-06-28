@@ -7,6 +7,12 @@
 
 namespace lune
 {
+  /*-------------.
+  | Construction |
+  `-------------*/
+
+  ELLE_SERIALIZE_CONSTRUCT_DEFINE(Phrase)
+  {}
 
 //
 // ---------- methods ---------------------------------------------------------
