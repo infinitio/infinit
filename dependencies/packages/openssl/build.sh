@@ -31,6 +31,7 @@ if ! uptodate "${OPENSSL_LIBRARIES}"; then
                 --prefix="${WORKDDIR}"                                          \
                 --openssldir="${WORKDIR}"                                       \
                 shared                                                          \
+                -DPURIFY                                                        \
                 || die "unable to configure"
 
             make install || die "unable to build"
