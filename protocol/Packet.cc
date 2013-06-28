@@ -5,6 +5,8 @@
 
 #include <protocol/Packet.hh>
 
+ELLE_LOG_COMPONENT("infinit.protocol.Packet")
+
 namespace infinit
 {
   namespace protocol
