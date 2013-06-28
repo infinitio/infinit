@@ -469,15 +469,110 @@ early_cancel()
   BOOST_CHECK_EQUAL(cancel_counter, 2);
 }
 
+void
+ghost_user()
+{
+  std::string to_send{"to_send"};
+
+  srand(time(NULL));
+  auto random_string = [] (size_t size = 24) -> std::string
+  {
+    static std::string charset = "1234567890abcdef";
+    std::string result;
+    result.resize(size);
+
+    srand(time(NULL));
+    for (size_t i = 0; i < size; i++)
+        result[i] = charset[rand() % charset.length()];
+
+    return result;
+  };
+
+  std::string sender_email = random_string() + "@lol.fr";
+  std::string recipient_email = random_string() + "@lol.fr";
+
+  static int success_counter = 0;
+
+  std::thread recipient_thread;
+
+  StatePtr recipient_state{new State()};
+  StatePtr sender_state{new State()};
+
+  make_login(sender_state, "delayed_acceptsender", sender_email);
+  auto sender_thread = init_sender(
+    sender_state,
+    recipient_email,
+    to_send,
+    [&, sender_state, recipient_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
+      {
+        ELLE_WARN("[Sender] Transaction %s had been canceled", t);
+        sender_state->logout();
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Sender] Transaction %s failed", t);
+        sender_state->logout();
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("[Sender] Transaction %s finished", t);
+        ++success_counter;
+        sender_state->logout();
+      }
+      else if (t.status == plasma::TransactionStatus::created &&
+               t.accepted == false)
+      {
+        make_login(recipient_state, "delayed_acceptrecipient", recipient_email);
+
+        recipient_thread = init_recipient(
+          recipient_state,
+          [&, recipient_state] (TransactionNotification const& t, bool)
+          {
+            if (t.status == plasma::TransactionStatus::canceled)
+            {
+              ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
+              recipient_state->logout();
+            }
+            else if (t.status == plasma::TransactionStatus::failed)
+            {
+              ELLE_ERR("[Recipient] Transaction %s failed", t);
+              recipient_state->logout();
+            }
+            else if (t.status == plasma::TransactionStatus::finished)
+            {
+              ELLE_LOG("[Recipient] Transaction %s finished", t);
+              ++success_counter;
+              recipient_state->logout();
+            }
+            else if (t.status == plasma::TransactionStatus::created && !t.accepted)
+            {
+              ::sleep(6);
+              ELLE_LOG("accepting %s", t);
+              recipient_state->transaction_manager().accept_transaction(t.id);
+            }
+          });
+      }
+
+    });
+
+  sender_thread.join();
+  recipient_thread.join();
+
+  BOOST_CHECK_EQUAL(success_counter, 2);
+}
+
 test_suite*
 init_unit_test_suite(int argc, char* argv[])
 {
   test_suite* test_suite = BOOST_TEST_SUITE("state_contructor");
   test_suite->add(BOOST_TEST_CASE(state_creation), 0, 20);
-  test_suite->add(BOOST_TEST_CASE(early_accept), 0, 120);
-  test_suite->add(BOOST_TEST_CASE(delayed_accept), 0, 120);
-  test_suite->add(BOOST_TEST_CASE(early_cancel), 0, 120);
-  test_suite->add(BOOST_TEST_CASE(delayed_cancel), 0, 120);
+  test_suite->add(BOOST_TEST_CASE(early_accept), 0, 240);
+  test_suite->add(BOOST_TEST_CASE(delayed_accept), 0, 240);
+  test_suite->add(BOOST_TEST_CASE(early_cancel), 0, 240);
+  test_suite->add(BOOST_TEST_CASE(delayed_cancel), 0, 240);
+  test_suite->add(BOOST_TEST_CASE(ghost_user), 0, 240);
 
   framework::master_test_suite().add(test_suite);
   return 0;
