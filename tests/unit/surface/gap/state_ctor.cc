@@ -1,8 +1,9 @@
 // For std::this_thread::sleep_for until gcc4.8
 #define _GLIBCXX_USE_NANOSLEEP 1
 
-#include <boost/test/included/unit_test.hpp>
-using namespace boost::unit_test;
+#define BOOST_TEST_MODULE heartbeat
+#define BOOST_TEST_DYN_LINK
+#include <boost/test/unit_test.hpp>
 
 #include <surface/gap/State.hh>
 
@@ -135,8 +136,7 @@ init_recipient(StatePtr state,
   return thread;
 }
 
-void
-state_creation()
+BOOST_AUTO_TEST_CASE(state_creation)
 {
   std::string state_creator_email = "state_creator_email@lol.fr";
 
@@ -176,8 +176,7 @@ state_creation()
   recipient_thread.join();
 }
 
-void
-delayed_accept()
+BOOST_AUTO_TEST_CASE(delayed_accept)
 {
   std::string to_send{"to_send"};
 
@@ -249,8 +248,7 @@ delayed_accept()
   BOOST_CHECK_EQUAL(success_counter, 2);
 }
 
-void
-early_accept()
+BOOST_AUTO_TEST_CASE(early_accept)
 {
   std::string to_send{"to_send"};
 
@@ -321,8 +319,7 @@ early_accept()
   BOOST_CHECK_EQUAL(success_counter, 2);
 }
 
-void
-delayed_cancel()
+BOOST_AUTO_TEST_CASE(delayed_cancel)
 {
   std::string to_send{"to_send"};
 
@@ -395,8 +392,7 @@ delayed_cancel()
   BOOST_CHECK_EQUAL(cancel_counter, 2);
 }
 
-void
-early_cancel()
+BOOST_AUTO_TEST_CASE(early_cancel)
 {
   std::string to_send{"to_send"};
 
@@ -469,8 +465,7 @@ early_cancel()
   BOOST_CHECK_EQUAL(cancel_counter, 2);
 }
 
-void
-ghost_user()
+BOOST_AUTO_TEST_CASE(ghost_user)
 {
   std::string to_send{"to_send"};
 
@@ -561,19 +556,4 @@ ghost_user()
   recipient_thread.join();
 
   BOOST_CHECK_EQUAL(success_counter, 2);
-}
-
-test_suite*
-init_unit_test_suite(int argc, char* argv[])
-{
-  test_suite* test_suite = BOOST_TEST_SUITE("state_contructor");
-  test_suite->add(BOOST_TEST_CASE(state_creation), 0, 20);
-  test_suite->add(BOOST_TEST_CASE(early_accept), 0, 240);
-  test_suite->add(BOOST_TEST_CASE(delayed_accept), 0, 240);
-  test_suite->add(BOOST_TEST_CASE(early_cancel), 0, 240);
-  test_suite->add(BOOST_TEST_CASE(delayed_cancel), 0, 240);
-  test_suite->add(BOOST_TEST_CASE(ghost_user), 0, 240);
-
-  framework::master_test_suite().add(test_suite);
-  return 0;
 }
