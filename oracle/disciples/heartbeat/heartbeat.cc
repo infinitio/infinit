@@ -27,48 +27,46 @@ namespace network = reactor::network;
 
 namespace heartbeat
 {
-
-void
-start(int port)
-{
-  ELLE_TRACE_FUNCTION("");
-  auto& sched = *reactor::Scheduler::scheduler();
-
-  network::UDTServer server(sched);
-  reactor::Scope scope;
-
-  server.listen(port);
-  ELLE_LOG("starting %s", server);
-  for (;;)
+  void
+  start(int port)
   {
-    network::UDTSocket* sockptr{
-      server.accept()
-    };
-    ELLE_LOG("accepting connection on %s", *sockptr);
-    auto client_th = [&, sockptr]
+    ELLE_TRACE_FUNCTION("");
+    auto& sched = *reactor::Scheduler::scheduler();
+
+    network::UDTServer server(sched);
+    reactor::Scope scope;
+
+    server.listen(port);
+    ELLE_LOG("starting %s", server);
+    for (;;)
     {
-      std::unique_ptr<network::UDTSocket> sock{sockptr};
-      std::string msg;
-
-      try
+      network::UDTSocket* sockptr{
+        server.accept()
+      };
+      ELLE_LOG("accepting connection on %s", *sockptr);
+      auto client_th = [&, sockptr]
       {
-        while (1)
+        std::unique_ptr<network::UDTSocket> sock{sockptr};
+        std::string msg;
+
+        try
         {
-          msg.resize(512);
-          size_t bytes = sock->read_some(network::Buffer{msg});
-          msg.resize(bytes);
-          sock->write(network::Buffer{msg});
+          while (1)
+          {
+            msg.resize(512);
+            size_t bytes = sock->read_some(network::Buffer{msg});
+            msg.resize(bytes);
+            sock->write(network::Buffer{msg});
+          }
         }
-      }
-      catch (network::ConnectionClosed const&e)
-      {
-        ELLE_LOG("connection closed with %s", *sock);
-      }
-    };
-    scope.run_background(elle::sprintf("%s", *sockptr), client_th);
+        catch (network::ConnectionClosed const&e)
+        {
+          ELLE_LOG("connection closed with %s", *sock);
+        }
+      };
+      scope.run_background(elle::sprintf("%s", *sockptr), client_th);
+    }
   }
-}
-
 } /* heartbeat */
 
 /// Returns the signal value if process has been signaled.
