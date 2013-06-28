@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 def run(client):
     # Testing devices
     if not client.get('/devices')['devices']:
@@ -24,3 +26,10 @@ def run(client):
     res = client.post('/device/delete', {"_id": devices[0]})
     assert res['success'] is True
     assert res["deleted_device_id"] == devices[0]
+
+if __name__ == "__main__":
+    import utils
+    import meta
+    with meta.Meta(spawn_db = True) as meta:
+        client = utils.create_client(meta)
+        run(client)

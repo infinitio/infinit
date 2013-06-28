@@ -1,51 +1,16 @@
 #!/usr/bin/env python3
 
 import os.path
-import hashlib
 import meta
-import pythia
 import subprocess
-import importlib
+import pythia
+import utils
 
 ROOT_DIR=subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip().decode('utf-8')
 META_TEST_DIR=os.path.join(ROOT_DIR, "oracle", "disciples", "meta", "tests")
 
 with meta.Meta(spawn_db = True) as meta:
-    session = {}
-    print(meta.url)
-    client = pythia.Client(session = session,
-                           server = meta.url)
-
-    email = 'testkaka@infinit.io'
-    password = 'kittens'
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    fullname = 'Pif Pif'
-    activation_code = 'bitebite'
-
-    res = client.post('/user/login', {'email': email,
-                                      'password': password_hash,
-    })
-
-    if not res['success']:
-        res = pythia.Admin(server = meta.url).post('/user/register',
-                                                   {'email': email,
-                                                    'fullname': fullname,
-                                                    'password': password_hash,
-                                                    'activation_code': activation_code,
-                                                })
-
-        if not res['success']:
-            raise Exception("Cannot register: " + res['error'])
-        res = client.post('/user/login', {'email': email,
-                                          'password': password_hash,
-        })
-
-        if not res['success']:
-            print(res)
-            raise Exception("Cannot login!")
-    session['token'] = res['token']
-    print("Got token:", res['token'])
-
+    client = utils.create_client(meta)
     account = client.get('/self')
     print("account:", account)
     assert account['success'] is True
@@ -69,12 +34,3 @@ with meta.Meta(spawn_db = True) as meta:
             print("Module {} failed: {}".format(module.__name__, e))
         print("=" * 79, end='\n')
 
-
-    res = client.post('/user/register', {
-        'fullname': 'Mister Test friend',
-        'email': "friend@test.net",
-        'password': password
-    })
-
-    assert res['success'] is False
-    assert client.get('/user/logout')['success'] is True
