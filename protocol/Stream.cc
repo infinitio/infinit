@@ -58,6 +58,7 @@ namespace infinit
       uint32_t res;
       elle::IOStreamClear clearer(s);
       s.read(reinterpret_cast<char*>(&res), sizeof(res));
+      ELLE_ASSERT_EQ(s.gcount(), sizeof(res));
       return ntohl(res);
     }
   }

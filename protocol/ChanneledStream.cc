@@ -127,6 +127,8 @@ namespace infinit
       {
         _reading = true;
         Packet p(_backend.read());
+        if (p.size() < 4)
+          throw elle::Exception("packet is too small for channel id");
         int channel_id = _uint32_get(p);
         // FIXME: The size of the packet isn't
         // adjusted. This is cosmetic though.
