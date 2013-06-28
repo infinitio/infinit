@@ -224,7 +224,7 @@ namespace plasma
 
     typedef elle::Buffer UserIcon;
 
-    class Client
+    class Client: public elle::Printable
     {
     private:
       std::string _root_url;
@@ -434,6 +434,14 @@ namespace plasma
       void identity(std::string const& str);
       std::string const& email() const;
       void email(std::string const& str);
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
 
     std::ostream&

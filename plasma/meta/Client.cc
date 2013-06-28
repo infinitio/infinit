@@ -482,7 +482,8 @@ namespace plasma
     Client::update_transaction(std::string const& transaction_id,
                                plasma::TransactionStatus status) const
     {
-      ELLE_TRACE("update %s transaction with new status %s",
+      ELLE_TRACE("%s: update %s transaction with new status %s",
+                 *this,
                  transaction_id,
                  status);
       json::Dictionary request{};
@@ -498,7 +499,8 @@ namespace plasma
                                std::string const& device_id,
                                std::string const& device_name) const
     {
-      ELLE_TRACE("accept %s transaction on device %s (%s)",
+      ELLE_TRACE("%s: accept %s transaction on device %s (%s)",
+                 *this,
                  transaction_id,
                  device_name,
                  device_id);
@@ -808,6 +810,16 @@ namespace plasma
       }
 
       return out;
+    }
+
+    /*----------.
+    | Printable |
+    `----------*/
+
+    void
+    Client::print(std::ostream& stream) const
+    {
+      stream << "meta::Client(" << this->_email << ")";
     }
   }
 }
