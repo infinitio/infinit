@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.7
+from __future__ import print_function
 
 
 """Meta server provide a JSON-RPC API to infinit
@@ -70,21 +71,24 @@ if __name__ == '__main__':
     args = parser.parse_args()
     meta.conf.APERTUS_CONTROL_PORT = args.apertus_control_port
     meta.conf.TROPHONIUS_CONTROL_PORT = args.trophonius_control_port
-    if (args.spawn_db == True):
-        with mongobox.MongoBox() as mongo:
+    try:
+        if args.spawn_db == True:
+            with mongobox.MongoBox() as mongo:
+                app = Application(meta_host=args.meta_host,
+                                  meta_port=args.meta_port,
+                                  mongo_host="localhost",
+                                  mongo_port=mongo.port,
+                                  port_file=args.port_file,
+                )
+                app.run()
+        else:
             app = Application(meta_host=args.meta_host,
                               meta_port=args.meta_port,
-                              mongo_host="localhost",
-                              mongo_port=mongo.port,
+                              mongo_host=args.mongo_host,
+                              mongo_port=args.mongo_port,
                               port_file=args.port_file,
             )
             app.run()
-    else:
-        app = Application(meta_host=args.meta_host,
-                          meta_port=args.meta_port,
-                          mongo_host=args.mongo_host,
-                          mongo_port=args.mongo_port,
-                          port_file=args.port_file,
-        )
-        app.run()
+    except KeyboardInterrupt:
+        print("Interrupted cleanly")
 
