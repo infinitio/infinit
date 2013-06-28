@@ -79,5 +79,6 @@ class Meta:
 
     def __exit__(self, *args):
         assert self.instance is not None
-        self.instance.terminate()
+        import signal
+        self.instance.send_signal(signal.SIGINT)
         self.__directory.__exit__(*args)
