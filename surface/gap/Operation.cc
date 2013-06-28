@@ -54,7 +54,7 @@ namespace surface
     {
       ELLE_DEBUG_METHOD("");
 
-      ELLE_DEBUG("handling error for operation '%s'", this->_name);
+      ELLE_DEBUG("handling success for operation '%s'", this->_name);
     }
 
     void
