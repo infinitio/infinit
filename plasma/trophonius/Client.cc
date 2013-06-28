@@ -103,7 +103,7 @@ namespace plasma
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict)
     {
-      ELLE_TRACE("%s: convert json %s to Notification instance", dict.repr());
+      ELLE_TRACE("convert json %s to Notification instance", dict.repr());
       NotificationType type = dict["notification_type"].as<NotificationType>();
       using namespace elle::serialize;
       auto extractor = from_string<InputJSONArchive>(dict.repr());
