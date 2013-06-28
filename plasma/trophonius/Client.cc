@@ -97,7 +97,7 @@ namespace plasma
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict)
     {
-      ELLE_TRACE("convert json %s to Notification instance", dict.repr());
+      ELLE_TRACE("%s: convert json %s to Notification instance", dict.repr());
       NotificationType type = dict["notification_type"].as<NotificationType>();
       using namespace elle::serialize;
       auto extractor = from_string<InputJSONArchive>(dict.repr());
@@ -178,8 +178,8 @@ namespace plasma
       tcp::resolver::query query(_impl->server, elle::sprint(_impl->port));
       tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 
-      ELLE_DEBUG("connecting trophonius client to %s:%s",
-                 _impl->server, _impl->port);
+      ELLE_DEBUG("%s: connecting trophonius client to %s:%s",
+                 *this, _impl->server, _impl->port);
       if (_impl->socket.is_open())
       {
         _impl->socket.close();
@@ -204,12 +204,14 @@ namespace plasma
         _impl->connected = false;
         if (err)
         {
-          ELLE_WARN("something went wrong while reading from socket: %s", err);
+          ELLE_WARN("%s: something went wrong while reading from socket: %s",
+                    *this, err);
           _impl->last_error = err;
         }
         if (err == boost::asio::error::eof)
         {
-          ELLE_TRACE("disconnected from trophonius, trying to reconnect...");
+          ELLE_TRACE("%s: disconnected from trophonius, trying to reconnect",
+                     *this);
           this->connect(_impl->user_id,
                         _impl->user_token,
                         _impl->user_device_id);
@@ -217,7 +219,8 @@ namespace plasma
         return;
       }
 
-      ELLE_DEBUG("read %s bytes from the socket (%s available)",
+      ELLE_DEBUG("%s: read %s bytes from the socket (%s available)",
+                 *this,
                  bytes_transferred,
                  _impl->response.in_avail());
 
@@ -229,7 +232,7 @@ namespace plasma
       std::unique_ptr<char[]> data{new char[bytes_transferred]};
       is.read(data.get(), bytes_transferred);
       std::string msg{data.get(), bytes_transferred};
-      ELLE_DEBUG("got message: %s", msg);
+      ELLE_DEBUG("%s: got message: %s", *this, msg);
       try
       {
         auto notif = notification_from_dict(json::parse(msg)->as_dictionary());
@@ -242,7 +245,8 @@ namespace plasma
       }
       catch (std::exception const&)
       {
-        ELLE_WARN("couldn't handle %s: %s", msg, elle::exception_string());
+        ELLE_WARN("%s: couldn't handle %s: %s",
+                  *this, msg, elle::exception_string());
       }
       this->_read_socket();
     }
@@ -305,20 +309,19 @@ namespace plasma
     {
       // Poll while something has to be done
       if (size_t count = _impl->io_service.poll())
-      {
-        ELLE_DEBUG("polling io service has triggered %s events", count);
-      }
+        ELLE_DEBUG("%s: polling io service has triggered %s events",
+                   *this, count);
 
       std::unique_ptr<Notification> ret;
 
       if (!_notifications.empty())
-        {
-          ELLE_DEBUG("Pop notification dictionnary to be handled.");
+      {
+        ELLE_DEBUG("%s: Pop notification dictionnary to be handled.", *this);
 
-          // Fill dictionary.
-          ret.reset(_notifications.front().release());
-          _notifications.pop();
-        }
+        // Fill dictionary.
+        ret.reset(_notifications.front().release());
+        _notifications.pop();
+      }
 
       return ret;
     }
@@ -363,5 +366,12 @@ namespace plasma
       return out;
     }
 
+    void
+    Client::print(std::ostream& stream) const
+    {
+      stream << "tropho::Client("
+             << this->_impl->user_id << ", "
+             << this->_impl->user_device_id << ")";
+    }
   }
 }

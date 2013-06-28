@@ -92,7 +92,7 @@ namespace plasma
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict);
 
-    class Client
+    class Client: public elle::Printable
     {
     private:
       struct Impl;
@@ -130,6 +130,14 @@ namespace plasma
       void
       _on_read_socket(boost::system::error_code const& err,
                       size_t bytes_transferred);
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
 
     std::ostream&
