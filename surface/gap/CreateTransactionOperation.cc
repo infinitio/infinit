@@ -78,6 +78,14 @@ namespace surface
       this->_network_id = this->_network_manager.create(network_name);
       // XXX add locally
 
+      // Preparing the network before sending the notification ensures that the
+      // recipient can't prepare it by himself.
+      this->_network_manager.prepare(this->_network_id);
+      this->_network_manager.to_directory(
+        this->_network_id,
+        common::infinit::network_shelter(this->_me.id,
+                                         this->_network_id));
+
       plasma::meta::CreateTransactionResponse res;
       ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
                  this->_device_id,
@@ -132,4 +140,3 @@ namespace surface
     }
   }
 }
-
