@@ -430,7 +430,7 @@ class Register(Page):
             public_key = public_key,
             handle = handle,
             lw_handle = handle.lower(),
-            swaggers = {},
+            swaggers = ghost and ghost['swaggers'] or {},
             networks = ghost and ghost['networks'] or [],
             devices = [],
             connected_devices = [],
