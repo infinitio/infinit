@@ -1,9 +1,11 @@
 # -*- encoding: utf-8 -*-
+from __future__ import print_function
 
 import json
 import traceback
 import web
 
+import socket
 import metalib
 import re
 import os.path
@@ -362,12 +364,14 @@ class Update(_Page):
 
         _id = database.networks().save(to_save)
 
-        self.notifier.notify_some(
-            notifier.NETWORK_UPDATE,
-            to_save["users"],
-            {"network_id": _id, "what": UPDATE},
-            store = False);
-
+        try:
+            self.notifier.notify_some(
+                notifier.NETWORK_UPDATE,
+                to_save["users"],
+                {"network_id": _id, "what": UPDATE},
+                store = False);
+        except socket.error as e:
+            print("Trophonius error:", e)
         return self.success({
             'updated_network_id': _id
         })
