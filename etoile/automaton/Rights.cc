@@ -25,8 +25,6 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <agent/Agent.hh>
-
 #include <elle/log.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Rights");
@@ -55,7 +53,7 @@ namespace etoile
         }
 
       // determine the rights according to the subject.
-      if (agent::Agent::Subject == context.object->owner_subject())
+      if (Etoile::instance()->user_subject() == context.object->owner_subject())
         {
           //
           // if the user is the object's owner, retrieve the user's
@@ -79,7 +77,7 @@ namespace etoile
                 new cryptography::SecretKey{
                   context.object->owner_token().
                     extract<cryptography::SecretKey>(
-                      agent::Agent::Identity.pair().k())};
+                      Etoile::instance()->user_keypair().k())};
             }
 
           // set the record for ease purpose.
@@ -104,11 +102,11 @@ namespace etoile
 
           // Retrieve a door on the access.
           nucleus::proton::Door<nucleus::neutron::Access> door =
-            context.access_porcupine->lookup(agent::Agent::Subject);
+            context.access_porcupine->lookup(Etoile::instance()->user_subject());
 
           door.open();
 
-          if (door().exist(agent::Agent::Subject) == true)
+          if (door().exist(Etoile::instance()->user_subject()) == true)
             {
               //
               // in this case, the subject is referenced in the ACL, hence
@@ -120,7 +118,7 @@ namespace etoile
 
               // retrieve the record associated with this subject.
               nucleus::neutron::Record const& record =
-                door().locate(agent::Agent::Subject);
+                door().locate(Etoile::instance()->user_subject());
 
               // set the role.
               context.rights.role = nucleus::neutron::Object::RoleLord;
@@ -142,7 +140,7 @@ namespace etoile
                     new cryptography::SecretKey{
                       context.rights.record->token().
                         extract<cryptography::SecretKey>(
-                          agent::Agent::Identity.pair().k())};
+                          Etoile::instance()->user_keypair().k())};
                 }
             }
           else
@@ -196,7 +194,7 @@ namespace etoile
                               nucleus::proton::Revision::Last);
 
                           // Check if the subject is actually the group manager.
-                          if (agent::Agent::Subject == group->manager_subject())
+                          if (Etoile::instance()->user_subject() == group->manager_subject())
                             {
                               ELLE_TRACE("the subject is the manager of "
                                          "the group '%s'",
@@ -230,7 +228,7 @@ namespace etoile
                                   // manager's fellow.
                                   cryptography::PrivateKey pass_k =
                                     token.extract<cryptography::PrivateKey>(
-                                      agent::Agent::Identity.pair().k());
+                                      Etoile::instance()->user_keypair().k());
 
                                   ELLE_TRACE("decrypting the access token");
 
@@ -272,7 +270,7 @@ namespace etoile
                                     ENSEMBLE_SECRET_KEY_LENGTH,
                                     ensemble_limits,
                                     Etoile::instance()->depot().network(),
-                                    agent::Agent::Subject.user(),
+                                    Etoile::instance()->user_subject().user(),
                                     ensemble_threshold};
 
                                   nucleus::proton::Porcupine<nucleus::neutron::Ensemble> ensemble_porcupine{
@@ -282,19 +280,19 @@ namespace etoile
 
                                   // Retrieve a door on the ensemble.
                                   nucleus::proton::Door<nucleus::neutron::Ensemble> _door{
-                                    ensemble_porcupine.lookup(agent::Agent::Subject)};
+                                    ensemble_porcupine.lookup(Etoile::instance()->user_subject())};
 
                                   _door.open();
 
                                   // Look for the user's subject in the ensemble.
-                                  if (_door().exist(agent::Agent::Subject) == false)
+                                  if (_door().exist(Etoile::instance()->user_subject()) == false)
                                     {
                                       ELLE_TRACE("the subject does not exist in the ensemble");
                                       continue;
                                     }
 
                                   nucleus::neutron::Fellow const& fellow =
-                                    _door().locate(agent::Agent::Subject);
+                                    _door().locate(Etoile::instance()->user_subject());
 
                                   context.rights.role =
                                     nucleus::neutron::Object::RoleVassal;
@@ -326,7 +324,7 @@ namespace etoile
                                       // from the fellow.
                                       cryptography::PrivateKey pass_k =
                                         token.extract<cryptography::PrivateKey>(
-                                          agent::Agent::Identity.pair().k());
+                                          Etoile::instance()->user_keypair().k());
 
                                       // With the private pass, one can decrypt
                                       // the access token associated with the
@@ -411,7 +409,7 @@ namespace etoile
         }
 
       // determine the rights according to the subject.
-      if (agent::Agent::Subject == context.group->manager_subject())
+      if (Etoile::instance()->user_subject() == context.group->manager_subject())
         {
           //
           // if the user is the group's manager, retrieve the user's

@@ -23,7 +23,6 @@
 #include <nucleus/neutron/Object.hh>
 
 #include <hole/Hole.hh>
-#include <agent/Agent.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Access");
 
@@ -59,7 +58,7 @@ namespace etoile
             new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
                                    Etoile::instance()->network(),
-                                   agent::Agent::Subject.user(),
+                                   Etoile::instance()->user_subject().user(),
                                    context.access_threshold);
 
           // Instanciate a porcupine.
@@ -76,7 +75,7 @@ namespace etoile
             new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
                                    Etoile::instance()->network(),
-                                   agent::Agent::Subject.user(),
+                                   Etoile::instance()->user_subject().user(),
                                    context.access_threshold);
 
           // otherwise create a new empty porcupine.
@@ -339,7 +338,7 @@ namespace etoile
         throw Exception("unable to audit the object");
 
       // is the target subject the user i.e the object owner in this case.
-      if (agent::Agent::Subject == subject)
+      if (Etoile::instance()->user_subject() == subject)
         {
           // update the context rights.
           if (Rights::Update(context, permissions) == elle::Status::Error)
@@ -364,7 +363,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(context, subject);
 
       // try to make the best of this call.
-      if (agent::Agent::Subject == subject)
+      if (Etoile::instance()->user_subject() == subject)
         {
           //
           // indeed, if the target subject is the current user, determine
@@ -588,7 +587,7 @@ namespace etoile
         throw Exception("unable to audit the object");
 
       // is the target subject the user i.e the object owner in this case.
-      if (agent::Agent::Subject == subject)
+      if (Etoile::instance()->user_subject() == subject)
         {
           // update the context rights.
           if (Rights::Update(context,

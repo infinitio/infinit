@@ -10,8 +10,6 @@
 #include <nucleus/proton/State.hh>
 #include <nucleus/neutron/Access.hh>
 
-#include <agent/Agent.hh>
-
 #include <elle/log.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Object");
@@ -159,7 +157,7 @@ namespace etoile
 
           // seal the object alone with the access block.
           if (context.object->Seal(
-                agent::Agent::Identity.pair().k(),
+                Etoile::instance()->user_keypair().k(),
                 fingerprint) == elle::Status::Error)
             throw Exception("unable to seal the object");
 

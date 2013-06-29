@@ -8,8 +8,6 @@
 #include <etoile/gear/Directory.hh>
 #include <etoile/Exception.hh>
 
-#include <agent/Agent.hh>
-
 #include <elle/print.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Directory");
@@ -30,8 +28,8 @@ namespace etoile
 
       context.object.reset(
         new nucleus::neutron::Object(
-          nucleus::proton::Network(Infinit::Network),
-          agent::Agent::Identity.pair().K(),
+          Etoile::instance()->network(),
+          Etoile::instance()->user_keypair().K(),
           nucleus::neutron::Genre::directory));
 
       nucleus::proton::Address address(context.object->bind());

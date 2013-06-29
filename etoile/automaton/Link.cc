@@ -5,8 +5,6 @@
 #include <etoile/gear/Link.hh>
 #include <etoile/Exception.hh>
 
-#include <agent/Agent.hh>
-
 #include <elle/log.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Link");
@@ -31,8 +29,8 @@ namespace etoile
       ELLE_ASSERT(context.object == nullptr);
 
       context.object.reset(
-        new nucleus::neutron::Object(nucleus::proton::Network(Infinit::Network),
-                                     agent::Agent::Identity.pair().K(),
+        new nucleus::neutron::Object(Etoile::instance()->network(),
+                                     Etoile::instance()->user_keypair().K(),
                                      nucleus::neutron::Genre::link));
 
       nucleus::proton::Address address(context.object->bind());

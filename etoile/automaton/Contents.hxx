@@ -25,7 +25,6 @@ using namespace infinit;
 # include <etoile/Exception.hh>
 
 # include <hole/Hole.hh>
-# include <agent/Agent.hh>
 
 // XXX
 #define CONTENTS_SECRET_KEY_LENGTH 256
@@ -67,7 +66,7 @@ namespace etoile
                 new etoile::nest::Nest(CONTENTS_SECRET_KEY_LENGTH,
                                        context.contents_limits,
                                        Etoile::instance()->network(),
-                                       agent::Agent::Subject.user(),
+                                       Etoile::instance()->user_subject().user(),
                                        context.contents_threshold);
 
               // Instanciate a porcupine.
@@ -91,7 +90,7 @@ namespace etoile
             new etoile::nest::Nest(CONTENTS_SECRET_KEY_LENGTH,
                                    context.contents_limits,
                                    Etoile::instance()->network(),
-                                   agent::Agent::Subject.user(),
+                                   Etoile::instance()->user_subject().user(),
                                    context.contents_threshold);
 
           // otherwise create a new empty porcupine.

@@ -9,8 +9,6 @@
 
 #include <elle/Buffer.hh>
 
-#include <agent/Agent.hh>
-
 #include <elle/log.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.File");
@@ -36,7 +34,7 @@ namespace etoile
 
       context.object.reset(
         new nucleus::neutron::Object(Etoile::instance()->network(),
-                                     Etoile::instance()->keys().K(),
+                                     Etoile::instance()->user_keypair().K(),
                                      nucleus::neutron::Genre::file));
 
       nucleus::proton::Address address(context.object->bind());

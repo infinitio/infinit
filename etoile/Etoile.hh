@@ -10,22 +10,33 @@
 # include <etoile/gear/Identifier.hh>
 # include <etoile/shrub/Shrub.hh>
 
-#include <hole/Hole.hh>
+# include <nucleus/neutron/Subject.hh>
+
+# include <hole/Hole.hh>
 
 namespace etoile
 {
   /// Filesystem interface to infinit.
   class Etoile
   {
+    /*-------------.
+    | Construction |
+    `-------------*/
   public:
-    Etoile(infinit::cryptography::KeyPair const& keys,
+    Etoile(infinit::cryptography::KeyPair const& user_keypair,
            hole::Hole* hole,
            nucleus::proton::Address const& root_address,
            bool portal = true);
     ~Etoile();
   private:
-    ELLE_ATTRIBUTE_R(infinit::cryptography::KeyPair, keys);
     ELLE_ATTRIBUTE(bool, portal);
+
+    /*-----.
+    | User |
+    `-----*/
+  private:
+    ELLE_ATTRIBUTE_R(infinit::cryptography::KeyPair, user_keypair);
+    ELLE_ATTRIBUTE_R(nucleus::neutron::Subject, user_subject);
 
     /*-------.
     | Actors |

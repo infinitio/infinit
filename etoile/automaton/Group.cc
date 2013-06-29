@@ -13,8 +13,6 @@
 #include <nucleus/neutron/Group.hh>
 #include <nucleus/neutron/Ensemble.hh>
 
-#include <agent/Agent.hh>
-
 #include <elle/log.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Group");
@@ -38,8 +36,8 @@ namespace etoile
       ELLE_ASSERT(context.group == nullptr);
 
       context.group.reset(
-        new nucleus::neutron::Group(nucleus::proton::Network(Infinit::Network),
-                                    agent::Agent::Subject.user(),
+        new nucleus::neutron::Group(Etoile::instance()->network(),
+                                    Etoile::instance()->user_subject().user(),
                                     description));
 
       // Manually set the group as dirty for the automata to consider it
@@ -160,7 +158,7 @@ namespace etoile
         }
 
       // is the target subject the user i.e the group manager in this case.
-      if (agent::Agent::Subject == subject)
+      if (Etoile::instance()->user_subject() == subject)
         {
           // recompute the context rights.
           if (Rights::Recompute(context) == elle::Status::Error)
@@ -181,7 +179,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(context, subject);
 
       // Ty to make the best of this call.
-      if (agent::Agent::Subject == subject)
+      if (Etoile::instance()->user_subject() == subject)
         {
           // Indeed, if the target subject is the current user, determine
           // the user's rights so that this is not to be done later.
@@ -360,7 +358,7 @@ namespace etoile
         }
 
       // is the target subject the user i.e the group manager in this case.
-      if (agent::Agent::Subject == subject)
+      if (Etoile::instance()->user_subject() == subject)
         {
           // recompute the context rights.
           if (Rights::Recompute(context) == elle::Status::Error)
@@ -436,7 +434,7 @@ namespace etoile
 
           ELLE_TRACE_SCOPE("the group is dirty");
 
-          context.group->seal(agent::Agent::Identity.pair().k());
+          context.group->seal(Etoile::instance()->user_keypair().k());
 
           // mark the block as needing to be stored.
           context.transcript().record(

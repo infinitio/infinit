@@ -20,8 +20,6 @@ using namespace infinit;
 
 #include <hole/Hole.hh>
 
-#include <agent/Agent.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Ensemble");
 
 namespace etoile
@@ -49,7 +47,7 @@ namespace etoile
             new etoile::nest::Nest(ENSEMBLE_SECRET_KEY_LENGTH,
                                    context.ensemble_limits,
                                    Etoile::instance()->network(),
-                                   agent::Agent::Subject.user(),
+                                   Etoile::instance()->user_subject().user(),
                                    context.ensemble_threshold);
 
           // Instanciate a porcupine.
@@ -66,7 +64,7 @@ namespace etoile
             new etoile::nest::Nest(ENSEMBLE_SECRET_KEY_LENGTH,
                                    context.ensemble_limits,
                                    Etoile::instance()->network(),
-                                   agent::Agent::Subject.user(),
+                                   Etoile::instance()->user_subject().user(),
                                    context.ensemble_threshold);
 
           // otherwise create a new empty porcupine.
@@ -240,7 +238,7 @@ namespace etoile
 
             cryptography::PrivateKey k(
               token.extract<cryptography::PrivateKey>(
-                agent::Agent::Identity.pair().k()));
+                Etoile::instance()->user_keypair().k()));
 
             pass = new cryptography::KeyPair(context.group->pass_K(), k);
           }

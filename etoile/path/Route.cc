@@ -5,7 +5,6 @@
 #include <etoile/path/Route.hh>
 #include <etoile/Exception.hh>
 
-#include <agent/Agent.hh>
 #include <hole/Hole.hh>
 
 namespace etoile

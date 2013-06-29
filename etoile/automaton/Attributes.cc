@@ -14,8 +14,6 @@
 #include <nucleus/neutron/Object.hh>
 #include <nucleus/neutron/Attributes.hh>
 
-#include <agent/Agent.hh>
-
 #include <elle/log.hh>
 
 #include <limits>
@@ -55,7 +53,7 @@ namespace etoile
             new etoile::nest::Nest(ATTRIBUTES_SECRET_KEY_LENGTH,
                                    context.attributes_limits,
                                    Etoile::instance()->network(),
-                                   agent::Agent::Subject.user(),
+                                   Etoile::instance()->user_subject().user(),
                                    context.attributes_threshold);
 
           // Instanciate a porcupine.
@@ -72,7 +70,7 @@ namespace etoile
             new etoile::nest::Nest(ATTRIBUTES_SECRET_KEY_LENGTH,
                                    context.attributes_limits,
                                    Etoile::instance()->network(),
-                                   agent::Agent::Subject.user(),
+                                   Etoile::instance()->user_subject().user(),
                                    context.attributes_threshold);
 
           // otherwise create a new empty porcupine.
