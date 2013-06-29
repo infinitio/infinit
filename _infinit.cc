@@ -109,6 +109,8 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
     for (auto const& peer: options["peer"].as<std::vector<std::string>>())
       members.push_back(elle::network::Locus(peer));
 
+  lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+
   // initialize the Lune library.
   if (lune::Lune::Initialize() == elle::Status::Error)
     throw elle::Exception("unable to initialize Lune");
@@ -163,7 +165,11 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   horizon::hole(hole.get());
 #endif
 
-  std::unique_ptr<etoile::Etoile> etoile(new etoile::Etoile(hole.get()));
+  std::unique_ptr<etoile::Etoile> etoile(
+    new etoile::Etoile(agent::Agent::Identity.pair(),
+                       hole.get(),
+                       descriptor.meta().root(),
+                       true));
 
   // initialize the horizon.
   if (!Infinit::Mountpoint.empty())
