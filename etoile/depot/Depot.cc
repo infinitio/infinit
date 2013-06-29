@@ -42,7 +42,8 @@ namespace etoile
     elle::Status
     Depot::Origin(nucleus::proton::Address& address)
     {
-      return this->_root_address;
+      address = this->_root_address;
+      return elle::Status::Ok;
     }
 
     elle::Status
