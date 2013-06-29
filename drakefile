@@ -1213,6 +1213,7 @@ def configure(cxx_toolkit = None,
 
   tests_src_n_lib = [
     ('tests/testing_tests.cc', []),
+    ('tests/unit/etoile/Etoile.cc', infinit_libs),
     ('tests/unit/etoile/Shrub.cc', infinit_libs),
     ('tests/unit/nucleus/neutron/nn_Group.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Object.cc', nucleus_test_libs),
