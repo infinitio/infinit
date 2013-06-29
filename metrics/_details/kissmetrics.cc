@@ -22,18 +22,22 @@ namespace elle
       static std::string pretty_name = "Kissmetrics";
       static const std::map<elle::metrics::Key, std::string> keymap
       {
-        {elle::metrics::Key::author,  "author"},
-        {elle::metrics::Key::count,   "count"},
-        {elle::metrics::Key::height,  "height"},
-        {elle::metrics::Key::input,   "input"},
-        {elle::metrics::Key::panel,   "panel"},
-        {elle::metrics::Key::session, "session"},
-        {elle::metrics::Key::size,    "size"},
-        {elle::metrics::Key::status,  "status"},
-        {elle::metrics::Key::step,    "step"},
-        {elle::metrics::Key::tag,     "_n"},
-        {elle::metrics::Key::value,   "value"},
-        {elle::metrics::Key::width,   "witdh"},
+        {elle::metrics::Key::attempt,   "attempt"},
+        {elle::metrics::Key::author,    "author"},
+        {elle::metrics::Key::count,     "count"},
+        {elle::metrics::Key::duration,  "duration"},
+        {elle::metrics::Key::height,    "height"},
+        {elle::metrics::Key::input,     "input"},
+        {elle::metrics::Key::network,   "network"},
+        {elle::metrics::Key::panel,     "panel"},
+        {elle::metrics::Key::session,   "session"},
+        {elle::metrics::Key::size,      "size"},
+        {elle::metrics::Key::status,    "status"},
+        {elle::metrics::Key::step,      "step"},
+        {elle::metrics::Key::tag,       "_n"},
+        {elle::metrics::Key::timestamp, "timestamp"},
+        {elle::metrics::Key::value,     "value"},
+        {elle::metrics::Key::width,     "witdh"},
       };
 
       //- Service --------------------------------------------------------------

@@ -56,12 +56,16 @@ namespace surface
       _recipient_id_or_email{recipient_id_or_email},
       _files{files},
       _on_transaction{cb}
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     void
     CreateTransactionOperation::_run()
     {
-      ELLE_TRACE_METHOD(this->_files);
+      ELLE_TRACE_METHOD("");
+
+      ELLE_TRACE("files: %s", this->_files);
 
       int size = total_size(this->_files);
 
@@ -72,11 +76,15 @@ namespace surface
                                                this->_recipient_id_or_email,
                                                time.nanoseconds);
       this->_network_id = this->_network_manager.create(network_name);
-
-      auto recipient = this->_user_manager.one(this->_recipient_id_or_email);
-      ELLE_TRACE("Add user %s to network %s", recipient, this->_network_id)
-        this->_meta.network_add_user(this->_network_id, recipient.id);
       // XXX add locally
+
+      // Preparing the network before sending the notification ensures that the
+      // recipient can't prepare it by himself.
+      this->_network_manager.prepare(this->_network_id);
+      this->_network_manager.to_directory(
+        this->_network_id,
+        common::infinit::network_shelter(this->_me.id,
+                                         this->_network_id));
 
       plasma::meta::CreateTransactionResponse res;
       ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
@@ -84,19 +92,23 @@ namespace surface
                  this->_files.size(),
                  first_file,
                  size,
-                 recipient.id,
+                 this->_recipient_id_or_email,
                  network_name,
                  this->_network_id);
 
       try
       {
-        res = this->_meta.create_transaction(recipient.id,
+        res = this->_meta.create_transaction(this->_recipient_id_or_email,
                                              first_file,
                                              this->_files.size(),
                                              size,
                                              fs::is_directory(first_file),
                                              this->_network_id,
                                              this->_device_id);
+        // Creating a transaction ensures that user has an id.
+        auto recipient = this->_user_manager.one(this->_recipient_id_or_email);
+        ELLE_TRACE("add user %s to network %s", recipient, this->_network_id)
+          this->_meta.network_add_user(this->_network_id, recipient.id);
       }
       catch (...)
       {
@@ -110,12 +122,6 @@ namespace surface
       this->_name += this->_transaction_id;
       this->_me.remaining_invitations = res.remaining_invitations;
 
-      this->_reporter.store(
-        "transaction_create",
-        {{MKey::status, "attempt"},
-         {MKey::value, this->_transaction_id},
-         {MKey::count, std::to_string(this->_files.size())},
-         {MKey::size, std::to_string(size)}});
       if (this->_on_transaction != nullptr)
         this->_on_transaction(this->_transaction_id);
     }
@@ -123,11 +129,14 @@ namespace surface
     void
     CreateTransactionOperation::_cancel()
     {
+      ELLE_TRACE_METHOD("");
+
       ELLE_DEBUG("cancelling %s", this->name());
       if (this->_transaction_id.size() > 0)
+      {
         this->_transaction_manager.update(this->_transaction_id,
                                           plasma::TransactionStatus::canceled);
+      }
     }
   }
 }
-

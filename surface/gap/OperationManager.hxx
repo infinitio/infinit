@@ -29,7 +29,7 @@ namespace surface
            "T must inherit Operation");
 
      public:
-       typedef std::function<void (Operation &)> Callback;
+       typedef std::function<void ()> Callback;
 
      protected:
        ELLE_ATTRIBUTE(Callback, on_success_callback);
@@ -41,33 +41,29 @@ namespace surface
        OperationAdaptor(Args&&... args):
          T(std::forward<Args>(args)...),
          _on_success_callback{
-           std::bind(&OperationAdaptor<T>::_on_success,
-                     this,
-                     std::placeholders::_1)},
+           std::bind(&OperationAdaptor<T>::_on_success, this)},
          _on_error_callback{
-           std::bind(&OperationAdaptor<T>::_on_error,
-                     this,
-                     std::placeholders::_1)},
+           std::bind(&OperationAdaptor<T>::_on_error, this)},
          _thread{std::bind(&OperationAdaptor<T>::_start, this)}
         {
-         ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
+         ELLE_LOG_COMPONENT("infinit.surface.gap.OperationManager");
          ELLE_TRACE_FUNCTION(this->_name);
         }
 
        virtual
        ~OperationAdaptor()
        {
-         ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
-         ELLE_TRACE_FUNCTION(this->_name);
+         ELLE_LOG_COMPONENT("infinit.surface.gap.OperationManager");
 
          try
          {
-           if (this->_done && !this->_succeeded && !this->_rethrown)
+           if (this->_done && !this->_succeeded && !this->_cancelled &&
+               !this->_rethrown)
            {
              ELLE_WARN("operation %s deleted without having been checked: %s",
                        this->_name, this->failure_reason());
            }
-           else if (!this->_done)
+           else if (!this->_done && !this->_cancelled)
            {
              ELLE_WARN("destroying running operation %s", this->_name);
            }
@@ -101,31 +97,16 @@ namespace surface
          }
        }
 
-       virtual
-       void
-       _on_error(Operation&)
-       {
-         ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
-         ELLE_TRACE_FUNCTION(this->_name);
-       }
-
-       virtual
-       void
-       _on_success(Operation&)
-       {
-         ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
-         ELLE_TRACE_FUNCTION(this->_name);
-       }
-
      private:
        void
        _start()
        {
-         ELLE_LOG_COMPONENT("infinit.surface.gap.Operation");
+         ELLE_LOG_COMPONENT("infinit.surface.gap.OperationManager");
          ELLE_TRACE_FUNCTION(this->_name);
 
          try
          {
+           this->_succeeded = false;
            ELLE_TRACE("Running long operation: %s", this->_name);
            this->_run();
            this->_succeeded = true;
@@ -136,10 +117,11 @@ namespace surface
          }
 
          if (!this->_succeeded)
+         {
            ELLE_ERR("operation %s threw an exception: %s (not rethrown yet)",
                     this->_name,
                     this->failure_reason());
-
+         }
 
          this->_done = true;
 
@@ -152,9 +134,9 @@ namespace surface
          try
          {
            if (this->_succeeded && this->_on_success_callback)
-             this->_on_success_callback(*this);
+             this->_on_success_callback();
            else if (!this->_succeeded && this->_on_error_callback)
-             this->_on_error_callback(*this);
+             this->_on_error_callback();
          }
          catch (...)
          {

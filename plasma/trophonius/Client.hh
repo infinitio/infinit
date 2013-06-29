@@ -18,7 +18,7 @@ namespace plasma
     {
 # define NOTIFICATION_TYPE(name, value)         \
       name = value,
-# include <oracle/disciples/meta/notification_type.hh.inc>
+# include <oracle/disciples/meta/src/meta/notification_type.hh.inc>
 # undef NOTIFICATION_TYPE
     };
 
@@ -26,18 +26,22 @@ namespace plasma
     {
 # define NETWORK_UPDATE(name, value)         \
       name = value,
-# include <oracle/disciples/meta/resources/network_update.hh.inc>
+# include <oracle/disciples/meta/src/meta/resources/network_update.hh.inc>
 # undef NETWORK_UPDATE
     };
 
     /// Base class for all notifications.
-    struct Notification
+    struct Notification: public elle::Printable
     {
       NotificationType notification_type;
 
       ELLE_SERIALIZE_CONSTRUCT(Notification)
       {}
       virtual ~Notification();
+
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
 
     namespace json = elle::format::json;
@@ -86,11 +90,13 @@ namespace plasma
       {}
     };
 
-    /// Build a notification object from a dictionnary.
+    /// Build a notification with the 'good' type from a dictionnary.
+    /// The notification type is determined by the "notification_type" field
+    /// presents in the dictionary.
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict);
 
-    class Client
+    class Client: public elle::Printable
     {
     private:
       struct Impl;
@@ -129,12 +135,13 @@ namespace plasma
       _on_read_socket(boost::system::error_code const& err,
                       size_t bytes_transferred);
 
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
       void
-      _check_connection(boost::system::error_code const& err);
-
-      void
-      _on_write_check(boost::system::error_code const& err,
-                      size_t const bytes_transferred);
+      print(std::ostream& stream) const override;
     };
 
     std::ostream&

@@ -174,24 +174,6 @@ class RemoveSwagger(Page):
         )
         return self.success({"swaggers" : swagez["swaggers"]})
 
-class FromPublicKey(Page):
-    __pattern__ = "/user/from_public_key"
-
-    def POST(self):
-        user = database.users().find_one({
-            'public_key': self.data['public_key'],
-        })
-
-        if not user:
-            return self.error(error.UNKNOWN, "No user could be found for this public key!")
-        return self.success({
-            '_id': user['_id'],
-            'handle': user['handle'],
-            'public_key': user['public_key'],
-            'fullname': user['fullname'],
-            'status': user.get('connected', False) and meta.page.CONNECTED or meta.page.DISCONNECTED
-        })
-
 class Invite(Page):
     # XXX doc and improve
 
@@ -285,6 +267,16 @@ class MinimumSelf(Page):
             'identity': self.user['identity'],
         })
 
+def extract_user_fields(user):
+    return {
+        '_id': user['_id'],
+        'public_key': user.get('public_key', ''),
+        'fullname': user.get('fullname', ''),
+        'handle': user.get('handle', ''),
+        'connected_devices': user.get('connected_devices', []),
+        'status': user['connected'] ,
+     }
+
 class One(Page):
     """
     Get public informations of an user by id or email
@@ -305,14 +297,19 @@ class One(Page):
             user = database.byId(database.users(), id_or_email)
         if not user:
             return self.error(error.UNKNOWN_USER, "Couldn't find user for id '%s'" % str(id_or_email))
-        return self.success({
-            '_id': user['_id'],
-            'public_key': user.get('public_key', ''),
-            'fullname': user.get('fullname', ''),
-            'handle': user.get('handle', ''),
-            'connected_devices': user.get('connected_devices', []),
-            'status': user['connected'] ,
+        return self.success(extract_user_fields(user))
+
+class FromPublicKey(Page):
+    __pattern__ = "/user/from_public_key"
+
+    def POST(self):
+        user = database.users().find_one({
+            'public_key': self.data['public_key'],
         })
+
+        if not user:
+            return self.error(error.UNKNOWN, "No user could be found for this public key!")
+        return self.success(extract_user_fields(user))
 
 class Avatar(Page):
     """
@@ -433,8 +430,8 @@ class Register(Page):
             public_key = public_key,
             handle = handle,
             lw_handle = handle.lower(),
-            swaggers = {},
-            networks = [],
+            swaggers = ghost and ghost['swaggers'] or {},
+            networks = ghost and ghost['networks'] or [],
             devices = [],
             connected_devices = [],
             notifications = ghost and ghost['notifications'] or [],

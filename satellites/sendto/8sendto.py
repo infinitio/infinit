@@ -85,12 +85,12 @@ def go(state, user, files):
         if getattr(state, "current_transaction_id", None):
             tid = state.current_transaction_id
             print("Interrupted. Cancel the outgoing transaction ({})".format(tid))
-            state.update_transaction(tid, state.TransactionStatus.canceled)
+            state.cancel_transaction(tid)
     except Exception as e:
         if getattr(state, "current_transaction_id", None):
             tid = state.current_transaction_id
             print("Interrupted. Cancel the outgoing transaction ({})".format(tid))
-            state.update_transaction(tid, state.TransactionStatus.canceled)
+            state.cancel_transaction(tid)
         raise e
 
 def get_homedir():

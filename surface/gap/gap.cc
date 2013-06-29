@@ -9,10 +9,14 @@
 #include <elle/log.hh>
 #include <elle/elle.hh>
 #include <elle/HttpClient.hh>
+#include <elle/system/Process.hh>
 #include <elle/container/list.hh>
 #include <CrashReporter.hh>
 
 #include <plasma/meta/Client.hh>
+
+#include <boost/filesystem.hpp>
+#include <boost/range/join.hpp>
 
 #include <cassert>
 #include <cstdlib>
@@ -126,34 +130,68 @@ extern "C"
 
   /// - gap ctor & dtor -----------------------------------------------------
 
-  gap_State* gap_new()
+  static
+  bool
+  initialize_lune()
   {
     static bool initialized = false;
     if (!initialized)
+    {
+      if (lune::Lune::Initialize() == elle::Status::Error)
       {
-        initialized = true;
-        if (lune::Lune::Initialize() == elle::Status::Error)
-          {
-            ELLE_ERR("Cannot initialize root components");
-            return nullptr;
-          }
+        ELLE_ERR("Cannot initialize root components");
+        return initialized;
       }
+      initialized = true;
+    }
+    return initialized;
+  }
+
+  gap_State* gap_new()
+  {
+    if (!initialize_lune())
+      return nullptr;
 
     try
-      {
-        return __TO_C(new surface::gap::State());
-      }
+    {
+      return __TO_C(new surface::gap::State());
+    }
     catch (std::exception const& err)
-      {
-        ELLE_ERR("Cannot initialize gap state: %s", err.what());
-        return nullptr;
-      }
+    {
+      ELLE_ERR("Cannot initialize gap state: %s", err.what());
+      return nullptr;
+    }
     catch (...)
-      {
-        ELLE_ERR("Cannot initialize gap state");
-        return nullptr;
-      }
+    {
+      ELLE_ERR("Cannot initialize gap state");
+      return nullptr;
+    }
   }
+
+  /// Create a new state.
+  /// Returns NULL on failure.
+  gap_State* gap_configurable_new(char const* host,
+                                  unsigned short port)
+  {
+    if (!initialize_lune())
+      return nullptr;
+
+    try
+    {
+      return __TO_C(new surface::gap::State(host, port));
+    }
+    catch (std::exception const& err)
+    {
+      ELLE_ERR("Cannot initialize gap state: %s", err.what());
+      return nullptr;
+    }
+    catch (...)
+    {
+      ELLE_ERR("Cannot initialize gap state");
+      return nullptr;
+    }
+  }
+
 
   void gap_free(gap_State* state)
   {
@@ -1022,6 +1060,18 @@ extern "C"
   }
 
   gap_Status
+  gap_cancel_transaction(gap_State* state,
+                         char const* transaction_id)
+  {
+    assert(transaction_id != nullptr);
+    WRAP_CPP_MANAGER_RET(state,
+                         transaction_manager,
+                         cancel_transaction,
+                         transaction_id);
+    return ret;
+  }
+
+  gap_Status
   gap_accept_transaction(gap_State* state,
                          char const* transaction_id)
   {
@@ -1068,23 +1118,33 @@ extern "C"
     return nullptr;
   }
 
+  static
+  std::string
+  read_file(std::string const& filename)
+  {
+    std::stringstream file_content;
+
+    file_content <<  ">>> " << filename << std::endl;
+
+    std::ifstream f(filename);
+    std::string line;
+    while (f.good() && !std::getline(f, line).eof())
+      file_content << line << std::endl;
+    file_content << "<<< " << filename << std::endl;
+    return file_content.str();
+  }
 
   void
   gap_send_file_crash_report(char const* module,
                              char const* filename)
   {
-    std::string file_content = ">>>\n";
+    std::string file_content;
     if (filename != nullptr)
     {
-      std::ifstream f(filename);
-      std::string line;
-      while (f.good() && !std::getline(f, line).eof())
-        file_content += line + "\n";
-      file_content += "<<< " + std::string{filename} + "\n";
+      file_content = read_file(filename);
     }
     else
       file_content = "<<< No file was specified!";
-
 
     elle::crash::report(common::meta::host(),
                         common::meta::port(),
@@ -1092,6 +1152,78 @@ extern "C"
                         "Crash",
                         elle::Backtrace::current(),
                         file_content);
+  }
+
+  gap_Status
+  gap_gather_crash_reports(char const* _user_id,
+                           char const* _network_id)
+  {
+    try
+    {
+      namespace fs = boost::filesystem;
+      std::string const user_id{_user_id,
+                                _user_id + strlen(_user_id)};
+      std::string const network_id{_network_id,
+                                   _network_id + strlen(_network_id)};
+
+      std::string const user_dir = common::infinit::user_directory(user_id);
+      std::string const network_dir =
+        common::infinit::network_directory(user_id, network_id);
+
+      fs::directory_iterator ndir;
+      fs::directory_iterator udir;
+      try
+      {
+        udir = fs::directory_iterator{user_dir};
+        ndir = fs::directory_iterator{network_dir};
+      }
+      catch (fs::filesystem_error const& e)
+      {
+        return gap_Status::gap_file_not_found;
+      }
+
+      boost::iterator_range<fs::directory_iterator> user_range{
+        udir, fs::directory_iterator{}};
+      boost::iterator_range<fs::directory_iterator> network_range{
+        ndir, fs::directory_iterator{}};
+
+      std::vector<fs::path> logs;
+      for (auto const& dir_ent: boost::join(user_range, network_range))
+      {
+        auto const& path = dir_ent.path();
+
+        if (path.extension() == ".log")
+          logs.push_back(path);
+
+      }
+      std::string filename = elle::sprintf("/tmp/infinit-%s-%s",
+                                           user_id, network_id);
+      std::list<std::string> args{"cjf", filename};
+      for (auto const& log: logs)
+        args.push_back(log.string());
+
+      elle::system::Process tar{"tar", args};
+      tar.wait();
+#if defined(INFINIT_LINUX)
+      std::string b64 = elle::system::check_output("base64", "-w0", filename);
+#else
+      std::string b64 = elle::system::check_output("base64", filename);
+#endif
+
+      auto title = elle::sprintf("Crash: Logs file for user: %s, network: %s",
+                                 user_id, network_id);
+      elle::crash::report(common::meta::host(),
+                          common::meta::port(),
+                          "Logs", title,
+                          elle::Backtrace::current(),
+                          "Logs attached",
+                          b64);
+    }
+    catch (std::exception const& e)
+    {
+      return gap_Status::gap_api_error;
+    }
+    return gap_Status::gap_ok;
   }
 
   // Generated file.

@@ -11,8 +11,9 @@
 #include <elle/os/path.hh>
 #include <elle/system/signal.hh>
 
-#include <signal.h>
+#include <boost/filesystem.hpp>
 
+#include <signal.h>
 #include <stdlib.h>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.InfinitInstanceManager");
@@ -25,18 +26,21 @@ namespace surface
     InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id)
       : _user_id{user_id}
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_TRACE_METHOD(user_id);
     }
 
     InfinitInstanceManager::~InfinitInstanceManager()
     {
       ELLE_TRACE_METHOD("");
+
       this->clear();
     }
 
     void
     InfinitInstanceManager::clear()
     {
+      ELLE_TRACE_METHOD("");
+
       auto it = begin(this->_instances);
 
       while(it != end(this->_instances))
@@ -76,11 +80,11 @@ namespace surface
         elle::sprintf("Unable to find portal for %s", network_id)};
     }
 
-
     void
     InfinitInstanceManager::launch(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
+
       if (this->_instances.find(network_id) != this->_instances.end())
       {
         ELLE_ASSERT_NEQ(this->_instances[network_id], nullptr);
@@ -141,9 +145,10 @@ namespace surface
     InfinitInstanceManager::stop(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
+
       if (this->_instances.find(network_id) == this->_instances.end())
       {
-        ELLE_DEBUG("no network %s found, no 8infinit to kill", network_id);
+        ELLE_DEBUG("no network %s found, no 8infinit to stop", network_id);
         return;
       }
 
@@ -152,7 +157,7 @@ namespace surface
       {
         using elle::system::ProcessTermination;
         typedef elle::system::Process::Milliseconds ms;
-        auto const& instance = this->instance(network_id);
+        auto const& instance = this->_instance(network_id);
         ELLE_ASSERT_NEQ(instance.process, nullptr);
         auto& process = *(instance.process);
         if (instance.process->running())
@@ -197,15 +202,17 @@ namespace surface
     bool
     InfinitInstanceManager::exists(std::string const& network_id) const
     {
-      ELLE_TRACE_METHOD(network_id);
       if (this->_instances.find(network_id) == this->_instances.end())
         return false;
 
-      if (!this->instance(network_id).process->running())
+      if (!this->_instance(network_id).process->running())
       {
         ELLE_WARN("Found not running infinit instance (pid = %s): status = %s",
-                   this->instance(network_id).process->id(),
-                   this->instance(network_id).process->status());
+                  this->_instance(network_id).process->id(),
+                  this->_instance(network_id).process->status());
+        auto portal_path = common::infinit::portal_path(this->_user_id,
+                                                        network_id);
+        boost::filesystem::remove(portal_path);
         //XXX this->_instances.erase(network_id);
         return false;
       }
@@ -213,9 +220,8 @@ namespace surface
     }
 
     InfinitInstance const&
-    InfinitInstanceManager::instance(std::string const& network_id) const
+    InfinitInstanceManager::_instance(std::string const& network_id) const
     {
-      ELLE_TRACE_METHOD(network_id);
       auto it = this->_instances.find(network_id);
       if (it == this->_instances.end())
         throw elle::Exception{"Cannot find any network " + network_id};
@@ -224,9 +230,10 @@ namespace surface
     }
 
     InfinitInstance const*
-    InfinitInstanceManager::instance_for_file(std::string const& path)
+    InfinitInstanceManager::_instance_for_file(std::string const& path)
     {
       ELLE_TRACE_METHOD(path);
+
       for (auto const& pair : this->_instances)
       {
         std::string mount_point = pair.second->mount_point;

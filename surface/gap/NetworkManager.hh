@@ -54,7 +54,7 @@ namespace surface
       elle::metrics::Reporter& _google_reporter;
       Self const& _self;
       Device const& _device;
-      ELLE_ATTRIBUTE_R(InfinitInstanceManager, infinit_instance_manager);
+      ELLE_ATTRIBUTE_X(InfinitInstanceManager, infinit_instance_manager);
 
       /*-------------.
       | Construction |
@@ -110,7 +110,11 @@ namespace surface
       /// Delete a new network.
       std::string
       delete_(std::string const& name,
-              bool force = false);
+              bool remove_directory = true);
+
+      /// Remove local directories (and kill any infinit instances).
+      void
+      delete_local(std::string const& name);
 
       /// Add a user to a network with its mail or id.
       void

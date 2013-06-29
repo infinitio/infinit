@@ -8,6 +8,7 @@
 # include <memory>
 # include <stdexcept>
 # include <string>
+# include <mutex>
 
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>
@@ -27,7 +28,7 @@ namespace plasma
     {
 # define ERR_CODE(name, value, comment)                                         \
       name = value,
-# include <oracle/disciples/meta/error_code.hh.inc>
+# include <oracle/disciples/meta/src/meta/error_code.hh.inc>
 # undef ERR_CODE
     };
 
@@ -223,7 +224,7 @@ namespace plasma
 
     typedef elle::Buffer UserIcon;
 
-    class Client
+    class Client: public elle::Printable
     {
     private:
       std::string _root_url;
@@ -232,6 +233,8 @@ namespace plasma
       std::string _email;
       std::string _token;
       std::string _user_agent;
+      // XXX Curl is supposed to be thread-safe.
+      std::mutex mutable _mutex;
 
     public:
       Client(std::string const& server,
@@ -431,6 +434,14 @@ namespace plasma
       void identity(std::string const& str);
       std::string const& email() const;
       void email(std::string const& str);
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
 
     std::ostream&

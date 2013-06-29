@@ -1,9 +1,11 @@
 # -*- encoding: utf-8 -*-
+from __future__ import print_function
 
 import json
 import traceback
 import web
 
+import socket
 import metalib
 import re
 import os.path
@@ -123,16 +125,6 @@ class AddUser(_Page):
         if to_add_user_id in network['users']:
             return self.error(error.USER_ALREADY_IN_NETWORK)
         to_add_user = database.byId(database.users(), to_add_user_id)
-        if '@' in to_add_user['email']:
-            infos = {
-                'added_by': self.user['fullname'],
-                'recipient': to_add_user['fullname'],
-                'network_name': network['name'],
-                'space': ' ',
-            }
-            # subject = mail.NETWORK_INVITATION_SUBJECT % infos
-            # content = mail.NETWORK_INVITATION_CONTENT % infos
-            # mail.send(to_add_user['email'], subject, content) #XXX
         network['users'].append(to_add_user_id)
         database.networks().save(network)
         to_add_user['networks'].append(network['_id'])
@@ -372,12 +364,14 @@ class Update(_Page):
 
         _id = database.networks().save(to_save)
 
-        self.notifier.notify_some(
-            notifier.NETWORK_UPDATE,
-            to_save["users"],
-            {"network_id": _id, "what": UPDATE},
-            store = False);
-
+        try:
+            self.notifier.notify_some(
+                notifier.NETWORK_UPDATE,
+                to_save["users"],
+                {"network_id": _id, "what": UPDATE},
+                store = False);
+        except socket.error as e:
+            print("Trophonius error:", e)
         return self.success({
             'updated_network_id': _id
         })

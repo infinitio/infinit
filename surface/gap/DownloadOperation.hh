@@ -21,6 +21,7 @@ namespace surface
       TransactionManager& _transaction_manager;
       NetworkManager& _network_manager;
       plasma::meta::SelfResponse const& _me;
+      elle::metrics::Reporter& _reporter;
       plasma::Transaction _transaction;
       std::function<void()> _notify;
 
@@ -28,6 +29,7 @@ namespace surface
       DownloadOperation(TransactionManager& transaction_manager,
                         NetworkManager& network_manager,
                         plasma::meta::SelfResponse const& me,
+                        elle::metrics::Reporter& reporter,
                         plasma::Transaction const& transaction,
                         std::function<void()> notify);
 
@@ -35,8 +37,13 @@ namespace surface
       void
       _run() override;
 
+      virtual
       void
-      _cancel() override;
+      _on_error();
+
+      virtual
+      void
+      _on_success();
     };
   }
 }

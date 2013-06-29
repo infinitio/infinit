@@ -342,7 +342,7 @@ BOOST_PYTHON_MODULE(_gap)
 # define _TS(c) #c
 # define ERR_CODE(name, value_, comment)         \
     .value(_TS(name), gap_ ## name)
-# include <oracle/disciples/meta/error_code.hh.inc>
+# include <oracle/disciples/meta/src/meta/error_code.hh.inc>
 # undef _TS
 # undef ERR_CODE
   ;
@@ -351,7 +351,7 @@ BOOST_PYTHON_MODULE(_gap)
 # define _TS(c) #c
 # define TRANSACTION_STATUS(name, value_)                                       \
     .value(_TS(name), gap_transaction_status_ ## name)
-# include <oracle/disciples/meta/resources/transaction_status.hh.inc>
+# include <oracle/disciples/meta/src/meta/resources/transaction_status.hh.inc>
 # undef TRANSACTION_STATUS
 # undef _TS
   ;
@@ -450,6 +450,7 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transactions", &_get_transactions);
   py::def("send_files", &_send_files);
   py::def("update_transaction", &gap_update_transaction);
+  py::def("cancel_transaction", &gap_cancel_transaction);
   py::def("accept_transaction", &gap_accept_transaction);
   py::def("set_output_dir", &gap_set_output_dir);
   py::def("get_output_dir", &gap_get_output_dir);

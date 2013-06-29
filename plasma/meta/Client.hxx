@@ -62,13 +62,15 @@ namespace plasma
 
     static inline
     int
-    curl_debug_callback (CURL *handle,
-                         curl_infotype type,
-                         char *what,
-                         size_t what_size,
-                         void *userptr)
+    curl_debug_callback(CURL* handle,
+                        curl_infotype type,
+                        char* what,
+                        size_t what_size,
+                        void* userptr)
     {
       ELLE_LOG_COMPONENT("infinit.plasma.meta.Client.curl");
+
+      Client* client = reinterpret_cast<Client*>(userptr);
 
       (void)handle;
       (void)userptr;
@@ -99,32 +101,32 @@ namespace plasma
 
       if (type == CURLINFO_TEXT)
       {
-        ELLE_DUMP("%s %s", sym, msg);
+        ELLE_DUMP("%s: %s %s", *client, sym, msg);
       }
       else if (type == CURLINFO_HEADER_OUT)
       {
         std::vector<std::string> v;
 
         boost::split(v, msg, boost::algorithm::is_any_of("\n"));
-        ELLE_TRACE_SCOPE("%s %s", sym, v[0]);
+        ELLE_TRACE_SCOPE("%s: %s %s", *client, sym, v[0]);
         int i = 0;
         for (auto const&s : v)
         {
           if (i++ == 0)
             continue;
-          ELLE_DEBUG("%s %s", sym, s);
+          ELLE_DEBUG("%s: %s %s", *client, sym, s);
         }
       }
       else if (type == CURLINFO_DATA_IN || type == CURLINFO_DATA_OUT)
       {
-        ELLE_TRACE("%s %s", sym, msg);
+        ELLE_TRACE("%s: %s %s", *client, sym, msg);
       }
       else if (type == CURLINFO_HEADER_IN)
       {
         if (msg.find("HTTP") == 0) // starts with
-          ELLE_TRACE("%s %s", sym, msg);
+          ELLE_TRACE("%s: %s %s", *client, sym, msg);
         else
-          ELLE_DUMP("%s %s", sym, msg);
+          ELLE_DUMP("%s: %s %s", *client, sym, msg);
       }
       return 0;
     }
@@ -134,12 +136,14 @@ namespace plasma
     Client::_post(std::string const& url,
                   elle::format::json::Object const& req) const
     {
+      // XXX Curl is supposed to be thread-safe.
+      std::unique_lock<std::mutex> lock(this->_mutex);
       std::stringstream in;
       std::stringstream out;
       curly::request_configuration c = curly::make_post();
 
       c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
-      c.option(CURLOPT_DEBUGDATA, nullptr);
+      c.option(CURLOPT_DEBUGDATA, this);
 
       req.repr(in);
       c.option(CURLOPT_POSTFIELDSIZE, in.str().size());
@@ -160,12 +164,14 @@ namespace plasma
     T
     Client::_get(std::string const& url) const
     {
+      // XXX Curl is supposed to be thread-safe.
+      std::unique_lock<std::mutex> lock(this->_mutex);
       std::stringstream resp;
       curly::request_configuration c = curly::make_get();
 
       c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
       c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
-      c.option(CURLOPT_DEBUGDATA, nullptr);
+      c.option(CURLOPT_DEBUGDATA, this);
 
       c.url(elle::sprintf("%s%s", this->_root_url, url));
       c.output(resp);
@@ -191,7 +197,8 @@ namespace plasma
       }
       catch (std::exception const& err)
       {
-        ELLE_ERR("Couldn't deserialize %s: %s",
+        ELLE_ERR("%s: Couldn't deserialize %s: %s",
+                 *this,
                  ELLE_PRETTY_TYPE(T),
                  err.what());
         throw Exception(Error::unknown, err.what());

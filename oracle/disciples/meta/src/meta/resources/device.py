@@ -158,7 +158,7 @@ class Update(Page):
 class Delete(Page):
     """
     Delete a device
-        DELETE /device/delete {
+        POST /device/delete {
             "_id": "device id to delete",
         } -> {
                 'success': True,
@@ -203,5 +203,5 @@ class Delete(Page):
             'owner': self.user['_id'], #not required
         }, remove=True)
         return self.success({
-            'deleted_device_id': id_,
+            'deleted_device_id': _id,
         })

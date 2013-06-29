@@ -16,6 +16,10 @@ namespace surface
     OperationManager::OperationStatus
     OperationManager::status(OperationId const id) const
     {
+      ELLE_TRACE_METHOD(id);
+
+      if (id == 0)
+        return OperationStatus::success;
       auto it = _operations.find(id);
       if (it == _operations.end())
         throw elle::Exception{
@@ -29,8 +33,24 @@ namespace surface
       return OperationStatus::failure;
     }
 
+    void
+    OperationManager::cancel_operation(OperationId const id)
+    {
+      ELLE_TRACE_METHOD(id);
+
+      auto it = _operations.find(id);
+      if (it == _operations.end())
+        throw elle::Exception{
+            "Couldn't find any operation with id " + std::to_string(id)
+        };
+      if (!it->second->done())
+        it->second->cancel();
+    }
+
     OperationManager::~OperationManager()
     {
+      ELLE_TRACE_METHOD("");
+
       for (auto& operation: this->_operations)
       {
         if (operation.second == nullptr)
@@ -51,13 +71,17 @@ namespace surface
     OperationManager::OperationId
     OperationManager::_next_operation_id()
     {
-      static OperationManager::OperationId id = 0;
+      ELLE_DEBUG_FUNCTION("");
+
+      static OperationManager::OperationId id = 0; // XXX not thread safe
       return ++id;
     }
 
     void
     OperationManager::finalize(OperationId const id)
     {
+      ELLE_TRACE_METHOD(id);
+
       auto it = _operations.find(id);
       if (it == _operations.end())
         throw elle::Exception{
@@ -72,6 +96,8 @@ namespace surface
     void
     OperationManager::cleanup()
     {
+      ELLE_TRACE_METHOD("");
+
       std::vector<OperationId> to_remove;
       for (auto& pair: this->_operations)
       {
@@ -87,7 +113,8 @@ namespace surface
     void
     OperationManager::_cancel(std::string const& name)
     {
-      ELLE_TRACE_METHOD(name);
+      ELLE_DEBUG_METHOD(name);
+
       for (auto& pair: _operations)
       {
        if (pair.second != nullptr &&
@@ -102,13 +129,15 @@ namespace surface
     void
     OperationManager::_cancel_all(std::string const& name)
     {
-      ELLE_TRACE_METHOD(name);
+      ELLE_DEBUG_METHOD(name);
+
       for (auto& pair: _operations)
       {
         if (pair.second != nullptr &&
            !pair.second->done() &&
             boost::algorithm::ends_with(pair.second->name(), name))
         {
+          ELLE_LOG("cancelling %s", pair.second->name());
           pair.second->cancel();
         }
       }
@@ -117,7 +146,8 @@ namespace surface
     void
     OperationManager::_cancel_all()
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_DEBUG_METHOD("");
+
       for (auto& pair: _operations)
       {
         if (pair.second != nullptr &&

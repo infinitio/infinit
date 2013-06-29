@@ -819,6 +819,13 @@ def configure(cxx_toolkit = None,
   tests << elle.rule_tests
 
   ## ----- ##
+  ## Check ##
+  ## ----- ##
+
+  check = drake.Rule('check')
+  check << elle.rule_check
+
+  ## ----- ##
   ## Build ##
   ## ----- ##
 
@@ -887,79 +894,6 @@ def configure(cxx_toolkit = None,
                                   cxx_toolkit, hole_cxx_config)
   # build << hole_bin
 
-  def satellite(name):
-    fmt = (name, name.capitalize())
-    sources = [
-      'satellites/%s/%s.cc' % fmt,
-      'satellites/%s/%s.hh' % fmt,
-      'satellites/%s/%s.hxx' % fmt,
-      'satellites/satellite.cc',
-      'satellites/satellite.hh',
-      ]
-    sources = filter(lambda p: drake.path_src(p).exists(), sources)
-    sources = map(drake.node, sources)
-    bin = drake.cxx.Executable('bin/8%s' % name,
-                               list(sources) + infinit_libs,
-                               cxx_toolkit, infinit_bin_config)
-    if name in satellites:
-      build << bin
-
-  for name in [
-    'access',
-    'authority',
-    'group',
-    'network',
-    'passport',
-    'progress',
-    'transfer',
-    'user',
-    'dump',
-    ]:
-    satellite(name)
-
-  # infinit-agent
-  agent_sources = drake.nodes(
-    'satellites/agent/infinit-agent.py'
-    )
-  agent_copy = drake.copy(agent_sources, 'bin', 'satellites/agent')
-  build << agent_copy
-
-  # 8search
-  search_sources = drake.nodes(
-    'satellites/search/8search.py',
-    )
-  search_copy = drake.copy(search_sources, 'bin', 'satellites/search')
-
-  if "search" in satellites:
-      build << search_copy
-
-  # 8d00m
-  d00m_sources = drake.nodes(
-    'satellites/d00m/8d00m.py'
-    )
-  d00m_copy = drake.copy(d00m_sources, 'bin', 'satellites/d00m')
-
-  if "d00m" in satellites:
-      build << d00m_copy
-
-  # 8sendto
-  sendto_sources = drake.nodes(
-    'satellites/sendto/8sendto.py',
-    )
-  sendto_copy = drake.copy(sendto_sources, 'bin', 'satellites/sendto')
-
-  if "sendto" in satellites:
-      build << sendto_copy
-
-  # 8recvfrom
-  recvfrom_sources = drake.nodes(
-    'satellites/recvfrom/8recvfrom.py',
-    )
-  recvfrom_copy = drake.copy(recvfrom_sources, 'bin', 'satellites/recvfrom')
-
-  if "recvfrom" in satellites:
-      build << recvfrom_copy
-
   # Trophonius
 
   tropho_cxx_config = drake.cxx.Config(cxx_config)
@@ -984,7 +918,6 @@ def configure(cxx_toolkit = None,
     'surface/gap/gap.h',
     'surface/gap/InfinitInstanceManager.cc',
     'surface/gap/InfinitInstanceManager.hh',
-    'surface/gap/metrics.cc',
     'surface/gap/metrics.hh',
     'surface/gap/NetworkManager.cc',
     'surface/gap/NetworkManager.hh',
@@ -1068,6 +1001,83 @@ def configure(cxx_toolkit = None,
     build << gap_python_pyfile_copy
     build << infinit_cli_copy
 
+  # Satellites
+
+  def satellite(name):
+    fmt = (name, name.capitalize())
+    sources = [
+      'satellites/%s/%s.cc' % fmt,
+      'satellites/%s/%s.hh' % fmt,
+      'satellites/%s/%s.hxx' % fmt,
+      'satellites/satellite.cc',
+      'satellites/satellite.hh',
+      ]
+    sources = filter(lambda p: drake.path_src(p).exists(), sources)
+    sources = map(drake.node, sources)
+    bin = drake.cxx.Executable('bin/8%s' % name,
+                               # XXX: not every satellite needs GAP.
+                               list(sources) + infinit_libs + [gap_lib],
+                               cxx_toolkit, infinit_bin_config)
+    if name in satellites:
+      build << bin
+
+  for name in [
+    'access',
+    'authority',
+    'group',
+    'network',
+    'passport',
+    'progress',
+    'send',
+    'transfer',
+    'user',
+    'dump',
+    ]:
+    satellite(name)
+
+  # infinit-agent
+  agent_sources = drake.nodes(
+    'satellites/agent/infinit-agent.py'
+    )
+  agent_copy = drake.copy(agent_sources, 'bin', 'satellites/agent')
+  build << agent_copy
+
+  # 8search
+  search_sources = drake.nodes(
+    'satellites/search/8search.py',
+    )
+  search_copy = drake.copy(search_sources, 'bin', 'satellites/search')
+
+  if "search" in satellites:
+      build << search_copy
+
+  # 8d00m
+  d00m_sources = drake.nodes(
+    'satellites/d00m/8d00m.py'
+    )
+  d00m_copy = drake.copy(d00m_sources, 'bin', 'satellites/d00m')
+
+  if "d00m" in satellites:
+      build << d00m_copy
+
+  # 8sendto
+  sendto_sources = drake.nodes(
+    'satellites/sendto/8sendto.py',
+    )
+  sendto_copy = drake.copy(sendto_sources, 'bin', 'satellites/sendto')
+
+  if "sendto" in satellites:
+      build << sendto_copy
+
+  # 8recvfrom
+  recvfrom_sources = drake.nodes(
+    'satellites/recvfrom/8recvfrom.py',
+    )
+  recvfrom_copy = drake.copy(recvfrom_sources, 'bin', 'satellites/recvfrom')
+
+  if "recvfrom" in satellites:
+      build << recvfrom_copy
+
   # Oracles
 
   oracles_enabled = cxx_toolkit.os != drake.os.windows
@@ -1078,7 +1088,6 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/erginus-server',
       'oracle/disciples/longinus-server',
       'oracle/disciples/meta-server',
-      'oracle/disciples/trophonius-server',
       'oracle/disciples/admin-console',
       'oracle/disciples/apertus-server',
       'oracle/disciples/services',
@@ -1101,51 +1110,38 @@ def configure(cxx_toolkit = None,
       )
 
     oracle_lib += drake.nodes(
-      'oracle/disciples/meta/__init__.py',
-      'oracle/disciples/meta/apertus.py',
-      'oracle/disciples/meta/application.py',
-      'oracle/disciples/meta/conf.py',
-      'oracle/disciples/meta/database.py',
-      'oracle/disciples/meta/apertus.py',
-      'oracle/disciples/meta/invitation.py',
-      'oracle/disciples/meta/error.py',
-      'oracle/disciples/meta/error_code.hh.inc',
-      'oracle/disciples/meta/mail.py',
-      'oracle/disciples/meta/notification_type.hh.inc',
-      'oracle/disciples/meta/notifier.py',
-      'oracle/disciples/meta/page.py',
-      'oracle/disciples/meta/regexp.py',
-      'oracle/disciples/meta/resources/__init__.py',
-      'oracle/disciples/meta/resources/device.py',
-      'oracle/disciples/meta/resources/network.py',
-      'oracle/disciples/meta/resources/network_update.hh.inc',
-      'oracle/disciples/meta/resources/notification.py',
-      'oracle/disciples/meta/resources/place_holder_avatar.png',
-      'oracle/disciples/meta/resources/root.py',
-      'oracle/disciples/meta/resources/transaction.py',
-      'oracle/disciples/meta/resources/transaction_status.hh.inc',
-      'oracle/disciples/meta/resources/user.py',
-      'oracle/disciples/meta/session.py',
-      'oracle/disciples/meta/session_store.py',
-      'oracle/disciples/meta/user_status.hh.inc',
-      )
-
-    oracle_lib += drake.nodes(
       'oracle/disciples/pythia/admin.py',
       'oracle/disciples/pythia/client.py',
       'oracle/disciples/pythia/constants.py',
       'oracle/disciples/pythia/__init__.py',
       )
 
+    # Trophonius
+    def oracle(name):
+      root = drake.Path('oracle/disciples/%s' % name)
+      rule = drake.Rule('oracle/%s/build' % name)
+      trophonius_sources = drake.nodes(
+        *git.ls_files(root / 'src' / name))
+      server = drake.node('oracle/disciples/%s-server' % name)
+      rule << drake.copy(trophonius_sources,
+                         'lib/python', root / 'src')
+      rule << drake.copy(server, 'bin', 'oracle/disciples')
 
-    oracle_lib += drake.nodes(
-      'oracle/disciples/trophonius/application.py',
-      'oracle/disciples/trophonius/clients.py',
-      'oracle/disciples/trophonius/conf.py',
-      'oracle/disciples/trophonius/constants.py',
-      'oracle/disciples/trophonius/__init__.py',
-      'oracle/disciples/trophonius/trophonius.py',
-      )
+      rule_check = drake.TestSuite('oracle/%s/check' % name)
+      for test in git.ls_files(root / 'tests'):
+        test = drake.node(test)
+        runner = drake.Runner(test)
+        runner.reporting = drake.Runner.Reporting.on_failure
+        rule_check << runner.status
+      oracles << rule
+      check << rule_check
+      return rule, rule_check
+
+
+    rule_trophonius, rule_trophonius_check = oracle('trophonius')
+    rule_meta, rule_meta_check = oracle('meta')
+    authority = drake.node('oracle/infinit.auth')
+    rule_meta << drake.copy(authority, 'oracle/meta', 'oracle')
 
     oracle_lib_copy = drake.copy(oracle_lib,
                                  'lib/python',
@@ -1223,19 +1219,18 @@ def configure(cxx_toolkit = None,
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
+    (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, reactor_lib]),
     #(('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc'),  [elle_lib, plasma_lib, curly_lib]),
     ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
-    ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib]),
+    ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib]),
     ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib] + udt_libs),
     #('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
-    # ('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + manager_libs),
+    ('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + infinit_libs),
     ('tests/unit/hole/slug.cc', infinit_libs),
     (('tests/unit/heartbeat.cc', 'heartbeat.cc', 'heartbeat.hh', 'common/common.cc'), [reactor_lib, elle_lib] + udt_libs),
   ]
 
-  check = drake.Rule('check')
-  check << elle.rule_check
   for test, deps in tests_src_n_lib:
     if isinstance(test, str):
       bin_name, ext = os.path.splitext(test)
@@ -1249,6 +1244,7 @@ def configure(cxx_toolkit = None,
                                     cxx_toolkit, tests_cxx_config)
     tests << test_bin
     runner = drake.Runner(test_bin)
+    runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status
 
   build << drake.cxx.Executable("bin/pass",

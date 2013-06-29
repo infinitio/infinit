@@ -21,6 +21,8 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
 
+#include <chrono>
+
 ELLE_LOG_COMPONENT("infinit.surface.gap.Transaction");
 
 namespace surface
@@ -60,8 +62,9 @@ namespace surface
       _output_dir{common::system::download_directory()}
     {
       ELLE_TRACE_METHOD("");
+
       this->_notification_manager.transaction_callback(
-        [&] (TransactionNotification const &n, bool is_new) -> void
+        [&] (TransactionNotification const &n, bool) -> void
         {
           this->_on_transaction(n);
         });
@@ -74,6 +77,8 @@ namespace surface
 
     TransactionManager::~TransactionManager()
     {
+      ELLE_TRACE_METHOD("");
+
       try
       {
         ELLE_TRACE("destroying the transaction manager");
@@ -89,12 +94,16 @@ namespace surface
     void
     TransactionManager::clear()
     {
+      ELLE_TRACE_METHOD("");
+
       this->_network_manager.clear();
     }
 
     void
     TransactionManager::output_dir(std::string const& dir)
     {
+      ELLE_TRACE_METHOD(dir);
+
       if (!fs::exists(dir))
         throw Exception{gap_error,
                         "directory doesn't exist."};
@@ -135,7 +144,7 @@ namespace surface
     float
     TransactionManager::progress(std::string const& id)
     {
-      ELLE_DEBUG("Retrieve progress of transaction %s", id);
+      ELLE_TRACE_METHOD(id);
 
       auto const& tr = this->one(id);
       auto const& instance_manager =
@@ -146,7 +155,7 @@ namespace surface
         return 0.0f;
       else if (this->_states[id].state != State::running)
         return 0.0f;
-      else if (not instance_manager.exists(tr.id))
+      else if (not instance_manager.exists(tr.network_id))
         return 0.0f;
 
       auto& progress = this->_progresses(
@@ -168,14 +177,15 @@ namespace surface
           "-u", this->_self.id,
         };
 
-        ELLE_DEBUG("LAUNCH: %s %s", progress_binary,
+        ELLE_DEBUG("launch: %s %s", progress_binary,
                    boost::algorithm::join(arguments, " "));
 
         this->_progresses(
           [&] (TransactionProgressMap&)
           {
             progress.process = elle::make_unique<elle::system::Process>(
-              process_config(elle::system::pipe_stdout_config),
+              binary_check_output_config("8progress", this->_self.id,
+                                         tr.network_id),
               progress_binary,
               arguments);
           });
@@ -188,16 +198,23 @@ namespace surface
             return 0.0f;
           if (!progress.process->running())
           {
-            int current_size = 0;
-            int total_size = 0;
-            std::stringstream ss;
-            ss << progress.process->read();
-            ss >> current_size >> total_size;
+            if (progress.process->status() != 0)
+            {
+              progress.last_value = 0.0f;
+            }
+            else
+            {
+              int current_size = 0;
+              int total_size = 0;
+              std::stringstream ss;
+              ss << progress.process->read();
+              ss >> current_size >> total_size;
+              if (total_size == 0)
+                progress.last_value = 0.0f;
+              else
+                progress.last_value = float(current_size) / float(total_size);
+            }
             progress.process.reset();
-
-            if (total_size == 0)
-              return 0.f;
-            progress.last_value = float(current_size) / float(total_size);
 
             if (progress.last_value < 0)
             {
@@ -221,6 +238,8 @@ namespace surface
     TransactionManager::update(std::string const& transaction_id,
                                plasma::TransactionStatus status)
     {
+      ELLE_TRACE_METHOD(transaction_id, status);
+
       ELLE_TRACE("set status %s on transaction %s", status, transaction_id);
       this->_meta.update_transaction(transaction_id, status);
     }
@@ -229,6 +248,7 @@ namespace surface
     TransactionManager::accept_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_METHOD(transaction);
+
       ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
       this->_add<LambdaOperation>(
           "accept_" + transaction.id,
@@ -241,17 +261,17 @@ namespace surface
     void
     TransactionManager::accept_transaction(std::string const& transaction_id)
     {
+      ELLE_TRACE_METHOD(transaction_id);
+
       this->accept_transaction(this->one(transaction_id));
     }
-
 
     void
     TransactionManager::_accept_transaction(Transaction const& transaction,
                                             Operation& operation)
     {
-      this->_reporter.store("transaction_accept",
-                            {{MKey::status, "attempt"},
-                             {MKey::value, transaction.id}});
+      ELLE_TRACE_METHOD(transaction, operation);
+
       try
       {
 
@@ -269,38 +289,43 @@ namespace surface
       }
       CATCH_FAILURE_TO_METRICS("transaction_accept");
 
-      this->_reporter.store("transaction_accept_succeed",
-                            {{MKey::value, transaction.id}});
+      if (transaction.status == plasma::TransactionStatus::created)
+      {
+        this->_reporter.store("transaction_accept_preparing",
+                              {{MKey::value, transaction.id}});
+      }
+      else if (transaction.status == plasma::TransactionStatus::started)
+      {
+        this->_reporter.store("transaction_accept_prepared",
+                              {{MKey::value, transaction.id}});
+      }
+
     }
 
     void
-    TransactionManager::cancel_transaction(Transaction const& transaction)
+    TransactionManager::cancel_transaction(std::string const& transaction_id)
     {
-      ELLE_TRACE_METHOD(transaction);
+      ELLE_TRACE_METHOD(transaction_id);
+
+      this->_cancel_transaction(this->one(transaction_id));
+    }
+
+    void
+    TransactionManager::_cancel_transaction(Transaction const& transaction)
+    {
+      ELLE_DEBUG_METHOD(transaction);
 
       this->_add<LambdaOperation>(
         "cancel_" + transaction.id,
         std::function<void()>{
           [&]
           {
-            std::string author = (
-              transaction.sender_id == this->_self.id ? "sender" : "recipient"
-            );
-
-            this->_reporter.store(
-              "transaction_cancel",
-              {{MKey::status, "attempt"},
-               {MKey::author, author},
-               {MKey::step, elle::sprint(transaction.status)},
-               {MKey::value, transaction.id}});
-
-            ELLE_SCOPE_EXIT(
-              [&]
-              {
-                this->_cancel_all(transaction.id);
-                this->_network_manager.delete_(transaction.network_id, true);
-              }
-            );
+            auto scope_exit = [&, transaction]
+            {
+              this->_cancel_all(transaction.id);
+              this->_network_manager.delete_(transaction.network_id, false);
+            };
+            ELLE_SCOPE_EXIT(scope_exit);
 
             try
             {
@@ -309,21 +334,91 @@ namespace surface
             }
             CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-            this->_reporter.store(
-              "transaction_cancel",
-              {{MKey::status, "succeed"},
-               {MKey::author, author},
-               {MKey::step, elle::sprint(transaction.status)},
-               {MKey::value, transaction.id}});
+            std::string author = (
+              transaction.sender_id == this->_self.id ? "sender" : "recipient");
+
+            auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch());
+            auto timestamp_tr = std::chrono::duration<double>(
+              transaction.timestamp);
+            double duration = timestamp_now.count() - timestamp_tr.count();
+
+            if (transaction.status == plasma::TransactionStatus::created)
+            {
+              if (transaction.accepted)
+              {
+                this->_reporter.store("transaction_cancel_preparing_accepted",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+              else
+              {
+                this->_reporter.store("transaction_cancel_preparing_unaccepted",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+            }
+            else if (transaction.status == plasma::TransactionStatus::started)
+            {
+              if (transaction.accepted &&
+                  this->_user_manager.device_status(
+                    transaction.recipient_id,
+                    transaction.recipient_device_id))
+              {
+                this->_reporter.store("transaction_cancel_transferring",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+              else if (transaction.accepted &&
+                       !this->_user_manager.device_status(
+                         transaction.recipient_id,
+                         transaction.recipient_device_id))
+              {
+                this->_reporter.store("transaction_cancel_offline",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+              else if (!transaction.accepted)
+              {
+                this->_reporter.store("transaction_cancel_prepared_unaccepted",
+                                      {{MKey::author, author},
+                                       {MKey::duration,
+                                        std::to_string(duration)},
+                                       {MKey::value, transaction.id}});
+              }
+            }
           }
         }
+      );
+    }
+
+    void
+    TransactionManager::_on_cancel_transaction(Transaction const& transaction)
+    {
+      ELLE_DEBUG_METHOD(transaction);
+
+      std::function<void()> scope_exit = [&, transaction]
+      {
+        this->_cancel_all(transaction.id);
+        this->_network_manager.delete_(transaction.network_id, false);
+      };
+      this->_add<LambdaOperation>(
+        "cancel_" + transaction.id,
+        scope_exit
       );
     }
 
     TransactionManager::TransactionsMap const&
     TransactionManager::all()
     {
-
       if (this->_transactions->get() != nullptr)
         return *this->_transactions->get();
 
@@ -356,6 +451,8 @@ namespace surface
     Transaction const&
     TransactionManager::sync(std::string const& id)
     {
+      ELLE_TRACE_METHOD(id);
+
       ELLE_TRACE("Synching transaction %s from _meta", id);
       this->all(); // ensure _transactions is not null;
       try
@@ -380,6 +477,8 @@ namespace surface
     void
     TransactionManager::_clean_transaction(Transaction const& tr)
     {
+      ELLE_DEBUG_METHOD(tr);
+
       ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::created);
       ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::started);
       auto s = this->_states[tr.id];
@@ -393,15 +492,20 @@ namespace surface
           ELLE_DEBUG("couldn't finalize operation: %s",
                      elle::exception_string());
         }
+
       this->_states->erase(tr.id);
       this->_cancel_all(tr.id);
-      this->_network_manager.delete_(tr.network_id);
+      this->_network_manager.delete_(
+        tr.network_id,
+        tr.status == plasma::TransactionStatus::failed);
     }
 
     void
     TransactionManager::_on_transaction(plasma::Transaction const& tr)
     {
-      ELLE_TRACE("received transaction %s, update local copy", tr)
+      ELLE_DEBUG_METHOD(tr);
+
+      ELLE_DEBUG("received transaction %s, update local copy", tr)
       {
         // Ensure map is not null
         this->all();
@@ -409,7 +513,12 @@ namespace surface
             (*ptr)[tr.id] = tr;
         });
       }
-      if (tr.status != plasma::TransactionStatus::created and
+      if (tr.status == plasma::TransactionStatus::canceled)
+      {
+        this->_on_cancel_transaction(tr);
+        return;
+      }
+      else if (tr.status != plasma::TransactionStatus::created and
           tr.status != plasma::TransactionStatus::started)
       {
         ELLE_DEBUG("Cleaning up finished transaction %s", tr);
@@ -421,16 +530,21 @@ namespace surface
       {
         if (tr.sender_device_id != this->_device.id)
         {
-          // ELLE_ASSERT(
-          //     false,
-          //     "got a transaction tr that does not involve my device: %s",
-          //     tr);
-          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
-          return;
+          /* XXX
+          throw Exception(
+            gap_device_not_valid,
+            elle::sprintf("received notification regarding a created "
+                          "transaction which does not involve this "
+                          "device: %s", tr));
+          */
+          ELLE_WARN("for now, all the user's devices receive notifications; "
+                    "trophonius needs to be improved so as to send "
+                    "notifications to devices rather than to users, at "
+                    "least for some types of notification");
         }
-        if (tr.status == plasma::TransactionStatus::created)
+        else if (tr.status == plasma::TransactionStatus::created)
         {
-          ELLE_TRACE("sender prepare upload for %s", tr)
+          ELLE_DEBUG("sender prepare upload for %s", tr)
             this->_prepare_upload(tr);
         }
         else if (tr.status == plasma::TransactionStatus::started &&
@@ -438,7 +552,7 @@ namespace surface
                  this->_user_manager.device_status(tr.recipient_id,
                                                    tr.recipient_device_id))
         {
-          ELLE_TRACE("sender start upload for %s", tr)
+          ELLE_DEBUG("sender start upload for %s", tr)
             this->_start_upload(tr);
 
         }
@@ -451,19 +565,19 @@ namespace surface
       {
         if (tr.recipient_device_id != this->_device.id)
         {
-          // ELLE_ASSERT(
-          //     false,
-          //     "got a transaction tr that does not involve my device: %s",
-          //     tr);
-          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
-          return;
+          if (tr.accepted)
+            throw Exception(
+              gap_device_not_valid,
+              elle::sprintf("received notification regarding a received "
+                            "transaction which does not involve this "
+                            "device: %s", tr));
         }
-        if (tr.status == plasma::TransactionStatus::started &&
-            tr.accepted &&
-            this->_user_manager.device_status(tr.sender_id,
+        else if (tr.status == plasma::TransactionStatus::started &&
+                 tr.accepted &&
+                 this->_user_manager.device_status(tr.sender_id,
                                               tr.sender_device_id))
         {
-          ELLE_TRACE("recipient start download for %s", tr)
+          ELLE_DEBUG("recipient start download for %s", tr)
             this->_start_download(tr);
         }
         else
@@ -493,6 +607,8 @@ namespace surface
     void
     TransactionManager::_on_user_status(UserStatusNotification const& notif)
     {
+      ELLE_DEBUG_METHOD(notif);
+
       // Search for user related transactions.
       auto to_check = this->_transactions(
         [&] (TransactionMapPtr& map_ptr) -> std::vector<plasma::Transaction>
@@ -513,12 +629,21 @@ namespace surface
     void
     TransactionManager::_prepare_upload(Transaction const& tr)
     {
+      ELLE_DEBUG_METHOD(tr);
+
       auto s = this->_states[tr.id];
 
+      // XXX ghost user doesn't have public key so check this before adding to
+      // network.
       if (s.state == State::none and
           not this->_user_manager.one(tr.recipient_id).public_key.empty())
       {
         ELLE_DEBUG("prepare transaction %s", tr)
+        this->_reporter.store("transaction_preparing",
+                              {{MKey::count, std::to_string(tr.files_count)},
+                               {MKey::network, tr.network_id},
+                               {MKey::size, std::to_string(tr.total_size)},
+                               {MKey::value, tr.id}});
         s.operation = this->_add<PrepareTransactionOperation>(
           *this,
           this->_network_manager,
@@ -533,22 +658,65 @@ namespace surface
       }
       else
       {
-        ELLE_DEBUG("do not prepare %s, already in state %d",
-                   tr,
-                   s.state);
+        if (s.state == State::preparing)
+        {
+          ELLE_DEBUG("do not prepare %s, already in state %d",
+                     tr,
+                     s.state);
+        }
+
+        else if (this->_user_manager.one(tr.recipient_id).public_key.empty())
+        {
+          ELLE_DEBUG("do not prepare %s, recipient hasn't registered yet",
+                     tr);
+        }
       }
     }
 
     void
     TransactionManager::_start_upload(Transaction const& transaction)
     {
+      ELLE_DEBUG_METHOD(transaction);
+
       auto s = this->_states[transaction.id];
-      if (s.state == State::preparing &&
-          this->status(s.operation) == OperationStatus::success)
+
+      // if (s.tries == 1) //XXX variable for that
+      // {
+      //   this->_meta.update_transaction(transaction.id,
+      //                                  plasma::TransactionStatus::failed);
+      //   this->_states->erase(transaction.id);
+      //   auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+      //     std::chrono::system_clock::now().time_since_epoch());
+      //   auto timestamp_tr = std::chrono::duration<double>(transaction.timestamp);
+      //   double duration = timestamp_now.count() - timestamp_tr.count();
+      //   this->_reporter.store("transaction_transferring_fail",
+      //                         {{MKey::attempt, std::to_string(s.tries)},
+      //                          {MKey::duration, std::to_string(duration)},
+      //                          {MKey::network,transaction.network_id},
+      //                          {MKey::value, transaction.id}});
+      //   return;
+      // }
+
+      // // If the transaction is running, cancel it.
+      // if (s.state == State::running)
+      // {
+      //   if (this->status(s.operation) == OperationStatus::running)
+      //   {
+      //     ELLE_LOG("transfer %s had an error, restarting", transaction.id);
+      //     this->cancel_operation(s.operation);
+      //   }
+      //   s.state = State::preparing;
+      //   s.operation = 0;
+      // }
+
+      if (s.state == State::preparing)
       {
         s.operation = this->_add<UploadOperation>(
-          transaction,
-          this->_network_manager, [this, transaction] {
+          transaction.id,
+          this->_network_manager,
+          *this,
+          this->_network_manager.infinit_instance_manager(),
+          [this, transaction] {
             this->_network_manager.notify_8infinit(
               transaction.network_id,
               transaction.sender_device_id,
@@ -558,32 +726,53 @@ namespace surface
         s.tries += 1;
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
+        this->_reporter.store("transaction_transferring",
+                              {{MKey::attempt, std::to_string(s.tries)},
+                               {MKey::network,transaction.network_id},
+                               {MKey::value, transaction.id}});
       }
       else
       {
         if (s.state != State::preparing)
-          ELLE_TRACE("cannot start upload of %s, state is not preparing: %s",
+          ELLE_DEBUG("cannot start upload of %s, state is not preparing: %s",
                      transaction, (int) s.state);
         else if (this->status(s.operation) == OperationStatus::failure)
-          ELLE_TRACE("cannot start upload of %s, prepare failed", transaction);
+          ELLE_DEBUG("cannot start upload of %s, prepare failed", transaction);
         else if (this->status(s.operation) == OperationStatus::running)
-          ELLE_TRACE("cannot start upload of %s, prepare still running",
+          ELLE_DEBUG("cannot start upload of %s, prepare still running",
                      transaction);
         else
-          ELLE_TRACE("XXX cannot start upload (should not be printed)");
+          ELLE_DEBUG("XXX cannot start upload (should not be printed)");
       }
     }
 
     void
     TransactionManager::_start_download(Transaction const& transaction)
     {
+      ELLE_DEBUG_METHOD(transaction);
+
       auto state = this->_states[transaction.id];
+      // if (state.state == State::running)
+      // {
+      //   ELLE_LOG("transfer %s met an error, restarting", transaction.id);
+      //   this->cancel_operation(state.operation);
+      //   this->_network_manager.delete_local(transaction.network_id);
+      //   this->_network_manager.prepare(transaction.network_id);
+      //   this->_network_manager.to_directory(
+      //     transaction.network_id,
+      //     common::infinit::network_shelter(this->_self.id,
+      //                                      transaction.network_id));
+      //   this->_network_manager.wait_portal(transaction.network_id);
+      //   state.state = State::none;
+      // }
+
       if (state.state == State::none)
       {
         state.operation = this->_add<DownloadOperation>(
             *this,
             this->_network_manager,
             this->_self,
+            this->_reporter,
             transaction,
             std::bind(&NetworkManager::notify_8infinit,
                       &(this->_network_manager),
@@ -594,6 +783,14 @@ namespace surface
         state.tries += 1;
         this->_states(
           [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
+      }
+      else
+      {
+        if (state.state != State::none)
+          ELLE_TRACE("cannot start download of %s, state is not none: %s",
+                     transaction, (int) state.state);
+        else
+          ELLE_TRACE("XXX cannot start upload (should not be printed)");
       }
     }
   }

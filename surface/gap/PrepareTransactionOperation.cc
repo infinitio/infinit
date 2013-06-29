@@ -34,12 +34,16 @@ namespace surface
       _self(self),
       _transaction(transaction),
       _files{files}
-    {}
+    {
+      ELLE_TRACE_METHOD("");
+    }
 
     void
     PrepareTransactionOperation::_run()
     {
-      ELLE_TRACE_METHOD(this->_transaction);
+      ELLE_DEBUG_METHOD("");
+
+      ELLE_DEBUG("running transaction '%s'", this->_transaction);
 
       this->_network_manager.prepare(this->_transaction.network_id);
       this->_network_manager.to_directory(
@@ -86,7 +90,7 @@ namespace surface
             "--to",
           };
 
-          ELLE_DEBUG("LAUNCH: %s %s",
+          ELLE_DEBUG("launch: %s %s",
                      transfer_binary,
                      boost::algorithm::join(arguments, " "));
 
@@ -114,12 +118,12 @@ namespace surface
           }
         }
       }
-      CATCH_FAILURE_TO_METRICS("transaction_create");
+      CATCH_FAILURE_TO_METRICS("transaction_preparing");
 
       this->_reporter.store(
-        "transaction_create",
-        {{MKey::status, "succeed"},
-         {MKey::value, this->_transaction.id},
+        "transaction_prepared",
+        {{MKey::value, this->_transaction.id},
+         {MKey::network, this->_transaction.network_id},
          {MKey::count, std::to_string(this->_transaction.files_count)},
          {MKey::size, std::to_string(this->_transaction.total_size)}});
 
@@ -130,7 +134,9 @@ namespace surface
     void
     PrepareTransactionOperation::_cancel()
     {
-      ELLE_DEBUG("cancelling %s name", this->name());
+      ELLE_DEBUG_METHOD("");
+
+      ELLE_DEBUG("cancelling transaction '%s'", this->name());
     }
   }
 }

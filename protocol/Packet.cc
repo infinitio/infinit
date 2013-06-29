@@ -5,6 +5,8 @@
 
 #include <protocol/Packet.hh>
 
+ELLE_LOG_COMPONENT("infinit.protocol.Packet")
+
 namespace infinit
 {
   namespace protocol
@@ -32,7 +34,7 @@ namespace infinit
         , _size(source._size)
         , _data(0)
       {
-        // FIXME: we might be able to doge all this by making
+        // FIXME: we might be able to dodge all this by making
         // elle::StreamBuffer movable and copying the {g,p}ptr() at
         // construction time.
         switch (source._mode)
@@ -59,10 +61,10 @@ namespace infinit
       write_buffer()
       {
         if (_mode == Mode::fresh)
-          {
-            assert(!_packet._data);
-            _mode = Mode::write;
-          }
+        {
+          assert(!_packet._data);
+          _mode = Mode::write;
+        }
         assert(_mode == Mode::write);
         // FIXME: Make buffer grow size parametrizable.
         static const elle::Size growth = 1024;
@@ -81,21 +83,29 @@ namespace infinit
       read_buffer()
       {
         switch (_mode)
-          {
-            case Mode::eof:
-              return elle::WeakBuffer(nullptr, 0);
-            case Mode::fresh:
-              _mode = Mode::eof;
-              if (_data)
-                return elle::WeakBuffer(_data, _packet._data_size - (_data - _packet._data));
-              else
-                {
-                  assert(_packet._data);
-                  return elle::WeakBuffer(_packet._data, _packet._data_size);
-                }
-            default:
-              std::abort();
-          }
+        {
+          case Mode::eof:
+            ELLE_DEBUG("%s: read end of file", *this);
+            return elle::WeakBuffer(nullptr, 0);
+          case Mode::fresh:
+            _mode = Mode::eof;
+            if (_data)
+            {
+              auto size = _packet._data_size - (_data - _packet._data);
+              elle::WeakBuffer res(_data, size);
+              ELLE_DEBUG("%s: read partial data: %s", *this, res);
+              return res;
+            }
+            else
+            {
+              assert(_packet._data);
+              elle::WeakBuffer res(_packet._data, _packet._data_size);
+              ELLE_DEBUG("%s: read whole data: %s", *this, res);
+              return res;
+            }
+          default:
+            std::abort();
+        }
       }
 
     private:

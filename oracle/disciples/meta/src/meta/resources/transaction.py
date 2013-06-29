@@ -42,6 +42,63 @@ configfile = open(filepath, 'r')
 for line in configfile:
     eval(_macro_matcher.sub(replacer, line))
 
+class _UpdateTransaction(Page):
+
+    def network_endpoints(self, transaction):
+        network = database.networks().find_one(
+            database.ObjectId(transaction["network_id"]),
+        )
+        if not network:
+            self.raise_error(error.NETWORK_NOT_FOUND)
+
+        if network['owner'] != self.user['_id'] and \
+           self.user['_id'] not in network['users']:
+            self.raise_error(error.OPERATION_NOT_PERMITTED)
+
+        nodes = network.get("nodes")
+        if nodes:
+          devices = tuple(
+              transaction[v + "_device_id"] for v  in ["sender", "recipient"]
+          )
+          # sender and receiver have set their devices
+          if all(str(d) in nodes for d in devices):
+              return tuple(nodes[str(d)] for d in devices)
+        return None
+
+    def add_link(self, transaction):
+        sender, receiver = self.network_endpoints(transaction)
+        ap_endpoint = self.apertus.add_link(
+            str(transaction["network_id"]),
+            sender["externals"],
+            receiver["externals"]
+        )
+
+        # Add the current apertus endpoint to the externals addresses of the
+        # devices.
+        ip, port = ap_endpoint.split(":")
+        sender["fallback"] = receiver["fallback"] = [
+            {"ip" : ip, "port" : port}
+        ]
+        network = database.networks().find_one(
+            database.ObjectId(transaction["network_id"]),
+        )
+        network["nodes"][str(transaction["sender_device_id"])] = sender
+        network["nodes"][str(transaction["recipient_device_id"])] = receiver
+        database.networks().save(network)
+
+    def del_link(self, transaction):
+        endpoints = self.network_endpoints(transaction)
+        if not endpoints:
+            return
+        sender, receiver = endpoints
+        self.apertus.del_link(
+            str(transaction["network_id"]),
+            sender["externals"],
+            receiver["externals"]
+        )
+
+
+
 class Create(Page):
     """
     Send a file to a specific user.
@@ -125,6 +182,8 @@ class Create(Page):
                     email = invitee_email,
                     register_status = 'ghost',
                     notifications = [],
+                    networks = [],
+                    swaggers = {},
                     accounts=[{'type':'email', 'id':invitee_email}]
                 )
                 recipient_fullname = id_or_email
@@ -205,7 +264,7 @@ class Create(Page):
             'remaining_invitations': self.user.get('remaining_invitations', 0),
         })
 
-class Accept(Page):
+class Accept(_UpdateTransaction):
     """
     Use to accept a file transfer.
     Maybe more in the future but be careful, for the moment, user MUST be the recipient.
@@ -268,6 +327,9 @@ class Accept(Page):
 
         updated_transaction_id = database.transactions().save(transaction);
 
+        if transaction['status'] == STARTED:
+            self.add_link(transaction)
+
         sender = database.users().find_one(
           database.ObjectId(transaction['sender_id'])
         )
@@ -298,7 +360,7 @@ class Accept(Page):
         })
 
 
-class Update(Page):
+class Update(_UpdateTransaction):
     """
     Update the transaction status. Accepted values:
         * from sender: [started, canceled, failed]
@@ -355,7 +417,7 @@ class Update(Page):
         status = int(self.data['status'])
         if is_sender and status not in [STARTED, CANCELED, FAILED]:
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
-        elif is_receiver and status not in [CANCELED, FINISHED]:
+        elif is_receiver and status not in [STARTED, CANCELED, FINISHED]:
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
 
         new_status = transaction['status'] != status
@@ -374,7 +436,7 @@ class Update(Page):
 
         if new_status:
             transaction["status"] = status
-            updated_transaction_id = database.transactions().save(transaction)
+            database.transactions().save(transaction)
         if new_status or status == STARTED:
             self.notifier.notify_some(
                 notifier.TRANSACTION,
@@ -382,62 +444,8 @@ class Update(Page):
                 transaction,
             )
         return self.success({
-            'updated_transaction_id': str(updated_transaction_id),
+            'updated_transaction_id': transaction['_id'],
         })
-
-
-    def network_endpoints(self, transaction):
-        network = database.networks().find_one(
-            database.ObjectId(transaction["network_id"]),
-        )
-        if not network:
-            self.raise_error(error.NETWORK_NOT_FOUND)
-
-        if network['owner'] != self.user['_id'] and \
-           self.user['_id'] not in network['users']:
-            self.raise_error(error.OPERATION_NOT_PERMITTED)
-
-        nodes = network.get("nodes")
-        if nodes:
-          devices = tuple(
-              transaction[v + "_device_id"] for v  in ["sender", "recipient"]
-          )
-          # sender and receiver have set their devices
-          if all(str(d) in nodes for d in devices):
-              return tuple(nodes[str(d)] for d in devices)
-        return None
-
-    def add_link(self, transaction):
-        sender, receiver = self.network_endpoints(transaction)
-        ap_endpoint = self.apertus.add_link(
-            str(transaction["network_id"]),
-            sender["externals"],
-            receiver["externals"]
-        )
-
-        # Add the current apertus endpoint to the externals addresses of the
-        # devices.
-        ip, port = ap_endpoint.split(":")
-        sender["fallback"] = receiver["fallback"] = [
-            {"ip" : ip, "port" : port}
-        ]
-        network = database.networks().find_one(
-            database.ObjectId(transaction["network_id"]),
-        )
-        network["nodes"][str(transaction["sender_device_id"])] = sender
-        network["nodes"][str(transaction["recipient_device_id"])] = receiver
-        database.networks().save(network)
-
-    def del_link(self, transaction):
-        endpoints = self.network_endpoints(transaction)
-        if not endpoints:
-            return
-        sender, receiver = endpoints
-        self.apertus.del_link(
-            str(transaction["network_id"]),
-            sender["externals"],
-            receiver["externals"]
-        )
 
 class All(Page):
     """

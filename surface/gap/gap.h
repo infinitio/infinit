@@ -26,6 +26,11 @@ extern "C" {
   /// Returns NULL on failure.
   gap_State* gap_new();
 
+  /// Create a new state.
+  /// Returns NULL on failure.
+  gap_State* gap_configurable_new(char const* host,
+                                  unsigned short port);
+
   /// Release a state.
   void gap_free(gap_State* state);
 
@@ -391,6 +396,11 @@ extern "C" {
                          char const* transaction_id,
                          gap_TransactionStatus status);
 
+  /// Cancel transaction.
+  gap_Status
+  gap_cancel_transaction(gap_State* state,
+                         char const* transaction_id);
+
   /// Accept a transaction.
   /// This function can only be used by the recipient of the transaction, if
   /// not already accepted.
@@ -409,6 +419,10 @@ extern "C" {
   void
   gap_send_file_crash_report(char const* module,
                              char const* filename);
+
+  gap_Status
+  gap_gather_crash_reports(char const* user_id,
+                           char const* network_id);
 
   // Generated file.
   #include <surface/gap/gen_metrics.h>
