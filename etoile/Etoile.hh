@@ -27,9 +27,9 @@ namespace etoile
     ELLE_ATTRIBUTE_R(infinit::cryptography::KeyPair, keys);
     ELLE_ATTRIBUTE(bool, portal);
 
-  /*-------.
-  | Actors |
-  `-------*/
+    /*-------.
+    | Actors |
+    `-------*/
   public:
     gear::Actor*
     actor_get(gear::Identifier const& id) const;
@@ -41,22 +41,22 @@ namespace etoile
     typedef std::map<gear::Identifier, gear::Actor*> Actors;
     ELLE_ATTRIBUTE(Actors, actors);
 
-  /*-----.
-  | Path |
-  `-----*/
+    /*-----.
+    | Path |
+    `-----*/
   private:
     ELLE_ATTRIBUTE_RX(shrub::Shrub, shrub);
 
-  /*------.
-  | Depot |
-  `------*/
+    /*------.
+    | Depot |
+    `------*/
   private:
     ELLE_ATTRIBUTE_RX(depot::Depot, depot);
     ELLE_ATTRIBUTE_r(nucleus::proton::Network, network);
 
-  /*----------------.
-  | Global instance |
-  `----------------*/
+    /*----------------.
+    | Global instance |
+    `----------------*/
   public:
     static Etoile* instance();
   private:
