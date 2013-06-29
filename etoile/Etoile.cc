@@ -11,24 +11,27 @@
 namespace etoile
 {
   namespace time = boost::posix_time;
-  Etoile::Etoile(hole::Hole* hole):
+  Etoile::Etoile(hole::Hole* hole, bool portal):
+    _portal(portal),
     _actors(),
     _shrub(Infinit::Configuration.etoile.shrub.capacity,
            time::milliseconds(Infinit::Configuration.etoile.shrub.lifespan),
            time::milliseconds(Infinit::Configuration.etoile.shrub.frequency)),
     _depot(hole)
   {
-    if (portal::Portal::Initialize() == elle::Status::Error)
-      throw Exception("unable to initialize the portal");
-
     ELLE_ASSERT(!this->_instance);
     this->_instance = this;
+
+    if (portal)
+      if (portal::Portal::Initialize() == elle::Status::Error)
+        throw Exception("unable to initialize the portal");
   }
 
   Etoile::~Etoile()
   {
-    if (portal::Portal::Clean() == elle::Status::Error)
-      throw Exception("unable to clean the portal");
+    if (this->_portal)
+      if (portal::Portal::Clean() == elle::Status::Error)
+        throw Exception("unable to clean the portal");
 
     for (auto& actor: this->_actors)
       delete actor.second;

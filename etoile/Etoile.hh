@@ -16,8 +16,10 @@ namespace etoile
   class Etoile
   {
   public:
-    Etoile(hole::Hole* hole);
+    Etoile(hole::Hole* hole, bool portal = true);
     ~Etoile();
+  private:
+    ELLE_ATTRIBUTE(bool, portal);
 
   /*-------.
   | Actors |
