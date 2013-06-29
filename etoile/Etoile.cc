@@ -10,10 +10,13 @@
 
 namespace etoile
 {
-  Etoile::Etoile():
+  namespace time = boost::posix_time;
+  Etoile::Etoile(hole::Hole* hole):
+    _actors(),
     _shrub(Infinit::Configuration.etoile.shrub.capacity,
-           boost::posix_time::milliseconds(Infinit::Configuration.etoile.shrub.lifespan),
-           boost::posix_time::milliseconds(Infinit::Configuration.etoile.shrub.frequency))
+           time::milliseconds(Infinit::Configuration.etoile.shrub.lifespan),
+           time::milliseconds(Infinit::Configuration.etoile.shrub.frequency)),
+    _depot(hole)
   {
     if (portal::Portal::Initialize() == elle::Status::Error)
       throw Exception("unable to initialize the portal");
@@ -71,6 +74,16 @@ namespace etoile
     if (it == this->_actors.end())
       throw elle::Exception(elle::sprintf("unkown actor %s", id));
     this->_actors.erase(it);
+  }
+
+  /*------.
+  | Depot |
+  `------*/
+
+  nucleus::proton::Network const&
+  Etoile::network() const
+  {
+    return this->_depot.network();
   }
 
   /*----------------.

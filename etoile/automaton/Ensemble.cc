@@ -1,8 +1,9 @@
-#include <etoile/automaton/Ensemble.hh>
-#include <etoile/gear/Group.hh>
-#include <etoile/depot/Depot.hh>
-#include <etoile/nest/Nest.hh>
+#include <etoile/Etoile.hh>
 #include <etoile/Exception.hh>
+#include <etoile/automaton/Ensemble.hh>
+#include <etoile/depot/Depot.hh>
+#include <etoile/gear/Group.hh>
+#include <etoile/nest/Nest.hh>
 
 #include <nucleus/proton/Revision.hh>
 #include <nucleus/proton/Address.hh>
@@ -47,7 +48,7 @@ namespace etoile
           context.ensemble_nest =
             new etoile::nest::Nest(ENSEMBLE_SECRET_KEY_LENGTH,
                                    context.ensemble_limits,
-                                   depot::global_depot->network(),
+                                   Etoile::instance()->network(),
                                    agent::Agent::Subject.user(),
                                    context.ensemble_threshold);
 
@@ -64,7 +65,7 @@ namespace etoile
           context.ensemble_nest =
             new etoile::nest::Nest(ENSEMBLE_SECRET_KEY_LENGTH,
                                    context.ensemble_limits,
-                                   depot::global_depot->network(),
+                                   Etoile::instance()->network(),
                                    agent::Agent::Subject.user(),
                                    context.ensemble_threshold);
 

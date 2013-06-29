@@ -191,7 +191,7 @@ namespace etoile
 
                           // Retrieve the group block.
                           group =
-                            depot::global_depot->pull_group(
+                            Etoile::instance()->depot().pull_group(
                               record->subject().group(),
                               nucleus::proton::Revision::Last);
 
@@ -271,7 +271,7 @@ namespace etoile
                                   etoile::nest::Nest ensemble_nest{
                                     ENSEMBLE_SECRET_KEY_LENGTH,
                                     ensemble_limits,
-                                    depot::global_depot->network(),
+                                    Etoile::instance()->depot().network(),
                                     agent::Agent::Subject.user(),
                                     ensemble_threshold};
 

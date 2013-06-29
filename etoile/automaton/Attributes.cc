@@ -54,7 +54,7 @@ namespace etoile
           context.attributes_nest =
             new etoile::nest::Nest(ATTRIBUTES_SECRET_KEY_LENGTH,
                                    context.attributes_limits,
-                                   depot::global_depot->network(),
+                                   Etoile::instance()->network(),
                                    agent::Agent::Subject.user(),
                                    context.attributes_threshold);
 
@@ -71,7 +71,7 @@ namespace etoile
           context.attributes_nest =
             new etoile::nest::Nest(ATTRIBUTES_SECRET_KEY_LENGTH,
                                    context.attributes_limits,
-                                   depot::global_depot->network(),
+                                   Etoile::instance()->network(),
                                    agent::Agent::Subject.user(),
                                    context.attributes_threshold);
 

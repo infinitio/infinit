@@ -2,12 +2,13 @@
 
 #include <elle/log.hh>
 
-#include <etoile/journal/Journal.hh>
+#include <etoile/Etoile.hh>
+#include <etoile/Exception.hh>
 #include <etoile/depot/Depot.hh>
+#include <etoile/gear/Action.hh>
 #include <etoile/gear/Scope.hh>
 #include <etoile/gear/Transcript.hh>
-#include <etoile/gear/Action.hh>
-#include <etoile/Exception.hh>
+#include <etoile/journal/Journal.hh>
 
 #include <nucleus/factory.hh>
 
@@ -206,7 +207,7 @@ namespace etoile
             {
             case gear::Action::Type::push:
               {
-                action->apply<depot::Depot>(*etoile::depot::global_depot);
+                action->apply<depot::Depot>(Etoile::instance()->depot());
                 break;
               }
             case gear::Action::Type::wipe:
@@ -225,7 +226,7 @@ namespace etoile
               break;
             case gear::Action::Type::wipe:
               {
-                action->apply<depot::Depot>(*etoile::depot::global_depot);
+                action->apply<depot::Depot>(Etoile::instance()->depot());
                 break;
               }
             }

@@ -3,9 +3,12 @@
 
 # include <elle/types.hh>
 
+# include <etoile/depot/Depot.hh>
 # include <etoile/gear/Actor.hh>
 # include <etoile/gear/Identifier.hh>
 # include <etoile/shrub/Shrub.hh>
+
+#include <hole/Hole.hh>
 
 namespace etoile
 {
@@ -13,7 +16,7 @@ namespace etoile
   class Etoile
   {
   public:
-    Etoile();
+    Etoile(hole::Hole* hole);
     ~Etoile();
 
   /*-------.
@@ -35,6 +38,13 @@ namespace etoile
   `-----*/
   private:
     ELLE_ATTRIBUTE_RX(shrub::Shrub, shrub);
+
+  /*------.
+  | Depot |
+  `------*/
+  private:
+    ELLE_ATTRIBUTE_RX(depot::Depot, depot);
+    ELLE_ATTRIBUTE_r(nucleus::proton::Network, network);
 
   /*----------------.
   | Global instance |

@@ -1,11 +1,12 @@
-#include <etoile/automaton/Group.hh>
-#include <etoile/automaton/Ensemble.hh>
-#include <etoile/automaton/Rights.hh>
-#include <etoile/gear/Group.hh>
-#include <etoile/depot/Depot.hh>
+#include <etoile/Etoile.hh>
+#include <etoile/Exception.hh>
+#include <etoile/Exception.hh>
 #include <etoile/abstract/Group.hh>
-#include <etoile/Exception.hh>
-#include <etoile/Exception.hh>
+#include <etoile/automaton/Ensemble.hh>
+#include <etoile/automaton/Group.hh>
+#include <etoile/automaton/Rights.hh>
+#include <etoile/depot/Depot.hh>
+#include <etoile/gear/Group.hh>
 
 #include <nucleus/proton/Door.hh>
 #include <nucleus/proton/Porcupine.hh>
@@ -76,7 +77,7 @@ namespace etoile
       ELLE_ASSERT(context.group == nullptr);
 
       context.group.reset(
-        depot::global_depot->pull_group(
+        Etoile::instance()->depot().pull_group(
           context.location.address(),
           context.location.revision()).release());
 

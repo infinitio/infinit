@@ -62,12 +62,6 @@ namespace etoile
       elle::Status
       Wipe(const nucleus::proton::Address&);
     };
-
-
-    /*------------------------------.
-    | Global Depot instance (FIXME) |
-    `------------------------------*/
-    extern Depot* global_depot;
   }
 }
 

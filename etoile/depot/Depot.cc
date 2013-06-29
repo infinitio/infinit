@@ -19,12 +19,6 @@ namespace etoile
 {
   namespace depot
   {
-    /*------------------------------.
-    | Global Depot instance (FIXME) |
-    `------------------------------*/
-
-    Depot* global_depot = nullptr;
-
     /*-------------.
     | Construction |
     `-------------*/

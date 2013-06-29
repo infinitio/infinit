@@ -16,6 +16,7 @@ using namespace infinit;
 # include <nucleus/neutron/Catalog.hh>
 # include <nucleus/neutron/Reference.hh>
 
+# include <etoile/Etoile.hh>
 # include <etoile/automaton/Rights.hh>
 # include <etoile/automaton/Author.hh>
 # include <etoile/automaton/Access.hh>
@@ -65,7 +66,7 @@ namespace etoile
               context.contents_nest =
                 new etoile::nest::Nest(CONTENTS_SECRET_KEY_LENGTH,
                                        context.contents_limits,
-                                       depot::global_depot->network(),
+                                       Etoile::instance()->network(),
                                        agent::Agent::Subject.user(),
                                        context.contents_threshold);
 
@@ -89,7 +90,7 @@ namespace etoile
           context.contents_nest =
             new etoile::nest::Nest(CONTENTS_SECRET_KEY_LENGTH,
                                    context.contents_limits,
-                                   depot::global_depot->network(),
+                                   Etoile::instance()->network(),
                                    agent::Agent::Subject.user(),
                                    context.contents_threshold);
 

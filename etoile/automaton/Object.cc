@@ -52,7 +52,7 @@ namespace etoile
       ELLE_ASSERT(context.object == nullptr);
 
       context.object.reset(
-        depot::global_depot->pull_object(
+        Etoile::instance()->depot().pull_object(
           context.location.address(),
           context.location.revision()).release());
 

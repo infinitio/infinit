@@ -157,16 +157,13 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   ELLE_DEBUG("constructing hole");
   std::unique_ptr<hole::Hole> hole(
     infinit::hole_factory(storage, passport, Infinit::authority(), members));
-  std::unique_ptr<etoile::depot::Depot> depot(
-    new etoile::depot::Depot(hole.get()));
-  etoile::depot::global_depot = depot.get();
   ELLE_DEBUG("hole constructed");
 #ifdef INFINIT_HORIZON
   ELLE_DEBUG("INFINIT_HORIZON enable");
   horizon::hole(hole.get());
 #endif
 
-  std::unique_ptr<etoile::Etoile> etoile(new etoile::Etoile);
+  std::unique_ptr<etoile::Etoile> etoile(new etoile::Etoile(hole.get()));
 
   // initialize the horizon.
   if (!Infinit::Mountpoint.empty())
@@ -191,8 +188,6 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
       throw elle::Exception("unable to clean the horizon");
 #endif
 
-  etoile::depot::global_depot = nullptr;
-  depot.reset();
   etoile.reset();
 
   // clean the Agent library.

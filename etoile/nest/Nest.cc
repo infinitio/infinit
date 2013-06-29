@@ -1,8 +1,9 @@
-#include <etoile/nest/Nest.hh>
-#include <etoile/gear/Transcript.hh>
-#include <etoile/gear/Action.hh>
-#include <etoile/depot/Depot.hh>
+#include <etoile/Etoile.hh>
 #include <etoile/Exception.hh>
+#include <etoile/depot/Depot.hh>
+#include <etoile/gear/Action.hh>
+#include <etoile/gear/Transcript.hh>
+#include <etoile/nest/Nest.hh>
 
 #include <elle/finally.hh>
 #include <elle/log.hh>
@@ -619,7 +620,7 @@ namespace etoile
 
       // Otherwise, load the block from the depot.
       auto contents =
-        depot::global_depot->pull<nucleus::proton::Contents>(
+        Etoile::instance()->depot().pull<nucleus::proton::Contents>(
           pod->egg()->address(),
           nucleus::proton::Revision::Last);
 
