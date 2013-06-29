@@ -11,9 +11,11 @@
 namespace etoile
 {
   namespace time = boost::posix_time;
-  Etoile::Etoile(hole::Hole* hole,
+  Etoile::Etoile(infinit::cryptography::KeyPair const& keys,
+                 hole::Hole* hole,
                  nucleus::proton::Address const& root_address,
                  bool portal):
+    _keys(keys),
     _portal(portal),
     _actors(),
     _shrub(Infinit::Configuration.etoile.shrub.capacity,

@@ -46,7 +46,7 @@ test()
                                           reactor::network::Protocol::tcp));
   slug->push(root_addr, root);
 
-  etoile::Etoile etoile(slug.get(), root_addr, false);
+  etoile::Etoile etoile(keys, slug.get(), root_addr, false);
 }
 
 BOOST_AUTO_TEST_CASE(test_etoile)

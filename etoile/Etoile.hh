@@ -3,6 +3,8 @@
 
 # include <elle/types.hh>
 
+# include <cryptography/KeyPair.hh>
+
 # include <etoile/depot/Depot.hh>
 # include <etoile/gear/Actor.hh>
 # include <etoile/gear/Identifier.hh>
@@ -16,11 +18,13 @@ namespace etoile
   class Etoile
   {
   public:
-    Etoile(hole::Hole* hole,
+    Etoile(infinit::cryptography::KeyPair const& keys,
+           hole::Hole* hole,
            nucleus::proton::Address const& root_address,
            bool portal = true);
     ~Etoile();
   private:
+    ELLE_ATTRIBUTE_R(infinit::cryptography::KeyPair, keys);
     ELLE_ATTRIBUTE(bool, portal);
 
   /*-------.
