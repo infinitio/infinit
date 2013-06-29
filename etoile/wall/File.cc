@@ -139,7 +139,7 @@ namespace etoile
     void
     File::write(gear::Identifier const& identifier,
                 nucleus::neutron::Offset const& offset,
-                elle::WeakBuffer const& data)
+                elle::ConstWeakBuffer data)
     {
       ELLE_TRACE_FUNCTION(identifier, offset, data);
 

@@ -38,7 +38,7 @@ namespace etoile
       void
       write(gear::Identifier const& identifier,
             nucleus::neutron::Offset const& offset,
-            elle::WeakBuffer const& data);
+            elle::ConstWeakBuffer data);
       /// Read _size_ bytes of data from the file, at the given offset
       /// _offset_.
       static
