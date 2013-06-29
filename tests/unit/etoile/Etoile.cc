@@ -14,6 +14,10 @@
 #include <hole/implementations/slug/Slug.hh>
 
 #include <etoile/Etoile.hh>
+#include <etoile/path/Chemin.hh>
+#include <etoile/wall/Directory.hh>
+#include <etoile/wall/File.hh>
+#include <etoile/wall/Path.hh>
 
 infinit::cryptography::KeyPair authority_keys =
   infinit::cryptography::KeyPair::generate(
@@ -47,6 +51,16 @@ test()
   slug->push(root_addr, root);
 
   etoile::Etoile etoile(keys, slug.get(), root_addr, false);
+
+  auto root_chemin = etoile::wall::Path::resolve("/");
+  auto root_actor = etoile::wall::Directory::load(root_chemin);
+
+  auto file_actor = etoile::wall::File::create();
+  etoile::wall::Directory::add(root_actor, "test_file", file_actor);
+  etoile::wall::File::write(file_actor, 0,
+                            elle::ConstWeakBuffer("Hello world.", 12));
+  etoile::wall::File::store(file_actor);
+  etoile::wall::Directory::store(root_actor);
 }
 
 BOOST_AUTO_TEST_CASE(test_etoile)
