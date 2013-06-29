@@ -413,17 +413,6 @@ namespace nucleus
 // ---------- block -----------------------------------------------------------
 //
 
-    /// Implements the Block's validate() interface method.
-    ///
-    /// However, since the Object requires additional information in
-    /// order to be validated, this method must *never* be used and therefore
-    /// returns an error.
-    void
-    Object::validate(proton::Address const&) const
-    {
-      throw Exception("this method should never have been called");
-    }
-
     void
     Object::validate(proton::Address const& address,
                      cryptography::Digest const& fingerprint) const
