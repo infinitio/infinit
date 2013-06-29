@@ -26,10 +26,12 @@ namespace etoile
     | Construction |
     `-------------*/
     public:
-      Depot(hole::Hole* hole);
+      Depot(hole::Hole* hole,
+            nucleus::proton::Address const& root_address);
     private:
       ELLE_ATTRIBUTE(hole::Hole*, hole);
       ELLE_ATTRIBUTE_r(nucleus::proton::Network, network);
+      ELLE_ATTRIBUTE(nucleus::proton::Address, root_address);
 
     /*-----------.
     | Operations |

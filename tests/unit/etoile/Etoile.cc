@@ -8,6 +8,8 @@
 #include <reactor/network/Protocol.hh>
 #include <reactor/scheduler.hh>
 
+#include <nucleus/neutron/Object.hh>
+
 #include <hole/storage/Memory.hh>
 #include <hole/implementations/slug/Slug.hh>
 
@@ -27,6 +29,13 @@ void
 test()
 {
   nucleus::proton::Network network("test network");
+
+  // Create root block.
+  nucleus::neutron::Object root(network, keys.K(),
+                                nucleus::neutron::Genre::directory);
+  root.Seal(keys.k());
+  auto root_addr = root.bind();
+
   hole::storage::Memory storage(network);
   elle::Passport passport("passport", "host", keys.K(), authority);
 
@@ -35,8 +44,9 @@ test()
                                           passport,
                                           authority,
                                           reactor::network::Protocol::tcp));
+  slug->push(root_addr, root);
 
-  etoile::Etoile etoile(slug.get(), false);
+  etoile::Etoile etoile(slug.get(), root_addr, false);
 }
 
 BOOST_AUTO_TEST_CASE(test_etoile)

@@ -16,7 +16,9 @@ namespace etoile
   class Etoile
   {
   public:
-    Etoile(hole::Hole* hole, bool portal = true);
+    Etoile(hole::Hole* hole,
+           nucleus::proton::Address const& root_address,
+           bool portal = true);
     ~Etoile();
   private:
     ELLE_ATTRIBUTE(bool, portal);

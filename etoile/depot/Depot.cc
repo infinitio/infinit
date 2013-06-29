@@ -23,8 +23,10 @@ namespace etoile
     | Construction |
     `-------------*/
 
-    Depot::Depot(hole::Hole* hole):
-      _hole(hole)
+    Depot::Depot(hole::Hole* hole,
+                 nucleus::proton::Address const& root_address):
+      _hole(hole),
+      _root_address(root_address)
     {}
 
     nucleus::proton::Network const&
@@ -40,10 +42,7 @@ namespace etoile
     elle::Status
     Depot::Origin(nucleus::proton::Address& address)
     {
-      // FIXME: do not re-parse the descriptor every time.
-      lune::Descriptor descriptor(Infinit::User, Infinit::Network);
-      address = descriptor.meta().root();
-      return elle::Status::Ok;
+      return this->_root_address;
     }
 
     elle::Status

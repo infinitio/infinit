@@ -11,13 +11,15 @@
 namespace etoile
 {
   namespace time = boost::posix_time;
-  Etoile::Etoile(hole::Hole* hole, bool portal):
+  Etoile::Etoile(hole::Hole* hole,
+                 nucleus::proton::Address const& root_address,
+                 bool portal):
     _portal(portal),
     _actors(),
     _shrub(Infinit::Configuration.etoile.shrub.capacity,
            time::milliseconds(Infinit::Configuration.etoile.shrub.lifespan),
            time::milliseconds(Infinit::Configuration.etoile.shrub.frequency)),
-    _depot(hole)
+    _depot(hole, root_address)
   {
     ELLE_ASSERT(!this->_instance);
     this->_instance = this;
