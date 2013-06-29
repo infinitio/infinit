@@ -31,13 +31,15 @@ namespace hole
       | Construction |
       `-------------*/
       public:
+        typedef std::vector<elle::network::Locus> Members;
         Slug(hole::storage::Storage& storage,
              elle::Passport const& passport,
              elle::Authority const& authority,
              reactor::network::Protocol protocol,
-             std::vector<elle::network::Locus> const& members,
-             int port,
-             reactor::Duration connection_timeout,
+             Members const& members = Members(),
+             int port = 0,
+             reactor::Duration connection_timeout =
+               boost::posix_time::milliseconds(5000),
              std::unique_ptr<reactor::network::UDPSocket> socket = nullptr);
         virtual ~Slug();
       private:
