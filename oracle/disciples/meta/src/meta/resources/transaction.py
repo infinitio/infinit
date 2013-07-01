@@ -256,7 +256,8 @@ class Create(Page):
         self.notifier.notify_some(
             notifier.TRANSACTION,
             [database.ObjectId(recipient_id), database.ObjectId(_id)],
-            transaction
+            transaction,
+            store = True,
         )
 
         return self.success({
