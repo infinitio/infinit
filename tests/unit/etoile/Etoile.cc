@@ -50,7 +50,7 @@ test()
                                           reactor::network::Protocol::tcp));
   slug->push(root_addr, root);
 
-  etoile::Etoile etoile(keys, slug.get(), root_addr, false);
+  etoile::Etoile etoile(keys, slug.get(), root_addr);
 
   auto root_chemin = etoile::wall::Path::resolve("/");
   auto root_actor = etoile::wall::Directory::load(root_chemin);

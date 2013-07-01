@@ -25,11 +25,8 @@ namespace etoile
   public:
     Etoile(infinit::cryptography::KeyPair const& user_keypair,
            hole::Hole* hole,
-           nucleus::proton::Address const& root_address,
-           bool portal = true);
+           nucleus::proton::Address const& root_address);
     ~Etoile();
-  private:
-    ELLE_ATTRIBUTE(bool, portal);
 
     /*-----.
     | User |

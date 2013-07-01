@@ -3,7 +3,6 @@
 #include <etoile/gear/Actor.hh>
 #include <etoile/gear/Scope.hh>
 #include <etoile/path/Path.hh>
-#include <etoile/portal/Portal.hh>
 #include <etoile/shrub/Shrub.hh>
 
 #include <Infinit.hh>
@@ -13,9 +12,7 @@ namespace etoile
   namespace time = boost::posix_time;
   Etoile::Etoile(infinit::cryptography::KeyPair const& user_keypair,
                  hole::Hole* hole,
-                 nucleus::proton::Address const& root_address,
-                 bool portal):
-    _portal(portal),
+                 nucleus::proton::Address const& root_address):
     _user_keypair(user_keypair),
     _user_subject(this->_user_keypair.K()),
     _actors(),
@@ -26,18 +23,10 @@ namespace etoile
   {
     ELLE_ASSERT(!this->_instance);
     this->_instance = this;
-
-    if (portal)
-      if (portal::Portal::Initialize() == elle::Status::Error)
-        throw Exception("unable to initialize the portal");
   }
 
   Etoile::~Etoile()
   {
-    if (this->_portal)
-      if (portal::Portal::Clean() == elle::Status::Error)
-        throw Exception("unable to clean the portal");
-
     for (auto& actor: this->_actors)
       delete actor.second;
     this->_actors.clear();

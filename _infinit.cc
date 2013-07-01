@@ -168,8 +168,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   std::unique_ptr<etoile::Etoile> etoile(
     new etoile::Etoile(agent::Agent::Identity.pair(),
                        hole.get(),
-                       descriptor.meta().root(),
-                       true));
+                       descriptor.meta().root()));
 
   // initialize the horizon.
   if (!Infinit::Mountpoint.empty())
