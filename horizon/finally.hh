@@ -9,7 +9,8 @@
     _variable_,                                                         \
     [] (etoile::gear::Identifier const& identifier)                     \
     {                                                                   \
-      etoile::wall::Object::discard(identifier);                        \
+      etoile::wall::Object::discard(*etoile::Etoile::instance(),        \
+                                    identifier);                        \
     });
 
 /// Make it super easy to abort the final action based on the name of
