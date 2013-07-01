@@ -1250,6 +1250,12 @@ def configure(cxx_toolkit = None,
     runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status
 
+  for test in ['pingpong-notifications.py',]:
+    test = drake.node('tests/functional/sharing/%s' % test)
+    runner = drake.Runner(test)
+    runner.reporting = drake.Runner.Reporting.on_failure
+    check << runner.status
+
   build << drake.cxx.Executable("bin/pass",
           drake.nodes('tests/unit/pass.cc', 'common/common.cc') + [reactor_lib,
               elle_lib] + udt_libs,
