@@ -5,8 +5,6 @@
 
 #include <elle/log.hh>
 
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Path");
 
 namespace etoile

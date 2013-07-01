@@ -19,9 +19,6 @@
 #include <nucleus/neutron/Offset.hh>
 #include <nucleus/neutron/Size.hh>
 
-
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.wall.File");
 
 namespace etoile

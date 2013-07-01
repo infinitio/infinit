@@ -21,8 +21,6 @@
 
 #include <hole/Hole.hh>
 
-#include <Infinit.hh>
-
 namespace etoile
 {
   namespace path

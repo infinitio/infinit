@@ -21,8 +21,6 @@
 #include <nucleus/neutron/Range.hh>
 #include <nucleus/neutron/Fellow.hh>
 
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Group");
 
 namespace etoile

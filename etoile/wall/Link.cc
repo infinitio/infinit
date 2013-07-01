@@ -14,8 +14,6 @@
 #include <etoile/journal/Journal.hh>
 #include <etoile/Exception.hh>
 
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Link");
 
 namespace etoile

@@ -13,8 +13,6 @@
 #include <nucleus/neutron/Trait.hh>
 #include <nucleus/neutron/Range.hh>
 
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Attributes");
 
 namespace etoile

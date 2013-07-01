@@ -2,8 +2,6 @@
 #include <etoile/shrub/Shrub.hh>
 #include <etoile/Exception.hh>
 
-#include <Infinit.hh>
-
 namespace etoile
 {
   namespace shrub

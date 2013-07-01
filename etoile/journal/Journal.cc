@@ -12,8 +12,6 @@
 
 #include <nucleus/factory.hh>
 
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.journal.Journal");
 
 /// XXX[to remove when file system I/Os while be async]

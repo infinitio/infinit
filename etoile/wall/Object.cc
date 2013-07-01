@@ -25,8 +25,6 @@
 #include <nucleus/neutron/Object.hh>
 #include <nucleus/neutron/Genre.hh>
 
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Object");
 
 namespace etoile
