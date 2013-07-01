@@ -1131,6 +1131,8 @@ def configure(cxx_toolkit = None,
       rule_check = drake.TestSuite('oracle/%s/check' % name)
       for test in git.ls_files(root / 'tests'):
         test = drake.node(test)
+        if not test.path().executable:
+          continue
         runner = drake.Runner(test)
         runner.reporting = drake.Runner.Reporting.on_failure
         rule_check << runner.status
