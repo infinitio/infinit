@@ -133,8 +133,9 @@ class AddUser(_Page):
         self.notifier.notify_some(
             notifier.NETWORK_UPDATE,
             recipient_ids = network["users"],
-            {"network_id": str(network['_id']), "what": NEW_USER},
-            store=False)
+            message = {"network_id": str(network['_id']), "what": NEW_USER},
+            store = False,
+        )
 
         return self.success({
             'updated_network_id': str(network['_id']),
@@ -368,8 +369,9 @@ class Update(_Page):
             self.notifier.notify_some(
                 notifier.NETWORK_UPDATE,
                 recipient_ids = to_save["users"],
-                {"network_id": _id, "what": UPDATE},
-                store = False);
+                message = {"network_id": _id, "what": UPDATE},
+                store = False,
+            )
         except socket.error as e:
             print("Trophonius error:", e)
         return self.success({
@@ -423,8 +425,9 @@ class AddDevice(_Page):
             self.notifier.notify_some(
                 notifier.NETWORK_UPDATE,
                 recipient_ids = network["users"],
-                {"network_id": str(network['_id']), "what": NEW_DEVICE},
-                store = False)
+                message = {"network_id": str(network['_id']), "what": NEW_DEVICE},
+                store = False,
+            )
 
         return self.success({
             "updated_network_id": str(network['_id']),
@@ -629,8 +632,9 @@ class Delete(_Page):
         self.notifier.notify_some(
             notifier.NETWORK_UPDATE,
             recipient_ids = users,
-            {"network_id": network_id, "what": DELETED},
-            store = False)
+            message = {"network_id": network_id, "what": DELETED},
+            store = False,
+        )
 
         database.networks().update(
             {

@@ -256,7 +256,7 @@ class Create(Page):
         self.notifier.notify_some(
             notifier.TRANSACTION,
             device_ids = device_ids,
-            transaction,
+            message = transaction,
             store = True,
         )
 
@@ -354,7 +354,8 @@ class Accept(_UpdateTransaction):
         self.notifier.notify_some(
             notifier.TRANSACTION,
             device_ids = device_ids,
-            transaction
+            message = transaction,
+            store = True,
         )
 
         return self.success({
@@ -449,7 +450,8 @@ class Update(_UpdateTransaction):
             self.notifier.notify_some(
                 notifier.TRANSACTION,
                 device_ids = device_ids,
-                transaction,
+                message = transaction,
+                store = True,
             )
         return self.success({
             'updated_transaction_id': transaction['_id'],

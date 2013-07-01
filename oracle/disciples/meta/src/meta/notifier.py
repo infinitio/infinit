@@ -39,8 +39,6 @@ NETWORK_CHANGED = 128
 class Notifier(object):
     def open(self):
         raise Exception('Not implemented')
-    def notify_some(self, notif_type, recipeint_ids, device_ids, message, store):
-        raise Exception('Not implemented')
     def close(self):
         raise Exception('Not implemented')
 
@@ -62,10 +60,11 @@ class TrophoniusNotify(Notifier):
                     notification_type,
                     recipient_ids = None,
                     device_ids = None,
-                    message,
+                    message = None,
                     store = True):
         # Check that we either have a list of recipients or devices
         assert recipient_ids is None ^ device_ids is None
+        assert message is not None
 
         message['notification_type'] = notification_type
         message['timestamp'] = time.time() #timestamp in s.

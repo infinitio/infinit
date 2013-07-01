@@ -112,7 +112,7 @@ class Message(Page):
         self.notifier.notify_some(
             notifier.MESSAGE,
             recipient_ids = [database.ObjectId(self.data["recipient_id"]),],
-            {
+            message = {
                 'sender_id' : self.data['sender_id'],
                 'message': self.data['message'],
             }

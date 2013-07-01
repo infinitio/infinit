@@ -160,7 +160,12 @@ class Page(object):
         )
         d = {"user_id" : user_id}
         d.update(data)
-        self.notifier.notify_some(notification_id, swaggers, d, store = False)
+        self.notifier.notify_some(
+            notification_id,
+            recipient_ids = swaggers,
+            message = d,
+            store = False,
+        )
 
     def error(self, error_code = error.UNKNOWN, msg = None):
         assert isinstance(error_code, tuple)
