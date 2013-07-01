@@ -82,7 +82,8 @@ namespace etoile
     }
 
     gear::Identifier
-    Directory::load(path::Chemin const& chemin)
+    Directory::load(etoile::Etoile& etoile,
+                    path::Chemin const& chemin)
     {
       ELLE_TRACE_FUNCTION(chemin);
 
@@ -177,41 +178,28 @@ namespace etoile
       }
     }
 
-    ///
-    /// this method returns the directory entry associated with the
-    /// given name.
-    ///
-    /// note that this method should be used careful as a pointer to the
-    /// target entry is returned. should this entry be destroyed by another
-    /// actor's operation, accessing it could make the system crash.
-    ///
-    elle::Status
-    Directory::Lookup(const gear::Identifier& identifier,
-                      const std::string& name,
-                      nucleus::neutron::Entry const*& entry)
+    nucleus::neutron::Entry const*
+    Directory::lookup(Etoile& etoile,
+                      const gear::Identifier& identifier,
+                      const std::string& name)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
-      gear::Directory*  context;
 
-      // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex);
-
-        // retrieve the context.
+        gear::Directory* context;
         if (scope->Use(context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
-
-        // apply the lookup automaton on the context.
+        nucleus::neutron::Entry const* entry;
         if (automaton::Directory::Lookup(*context,
                                          name,
                                          entry) == elle::Status::Error)
           throw Exception("unable to lookup the directory entry");
+        return entry;
       }
-
-      return elle::Status::Ok;
     }
 
     nucleus::neutron::Range<nucleus::neutron::Entry>
@@ -360,11 +348,12 @@ namespace etoile
     }
 
     void
-    Directory::discard(gear::Identifier const& identifier)
+    Directory::discard(etoile::Etoile& etoile,
+                       gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
       gear::Directory* context;
 

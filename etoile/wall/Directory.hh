@@ -29,7 +29,8 @@ namespace etoile
       /// Load the directory referenced through the given chemin.
       static
       gear::Identifier
-      load(path::Chemin const& chemin);
+      load(etoile::Etoile& etoile,
+           path::Chemin const& chemin);
       /// Add an entry to the given directory.
       static
       void
@@ -37,11 +38,16 @@ namespace etoile
           std::string const& name,
           gear::Identifier const& child);
 
+      /// The directory entry associated with the given name.
+      ///
+      /// This method should be used careful as a pointer to the target entry is
+      /// returned. should this entry be destroyed by another actor's operation,
+      /// accessing it could make the system crash.
       static
-      elle::Status
-      Lookup(const gear::Identifier&,
-             const std::string&,
-             nucleus::neutron::Entry const*&);
+      nucleus::neutron::Entry const*
+      lookup(etoile::Etoile& etoile,
+             const gear::Identifier&,
+             const std::string&);
 
       /// Return a set of entries located in [index, index + size[.
       static
@@ -63,7 +69,8 @@ namespace etoile
       /// Discard the scope, potentially ignoring some modifications.
       static
       void
-      discard(gear::Identifier const& identifier);
+      discard(etoile::Etoile& etoile,
+              gear::Identifier const& identifier);
       /// Commit the pending modifications by placing the scope in the journal.
       static
       void

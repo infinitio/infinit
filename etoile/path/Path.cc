@@ -79,7 +79,6 @@ namespace etoile
            scoutor++)
       {
         std::string slice;
-        nucleus::neutron::Entry const* entry;
 
         // Extract the slice/revision from the current slab.
         if (Path::Parse(*scoutor,
@@ -93,30 +92,28 @@ namespace etoile
 
         Chemin chemin(route, venue, venue.elements().size());
 
-        gear::Identifier identifier(wall::Directory::load(chemin));
-        if (wall::Directory::Lookup(identifier,
-                                    slice,
-                                    entry) == elle::Status::Error)
+
         {
-          wall::Directory::discard(identifier);
+          gear::Identifier identifier(wall::Directory::load(etoile, chemin));
+          elle::Finally discard([&]{
+              wall::Directory::discard(etoile, identifier);
+            });
+          nucleus::neutron::Entry const* entry =
+            wall::Directory::lookup(etoile, identifier, slice);
 
-          throw Exception("unable to lookup the slice");
+          // Set the address; the revision is already set i.e it has been
+          // extracted from the slab.
+          if (entry != nullptr)
+            address = entry->address();
+
+          // If there is no such entry, abort.  Note that the pointer is used to
+          // know whether or not the lookup has succeded. however, the entry's
+          // content cannot be accessed as it has potentially been released with
+          // the context through the call to Discard().
+          if (entry == nullptr)
+            throw wall::NoSuchFileOrDirectory(*reactor::Scheduler::scheduler(),
+                                              slice);
         }
-
-        // Set the address; the revision is already set i.e it has been
-        // extracted from the slab.
-        if (entry != nullptr)
-          address = entry->address();
-
-        wall::Directory::discard(identifier);
-
-        // If there is no such entry, abort.  Note that the pointer is used to
-        // know whether or not the lookup has succeded. however, the entry's
-        // content cannot be accessed as it has potentially been released with
-        // the context through the call to Discard().
-        if (entry == nullptr)
-          throw wall::NoSuchFileOrDirectory(*reactor::Scheduler::scheduler(),
-                                            slice);
         venue.append(address, revision);
       }
 

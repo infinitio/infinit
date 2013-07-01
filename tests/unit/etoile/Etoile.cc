@@ -53,7 +53,7 @@ test()
   etoile::Etoile etoile(keys, slug.get(), root_addr);
 
   auto root_chemin = etoile::wall::Path::resolve(etoile, "/");
-  auto root_actor = etoile::wall::Directory::load(root_chemin);
+  auto root_actor = etoile::wall::Directory::load(etoile, root_chemin);
 
   auto file_actor = etoile::wall::File::create();
   etoile::wall::Directory::add(root_actor, "test_file", file_actor);

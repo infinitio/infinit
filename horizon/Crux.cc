@@ -306,7 +306,8 @@ namespace horizon
       etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the directory.
-    etoile::gear::Identifier identifier(etoile::wall::Directory::load(chemin));
+    etoile::gear::Identifier identifier(
+      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
 
     // Duplicate the identifier and save it in the info structure's
     // file handle.
@@ -410,7 +411,8 @@ namespace horizon
     ELLE_FINALLY_ACTION_DELETE(handle);
 
     // Discard the object.
-    etoile::wall::Directory::discard(handle->identifier);
+    etoile::wall::Directory::discard(*etoile::Etoile::instance(),
+                                     handle->identifier);
 
     delete handle;
 
@@ -439,7 +441,8 @@ namespace horizon
     etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the directory.
-    etoile::gear::Identifier directory(etoile::wall::Directory::load(chemin));
+    etoile::gear::Identifier directory(
+      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
 
     HORIZON_FINALLY_ACTION_DISCARD(directory);
 
@@ -537,11 +540,14 @@ namespace horizon
     nucleus::neutron::Subject subject;
 
     // Resolve the path.
-    etoile::path::Chemin chemin_parent(etoile::wall::Path::resolve(*etoile::Etoile::instance(), parent));
+    etoile::path::Chemin chemin_parent(
+      etoile::wall::Path::resolve(*etoile::Etoile::instance(),
+                                  parent));
 
     // Load the directory.
     etoile::gear::Identifier directory(
-      etoile::wall::Directory::load(chemin_parent));
+      etoile::wall::Directory::load(*etoile::Etoile::instance(),
+                                    chemin_parent));
 
     HORIZON_FINALLY_ACTION_DISCARD(directory);
 
@@ -562,7 +568,7 @@ namespace horizon
 
     // Load the subdirectory.
     etoile::gear::Identifier subdirectory(
-      etoile::wall::Directory::load(chemin_child));
+      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin_child));
 
     HORIZON_FINALLY_ACTION_DISCARD(subdirectory);
 
@@ -1082,10 +1088,12 @@ namespace horizon
     std::string to(target);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), from));
+    etoile::path::Chemin chemin(
+      etoile::wall::Path::resolve(*etoile::Etoile::instance(), from));
 
     // Load the directory.
-    etoile::gear::Identifier directory(etoile::wall::Directory::load(chemin));
+    etoile::gear::Identifier directory(
+      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
 
     HORIZON_FINALLY_ACTION_DISCARD(directory);
 
@@ -1233,10 +1241,12 @@ namespace horizon
     std::string parent = _dirname(path, name);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), parent));
+    etoile::path::Chemin chemin(
+      etoile::wall::Path::resolve(*etoile::Etoile::instance(), parent));
 
     // Load the directory.
-    etoile::gear::Identifier directory(etoile::wall::Directory::load(chemin));
+    etoile::gear::Identifier directory(
+      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
 
     HORIZON_FINALLY_ACTION_DISCARD(directory);
 
@@ -1660,7 +1670,6 @@ namespace horizon
         // In this case, the object to move can simply be renamed
         // since the source and target directory are identical.
 
-        nucleus::neutron::Entry const* entry;
         etoile::path::Chemin chemin;
 
         ELLE_TRACE("resolve the source directory path")
@@ -1669,7 +1678,7 @@ namespace horizon
         ELLE_TRACE("load source directory");
 
         etoile::gear::Identifier directory(
-          etoile::wall::Directory::load(chemin));
+          etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
 
         HORIZON_FINALLY_ACTION_DISCARD(directory);
 
@@ -1687,12 +1696,19 @@ namespace horizon
              nucleus::neutron::permissions::write))
           return (-EACCES);
 #endif
-
-        ELLE_TRACE("lookup for the target name")
-          if (etoile::wall::Directory::Lookup(directory,
-                                              t,
-                                              entry) == elle::Status::Error)
-            return (-EPERM);
+        nucleus::neutron::Entry const* entry = nullptr;
+        try
+        {
+          ELLE_TRACE("lookup for the target name")
+            entry = etoile::wall::Directory::lookup(*etoile::Etoile::instance(),
+                                                    directory,
+                                                    t);
+        }
+        catch (...)
+        {
+          // XXX: is that really the only case ?
+          return (-EPERM);
+        }
 
         // Check if an entry actually exist for the target name
         // meaning that an object is about to get overwritten.
@@ -1727,7 +1743,6 @@ namespace horizon
         // entry in the _to_ directory is added while the entry in
         // the _from_ directory is removed.
         etoile::gear::Identifier identifier_object;
-        nucleus::neutron::Entry const* entry;
 
         // Resolve the path.
         etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), source));
@@ -1743,7 +1758,7 @@ namespace horizon
 
         // Load the _to_ directory.
         etoile::gear::Identifier identifier_to(
-          etoile::wall::Directory::load(chemin));
+          etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
 
         HORIZON_FINALLY_ACTION_DISCARD(identifier_to);
 
@@ -1764,7 +1779,7 @@ namespace horizon
 
         // Load the _from_ directory.
         etoile::gear::Identifier identifier_from(
-          etoile::wall::Directory::load(chemin));
+          etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
 
         HORIZON_FINALLY_ACTION_DISCARD(identifier_from);
 
@@ -1783,10 +1798,17 @@ namespace horizon
 #endif
 
         // Lookup for the target name.
-        if (etoile::wall::Directory::Lookup(identifier_to,
-                                            t,
-                                            entry) == elle::Status::Error)
+        nucleus::neutron::Entry const* entry = nullptr;
+        try
+        {
+          entry = etoile::wall::Directory::lookup(*etoile::Etoile::instance(),
+                                                  identifier_to,
+                                                  t);
+        }
+        catch (...)
+        {
           return (-EPERM);
+        }
 
         // Check if an entry actually exist for the target name
         // meaning that an object is about to get overwritten.
@@ -1877,7 +1899,7 @@ namespace horizon
 
     // Load the directory.
     etoile::gear::Identifier identifier_parent(
-      etoile::wall::Directory::load(chemin_parent));
+      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin_parent));
 
     HORIZON_FINALLY_ACTION_DISCARD(identifier_parent);
 
