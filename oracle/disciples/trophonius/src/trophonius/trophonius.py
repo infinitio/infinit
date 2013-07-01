@@ -210,8 +210,7 @@ class MetaTropho(basic.LineReceiver):
                     continue
                 log.msg("Send %s to %s (%s)" % (line, rec_id, self.factory.clients[rec_id]))
                 for c in self.factory.clients[rec_id]:
-                    #print(rec_id, c, line, sep=" | ");
-                    c.sendLine(str(msg))
+                    c.sendLine(str(line))
         except KeyError as ke:
             log.err("Handled exception {}: {} unknow id".format(
                 ke.__class__.__name__,
