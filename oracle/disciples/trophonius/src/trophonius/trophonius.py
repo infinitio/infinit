@@ -156,14 +156,6 @@ class Trophonius(basic.LineReceiver):
             assert isinstance(self.factory.clients, dict)
             self.factory.clients[self.device_id] = self
 
-            self.meta_client.post(
-                '/user/connected',
-                {
-                    'user_id': self.id,
-                    'user_token': self.token,
-                }
-            )
-
             # Enable the notifications for the current client
             self.state = "PING"
 
