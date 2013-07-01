@@ -59,7 +59,7 @@ class TrophoniusNotify(Notifier):
         if isinstance(message, dict):
             msg = json.dumps(message, default = str)
         else:
-            log.err('Notification was bad formed.')
+            log.err('Notification was ill formed.')
         self.conn.send(msg + "\n")
 
     def fill(self, message, notification_type, recipient):
