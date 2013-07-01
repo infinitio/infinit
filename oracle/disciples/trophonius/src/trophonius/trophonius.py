@@ -84,7 +84,7 @@ class Trophonius(basic.LineReceiver):
         if self._alive_service is not None:
             self._alive_service.stop()
 
-        print("Disconnect user: id=%s" % self.id)
+        log.msg("Disconnect user %s" % self.id)
 
         try:
             if self.devices is not None:
@@ -184,10 +184,10 @@ class MetaTropho(basic.LineReceiver):
         self.factory = factory
 
     def connectionMade(self):
-        log.msg("Meta: New connection from", self.transport.getPeer())
+        pass #log.msg("Meta: New connection from", self.transport.getPeer())
 
     def connectionLost(self, reason):
-        log.msg("Meta: Connection lost with", self.transport.getPeer(), reason)
+        pass #log.msg("Meta: Connection lost with", self.transport.getPeer(), reason)
 
     def _send_res(self, res, msg=""):
         if isinstance(res, dict):
@@ -205,18 +205,18 @@ class MetaTropho(basic.LineReceiver):
     def enqueue(self, line, recipients):
         try:
             for rec_id in recipients:
-                print("Send to: ", rec_id)
                 if not rec_id in self.factory.clients:
-                    print("User not connected")
+                    log.msg("User %s not connected" % rec_id)
                     continue
+                log.msg("Send %s to %s (%s)" % (line, rec_id, self.factory.clients[rec_id]))
                 for c in self.factory.clients[rec_id]:
-                    print(rec_id, c, line, sep=" | ");
-                    msg = "{}".format(line)
-                    c.sendLine(msg)
+                    #print(rec_id, c, line, sep=" | ");
+                    c.sendLine(str(msg))
         except KeyError as ke:
             log.err("Handled exception {}: {} unknow id".format(
-                                        ke.__class__.__name__,
-                                        ke))
+                ke.__class__.__name__,
+                ke
+            ))
             raise InvalidID(rec_id)
 
     def make_switch(self, line):
