@@ -38,7 +38,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(description);
 
-      std::shared_ptr<gear::Scope> scope = Etoile::instance()->scope_supply();
+      std::shared_ptr<gear::Scope> scope = etoile.scope_supply();
       gear::Guard guard(scope);
       gear::Group* context;
 
@@ -49,7 +49,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         guard.actor(new gear::Actor(scope));
@@ -79,7 +79,7 @@ namespace etoile
 
       // XXX[change this so as to scope the groups i.e in order for the groups
       //     to be opened by multiple actors concurrently]
-      std::shared_ptr<gear::Scope> scope = Etoile::instance()->scope_supply();
+      std::shared_ptr<gear::Scope> scope = etoile.scope_supply();
       gear::Guard guard(scope);
       gear::Group* context;
 
@@ -88,7 +88,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         guard.actor(new gear::Actor(scope));
@@ -118,7 +118,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
@@ -129,7 +129,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the information automaton on the context.
@@ -148,7 +148,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
@@ -157,7 +157,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the add automaton on the context.
@@ -176,7 +176,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
@@ -185,7 +185,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the lookup automaton on the context.
@@ -209,7 +209,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier, index, size);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
@@ -218,7 +218,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the consult automaton on the context.
@@ -239,7 +239,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
@@ -248,7 +248,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the remove automaton on the context.
@@ -266,7 +266,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
@@ -277,7 +277,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -349,7 +349,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
@@ -360,7 +360,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -432,7 +432,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
@@ -443,7 +443,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in

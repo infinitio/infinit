@@ -41,7 +41,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the set automaton on the context.
@@ -73,7 +73,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the get automaton on the context.
@@ -107,7 +107,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the fetch automaton on the context.
@@ -138,7 +138,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the omit automaton on the context.

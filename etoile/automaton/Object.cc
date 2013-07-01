@@ -50,7 +50,7 @@ namespace etoile
       ELLE_ASSERT(context.object == nullptr);
 
       context.object.reset(
-        Etoile::instance()->depot().pull_object(
+        context.etoile().depot().pull_object(
           context.location.address(),
           context.location.revision()).release());
 
@@ -157,7 +157,7 @@ namespace etoile
 
           // seal the object alone with the access block.
           if (context.object->Seal(
-                Etoile::instance()->user_keypair().k(),
+                context.etoile().user_keypair().k(),
                 fingerprint) == elle::Status::Error)
             throw Exception("unable to seal the object");
 

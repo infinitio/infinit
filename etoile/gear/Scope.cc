@@ -9,6 +9,7 @@
 #include <etoile/gear/Object.hh>
 #include <etoile/gear/Group.hh>
 #include <etoile/gear/Chronicle.hh>
+#include <etoile/gear/Guard.hh>
 #include <etoile/Exception.hh>
 #include <etoile/Etoile.hh>
 
@@ -427,7 +428,7 @@ namespace etoile
       // The problem is solved by unregistering the scope as soon as we know
       // we are going to go through the shutdown process and that, from now
       // on, no more actors should be able to attach to it.
-      Etoile::instance()->scope_relinquish(this);
+      this->context->etoile().scope_relinquish(this);
 
       //
       // otherwise, the current actor is the last one and is responsible
@@ -493,7 +494,7 @@ namespace etoile
       reactor::Lock lock(mutex.write());
       {
         // allocate a context.
-        auto context = std::unique_ptr<T>(new T);
+        auto context = std::unique_ptr<T>(new T(this->context->etoile()));
 
         // locate the context based on the current scope's chemin.
         context->location = this->chemin.locate();
@@ -546,62 +547,38 @@ namespace etoile
       reactor::Lock lock(mutex.write());
       {
         T*              context = nullptr;
-        Actor*          actor = nullptr;
-
-        // XXX use a gear::Guard here.
-        struct OnExit
-        {
-          Actor*   actor;
-          std::shared_ptr<Scope> scope;
-          bool      track;
-
-          OnExit() :
-            actor(nullptr), scope(nullptr), track(true)
-          {}
-          ~OnExit()
-          {
-            if (!this->track)
-              return;
-            delete this->actor;
-            if (this->scope != nullptr)
-              Etoile::instance()->scope_annihilate(this->scope);
-          }
-        } guard;
 
         //
         // create a scope, very much as for wall::*::Create(), except
         // that it works even for objects which cannot, obviously, be created.
         //
         // supply a scope i.e request a new anonymous scope.
-        std::shared_ptr<Scope> scope = Etoile::instance()->scope_supply();
-
-        guard.scope = scope;
+        std::shared_ptr<Scope> scope = this->context->etoile().scope_supply();
+        gear::Guard guard(scope);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(this->context->etoile(), context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // allocate an actor on the new scope, making the scope valid
         // for triggering automata.
-        actor = new gear::Actor(scope);
-        guard.actor = actor;
+        guard.actor(new gear::Actor(scope));
 
         //
         // swap the contexts.
         //
         {
           // transfer the current scope's context to the new scope.
-          actor->scope->context = this->context;
+          guard.actor()->scope->context = this->context;
 
           // set the current scope's context with the new one.
           this->context = context;
         }
 
         // store the object which now carries the modified context.
-        T::W::store(*etoile::Etoile::instance(), actor->identifier);
+        T::W::store(this->context->etoile(), guard.actor()->identifier);
 
-        // waive the actor and the scope
-        guard.track = false;
+        guard.Release();
 
         //
         // at this point, a scope has been created, to which the modified

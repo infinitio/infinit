@@ -9,8 +9,8 @@
 # include <etoile/gear/fwd.hh>
 # include <etoile/gear/Actor.hh>
 # include <etoile/gear/Operation.hh>
-
 # include <etoile/path/Chemin.hh>
+# include <etoile/Etoile.hh>
 
 # include <reactor/rw-mutex.hh>
 
@@ -78,7 +78,8 @@ namespace etoile
       elle::Status      Detach(Actor*);
 
       template <typename T>
-      elle::Status      Use(T*&);
+      elle::Status      Use(Etoile& etoile,
+                            T*&);
 
       elle::Status      Operate(const Operation);
 

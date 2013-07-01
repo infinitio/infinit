@@ -6,6 +6,7 @@
 # include <elle/types.hh>
 
 # include <etoile/gear/fwd.hh>
+# include <etoile/fwd.hh>
 
 # include <nucleus/proton/Address.hh>
 # include <nucleus/proton/Revision.hh>
@@ -31,7 +32,8 @@ namespace etoile
       /// Record the given transcript for processing.
       static
       void
-      record(std::unique_ptr<gear::Transcript>&& transcript);
+      record(Etoile& etoile,
+             std::unique_ptr<gear::Transcript>&& transcript);
       /// XXX[to remove in favor of the method above]
       static
       elle::Status
@@ -52,7 +54,8 @@ namespace etoile
       /// Note that this process is run it a specific background thread.
       static
       void
-      _process(std::unique_ptr<gear::Transcript>&& transcript);
+      _process(depot::Depot& depot,
+               std::unique_ptr<gear::Transcript>&& transcript);
       // XXX[temporay: clones the block through serialization]
       static
       std::unique_ptr<nucleus::proton::Block>

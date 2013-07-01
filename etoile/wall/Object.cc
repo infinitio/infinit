@@ -71,7 +71,7 @@ namespace etoile
                          "cache was cleaned")
               {
                 path::Venue venue =
-                  path::Path::Resolve(*Etoile::instance(),
+                  path::Path::Resolve(etoile,
                                       scope->chemin.route());
                 scope->chemin = path::Chemin(scope->chemin.route(), venue);
                 location = scope->chemin.locate();
@@ -90,7 +90,7 @@ namespace etoile
               {
                 gear::File* _context;
 
-                if (scope->Use(_context) == elle::Status::Error)
+                if (scope->Use(etoile, _context) == elle::Status::Error)
                   throw Exception("unable to create the context");
 
                 // In order to avoid loading the object twice, manually set it
@@ -108,7 +108,7 @@ namespace etoile
               {
                 gear::Directory* _context;
 
-                if (scope->Use(_context) == elle::Status::Error)
+                if (scope->Use(etoile, _context) == elle::Status::Error)
                   throw Exception("unable to create the context");
 
                 // In order to avoid loading the object twice, manually set it
@@ -126,7 +126,7 @@ namespace etoile
               {
                 gear::Link* _context;
 
-                if (scope->Use(_context) == elle::Status::Error)
+                if (scope->Use(etoile, _context) == elle::Status::Error)
                   throw Exception("unable to create the context");
 
                 // In order to avoid loading the object twice, manually set it
@@ -160,7 +160,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // allocate an actor.
@@ -209,7 +209,7 @@ namespace etoile
 
         // retrieve the context.
         gear::Object* context;
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the information automaton on the context.
@@ -240,7 +240,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -326,7 +326,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -409,7 +409,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in

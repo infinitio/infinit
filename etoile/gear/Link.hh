@@ -46,7 +46,7 @@ namespace etoile
       //
       // constructors & destructors
       //
-      Link();
+      Link(Etoile& etoile);
       ~Link();
 
       //

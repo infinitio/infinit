@@ -21,7 +21,10 @@ namespace etoile
       // generate an identifier.
       if (this->identifier.Generate() == elle::Status::Error)
         return;
-      Etoile::instance()->actor_add(*this);
+
+      Etoile& etoile = this->scope->context->etoile();
+
+      etoile.actor_add(*this);
 
       // add the actor to the scope's set.
       if (scope->Attach(this) == elle::Status::Error)
@@ -37,7 +40,9 @@ namespace etoile
       if (this->scope->Detach(this) == elle::Status::Error)
         return;
 
-      Etoile::instance()->actor_remove(*this);
+      Etoile& etoile = this->scope->context->etoile();
+
+      etoile.actor_remove(*this);
     }
 
 //

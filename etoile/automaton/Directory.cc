@@ -28,8 +28,8 @@ namespace etoile
 
       context.object.reset(
         new nucleus::neutron::Object(
-          Etoile::instance()->network(),
-          Etoile::instance()->user_keypair().K(),
+          context.etoile().network(),
+          context.etoile().user_keypair().K(),
           nucleus::neutron::Genre::directory));
 
       nucleus::proton::Address address(context.object->bind());

@@ -46,7 +46,11 @@ namespace etoile
             delete this->_actor;
 
           if (this->_scope != nullptr)
-            Etoile::instance()->scope_annihilate(this->_scope);
+          {
+            Etoile& etoile = this->_scope->context->etoile();
+
+            etoile.scope_annihilate(this->_scope);
+          }
         }
     }
 

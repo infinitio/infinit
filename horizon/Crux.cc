@@ -60,7 +60,6 @@ namespace horizon
     return p.parent_path().generic_string();
   }
 
-
   /// The number of directory entries to fetch from etoile when
   /// performing a readdir().
   const nucleus::neutron::Size Crux::Range = 128;
@@ -81,7 +80,7 @@ namespace horizon
     try
     {
       ELLE_DEBUG("resolve the path")
-        chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), way);
+        chemin = etoile::wall::Path::resolve(etoile(), way);
     }
     catch (etoile::wall::NoSuchFileOrDirectory const&)
     {
@@ -91,10 +90,10 @@ namespace horizon
     ELLE_DEBUG("load the object");
 
     etoile::gear::Identifier identifier =
-      etoile::wall::Object::load(*etoile::Etoile::instance(),
+      etoile::wall::Object::load(etoile(),
                                  chemin);
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier);
 
     // Create a local handle.
     Handle handle(Handle::OperationGetattr, identifier);
@@ -109,7 +108,7 @@ namespace horizon
       return (result);
 
     // Discard the object.
-    etoile::wall::Object::discard(*etoile::Etoile::instance(), identifier);
+    etoile::wall::Object::discard(etoile(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -136,7 +135,7 @@ namespace horizon
 
     // Retrieve information on the object.
     etoile::abstract::Object abstract(
-      etoile::wall::Object::information(*etoile::Etoile::instance(),
+      etoile::wall::Object::information(etoile(),
                                         handle->identifier));
 
     // Set the uid by first looking into the users map. if no local
@@ -221,7 +220,7 @@ namespace horizon
 
           // Retrieve the attribute.
           nucleus::neutron::Trait trait(
-            etoile::wall::Attributes::get(*etoile::Etoile::instance(),
+            etoile::wall::Attributes::get(etoile(),
                                           handle->identifier, "perm::exec"));
 
           // Check the trait.
@@ -307,11 +306,11 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin(
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
+      etoile::wall::Path::resolve(etoile(), path));
 
     // Load the directory.
     etoile::gear::Identifier identifier(
-      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
+      etoile::wall::Directory::load(etoile(), chemin));
 
     // Duplicate the identifier and save it in the info structure's
     // file handle.
@@ -344,7 +343,7 @@ namespace horizon
     // Check the subject's permissions on the object.
     {
       nucleus::neutron::Record record(
-        etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+        etoile::wall::Access::lookup(etoile(),
                                      handle->identifier,
                                      agent::Agent::Subject));
 
@@ -377,7 +376,7 @@ namespace horizon
         // Read the directory entries.
         nucleus::neutron::Range<nucleus::neutron::Entry> range(
           etoile::wall::Directory::consult(
-            *etoile::Etoile::instance(),
+            etoile(),
             handle->identifier,
             static_cast<nucleus::neutron::Index>(offset),
             Crux::Range));
@@ -417,7 +416,7 @@ namespace horizon
     ELLE_FINALLY_ACTION_DELETE(handle);
 
     // Discard the object.
-    etoile::wall::Directory::discard(*etoile::Etoile::instance(),
+    etoile::wall::Directory::discard(etoile(),
                                      handle->identifier);
 
     delete handle;
@@ -445,18 +444,18 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+      etoile::wall::Path::resolve(etoile(), path);
 
     // Load the directory.
     etoile::gear::Identifier directory(
-      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
+      etoile::wall::Directory::load(etoile(), chemin));
 
-    HORIZON_FINALLY_ACTION_DISCARD(directory);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), directory);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    directory, agent::Agent::Subject));
 
     // Check the record.
@@ -468,9 +467,9 @@ namespace horizon
 
     // Create the subdirectory.
     etoile::gear::Identifier subdirectory =
-      etoile::wall::Directory::create(*etoile::Etoile::instance());
+      etoile::wall::Directory::create(etoile());
 
-    HORIZON_FINALLY_ACTION_DISCARD(subdirectory);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), subdirectory);
 
     // Compute the permissions.
     if (mode & S_IRUSR)
@@ -480,7 +479,7 @@ namespace horizon
       permissions |= nucleus::neutron::permissions::write;
 
     // Set the owner permissions.
-    if (etoile::wall::Access::Grant(*etoile::Etoile::instance(),
+    if (etoile::wall::Access::Grant(etoile(),
                                     subdirectory,
                                     agent::Agent::Subject,
                                     permissions) == elle::Status::Error)
@@ -495,7 +494,7 @@ namespace horizon
         {
           // grant the read permission to the 'everybody' group.
           if (etoile::wall::Access::Grant(
-                *etoile::Etoile::instance(),
+                etoile(),
                 subdirectory,
                 descriptor.meta().everybody_subject(),
                 nucleus::neutron::permissions::read) == elle::Status::Error)
@@ -524,17 +523,17 @@ namespace horizon
       }
 
     // Add the subdirectory.
-    etoile::wall::Directory::add(*etoile::Etoile::instance(),
+    etoile::wall::Directory::add(etoile(),
                                  directory, name, subdirectory);
 
     // Store the subdirectory.
-    etoile::wall::Directory::store(*etoile::Etoile::instance(),
+    etoile::wall::Directory::store(etoile(),
                                    subdirectory);
 
     HORIZON_FINALLY_ABORT(subdirectory);
 
     // Store the directory.
-    etoile::wall::Directory::store(*etoile::Etoile::instance(), directory);
+    etoile::wall::Directory::store(etoile(), directory);
 
     HORIZON_FINALLY_ABORT(directory);
 
@@ -554,20 +553,20 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin_parent(
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(),
+      etoile::wall::Path::resolve(etoile(),
                                   parent));
 
     // Load the directory.
     etoile::gear::Identifier directory(
-      etoile::wall::Directory::load(*etoile::Etoile::instance(),
+      etoile::wall::Directory::load(etoile(),
                                     chemin_parent));
 
-    HORIZON_FINALLY_ACTION_DISCARD(directory);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), directory);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    directory, agent::Agent::Subject));
 
     // Check the record.
@@ -579,18 +578,18 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin_child =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), child);
+      etoile::wall::Path::resolve(etoile(), child);
 
     // Load the subdirectory.
     etoile::gear::Identifier subdirectory(
-      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin_child));
+      etoile::wall::Directory::load(etoile(), chemin_child));
 
-    HORIZON_FINALLY_ACTION_DISCARD(subdirectory);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), subdirectory);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve information on the object.
     etoile::abstract::Object abstract(
-      etoile::wall::Object::information(*etoile::Etoile::instance(),
+      etoile::wall::Object::information(etoile(),
                                         subdirectory));
 
     // Create a temporary subject based on the object owner's key.
@@ -603,18 +602,18 @@ namespace horizon
 #endif
 
     // Remove the entry.
-    if (etoile::wall::Directory::Remove(*etoile::Etoile::instance(),
+    if (etoile::wall::Directory::Remove(etoile(),
                                         directory,
                                         name) == elle::Status::Error)
       return (-EPERM);
 
     // Store the directory.
-    etoile::wall::Directory::store(*etoile::Etoile::instance(), directory);
+    etoile::wall::Directory::store(etoile(), directory);
 
     HORIZON_FINALLY_ABORT(directory);
 
     // Destroy the subdirectory.
-    if (etoile::wall::Directory::Destroy(*etoile::Etoile::instance(),
+    if (etoile::wall::Directory::Destroy(etoile(),
                                          subdirectory) == elle::Status::Error)
       return (-EPERM);
 
@@ -633,7 +632,7 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+      etoile::wall::Path::resolve(etoile(), path);
 
     // Optimisation: if the mask is equal to F_OK i.e there is nothing else
     // to check but the existence of the path, return righ away.
@@ -642,13 +641,13 @@ namespace horizon
 
     // Load the object.
     etoile::gear::Identifier identifier =
-      etoile::wall::Object::load(*etoile::Etoile::instance(), chemin);
+      etoile::wall::Object::load(etoile(), chemin);
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier);
 
     // Retrieve the user's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    identifier, agent::Agent::Subject));
 
     // Check the record.
@@ -657,7 +656,7 @@ namespace horizon
 
     // Retrieve information on the object.
     etoile::abstract::Object abstract =
-      etoile::wall::Object::information(*etoile::Etoile::instance(),
+      etoile::wall::Object::information(etoile(),
                                         identifier);
 
     // Check if the permissions match the mask for execution.
@@ -668,7 +667,7 @@ namespace horizon
           case nucleus::neutron::Genre::file:
             {
               nucleus::neutron::Trait trait(
-                etoile::wall::Attributes::get(*etoile::Etoile::instance(),
+                etoile::wall::Attributes::get(etoile(),
                                               identifier, "perm::exec"));
 
               // Check the trait.
@@ -692,7 +691,7 @@ namespace horizon
           case nucleus::neutron::Genre::link:
             {
               nucleus::neutron::Trait trait(
-                etoile::wall::Attributes::get(*etoile::Etoile::instance(),
+                etoile::wall::Attributes::get(etoile(),
                                               identifier, "perm::exec"));
 
               // Check the trait.
@@ -722,7 +721,7 @@ namespace horizon
       }
 
     // Discard the object.
-    etoile::wall::Object::discard(*etoile::Etoile::instance(), identifier);
+    etoile::wall::Object::discard(etoile(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -733,7 +732,7 @@ namespace horizon
     // identifier must be discarded while EACCES must be returned.
 
     // Discard the identifier.
-    etoile::wall::Object::discard(*etoile::Etoile::instance(), identifier);
+    etoile::wall::Object::discard(etoile(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -777,17 +776,17 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+      etoile::wall::Path::resolve(etoile(), path);
 
     // Load the object.
     etoile::gear::Identifier identifier =
-      etoile::wall::Object::load(*etoile::Etoile::instance(), chemin);
+      etoile::wall::Object::load(etoile(), chemin);
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier);
 
     // Retrieve information on the object.
     etoile::abstract::Object abstract =
-      etoile::wall::Object::information(*etoile::Etoile::instance(),
+      etoile::wall::Object::information(etoile(),
                                         identifier);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
@@ -832,7 +831,7 @@ namespace horizon
         // Update the accesses.  Note that the method assumes that
         // the caller is the object's owner! if not, an error will
         // occur anyway, so why bother checking.
-        if (etoile::wall::Access::Grant(*etoile::Etoile::instance(),
+        if (etoile::wall::Access::Grant(etoile(),
                                         identifier,
                                         agent::Agent::Subject,
                                         permissions) == elle::Status::Error)
@@ -849,7 +848,7 @@ namespace horizon
           case nucleus::neutron::Genre::file:
             {
               // Set the perm::exec attribute
-              etoile::wall::Attributes::set(*etoile::Etoile::instance(),
+              etoile::wall::Attributes::set(etoile(),
                                             identifier,
                                             "perm::exec", "true");
 
@@ -866,7 +865,7 @@ namespace horizon
       }
 
     // Store the object.
-    etoile::wall::Object::store(*etoile::Etoile::instance(), identifier);
+    etoile::wall::Object::store(etoile(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -903,18 +902,18 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+      etoile::wall::Path::resolve(etoile(), path);
 
     // Load the object.
     etoile::gear::Identifier identifier =
-      etoile::wall::Object::load(*etoile::Etoile::instance(), chemin);
+      etoile::wall::Object::load(etoile(), chemin);
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve information on the object.
     etoile::abstract::Object abstract =
-      etoile::wall::Object::information(*etoile::Etoile::instance(),
+      etoile::wall::Object::information(etoile(),
                                         identifier);
 
     // Create a temporary subject based on the object owner's key.
@@ -927,13 +926,13 @@ namespace horizon
 #endif
 
     // Set the attribute.
-    etoile::wall::Attributes::set(*etoile::Etoile::instance(),
+    etoile::wall::Attributes::set(etoile(),
                                   identifier,
                                   elle::String(name),
                                   elle::String(value, size));
 
     // Store the object.
-    etoile::wall::Object::store(*etoile::Etoile::instance(), identifier);
+    etoile::wall::Object::store(etoile(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -952,21 +951,21 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+      etoile::wall::Path::resolve(etoile(), path);
 
     // Load the object.
     etoile::gear::Identifier identifier =
-      etoile::wall::Object::load(*etoile::Etoile::instance(), chemin);
+      etoile::wall::Object::load(etoile(), chemin);
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier);
 
     // Get the attribute.
     nucleus::neutron::Trait trait(
-      etoile::wall::Attributes::get(*etoile::Etoile::instance(),
+      etoile::wall::Attributes::get(etoile(),
                                     identifier, elle::String(name)));
 
     // Discard the object.
-    etoile::wall::Object::discard(*etoile::Etoile::instance(), identifier);
+    etoile::wall::Object::discard(etoile(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -1003,17 +1002,17 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+      etoile::wall::Path::resolve(etoile(), path);
 
     // Load the object.
     etoile::gear::Identifier identifier =
-      etoile::wall::Object::load(*etoile::Etoile::instance(), chemin);
+      etoile::wall::Object::load(etoile(), chemin);
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier);
 
     // Fetch the attributes.
     nucleus::neutron::Range<nucleus::neutron::Trait> range(
-      etoile::wall::Attributes::fetch(*etoile::Etoile::instance(), identifier));
+      etoile::wall::Attributes::fetch(etoile(), identifier));
 
     // If the size is zero, this call must return the size required
     // to store the list.
@@ -1025,7 +1024,7 @@ namespace horizon
 
         // Discard the object, now that it will no longer be
         // accessed.
-        etoile::wall::Object::discard(*etoile::Etoile::instance(), identifier);
+        etoile::wall::Object::discard(etoile(), identifier);
 
         HORIZON_FINALLY_ABORT(identifier);
 
@@ -1049,7 +1048,7 @@ namespace horizon
 
         // Discard the object now that it will no longer be
         // accessed.
-        etoile::wall::Object::discard(*etoile::Etoile::instance(), identifier);
+        etoile::wall::Object::discard(etoile(), identifier);
 
         HORIZON_FINALLY_ABORT(identifier);
 
@@ -1068,18 +1067,18 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+      etoile::wall::Path::resolve(etoile(), path);
 
     // Load the object.
     etoile::gear::Identifier identifier =
-      etoile::wall::Object::load(*etoile::Etoile::instance(), chemin);
+      etoile::wall::Object::load(etoile(), chemin);
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve information on the object.
     etoile::abstract::Object abstract =
-      etoile::wall::Object::information(*etoile::Etoile::instance(),
+      etoile::wall::Object::information(etoile(),
                                         identifier);
 
     // Create a temporary subject based on the object owner's key.
@@ -1092,14 +1091,14 @@ namespace horizon
 #endif
 
     // Omit the attribute.
-    if (etoile::wall::Attributes::Omit(*etoile::Etoile::instance(),
+    if (etoile::wall::Attributes::Omit(etoile(),
                                        identifier,
                                        elle::String(name)) ==
         elle::Status::Error)
       return (-EPERM);
 
     // Store the object.
-    etoile::wall::Object::store(*etoile::Etoile::instance(), identifier);
+    etoile::wall::Object::store(etoile(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -1131,18 +1130,18 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin(
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), from));
+      etoile::wall::Path::resolve(etoile(), from));
 
     // Load the directory.
     etoile::gear::Identifier directory(
-      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
+      etoile::wall::Directory::load(etoile(), chemin));
 
-    HORIZON_FINALLY_ACTION_DISCARD(directory);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), directory);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    directory, agent::Agent::Subject));
 
     // Check the record.
@@ -1154,9 +1153,9 @@ namespace horizon
 
     // Create a link.
     etoile::gear::Identifier link =
-      etoile::wall::Link::create(*etoile::Etoile::instance());
+      etoile::wall::Link::create(etoile());
 
-    HORIZON_FINALLY_ACTION_DISCARD(link);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), link);
 
     // FIXME: do not re-parse the descriptor every time.
     lune::Descriptor descriptor(Infinit::User, Infinit::Network);
@@ -1167,7 +1166,7 @@ namespace horizon
         {
           // grant the read permission to the 'everybody' group.
           if (etoile::wall::Access::Grant(
-                *etoile::Etoile::instance(),
+                etoile(),
                 link,
                 descriptor.meta().everybody_subject(),
                 nucleus::neutron::permissions::read) == elle::Status::Error)
@@ -1175,7 +1174,7 @@ namespace horizon
 
           // grant the exec permission to the 'everybody' group by
           // creating the attribute 'perm::exec'.
-          etoile::wall::Attributes::set(*etoile::Etoile::instance(),
+          etoile::wall::Attributes::set(etoile(),
                                         link,
                                         "perm::exec", "true");
 
@@ -1202,19 +1201,19 @@ namespace horizon
       }
 
     // Bind the link.
-    etoile::wall::Link::bind(*etoile::Etoile::instance(), link, to);
+    etoile::wall::Link::bind(etoile(), link, to);
 
     // Add an entry for the link.
-    etoile::wall::Directory::add(*etoile::Etoile::instance(),
+    etoile::wall::Directory::add(etoile(),
                                  directory, name, link);
 
     // Store the link.
-    etoile::wall::Link::store(*etoile::Etoile::instance(), link);
+    etoile::wall::Link::store(etoile(), link);
 
     HORIZON_FINALLY_ABORT(link);
 
     // Store the modified directory.
-    etoile::wall::Directory::store(*etoile::Etoile::instance(), directory);
+    etoile::wall::Directory::store(etoile(), directory);
 
     HORIZON_FINALLY_ABORT(directory);
 
@@ -1234,19 +1233,19 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+      etoile::wall::Path::resolve(etoile(), path);
 
     // Load the link.
-    if (etoile::wall::Link::Load(*etoile::Etoile::instance(),
+    if (etoile::wall::Link::Load(etoile(),
                                  chemin, identifier) == elle::Status::Error)
       return (-ENOENT);
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    identifier, agent::Agent::Subject));
 
     // Check the record.
@@ -1258,10 +1257,10 @@ namespace horizon
 
     // Resolve the link.
     std::string target =
-      etoile::wall::Link::resolve(*etoile::Etoile::instance(), identifier);
+      etoile::wall::Link::resolve(etoile(), identifier);
 
     // Discard the link.
-    if (etoile::wall::Link::Discard(*etoile::Etoile::instance(),
+    if (etoile::wall::Link::Discard(etoile(),
                                     identifier) == elle::Status::Error)
       return (-EPERM);
 
@@ -1294,18 +1293,18 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin(
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), parent));
+      etoile::wall::Path::resolve(etoile(), parent));
 
     // Load the directory.
     etoile::gear::Identifier directory(
-      etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
+      etoile::wall::Directory::load(etoile(), chemin));
 
-    HORIZON_FINALLY_ACTION_DISCARD(directory);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), directory);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    directory, agent::Agent::Subject));
 
     // Check the record.
@@ -1317,9 +1316,9 @@ namespace horizon
 
     // Create the file.
     etoile::gear::Identifier file(
-      etoile::wall::File::create(*etoile::Etoile::instance()));
+      etoile::wall::File::create(etoile()));
 
-    HORIZON_FINALLY_ACTION_DISCARD(file);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), file);
 
     // Set default permissions: read and write.
     permissions =
@@ -1327,7 +1326,7 @@ namespace horizon
       nucleus::neutron::permissions::write;
 
     // Set the owner permissions.
-    if (etoile::wall::Access::Grant(*etoile::Etoile::instance(),
+    if (etoile::wall::Access::Grant(etoile(),
                                     file,
                                     agent::Agent::Subject,
                                     permissions) == elle::Status::Error)
@@ -1335,7 +1334,7 @@ namespace horizon
 
     // If the file has the exec bit, add the perm::exec attribute.
     if (mode & S_IXUSR)
-      etoile::wall::Attributes::set(*etoile::Etoile::instance(),
+      etoile::wall::Attributes::set(etoile(),
                                     file,
                                     "perm::exec", "true");
 
@@ -1349,7 +1348,7 @@ namespace horizon
         {
           // grant the read permission to the 'everybody' group.
           if (etoile::wall::Access::Grant(
-                *etoile::Etoile::instance(),
+                etoile(),
                 file,
                 descriptor.meta().everybody_subject(),
                 nucleus::neutron::permissions::read) == elle::Status::Error)
@@ -1378,7 +1377,7 @@ namespace horizon
       }
 
     // Add the file to the directory.
-    etoile::wall::Directory::add(*etoile::Etoile::instance(),
+    etoile::wall::Directory::add(etoile(),
                                  directory, name, file);
 
     // Store the file, ensuring the file system consistency.
@@ -1389,21 +1388,21 @@ namespace horizon
     // harm, especially considering the Infinit consistency
     // guaranties, we still prefer to do things right, at least for
     // now.
-    etoile::wall::File::store(*etoile::Etoile::instance(), file);
+    etoile::wall::File::store(etoile(), file);
 
     HORIZON_FINALLY_ABORT(file);
 
     // Store the directory.
-    etoile::wall::Directory::store(*etoile::Etoile::instance(), directory);
+    etoile::wall::Directory::store(etoile(), directory);
 
     HORIZON_FINALLY_ABORT(directory);
 
     // Resolve the path.
-    chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+    chemin = etoile::wall::Path::resolve(etoile(), path);
 
     // Finally, the file is reopened.
     etoile::gear::Identifier identifier(
-      etoile::wall::File::load(*etoile::Etoile::instance(), chemin));
+      etoile::wall::File::load(etoile(), chemin));
 
     // Compute the future permissions as the current ones are
     // temporary.
@@ -1443,11 +1442,11 @@ namespace horizon
     etoile::path::Chemin      chemin;
 
     // Resolve the path.
-    chemin = (etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
+    chemin = (etoile::wall::Path::resolve(etoile(), path));
 
     // Load the file.
     etoile::gear::Identifier identifier(
-      etoile::wall::File::load(*etoile::Etoile::instance(), chemin));
+      etoile::wall::File::load(etoile(), chemin));
 
     // Store the identifier in the file handle.
     info->fh =
@@ -1483,7 +1482,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    handle->identifier, agent::Agent::Subject));
 
     // Check the record.
@@ -1494,7 +1493,7 @@ namespace horizon
 #endif
 
     // Write the file.
-    etoile::wall::File::write(*etoile::Etoile::instance(),
+    etoile::wall::File::write(etoile(),
                               handle->identifier,
                               static_cast<nucleus::neutron::Offset>(offset),
                               data);
@@ -1522,7 +1521,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    handle->identifier, agent::Agent::Subject));
 
     // Check the record.
@@ -1535,7 +1534,7 @@ namespace horizon
     // Read the file.
     elle::Buffer data =
       etoile::wall::File::read(
-        *etoile::Etoile::instance(),
+        etoile(),
         handle->identifier,
         static_cast<nucleus::neutron::Offset>(offset),
         static_cast<nucleus::neutron::Size>(size));
@@ -1558,13 +1557,13 @@ namespace horizon
 
     // Resolve the path.
     etoile::path::Chemin chemin =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
+      etoile::wall::Path::resolve(etoile(), path);
 
     // Load the file.
     etoile::gear::Identifier identifier(
-      etoile::wall::File::load(*etoile::Etoile::instance(), chemin));
+      etoile::wall::File::load(etoile(), chemin));
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier);
 
     // Create a local handle.
     Handle                    handle(Handle::OperationTruncate,
@@ -1578,7 +1577,7 @@ namespace horizon
       return (result);
 
     // Store the file.
-    etoile::wall::File::store(*etoile::Etoile::instance(), identifier);
+    etoile::wall::File::store(etoile(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -1601,7 +1600,7 @@ namespace horizon
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    handle->identifier, agent::Agent::Subject));
 
     // Check the record.
@@ -1614,7 +1613,7 @@ namespace horizon
     // Adjust the file's size.
     try
     {
-      etoile::wall::File::adjust(*etoile::Etoile::instance(),
+      etoile::wall::File::adjust(etoile(),
                                  handle->identifier,
                                  size);
     }
@@ -1660,7 +1659,7 @@ namespace horizon
 
           // Set the owner permissions.
           if (etoile::wall::Access::Grant(
-                *etoile::Etoile::instance(),
+                etoile(),
                 handle->identifier,
                 agent::Agent::Subject,
                 handle->permissions) == elle::Status::Error)
@@ -1680,7 +1679,7 @@ namespace horizon
       }
 
     // Store the file.
-    etoile::wall::File::store(*etoile::Etoile::instance(), handle->identifier);
+    etoile::wall::File::store(etoile(), handle->identifier);
 
     // Delete the handle.
     delete handle;
@@ -1748,21 +1747,21 @@ namespace horizon
         etoile::path::Chemin chemin;
 
         ELLE_TRACE("resolve the source directory path")
-          chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(),
+          chemin = etoile::wall::Path::resolve(etoile(),
                                                from);
 
         ELLE_TRACE("load source directory");
 
         etoile::gear::Identifier directory(
-          etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
+          etoile::wall::Directory::load(etoile(), chemin));
 
-        HORIZON_FINALLY_ACTION_DISCARD(directory);
+        HORIZON_FINALLY_ACTION_DISCARD(etoile(), directory);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
         ELLE_TRACE("retrieve the subject's permissions on the object");
 
         nucleus::neutron::Record record(
-          etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+          etoile::wall::Access::lookup(etoile(),
                                        directory,
                                        agent::Agent::Subject));
 
@@ -1777,7 +1776,7 @@ namespace horizon
         try
         {
           ELLE_TRACE("lookup for the target name")
-            entry = etoile::wall::Directory::lookup(*etoile::Etoile::instance(),
+            entry = etoile::wall::Directory::lookup(etoile(),
                                                     directory,
                                                     t);
         }
@@ -1803,13 +1802,13 @@ namespace horizon
           }
 
         ELLE_TRACE("rename the entry from %s to %s", f, t)
-          if (etoile::wall::Directory::Rename(*etoile::Etoile::instance(),
+          if (etoile::wall::Directory::Rename(etoile(),
                                               directory, f, t) ==
               elle::Status::Error)
             return (-EPERM);
 
         ELLE_TRACE("store the directory")
-          etoile::wall::Directory::store(*etoile::Etoile::instance(),
+          etoile::wall::Directory::store(etoile(),
                                          directory);
 
         HORIZON_FINALLY_ABORT(directory);
@@ -1825,29 +1824,29 @@ namespace horizon
 
         // Resolve the path.
         etoile::path::Chemin chemin =
-          etoile::wall::Path::resolve(*etoile::Etoile::instance(), source);
+          etoile::wall::Path::resolve(etoile(), source);
 
         // Load the object even though we don't know its genre as we
         // do not need to know to perform this operation.
         identifier_object =
-          etoile::wall::Object::load(*etoile::Etoile::instance(),
+          etoile::wall::Object::load(etoile(),
                                      chemin);
 
-        HORIZON_FINALLY_ACTION_DISCARD(identifier_object);
+        HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier_object);
 
         // Resolve the path.
-        chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), to);
+        chemin = etoile::wall::Path::resolve(etoile(), to);
 
         // Load the _to_ directory.
         etoile::gear::Identifier identifier_to(
-          etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
+          etoile::wall::Directory::load(etoile(), chemin));
 
-        HORIZON_FINALLY_ACTION_DISCARD(identifier_to);
+        HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier_to);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
         // Retrieve the subject's permissions on the object.
         nucleus::neutron::Record record_to(
-          etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+          etoile::wall::Access::lookup(etoile(),
                                        identifier_to, agent::Agent::Subject));
 
         // Check the record.
@@ -1858,19 +1857,19 @@ namespace horizon
 #endif
 
         // Resolve the path.
-        chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), from);
+        chemin = etoile::wall::Path::resolve(etoile(), from);
 
         // Load the _from_ directory.
         etoile::gear::Identifier identifier_from(
-          etoile::wall::Directory::load(*etoile::Etoile::instance(), chemin));
+          etoile::wall::Directory::load(etoile(), chemin));
 
-        HORIZON_FINALLY_ACTION_DISCARD(identifier_from);
+        HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier_from);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
         // Retrieve the subject's permissions on the object.
         nucleus::neutron::Record record_from(
           etoile::wall::Access::lookup(
-            *etoile::Etoile::instance(),
+            etoile(),
             identifier_from, agent::Agent::Subject));
 
         // Check the record.
@@ -1885,7 +1884,7 @@ namespace horizon
         nucleus::neutron::Entry const* entry = nullptr;
         try
         {
-          entry = etoile::wall::Directory::lookup(*etoile::Etoile::instance(),
+          entry = etoile::wall::Directory::lookup(etoile(),
                                                   identifier_to,
                                                   t);
         }
@@ -1909,30 +1908,30 @@ namespace horizon
           }
 
         // Add an entry.
-        etoile::wall::Directory::add(*etoile::Etoile::instance(),
+        etoile::wall::Directory::add(etoile(),
                                      identifier_to, t, identifier_object);
 
         // Remove the entry.
         if (etoile::wall::Directory::Remove(
-              *etoile::Etoile::instance(),
+              etoile(),
               identifier_from,
               f) == elle::Status::Error)
           return (-EPERM);
 
         // Store the _to_ directory.
-        etoile::wall::Directory::store(*etoile::Etoile::instance(),
+        etoile::wall::Directory::store(etoile(),
                                        identifier_to);
 
         HORIZON_FINALLY_ABORT(identifier_to);
 
         // Store the _from_ directory.
-        etoile::wall::Directory::store(*etoile::Etoile::instance(),
+        etoile::wall::Directory::store(etoile(),
                                        identifier_from);
 
         HORIZON_FINALLY_ABORT(identifier_from);
 
         // Store the object.
-        etoile::wall::Object::store(*etoile::Etoile::instance(),
+        etoile::wall::Object::store(etoile(),
                                     identifier_object);
 
         HORIZON_FINALLY_ABORT(identifier_object);
@@ -1962,17 +1961,17 @@ namespace horizon
 
     // Resolve the path.
     chemin_child =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), child);
+      etoile::wall::Path::resolve(etoile(), child);
 
     // Load the object.
     etoile::gear::Identifier identifier_child(
-      etoile::wall::Object::load(*etoile::Etoile::instance(), chemin_child));
+      etoile::wall::Object::load(etoile(), chemin_child));
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier_child);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier_child);
 
     // Retrieve information on the object.
     etoile::abstract::Object abstract =
-      etoile::wall::Object::information(*etoile::Etoile::instance(),
+      etoile::wall::Object::information(etoile(),
                                         identifier_child);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
@@ -1987,19 +1986,19 @@ namespace horizon
 
     // Resolve the path.
     chemin_parent =
-      etoile::wall::Path::resolve(*etoile::Etoile::instance(), parent);
+      etoile::wall::Path::resolve(etoile(), parent);
 
     // Load the directory.
     etoile::gear::Identifier identifier_parent(
-      etoile::wall::Directory::load(*etoile::Etoile::instance(),
+      etoile::wall::Directory::load(etoile(),
                                     chemin_parent));
 
-    HORIZON_FINALLY_ACTION_DISCARD(identifier_parent);
+    HORIZON_FINALLY_ACTION_DISCARD(etoile(), identifier_parent);
 
 #ifdef HORIZON_CRUX_SAFETY_CHECKS
     // Retrieve the subject's permissions on the object.
     nucleus::neutron::Record record(
-      etoile::wall::Access::lookup(*etoile::Etoile::instance(),
+      etoile::wall::Access::lookup(etoile(),
                                    identifier_parent, agent::Agent::Subject));
 
     // Check the record.
@@ -2017,7 +2016,7 @@ namespace horizon
           // Destroy the file.
           try
           {
-            etoile::wall::File::destroy(*etoile::Etoile::instance(),
+            etoile::wall::File::destroy(etoile(),
                                         identifier_child);
           }
           catch (...)
@@ -2042,7 +2041,7 @@ namespace horizon
           // Destroy the link.
           try
           {
-            etoile::wall::Link::destroy(*etoile::Etoile::instance(),
+            etoile::wall::Link::destroy(etoile(),
                                         identifier_child);
           }
           catch (...)
@@ -2055,13 +2054,13 @@ namespace horizon
       };
 
     // Remove the entry.
-    if (etoile::wall::Directory::Remove(*etoile::Etoile::instance(),
+    if (etoile::wall::Directory::Remove(etoile(),
                                         identifier_parent,
                                         name) == elle::Status::Error)
       return (-EPERM);
 
     // Store the directory.
-    etoile::wall::Directory::store(*etoile::Etoile::instance(),
+    etoile::wall::Directory::store(etoile(),
                                    identifier_parent);
 
     HORIZON_FINALLY_ABORT(identifier_parent);

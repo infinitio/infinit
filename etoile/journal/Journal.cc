@@ -34,7 +34,8 @@ namespace etoile
     `---------------*/
 
     void
-    Journal::record(std::unique_ptr<gear::Transcript>&& transcript)
+    Journal::record(Etoile& etoile,
+                    std::unique_ptr<gear::Transcript>&& transcript)
     {
       ELLE_TRACE_FUNCTION(transcript);
 
@@ -59,6 +60,7 @@ namespace etoile
          new reactor::Thread(*reactor::Scheduler::scheduler(),
                              "journal process",
                              boost::bind(&Journal::_process,
+                                         etoile.depot(),
                                          std::move(transcript)),
                              true);
 
@@ -71,7 +73,7 @@ namespace etoile
           throw Exception("unable to spawn a new thread: '%s'", err.what());
         }
 #else
-      Journal::_process(std::move(transcript));
+      Journal::_process(etoile.depot(), std::move(transcript));
 #endif
     }
 
@@ -94,7 +96,7 @@ namespace etoile
       std::unique_ptr<gear::Transcript> transcript{scope->context->cede()};
 
       // Record the transcript for processing.
-      Journal::record(std::move(transcript));
+      Journal::record(scope->context->etoile(), std::move(transcript));
 
       // Update the context's state.
       scope->context->state = gear::Context::StateJournaled;
@@ -185,7 +187,8 @@ namespace etoile
     }
 
     void
-    Journal::_process(std::unique_ptr<gear::Transcript>&& transcript)
+    Journal::_process(depot::Depot& depot,
+                      std::unique_ptr<gear::Transcript>&& transcript)
     {
       ELLE_TRACE_FUNCTION(transcript);
 
@@ -199,7 +202,7 @@ namespace etoile
             {
             case gear::Action::Type::push:
               {
-                action->apply<depot::Depot>(Etoile::instance()->depot());
+                action->apply<depot::Depot>(depot);
                 break;
               }
             case gear::Action::Type::wipe:
@@ -218,7 +221,7 @@ namespace etoile
               break;
             case gear::Action::Type::wipe:
               {
-                action->apply<depot::Depot>(Etoile::instance()->depot());
+                action->apply<depot::Depot>(depot);
                 break;
               }
             }

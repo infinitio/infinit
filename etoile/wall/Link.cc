@@ -40,7 +40,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // allocate an actor.
@@ -89,7 +89,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // allocate an actor.
@@ -142,7 +142,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the bind automaton on the context.
@@ -171,7 +171,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the resolve automaton on the context.
@@ -204,7 +204,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -289,7 +289,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -372,7 +372,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in

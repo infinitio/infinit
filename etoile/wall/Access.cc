@@ -37,7 +37,7 @@ namespace etoile
 
       {
         reactor::Lock lock(scope->mutex);
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
         nucleus::neutron::Record const* record(nullptr);
         if (automaton::Access::Lookup(*context, subject, record) ==
@@ -66,7 +66,7 @@ namespace etoile
       {
         reactor::Lock lock(scope->mutex);
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the consult automaton on the context.
@@ -99,7 +99,7 @@ namespace etoile
       {
         reactor::Lock lock(scope->mutex.write());
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the grant automaton on the context.
@@ -135,7 +135,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the revoke automaton on the context.

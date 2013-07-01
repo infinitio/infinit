@@ -18,13 +18,14 @@ namespace etoile
     /// by casting it with the given type.
     ///
     template <typename T>
-    elle::Status        Scope::Use(T*&                          context)
+    elle::Status        Scope::Use(Etoile& etoile,
+                                   T*&                          context)
     {
       // first, if the scope's context is null, allocate one.
       if (this->context == nullptr)
         {
           // allocate a context according to the nature.
-          this->context = new T;
+          this->context = new T(etoile);
         }
 
       // Return the context by dynamically casting it; this is required in order

@@ -48,7 +48,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // allocate an actor.
@@ -91,7 +91,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // allocate an actor.
@@ -142,7 +142,7 @@ namespace etoile
       gear::Actor* child_actor = etoile.actor_get(child);
       std::shared_ptr<gear::Scope> child_scope = child_actor->scope;
 
-      if (child_scope->Use(object) == elle::Status::Error)
+      if (child_scope->Use(etoile, object) == elle::Status::Error)
         throw Exception("unable to retrieve the context");
       address = object->location.address();
 
@@ -154,7 +154,7 @@ namespace etoile
         reactor::Lock lock(parent_scope->mutex.write());
 
         // retrieve the context.
-        if (parent_scope->Use(directory) == elle::Status::Error)
+        if (parent_scope->Use(etoile, directory) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the add automaton on the context.
@@ -181,7 +181,7 @@ namespace etoile
 
       {
         reactor::Lock lock(scope->mutex);
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
         nucleus::neutron::Entry const* entry;
         if (automaton::Directory::Lookup(*context,
@@ -211,7 +211,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the consult automaton on the context.
@@ -248,7 +248,7 @@ namespace etoile
         ELLE_TRACE("old venue: %s", venue);
 
         ELLE_TRACE("retrieve the context")
-          if (scope->Use(context) == elle::Status::Error)
+          if (scope->Use(etoile, context) == elle::Status::Error)
             throw Exception("unable to retrieve the context");
 
         ELLE_TRACE("apply the rename automaton on the context")
@@ -317,7 +317,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the remove automaton on the context.
@@ -355,7 +355,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -438,7 +438,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -524,7 +524,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in

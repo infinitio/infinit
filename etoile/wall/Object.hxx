@@ -24,12 +24,12 @@ namespace etoile
         ELLE_TRACE("clearing the cache in order to evict %s",
                    scope.chemin.route());
 
-        Etoile::instance()->shrub().clear();
+        etoile.shrub().clear();
 
         ELLE_TRACE("try to resolve the route now that the cache was cleaned");
 
         path::Venue venue =
-          path::Path::Resolve(*Etoile::instance(), scope.chemin.route());
+          path::Path::Resolve(etoile, scope.chemin.route());
         scope.chemin = path::Chemin(scope.chemin.route(), venue);
 
         ELLE_DEBUG("route was successfully resolved into %s",
@@ -38,7 +38,7 @@ namespace etoile
         ELLE_TRACE("loading object");
 
         T* context = nullptr;
-        if (scope.Use(context) == elle::Status::Error)
+        if (scope.Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to use the context");
 
         // Reset location

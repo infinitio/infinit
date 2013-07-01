@@ -46,7 +46,7 @@ namespace etoile
       //
       // constructors & destructors
       //
-      Directory();
+      Directory(Etoile& etoile);
       ~Directory();
 
       //

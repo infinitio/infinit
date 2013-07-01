@@ -32,7 +32,7 @@ namespace etoile
       Venue venue;
 
       // Resolve as much as possible through the path cache.
-      Etoile::instance()->shrub().resolve(route, venue);
+      etoile.shrub().resolve(route, venue);
       assert(venue.elements().size() <= route.elements().size());
       // If complete, return the address i.e without updating the cache.
       if (route.elements().size() == venue.elements().size())

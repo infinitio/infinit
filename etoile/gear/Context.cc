@@ -13,7 +13,9 @@ namespace etoile
     ///
     /// default constructor.
     ///
-    Context::Context(const Nature                               nature):
+    Context::Context(Etoile& etoile,
+                     const Nature                               nature):
+      _etoile(etoile),
       nature(nature),
       state(Context::StateUnknown),
       operation(OperationUnknown),

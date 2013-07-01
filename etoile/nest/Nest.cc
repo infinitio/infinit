@@ -4,6 +4,7 @@
 #include <etoile/gear/Action.hh>
 #include <etoile/gear/Transcript.hh>
 #include <etoile/nest/Nest.hh>
+#include <etoile/Etoile.hh>
 
 #include <elle/finally.hh>
 #include <elle/log.hh>
@@ -28,13 +29,14 @@ namespace etoile
     | Construction |
     `-------------*/
 
-    Nest::Nest(elle::Natural32 const secret_length,
+    Nest::Nest(Etoile& etoile,
+               elle::Natural32 const secret_length,
                nucleus::proton::Limits const& limits,
                nucleus::proton::Network const& network,
                cryptography::PublicKey const& agent_K,
                nucleus::proton::Footprint const threshold):
       nucleus::proton::Nest(limits, network, agent_K),
-
+      _etoile(etoile),
       _secret_length(secret_length),
       _threshold(threshold),
       _size(0)
@@ -581,7 +583,7 @@ namespace etoile
       //
       // Note that this operation is performed at the end so as to be sure not
       // to block in the process of traversing the queue.
-      journal::Journal::record(std::move(transcript));
+      journal::Journal::record(this->_etoile, std::move(transcript));
 
 #if defined(DEBUG) || !defined(NDEBUG)
       this->_check();
@@ -620,7 +622,7 @@ namespace etoile
 
       // Otherwise, load the block from the depot.
       auto contents =
-        Etoile::instance()->depot().pull<nucleus::proton::Contents>(
+        this->_etoile.depot().pull<nucleus::proton::Contents>(
           pod->egg()->address(),
           nucleus::proton::Revision::Last);
 

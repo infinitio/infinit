@@ -63,10 +63,11 @@ namespace etoile
             {
               // Instanciate a nest.
               context.contents_nest =
-                new etoile::nest::Nest(CONTENTS_SECRET_KEY_LENGTH,
+                new etoile::nest::Nest(context.etoile(),
+                                       CONTENTS_SECRET_KEY_LENGTH,
                                        context.contents_limits,
-                                       Etoile::instance()->network(),
-                                       Etoile::instance()->user_subject().user(),
+                                       context.etoile().network(),
+                                       context.etoile().user_subject().user(),
                                        context.contents_threshold);
 
               // Instanciate a porcupine.
@@ -87,10 +88,11 @@ namespace etoile
         {
           // Instanciate a nest.
           context.contents_nest =
-            new etoile::nest::Nest(CONTENTS_SECRET_KEY_LENGTH,
+            new etoile::nest::Nest(context.etoile(),
+                                   CONTENTS_SECRET_KEY_LENGTH,
                                    context.contents_limits,
-                                   Etoile::instance()->network(),
-                                   Etoile::instance()->user_subject().user(),
+                                   context.etoile().network(),
+                                   context.etoile().user_subject().user(),
                                    context.contents_threshold);
 
           // otherwise create a new empty porcupine.

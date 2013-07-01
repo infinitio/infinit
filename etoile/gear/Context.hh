@@ -7,6 +7,7 @@
 # include <etoile/gear/Transcript.hh>
 # include <etoile/gear/Nature.hh>
 # include <etoile/gear/Operation.hh>
+# include <etoile/Etoile.hh>
 
 namespace etoile
 {
@@ -52,7 +53,8 @@ namespace etoile
       //
       // constructors & destructors
       //
-      Context(const Nature);
+      Context(Etoile& etoile,
+              const Nature);
       ~Context();
 
       /*--------.
@@ -79,6 +81,9 @@ namespace etoile
       //
       // attributes
       //
+    private:
+      ELLE_ATTRIBUTE_X(Etoile&, etoile);
+    public:
       Nature                    nature;
 
       State                     state;
