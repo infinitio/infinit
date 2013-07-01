@@ -530,17 +530,11 @@ namespace surface
       {
         if (tr.sender_device_id != this->_device.id)
         {
-          /* XXX
           throw Exception(
             gap_device_not_valid,
             elle::sprintf("received notification regarding a created "
                           "transaction which does not involve this "
                           "device: %s", tr));
-          */
-          ELLE_WARN("for now, all the user's devices receive notifications; "
-                    "trophonius needs to be improved so as to send "
-                    "notifications to devices rather than to users, at "
-                    "least for some types of notification");
         }
         else if (tr.status == plasma::TransactionStatus::created)
         {
