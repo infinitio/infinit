@@ -218,7 +218,7 @@ namespace surface
         this->_handle_notification(
           *plasma::trophonius::notification_from_dict(dict), new_);
       }
-      catch (...)
+      catch (std::exception const&)
       {
         ELLE_ERR("%s: couldn't handle notification: %s: %s",
                  *this,
@@ -231,38 +231,48 @@ namespace surface
     NotificationManager::_handle_notification(Notification const& notif,
                                               bool new_)
     {
-      ELLE_TRACE_SCOPE("%s: handle notification", *this);
-      ELLE_DEBUG("%s: notification: %s", *this, notif);
-      ELLE_DEBUG("%s: notification is new: %s", *this, new_);
-
-      this->_check_trophonius();
-
-      // Just a ping. We are not supposed to get one here, but if it's the case,
-      // nothing to do with it. If we want to be more strict, we should throw.
-      if (notif.notification_type == NotificationType::ping)
-        return;
-
-      // Connexion established.
-      if (notif.notification_type == NotificationType::connection_enabled)
-        // XXX set _connection_enabled to true
-        return;
-
-      auto handler_list = _notification_handlers.find(notif.notification_type);
-
-      if (handler_list == _notification_handlers.end())
+      try
       {
-        ELLE_DEBUG("%s: handler missing for notification '%u'",
-                   *this,
-                   notif.notification_type);
-        return;
+        ELLE_TRACE_SCOPE("%s: handle notification", *this);
+        ELLE_DEBUG("%s: notification: %s", *this, notif);
+        ELLE_DEBUG("%s: notification is new: %s", *this, new_);
+
+        this->_check_trophonius();
+
+        // Just a ping. We are not supposed to get one here, but if it's the case,
+        // nothing to do with it. If we want to be more strict, we should throw.
+        if (notif.notification_type == NotificationType::ping)
+          return;
+
+        // Connexion established.
+        if (notif.notification_type == NotificationType::connection_enabled)
+          // XXX set _connection_enabled to true
+          return;
+
+        auto handler_list = _notification_handlers.find(notif.notification_type);
+
+        if (handler_list == _notification_handlers.end())
+        {
+          ELLE_DEBUG("%s: handler missing for notification '%u'",
+                     *this,
+                     notif.notification_type);
+          return;
+        }
+
+        for (auto& handler: handler_list->second)
+        {
+          ELLE_DEBUG("%s: firing notification handler (piupiu)", *this);
+          ELLE_ASSERT(handler != nullptr);
+          handler(notif, new_);
+          ELLE_DEBUG("%s: notification handler fired (piupiu done)", *this);
+        }
       }
-
-      for (auto& handler: handler_list->second)
+      catch (std::exception const&)
       {
-        ELLE_DEBUG("%s: firing notification handler (piupiu)", *this);
-        ELLE_ASSERT(handler != nullptr);
-        handler(notif, new_);
-        ELLE_DEBUG("%s: notification handler fired (piupiu done)", *this);
+        ELLE_ERR("%s: couldn't handle notification: %s: %s",
+                 *this,
+                 notif,
+                 elle::exception_string());
       }
     }
 
