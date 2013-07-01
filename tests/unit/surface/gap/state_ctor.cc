@@ -57,9 +57,10 @@ make_login(StatePtr state,
 // Polling function.
 // Stop polling when the state is logged out.
 void
-work(StatePtr state)
+work(StatePtr state,
+     bool& finished)
 {
-  while (state->logged_in())
+  while (finished)
   {
     state->notification_manager().poll(1);
     ::sleep(1);
@@ -69,9 +70,10 @@ work(StatePtr state)
 
 // Create a polling worker for a given state.
 std::thread
-make_worker(StatePtr state)
+make_worker(StatePtr state,
+            bool& finished)
 {
-  return std::thread{[&, state] { work(state); }};
+  return std::thread{[&, state] { work(state, finished); }};
 };
 
 // Initialize sender, creating the polling thread that keep state alive during
@@ -82,13 +84,14 @@ std::thread
 init_sender(StatePtr state,
             std::string const& recipient_email,
             std::string const& to_send,
+            bool& finished,
             Callback&& callback)
 {
   int timeout = 0;
 
   state->notification_manager().transaction_callback(std::move(callback));
 
-  std::thread thread{make_worker(state)};
+  std::thread thread{make_worker(state, finished)};
 
   try
   {
@@ -128,11 +131,12 @@ init_sender(StatePtr state,
 template <typename Callback>
 std::thread
 init_recipient(StatePtr state,
+               bool& finished,
                Callback&& callback)
 {
   state->notification_manager().transaction_callback(std::move(callback));
 
-  std::thread thread{make_worker(state)};
+  std::thread thread{make_worker(state, finished)};
   return thread;
 }
 
@@ -140,40 +144,23 @@ BOOST_AUTO_TEST_CASE(state_creation)
 {
   std::string state_creator_email = "state_creator_email@lol.fr";
 
+  bool finished = false;
   StatePtr recipient_state{new State()};
   make_login(recipient_state, "state_creator", state_creator_email);
 
   auto recipient_thread = init_recipient(
     recipient_state,
-    [&, recipient_state] (TransactionNotification const& t, bool)
-    {
-      if (t.status == plasma::TransactionStatus::canceled)
-      {
-        ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
-        recipient_state->logout();
-      }
-      else if (t.status == plasma::TransactionStatus::failed)
-      {
-        ELLE_ERR("[Recipient] Transaction %s failed", t);
-        recipient_state->logout();
-      }
-      else if (t.status == plasma::TransactionStatus::finished)
-      {
-        ELLE_LOG("[Recipient] Transaction %s finished", t);
-        recipient_state->logout();
-      }
-      else if (t.status == plasma::TransactionStatus::created && !t.accepted)
-      {
-        ELLE_LOG("accepting %s", t);
-        recipient_state->transaction_manager().accept_transaction(t.id);
-      }
-    }
+    finished,
+    [&,recipient_state] (TransactionNotification const& t, bool)
+    {}
   );
 
   ::sleep(6);
 
-  recipient_state->logout();
+  finished = true;
   recipient_thread.join();
+
+  recipient_state->logout();
 }
 
 BOOST_AUTO_TEST_CASE(delayed_accept)
@@ -188,25 +175,27 @@ BOOST_AUTO_TEST_CASE(delayed_accept)
   StatePtr recipient_state{new State()};
   make_login(recipient_state, "delayed_acceptrecipient", recipient_email);
 
+  bool recipient_finish = false;
   auto recipient_thread = init_recipient(
     recipient_state,
+    recipient_finish,
     [&, recipient_state] (TransactionNotification const& t, bool)
     {
       if (t.status == plasma::TransactionStatus::canceled)
       {
         ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
-        recipient_state->logout();
+        recipient_finish = true;
       }
       else if (t.status == plasma::TransactionStatus::failed)
       {
         ELLE_ERR("[Recipient] Transaction %s failed", t);
-        recipient_state->logout();
+        recipient_finish = true;
       }
       else if (t.status == plasma::TransactionStatus::finished)
       {
         ELLE_LOG("[Recipient] Transaction %s finished", t);
         ++success_counter;
-        recipient_state->logout();
+        recipient_finish = true;
       }
       else if (t.status == plasma::TransactionStatus::created && !t.accepted)
       {
@@ -218,27 +207,29 @@ BOOST_AUTO_TEST_CASE(delayed_accept)
 
   StatePtr sender_state{new State()};
   make_login(sender_state, "delayed_acceptsender", sender_email);
+  bool sender_finished = false;
   auto sender_thread = init_sender(
     sender_state,
     recipient_email,
     to_send,
+    sender_finished,
     [&, sender_state] (TransactionNotification const& t, bool)
     {
       if (t.status == plasma::TransactionStatus::canceled)
       {
         ELLE_WARN("[Sender] Transaction %s had been canceled", t);
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::failed)
       {
         ELLE_ERR("[Sender] Transaction %s failed", t);
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::finished)
       {
         ELLE_LOG("[Sender] Transaction %s finished", t);
         ++success_counter;
-        sender_state->logout();
+        sender_finished = true;
       }
     });
 
@@ -259,26 +250,27 @@ BOOST_AUTO_TEST_CASE(early_accept)
 
   StatePtr recipient_state{new State()};
   make_login(recipient_state, "early_acceptrecipient", recipient_email);
-
+  bool recipient_finished = false;
   auto recipient_thread = init_recipient(
     recipient_state,
+    recipient_finished,
     [&, recipient_state] (TransactionNotification const& t, bool)
     {
       if (t.status == plasma::TransactionStatus::canceled)
       {
         ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
-        recipient_state->logout();
+        recipient_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::failed)
       {
         ELLE_ERR("[Recipient] Transaction %s failed", t);
-        recipient_state->logout();
+        recipient_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::finished)
       {
         ELLE_LOG("[Recipient] Transaction %s finished", t);
         ++success_counter;
-        recipient_state->logout();
+        recipient_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::created && !t.accepted)
       {
@@ -289,27 +281,29 @@ BOOST_AUTO_TEST_CASE(early_accept)
 
   StatePtr sender_state{new State()};
   make_login(sender_state, "early_acceptsender", sender_email);
+  bool sender_finished = false;
   auto sender_thread = init_sender(
     sender_state,
     recipient_email,
     to_send,
+    sender_finished,
     [&, sender_state] (TransactionNotification const& t, bool)
     {
       if (t.status == plasma::TransactionStatus::canceled)
       {
         ELLE_WARN("[Sender] Transaction %s had been canceled", t);
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::failed)
       {
         ELLE_ERR("[Sender] Transaction %s failed", t);
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::finished)
       {
         ELLE_LOG("[Sender] Transaction %s finished", t);
         ++success_counter;
-        sender_state->logout();
+        sender_finished = true;
       }
     });
 
@@ -332,25 +326,27 @@ BOOST_AUTO_TEST_CASE(delayed_cancel)
   make_login(recipient_state, "delayed_cancelrecipient",
                                     recipient_email);
 
+  bool recipient_finished = false;
   auto recipient_thread = init_recipient(
     recipient_state,
+    recipient_finished,
     [&, recipient_state] (TransactionNotification const& t, bool)
     {
       if (t.status == plasma::TransactionStatus::canceled)
       {
         ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
-        recipient_state->logout();
+        recipient_finished = true;
         ++cancel_counter;
       }
       else if (t.status == plasma::TransactionStatus::failed)
       {
         ELLE_ERR("[Recipient] Transaction %s failed", t);
-        recipient_state->logout();
+        recipient_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::finished)
       {
         ELLE_LOG("[Recipient] Transaction %s finished", t);
-        recipient_state->logout();
+        recipient_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::created && !t.accepted)
       {
@@ -362,27 +358,29 @@ BOOST_AUTO_TEST_CASE(delayed_cancel)
 
   StatePtr sender_state{new State()};
   make_login(sender_state, "delayed_cancelsender", sender_email);
+  bool sender_finished = false;
   auto sender_thread = init_sender(
     sender_state,
     recipient_email,
     to_send,
+    sender_finished,
     [&, sender_state] (TransactionNotification const& t, bool)
     {
       if (t.status == plasma::TransactionStatus::canceled)
       {
         ELLE_WARN("[Sender] Transaction %s had been canceled", t);
         ++cancel_counter;
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::failed)
       {
         ELLE_ERR("[Sender] Transaction %s failed", t);
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::finished)
       {
         ELLE_LOG("[Sender] Transaction %s finished", t);
-        sender_state->logout();
+        sender_finished = true;
       }
     });
 
@@ -403,26 +401,27 @@ BOOST_AUTO_TEST_CASE(early_cancel)
 
   StatePtr recipient_state{new State()};
   make_login(recipient_state, "early_cancelrecipient", recipient_email);
-
+  bool recipient_finished = false;
   auto recipient_thread = init_recipient(
     recipient_state,
+    recipient_finished,
     [&, recipient_state] (TransactionNotification const& t, bool)
     {
       if (t.status == plasma::TransactionStatus::canceled)
       {
         ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
-        recipient_state->logout();
+        recipient_finished = true;
         ++cancel_counter;
       }
       else if (t.status == plasma::TransactionStatus::failed)
       {
         ELLE_ERR("[Recipient] Transaction %s failed", t);
-        recipient_state->logout();
+        recipient_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::finished)
       {
         ELLE_LOG("Transaction %s finished", t);
-        recipient_state->logout();
+        recipient_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::created && !t.accepted)
       {
@@ -435,27 +434,29 @@ BOOST_AUTO_TEST_CASE(early_cancel)
   StatePtr sender_state{new State()};
   make_login(sender_state, "cancelsender", sender_email);
 
+  bool sender_finished = false;
   auto sender_thread = init_sender(
     sender_state,
     recipient_email,
     to_send,
+    sender_finished,
     [&, sender_state] (TransactionNotification const& t, bool)
     {
       if (t.status == plasma::TransactionStatus::canceled)
       {
         ELLE_WARN("[Sender] Transaction %s had been canceled", t);
         ++cancel_counter;
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::failed)
       {
         ELLE_ERR("[Sender] Transaction %s failed", t);
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::finished)
       {
         ELLE_LOG("Transaction %s finished", t);
-        sender_state->logout();
+        sender_finished = true;
       }
     });
 
@@ -492,54 +493,56 @@ BOOST_AUTO_TEST_CASE(ghost_user)
 
   StatePtr recipient_state{new State()};
   StatePtr sender_state{new State()};
-
+  bool sender_finished = false;
   make_login(sender_state, "delayed_acceptsender", sender_email);
   auto sender_thread = init_sender(
     sender_state,
     recipient_email,
     to_send,
+    sender_finished,
     [&, sender_state, recipient_state] (TransactionNotification const& t, bool)
     {
       if (t.status == plasma::TransactionStatus::canceled)
       {
         ELLE_WARN("[Sender] Transaction %s had been canceled", t);
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::failed)
       {
         ELLE_ERR("[Sender] Transaction %s failed", t);
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::finished)
       {
         ELLE_LOG("[Sender] Transaction %s finished", t);
         ++success_counter;
-        sender_state->logout();
+        sender_finished = true;
       }
       else if (t.status == plasma::TransactionStatus::created &&
                t.accepted == false)
       {
         make_login(recipient_state, "delayed_acceptrecipient", recipient_email);
-
+        bool recipient_finished = false;
         recipient_thread = init_recipient(
           recipient_state,
+          recipient_finished,
           [&, recipient_state] (TransactionNotification const& t, bool)
           {
             if (t.status == plasma::TransactionStatus::canceled)
             {
               ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
-              recipient_state->logout();
+              recipient_finished = true;
             }
             else if (t.status == plasma::TransactionStatus::failed)
             {
               ELLE_ERR("[Recipient] Transaction %s failed", t);
-              recipient_state->logout();
+              recipient_finished = true;
             }
             else if (t.status == plasma::TransactionStatus::finished)
             {
               ELLE_LOG("[Recipient] Transaction %s finished", t);
               ++success_counter;
-              recipient_state->logout();
+              recipient_finished = true;
             }
             else if (t.status == plasma::TransactionStatus::created && !t.accepted)
             {
