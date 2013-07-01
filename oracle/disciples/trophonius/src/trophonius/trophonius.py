@@ -3,7 +3,7 @@
 
 from __future__ import print_function
 
-from twisted.internet import protocol, reactor, task
+from twisted.internet import protocol, reactor
 from twisted.protocols import basic
 from twisted.python import log
 
@@ -63,11 +63,11 @@ class Trophonius(basic.LineReceiver):
         return "<{}()>".format(self.__class__.__name__)
 
     def connectionMade(self):
-        from functools import partial
         log.msg("New connection from", self.transport.getPeer())
-        self._alive_service = task.LoopingCall(self.sendLine,
+        self._ping_service = task.LoopingCall(self.sendLine,
                 json.dumps({"notification_type": 208}))
-        self._alive_service.start(30)
+        self._ping_service.start(30)
+        self._disconnect_timer = reactor.callLater(30, self._loseConnection)
 
     def _loseConnection(self):
         self.reason = "noPing"
@@ -81,8 +81,11 @@ class Trophonius(basic.LineReceiver):
         if self.id is None:
             return
 
-        if self._alive_service is not None:
-            self._alive_service.stop()
+        if self._disconnect_timer is not None and self._disconnect_timer.active():
+            self._disconnect_timer.cancel()
+
+        if self._ping_service is not None:
+            self._ping_service.stop()
 
         log.msg("Disconnect user %s" % self.id)
 
@@ -114,7 +117,11 @@ class Trophonius(basic.LineReceiver):
             self.sendLine("{}".format(message))
 
     def handle_PING(self, line):
-        pass
+        data = json.loads(line)
+        if data["notification_type"] == 208:
+            if self._alive_service is not None and \
+               self._alive_service.active():
+                self._alive_service.reset(60)
 
     def handle_HELLO(self, line):
         """

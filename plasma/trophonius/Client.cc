@@ -134,8 +134,10 @@ namespace plasma
     {
       boost::asio::io_service io_service;
       boost::asio::ip::tcp::socket socket;
+      boost::asio::deadline_timer connection_checker;
+      boost::asio::deadline_timer ping_timer;
       bool connected;
-      bool pong_expected;
+      bool ping_received;
       std::string server;
       uint16_t port;
       boost::asio::streambuf request;
@@ -151,8 +153,10 @@ namespace plasma
            std::function<void()> connect_callback):
         io_service{},
         socket{io_service},
+        connection_checker{io_service},
+        ping_timer{io_service},
         connected{false},
-        pong_expected{false},
+        ping_received{false},
         server{server},
         port{port},
         request{},
@@ -171,6 +175,111 @@ namespace plasma
 
     Client::~Client()
     {}
+
+    static char const* ping_msg = "{\"notification_type\": 208}\n";
+
+    void
+    Client::_disconnect()
+    {
+      _impl->connected = false;
+      _impl->socket.close();
+    }
+
+    void
+    Client::_check_connection(boost::system::error_code const& err)
+    {
+      if (err)
+      {
+        if (err.value() != boost::asio::error::operation_aborted)
+        {
+          ELLE_WARN("timer failed in %s (%s), stopping connection checks",
+                    __func__, err);
+        }
+        return;
+      }
+
+      if (_impl->connected == false || _impl->ping_received == false)
+      {
+        try
+        {
+          ELLE_TRACE("no message from Trophonius since to long.");
+          ELLE_TRACE("trying to reconnect");
+          this->_disconnect();
+          this->connect(_impl->user_id,
+                        _impl->user_token,
+                        _impl->user_device_id);
+          _impl->last_error = boost::system::error_code{};
+          ELLE_TRACE("reconnected to Trophonius successfully");
+        }
+        catch (std::exception const&)
+        {
+          ELLE_WARN("Couldn't reconnect to tropho: %s",
+                    elle::exception_string());
+        }
+      }
+      else
+        this->_restart_timer();
+    }
+
+    void
+    Client::_on_ping_sent(boost::system::error_code const& err,
+                          size_t const /*bytes_transferred*/)
+    {
+      if (err)
+      {
+        _impl->connected = false;
+        ELLE_WARN("timer failed in %s (%s), stopping connection checks",
+                  __func__, err);
+      }
+    }
+
+    void
+    Client::_send_ping(boost::system::error_code const& err)
+    {
+      if (err)
+      {
+        if (err.value() != boost::asio::error::operation_aborted)
+        {
+          ELLE_WARN("timer failed (%s), stopping connection checks", err);
+        }
+        return;
+      }
+
+      try
+      {
+        ELLE_DEBUG("send ping to %s", _impl->socket.remote_endpoint());
+        boost::asio::async_write(
+          _impl->socket,
+          boost::asio::buffer(ping_msg, strlen(ping_msg)),
+          std::bind(
+            &Client::_on_ping_sent, this,
+            std::placeholders::_1, std::placeholders::_2
+          )
+        );
+      }
+      catch (std::exception const&)
+      {
+        ELLE_WARN("couldn't send ping to tropho: %s",
+                  elle::exception_string());
+        this->_impl->connected = false;
+      }
+    }
+
+    void
+    Client::_restart_timer()
+    {
+      _impl->ping_timer.expires_from_now(
+        boost::posix_time::seconds(20));
+
+      _impl->ping_timer.async_wait(
+        std::bind(&Client::_send_ping, this, std::placeholders::_1));
+
+      _impl->connection_checker.expires_from_now(
+        boost::posix_time::seconds(60));
+
+      _impl->connection_checker.async_wait(
+          std::bind(&Client::_check_connection, this, std::placeholders::_1));
+    }
 
     void
     Client::_connect()
@@ -208,19 +317,19 @@ namespace plasma
       if (err || bytes_transferred == 0)
       {
         _impl->connected = false;
-        if (err)
-        {
-          ELLE_WARN("%s: something went wrong while reading from socket: %s",
-                    *this, err);
-          _impl->last_error = err;
-        }
         if (err == boost::asio::error::eof)
         {
-          ELLE_TRACE("%s: disconnected from trophonius, trying to reconnect",
+          ELLE_TRACE("%s: disconnected from Trophonius, trying to reconnect",
                      *this);
           this->connect(_impl->user_id,
                         _impl->user_token,
                         _impl->user_device_id);
+        }
+        else if (err)
+        {
+          ELLE_WARN("%s: something went wrong while reading from socket: %s",
+                    *this, err);
+          _impl->last_error = err;
         }
         return;
       }
@@ -246,7 +355,9 @@ namespace plasma
         // this notification is 'ignored', meaning that it's not pushed into the
         // notification queue.
         // If we want a behavior on it, just remove that condition.
-        if (notif->notification_type != NotificationType::ping)
+        if (notif->notification_type == NotificationType::ping)
+          _impl->ping_received = true;
+        else
           this->_notifications.emplace(notif.release());
       }
       catch (std::exception const&)
@@ -307,6 +418,8 @@ namespace plasma
           elle::ResponseCode::error, "Writing socket error"};
 
       this->_read_socket();
+      this->_restart_timer();
+      _impl->connect_callback();
       return true;
     }
 

@@ -129,7 +129,13 @@ namespace plasma
       _connect();
 
       void
+      _disconnect();
+
+      void
       _read_socket();
+
+      void
+      _restart_timer();
 
       void
       _on_read_socket(boost::system::error_code const& err,
@@ -142,6 +148,16 @@ namespace plasma
       virtual
       void
       print(std::ostream& stream) const override;
+
+      void
+      _check_connection(boost::system::error_code const& err);
+
+      void
+      _send_ping(boost::system::error_code const& err);
+
+      void
+      _on_ping_sent(boost::system::error_code const& err,
+                      size_t const bytes_transferred);
     };
 
     std::ostream&

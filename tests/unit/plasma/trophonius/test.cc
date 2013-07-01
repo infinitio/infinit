@@ -91,3 +91,142 @@ BOOST_AUTO_TEST_CASE(test)
   reactor::Thread c{sched, "client", std::move(client)};
   sched.run();
 }
+
+BOOST_AUTO_TEST_CASE(ping)
+{
+  reactor::Scheduler sched;
+  int port = -1;
+  namespace network = reactor::network;
+  reactor::Thread* client_thread = nullptr;
+
+  auto serv = [&]
+  {
+    using namespace reactor;
+    network::TCPServer server{sched};
+
+    server.listen(0);
+    port = server.port();
+    std::cout << "listen on port " << port << std::endl;
+    std::unique_ptr<network::TCPSocket> socket{server.accept()};
+    std::cout << "Connection accepted" << std::endl;
+
+    std::string buf(512, '\0');
+    size_t bytes = socket->read_some(network::Buffer(buf));
+    buf.resize(bytes);
+    std::cout << "Server read: " << buf << std::endl;
+
+    auto send_ping = [&]
+    {
+      sleep(30);
+      std::string msg = "{\"notification_type\": 208}\n";
+      socket->write(network::Buffer(msg));
+      sleep(30);
+      msg = "{\"notification_type\": 208}\n";
+      socket->write(network::Buffer(msg));
+    };
+    reactor::Thread ping{sched, "ping", std::move(send_ping)};
+
+    for (int i = 0; i < 2; i++)
+    {
+      std::string buf(512, '\0');
+
+      bytes = socket->read_some(network::Buffer(buf));
+      buf.resize(bytes);
+      std::cout << "Server read: " << buf << std::endl;
+    }
+    auto* this_thread = sched.current();
+    this_thread->wait(ping);
+    client_thread->terminate_now();
+  };
+  reactor::Thread s{sched, "server", std::move(serv)};
+
+  auto client = [&]
+  {
+    using namespace plasma::trophonius;
+    sleep(1);
+    plasma::trophonius::Client c("127.0.0.1", port, [] {});
+
+    sleep(1);
+    c.connect("", "", "");
+    while (1)
+    {
+      std::cout << "polling notifications" << std::endl;
+      std::unique_ptr<Notification> notif = c.poll();
+      sleep(1);
+
+      if (!notif)
+        continue;
+    }
+  };
+  reactor::Thread c{sched, "client", std::move(client)};
+  client_thread = &c;
+  sched.run();
+}
+
+BOOST_AUTO_TEST_CASE(noping)
+{
+  reactor::Scheduler sched;
+  int port = -1;
+  namespace network = reactor::network;
+  reactor::Thread* client_thread = nullptr;
+
+  auto serv = [&]
+  {
+    using namespace reactor;
+    network::TCPServer server{sched};
+
+    server.listen(0);
+    port = server.port();
+    std::cout << "listen on port " << port << std::endl;
+    for (int times = 0; times < 2; times++)
+    {
+      std::unique_ptr<network::TCPSocket> socket{server.accept()};
+      std::cout << "Connection accepted" << std::endl;
+
+      try
+      {
+        std::string buf(512, '\0');
+        size_t bytes = socket->read_some(network::Buffer(buf));
+        buf.resize(bytes);
+        std::cout << "Server read: " << buf << std::endl;
+
+        for (int i = 0; i < 2; i++)
+        {
+          std::string buf(512, '\0');
+
+          bytes = socket->read_some(network::Buffer(buf));
+          buf.resize(bytes);
+          std::cout << "Server read: " << buf << std::endl;
+        }
+      }
+      catch (reactor::network::ConnectionClosed const&)
+      {
+        //continue;
+      }
+    }
+    client_thread->terminate_now();
+  };
+  reactor::Thread s{sched, "server", std::move(serv)};
+
+  auto client = [&]
+  {
+    using namespace plasma::trophonius;
+    sleep(1);
+    plasma::trophonius::Client c("127.0.0.1", port, [] {});
+
+    sleep(1);
+    c.connect("", "", "");
+    while (1)
+    {
+      std::cout << "polling notifications" << std::endl;
+      std::unique_ptr<Notification> notif = c.poll();
+      sleep(1);
+
+      if (!notif)
+        continue;
+    }
+  };
+  reactor::Thread c{sched, "client", std::move(client)};
+  client_thread = &c;
+  sched.run();
+}
