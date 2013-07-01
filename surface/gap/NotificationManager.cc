@@ -131,7 +131,7 @@ namespace surface
     size_t
     NotificationManager::poll(size_t max)
     {
-      ELLE_TRACE("%s: polling at most %s notification", *this, max);
+      ELLE_DUMP("%s: polling at most %s notification", *this, max);
 
       std::unique_ptr<Notification> notif;
       std::string transaction_id = "";
