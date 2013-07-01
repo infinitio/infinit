@@ -77,7 +77,7 @@ class TrophoniusNotify(Notifier):
 
         elif device_ids is not None:
             device_ids = set(database.ObjectId(device_id) for device_id in device_ids)
-        message['to_devices'] = device_ids
+        message['to_devices'] = list(device_ids)
 
         if store:
             if recipient_ids is None:
