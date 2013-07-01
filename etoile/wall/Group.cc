@@ -35,7 +35,8 @@ namespace etoile
 //
 
     std::pair<nucleus::neutron::Group::Identity, gear::Identifier>
-    Group::Create(elle::String const& description)
+    Group::Create(etoile::Etoile& etoile,
+                  elle::String const& description)
     {
       ELLE_TRACE_FUNCTION(description);
 
@@ -73,7 +74,8 @@ namespace etoile
     }
 
     gear::Identifier
-    Group::Load(typename nucleus::neutron::Group::Identity const& identity)
+    Group::Load(etoile::Etoile& etoile,
+                typename nucleus::neutron::Group::Identity const& identity)
     {
       ELLE_TRACE_FUNCTION(identity);
 
@@ -113,7 +115,8 @@ namespace etoile
     }
 
     abstract::Group
-    Group::Information(gear::Identifier const& identifier)
+    Group::Information(etoile::Etoile& etoile,
+                       gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
@@ -141,7 +144,8 @@ namespace etoile
     }
 
     void
-    Group::Add(gear::Identifier const& identifier,
+    Group::Add(etoile::Etoile& etoile,
+               gear::Identifier const& identifier,
                nucleus::neutron::Subject const& subject)
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
@@ -168,7 +172,8 @@ namespace etoile
     }
 
     nucleus::neutron::Fellow
-    Group::Lookup(gear::Identifier const& identifier,
+    Group::Lookup(etoile::Etoile& etoile,
+                  gear::Identifier const& identifier,
                   nucleus::neutron::Subject const& subject)
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
@@ -199,7 +204,8 @@ namespace etoile
     }
 
     nucleus::neutron::Range<nucleus::neutron::Fellow>
-    Group::Consult(gear::Identifier const& identifier,
+    Group::Consult(etoile::Etoile& etoile,
+                   gear::Identifier const& identifier,
                    nucleus::neutron::Index const& index,
                    nucleus::neutron::Size const& size)
     {
@@ -229,7 +235,8 @@ namespace etoile
     }
 
     void
-    Group::Remove(gear::Identifier const& identifier,
+    Group::Remove(etoile::Etoile& etoile,
+                  gear::Identifier const& identifier,
                   nucleus::neutron::Subject const& subject)
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
@@ -256,7 +263,8 @@ namespace etoile
     }
 
     void
-    Group::Discard(gear::Identifier const& identifier)
+    Group::Discard(etoile::Etoile& etoile,
+                   gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
@@ -338,7 +346,8 @@ namespace etoile
     }
 
     void
-    Group::Store(gear::Identifier const& identifier)
+    Group::Store(etoile::Etoile& etoile,
+                 gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
@@ -420,7 +429,8 @@ namespace etoile
     }
 
     void
-    Group::Destroy(gear::Identifier const& identifier)
+    Group::Destroy(etoile::Etoile& etoile,
+                   gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 

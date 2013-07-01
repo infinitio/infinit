@@ -27,12 +27,13 @@ namespace etoile
   namespace wall
   {
     nucleus::neutron::Record
-    Access::lookup(const gear::Identifier& identifier,
+    Access::lookup(etoile::Etoile& etoile,
+                   const gear::Identifier& identifier,
                    const nucleus::neutron::Subject& subject)
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
@@ -52,13 +53,14 @@ namespace etoile
     }
 
     nucleus::neutron::Range<nucleus::neutron::Record>
-    Access::consult(gear::Identifier const& identifier,
+    Access::consult(etoile::Etoile& etoile,
+                    gear::Identifier const& identifier,
                     nucleus::neutron::Index const& index,
                     nucleus::neutron::Size const& size)
     {
       ELLE_TRACE_FUNCTION(identifier, index, size);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object*     context;
 
@@ -84,13 +86,14 @@ namespace etoile
     /// this method grants the given access permissions to the subject.
     ///
     elle::Status        Access::Grant(
+      etoile::Etoile& etoile,
       const gear::Identifier&               identifier,
       const nucleus::neutron::Subject& subject,
       const nucleus::neutron::Permissions& permissions)
     {
       ELLE_TRACE_FUNCTION(identifier, subject, permissions);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object*     context;
 
@@ -119,12 +122,13 @@ namespace etoile
     /// list.
     ///
     elle::Status        Access::Revoke(
+      etoile::Etoile& etoile,
       const gear::Identifier&               identifier,
       const nucleus::neutron::Subject& subject)
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object*     context;
 

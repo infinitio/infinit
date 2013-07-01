@@ -36,11 +36,11 @@ namespace etoile
 //
 
     gear::Identifier
-    Directory::create()
+    Directory::create(etoile::Etoile& etoile)
     {
       ELLE_TRACE_FUNCTION("");
 
-      std::shared_ptr<gear::Scope> scope = Etoile::instance()->scope_supply();
+      std::shared_ptr<gear::Scope> scope = etoile.scope_supply();
       gear::Guard guard(scope);
       gear::Directory* context;
       gear::Identifier identifier;
@@ -83,7 +83,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(chemin);
 
       std::shared_ptr<gear::Scope> scope =
-        Etoile::instance()->scope_acquire(chemin);
+        etoile.scope_acquire(chemin);
       gear::Guard guard(scope);
       gear::Directory* context;
       gear::Identifier identifier;
@@ -116,7 +116,7 @@ namespace etoile
           }
         catch (std::exception const&)
           {
-            Object::reload<gear::Directory>(*scope);
+            Object::reload<gear::Directory>(etoile, *scope);
           }
 
         ELLE_DEBUG("returning identifier %s on %s", identifier, *scope);
@@ -195,13 +195,14 @@ namespace etoile
     }
 
     nucleus::neutron::Range<nucleus::neutron::Entry>
-    Directory::consult(gear::Identifier const& identifier,
+    Directory::consult(etoile::Etoile& etoile,
+                       gear::Identifier const& identifier,
                        nucleus::neutron::Index const& index,
                        nucleus::neutron::Index const& size)
     {
       ELLE_TRACE_FUNCTION(identifier, index, size);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory* context;
 
@@ -230,13 +231,14 @@ namespace etoile
     /// this method renames a directory entry.
     ///
     elle::Status
-    Directory::Rename(const gear::Identifier& identifier,
+    Directory::Rename(etoile::Etoile& etoile,
+                      const gear::Identifier& identifier,
                       const std::string& from,
                       const std::string& to)
     {
       ELLE_TRACE_FUNCTION(identifier, from, to);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory*  context;
 
@@ -282,7 +284,7 @@ namespace etoile
           // chemins are now inconsistent---i.e referencing the old
           // chemin _chemin.from_.
           ELLE_TRACE("update the scope")
-            Etoile::instance()->scope_update(chemin_from, chemin_to);
+            etoile.scope_update(chemin_from, chemin_to);
         }
 
         //
@@ -290,8 +292,8 @@ namespace etoile
         //
         {
           // evict the route from the shrub.
-          Etoile::instance()->shrub().evict(route_from);
-          Etoile::instance()->shrub().evict(route_to);
+          etoile.shrub().evict(route_from);
+          etoile.shrub().evict(route_to);
         }
       }
 
@@ -302,12 +304,13 @@ namespace etoile
     /// this method removes a directory entry.
     ///
     elle::Status
-    Directory::Remove(const gear::Identifier& identifier,
+    Directory::Remove(etoile::Etoile& etoile,
+                      const gear::Identifier& identifier,
                       const std::string& name)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory*  context;
 
@@ -330,7 +333,7 @@ namespace etoile
         // Invalidate the route in the shrub.
         {
           path::Route route(scope->chemin.route(), name);
-          Etoile::instance()->shrub().evict(route);
+          etoile.shrub().evict(route);
         }
       }
 
@@ -426,7 +429,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory* context;
 
@@ -507,11 +510,12 @@ namespace etoile
     /// this method destroys a directory.
     ///
     elle::Status
-    Directory::Destroy(const gear::Identifier& identifier)
+    Directory::Destroy(etoile::Etoile& etoile,
+                       const gear::Identifier& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory*          context;
 

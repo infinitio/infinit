@@ -35,12 +35,13 @@ namespace etoile
   {
 
     gear::Identifier
-    Object::load(const path::Chemin& chemin)
+    Object::load(etoile::Etoile& etoile,
+                 const path::Chemin& chemin)
     {
       ELLE_TRACE_FUNCTION(chemin);
 
       std::shared_ptr<gear::Scope> scope =
-        Etoile::instance()->scope_acquire(chemin);
+        etoile.scope_acquire(chemin);
       gear::Guard guard(scope);
       gear::Object* context;
 
@@ -58,7 +59,7 @@ namespace etoile
 
           try
             {
-              object = Etoile::instance()->depot().pull_object(
+              object = etoile.depot().pull_object(
                 location.address(), location.revision());
             }
           catch (std::runtime_error& e)
@@ -66,7 +67,7 @@ namespace etoile
               assert(scope != nullptr);
               ELLE_TRACE("clearing the cache in order to evict %s",
                          scope->chemin.route())
-                Etoile::instance()->shrub().clear();
+                etoile.shrub().clear();
 
               ELLE_TRACE("try to resolve the route now that the "
                          "cache was cleaned")
@@ -79,7 +80,7 @@ namespace etoile
               }
 
               ELLE_TRACE("trying to load the object again from %s", location)
-                object = Etoile::instance()->depot().pull_object(
+                object = etoile.depot().pull_object(
                   location.address(), location.revision());
             }
 
@@ -183,7 +184,7 @@ namespace etoile
           {
             ELLE_ASSERT(scope != nullptr);
 
-            Object::reload<gear::Object>(*scope);
+            Object::reload<gear::Object>(etoile, *scope);
           }
 
         // waive the actor and the scope
@@ -197,11 +198,12 @@ namespace etoile
     }
 
     abstract::Object
-    Object::information(const gear::Identifier& identifier)
+    Object::information(etoile::Etoile& etoile,
+                        const gear::Identifier& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
 
       {
@@ -224,11 +226,12 @@ namespace etoile
     }
 
     void
-    Object::discard(gear::Identifier const& identifier)
+    Object::discard(etoile::Etoile& etoile,
+                    gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
@@ -392,11 +395,12 @@ namespace etoile
     }
 
     void
-    Object::destroy(gear::Identifier const& identifier)
+    Object::destroy(etoile::Etoile& etoile,
+                    gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 

@@ -28,11 +28,11 @@ namespace etoile
 //
 
     gear::Identifier
-    Link::create()
+    Link::create(etoile::Etoile& etoile)
     {
       ELLE_TRACE_FUNCTION("");
 
-      std::shared_ptr<gear::Scope> scope = Etoile::instance()->scope_supply();
+      std::shared_ptr<gear::Scope> scope = etoile.scope_supply();
       gear::Guard guard(scope);
       gear::Link* context;
       gear::Identifier identifier;
@@ -75,13 +75,14 @@ namespace etoile
     /// an associated context.
     ///
     elle::Status        Link::Load(
-                          const path::Chemin&                   chemin,
-                          gear::Identifier&                     identifier)
+      etoile::Etoile& etoile,
+      const path::Chemin&                   chemin,
+      gear::Identifier&                     identifier)
     {
       ELLE_TRACE_FUNCTION(chemin);
 
       std::shared_ptr<gear::Scope> scope =
-        Etoile::instance()->scope_acquire(chemin);
+        etoile.scope_acquire(chemin);
       gear::Guard               guard(scope);
       gear::Link*       context;
 
@@ -114,7 +115,7 @@ namespace etoile
         catch (std::exception const&)
           {
             assert(scope != nullptr);
-            Object::reload<gear::Link>(*scope);
+            Object::reload<gear::Link>(etoile, *scope);
           }
 
         ELLE_DEBUG("returning identifier %s on %s", identifier, *scope);
@@ -128,12 +129,13 @@ namespace etoile
     }
 
     void
-    Link::bind(gear::Identifier const& identifier,
+    Link::bind(etoile::Etoile& etoile,
+               gear::Identifier const& identifier,
                std::string const& target)
     {
       ELLE_TRACE_FUNCTION(identifier, target);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Link* context;
 
@@ -155,11 +157,12 @@ namespace etoile
     }
 
     std::string
-    Link::resolve(gear::Identifier const& identifier)
+    Link::resolve(etoile::Etoile& etoile,
+                  gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Link* context;
 
@@ -187,11 +190,12 @@ namespace etoile
     /// performed modifications.
     ///
     elle::Status        Link::Discard(
-                          const gear::Identifier&               identifier)
+      etoile::Etoile& etoile,
+      const gear::Identifier&               identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Link*       context;
 

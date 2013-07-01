@@ -25,7 +25,7 @@ namespace etoile
       /// Create a directory though orphan since not attached to the hierarchy.
       static
       gear::Identifier
-      create();
+      create(etoile::Etoile& etoile);
       /// Load the directory referenced through the given chemin.
       static
       gear::Identifier
@@ -53,18 +53,21 @@ namespace etoile
       /// Return a set of entries located in [index, index + size[.
       static
       nucleus::neutron::Range<nucleus::neutron::Entry>
-      consult(gear::Identifier const& identifer,
+      consult(etoile::Etoile& etoile,
+              gear::Identifier const& identifer,
               nucleus::neutron::Index const& index,
               nucleus::neutron::Size const& size);
 
       static
       elle::Status
-      Rename(const gear::Identifier&,
+      Rename(etoile::Etoile& etoile,
+             const gear::Identifier&,
              const std::string&,
              const std::string&);
       static
       elle::Status
-      Remove(const gear::Identifier&,
+      Remove(etoile::Etoile& etoile,
+             const gear::Identifier&,
              const std::string&);
 
       /// Discard the scope, potentially ignoring some modifications.
@@ -80,7 +83,8 @@ namespace etoile
 
       static
       elle::Status
-      Destroy(const gear::Identifier&);
+      Destroy(etoile::Etoile& etoile,
+              const gear::Identifier&);
     };
 
   }

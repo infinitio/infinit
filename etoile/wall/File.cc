@@ -33,7 +33,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION("");
 
-      std::shared_ptr<gear::Scope> scope = Etoile::instance()->scope_supply();
+      std::shared_ptr<gear::Scope> scope = etoile.scope_supply();
       gear::Guard guard(scope);
       gear::File* context;
       gear::Identifier identifier;
@@ -73,7 +73,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(chemin);
 
       std::shared_ptr<gear::Scope> scope =
-        Etoile::instance()->scope_acquire(chemin);
+        etoile.scope_acquire(chemin);
       gear::Guard guard(scope);
       gear::File* context;
       gear::Identifier identifier;
@@ -106,7 +106,7 @@ namespace etoile
         catch (std::exception const&)
         {
           assert(scope != nullptr);
-          Object::reload<gear::File>(*scope);
+          Object::reload<gear::File>(etoile, *scope);
         }
 
         ELLE_DEBUG("returning identifier %s on %s", identifier, *scope);

@@ -27,13 +27,14 @@ namespace etoile
 //
 
     void
-    Attributes::set(gear::Identifier const& identifier,
+    Attributes::set(etoile::Etoile& etoile,
+                    gear::Identifier const& identifier,
                     elle::String const& name,
                     elle::String const& value)
     {
       ELLE_TRACE_FUNCTION(identifier, name, value);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
@@ -57,12 +58,13 @@ namespace etoile
     }
 
     nucleus::neutron::Trait
-    Attributes::get(gear::Identifier const& identifier,
+    Attributes::get(etoile::Etoile& etoile,
+                    gear::Identifier const& identifier,
                     elle::String const& name)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
@@ -91,11 +93,12 @@ namespace etoile
     }
 
     nucleus::neutron::Range<nucleus::neutron::Trait>
-    Attributes::fetch(gear::Identifier const& identifier)
+    Attributes::fetch(etoile::Etoile& etoile,
+                      gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
@@ -122,12 +125,13 @@ namespace etoile
     /// this method removes the given attribute from the list.
     ///
     elle::Status        Attributes::Omit(
-                          const gear::Identifier&               identifier,
-                          const elle::String&                   name)
+      etoile::Etoile& etoile,
+      const gear::Identifier&               identifier,
+      const elle::String&                   name)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object*     context;
 

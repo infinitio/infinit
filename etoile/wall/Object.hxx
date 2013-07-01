@@ -15,7 +15,8 @@ namespace etoile
 
       template <typename T>
       void
-      Object::reload(gear::Scope& scope)
+      Object::reload(etoile::Etoile& etoile,
+                     gear::Scope& scope)
       {
         ELLE_LOG_COMPONENT("etoile.wall.Object");
         ELLE_TRACE_FUNCTION(scope);
