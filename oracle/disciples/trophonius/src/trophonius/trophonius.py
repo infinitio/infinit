@@ -227,6 +227,7 @@ class MetaTropho(basic.LineReceiver):
         try:
             js_req = json.loads(line)
             device_ids = js_req["to_devices"]
+            assert isinstance(device_ids, list)
             self.enqueue(line, device_ids)
         except ValueError as ve:
             log.err("Handled exception {}: {}".format(
