@@ -54,6 +54,7 @@ class Trophonius(basic.LineReceiver):
         self.state = 'HELLO'
         self.meta_client = None
         self._alive_service = None
+        self._ping_service = None
         self.reason = None
 
     def __str__(self):
@@ -67,7 +68,7 @@ class Trophonius(basic.LineReceiver):
         self._ping_service = task.LoopingCall(self.sendLine,
                 json.dumps({"notification_type": 208}))
         self._ping_service.start(30)
-        self._disconnect_timer = reactor.callLater(30, self._loseConnection)
+        self._alive_service = reactor.callLater(60, self._loseConnection)
 
     def _loseConnection(self):
         self.reason = "noPing"
@@ -81,8 +82,8 @@ class Trophonius(basic.LineReceiver):
         if self.id is None:
             return
 
-        if self._disconnect_timer is not None and self._disconnect_timer.active():
-            self._disconnect_timer.cancel()
+        if self._alive_service is not None and self._alive_service.active():
+            self._alive_service.cancel()
 
         if self._ping_service is not None:
             self._ping_service.stop()
