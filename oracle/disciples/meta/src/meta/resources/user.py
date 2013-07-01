@@ -109,9 +109,9 @@ class Message(Page):
 
     def POST(self):
         self.requireLoggedIn()
-        self.notifier.notify_one(
+        self.notifier.notify_some(
             notifier.MESSAGE,
-            self.data["recipient_id"],
+            [database.ObjectId(self.data["recipient_id"]),],
             {
                 'sender_id' : self.data['sender_id'],
                 'message': self.data['message'],
@@ -587,7 +587,6 @@ class _DeviceAccess(Page):
                 'device_status': value,
             },
             user_id = user_id,
-            store = False,
         )
 
     def connect(self, user_id, device_id):
