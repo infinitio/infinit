@@ -16,9 +16,7 @@ namespace etoile
     _user_keypair(user_keypair),
     _user_subject(this->_user_keypair.K()),
     _actors(),
-    _shrub(Infinit::Configuration.etoile.shrub.capacity,
-           time::milliseconds(Infinit::Configuration.etoile.shrub.lifespan),
-           time::milliseconds(Infinit::Configuration.etoile.shrub.frequency)),
+    _shrub(),
     _depot(hole, root_address)
   {
     ELLE_ASSERT(!this->_instance);

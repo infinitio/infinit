@@ -20,6 +20,7 @@ namespace etoile
   /// path-specific cache.
   namespace shrub
   {
+    namespace time = boost::posix_time;
     /// The shrub i.e path cache relies on the LRU algorithm by keeping two data
     /// structures: a map for looking up and a queue for removing the least
     /// recently used riffles quickly.
@@ -50,14 +51,11 @@ namespace etoile
     ///             caching paths.
     ///   o capacity: indicates the number of riffles the shrub can
     ///               maintain before rejecting additional entries.
-    ///   o frequency: indicates, in milliseconds, how often the sweeper
-    ///                should be triggered in order to evict expired riffles.
-    ///                note that the frequency is expressed in milliseconds.
+    ///   o frequency: how often the sweeper should be triggered in order to
+    ///                evict expired riffles.
     ///   o lifespan: indicates the riffles' lifespan before being considered
     ///               as having expired. note that every update on a riffle
-    ///               resets the "expiration timeout", so to speak. note
-    ///               that the lifespan is expressed in seconds, not
-    ///               milliseconds.
+    ///               resets the "expiration timeout", so to speak.
     ///
     class Shrub
     {
@@ -66,9 +64,9 @@ namespace etoile
     `-------------*/
     public:
       /// Create a Shrub.
-      Shrub(elle::Size capacity,
-            boost::posix_time::time_duration const& lifespan,
-            boost::posix_time::time_duration const& sweep_frequency);
+      Shrub(elle::Size capacity = 1024,
+            time::time_duration const& lifespan = time::seconds(300),
+            time::time_duration const& sweep_frequency = time::seconds(120));
       /// Destroy a Shrub.
       ~Shrub();
 
