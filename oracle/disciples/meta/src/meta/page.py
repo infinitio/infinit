@@ -36,22 +36,9 @@ class Page(object):
         self._input = None
         self._user = None
 
-    @property
-    def session(self):
-        assert self.__session__ is not None
-        return self.__session__
-
-    @property
-    def user(self):
-        if self._user is None:
-            try:
-                self._user = database.users().find_one({
-                    '_id': database.ObjectId(self.session._user_id)
-                })
-            except AttributeError:
-                return None
-        return self._user
-
+    #
+    # Members
+    #
     @property
     def notifier(self):
         if self.__notifier is None:
@@ -77,18 +64,39 @@ class Page(object):
             self._input = web.input()
         return self._input
 
-    def validate(self):
-        for (field, validator) in self._validators:
-            if not field in self.data.keys():
-                return (error.BAD_REQUEST[0], "Field %s is mandatory" % field)
-            else:
-                error_code = validator(self.data[field])
-                if error_code:
-                    return error_code
-        for (field, type_) in self._mendatory_fields:
-            if not field in self.data.keys() or not isinstance(self.data[field], type_):
-                return (error.BAD_REQUEST[0], "Field %s is mandatory and must be an %s" % (field, type_))
-        return ()
+    _data = None
+    @property
+    def data(self):
+        if self._data is None:
+            try:
+                data = web.data()
+                if web.ctx.env['CONTENT_TYPE'] != 'application/json':
+                    data = urllib.unquote(data)
+                self._data = json.loads(data)
+            except:
+                traceback.print_exc()
+                print "Cannot decode", data, web.data()
+                raise ValueError("Wrong post data")
+        return self._data
+
+    #
+    # User
+    #
+    @property
+    def session(self):
+        assert self.__session__ is not None
+        return self.__session__
+
+    @property
+    def user(self):
+        if self._user is None:
+            try:
+                self._user = database.users().find_one({
+                    '_id': database.ObjectId(self.session._user_id)
+                })
+            except AttributeError:
+                return None
+        return self._user
 
     def logout(self):
         self.session.kill()
@@ -126,46 +134,33 @@ class Page(object):
         user = database.users().save(kwargs)
         return user
 
-    @staticmethod
-    def connected(user_id):
-        assert isinstance(user_id, database.ObjectId)
-        user = database.users().find_one(user_id)
-        if not user:
-            raise Exception("This user doesn't exist")
-        return user.get('connected', False)
-
-    def forbidden(self, msg):
-        raise web.HTTPError("403 {}".format(msg))
-
-    def requireLoggedIn(self):
-        if not self.user:
-            self.forbidden("Authentication required.")
-
     def hashPassword(self, password):
         seasoned = password + conf.SALT
         seasoned = seasoned.encode('utf-8')
         return hashlib.md5(seasoned).hexdigest()
 
-    def notifySwaggers(self, notification_id, data, user_id = None):
-        if user_id is None:
-            user = self.user
-            user_id = user['_id']
-        else:
-            assert isinstance(user_id, database.ObjectId)
-            user = database.users().find_one(user_id)
+    #
+    # Check and return values
+    #
+    def requireLoggedIn(self):
+        if not self.user:
+            self.forbidden("Authentication required.")
 
-        swaggers = list(
-            swagger_id for swagger_id in user['swaggers'].keys()
-            if self.connected(database.ObjectId(swagger_id))
-        )
-        d = {"user_id" : user_id}
-        d.update(data)
-        self.notifier.notify_some(
-            notification_id,
-            recipient_ids = swaggers,
-            message = d,
-            store = False,
-        )
+    def validate(self):
+        for (field, validator) in self._validators:
+            if not field in self.data.keys():
+                return (error.BAD_REQUEST[0], "Field %s is mandatory" % field)
+            else:
+                error_code = validator(self.data[field])
+                if error_code:
+                    return error_code
+        for (field, type_) in self._mendatory_fields:
+            if not field in self.data.keys() or not isinstance(self.data[field], type_):
+                return (error.BAD_REQUEST[0], "Field %s is mandatory and must be an %s" % (field, type_))
+        return ()
+
+    def forbidden(self, msg):
+        raise web.HTTPError("403 {}".format(msg))
 
     def error(self, error_code = error.UNKNOWN, msg = None):
         assert isinstance(error_code, tuple)
@@ -190,18 +185,3 @@ class Page(object):
         web.header('Content-Type', 'application/json')
         web.header('Content-Length', str(len(res)))
         return res
-
-    _data = None
-    @property
-    def data(self):
-        if self._data is None:
-            try:
-                data = web.data()
-                if web.ctx.env['CONTENT_TYPE'] != 'application/json':
-                    data = urllib.unquote(data)
-                self._data = json.loads(data)
-            except:
-                traceback.print_exc()
-                print "Cannot decode", data, web.data()
-                raise ValueError("Wrong post data")
-        return self._data
