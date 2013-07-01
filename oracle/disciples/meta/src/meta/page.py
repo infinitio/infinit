@@ -1,4 +1,3 @@
-
 # -*- encoding: utf-8 -*-
 
 import web
@@ -17,16 +16,6 @@ from meta import notifier
 from meta import error
 from meta import regexp
 from meta import apertus
-
-_macro_matcher = re.compile(r'(.*\()(\S+)(,.*\))')
-
-def replacer(match):
-    field = match.group(2)
-    return match.group(1) + "'" + field + "'" + match.group(3)
-
-configfile = open(filepath, 'r')
-for line in configfile:
-    eval(_macro_matcher.sub(replacer, line))
 
 class Page(object):
     """
