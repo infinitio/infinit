@@ -530,13 +530,14 @@ namespace surface
       {
         if (tr.sender_device_id != this->_device.id)
         {
-          throw Exception(
-            gap_device_not_valid,
-            elle::sprintf("received notification regarding a created "
-                          "transaction which does not involve this "
-                          "device: %s", tr));
+          // ELLE_ASSERT(
+          //     false,
+          //     "got a transaction tr that does not involve my device: %s",
+          //     tr);
+          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
+          return;
         }
-        else if (tr.status == plasma::TransactionStatus::created)
+        if (tr.status == plasma::TransactionStatus::created)
         {
           ELLE_DEBUG("sender prepare upload for %s", tr)
             this->_prepare_upload(tr);
@@ -559,16 +560,16 @@ namespace surface
       {
         if (tr.recipient_device_id != this->_device.id)
         {
-          if (tr.accepted)
-            throw Exception(
-              gap_device_not_valid,
-              elle::sprintf("received notification regarding a received "
-                            "transaction which does not involve this "
-                            "device: %s", tr));
+          // ELLE_ASSERT(
+          //     false,
+          //     "got a transaction tr that does not involve my device: %s",
+          //     tr);
+          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
+          return;
         }
-        else if (tr.status == plasma::TransactionStatus::started &&
-                 tr.accepted &&
-                 this->_user_manager.device_status(tr.sender_id,
+        if (tr.status == plasma::TransactionStatus::started &&
+            tr.accepted &&
+            this->_user_manager.device_status(tr.sender_id,
                                               tr.sender_device_id))
         {
           ELLE_DEBUG("recipient start download for %s", tr)
