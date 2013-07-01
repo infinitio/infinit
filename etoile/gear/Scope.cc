@@ -10,400 +10,18 @@
 #include <etoile/gear/Group.hh>
 #include <etoile/gear/Chronicle.hh>
 #include <etoile/Exception.hh>
+#include <etoile/Etoile.hh>
 
 #include <elle/log.hh>
 
 #include <Infinit.hh>
 
+ELLE_LOG_COMPONENT("infinit.etoile.gear.Scope");
+
 namespace etoile
 {
   namespace gear
   {
-
-    ELLE_LOG_COMPONENT("infinit.etoile.gear.Scope");
-
-//
-// ---------- definitions -----------------------------------------------------
-//
-
-    ///
-    /// this container holds the scopes accessible through a chemin.
-    ///
-    Scope::S::O::Container              Scope::Scopes::Onymous;
-
-    ///
-    /// this container holds the anonymous---i.e freshly author---scopes.
-    ///
-    Scope::S::A::Container              Scope::Scopes::Anonymous;
-
-//
-// ---------- static methods --------------------------------------------------
-//
-
-    ///
-    /// this method returns true if an anymous scope exists for
-    /// the given chemin.
-    ///
-    elle::Boolean       Scope::Exist(const path::Chemin&        chemin)
-    {
-      Scope::S::O::Scoutor      scoutor;
-
-      if ((scoutor = Scope::Scopes::Onymous.find(chemin)) !=
-          Scope::Scopes::Onymous.end())
-        return true;
-
-      return false;
-    }
-
-    ///
-    /// this method inserts an anymous scope.
-    ///
-    elle::Status        Scope::Add(const path::Chemin&          chemin,
-                                   Scope*                       scope)
-    {
-      std::pair<Scope::S::O::Iterator, elle::Boolean>   result;
-
-      // insert the scope in the container.
-      result = Scope::Scopes::Onymous.insert(
-        std::pair<const path::Chemin, Scope*>(chemin, scope));
-
-      // check the result.
-      if (result.second == false)
-        throw Exception("unable to insert the scope in the container");
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method returns the anymous scope associated with the given chemin.
-    ///
-    elle::Status        Scope::Retrieve(const path::Chemin&     chemin,
-                                        Scope*&                 scope)
-    {
-      Scope::S::O::Scoutor      scoutor;
-
-      if ((scoutor = Scope::Scopes::Onymous.find(chemin)) ==
-          Scope::Scopes::Onymous.end())
-        throw Exception("unable to locate the scope associated with the given chemin");
-
-      scope = scoutor->second;
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method removes the onymous scope associated with the given
-    /// chemin.
-    ///
-    elle::Status        Scope::Remove(const path::Chemin&       chemin)
-    {
-      Scope::S::O::Iterator     iterator;
-
-      if ((iterator = Scope::Scopes::Onymous.find(chemin)) ==
-          Scope::Scopes::Onymous.end())
-        throw Exception("unable to locate the scope associated with the given chemin");
-
-      Scope::Scopes::Onymous.erase(iterator);
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method inserts an anonymous scope.
-    ///
-    elle::Status        Scope::Add(Scope*                       scope)
-    {
-      // insert the scope in the anonymous container.
-      Scope::Scopes::Anonymous.push_back(scope);
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method removes an anonymous scope.
-    ///
-    elle::Status        Scope::Remove(Scope*                    scope)
-    {
-      Scope::Scopes::Anonymous.remove(scope);
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method inserts the given scope in the appropriate container,
-    /// i.e according to its chemin.
-    ///
-    elle::Status        Scope::Inclose(Scope*                   scope)
-    {
-      // depending on the scope i.e its chemin.
-      if (scope->chemin.empty())
-      {
-        if (Scope::Add(scope) == elle::Status::Error)
-          throw Exception("unable to add the anonymous scope");
-      }
-      else
-      {
-        if (Scope::Add(scope->chemin, scope) == elle::Status::Error)
-          throw Exception("unable to add the onymous scope");
-      }
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method tries to locate an existing scope given the chemin.
-    ///
-    /// if none exists, a scope is created and added to the container.
-    ///
-    elle::Status        Scope::Acquire(const path::Chemin&      chemin,
-                                       Scope*&                  scope)
-    {
-      if (Scope::Exist(chemin) == false)
-        {
-          // allocate a new scope.
-          auto s = std::unique_ptr<Scope>(new Scope(chemin));
-
-          // create the scope.
-          if (s->Create() == elle::Status::Error)
-            throw Exception("unable to create the scope");
-
-          // inclose the scope.
-          if (Scope::Inclose(s.get()) == elle::Status::Error)
-            throw Exception("unable to inclose the scope");
-
-          // return the scope.
-          scope = s.release();
-        }
-      else
-        {
-          // retrieve the existing scope.
-          if (Scope::Retrieve(chemin, scope) == elle::Status::Error)
-            throw Exception("unable to retrieve the existing scope");
-        }
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this specific-revision of the method creates a scope without
-    /// looking for an existing one.
-    ///
-    elle::Status        Scope::Supply(Scope*&                   scope)
-    {
-      // allocate a new scope.
-      auto s = std::unique_ptr<Scope>(new Scope);
-
-      // create the scope.
-      if (s->Create() == elle::Status::Error)
-        throw Exception("unable to create the scope");
-
-      // inclose the scope.
-      if (Scope::Inclose(s.get()) == elle::Status::Error)
-        throw Exception("unable to inclose the scope");
-
-      // return the scope.
-      scope = s.release();
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// this method removes the scope from its container making the scope
-    /// orphan.
-    ///
-    /// therefore, it is the responsibility of the caller to delete the scope.
-    ///
-    elle::Status        Scope::Relinquish(Scope*                scope)
-    {
-      // depending on the scope type.
-      if (scope->chemin.empty())
-      {
-        // The scope is anonymous.
-        if (Scope::Remove(scope) == elle::Status::Error)
-          throw Exception("unable to remove the anonymous scope");
-      }
-      else
-      {
-        // The scope is onymous.
-        if (Scope::Remove(scope->chemin) == elle::Status::Error)
-          throw Exception("unable to remove the onymous scope");
-      }
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// should the given scope become unused---i.e no more actor is
-    /// operating on it---, it is relinquished and deleted.
-    ///
-    elle::Status        Scope::Annihilate(Scope*                scope)
-    {
-
-      // if no actor operates on it anymore.
-      if (scope->actors.empty() == true)
-        {
-          // relinquish the scope.
-          if (Scope::Relinquish(scope) == elle::Status::Error)
-            throw Exception("unable to relinquish the scope");
-
-          // and finally, delete it.
-          delete scope;
-        }
-
-      return elle::Status::Ok;
-    }
-
-    ///
-    /// update the scope container which may contain scopes
-    /// referencing invalid chemins.
-    ///
-    /// XXX note that the mechanism below is not very efficient.
-    ///     instead a tree-based data structure should be used
-    ///     in order to update the container in an efficient
-    ///     manner.
-    ///
-    elle::Status        Scope::Update(const path::Chemin&       from,
-                                      const path::Chemin&       to)
-    {
-      //
-      // go through the onymous scopes and update the chemins
-      // should them derive _from_.
-      //
-
-    retry:
-      auto              iterator = Scope::Scopes::Onymous.begin();
-      auto              end = Scope::Scopes::Onymous.end();
-
-      for (; iterator != end; ++iterator)
-        {
-          Scope*        scope = iterator->second;
-
-          if (scope->chemin.derives(from) == false)
-            continue;
-
-          //
-          // the scope's chemin seems to derive the base
-          // i.e _from_.
-          //
-          // it must therefore be updated so as to be
-          // consistent.
-          //
-
-          scope->chemin = to;
-
-          //
-          // note that the current scope is registered in
-          // the container with its old chemin as the key.
-          //
-          // therefore, the container's key for this scope
-          // must also be updated.
-          //
-          // the following thus removes the scope and
-          // re-inserts it.
-          //
-
-          if (Scope::Remove(from) == elle::Status::Error)
-            throw Exception("unable to remove the scope");
-
-          if (Scope::Add(scope->chemin, scope) == elle::Status::Error)
-            {
-              //
-              // in this extreme case, manually delete the scope
-              // which is now orphan.
-              //
-
-              delete scope;
-
-              throw Exception("unable to re-insert the scope");
-            }
-
-          //
-          // at this point, we cannot go further with the
-          // iterator as consistency cannot be guaranteed
-          // anymore.
-          //
-          // therefore, go through the whole process again.
-          //
-
-          goto retry;
-        }
-
-      return (elle::Status::Ok);
-    }
-
-    ///
-    /// this method displays the containers.
-    ///
-    elle::Status        Scope::Show(const elle::Natural32       margin)
-    {
-      elle::String      alignment(margin, ' ');
-
-
-      std::cout << alignment << "[Scope]" << std::endl;
-
-      //
-      // onymous scopes.
-      //
-      {
-        Scope::S::O::Scoutor    scoutor;
-
-        std::cout << alignment << elle::io::Dumpable::Shift
-                  << "[Onymous] " << Scope::Scopes::Onymous.size()
-                  << std::endl;
-
-        // go through the onymous scopes.
-        for (scoutor = Scope::Scopes::Onymous.begin();
-             scoutor != Scope::Scopes::Onymous.end();
-             scoutor++)
-          {
-            // dump the scope, if present.
-            if (scoutor->second == nullptr)
-              {
-                std::cout << alignment << elle::io::Dumpable::Shift
-                          << elle::io::Dumpable::Shift
-                          << "[Scope] " << "none" << std::endl;
-              }
-            else
-              {
-                if (scoutor->second->Dump(margin + 4) == elle::Status::Error)
-                  throw Exception("unable to dump the scope");
-              }
-          }
-      }
-
-      //
-      // anonymous scopes.
-      //
-      {
-        Scope::S::A::Scoutor    scoutor;
-
-        std::cout << alignment << elle::io::Dumpable::Shift
-                  << "[Anonymous] " << Scope::Scopes::Anonymous.size()
-                  << std::endl;
-
-        // go through the anonymous scopes.
-        for (scoutor = Scope::Scopes::Anonymous.begin();
-             scoutor != Scope::Scopes::Anonymous.end();
-             scoutor++)
-          {
-            // dump the scope, if present.
-            if (*scoutor == nullptr)
-              {
-                std::cout << alignment << elle::io::Dumpable::Shift
-                          << elle::io::Dumpable::Shift
-                          << "[Scope] " << "none" << std::endl;
-              }
-            else
-              {
-                if ((*scoutor)->Dump(margin + 4) == elle::Status::Error)
-                  throw Exception("unable to dump the scope");
-              }
-          }
-      }
-
-      return elle::Status::Ok;
-    }
-
 //
 // ---------- constructors & destructors --------------------------------------
 //
@@ -434,7 +52,7 @@ namespace etoile
     ///
     Scope::~Scope()
     {
-      Scope::A::Scoutor scoutor;
+      Scope::Scoutor scoutor;
 
       // delete the context.
       if (this->context != nullptr)
@@ -464,19 +82,10 @@ namespace etoile
 //
 
     ///
-    /// this method creates a scope.
-    ///
-    elle::Status        Scope::Create()
-    {
-      return elle::Status::Ok;
-    }
-
-    ///
     /// this method adds an actor to the scope's set of actors.
     ///
     elle::Status        Scope::Attach(Actor*                    actor)
     {
-
       // try to locate an existing actor.
       if (this->Locate(actor) == true)
         throw Exception("this actor seems to have been already registered");
@@ -491,10 +100,9 @@ namespace etoile
     /// this method returns true if the actor has been located.
     ///
     elle::Boolean       Scope::Locate(Actor*                    actor,
-                                      Scope::A::Iterator*       iterator)
+                                      Scope::Iterator*       iterator)
     {
-      Scope::A::Iterator        i;
-
+      Scope::Iterator        i;
 
       // go through the set of actors.
       for (i = this->actors.begin();
@@ -520,8 +128,7 @@ namespace etoile
     ///
     elle::Status        Scope::Detach(Actor*                    actor)
     {
-      Scope::A::Iterator        iterator;
-
+      Scope::Iterator        iterator;
 
       // try to locate an existing actor.
       if (this->Locate(actor, &iterator) == false)
@@ -822,7 +429,7 @@ namespace etoile
       // The problem is solved by unregistering the scope as soon as we know
       // we are going to go through the shutdown process and that, from now
       // on, no more actors should be able to attach to it.
-      Scope::Relinquish(this);
+      Etoile::instance()->scope_relinquish(this);
 
       //
       // otherwise, the current actor is the last one and is responsible
@@ -948,14 +555,14 @@ namespace etoile
 
       reactor::Lock lock(mutex.write());
       {
-        Scope*          scope = nullptr;
         T*              context = nullptr;
         Actor*          actor = nullptr;
 
+        // XXX use a gear::Guard here.
         struct OnExit
         {
           Actor*   actor;
-          Scope*   scope;
+          std::shared_ptr<Scope> scope;
           bool      track;
 
           OnExit() :
@@ -967,7 +574,7 @@ namespace etoile
               return;
             delete this->actor;
             if (this->scope != nullptr)
-              gear::Scope::Annihilate(this->scope);
+              Etoile::instance()->scope_annihilate(this->scope);
           }
         } guard;
 
@@ -976,8 +583,8 @@ namespace etoile
         // that it works even for objects which cannot, obviously, be created.
         //
         // supply a scope i.e request a new anonymous scope.
-        if (gear::Scope::Supply(scope) == elle::Status::Error)
-          throw Exception("unable to supply a scope");
+        std::shared_ptr<Scope> scope = Etoile::instance()->scope_supply();
+
         guard.scope = scope;
 
         // retrieve the context.
@@ -1281,9 +888,11 @@ namespace etoile
     elle::Status        Scope::Dump(const elle::Natural32       margin) const
     {
       elle::String      alignment(margin, ' ');
-      Scope::A::Scoutor scoutor;
+      Scope::Scoutor scoutor;
 
       std::cout << alignment << "[Scope] " << std::hex << this << std::endl;
+
+      std::cout << alignment << "  [State] " << this->state << std::endl;
 
       // dump the chemin.
       if (this->chemin.Dump(margin + 2) == elle::Status::Error)

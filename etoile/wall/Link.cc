@@ -32,14 +32,9 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION("");
 
-      gear::Scope* scope;
-      gear::Link* context;
-
-      // acquire the scope.
-      if (gear::Scope::Supply(scope) == elle::Status::Error)
-        throw Exception("unable to supply the scope");
-
+      std::shared_ptr<gear::Scope> scope = Etoile::instance()->scope_supply();
       gear::Guard guard(scope);
+      gear::Link* context;
       gear::Identifier identifier;
 
       // Declare a critical section.
@@ -85,14 +80,10 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(chemin);
 
-      gear::Scope*      scope;
-      gear::Link*       context;
-
-      // acquire the scope.
-      if (gear::Scope::Acquire(chemin, scope) == elle::Status::Error)
-        throw Exception("unable to acquire the scope");
-
+      std::shared_ptr<gear::Scope> scope =
+        Etoile::instance()->scope_acquire(chemin);
       gear::Guard               guard(scope);
+      gear::Link*       context;
 
       // Declare a critical section.
       {
@@ -143,7 +134,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier, target);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Link* context;
 
       // Declare a critical section.
@@ -169,7 +160,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Link* context;
 
       std::string target;
@@ -201,7 +192,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Link*       context;
 
       gear::Guard               guard(actor);
@@ -261,7 +252,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;
@@ -286,7 +277,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = etoile.actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Link* context;
 
       gear::Guard guard(actor);
@@ -346,7 +337,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;
@@ -369,7 +360,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = etoile.actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Link* context;
 
       gear::Guard guard(actor);
@@ -425,7 +416,7 @@ namespace etoile
         {
           // If the link has been sealed, i.e there is no more actor operating
           // on it, record it in the journal.
-          if (journal::Journal::Record(scope) == elle::Status::Error)
+          if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
             throw Exception("unable to record the scope in the journal");
 
           break;

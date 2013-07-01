@@ -78,13 +78,12 @@ namespace etoile
     }
 
     elle::Status
-    Journal::Record(gear::Scope*            scope)
+    Journal::Record(std::shared_ptr<gear::Scope> scope)
     {
       ELLE_TRACE_SCOPE("Journal::Record(%s)", *scope);
 
-      ELLE_FINALLY_ACTION_DELETE(scope);
-
       ELLE_ASSERT_EQ(scope->actors.empty(), true);
+      ELLE_ASSERT_EQ(scope.use_count(), 1);
 
       // Ignore empty scope' transcripts.
       if (scope->context->transcript().empty() == true)
@@ -101,11 +100,6 @@ namespace etoile
 
       // Update the context's state.
       scope->context->state = gear::Context::StateJournaled;
-
-      ELLE_FINALLY_ABORT(scope);
-
-      // Finally, delete the scope.
-      delete scope;
 
       return elle::Status::Ok;
     }

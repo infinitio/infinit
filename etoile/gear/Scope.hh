@@ -54,63 +54,9 @@ namespace etoile
       //
       // types
       //
-      struct S
-      {
-        struct O
-        {
-          typedef std::map<const path::Chemin,
-                           Scope*>                      Container;
-          typedef Container::iterator                   Iterator;
-          typedef Container::const_iterator             Scoutor;
-        };
-
-        struct A
-        {
-          typedef std::list<Scope*>                     Container;
-          typedef Container::iterator                   Iterator;
-          typedef Container::const_iterator             Scoutor;
-        };
-      };
-
-      struct A
-      {
-        typedef std::list<Actor*>                       Container;
-        typedef typename Container::iterator            Iterator;
-        typedef typename Container::const_iterator      Scoutor;
-      };
-
-      //
-      // static methods
-      //
-      static elle::Boolean      Exist(const path::Chemin&);
-      static elle::Status       Add(const path::Chemin&,
-                                    Scope*);
-      static elle::Status       Retrieve(const path::Chemin&,
-                                         Scope*&);
-      static elle::Status       Remove(const path::Chemin&);
-      static elle::Status       Add(Scope*);
-      static elle::Status       Remove(Scope*);
-
-      static elle::Status       Inclose(Scope*);
-      static elle::Status       Acquire(const path::Chemin&,
-                                        Scope*&);
-      static elle::Status       Supply(Scope*&);
-      static elle::Status       Relinquish(Scope*);
-      static elle::Status       Annihilate(Scope*);
-
-      static elle::Status       Update(const path::Chemin&,
-                                       const path::Chemin&);
-
-      static elle::Status       Show(const elle::Natural32 = 0);
-
-      //
-      // static attributes
-      //
-      struct                            Scopes
-      {
-        static S::O::Container          Onymous;
-        static S::A::Container          Anonymous;
-      };
+      typedef std::list<Actor*>                       Container;
+      typedef typename Container::iterator            Iterator;
+      typedef typename Container::const_iterator      Scoutor;
 
       //
       // constructors & destructors
@@ -118,14 +64,15 @@ namespace etoile
       Scope();
       Scope(const path::Chemin&);
       ~Scope();
+    private:
+      Scope(Scope&& other);
 
       //
       // methods
       //
-      elle::Status      Create();
-
+    public:
       elle::Boolean     Locate(Actor*,
-                               A::Iterator* = nullptr);
+                               Iterator* = nullptr);
 
       elle::Status      Attach(Actor*);
       elle::Status      Detach(Actor*);
@@ -171,7 +118,7 @@ namespace etoile
       Context*          context;
       Chronicle*        chronicle;
 
-      A::Container      actors;
+      Container      actors;
 
       reactor::RWMutex mutex;
     };

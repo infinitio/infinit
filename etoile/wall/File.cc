@@ -33,14 +33,9 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION("");
 
-      gear::Scope* scope;
-      gear::File* context;
-
-      // acquire the scope.
-      if (gear::Scope::Supply(scope) == elle::Status::Error)
-        throw Exception("unable to supply the scope");
-
+      std::shared_ptr<gear::Scope> scope = Etoile::instance()->scope_supply();
       gear::Guard guard(scope);
+      gear::File* context;
       gear::Identifier identifier;
 
       // Declare a critical section.
@@ -77,14 +72,10 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(chemin);
 
-      gear::Scope* scope;
-      gear::File* context;
-
-      // acquire the scope.
-      if (gear::Scope::Acquire(chemin, scope) == elle::Status::Error)
-        throw Exception("unable to acquire the scope");
-
+      std::shared_ptr<gear::Scope> scope =
+        Etoile::instance()->scope_acquire(chemin);
       gear::Guard guard(scope);
+      gear::File* context;
       gear::Identifier identifier;
 
       // declare a critical section.
@@ -137,7 +128,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier, offset, data);
 
       gear::Actor* actor = etoile.actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::File* context;
 
       // declare a critical section.
@@ -168,7 +159,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier, offset, size);
 
       gear::Actor* actor = etoile.actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::File* context;
 
       elle::Buffer* buffer = nullptr;
@@ -205,7 +196,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier, size);
 
       gear::Actor* actor = etoile.actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::File* context;
 
       // Declare a critical section.
@@ -233,7 +224,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = etoile.actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::File* context;
 
       gear::Guard guard(actor);
@@ -289,7 +280,7 @@ namespace etoile
         {
           // If the file has been sealed, i.e there is no more actor
           // operating on it, record it in the journal.
-          if (journal::Journal::Record(scope) == elle::Status::Error)
+          if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
             throw Exception("unable to record the scope in the journal");
 
           break;
@@ -309,7 +300,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = etoile.actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::File* context;
 
       gear::Guard guard(actor);
@@ -365,7 +356,7 @@ namespace etoile
         {
           // If the file has been sealed, i.e there is no more actor
           // operating on it, record it in the journal.
-          if (journal::Journal::Record(scope) == elle::Status::Error)
+          if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
             throw Exception("unable to record the scope in the journal");
 
           break;
@@ -388,7 +379,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = etoile.actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::File* context;
 
       gear::Guard guard(actor);
@@ -444,7 +435,7 @@ namespace etoile
         {
           // If the file has been sealed, i.e there is no more actor
           // operating on it, record it in the journal.
-          if (journal::Journal::Record(scope) == elle::Status::Error)
+          if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
             throw Exception("unable to record the scope in the journal");
 
           break;

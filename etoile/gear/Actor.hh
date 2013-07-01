@@ -48,21 +48,10 @@ namespace etoile
           StateUpdated
         };
 
-      // //
-      // // static methods
-      // //
-      // static elle::Status       Add(const Identifier&,
-      //                               Actor*);
-      // static elle::Status       Select(const Identifier&,
-      //                                  Actor*&);
-      // static elle::Status       Remove(const Identifier&);
-
-      // static elle::Status       Show(const elle::Natural32 = 0);
-
       //
       // constructors & destructors
       //
-      Actor(Scope*);
+      Actor(std::shared_ptr<Scope>);
       ~Actor();
 
       //
@@ -81,7 +70,7 @@ namespace etoile
       // attributes
       //
       Identifier        identifier;
-      Scope*            scope;
+      std::shared_ptr<Scope> scope;
       State             state;
     };
 

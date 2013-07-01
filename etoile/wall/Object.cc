@@ -39,14 +39,10 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(chemin);
 
-      gear::Scope* scope;
-      gear::Object* context;
-
-      // acquire the scope.
-      if (gear::Scope::Acquire(chemin, scope) == elle::Status::Error)
-        throw Exception("unable to acquire the scope");
-
+      std::shared_ptr<gear::Scope> scope =
+        Etoile::instance()->scope_acquire(chemin);
       gear::Guard guard(scope);
+      gear::Object* context;
 
       // XXX[tout ce bloc devrait probablement etre locke]
 
@@ -206,7 +202,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
 
       {
         reactor::Lock lock(scope->mutex);
@@ -233,7 +229,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
       gear::Guard guard(actor);
@@ -294,7 +290,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;
@@ -319,7 +315,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = etoile.actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
       gear::Guard guard(actor);
@@ -379,7 +375,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;
@@ -401,7 +397,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
       gear::Guard guard(actor);
@@ -461,7 +457,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;

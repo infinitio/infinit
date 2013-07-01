@@ -34,7 +34,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier, name, value);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
       // Declare a critical section.
@@ -63,7 +63,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier, name);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
       nucleus::neutron::Trait const* trait = nullptr;
@@ -96,7 +96,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
 
       nucleus::neutron::Range<nucleus::neutron::Trait> range;
@@ -128,7 +128,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(identifier, name);
 
       gear::Actor* actor = Etoile::instance()->actor_get(identifier);
-      gear::Scope* scope = actor->scope;
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object*     context;
 
       // Declare a critical section.

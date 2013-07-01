@@ -35,7 +35,7 @@ namespace etoile
       /// XXX[to remove in favor of the method above]
       static
       elle::Status
-      Record(gear::Scope* scope);
+      Record(std::shared_ptr<gear::Scope> scope);
       /// Retrieve a block from the journal.
       ///
       /// This method returns true if the block is found, false otherwise.
