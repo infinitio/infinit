@@ -103,14 +103,6 @@ namespace etoile
   private:
     ELLE_ATTRIBUTE_RX(depot::Depot, depot);
     ELLE_ATTRIBUTE_r(nucleus::proton::Network, network);
-
-    /*----------------.
-    | Global instance |
-    `----------------*/
-  public:
-    static Etoile* instance();
-  private:
-    static Etoile* _instance;
   };
 
 }

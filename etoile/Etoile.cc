@@ -5,8 +5,6 @@
 #include <etoile/path/Path.hh>
 #include <etoile/shrub/Shrub.hh>
 
-#include <Infinit.hh>
-
 #include <elle/log.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.Etoile");
@@ -27,8 +25,6 @@ namespace etoile
     _shrub(),
     _depot(hole, root_address)
   {
-    ELLE_ASSERT(!this->_instance);
-    this->_instance = this;
   }
 
   Etoile::~Etoile()
@@ -39,8 +35,6 @@ namespace etoile
 
     this->_onymous_scopes.clear();
     this->_anonymous_scopes.clear();
-
-    this->_instance = nullptr;
   }
 
   /*-------.
@@ -312,16 +306,4 @@ namespace etoile
   {
     return this->_depot.network();
   }
-
-  /*----------------.
-  | Global instance |
-  `----------------*/
-
-  Etoile*
-  Etoile::instance()
-  {
-    return Etoile::_instance;
-  }
-
-  Etoile* Etoile::_instance(nullptr);
 }
