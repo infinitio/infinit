@@ -1230,6 +1230,7 @@ def configure(cxx_toolkit = None,
     ('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + infinit_libs),
     ('tests/unit/hole/slug.cc', infinit_libs),
     (('tests/unit/heartbeat.cc', 'heartbeat.cc', 'heartbeat.hh', 'common/common.cc'), [reactor_lib, elle_lib] + udt_libs),
+    ('tests/unit/signal_handling.cc', infinit_libs),
   ]
 
   for test, deps in tests_src_n_lib:
