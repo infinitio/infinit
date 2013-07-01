@@ -1,5 +1,6 @@
 NOTIFICATION_TYPE(none,               0)
 NOTIFICATION_TYPE(user_status,        8)
+NOTIFICATION_TYPE(new_swagger,        9)
 NOTIFICATION_TYPE(transaction,        7)
 NOTIFICATION_TYPE(message,            217)
 NOTIFICATION_TYPE(connection_enabled, -666)

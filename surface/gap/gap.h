@@ -147,6 +147,12 @@ extern "C" {
     gap_user_status_busy = 2,
   } gap_UserStatus;
 
+  typedef void (*gap_new_swagger_callback_t)(char const*);
+
+  gap_Status
+  gap_new_swagger_callback(gap_State* state,
+                           gap_new_swagger_callback_t cb);
+
   typedef void (*gap_user_status_callback_t)(char const*,
                                              gap_UserStatus const);
 

@@ -46,6 +46,16 @@ namespace plasma
 
     namespace json = elle::format::json;
 
+    struct NewSwaggerNotification:
+      public Notification
+    {
+      std::string user_id;
+
+      ELLE_SERIALIZE_CONSTRUCT(NewSwaggerNotification,
+                               Notification)
+      {}
+    };
+
     struct UserStatusNotification:
       public Notification
     {
@@ -68,7 +78,6 @@ namespace plasma
                                Transaction)
       {}
     };
-
 
     struct NetworkUpdateNotification:
       public Notification

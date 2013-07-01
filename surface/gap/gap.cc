@@ -802,6 +802,25 @@ extern "C"
   // - Trophonius -----------------------------------------------------------
 
   gap_Status
+  gap_new_swagger_callback(gap_State* state,
+                           gap_new_swagger_callback_t cb)
+  {
+    using namespace plasma::trophonius;
+    auto cpp_cb = [cb] (NewSwaggerNotification const& notif) {
+      cb(notif.user_id.c_str());
+    };
+
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->notification_manager().new_swagger_callback(cpp_cb);
+    }
+    CATCH_ALL(new_swagger_callback);
+
+    return ret;
+  }
+
+  gap_Status
   gap_user_status_callback(gap_State* state,
                            gap_user_status_callback_t cb)
   {

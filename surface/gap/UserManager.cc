@@ -37,6 +37,13 @@ namespace surface
           this->_on_swagger_status_update(n);
         }
       );
+
+      this->_notification_manager.new_swagger_callback(
+        [&] (NewSwaggerNotification const &n) -> void
+        {
+          this->_on_new_swagger(n);
+        }
+      );
     }
 
     UserManager::~UserManager()
@@ -177,6 +184,13 @@ namespace surface
           gap_error,
           "Cannot find any swagger for id '" + id + "'"};
       return this->one(id);
+    }
+
+    void
+    UserManager::_on_new_swagger(NewSwaggerNotification const& notification)
+    {
+      this->one(notification.user_id);
+      this->_swaggers.insert(notification.user_id);
     }
 
     void

@@ -314,6 +314,18 @@ namespace surface
     }
 
     void
+    NotificationManager::new_swagger_callback(
+      NewSwaggerNotificationCallback const& cb)
+    {
+      auto fn = [cb] (Notification const& notif, bool) -> void {
+        return cb(static_cast<NewSwaggerNotification const&>(notif));
+      };
+
+      using Type = NotificationType;
+      this->_notification_handlers[Type::new_swagger].push_back(fn);
+    }
+
+    void
     NotificationManager::user_status_callback(
       UserStatusNotificationCallback const& cb)
     {

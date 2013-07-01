@@ -36,6 +36,17 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::Notification, ar, value, version)
   ar & named("notification_type", value.notification_type);
 }
 
+ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::NewSwaggerNotification);
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NewSwaggerNotification,
+                      ar,
+                      value,
+                      version)
+{
+  (void)version;
+  ar & base_class<plasma::trophonius::Notification>(value);
+  ar & named("user_id", value.user_id);
+}
+
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::UserStatusNotification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification,
                       ar,
@@ -112,6 +123,8 @@ namespace plasma
         return Ptr(new Notification{extractor});
       case NotificationType::transaction:
         return Ptr(new TransactionNotification{extractor});
+      case NotificationType::new_swagger:
+        return Ptr(new NewSwaggerNotification{extractor});
       case NotificationType::user_status:
         return Ptr(new UserStatusNotification{extractor});
       case NotificationType::message:
@@ -125,7 +138,6 @@ namespace plasma
       }
       elle::unreachable();
     }
-
 
     //- Implementation --------------------------------------------------------
     struct Client::Impl

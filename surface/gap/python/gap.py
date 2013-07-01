@@ -80,6 +80,8 @@ class _State:
             # Callback.
             'transaction_callback',
             'message_callback',
+            'user_status_callback',
+            'new_swagger_callback',
 
             # Operation.
             'operation_status',

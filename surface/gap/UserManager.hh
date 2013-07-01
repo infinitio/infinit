@@ -3,6 +3,7 @@
 
 # include <surface/gap/Exception.hh>
 # include <surface/gap/NotificationManager.hh>
+# include <surface/gap/usings.hh>
 # include <plasma/meta/Client.hh>
 
 # include <unordered_set>
@@ -15,6 +16,7 @@ namespace surface
     using Self = ::plasma::meta::SelfResponse;
     using NotifManager = ::surface::gap::NotificationManager;
     using UserStatusNotification = ::surface::gap::UserStatusNotification;
+    using NewSwaggerNotification = ::surface::gap::NewSwaggerNotification;
     class UserManager: Notifiable
     {
       /*----------.
@@ -119,6 +121,9 @@ namespace surface
       | Callbacks |
       `----------*/
     public:
+      void
+      _on_new_swagger(NewSwaggerNotification const& notification);
+
       void
       _on_swagger_status_update(UserStatusNotification const& notif);
 

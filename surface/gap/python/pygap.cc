@@ -265,6 +265,18 @@ namespace
   }
 
   void
+  _gap_new_swagger_callback(gap_State* state,
+                            boost::python::object cb)
+  {
+    using namespace plasma::trophonius;
+    auto cpp_cb = [cb] (NewSwaggerNotification const& notif) {
+      wrap_call(cb)(notif.user_id.c_str());
+    };
+
+    reinterpret_cast<surface::gap::State*>(state)->notification_manager().new_swagger_callback(cpp_cb);
+  }
+
+  void
   _gap_user_status_callback(gap_State* state,
                            boost::python::object cb)
   {
@@ -392,25 +404,11 @@ BOOST_PYTHON_MODULE(_gap)
   ///////////////////////////
   // Callbacks.
 
-  py::def(
-    "transaction_callback",
-    &_gap_transaction_callback
-  );
-
-  py::def(
-    "message_callback",
-    &_gap_message_callback
-  );
-
-  py::def(
-    "on_error_callback",
-    &_gap_on_error_callback
-  );
-
-  py::def(
-    "user_status_callback",
-    &_gap_user_status_callback
-  );
+  py::def("transaction_callback", &_gap_transaction_callback);
+  py::def("message_callback", &_gap_message_callback);
+  py::def("on_error_callback", &_gap_on_error_callback);
+  py::def("new_swagger_callback", &_gap_new_swagger_callback);
+  py::def("user_status_callback", &_gap_user_status_callback);
 
    //- Infinit services status -------------------------------------------------
 

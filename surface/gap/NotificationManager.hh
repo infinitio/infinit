@@ -2,6 +2,7 @@
 # define NOTIFICATIONMANAGER_HH
 
 # include "Exception.hh"
+# include <surface/gap/usings.hh>
 
 # include <plasma/trophonius/Client.hh>
 # include <plasma/meta/Client.hh>
@@ -18,12 +19,6 @@ namespace surface
 {
   namespace gap
   {
-    using ::plasma::trophonius::Notification;
-    using ::plasma::trophonius::TransactionNotification;
-    using ::plasma::trophonius::UserStatusNotification;
-    using ::plasma::trophonius::MessageNotification;
-    using ::plasma::trophonius::NetworkUpdateNotification;
-    using ::plasma::trophonius::NotificationType;
     using Self = ::plasma::meta::SelfResponse;
     using Device = ::plasma::meta::Device;
 
@@ -82,6 +77,10 @@ namespace surface
 
     public:
       typedef
+        std::function<void (NewSwaggerNotification const&)>
+        NewSwaggerNotificationCallback;
+
+      typedef
         std::function<void (UserStatusNotification const&)>
         UserStatusNotificationCallback;
 
@@ -98,6 +97,9 @@ namespace surface
         NetworkUpdateNotificationCallback;
 
     public:
+      void
+      new_swagger_callback(NewSwaggerNotificationCallback const& cb);
+
       void
       user_status_callback(UserStatusNotificationCallback const& cb);
 
