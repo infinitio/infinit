@@ -66,7 +66,7 @@ namespace surface
       _me{nullptr},
       _device{nullptr}
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_TRACE_METHOD(host, port);
 
       // Start metrics after setting up the logger.
       this->_reporter.start();

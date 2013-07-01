@@ -144,12 +144,17 @@ class _State:
         return self.__call('_id');
 
 class State(_State):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        self.__args = args
+        self.__kwargs = kwargs
         super(State, self).__init__()
         self.__state = None
 
     def __enter__(self):
-        self.__state = _gap.new()
+        if len(self.__args) == 0 and len(self.__kwargs) == 0:
+            self.__state = _gap.new()
+        else:
+            self.__state = _gap.configurable_new(*self.__args, **self.__kwargs)
         assert self.__state is not None
         return self
 
