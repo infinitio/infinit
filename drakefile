@@ -1122,10 +1122,9 @@ def configure(cxx_toolkit = None,
     def oracle(name):
       root = drake.Path('oracle/disciples/%s' % name)
       rule = drake.Rule('oracle/%s/build' % name)
-      trophonius_sources = drake.nodes(
-        *git.ls_files(root / 'src' / name))
+      oracle_sources = drake.nodes(*git.ls_files(root / 'src' / name))
       server = drake.node('oracle/disciples/%s-server' % name)
-      rule << drake.copy(trophonius_sources,
+      rule << drake.copy(oracle_sources,
                          'lib/python', root / 'src')
       rule << drake.copy(server, 'bin', 'oracle/disciples')
 
