@@ -54,6 +54,10 @@ class GetBacktrace(Page):
     __pattern__ = "/debug/report"
 
     def PUT(self):
+        # Compatibility with v1
+        return self.POST()
+
+    def POST(self):
         _id = self.user and self.user.get('_id', "anonymous") or "anonymous" # _id if the user is logged in.
         email = self.data.get('email', "crash@infinit.io") #specified email if set.
         send = self.data.get('send', False) #Only send if set.

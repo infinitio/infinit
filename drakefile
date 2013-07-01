@@ -538,7 +538,7 @@ def configure(cxx_toolkit = None,
     'Program.hh',
     'common/common.cc',
     ) + [version]
-  infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources + [reactor_lib],
+  infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources + [reactor_lib, curly_lib],
                                  cxx_toolkit, cxx_config)
 
   # Hole
@@ -1169,7 +1169,7 @@ def configure(cxx_toolkit = None,
       )
 
     heartbeat = drake.cxx.Executable('bin/heartbeat-server',
-        heartbeat_sources + [reactor_lib, elle_lib] + udt_libs,
+        heartbeat_sources + [reactor_lib, elle_lib, curly_lib] + udt_libs,
         cxx_toolkit, heartbeat_config)
 
     oracles << oracle_source_copy
@@ -1223,6 +1223,7 @@ def configure(cxx_toolkit = None,
     (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, reactor_lib]),
     #(('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc'),  [elle_lib, plasma_lib, curly_lib]),
     ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
+    (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib, curly_lib] + udt_libs),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib]),
     ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib] + udt_libs),
