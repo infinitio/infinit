@@ -218,7 +218,7 @@ namespace plasma
         }
       }
       else
-        this->_restart_timer();
+        this->_restart_connection_check_timer();
     }
 
     void
@@ -263,17 +263,23 @@ namespace plasma
                   elle::exception_string());
         this->_impl->connected = false;
       }
+      // Ensure that we try to send a ping every x seconds
+      this->_restart_ping_timer();
     }
 
     void
-    Client::_restart_timer()
+    Client::_restart_ping_timer()
     {
       _impl->ping_timer.expires_from_now(
-        boost::posix_time::seconds(20));
+        boost::posix_time::seconds(30));
 
       _impl->ping_timer.async_wait(
         std::bind(&Client::_send_ping, this, std::placeholders::_1));
+    }
 
+    void
+    Client::_restart_connection_check_timer()
+    {
       _impl->connection_checker.expires_from_now(
         boost::posix_time::seconds(60));
 
@@ -418,7 +424,8 @@ namespace plasma
           elle::ResponseCode::error, "Writing socket error"};
 
       this->_read_socket();
-      this->_restart_timer();
+      this->_restart_ping_timer();
+      this->_restart_connection_check_timer();
       _impl->connect_callback();
       return true;
     }
