@@ -530,6 +530,11 @@ namespace surface
       {
         if (tr.sender_device_id != this->_device.id)
         {
+          // XXX
+          // for now, all the user's devices receive notifications; trophonius
+          // needs to be improved so as to send notifications to devices rather
+          // than to users, at least for some types of notification
+
           // ELLE_ASSERT(
           //     false,
           //     "got a transaction tr that does not involve my device: %s",
