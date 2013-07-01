@@ -18,7 +18,9 @@ namespace surface
   {
     namespace json = elle::format::json;
 
-    NotificationManager::NotificationManager(plasma::meta::Client& meta,
+    NotificationManager::NotificationManager(std::string const& trophonius_host,
+                                             uint16_t trophonius_port,
+                                             plasma::meta::Client& meta,
                                              Self const& self,
                                              Device const& device):
       _trophonius{nullptr},
@@ -26,7 +28,7 @@ namespace surface
       _self(self),
       _device(device)
     {
-      this->_connect();
+      this->_connect(trophonius_host, trophonius_port);
     }
 
     NotificationManager::~NotificationManager()
@@ -46,9 +48,10 @@ namespace surface
     //    - if it's not: we start it TODO
     //  - We use common::trophonius::{port, host} if the file is not there
     void
-    NotificationManager::_connect()
+    NotificationManager::_connect(std::string const& trophonius_host,
+                                  uint16_t trophonius_port)
     {
-      ELLE_DEBUG("%s: connect", *this);
+      ELLE_LOG("%s: connect(%s,%s)", *this, trophonius_host, trophonius_port);
 
       ELLE_ASSERT_EQ(this->_trophonius, nullptr);
 
@@ -90,8 +93,8 @@ namespace surface
       {
         this->_trophonius.reset(
           new plasma::trophonius::Client{
-            common::trophonius::host(),
-            common::trophonius::port(),
+            trophonius_host,
+            trophonius_port,
             std::bind(&NotificationManager::_on_trophonius_connected, this),
           });
       }
@@ -111,7 +114,6 @@ namespace surface
       this->_trophonius->connect(this->_self.id,
                                  this->_meta.token(),
                                  this->_device.id);
-
     }
 
     void

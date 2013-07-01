@@ -28,8 +28,10 @@ extern "C" {
 
   /// Create a new state.
   /// Returns NULL on failure.
-  gap_State* gap_configurable_new(char const* host,
-                                  unsigned short port);
+  gap_State* gap_configurable_new(char const* meta_host,
+                                  unsigned short meta_port,
+                                  char const* trophonius_host,
+                                  unsigned short trophonius_port);
 
   /// Release a state.
   void gap_free(gap_State* state);

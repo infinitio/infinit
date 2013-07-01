@@ -67,8 +67,10 @@ namespace surface
 
       ///- Construction --------------------------------------------------------
     public:
-      State(std::string const& host = common::meta::host(),
-            uint16_t = common::meta::port());
+      State(std::string const& meta_host = common::meta::host(),
+            uint16_t meta_port = common::meta::port(),
+            std::string const& trophonius_host = common::trophonius::host(),
+            uint16_t trophonius_port = common::trophonius::port());
       ~State();
 
     public:
@@ -163,6 +165,9 @@ namespace surface
     private:
       typedef std::unique_ptr<NetworkManager> NetworkManagerPtr;
       elle::threading::Monitor<NetworkManagerPtr> _network_manager;
+
+      ELLE_ATTRIBUTE_R(std::string, trophonius_host);
+      ELLE_ATTRIBUTE_R(uint16_t, trophonius_port);
 
       typedef std::unique_ptr<NotificationManager> NotificationManagerPtr;
       elle::threading::Monitor<NotificationManagerPtr> _notification_manager;

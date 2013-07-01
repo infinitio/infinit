@@ -57,16 +57,22 @@ namespace surface
     }
 
     // - State ----------------------------------------------------------------
-    State::State(std::string const& host,
-                 uint16_t port):
+    State::State(std::string const& meta_host,
+                 uint16_t meta_port,
+                 std::string const& trophonius_host,
+                 uint16_t trophonius_port):
       _logger_intializer{},
-      _meta{host, port, true},
+      _meta{meta_host, meta_port, true},
       _reporter(),
       _google_reporter(),
       _me{nullptr},
-      _device{nullptr}
+      _device{nullptr},
+      _files_infos{},
+      _trophonius_host{trophonius_host},
+      _trophonius_port{trophonius_port}
     {
-      ELLE_TRACE_METHOD(host, port);
+      ELLE_TRACE("State(meta(%s,%s), trophonius(%s, %s))",
+                 meta_host, meta_port, trophonius_host, trophonius_port);
 
       // Start metrics after setting up the logger.
       this->_reporter.start();
@@ -415,7 +421,11 @@ namespace surface
             ELLE_TRACE("allocating a new notification manager");
 
             manager.reset(
-              new NotificationManager{this->_meta, this->me(), this->device()});
+              new NotificationManager{this->_trophonius_host,
+                                      this->_trophonius_port,
+                                      this->_meta,
+                                      this->me(),
+                                      this->device()});
           }
           return *manager;
         });

@@ -53,7 +53,9 @@ namespace surface
       ELLE_ATTRIBUTE(Device const&, device);
 
     public:
-      NotificationManager(plasma::meta::Client& meta,
+      NotificationManager(std::string const& trophonius_host,
+                          uint16_t trophonius_port,
+                          plasma::meta::Client& meta,
                           Self const& self,
                           Device const& device);
 
@@ -62,7 +64,8 @@ namespace surface
 
     private:
       void
-      _connect();
+      _connect(std::string const& trophonius_host,
+               uint16_t trophonius_port);
 
       void
       _check_trophonius();

@@ -170,15 +170,20 @@ extern "C"
 
   /// Create a new state.
   /// Returns NULL on failure.
-  gap_State* gap_configurable_new(char const* host,
-                                  unsigned short port)
+  gap_State* gap_configurable_new(char const* meta_host,
+                                  unsigned short meta_port,
+                                  char const* trophonius_host,
+                                  unsigned short trophonius_port)
   {
     if (!initialize_lune())
       return nullptr;
 
     try
     {
-      return __TO_C(new surface::gap::State(host, port));
+      return __TO_C(new surface::gap::State(meta_host,
+                                            meta_port,
+                                            trophonius_host,
+                                            trophonius_port));
     }
     catch (std::exception const& err)
     {
