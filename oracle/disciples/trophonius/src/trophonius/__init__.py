@@ -51,6 +51,11 @@ class Trophonius:
             except OSError as e:
                 if e.errno is not errno.ENOENT:
                     raise
+# Changed in version 3.3: IOError used to be raised, it is now an alias of
+# OSError. In python 3.3 FileExistsError is now raised if the file opened
+# in exclusive creation mode ('x') already exists.
+            except IOError as e:
+                    pass
             time.sleep(1)
         return self
 
