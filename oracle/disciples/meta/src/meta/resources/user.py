@@ -547,7 +547,9 @@ class _DeviceAccess(Page):
         return device
 
     def is_connected(self, user_id):
-        return database.users().find_one(user_id)['connected']
+        res = database.users().find_one(user_id)['connected']
+        assert isinstance(res, bool)
+        return res
 
     def __set_connected(self, value, user_id, device_id):
         assert database.users().find_one(user_id)
@@ -585,6 +587,7 @@ class _DeviceAccess(Page):
                 'device_status': value,
             },
             user_id = user_id,
+            store = False,
         )
 
     def connect(self, user_id, device_id):
