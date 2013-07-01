@@ -27,110 +27,103 @@ namespace etoile
 {
   namespace path
   {
-    elle::Status
-    Path::Resolve(const Route& route,
-                  Venue& venue)
+    Venue
+    Path::Resolve(etoile::Etoile& etoile,
+                  const Route& route)
     {
+      Venue venue;
+
+      // Resolve as much as possible through the path cache.
+      Etoile::instance()->shrub().resolve(route, venue);
+      assert(venue.elements().size() <= route.elements().size());
+      // If complete, return the address i.e without updating the cache.
+      if (route.elements().size() == venue.elements().size())
+        return venue;
+
       nucleus::proton::Address address;
       nucleus::proton::Revision revision;
-      Route::Scoutor    scoutor;
 
-      // first ask the shrub i.e path cache to resolve as much as it can.
-      Etoile::instance()->shrub().resolve(route, venue);
-
-      assert(venue.elements().size() <= route.elements().size());
-
-      // if complete, return the address i.e without updating the cache.
-      if (route.elements().size() == venue.elements().size())
-        return elle::Status::Ok;
-
-      // if the cache did not resolve anything.
+      // If the cache did not resolve anything.
       if (venue.elements().empty())
-        {
-          std::string         slice;
+      {
+        std::string slice;
 
-          // retrieve the root directory's address.
-          if (Etoile::instance()->depot().Origin(address) == elle::Status::Error)
-            throw Exception("unable to retrieve the address of the root directory");
+        // Retrieve the root directory's address.
+        if (etoile.depot().Origin(address) == elle::Status::Error)
+          throw Exception("unable to retrieve the address of the root directory");
 
-          // parse the very first slab i.e the root slab in order
-          // to extract the revision number. note that the root slab is
-          // always empty.
-          if (Path::Parse(route.elements()[0],
-                          slice, revision) == elle::Status::Error)
-            throw Exception("unable to extract the revision number from the root slab");
+        // Parse the very first slab i.e the root slab in order
+        // to extract the revision number. note that the root slab is
+        // always empty.
+        if (Path::Parse(route.elements()[0],
+                        slice, revision) == elle::Status::Error)
+          throw Exception("unable to extract the revision number "
+                          "from the root slab");
 
-          // check that the slice is empty, as it should for the root
-          // directory.
-          if (slice.empty() == false)
-            throw Exception("the root slice should always be empty");
+        // Check that the slice is empty, as it should for the root
+        // directory.
+        if (slice.empty() == false)
+          throw Exception("the root slice should always be empty");
 
-          venue.append(address, revision);
-        }
+        venue.append(address, revision);
+      }
 
-      // set the address/revision with the address of the last resolved element.
+      // Set the address/revision with the address of the last resolved element.
       address = venue.elements()[venue.elements().size() - 1].address();
       revision = venue.elements()[venue.elements().size() - 1].revision();
 
-      // otherwise, resolve manually by retrieving the directory object.
-      for (scoutor = route.elements().begin() + venue.elements().size();
+      // Otherwise, resolve manually by retrieving the directory object.
+      for (Route::Scoutor scoutor =
+             route.elements().begin() + venue.elements().size();
            scoutor != route.elements().end();
            scoutor++)
+      {
+        std::string slice;
+        nucleus::neutron::Entry const* entry;
+
+        // Extract the slice/revision from the current slab.
+        if (Path::Parse(*scoutor,
+                        slice,
+                        revision) == elle::Status::Error)
+          throw Exception("unable to extract the slice/revision from the "
+                          "current slab");
+
+        if (slice.empty() == true)
+          throw Exception("the slice should never be empty");
+
+        Chemin chemin(route, venue, venue.elements().size());
+
+        gear::Identifier identifier(wall::Directory::load(chemin));
+        if (wall::Directory::Lookup(identifier,
+                                    slice,
+                                    entry) == elle::Status::Error)
         {
-          std::string                 slice;
-          nucleus::neutron::Entry const* entry;
-
-          // extract the slice/revision from the current slab.
-          if (Path::Parse(*scoutor,
-                          slice,
-                          revision) == elle::Status::Error)
-            throw Exception("unable to extract the slice/revision from the "
-                   "current slab");
-
-          // check that the slice is not empty.
-          if (slice.empty() == true)
-            throw Exception("the slice should never be empty");
-
-          Chemin chemin(route, venue, venue.elements().size());
-
-          // load the directory.
-          gear::Identifier identifier(wall::Directory::load(chemin));
-
-          // lookup the slice.
-          if (wall::Directory::Lookup(identifier,
-                                      slice,
-                                      entry) == elle::Status::Error)
-            {
-              // discard the directory.
-              wall::Directory::discard(identifier);
-
-              throw Exception("unable to lookup the slice");
-            }
-
-          // set the address; the revision is already set i.e it has
-          // been extracted from the slab.
-          if (entry != nullptr)
-            address = entry->address();
-
-          // discard the directory.
           wall::Directory::discard(identifier);
 
-          // if there is no such entry, abort.
-          //
-          // note that the pointer is used to know whether or not the
-          // lookup has succeded. however, the entry's content cannot be
-          // accessed as it has potentially been released with the context
-          // through the call to Discard().
-          if (entry == nullptr)
-            throw wall::NoSuchFileOrDirectory(*reactor::Scheduler::scheduler(),
-                                              slice);
-          venue.append(address, revision);
+          throw Exception("unable to lookup the slice");
         }
 
-      // update the shrub with the resolved path.
-      Etoile::instance()->shrub().update(route, venue);
+        // Set the address; the revision is already set i.e it has been
+        // extracted from the slab.
+        if (entry != nullptr)
+          address = entry->address();
 
-      return elle::Status::Ok;
+        wall::Directory::discard(identifier);
+
+        // If there is no such entry, abort.  Note that the pointer is used to
+        // know whether or not the lookup has succeded. however, the entry's
+        // content cannot be accessed as it has potentially been released with
+        // the context through the call to Discard().
+        if (entry == nullptr)
+          throw wall::NoSuchFileOrDirectory(*reactor::Scheduler::scheduler(),
+                                            slice);
+        venue.append(address, revision);
+      }
+
+      // Update the shrub.
+      etoile.shrub().update(route, venue);
+
+      return venue;
     }
 
     elle::Status

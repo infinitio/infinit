@@ -4,6 +4,7 @@
 #include <elle/types.hh>
 #include <nucleus/proton/fwd.hh>
 
+#include <etoile/Etoile.hh>
 #include <etoile/path/fwd.hh>
 
 namespace etoile
@@ -22,9 +23,9 @@ namespace etoile
       /// only processes absolute paths. Paths being composed of links will fail
       /// to be resolved for instance.
       static
-      elle::Status
-      Resolve(const Route& route,
-              Venue& venue);
+      Venue
+      Resolve(etoile::Etoile& etoile,
+              const Route& route);
 
       /// Take a slice and tries to extract both the real slice and the revision
       /// number.

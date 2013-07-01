@@ -27,11 +27,8 @@ namespace etoile
 
         ELLE_TRACE("try to resolve the route now that the cache was cleaned");
 
-        path::Venue venue;
-        if (path::Path::Resolve(scope.chemin.route(),
-                                venue) == elle::Status::Error)
-          throw Exception(elle::sprintf("unable to resolve the route %s",
-                                        scope.chemin.route()));
+        path::Venue venue =
+          path::Path::Resolve(*Etoile::instance(), scope.chemin.route());
         scope.chemin = path::Chemin(scope.chemin.route(), venue);
 
         ELLE_DEBUG("route was successfully resolved into %s",

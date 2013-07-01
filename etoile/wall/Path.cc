@@ -14,17 +14,12 @@ namespace etoile
   namespace wall
   {
     path::Chemin
-    Path::resolve(std::string const& way)
+    Path::resolve(etoile::Etoile& etoile,
+                  std::string const& way)
     {
       ELLE_TRACE_FUNCTION(way);
-
       path::Route route(way);
-      path::Venue venue;
-
-      // Resolve the route.
-      if (path::Path::Resolve(route, venue) == elle::Status::Error)
-        throw Exception("unable to resolve the route");
-
+      path::Venue venue = path::Path::Resolve(etoile, route);
       return path::Chemin(route, venue);
     }
 

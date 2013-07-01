@@ -5,6 +5,7 @@
 
 # include <reactor/exception.hh>
 
+# include <etoile/Etoile.hh>
 # include <etoile/path/fwd.hh>
 
 namespace etoile
@@ -21,7 +22,7 @@ namespace etoile
       /// version of the named directory, file etc. contained in the path.
       static
       path::Chemin
-      resolve(std::string const& path);
+      resolve(etoile::Etoile& etoile, std::string const& path);
     };
 
     // XXX[to move somewhere else]

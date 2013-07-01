@@ -7,6 +7,7 @@
 
 #include <agent/Agent.hh>
 
+#include <etoile/Etoile.hh>
 #include <etoile/gear/Identifier.hh>
 #include <etoile/path/Chemin.hh>
 #include <etoile/wall/Object.hh>
@@ -78,14 +79,14 @@ namespace horizon
 
     etoile::path::Chemin      chemin;
     try
-      {
-        ELLE_DEBUG("resolve the path")
-          chemin = etoile::wall::Path::resolve(way);
-      }
+    {
+      ELLE_DEBUG("resolve the path")
+        chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), way);
+    }
     catch (etoile::wall::NoSuchFileOrDirectory const&)
-      {
-        return (-ENOENT);
-      }
+    {
+      return (-ENOENT);
+    }
 
     etoile::gear::Identifier identifier;
     ELLE_DEBUG("load the object")
@@ -301,7 +302,8 @@ namespace horizon
     ELLE_TRACE_FUNCTION(path, info);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(
+      etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the directory.
     etoile::gear::Identifier identifier(etoile::wall::Directory::load(chemin));
@@ -434,7 +436,7 @@ namespace horizon
     std::string path = _dirname(path_, name);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the directory.
     etoile::gear::Identifier directory(etoile::wall::Directory::load(chemin));
@@ -535,7 +537,7 @@ namespace horizon
     nucleus::neutron::Subject subject;
 
     // Resolve the path.
-    etoile::path::Chemin chemin_parent(etoile::wall::Path::resolve(parent));
+    etoile::path::Chemin chemin_parent(etoile::wall::Path::resolve(*etoile::Etoile::instance(), parent));
 
     // Load the directory.
     etoile::gear::Identifier directory(
@@ -556,7 +558,7 @@ namespace horizon
 #endif
 
     // Resolve the path.
-    etoile::path::Chemin chemin_child(etoile::wall::Path::resolve(child));
+    etoile::path::Chemin chemin_child(etoile::wall::Path::resolve(*etoile::Etoile::instance(), child));
 
     // Load the subdirectory.
     etoile::gear::Identifier subdirectory(
@@ -606,7 +608,7 @@ namespace horizon
     ELLE_TRACE_FUNCTION(path, mask);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Optimisation: if the mask is equal to F_OK i.e there is nothing else
     // to check but the existence of the path, return righ away.
@@ -744,7 +746,7 @@ namespace horizon
       permissions |= nucleus::neutron::permissions::write;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -865,7 +867,7 @@ namespace horizon
     nucleus::neutron::Subject subject;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -910,7 +912,7 @@ namespace horizon
     ELLE_TRACE_FUNCTION(path, name, size);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -958,7 +960,7 @@ namespace horizon
     size_t offset;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -1021,7 +1023,7 @@ namespace horizon
     nucleus::neutron::Subject subject;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the object.
     etoile::gear::Identifier identifier(etoile::wall::Object::load(chemin));
@@ -1080,7 +1082,7 @@ namespace horizon
     std::string to(target);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(from));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), from));
 
     // Load the directory.
     etoile::gear::Identifier directory(etoile::wall::Directory::load(chemin));
@@ -1176,7 +1178,7 @@ namespace horizon
     etoile::gear::Identifier  identifier;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the link.
     if (etoile::wall::Link::Load(chemin, identifier) == elle::Status::Error)
@@ -1231,7 +1233,7 @@ namespace horizon
     std::string parent = _dirname(path, name);
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(parent));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), parent));
 
     // Load the directory.
     etoile::gear::Identifier directory(etoile::wall::Directory::load(chemin));
@@ -1329,7 +1331,7 @@ namespace horizon
     HORIZON_FINALLY_ABORT(directory);
 
     // Resolve the path.
-    chemin = etoile::wall::Path::resolve(path);
+    chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
 
     // Finally, the file is reopened.
     etoile::gear::Identifier identifier(etoile::wall::File::load(chemin));
@@ -1372,7 +1374,7 @@ namespace horizon
     etoile::path::Chemin      chemin;
 
     // Resolve the path.
-    chemin = (etoile::wall::Path::resolve(path));
+    chemin = (etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the file.
     etoile::gear::Identifier identifier(etoile::wall::File::load(chemin));
@@ -1481,7 +1483,7 @@ namespace horizon
     int                       result;
 
     // Resolve the path.
-    etoile::path::Chemin chemin(etoile::wall::Path::resolve(path));
+    etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the file.
     etoile::gear::Identifier identifier(etoile::wall::File::load(chemin));
@@ -1662,7 +1664,7 @@ namespace horizon
         etoile::path::Chemin chemin;
 
         ELLE_TRACE("resolve the source directory path")
-          chemin = etoile::wall::Path::resolve(from);
+          chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), from);
 
         ELLE_TRACE("load source directory");
 
@@ -1728,7 +1730,7 @@ namespace horizon
         nucleus::neutron::Entry const* entry;
 
         // Resolve the path.
-        etoile::path::Chemin chemin(etoile::wall::Path::resolve(source));
+        etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), source));
 
         // Load the object even though we don't know its genre as we
         // do not need to know to perform this operation.
@@ -1737,7 +1739,7 @@ namespace horizon
         HORIZON_FINALLY_ACTION_DISCARD(identifier_object);
 
         // Resolve the path.
-        chemin = etoile::wall::Path::resolve(to);
+        chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), to);
 
         // Load the _to_ directory.
         etoile::gear::Identifier identifier_to(
@@ -1758,7 +1760,7 @@ namespace horizon
 #endif
 
         // Resolve the path.
-        chemin = etoile::wall::Path::resolve(from);
+        chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), from);
 
         // Load the _from_ directory.
         etoile::gear::Identifier identifier_from(
@@ -1848,7 +1850,7 @@ namespace horizon
     nucleus::neutron::Subject subject;
 
     // Resolve the path.
-    chemin_child = etoile::wall::Path::resolve(child);
+    chemin_child = etoile::wall::Path::resolve(*etoile::Etoile::instance(), child);
 
     // Load the object.
     etoile::gear::Identifier identifier_child(
@@ -1871,7 +1873,7 @@ namespace horizon
 #endif
 
     // Resolve the path.
-    chemin_parent = etoile::wall::Path::resolve(parent);
+    chemin_parent = etoile::wall::Path::resolve(*etoile::Etoile::instance(), parent);
 
     // Load the directory.
     etoile::gear::Identifier identifier_parent(
