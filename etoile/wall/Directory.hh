@@ -34,7 +34,8 @@ namespace etoile
       /// Add an entry to the given directory.
       static
       void
-      add(gear::Identifier const& parent,
+      add(etoile::Etoile& etoile,
+          gear::Identifier const& parent,
           std::string const& name,
           gear::Identifier const& child);
 

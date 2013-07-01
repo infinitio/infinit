@@ -139,7 +139,8 @@ namespace etoile
     }
 
     void
-    Directory::add(gear::Identifier const& parent,
+    Directory::add(etoile::Etoile& etoile,
+                   gear::Identifier const& parent,
                    std::string const& name,
                    gear::Identifier const& child)
     {
@@ -149,14 +150,14 @@ namespace etoile
       gear::Object* object;
       nucleus::proton::Address address;
 
-      gear::Actor* child_actor = Etoile::instance()->actor_get(child);
+      gear::Actor* child_actor = etoile.actor_get(child);
       gear::Scope* child_scope = child_actor->scope;
 
       if (child_scope->Use(object) == elle::Status::Error)
         throw Exception("unable to retrieve the context");
       address = object->location.address();
 
-      gear::Actor* parent_actor = Etoile::instance()->actor_get(parent);
+      gear::Actor* parent_actor = etoile.actor_get(parent);
       gear::Scope* parent_scope = parent_actor->scope;
 
       // Declare a critical section.

@@ -56,7 +56,7 @@ test()
   auto root_actor = etoile::wall::Directory::load(etoile, root_chemin);
 
   auto file_actor = etoile::wall::File::create(etoile);
-  etoile::wall::Directory::add(root_actor, "test_file", file_actor);
+  etoile::wall::Directory::add(etoile, root_actor, "test_file", file_actor);
   etoile::wall::File::write(etoile, file_actor, 0,
                             elle::ConstWeakBuffer("Hello world.", 12));
   etoile::wall::File::store(etoile, file_actor);

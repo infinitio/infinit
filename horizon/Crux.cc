@@ -513,7 +513,8 @@ namespace horizon
       }
 
     // Add the subdirectory.
-    etoile::wall::Directory::add(directory, name, subdirectory);
+    etoile::wall::Directory::add(*etoile::Etoile::instance(),
+                                 directory, name, subdirectory);
 
     // Store the subdirectory.
     etoile::wall::Directory::store(*etoile::Etoile::instance(),
@@ -1160,7 +1161,8 @@ namespace horizon
     etoile::wall::Link::bind(link, to);
 
     // Add an entry for the link.
-    etoile::wall::Directory::add(directory, name, link);
+    etoile::wall::Directory::add(*etoile::Etoile::instance(),
+                                 directory, name, link);
 
     // Store the link.
     etoile::wall::Link::store(*etoile::Etoile::instance(), link);
@@ -1323,7 +1325,8 @@ namespace horizon
       }
 
     // Add the file to the directory.
-    etoile::wall::Directory::add(directory, name, file);
+    etoile::wall::Directory::add(*etoile::Etoile::instance(),
+                                 directory, name, file);
 
     // Store the file, ensuring the file system consistency.
     //
@@ -1840,7 +1843,8 @@ namespace horizon
           }
 
         // Add an entry.
-        etoile::wall::Directory::add(identifier_to, t, identifier_object);
+        etoile::wall::Directory::add(*etoile::Etoile::instance(),
+                                     identifier_to, t, identifier_object);
 
         // Remove the entry.
         if (etoile::wall::Directory::Remove(
