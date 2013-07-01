@@ -39,11 +39,7 @@ NETWORK_CHANGED = 128
 class Notifier(object):
     def open(self):
         raise Exception('Not implemented')
-    def notify_one(self, notif_type, to, message, store):
-        raise Exception('Not implemented')
-    def notify_some(self, notif_type, to, message, store):
-        raise Exception('Not implemented')
-    def send_notification(self, message):
+    def notify_some(self, notif_type, recipeint_ids, device_ids, message, store):
         raise Exception('Not implemented')
     def close(self):
         raise Exception('Not implemented')
@@ -55,31 +51,45 @@ class TrophoniusNotify(Notifier):
     def open(self):
         self.conn.connect((conf.TROPHONIUS_HOST, int(conf.TROPHONIUS_CONTROL_PORT)))
 
-    def send_notification(self, message):
+    def __send_notification(self, message):
         if isinstance(message, dict):
             msg = json.dumps(message, default = str)
         else:
             log.err('Notification was ill formed.')
         self.conn.send(msg + "\n")
 
-    def fill(self, message, notification_type, recipient):
+    def notify_some(self,
+                    notification_type,
+                    recipient_ids = None,
+                    device_ids = None,
+                    message,
+                    store = True):
+        # Check that we either have a list of recipients or devices
+        assert recipient_ids is None ^ device_ids is None
+
         message['notification_type'] = notification_type
         message['timestamp'] = time.time() #timestamp in s.
-        message['to'] = recipient
 
-    def notify_some(self, notification_type, recipients_id, message, store = True):
-        # Recipients empty.
-        if not recipients_id:
-            return
+        if recipient_ids is not None:
+            device_ids = set()
+            for recipient_id in recipient_ids:
+                user = database.users().find_one(database.ObjectId(recipient_id))
+                device_ids.update(user['devices'])
 
-        self.fill(message, notification_type, recipients_id)
+        elif device_ids is not None:
+            device_ids = set(database.ObjectId(device_id) for device_id in device_ids)
+        message['to_devices'] = device_ids
 
-        for _id in recipients_id:
-            _id = database.ObjectId(_id)
-            assert isinstance(_id, database.ObjectId)
-            if store:
+        if store:
+            if recipient_ids is None:
+                recipient_ids = set()
+                for device_id in device_ids:
+                    device = database.devices().find_one(device_id)
+                    recipient_ids.add(device['owner'])
+            for _id in recipient_ids:
+                _id = database.ObjectId(_id)
                 user = database.users().find_one(_id)
                 user['notifications'].append(message)
                 database.users().save(user)
 
-        self.send_notification(message)
+        self.__send_notification(message)

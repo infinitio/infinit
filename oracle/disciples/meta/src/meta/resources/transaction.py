@@ -250,12 +250,12 @@ class Create(Page):
                     user_id = str(self.user['_id']),
                 )
 
-
-        # XXX: notification should be sent by device_id for the sender (The
-        # transaction can be initiated only on the sender's device_id).
+        device_ids = [transaction['sender_device_id']]
+        recipient = database.users().find_one(database.ObjectId(recipient_id))
+        device_ids.extend(recipient['devices'])
         self.notifier.notify_some(
             notifier.TRANSACTION,
-            [database.ObjectId(recipient_id), database.ObjectId(_id)],
+            device_ids = device_ids,
             transaction,
             store = True,
         )
@@ -350,9 +350,10 @@ class Accept(_UpdateTransaction):
             database.users().save(sender)
             database.users().save(self.user)
 
+        device_ids = [transaction['sender_device_id'], transaction['recipient_device_id']]
         self.notifier.notify_some(
             notifier.TRANSACTION,
-            [transaction['sender_id'], transaction['recipient_id']],
+            device_ids = device_ids,
             transaction
         )
 
@@ -439,9 +440,15 @@ class Update(_UpdateTransaction):
             transaction["status"] = status
             database.transactions().save(transaction)
         if new_status or status == STARTED:
+            device_ids = [transaction['sender_device_id']]
+            if transaction['accepted']:
+                device_ids.append(transaction['recipient_device_id'])
+            else:
+                recipient = database.users().find_one(database.ObjectId(transaction['recipient_id']))
+                device_ids.extend(recipient['devices'])
             self.notifier.notify_some(
                 notifier.TRANSACTION,
-                [transaction['sender_id'], transaction['recipient_id']],
+                device_ids = device_ids,
                 transaction,
             )
         return self.success({

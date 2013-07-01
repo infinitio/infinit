@@ -111,7 +111,7 @@ class Message(Page):
         self.requireLoggedIn()
         self.notifier.notify_some(
             notifier.MESSAGE,
-            [database.ObjectId(self.data["recipient_id"]),],
+            recipient_ids = [database.ObjectId(self.data["recipient_id"]),],
             {
                 'sender_id' : self.data['sender_id'],
                 'message': self.data['message'],

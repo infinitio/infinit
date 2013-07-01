@@ -154,8 +154,7 @@ class Trophonius(basic.LineReceiver):
 
             # Add the current client to the client list
             assert isinstance(self.factory.clients, dict)
-            self.factory.clients.setdefault(self.id, set()).add(self)
-            self.devices = self.factory.clients[self.id]
+            self.factory.clients[self.device_id] = self
 
             self.meta_client.post(
                 '/user/connected',
@@ -209,33 +208,26 @@ class MetaTropho(basic.LineReceiver):
             message = json.dumps(s)
             self.sendLine(message)
 
-    def enqueue(self, line, recipients):
+    def enqueue(self, line, device_ids):
         try:
-            for rec_id in recipients:
-                if not rec_id in self.factory.clients:
-                    log.msg("User %s not connected" % rec_id)
+            for device_id in device_ids:
+                if not device_id in self.factory.clients:
+                    log.msg("Device %s not connected" % device_id)
                     continue
-                log.msg("Send %s to %s (%s)" % (line, rec_id, self.factory.clients[rec_id]))
-                for c in self.factory.clients[rec_id]:
-                    c.sendLine(str(line))
+                log.msg("Send %s to %s (%s)" % (line, device_id))
+                self.factory.clients[device_id].sendLine(str(line))
         except KeyError as ke:
             log.err("Handled exception {}: {} unknow id".format(
                 ke.__class__.__name__,
                 ke
             ))
-            raise InvalidID(rec_id)
+            raise InvalidID(device_id)
 
     def make_switch(self, line):
         try:
-            recipients_ids = []
             js_req = json.loads(line)
-            _recipient = js_req["to"]
-            if isinstance(_recipient, list):
-                recipients_ids = _recipient
-            elif isinstance(_recipient, str) or isinstance(_recipient, unicode):
-                recipients_ids = [_recipient]
-                print(recipients_ids)
-            self.enqueue(line, recipients_ids)
+            device_ids = js_req["to_devices"]
+            self.enqueue(line, device_ids)
         except ValueError as ve:
             log.err("Handled exception {}: {}".format(
                                         ve.__class__.__name__,

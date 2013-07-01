@@ -132,7 +132,7 @@ class AddUser(_Page):
 
         self.notifier.notify_some(
             notifier.NETWORK_UPDATE,
-            network["users"],
+            recipient_ids = network["users"],
             {"network_id": str(network['_id']), "what": NEW_USER},
             store=False)
 
@@ -367,7 +367,7 @@ class Update(_Page):
         try:
             self.notifier.notify_some(
                 notifier.NETWORK_UPDATE,
-                to_save["users"],
+                recipient_ids = to_save["users"],
                 {"network_id": _id, "what": UPDATE},
                 store = False);
         except socket.error as e:
@@ -422,7 +422,7 @@ class AddDevice(_Page):
 
             self.notifier.notify_some(
                 notifier.NETWORK_UPDATE,
-                network["users"],
+                recipient_ids = network["users"],
                 {"network_id": str(network['_id']), "what": NEW_DEVICE},
                 store = False)
 
@@ -628,7 +628,7 @@ class Delete(_Page):
 
         self.notifier.notify_some(
             notifier.NETWORK_UPDATE,
-            users,
+            recipient_ids = users,
             {"network_id": network_id, "what": DELETED},
             store = False)
 
