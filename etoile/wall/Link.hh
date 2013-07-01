@@ -44,9 +44,14 @@ namespace etoile
       /// Commit the pending modifications by placing the scope in the journal.
       static
       void
-      store(gear::Identifier const& identifier);
+      store(etoile::Etoile& etoile,
+            gear::Identifier const& identifier);
 
-      static elle::Status       Destroy(const gear::Identifier&);
+      /// Destroy a link.
+      static
+      void
+      destroy(etoile::Etoile& etoile,
+              const gear::Identifier&);
     };
 
   }

@@ -516,12 +516,13 @@ namespace horizon
     etoile::wall::Directory::add(directory, name, subdirectory);
 
     // Store the subdirectory.
-    etoile::wall::Directory::store(subdirectory);
+    etoile::wall::Directory::store(*etoile::Etoile::instance(),
+                                   subdirectory);
 
     HORIZON_FINALLY_ABORT(subdirectory);
 
     // Store the directory.
-    etoile::wall::Directory::store(directory);
+    etoile::wall::Directory::store(*etoile::Etoile::instance(), directory);
 
     HORIZON_FINALLY_ABORT(directory);
 
@@ -592,7 +593,7 @@ namespace horizon
       return (-EPERM);
 
     // Store the directory.
-    etoile::wall::Directory::store(directory);
+    etoile::wall::Directory::store(*etoile::Etoile::instance(), directory);
 
     HORIZON_FINALLY_ABORT(directory);
 
@@ -837,7 +838,7 @@ namespace horizon
       }
 
     // Store the object.
-    etoile::wall::Object::store(identifier);
+    etoile::wall::Object::store(*etoile::Etoile::instance(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -900,7 +901,7 @@ namespace horizon
                                   elle::String(value, size));
 
     // Store the object.
-    etoile::wall::Object::store(identifier);
+    etoile::wall::Object::store(*etoile::Etoile::instance(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -1057,7 +1058,7 @@ namespace horizon
       return (-EPERM);
 
     // Store the object.
-    etoile::wall::Object::store(identifier);
+    etoile::wall::Object::store(*etoile::Etoile::instance(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -1162,12 +1163,12 @@ namespace horizon
     etoile::wall::Directory::add(directory, name, link);
 
     // Store the link.
-    etoile::wall::Link::store(link);
+    etoile::wall::Link::store(*etoile::Etoile::instance(), link);
 
     HORIZON_FINALLY_ABORT(link);
 
     // Store the modified directory.
-    etoile::wall::Directory::store(directory);
+    etoile::wall::Directory::store(*etoile::Etoile::instance(), directory);
 
     HORIZON_FINALLY_ABORT(directory);
 
@@ -1263,7 +1264,8 @@ namespace horizon
 #endif
 
     // Create the file.
-    etoile::gear::Identifier file(etoile::wall::File::create());
+    etoile::gear::Identifier file(
+      etoile::wall::File::create(*etoile::Etoile::instance()));
 
     HORIZON_FINALLY_ACTION_DISCARD(file);
 
@@ -1331,12 +1333,12 @@ namespace horizon
     // harm, especially considering the Infinit consistency
     // guaranties, we still prefer to do things right, at least for
     // now.
-    etoile::wall::File::store(file);
+    etoile::wall::File::store(*etoile::Etoile::instance(), file);
 
     HORIZON_FINALLY_ABORT(file);
 
     // Store the directory.
-    etoile::wall::Directory::store(directory);
+    etoile::wall::Directory::store(*etoile::Etoile::instance(), directory);
 
     HORIZON_FINALLY_ABORT(directory);
 
@@ -1344,7 +1346,8 @@ namespace horizon
     chemin = etoile::wall::Path::resolve(*etoile::Etoile::instance(), path);
 
     // Finally, the file is reopened.
-    etoile::gear::Identifier identifier(etoile::wall::File::load(chemin));
+    etoile::gear::Identifier identifier(
+      etoile::wall::File::load(*etoile::Etoile::instance(), chemin));
 
     // Compute the future permissions as the current ones are
     // temporary.
@@ -1387,7 +1390,8 @@ namespace horizon
     chemin = (etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the file.
-    etoile::gear::Identifier identifier(etoile::wall::File::load(chemin));
+    etoile::gear::Identifier identifier(
+      etoile::wall::File::load(*etoile::Etoile::instance(), chemin));
 
     // Store the identifier in the file handle.
     info->fh =
@@ -1433,7 +1437,8 @@ namespace horizon
 #endif
 
     // Write the file.
-    etoile::wall::File::write(handle->identifier,
+    etoile::wall::File::write(*etoile::Etoile::instance(),
+                              handle->identifier,
                               static_cast<nucleus::neutron::Offset>(offset),
                               data);
 
@@ -1472,6 +1477,7 @@ namespace horizon
     // Read the file.
     elle::Buffer data =
       etoile::wall::File::read(
+        *etoile::Etoile::instance(),
         handle->identifier,
         static_cast<nucleus::neutron::Offset>(offset),
         static_cast<nucleus::neutron::Size>(size));
@@ -1496,7 +1502,8 @@ namespace horizon
     etoile::path::Chemin chemin(etoile::wall::Path::resolve(*etoile::Etoile::instance(), path));
 
     // Load the file.
-    etoile::gear::Identifier identifier(etoile::wall::File::load(chemin));
+    etoile::gear::Identifier identifier(
+      etoile::wall::File::load(*etoile::Etoile::instance(), chemin));
 
     HORIZON_FINALLY_ACTION_DISCARD(identifier);
 
@@ -1512,7 +1519,7 @@ namespace horizon
       return (result);
 
     // Store the file.
-    etoile::wall::File::store(identifier);
+    etoile::wall::File::store(*etoile::Etoile::instance(), identifier);
 
     HORIZON_FINALLY_ABORT(identifier);
 
@@ -1545,9 +1552,16 @@ namespace horizon
 #endif
 
     // Adjust the file's size.
-    if (etoile::wall::File::Adjust(handle->identifier,
-                                   size) == elle::Status::Error)
-      return (-EPERM);
+    try
+    {
+      etoile::wall::File::adjust(*etoile::Etoile::instance(),
+                                 handle->identifier,
+                                 size);
+    }
+    catch (...)
+    {
+      return -EPERM;
+    }
 
     return (0);
   }
@@ -1605,7 +1619,7 @@ namespace horizon
       }
 
     // Store the file.
-    etoile::wall::File::store(handle->identifier);
+    etoile::wall::File::store(*etoile::Etoile::instance(), handle->identifier);
 
     // Delete the handle.
     delete handle;
@@ -1731,7 +1745,8 @@ namespace horizon
             return (-EPERM);
 
         ELLE_TRACE("store the directory")
-          etoile::wall::Directory::store(directory);
+          etoile::wall::Directory::store(*etoile::Etoile::instance(),
+                                         directory);
 
         HORIZON_FINALLY_ABORT(directory);
       }
@@ -1834,17 +1849,20 @@ namespace horizon
           return (-EPERM);
 
         // Store the _to_ directory.
-        etoile::wall::Directory::store(identifier_to);
+        etoile::wall::Directory::store(*etoile::Etoile::instance(),
+                                       identifier_to);
 
         HORIZON_FINALLY_ABORT(identifier_to);
 
         // Store the _from_ directory.
-        etoile::wall::Directory::store(identifier_from);
+        etoile::wall::Directory::store(*etoile::Etoile::instance(),
+                                       identifier_from);
 
         HORIZON_FINALLY_ABORT(identifier_from);
 
         // Store the object.
-        etoile::wall::Object::store(identifier_object);
+        etoile::wall::Object::store(*etoile::Etoile::instance(),
+                                    identifier_object);
 
         HORIZON_FINALLY_ABORT(identifier_object);
       }
@@ -1921,8 +1939,15 @@ namespace horizon
       case nucleus::neutron::Genre::file:
         {
           // Destroy the file.
-          if (etoile::wall::File::Destroy(identifier_child) == elle::Status::Error)
-            return (-EPERM);
+          try
+          {
+            etoile::wall::File::destroy(*etoile::Etoile::instance(),
+                                        identifier_child);
+          }
+          catch (...)
+          {
+            return -EPERM;
+          }
 
           HORIZON_FINALLY_ABORT(identifier_child);
 
@@ -1939,8 +1964,15 @@ namespace horizon
           HORIZON_FINALLY_ABORT(identifier_child);
 
           // Destroy the link.
-          if (etoile::wall::Link::Destroy(identifier_child) == elle::Status::Error)
-            return (-EPERM);
+          try
+          {
+            etoile::wall::Link::destroy(*etoile::Etoile::instance(),
+                                        identifier_child);
+          }
+          catch (...)
+          {
+            return -EPERM;
+          }
 
           break;
         }
@@ -1952,7 +1984,8 @@ namespace horizon
       return (-EPERM);
 
     // Store the directory.
-    etoile::wall::Directory::store(identifier_parent);
+    etoile::wall::Directory::store(*etoile::Etoile::instance(),
+                                   identifier_parent);
 
     HORIZON_FINALLY_ABORT(identifier_parent);
 

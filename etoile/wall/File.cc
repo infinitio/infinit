@@ -28,13 +28,8 @@ namespace etoile
 {
   namespace wall
   {
-
-//
-// ---------- methods ---------------------------------------------------------
-//
-
     gear::Identifier
-    File::create()
+    File::create(etoile::Etoile& etoile)
     {
       ELLE_TRACE_FUNCTION("");
 
@@ -52,11 +47,8 @@ namespace etoile
       {
         reactor::Lock lock(scope->mutex.write());
 
-        // retrieve the context.
         if (scope->Use(context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
-
-        // allocate an actor.
         guard.actor(new gear::Actor(scope));
 
         // return the identifier.
@@ -80,7 +72,8 @@ namespace etoile
     }
 
     gear::Identifier
-    File::load(path::Chemin const& chemin)
+    File::load(etoile::Etoile& etoile,
+               path::Chemin const& chemin)
     {
       ELLE_TRACE_FUNCTION(chemin);
 
@@ -115,16 +108,15 @@ namespace etoile
                    context->location);
 
         try
-          {
-            // apply the load automaton on the context.
-            if (automaton::File::Load(*context) == elle::Status::Error)
-              throw Exception("unable to load the file");
-          }
+        {
+          if (automaton::File::Load(*context) == elle::Status::Error)
+            throw Exception("unable to load the file");
+        }
         catch (std::exception const&)
-          {
-            assert(scope != nullptr);
-            Object::reload<gear::File>(*scope);
-          }
+        {
+          assert(scope != nullptr);
+          Object::reload<gear::File>(*scope);
+        }
 
         ELLE_DEBUG("returning identifier %s on %s", identifier, *scope);
 
@@ -137,13 +129,14 @@ namespace etoile
     }
 
     void
-    File::write(gear::Identifier const& identifier,
+    File::write(etoile::Etoile& etoile,
+                gear::Identifier const& identifier,
                 nucleus::neutron::Offset const& offset,
                 elle::ConstWeakBuffer data)
     {
       ELLE_TRACE_FUNCTION(identifier, offset, data);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
       gear::File* context;
 
@@ -167,13 +160,14 @@ namespace etoile
     }
 
     elle::Buffer
-    File::read(gear::Identifier const& identifier,
+    File::read(etoile::Etoile& etoile,
+               gear::Identifier const& identifier,
                nucleus::neutron::Offset const& offset,
                nucleus::neutron::Size const& size)
     {
       ELLE_TRACE_FUNCTION(identifier, offset, size);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
       gear::File* context;
 
@@ -202,18 +196,17 @@ namespace etoile
       return (std::move(*buffer));
     }
 
-    ///
-    /// this method adjusts the size of a file.
-    ///
-    elle::Status        File::Adjust(
-                          const gear::Identifier&               identifier,
-                          const nucleus::neutron::Size& size)
+    /// This method adjusts the size of a file.
+    void
+    File::adjust(etoile::Etoile& etoile,
+                 const gear::Identifier& identifier,
+                 const nucleus::neutron::Size& size)
     {
       ELLE_TRACE_FUNCTION(identifier, size);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
-      gear::File*       context;
+      gear::File* context;
 
       // Declare a critical section.
       {
@@ -231,16 +224,15 @@ namespace etoile
         // set the actor's state.
         actor->state = gear::Actor::StateUpdated;
       }
-
-      return elle::Status::Ok;
     }
 
     void
-    File::discard(gear::Identifier const& identifier)
+    File::discard(etoile::Etoile& etoile,
+                  gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
       gear::File* context;
 
@@ -277,52 +269,46 @@ namespace etoile
 
         // trigger the shutdown.
         try
-          {
-            if (scope->Shutdown() == elle::Status::Error)
-              throw Exception("unable to trigger the shutdown");
-          }
+        {
+          if (scope->Shutdown() == elle::Status::Error)
+            throw Exception("unable to trigger the shutdown");
+        }
         catch (elle::Exception const& e)
-          {
-            ELLE_ERR("unable to shutdown the scope: '%s'", e.what());
-            return;
-          }
+        {
+          ELLE_ERR("unable to shutdown the scope: '%s'", e.what());
+          return;
+        }
       }
 
       // depending on the context's state.
       switch (context->state)
-        {
+      {
         case gear::Context::StateDiscarded:
         case gear::Context::StateStored:
         case gear::Context::StateDestroyed:
-          {
-            //
-            // if the file has been sealed, i.e there is no more actor
-            // operating on it, record it in the journal.
-            //
+        {
+          // If the file has been sealed, i.e there is no more actor
+          // operating on it, record it in the journal.
+          if (journal::Journal::Record(scope) == elle::Status::Error)
+            throw Exception("unable to record the scope in the journal");
 
-            // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
-              throw Exception("unable to record the scope in the journal");
-
-            break;
-          }
-        default:
-          {
-            //
-            // otherwise, some actors are probably still working on it.
-            //
-
-            break;
-          }
+          break;
         }
+        default:
+        {
+          // Otherwise, some actors are probably still working on it.
+          break;
+        }
+      }
     }
 
     void
-    File::store(gear::Identifier const& identifier)
+    File::store(etoile::Etoile& etoile,
+                gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
       gear::File* context;
 
@@ -359,59 +345,53 @@ namespace etoile
 
         // trigger the shutdown.
         try
-          {
-            if (scope->Shutdown() == elle::Status::Error)
-              throw Exception("unable to trigger the shutdown");
-          }
+        {
+          if (scope->Shutdown() == elle::Status::Error)
+            throw Exception("unable to trigger the shutdown");
+        }
         catch (elle::Exception const& e)
-          {
-            ELLE_ERR("unable to shutdown the scope: '%s'", e.what());
-            return;
-          }
+        {
+          ELLE_ERR("unable to shutdown the scope: '%s'", e.what());
+          return;
+        }
       }
 
       // depending on the context's state.
       switch (context->state)
-        {
+      {
         case gear::Context::StateDiscarded:
         case gear::Context::StateStored:
         case gear::Context::StateDestroyed:
-          {
-            //
-            // if the file has been sealed, i.e there is no more actor
-            // operating on it, record it in the journal.
-            //
+        {
+          // If the file has been sealed, i.e there is no more actor
+          // operating on it, record it in the journal.
+          if (journal::Journal::Record(scope) == elle::Status::Error)
+            throw Exception("unable to record the scope in the journal");
 
-            // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
-              throw Exception("unable to record the scope in the journal");
-
-            break;
-          }
-        default:
-          {
-            //
-            // otherwise, some actors are probably still working on it.
-            //
-
-            break;
-          }
+          break;
         }
+        default:
+        {
+          // Otherwise, some actors are probably still working on it.
+            break;
+        }
+      }
     }
 
     ///
     /// this method destroys a file.
     ///
-    elle::Status        File::Destroy(
-                          const gear::Identifier&               identifier)
+    void
+    File::destroy(etoile::Etoile& etoile,
+                  const gear::Identifier& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
-      gear::File*       context;
+      gear::File* context;
 
-      gear::Guard               guard(actor);
+      gear::Guard guard(actor);
 
       // Declare a critical section.
       {
@@ -444,46 +424,37 @@ namespace etoile
 
         // trigger the shutdown.
         try
-          {
-            if (scope->Shutdown() == elle::Status::Error)
-              throw Exception("unable to trigger the shutdown");
-          }
+        {
+          if (scope->Shutdown() == elle::Status::Error)
+            throw Exception("unable to trigger the shutdown");
+        }
         catch (elle::Exception const& e)
-          {
-            ELLE_ERR("unable to shutdown the scope: '%s'", e.what());
-            return elle::Status::Ok;
-          }
+        {
+          ELLE_ERR("unable to shutdown the scope: '%s'", e.what());
+          return;
+        }
       }
 
       // depending on the context's state.
       switch (context->state)
-        {
+      {
         case gear::Context::StateDiscarded:
         case gear::Context::StateStored:
         case gear::Context::StateDestroyed:
-          {
-            //
-            // if the file has been sealed, i.e there is no more actor
-            // operating on it, record it in the journal.
-            //
+        {
+          // If the file has been sealed, i.e there is no more actor
+          // operating on it, record it in the journal.
+          if (journal::Journal::Record(scope) == elle::Status::Error)
+            throw Exception("unable to record the scope in the journal");
 
-            // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
-              throw Exception("unable to record the scope in the journal");
-
-            break;
-          }
-        default:
-          {
-            //
-            // otherwise, some actors are probably still working on it.
-            //
-
-            break;
-          }
+          break;
         }
-
-      return elle::Status::Ok;
+        default:
+        {
+          // Otherwise, some actors are still working on it.
+          break;
+        }
+      }
     }
   }
 }

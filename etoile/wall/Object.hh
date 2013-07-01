@@ -4,6 +4,7 @@
 # include <elle/types.hh>
 # include <elle/log.hh>
 
+# include <etoile/Etoile.hh>
 # include <etoile/path/fwd.hh>
 # include <etoile/gear/fwd.hh>
 # include <etoile/abstract/fwd.hh>
@@ -38,7 +39,8 @@ namespace etoile
       /// Commit the pending modifications by placing the scope in the journal.
       static
       void
-      store(gear::Identifier const& identifier);
+      store(etoile::Etoile& etoile,
+            gear::Identifier const& identifier);
       /// Destroy an object.
       ///
       /// Use with great care since, not knowing the object's genre, the data

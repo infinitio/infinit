@@ -1001,7 +1001,7 @@ namespace etoile
         }
 
         // store the object which now carries the modified context.
-        T::W::store(actor->identifier);
+        T::W::store(*etoile::Etoile::instance(), actor->identifier);
 
         // waive the actor and the scope
         guard.track = false;

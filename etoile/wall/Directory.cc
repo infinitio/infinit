@@ -431,7 +431,8 @@ namespace etoile
     }
 
     void
-    Directory::store(gear::Identifier const& identifier)
+    Directory::store(etoile::Etoile& etoile,
+                     gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 

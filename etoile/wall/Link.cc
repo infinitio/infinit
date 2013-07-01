@@ -280,11 +280,12 @@ namespace etoile
     }
 
     void
-    Link::store(gear::Identifier const& identifier)
+    Link::store(etoile::Etoile& etoile,
+                gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
       gear::Link* context;
 
@@ -361,19 +362,17 @@ namespace etoile
         }
     }
 
-    ///
-    /// this method destroys a link.
-    ///
-    elle::Status        Link::Destroy(
-                          const gear::Identifier&               identifier)
+    void
+    Link::destroy(etoile::Etoile& etoile,
+                  const gear::Identifier& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
-      gear::Link*       context;
+      gear::Link* context;
 
-      gear::Guard               guard(actor);
+      gear::Guard guard(actor);
 
       // Declare a critical section.
       {
@@ -406,46 +405,37 @@ namespace etoile
 
         // trigger the shutdown.
         try
-          {
-            if (scope->Shutdown() == elle::Status::Error)
-              throw Exception("unable to trigger the shutdown");
-          }
+        {
+          if (scope->Shutdown() == elle::Status::Error)
+            throw Exception("unable to trigger the shutdown");
+        }
         catch (elle::Exception const& e)
-          {
-            ELLE_ERR("unable to shutdown the scope: '%s'", e.what());
-            return elle::Status::Ok;
-          }
+        {
+          ELLE_ERR("unable to shutdown the scope: '%s'", e.what());
+          return;
+        }
       }
 
       // depending on the context's state.
       switch (context->state)
-        {
+      {
         case gear::Context::StateDiscarded:
         case gear::Context::StateStored:
         case gear::Context::StateDestroyed:
-          {
-            //
-            // if the link has been sealed, i.e there is no more actor
-            // operating on it, record it in the journal.
-            //
+        {
+          // If the link has been sealed, i.e there is no more actor operating
+          // on it, record it in the journal.
+          if (journal::Journal::Record(scope) == elle::Status::Error)
+            throw Exception("unable to record the scope in the journal");
 
-            // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
-              throw Exception("unable to record the scope in the journal");
-
-            break;
-          }
-        default:
-          {
-            //
-            // otherwise, some actors are probably still working on it.
-            //
-
-            break;
-          }
+          break;
         }
-
-      return elle::Status::Ok;
+        default:
+        {
+          // Otherwise, some actors are still working on it.
+          break;
+        }
+      }
     }
   }
 }

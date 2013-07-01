@@ -55,12 +55,12 @@ test()
   auto root_chemin = etoile::wall::Path::resolve(etoile, "/");
   auto root_actor = etoile::wall::Directory::load(etoile, root_chemin);
 
-  auto file_actor = etoile::wall::File::create();
+  auto file_actor = etoile::wall::File::create(etoile);
   etoile::wall::Directory::add(root_actor, "test_file", file_actor);
-  etoile::wall::File::write(file_actor, 0,
+  etoile::wall::File::write(etoile, file_actor, 0,
                             elle::ConstWeakBuffer("Hello world.", 12));
-  etoile::wall::File::store(file_actor);
-  etoile::wall::Directory::store(root_actor);
+  etoile::wall::File::store(etoile, file_actor);
+  etoile::wall::Directory::store(etoile, root_actor);
 }
 
 BOOST_AUTO_TEST_CASE(test_etoile)

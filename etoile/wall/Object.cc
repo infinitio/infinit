@@ -313,11 +313,12 @@ namespace etoile
     }
 
     void
-    Object::store(gear::Identifier const& identifier)
+    Object::store(etoile::Etoile& etoile,
+                  gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor = Etoile::instance()->actor_get(identifier);
+      gear::Actor* actor = etoile.actor_get(identifier);
       gear::Scope* scope = actor->scope;
       gear::Object* context;
 
