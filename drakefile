@@ -1105,13 +1105,6 @@ def configure(cxx_toolkit = None,
       )
 
     oracle_lib += drake.nodes(
-      'oracle/disciples/apertus/__init__.py',
-      'oracle/disciples/apertus/apertus.py',
-      'oracle/disciples/apertus/application.py',
-      'oracle/disciples/apertus/conf.py',
-      )
-
-    oracle_lib += drake.nodes(
       'oracle/disciples/pythia/admin.py',
       'oracle/disciples/pythia/client.py',
       'oracle/disciples/pythia/constants.py',
@@ -1140,6 +1133,7 @@ def configure(cxx_toolkit = None,
 
 
     rule_trophonius, rule_trophonius_check = oracle('trophonius')
+    rule_apertus, rule_apertus_check = oracle('apertus')
     rule_meta, rule_meta_check = oracle('meta')
     authority = drake.node('oracle/infinit.auth')
     rule_meta << drake.copy(authority, 'oracle/meta', 'oracle')
