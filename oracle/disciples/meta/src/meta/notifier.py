@@ -67,23 +67,7 @@ class TrophoniusNotify(Notifier):
         message['timestamp'] = time.time() #timestamp in s.
         message['to'] = recipient
 
-    def notify_one(self, notification_type, recipient_id, message, store = True):
-#      assert isinstance(recipient, database.ObjectId)
-        self.fill(message, notification_type, str(recipient_id))
-
-        user_ = self._add_notif_to_db(recipient_id, message)
-
-        if not user_:
-            log.err("Unknown user.")
-            return
-
-        if user_['connected']:
-            self.send_notification(message)
-
     def notify_some(self, notification_type, recipients_id, message, store = True):
-        if not isinstance(recipients_id, list):
-            return self.notify_one(notification_type, recipients_id, message)
-
         # Recipients empty.
         if not recipients_id:
             return
