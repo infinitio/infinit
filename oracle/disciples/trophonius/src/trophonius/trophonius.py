@@ -206,7 +206,7 @@ class MetaTropho(basic.LineReceiver):
                 if not device_id in self.factory.clients:
                     log.msg("Device %s not connected" % device_id)
                     continue
-                log.msg("Send %s to %s (%s)" % (line, device_id))
+                log.msg("Send %s to %s" % (line, device_id))
                 self.factory.clients[device_id].sendLine(str(line))
         except KeyError as ke:
             log.err("Handled exception {}: {} unknow id".format(
