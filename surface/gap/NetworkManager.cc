@@ -442,36 +442,29 @@ namespace surface
 
     void
     NetworkManager::add_user(std::string const& network_id,
-                             std::string const& owner,
-                             std::string const& user_id,
-                             std::string const& user_identity)
+                             std::string const& peer_public_key)
     {
-      ELLE_TRACE_METHOD(network_id, owner, user_id, user_identity);
+      ELLE_TRACE_METHOD(network_id, peer_public_key);
 
       this->_reporter.store("network_adduser_attempt",
                             {{MKey::value, network_id}});
 
       try
       {
-        Network network = this->one(network_id);
-        auto const& group_binary = common::infinit::binary_path("8group");
-        std::list<std::string> arguments{
-          "--user", owner,
-          "--type", "user",
-          "--add",
-          "--network", network._id,
-          "--identity", user_identity
-        };
+        nucleus::neutron::User::Identity public_key;
+        public_key.Restore(peer_public_key);
 
-        ELLE_DEBUG("launch: %s %s",
-                   group_binary,
-                   boost::algorithm::join(arguments, " "));
-        auto pc = binary_config("8group",
-                                this->_self.id,
-                                network._id);
-        elle::system::Process p{std::move(pc), group_binary, arguments};
-        if (p.wait_status() != 0)
-          throw Exception(gap_internal_error, "8group binary failed");
+        nucleus::neutron::Subject subject;
+        subject.Create(public_key);
+
+        auto const& network = this->one(network_id);
+
+        nucleus::neutron::Group::Identity group;
+        group.Restore(network.group_address);
+
+        this->_infinit_instance_manager.add_user(network._id,
+                                                 group,
+                                                 subject);
       }
       CATCH_FAILURE_TO_METRICS("network_adduser");
 
@@ -499,44 +492,18 @@ namespace surface
 
     void
     NetworkManager::set_permissions(std::string const& network_id,
-                                    std::string const& user_id,
-                                    std::string const& user_identity,
-                                    nucleus::neutron::Permissions permissions)
+                                    std::string const& peer_public_key)
     {
-      ELLE_TRACE_METHOD(network_id, user_id, user_identity, permissions);
+      ELLE_TRACE_SCOPE("%s: set permission on '/' for user %s on network %s",
+                       *this, peer_public_key, network_id);
 
-      std::string const& access_binary =
-        common::infinit::binary_path("8access");
+      nucleus::neutron::User::Identity public_key;
+      public_key.Restore(peer_public_key);
 
-      std::list<std::string> arguments{
-        "--user", this->_self.id,
-        "--type", "user",
-        "--grant",
-        "--network", network_id,
-        "--path", "/",
-        "--identity", user_identity,
-      };
+      nucleus::neutron::Subject subject;
+      subject.Create(public_key);
 
-      if (permissions & nucleus::neutron::permissions::read)
-        arguments.push_back("--read");
-      if (permissions & nucleus::neutron::permissions::write)
-        arguments.push_back("--write");
-
-      ELLE_DEBUG("launch: %s %s",
-                 access_binary,
-                 boost::algorithm::join(arguments, " "));
-
-      if (permissions & gap_exec)
-      {
-        ELLE_WARN("XXX: setting executable permissions not yet implemented");
-      }
-
-      auto pc = binary_config("8access",
-                              this->_self.id,
-                              network_id);
-      elle::system::Process p{std::move(pc), access_binary, arguments};
-      if (p.wait_status() != 0)
-        throw Exception(gap_internal_error, "8access binary failed");
+      this->_infinit_instance_manager.grant_permissions(network_id, subject);
     }
 
     static
@@ -898,9 +865,7 @@ namespace surface
       this->_infinit_instance_manager.launch(
         network_id,
         identity,
-        nucleus::proton::Address(
-          elle::serialize::from_string<elle::serialize::InputBase64Archive>(
-            this->one(network_id).root_address)));
+        this->one(network_id).descriptor);
     }
   }
 }

@@ -119,9 +119,7 @@ namespace surface
       /// Add a user to a network with its mail or id.
       void
       add_user(std::string const& network_id,
-               std::string const& inviter_id,
-               std::string const& user_id,
-               std::string const& identity);
+               std::string const& user_K);
 
       /// Add a device to a network.
       void
@@ -142,10 +140,7 @@ namespace surface
       /// Give the recipient the write on the root of the network.
       void
       set_permissions(std::string const& network_id,
-                      std::string const& user_id,
-                      std::string const& user_identity,
-                      nucleus::neutron::Permissions permissions);
-
+                      std::string const& peer_public_key);
       ///
       void
       to_directory(std::string const& network_id,

@@ -10,6 +10,13 @@
 #include <elle/os/path.hh>
 #include <elle/system/signal.hh>
 
+#include <etoile/Etoile.hh>
+#include <etoile/wall/Access.hh>
+#include <etoile/wall/Group.hh>
+#include <etoile/wall/Object.hh>
+#include <etoile/wall/Path.hh>
+#include <etoile/path/Chemin.hh>
+
 #include <common/common.hh>
 #include <surface/gap/InfinitInstanceManager.hh>
 #include <surface/gap/binary_config.hh>
@@ -23,12 +30,15 @@ namespace surface
     InfinitInstance::InfinitInstance(std::string const& user_id,
                                      std::string const& network_id,
                                      lune::Identity const& identity,
-                                     nucleus::proton::Address const& root_addr):
+                                     std::string const& descriptor):
       network_id(network_id),
       mount_point(),
       network(network_id),
       identity(identity),
       passport(),
+      descriptor(
+        elle::serialize::from_string<elle::serialize::InputBase64Archive>(
+          descriptor)),
       storage(this->network, common::infinit::network_shelter(user_id,
                                                               network_id)),
       hole(),
@@ -56,9 +66,10 @@ namespace surface
                              passport,
                              Infinit::authority(),
                              reactor::network::Protocol::tcp));
-          this->etoile.reset(new etoile::Etoile(this->identity.pair(),
-                                                this->hole.get(),
-                                                root_addr));
+          this->etoile.reset(
+            new etoile::Etoile(this->identity.pair(),
+                               this->hole.get(),
+                               this->descriptor.meta().root()));
         });
     }
 
@@ -94,7 +105,7 @@ namespace surface
     void
     InfinitInstanceManager::launch(std::string const& network_id,
                                    lune::Identity const& identity,
-                                   nucleus::proton::Address const& root_addr)
+                                   std::string const& descriptor_digest)
     {
       ELLE_TRACE_SCOPE("%s: launch network %s", *this, network_id);
 
@@ -102,7 +113,9 @@ namespace surface
         throw elle::Exception{"Network " + network_id + " already launched"};
 
       std::unique_ptr<InfinitInstance> instance(
-        new InfinitInstance(this->_user_id, network_id, identity, root_addr));
+        new InfinitInstance(
+          this->_user_id, network_id, identity, descriptor_digest));
+
       this->_instances.insert(std::make_pair(network_id, std::move(instance)));
     }
 
@@ -121,8 +134,76 @@ namespace surface
       return this->_instances.find(network_id) != this->_instances.end();
     }
 
-    InfinitInstance const&
-    InfinitInstanceManager::_instance(std::string const& network_id) const
+    void
+    InfinitInstanceManager::add_user(
+      std::string const& network_id,
+      nucleus::neutron::Group::Identity const& group,
+      nucleus::neutron::Subject const& subject)
+    {
+      ELLE_TRACE_SCOPE("%s: add user %s into network %s",
+                       *this, subject, network_id);
+
+      auto& instance = this->_instance(network_id);
+
+      instance.scheduler.mt_run<void>(
+        elle::sprintf("add_user for %s", network_id),
+        [&] ()
+        {
+          auto& etoile = *instance.etoile;
+          auto identifier = etoile::wall::Group::Load(etoile, group);
+
+          elle::Finally discard{[&] ()
+            {
+              etoile::wall::Group::Discard(etoile, identifier);
+            }
+          };
+
+          etoile::wall::Group::Add(etoile, identifier, subject);
+          etoile::wall::Group::Store(etoile, identifier);
+
+          discard.abort();
+        });
+    }
+
+    void
+    InfinitInstanceManager::grant_permissions(
+      std::string const& network_id,
+      nucleus::neutron::Subject const& subject)
+    {
+      ELLE_TRACE_SCOPE("%s: grant permissions to user %s into network %s",
+                       *this, subject, network_id);
+
+      auto& instance = this->_instance(network_id);
+
+      instance.scheduler.mt_run<void>(
+        elle::sprintf("grant permissions for %s", network_id),
+        [&] ()
+        {
+          auto& etoile = *instance.etoile;
+
+          etoile::path::Chemin chemin = etoile::wall::Path::resolve(etoile, "/");
+          auto identifier = etoile::wall::Object::load(etoile, chemin);
+
+          elle::Finally discard{[&] ()
+            {
+              etoile::wall::Object::discard(etoile, identifier);
+            }
+          };
+
+          etoile::wall::Access::Grant(etoile,
+                                      identifier,
+                                      subject,
+                                      nucleus::neutron::permissions::write);
+
+          etoile::wall::Object::store(etoile, identifier);
+
+          discard.abort();
+        });
+    }
+
+
+    InfinitInstance&
+    InfinitInstanceManager::_instance(std::string const& network_id)
     {
       auto it = this->_instances.find(network_id);
       if (it == this->_instances.end())

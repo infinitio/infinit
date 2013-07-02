@@ -564,8 +564,6 @@ extern "C"
       auto const& user = __TO_CPP(state)->user_manager().one(user_id);
       std::string me = __TO_CPP(state)->me().id;
       __TO_CPP(state)->network_manager().add_user(network_id,
-                                                  me,
-                                                  user.id,
                                                   user.public_key);
       ret = gap_ok;
     }

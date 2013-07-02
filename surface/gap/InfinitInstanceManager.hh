@@ -18,6 +18,7 @@
 # include <hole/implementations/slug/Slug.hh>
 # include <hole/storage/Directory.hh>
 # include <lune/Identity.hh>
+# include <lune/Descriptor.hh>
 # include <nucleus/neutron/Object.hh>
 # include <nucleus/proton/Network.hh>
 # include <surface/gap/Exception.hh>
@@ -40,6 +41,7 @@ namespace surface
       nucleus::proton::Network network;
       lune::Identity identity;
       elle::Passport passport;
+      lune::Descriptor descriptor;
       hole::storage::Directory storage;
       std::unique_ptr<hole::Hole> hole;
       std::unique_ptr<etoile::Etoile> etoile;
@@ -50,7 +52,7 @@ namespace surface
       InfinitInstance(std::string const& user_id,
                       std::string const& network_id,
                       lune::Identity const& identity,
-                      nucleus::proton::Address const& root_addr);
+                      std::string const& descriptor); //XXX: Should be movable.
     };
 
     class InfinitInstanceManager:
@@ -94,10 +96,12 @@ namespace surface
       void
       clear();
 
+      // Change descriptor_digest that to lune::Descriptor&& as soon as
+      // lune::Descriptor is movable.
       void
       launch(std::string const& network_id,
              lune::Identity const& identity,
-             nucleus::proton::Address const& root_addr);
+             std::string const& descriptor_digest);
 
       bool
       exists(std::string const& network_id) const;
@@ -105,9 +109,18 @@ namespace surface
       void
       stop(std::string const& network_id);
 
+      void
+      add_user(std::string const& network_id,
+               nucleus::neutron::Group::Identity const& group,
+               nucleus::neutron::Subject const& subject);
+
+      void
+      grant_permissions(std::string const& network_id,
+                        nucleus::neutron::Subject const& subject);
+
     private:
-      InfinitInstance const&
-      _instance(std::string const& network_id) const;
+      InfinitInstance&
+      _instance(std::string const& network_id);
 
       InfinitInstance const*
       _instance_for_file(std::string const& path);
