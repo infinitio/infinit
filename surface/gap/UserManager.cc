@@ -31,6 +31,7 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
 
+      using std::placeholders::_1;
       this->_notification_manager.user_status_callback(
         std::bind(&UserManager::_on_swagger_status_update, this, _1));
       this->_notification_manager.new_swagger_callback(
@@ -89,7 +90,7 @@ namespace surface
         auto user = this->_meta.user(swagger_id);
         auto it = this->_users.find(swagger_id);
         bool need_resync = (
-          it == this->_users.end() || it->status != user.status);
+          it == this->_users.end() || it->second->status != user.status);
 
         for (auto const& dev: user.connected_devices)
         {
@@ -101,7 +102,7 @@ namespace surface
 
         if (it != this->_users.end())
         {
-          for (auto const& old_dev: it->connected_devices)
+          for (auto const& old_dev: it->second->connected_devices)
             // Some device has been disconnected.
             if (this->_connected_devices.find(old_dev) ==
                 this->_connected_devices.end())
@@ -109,15 +110,16 @@ namespace surface
         }
 
         // Save the user
-        this->_users[swagger_id].reset(
-          new User{
-            user.id,
-            user.fullname,
-            user.handle,
-            user.public_key,
-            user.status,
-            user.connected_devices,
-          });
+        delete this->_users[swagger_id];
+        this->_users[swagger_id] = nullptr;
+        this->_users[swagger_id] = new User{
+          user.id,
+          user.fullname,
+          user.handle,
+          user.public_key,
+          user.status,
+          user.connected_devices,
+        };
 
         if (need_resync)
         {

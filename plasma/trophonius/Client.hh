@@ -37,6 +37,11 @@ namespace plasma
 
       ELLE_SERIALIZE_CONSTRUCT(Notification)
       {}
+
+      Notification(NotificationType const type):
+        notification_type{type}
+      {}
+
       virtual ~Notification();
 
       virtual
@@ -66,6 +71,10 @@ namespace plasma
 
       ELLE_SERIALIZE_CONSTRUCT(UserStatusNotification,
                                Notification)
+      {}
+
+      UserStatusNotification():
+        Notification{NotificationType::user_status}
       {}
     };
 
