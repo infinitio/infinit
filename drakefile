@@ -828,7 +828,7 @@ def configure(cxx_toolkit = None,
   ## Check ##
   ## ----- ##
 
-  check = drake.Rule('check')
+  check = drake.TestSuite('check')
   check << elle.rule_check
 
   ## ----- ##
@@ -1270,6 +1270,3 @@ def configure(cxx_toolkit = None,
           drake.nodes('tests/unit/pass.cc', 'common/common.cc') + [reactor_lib,
               elle_lib] + udt_libs,
           cxx_toolkit, tests_cxx_config)
-  #Check
-  rule_check = drake.Rule('check')
-  rule_check << elle.rule_check
