@@ -10,6 +10,7 @@ from meta import notifier
 import meta.mail
 
 import re
+import os
 
 import metalib
 
