@@ -24,7 +24,7 @@ namespace surface
         elle::Exception{msg},
         code{code}
       {
-        ELLE_LOG_COMPONENT("infinit.surface.Exception");
+        ELLE_LOG_COMPONENT("infinit.surface.gap.Exception");
         ELLE_ERR("%s: %s", code, msg);
       }
     };
