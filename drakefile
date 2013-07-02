@@ -514,9 +514,23 @@ def configure(cxx_toolkit = None,
     'plasma/trophonius/Client.hh',
     'plasma/plasma.cc',
     # 'plasma/watchdog/ClientActions.hh',
-    )
+    ) + [
+      curly_lib,
+      elle_lib,
+    ]
   plasma_lib = drake.cxx.DynLib('lib/plasma', plasma_sources,
                                 cxx_toolkit, cxx_config)
+  plasma_python_sources = plasma_sources + [
+    drake.node('plasma/trophonius/python.cc'),
+  ]
+  plasma_python_cxx_config = drake.cxx.Config(cxx_config)
+  plasma_python_cxx_config += python3
+  plasma_python_cxx_config += boost.config_python()
+  plasma_python_cxx_config.lib_path_runtime('..')
+  plasma_python_lib = drake.cxx.Module(
+    'lib/python/plasma',
+    plasma_python_sources,
+    cxx_toolkit, plasma_python_cxx_config)
 
   # Agent
   agent_sources = drake.nodes(
@@ -900,14 +914,15 @@ def configure(cxx_toolkit = None,
 
   # Trophonius
 
-  tropho_cxx_config = drake.cxx.Config(cxx_config)
   tropho_sources = drake.nodes(
     'plasma/trophonius/Client.cc',
     'plasma/trophonius/Client.hh',
     )
-  tropho_lib = drake.cxx.DynLib('lib/trophonius',
-                             tropho_sources,
-                             cxx_toolkit, cxx_config)
+  tropho_lib = drake.cxx.DynLib(
+    'lib/trophonius',
+    tropho_sources,
+    cxx_toolkit, cxx_config)
+
   ## GAP:
   gap_sources = drake.nodes(
     'surface/gap/binary_config.hh',

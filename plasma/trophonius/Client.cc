@@ -1,5 +1,3 @@
-#include <surface/gap/gap.h> // XXX remove dependency
-
 #include "Client.hh"
 
 #include <plasma/plasma.hh>
