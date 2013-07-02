@@ -77,6 +77,7 @@ namespace surface
       }
 
       throw Exception{
+        gap_error,
         elle::sprintf("Unable to find portal for %s", network_id)};
     }
 
