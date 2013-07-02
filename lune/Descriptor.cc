@@ -71,6 +71,11 @@ namespace lune
   {
   }
 
+  Descriptor::Descriptor(Descriptor&& other):
+    _meta(std::move(other._meta)),
+    _data(std::move(other._data))
+  {}
+
   ELLE_SERIALIZE_CONSTRUCT_DEFINE(Descriptor)
   {
   }
@@ -206,6 +211,17 @@ namespace lune
           this->_history,
           this->_extent))};
   }
+
+  Descriptor::Meta::Meta(Meta&& other):
+    _id(std::move(other._id)),
+    _administrator_K(std::move(other._administrator_K)),
+    _model(std::move(other._model)),
+    _root(std::move(other._root)),
+    _everybody(std::move(other._everybody)),
+    _history(std::move(other._history)),
+    _extent(std::move(other._extent)),
+    _signature(std::move(other._signature))
+  {}
 
   Descriptor::Meta::~Meta()
   {
@@ -365,6 +381,15 @@ namespace lune
     _signature(nullptr)
   {
   }
+
+  Descriptor::Data::Data(Data&& other):
+    _name(std::move(other._name)),
+    _openness(std::move(other._openness)),
+    _policy(std::move(other._policy)),
+    _version(std::move(other._version)),
+    _formats(std::move(other._formats)),
+    _signature(std::move(other._signature))
+  {}
 
   Descriptor::Data::~Data()
   {

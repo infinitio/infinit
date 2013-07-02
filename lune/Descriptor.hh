@@ -153,6 +153,7 @@ namespace lune
                elle::Natural32 extent,
                elle::Version const& version,
                elle::Authority const& authority);
+    Descriptor(Descriptor&& other);
     ELLE_SERIALIZE_CONSTRUCT_DECLARE(Descriptor);
 
     /*--------.
@@ -229,6 +230,7 @@ namespace lune
            elle::Boolean history,
            elle::Natural32 extent,
            elle::Authority const& authority);
+      Meta(Meta&& meta);
       ~Meta();
 
       //
@@ -315,6 +317,7 @@ namespace lune
            hole::Openness const& openness,
            horizon::Policy const& policy,
            elle::Version const& version);
+      Data(Data&& other);
       ~Data();
 
       //
