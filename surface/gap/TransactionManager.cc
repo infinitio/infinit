@@ -495,9 +495,10 @@ namespace surface
 
       this->_states->erase(tr.id);
       this->_cancel_all(tr.id);
+      // Only delete local data of successful transfers
       this->_network_manager.delete_(
         tr.network_id,
-        tr.status == plasma::TransactionStatus::failed);
+        tr.status == plasma::TransactionStatus::finished);
     }
 
     void
