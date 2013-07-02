@@ -532,6 +532,7 @@ def configure(cxx_toolkit = None,
     plasma_python_sources,
     cxx_toolkit, plasma_python_cxx_config)
 
+
   # Agent
   agent_sources = drake.nodes(
     'agent/Agent.hh',
@@ -839,6 +840,7 @@ def configure(cxx_toolkit = None,
   build << curl_lib
   build << stun_core_lib
   build << stun_common_lib
+  build << plasma_python_lib
 
   ## -------- ##
   ## Programs ##
