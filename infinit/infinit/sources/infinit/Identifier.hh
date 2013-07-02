@@ -33,7 +33,7 @@ namespace infinit
   public:
     /// Construct a random identifier out of _size_ bytes.
     explicit
-    Identifier(elle::Natural32 const size = default_size);
+    Identifier(elle::Natural32 const size = Constants::default_size);
     /// Construct an identifier based on a string.
     explicit
     Identifier(elle::String const& string);
