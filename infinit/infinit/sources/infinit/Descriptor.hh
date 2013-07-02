@@ -560,9 +560,9 @@ namespace infinit
       /// The set of initial blocks in the storage layer.
       ELLE_ATTRIBUTE_R(Vector, blocks);
       /// The set of endpoints (IP addresses, hosts etc. and port) referencing
-      /// the stable nodes of the network which can be used for boostraping
+      /// the stable peers of the network which can be used for boostraping
       /// i.e discovering the network.
-      ELLE_ATTRIBUTE_R(std::vector<Endpoint>, nodes);
+      ELLE_ATTRIBUTE_R(std::vector<Endpoint>, peers);
       /// The most recent version of the Infinit software supported by the
       /// network.
       ///
