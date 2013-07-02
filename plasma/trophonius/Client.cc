@@ -236,9 +236,10 @@ namespace plasma
     {
       if (err)
       {
-        _impl->connected = false;
+        this->_disconnect();
+        this->connect(_impl->user_id, _impl->user_token, _impl->user_device_id);
         ELLE_WARN("timer failed in %s (%s), stopping connection checks",
-                  __func__, err);
+                  __func__, err.message());
       }
     }
 
