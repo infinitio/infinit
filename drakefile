@@ -519,7 +519,7 @@ def configure(cxx_toolkit = None,
       elle_lib,
     ]
   plasma_lib = drake.cxx.DynLib('lib/plasma', plasma_sources,
-                                cxx_toolkit, cxx_config)
+                                cxx_toolkit, cxx_config_libs)
   plasma_python_sources = plasma_sources + [
     drake.node('plasma/trophonius/python.cc'),
   ]
@@ -553,8 +553,11 @@ def configure(cxx_toolkit = None,
     'Program.hh',
     'common/common.cc',
     ) + [version]
-  infinit_lib = drake.cxx.DynLib('lib/infinit', infinit_sources + [reactor_lib, curly_lib],
-                                 cxx_toolkit, cxx_config)
+  infinit_cxx_config = drake.cxx.Config(cxx_config)
+  infinit_cxx_config.lib_path_runtime('.')
+  infinit_lib = drake.cxx.DynLib('lib/infinit',
+                                 infinit_sources + [reactor_lib, curly_lib],
+                                 cxx_toolkit, infinit_cxx_config)
 
   # Hole
   hole_sources = drake.nodes(
