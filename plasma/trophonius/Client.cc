@@ -178,7 +178,8 @@ namespace plasma
     Client::Client(std::string const& server,
                    uint16_t port,
                    std::function<void()> connect_callback):
-      _impl{new Impl{server, port, connect_callback}}
+      _impl{new Impl{server, port, connect_callback}},
+      _reconnected{0}
     {
       ELLE_ASSERT(connect_callback != nullptr);
     }
@@ -191,8 +192,25 @@ namespace plasma
     void
     Client::_disconnect()
     {
+      boost::system::error_code err;
+      this->_disconnect(err);
+    }
+
+    void
+    Client::_disconnect(boost::system::error_code& err)
+    {
       _impl->connected = false;
-      _impl->socket.close();
+      _impl->socket.close(err);
+      this->_reconnected++;
+    }
+
+    void
+    Client::_reconnect()
+    {
+      this->_disconnect();
+      this->connect(_impl->user_id,
+                    _impl->user_token,
+                    _impl->user_device_id);
     }
 
     void
@@ -214,10 +232,7 @@ namespace plasma
         {
           ELLE_TRACE("no message from Trophonius for too long.");
           ELLE_TRACE("trying to reconnect");
-          this->_disconnect();
-          this->connect(_impl->user_id,
-                        _impl->user_token,
-                        _impl->user_device_id);
+          this->_reconnect();
           _impl->last_error = boost::system::error_code{};
           ELLE_TRACE("reconnected to Trophonius successfully");
         }
@@ -236,8 +251,7 @@ namespace plasma
     {
       if (err)
       {
-        this->_disconnect();
-        this->connect(_impl->user_id, _impl->user_token, _impl->user_device_id);
+        this->_reconnect();
         ELLE_WARN("timer failed in %s (%s), stopping connection checks",
                   __func__, err.message());
       }
@@ -338,9 +352,7 @@ namespace plasma
         {
           ELLE_TRACE("%s: disconnected from Trophonius, trying to reconnect",
                      *this);
-          this->connect(_impl->user_id,
-                        _impl->user_token,
-                        _impl->user_device_id);
+          this->_reconnect();
         }
         else if (err)
         {

@@ -140,14 +140,22 @@ namespace plasma
       bool
       has_notification(void);
 
+      ELLE_ATTRIBUTE_R(int, reconnected);
+
     private:
       std::queue<std::unique_ptr<Notification>> _notifications;
+
+      void
+      _reconnect();
 
       void
       _connect();
 
       void
       _disconnect();
+
+      void
+      _disconnect(boost::system::error_code& err);
 
       void
       _read_socket();
