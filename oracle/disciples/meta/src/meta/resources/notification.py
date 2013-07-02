@@ -18,13 +18,17 @@ _macro_matcher = re.compile(r'(.*\()(\S+)(,.*\))')
 def TRANSACTION_STATUS(name, value):
     globals()[name.upper()] = value
 
+def replacer(match):
+    field = match.group(2)
+    return match.group(1) + "'" + field + "'" + match.group(3)
+
 filepath = os.path.abspath(
   os.path.join(os.path.dirname(__file__), 'transaction_status.hh.inc')
 )
 
 configfile = open(filepath, 'r')
 for line in configfile:
-    eval(_macro_matcher.sub(TRANSACTION_STATUS, line))
+    eval(_macro_matcher.sub(replacer, line))
 
 class All(Page):
     """
