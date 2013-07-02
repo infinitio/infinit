@@ -46,9 +46,7 @@ namespace surface
         }
         if (!this->_infinit_instance_manager.exists(network_id))
         {
-          this->_transaction_manager.update(
-            this->_transaction_id,
-            plasma::TransactionStatus::failed);
+          throw elle::Exception{"infinit instance does not exist anymore"};
         }
       }
       catch (...)
@@ -57,6 +55,14 @@ namespace surface
                  elle::exception_string());
         throw;
       }
+    }
+
+    void
+    UploadOperation::_on_error()
+    {
+      this->_transaction_manager.update(
+        this->_transaction_id,
+        plasma::TransactionStatus::failed);
     }
   }
 }

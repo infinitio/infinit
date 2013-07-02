@@ -26,22 +26,6 @@ namespace surface
 
     class InfinitInstanceManager
     {
-      /*----------.
-      | Exception |
-      `----------*/
-      class Exception:
-        surface::gap::Exception
-      {
-      public:
-        Exception(gap_Status error, std::string const& what):
-          surface::gap::Exception{error, what}
-        {}
-
-        Exception(std::string const& what):
-          surface::gap::Exception{gap_error, what}
-        {}
-      };
-
       /*-----------.
       | Attributes |
       `-----------*/

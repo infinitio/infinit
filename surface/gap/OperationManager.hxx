@@ -107,13 +107,16 @@ namespace surface
          try
          {
            this->_succeeded = false;
-           ELLE_TRACE("Running long operation: %s", this->_name);
+           ELLE_TRACE("running long operation: %s", this->_name);
            this->_run();
            this->_succeeded = true;
          }
          catch (...)
          {
            this->_exception = std::current_exception();
+           ELLE_ERR("store an exception of operation %s: %s",
+                    this->_name,
+                    elle::exception_string());
          }
 
          if (!this->_succeeded)

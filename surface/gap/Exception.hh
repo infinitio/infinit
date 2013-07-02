@@ -25,7 +25,7 @@ namespace surface
         code{code}
       {
         ELLE_LOG_COMPONENT("infinit.surface.gap.Exception");
-        ELLE_ERR("%s: %s", code, msg);
+        ELLE_ERR("%s: %s: %s", code, msg, this->backtrace());
       }
     };
   }

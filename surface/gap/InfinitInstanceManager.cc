@@ -1,6 +1,7 @@
 #include "InfinitInstanceManager.hh"
 
 #include "binary_config.hh"
+#include "Exception.hh"
 
 #include <common/common.hh>
 
@@ -63,22 +64,26 @@ namespace surface
 
       ELLE_DEBUG("portal path is %s", portal_path);
       if (!this->exists(network_id))
+      {
+        if (boost::filesystem::exists(portal_path))
+          boost::filesystem::remove(portal_path);
         this->launch(network_id);
+      }
 
       for (int i = 0; i < 45; ++i)
       {
-        ELLE_DEBUG("Waiting for portal.");
+        ELLE_DEBUG("waiting for portal.");
         if (elle::os::path::exists(portal_path))
           return;
 
         if (!this->exists(network_id))
-          throw Exception{gap_error, "Infinit instance has crashed"};
+          throw Exception{gap_error, "infinit instance has crashed"};
         ::sleep(1);
       }
 
       throw Exception{
         gap_error,
-        elle::sprintf("Unable to find portal for %s", network_id)};
+        elle::sprintf("unable to find portal for %s", network_id)};
     }
 
     void

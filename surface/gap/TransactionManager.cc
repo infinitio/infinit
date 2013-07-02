@@ -560,7 +560,6 @@ namespace surface
       {
         if (tr.recipient_device_id != this->_device.id)
         {
-
           if (!tr.recipient_device_id.empty())
           {
             ELLE_ERR(

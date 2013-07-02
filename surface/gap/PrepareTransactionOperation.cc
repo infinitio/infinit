@@ -45,26 +45,45 @@ namespace surface
 
       ELLE_DEBUG("running transaction '%s'", this->_transaction);
 
-      this->_network_manager.prepare(this->_transaction.network_id);
-      this->_network_manager.to_directory(
-        this->_transaction.network_id,
-        common::infinit::network_shelter(this->_self.id,
-                                         this->_transaction.network_id));
+      this->_reporter.store(
+        "preparing",
+        {
+          {MKey::value, this->_transaction.id},
+          {MKey::count, std::to_string(this->_transaction.files_count)},
+          {MKey::size, std::to_string(this->_transaction.total_size)},
+          {MKey::timestamp, std::to_string(this->_transaction.files_count)},
+        });
 
-      this->_network_manager.wait_portal(this->_transaction.network_id);
+      ELLE_DEBUG("prepare network and directories for %s",
+                 this->_transaction.network_id)
+      {
+        this->_network_manager.prepare(this->_transaction.network_id);
+        this->_network_manager.to_directory(
+          this->_transaction.network_id,
+          common::infinit::network_shelter(this->_self.id,
+                                           this->_transaction.network_id));
+      }
 
+      ELLE_DEBUG("waiting network %s portal", this->_transaction.network_id)
+      {
+        this->_network_manager.wait_portal(this->_transaction.network_id);
+      }
+
+      std::string recipient_K;
       ELLE_DEBUG("giving '%s' access to the network '%s'",
                  this->_transaction.recipient_id,
-                 this->_transaction.network_id);
+                 this->_transaction.network_id)
+      {
+        // XXX Remove call to meta
+        recipient_K =
+          this->_meta.user(this->_transaction.recipient_id).public_key;
+        ELLE_ASSERT_NEQ(recipient_K.size(), 0u);
 
-      std::string recipient_K =
-        this->_meta.user(this->_transaction.recipient_id).public_key;
-      ELLE_ASSERT_NEQ(recipient_K.size(), 0u);
-
-      this->_network_manager.add_user(this->_transaction.network_id,
-                                      this->_self.id,
-                                      this->_transaction.recipient_id,
-                                      recipient_K);
+        this->_network_manager.add_user(this->_transaction.network_id,
+                                        this->_self.id,
+                                        this->_transaction.recipient_id,
+                                        recipient_K);
+      }
 
       ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
                  this->_transaction.recipient_id,
