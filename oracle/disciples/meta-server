@@ -60,6 +60,15 @@ parser.add_argument(
     default = False,
 )
 
+# if testing, need the possibility to disable apertus.
+# By the way, apertus host/port should be settable.
+parser.add_argument(
+    '--no-apertus',
+    help = 'Disable all code concerning apertus.',
+    action = 'store_true',
+    default = False,
+)
+
 parser.add_argument(
     '--port-file',
     default = 'meta_port_file',
@@ -79,6 +88,7 @@ if __name__ == '__main__':
                                   mongo_host="localhost",
                                   mongo_port=mongo.port,
                                   port_file=args.port_file,
+                                  no_apertus = args.no_apertus,
                 )
                 app.run()
         else:
@@ -87,8 +97,8 @@ if __name__ == '__main__':
                               mongo_host=args.mongo_host,
                               mongo_port=args.mongo_port,
                               port_file=args.port_file,
+                              no_apertus = args.no_apertus,
             )
             app.run()
     except KeyboardInterrupt:
         print("Interrupted cleanly")
-

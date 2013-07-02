@@ -23,11 +23,13 @@ class Meta:
                  meta_host = '0.0.0.0',
                  meta_port = 0,
                  trophonius_control_port = None,
+                 no_apertus = False,
                  spawn_db = False):
         self.meta_host = meta_host
         self.meta_port = meta_port
         self.spawn_db = spawn_db
         self.trophonius_control_port = trophonius_control_port
+        self.no_apertus = no_apertus
         self.instance = None
         self.__directory = tempfile.TemporaryDirectory()
         self.__port_file = None
@@ -71,6 +73,8 @@ class Meta:
         if self.trophonius_control_port is not None:
             command.append('--trophonius-control-port')
             command.append(str(self.trophonius_control_port))
+        if self.no_apertus:
+            command.append('--no-apertus')
         if self.spawn_db:
           command.append('--spawn-db')
         self.instance = subprocess.Popen(
