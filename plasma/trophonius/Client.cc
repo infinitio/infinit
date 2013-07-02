@@ -332,7 +332,8 @@ namespace plasma
       if (err || bytes_transferred == 0)
       {
         _impl->connected = false;
-        if (err == boost::asio::error::eof)
+        if (err == boost::asio::error::eof ||
+            err == boost::asio::error::connection_reset)
         {
           ELLE_TRACE("%s: disconnected from Trophonius, trying to reconnect",
                      *this);
@@ -343,7 +344,7 @@ namespace plasma
         else if (err)
         {
           ELLE_WARN("%s: something went wrong while reading from socket: %s",
-                    *this, err);
+                    *this, err.message());
           _impl->last_error = err;
         }
         return;
