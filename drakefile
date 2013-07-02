@@ -257,8 +257,6 @@ def configure(cxx_toolkit = None,
 
   curly_libs = [
     curly_lib,
-    curly_asio_lib,
-    curly_sched_lib,
   ]
 
   # Fuse
