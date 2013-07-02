@@ -17,7 +17,6 @@ import metalib
 _macro_matcher = re.compile(r'(.*\()(\S+)(,.*\))')
 def TRANSACTION_STATUS(name, value):
     globals()[name.upper()] = value
-    _status_to_string[value] = str(name)
 
 filepath = os.path.abspath(
   os.path.join(os.path.dirname(__file__), 'transaction_status.hh.inc')
@@ -25,7 +24,7 @@ filepath = os.path.abspath(
 
 configfile = open(filepath, 'r')
 for line in configfile:
-    eval(_macro_matcher.sub(replacer, line))
+    eval(_macro_matcher.sub(TRANSACTION_STATUS, line))
 
 class All(Page):
     """
