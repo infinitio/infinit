@@ -11,19 +11,22 @@ import plasma
 try:
     meta = trophonius.FakeMeta()
     with meta:
-        tropho = trophonius.Trophonius(meta_port = meta.port)
+        tropho = trophonius.Trophonius(meta_port = meta.port, timeout=5)
         with tropho:
             meta_client = pythia.Client(server = meta.url)
             res = meta_client.post('/user/login', {
                 'email': 'pif@infinit.io',
                 'password': 'paf'
                 })
-            client = plasma.Client(tropho.host, tropho.port,
-                                   lambda: print('connected'))
+            client = plasma.Trophonius(tropho.host, tropho.port,
+                                       lambda: print('connected'))
             client.connect(res['_id'], res['token'], 'device')
             for i in range(40):
-                print(client.poll())
+                notif = client.poll()
+                if notif is not None:
+                    print(notif)
                 time.sleep(1)
+            print("quiting")
 except:
     print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
     print('Trophonius stderr:\n' + tropho.stderr, file = sys.stderr)

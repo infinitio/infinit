@@ -23,7 +23,6 @@ struct NotificationConverter
 to_python_converter<std::unique_ptr<plasma::trophonius::Notification>,
                     NotificationConverter> converter;
 
-
 using plasma::trophonius::Notification;
 using plasma::trophonius::UserStatusNotification;
 using plasma::trophonius::TransactionNotification;
@@ -40,7 +39,7 @@ extern "C"
 BOOST_PYTHON_MODULE(plasma)
 {
   class_<Client, boost::noncopyable>(
-    "Client", init< std::string const&, uint16_t, object >())
+    "Trophonius", init<std::string const&, uint16_t, object>())
     .def("connect", &Client::connect)
     .def("has_notification", &Client::has_notification)
     .def("poll", &Client::poll)
