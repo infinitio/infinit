@@ -421,7 +421,7 @@ class Update(_UpdateTransaction):
         status = int(self.data['status'])
         if is_sender and status not in [STARTED, CANCELED, FAILED]:
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
-        elif is_receiver and status not in [STARTED, CANCELED, FINISHED]:
+        elif is_receiver and status not in [STARTED, CANCELED, FINISHED, FAILED]:
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
 
         new_status = transaction['status'] != status
