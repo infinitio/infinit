@@ -138,6 +138,13 @@ namespace surface
 
       ELLE_DEBUG("cancelling transaction '%s'", this->name());
     }
+
+    void
+    PrepareTransactionOperation::_on_error()
+    {
+      this->_transaction_manager.update(this->_transaction.id,
+                                        plasma::TransactionStatus::failed);
+    }
   }
 }
 

@@ -48,7 +48,7 @@ namespace surface
         {
           this->_transaction_manager.update(
             this->_transaction_id,
-            plasma::TransactionStatus::started);
+            plasma::TransactionStatus::failed);
         }
       }
       catch (...)
