@@ -16,6 +16,7 @@ using namespace infinit;
 # include <nucleus/neutron/Catalog.hh>
 # include <nucleus/neutron/Reference.hh>
 
+# include <etoile/Etoile.hh>
 # include <etoile/automaton/Rights.hh>
 # include <etoile/automaton/Author.hh>
 # include <etoile/automaton/Access.hh>
@@ -24,7 +25,6 @@ using namespace infinit;
 # include <etoile/Exception.hh>
 
 # include <hole/Hole.hh>
-# include <agent/Agent.hh>
 
 // XXX
 #define CONTENTS_SECRET_KEY_LENGTH 256
@@ -63,10 +63,11 @@ namespace etoile
             {
               // Instanciate a nest.
               context.contents_nest =
-                new etoile::nest::Nest(CONTENTS_SECRET_KEY_LENGTH,
+                new etoile::nest::Nest(context.etoile(),
+                                       CONTENTS_SECRET_KEY_LENGTH,
                                        context.contents_limits,
-                                       depot::hole().storage().network(),
-                                       agent::Agent::Subject.user(),
+                                       context.etoile().network(),
+                                       context.etoile().user_subject().user(),
                                        context.contents_threshold);
 
               // Instanciate a porcupine.
@@ -87,10 +88,11 @@ namespace etoile
         {
           // Instanciate a nest.
           context.contents_nest =
-            new etoile::nest::Nest(CONTENTS_SECRET_KEY_LENGTH,
+            new etoile::nest::Nest(context.etoile(),
+                                   CONTENTS_SECRET_KEY_LENGTH,
                                    context.contents_limits,
-                                   depot::hole().storage().network(),
-                                   agent::Agent::Subject.user(),
+                                   context.etoile().network(),
+                                   context.etoile().user_subject().user(),
                                    context.contents_threshold);
 
           // otherwise create a new empty porcupine.

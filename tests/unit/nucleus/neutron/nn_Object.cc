@@ -22,9 +22,7 @@ int main()
                                kp.K(),
                                nucleus::neutron::Genre::directory);
 
-  cryptography::Digest fingerprint;
-
-  CHECK(blk.Seal(kp.k(), fingerprint));
+  CHECK(blk.Seal(kp.k()));
 
   nucleus::proton::Address addr(blk.bind());
 

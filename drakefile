@@ -214,12 +214,6 @@ def configure(cxx_toolkit = None,
   # Boost
   boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
   cxx_config += boost.config()
-  cxx_config += boost.config_signals()
-  cxx_config += boost.config_system()
-  cxx_config.define('BOOST_PP_VARIADICS')
-  cxx_config += boost.config_filesystem(static = (cxx_toolkit.os is drake.os.macos))
-  cxx_config.define('BOOST_FILESYSTEM_NO_DEPRECATED', '1')
-  cxx_config += boost.config_thread()
 
   # Python
   python_enabled = cxx_toolkit.os != drake.os.windows
@@ -235,7 +229,7 @@ def configure(cxx_toolkit = None,
   # Elle
   elle = drake.include('elle',
                        cxx_toolkit,
-                       cxx_config,
+                       drake.cxx.Config(cxx_config),
                        prefix = prefix,
                        boost = boost,
                        stuntman = stun_core,
@@ -252,6 +246,14 @@ def configure(cxx_toolkit = None,
   asio_udt_lib = drake.copy(elle.reactor.asio_udt.library,'lib', 'elle/reactor/asio-udt/lib')
   udt_lib = drake.copy(elle.reactor.asio_udt.udt.library,'lib', 'elle/reactor/asio-udt/udt/lib')
   cxx_config.add_local_include_path('.')
+
+  # Warnings
+  cxx_config.warnings.parentheses = False
+  cxx_config.warnings.empty_body = False
+  cxx_config.warnings.missing_declarations = \
+    drake.cxx.Config.Warnings.Error
+  cxx_config.warnings.return_type = \
+    drake.cxx.Config.Warnings.Error
 
   curly_libs = [
     curly_lib,
@@ -695,8 +697,6 @@ def configure(cxx_toolkit = None,
     'etoile/gear/Directory.hh',
     'etoile/gear/File.cc',
     'etoile/gear/File.hh',
-    'etoile/gear/Gear.cc',
-    'etoile/gear/Gear.hh',
     'etoile/gear/Group.cc',
     'etoile/gear/Group.hh',
     'etoile/gear/Guard.cc',
@@ -732,22 +732,11 @@ def configure(cxx_toolkit = None,
     'etoile/path/Route.cc',
     'etoile/path/Route.hh',
     'etoile/path/Route.hxx',
-    'etoile/path/Slab.hh',
     'etoile/path/Slice.hh',
     'etoile/path/Venue.cc',
     'etoile/path/Venue.hh',
     'etoile/path/Venue.hxx',
-    'etoile/path/Way.cc',
-    'etoile/path/Way.hh',
-    'etoile/path/Way.hxx',
     'etoile/path/fwd.hh',
-    'etoile/portal/Application.cc',
-    'etoile/portal/Application.hh',
-    'etoile/portal/Manifest.cc',
-    'etoile/portal/Manifest.hh',
-    'etoile/portal/Portal.cc',
-    'etoile/portal/Portal.hh',
-    'etoile/portal/fwd.hh',
     'etoile/shrub/Riffle.cc',
     'etoile/shrub/Riffle.hh',
     'etoile/shrub/Shrub.cc',
@@ -977,8 +966,10 @@ def configure(cxx_toolkit = None,
 
   gap_sources += GAPGenerator(gap_generator, 'surface/gap/gen_metrics').generated
 
-  gap_cxx_config_libs = cxx_config_libs
+  gap_cxx_config_libs = drake.cxx.Config(cxx_config_libs)
   gap_cxx_config_libs.lib_path_runtime('../../lib/_gap')
+  gap_cxx_config_libs += boost.config_filesystem(
+    static = (cxx_toolkit.os is drake.os.macos))
   gap_lib = drake.cxx.DynLib('lib/gap',
                              gap_sources + infinit_libs,
                              cxx_toolkit, gap_cxx_config_libs)
@@ -1039,16 +1030,16 @@ def configure(cxx_toolkit = None,
       build << bin
 
   for name in [
-    'access',
-    'authority',
-    'group',
-    'network',
-    'passport',
-    'progress',
-    'send',
-    'transfer',
-    'user',
-    'dump',
+    # 'access',
+    # 'authority',
+    # 'group',
+    # 'network',
+    # 'passport',
+    # 'progress',
+    # 'send',
+    # 'transfer',
+    # 'user',
+    # 'dump',
     ]:
     satellite(name)
 
@@ -1232,6 +1223,8 @@ def configure(cxx_toolkit = None,
 
   tests_src_n_lib = [
     ('tests/testing_tests.cc', []),
+    ('tests/unit/etoile/Etoile.cc', infinit_libs),
+    ('tests/unit/etoile/Shrub.cc', infinit_libs),
     ('tests/unit/nucleus/neutron/nn_Group.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Object.cc', nucleus_test_libs),
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),

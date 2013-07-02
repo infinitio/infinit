@@ -21,6 +21,7 @@ ELLE_LOG_COMPONENT("infinit.satellites.dump.Dump");
 
 namespace satellite
 {
+  static
   void
   Dump(elle::Natural32 argc,
        elle::Character* argv[])

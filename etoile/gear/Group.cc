@@ -19,8 +19,8 @@ namespace etoile
     ///
     /// the default constructor.
     ///
-    Group::Group():
-      Context(NatureGroup),
+    Group::Group(Etoile& etoile):
+      Context(etoile, NatureGroup),
 
       ensemble_porcupine(nullptr),
       ensemble_nest(nullptr),

@@ -28,38 +28,48 @@ namespace etoile
       /// and is therefore considered as orphan.
       static
       gear::Identifier
-      create();
+      create(etoile::Etoile& etoile);
       /// Load the file and returns an identifier for manipuling it.
       static
       gear::Identifier
-      load(path::Chemin const& chemin);
+      load(etoile::Etoile& etoile, path::Chemin const& chemin);
       /// Write the file with the given region of data.
       static
       void
-      write(gear::Identifier const& identifier,
+      write(etoile::Etoile& etoile,
+            gear::Identifier const& identifier,
             nucleus::neutron::Offset const& offset,
-            elle::WeakBuffer const& data);
+            elle::ConstWeakBuffer data);
       /// Read _size_ bytes of data from the file, at the given offset
       /// _offset_.
       static
       elle::Buffer
-      read(gear::Identifier const& idenifier,
+      read(etoile::Etoile& etoile,
+           gear::Identifier const& idenifier,
            nucleus::neutron::Offset const& offset,
            nucleus::neutron::Size const& size);
 
-      static elle::Status       Adjust(const gear::Identifier&,
-                                       const nucleus::neutron::Size&);
+      static
+      void
+      adjust(etoile::Etoile& etoile,
+             const gear::Identifier&,
+             const nucleus::neutron::Size&);
 
       /// Discard the scope, potentially ignoring some modifications.
       static
       void
-      discard(gear::Identifier const& identifier);
+      discard(etoile::Etoile& etoile,
+              gear::Identifier const& identifier);
       /// Commit the pending modifications by placing the scope in the journal.
       static
       void
-      store(gear::Identifier const& identifier);
+      store(etoile::Etoile& etoile,
+            gear::Identifier const& identifier);
 
-      static elle::Status       Destroy(const gear::Identifier&);
+      static
+      void
+      destroy(etoile::Etoile& etoile,
+              const gear::Identifier&);
     };
   }
 }

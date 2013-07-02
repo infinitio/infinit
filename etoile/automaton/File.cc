@@ -9,8 +9,6 @@
 
 #include <elle/Buffer.hh>
 
-#include <agent/Agent.hh>
-
 #include <elle/log.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.File");
@@ -35,8 +33,8 @@ namespace etoile
       ELLE_ASSERT(context.object == nullptr);
 
       context.object.reset(
-        new nucleus::neutron::Object(nucleus::proton::Network(Infinit::Network),
-                                     agent::Agent::Identity.pair().K(),
+        new nucleus::neutron::Object(context.etoile().network(),
+                                     context.etoile().user_keypair().K(),
                                      nucleus::neutron::Genre::file));
 
       nucleus::proton::Address address(context.object->bind());
@@ -82,10 +80,10 @@ namespace etoile
     ///
     /// this method writes a specific region of the file.
     ///
-    elle::Status        File::Write(
-                          gear::File&                           context,
-                          const nucleus::neutron::Offset& offset,
-                          elle::WeakBuffer const& region)
+    elle::Status
+    File::Write(gear::File& context,
+                const nucleus::neutron::Offset& offset,
+                elle::ConstWeakBuffer region)
     {
       ELLE_TRACE_FUNCTION(context, offset, region);
 
@@ -154,8 +152,8 @@ namespace etoile
           ELLE_ASSERT(relative_size != 0);
 
           data().write(relative_offset,
-                       elle::WeakBuffer{
-                         region.mutable_contents() + (absolute_offset - offset),
+                       elle::ConstWeakBuffer{
+                         region.contents() + (absolute_offset - offset),
                          static_cast<size_t>(relative_size)});
 
           data.close();
@@ -206,8 +204,8 @@ namespace etoile
               // data block.
               end().write(
                 end().size(),
-                elle::WeakBuffer{
-                  region.mutable_contents() + (absolute_offset - offset),
+                elle::ConstWeakBuffer{
+                  region.contents() + (absolute_offset - offset),
                   static_cast<size_t>(expanding_size -
                                       (absolute_offset - offset))});
 

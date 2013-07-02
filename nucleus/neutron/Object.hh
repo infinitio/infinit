@@ -101,7 +101,8 @@ namespace nucleus
                                      Permissions const permissions);
 
       elle::Status      Seal(cryptography::PrivateKey const&,
-                             cryptography::Digest const& fingerprint);
+                             cryptography::Digest const& fingerprint =
+                               cryptography::Digest(0));
 
       /// XXX
       proton::Radix const&
@@ -154,12 +155,10 @@ namespace nucleus
       //
     public:
       // block
-      virtual
-      void
-      validate(proton::Address const& address) const;
       void
       validate(proton::Address const& address,
-               cryptography::Digest const& fingerprint) const;
+               cryptography::Digest const& fingerprint =
+                 cryptography::Digest(0)) const;
       // dumpable
       elle::Status
       Dump(const elle::Natural32 = 0) const;

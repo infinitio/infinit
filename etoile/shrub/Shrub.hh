@@ -1,99 +1,117 @@
 #ifndef ETOILE_SHRUB_SHRUB_HH
 # define ETOILE_SHRUB_SHRUB_HH
 
-# include <elle/types.hh>
+# include <boost/date_time/posix_time/posix_time.hpp>
+
+# include <reactor/fwd.hh>
+
+# include <elle/attribute.hh>
 # include <elle/container/timeline/Timeline.hh>
-# include <etoile/shrub/Riffle.hh>
+# include <elle/types.hh>
+# include <elle/utility/Duration.hh>
 
 # include <etoile/path/fwd.hh>
+# include <etoile/shrub/Riffle.hh>
+# include <etoile/shrub/fwd.hh>
 
 namespace etoile
 {
-  ///
-  /// this namespace contains everything related to the shrub i.e the
+  /// This namespace contains everything related to the shrub i.e the
   /// path-specific cache.
-  ///
   namespace shrub
   {
-
+    namespace time = boost::posix_time;
+    /// The shrub i.e path cache relies on the LRU algorithm by keeping two data
+    /// structures: a map for looking up and a queue for removing the least
+    /// recently used riffles quickly.
     ///
-    /// the shrub i.e path cache relies on the LRU algorithm by keeping two
-    /// data structures: a map for looking up and a queue for removing the
-    /// least recently used riffles quickly.
+    /// To avoid using too much memory for these data structures, both point to
+    /// the same data: riffles.
     ///
-    /// to avoid using too much memory for these data structures, both point
-    /// to the same data: riffles.
+    /// Noteworthy is that, since this cache is used for paths and that paths
+    /// follow a pattern where /music/meshuggah is a subset of /music, the data
+    /// structure for storing the paths is a tree.  Indeed, the Riffle class
+    /// keeps a name such as 'meshuggah' along with a map of all the child
+    /// entries.
     ///
-    /// noteworthy is that, since this cache is used for paths and that paths
-    /// follow a pattern where /music/meshuggah is a subset of /music, the
-    /// data structure for storing the paths is hierachical.
-    ///
-    /// indeed, the Riffle class keeps a name such as 'meshuggah' along with
-    /// a map of all the child entries.
-    ///
-    /// this design has been chosen to speed up the resolution process. indeed,
+    /// This design has been chosen to speed up the resolution process. Indeed,
     /// this cache is used when a path must be resolved into a venue. the
-    /// objective of the cache is thus to find the longest part of a given
-    /// path.
+    /// objective of the cache is thus to find the longest part of a given path.
     ///
-    /// for example, given /music/meshuggah/nothing/, the objective is to
-    /// find the corresponding address of this directory object. instead of
-    /// trying /music/meshuggah/nothing/, then /music/meshuggah/, then
-    /// /music/ etc. the designed cache is capable of returning the longest
-    /// match within a single pass because riffles are hierarchically
-    /// organised.
+    /// For example, given /music/meshuggah/nothing/, the objective is to find
+    /// the corresponding address of this directory object. instead of trying
+    /// /music/meshuggah/nothing/, then /music/meshuggah/, then /music/ etc. the
+    /// designed cache is capable of returning the longest match within a single
+    /// pass because riffles are hierarchically organised.
     ///
-    /// note that several parameters can be configured through the
-    /// configuration file:
+    /// Note that several parameters can be configured through the configuration
+    /// file:
     ///
     ///   o status: indicates whether the shrub should be used for
     ///             caching paths.
     ///   o capacity: indicates the number of riffles the shrub can
     ///               maintain before rejecting additional entries.
-    ///   o frequency: indicates, in milliseconds, how often the sweeper
-    ///                should be triggered in order to evict expired riffles.
-    ///                note that the frequency is expressed in milliseconds.
+    ///   o frequency: how often the sweeper should be triggered in order to
+    ///                evict expired riffles.
     ///   o lifespan: indicates the riffles' lifespan before being considered
     ///               as having expired. note that every update on a riffle
-    ///               resets the "expiration timeout", so to speak. note
-    ///               that the lifespan is expressed in seconds, not
-    ///               milliseconds.
+    ///               resets the "expiration timeout", so to speak.
     ///
     class Shrub
     {
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
-      //
-      // static methods
-      //
-      static elle::Status       Initialize();
-      static elle::Status       Clean();
+      /// Create a Shrub.
+      Shrub(elle::Size capacity = 1024,
+            time::time_duration const& lifespan = time::seconds(300),
+            time::time_duration const& sweep_frequency = time::seconds(120));
+      /// Destroy a Shrub.
+      ~Shrub();
 
-      static elle::Status       Allocate(const elle::Natural32);
+    /*--------------.
+    | Configuration |
+    `--------------*/
+      ELLE_ATTRIBUTE_R(elle::Size, capacity);
+      ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, lifespan);
+      ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, sweep_frequency);
 
-      static elle::Status       Resolve(const path::Route&,
-                                        path::Venue&);
-      static elle::Status       Update(const path::Route&,
-                                       const path::Venue&);
-      static elle::Status       Evict(const path::Route&);
-
-      static elle::Status       Show(const elle::Natural32 = 0);
-
-      static
+    public:
+      /// Allocate \param size slots for the introduction of new riffles.
+      void
+      allocate(const elle::Natural32 size);
+      /// Fill the \param venue by resolving the given \param route as much as
+      /// possible.
+      void
+      resolve(path::Route const& route,
+              path::Venue& venue);
+      /// Fill the shrub with the given \param venue for  \param route.
+      void
+      update(const path::Route& route,
+             const path::Venue& venue);
+      /// Remove the \param route from the Shrub.
+      void
+      evict(const path::Route& route);
+      /// Dump the whole shrub.
+      void
+      show(const elle::Natural32 = 0);
+      /// Remove all routes from the Shrub.
       void
       clear();
 
-
-      //
-      // static callbacks
-      //
-      static elle::Status       Sweeper();
-
-      //
-      // static attributes
-      //
-      static Riffle*                    Riffles;
-
-      static elle::container::timeline::Timeline<Riffle*>    Queue;
+    /*------.
+    | Cache |
+    `------*/
+    private:
+      /// Remove expired routes.
+      void
+      _sweep();
+      /// The thread running _sweep regularly.
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, sweeper);
+      friend class Riffle;
+      ELLE_ATTRIBUTE(Riffle*, riffles);
+      ELLE_ATTRIBUTE(elle::container::timeline::Timeline<Riffle*>, queue);
     };
 
   }

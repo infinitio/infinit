@@ -14,7 +14,6 @@ using namespace infinit;
 
 #include <etoile/gear/Identifier.hh>
 #include <etoile/path/Chemin.hh>
-#include <etoile/path/Way.hh>
 #include <etoile/portal/Manifest.hh>
 
 #include <nucleus/neutron/Range.hh>
@@ -66,6 +65,7 @@ namespace satellite
     bool _clean;
   };
 
+  static
   void
   display(nucleus::neutron::Record const& record)
   {
@@ -132,12 +132,12 @@ namespace satellite
   }
 
   void
-  Access::lookup(const etoile::path::Way& way,
+  Access::lookup(const std::string& path,
                  const nucleus::neutron::Subject& subject)
   {
     Access::connect();
     // Resolve the path.
-    etoile::path::Chemin chemin(Access::rpcs->pathresolve(way));
+    etoile::path::Chemin chemin(Access::rpcs->pathresolve(path));
     // Load the object.
     etoile::gear::Identifier identifier(Access::rpcs->objectload(chemin));
     Ward ward(identifier);
@@ -148,11 +148,11 @@ namespace satellite
   }
 
   void
-  Access::consult(const etoile::path::Way& way)
+  Access::consult(const std::string& path)
   {
     Access::connect();
     // Resolve the path.
-    etoile::path::Chemin chemin(Access::rpcs->pathresolve(way));
+    etoile::path::Chemin chemin(Access::rpcs->pathresolve(path));
     // Load the object.
     etoile::gear::Identifier identifier(Access::rpcs->objectload(chemin));
     Ward ward(identifier);
@@ -168,13 +168,13 @@ namespace satellite
   }
 
   void
-  Access::grant(const etoile::path::Way&  way,
+  Access::grant(const std::string&  path,
                 const nucleus::neutron::Subject&   subject,
                 const nucleus::neutron::Permissions permissions)
   {
     Access::connect();
     // Resolve the path.
-    etoile::path::Chemin chemin(Access::rpcs->pathresolve(way));
+    etoile::path::Chemin chemin(Access::rpcs->pathresolve(path));
     // Load the object.
     etoile::gear::Identifier identifier(Access::rpcs->objectload(chemin));
     Ward ward(identifier);
@@ -186,12 +186,12 @@ namespace satellite
   }
 
   void
-  Access::revoke(const etoile::path::Way& way,
+  Access::revoke(const std::string& path,
                  const nucleus::neutron::Subject&  subject)
   {
     Access::connect();
     // Resolve the path.
-    etoile::path::Chemin chemin(Access::rpcs->pathresolve(way));
+    etoile::path::Chemin chemin(Access::rpcs->pathresolve(path));
     // Load the object.
     etoile::gear::Identifier identifier(Access::rpcs->objectload(chemin));
     Ward ward(identifier);
@@ -202,6 +202,7 @@ namespace satellite
     ward.release();
   }
 
+  static
   elle::Status
   Access(elle::Natural32 argc,
          elle::Character* argv[])
@@ -468,10 +469,7 @@ namespace satellite
               }
             }
 
-          // declare additional local variables.
-          etoile::path::Way             way(path);
-
-          Access::lookup(way, subject);
+          Access::lookup(path, subject);
 
           break;
         }
@@ -485,9 +483,7 @@ namespace satellite
             throw elle::Exception("unable to retrieve the path value");
 
           // declare additional local variables.
-          etoile::path::Way             way(path);
-
-          Access::consult(way);
+          Access::consult(path);
           break;
         }
       case Access::OperationGrant:
@@ -565,9 +561,7 @@ namespace satellite
             permissions |= nucleus::neutron::permissions::write;
 
           // declare additional local variables.
-          etoile::path::Way             way(path);
-
-          Access::grant(way, subject, permissions);
+          Access::grant(path, subject, permissions);
           break;
         }
       case Access::OperationRevoke:
@@ -632,10 +626,7 @@ namespace satellite
               }
             }
 
-          // declare additional local variables.
-          etoile::path::Way             way(path);
-
-          Access::revoke(way, subject);
+          Access::revoke(path, subject);
           break;
         }
       case Access::OperationUnknown:

@@ -1,18 +1,17 @@
-#include <etoile/automaton/Group.hh>
-#include <etoile/automaton/Ensemble.hh>
-#include <etoile/automaton/Rights.hh>
-#include <etoile/gear/Group.hh>
-#include <etoile/depot/Depot.hh>
+#include <etoile/Etoile.hh>
+#include <etoile/Exception.hh>
+#include <etoile/Exception.hh>
 #include <etoile/abstract/Group.hh>
-#include <etoile/Exception.hh>
-#include <etoile/Exception.hh>
+#include <etoile/automaton/Ensemble.hh>
+#include <etoile/automaton/Group.hh>
+#include <etoile/automaton/Rights.hh>
+#include <etoile/depot/Depot.hh>
+#include <etoile/gear/Group.hh>
 
 #include <nucleus/proton/Door.hh>
 #include <nucleus/proton/Porcupine.hh>
 #include <nucleus/neutron/Group.hh>
 #include <nucleus/neutron/Ensemble.hh>
-
-#include <agent/Agent.hh>
 
 #include <elle/log.hh>
 
@@ -37,8 +36,8 @@ namespace etoile
       ELLE_ASSERT(context.group == nullptr);
 
       context.group.reset(
-        new nucleus::neutron::Group(nucleus::proton::Network(Infinit::Network),
-                                    agent::Agent::Subject.user(),
+        new nucleus::neutron::Group(context.etoile().network(),
+                                    context.etoile().user_subject().user(),
                                     description));
 
       // Manually set the group as dirty for the automata to consider it
@@ -76,7 +75,7 @@ namespace etoile
       ELLE_ASSERT(context.group == nullptr);
 
       context.group.reset(
-        depot::Depot::pull_group(
+        context.etoile().depot().pull_group(
           context.location.address(),
           context.location.revision()).release());
 
@@ -159,7 +158,7 @@ namespace etoile
         }
 
       // is the target subject the user i.e the group manager in this case.
-      if (agent::Agent::Subject == subject)
+      if (context.etoile().user_subject() == subject)
         {
           // recompute the context rights.
           if (Rights::Recompute(context) == elle::Status::Error)
@@ -180,7 +179,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(context, subject);
 
       // Ty to make the best of this call.
-      if (agent::Agent::Subject == subject)
+      if (context.etoile().user_subject() == subject)
         {
           // Indeed, if the target subject is the current user, determine
           // the user's rights so that this is not to be done later.
@@ -359,7 +358,7 @@ namespace etoile
         }
 
       // is the target subject the user i.e the group manager in this case.
-      if (agent::Agent::Subject == subject)
+      if (context.etoile().user_subject() == subject)
         {
           // recompute the context rights.
           if (Rights::Recompute(context) == elle::Status::Error)
@@ -435,7 +434,7 @@ namespace etoile
 
           ELLE_TRACE_SCOPE("the group is dirty");
 
-          context.group->seal(agent::Agent::Identity.pair().k());
+          context.group->seal(context.etoile().user_keypair().k());
 
           // mark the block as needing to be stored.
           context.transcript().record(

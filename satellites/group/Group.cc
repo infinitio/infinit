@@ -213,6 +213,7 @@ namespace satellite
   ///
   /// the main function.
   ///
+  static
   elle::Status
   Group(elle::Natural32 argc,
         elle::Character* argv[])

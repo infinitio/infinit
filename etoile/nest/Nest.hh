@@ -5,6 +5,7 @@
 
 # include <etoile/nest/Pod.hh>
 # include <etoile/gear/fwd.hh>
+# include <etoile/fwd.hh>
 
 # include <nucleus/proton/fwd.hh>
 # include <nucleus/proton/Nest.hh>
@@ -55,7 +56,8 @@ namespace etoile
     public:
       /// Construct a nest by providing the length of the secret key with which
       /// the modified blocks will be encrypted.
-      Nest(elle::Natural32 const secret_length,
+      Nest(Etoile& etoile,
+           elle::Natural32 const secret_length,
            nucleus::proton::Limits const& limits,
            nucleus::proton::Network const& network,
            cryptography::PublicKey const& agent_K,
@@ -141,6 +143,8 @@ namespace etoile
       | Attributes |
       `-----------*/
     private:
+      /// XXX
+      ELLE_ATTRIBUTE(Etoile&, etoile);
       /// The set of pods tracking the various content blocks.
       ///
       /// Note that this container is index by the address of the egg tracked

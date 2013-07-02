@@ -23,7 +23,6 @@
 #include <nucleus/neutron/Object.hh>
 
 #include <hole/Hole.hh>
-#include <agent/Agent.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Access");
 
@@ -56,10 +55,11 @@ namespace etoile
         {
           // Instanciate a nest.
           context.access_nest =
-            new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
+            new etoile::nest::Nest(context.etoile(),
+                                   ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
-                                   depot::hole().storage().network(),
-                                   agent::Agent::Subject.user(),
+                                   context.etoile().network(),
+                                   context.etoile().user_subject().user(),
                                    context.access_threshold);
 
           // Instanciate a porcupine.
@@ -73,10 +73,11 @@ namespace etoile
         {
           // Instanciate a nest.
           context.access_nest =
-            new etoile::nest::Nest(ACCESS_SECRET_KEY_LENGTH,
+            new etoile::nest::Nest(context.etoile(),
+                                   ACCESS_SECRET_KEY_LENGTH,
                                    context.access_limits,
-                                   depot::hole().storage().network(),
-                                   agent::Agent::Subject.user(),
+                                   context.etoile().network(),
+                                   context.etoile().user_subject().user(),
                                    context.access_threshold);
 
           // otherwise create a new empty porcupine.
@@ -219,7 +220,7 @@ namespace etoile
                         // XXX[the context should make use of unique_ptr instead
                         //     of releasing here.]
                         group =
-                          depot::Depot::pull_group(
+                          context.etoile().depot().pull_group(
                             subject.group(),
                             nucleus::proton::Revision::Last);
 
@@ -280,7 +281,7 @@ namespace etoile
                     // XXX[the context should make use of unique_ptr instead
                     //     of releasing here.]
                     group =
-                      depot::Depot::pull_group(
+                      context.etoile().depot().pull_group(
                         subject.group(),
                         nucleus::proton::Revision::Last);
 
@@ -339,7 +340,7 @@ namespace etoile
         throw Exception("unable to audit the object");
 
       // is the target subject the user i.e the object owner in this case.
-      if (agent::Agent::Subject == subject)
+      if (context.etoile().user_subject() == subject)
         {
           // update the context rights.
           if (Rights::Update(context, permissions) == elle::Status::Error)
@@ -364,7 +365,7 @@ namespace etoile
       ELLE_TRACE_FUNCTION(context, subject);
 
       // try to make the best of this call.
-      if (agent::Agent::Subject == subject)
+      if (context.etoile().user_subject() == subject)
         {
           //
           // indeed, if the target subject is the current user, determine
@@ -588,7 +589,7 @@ namespace etoile
         throw Exception("unable to audit the object");
 
       // is the target subject the user i.e the object owner in this case.
-      if (agent::Agent::Subject == subject)
+      if (context.etoile().user_subject() == subject)
         {
           // update the context rights.
           if (Rights::Update(context,
@@ -687,7 +688,7 @@ namespace etoile
                     // XXX[the context should make use of unique_ptr instead
                     //     of releasing here.]
                     group =
-                      depot::Depot::pull_group(
+                      context.etoile().depot().pull_group(
                         record->subject().group(),
                         nucleus::proton::Revision::Last);
 

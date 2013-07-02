@@ -119,6 +119,7 @@ namespace satellite
   ///
   /// the main function.
   ///
+  static
   elle::Status
   Authority(elle::Natural32 argc,
             elle::Character* argv[])

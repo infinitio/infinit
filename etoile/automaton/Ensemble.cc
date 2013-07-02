@@ -1,8 +1,9 @@
-#include <etoile/automaton/Ensemble.hh>
-#include <etoile/gear/Group.hh>
-#include <etoile/depot/Depot.hh>
-#include <etoile/nest/Nest.hh>
+#include <etoile/Etoile.hh>
 #include <etoile/Exception.hh>
+#include <etoile/automaton/Ensemble.hh>
+#include <etoile/depot/Depot.hh>
+#include <etoile/gear/Group.hh>
+#include <etoile/nest/Nest.hh>
 
 #include <nucleus/proton/Revision.hh>
 #include <nucleus/proton/Address.hh>
@@ -18,8 +19,6 @@
 using namespace infinit;
 
 #include <hole/Hole.hh>
-
-#include <agent/Agent.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Ensemble");
 
@@ -45,10 +44,11 @@ namespace etoile
         {
           // Instanciate a nest.
           context.ensemble_nest =
-            new etoile::nest::Nest(ENSEMBLE_SECRET_KEY_LENGTH,
+            new etoile::nest::Nest(context.etoile(),
+                                   ENSEMBLE_SECRET_KEY_LENGTH,
                                    context.ensemble_limits,
-                                   depot::hole().storage().network(),
-                                   agent::Agent::Subject.user(),
+                                   context.etoile().network(),
+                                   context.etoile().user_subject().user(),
                                    context.ensemble_threshold);
 
           // Instanciate a porcupine.
@@ -62,10 +62,11 @@ namespace etoile
         {
           // Instanciate a nest.
           context.ensemble_nest =
-            new etoile::nest::Nest(ENSEMBLE_SECRET_KEY_LENGTH,
+            new etoile::nest::Nest(context.etoile(),
+                                   ENSEMBLE_SECRET_KEY_LENGTH,
                                    context.ensemble_limits,
-                                   depot::hole().storage().network(),
-                                   agent::Agent::Subject.user(),
+                                   context.etoile().network(),
+                                   context.etoile().user_subject().user(),
                                    context.ensemble_threshold);
 
           // otherwise create a new empty porcupine.
@@ -239,7 +240,7 @@ namespace etoile
 
             cryptography::PrivateKey k(
               token.extract<cryptography::PrivateKey>(
-                agent::Agent::Identity.pair().k()));
+                context.etoile().user_keypair().k()));
 
             pass = new cryptography::KeyPair(context.group->pass_K(), k);
           }

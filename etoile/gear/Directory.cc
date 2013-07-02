@@ -19,8 +19,8 @@ namespace etoile
     ///
     /// the constructor
     ///
-    Directory::Directory():
-      Object(NatureDirectory),
+    Directory::Directory(Etoile& etoile):
+      Object(etoile, NatureDirectory),
 
       contents_porcupine(nullptr),
       contents_nest(nullptr),

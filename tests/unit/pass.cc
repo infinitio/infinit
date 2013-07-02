@@ -15,6 +15,7 @@
 
 ELLE_LOG_COMPONENT("test.pass");
 
+static
 void
 Main()
 {

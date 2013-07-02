@@ -43,7 +43,7 @@ namespace etoile
       //
       // constructors & destructors
       //
-      Group();
+      Group(Etoile& etoile);
       ~Group();
 
       //

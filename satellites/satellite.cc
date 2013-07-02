@@ -37,6 +37,7 @@ namespace infinit
 {
   static int st_pid = -1;
 
+  static
   void
   forward_signal(int signum)
   {
@@ -142,6 +143,10 @@ namespace infinit
       ELLE_DEBUG("quiting %s", name);
       return EXIT_SUCCESS;
     }
+    catch (Exit const& e)
+    {
+      return e.value();
+    }
     catch (std::runtime_error const& e)
     {
      ELLE_ERR("%s: fatal error: %s", name, e.what());
@@ -151,6 +156,11 @@ namespace infinit
       return EXIT_FAILURE;
     }
   }
+
+  Exit::Exit(int value):
+    elle::Exception("exit"),
+    _value(value)
+  {}
 
   int
   satellite_main(std::string const& name, std::function<void ()> const& action)
@@ -180,6 +190,10 @@ namespace infinit
         sched.run();
         exit(main.result());
       }
+      catch (Exit const& e)
+      {
+        return e.value();
+      }
       catch (elle::Exception const& e)
       {
         ELLE_ERR("%s: fatal error: %s", name, e);
@@ -198,5 +212,4 @@ namespace infinit
       }
     }
   }
-
 }

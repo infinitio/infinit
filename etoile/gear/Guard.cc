@@ -1,10 +1,9 @@
 #include <etoile/gear/Guard.hh>
 #include <etoile/gear/Actor.hh>
 #include <etoile/gear/Scope.hh>
+#include <etoile/Etoile.hh>
 
 #include <elle/log.hh>
-
-ELLE_LOG_COMPONENT("infinit.etoile.gear.Guard");
 
 namespace etoile
 {
@@ -18,7 +17,7 @@ namespace etoile
     ///
     /// default constructor.
     ///
-    Guard::Guard(Scope*                                             scope,
+    Guard::Guard(std::shared_ptr<Scope> const& scope,
                  Actor*                                             actor):
       _scope(scope),
       _actor(actor),
@@ -29,7 +28,7 @@ namespace etoile
     ///
     /// another constructor.
     ///
-    Guard::Guard(Actor*                                             actor):
+    Guard::Guard(Actor* actor):
       _scope(nullptr),
       _actor(actor),
       _track(true)
@@ -47,12 +46,11 @@ namespace etoile
             delete this->_actor;
 
           if (this->_scope != nullptr)
-            {
-              if (Scope::Annihilate(this->_scope) == elle::Status::Error)
-                {
-                  ELLE_WARN("unable to annihilate the scope");
-                }
-            }
+          {
+            Etoile& etoile = this->_scope->context->etoile();
+
+            etoile.scope_annihilate(this->_scope);
+          }
         }
     }
 

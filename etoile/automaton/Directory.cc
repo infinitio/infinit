@@ -8,8 +8,6 @@
 #include <etoile/gear/Directory.hh>
 #include <etoile/Exception.hh>
 
-#include <agent/Agent.hh>
-
 #include <elle/print.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Directory");
@@ -30,8 +28,8 @@ namespace etoile
 
       context.object.reset(
         new nucleus::neutron::Object(
-          nucleus::proton::Network(Infinit::Network),
-          agent::Agent::Identity.pair().K(),
+          context.etoile().network(),
+          context.etoile().user_keypair().K(),
           nucleus::neutron::Genre::directory));
 
       nucleus::proton::Address address(context.object->bind());
@@ -78,7 +76,7 @@ namespace etoile
     ///
     elle::Status        Directory::Add(
                           gear::Directory&                      context,
-                          const path::Slice&                    name,
+                          const std::string&                    name,
                           const nucleus::proton::Address& address)
     {
       ELLE_TRACE_FUNCTION(context, name, address);
@@ -138,7 +136,7 @@ namespace etoile
     ///
     elle::Status        Directory::Lookup(
                           gear::Directory&                      context,
-                          const path::Slice&                    name,
+                          const std::string&                    name,
                           nucleus::neutron::Entry const*& entry)
     {
       ELLE_TRACE_FUNCTION(context, name);
@@ -268,8 +266,8 @@ namespace etoile
     ///
     elle::Status        Directory::Rename(
                           gear::Directory&                      context,
-                          const path::Slice&                    from,
-                          const path::Slice&                    to)
+                          const std::string&                    from,
+                          const std::string&                    to)
     {
       ELLE_TRACE_FUNCTION(context, from, to);
 
@@ -407,7 +405,7 @@ namespace etoile
     ///
     elle::Status        Directory::Remove(
                           gear::Directory&                      context,
-                          const path::Slice&                    name)
+                          const std::string&                    name)
     {
       ELLE_TRACE_FUNCTION(context, name);
 

@@ -77,8 +77,9 @@ namespace etoile
       //
       // constructors & destructors
       //
-      Object();
-      Object(const Nature);
+      Object(Etoile& etoile);
+      Object(Etoile& etoile,
+             const Nature);
       ~Object();
 
       //

@@ -5,189 +5,99 @@ namespace etoile
 {
   namespace path
   {
+    /*-------------.
+    | Construction |
+    `-------------*/
 
-//
-// ---------- definitions -----------------------------------------------------
-//
-
-    ///
-    /// this defines a null chemin.
-    ///
-    const Chemin                        Chemin::Null;
-
-//
-// ---------- constructors & destructors --------------------------------------
-//
-
-    ///
-    /// default constructor.
-    ///
     Chemin::Chemin()
-    {
-    }
+    {}
 
     Chemin::Chemin(Route const& route,
-                   Venue const& venue)
+                   Venue const& venue):
+      _route(route),
+      _venue(venue)
+    {}
+
+    Chemin::Chemin(Route const& route,
+                   Venue const& venue,
+                   elle::Size size):
+      _route(route, size),
+      _venue(venue, size)
+    {}
+
+    /*-----------.
+    | Operations |
+    `-----------*/
+
+    bool
+    Chemin::derives(const Chemin& base) const
     {
-      if (this->Create(route, venue) == elle::Status::Error)
-        throw Exception("Cannot create the chemin");
-    }
-//
-// ---------- methods ---------------------------------------------------------
-//
-
-    ///
-    /// this method creates a chemin.
-    ///
-    elle::Status        Chemin::Create(const Route&             route,
-                                       const Venue&             venue,
-                                       const nucleus::neutron::Size size)
-    {
-      // clear the route because the chemin may have been used for
-      // something else before.
-      if (this->route.Clear() == elle::Status::Error)
-        throw Exception("unable to clear the route");
-
-      // do the same for the venue.
-      if (this->venue.Clear() == elle::Status::Error)
-        throw Exception("unable to clear the venue");
-
-      //
-      // import the route.
-      //
-      {
-        Route::Scoutor  scoutor;
-        nucleus::neutron::Size i;
-
-        // go through the route.
-        for (scoutor = route.elements.begin(), i = 0;
-             (scoutor != route.elements.end()) && (i < size);
-             scoutor++, i++)
-          {
-            // record the route element.
-            this->route.elements.push_back(*scoutor);
-          }
-      }
-
-      //
-      // import the venue.
-      //
-      {
-        Venue::Scoutor  scoutor;
-        nucleus::neutron::Size i;
-
-        // go through the venue.
-        for (scoutor = venue.elements.begin(), i = 0;
-             (scoutor != venue.elements.end()) && (i < size);
-             scoutor++, i++)
-          {
-            // record the venue element.
-            this->venue.elements.push_back(*scoutor);
-          }
-      }
-
-      return elle::Status::Ok;
+      return
+        this->_route.derives(base._route) && this->_venue.derives(base._venue);
     }
 
-    ///
-    /// this method returns true if the current chemin derives the
-    /// given base.
-    ///
-    /// let us imagine two chemins A and B. A is said to derive B
-    /// if both its route and venue are included in B, plus potential
-    /// other entries. in other words A's route and venue can be equal
-    /// or longer.
-    ///
-    elle::Boolean       Chemin::Derives(const Chemin&            base) const
+    nucleus::proton::Location
+    Chemin::locate() const
     {
-      if ((this->route.Derives(base.route) == true) &&
-          (this->venue.Derives(base.venue) == true))
-        return (true);
-
-      return (false);
-    }
-
-    ///
-    /// this method generates a Location based on the route and venue.
-    ///
-    elle::Status        Chemin::Locate(nucleus::proton::Location& location) const
-    {
-      // check the size of the venue.
-      if (this->venue.elements.size() == 0)
+      if (this->_venue.elements().size() == 0)
         throw Exception("the venue seems to be empty");
-
-      // set the location's attributes according to the venue last element.
-      location = this->venue.elements[this->venue.elements.size() - 1];
-
-      return elle::Status::Ok;
+      return this->_venue.elements()[this->_venue.elements().size() - 1];
     }
 
-//
-// ---------- object ----------------------------------------------------------
-//
-
-    ///
-    /// this operator compares two objects.
-    ///
-    elle::Boolean       Chemin::operator==(const Chemin&        element) const
+    bool
+    Chemin::empty() const
     {
-      // check the address as this may actually be the same object.
-      if (this == &element)
-        return true;
-
-      // compare the attributes.
-      if ((this->route != element.route) ||
-          (this->venue != element.venue))
-        return false;
-
-      return true;
+      return this->_route == Route::Root && this->_venue.elements().empty();
     }
 
-    ///
-    /// this operator compares two objects.
-    ///
-    elle::Boolean       Chemin::operator<(const Chemin&         element) const
+    /*----------.
+    | Orderable |
+    `----------*/
+
+    bool
+    Chemin::operator==(const Chemin& other) const
     {
-      // check the address as this may actually be the same object.
-      if (this == &element)
-        return false;
-
-      // compare the route only.
-      if (this->route < element.route)
+      if (this == &other)
         return true;
+      return this->_route == other._route && this->_venue == other._venue;
+    }
 
+    bool
+    Chemin::operator<(const Chemin& other) const
+    {
+      if (this == &other)
+        return false;
+      // Compare the route only.
+      if (this->_route < other._route)
+        return true;
       return false;
     }
 
-//
-// ---------- dumpable --------------------------------------------------------
-//
+    /*---------.
+    | Dumpable |
+    `---------*/
 
-    ///
-    /// this method dumps a chemin.
-    ///
-    elle::Status        Chemin::Dump(const elle::Natural32      margin) const
+    elle::Status
+    Chemin::Dump(const elle::Natural32 margin) const
     {
       elle::String      alignment(margin, ' ');
 
       std::cout << alignment << "[Chemin] " << this << std::endl;
-
-      // dump the route.
-      if (this->route.Dump(margin + 2) == elle::Status::Error)
+      if (this->_route.Dump(margin + 2) == elle::Status::Error)
         throw Exception("unable to dump the route");
-
-      // dump the venue.
-      if (this->venue.Dump(margin + 2) == elle::Status::Error)
+      if (this->_venue.Dump(margin + 2) == elle::Status::Error)
         throw Exception("unable to dump the venue");
-
       return elle::Status::Ok;
     }
 
+    /*----------.
+    | Printable |
+    `----------*/
 
     std::ostream&
     operator << (std::ostream& stream, Chemin const& c)
     {
-      stream << c.route;
+      stream << c.route();
       return stream;
     }
 

@@ -19,57 +19,38 @@ namespace etoile
 {
   namespace depot
   {
-    /*-----------------------------.
-    | Global Hole instance (FIXME) |
-    `-----------------------------*/
-    static
-    hole::Hole*&
-    _hole()
+    /*-------------.
+    | Construction |
+    `-------------*/
+
+    Depot::Depot(hole::Hole* hole,
+                 nucleus::proton::Address const& root_address):
+      _hole(hole),
+      _root_address(root_address)
+    {}
+
+    nucleus::proton::Network const&
+    Depot::network() const
     {
-      static hole::Hole* hole(nullptr);
-      return hole;
+      return this->_hole->storage().network();
     }
 
-    hole::Hole&
-    hole()
-    {
-      ELLE_ASSERT(_hole());
-      return *_hole();
-    }
+    /*-----------.
+    | Operations |
+    `-----------*/
 
-    void
-    hole(hole::Hole* hole)
+    elle::Status
+    Depot::Origin(nucleus::proton::Address& address)
     {
-      ELLE_ASSERT(!_hole() || !hole);
-      _hole() = hole;
-    }
-
-    elle::Boolean
-    have_hole()
-    {
-      return (_hole() != nullptr);
-    }
-
-//
-// ---------- methods ---------------------------------------------------------
-//
-
-    /// this method returns the address of the network's root block.
-    elle::Status        Depot::Origin(nucleus::proton::Address& address)
-    {
-      // FIXME: do not re-parse the descriptor every time.
-      lune::Descriptor descriptor(Infinit::User, Infinit::Network);
-      address = descriptor.meta().root();
+      address = this->_root_address;
       return elle::Status::Ok;
     }
 
-    ///
-    /// this method stores the given block in the underlying storage layer.
-    ///
-    elle::Status        Depot::Push(const nucleus::proton::Address& address,
-                                    const nucleus::proton::Block& block)
+    elle::Status
+    Depot::Push(const nucleus::proton::Address& address,
+                const nucleus::proton::Block& block)
     {
-      hole().push(address, block);
+      this->_hole->push(address, block);
       return elle::Status::Ok;
     }
 
@@ -99,10 +80,9 @@ namespace etoile
     elle::Status        Depot::Wipe(const nucleus::proton::Address& address)
     {
       // call the Hole.
-      hole().wipe(address);
+      this->_hole->wipe(address);
 
       return elle::Status::Ok;
     }
-
   }
 }

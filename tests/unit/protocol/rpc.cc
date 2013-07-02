@@ -14,24 +14,21 @@
 #include <protocol/Serializer.hh>
 #include <protocol/RPC.hh>
 
+static
 int
 answer()
 {
   return 42;
 }
 
-int
-answer2()
-{
-  return 42;
-}
-
+static
 int
 square(int x)
 {
   return x * x;
 }
 
+static
 std::string
 concat(std::string const& left,
        std::string const& right)
@@ -39,7 +36,10 @@ concat(std::string const& left,
   return left + right;
 }
 
+static
 reactor::Thread* suicide_thread(nullptr);
+
+static
 void
 suicide()
 {
@@ -51,6 +51,8 @@ suicide()
 }
 
 static int global_counter = 0;
+
+static
 int
 count()
 {
@@ -61,6 +63,7 @@ count()
   return global_counter;
 }
 
+static
 void
 except()
 {
@@ -103,6 +106,7 @@ struct DummyRPC:
 | Basic |
 `------*/
 
+static
 void
 caller(reactor::Semaphore& lock, int& port)
 {
@@ -119,6 +123,7 @@ caller(reactor::Semaphore& lock, int& port)
   BOOST_CHECK_THROW(rpc.raise(), std::runtime_error);
 }
 
+static
 void
 runner(reactor::Semaphore& lock,
        bool sync,
@@ -153,6 +158,7 @@ runner(reactor::Semaphore& lock,
   {}
 }
 
+static
 int
 test(bool sync)
 {
@@ -178,6 +184,7 @@ test(bool sync)
 | Terminate |
 `----------*/
 
+static
 void
 pacify(reactor::Semaphore& lock,
        reactor::Thread& t,
@@ -194,6 +201,7 @@ pacify(reactor::Semaphore& lock,
   BOOST_CHECK_THROW(rpc.suicide(), std::runtime_error);
 }
 
+static
 int
 test_terminate(bool sync)
 {
@@ -218,6 +226,7 @@ test_terminate(bool sync)
 | Parallel |
 `---------*/
 
+static
 void
 counter(reactor::Semaphore& lock,
         bool sync,
@@ -258,6 +267,7 @@ counter(reactor::Semaphore& lock,
 }
 
 
+static
 int
 test_parallel(bool sync)
 {
@@ -334,6 +344,7 @@ test_disconnection()
 | Test suite |
 `-----------*/
 
+static
 bool
 test_suite()
 {

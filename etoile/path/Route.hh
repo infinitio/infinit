@@ -5,7 +5,6 @@
 # include <elle/operator.hh>
 
 # include <etoile/path/fwd.hh>
-# include <etoile/path/Slab.hh>
 
 # include <vector>
 
@@ -13,71 +12,88 @@ namespace etoile
 {
   namespace path
   {
-
-    ///
-    /// a route is a sequence of slabs forming a path, each slab representing
+    /// A route is a sequence of slabs forming a path, each slab representing
     /// the name of subdirectory down to the target object along with their
     /// revision numbers.
     ///
-    /// note that this class also contains the revision number of the root
-    /// directory. indeed, the first slab is always used for representing
-    /// the root directory even though its slab is empty.
-    ///
+    /// Note that this class also contains the revision number of the root
+    /// directory. indeed, the first slab is always used for representing the
+    /// root directory even though its slab is empty.
     class Route
     {
     public:
-      //
-      // constants
-      //
-      static const Route                Null;
-      static Route                      Root;
+      /// The root directory.
+      static Route Root;
 
-      //
-      // static methods
-      //
-      static elle::Status       Initialize();
-      static elle::Status       Clean();
+    /*------.
+    | Types |
+    `------*/
+    public:
+      typedef std::vector<std::string> Container;
+      typedef Container::iterator Iterator;
+      typedef Container::const_iterator Scoutor;
 
-      //
-      // types
-      //
-      typedef std::vector<Slab>                 Container;
-      typedef Container::iterator               Iterator;
-      typedef Container::const_iterator         Scoutor;
-
-      //
-      // constructors & destructors
-      //
+    /*-------------.
+    | Construction |
+    `-------------*/
+    public:
+      /// Create a Route representing the root.
       Route();
-      Route(Route const&) = default;
+      /// A copy of \param source.
+      Route(Route const& source) = default;
+      /// A copy of \param source limited to the first \param size components.
+      Route(Route const& source, elle::Size size);
+      /// Create a route from a string by splitting it according to the path
+      /// separator.
+      ///
+      /// Note that the first slab is always empty in order to represent the
+      /// root directory.  The following assumes the root revision indicator is
+      /// '@' while the slab revision indicator is '%'.
+      ///
+      /// Note that the ways can embed revision numbers as shown next:
+      ///
+      ///   /suce%42/avale/leche.txt%3
+      ///
+      /// However, the format '%[0-9]+' cannot be used with the root directory
+      /// since the way always starts with '/...'.  In order to provide this
+      /// functionality, the following check is made: if the first non-empty
+      /// slab starts with '@[0-9]+', then this slab is used as the root one
+      /// with the appropriate revision number.
+      Route(std::string const& path);
+      /// Create a route by appending a component to an existing route.
+      Route(const Route& route, const std::string& component);
+      // XXX: should not be assignable.
+      ELLE_OPERATOR_ASSIGNMENT(Route);
 
-      //
-      // methods
-      //
-      elle::Status              Create(const Way&);
-      elle::Status              Create(const Route&,
-                                       const Slab&);
+    /*-----------.
+    | Operations |
+    `-----------*/
+    public:
+      /// Whether this starts with \param base.
+      bool
+      derives(Route const& base) const;
 
-      elle::Boolean             Derives(const Route&) const;
+    /*----------.
+    | Orderable |
+    `----------*/
+    public:
+      bool
+      operator==(const Route&) const;
+      bool
+      operator<(const Route&) const;
 
-      elle::Status              Clear();
+    /*---------.
+    | Dumpable |
+    `---------*/
+    public:
+      elle::Status
+      Dump(const elle::Natural32 = 0) const;
 
-      //
-      // interfaces
-      //
-
-      ELLE_OPERATOR_ASSIGNMENT(Route); // XXX
-
-      elle::Boolean             operator==(const Route&) const;
-      elle::Boolean             operator<(const Route&) const;
-
-      // dumpable
-      elle::Status              Dump(const elle::Natural32 = 0) const;
-
-      //
-      // attributes
-      //
-      Container                 elements;
+    /*---------.
+    | Elements |
+    `---------*/
+    public:
+      ELLE_ATTRIBUTE_RX(Container, elements);
     };
 
     std::ostream&

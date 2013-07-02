@@ -3,10 +3,7 @@
 #include <etoile/automaton/Contents.hh>
 #include <etoile/automaton/Rights.hh>
 #include <etoile/gear/Link.hh>
-#include <etoile/path/Way.hh>
 #include <etoile/Exception.hh>
-
-#include <agent/Agent.hh>
 
 #include <elle/log.hh>
 
@@ -32,8 +29,8 @@ namespace etoile
       ELLE_ASSERT(context.object == nullptr);
 
       context.object.reset(
-        new nucleus::neutron::Object(nucleus::proton::Network(Infinit::Network),
-                                     agent::Agent::Identity.pair().K(),
+        new nucleus::neutron::Object(context.etoile().network(),
+                                     context.etoile().user_keypair().K(),
                                      nucleus::neutron::Genre::link));
 
       nucleus::proton::Address address(context.object->bind());
@@ -78,9 +75,10 @@ namespace etoile
     ///
     /// this method binds a new target to the link.
     ///
-    elle::Status        Link::Bind(
-                          gear::Link&                           context,
-                          const path::Way&                      way)
+    elle::Status
+    Link::Bind(
+      gear::Link& context,
+      std::string const& way)
     {
       ELLE_TRACE_FUNCTION(context, way);
 
@@ -132,9 +130,9 @@ namespace etoile
     ///
     /// this method returns the way associated with this link.
     ///
-    elle::Status        Link::Resolve(
-                          gear::Link&                           context,
-                          path::Way&                            way)
+    elle::Status
+    Link::Resolve(gear::Link& context,
+                  std::string& path)
     {
       ELLE_TRACE_FUNCTION(context);
 

@@ -30,6 +30,13 @@ using plasma::trophonius::TransactionNotification;
 using plasma::trophonius::NetworkUpdateNotification;
 using plasma::trophonius::MessageNotification;
 
+// Pacify -Wmissing-declaration.
+extern "C"
+{
+  PyObject*
+  PyInit_plasma();
+}
+
 BOOST_PYTHON_MODULE(plasma)
 {
   class_<Client, boost::noncopyable>(

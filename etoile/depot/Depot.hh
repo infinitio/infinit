@@ -19,54 +19,51 @@ namespace etoile
   ///
   namespace depot
   {
-
-    /*-----------------------------.
-    | Global Hole instance (FIXME) |
-    `-----------------------------*/
-    hole::Hole&
-    hole();
-    void
-    hole(hole::Hole* hole);
-    // XXX[to remove]
-    elle::Boolean
-    have_hole();
-
-    ///
-    /// this class abstracts the storage layer.
-    ///
+    /// The storage layer.
     class Depot
     {
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
-      //
-      // methods
-      //
-      static elle::Status       Origin(nucleus::proton::Address&);
+      Depot(hole::Hole* hole,
+            nucleus::proton::Address const& root_address);
+    private:
+      ELLE_ATTRIBUTE(hole::Hole*, hole);
+      ELLE_ATTRIBUTE_r(nucleus::proton::Network, network);
+      ELLE_ATTRIBUTE(nucleus::proton::Address, root_address);
 
-      static elle::Status       Push(const nucleus::proton::Address&,
-                                     const nucleus::proton::Block&);
-
+    /*-----------.
+    | Operations |
+    `-----------*/
+    public:
+      /// The address of the network's root block.
+      elle::Status
+      Origin(nucleus::proton::Address&);
+      /// Store the given block in the underlying storage layer.
+      elle::Status
+      Push(const nucleus::proton::Address&,
+           const nucleus::proton::Block&);
       /// XXX
-      static std::unique_ptr<nucleus::neutron::Object>
+      std::unique_ptr<nucleus::neutron::Object>
       pull_object(nucleus::proton::Address const& address,
                   nucleus::proton::Revision const & revision);
       /// XXX
-      static std::unique_ptr<nucleus::neutron::Group>
+      std::unique_ptr<nucleus::neutron::Group>
       pull_group(nucleus::proton::Address const& address,
                  nucleus::proton::Revision const& revision);
       /// XXX
-      static std::unique_ptr<nucleus::proton::Contents>
+      std::unique_ptr<nucleus::proton::Contents>
       pull_contents(nucleus::proton::Address const& address);
-
       /// XXX
       template <typename T>
-      static std::unique_ptr<T>
+      std::unique_ptr<T>
       pull(nucleus::proton::Address const& address,
            nucleus::proton::Revision const& revision =
              nucleus::proton::Revision::Last);
-
-      static elle::Status       Wipe(const nucleus::proton::Address&);
+      elle::Status
+      Wipe(const nucleus::proton::Address&);
     };
-
   }
 }
 

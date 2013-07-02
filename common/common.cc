@@ -445,55 +445,10 @@ namespace common
       );
       return base_url + "/" + platform + architecture;
     }
-
-    std::string
-    manifest(char const* platform,
-             unsigned int architecture)
-    {
-      return base_url(platform, architecture) + "/manifest.xml";
-    }
-
   }
 
 
   //- scheduled for deletion --------------------------------------------------
-
-  namespace watchdog
-  {
-
-    std::string
-    server_name(std::string const& user_id)
-    {
-      return path::join(infinit::user_directory(user_id), "server.wtg");
-    }
-
-    std::string
-    lock_path(std::string const& user_id)
-    {
-        return path::join(
-          infinit::user_directory(user_id),
-          "lock.wtg"
-        );
-    }
-
-    std::string
-    log_path(std::string const& user_id)
-    {
-        return path::join(
-          infinit::user_directory(user_id),
-          "log.wtg"
-        );
-    }
-
-    std::string
-    id_path(std::string const& user_id)
-    {
-        return path::join(
-          infinit::user_directory(user_id),
-          "id.wtg"
-        );
-    }
-  }
 
   namespace metrics
   {

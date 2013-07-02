@@ -46,7 +46,7 @@ namespace etoile
       //
       // constructors & destructors
       //
-      File();
+      File(Etoile& etoile);
       ~File();
 
       //

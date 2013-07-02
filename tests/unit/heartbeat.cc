@@ -23,6 +23,7 @@ namespace network = reactor::network;
 
 namespace heartbeat {
 
+static
 void
 _sleep(int seconds)
 {
@@ -31,6 +32,7 @@ _sleep(int seconds)
   s.run();
 }
 
+static
 void
 run()
 {
@@ -68,4 +70,3 @@ BOOST_AUTO_TEST_CASE(heartbeat_test)
   reactor::Thread t(sched, "test", fn);
   sched.run();
 }
-

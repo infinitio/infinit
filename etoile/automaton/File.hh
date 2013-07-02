@@ -27,7 +27,7 @@ namespace etoile
 
       static elle::Status       Write(gear::File&,
                                       const nucleus::neutron::Offset&,
-                                      elle::WeakBuffer const&);
+                                      elle::ConstWeakBuffer data);
       static
       elle::Buffer
       read(gear::File&,

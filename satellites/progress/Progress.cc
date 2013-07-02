@@ -14,7 +14,6 @@
 
 #include <etoile/gear/Identifier.hh>
 #include <etoile/path/Chemin.hh>
-#include <etoile/path/Way.hh>
 #include <etoile/portal/Manifest.hh>
 
 #include <nucleus/neutron/Range.hh>
@@ -103,7 +102,7 @@ namespace satellite
       // Resolve the path to the root directory.
       etoile::path::Chemin chemin(
         Progress::rpcs->pathresolve(
-          etoile::path::Way(elle::system::path::separator)));
+          std::string(1, elle::system::path::separator)));
 
       // Load the root directory.
       etoile::gear::Identifier directory(
@@ -136,17 +135,15 @@ namespace satellite
 
     // (2) Get the progress attribute from the specific file.
     {
-      // The way to the progress-specific file.
       elle::String root(elle::String(1, elle::system::path::separator) +
                         ".progress");
-      etoile::path::Way way(root);
 
       etoile::path::Chemin* chemin(nullptr);
 
       try
         {
           // Resolve the file.
-          chemin = new etoile::path::Chemin(Progress::rpcs->pathresolve(way));
+          chemin = new etoile::path::Chemin(Progress::rpcs->pathresolve(root));
         }
       catch (...)
         {
@@ -190,6 +187,7 @@ namespace satellite
     std::cout << _progress << " " << _size << std::endl;
   }
 
+  static
   void
   Progress(elle::Natural32 argc,
            elle::Character* argv[])

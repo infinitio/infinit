@@ -3,6 +3,7 @@
 
 #include <reactor/scheduler.hh>
 
+#include <etoile/Etoile.hh>
 #include <etoile/abstract/Group.hh>
 #include <etoile/automaton/Group.hh>
 #include <etoile/automaton/Rights.hh>
@@ -20,8 +21,6 @@
 #include <nucleus/neutron/Range.hh>
 #include <nucleus/neutron/Fellow.hh>
 
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Group");
 
 namespace etoile
@@ -34,27 +33,23 @@ namespace etoile
 //
 
     std::pair<nucleus::neutron::Group::Identity, gear::Identifier>
-    Group::Create(elle::String const& description)
+    Group::Create(etoile::Etoile& etoile,
+                  elle::String const& description)
     {
       ELLE_TRACE_FUNCTION(description);
 
-      gear::Scope* scope;
+      std::shared_ptr<gear::Scope> scope = etoile.scope_supply();
+      gear::Guard guard(scope);
       gear::Group* context;
 
       std::pair<nucleus::neutron::Group::Identity, gear::Identifier> res;
-
-      // acquire the scope.
-      if (gear::Scope::Supply(scope) == elle::Status::Error)
-        throw Exception("unable to supply the scope");
-
-      gear::Guard guard(scope);
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         guard.actor(new gear::Actor(scope));
@@ -77,26 +72,23 @@ namespace etoile
     }
 
     gear::Identifier
-    Group::Load(typename nucleus::neutron::Group::Identity const& identity)
+    Group::Load(etoile::Etoile& etoile,
+                typename nucleus::neutron::Group::Identity const& identity)
     {
       ELLE_TRACE_FUNCTION(identity);
 
-      gear::Scope* scope;
-      gear::Group* context;
-
       // XXX[change this so as to scope the groups i.e in order for the groups
       //     to be opened by multiple actors concurrently]
-      if (gear::Scope::Supply(scope) == elle::Status::Error)
-        throw Exception("unable to supplyire the scope");
-
+      std::shared_ptr<gear::Scope> scope = etoile.scope_supply();
       gear::Guard guard(scope);
+      gear::Group* context;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         guard.actor(new gear::Actor(scope));
@@ -121,17 +113,14 @@ namespace etoile
     }
 
     abstract::Group
-    Group::Information(gear::Identifier const& identifier)
+    Group::Information(etoile::Etoile& etoile,
+                       gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
 
       scope = actor->scope;
 
@@ -140,7 +129,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the information automaton on the context.
@@ -153,27 +142,22 @@ namespace etoile
     }
 
     void
-    Group::Add(gear::Identifier const& identifier,
+    Group::Add(etoile::Etoile& etoile,
+               gear::Identifier const& identifier,
                nucleus::neutron::Subject const& subject)
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
-
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the add automaton on the context.
@@ -186,28 +170,22 @@ namespace etoile
     }
 
     nucleus::neutron::Fellow
-    Group::Lookup(gear::Identifier const& identifier,
+    Group::Lookup(etoile::Etoile& etoile,
+                  gear::Identifier const& identifier,
                   nucleus::neutron::Subject const& subject)
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the lookup automaton on the context.
@@ -224,29 +202,23 @@ namespace etoile
     }
 
     nucleus::neutron::Range<nucleus::neutron::Fellow>
-    Group::Consult(gear::Identifier const& identifier,
+    Group::Consult(etoile::Etoile& etoile,
+                   gear::Identifier const& identifier,
                    nucleus::neutron::Index const& index,
                    nucleus::neutron::Size const& size)
     {
       ELLE_TRACE_FUNCTION(identifier, index, size);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the consult automaton on the context.
@@ -261,27 +233,22 @@ namespace etoile
     }
 
     void
-    Group::Remove(gear::Identifier const& identifier,
+    Group::Remove(etoile::Etoile& etoile,
+                  gear::Identifier const& identifier,
                   nucleus::neutron::Subject const& subject)
     {
       ELLE_TRACE_FUNCTION(identifier, subject);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
-
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the remove automaton on the context.
@@ -294,28 +261,23 @@ namespace etoile
     }
 
     void
-    Group::Discard(gear::Identifier const& identifier)
+    Group::Discard(etoile::Etoile& etoile,
+                   gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
       gear::Guard guard(actor);
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -365,7 +327,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;
@@ -382,28 +344,23 @@ namespace etoile
     }
 
     void
-    Group::Store(gear::Identifier const& identifier)
+    Group::Store(etoile::Etoile& etoile,
+                 gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
       gear::Guard guard(actor);
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -453,7 +410,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;
@@ -470,29 +427,23 @@ namespace etoile
     }
 
     void
-    Group::Destroy(gear::Identifier const& identifier)
+    Group::Destroy(etoile::Etoile& etoile,
+                   gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Group* context;
 
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
       gear::Guard guard(actor);
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -542,7 +493,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;

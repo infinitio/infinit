@@ -21,8 +21,8 @@ namespace etoile
     ///
     /// the default constructor.
     ///
-    Object::Object():
-      Context(NatureObject),
+    Object::Object(Etoile& etoile):
+      Context(etoile, NatureObject),
 
       access_porcupine(nullptr),
       access_nest(nullptr),
@@ -50,8 +50,9 @@ namespace etoile
     ///
     /// the nature-specific constructor.
     ///
-    Object::Object(const Nature                                 nature):
-      Context(nature),
+    Object::Object(Etoile& etoile,
+                   const Nature                                 nature):
+      Context(etoile, nature),
 
       access_porcupine(nullptr),
       access_nest(nullptr),

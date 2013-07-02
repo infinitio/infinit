@@ -2,6 +2,8 @@
 
 #include <elle/system/platform.hh>
 
+#include <etoile/Etoile.hh>
+
 #include <Infinit.hh>
 
 #if defined(INFINIT_LINUX)
@@ -19,6 +21,7 @@ namespace horizon
     /*-----------------------------.
     | Global Hole instance (FIXME) |
     `-----------------------------*/
+
     static
     hole::Hole*&
     _hole()
@@ -39,6 +42,28 @@ namespace horizon
     {
       assert(!_hole() || !hole);
       _hole() = hole;
+    }
+
+    static
+    etoile::Etoile*&
+    _etoile()
+    {
+      static etoile::Etoile* etoile(nullptr);
+      return etoile;
+    }
+
+    etoile::Etoile&
+    etoile()
+    {
+      assert(_etoile());
+      return *_etoile();
+    }
+
+    void
+    etoile(etoile::Etoile* etoile)
+    {
+      assert(!_etoile() || !etoile);
+      _etoile() = etoile;
     }
 
 //
