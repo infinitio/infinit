@@ -37,7 +37,8 @@ class Application(object):
             ssl_port=conf.LISTEN_SSL_PORT,
             logfile=sys.stderr,
             meta_url=pythia.constants.DEFAULT_SERVER,
-            runtime_dir=None):
+            runtime_dir=None,
+            timeout=30):
         self.ip = ip
         self.port = port
         self.logfile = logfile
@@ -45,6 +46,7 @@ class Application(object):
         self.clients = dict()
         self.meta_url = meta_url
         self.runtime_dir = runtime_dir
+        self.timeout = timeout
         if HAVE_SETPROCTITLE:
             setproctitle.setproctitle("Trophonius")
 

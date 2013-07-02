@@ -68,14 +68,15 @@ class Trophonius(basic.LineReceiver):
         self._ping_service = task.LoopingCall(self.sendLine,
                 json.dumps({"notification_type": 208}))
         self._ping_service.start(30)
-        self._alive_service = reactor.callLater(60, self._loseConnection)
+        timeout = self.factory.application.timeout
+        self._alive_service = reactor.callLater(timeout, self._loseConnection)
 
     def _loseConnection(self):
         self.reason = "noPing"
         self.transport.loseConnection()
 
     def connectionLost(self, reason):
-        self.reason = self.reason or reason
+        self.reason = self.reason or reason.getErrorMessage()
 
         log.msg("Connection lost with", self.transport.getPeer(), self.reason)
 
@@ -122,7 +123,9 @@ class Trophonius(basic.LineReceiver):
         if data["notification_type"] == 208:
             if self._alive_service is not None and \
                self._alive_service.active():
-                self._alive_service.reset(60)
+                print("reset alive service")
+                timeout = self.factory.application.timeout
+                self._alive_service.reset(timeout)
 
     def handle_HELLO(self, line):
         """
@@ -183,10 +186,10 @@ class MetaTropho(basic.LineReceiver):
         self.factory = factory
 
     def connectionMade(self):
-        pass #log.msg("Meta: New connection from", self.transport.getPeer())
+        log.msg("Meta: New connection from", self.transport.getPeer())
 
     def connectionLost(self, reason):
-        pass #log.msg("Meta: Connection lost with", self.transport.getPeer(), reason)
+        log.msg("Meta: Connection lost with", self.transport.getPeer(), reason.getErrorMessage())
 
     def _send_res(self, res, msg=""):
         if isinstance(res, dict):
