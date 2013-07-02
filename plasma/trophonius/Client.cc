@@ -212,7 +212,7 @@ namespace plasma
       {
         try
         {
-          ELLE_TRACE("no message from Trophonius since to long.");
+          ELLE_TRACE("no message from Trophonius for too long.");
           ELLE_TRACE("trying to reconnect");
           this->_disconnect();
           this->connect(_impl->user_id,
@@ -227,8 +227,7 @@ namespace plasma
                     elle::exception_string());
         }
       }
-      else
-        this->_restart_connection_check_timer();
+      this->_restart_connection_check_timer();
     }
 
     void
