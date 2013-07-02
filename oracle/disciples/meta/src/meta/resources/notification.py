@@ -14,6 +14,7 @@ import os
 
 import metalib
 
+_macro_matcher = re.compile(r'(.*\()(\S+)(,.*\))')
 def TRANSACTION_STATUS(name, value):
     globals()[name.upper()] = value
     _status_to_string[value] = str(name)
