@@ -61,6 +61,7 @@ if __name__ == '__main__':
         port = args.port,
         ssl_port = args.control_port,
         meta_url = args.meta_url,
-        runtime_dir = args.runtime_dir
+        runtime_dir = args.runtime_dir,
+        timeout = args.timeout,
     )
     application.run()
