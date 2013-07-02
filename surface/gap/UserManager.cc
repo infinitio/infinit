@@ -32,18 +32,11 @@ namespace surface
       ELLE_TRACE_METHOD("");
 
       this->_notification_manager.user_status_callback(
-        [&] (UserStatusNotification const &n) -> void
-        {
-          this->_on_swagger_status_update(n);
-        }
-      );
-
+        std::bind(&UserManager::_on_swagger_status_update, this, _1));
       this->_notification_manager.new_swagger_callback(
-        [&] (NewSwaggerNotification const &n) -> void
-        {
-          this->_on_new_swagger(n);
-        }
-      );
+        std::bind(&UserManager::_on_new_swagger, this, _1));
+      this->_notification_manager.add_resync_callback(
+        std::bind(&UserManager::_on_resync, this));
     }
 
     UserManager::~UserManager()
@@ -76,6 +69,63 @@ namespace surface
       for (auto const& dev: user.connected_devices)
         this->_connected_devices.insert(dev);
       return user;
+    }
+
+    void
+    UserManager::_on_resync()
+    {
+      this->_swaggers_dirty = true;
+      auto swaggers = this->swaggers();
+      auto old_connected_devices = this->_connected_devices;
+      this->_connected_devices.clear();
+
+      // Skeleton of user notif (we do not care abot device status).
+      UserStatusNotification n;
+      n.notification_type = NotificationType::user_status;
+      n.device_id = "";
+      n.device_status = false;
+      for (auto const& swagger_id: swaggers)
+      {
+        auto user = this->_meta.user(swagger_id);
+        auto it = this->_users.find(swagger_id);
+        bool need_resync = (
+          it == this->_users.end() || it->status != user.status);
+
+        for (auto const& dev: user.connected_devices)
+        {
+          // Some device has been connected.
+          if (old_connected_devices.find(dev) == old_connected_devices.end())
+            need_resync = true;
+          this->_connected_devices.insert(dev);
+        }
+
+        if (it != this->_users.end())
+        {
+          for (auto const& old_dev: it->connected_devices)
+            // Some device has been disconnected.
+            if (this->_connected_devices.find(old_dev) ==
+                this->_connected_devices.end())
+              need_resync = true;
+        }
+
+        // Save the user
+        this->_users[swagger_id].reset(
+          new User{
+            user.id,
+            user.fullname,
+            user.handle,
+            user.public_key,
+            user.status,
+            user.connected_devices,
+          });
+
+        if (need_resync)
+        {
+          n.user_id = user.id;
+          n.status = user.status;
+          this->_notification_manager.fire_callbacks(n, false);
+        }
+      }
     }
 
     User const&
@@ -212,10 +262,13 @@ namespace surface
       it->second->status = notif.status;
 
       // Update connected devices.
-      if (notif.device_status)
-        this->_connected_devices.insert(notif.device_id);
-      else
-        this->_connected_devices.erase(notif.device_id);
+      if (notif.device_id.size() > 0)
+      {
+        if (notif.device_status)
+          this->_connected_devices.insert(notif.device_id);
+        else
+          this->_connected_devices.erase(notif.device_id);
+      }
     }
 
    void

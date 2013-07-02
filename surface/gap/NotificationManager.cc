@@ -128,6 +128,14 @@ namespace surface
     {
       ELLE_LOG("%s: successfully reconnected to trophonius", *this);
       this->pull(-1, 0, true);
+      for (auto& cb: this->_resync_callbacks)
+        cb();
+    }
+
+    void
+    NotificationManager::add_resync_callback(ResyncCallback const& cb)
+    {
+      this->_resync_callbacks.push_back(cb);
     }
 
     size_t
@@ -323,6 +331,14 @@ namespace surface
 
       using Type = NotificationType;
       this->_notification_handlers[Type::new_swagger].push_back(fn);
+    }
+
+    void
+    NotificationManager::fire_callbacks(Notification const& notif,
+                                        bool const is_new)
+    {
+      for (auto const& cb: this->_notification_handlers[notif.notification_type])
+        cb(notif, is_new);
     }
 
     void
