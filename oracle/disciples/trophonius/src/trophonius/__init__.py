@@ -12,8 +12,7 @@ root_dir = os.path.realpath(os.path.dirname(__file__))
 class Trophonius:
 
     # XXX Trophonius timeout is linked to plasma/trophonius/Client ping interval.
-    # As such, this value must always be greater than that the client ping
-    # interval.
+    # As such, this value must always be greater than the client ping interval.
     def __init__(self,
                  host = "0.0.0.0",
                  port = 0,

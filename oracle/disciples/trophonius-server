@@ -23,7 +23,7 @@ parser.add_argument(
 )
 
 # XXX Trophonius timeout is linked to plasma/trophonius/Client ping interval.
-# As such, this value must always be greater than that the client ping interval.
+# As such, this value must always be greater than the client ping interval.
 parser.add_argument(
     '--timeout',
     type = int,
