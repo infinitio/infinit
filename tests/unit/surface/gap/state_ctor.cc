@@ -30,6 +30,7 @@ static elle::Status lune_status = lune::Lune::Initialize();
 // Create a state from username and email.
 // Try to create the user. If it fails, login.
 // Return a shared_ptr on the ready state.
+static
 void
 make_login(StatePtr state,
            std::string user,
@@ -56,6 +57,7 @@ make_login(StatePtr state,
 
 // Polling function.
 // Stop polling when the state is logged out.
+static
 void
 work(StatePtr state,
      bool& finished)
@@ -69,6 +71,7 @@ work(StatePtr state,
 }
 
 // Create a polling worker for a given state.
+static
 std::thread
 make_worker(StatePtr state,
             bool& finished)
