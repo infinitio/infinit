@@ -456,6 +456,7 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("set_output_dir", &gap_set_output_dir);
   py::def("get_output_dir", &gap_get_output_dir);
   py::def("transaction_progress", &gap_transaction_progress);
+  py::def("transaction_is_accepted", &gap_transaction_accepted);
   py::def("transaction_sender_id", &gap_transaction_sender_id);
   py::def("transaction_sender_fullname", &gap_transaction_sender_fullname);
   py::def("transaction_sender_device_id", &gap_transaction_sender_device_id);

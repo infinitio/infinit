@@ -58,6 +58,7 @@ class _State:
             'accept_transaction',
             'transactions',
             'transaction_progress',
+            'transaction_is_accepted',
             'transaction_sender_id',
             'transaction_sender_fullname',
             'transaction_sender_device_id',
