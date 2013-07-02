@@ -11,7 +11,7 @@ import plasma
 try:
     meta = trophonius.FakeMeta()
     with meta:
-        tropho = trophonius.Trophonius(meta_port = meta.port, timeout=5)
+        tropho = trophonius.Trophonius(meta_port = meta.port)
         with tropho:
             meta_client = pythia.Client(server = meta.url)
             res = meta_client.post('/user/login', {
@@ -21,11 +21,12 @@ try:
             client = plasma.Trophonius(tropho.host, tropho.port,
                                        lambda: print('connected'))
             client.connect(res['_id'], res['token'], 'device')
-            for i in range(40):
+            for i in range(30):
                 notif = client.poll()
                 if notif is not None:
                     print(notif)
-                time.sleep(1)
+                time.sleep(2)
+            assert client.retries == 0
             print("quiting")
 except:
     print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
