@@ -234,7 +234,8 @@ class Create(Page):
             sent +=  " and %i other files" % (transaction['files_count'] - 1)
 
         # XXX: MAIL DESACTIVATED
-        if not meta.user.is_connected(recipient_id):
+        from meta.resources import user
+        if not user.is_connected(database.ObjectId(recipient_id)):
             if not invitee_email:
                 invitee_email = database.users().find_one(
                     {'_id': database.ObjectId(id_or_email)}

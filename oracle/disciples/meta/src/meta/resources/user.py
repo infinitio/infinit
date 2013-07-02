@@ -297,7 +297,7 @@ class Self(Page):
             'public_key': self.user['public_key'],
             'accounts': self.user['accounts'],
             'remaining_invitations': self.user.get('remaining_invitations', 0),
-            'status': is_connected(self.user['_id']),
+            'status': is_connected(database.ObjectId(self.user['_id'])),
             'token_generation_key': self.user.get('token_generation_key', ''),
         })
 
@@ -363,7 +363,7 @@ class One(Page):
         if '@' in id_or_email:
             user = user_by_email(id_or_email)
         else:
-            user = user_by_id(id_or_email)
+            user = user_by_id(database.ObjectId(id_or_email))
 
         return self.success(extract_user_fields(user))
 
