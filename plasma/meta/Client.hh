@@ -339,7 +339,8 @@ namespace plasma
                    std::string const& message) const;
 
       PullNotificationResponse
-      pull_notifications(int count, int offset = 0) const;
+      pull_notifications(int const count,
+                         int const offset = 0) const;
 
       ReadNotificationResponse
       notification_read() const;
