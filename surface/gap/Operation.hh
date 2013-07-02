@@ -73,13 +73,6 @@ namespace surface
        void
        rethrow();
 
-     protected:
-        // XXX put this in elle ?
-        /// Try to obtain a string from the exception pointer e or the current
-        /// exception when none is given.
-        std::string
-        _exception_string(std::exception_ptr eptr = std::exception_ptr{});
-
      public:
         /// When succeeded is false, returns the stored exception string.
         std::string

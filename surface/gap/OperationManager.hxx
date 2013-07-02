@@ -70,7 +70,7 @@ namespace surface
          }
          catch (...)
          {
-           ELLE_ERR("LOGIC ERROR: %s", this->_exception_string());
+           ELLE_ERR("LOGIC ERROR: %s", elle::exception_string());
          }
 
          try
@@ -92,7 +92,7 @@ namespace surface
          catch (...)
          {
            ELLE_ERR("couldn't join the operation's thread of %s: %s",
-                    this->_exception_string(),
+                    elle::exception_string(),
                     this->_name);
          }
        }
@@ -143,7 +143,7 @@ namespace surface
            ELLE_ERR("%s handler for operation %s failed: %s",
                     this->_succeeded ? "success" : "error",
                     this->_name,
-                    this->_exception_string());
+                    elle::exception_string());
          }
        }
      };
