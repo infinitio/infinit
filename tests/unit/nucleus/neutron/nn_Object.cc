@@ -33,7 +33,7 @@ int main()
       nucleus::neutron::Object blk_copy;
       buf.reader() >> blk_copy;
 
-      blk_copy.validate(addr, fingerprint);
+      blk_copy.validate(addr);
 
       assert(blk.owner_subject() == blk_copy.owner_subject());
     }
