@@ -33,7 +33,6 @@ namespace surface
       auto network_id = tr.network_id;
       try
       {
-        this->_network_manager.wait_portal(network_id);
         this->_notify();
         while (this->_infinit_instance_manager.exists(network_id))
         {

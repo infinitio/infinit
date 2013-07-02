@@ -282,7 +282,7 @@ namespace surface
           transaction.network_id,
           common::infinit::network_shelter(this->_self.id,
                                            transaction.network_id));
-        this->_network_manager.wait_portal(transaction.network_id);
+        this->_network_manager.launch(transaction.network_id);
         this->_meta.accept_transaction(transaction.id,
                                        this->_device.id,
                                        this->_device.name);
@@ -762,7 +762,7 @@ namespace surface
       //     transaction.network_id,
       //     common::infinit::network_shelter(this->_self.id,
       //                                      transaction.network_id));
-      //   this->_network_manager.wait_portal(transaction.network_id);
+      //   this->_network_manager.launch(transaction.network_id);
       //   state.state = State::none;
       // }
 

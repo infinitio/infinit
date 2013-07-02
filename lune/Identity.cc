@@ -32,7 +32,12 @@ namespace lune
     _pair(nullptr),
     _signature(nullptr),
     code(nullptr)
+  {}
+
+  Identity::Identity(std::string const& user_id):
+    Identity()
   {
+    this->load(elle::io::Path{Identity::_path(user_id)});
   }
 
   Identity::Identity(Identity const& other):
@@ -41,8 +46,7 @@ namespace lune
     _pair(new cryptography::KeyPair{*other._pair}),
     _signature(new cryptography::Signature{*other._signature}),
     code(new cryptography::Code{*other.code})
-  {
-  }
+  {}
 
   ///
   /// destructor.

@@ -505,9 +505,6 @@ namespace surface
     {
       ELLE_TRACE_METHOD(network_id, user_id, user_identity, permissions);
 
-      // TODO: Do this only on the current device for sender and recipient.
-      this->wait_portal(network_id);
-
       std::string const& access_binary =
         common::infinit::binary_path("8access");
 
@@ -820,8 +817,6 @@ namespace surface
       {
         lune::Phrase phrase;
 
-        this->wait_portal(network_id);
-
         phrase.load(this->_self.id, network_id, "slug");
 
         ELLE_DEBUG("Connect to the local 8infint instance (%s:%d)",
@@ -887,7 +882,7 @@ namespace surface
     }
 
     void
-    NetworkManager::wait_portal(std::string const& network_id)
+    NetworkManager::launch(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
 
@@ -895,7 +890,17 @@ namespace surface
       //     obviously been created and prepared!
       this->prepare(network_id);
 
-      this->_infinit_instance_manager.wait_portal(network_id);
+      // XXX: do not restore the identity every time.
+      lune::Identity identity;
+      if (identity.Restore(this->_meta.identity()) == elle::Status::Error)
+        throw std::runtime_error("Couldn't restore the identity.");
+
+      this->_infinit_instance_manager.launch(
+        network_id,
+        identity,
+        nucleus::proton::Address(
+          elle::serialize::from_string<elle::serialize::InputBase64Archive>(
+            this->one(network_id).root_address)));
     }
   }
 }

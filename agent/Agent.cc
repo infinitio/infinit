@@ -22,7 +22,7 @@ namespace agent
   ///
   /// the user's identity.
   ///
-  lune::Identity                Agent::Identity;
+  lune::Identity Agent::Identity;
 
   ///
   /// this variable represents the user subject.

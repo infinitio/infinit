@@ -74,7 +74,7 @@ namespace surface
 
     public:
       void
-      wait_portal(std::string const& network_id);
+      launch(std::string const& network_id);
 
 
       /*------------.

@@ -51,7 +51,7 @@ namespace surface
         common::infinit::network_shelter(this->_self.id,
                                          this->_transaction.network_id));
 
-      this->_network_manager.wait_portal(this->_transaction.network_id);
+      this->_network_manager.launch(this->_transaction.network_id);
 
       ELLE_DEBUG("giving '%s' access to the network '%s'",
                  this->_transaction.recipient_id,
@@ -140,4 +140,3 @@ namespace surface
     }
   }
 }
-

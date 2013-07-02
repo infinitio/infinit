@@ -1,12 +1,26 @@
 #ifndef  SURFACE_GAP_INFINITINSTANCEMANAGER_HH
 # define SURFACE_GAP_INFINITINSTANCEMANAGER_HH
 
-# include <elle/system/Process.hh>
-# include <surface/gap/Exception.hh>
-
 # include <map>
 # include <memory>
 # include <string>
+
+# include <elle/serialize/extract.hh>
+# include <elle/system/Process.hh>
+
+# include <reactor/scheduler.hh>
+# include <reactor/thread.hh>
+
+# include <Infinit.hh>
+# include <common/common.hh>
+# include <etoile/Etoile.hh>
+# include <hole/Hole.hh>
+# include <hole/implementations/slug/Slug.hh>
+# include <hole/storage/Directory.hh>
+# include <lune/Identity.hh>
+# include <nucleus/neutron/Object.hh>
+# include <nucleus/proton/Network.hh>
+# include <surface/gap/Exception.hh>
 
 namespace surface
 {
@@ -19,12 +33,28 @@ namespace surface
 
     struct InfinitInstance
     {
-      std::string       network_id;
-      std::string       mount_point;
-      SystemProcessPtr  process;
+      // XXX: we might want to keep the passport/identity/... in the manager
+      // directly.
+      std::string network_id;
+      std::string mount_point;
+      nucleus::proton::Network network;
+      lune::Identity identity;
+      elle::Passport passport;
+      hole::storage::Directory storage;
+      std::unique_ptr<hole::Hole> hole;
+      std::unique_ptr<etoile::Etoile> etoile;
+      reactor::Scheduler scheduler;
+      reactor::Thread keep_alive;
+      std::thread thread;
+
+      InfinitInstance(std::string const& user_id,
+                      std::string const& network_id,
+                      lune::Identity const& identity,
+                      nucleus::proton::Address const& root_addr);
     };
 
-    class InfinitInstanceManager
+    class InfinitInstanceManager:
+      public elle::Printable
     {
       /*----------.
       | Exception |
@@ -65,10 +95,9 @@ namespace surface
       clear();
 
       void
-      wait_portal(std::string const& network_id);
-
-      void
-      launch(std::string const& network_id);
+      launch(std::string const& network_id,
+             lune::Identity const& identity,
+             nucleus::proton::Address const& root_addr);
 
       bool
       exists(std::string const& network_id) const;
@@ -82,8 +111,15 @@ namespace surface
 
       InfinitInstance const*
       _instance_for_file(std::string const& path);
-    };
 
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const override;
+    };
   }
 }
 
