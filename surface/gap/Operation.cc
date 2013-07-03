@@ -77,40 +77,11 @@ namespace surface
     }
 
     std::string
-    Operation::_exception_string(std::exception_ptr eptr)
-    {
-      ELLE_DEBUG_METHOD(eptr);
-
-      if (!eptr)
-        eptr = std::current_exception();
-      if (!eptr)
-        throw elle::Exception{"no current exception present"};
-      try
-      {
-        std::rethrow_exception(eptr);
-      }
-      catch (elle::Exception const& e)
-      {
-        return elle::sprint(e);
-      }
-      catch (std::exception const& e)
-      {
-        return e.what();
-      }
-      catch (...)
-      {
-        return "unknown exception type";
-      }
-
-      elle::unreachable();
-    }
-
-    std::string
     Operation::failure_reason()
     {
       ELLE_TRACE_METHOD("");
 
-      if (!this->_exception)
+      if (this->_exception == std::exception_ptr{})
         throw elle::Exception{"no current exception"};
 
       if (this->_failure_reason.empty())

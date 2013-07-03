@@ -5,6 +5,7 @@
 
 # include <elle/HttpClient.hh>
 
+# include <boost/date_time/posix_time/posix_time_types.hpp>
 # include <boost/system/error_code.hpp>
 
 # include <functional>
@@ -37,6 +38,11 @@ namespace plasma
 
       ELLE_SERIALIZE_CONSTRUCT(Notification)
       {}
+
+      Notification(NotificationType const type):
+        notification_type{type}
+      {}
+
       virtual ~Notification();
 
       virtual
@@ -54,6 +60,7 @@ namespace plasma
       ELLE_SERIALIZE_CONSTRUCT(NewSwaggerNotification,
                                Notification)
       {}
+
     };
 
     struct UserStatusNotification:
@@ -66,6 +73,10 @@ namespace plasma
 
       ELLE_SERIALIZE_CONSTRUCT(UserStatusNotification,
                                Notification)
+      {}
+
+      UserStatusNotification():
+        Notification{NotificationType::user_status}
       {}
     };
 
@@ -131,14 +142,24 @@ namespace plasma
       bool
       has_notification(void);
 
+      ELLE_ATTRIBUTE_R(int, reconnected);
+      ELLE_ATTRIBUTE_Rw(boost::posix_time::time_duration, ping_period);
+      ELLE_ATTRIBUTE(boost::posix_time::time_duration, ping_timeout);
+
     private:
       std::queue<std::unique_ptr<Notification>> _notifications;
+
+      void
+      _reconnect();
 
       void
       _connect();
 
       void
       _disconnect();
+
+      void
+      _disconnect(boost::system::error_code& err);
 
       void
       _read_socket();
@@ -161,15 +182,17 @@ namespace plasma
       void
       print(std::ostream& stream) const override;
 
+    /*-----.
+    | Ping |
+    `-----*/
+    private:
       void
-      _check_connection(boost::system::error_code const& err);
-
+      _check_connection();
       void
-      _send_ping(boost::system::error_code const& err);
-
+      _send_ping();
       void
       _on_ping_sent(boost::system::error_code const& err,
-                      size_t const bytes_transferred);
+                    size_t const bytes_transferred);
     };
 
     std::ostream&

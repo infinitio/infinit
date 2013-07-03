@@ -1,0 +1,80 @@
+#!/usr/bin/env python3.2
+
+import meta
+import trophonius
+import gap
+import time
+import plasma
+import pythia
+
+count = 0
+
+# That logs us.
+def register(client, fullname, email):
+    client.register(fullname, email, "password", fullname + "_device", "bitebite")
+
+def new_swagger_callback(expected, user_id):
+    assert(expected == user_id)
+    global count
+    count += 1
+
+trophonius_control_port = 39075
+
+def hash_password(password):
+    import hashlib
+    return hashlib.sha256(password.encode()).hexdigest()
+
+with meta.Meta(spawn_db = True,
+               trophonius_control_port = trophonius_control_port) as meta, \
+     trophonius.Trophonius(meta_port = meta.meta_port,
+                           control_port = trophonius_control_port) as tropho:
+
+    # Create users
+    client = pythia.Admin(server = meta.url)
+    def register(i):
+        email = 'user%s@infinit.io' % i
+        client.post('/user/register',
+                    {'email': email,
+                     'fullname': 'user%s' % i,
+                     'password': hash_password('user%s' % i),
+                     'activation_code': 'bitebite',
+                 })
+        return client.get('/user/%s/view' % email, {})['_id']
+    user1 = register(1)
+    user2 = register(2)
+    client.post('/user/add_swagger', {'user1': user1, 'user2': user2})
+
+    # Connect
+    def connect(i):
+        client = pythia.Client(meta.url)
+        params = {'email': 'user%s@infinit.io' % i,
+                  'password': hash_password('user%s' % i)}
+        res = client.post('/user/login', params)
+        client._session['token'] = res['token']
+        device = client.post('/device/create',
+                              {'name': 'device'})
+        return res, device
+
+    def connect_tropho(client, device):
+        res = plasma.Trophonius(tropho.host, tropho.port, lambda: None)
+        res.connect(client['_id'], client['token'],
+                    device['created_device_id'])
+        return res
+
+    client1, device1 = connect(1)
+    tropho1 = connect_tropho(client1, device1)
+
+    client2, device2 = connect(2)
+    tropho2 = connect_tropho(client2, device2)
+
+    def poll(name, client, expected):
+        notif = client.poll()
+        while notif is not None:
+            print('%s: %s' % (name, notif.type))
+            notif = client.poll()
+
+    import time
+    for i in range(10):
+        poll('user1', tropho1)
+        poll('user2', tropho2)
+        time.sleep(.5)

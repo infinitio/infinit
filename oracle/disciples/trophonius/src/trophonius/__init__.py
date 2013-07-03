@@ -11,18 +11,22 @@ root_dir = os.path.realpath(os.path.dirname(__file__))
 
 class Trophonius:
 
+    # XXX Trophonius timeout is linked to plasma/trophonius/Client ping interval.
+    # As such, this value must always be greater than the client ping interval.
     def __init__(self,
                  host = "0.0.0.0",
                  port = 0,
                  control_port = 0,
                  meta_host = 'localhost',
-                 meta_port = 8080):
+                 meta_port = 8080,
+                 timeout= 60):
         self.host = host
         self.port = port
         self.control_port = control_port
         self.meta_url = "http://%s:%s" % (meta_host, meta_port)
         self.instance = None
         self.__directory = tempfile.TemporaryDirectory()
+        self.timeout = timeout
 
     def __read_port(self, path):
         with open(os.path.join(self.__directory.name, path), 'r') as f:
@@ -38,6 +42,7 @@ class Trophonius:
              "--control-port", str(self.control_port),
              "--meta-url", self.meta_url,
              "--runtime-dir", self.__directory.name,
+             "--timeout", str(self.timeout),
             ],
             stdout = subprocess.PIPE,
             stderr = subprocess.PIPE,

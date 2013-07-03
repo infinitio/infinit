@@ -11,6 +11,7 @@
 
 #include <common/common.hh>
 
+#include <elle/assert.hh>
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
 #include <elle/os/getenv.hh>
@@ -215,8 +216,8 @@ namespace surface
         return 1.0f;
       else if (tr.status != plasma::TransactionStatus::started)
         return 0.0f;
-      // else if (this->_states[id].state != State::running)
-      //   return 0.0f;
+      else if (this->_states[id].state != State::running)
+        return 0.0f;
       else if (!instance_manager.exists(tr.network_id))
         return 0.0f;
 
@@ -484,9 +485,10 @@ namespace surface
 
       this->_states->erase(tr.id);
       this->_cancel_all(tr.id);
+      // Only delete local data of successful transfers
       this->_network_manager.delete_(
         tr.network_id,
-        tr.status == plasma::TransactionStatus::failed);
+        tr.status == plasma::TransactionStatus::finished);
     }
 
     void
@@ -519,16 +521,9 @@ namespace surface
       {
         if (tr.sender_device_id != this->_device.id)
         {
-          // XXX
-          // for now, all the user's devices receive notifications; trophonius
-          // needs to be improved so as to send notifications to devices rather
-          // than to users, at least for some types of notification
-
-          // ELLE_ASSERT(
-          //     false,
-          //     "got a transaction tr that does not involve my device: %s",
-          //     tr);
-          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
+          ELLE_ERR(
+            "got a transaction %s that does not involve my device", tr);
+          ELLE_ASSERT(false && "invalid transaction_id");
           return;
         }
         if (tr.status == plasma::TransactionStatus::created)
@@ -554,12 +549,14 @@ namespace surface
       {
         if (tr.recipient_device_id != this->_device.id)
         {
-          // ELLE_ASSERT(
-          //     false,
-          //     "got a transaction tr that does not involve my device: %s",
-          //     tr);
-          ELLE_WARN("XXX Should be an assert: got device unrelated tr");
-          return;
+          if (!tr.recipient_device_id.empty())
+          {
+            ELLE_ERR(
+              "got an accepted transaction that does not involve my device: %s",
+              tr);
+            ELLE_ASSERT(false && "invalid transaction_id");
+            return;
+          }
         }
         if (tr.status == plasma::TransactionStatus::started &&
             tr.accepted &&
@@ -588,7 +585,8 @@ namespace surface
       }
       else
       {
-        ELLE_WARN("got a transaction tr not related to me: %s", tr);
+        ELLE_ERR("got a transaction not related to me:", tr);
+        ELLE_ASSERT(false && "invalid transaction_id");
         return;
       }
     }

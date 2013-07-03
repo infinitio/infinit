@@ -43,6 +43,9 @@ namespace surface
 
       void
       _cancel() override;
+
+      void
+      _on_error() override;
     };
   }
 }

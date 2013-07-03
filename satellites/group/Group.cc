@@ -16,7 +16,6 @@
 #include <elle/serialize/PairSerializer.hxx>
 
 #include <etoile/gear/Identifier.hh>
-#include <etoile/portal/Manifest.hh>
 #include <etoile/abstract/Group.hh>
 
 #include <nucleus/neutron/Range.hh>
@@ -52,7 +51,7 @@ namespace satellite
   reactor::network::TCPSocket* Group::socket = nullptr;
   infinit::protocol::Serializer* Group::serializer = nullptr;
   infinit::protocol::ChanneledStream* Group::channels = nullptr;
-  etoile::portal::RPC* Group::rpcs = nullptr;
+  etoile::RPC* Group::rpcs = nullptr;
 
   void
   Group::display(nucleus::neutron::Fellow const& fellow)
@@ -114,11 +113,11 @@ namespace satellite
     Group::channels =
       new infinit::protocol::ChanneledStream(*reactor::Scheduler::scheduler(),
                                              *serializer);
-    Group::rpcs = new etoile::portal::RPC(*channels);
+    Group::rpcs = new etoile::RPC(*channels);
 
     // Authenticate.
-    if (!Group::rpcs->authenticate(phrase.pass))
-      throw reactor::Exception("authentication failed");
+    // if (!Group::rpcs->authenticate(phrase.pass))
+    //   throw reactor::Exception("authentication failed");
   }
 
   void

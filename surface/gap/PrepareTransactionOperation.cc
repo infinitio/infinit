@@ -45,11 +45,24 @@ namespace surface
 
       ELLE_DEBUG("running transaction '%s'", this->_transaction);
 
-      this->_network_manager.prepare(this->_transaction.network_id);
-      this->_network_manager.to_directory(
-        this->_transaction.network_id,
-        common::infinit::network_shelter(this->_self.id,
-                                         this->_transaction.network_id));
+      this->_reporter.store(
+        "preparing",
+        {
+          {MKey::value, this->_transaction.id},
+          {MKey::count, std::to_string(this->_transaction.files_count)},
+          {MKey::size, std::to_string(this->_transaction.total_size)},
+          {MKey::timestamp, std::to_string(this->_transaction.files_count)},
+        });
+
+      ELLE_DEBUG("prepare network and directories for %s",
+                 this->_transaction.network_id)
+      {
+        this->_network_manager.prepare(this->_transaction.network_id);
+        this->_network_manager.to_directory(
+          this->_transaction.network_id,
+          common::infinit::network_shelter(this->_self.id,
+                                           this->_transaction.network_id));
+      }
 
       this->_network_manager.launch(this->_transaction.network_id);
 
@@ -132,6 +145,13 @@ namespace surface
       ELLE_DEBUG_METHOD("");
 
       ELLE_DEBUG("cancelling transaction '%s'", this->name());
+    }
+
+    void
+    PrepareTransactionOperation::_on_error()
+    {
+      this->_transaction_manager.update(this->_transaction.id,
+                                        plasma::TransactionStatus::failed);
     }
   }
 }

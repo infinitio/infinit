@@ -61,6 +61,9 @@ namespace surface
       std::map<std::string, User*> _users;
       std::unordered_set<std::string> _connected_devices;
 
+      void
+      _on_resync();
+
       /*-------.
       | Access |
       `-------*/

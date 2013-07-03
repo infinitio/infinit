@@ -70,6 +70,7 @@ except()
   throw std::runtime_error("blablabla");
 }
 
+static
 void
 wait()
 {
@@ -292,6 +293,7 @@ test_parallel(bool sync)
 | Disconnection |
 `--------------*/
 
+static
 void
 disconnection_caller(reactor::Semaphore& lock,
                        bool sync,
@@ -314,6 +316,7 @@ disconnection_caller(reactor::Semaphore& lock,
   sched.current()->wait({&call_1, &call_2});
 }
 
+static
 int
 test_disconnection()
 {

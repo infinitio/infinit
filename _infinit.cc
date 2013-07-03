@@ -8,6 +8,7 @@
 #include <elle/log/TextLogger.hh>
 #include <elle/network/Interface.hh>
 #include <elle/network/Locus.hh>
+#include <elle/serialize/PairSerializer.hxx>
 #include <elle/serialize/extract.hh>
 #include <elle/utility/Parser.hh>
 
@@ -16,7 +17,18 @@
 #include <satellites/satellite.hh>
 
 #include <etoile/Etoile.hh>
+#include <etoile/Manifest.hh>
 #include <etoile/depot/Depot.hh>
+
+#include <etoile/abstract/Group.hh>
+#include <etoile/wall/Access.hh>
+#include <etoile/wall/Attributes.hh>
+#include <etoile/wall/Directory.hh>
+#include <etoile/wall/File.hh>
+#include <etoile/wall/Group.hh>
+#include <etoile/wall/Link.hh>
+#include <etoile/wall/Object.hh>
+#include <etoile/wall/Path.hh>
 
 #include <hole/Hole.hh>
 #include <hole/storage/Directory.hh>
@@ -32,6 +44,7 @@
 #include <CrashReporter.hh>
 #include <HoleFactory.hh>
 #include <Infinit.hh>
+#include <Portal.hh>
 #include <Program.hh>
 #include <version.hh>
 
@@ -169,6 +182,91 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
     new etoile::Etoile(agent::Agent::Identity.pair(),
                        hole.get(),
                        descriptor.meta().root()));
+  infinit::Portal<etoile::RPC> etoile_portal(
+    "portal", [&](etoile::RPC& rpcs)
+    {
+      using std::placeholders::_1;
+      using std::placeholders::_2;
+      using std::placeholders::_3;
+      using std::placeholders::_4;
+      rpcs.accessconsult = std::bind(&etoile::wall::Access::consult,
+                                     std::ref(*etoile.get()), _1, _2, _3);
+      rpcs.accessgrant = std::bind(&etoile::wall::Access::Grant,
+                                   std::ref(*etoile.get()), _1, _2, _3);
+      rpcs.accesslookup = std::bind(&etoile::wall::Access::lookup,
+                                    std::ref(*etoile.get()), _1, _2);
+      rpcs.accessrevoke = std::bind(&etoile::wall::Access::Revoke,
+                                    std::ref(*etoile.get()), _1, _2);
+      rpcs.groupadd = std::bind(&etoile::wall::Group::Add,
+                                std::ref(*etoile.get()), _1, _2);
+      rpcs.groupconsult = std::bind(&etoile::wall::Group::Consult,
+                                    std::ref(*etoile.get()), _1, _2, _3);
+      rpcs.groupcreate = std::bind(&etoile::wall::Group::Create,
+                                   std::ref(*etoile.get()), _1);
+      rpcs.groupdestroy = std::bind(&etoile::wall::Group::Destroy,
+                                    std::ref(*etoile.get()), _1);
+      rpcs.groupdiscard = std::bind(&etoile::wall::Group::Discard,
+                                    std::ref(*etoile.get()), _1);
+      rpcs.groupinformation = std::bind(&etoile::wall::Group::Information,
+                                        std::ref(*etoile.get()), _1);
+      rpcs.groupload = std::bind(&etoile::wall::Group::Load,
+                                 std::ref(*etoile.get()), _1);
+      rpcs.grouplookup = std::bind(&etoile::wall::Group::Lookup,
+                                   std::ref(*etoile.get()), _1, _2);
+      rpcs.groupremove = std::bind(&etoile::wall::Group::Remove,
+                                   std::ref(*etoile.get()), _1, _2);
+      rpcs.groupstore = std::bind(&etoile::wall::Group::Store,
+                                  std::ref(*etoile.get()), _1);
+      rpcs.objectload = std::bind(&etoile::wall::Object::load,
+                                  std::ref(*etoile.get()), _1);
+      rpcs.objectinformation = std::bind(&etoile::wall::Object::information,
+                                         std::ref(*etoile.get()), _1);
+      rpcs.objectdiscard = std::bind(&etoile::wall::Object::discard,
+                                     std::ref(*etoile.get()), _1);
+      rpcs.objectstore = std::bind(&etoile::wall::Object::store,
+                                   std::ref(*etoile.get()), _1);
+      rpcs.fileload = std::bind(&etoile::wall::File::load,
+                                std::ref(*etoile.get()), _1);
+      rpcs.filecreate = std::bind(&etoile::wall::File::create,
+                                  std::ref(*etoile.get()));
+      rpcs.fileread = std::bind(&etoile::wall::File::read,
+                                std::ref(*etoile.get()), _1, _2, _3);
+      rpcs.filewrite = std::bind(&etoile::wall::File::write,
+                                 std::ref(*etoile.get()), _1, _2, _3);
+      rpcs.filediscard = std::bind(&etoile::wall::File::discard,
+                                   std::ref(*etoile.get()), _1);
+      rpcs.filestore = std::bind(&etoile::wall::File::store,
+                                 std::ref(*etoile.get()), _1);
+      rpcs.linkcreate = std::bind(&etoile::wall::Link::create,
+                                  std::ref(*etoile.get()));
+      rpcs.linkbind = std::bind(&etoile::wall::Link::bind,
+                                std::ref(*etoile.get()), _1, _2);
+      rpcs.linkresolve = std::bind(&etoile::wall::Link::resolve,
+                                   std::ref(*etoile.get()), _1);
+      rpcs.linkstore = std::bind(&etoile::wall::Link::store,
+                                 std::ref(*etoile.get()), _1);
+      rpcs.directorycreate = std::bind(&etoile::wall::Directory::create,
+                                       std::ref(*etoile.get()));
+      rpcs.directoryload = std::bind(&etoile::wall::Directory::load,
+                                     std::ref(*etoile.get()), _1);
+      rpcs.directoryadd = std::bind(&etoile::wall::Directory::add,
+                                    std::ref(*etoile.get()), _1, _2, _3);
+      rpcs.directoryconsult = std::bind(&etoile::wall::Directory::consult,
+                                        std::ref(*etoile.get()), _1, _2, _3);
+      rpcs.directorydiscard = std::bind(&etoile::wall::Directory::discard,
+                                        std::ref(*etoile.get()), _1);
+      rpcs.directorystore = std::bind(&etoile::wall::Directory::store,
+                                      std::ref(*etoile.get()), _1);
+      rpcs.pathresolve = std::bind(&etoile::wall::Path::resolve,
+                                   std::ref(*etoile.get()), _1);
+      rpcs.attributesset = std::bind(&etoile::wall::Attributes::set,
+                                     std::ref(*etoile.get()), _1, _2, _3);
+      rpcs.attributesget = std::bind(&etoile::wall::Attributes::get,
+                                     std::ref(*etoile.get()), _1, _2);
+      rpcs.attributesfetch = std::bind(&etoile::wall::Attributes::fetch,
+                                       std::ref(*etoile.get()), _1);
+    });
+
 #ifdef INFINIT_HORIZON
   horizon::etoile(etoile.get());
 #endif

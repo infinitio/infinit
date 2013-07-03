@@ -34,21 +34,20 @@ namespace surface
       try
       {
         this->_notify();
-        while (this->_infinit_instance_manager.exists(network_id))
-        {
-          tr = this->_transaction_manager.one(this->_transaction_id);
-          if (tr.status != plasma::TransactionStatus::started)
-            return;
-          if (this->cancelled())
-            return;
-          ::sleep(1);
-        }
-        if (!this->_infinit_instance_manager.exists(network_id))
-        {
-          this->_transaction_manager.update(
-            this->_transaction_id,
-            plasma::TransactionStatus::started);
-        }
+        // XXX This awaits the transaction to be terminated
+        //while (this->_infinit_instance_manager.exists(network_id))
+        //{
+        //  tr = this->_transaction_manager.one(this->_transaction_id);
+        //  if (tr.status != plasma::TransactionStatus::started)
+        //    return;
+        //  if (this->cancelled())
+        //    return;
+        //  ::sleep(1);
+        //}
+        //if (!this->_infinit_instance_manager.exists(network_id))
+        //{
+        //  throw elle::Exception{"infinit instance does not exist anymore"};
+        //}
       }
       catch (...)
       {
@@ -56,6 +55,14 @@ namespace surface
                  elle::exception_string());
         throw;
       }
+    }
+
+    void
+    UploadOperation::_on_error()
+    {
+      this->_transaction_manager.update(
+        this->_transaction_id,
+        plasma::TransactionStatus::failed);
     }
   }
 }

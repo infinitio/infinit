@@ -14,7 +14,6 @@ using namespace infinit;
 
 #include <etoile/gear/Identifier.hh>
 #include <etoile/path/Chemin.hh>
-#include <etoile/portal/Manifest.hh>
 
 #include <nucleus/neutron/Range.hh>
 #include <nucleus/neutron/Record.hh>
@@ -38,7 +37,7 @@ namespace satellite
   reactor::network::TCPSocket* Access::socket = nullptr;
   infinit::protocol::Serializer* Access::serializer = nullptr;
   infinit::protocol::ChanneledStream* Access::channels = nullptr;
-  etoile::portal::RPC* Access::rpcs = nullptr;
+  etoile::RPC* Access::rpcs = nullptr;
 
   /// Ward helper to make sure objects are discarded on errors.
   class Ward
@@ -125,10 +124,10 @@ namespace satellite
     Access::channels =
       new infinit::protocol::ChanneledStream(*reactor::Scheduler::scheduler(),
                                              *serializer);
-    Access::rpcs = new etoile::portal::RPC(*channels);
+    Access::rpcs = new etoile::RPC(*channels);
 
-    if (!Access::rpcs->authenticate(phrase.pass))
-      throw reactor::Exception("unable to authenticate to Etoile");
+    // if (!Access::rpcs->authenticate(phrase.pass))
+    //   throw reactor::Exception("unable to authenticate to Etoile");
   }
 
   void

@@ -11,6 +11,18 @@ public:
     plasma::trophonius::Client(host, port,
                                [=]() {on_connection();})
   {}
+
+  int
+  ping_period_get() const
+  {
+    return this->ping_period().total_seconds();
+  }
+
+  void
+  ping_period_set(int period)
+  {
+    this->ping_period(boost::posix_time::seconds(period));
+  }
 };
 
 struct NotificationConverter
@@ -21,8 +33,20 @@ struct NotificationConverter
 };
 
 to_python_converter<std::unique_ptr<plasma::trophonius::Notification>,
-                    NotificationConverter> converter;
+                    NotificationConverter> notification_converter;
 
+struct NotificationTypeConverter
+{
+  static
+  PyObject*
+  convert(plasma::trophonius::NotificationType type)
+  {
+    return incref(object(elle::sprintf("%s", type)).ptr());
+  }
+};
+
+to_python_converter<plasma::trophonius::NotificationType,
+                    NotificationTypeConverter> notificationtype_converter;
 
 using plasma::trophonius::Notification;
 using plasma::trophonius::UserStatusNotification;
@@ -40,10 +64,13 @@ extern "C"
 BOOST_PYTHON_MODULE(plasma)
 {
   class_<Client, boost::noncopyable>(
-    "Client", init< std::string const&, uint16_t, object >())
+    "Trophonius", init<std::string const&, uint16_t, object>())
     .def("connect", &Client::connect)
     .def("has_notification", &Client::has_notification)
     .def("poll", &Client::poll)
+    .add_property("retries", &Client::reconnected)
+    .add_property("ping_period",
+                  &Client::ping_period_get, &Client::ping_period_set)
     ;
 
   class_<plasma::trophonius::Notification>(

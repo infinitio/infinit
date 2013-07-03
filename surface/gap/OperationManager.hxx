@@ -70,7 +70,7 @@ namespace surface
          }
          catch (...)
          {
-           ELLE_ERR("LOGIC ERROR: %s", this->_exception_string());
+           ELLE_ERR("LOGIC ERROR: %s", elle::exception_string());
          }
 
          try
@@ -92,7 +92,7 @@ namespace surface
          catch (...)
          {
            ELLE_ERR("couldn't join the operation's thread of %s: %s",
-                    this->_exception_string(),
+                    elle::exception_string(),
                     this->_name);
          }
        }
@@ -107,13 +107,16 @@ namespace surface
          try
          {
            this->_succeeded = false;
-           ELLE_TRACE("Running long operation: %s", this->_name);
+           ELLE_TRACE("running long operation: %s", this->_name);
            this->_run();
            this->_succeeded = true;
          }
          catch (...)
          {
            this->_exception = std::current_exception();
+           ELLE_ERR("store an exception of operation %s: %s",
+                    this->_name,
+                    elle::exception_string());
          }
 
          if (!this->_succeeded)
@@ -143,7 +146,7 @@ namespace surface
            ELLE_ERR("%s handler for operation %s failed: %s",
                     this->_succeeded ? "success" : "error",
                     this->_name,
-                    this->_exception_string());
+                    elle::exception_string());
          }
        }
      };

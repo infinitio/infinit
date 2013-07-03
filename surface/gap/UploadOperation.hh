@@ -36,6 +36,9 @@ namespace surface
 
       void
       _run() override;
+
+      void
+      _on_error() override;
     };
   }
 }

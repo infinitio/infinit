@@ -32,12 +32,17 @@ class Message(object):
         self.type = type
 
 class Application(object):
-    def __init__(self, ip="127.0.0.1",
-            port=conf.LISTEN_TCP_PORT,
-            ssl_port=conf.LISTEN_SSL_PORT,
-            logfile=sys.stderr,
-            meta_url=pythia.constants.DEFAULT_SERVER,
-            runtime_dir=None):
+    def __init__(self,
+                 ip = "127.0.0.1",
+                 port = conf.LISTEN_TCP_PORT,
+                 ssl_port = conf.LISTEN_SSL_PORT,
+                 logfile = sys.stderr,
+                 meta_url = pythia.constants.DEFAULT_SERVER,
+                 runtime_dir = None,
+                 timeout = 60):
+        # XXX Trophonius timeout is linked to plasma/trophonius/Client ping
+        # interval. As such, this value must always be greater than the client
+        # ping interval.
         self.ip = ip
         self.port = port
         self.logfile = logfile
@@ -45,6 +50,7 @@ class Application(object):
         self.clients = dict()
         self.meta_url = meta_url
         self.runtime_dir = runtime_dir
+        self.timeout = timeout
         if HAVE_SETPROCTITLE:
             setproctitle.setproctitle("Trophonius")
 

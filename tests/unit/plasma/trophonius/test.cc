@@ -18,6 +18,7 @@
 
 #include <plasma/trophonius/Client.hh>
 
+static
 void
 sleep(int sec)
 {

@@ -22,6 +22,14 @@ parser.add_argument(
     '--port', type = int, default = meta.conf.TROPHONIUS_PORT
 )
 
+# XXX Trophonius timeout is linked to plasma/trophonius/Client ping interval.
+# As such, this value must always be greater than the client ping interval.
+parser.add_argument(
+    '--timeout',
+    type = int,
+    default = 60
+)
+
 parser.add_argument(
     '--host',
     default = meta.conf.TROPHONIUS_HOST
@@ -53,6 +61,7 @@ if __name__ == '__main__':
         port = args.port,
         ssl_port = args.control_port,
         meta_url = args.meta_url,
-        runtime_dir = args.runtime_dir
+        runtime_dir = args.runtime_dir,
+        timeout = args.timeout,
     )
     application.run()

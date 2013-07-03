@@ -77,23 +77,23 @@ namespace surface
 
     public:
       typedef
-        std::function<void (NewSwaggerNotification const&)>
+        std::function<void(NewSwaggerNotification const&)>
         NewSwaggerNotificationCallback;
 
       typedef
-        std::function<void (UserStatusNotification const&)>
+        std::function<void(UserStatusNotification const&)>
         UserStatusNotificationCallback;
 
       typedef
-        std::function<void (TransactionNotification const&, bool)>
+        std::function<void(TransactionNotification const&, bool)>
         TransactionNotificationCallback;
 
       typedef
-        std::function<void (MessageNotification const&)>
+        std::function<void(MessageNotification const&)>
         MessageNotificationCallback;
 
       typedef
-        std::function<void (NetworkUpdateNotification const&)>
+        std::function<void(NetworkUpdateNotification const&)>
         NetworkUpdateNotificationCallback;
 
     public:
@@ -111,6 +111,23 @@ namespace surface
 
       void
       network_update_callback(NetworkUpdateNotificationCallback const& cb);
+
+      /// Fire notification manually.
+      void
+      fire_callbacks(Notification const& notif,
+                     bool const is_new);
+
+    //
+    // ---------- Resync callbacks --------------------------------------------
+    //
+    public:
+      typedef std::function<void(void)> ResyncCallback;
+    private:
+      std::list<ResyncCallback> _resync_callbacks;
+    public:
+      /// Add a callback to be notified when a resynchronization is needed.
+      void
+      add_resync_callback(ResyncCallback const& cb);
 
     public:
       size_t

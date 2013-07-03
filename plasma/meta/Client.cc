@@ -554,19 +554,14 @@ namespace plasma
     }
 
     PullNotificationResponse
-    Client::pull_notifications(int count, int offset) const
+    Client::pull_notifications(int const count,
+                               int const offset) const
     {
-      json::Dictionary request{std::map<std::string, std::string>
-      {
-      }};
-
+      json::Dictionary request{};
       request["count"] = count;
       request["offset"] = offset;
 
-      auto res = this->_post<PullNotificationResponse>("/notification/get",
-                                                              request);
-
-      return res;
+      return this->_post<PullNotificationResponse>("/notifications", request);
     }
 
     ReadNotificationResponse

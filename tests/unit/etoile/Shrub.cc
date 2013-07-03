@@ -7,6 +7,7 @@
 
 #include <etoile/shrub/Shrub.hh>
 
+static
 void
 test()
 {

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <boost/filesystem.hpp>
+#include "Exception.hh"
 
 #include <HoleFactory.hh>
 
