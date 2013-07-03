@@ -101,10 +101,11 @@ class TrophoniusNotify(Notifier):
             return
         for k in ['notifications', 'old_notifications']:
             to_remove = []
-            for idx, n in enumerate(user[k]):
+            l = user.get(k, [])
+            for idx, n in enumerate(l):
                 if n['notification_type'] == TRANSACTION and \
                    n['_id'] == msg['_id']:
                     to_remove.append(idx)
             to_remove.reverse()
             for idx in to_remove:
-                user[k].pop(idx)
+                l.pop(idx)
