@@ -94,7 +94,6 @@ def configure(cxx_toolkit = None,
 
   VersionGenerator(git, version)
 
-
   # OpenSSL
   openssl = None
 
@@ -1214,6 +1213,11 @@ def configure(cxx_toolkit = None,
   tests_cxx_config.lib_path_runtime('../lib')
   tests_cxx_config += boost.config_test()
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib] + udt_libs
+
+  walrus = drake.copy(drake.node('tests/unit/walrus.py'), 'lib/python', 'tests/unit')
+  Walrus = drake.copy(drake.node('tests/unit/Walrus.py'), 'lib/python', 'tests/unit')
+  build << walrus
+  build << Walrus
 
   tests_src_n_lib = [
     ('tests/testing_tests.cc', []),
