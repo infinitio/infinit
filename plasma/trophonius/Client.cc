@@ -201,7 +201,6 @@ namespace plasma
     {
       _impl->connected = false;
       _impl->socket.close(err);
-      this->_reconnected++;
     }
 
     void
@@ -211,6 +210,7 @@ namespace plasma
       this->connect(_impl->user_id,
                     _impl->user_token,
                     _impl->user_device_id);
+      this->_reconnected++;
     }
 
     void
@@ -230,15 +230,24 @@ namespace plasma
       {
         try
         {
-          ELLE_WARN("no message from Trophonius for too long.");
-          ELLE_TRACE("trying to reconnect");
-          this->_reconnect();
+          if (!_impl->ping_received)
+          {
+            ELLE_WARN("%s: no message from Trophonius for too long", *this);
+          }
+          if (!_impl->connected)
+          {
+            ELLE_WARN("%s: client has been disconnected from Trophonius", *this);
+          }
+          ELLE_TRACE("trying to reconnect")
+          {
+            this->_reconnect();
+          }
           _impl->last_error = boost::system::error_code{};
           ELLE_TRACE("reconnected to Trophonius successfully");
         }
         catch (std::exception const&)
         {
-          ELLE_WARN("Couldn't reconnect to tropho: %s",
+          ELLE_WARN("couldn't reconnect to tropho: %s",
                     elle::exception_string());
         }
       }
