@@ -253,7 +253,10 @@ namespace surface
       auto swagger = this->one(notif.user_id);
       this->swaggers(); // force up-to-date swaggers
       this->_swaggers.insert(swagger.id);
-      ELLE_DEBUG("%s's status changed to %s", swagger, notif.status);
+      ELLE_DEBUG("%s's (id: %s) status changed to %s",
+                 swagger.fullname,
+                 swagger.id,
+                 notif.status);
       ELLE_ASSERT(notif.status == gap_user_status_online ||
                   notif.status == gap_user_status_offline);
 
