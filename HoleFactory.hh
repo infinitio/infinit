@@ -14,6 +14,8 @@ namespace infinit
                elle::Passport const& passport,
                elle::Authority const& authority,
                std::vector<elle::network::Locus> const& members,
+               std::string const& host = "",
+               uint16_t port = 0, // XXX: Ugly, we should use boost::optional.
                std::string const& token = "");
 }
 

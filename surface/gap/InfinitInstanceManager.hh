@@ -51,6 +51,8 @@ namespace surface
       std::thread thread;
 
       InfinitInstance(std::string const& user_id,
+                      std::string const& meta_host,
+                      uint16_t meta_port,
                       std::string const& token,
                       std::string const& network_id,
                       lune::Identity const& identity,
@@ -66,8 +68,11 @@ namespace surface
     private:
       typedef std::unique_ptr<InfinitInstance> InfinitInstancePtr;
       std::map<std::string, InfinitInstancePtr> _instances;
-      std::string _user_id;
-      ELLE_ATTRIBUTE_RW(std::string, token);
+      ELLE_ATTRIBUTE(std::string, user_id);
+      ELLE_ATTRIBUTE(std::string, meta_host);
+      ELLE_ATTRIBUTE(uint16_t, meta_port);
+      ELLE_ATTRIBUTE(std::string, token);
+
 
       /*-------------.
       | Construction |
@@ -75,6 +80,8 @@ namespace surface
     public:
       explicit
       InfinitInstanceManager(std::string const& user_id,
+                             std::string const& meta_host,
+                             uint16_t meta_port,
                              std::string const& token);
 
     public:
@@ -112,7 +119,6 @@ namespace surface
                    std::function<void ()> success_callback,
                    std::function<void ()> failure_callback);
 
-
       void
       download_files(std::string const& network_id,
                      nucleus::neutron::Subject const& subject,
@@ -133,8 +139,6 @@ namespace surface
 
       InfinitInstance const*
       _instance_for_file(std::string const& path);
-
-
 
     /*----------.
     | Printable |

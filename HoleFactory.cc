@@ -81,6 +81,8 @@ namespace infinit
                elle::Passport const& passport,
                elle::Authority const& authority,
                std::vector<elle::network::Locus> const& members,
+               std::string const& _meta_host,
+               uint16_t _meta_port,
                std::string const& token)
   {
     switch (descriptor.meta().model().type)
@@ -168,9 +170,14 @@ namespace infinit
           // Create the hole.
           std::unique_ptr<hole::Hole> hole(slug);
 
-          ELLE_TRACE("send addresses to meta")
+          std::string meta_host = _meta_host.empty() ? common::meta::host() :
+                                                       _meta_host;
+          uint16_t meta_port = (_meta_port == 0) ? common::meta::port() :
+                                                   _meta_port;
+          ELLE_TRACE_SCOPE("publish breached addresses to meta(%s,%s)",
+                           meta_host, meta_port);
           {
-            plasma::meta::Client client(common::meta::host(), common::meta::port());
+            plasma::meta::Client client(meta_host, meta_port);
             try
             {
               std::vector<std::pair<std::string, uint16_t>> addresses;

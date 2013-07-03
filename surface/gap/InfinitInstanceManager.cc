@@ -34,6 +34,8 @@ namespace surface
   namespace gap
   {
     InfinitInstance::InfinitInstance(std::string const& user_id,
+                                     std::string const& meta_host,
+                                     uint16_t meta_port,
                                      std::string const& token,
                                      std::string const& network_id,
                                      lune::Identity const& identity,
@@ -73,6 +75,8 @@ namespace surface
                                              passport,
                                              Infinit::authority(),
                                              {},
+                                             meta_host,
+                                             meta_port,
                                              token);
 
           this->etoile.reset(
@@ -83,11 +87,15 @@ namespace surface
     }
 
     InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id,
-                                                   std::string const& token)
-      : _user_id{user_id}
-      , _token{token}
+                                                   std::string const& meta_host,
+                                                   uint16_t meta_port,
+                                                   std::string const& token):
+      _user_id{user_id},
+      _meta_host(meta_host),
+      _meta_port(meta_port),
+      _token{token}
     {
-      ELLE_TRACE_METHOD(user_id);
+      ELLE_TRACE_METHOD(user_id, meta_host, meta_port, token);
     }
 
     InfinitInstanceManager::~InfinitInstanceManager()
@@ -125,7 +133,8 @@ namespace surface
 
       std::unique_ptr<InfinitInstance> instance(
         new InfinitInstance(
-          this->_user_id, this->_token, network_id, identity, descriptor_digest));
+          this->_user_id, this->_meta_host, this->_meta_port, this->_token,
+          network_id, identity, descriptor_digest));
 
       this->_instances.insert(std::make_pair(network_id, std::move(instance)));
     }

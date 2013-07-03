@@ -170,7 +170,7 @@ namespace surface
       _google_reporter(google_reporter),
       _self(me),
       _device(device),
-      _infinit_instance_manager{me.id, meta.token()}
+      _infinit_instance_manager{me.id, this->_meta.host(), this->_meta.port(), this->_meta.token()}
     {
       ELLE_TRACE_METHOD("");
     }
