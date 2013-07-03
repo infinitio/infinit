@@ -38,7 +38,8 @@ except:
 try:
     meta = trophonius.FakeMeta()
     with meta:
-        tropho = trophonius.Trophonius(meta_port = meta.port, timeout=5)
+        tropho = trophonius.Trophonius(meta_port = meta.port,
+                                       timeout = 3)
         with tropho:
             meta_client = pythia.Client(server = meta.url)
             res = meta_client.post('/user/login', {
@@ -48,12 +49,14 @@ try:
             client = plasma.Trophonius(tropho.host, tropho.port,
                                        lambda: print('connected'))
             client.connect(res['_id'], res['token'], 'device')
-            for i in range(30):
+            for i in range(15):
                 notif = client.poll()
                 if notif is not None:
                     print(notif)
-                time.sleep(2)
-            assert client.retries != 0
+                time.sleep(1)
+            if client.retries != 4:
+                raise Exception('client should have reconnected 3 '
+                                'times, not %s' % client.retries)
             print("quiting")
 except:
     print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
