@@ -115,7 +115,7 @@ class Trophonius(basic.LineReceiver):
             else:
                 s["response_details"] = "{}".format(response_matrix[res])
             message = json.dumps(s)
-            print("sending message from", self, "to", self.transport.getPeer(), ":", message)
+            log.msg("sending message from", self, "to", self.transport.getPeer(), ":", message)
             self.sendLine("{}".format(message))
 
     def handle_PING(self, line):
@@ -123,7 +123,6 @@ class Trophonius(basic.LineReceiver):
         if data["notification_type"] == 208:
             if self._alive_service is not None and \
                self._alive_service.active():
-                print("reset alive service")
                 timeout = self.factory.application.timeout
                 self._alive_service.reset(timeout)
 
