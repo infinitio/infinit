@@ -80,18 +80,20 @@ class Read(Page):
         if not self.user:
             return self.error(error.NOT_LOGGED_IN)
 
-        self._user['notifications'].reverse() # XXX remove
+        self.user['notifications'].reverse() # XXX remove
         old = []
         new = []
-        for n in self._user['notifications']:
+        for n in self.user['notifications']:
             if n['notification_type'] == notifier.TRANSACTION and \
                n['status'] not in [CANCELLED, FAILED, FINISHED]:
                 new.append(n)
             else:
                 old.append(n)
 
-        self._user['old_notifications'].insert(0, old)
-        self._user['notifications'] = new
+
+        old.extend(self.user['old_notifications'])
+        self.user['old_notifications'] = old
+        self.user['notifications'] = new
 
         database.users().save(self._user)
 
