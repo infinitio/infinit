@@ -41,7 +41,8 @@ namespace infinit
                  std::vector<elle::network::Locus> const& members,
                  int port,
                  reactor::Duration connection_timeout,
-                 std::unique_ptr<reactor::network::UDPSocket> socket):
+                 std::unique_ptr<reactor::network::UDPSocket> socket,
+                 std::unique_ptr<reactor::Thread> heartbeat):
       Super(storage, passport, authority,
             protocol, members, port, connection_timeout, std::move(socket)),
       _portal(
@@ -57,11 +58,21 @@ namespace infinit
                                      std::placeholders::_1,
                                      std::placeholders::_2);
         }
-        )
+        ),
+      _heartbeat(std::move(heartbeat))
     {}
 
+    ~PortaledSlug()
+    {
+      if (this->_heartbeat)
+        this->_heartbeat->terminate_now();
+    }
 
     Portal<hole::implementations::slug::control::RPC> _portal;
+
+  private:
+    ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, heartbeat);
+
   };
 
   std::unique_ptr<hole::Hole>
@@ -143,14 +154,16 @@ namespace infinit
           }
 
           // If the punch succeed, we start the heartbeat thread.
+          std::unique_ptr<reactor::Thread> heartbeat;
           if (socket)
-            heartbeat::start(*socket,
-                             common::heartbeat::host(),
-                             common::heartbeat::port());
+            heartbeat.reset(heartbeat::start(*socket,
+                                             common::heartbeat::host(),
+                                             common::heartbeat::port()));
 
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,
-                                        std::move(socket));
+                                        std::move(socket),
+                                        std::move(heartbeat));
 
           // Create the hole.
           std::unique_ptr<hole::Hole> hole(slug);

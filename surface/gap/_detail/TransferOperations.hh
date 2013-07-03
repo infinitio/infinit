@@ -32,6 +32,12 @@ namespace surface
                 nucleus::neutron::Subject const& subject,
                 std::string const& target);
       }
+
+      namespace progress
+      {
+        float
+        progress(etoile::Etoile& etoile);
+      }
     }
   }
 }

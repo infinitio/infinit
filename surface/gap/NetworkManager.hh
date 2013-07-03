@@ -124,13 +124,22 @@ namespace surface
       /// Upload files (wrap instance_manager.upload_files)
       void
       upload_files(std::string const& network_id,
-                   std::unordered_set<std::string> const& files);
+                   std::unordered_set<std::string> const& files,
+                   std::function<void ()> success_callback,
+                   std::function<void ()> failure_callback);
+
 
       /// Download files into path 'destination' (wrap).
       void
       download_files(std::string const& network_id,
                      std::string const& public_key,
-                     std::string const& destination);
+                     std::string const& destination,
+                     std::function<void ()> success_callback,
+                     std::function<void ()> failure_callback);
+
+      /// Get the progress on the current network.
+      float
+      progress(std::string const& network_id);
 
       /// Add a device to a network.
       void

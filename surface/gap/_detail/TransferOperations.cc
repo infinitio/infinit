@@ -48,7 +48,10 @@ namespace surface
 
         boost::filesystem::path p(path);
         std::string way = p.parent_path().generic_string();
+        if (way.empty()) way = std::string(1, elle::system::path::separator);
         std::string name = p.filename().generic_string();
+
+        ELLE_DEBUG("path: %s, way: %s, name: %s", p, way, name);
 
         // Resolve parent directory.
         etoile::path::Chemin chemin(etoile::wall::Path::resolve(etoile, way));
@@ -384,7 +387,7 @@ namespace surface
           }
           else if (boost::filesystem::is_regular_file(path) == true)
           {
-            // Transfor a single file.
+            // Transfer a single file.
             std::string root(path.parent_path().string());
             std::string base(path.string().substr(root.length()));
 
@@ -407,7 +410,7 @@ namespace surface
         {
           elle::Natural64 size = 0;
           for (auto const& item: items)
-            size += store(etoile, descriptor, subject, item);
+            size += store(etoile, descriptor, subject, boost::filesystem::canonical(item).string());
 
           store_size(etoile, size);
         }
@@ -533,6 +536,8 @@ namespace surface
         {
           ELLE_TRACE_SCOPE("%s: progress (+%s)", etoile, increment);
 
+          ELLE_ASSERT_NEQ(size, 0u);
+
           // The difference between the current progress and the last
           // one which has been pushed in the attributes. Once this
           // difference is reached, the attributes are updated.
@@ -546,9 +551,11 @@ namespace surface
           // Increment the progress counter.
           _progress += increment;
 
+          ELLE_DEBUG("size: %s, stale %s, increment %s, progress: %s (stale + increment)",
+                     size, stale, increment, _progress);
+
           // Compute the increment in terms of pourcentage of progress.
-          ELLE_ASSERT_NEQ(size, 0u);
-          elle::Real difference = (_progress - stale) * 100 / size;
+          elle::Real difference = (_progress - stale) * 100 / (float) size;
 
           ELLE_DEBUG("difference %s", difference);
 
@@ -671,7 +678,7 @@ namespace surface
                 // 1MB seems large enough for the performance to remain
                 // good while ensuring a smooth progress i.e no jump from
                 // 4% to 38% for reasonable large files.
-                std::streamsize N = 1048576;
+                std::streamsize N = 1500;
                 nucleus::neutron::Offset offset(0);
 
                 std::ofstream stream(path, std::ios::binary);
@@ -788,6 +795,110 @@ namespace surface
                    subject,
                    std::string(1, elle::system::path::separator),
                    target);
+        }
+      }
+
+      namespace progress
+      {
+        float
+        progress(etoile::Etoile& etoile)
+        {
+          ELLE_TRACE("%s: progress", etoile);
+
+          elle::Natural64 _size(0);
+          elle::Natural64 _progress(0);
+
+          // (1) Get the transfer size from the root directory.
+          {
+            // Resolve the path to the root directory.
+            etoile::path::Chemin chemin(
+              etoile::wall::Path::resolve(
+                etoile,
+                std::string(1, elle::system::path::separator)));
+
+            // Load the root directory.
+            etoile::gear::Identifier directory(
+              etoile::wall::Directory::load(etoile, chemin));
+
+            // Discard the guard at the end of the scope, don't abort this one.
+            elle::Finally discard_directory{[&] ()
+              {
+                etoile::wall::Directory::discard(etoile, directory);
+              }
+            };
+
+            // Then, retrieve the size of the transfer.
+            nucleus::neutron::Trait size(
+              etoile::wall::Attributes::get(etoile,
+                                            directory,
+                                            "infinit:transfer:size"));
+
+            if (size == nucleus::neutron::Trait::null())
+            {
+              ELLE_DEBUG("no 'size' attribute present");
+
+              throw std::runtime_error("no transfer size attribute present");
+            }
+
+            ELLE_DEBUG("'size' attribute retrieved: %s", size.value());
+
+            // Set the size variable.
+            _size = boost::lexical_cast<elle::Natural64>(size.value());
+          }
+
+          // (2) Get the progress attribute from the specific file.
+          {
+            elle::String root(elle::String(1, elle::system::path::separator) +
+                              ".progress");
+
+            std::unique_ptr<etoile::path::Chemin> chemin{};
+
+            try
+            {
+              // Resolve the file.
+              chemin.reset(
+                new etoile::path::Chemin(
+                  etoile::wall::Path::resolve(etoile, root)));
+            }
+            catch (...)
+            {
+              ELLE_WARN("%s: no '.progress' file present", etoile);
+              return 0.0f;
+            }
+
+            // Load the progress file.
+            etoile::gear::Identifier identifier(
+              etoile::wall::File::load(etoile, *chemin));
+
+            // Discard the guard a the end of the scope, don't abort this one.
+            elle::Finally discard_file{[&] ()
+              {
+                etoile::wall::File::discard(etoile, identifier);
+              }
+            };
+
+            // Retrieve the progress and size attributes.
+            nucleus::neutron::Trait progress(
+              etoile::wall::Attributes::get(etoile,
+                                            identifier,
+                                            "infinit:transfer:progress"));
+
+            if (progress == nucleus::neutron::Trait::null())
+            {
+              ELLE_DEBUG("no 'progress' attribute retrieved");
+
+              return 0.0f;
+            }
+
+            ELLE_DEBUG("'progress' attribute retrieved: %s", progress.value());
+
+            // Set the progress variable.
+            _progress = boost::lexical_cast<elle::Natural64>(progress.value());
+          }
+
+          float ratio = ((float) _progress / (float) _size);
+          ELLE_TRACE("%s: progress is %s", etoile, ratio);
+          return ratio;
         }
       }
     }

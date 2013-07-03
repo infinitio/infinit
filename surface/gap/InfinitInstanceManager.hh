@@ -124,12 +124,20 @@ namespace surface
 
       void
       upload_files(std::string const& network_id,
-                   std::unordered_set<std::string> items);
+                   std::unordered_set<std::string> items,
+                   std::function<void ()> success_callback,
+                   std::function<void ()> failure_callback);
+
 
       void
       download_files(std::string const& network_id,
                      nucleus::neutron::Subject const& subject,
-                     std::string const& destination_path);
+                     std::string const& destination_path,
+                     std::function<void ()> success_callback,
+                     std::function<void ()> failure_callback);
+
+      float
+      progress(std::string const& network_id);
 
       int
       connect_try(std::string const& network_id,
@@ -141,6 +149,8 @@ namespace surface
 
       InfinitInstance const*
       _instance_for_file(std::string const& path);
+
+
 
     /*----------.
     | Printable |

@@ -62,7 +62,7 @@ namespace surface
     {
       this->scheduler.mt_run<void>(
         elle::sprintf("initializer for %s", network_id),
-        [&] ()
+        [&]
         {
           elle::serialize::from_file(common::infinit::passport_path(user_id))
             >> this->passport;
@@ -71,7 +71,8 @@ namespace surface
                                              storage,
                                              passport,
                                              Infinit::authority(),
-                                             {});
+                                             {},
+                                             token);
 
           this->etoile.reset(
             new etoile::Etoile(this->identity.pair(),
@@ -134,6 +135,22 @@ namespace surface
       ELLE_TRACE_METHOD(network_id);
 
       ELLE_ASSERT(this->_instances.find(network_id) != this->_instances.end());
+
+      auto& instance = this->_instance(network_id);
+
+      instance.scheduler.mt_run<void>(
+        elle::sprintf("stop(%s)", network_id),
+        [&instance]
+        {
+          instance.etoile.reset();
+          instance.hole.reset();
+
+          instance.keep_alive.terminate();
+        });
+
+      instance.scheduler.terminate();
+
+      instance.thread.join();
       this->_instances.erase(network_id);
     }
 
@@ -156,12 +173,12 @@ namespace surface
 
       instance.scheduler.mt_run<void>(
         elle::sprintf("add_user for %s", network_id),
-        [&] ()
+        [&]
         {
           auto& etoile = *instance.etoile;
           auto identifier = etoile::wall::Group::Load(etoile, group);
 
-          elle::Finally discard{[&] ()
+          elle::Finally discard{[&]
             {
               etoile::wall::Group::Discard(etoile, identifier);
             }
@@ -186,14 +203,14 @@ namespace surface
 
       instance.scheduler.mt_run<void>(
         elle::sprintf("grant permissions for %s", network_id),
-        [&] ()
+        [&]
         {
           auto& etoile = *instance.etoile;
 
           etoile::path::Chemin chemin = etoile::wall::Path::resolve(etoile, "/");
           auto identifier = etoile::wall::Object::load(etoile, chemin);
 
-          elle::Finally discard{[&] ()
+          elle::Finally discard{[&]
             {
               etoile::wall::Object::discard(etoile, identifier);
             }
@@ -212,43 +229,93 @@ namespace surface
 
     void
     InfinitInstanceManager::upload_files(std::string const& network_id,
-                                         std::unordered_set<std::string> items)
+                                         std::unordered_set<std::string> items,
+                                         std::function<void ()> success_callback,
+                                         std::function<void ()> failure_callback)
+
     {
       ELLE_TRACE_SCOPE("%s: uploading  %s into network %s",
                        *this, items, network_id);
 
       auto& instance = this->_instance(network_id);
 
-      instance.scheduler.mt_run<void>(
-        elle::sprintf("upload files for %s", network_id),
-        [&] ()
-        {
-          auto& etoile = *instance.etoile;
+      new reactor::Thread(
+          instance.scheduler,
+          elle::sprintf("upload files for %s", network_id),
+          [&instance, items, success_callback, failure_callback, this]
+          {
+            auto& etoile = *instance.etoile;
 
-          nucleus::neutron::Subject subject;
-          subject.Create(instance.descriptor.meta().administrator_K());
+            nucleus::neutron::Subject subject;
+            subject.Create(instance.descriptor.meta().administrator_K());
 
-          operation_detail::to::send(etoile, instance.descriptor, subject, items);
-        });
+            try
+            {
+              operation_detail::to::send(etoile, instance.descriptor, subject, items);
+              ELLE_DEBUG("%s: copy succeed", *this);
+              success_callback();
+            }
+            catch (...)
+            {
+              ELLE_DEBUG("%s: copy failed", *this);
+              failure_callback();
+              throw;
+            }
+          },
+          true);
     }
 
     void
     InfinitInstanceManager::download_files(std::string const& network_id,
                                            nucleus::neutron::Subject const& subject,
-                                           std::string const& destination)
+                                           std::string const& destination,
+                                           std::function<void ()> success_callback,
+                                           std::function<void ()> failure_callback)
+
     {
       ELLE_TRACE_SCOPE("%s: download files from network %s into %s",
                        *this, network_id, destination);
 
       auto& instance = this->_instance(network_id);
 
-      instance.scheduler.mt_run<void>(
+      new reactor::Thread(
+        instance.scheduler,
         elle::sprintf("download files for %s", network_id),
-        [&] ()
+        [&instance, subject, destination, success_callback, failure_callback, this]
         {
           auto& etoile = *instance.etoile;
 
-          operation_detail::from::receive(etoile, instance.descriptor, subject, destination);
+          try
+          {
+            operation_detail::from::receive(etoile, instance.descriptor, subject, destination);
+            ELLE_DEBUG("%s: download succeeed", *this);
+            success_callback();
+          }
+          catch (...)
+          {
+            ELLE_DEBUG("%s: download failed", *this);
+            failure_callback();
+            throw;
+          }
+        },
+        true);
+    }
+
+    float
+    InfinitInstanceManager::progress(std::string const& network_id)
+    {
+      ELLE_DEBUG_SCOPE("%s: getting progress for network %s",
+                       *this, network_id);
+
+      auto& instance = this->_instance(network_id);
+
+      return instance.scheduler.mt_run<float>(
+        elle::sprintf("progress for %s", network_id),
+        [&] () -> float
+        {
+          auto& etoile = *instance.etoile;
+
+          return operation_detail::progress::progress(etoile);
         });
     }
 

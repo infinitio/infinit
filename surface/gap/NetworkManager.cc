@@ -508,18 +508,25 @@ namespace surface
 
     void
     NetworkManager::upload_files(std::string const& network_id,
-                                 std::unordered_set<std::string> const& files)
+                                 std::unordered_set<std::string> const& files,
+                                 std::function<void ()> success_callback,
+                                 std::function<void ()> failure_callback)
+
     {
       ELLE_TRACE_SCOPE("%s: uploading %s into network %s",
                        *this, files, network_id);
       this->_infinit_instance_manager.upload_files(network_id,
-                                                   files);
+                                                   files,
+                                                   success_callback,
+                                                   failure_callback);
     }
 
     void
     NetworkManager::download_files(std::string const& network_id,
                                    std::string const& public_key,
-                                   std::string const& destination)
+                                   std::string const& destination,
+                                   std::function<void ()> success_callback,
+                                   std::function<void ()> failure_callback)
     {
       ELLE_TRACE_SCOPE("%s: uploading files into network %s",
                        *this, network_id);
@@ -532,7 +539,18 @@ namespace surface
 
       this->_infinit_instance_manager.download_files(network_id,
                                                      subject,
-                                                     destination);
+                                                     destination,
+                                                     success_callback,
+                                                     failure_callback);
+    }
+
+    float
+    NetworkManager::progress(std::string const& network_id)
+    {
+      ELLE_TRACE_SCOPE("%s: getting progress for %s",
+                       *this, network_id);
+
+      return this->_infinit_instance_manager.progress(network_id);
     }
 
     static

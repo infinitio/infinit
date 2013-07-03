@@ -125,7 +125,6 @@ namespace surface
       if (files.empty())
         throw Exception(gap_no_file, "no files to send");
 
-
       auto total_size =
         [] (std::unordered_set<std::string> const& files) -> size_t
       {
@@ -163,14 +162,8 @@ namespace surface
         common::infinit::network_shelter(this->_self.id, network_id));
 
       plasma::meta::CreateTransactionResponse res;
-      ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
-                 this->_device.id,
-                 files.size(),
-                 first_file,
-                 size,
-                 recipient_id_or_email,
-                 network_name,
-                 network_id);
+      ELLE_DEBUG("Send %s (%sB) to %s via network %s",
+                 first_file, size, recipient_id_or_email, network_id);
 
       std::string transaction_id = "";
       try
@@ -217,90 +210,18 @@ namespace surface
       auto const& tr = this->one(id);
       auto const& instance_manager =
         this->_network_manager.infinit_instance_manager();
+
       if (tr.status == plasma::TransactionStatus::finished)
         return 1.0f;
       else if (tr.status != plasma::TransactionStatus::started)
         return 0.0f;
-      else if (this->_states[id].state != State::running)
+      // else if (this->_states[id].state != State::running)
+      //   return 0.0f;
+      else if (!instance_manager.exists(tr.network_id))
         return 0.0f;
-      else if (not instance_manager.exists(tr.network_id))
-        return 0.0f;
 
-      auto& progress = this->_progresses(
-        [&id] (TransactionProgressMap& map) -> TransactionProgress&
-        {
-          auto& ptr = map[id];
-          if (ptr == nullptr)
-            ptr = elle::make_unique<TransactionProgress>();
-          return *ptr;
-        }
-      );
-
-      if (progress.process == nullptr)
-      {
-        std::string const& progress_binary =
-          common::infinit::binary_path("8progress");
-        std::list<std::string> arguments{
-          "-n", tr.network_id,
-          "-u", this->_self.id,
-        };
-
-        ELLE_DEBUG("launch: %s %s", progress_binary,
-                   boost::algorithm::join(arguments, " "));
-
-        this->_progresses(
-          [&] (TransactionProgressMap&)
-          {
-            progress.process = elle::make_unique<elle::system::Process>(
-              binary_check_output_config("8progress", this->_self.id,
-                                         tr.network_id),
-              progress_binary,
-              arguments);
-          });
-      }
-
-      return this->_progresses(
-        [&] () -> float
-        {
-          if (progress.process == nullptr)
-            return 0.0f;
-          if (!progress.process->running())
-          {
-            if (progress.process->status() != 0)
-            {
-              progress.last_value = 0.0f;
-            }
-            else
-            {
-              int current_size = 0;
-              int total_size = 0;
-              std::stringstream ss;
-              ss << progress.process->read();
-              ss >> current_size >> total_size;
-              if (total_size == 0)
-                progress.last_value = 0.0f;
-              else
-                progress.last_value = float(current_size) / float(total_size);
-            }
-            progress.process.reset();
-
-            if (progress.last_value < 0)
-            {
-              ELLE_WARN("8progress returned a negative integer: %s", progress);
-              progress.last_value = 0;
-            }
-            else if (progress.last_value > 1.0f)
-            {
-              ELLE_WARN("8progress returned an integer greater than 1: %s",
-                        progress);
-              progress.last_value = 1.0f;
-            }
-          }
-          return progress.last_value;
-        }
-      );
+      return this->_network_manager.progress(tr.network_id);
     }
-
 
     void
     TransactionManager::update(std::string const& transaction_id,
@@ -727,12 +648,40 @@ namespace surface
         s.state = State::preparing;
         this->_states([&tr, &s] (StateMap& map) {map[tr.id] = s;});
 
-        this->_network_manager.upload_files(tr.network_id, s.files);
+        elle::metrics::Reporter& reporter = this->_reporter;
+
+        this->_network_manager.upload_files(
+          tr.network_id,
+          s.files,
+          [&reporter, tr, this]
+          {
+            reporter.store(
+              "transaction_prepared",
+              {{MKey::value, tr.id},
+                {MKey::network, tr.network_id},
+                {MKey::count, std::to_string(tr.files_count)},
+                {MKey::size, std::to_string(tr.total_size)}});
+
+            this->update(tr.id,
+                         plasma::TransactionStatus::started);
+
+          },
+          [&reporter, tr, this]
+          {
+            reporter.store(
+              "transaction_preparing_failed",
+              {{MKey::value, tr.id},
+                {MKey::network, tr.network_id},
+                {MKey::count, std::to_string(tr.files_count)},
+                {MKey::size, std::to_string(tr.total_size)}});
+
+            this->update(tr.id,
+                         plasma::TransactionStatus::failed);
+
+          });
 
         ELLE_DEBUG("%s: finished preparing %s locally for network %s",
                    *this, s.files, tr.network_id);
-
-        this->update(tr.id, plasma::TransactionStatus::started);
       }
     }
 
@@ -742,35 +691,6 @@ namespace surface
       ELLE_DEBUG_METHOD(transaction);
 
       auto s = this->_states[transaction.id];
-
-      // if (s.tries == 1) //XXX variable for that
-      // {
-      //   this->_meta.update_transaction(transaction.id,
-      //                                  plasma::TransactionStatus::failed);
-      //   this->_states->erase(transaction.id);
-      //   auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
-      //     std::chrono::system_clock::now().time_since_epoch());
-      //   auto timestamp_tr = std::chrono::duration<double>(transaction.timestamp);
-      //   double duration = timestamp_now.count() - timestamp_tr.count();
-      //   this->_reporter.store("transaction_transferring_fail",
-      //                         {{MKey::attempt, std::to_string(s.tries)},
-      //                          {MKey::duration, std::to_string(duration)},
-      //                          {MKey::network,transaction.network_id},
-      //                          {MKey::value, transaction.id}});
-      //   return;
-      // }
-
-      // // If the transaction is running, cancel it.
-      // if (s.state == State::running)
-      // {
-      //   if (this->status(s.operation) == OperationStatus::running)
-      //   {
-      //     ELLE_LOG("transfer %s had an error, restarting", transaction.id);
-      //     this->cancel_operation(s.operation);
-      //   }
-      //   s.state = State::preparing;
-      //   s.operation = 0;
-      // }
 
       if (s.state == State::preparing)
       {
@@ -815,13 +735,41 @@ namespace surface
                                                transaction.sender_device_id,
                                                transaction.recipient_device_id);
 
-        this->_network_manager.download_files(transaction.network_id,
-                                              this->_self.public_key,
-                                              this->_output_dir);
+        elle::metrics::Reporter& reporter = this->_reporter;
 
-        state.state = State::running;
-        this->_states(
-          [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
+        this->_network_manager.download_files(
+          transaction.network_id,
+          this->_self.public_key,
+          this->_output_dir,
+          [&reporter, transaction, this]
+          {
+            auto timestamp_now =
+              std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::system_clock::now().time_since_epoch());
+            auto timestamp_tr = std::chrono::duration<double>(
+              transaction.timestamp);
+            double duration = timestamp_now.count() - timestamp_tr.count();
+            reporter.store(
+              "transaction_transferred",
+              {{MKey::duration, std::to_string(duration)},
+                {MKey::value, transaction.id},
+                {MKey::network, transaction.network_id},
+                {MKey::count, std::to_string(transaction.files_count)},
+                {MKey::size, std::to_string(transaction.total_size)}});
+
+            this->update(transaction.id, plasma::TransactionStatus::finished);
+          },
+          [&reporter, transaction, this]
+          {
+            reporter.store(
+              "transaction_transferring_fail",
+              {{MKey::value, transaction.id},
+                {MKey::network, transaction.network_id},
+                {MKey::count, std::to_string(transaction.files_count)},
+                {MKey::size, std::to_string(transaction.total_size)}});
+
+            this->update(transaction.id, plasma::TransactionStatus::failed);
+          });
       }
       else
       {
