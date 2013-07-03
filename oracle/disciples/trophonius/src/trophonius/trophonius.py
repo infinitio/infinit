@@ -67,7 +67,7 @@ class Trophonius(basic.LineReceiver):
         log.msg("New connection from", self.transport.getPeer())
         self._ping_service = task.LoopingCall(self.sendLine,
                 json.dumps({"notification_type": 208}))
-        self._ping_service.start(30)
+        self._ping_service.start(self.factory.application.timeout / 2)
         timeout = self.factory.application.timeout
         self._alive_service = reactor.callLater(timeout, self._loseConnection)
 
