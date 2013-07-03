@@ -253,10 +253,10 @@ class Create(Page):
 
         device_ids = [transaction['sender_device_id']]
         recipient = database.users().find_one(database.ObjectId(recipient_id))
-        device_ids.extend(recipient['devices'])
         self.notifier.notify_some(
             notifier.TRANSACTION,
             device_ids = device_ids,
+            recipient_ids = [recipient['_id']],
             message = transaction,
             store = True,
         )
