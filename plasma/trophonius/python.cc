@@ -33,7 +33,20 @@ struct NotificationConverter
 };
 
 to_python_converter<std::unique_ptr<plasma::trophonius::Notification>,
-                    NotificationConverter> converter;
+                    NotificationConverter> notification_converter;
+
+struct NotificationTypeConverter
+{
+  static
+  PyObject*
+  convert(plasma::trophonius::NotificationType type)
+  {
+    return incref(object(elle::sprintf("%s", type)).ptr());
+  }
+};
+
+to_python_converter<plasma::trophonius::NotificationType,
+                    NotificationTypeConverter> notificationtype_converter;
 
 using plasma::trophonius::Notification;
 using plasma::trophonius::UserStatusNotification;
