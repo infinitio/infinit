@@ -25,6 +25,9 @@
 
 #include <fcntl.h>
 
+#define PLASMA_TROPHONIUS_PING_INTERVAL 30
+#define PLASMA_TROPHONIUS_PING_WINDOW 60
+
 ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 
 //- Notification serializers --------------------------------------------------
@@ -230,18 +233,19 @@ namespace plasma
       {
         try
         {
-          if (!_impl->ping_received)
+          if (_impl->ping_received == false)
           {
-            ELLE_WARN("%s: no message from Trophonius for too long", *this);
+            ELLE_WARN("%s: haven't received a ping from Trophonius in %s s",
+                      *this,
+                      PLASMA_TROPHONIUS_PING_WINDOW);
           }
-          if (!_impl->connected)
+          if (_impl->connected == false)
           {
-            ELLE_WARN("%s: client has been disconnected from Trophonius", *this);
+            ELLE_WARN("%s: client has been disconnected from Trophonius",
+                      *this);
           }
-          ELLE_TRACE("trying to reconnect")
-          {
-            this->_reconnect();
-          }
+          ELLE_TRACE("trying to reconnect");
+          this->_reconnect();
           _impl->last_error = boost::system::error_code{};
           ELLE_TRACE("reconnected to Trophonius successfully");
         }
@@ -304,7 +308,7 @@ namespace plasma
     Client::_restart_ping_timer()
     {
       _impl->ping_timer.expires_from_now(
-        boost::posix_time::seconds(30));
+        boost::posix_time::seconds(PLASMA_TROPHONIUS_PING_INTERVAL));
 
       _impl->ping_timer.async_wait(
         std::bind(&Client::_send_ping, this, std::placeholders::_1));
@@ -314,7 +318,7 @@ namespace plasma
     Client::_restart_connection_check_timer()
     {
       _impl->connection_checker.expires_from_now(
-        boost::posix_time::seconds(60));
+        boost::posix_time::seconds(PLASMA_TROPHONIUS_PING_WINDOW));
 
       _impl->connection_checker.async_wait(
           std::bind(&Client::_check_connection, this, std::placeholders::_1));
