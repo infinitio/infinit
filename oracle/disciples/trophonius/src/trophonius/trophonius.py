@@ -154,6 +154,7 @@ class Trophonius(basic.LineReceiver):
                 'user_id': self.id,
                 'device_id': self.device_id,
             })
+            log.msg("User", self.id, "is now connected with device", self.device_id)
 
             # Add the current client to the client list
             assert isinstance(self.factory.clients, dict)
@@ -185,10 +186,10 @@ class MetaTropho(basic.LineReceiver):
         self.factory = factory
 
     def connectionMade(self):
-        log.msg("Meta: New connection from", self.transport.getPeer())
+        pass #log.msg("Meta: New connection from", self.transport.getPeer())
 
     def connectionLost(self, reason):
-        log.msg("Meta: Connection lost with", self.transport.getPeer(), reason.getErrorMessage())
+        pass #log.msg("Meta: Connection lost with", self.transport.getPeer(), reason.getErrorMessage())
 
     def _send_res(self, res, msg=""):
         if isinstance(res, dict):
@@ -207,7 +208,7 @@ class MetaTropho(basic.LineReceiver):
         try:
             for device_id in device_ids:
                 if not device_id in self.factory.clients:
-                    log.msg("Device %s not connected" % device_id)
+                    #log.msg("Device %s not connected" % device_id)
                     continue
                 log.msg("Send %s to %s" % (line, device_id))
                 self.factory.clients[device_id].sendLine(str(line))
