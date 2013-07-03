@@ -96,7 +96,7 @@ class Read(Page):
         new = []
         for n in self.user['notifications']:
             if n['notification_type'] == notifier.TRANSACTION and \
-               n['status'] not in [CANCELLED, FAILED, FINISHED] and \
+               n['status'] not in [CANCELED, FAILED, FINISHED] and \
                self._get_transaction(n['transaction_id'])['status'] == n['status']:
                 new.append(n)
             else:
