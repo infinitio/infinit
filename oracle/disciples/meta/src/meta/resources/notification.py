@@ -76,25 +76,34 @@ class Read(Page):
 
     __pattern__ = "/notification/read"
 
+    def __init__(self):
+        self._transactions = {}
+
+    def _get_transaction(self, id):
+        id = database.ObjectId(id)
+        tr = self._transactions.get(id)
+        if tr is None:
+            tr = database.transactions().find_one(id)
+            self._transactions[id] = tr
+        return tr
+
     def GET(self):
         if not self.user:
             return self.error(error.NOT_LOGGED_IN)
-
         self.user['notifications'].reverse() # XXX remove
         old = []
         new = []
         for n in self.user['notifications']:
             if n['notification_type'] == notifier.TRANSACTION and \
-               n['status'] not in [CANCELLED, FAILED, FINISHED]:
+               n['status'] not in [CANCELLED, FAILED, FINISHED] and \
+               self._get_transaction(n['transaction_id'])['status'] == n['status']:
                 new.append(n)
             else:
                 old.append(n)
-
-
         old.extend(self.user['old_notifications'])
-        self.user['old_notifications'] = old
+        self.user['old_notifications'] = old[:10]
         self.user['notifications'] = new
 
-        database.users().save(self._user)
+        database.users().save(self.user)
 
         return self.success()
