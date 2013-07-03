@@ -309,6 +309,7 @@ namespace plasma
 
       _impl->connection_checker.async_wait(
           std::bind(&Client::_check_connection, this, std::placeholders::_1));
+      _impl->ping_received = false;
     }
 
     void
@@ -346,20 +347,16 @@ namespace plasma
     {
       if (err || bytes_transferred == 0)
       {
-        _impl->connected = false;
-        if (err == boost::asio::error::eof ||
-            err == boost::asio::error::connection_reset)
+        if (err == boost::asio::error::operation_aborted)
         {
-          ELLE_TRACE("%s: disconnected from Trophonius, trying to reconnect",
-                     *this);
-          this->_reconnect();
+          ELLE_WARN("%s: socket read aborted, tropho disconnected", *this);
+          _impl->connected = false;
+          return;
         }
-        else if (err)
-        {
-          ELLE_WARN("%s: something went wrong while reading from socket: %s",
-                    *this, err.message());
-          _impl->last_error = err;
-        }
+        ELLE_WARN("%s: something went wrong while reading from socket: %s",
+                  *this, err.message());
+        _impl->last_error = err;
+        this->_reconnect();
         return;
       }
 
