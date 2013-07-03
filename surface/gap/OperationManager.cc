@@ -82,15 +82,17 @@ namespace surface
     {
       ELLE_TRACE_METHOD(id);
 
-      auto it = _operations.find(id);
-      if (it == _operations.end())
-        throw elle::Exception{
-            "Couldn't find any operation with id " + std::to_string(id)
-        };
-      if (!it->second->done())
-        throw elle::Exception{"Operation not finished"};
-      if (!it->second->succeeded())
-        it->second->rethrow();
+      return;
+
+      // auto it = _operations.find(id);
+      // if (it == _operations.end())
+      //   throw elle::Exception{
+      //       "Couldn't find any operation with id " + std::to_string(id)
+      //   };
+      // if (!it->second->done())
+      //   throw elle::Exception{"Operation not finished"};
+      // if (!it->second->succeeded())
+      //   it->second->rethrow();
     }
 
     void

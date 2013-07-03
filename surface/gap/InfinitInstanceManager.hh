@@ -51,6 +51,7 @@ namespace surface
       std::thread thread;
 
       InfinitInstance(std::string const& user_id,
+                      std::string const& token,
                       std::string const& network_id,
                       lune::Identity const& identity,
                       std::string const& descriptor); //XXX: Should be movable.
@@ -82,13 +83,15 @@ namespace surface
       typedef std::unique_ptr<InfinitInstance> InfinitInstancePtr;
       std::map<std::string, InfinitInstancePtr> _instances;
       std::string _user_id;
+      ELLE_ATTRIBUTE_RW(std::string, token);
 
       /*-------------.
       | Construction |
       `-------------*/
     public:
       explicit
-      InfinitInstanceManager(std::string const& user_id);
+      InfinitInstanceManager(std::string const& user_id,
+                             std::string const& token);
 
     public:
       virtual
@@ -122,6 +125,15 @@ namespace surface
       void
       upload_files(std::string const& network_id,
                    std::unordered_set<std::string> items);
+
+      void
+      download_files(std::string const& network_id,
+                     nucleus::neutron::Subject const& subject,
+                     std::string const& destination_path);
+
+      int
+      connect_try(std::string const& network_id,
+                   std::vector<std::string> const& addresses);
 
     private:
       InfinitInstance&

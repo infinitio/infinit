@@ -170,7 +170,7 @@ namespace surface
       _google_reporter(google_reporter),
       _self(me),
       _device(device),
-      _infinit_instance_manager{me.id}
+      _infinit_instance_manager{me.id, meta.token()}
     {
       ELLE_TRACE_METHOD("");
     }
@@ -510,82 +510,29 @@ namespace surface
     NetworkManager::upload_files(std::string const& network_id,
                                  std::unordered_set<std::string> const& files)
     {
-      ELLE_TRACE_SCOPE("%s: uploading files into network %s",
-                       *this, network_id);
-
+      ELLE_TRACE_SCOPE("%s: uploading %s into network %s",
+                       *this, files, network_id);
       this->_infinit_instance_manager.upload_files(network_id,
                                                    files);
     }
 
-    static
-    int
-    _connect_try(reactor::Scheduler& sched,
-                 hole::implementations::slug::control::RPC& rpcs,
-                 std::vector<std::string> const& addresses)
+    void
+    NetworkManager::download_files(std::string const& network_id,
+                                   std::string const& public_key,
+                                   std::string const& destination)
     {
-      ELLE_DEBUG_FUNCTION(sched, rpcs, addresses);
+      ELLE_TRACE_SCOPE("%s: uploading files into network %s",
+                       *this, network_id);
 
-      typedef std::unique_ptr<reactor::VThread<bool>> VThreadBoolPtr;
-      std::vector<std::pair<VThreadBoolPtr, std::string>> v;
+      nucleus::neutron::User::Identity _public_key;
+      _public_key.Restore(public_key);
 
-      auto slug_connect = [&] (std::string const& endpoint)
-        {
-          std::vector<std::string> result;
-          boost::split(result, endpoint, boost::is_any_of(":"));
+      nucleus::neutron::Subject subject;
+      subject.Create(_public_key);
 
-          auto const &ip = result[0];
-          auto const &port = result[1];
-          ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
-          rpcs.slug_connect(ip, std::stoi(port));
-
-          ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
-          if (!rpcs.slug_wait(ip, std::stoi(port)))
-            throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
-                                                ip, port));
-        };
-
-      auto start_thread = [&] (std::string const &endpoint)
-        {
-          v.push_back(std::make_pair(
-                        elle::make_unique<reactor::VThread<bool>>(
-                          sched,
-                          elle::sprintf("slug_connect(%s)", endpoint),
-                          [&] () -> int
-                          {
-                            try
-                            {
-                              slug_connect(endpoint);
-                            }
-                            catch (elle::Exception const &e)
-                            {
-                              ELLE_WARN("slug_connect failed: %s", e.what());
-                              return false;
-                            }
-                            return true;
-                          }),
-                        endpoint));
-        };
-
-      ELLE_DEBUG("Connecting...")
-        std::for_each(std::begin(addresses), std::end(addresses), start_thread);
-
-      int i = 0;
-      for (auto &t : v)
-      {
-        reactor::VThread<bool> &vt = *t.first;
-        sched.current()->wait(vt);
-        if (vt.result() == true)
-        {
-          i++;
-          ELLE_LOG("connection to %s succeed", t.second);
-        }
-        else
-        {
-          ELLE_WARN("connection to %s failed", t.second);
-        }
-      }
-      ELLE_TRACE("finish connecting to %d node%s", i, i > 1 ? "s" : "");
-      return i;
+      this->_infinit_instance_manager.download_files(network_id,
+                                                     subject,
+                                                     destination);
     }
 
     static
@@ -791,72 +738,51 @@ namespace surface
         }
       }
 
-      // Finish by calling the RPC to notify 8infinit of all the IPs of the peer
+      ELLE_DEBUG("connection rounds:")
       {
-        lune::Phrase phrase;
-
-        phrase.load(this->_self.id, network_id, "slug");
-
-        ELLE_DEBUG("Connect to the local 8infint instance (%s:%d)",
-                   elle::String{"127.0.0.1"},
-                   phrase.port);
-
-        // Connect to the server.
-        reactor::network::TCPSocket socket{
-          sched,
-          elle::String("127.0.0.1"),
-          phrase.port,
-        };
-
-        proto::Serializer serializer{sched, socket};
-        proto::ChanneledStream channels{sched, serializer};
-        hole::implementations::slug::control::RPC rpcs{channels};
-
-        ELLE_DEBUG("connection rounds:")
+        int i = 0;
+        for (auto const& round: rounds)
         {
-          int i = 0;
-          for (auto const& round: rounds)
+          ++i;
+          ELLE_TRACE("- round[%s]: %s", i, round.name())
           {
-            ++i;
-            ELLE_TRACE("- round[%s]: %s", i, round.name())
+            for (auto const& addr: round.addresses())
             {
-              for (auto const& addr: round.addresses())
-              {
-                ELLE_TRACE("-- %s", addr);
-              }
+              ELLE_TRACE("-- %s", addr);
             }
           }
         }
-
-        int round_number = 0;
-        bool success = false;
-        for (auto const& round: rounds)
-        {
-          ++round_number;
-          ELLE_TRACE("round[%s]: %s", round_number, round.name())
-          {
-            for (auto const& addr : round.addresses())
-              ELLE_DEBUG("-- %s", addr);
-          }
-
-          this->_reporter.store("connection_method_attempt",
-                                {{MKey::value, round.name()}});
-          if (_connect_try(sched, rpcs, round.addresses()) > 0)
-          {
-            this->_reporter.store("connection_method_succeed",
-                                  {{MKey::value, round.name()}});
-            success = true;
-            break;
-          }
-          else
-          {
-            this->_reporter.store("connection_method_fail",
-                                  {{MKey::value, round.name()}});
-          }
-        }
-        if (!success)
-          throw elle::Exception{"Unable to connect"};
       }
+
+      int round_number = 0;
+      bool success = false;
+      for (auto const& round: rounds)
+      {
+        ++round_number;
+        ELLE_TRACE("round[%s]: %s", round_number, round.name())
+        {
+          for (auto const& addr : round.addresses())
+            ELLE_DEBUG("-- %s", addr);
+        }
+
+        this->_reporter.store("connection_method_attempt",
+                              {{MKey::value, round.name()}});
+        if (this->_infinit_instance_manager.connect_try(network_id,
+                                                        round.addresses()) > 0)
+        {
+          this->_reporter.store("connection_method_succeed",
+                                {{MKey::value, round.name()}});
+          success = true;
+          break;
+        }
+        else
+        {
+          this->_reporter.store("connection_method_fail",
+                                {{MKey::value, round.name()}});
+        }
+      }
+      if (!success)
+        throw elle::Exception{"Unable to connect"};
     }
 
     void

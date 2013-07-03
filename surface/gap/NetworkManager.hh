@@ -126,6 +126,12 @@ namespace surface
       upload_files(std::string const& network_id,
                    std::unordered_set<std::string> const& files);
 
+      /// Download files into path 'destination' (wrap).
+      void
+      download_files(std::string const& network_id,
+                     std::string const& public_key,
+                     std::string const& destination);
+
       /// Add a device to a network.
       void
       add_device(std::string const& network_id,
@@ -145,7 +151,7 @@ namespace surface
       /// Give the recipient the write on the root of the network.
       void
       set_permissions(std::string const& network_id,
-                      std::string const& peer_public_key);
+                      std::string const& peer_pu);
       ///
       void
       to_directory(std::string const& network_id,

@@ -3,6 +3,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include <HoleFactory.hh>
+
 #include <elle/Exception.hh>
 #include <elle/log.hh>
 #include <elle/memory.hh>
@@ -22,6 +24,8 @@
 #include <surface/gap/InfinitInstanceManager.hh>
 #include <surface/gap/binary_config.hh>
 
+#include <boost/algorithm/string.hpp>
+
 ELLE_LOG_COMPONENT("infinit.surface.gap.InfinitInstanceManager");
 
 namespace surface
@@ -29,6 +33,7 @@ namespace surface
   namespace gap
   {
     InfinitInstance::InfinitInstance(std::string const& user_id,
+                                     std::string const& token,
                                      std::string const& network_id,
                                      lune::Identity const& identity,
                                      std::string const& descriptor):
@@ -56,17 +61,18 @@ namespace surface
       thread(std::bind(&reactor::Scheduler::run, std::ref(scheduler)))
     {
       this->scheduler.mt_run<void>(
-        elle::sprintf("initalizer for %s", network_id),
+        elle::sprintf("initializer for %s", network_id),
         [&] ()
         {
           elle::serialize::from_file(common::infinit::passport_path(user_id))
             >> this->passport;
 
-          this->hole.reset(new hole::implementations::slug::Slug(
-                             storage,
-                             passport,
-                             Infinit::authority(),
-                             reactor::network::Protocol::tcp));
+          this->hole = infinit::hole_factory(this->descriptor,
+                                             storage,
+                                             passport,
+                                             Infinit::authority(),
+                                             {});
+
           this->etoile.reset(
             new etoile::Etoile(this->identity.pair(),
                                this->hole.get(),
@@ -74,8 +80,10 @@ namespace surface
         });
     }
 
-    InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id)
+    InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id,
+                                                   std::string const& token)
       : _user_id{user_id}
+      , _token{token}
     {
       ELLE_TRACE_METHOD(user_id);
     }
@@ -115,7 +123,7 @@ namespace surface
 
       std::unique_ptr<InfinitInstance> instance(
         new InfinitInstance(
-          this->_user_id, network_id, identity, descriptor_digest));
+          this->_user_id, this->_token, network_id, identity, descriptor_digest));
 
       this->_instances.insert(std::make_pair(network_id, std::move(instance)));
     }
@@ -221,6 +229,81 @@ namespace surface
           subject.Create(instance.descriptor.meta().administrator_K());
 
           operation_detail::to::send(etoile, instance.descriptor, subject, items);
+        });
+    }
+
+    void
+    InfinitInstanceManager::download_files(std::string const& network_id,
+                                           nucleus::neutron::Subject const& subject,
+                                           std::string const& destination)
+    {
+      ELLE_TRACE_SCOPE("%s: download files from network %s into %s",
+                       *this, network_id, destination);
+
+      auto& instance = this->_instance(network_id);
+
+      instance.scheduler.mt_run<void>(
+        elle::sprintf("download files for %s", network_id),
+        [&] ()
+        {
+          auto& etoile = *instance.etoile;
+
+          operation_detail::from::receive(etoile, instance.descriptor, subject, destination);
+        });
+    }
+
+    int
+    InfinitInstanceManager::connect_try(std::string const& network_id,
+                                        std::vector<std::string> const& addresses)
+    {
+      ELLE_TRACE_SCOPE("%s: connecting infinit of network %s to %s",
+                       *this, network_id, addresses);
+
+      auto& instance = this->_instance(network_id);
+
+      return instance.scheduler.mt_run<int>(
+        elle::sprintf("connecting nodes for %s", network_id),
+        [&] () -> int
+        {
+          auto& hole = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
+
+          typedef std::unique_ptr<reactor::VThread<bool>> VThreadBoolPtr;
+          std::vector<std::pair<VThreadBoolPtr, std::string>> v;
+
+          auto slug_connect = [&] (std::string const& endpoint)
+            {
+              std::vector<std::string> result;
+              boost::split(result, endpoint, boost::is_any_of(":"));
+
+              auto const &ip = result[0];
+              auto const &port = result[1];
+              ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
+              hole.portal_connect(ip, std::stoi(port));
+
+              ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
+              if (!hole.portal_wait(ip, std::stoi(port)))
+                throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
+                                                    ip, port));
+            };
+
+          int i = 0;
+          for (auto const& address: addresses)
+          {
+            try
+            {
+              slug_connect(address);
+              ++i;
+              ELLE_LOG("%s: connection to %s succeed", *this, address);
+            }
+            catch (elle::Exception const& e)
+            {
+              ELLE_WARN("%s: connection to %s failed", *this, address);
+            }
+          }
+
+          ELLE_TRACE("%s: finish connecting to %d node%s",
+                     *this, i, i > 1 ? "s" : "");
+          return i;
         });
     }
 

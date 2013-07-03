@@ -22,12 +22,6 @@ namespace surface
              lune::Descriptor const& descriptor,
              nucleus::neutron::Subject const& subject,
              std::unordered_set<std::string> items);
-
-        elle::Natural64
-        send(etoile::Etoile& etoile,
-             lune::Descriptor const& descriptor,
-             nucleus::neutron::Subject const& subject,
-             std::string const& source);
       }
 
       namespace from

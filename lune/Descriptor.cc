@@ -45,6 +45,9 @@ namespace lune
   {
     ELLE_TRACE("Creating descriptor of network %s in %s",
                network, this->_path(user, network));
+
+    ELLE_ASSERT(!user.empty());
+    ELLE_ASSERT(!network.empty());
     if (Descriptor::exists(user, network) == false)
       throw elle::Exception(elle::sprintf(
                               "network %s does not seem to exist for user %s",

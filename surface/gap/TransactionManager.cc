@@ -14,6 +14,7 @@
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
 #include <elle/os/getenv.hh>
+#include <elle/container/set.hh>
 #include <elle/system/Process.hh>
 #include <elle/memory.hh>
 #include <elle/finally.hh>
@@ -124,21 +125,88 @@ namespace surface
       if (files.empty())
         throw Exception(gap_no_file, "no files to send");
 
-      return this->_add<CreateTransactionOperation>(
-          *this,
-          this->_network_manager,
-          this->_user_manager,
-          this->_meta,
-          this->_reporter,
-          this->_self,
-          this->_device.id,
-          recipient_id_or_email,
-          files,
-          [this, files] (std::string const& tr_id) {
-            this->_states([&tr_id, &files] (StateMap& map) {
-              map[tr_id].files = files;
-            });
-          });
+
+      auto total_size =
+        [] (std::unordered_set<std::string> const& files) -> size_t
+      {
+        ELLE_TRACE_FUNCTION(files);
+
+        size_t size = 0;
+        {
+          for (auto const& file: files)
+          {
+            auto _size = elle::os::file::size(file);
+            ELLE_DEBUG("%s: %i", file, _size);
+            size += _size;
+          }
+        }
+        return size;
+      };
+
+      int size = total_size(files);
+
+      std::string first_file = fs::path(*(files.cbegin())).filename().string();
+
+      elle::utility::Time time; time.Current();
+      std::string network_name = elle::sprintf("%s-%s",
+                                               recipient_id_or_email,
+                                               time.nanoseconds);
+
+      std::string network_id = this->_network_manager.create(network_name);
+      // XXX add locally
+
+      // Preparing the network before sending the notification ensures that the
+      // recipient can't prepare it by himself.
+      this->_network_manager.prepare(network_id);
+      this->_network_manager.to_directory(
+        network_id,
+        common::infinit::network_shelter(this->_self.id, network_id));
+
+      plasma::meta::CreateTransactionResponse res;
+      ELLE_DEBUG("(%s): (%s) %s [%s] -> %s throught %s (%s)",
+                 this->_device.id,
+                 files.size(),
+                 first_file,
+                 size,
+                 recipient_id_or_email,
+                 network_name,
+                 network_id);
+
+      std::string transaction_id = "";
+      try
+      {
+        res = this->_meta.create_transaction(recipient_id_or_email,
+                                             first_file,
+                                             files.size(),
+                                             size,
+                                             fs::is_directory(first_file),
+                                             network_id,
+                                             this->_device.id);
+
+        transaction_id = res.created_transaction_id;
+
+        auto s = this->_states[transaction_id];
+        s.files = files;
+        this->_states(
+          [&transaction_id, &s] (StateMap& map) {map[transaction_id] = s;});
+
+        // Creating a transaction ensures that user has an id.
+        auto recipient = this->_user_manager.one(recipient_id_or_email);
+        ELLE_TRACE("add user %s to network %s", recipient, network_id)
+          this->_meta.network_add_user(network_id, recipient.id);
+      }
+      catch (...)
+      {
+        ELLE_DEBUG("transaction creation failed: %s", elle::exception_string());
+        if (!transaction_id.empty())
+          this->cancel_transaction(transaction_id);
+        else
+          this->_network_manager.delete_(network_id, false);
+        throw;
+      }
+      this->_self.remaining_invitations = res.remaining_invitations;
+
+      return 0;
     }
 
     float
@@ -626,53 +694,6 @@ namespace surface
         this->_on_transaction(tr);
     }
 
-    // void
-    // TransactionManager::_prepare_upload(Transaction const& tr)
-    // {
-    //   ELLE_DEBUG_METHOD(tr);
-
-    //   auto s = this->_states[tr.id];
-
-    //   // XXX ghost user doesn't have public key so check this before adding to
-    //   // network.
-    //   if (s.state == State::none and
-    //       not this->_user_manager.one(tr.recipient_id).public_key.empty())
-    //   {
-    //     ELLE_DEBUG("prepare transaction %s", tr)
-    //     this->_reporter.store("transaction_preparing",
-    //                           {{MKey::count, std::to_string(tr.files_count)},
-    //                            {MKey::network, tr.network_id},
-    //                            {MKey::size, std::to_string(tr.total_size)},
-    //                            {MKey::value, tr.id}});
-    //     s.operation = this->_add<PrepareTransactionOperation>(
-    //       *this,
-    //       this->_network_manager,
-    //       this->_meta,
-    //       this->_reporter,
-    //       this->_self,
-    //       tr,
-    //       s.files);
-    //     s.state = State::preparing;
-    //     this->_states(
-    //       [&tr, &s] (StateMap& map) {map[tr.id] = s;});
-    //   }
-    //   else
-    //   {
-    //     if (s.state == State::preparing)
-    //     {
-    //       ELLE_DEBUG("do not prepare %s, already in state %d",
-    //                  tr,
-    //                  s.state);
-    //     }
-
-    //     else if (this->_user_manager.one(tr.recipient_id).public_key.empty())
-    //     {
-    //       ELLE_DEBUG("do not prepare %s, recipient hasn't registered yet",
-    //                  tr);
-    //     }
-    //   }
-    // }
-
     // XXX[Antony]: This remove the asynchronousity =)
     void
     TransactionManager::_prepare_upload(Transaction const& tr)
@@ -682,22 +703,37 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: uploading files %s for transaction %s, network %s",
                        *this, s.files, tr.id, tr.network_id);
 
-      this->_network_manager.prepare(tr.network_id);
-      this->_network_manager.to_directory(
+      ELLE_DEBUG("%s: state is %s", *this, s.state);
+      ELLE_DEBUG("%s: peer public key %s", *this, this->_user_manager.one(tr.recipient_id).public_key);
+
+      if (s.state == State::none and
+          not this->_user_manager.one(tr.recipient_id).public_key.empty())
+      {
+        this->_network_manager.prepare(tr.network_id);
+        this->_network_manager.to_directory(
         tr.network_id,
         common::infinit::network_shelter(this->_self.id,
                                          tr.network_id));
 
-      this->_network_manager.launch(tr.network_id);
+        this->_network_manager.launch(tr.network_id);
 
-      std::string recipient_K =
-        this->_meta.user(tr.recipient_id).public_key;
-      ELLE_ASSERT_NEQ(recipient_K.size(), 0u);
+        std::string recipient_K =
+          this->_meta.user(tr.recipient_id).public_key;
+        ELLE_ASSERT_NEQ(recipient_K.size(), 0u);
 
-      this->_network_manager.add_user(tr.network_id, recipient_K);
-      this->_network_manager.set_permissions(tr.network_id, recipient_K);
-      this->_network_manager.upload_files(tr.network_id,
-                                          s.files);
+        this->_network_manager.add_user(tr.network_id, recipient_K);
+        this->_network_manager.set_permissions(tr.network_id, recipient_K);
+
+        s.state = State::preparing;
+        this->_states([&tr, &s] (StateMap& map) {map[tr.id] = s;});
+
+        this->_network_manager.upload_files(tr.network_id, s.files);
+
+        ELLE_DEBUG("%s: finished preparing %s locally for network %s",
+                   *this, s.files, tr.network_id);
+
+        this->update(tr.id, plasma::TransactionStatus::started);
+      }
     }
 
     void
@@ -738,21 +774,14 @@ namespace surface
 
       if (s.state == State::preparing)
       {
-        s.operation = this->_add<UploadOperation>(
-          transaction.id,
-          this->_network_manager,
-          *this,
-          this->_network_manager.infinit_instance_manager(),
-          [this, transaction] {
-            this->_network_manager.notify_8infinit(
-              transaction.network_id,
-              transaction.sender_device_id,
-              transaction.recipient_device_id);
-            });
+        this->_network_manager.notify_8infinit(transaction.network_id,
+                                               transaction.sender_device_id,
+                                               transaction.recipient_device_id);
+
         s.state = State::running;
-        s.tries += 1;
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
+
         this->_reporter.store("transaction_transferring",
                               {{MKey::attempt, std::to_string(s.tries)},
                                {MKey::network,transaction.network_id},
@@ -779,35 +808,18 @@ namespace surface
       ELLE_DEBUG_METHOD(transaction);
 
       auto state = this->_states[transaction.id];
-      // if (state.state == State::running)
-      // {
-      //   ELLE_LOG("transfer %s met an error, restarting", transaction.id);
-      //   this->cancel_operation(state.operation);
-      //   this->_network_manager.delete_local(transaction.network_id);
-      //   this->_network_manager.prepare(transaction.network_id);
-      //   this->_network_manager.to_directory(
-      //     transaction.network_id,
-      //     common::infinit::network_shelter(this->_self.id,
-      //                                      transaction.network_id));
-      //   this->_network_manager.launch(transaction.network_id);
-      //   state.state = State::none;
-      // }
 
       if (state.state == State::none)
       {
-        state.operation = this->_add<DownloadOperation>(
-            *this,
-            this->_network_manager,
-            this->_self,
-            this->_reporter,
-            transaction,
-            std::bind(&NetworkManager::notify_8infinit,
-                      &(this->_network_manager),
-                      transaction.network_id,
-                      transaction.sender_device_id,
-                      transaction.recipient_device_id));
+        this->_network_manager.notify_8infinit(transaction.network_id,
+                                               transaction.sender_device_id,
+                                               transaction.recipient_device_id);
+
+        this->_network_manager.download_files(transaction.network_id,
+                                              this->_self.public_key,
+                                              this->_output_dir);
+
         state.state = State::running;
-        state.tries += 1;
         this->_states(
           [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
       }

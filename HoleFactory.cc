@@ -10,7 +10,6 @@
 #include <common/common.hh>
 
 #include <lune/Descriptor.hh>
-#include <lune/Set.hh>
 
 #include <hole/implementations/local/Implementation.hh>
 #include <hole/implementations/remote/Implementation.hh>
@@ -66,17 +65,13 @@ namespace infinit
   };
 
   std::unique_ptr<hole::Hole>
-  hole_factory(hole::storage::Storage& storage,
+  hole_factory(lune::Descriptor const& descriptor,
+               hole::storage::Storage& storage,
                elle::Passport const& passport,
                elle::Authority const& authority,
-               std::vector<elle::network::Locus> const& members)
+               std::vector<elle::network::Locus> const& members,
+               std::string const& token)
   {
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
-
-    lune::Set set;
-    if (lune::Set::exists(Infinit::User, Infinit::Network) == true)
-      set.load(Infinit::User, Infinit::Network);
-
     switch (descriptor.meta().model().type)
       {
         case hole::Model::TypeLocal:
@@ -86,20 +81,14 @@ namespace infinit
               storage, passport, authority));
           break;
         }
-        case hole::Model::TypeRemote:
-        {
-          // Retrieve the locus.
-          if (set.loci.size() != 1)
-            {
-              static boost::format fmt("there should be a single locus "
-                                       "in the network's set (%u)");
-              throw std::runtime_error(str(fmt % set.loci.size()));
-            }
-          elle::network::Locus locus = *set.loci.begin();
-          return std::unique_ptr<hole::Hole>(
-            new hole::implementations::remote::Implementation(
-              storage, passport, authority, locus));
-        }
+        // case hole::Model::TypeRemote:
+        // {
+        //   // Retrieve the locus.
+        //   elle::network::Locus locus = *set.loci.begin();
+        //   return std::unique_ptr<hole::Hole>(
+        //     new hole::implementations::remote::Implementation(
+        //       storage, passport, authority, locus));
+        // }
         case hole::Model::TypeSlug:
         {
           int port = Infinit::Configuration["hole"].Get("slug.port", 0);
@@ -168,7 +157,6 @@ namespace infinit
 
           ELLE_TRACE("send addresses to meta")
           {
-            lune::Descriptor descriptor(Infinit::User, Infinit::Network);
             plasma::meta::Client client(common::meta::host(), common::meta::port());
             try
             {
@@ -191,7 +179,7 @@ namespace infinit
                 public_addresses.push_back(std::pair<std::string, uint16_t>
                                            (pub.address().to_string(),
                                             pub.port()));
-              client.token(agent::Agent::meta_token);
+              client.token(token.empty() ? agent::Agent::meta_token : token);
 
               ELLE_DEBUG("public_addresses: %s", public_addresses);
               client.network_connect_device(descriptor.meta().id(),

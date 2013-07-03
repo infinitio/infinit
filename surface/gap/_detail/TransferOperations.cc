@@ -128,7 +128,11 @@ namespace surface
           };
 
           // Attach the link to the hierarchy.
-          etoile::gear::Identifier directory(attach(etoile, descriptor, subject, link, target));
+          etoile::gear::Identifier directory(attach(etoile,
+                                                    descriptor,
+                                                    subject,
+                                                    link,
+                                                    target));
 
           elle::Finally discard_directory{[&] ()
             {
@@ -157,10 +161,10 @@ namespace surface
 
         static
         void
-        progress(etoile::Etoile& etoile,
-                 elle::Natural64 const size)
+        store_size(etoile::Etoile& etoile,
+                   elle::Natural64 const size)
         {
-          ELLE_TRACE_FUNCTION(size);
+          ELLE_TRACE_SCOPE("%s: store size (%s)", etoile, size);
 
           std::string root(1, elle::system::path::separator);
 
@@ -304,23 +308,15 @@ namespace surface
           return (1);
         }
 
-        void
-        send(etoile::Etoile& etoile,
-             lune::Descriptor const& descriptor,
-             nucleus::neutron::Subject const& subject,
-             std::unordered_set<std::string> items)
-        {
-          elle::Natural64 size = 0;
-          for (auto const& item: items)
-            size += send(etoile, descriptor, subject, item);
-        }
-
+        static
         elle::Natural64
-        send(etoile::Etoile& etoile,
-             lune::Descriptor const& descriptor,
-             nucleus::neutron::Subject const& subject,
-             std::string const& source)
+        store(etoile::Etoile& etoile,
+              lune::Descriptor const& descriptor,
+              nucleus::neutron::Subject const& subject,
+              std::string const& source)
         {
+          ELLE_TRACE("%s: store %s on network", etoile, source);
+
           elle::Natural64 size = 0;
 
           boost::filesystem::path path(source);
@@ -400,9 +396,20 @@ namespace surface
           else
             throw std::runtime_error("unknown object type");
 
-          progress(etoile, size);
-
           return size;
+        }
+
+        void
+        send(etoile::Etoile& etoile,
+             lune::Descriptor const& descriptor,
+             nucleus::neutron::Subject const& subject,
+             std::unordered_set<std::string> items)
+        {
+          elle::Natural64 size = 0;
+          for (auto const& item: items)
+            size += store(etoile, descriptor, subject, item);
+
+          store_size(etoile, size);
         }
       }
 
