@@ -207,13 +207,21 @@ namespace surface
             {
               int current_size = 0;
               int total_size = 0;
-              std::stringstream ss;
-              ss << progress.process->read();
-              ss >> current_size >> total_size;
-              if (total_size == 0)
-                progress.last_value = 0.0f;
-              else
-                progress.last_value = float(current_size) / float(total_size);
+              try
+              {
+                std::stringstream ss;
+                ss << progress.process->read();
+                ss >> current_size >> total_size;
+                if (total_size == 0)
+                  progress.last_value = 0.0f;
+                else
+                  progress.last_value = float(current_size) / float(total_size);
+              }
+              catch (std::exception const&)
+              {
+                ELLE_WARN("couldn't read from 8progress: %s",
+                          elle::exception_string());
+              }
             }
             progress.process.reset();
 
