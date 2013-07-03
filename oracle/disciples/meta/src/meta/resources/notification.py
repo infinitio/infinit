@@ -78,6 +78,7 @@ class Read(Page):
 
     def __init__(self):
         self._transactions = {}
+        super(Read, self).__init__()
 
     def _get_transaction(self, id):
         id = database.ObjectId(id)
