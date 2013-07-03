@@ -25,9 +25,6 @@
 
 #include <fcntl.h>
 
-#define PLASMA_TROPHONIUS_PING_INTERVAL 30
-#define PLASMA_TROPHONIUS_PING_WINDOW 60
-
 ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 
 //- Notification serializers --------------------------------------------------
@@ -182,7 +179,8 @@ namespace plasma
                    uint16_t port,
                    std::function<void()> connect_callback):
       _impl{new Impl{server, port, connect_callback}},
-      _reconnected{0}
+      _reconnected{0},
+      _ping_period{boost::posix_time::seconds(30)}
     {
       ELLE_ASSERT(connect_callback != nullptr);
     }
@@ -217,19 +215,13 @@ namespace plasma
       this->_reconnected++;
     }
 
-    void
-    Client::_check_connection(boost::system::error_code const& err)
-    {
-      if (err)
-      {
-        if (err.value() != boost::asio::error::operation_aborted)
-        {
-          ELLE_WARN("timer failed in %s (%s), stopping connection checks",
-                    __func__, err);
-        }
-        return;
-      }
+    /*-----.
+    | Ping |
+    `-----*/
 
+    void
+    Client::_check_connection()
+    {
       if (_impl->connected == false || _impl->ping_received == false)
       {
         try
@@ -272,20 +264,11 @@ namespace plasma
     }
 
     void
-    Client::_send_ping(boost::system::error_code const& err)
+    Client::_send_ping()
     {
-      if (err)
-      {
-        if (err.value() != boost::asio::error::operation_aborted)
-        {
-          ELLE_WARN("timer failed (%s), stopping connection checks", err);
-        }
-        return;
-      }
-
       try
       {
-        ELLE_DEBUG("send ping to %s", _impl->socket.remote_endpoint());
+        ELLE_DEBUG_SCOPE("send ping to %s", _impl->socket.remote_endpoint());
         boost::asio::async_write(
           _impl->socket,
           boost::asio::buffer(ping_msg, strlen(ping_msg)),
@@ -308,22 +291,49 @@ namespace plasma
     void
     Client::_restart_ping_timer()
     {
-      _impl->ping_timer.expires_from_now(
-        boost::posix_time::seconds(PLASMA_TROPHONIUS_PING_INTERVAL));
+      _impl->ping_timer.expires_from_now(this->_ping_period);
 
       _impl->ping_timer.async_wait(
-        std::bind(&Client::_send_ping, this, std::placeholders::_1));
+        [this] (boost::system::error_code const& err)
+        {
+          if (err)
+          {
+            if (err.value() != boost::asio::error::operation_aborted)
+              ELLE_WARN("timer failed (%s), stopping connection checks", err);
+            return;
+          }
+          else
+            this->_send_ping();
+        });
     }
 
     void
     Client::_restart_connection_check_timer()
     {
-      _impl->connection_checker.expires_from_now(
-        boost::posix_time::seconds(PLASMA_TROPHONIUS_PING_WINDOW));
+      _impl->connection_checker.expires_from_now(this->_ping_period * 2);
 
       _impl->connection_checker.async_wait(
-          std::bind(&Client::_check_connection, this, std::placeholders::_1));
+        [&] (boost::system::error_code const& err)
+        {
+          if (err)
+          {
+            if (err.value() != boost::asio::error::operation_aborted)
+              ELLE_WARN("timer failed in %s (%s), stopping connection checks",
+                        __func__, err);
+            return;
+          }
+          else
+            this->_check_connection();
+        });
       _impl->ping_received = false;
+    }
+
+    void
+    Client::ping_period(boost::posix_time::time_duration const& period)
+    {
+      this->_ping_period = period;
+      if (_impl->connected)
+        this->_send_ping();
     }
 
     void
@@ -374,7 +384,7 @@ namespace plasma
         return;
       }
 
-      ELLE_DEBUG("%s: read %s bytes from the socket (%s available)",
+      ELLE_DUMP("%s: read %s bytes from the socket (%s available)",
                  *this,
                  bytes_transferred,
                  _impl->response.in_avail());
@@ -387,7 +397,7 @@ namespace plasma
       std::unique_ptr<char[]> data{new char[bytes_transferred]};
       is.read(data.get(), bytes_transferred);
       std::string msg{data.get(), bytes_transferred};
-      ELLE_DEBUG("%s: got message: %s", *this, msg);
+      ELLE_TRACE_SCOPE("%s: got message: %s", *this, msg);
       try
       {
         auto notif = notification_from_dict(json::parse(msg)->as_dictionary());
@@ -396,7 +406,10 @@ namespace plasma
         // notification queue.
         // If we want a behavior on it, just remove that condition.
         if (notif->notification_type == NotificationType::ping)
+        {
+          ELLE_DEBUG("%s: ping received", *this);
           _impl->ping_received = true;
+        }
         else
           this->_notifications.emplace(notif.release());
       }

@@ -5,6 +5,7 @@
 
 # include <elle/HttpClient.hh>
 
+# include <boost/date_time/posix_time/posix_time_types.hpp>
 # include <boost/system/error_code.hpp>
 
 # include <functional>
@@ -142,6 +143,7 @@ namespace plasma
       has_notification(void);
 
       ELLE_ATTRIBUTE_R(int, reconnected);
+      ELLE_ATTRIBUTE_Rw(boost::posix_time::time_duration, ping_period);
 
     private:
       std::queue<std::unique_ptr<Notification>> _notifications;
@@ -179,15 +181,17 @@ namespace plasma
       void
       print(std::ostream& stream) const override;
 
+    /*-----.
+    | Ping |
+    `-----*/
+    private:
       void
-      _check_connection(boost::system::error_code const& err);
-
+      _check_connection();
       void
-      _send_ping(boost::system::error_code const& err);
-
+      _send_ping();
       void
       _on_ping_sent(boost::system::error_code const& err,
-                      size_t const bytes_transferred);
+                    size_t const bytes_transferred);
     };
 
     std::ostream&
