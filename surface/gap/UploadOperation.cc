@@ -35,19 +35,20 @@ namespace surface
       {
         this->_network_manager.wait_portal(network_id);
         this->_notify();
-        while (this->_infinit_instance_manager.exists(network_id))
-        {
-          tr = this->_transaction_manager.one(this->_transaction_id);
-          if (tr.status != plasma::TransactionStatus::started)
-            return;
-          if (this->cancelled())
-            return;
-          ::sleep(1);
-        }
-        if (!this->_infinit_instance_manager.exists(network_id))
-        {
-          throw elle::Exception{"infinit instance does not exist anymore"};
-        }
+        // XXX This awaits the transaction to be terminated
+        //while (this->_infinit_instance_manager.exists(network_id))
+        //{
+        //  tr = this->_transaction_manager.one(this->_transaction_id);
+        //  if (tr.status != plasma::TransactionStatus::started)
+        //    return;
+        //  if (this->cancelled())
+        //    return;
+        //  ::sleep(1);
+        //}
+        //if (!this->_infinit_instance_manager.exists(network_id))
+        //{
+        //  throw elle::Exception{"infinit instance does not exist anymore"};
+        //}
       }
       catch (...)
       {
