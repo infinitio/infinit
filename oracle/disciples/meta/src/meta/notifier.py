@@ -63,7 +63,7 @@ class TrophoniusNotify(Notifier):
                     message = None,
                     store = True):
         # Check that we either have a list of recipients or devices
-        assert (recipient_ids is None) ^ (device_ids is None)
+        assert (recipient_ids is not None) or (device_ids is not None)
         assert message is not None
 
         message['notification_type'] = notification_type
