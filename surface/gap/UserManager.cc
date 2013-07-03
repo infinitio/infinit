@@ -183,9 +183,10 @@ namespace surface
     {
       ELLE_TRACE_METHOD(user_id, device_id);
 
-      auto user = this->one(user_id); // Ensure the user is loaded.
-      bool status = (this->_connected_devices.find(device_id) !=
-                     this->_connected_devices.end());
+      auto user = this->sync(user_id); // Force user synchronisation.
+      bool status = std::find(user.connected_devices.begin(),
+                              user.connected_devices.end(),
+                              device_id) != user.connected_devices.end();
       ELLE_DEBUG("device %s is %s", device_id, (status ? "up" : "down"));
       return status;
     }
@@ -213,9 +214,7 @@ namespace surface
     {
       ELLE_TRACE_METHOD(recipient_id, message);
 
-      this->_meta.send_message(recipient_id,
-                               this->_self.id,
-                               message);
+      this->_meta.send_message(recipient_id, this->_self.id, message);
     }
 
     ///- Swaggers --------------------------------------------------------------
