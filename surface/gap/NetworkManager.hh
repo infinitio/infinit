@@ -121,6 +121,11 @@ namespace surface
       add_user(std::string const& network_id,
                std::string const& user_K);
 
+      /// Upload files (wrap instance_manager.upload_files)
+      void
+      upload_files(std::string const& network_id,
+                   std::unordered_set<std::string> const& files);
+
       /// Add a device to a network.
       void
       add_device(std::string const& network_id,

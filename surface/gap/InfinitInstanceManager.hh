@@ -3,6 +3,7 @@
 
 # include <map>
 # include <memory>
+# include <unordered_set>
 # include <string>
 
 # include <elle/serialize/extract.hh>
@@ -117,6 +118,10 @@ namespace surface
       void
       grant_permissions(std::string const& network_id,
                         nucleus::neutron::Subject const& subject);
+
+      void
+      upload_files(std::string const& network_id,
+                   std::unordered_set<std::string> items);
 
     private:
       InfinitInstance&

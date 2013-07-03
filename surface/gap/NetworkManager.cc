@@ -506,6 +506,17 @@ namespace surface
       this->_infinit_instance_manager.grant_permissions(network_id, subject);
     }
 
+    void
+    NetworkManager::upload_files(std::string const& network_id,
+                                 std::unordered_set<std::string> const& files)
+    {
+      ELLE_TRACE_SCOPE("%s: uploading files into network %s",
+                       *this, network_id);
+
+      this->_infinit_instance_manager.upload_files(network_id,
+                                                   files);
+    }
+
     static
     int
     _connect_try(reactor::Scheduler& sched,

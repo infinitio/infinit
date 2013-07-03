@@ -626,51 +626,78 @@ namespace surface
         this->_on_transaction(tr);
     }
 
+    // void
+    // TransactionManager::_prepare_upload(Transaction const& tr)
+    // {
+    //   ELLE_DEBUG_METHOD(tr);
+
+    //   auto s = this->_states[tr.id];
+
+    //   // XXX ghost user doesn't have public key so check this before adding to
+    //   // network.
+    //   if (s.state == State::none and
+    //       not this->_user_manager.one(tr.recipient_id).public_key.empty())
+    //   {
+    //     ELLE_DEBUG("prepare transaction %s", tr)
+    //     this->_reporter.store("transaction_preparing",
+    //                           {{MKey::count, std::to_string(tr.files_count)},
+    //                            {MKey::network, tr.network_id},
+    //                            {MKey::size, std::to_string(tr.total_size)},
+    //                            {MKey::value, tr.id}});
+    //     s.operation = this->_add<PrepareTransactionOperation>(
+    //       *this,
+    //       this->_network_manager,
+    //       this->_meta,
+    //       this->_reporter,
+    //       this->_self,
+    //       tr,
+    //       s.files);
+    //     s.state = State::preparing;
+    //     this->_states(
+    //       [&tr, &s] (StateMap& map) {map[tr.id] = s;});
+    //   }
+    //   else
+    //   {
+    //     if (s.state == State::preparing)
+    //     {
+    //       ELLE_DEBUG("do not prepare %s, already in state %d",
+    //                  tr,
+    //                  s.state);
+    //     }
+
+    //     else if (this->_user_manager.one(tr.recipient_id).public_key.empty())
+    //     {
+    //       ELLE_DEBUG("do not prepare %s, recipient hasn't registered yet",
+    //                  tr);
+    //     }
+    //   }
+    // }
+
+    // XXX[Antony]: This remove the asynchronousity =)
     void
     TransactionManager::_prepare_upload(Transaction const& tr)
     {
-      ELLE_DEBUG_METHOD(tr);
-
       auto s = this->_states[tr.id];
 
-      // XXX ghost user doesn't have public key so check this before adding to
-      // network.
-      if (s.state == State::none and
-          not this->_user_manager.one(tr.recipient_id).public_key.empty())
-      {
-        ELLE_DEBUG("prepare transaction %s", tr)
-        this->_reporter.store("transaction_preparing",
-                              {{MKey::count, std::to_string(tr.files_count)},
-                               {MKey::network, tr.network_id},
-                               {MKey::size, std::to_string(tr.total_size)},
-                               {MKey::value, tr.id}});
-        s.operation = this->_add<PrepareTransactionOperation>(
-          *this,
-          this->_network_manager,
-          this->_meta,
-          this->_reporter,
-          this->_self,
-          tr,
-          s.files);
-        s.state = State::preparing;
-        this->_states(
-          [&tr, &s] (StateMap& map) {map[tr.id] = s;});
-      }
-      else
-      {
-        if (s.state == State::preparing)
-        {
-          ELLE_DEBUG("do not prepare %s, already in state %d",
-                     tr,
-                     s.state);
-        }
+      ELLE_TRACE_SCOPE("%s: uploading files %s for transaction %s, network %s",
+                       *this, s.files, tr.id, tr.network_id);
 
-        else if (this->_user_manager.one(tr.recipient_id).public_key.empty())
-        {
-          ELLE_DEBUG("do not prepare %s, recipient hasn't registered yet",
-                     tr);
-        }
-      }
+      this->_network_manager.prepare(tr.network_id);
+      this->_network_manager.to_directory(
+        tr.network_id,
+        common::infinit::network_shelter(this->_self.id,
+                                         tr.network_id));
+
+      this->_network_manager.launch(tr.network_id);
+
+      std::string recipient_K =
+        this->_meta.user(tr.recipient_id).public_key;
+      ELLE_ASSERT_NEQ(recipient_K.size(), 0u);
+
+      this->_network_manager.add_user(tr.network_id, recipient_K);
+      this->_network_manager.set_permissions(tr.network_id, recipient_K);
+      this->_network_manager.upload_files(tr.network_id,
+                                          s.files);
     }
 
     void

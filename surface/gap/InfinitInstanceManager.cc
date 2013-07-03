@@ -18,6 +18,7 @@
 #include <etoile/path/Chemin.hh>
 
 #include <common/common.hh>
+#include <surface/gap/_detail/TransferOperations.hh>
 #include <surface/gap/InfinitInstanceManager.hh>
 #include <surface/gap/binary_config.hh>
 
@@ -201,6 +202,27 @@ namespace surface
         });
     }
 
+    void
+    InfinitInstanceManager::upload_files(std::string const& network_id,
+                                         std::unordered_set<std::string> items)
+    {
+      ELLE_TRACE_SCOPE("%s: uploading  %s into network %s",
+                       *this, items, network_id);
+
+      auto& instance = this->_instance(network_id);
+
+      instance.scheduler.mt_run<void>(
+        elle::sprintf("upload files for %s", network_id),
+        [&] ()
+        {
+          auto& etoile = *instance.etoile;
+
+          nucleus::neutron::Subject subject;
+          subject.Create(instance.descriptor.meta().administrator_K());
+
+          operation_detail::to::send(etoile, instance.descriptor, subject, items);
+        });
+    }
 
     InfinitInstance&
     InfinitInstanceManager::_instance(std::string const& network_id)
