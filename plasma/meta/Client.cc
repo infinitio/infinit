@@ -266,6 +266,8 @@ namespace plasma
     Client::Client(std::string const& server,
                    uint16_t port,
                    bool check_errors):
+      _host(server),
+      _port(port),
       _root_url{elle::sprintf("http://%s:%d", server, port)},
       _check_errors{check_errors},
       _identity{},
