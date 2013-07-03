@@ -11,6 +11,18 @@ public:
     plasma::trophonius::Client(host, port,
                                [=]() {on_connection();})
   {}
+
+  int
+  ping_period_get() const
+  {
+    return this->ping_period().total_seconds();
+  }
+
+  void
+  ping_period_set(int period)
+  {
+    this->ping_period(boost::posix_time::seconds(period));
+  }
 };
 
 struct NotificationConverter
@@ -44,6 +56,8 @@ BOOST_PYTHON_MODULE(plasma)
     .def("has_notification", &Client::has_notification)
     .def("poll", &Client::poll)
     .add_property("retries", &Client::reconnected)
+    .add_property("ping_period",
+                  &Client::ping_period_get, &Client::ping_period_set)
     ;
 
   class_<plasma::trophonius::Notification>(
