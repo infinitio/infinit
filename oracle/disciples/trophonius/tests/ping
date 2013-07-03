@@ -12,7 +12,7 @@ try:
     meta = trophonius.FakeMeta()
     with meta:
         tropho = trophonius.Trophonius(meta_port = meta.port,
-                                       timeout = 3)
+                                       timeout = 6)
         with tropho:
             meta_client = pythia.Client(server = meta.url)
             res = meta_client.post('/user/login', {
@@ -21,15 +21,16 @@ try:
                 })
             client = plasma.Trophonius(tropho.host, tropho.port,
                                        lambda: None)
+            client.ping_period = 3
             client.connect(res['_id'], res['token'], 'device')
             for i in range(15):
                 notif = client.poll()
                 if notif is not None:
                     pass # print(notif)
                 time.sleep(1)
-            if client.retries != 4:
-                raise Exception('client should have reconnected 3 '
-                                'times, not %s' % client.retries)
+            if client.retries != 0:
+                raise Exception('client reconnected %s times' % \
+                                client.retries)
 except:
     print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
     print('Trophonius stderr:\n' + tropho.stderr, file = sys.stderr)
