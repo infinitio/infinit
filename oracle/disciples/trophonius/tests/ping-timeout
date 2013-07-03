@@ -20,18 +20,17 @@ try:
                 'password': 'paf'
                 })
             client = plasma.Trophonius(tropho.host, tropho.port,
-                                       lambda: print('connected'))
+                                       lambda: None)
             client.ping_period = 3
             client.connect(res['_id'], res['token'], 'device')
             for i in range(15):
                 notif = client.poll()
                 if notif is not None:
-                    print(notif)
+                    pass # print(notif)
                 time.sleep(1)
             if client.retries != 0:
                 raise Exception('client reconnected %s times' % \
                                 client.retries)
-            print("quiting")
 except:
     print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
     print('Trophonius stderr:\n' + tropho.stderr, file = sys.stderr)
@@ -52,17 +51,16 @@ try:
                 'password': 'paf'
                 })
             client = plasma.Trophonius(tropho.host, tropho.port,
-                                       lambda: print('connected'))
+                                       lambda: None)
             client.connect(res['_id'], res['token'], 'device')
             for i in range(15):
                 notif = client.poll()
                 if notif is not None:
-                    print(notif)
+                    pass # print(notif)
                 time.sleep(1)
             if client.retries != 4:
                 raise Exception('client should have reconnected 3 '
                                 'times, not %s' % client.retries)
-            print("quiting")
 except:
     print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
     print('Trophonius stderr:\n' + tropho.stderr, file = sys.stderr)
