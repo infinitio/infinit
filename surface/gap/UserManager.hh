@@ -61,18 +61,30 @@ namespace surface
       std::map<std::string, User*> _users;
       std::unordered_set<std::string> _connected_devices;
 
+      /// XXX.
       void
       _on_resync();
+
+      /// Update the current user container with the current meta user data.
+      User const&
+      _sync(plasma::meta::UserResponse const& res);
 
       /*-------.
       | Access |
       `-------*/
     public:
-      /// Retrieve a user by id or with its email.
+      /// Force the update of an user.
+      User const&
+      sync(std::string const& id);
+
+      /// Return the cached version of a user if it exists. If not, sync the
+      /// user from meta. You can retrieve it using id or email but only the id
+      /// version use caching.
       User const&
       one(std::string const& id);
 
-      /// Retrieve a user by its public key.
+      /// Return the cached version of a user if it exists according to it
+      /// public key. If not, sync the user from meta.
       User const&
       from_public_key(std::string const& public_key);
 
