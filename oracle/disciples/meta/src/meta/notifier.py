@@ -90,7 +90,21 @@ class TrophoniusNotify(Notifier):
                 recipient_ids.add(device['owner'])
             for _id in recipient_ids:
                 user = database.users().find_one(_id)
+                self._remove_duplicate(user, message)
                 user['notifications'].append(message)
                 database.users().save(user)
 
         self.__send_notification(message)
+
+    def _remove_duplicate(self, user, msg):
+        if msg['notification_type'] != TRANSACTION:
+            return
+        for k in ['notifications', 'old_notifications']:
+            to_remove = []
+            for idx, n in enumerate(user[k]):
+                if n['notification_type'] == TRANSACTION and \
+                   n['_id'] == msg['_id']:
+                    to_remove.append(idx)
+            to_remove.reverse()
+            for idx in to_remove:
+                user[k].pop(idx)
