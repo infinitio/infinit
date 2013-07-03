@@ -204,6 +204,7 @@ namespace plasma
     {
       _impl->connected = false;
       _impl->socket.close(err);
+      _impl->ping_timer.cancel();
     }
 
     void
