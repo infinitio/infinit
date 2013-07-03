@@ -5,7 +5,7 @@
 
 # include <reactor/network/fwd.hh>
 
-# include <etoile/portal/Manifest.hh>
+# include <etoile/Manifest.hh>
 
 # include <protocol/fwd.hh>
 
@@ -32,7 +32,7 @@ namespace satellite
     static reactor::network::TCPSocket* socket;
     static infinit::protocol::Serializer* serializer;
     static infinit::protocol::ChanneledStream* channels;
-    static etoile::portal::RPC* rpcs;
+    static etoile::RPC* rpcs;
   };
 
 }

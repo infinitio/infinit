@@ -13,7 +13,6 @@
 
 #include <etoile/gear/Identifier.hh>
 #include <etoile/path/Chemin.hh>
-#include <etoile/portal/Manifest.hh>
 
 #include <nucleus/neutron/Range.hh>
 #include <nucleus/neutron/Record.hh>
@@ -45,7 +44,7 @@ namespace satellite
   reactor::network::TCPSocket* Transfer::socket = nullptr;
   infinit::protocol::Serializer* Transfer::serializer = nullptr;
   infinit::protocol::ChanneledStream* Transfer::channels = nullptr;
-  etoile::portal::RPC* Transfer::rpcs = nullptr;
+  etoile::RPC* Transfer::rpcs = nullptr;
   lune::Descriptor* Transfer::descriptor = nullptr;
 
   /// Ward helper to make sure objects are discarded on errors.
@@ -102,10 +101,10 @@ namespace satellite
     Transfer::channels =
       new infinit::protocol::ChanneledStream(*reactor::Scheduler::scheduler(),
                                              *serializer);
-    Transfer::rpcs = new etoile::portal::RPC(*channels);
+    Transfer::rpcs = new etoile::RPC(*channels);
 
-    if (!Transfer::rpcs->authenticate(phrase.pass))
-      throw reactor::Exception("unable to authenticate to Etoile");
+    // if (!Transfer::rpcs->authenticate(phrase.pass))
+    //   throw reactor::Exception("unable to authenticate to Etoile");
   }
 
   etoile::gear::Identifier
