@@ -95,16 +95,23 @@ class Wire(protocol.Protocol):
         self.pause = False
         self.connection = trophonius.connect(RemoteEndpointFactory(self))
         self.connection.addCallback(self.trophoniusConnectionMade)
+        self.data_cache = []
 
     def trophoniusConnectionMade(self, proto):
         self.rhs = proto
+        for data in self.data_cache:
+            print("send", len(data), "from cache");
+            self.rhs.transport.write(data)
+        self.data_cache = None
 
     def dataFromPeer(self, data):
         if self.pause is False:
             self.transport.write(data)
 
     def dataReceived(self, data):
-        if self.rhs is not None and self.pause is False:
+        if self.connection.called is False:
+            self.data_cache.append(data)
+        elif self.rhs is not None and self.pause is False:
             self.rhs.transport.write(data)
 
     def stop(self):
