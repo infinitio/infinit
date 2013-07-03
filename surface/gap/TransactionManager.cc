@@ -494,7 +494,7 @@ namespace surface
     void
     TransactionManager::_on_transaction(plasma::Transaction const& tr)
     {
-      ELLE_DEBUG_METHOD(tr);
+      ELLE_TRACE_SCOPE("%s: transaction callback for %s", *this, tr);
 
       ELLE_DEBUG("received transaction %s, update local copy", tr)
       {
@@ -519,6 +519,7 @@ namespace surface
 
       if (tr.sender_id == this->_self.id)
       {
+        ELLE_DEBUG_SCOPE("%s: you are the sender", tr);
         if (tr.sender_device_id != this->_device.id)
         {
           ELLE_ERR(
@@ -547,6 +548,7 @@ namespace surface
       }
       else if (tr.recipient_id == this->_self.id)
       {
+        ELLE_DEBUG_SCOPE("%s: you are the recipient", tr);
         if (tr.recipient_device_id != this->_device.id)
         {
           if (!tr.recipient_device_id.empty())
