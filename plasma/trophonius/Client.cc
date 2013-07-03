@@ -230,7 +230,7 @@ namespace plasma
           {
             ELLE_WARN("%s: haven't received a ping from Trophonius in %s s",
                       *this,
-                      PLASMA_TROPHONIUS_PING_WINDOW);
+                      this->_ping_timeout);
           }
           if (_impl->connected == false)
           {
@@ -332,6 +332,7 @@ namespace plasma
     Client::ping_period(boost::posix_time::time_duration const& period)
     {
       this->_ping_period = period;
+      this->_ping_timeout = period * 2;
       if (_impl->connected)
         this->_send_ping();
     }

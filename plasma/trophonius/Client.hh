@@ -144,6 +144,7 @@ namespace plasma
 
       ELLE_ATTRIBUTE_R(int, reconnected);
       ELLE_ATTRIBUTE_Rw(boost::posix_time::time_duration, ping_period);
+      ELLE_ATTRIBUTE(boost::posix_time::time_duration, ping_timeout);
 
     private:
       std::queue<std::unique_ptr<Notification>> _notifications;
