@@ -28,8 +28,11 @@ class Trophonius:
         self.__directory = tempfile.TemporaryDirectory()
         self.timeout = timeout
 
+    def __port_path(self, path):
+        return os.path.join(self.__directory.name, path)
+
     def __read_port(self, path):
-        with open(os.path.join(self.__directory.name, path), 'r') as f:
+        with open(self.__port_path(path), 'r') as f:
             return(int(f.readline()))
 
     def __enter__(self):
@@ -67,16 +70,9 @@ class Trophonius:
     def __exit__(self, exception, exception_type, backtrace):
         assert self.instance is not None
         self.instance.terminate()
-        while True:
-            try:
-                self.__read_port('trophonius.sock')
-                time.sleep(1)
-            except:
-                try:
-                    self.__read_port('trophonius.csock')
-                    time.sleep(1)
-                except:
-                    break
+        while os.path.exists(self.__port_path('trophonius.sock')) and\
+              os.path.exists(self.__port_path('trophonius.csock')):
+            time.sleep(1)
         self.__directory.__exit__(exception,
                                   exception_type,
                                   backtrace)
