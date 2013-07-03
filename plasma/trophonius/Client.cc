@@ -230,7 +230,7 @@ namespace plasma
       {
         try
         {
-          ELLE_TRACE("no message from Trophonius for too long.");
+          ELLE_WARN("no message from Trophonius for too long.");
           ELLE_TRACE("trying to reconnect");
           this->_reconnect();
           _impl->last_error = boost::system::error_code{};
