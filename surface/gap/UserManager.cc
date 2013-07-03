@@ -46,14 +46,10 @@ namespace surface
     }
 
     User const&
-    UserManager::one(std::string const& id)
+    UserManager::_sync(plasma::meta::UserResponse const& response)
     {
-      auto it = this->_users.find(id);
-      if (it != this->_users.end())
-      {
-        return *(it->second);
-      }
-      auto response = this->_meta.user(id);
+      ELLE_TRACE_METHOD("%s: user response: %s", *this, response);
+
       std::unique_ptr<User> user_ptr{
         new User{
           response.id,
@@ -62,14 +58,51 @@ namespace surface
           response.public_key,
           response.status,
           response.connected_devices,
-        }};
+        }
+      };
 
       auto const& user = *(this->_users[response.id] = user_ptr.get());
       user_ptr.release();
 
       for (auto const& dev: user.connected_devices)
         this->_connected_devices.insert(dev);
+
       return user;
+    }
+
+    User const&
+    UserManager::sync(std::string const& id)
+    {
+      ELLE_DEBUG_METHOD(id);
+
+      return this->_sync(this->_meta.user(id));
+    }
+
+    User const&
+    UserManager::one(std::string const& id)
+    {
+      ELLE_DEBUG_METHOD(id);
+
+      auto it = this->_users.find(id);
+      if (it != this->_users.end())
+      {
+        return *(it->second);
+      }
+
+      return this->sync(id);
+    }
+
+    User const&
+    UserManager::from_public_key(std::string const& public_key)
+    {
+      ELLE_DEBUG_METHOD(public_key);
+
+      for (auto const& pair : this->_users)
+      {
+        if (pair.second->public_key == public_key)
+          return *(pair.second);
+      }
+      return this->_sync(this->_meta.user_from_public_key(public_key));
     }
 
     void
@@ -130,29 +163,6 @@ namespace surface
       }
     }
 
-    User const&
-    UserManager::from_public_key(std::string const& public_key)
-    {
-      ELLE_TRACE_METHOD(public_key);
-
-      for (auto const& pair : this->_users)
-      {
-        if (pair.second->public_key == public_key)
-          return *(pair.second);
-      }
-      auto response = this->_meta.user_from_public_key(public_key);
-      std::unique_ptr<User> user{new User{
-          response.id,
-          response.fullname,
-          response.handle,
-          response.public_key,
-          response.status,
-      }};
-
-      this->_users[response.id] = user.get();
-      return *(user.release());
-    }
-
     std::map<std::string, User const*>
     UserManager::search(std::string const& text)
     {
@@ -173,7 +183,7 @@ namespace surface
     {
       ELLE_TRACE_METHOD(user_id, device_id);
 
-      this->one(user_id); // Ensure the user is loaded.
+      auto user = this->one(user_id); // Ensure the user is loaded.
       bool status = (this->_connected_devices.find(device_id) !=
                      this->_connected_devices.end());
       ELLE_DEBUG("device %s is %s", device_id, (status ? "up" : "down"));
@@ -248,15 +258,13 @@ namespace surface
     void
     UserManager::_on_swagger_status_update(UserStatusNotification const& notif)
     {
-      ELLE_DEBUG_METHOD(notif);
+      ELLE_TRACE_SCOPE("%s: received user status notification %s", *this, notif);
 
       auto swagger = this->one(notif.user_id);
       this->swaggers(); // force up-to-date swaggers
       this->_swaggers.insert(swagger.id);
       ELLE_DEBUG("%s's (id: %s) status changed to %s",
-                 swagger.fullname,
-                 swagger.id,
-                 notif.status);
+                 swagger.fullname, swagger.id, notif.status);
       ELLE_ASSERT(notif.status == gap_user_status_online ||
                   notif.status == gap_user_status_offline);
 
