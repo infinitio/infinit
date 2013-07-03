@@ -69,24 +69,26 @@ class TrophoniusNotify(Notifier):
         message['notification_type'] = notification_type
         message['timestamp'] = time.time() #timestamp in s.
 
-        if recipient_ids is not None:
+        if device_ids is None:
             device_ids = set()
-            for recipient_id in recipient_ids:
-                user = database.users().find_one(database.ObjectId(recipient_id))
-                device_ids.update(user['devices'])
+        if recipient_ids is None:
+            recipient_ids = set()
 
-        elif device_ids is not None:
-            device_ids = set(database.ObjectId(device_id) for device_id in device_ids)
+        device_ids = set(map(database.ObjectId, device_ids))
+        recipient_ids = set(map(database.ObjectId, recipient_ids))
+
+        if recipient_ids:
+            for recipient_id in recipient_ids:
+                user = database.users().find_one(recipient_id)
+                device_ids.update(user.get('devices', []))
+
         message['to_devices'] = list(device_ids)
 
         if store:
-            if recipient_ids is None:
-                recipient_ids = set()
-                for device_id in device_ids:
-                    device = database.devices().find_one(device_id)
-                    recipient_ids.add(device['owner'])
+            for device_id in device_ids:
+                device = database.devices().find_one(device_id)
+                recipient_ids.add(device['owner'])
             for _id in recipient_ids:
-                _id = database.ObjectId(_id)
                 user = database.users().find_one(_id)
                 user['notifications'].append(message)
                 database.users().save(user)
