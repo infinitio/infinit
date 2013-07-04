@@ -132,7 +132,7 @@ namespace hole
       Slug::~Slug()
       {
         for (auto host: Hosts(_hosts))
-          this->_remove(host.second);
+          this->_remove(*host.second);
 
         // Stop serving; we may not be listening, since bind errors are
         // considered warnings (see constructor), in which case we have no
@@ -169,7 +169,7 @@ namespace hole
             {
               for (auto neighbour: _hosts)
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
 
                 try
                 {
@@ -276,7 +276,7 @@ namespace hole
             {
               for (auto neighbour: this->_hosts)
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
 
                 try
                 {
@@ -375,7 +375,7 @@ namespace hole
               bool found = false;
               for (auto neighbour: this->_hosts)
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
                 assert(host != nullptr);
 
                 std::unique_ptr<nucleus::proton::ImmutableBlock> iblock;
@@ -548,7 +548,7 @@ namespace hole
 
         for (auto neighbour: this->_hosts)
           {
-            Host* host = neighbour.second;
+            auto host = neighbour.second;
             std::unique_ptr<MutableBlock> block;
 
             try
@@ -795,7 +795,7 @@ namespace hole
             bool found = false;
             for (auto neighbour: this->_hosts)
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
                 std::unique_ptr<MutableBlock> block;
 
                 try
@@ -1030,7 +1030,7 @@ namespace hole
             {
               for (auto neighbour: this->_hosts)
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
 
                 try
                 {
@@ -1076,7 +1076,7 @@ namespace hole
       {
         std::vector<Host*> res;
         for (auto host: _hosts)
-          res.push_back(host.second);
+          res.push_back(host.second.get());
         return std::move(res);
       }
 
@@ -1101,7 +1101,7 @@ namespace hole
         (void)opener;
         // Beware: do not yield between the host creation and the
         // authentication, or we might face a race condition.
-        Host* host = new Host(*this, locus, std::move(socket));
+        std::shared_ptr<Host> host(new Host(*this, locus, std::move(socket)));
         // XXX: leak
         ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
         auto loci = host->authenticate(this->passport());
@@ -1117,7 +1117,7 @@ namespace hole
       }
 
       void
-      Slug::_host_register(Host* host)
+      Slug::_host_register(std::shared_ptr<Host> host)
       {
         ELLE_LOG("%s: add host: %s", *this, *host);
         // XXX: the next line is broken
@@ -1133,7 +1133,7 @@ namespace hole
         {
           _connect(locus);
         }
-      catch (reactor::network::Exception& err)
+        catch (reactor::network::Exception& err)
         {
           ELLE_TRACE("ignore host %s: %s", locus, err.what());
         }
@@ -1147,21 +1147,21 @@ namespace hole
         // If the Host didn't take care of erasing himself from the list:
         if (it_host != end(this->_hosts))
         {
-          auto host_ptr = it_host->second;
+          std::shared_ptr<Host> host_ptr = it_host->second;
           this->_hosts.erase(it_host);
 
           // delete the host if it's still in the map.
           // This line can yield, so we need to make sure that the host is
           // erased from the list before calling its destructor.
-          delete host_ptr;
+          host_ptr.reset();
         }
       }
 
       void
-      Slug::_remove(Host* host)
+      Slug::_remove(Host const& host)
       {
-        ELLE_LOG("%s: remove host: %s", *this, *host);
-        this->_remove(host->locus());
+        ELLE_LOG("%s: remove host: %s", *this, host);
+        this->_remove(host.locus());
       }
 
       /*-------.

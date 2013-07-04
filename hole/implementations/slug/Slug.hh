@@ -97,9 +97,10 @@ namespace hole
       private:
         friend class Host;
         /// XXX We need to stop storing naked pointer.
-        typedef std::unordered_map<elle::network::Locus, Host*> Hosts;
+        typedef std::unordered_map<elle::network::Locus,
+                                   std::shared_ptr<Host>> Hosts;
         void
-        _host_register(Host* host);
+        _host_register(std::shared_ptr<Host> host);
         void
         _connect(elle::network::Locus const& locus);
         void
@@ -108,7 +109,7 @@ namespace hole
         void
         _connect_try(elle::network::Locus const& locus);
         void
-        _remove(Host* host);
+        _remove(Host const& host);
         void
         _remove(elle::network::Locus loc);
         Hosts _hosts;

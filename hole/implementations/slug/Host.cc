@@ -78,7 +78,7 @@ namespace hole
       {
         auto fn_on_exit = [&] {
           ELLE_LOG("%s: left", *this);
-          this->_slug._remove(this);
+          this->_slug._remove(*this);
         };
         elle::Finally on_exit(std::move(fn_on_exit));
 
@@ -140,7 +140,7 @@ namespace hole
         {
             ELLE_DEBUG("already authenticated");
             // XXX is this required ?
-            this->_slug._host_register(this);
+            this->_slug._host_register(std::shared_ptr<Host>(this));
             return this->_slug.loci();
         }
 
@@ -153,7 +153,7 @@ namespace hole
           this->authenticate(this->_slug.passport());
         // If we're authenticated, validate this host.
         if (this->_state == State::authenticated)
-          this->_slug._host_register(this);
+          this->_slug._host_register(std::shared_ptr<Host>(this));
         // Send back all the hosts we know.
         return this->_slug.loci();
       }
