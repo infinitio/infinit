@@ -36,3 +36,6 @@ def create_client(meta):
     session['token'] = res['token']
     print("Got token:", res['token'])
     return client
+
+def run(self):
+    print('no utils tests')
