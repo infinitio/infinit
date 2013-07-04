@@ -257,6 +257,9 @@ class Create(Page):
             store = True,
         )
 
+        from user import increase_swag
+        increase_swag(self.user, recipient, self.notifier)
+
         return self.success({
             'created_transaction_id': transaction_id,
             'remaining_invitations': self.user.get('remaining_invitations', 0),
@@ -335,17 +338,6 @@ class Accept(_UpdateTransaction):
         # XXX: If the sender delete his account while transaction is pending.
         # We should turn all his transaction to canceled.
         assert sender is not None
-
-        # If transfer is accepted, increase popularity of each user.
-        if self.user['_id'] != sender['_id']:
-            # XXX: probably not optimized, we should maybe use database.
-            # find_and_modify and increase the value.
-            sender['swaggers'][str(self.user['_id'])] = \
-                sender['swaggers'].setdefault(str(self.user['_id']), 0) + 1;
-            self.user['swaggers'][str(sender['_id'])] = \
-                self.user['swaggers'].setdefault(str(sender['_id']), 0) + 1;
-            database.users().save(sender)
-            database.users().save(self.user)
 
         device_ids = [transaction['sender_device_id'], transaction['recipient_device_id']]
         self.notifier.notify_some(
