@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import utils
 
 def run(client):
     res = client.post('/user/register', {
@@ -11,7 +12,6 @@ def run(client):
     assert client.get('/user/logout')['success'] is True
 
 if __name__ == "__main__":
-    import utils
     import meta
     with meta.Meta(spawn_db = True) as meta:
         client = utils.create_client(meta)

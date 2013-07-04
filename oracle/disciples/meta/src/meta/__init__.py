@@ -91,3 +91,11 @@ class Meta:
         import signal
         self.instance.send_signal(signal.SIGINT)
         self.__directory.__exit__(*args)
+
+    @property
+    def stdout(self):
+      return self.instance.stdout.read().decode('utf-8')
+
+    @property
+    def stderr(self):
+      return self.instance.stderr.read().decode('utf-8')

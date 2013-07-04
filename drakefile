@@ -526,7 +526,9 @@ def configure(cxx_toolkit = None,
     'lib/python/plasma',
     plasma_python_sources,
     cxx_toolkit, plasma_python_cxx_config)
-
+  rule_plasma = drake.Rule('plasma')
+  rule_plasma << plasma_python_lib
+  rule_plasma << plasma_lib
 
   # Agent
   agent_sources = drake.nodes(
@@ -1254,8 +1256,11 @@ def configure(cxx_toolkit = None,
     runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status
 
-  for test in ['pingpong-notifications.py',]:
-    test = drake.node('tests/functional/sharing/%s' % test)
+  for test in ['sharing/pingpong-notifications.py',
+               'sharing/swaggers.py',
+               'servers/online-offline',
+             ]:
+    test = drake.node('tests/functional/%s' % test)
     runner = drake.Runner(test)
     runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3.2
 
-import meta
-import trophonius
+import utils
 import gap
 import time
 import plasma
 import pythia
+import sys
 
 count = 0
 
@@ -24,11 +24,7 @@ def hash_password(password):
     import hashlib
     return hashlib.sha256(password.encode()).hexdigest()
 
-with meta.Meta(spawn_db = True,
-               trophonius_control_port = trophonius_control_port) as meta, \
-     trophonius.Trophonius(meta_port = meta.meta_port,
-                           control_port = trophonius_control_port) as tropho:
-
+with utils.Servers() as (meta, tropho):
     # Create users
     client = pythia.Admin(server = meta.url)
     def register(i):
@@ -67,14 +63,24 @@ with meta.Meta(spawn_db = True,
     client2, device2 = connect(2)
     tropho2 = connect_tropho(client2, device2)
 
-    def poll(name, client, expected):
+    def poll(name, client):
         notif = client.poll()
         while notif is not None:
             print('%s: %s' % (name, notif.type))
             notif = client.poll()
 
+    def poll(name, client, notifications):
+        notif = client.poll()
+        while notif is not None:
+            notifications.append(notif.type)
+            notif = client.poll()
+
     import time
+    notif1 = []
+    notif2 = []
     for i in range(10):
-        poll('user1', tropho1)
-        poll('user2', tropho2)
+        poll('user1', tropho1, notif1)
+        poll('user2', tropho2, notif2)
         time.sleep(.5)
+
+    assert 'user_status' in notif1
