@@ -31,7 +31,8 @@ namespace hole
     Storage::exist(Address const& address,
                    nucleus::proton::Revision const& revision) const
     {
-      ELLE_TRACE_METHOD(address, revision);
+      ELLE_TRACE_SCOPE("%s: check if %s exists at revision %s",
+                       *this, address, revision);
 
       ELLE_ASSERT(address.network() == this->_network);
 
@@ -57,7 +58,7 @@ namespace hole
     Storage::store(const nucleus::proton::Address& address,
                    const nucleus::proton::ImmutableBlock& block)
     {
-      ELLE_TRACE_METHOD(address, block);
+      ELLE_TRACE_SCOPE("%s: store %s at %s", *this, block, address);
 
       ELLE_ASSERT(address.network() == this->_network);
 
@@ -71,7 +72,7 @@ namespace hole
     Storage::store(const nucleus::proton::Address& address,
                    const nucleus::proton::MutableBlock& block)
     {
-      ELLE_TRACE_METHOD(address, block);
+      ELLE_TRACE_SCOPE("%s: store %s at %s", *this, block, address);
 
       ELLE_ASSERT(address.network() == this->_network);
 
@@ -84,7 +85,7 @@ namespace hole
     std::unique_ptr<nucleus::proton::Block>
     Storage::load(nucleus::proton::Address const& address) const
     {
-      ELLE_TRACE_METHOD(address);
+      ELLE_TRACE_SCOPE("%s: load %s", *this, address);
 
       ELLE_ASSERT(address.network() == this->_network);
 
@@ -98,7 +99,7 @@ namespace hole
     Storage::load(nucleus::proton::Address const& address,
                   nucleus::proton::Revision const& revision) const
     {
-      ELLE_TRACE_METHOD(address, revision);
+      ELLE_TRACE_SCOPE("%s: load %s at revision %s", *this, address, revision);
 
       ELLE_ASSERT(address.network() == this->_network);
 
@@ -114,7 +115,7 @@ namespace hole
     void
     Storage::erase(nucleus::proton::Address const& address)
     {
-      ELLE_TRACE_METHOD(address);
+      ELLE_TRACE_SCOPE("%s: erase at %s", *this, address);
 
       ELLE_ASSERT(address.network() == this->_network);
 
