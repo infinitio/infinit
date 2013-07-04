@@ -6,6 +6,8 @@
 # include <surface/gap/usings.hh>
 # include <plasma/meta/Client.hh>
 
+# include <elle/Printable.hh>
+
 # include <unordered_set>
 
 namespace surface
@@ -17,7 +19,10 @@ namespace surface
     using NotifManager = ::surface::gap::NotificationManager;
     using UserStatusNotification = ::surface::gap::UserStatusNotification;
     using NewSwaggerNotification = ::surface::gap::NewSwaggerNotification;
-    class UserManager: Notifiable
+
+    class UserManager:
+      public Notifiable,
+      public elle::Printable
     {
       /*----------.
       | Exception |
@@ -142,6 +147,13 @@ namespace surface
       void
       _on_swagger_status_update(UserStatusNotification const& notif);
 
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
   }
 }

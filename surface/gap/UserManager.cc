@@ -48,7 +48,7 @@ namespace surface
     User const&
     UserManager::_sync(plasma::meta::UserResponse const& response)
     {
-      ELLE_TRACE_METHOD("%s: user response: %s", *this, response);
+      ELLE_TRACE_SCOPE("%s: user response: %s", *this, response);
 
       std::unique_ptr<User> user_ptr{
         new User{
@@ -283,13 +283,21 @@ namespace surface
       }
     }
 
-   void
-   UserManager::swaggers_dirty()
-   {
-     ELLE_TRACE_METHOD("");
+    void
+    UserManager::swaggers_dirty()
+    {
+      ELLE_TRACE_METHOD("");
 
-     this->_swaggers_dirty = true;
-   }
+      this->_swaggers_dirty = true;
+    }
 
+    /*----------.
+    | Printable |
+    `----------*/
+    void
+    UserManager::print(std::ostream& stream) const
+    {
+      stream << "NetworkManager(" << this->_meta.email() << ")";
+    }
   }
 }
