@@ -24,7 +24,7 @@
 
 #include <chrono>
 
-ELLE_LOG_COMPONENT("infinit.surface.gap.Transaction");
+ELLE_LOG_COMPONENT("infinit.surface.gap.TransactionManager");
 
 namespace surface
 {
