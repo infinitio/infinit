@@ -1,0 +1,100 @@
+//
+// ---------- Agent -----------------------------------------------------------
+//
+
+The agent acts on behalf of a set of users so as to ease the process of entering a passphrase in exactly the same way ssh-agent does for SSH-related tools.
+
+Note that the agent goes a step further than SSH. Indeed, in addition to requesting the encryption, decryption, signature or verification of data, the infinit-agent is also capable of launching a hardcoded-set of binaries should the given binary's fingerprint match.
+
+XXX Interestingly, preventing the agent from providing the key pair to any program but allowing requests such a encrypt/decrypt/etc. provide the exact same security level since one can do: agent.decrypt(identity.user_k) -> decrypted private key
+
+/*------.
+| Start |
+`------*/
+
+description: Start the agent by acting on behalf of a set of user identities.
+target: LOCAL_USER_NAMES...
+
+# default which loads all the user identities from the default INFINIT_HOME.
+infinit-agent-start
+[input: password to decrypt the identity's key pair]
+
+# specify the users to take into account.
+infinit-agent-start nabila capucine
+[input: password to decrypt nabila's identity's key pair]
+[input: password to decrypt capucine's identity's key pair]
+
+# launch the agent with a specific infinit home.
+infinit-agent-start --infinit-home=/tmp/infinit
+
+/*-----.
+| Stop |
+`-----*/
+
+description: Stop the agent. Note that one cannot have multiple agents running.
+target: [none]
+
+# default.
+infinit-agent-stop
+
+/*----.
+| Add |
+`----*/
+
+description: Add a user identity to the agent. Note that the agent will look for the user in the infinit home given at startup.
+target: LOCAL_USER_NAME
+
+# default.
+infinit-agent-add nabila
+[input: password to decrypt nabila's identity's key pair]
+
+/*-------.
+| Remove |
+`-------*/
+
+description: Remove a user identity from the agent.
+target: LOCAL_USER_NAME
+
+# default
+infinit-agent-remove nabila
+
+/*------.
+| Print |
+`------*/
+
+description: Display information on the agent, such as the socket, pid and infinit home.
+target: [none]
+
+# default.
+infinit-agent-print
+
+# specify the fields to display.
+infinit-agent-print --fields=status{started/stopped},pid,socket,infinit-home
+
+# specify the format.
+infinit-agent-print --format={raw,json,yaml}
+
+/*-----.
+| List |
+`-----*/
+
+description: List the user identities being currently managed by the agent.
+target: [none]
+
+# default.
+infinit-agent-list
+
+# specify the fields to display.
+infinit-agent-list --fields=user-name,[+infinit-user-print --fields]
+
+# specify the format.
+infinit-agent-list --fields=user-name,identifier --format={raw,json,yaml}
+
+/*-------.
+| Launch |
+`-------*/
+
+description: Launch the given executable file assuming its fingerprint matches one of the agent's hard-coded allowed executables to be run that way. At startup, the binary is given information so as to retrieve the user's key pair without having to interactively request the passphrase.
+target: LOCAL_USER_NAME
+
+infinit-agent-launch nabila --command /tmp/8infinit -u nabila -n les-anges-5 -m /mnt/les-anges/5/

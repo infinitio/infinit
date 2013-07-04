@@ -1,0 +1,98 @@
+//
+// ---------- Device ----------------------------------------------------------
+//
+
+/*--------.
+| Declare |
+`--------*/
+
+description: Declare a device under the control of the given user, hence allowing this device to connect to the user's networks.
+target: [none]
+agent: yes (the passphrase is unecessary: agent.decrypt(administrator-name, identity.user_k) -> decryted private key)
+
+# create a passport for the current device which is signed by the default authority INFINIT_META_HOST/PORT.
+infinit-device-declare --description="My laptop" --owner-name=nabila --passport-path=/tmp/laptop.ppt
+[input: passphrase to decrypt the owner's identity key pair]
+
+# create a passport signed by the given authority file.
+infinit-device-declare --owner-name=nabila --passport-path=/tmp/laptop.ppt
+[input: passphrase for decrypting the authority]
+[input: passphrase to decrypt the owner's identity key pair]
+
+# create a passport signed by the given authority server.
+infinit-device-declare --owner-name=nabila --passport-path=/tmp/laptop.ppt --authority-host=XXX
+[input: passphrase for decrypting the authority]
+[input: passphrase to decrypt the owner's identity key pair]
+
+/*----------.
+| Undeclare |
+`----------*/
+
+description: Destroy the passport associated to this device. Note that the passport must also be uninstalled for the destruction to be complete.
+target: PASSPORT_PATH
+agent: no
+
+# default destruction.
+infinit-device-undeclare /tmp/laptop.ppt
+[confirmation] OR [option: --force]
+
+/*--------.
+| Install |
+`--------*/
+
+description: Install the given device's passport locally for the device to access the networks having been installed.
+target: PASSPORT_PATH
+agent: no
+
+# install the passport in the default INFINIT_HOME directory.
+infinit-device-install /tmp/laptop.ppt --user-name nabila
+
+# install the passport by specifying the infinit home.
+infinit-device-install /tmp/laptop.ppt --user-name nabila --infinit-home=/tmp/infinit
+
+/*----------.
+| Uninstall |
+`----------*/
+
+description: Declare this device as no longer allowed to connect to the user's networks.
+target: LOCAL_USER_NAME
+agent: no
+
+# uninstall the user's passport from the default INFINIT_HOME.
+infinit-device-uninstall nabila
+[confirmation] OR [option: --force]
+
+# uninstall the user's passport from the specified home.
+infinit-device-uninstall nabila --infinit-home=/tmp/infinit
+[confirmation] OR [option: --force]
+
+/*------.
+| Print |
+`------*/
+
+description: Print information on a device given its passport.
+target: PASSPORT_PATH
+agent: no
+
+# print information in relation with the given device's passport.
+infinit-device-print /tmp/laptop.ppt
+
+# print specific fields of the passport.
+infinit-device-print /tmp/laptop.ppt --fields=authority_publickey,identifier,owner_publickey,description
+
+# print in a specific format.
+infinit-device-print /tmp/laptop.ppt --format={raw,json,yaml}
+
+/*--------.
+| Extract |
+`--------*/
+
+description: Extract a device's passport given its owner name.
+target: LOCAL_USER_NAME
+agent: no
+
+# extract the passport file from an installed device in the default INFINIT_HOME and store it in the given file.
+infinit-device-extract nabila --passport-path=/tmp/extracted.ppt
+
+# extract the device's passport from a specified infinit home.
+infinit-device-extract nabila --infinit-home=/tmp/infinit --passport-path=/tmp/extracted.ppt

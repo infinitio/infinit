@@ -1,0 +1,74 @@
+//
+// ---------- Volume ----------------------------------------------------------
+//
+
+/*------.
+| Print |
+`------*/
+
+description: Display information on a volume given its mount-point.
+target: MOUNT_POINT
+agent: no
+
+# default.
+infinit-volume-print /mnt/les-anges/5/
+
+# display some fields.
+infinit-volume-print /mnt/les-anges/5/ --fields=user-name,network-name
+
+# print in a specific format.
+infinit-volume-print /mnt/les-anges/5/ --format={raw,json,yaml}
+
+/*-----.
+| List |
+`-----*/
+
+description: List the volumes having been mounted by the given user.
+target: LOCAL_USER_NAME
+agent: no
+
+# list from the default INFINIT_HOME.
+infinit-volume-list nabila
+
+# list from a specific infinit home.
+infinit-volume-list nabila --infinit-home=/tmp/infinit
+
+# list with specific fields.
+infinit-volume-list --fields=mount-point,[+infinit-volume-print --fields]
+
+# list in a specific format.
+infinit-volume-list --fields=mount-point,user-name --format={raw,json,yaml}
+
+/*------.
+| Mount |
+`------*/
+
+description: Mount a volume given the user to act on behalf of along with the network and the mount point.
+target: [none]
+agent: yes (the passphrase is unnecessary: agent.decrypt(user-name, identity.user_k) -> decrypted private key)
+
+# mount a volume.
+infinit-volume-mount --user-name=nabila --network-name=les-anges-5 --mount-point=/mnt/les-anges/5/
+[input: passphrase to decrypt the user's identity key pair]
+
+# mount from a specific infinit home.
+infinit-volume-mount --user-name=nabila --network-name=les-anges-5 --mount-point=/mnt/les-anges/5/ --infinit-home=/tmp/infinit
+[input: passphrase to decrypt the user's identity key pair]
+
+# mount a volume by specifying some of the peers to connect to in order to discover the whole network.
+infinit-volume-mount --user-name=nabila --network-name=les-anges-5 --mount-point=/mnt/les-anges/5/ --peer=192.168.0.1:12345 --peer=88.182.104.23:34812
+[input: passphrase to decrypt the user's identity key pair]
+
+/*--------.
+| Unmount |
+`--------*/
+
+description: Unmount an existing volume.
+target: MOUNT_POINT
+agent: no
+
+# unmount a volume from the default infinit home.
+infinit-volume-unmount /mnt/les-anges/5/
+
+# unmount a volume from a specific infinit home.
+infinit-volume-unmount /mnt/les-anges/5/ --infinit-home=/tmp/infinit

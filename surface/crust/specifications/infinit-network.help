@@ -1,0 +1,139 @@
+//
+// ---------- Network ---------------------------------------------------------
+//
+
+/*-------.
+| Create |
+`-------*/
+
+description: Create a network by issuing a descriptor which includes information on how to booststrap the network: which peer to connect to in order to discover the whole network topology, the overlay network implementation model and so forth.
+target: [none]
+agent: yes (the passphrase is unecessary: agent.decrypt(administrator-name, identity.user_k) -> decryted private key)
+
+# create a network by default.
+infinit-network-create --descriptor-path=/tmp/les-anges-5.dsc --administrator-name=nabila
+[input: passphrase to decrypt the administrator's identity key pair]
+
+# create a network which is signed by the default authority INFINIT_META_HOST/PORT but specifying the network's characteristics.
+infinit-network-create --model=slug --policy=confidential --openness=closed --description="Les Anges de la Telerealite 5" --descriptor-path=/tmp/les-anges-5.dsc --administrator-name=nabila
+[input: passphrase to decrypt the administrator's identity key pair]
+
+# create a network which will be signed by the given authority file.
+infinit-network-create --model=slug --policy=confidential --openness=closed --description="Les Anges de la Telerealite 5" --descriptor-path=/tmp/les-anges-5.dsc --administrator-name=nabila --authority-path=/tmp/my-domain.auth
+[input: passphrase for decrypting the authority]
+[input: passphrase to decrypt the administrator's identity key pair]
+
+# create a network which will be signed by the given authority server.
+infinit-network-create --model=slug --policy=confidential --openness=closed --description="Les Anges de la Telerealite 5" --descriptor-path=/tmp/les-anges-5.dsc --administrator-name=nabila --authority-host=XXX
+[input: passphrase to decrypt the administrator's identity key pair]
+
+# create a network with the given peers directly embedded in the descriptor because being stable.
+infinit-network-create --model=slug --policy=confidential --openness=closed --description="Les Anges de la Telerealite 5" --descriptor-path=/tmp/les-anges-5.dsc --administrator-name=nabila --peer=174.129.254.123:42 --peer=88.188.44.22:84
+[input: passphrase to decrypt the administrator's identity key pair]
+
+/*--------.
+| Destroy |
+`--------*/
+
+description: Destroy a network given the path to its descriptor.
+target: DESCRIPTOR_PATH
+agent: no
+
+# default destruction.
+infinit-network-destroy /tmp/les-anges-5.dsc
+[confirmation] OR [option: --force]
+
+/*--------.
+| Install |
+`--------*/
+
+description: Install a network locally so as to be manipulated through a human-readable name.
+target: DESCRIPTOR_PATH
+agent: no
+
+# install the descriptor in the default INFINIT_HOME directory.
+infinit-network-install /tmp/les-anges-5.dsc --user-name nabila --network-name=les-anges-5
+
+# install the descriptor by specifying the infinit home.
+infinit-network-install /tmp/les-anges-5.dsc --user-name nabila --network-name=les-anges-5 --infinit-home=/tmp/infinit
+
+/*----------.
+| Uninstall |
+`----------*/
+
+description: Uninstall a network so as to make it unusable locally.
+target: LOCAL_USER_NAME
+agent: no
+
+# uninstall the given network from the default INFINIT_HOME.
+infinit-network-uninstall nabila --network-name=les-anges-5
+[confirmation] OR [option: --force]
+
+# uninstall the network from the specified home.
+infinit-network-uninstall nabila --network-name=les-anges-5 --infinit-home=/tmp/infinit
+[confirmation] OR [option: --force]
+
+/*------.
+| Print |
+`------*/
+
+description: Display information on a network given its descriptor.
+target: DESCRIPTOR_PATH
+agent: no
+
+# print information in relation with the given network's descriptor.
+infinit-network-print /tmp/les-anges-5.dsc
+
+# print specific fields of the descriptor.
+infinit-network-print /tmp/les-anges-5.dsc --fields=authority_publickey,identifier,administrator_publickey,extent,history,description,openness,policy,peers
+
+# print in a specific format.
+infinit-network-print /tmp/les-anges-5.dsc --format={raw,json,yaml}
+
+/*-----.
+| List |
+`-----*/
+
+description: List the names of all the networks which have been installed by a user.
+target: LOCAL_USER_NAME
+agent: no
+
+# list the networks which have been installed by the user, depending on other characteristics.
+#
+# relationship can have a value of 'owner' or 'invitee'.
+infinit-network-list nabila --fields=relationship,administrator-publickey
+
+# list the networks from a specific home.
+infinit-network-list nabila --infinit-home=/tmp/infinit
+
+# list the networks with specific fields.
+infinit-network-list nabila --fields=network-name,[+infinit-network-print --fields]
+
+# list in a specific format.
+infinit-network-list nabila --fields=network-name,authority_publickey --format={raw,json,yaml}
+
+/*--------.
+| Extract |
+`--------*/
+
+description: Extract the descriptor file from an installed network. Note that the descriptor describes the intial state of the network, not its current.
+target: LOCAL_USER_NAME
+agent: no
+
+# extract the descriptor file from an installed network in the default INFINIT_HOME and store it in the given file.
+infinit-network-extract nabila --network-name=les-anges-5 --descriptor-path=/tmp/extracted.dsc
+
+# extract the descriptor from a specified infinit home.
+infinit-network-extract nabila --network-name=les-anges-5 --infinit-home=/tmp/infinit --descriptor-path=/tmp/extracted.dsc
+
+/*-------.
+| Update |
+`-------*/
+
+description: Update some fields in the network's descriptor. Note that for the modifications to take effect, all the users having mounted the network would need to retrieve the new version of the descriptor and remount the volume.
+target: DESCRIPTOR_PATH
+agent: no (because such modifications require the administrator to prove its identity)
+
+# update the network's characteristics by re-signing it with the default meta authority INFINIT_META_HOST/PORT.
+infinit-network-update /tmp/test.dsc --identity-path=/tmp/nabila.idy --description "The company network" --add-peer=88.188.44.22:84 --remove-peer=88.188.44.22:84 --openness=closed --policy=accessible
+[input: passphrase for decrypting the identity's key pair so as to be able to resign the data section]

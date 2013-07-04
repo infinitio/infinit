@@ -1,0 +1,155 @@
+//
+// ---------- User ------------------------------------------------------------
+//
+
+/*-------.
+| Create |
+`-------*/
+
+description: Create a user by issuing an identity file which embeds the user's key pair encrypted with a passphrase.
+target: [none]
+agent: no
+
+# default creation which signs the identity with the default meta authority INFINIT_META_HOST/PORT.
+infinit-user-create --identity-path=/tmp/nabila.idy
+[input: passphrase for encrypting the identity's key pair]
+
+# creation with a 2048-bit RSA key pair being generated.
+infinit-user-create --keypair-type=rsa --keypair-length=2048 --identity-path=/tmp/nabila.idy
+[input: passphrase for encrypting the identity's key pair]
+
+# creation with a 2048-bit RSA key pair being generated.
+infinit-user-create --keypair-type=rsa --keypair-length=2048 --identity-path=/tmp/nabila.idy
+[input: passphrase for encrypting the identity's key pair]
+
+# create a user identity with the given SSH key pair.
+infinit-user-create --keypair-path=$HOME/.ssh/id_rsa --identity-path=/tmp/nabila.idy
+[input: passphrase for decrypting the SSH key pair]
+[input: passphrase for encrypting the identity's key pair]
+
+# create a user identity which will be signed by the given authority.
+infinit-user-create --authority-path=/tmp/my-domain.auth --identity-path=/tmp/nabila.idy
+[input: passphrase for decrypting the authority's private key]
+[input: passphrase for encrypting the identity's key pair]
+
+# create a user identity which will be signed by a given meta authority.
+infinit-user-create --authority-host=XXX --identity-path=/tmp/nabila.idy
+[input: passphrase for encrypting the identity's key pair]
+
+/*--------.
+| Destroy |
+`--------*/
+
+description: Destroy the given identity file.
+target: IDENTITY_PATH
+agent: no
+
+# default destruction.
+infinit-user-destroy /tmp/nabila.idy
+[confirmation] OR [option: --force]
+
+/*--------.
+| Install |
+`--------*/
+
+description: Install a user (represented by the identity) locally so as to be used under the associated user name.
+target: IDENTITY_PATH
+agent: no
+
+# install the identity by specifying the infinit home.
+infinit-user-install /tmp/nabila.idy --user-name nabila --infinit-home=/tmp/infinit
+
+# install the identity in the default INFINIT_HOME directory.
+infinit-user-install /tmp/nabila.idy --user-name nabila
+
+/*----------.
+| Uninstall |
+`----------*/
+
+description: Uninstall a user on the local machine.
+target: LOCAL_USER_NAME
+agent: no
+
+# uninstall the user from the specified home.
+infinit-user-uninstall nabila --infinit-home=/tmp/infinit
+[confirmation] OR [option: --force]
+
+# uninstall the given user from the default INFINIT_HOME.
+infinit-user-uninstall nabila
+[confirmation] OR [option: --force]
+
+/*------.
+| Print |
+`------*/
+
+description: Display information regarding a user represented by the given identity file.
+target: IDENTITY_PATH
+agent: no
+
+# print the given identity file.
+infinit-user-print /tmp/nabila.idy
+
+# print specific fields of the identity.
+infinit-user-print /tmp/nabila.idy --fields=description,identifier,user-publickey,authority-publickey
+
+# print information in a specific format.
+infinit-user-print /tmp/nabila.idy --format={raw,json,yaml}
+
+/*-----.
+| List |
+`-----*/
+
+description: List the names of the user which have been installed locally.
+target: [none]
+agent: no
+
+# list the name of the identities present in the default INFINIT_HOME.
+infinit-user-list
+
+# list the name of the identities in the specified infinit home.
+infinit-user-list --infinit-home=/tmp/infinit
+
+# list the name of the identities with specific fields.
+infinit-user-list --fields=user-name,[+infinit-user-print --fields]
+
+# list in a specific format.
+infinit-user-list --fields=user-name,identifier --format={raw,json,yaml}
+
+/*--------.
+| Extract |
+`--------*/
+
+description: Extract the identity file from a user having been installed locally.
+target: LOCAL_USER_NAME
+agent: no
+
+# extract the identity file from an installed user in the default INFINIT_HOME and store it in the given file.
+infinit-user-extract nabila --identity-path=/tmp/extracted.idy
+
+# extract the identity from a specified infinit home.
+infinit-user-extract nabila --infinit-home=/tmp/infinit --identity-path=/tmp/extracted.idy
+
+/*-------.
+| Update |
+`-------*/
+
+description: Update some fields in the identity file representing a user.
+target: IDENTITY_PATH
+agent: no
+
+# update the identity's fields by re-signing it with the default meta authority INFINIT_META_HOST/PORT.
+infinit-user-update /tmp/nabila.idy --description "My professional identity"
+
+/*-----------.
+| Passphrase |
+`-----------*/
+
+description: Change the user's passphrase by re-encrypting the identity's key pair and re-signing the identity.
+target: IDENTITY_PATH
+agent: no (the agent cannot be used here and the old password is required to make sure the user controls the given identity)
+
+# change the identity's passphrase by re-signing with the given authority file.
+infinit-user-passphrase /tmp/nabila.idy --authority-path=/tmp/my-domain.auth
+[input: passphrase for decrypting the authority]
+[input: old passphrase for deencrypting the identity's key pair]
+[input: new passphrase for re-encrypting the identity's key pair]
