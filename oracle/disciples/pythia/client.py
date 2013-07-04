@@ -38,7 +38,7 @@ class Client(object):
     }
 
     def __init__(self, server = DEFAULT_SERVER, session = None):
-        self._session = session or {}
+        self._session = (session is not None and [session] or [{}])[0]
         self._server = server.rstrip('/') + '/'
 
     def get(self, url, params={}, token=None):
