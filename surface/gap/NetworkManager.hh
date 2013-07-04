@@ -12,6 +12,7 @@
 
 # include <reactor/scheduler.hh>
 
+# include <elle/Printable.hh>
 # include <elle/threading/Monitor.hh>
 
 namespace surface
@@ -26,7 +27,8 @@ namespace surface
     using Device = ::plasma::meta::Device;
     using Endpoint = ::plasma::meta::EndpointNodeResponse;
 
-    class NetworkManager
+    class NetworkManager:
+      public elle::Printable
     {
       /*-----------------.
       | Module Exception |
@@ -171,6 +173,14 @@ namespace surface
       void
       _on_network_update(NetworkUpdateNotification const& notif);
 
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
   }
 }

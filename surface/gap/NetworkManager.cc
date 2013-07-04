@@ -822,5 +822,14 @@ namespace surface
         identity,
         this->one(network_id).descriptor);
     }
+
+    /*----------.
+    | Printable |
+    `----------*/
+    void
+    NetworkManager::print(std::ostream& stream) const
+    {
+      stream << "NetworkManager(" << this->_meta.email() << ")";
+    }
   }
 }
