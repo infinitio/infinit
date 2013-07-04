@@ -1,7 +1,6 @@
 #!/usr/bin/env python3.2
 
-import meta
-import trophonius
+import utils
 import gap
 import time
 import plasma
@@ -25,80 +24,63 @@ def hash_password(password):
     import hashlib
     return hashlib.sha256(password.encode()).hexdigest()
 
-try:
-    meta = meta.Meta(spawn_db = True,
-                     trophonius_control_port = trophonius_control_port)
-    with meta:
-        tropho = trophonius.Trophonius(meta_port = meta.meta_port,
-                                       control_port = trophonius_control_port)
-        with tropho:
-            # Create users
-            client = pythia.Admin(server = meta.url)
-            def register(i):
-                email = 'user%s@infinit.io' % i
-                client.post('/user/register',
-                            {'email': email,
-                             'fullname': 'user%s' % i,
-                             'password': hash_password('user%s' % i),
-                             'activation_code': 'bitebite',
-                         })
-                return client.get('/user/%s/view' % email, {})['_id']
-            user1 = register(1)
-            user2 = register(2)
-            client.post('/user/add_swagger', {'user1': user1, 'user2': user2})
+with utils.Servers() as (meta, tropho):
+    # Create users
+    client = pythia.Admin(server = meta.url)
+    def register(i):
+        email = 'user%s@infinit.io' % i
+        client.post('/user/register',
+                    {'email': email,
+                     'fullname': 'user%s' % i,
+                     'password': hash_password('user%s' % i),
+                     'activation_code': 'bitebite',
+                 })
+        return client.get('/user/%s/view' % email, {})['_id']
+    user1 = register(1)
+    user2 = register(2)
+    client.post('/user/add_swagger', {'user1': user1, 'user2': user2})
 
-            # Connect
-            def connect(i):
-                client = pythia.Client(meta.url)
-                params = {'email': 'user%s@infinit.io' % i,
-                          'password': hash_password('user%s' % i)}
-                res = client.post('/user/login', params)
-                client._session['token'] = res['token']
-                device = client.post('/device/create',
-                                      {'name': 'device'})
-                return res, device
+    # Connect
+    def connect(i):
+        client = pythia.Client(meta.url)
+        params = {'email': 'user%s@infinit.io' % i,
+                  'password': hash_password('user%s' % i)}
+        res = client.post('/user/login', params)
+        client._session['token'] = res['token']
+        device = client.post('/device/create',
+                              {'name': 'device'})
+        return res, device
 
-            def connect_tropho(client, device):
-                res = plasma.Trophonius(tropho.host, tropho.port, lambda: None)
-                res.connect(client['_id'], client['token'],
-                            device['created_device_id'])
-                return res
+    def connect_tropho(client, device):
+        res = plasma.Trophonius(tropho.host, tropho.port, lambda: None)
+        res.connect(client['_id'], client['token'],
+                    device['created_device_id'])
+        return res
 
-            client1, device1 = connect(1)
-            tropho1 = connect_tropho(client1, device1)
+    client1, device1 = connect(1)
+    tropho1 = connect_tropho(client1, device1)
 
-            client2, device2 = connect(2)
-            tropho2 = connect_tropho(client2, device2)
+    client2, device2 = connect(2)
+    tropho2 = connect_tropho(client2, device2)
 
-            def poll(name, client):
-                notif = client.poll()
-                while notif is not None:
-                    print('%s: %s' % (name, notif.type))
-                    notif = client.poll()
+    def poll(name, client):
+        notif = client.poll()
+        while notif is not None:
+            print('%s: %s' % (name, notif.type))
+            notif = client.poll()
 
-            def poll(name, client, notifications):
-                notif = client.poll()
-                while notif is not None:
-                    notifications.append(notif.type)
-                    notif = client.poll()
+    def poll(name, client, notifications):
+        notif = client.poll()
+        while notif is not None:
+            notifications.append(notif.type)
+            notif = client.poll()
 
-            import time
-            notif1 = []
-            notif2 = []
-            for i in range(10):
-                poll('user1', tropho1, notif1)
-                poll('user2', tropho2, notif2)
-                time.sleep(.5)
+    import time
+    notif1 = []
+    notif2 = []
+    for i in range(10):
+        poll('user1', tropho1, notif1)
+        poll('user2', tropho2, notif2)
+        time.sleep(.5)
 
-            assert 'user_status' in notif1
-
-except:
-    print('======== Trophonius stdout:\n' + tropho.stdout,
-          file = sys.stderr)
-    print('======== Trophonius stderr:\n' + tropho.stderr,
-          file = sys.stderr)
-    print('======== Meta stdout:\n' + meta.stdout,
-          file = sys.stderr)
-    print('======== Meta stderr:\n' + meta.stderr,
-          file = sys.stderr)
-    raise
+    assert 'user_status' in notif1
