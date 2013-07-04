@@ -229,10 +229,6 @@ class Create(Page):
 
         transaction_id = database.transactions().insert(transaction)
 
-        sent = first_filename;
-        if transaction['files_count'] > 1:
-            sent +=  " and %i other files" % (transaction['files_count'] - 1)
-
         # XXX: MAIL DESACTIVATED
         from meta.resources import user
         if not user.is_connected(database.ObjectId(recipient_id)):
