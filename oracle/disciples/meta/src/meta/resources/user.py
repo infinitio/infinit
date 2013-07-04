@@ -35,8 +35,7 @@ import pythia
 # Users
 #
 def __ensure_user_exists(user):
-    if user is None:
-        return self.error(error.UNKNOWN_USER)
+    assert user is not None
 
 def user_by_id(_id, ensure_user_exists = True):
     assert isinstance(_id, database.ObjectId)
@@ -107,10 +106,7 @@ class _Page(Page):
             assert isinstance(user_id, database.ObjectId)
             user = user_by_id(user_id)
 
-        swaggers = list(
-            swagger_id for swagger_id in user['swaggers'].keys()
-            if is_connected(database.ObjectId(swagger_id))
-            )
+        swaggers = map(database.ObjectId, user['swaggers'].keys())
         d = {"user_id" : user_id}
         d.update(data)
         self.notifier.notify_some(
@@ -118,7 +114,7 @@ class _Page(Page):
             recipient_ids = swaggers,
             message = d,
             store = False,
-            )
+        )
 
 
 class Search(Page):
