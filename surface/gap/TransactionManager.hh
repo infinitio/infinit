@@ -1,14 +1,17 @@
 #ifndef SURFACE_GAP_TRANSACTIONMANAGER_HH
 # define SURFACE_GAP_TRANSACTIONMANAGER_HH
 
-# include "status.hh"
+# include "Device.hh"
 # include "NetworkManager.hh"
 # include "NotificationManager.hh"
 # include "OperationManager.hh"
+# include "Self.hh"
+# include "Transaction.hh"
+# include "TransactionStateMachine.hh"
 # include "UserManager.hh"
 # include "metrics.hh"
+# include "status.hh"
 
-# include <plasma/plasma.hh>
 # include <plasma/trophonius/Client.hh>
 # include <plasma/meta/Client.hh>
 
@@ -21,16 +24,6 @@ namespace surface
 {
   namespace gap
   {
-    /*-------.
-    | Usings |
-    `-------*/
-    using ::plasma::Transaction;
-    using Self = ::plasma::meta::SelfResponse;
-    using Device = ::plasma::meta::Device;
-    using NotificationManager = ::surface::gap::NotificationManager;
-    using NetworkManager = ::surface::gap::NetworkManager;
-    using UserManager = ::surface::gap::UserManager;
-
     class TransactionManager:
       public OperationManager,
       public Notifiable
@@ -48,6 +41,7 @@ namespace surface
       Self& _self;
       Device _device;
       ELLE_ATTRIBUTE_R(std::string, output_dir);
+      ELLE_ATTRIBUTE(TransactionStateMachine, state_machine);
 
       /*-------------.
       | Construction |
