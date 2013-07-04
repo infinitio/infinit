@@ -50,7 +50,6 @@ class Trophonius:
             stdout = subprocess.PIPE,
             stderr = subprocess.PIPE,
         )
-        print(path)
         while True:
             try:
                 self.port = self.__read_port('trophonius.sock')
