@@ -515,7 +515,9 @@ def configure(cxx_toolkit = None,
   plasma_lib = drake.cxx.DynLib('lib/plasma', plasma_sources,
                                 cxx_toolkit, cxx_config_libs)
   plasma_python_sources = plasma_sources + [
+    drake.node('plasma/python.cc'),
     drake.node('plasma/trophonius/python.cc'),
+    drake.node('plasma/meta/python.cc'),
   ]
   plasma_python_cxx_config = drake.cxx.Config(cxx_config)
   plasma_python_cxx_config += python3
