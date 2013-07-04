@@ -260,6 +260,11 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: received user status notification %s", *this, notif);
 
       auto swagger = this->one(notif.user_id);
+      if (swagger.public_key.empty() && notif.status == gap_user_status_online)
+      {
+        swagger = this->_sync(notif.user_id);
+        ELLE_ASSERT(not swagger.public_key.empty());
+      }
       this->swaggers(); // force up-to-date swaggers
       this->_swaggers->insert(swagger.id);
       ELLE_DEBUG("%s's (id: %s) status changed to %s",
