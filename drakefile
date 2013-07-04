@@ -526,7 +526,9 @@ def configure(cxx_toolkit = None,
     'lib/python/plasma',
     plasma_python_sources,
     cxx_toolkit, plasma_python_cxx_config)
-
+  rule_plasma = drake.Rule('plasma')
+  rule_plasma << plasma_python_lib
+  rule_plasma << plasma_lib
 
   # Agent
   agent_sources = drake.nodes(
