@@ -76,14 +76,29 @@ try:
                     print('%s: %s' % (name, notif.type))
                     notif = client.poll()
 
+            def poll(name, client, notifications):
+                notif = client.poll()
+                while notif is not None:
+                    notifications.append(notif.type)
+                    notif = client.poll()
+
             import time
+            notif1 = []
+            notif2 = []
             for i in range(10):
-                poll('user1', tropho1)
-                poll('user2', tropho2)
+                poll('user1', tropho1, notif1)
+                poll('user2', tropho2, notif2)
                 time.sleep(.5)
+
+            assert 'user_status' in notif1
+
 except:
-    print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
-    print('Trophonius stderr:\n' + tropho.stderr, file = sys.stderr)
-    print('Meta stdout:\n' + meta.stdout, file = sys.stderr)
-    print('Meta stderr:\n' + meta.stderr, file = sys.stderr)
+    print('======== Trophonius stdout:\n' + tropho.stdout,
+          file = sys.stderr)
+    print('======== Trophonius stderr:\n' + tropho.stderr,
+          file = sys.stderr)
+    print('======== Meta stdout:\n' + meta.stdout,
+          file = sys.stderr)
+    print('======== Meta stderr:\n' + meta.stderr,
+          file = sys.stderr)
     raise
