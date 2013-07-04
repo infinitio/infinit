@@ -280,8 +280,6 @@ namespace plasma
     {
     }
 
-
-
     // - API calls ------------------------------------------------------------
     // XXX add login with token method.
     LoginResponse
@@ -816,7 +814,7 @@ namespace plasma
     void
     Client::print(std::ostream& stream) const
     {
-      stream << "meta::Client(" << this->_email << ")";
+      stream << "meta::Client(" << this->_host << ":" << this->_port << " @" << this->_email << ")";
     }
   }
 }
