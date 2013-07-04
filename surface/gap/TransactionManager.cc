@@ -25,6 +25,9 @@
 
 #include <chrono>
 
+//XXX
+#include <cstdlib>
+
 ELLE_LOG_COMPONENT("infinit.surface.gap.Transaction");
 
 namespace surface
@@ -221,6 +224,10 @@ namespace surface
       else if (!instance_manager.exists(tr.network_id))
         return 0.0f;
 
+      // XX XX XX XX XX XX
+      //  XXX   XXX   XXX
+      // XX XX XX XX XX XX
+      return (::rand() % 100) / 100.0f;
       return this->_network_manager.progress(tr.network_id);
     }
 
@@ -235,20 +242,6 @@ namespace surface
     }
 
     void
-    TransactionManager::accept_transaction(Transaction const& transaction)
-    {
-      ELLE_TRACE_METHOD(transaction);
-
-      ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
-      this->_add<LambdaOperation>(
-          "accept_" + transaction.id,
-          std::function<void(Operation&)>{
-            std::bind(&TransactionManager::_accept_transaction,
-                      this,
-                      transaction,
-                      std::placeholders::_1)});
-    }
-    void
     TransactionManager::accept_transaction(std::string const& transaction_id)
     {
       ELLE_TRACE_METHOD(transaction_id);
@@ -257,39 +250,62 @@ namespace surface
     }
 
     void
-    TransactionManager::_accept_transaction(Transaction const& transaction,
-                                            Operation& operation)
+    TransactionManager::accept_transaction(Transaction const& transaction)
     {
-      ELLE_TRACE_METHOD(transaction, operation);
+      ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
 
-      try
+      if (transaction.accepted == true)
+        throw elle::Exception("Transaction already accepted.");
+
+      auto s = this->_states[transaction.id];
+
+      if (s.state == State::none)
       {
+        s.state = State::accepted;
+        this->_states([&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
 
-        this->_network_manager.add_device(transaction.network_id,
-                                          this->_device.id);
-        this->_network_manager.prepare(transaction.network_id);
-        this->_network_manager.to_directory(
-          transaction.network_id,
-          common::infinit::network_shelter(this->_self.id,
-                                           transaction.network_id));
-        this->_network_manager.launch(transaction.network_id);
-        this->_meta.accept_transaction(transaction.id,
-                                       this->_device.id,
-                                       this->_device.name);
+        try
+        {
+          if (transaction.status == plasma::TransactionStatus::created)
+          {
+            this->_reporter.store("transaction_accept_preparing",
+                                  {{MKey::value, transaction.id}});
+          }
+          else if (transaction.status == plasma::TransactionStatus::started)
+          {
+            this->_reporter.store("transaction_accept_prepared",
+                                  {{MKey::value, transaction.id}});
+          }
+
+
+          this->_network_manager.add_device(transaction.network_id,
+                                            this->_device.id);
+          this->_network_manager.prepare(transaction.network_id);
+          this->_network_manager.to_directory(
+            transaction.network_id,
+            common::infinit::network_shelter(this->_self.id,
+                                             transaction.network_id));
+          this->_network_manager.launch(transaction.network_id);
+
+          // Long.
+          this->_meta.accept_transaction(transaction.id,
+                                         this->_device.id,
+                                         this->_device.name);
+        }
+        CATCH_FAILURE_TO_METRICS("transaction_accept");
       }
-      CATCH_FAILURE_TO_METRICS("transaction_accept");
-
-      if (transaction.status == plasma::TransactionStatus::created)
+      else
       {
-        this->_reporter.store("transaction_accept_preparing",
-                              {{MKey::value, transaction.id}});
+        // meta.accept_transaction is done at the end of the previous block,
+        // and many operations occure before. Some can be long and the http
+        // request to meta too.
+        // So there is a time laps when you localy accepted the transaction but
+        // the transaction.accepted is still false. This log may seem awkward
+        // but it's not, especialy if you didn't lock the accepting process on
+        // top level (mac app, python script, ...).
+        ELLE_DEBUG("%s: Accepting the already accepted transaction %s",
+                   *this, transaction);
       }
-      else if (transaction.status == plasma::TransactionStatus::started)
-      {
-        this->_reporter.store("transaction_accept_prepared",
-                              {{MKey::value, transaction.id}});
-      }
-
     }
 
     void
@@ -305,105 +321,88 @@ namespace surface
     {
       ELLE_DEBUG_METHOD(transaction);
 
-      this->_add<LambdaOperation>(
-        "cancel_" + transaction.id,
-        std::function<void()>{
-          [&]
-          {
-            auto scope_exit = [&, transaction]
-            {
-              this->_cancel_all(transaction.id);
-              this->_network_manager.delete_(transaction.network_id, false);
-            };
-            ELLE_SCOPE_EXIT(scope_exit);
+      auto scope_exit = [&, transaction]
+        {
+          this->_network_manager.delete_(transaction.network_id, false);
+        };
+      ELLE_SCOPE_EXIT(scope_exit);
 
-            try
-            {
-              this->_meta.update_transaction(transaction.id,
-                                             plasma::TransactionStatus::canceled);
-            }
-            CATCH_FAILURE_TO_METRICS("transaction_cancel");
+      try
+      {
+        this->_meta.update_transaction(transaction.id,
+                                       plasma::TransactionStatus::canceled);
+      }
+      CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
-            std::string author = (
-              transaction.sender_id == this->_self.id ? "sender" : "recipient");
+      std::string author = (
+        transaction.sender_id == this->_self.id ? "sender" : "recipient");
 
-            auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch());
-            auto timestamp_tr = std::chrono::duration<double>(
-              transaction.timestamp);
-            double duration = timestamp_now.count() - timestamp_tr.count();
+      auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+      auto timestamp_tr = std::chrono::duration<double>(
+        transaction.timestamp);
+      double duration = timestamp_now.count() - timestamp_tr.count();
 
-            if (transaction.status == plasma::TransactionStatus::created)
-            {
-              if (transaction.accepted)
-              {
-                this->_reporter.store("transaction_cancel_preparing_accepted",
-                                      {{MKey::author, author},
-                                       {MKey::duration,
-                                        std::to_string(duration)},
-                                       {MKey::value, transaction.id}});
-              }
-              else
-              {
-                this->_reporter.store("transaction_cancel_preparing_unaccepted",
-                                      {{MKey::author, author},
-                                       {MKey::duration,
-                                        std::to_string(duration)},
-                                       {MKey::value, transaction.id}});
-              }
-            }
-            else if (transaction.status == plasma::TransactionStatus::started)
-            {
-              if (transaction.accepted &&
-                  this->_user_manager.device_status(
-                    transaction.recipient_id,
-                    transaction.recipient_device_id))
-              {
-                this->_reporter.store("transaction_cancel_transferring",
-                                      {{MKey::author, author},
-                                       {MKey::duration,
-                                        std::to_string(duration)},
-                                       {MKey::value, transaction.id}});
-              }
-              else if (transaction.accepted &&
-                       !this->_user_manager.device_status(
-                         transaction.recipient_id,
-                         transaction.recipient_device_id))
-              {
-                this->_reporter.store("transaction_cancel_offline",
-                                      {{MKey::author, author},
-                                       {MKey::duration,
-                                        std::to_string(duration)},
-                                       {MKey::value, transaction.id}});
-              }
-              else if (!transaction.accepted)
-              {
-                this->_reporter.store("transaction_cancel_prepared_unaccepted",
-                                      {{MKey::author, author},
-                                       {MKey::duration,
-                                        std::to_string(duration)},
-                                       {MKey::value, transaction.id}});
-              }
-            }
-          }
+      if (transaction.status == plasma::TransactionStatus::created)
+      {
+        if (transaction.accepted)
+        {
+          this->_reporter.store("transaction_cancel_preparing_accepted",
+                                {{MKey::author, author},
+                                  {MKey::duration,
+                                      std::to_string(duration)},
+                                  {MKey::value, transaction.id}});
         }
-      );
+        else
+        {
+          this->_reporter.store("transaction_cancel_preparing_unaccepted",
+                                {{MKey::author, author},
+                                  {MKey::duration,
+                                      std::to_string(duration)},
+                                  {MKey::value, transaction.id}});
+        }
+      }
+      else if (transaction.status == plasma::TransactionStatus::started)
+      {
+        if (transaction.accepted &&
+            this->_user_manager.device_status(
+              transaction.recipient_id,
+              transaction.recipient_device_id))
+        {
+          this->_reporter.store("transaction_cancel_transferring",
+                                {{MKey::author, author},
+                                  {MKey::duration,
+                                      std::to_string(duration)},
+                                  {MKey::value, transaction.id}});
+        }
+        else if (transaction.accepted &&
+                 !this->_user_manager.device_status(
+                   transaction.recipient_id,
+                   transaction.recipient_device_id))
+        {
+          this->_reporter.store("transaction_cancel_offline",
+                                {{MKey::author, author},
+                                  {MKey::duration,
+                                      std::to_string(duration)},
+                                  {MKey::value, transaction.id}});
+        }
+        else if (!transaction.accepted)
+        {
+          this->_reporter.store("transaction_cancel_prepared_unaccepted",
+                                {{MKey::author, author},
+                                  {MKey::duration,
+                                      std::to_string(duration)},
+                                  {MKey::value, transaction.id}});
+        }
+      }
     }
 
     void
     TransactionManager::_on_cancel_transaction(Transaction const& transaction)
     {
       ELLE_DEBUG_METHOD(transaction);
-
-      std::function<void()> scope_exit = [&, transaction]
-      {
-        this->_cancel_all(transaction.id);
-        this->_network_manager.delete_(transaction.network_id, false);
-      };
-      this->_add<LambdaOperation>(
-        "cancel_" + transaction.id,
-        scope_exit
-      );
+      /// XXX: False means that peer of the deleter will never remo
+      this->_network_manager.delete_(transaction.network_id, false);
     }
 
     TransactionManager::TransactionsMap const&
@@ -472,19 +471,9 @@ namespace surface
       ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::created);
       ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::started);
       auto s = this->_states[tr.id];
-      if (s.state != State::none)
-        try
-        {
-          this->finalize(s.operation);
-        }
-        catch (std::exception const&)
-        {
-          ELLE_DEBUG("couldn't finalize operation: %s",
-                     elle::exception_string());
-        }
+      ELLE_ASSERT_EQ(s.state, State::running);
 
       this->_states->erase(tr.id);
-      this->_cancel_all(tr.id);
       // Only delete local data of successful transfers
       this->_network_manager.delete_(
         tr.network_id,
@@ -495,6 +484,9 @@ namespace surface
     TransactionManager::_on_transaction(plasma::Transaction const& tr)
     {
       ELLE_TRACE_SCOPE("%s: transaction callback for %s", *this, tr);
+
+      ELLE_ASSERT(tr.recipient_id == this->_self.id ||
+                  tr.sender_id == this->_self.id);
 
       ELLE_DEBUG("received transaction %s, update local copy", tr)
       {
@@ -692,15 +684,18 @@ namespace surface
 
       auto s = this->_states[transaction.id];
 
+      // XXX: This condition sucks so much, cause state.state is the local state
+      // of the process. If you disconnect during the process, you next during
+      // your next connection, you can't do any assertion about on the state.
       if (s.state == State::preparing)
       {
-        this->_network_manager.notify_8infinit(transaction.network_id,
-                                               transaction.sender_device_id,
-                                               transaction.recipient_device_id);
-
         s.state = State::running;
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
+
+        this->_network_manager.notify_8infinit(transaction.network_id,
+                                               transaction.sender_device_id,
+                                               transaction.recipient_device_id);
 
         this->_reporter.store("transaction_transferring",
                               {{MKey::attempt, std::to_string(s.tries)},
@@ -729,8 +724,15 @@ namespace surface
 
       auto state = this->_states[transaction.id];
 
-      if (state.state == State::none)
+      // XXX: This condition sucks so much, cause state.state is the local state
+      // of the process. If you disconnect during the process, you next during
+      // your next connection, you can't do any assertion about on the state.
+      if (state.state != State::finished || state.state != State::running)
       {
+        state.state = State::running;
+        this->_states(
+          [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
+
         this->_network_manager.notify_8infinit(transaction.network_id,
                                                transaction.sender_device_id,
                                                transaction.recipient_device_id);

@@ -358,6 +358,7 @@ namespace surface
 
       if (this->_networks->find(network_id) != this->_networks->end())
       {
+        this->_infinit_instance_manager.stop(network_id);
         this->_reporter.store("network_delete_attempt",
                               {{MKey::value,  network_id}});
         ELLE_TRACE("remove network %s from meta", network_id)
