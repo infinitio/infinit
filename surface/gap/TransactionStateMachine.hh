@@ -13,6 +13,9 @@ namespace surface
 {
   namespace gap
   {
+    /// Represent the transaction state machine.
+    /// Each transition from a state to another is triggered by a specific
+    /// callback.
     class TransactionStateMachine
     {
     public:
