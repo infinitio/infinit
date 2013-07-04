@@ -101,7 +101,7 @@ if __name__ == '__main__':
     # As long as it stands, we need to have a control port.
     trophonius_control_port = 39074
 
-    with meta.Meta(spawn_db = True, #no_apertus = True,
+    with meta.Meta(spawn_db = True, no_apertus = True,
                    trophonius_control_port = trophonius_control_port) as meta, \
          trophonius.Trophonius(meta_port = meta.meta_port,
                                control_port = trophonius_control_port) as trophonius:
