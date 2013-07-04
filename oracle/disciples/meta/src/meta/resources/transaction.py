@@ -435,7 +435,7 @@ class Update(_UpdateTransaction):
                 device_ids.append(transaction['recipient_device_id'])
             else:
                 recipient = database.users().find_one(database.ObjectId(transaction['recipient_id']))
-                device_ids.extend(recipient['devices'])
+                device_ids.extend(recipient.get('devices', []))
             self.notifier.notify_some(
                 notifier.TRANSACTION,
                 device_ids = device_ids,
