@@ -127,7 +127,7 @@ namespace surface
         enum
         {
           none,     // Unknown transaction.
-          accepted,
+          accepting,
           preparing,
           running,
           finished,

@@ -270,7 +270,8 @@ namespace surface
 
       if (s.state == State::none)
       {
-        s.state = State::accepted;
+        ELLE_DEBUG("%s: changed local state to accepted", transaction);
+        s.state = State::accepting;
         this->_states([&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
 
         try
@@ -475,14 +476,11 @@ namespace surface
 
       ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::created);
       ELLE_ASSERT_NEQ(tr.status, plasma::TransactionStatus::started);
-      auto s = this->_states[tr.id];
-      ELLE_ASSERT_EQ(s.state, State::running);
 
       this->_states->erase(tr.id);
       // Only delete local data of successful transfers
       this->_network_manager.delete_(
-        tr.network_id,
-        tr.status == plasma::TransactionStatus::finished);
+        tr.network_id, tr.status == plasma::TransactionStatus::finished);
     }
 
     void
@@ -569,6 +567,7 @@ namespace surface
         this->_network_manager.add_user(tr.network_id, recipient_K);
         this->_network_manager.set_permissions(tr.network_id, recipient_K);
 
+        ELLE_DEBUG("%s: changed local state to preparing", tr);
         s.state = State::preparing;
         this->_states([&tr, &s] (StateMap& map) {map[tr.id] = s;});
 
@@ -616,11 +615,9 @@ namespace surface
 
       auto s = this->_states[transaction.id];
 
-      // XXX: This condition sucks so much, cause state.state is the local state
-      // of the process. If you disconnect during the process, you next during
-      // your next connection, you can't do any assertion about on the state.
       if (s.state == State::preparing)
       {
+        ELLE_DEBUG("%s: change local state %s to running", s.state, transaction);
         s.state = State::running;
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
@@ -656,11 +653,9 @@ namespace surface
 
       auto state = this->_states[transaction.id];
 
-      // XXX: This condition sucks so much, cause state.state is the local state
-      // of the process. If you disconnect during the process, you next during
-      // your next connection, you can't do any assertion about on the state.
-      if (state.state != State::finished || state.state != State::running)
+      if (state.state != State::finished && state.state != State::running)
       {
+        ELLE_DEBUG("%s: change local state to running", transaction);
         state.state = State::running;
         this->_states(
           [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
@@ -690,6 +685,12 @@ namespace surface
                 {MKey::network, transaction.network_id},
                 {MKey::count, std::to_string(transaction.files_count)},
                 {MKey::size, std::to_string(transaction.total_size)}});
+
+            ELLE_DEBUG("%s: change local state to finished", transaction);
+            auto state = this->_states[transaction.id];
+            state.state = State::finished;
+            this->_states(
+              [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
 
             this->update(transaction.id, plasma::TransactionStatus::finished);
           },
