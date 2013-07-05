@@ -508,7 +508,6 @@ def configure(cxx_toolkit = None,
     'plasma/trophonius/Client.cc',
     'plasma/trophonius/Client.hh',
     'plasma/plasma.cc',
-    # 'plasma/watchdog/ClientActions.hh',
     ) + [
       curly_lib,
       elle_lib,
