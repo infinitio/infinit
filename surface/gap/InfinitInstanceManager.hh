@@ -44,7 +44,7 @@ namespace surface
       elle::Passport passport;
       lune::Descriptor descriptor;
       hole::storage::Directory storage;
-      std::unique_ptr<hole::Hole> hole;
+      std::unique_ptr<hole::implementations::slug::Slug> hole;
       std::unique_ptr<etoile::Etoile> etoile;
       reactor::Scheduler scheduler;
       reactor::Thread keep_alive;

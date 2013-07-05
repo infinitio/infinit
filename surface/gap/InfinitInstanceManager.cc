@@ -1,12 +1,13 @@
 #include <signal.h>
 #include <stdlib.h>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
-#include "Exception.hh"
 
 #include <HoleFactory.hh>
 
 #include <elle/Exception.hh>
+#include <elle/network/Interface.hh>
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/os/getenv.hh>
@@ -22,10 +23,12 @@
 
 #include <common/common.hh>
 #include <surface/gap/_detail/TransferOperations.hh>
+#include <surface/gap/Exception.hh>
 #include <surface/gap/InfinitInstanceManager.hh>
 #include <surface/gap/binary_config.hh>
 
-#include <boost/algorithm/string.hpp>
+#include <plasma/meta/Client.hh>
+
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.InfinitInstanceManager");
 
@@ -70,14 +73,46 @@ namespace surface
           elle::serialize::from_file(common::infinit::passport_path(user_id))
             >> this->passport;
 
-          this->hole = infinit::hole_factory(this->descriptor,
-                                             storage,
-                                             passport,
-                                             Infinit::authority(),
-                                             {},
-                                             meta_host,
-                                             meta_port,
-                                             token);
+          this->hole.reset(new hole::implementations::slug::Slug(
+                             storage,
+                             passport,
+                             Infinit::authority(),
+                             reactor::network::Protocol::tcp));
+
+          ELLE_TRACE_SCOPE("publish breached addresses to meta(%s,%s)",
+                           meta_host, meta_port);
+          {
+            plasma::meta::Client client(meta_host, meta_port);
+            try
+            {
+              std::vector<std::pair<std::string, uint16_t>> addresses;
+              auto interfaces = elle::network::Interface::get_map(
+                elle::network::Interface::Filter::only_up
+                | elle::network::Interface::Filter::no_loopback
+                | elle::network::Interface::Filter::no_autoip
+                );
+                for (auto const& pair: interfaces)
+                  if (pair.second.ipv4_address.size() > 0 &&
+                      pair.second.mac_address.size() > 0)
+                  {
+                    auto const &ipv4 = pair.second.ipv4_address;
+                    addresses.emplace_back(ipv4, this->hole->port());
+                  }
+                ELLE_DEBUG("addresses: %s", addresses);
+              std::vector<std::pair<std::string, uint16_t>> public_addresses;
+
+              client.token(token);
+              client.network_connect_device(this->descriptor.meta().id(),
+                                            passport.id(),
+                                            addresses,
+                                            public_addresses);
+            }
+            catch (std::exception const& err)
+            {
+              ELLE_ERR("Cannot update device port: %s",
+                       err.what()); // XXX[to improve]
+            }
+          }
 
           this->etoile.reset(
             new etoile::Etoile(this->identity.pair(),

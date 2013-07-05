@@ -701,109 +701,11 @@ namespace surface
       ELLE_DEBUG("fallback")
         std::for_each(begin(fallback), end(fallback), _print);
 
-      // Very sophisticated heuristic to deduce the addresses to try first.
-      class Round
-      {
-        typedef std::vector<std::string> Addresses;
-      public:
-        explicit
-        Round(std::string const& name, Addresses const& addresses):
-          _name(name),
-          _addresses(addresses)
-        {}
+      auto peers_count = this->_infinit_instance_manager.connect_try(
+        network_id, fallback, false);
 
-        ELLE_ATTRIBUTE_R(std::string, name);
-        ELLE_ATTRIBUTE_R(Addresses, addresses);
-      };
-
-      static std::string _nat = "nat";
-      static std::string _local = "local";
-      static std::string _forwarder = "forwarder";
-
-      std::vector<Round> rounds;
-      {
-        std::vector<std::string> common = _find_commond_addr(externals,
-                                                             my_externals);
-        // sort the list, in order to have a deterministic behavior
-        std::sort(begin(externals), end(externals));
-        std::sort(begin(locals), end(locals));
-        std::sort(begin(fallback), end(fallback));
-
-        if (externals.empty() || my_externals.empty())
-        {
-          rounds.emplace_back(_local, locals);
-          rounds.emplace_back(_forwarder, fallback);
-        }
-        else if (common.empty())
-        {
-          // if there is no common external address, then we can try them first.
-          rounds.emplace_back(_nat, externals);
-          // then, we know we can not connect locally, so try to fallback
-          rounds.emplace_back(_forwarder, fallback);
-        }
-        else
-        {
-          // if there is a common external address, we can try to connect to
-          // local endpoints
-          std::vector<std::string> addr = _find_commond_addr(locals,
-                                                             my_locals);
-
-          rounds.emplace_back(_local, locals);
-          if (addr.empty())
-          {
-            // wtf, you are trying to do a local exchange, this is stupid, but
-            // let it be.
-            rounds.emplace_back(_nat, externals);
-            rounds.emplace_back(_forwarder, fallback);
-          }
-        }
-      }
-
-      ELLE_DEBUG("connection rounds:")
-      {
-        int i = 0;
-        for (auto const& round: rounds)
-        {
-          ++i;
-          ELLE_TRACE("- round[%s]: %s", i, round.name())
-          {
-            for (auto const& addr: round.addresses())
-            {
-              ELLE_TRACE("-- %s", addr);
-            }
-          }
-        }
-      }
-
-      int round_number = 0;
-      bool success = false;
-      for (auto const& round: rounds)
-      {
-        ++round_number;
-        ELLE_TRACE("round[%s]: %s", round_number, round.name())
-        {
-          for (auto const& addr : round.addresses())
-            ELLE_DEBUG("-- %s", addr);
-        }
-
-        this->_reporter.store("connection_method_attempt",
-                              {{MKey::value, round.name()}});
-        if (this->_infinit_instance_manager.connect_try(
-              network_id, round.addresses(), sender) > 0)
-        {
-          this->_reporter.store("connection_method_succeed",
-                                {{MKey::value, round.name()}});
-          success = true;
-          break;
-        }
-        else
-        {
-          this->_reporter.store("connection_method_fail",
-                                {{MKey::value, round.name()}});
-        }
-      }
-      if (!success)
-        throw elle::Exception{"Unable to connect"};
+      if (peers_count == 0)
+        throw elle::Exception("Unable to connect");
     }
 
     void
