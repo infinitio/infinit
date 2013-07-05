@@ -77,33 +77,31 @@ class Application(object):
     def __init__(self,
                  ip = meta.conf.APERTUS_HOST,
                  port = meta.conf.APERTUS_PORT,
-                 control_port = meta.conf.APERTUS_CONTROL_PORT):
+                 runtime_dir = ""):
         self.ip = ip
         self.port = port
-        self.control_port = control_port
-        pass
+        self.runtime_dir = runtime_dir
+
+    def local_ip(self):
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("gmail.com", 80))
+        ip, port = s.getsockname()
+        s.close()
+        return ip
 
     def run(self):
         log.startLogging(sys.stderr)
 
-        interface_names = ['eth0', 'en0', 'en1', 'eno1', 'eno2']
-        found = False
-        for name in interface_names:
-            try:
-                iface = netifaces.ifaddresses(name)
-                l_addr4 = iface[netifaces.AF_INET]
-                l_addr6 = iface[netifaces.AF_INET6]
-            except:
-                pass
-            else:
-                found = True
-                break
-        if not found:
-            raise Exception("Cannot find valid interface")
+        addr = self.local_ip()
+        factory = apertus.Factory(addr)
 
-        factory = apertus.Factory(l_addr4[0]['addr'])
+        listening_port = reactor.listenTCP(self.port, factory)
 
-        reactor.listenTCP(self.control_port, factory, interface="localhost")
+        if self.runtime_dir:
+            port = listening_port.getHost().port
+            with open(os.path.join(self.runtime_dir, "apertus.sock"), "w+") as portfile:
+                portfile.write("control:{}\n".format(port))
 
         if HAVE_SETPROCTITLE:
             setproctitle("apertus-server")

@@ -12,9 +12,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--control-port',
-    type = int,
-    default = meta.conf.APERTUS_CONTROL_PORT
+    '--runtime-dir', type = str, default = ""
 )
 
 from apertus.application import Application
@@ -23,6 +21,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     application = Application(
         port = args.port,
-        control_port = args.control_port
+        runtime_dir = args.runtime_dir
     )
     application.run()
