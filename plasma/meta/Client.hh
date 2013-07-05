@@ -231,6 +231,9 @@ namespace plasma
 
     class Client: public elle::Printable
     {
+      ELLE_ATTRIBUTE_R(std::string, host);
+      ELLE_ATTRIBUTE_R(uint16_t, port);
+
     private:
       std::string _root_url;
       bool _check_errors;

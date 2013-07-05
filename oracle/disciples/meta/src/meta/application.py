@@ -19,7 +19,8 @@ class Application(object):
                  meta_port = 8080,
                  mongo_host = None,
                  mongo_port = None,
-                 port_file = None):
+                 port_file = None,
+                 no_apertus = False):
         urls = []
         views = {}
 
@@ -37,10 +38,11 @@ class Application(object):
         self.app = web.application(urls, views)
 
         conf.META_HOST = meta_host
-
         conf.META_PORT = meta_port
         conf.MONGO_HOST = mongo_host
         conf.MONGO_PORT = mongo_port
+
+        conf.NO_APERTUS = no_apertus
 
         self.ip = meta_host
         self.port = meta_port

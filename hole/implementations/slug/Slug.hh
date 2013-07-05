@@ -130,7 +130,7 @@ namespace hole
       | Portal |
       `-------*/
       public:
-        void portal_connect(std::string const& host, int port);
+        void portal_connect(std::string const& host, int port, bool server);
         bool portal_wait(std::string const& host, int port);
 
 

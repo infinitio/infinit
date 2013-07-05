@@ -67,18 +67,20 @@ class _UpdateTransaction(Page):
 
     def add_link(self, transaction):
         sender, receiver = self.network_endpoints(transaction)
-        ap_endpoint = self.apertus.add_link(
-            str(transaction["network_id"]),
-            sender["externals"],
-            receiver["externals"]
-        )
+        if self.apertus is not None:
+            ap_endpoint = self.apertus.add_link(
+                str(transaction["network_id"]),
+                sender["externals"],
+                receiver["externals"]
+            )
 
-        # Add the current apertus endpoint to the externals addresses of the
-        # devices.
-        ip, port = ap_endpoint.split(":")
-        sender["fallback"] = receiver["fallback"] = [
-            {"ip" : ip, "port" : port}
-        ]
+            # Add the current apertus endpoint to the externals addresses of the
+            # devices.
+            ip, port = ap_endpoint.split(":")
+            sender["fallback"] = receiver["fallback"] = [
+                {"ip" : ip, "port" : port}
+            ]
+
         network = database.networks().find_one(
             database.ObjectId(transaction["network_id"]),
         )
@@ -87,17 +89,16 @@ class _UpdateTransaction(Page):
         database.networks().save(network)
 
     def del_link(self, transaction):
-        endpoints = self.network_endpoints(transaction)
-        if not endpoints:
-            return
-        sender, receiver = endpoints
-        self.apertus.del_link(
-            str(transaction["network_id"]),
-            sender["externals"],
-            receiver["externals"]
-        )
-
-
+        if self.apertus is not None:
+            endpoints = self.network_endpoints(transaction)
+            if not endpoints:
+                return
+            sender, receiver = endpoints
+            self.apertus.del_link(
+                str(transaction["network_id"]),
+                sender["externals"],
+                receiver["externals"]
+            )
 
 class Create(Page):
     """

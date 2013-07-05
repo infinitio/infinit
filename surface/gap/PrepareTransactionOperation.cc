@@ -64,36 +64,25 @@ namespace surface
                                            this->_transaction.network_id));
       }
 
-      ELLE_DEBUG("waiting network %s portal", this->_transaction.network_id)
-      {
-        this->_network_manager.wait_portal(this->_transaction.network_id);
-      }
+      this->_network_manager.launch(this->_transaction.network_id);
 
-      std::string recipient_K;
       ELLE_DEBUG("giving '%s' access to the network '%s'",
                  this->_transaction.recipient_id,
-                 this->_transaction.network_id)
-      {
-        // XXX Remove call to meta
-        recipient_K =
-          this->_meta.user(this->_transaction.recipient_id).public_key;
-        ELLE_ASSERT_NEQ(recipient_K.size(), 0u);
+                 this->_transaction.network_id);
 
-        this->_network_manager.add_user(this->_transaction.network_id,
-                                        this->_self.id,
-                                        this->_transaction.recipient_id,
-                                        recipient_K);
-      }
+      std::string recipient_K =
+        this->_meta.user(this->_transaction.recipient_id).public_key;
+      ELLE_ASSERT_NEQ(recipient_K.size(), 0u);
+
+      this->_network_manager.add_user(this->_transaction.network_id,
+                                      recipient_K);
 
       ELLE_DEBUG("Giving '%s' permissions on the network to '%s'.",
                  this->_transaction.recipient_id,
                  this->_transaction.network_id);
 
-      this->_network_manager.set_permissions(
-        this->_transaction.network_id,
-        this->_transaction.recipient_id,
-        recipient_K,
-        nucleus::neutron::permissions::write); // XXX write ?
+      this->_network_manager.set_permissions(this->_transaction.network_id,
+                                             recipient_K);
 
       auto transfer_binary = common::infinit::binary_path("8transfer");
 
@@ -166,4 +155,3 @@ namespace surface
     }
   }
 }
-

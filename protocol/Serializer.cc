@@ -42,7 +42,7 @@ namespace infinit
         ELLE_DUMP("%s: checksum: %s", *this, hash);
 
         uint32_t size(_uint32_get(_stream));
-        ELLE_DUMP("%s: packet size: %s", *this, size);
+        ELLE_DEBUG("%s: packet size: %s", *this, size);
 
         Packet packet(size);
         _stream.read(reinterpret_cast<char*>(packet._data), size);
@@ -93,7 +93,7 @@ namespace infinit
         ELLE_DUMP("%s: send packet data", *this)
           _stream.write(reinterpret_cast<char*>(packet._data),
                         packet._data_size);
-                      }
+      }
       _stream.flush();
     }
 

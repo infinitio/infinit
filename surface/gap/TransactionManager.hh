@@ -127,8 +127,10 @@ namespace surface
         enum
         {
           none,     // Unknown transaction.
+          accepted,
           preparing,
           running,
+          finished,
         } state;
         int tries;
         OperationId operation;
@@ -157,9 +159,6 @@ namespace surface
       cancel_transaction(std::string const& transaction_id);
 
     private:
-      void
-      _accept_transaction(Transaction const& transaction,
-                          Operation& operation);
 
       void
       _cancel_transaction(Transaction const& transaction);

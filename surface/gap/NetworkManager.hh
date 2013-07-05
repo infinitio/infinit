@@ -12,6 +12,7 @@
 
 # include <reactor/scheduler.hh>
 
+# include <elle/Printable.hh>
 # include <elle/threading/Monitor.hh>
 
 namespace surface
@@ -26,7 +27,8 @@ namespace surface
     using Device = ::plasma::meta::Device;
     using Endpoint = ::plasma::meta::EndpointNodeResponse;
 
-    class NetworkManager
+    class NetworkManager:
+      public elle::Printable
     {
       /*-----------------.
       | Module Exception |
@@ -74,7 +76,7 @@ namespace surface
 
     public:
       void
-      wait_portal(std::string const& network_id);
+      launch(std::string const& network_id);
 
 
       /*------------.
@@ -119,9 +121,27 @@ namespace surface
       /// Add a user to a network with its mail or id.
       void
       add_user(std::string const& network_id,
-               std::string const& inviter_id,
-               std::string const& user_id,
-               std::string const& identity);
+               std::string const& user_K);
+
+      /// Upload files (wrap instance_manager.upload_files)
+      void
+      upload_files(std::string const& network_id,
+                   std::unordered_set<std::string> const& files,
+                   std::function<void ()> success_callback,
+                   std::function<void ()> failure_callback);
+
+
+      /// Download files into path 'destination' (wrap).
+      void
+      download_files(std::string const& network_id,
+                     std::string const& public_key,
+                     std::string const& destination,
+                     std::function<void ()> success_callback,
+                     std::function<void ()> failure_callback);
+
+      /// Get the progress on the current network.
+      float
+      progress(std::string const& network_id);
 
       /// Add a device to a network.
       void
@@ -142,10 +162,7 @@ namespace surface
       /// Give the recipient the write on the root of the network.
       void
       set_permissions(std::string const& network_id,
-                      std::string const& user_id,
-                      std::string const& user_identity,
-                      nucleus::neutron::Permissions permissions);
-
+                      std::string const& peer_pu);
       ///
       void
       to_directory(std::string const& network_id,
@@ -156,6 +173,14 @@ namespace surface
       void
       _on_network_update(NetworkUpdateNotification const& notif);
 
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
   }
 }

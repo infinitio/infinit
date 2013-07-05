@@ -53,6 +53,9 @@ class Page(object):
 
     @property
     def apertus(self):
+        if conf.NO_APERTUS:
+            return None
+
         if self.__apertus is None:
             self.__apertus = apertus.Apertus()
             return self.__apertus

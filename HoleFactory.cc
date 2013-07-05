@@ -10,7 +10,6 @@
 #include <common/common.hh>
 
 #include <lune/Descriptor.hh>
-#include <lune/Set.hh>
 
 #include <hole/implementations/local/Implementation.hh>
 #include <hole/implementations/remote/Implementation.hh>
@@ -42,7 +41,8 @@ namespace infinit
                  std::vector<elle::network::Locus> const& members,
                  int port,
                  reactor::Duration connection_timeout,
-                 std::unique_ptr<reactor::network::UDPSocket> socket):
+                 std::unique_ptr<reactor::network::UDPSocket> socket,
+                 std::unique_ptr<reactor::Thread> heartbeat):
       Super(storage, passport, authority,
             protocol, members, port, connection_timeout, std::move(socket)),
       _portal(
@@ -52,31 +52,40 @@ namespace infinit
           rpcs.slug_connect = std::bind(&Slug::portal_connect,
                                         this,
                                         std::placeholders::_1,
-                                        std::placeholders::_2);
+                                        std::placeholders::_2,
+                                        true);
           rpcs.slug_wait = std::bind(&Slug::portal_wait,
                                      this,
                                      std::placeholders::_1,
                                      std::placeholders::_2);
         }
-        )
+        ),
+      _heartbeat(std::move(heartbeat))
     {}
 
+    ~PortaledSlug()
+    {
+      if (this->_heartbeat)
+        this->_heartbeat->terminate_now();
+    }
 
     Portal<hole::implementations::slug::control::RPC> _portal;
+
+  private:
+    ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, heartbeat);
+
   };
 
   std::unique_ptr<hole::Hole>
-  hole_factory(hole::storage::Storage& storage,
+  hole_factory(lune::Descriptor const& descriptor,
+               hole::storage::Storage& storage,
                elle::Passport const& passport,
                elle::Authority const& authority,
-               std::vector<elle::network::Locus> const& members)
+               std::vector<elle::network::Locus> const& members,
+               std::string const& _meta_host,
+               uint16_t _meta_port,
+               std::string const& token)
   {
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
-
-    lune::Set set;
-    if (lune::Set::exists(Infinit::User, Infinit::Network) == true)
-      set.load(Infinit::User, Infinit::Network);
-
     switch (descriptor.meta().model().type)
       {
         case hole::Model::TypeLocal:
@@ -86,20 +95,14 @@ namespace infinit
               storage, passport, authority));
           break;
         }
-        case hole::Model::TypeRemote:
-        {
-          // Retrieve the locus.
-          if (set.loci.size() != 1)
-            {
-              static boost::format fmt("there should be a single locus "
-                                       "in the network's set (%u)");
-              throw std::runtime_error(str(fmt % set.loci.size()));
-            }
-          elle::network::Locus locus = *set.loci.begin();
-          return std::unique_ptr<hole::Hole>(
-            new hole::implementations::remote::Implementation(
-              storage, passport, authority, locus));
-        }
+        // case hole::Model::TypeRemote:
+        // {
+        //   // Retrieve the locus.
+        //   elle::network::Locus locus = *set.loci.begin();
+        //   return std::unique_ptr<hole::Hole>(
+        //     new hole::implementations::remote::Implementation(
+        //       storage, passport, authority, locus));
+        // }
         case hole::Model::TypeSlug:
         {
           int port = Infinit::Configuration["hole"].Get("slug.port", 0);
@@ -154,22 +157,28 @@ namespace infinit
           }
 
           // If the punch succeed, we start the heartbeat thread.
+          std::unique_ptr<reactor::Thread> heartbeat;
           if (socket)
-            heartbeat::start(*socket,
-                             common::heartbeat::host(),
-                             common::heartbeat::port());
+            heartbeat.reset(heartbeat::start(*socket,
+                                             common::heartbeat::host(),
+                                             common::heartbeat::port()));
 
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,
-                                        std::move(socket));
+                                        std::move(socket),
+                                        std::move(heartbeat));
 
           // Create the hole.
           std::unique_ptr<hole::Hole> hole(slug);
 
-          ELLE_TRACE("send addresses to meta")
+          std::string meta_host = _meta_host.empty() ? common::meta::host() :
+                                                       _meta_host;
+          uint16_t meta_port = (_meta_port == 0) ? common::meta::port() :
+                                                   _meta_port;
+          ELLE_TRACE_SCOPE("publish breached addresses to meta(%s,%s)",
+                           meta_host, meta_port);
           {
-            lune::Descriptor descriptor(Infinit::User, Infinit::Network);
-            plasma::meta::Client client(common::meta::host(), common::meta::port());
+            plasma::meta::Client client(meta_host, meta_port);
             try
             {
               std::vector<std::pair<std::string, uint16_t>> addresses;
@@ -191,7 +200,7 @@ namespace infinit
                 public_addresses.push_back(std::pair<std::string, uint16_t>
                                            (pub.address().to_string(),
                                             pub.port()));
-              client.token(agent::Agent::meta_token);
+              client.token(token.empty() ? agent::Agent::meta_token : token);
 
               ELLE_DEBUG("public_addresses: %s", public_addresses);
               client.network_connect_device(descriptor.meta().id(),

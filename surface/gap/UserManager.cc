@@ -174,9 +174,8 @@ namespace surface
         device_id) != user.connected_devices.end();
 
       ELLE_DEBUG("user (%s) device's (%s) is %s",
-                 user_id,
-                 device_id,
-                 (status ? "up" : "down"));
+                 user_id, device_id, (status ? "up" : "down"));
+
       return status;
     }
 
@@ -203,9 +202,7 @@ namespace surface
     {
       ELLE_TRACE_METHOD(recipient_id, message);
 
-      this->_meta.send_message(recipient_id,
-                               this->_self.id,
-                               message);
+      this->_meta.send_message(recipient_id, this->_self.id, message);
     }
 
     ///- Swaggers --------------------------------------------------------------
@@ -292,13 +289,21 @@ namespace surface
       });
     }
 
-   void
-   UserManager::swaggers_dirty()
-   {
-     ELLE_TRACE_METHOD("");
+    void
+    UserManager::swaggers_dirty()
+    {
+      ELLE_TRACE_METHOD("");
 
-     this->_swaggers_dirty = true;
-   }
+      this->_swaggers_dirty = true;
+    }
 
+    /*----------.
+    | Printable |
+    `----------*/
+    void
+    UserManager::print(std::ostream& stream) const
+    {
+      stream << "NetworkManager(" << this->_meta.email() << ")";
+    }
   }
 }

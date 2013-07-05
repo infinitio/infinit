@@ -1,21 +1,34 @@
-#include "InfinitInstanceManager.hh"
+#include <signal.h>
+#include <stdlib.h>
 
-#include "binary_config.hh"
-#include "Exception.hh"
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 
-#include <common/common.hh>
+#include <HoleFactory.hh>
 
 #include <elle/Exception.hh>
+#include <elle/network/Interface.hh>
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/os/getenv.hh>
 #include <elle/os/path.hh>
 #include <elle/system/signal.hh>
 
-#include <boost/filesystem.hpp>
+#include <etoile/Etoile.hh>
+#include <etoile/wall/Access.hh>
+#include <etoile/wall/Group.hh>
+#include <etoile/wall/Object.hh>
+#include <etoile/wall/Path.hh>
+#include <etoile/path/Chemin.hh>
 
-#include <signal.h>
-#include <stdlib.h>
+#include <common/common.hh>
+#include <surface/gap/_detail/TransferOperations.hh>
+#include <surface/gap/Exception.hh>
+#include <surface/gap/InfinitInstanceManager.hh>
+#include <surface/gap/binary_config.hh>
+
+#include <plasma/meta/Client.hh>
+
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.InfinitInstanceManager");
 
@@ -23,11 +36,101 @@ namespace surface
 {
   namespace gap
   {
-
-    InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id)
-      : _user_id{user_id}
+    InfinitInstance::InfinitInstance(std::string const& user_id,
+                                     std::string const& meta_host,
+                                     uint16_t meta_port,
+                                     std::string const& token,
+                                     std::string const& network_id,
+                                     lune::Identity const& identity,
+                                     std::string const& descriptor):
+      network_id(network_id),
+      mount_point(),
+      network(network_id),
+      identity(identity),
+      passport(),
+      descriptor(
+        elle::serialize::from_string<elle::serialize::InputBase64Archive>(
+          descriptor)),
+      storage(this->network, common::infinit::network_shelter(user_id,
+                                                              network_id)),
+      hole(),
+      etoile(),
+      scheduler(),
+      keep_alive(scheduler, "Keep alive", [] ()
+                 {
+                   while (true)
+                   {
+                     auto* current = reactor::Scheduler::scheduler()->current();
+                     current->sleep(boost::posix_time::seconds(60));
+                   }
+                 }),
+      thread(std::bind(&reactor::Scheduler::run, std::ref(scheduler)))
     {
-      ELLE_TRACE_METHOD(user_id);
+      this->scheduler.mt_run<void>(
+        elle::sprintf("initializer for %s", network_id),
+        [&]
+        {
+          elle::serialize::from_file(common::infinit::passport_path(user_id))
+            >> this->passport;
+
+          this->hole.reset(new hole::implementations::slug::Slug(
+                             storage,
+                             passport,
+                             Infinit::authority(),
+                             reactor::network::Protocol::tcp));
+
+          ELLE_TRACE_SCOPE("publish breached addresses to meta(%s,%s)",
+                           meta_host, meta_port);
+          {
+            plasma::meta::Client client(meta_host, meta_port);
+            try
+            {
+              std::vector<std::pair<std::string, uint16_t>> addresses;
+              auto interfaces = elle::network::Interface::get_map(
+                elle::network::Interface::Filter::only_up
+                | elle::network::Interface::Filter::no_loopback
+                | elle::network::Interface::Filter::no_autoip
+                );
+                for (auto const& pair: interfaces)
+                  if (pair.second.ipv4_address.size() > 0 &&
+                      pair.second.mac_address.size() > 0)
+                  {
+                    auto const &ipv4 = pair.second.ipv4_address;
+                    addresses.emplace_back(ipv4, this->hole->port());
+                  }
+                ELLE_DEBUG("addresses: %s", addresses);
+              std::vector<std::pair<std::string, uint16_t>> public_addresses;
+
+              client.token(token);
+              client.network_connect_device(this->descriptor.meta().id(),
+                                            passport.id(),
+                                            addresses,
+                                            public_addresses);
+            }
+            catch (std::exception const& err)
+            {
+              ELLE_ERR("Cannot update device port: %s",
+                       err.what()); // XXX[to improve]
+            }
+          }
+
+          this->etoile.reset(
+            new etoile::Etoile(this->identity.pair(),
+                               this->hole.get(),
+                               this->descriptor.meta().root()));
+        });
+    }
+
+    InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id,
+                                                   std::string const& meta_host,
+                                                   uint16_t meta_port,
+                                                   std::string const& token):
+      _user_id{user_id},
+      _meta_host(meta_host),
+      _meta_port(meta_port),
+      _token{token}
+    {
+      ELLE_TRACE_METHOD(user_id, meta_host, meta_port, token);
     }
 
     InfinitInstanceManager::~InfinitInstanceManager()
@@ -54,97 +157,21 @@ namespace surface
     }
 
     void
-    InfinitInstanceManager::wait_portal(std::string const& network_id)
+    InfinitInstanceManager::launch(std::string const& network_id,
+                                   lune::Identity const& identity,
+                                   std::string const& descriptor_digest)
     {
-      ELLE_TRACE_METHOD(network_id);
-
-      ELLE_DEBUG("retrieving portal path");
-      auto portal_path = common::infinit::portal_path(this->_user_id,
-                                                      network_id);
-
-      ELLE_DEBUG("portal path is %s", portal_path);
-      if (!this->exists(network_id))
-      {
-        if (boost::filesystem::exists(portal_path))
-          boost::filesystem::remove(portal_path);
-        this->launch(network_id);
-      }
-
-      for (int i = 0; i < 45; ++i)
-      {
-        ELLE_DEBUG("waiting for portal.");
-        if (elle::os::path::exists(portal_path))
-          return;
-
-        if (!this->exists(network_id))
-          throw Exception{gap_error, "infinit instance has crashed"};
-        ::sleep(1);
-      }
-
-      throw Exception{
-        gap_error,
-        elle::sprintf("unable to find portal for %s", network_id)};
-    }
-
-    void
-    InfinitInstanceManager::launch(std::string const& network_id)
-    {
-      ELLE_TRACE_METHOD(network_id);
+      ELLE_TRACE_SCOPE("%s: launch network %s", *this, network_id);
 
       if (this->_instances.find(network_id) != this->_instances.end())
-      {
-        ELLE_ASSERT_NEQ(this->_instances[network_id], nullptr);
-        if (this->_instances[network_id]->process->running())
-          throw elle::Exception{"Network " + network_id + " already launched"};
-        else
-          ELLE_DEBUG("Found staled infinit instance (%s): status = %s",
-                     this->_instances[network_id]->process->id(),
-                     this->_instances[network_id]->process->status());
-      }
+        throw elle::Exception{"Network " + network_id + " already launched"};
 
-      std::string command;
-      std::list<std::string> args;
+      std::unique_ptr<InfinitInstance> instance(
+        new InfinitInstance(
+          this->_user_id, this->_meta_host, this->_meta_port, this->_token,
+          network_id, identity, descriptor_digest));
 
-      auto pc = binary_config("8infinit",
-                              this->_user_id,
-                              network_id);
-      if (elle::os::getenv("INFINIT_DEBUG_WITH_VALGRIND", "") == "1")
-      {
-        command = "/opt/local/bin/valgrind";
-        args = {
-          "--dsymutil=yes",
-          "--max-stackframe=751633440",
-          common::infinit::binary_path("8infinit"),
-          "-n", network_id,
-          "-u", this->_user_id,
-        };
-      }
-      else
-      {
-        command = common::infinit::binary_path("8infinit");
-        args = {
-          "-n", network_id,
-          "-u", this->_user_id,
-        };
-      }
-      ELLE_DEBUG("%s %s %s %s %s",
-                 common::infinit::binary_path("8infinit"),
-                 "-n",
-                 network_id,
-                 "-u",
-                 this->_user_id);
-      auto process = elle::make_unique<elle::system::Process>(
-        std::move(pc),
-        command,
-        args
-      );
-
-      this->_instances[network_id].reset(
-        new InfinitInstance{
-          network_id,
-          "",
-          std::move(process),
-      });
+      this->_instances.insert(std::make_pair(network_id, std::move(instance)));
     }
 
     void
@@ -152,81 +179,249 @@ namespace surface
     {
       ELLE_TRACE_METHOD(network_id);
 
-      if (this->_instances.find(network_id) == this->_instances.end())
-      {
-        ELLE_DEBUG("no network %s found, no 8infinit to stop", network_id);
-        return;
-      }
+      ELLE_ASSERT(this->_instances.find(network_id) != this->_instances.end());
 
-      elle::system::Process::StatusCode status_code = 0;
-      try
-      {
-        using elle::system::ProcessTermination;
-        typedef elle::system::Process::Milliseconds ms;
-        auto const& instance = this->_instance(network_id);
-        ELLE_ASSERT_NEQ(instance.process, nullptr);
-        auto& process = *(instance.process);
-        if (instance.process->running())
-          status_code = process.interrupt(ProcessTermination::dont_wait)
-            .wait_status(ms{1000});
-        if (instance.process->running())
-          status_code = process.terminate(ProcessTermination::dont_wait)
-            .wait_status(ms{100});
-        if (instance.process->running())
-          status_code = process.kill(ProcessTermination::dont_wait)
-            .wait_status(ms{1});
-      }
-      catch (elle::Exception const& e)
-      {
-        ELLE_WARN("couldn't interrupt 8infinit instance of %s: %s",
-                  network_id, e);
-      }
-      if (status_code != 0)
-      {
-        if (status_code < 0)
+      auto& instance = this->_instance(network_id);
+
+      instance.scheduler.mt_run<void>(
+        elle::sprintf("stop(%s)", network_id),
+        [&instance]
         {
-          if (-status_code == SIGINT)
-            ELLE_LOG("8infinit stopped with signal %s (%s)",
-                     -status_code,
-                     elle::system::strsignal(-status_code));
-          else
-            ELLE_ERR("8infinit stopped with signal %s (%s)",
-                     -status_code,
-                     elle::system::strsignal(-status_code));
-        }
-        else
-          ELLE_ERR("8infinit(%s) exited with status %s",
-                   network_id, status_code);
-      }
-      else
-      {
-        ELLE_DEBUG("8infinit(%s) exited with status 0", network_id);
-      }
+          instance.etoile.reset();
+          instance.hole.reset();
+
+          instance.keep_alive.terminate();
+        });
+
+      instance.scheduler.terminate();
+
+      instance.thread.join();
       this->_instances.erase(network_id);
     }
 
     bool
     InfinitInstanceManager::exists(std::string const& network_id) const
     {
-      if (this->_instances.find(network_id) == this->_instances.end())
-        return false;
-
-      if (!this->_instance(network_id).process->running())
-      {
-        ELLE_WARN("Found not running infinit instance (pid = %s): status = %s",
-                  this->_instance(network_id).process->id(),
-                  this->_instance(network_id).process->status());
-        auto portal_path = common::infinit::portal_path(this->_user_id,
-                                                        network_id);
-        boost::filesystem::remove(portal_path);
-        //XXX this->_instances.erase(network_id);
-        return false;
-      }
-      return true;
+      return this->_instances.find(network_id) != this->_instances.end();
     }
 
-    InfinitInstance const&
-    InfinitInstanceManager::_instance(std::string const& network_id) const
+    void
+    InfinitInstanceManager::add_user(
+      std::string const& network_id,
+      nucleus::neutron::Group::Identity const& group,
+      nucleus::neutron::Subject const& subject)
+    {
+      ELLE_TRACE_SCOPE("%s: add user %s into network %s",
+                       *this, subject, network_id);
+
+      auto& instance = this->_instance(network_id);
+
+      instance.scheduler.mt_run<void>(
+        elle::sprintf("add_user for %s", network_id),
+        [&]
+        {
+          auto& etoile = *instance.etoile;
+          auto identifier = etoile::wall::Group::Load(etoile, group);
+
+          elle::Finally discard{[&]
+            {
+              etoile::wall::Group::Discard(etoile, identifier);
+            }
+          };
+
+          etoile::wall::Group::Add(etoile, identifier, subject);
+          etoile::wall::Group::Store(etoile, identifier);
+
+          discard.abort();
+        });
+    }
+
+    void
+    InfinitInstanceManager::grant_permissions(
+      std::string const& network_id,
+      nucleus::neutron::Subject const& subject)
+    {
+      ELLE_TRACE_SCOPE("%s: grant permissions to user %s into network %s",
+                       *this, subject, network_id);
+
+      auto& instance = this->_instance(network_id);
+
+      instance.scheduler.mt_run<void>(
+        elle::sprintf("grant permissions for %s", network_id),
+        [&]
+        {
+          auto& etoile = *instance.etoile;
+
+          etoile::path::Chemin chemin = etoile::wall::Path::resolve(etoile, "/");
+          auto identifier = etoile::wall::Object::load(etoile, chemin);
+
+          elle::Finally discard{[&]
+            {
+              etoile::wall::Object::discard(etoile, identifier);
+            }
+          };
+
+          etoile::wall::Access::Grant(etoile,
+                                      identifier,
+                                      subject,
+                                      nucleus::neutron::permissions::write);
+
+          etoile::wall::Object::store(etoile, identifier);
+
+          discard.abort();
+        });
+    }
+
+    void
+    InfinitInstanceManager::upload_files(std::string const& network_id,
+                                         std::unordered_set<std::string> items,
+                                         std::function<void ()> success_callback,
+                                         std::function<void ()> failure_callback)
+
+    {
+      ELLE_TRACE_SCOPE("%s: uploading  %s into network %s",
+                       *this, items, network_id);
+
+      auto& instance = this->_instance(network_id);
+
+      new reactor::Thread(
+          instance.scheduler,
+          elle::sprintf("upload files for %s", network_id),
+          [&instance, items, success_callback, failure_callback, this]
+          {
+            auto& etoile = *instance.etoile;
+
+            nucleus::neutron::Subject subject;
+            subject.Create(instance.descriptor.meta().administrator_K());
+
+            try
+            {
+              operation_detail::to::send(etoile, instance.descriptor, subject, items);
+              ELLE_DEBUG("%s: copy succeed", *this);
+              success_callback();
+            }
+            catch (...)
+            {
+              ELLE_DEBUG("%s: copy failed", *this);
+              failure_callback();
+              throw;
+            }
+          },
+          true);
+    }
+
+    void
+    InfinitInstanceManager::download_files(std::string const& network_id,
+                                           nucleus::neutron::Subject const& subject,
+                                           std::string const& destination,
+                                           std::function<void ()> success_callback,
+                                           std::function<void ()> failure_callback)
+
+    {
+      ELLE_TRACE_SCOPE("%s: download files from network %s into %s",
+                       *this, network_id, destination);
+
+      auto& instance = this->_instance(network_id);
+
+      new reactor::Thread(
+        instance.scheduler,
+        elle::sprintf("download files for %s", network_id),
+        [&instance, subject, destination, success_callback, failure_callback, this]
+        {
+          auto& etoile = *instance.etoile;
+
+          try
+          {
+            operation_detail::from::receive(etoile, instance.descriptor, subject, destination);
+            ELLE_DEBUG("%s: download succeeed", *this);
+            success_callback();
+          }
+          catch (...)
+          {
+            ELLE_DEBUG("%s: download failed", *this);
+            failure_callback();
+            throw;
+          }
+        },
+        true);
+    }
+
+    float
+    InfinitInstanceManager::progress(std::string const& network_id)
+    {
+      ELLE_DEBUG_SCOPE("%s: getting progress for network %s",
+                       *this, network_id);
+
+      auto& instance = this->_instance(network_id);
+
+      return instance.scheduler.mt_run<float>(
+        elle::sprintf("progress for %s", network_id),
+        [&] () -> float
+        {
+          auto& etoile = *instance.etoile;
+
+          return operation_detail::progress::progress(etoile);
+        });
+    }
+
+    int
+    InfinitInstanceManager::connect_try(std::string const& network_id,
+                                        std::vector<std::string> const& addresses,
+                                        bool sender)
+    {
+      ELLE_TRACE_SCOPE("%s: connecting infinit of network %s to %s",
+                       *this, network_id, addresses);
+
+      auto& instance = this->_instance(network_id);
+
+      return instance.scheduler.mt_run<int>(
+        elle::sprintf("connecting nodes for %s", network_id),
+        [&] () -> int
+        {
+          auto& hole = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
+
+          typedef std::unique_ptr<reactor::VThread<bool>> VThreadBoolPtr;
+          std::vector<std::pair<VThreadBoolPtr, std::string>> v;
+
+          auto slug_connect = [&] (std::string const& endpoint)
+            {
+              std::vector<std::string> result;
+              boost::split(result, endpoint, boost::is_any_of(":"));
+
+              auto const &ip = result[0];
+              auto const &port = result[1];
+              ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
+              hole.portal_connect(ip, std::stoi(port), sender);
+
+              ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
+              if (!hole.portal_wait(ip, std::stoi(port)))
+                throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
+                                                    ip, port));
+            };
+
+          int i = 0;
+          for (auto const& address: addresses)
+          {
+            try
+            {
+              slug_connect(address);
+              ++i;
+              ELLE_LOG("%s: connection to %s succeed", *this, address);
+            }
+            catch (elle::Exception const& e)
+            {
+              ELLE_WARN("%s: connection to %s failed", *this, address);
+            }
+          }
+
+          ELLE_TRACE("%s: finish connecting to %d node%s",
+                     *this, i, i > 1 ? "s" : "");
+          return i;
+        });
+    }
+
+    InfinitInstance&
+    InfinitInstanceManager::_instance(std::string const& network_id)
     {
       auto it = this->_instances.find(network_id);
       if (it == this->_instances.end())
@@ -248,6 +443,15 @@ namespace surface
           return pair.second.get();
       }
       return nullptr;
+    }
+
+    /*----------.
+    | Printable |
+    `----------*/
+    void
+    InfinitInstanceManager::print(std::ostream& stream) const
+    {
+      stream << "InstanceManager(" << this->_user_id << ")";
     }
   }
 }

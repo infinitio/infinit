@@ -170,7 +170,7 @@ namespace surface
       _google_reporter(google_reporter),
       _self(me),
       _device(device),
-      _infinit_instance_manager{me.id}
+      _infinit_instance_manager{me.id, this->_meta.host(), this->_meta.port(), this->_meta.token()}
     {
       ELLE_TRACE_METHOD("");
     }
@@ -358,6 +358,7 @@ namespace surface
 
       if (this->_networks->find(network_id) != this->_networks->end())
       {
+        this->_infinit_instance_manager.stop(network_id);
         this->_reporter.store("network_delete_attempt",
                               {{MKey::value,  network_id}});
         ELLE_TRACE("remove network %s from meta", network_id)
@@ -442,36 +443,29 @@ namespace surface
 
     void
     NetworkManager::add_user(std::string const& network_id,
-                             std::string const& owner,
-                             std::string const& user_id,
-                             std::string const& user_identity)
+                             std::string const& peer_public_key)
     {
-      ELLE_TRACE_METHOD(network_id, owner, user_id, user_identity);
+      ELLE_TRACE_METHOD(network_id, peer_public_key);
 
       this->_reporter.store("network_adduser_attempt",
                             {{MKey::value, network_id}});
 
       try
       {
-        Network network = this->one(network_id);
-        auto const& group_binary = common::infinit::binary_path("8group");
-        std::list<std::string> arguments{
-          "--user", owner,
-          "--type", "user",
-          "--add",
-          "--network", network._id,
-          "--identity", user_identity
-        };
+        nucleus::neutron::User::Identity public_key;
+        public_key.Restore(peer_public_key);
 
-        ELLE_DEBUG("launch: %s %s",
-                   group_binary,
-                   boost::algorithm::join(arguments, " "));
-        auto pc = binary_config("8group",
-                                this->_self.id,
-                                network._id);
-        elle::system::Process p{std::move(pc), group_binary, arguments};
-        if (p.wait_status() != 0)
-          throw Exception(gap_internal_error, "8group binary failed");
+        nucleus::neutron::Subject subject;
+        subject.Create(public_key);
+
+        auto const& network = this->one(network_id);
+
+        nucleus::neutron::Group::Identity group;
+        group.Restore(network.group_address);
+
+        this->_infinit_instance_manager.add_user(network._id,
+                                                 group,
+                                                 subject);
       }
       CATCH_FAILURE_TO_METRICS("network_adduser");
 
@@ -499,118 +493,65 @@ namespace surface
 
     void
     NetworkManager::set_permissions(std::string const& network_id,
-                                    std::string const& user_id,
-                                    std::string const& user_identity,
-                                    nucleus::neutron::Permissions permissions)
+                                    std::string const& peer_public_key)
     {
-      ELLE_TRACE_METHOD(network_id, user_id, user_identity, permissions);
+      ELLE_TRACE_SCOPE("%s: set permission on '/' for user %s on network %s",
+                       *this, peer_public_key, network_id);
 
-      // TODO: Do this only on the current device for sender and recipient.
-      this->wait_portal(network_id);
+      nucleus::neutron::User::Identity public_key;
+      public_key.Restore(peer_public_key);
 
-      std::string const& access_binary =
-        common::infinit::binary_path("8access");
+      nucleus::neutron::Subject subject;
+      subject.Create(public_key);
 
-      std::list<std::string> arguments{
-        "--user", this->_self.id,
-        "--type", "user",
-        "--grant",
-        "--network", network_id,
-        "--path", "/",
-        "--identity", user_identity,
-      };
-
-      if (permissions & nucleus::neutron::permissions::read)
-        arguments.push_back("--read");
-      if (permissions & nucleus::neutron::permissions::write)
-        arguments.push_back("--write");
-
-      ELLE_DEBUG("launch: %s %s",
-                 access_binary,
-                 boost::algorithm::join(arguments, " "));
-
-      if (permissions & gap_exec)
-      {
-        ELLE_WARN("XXX: setting executable permissions not yet implemented");
-      }
-
-      auto pc = binary_config("8access",
-                              this->_self.id,
-                              network_id);
-      elle::system::Process p{std::move(pc), access_binary, arguments};
-      if (p.wait_status() != 0)
-        throw Exception(gap_internal_error, "8access binary failed");
+      this->_infinit_instance_manager.grant_permissions(network_id, subject);
     }
 
-    static
-    int
-    _connect_try(reactor::Scheduler& sched,
-                 hole::implementations::slug::control::RPC& rpcs,
-                 std::vector<std::string> const& addresses)
+    void
+    NetworkManager::upload_files(std::string const& network_id,
+                                 std::unordered_set<std::string> const& files,
+                                 std::function<void ()> success_callback,
+                                 std::function<void ()> failure_callback)
+
     {
-      ELLE_DEBUG_FUNCTION(sched, rpcs, addresses);
+      ELLE_TRACE_SCOPE("%s: uploading %s into network %s",
+                       *this, files, network_id);
+      this->_infinit_instance_manager.upload_files(network_id,
+                                                   files,
+                                                   success_callback,
+                                                   failure_callback);
+    }
 
-      typedef std::unique_ptr<reactor::VThread<bool>> VThreadBoolPtr;
-      std::vector<std::pair<VThreadBoolPtr, std::string>> v;
+    void
+    NetworkManager::download_files(std::string const& network_id,
+                                   std::string const& public_key,
+                                   std::string const& destination,
+                                   std::function<void ()> success_callback,
+                                   std::function<void ()> failure_callback)
+    {
+      ELLE_TRACE_SCOPE("%s: uploading files into network %s",
+                       *this, network_id);
 
-      auto slug_connect = [&] (std::string const& endpoint)
-        {
-          std::vector<std::string> result;
-          boost::split(result, endpoint, boost::is_any_of(":"));
+      nucleus::neutron::User::Identity _public_key;
+      _public_key.Restore(public_key);
 
-          auto const &ip = result[0];
-          auto const &port = result[1];
-          ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
-          rpcs.slug_connect(ip, std::stoi(port));
+      nucleus::neutron::Subject subject;
+      subject.Create(_public_key);
 
-          ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
-          if (!rpcs.slug_wait(ip, std::stoi(port)))
-            throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
-                                                ip, port));
-        };
+      this->_infinit_instance_manager.download_files(network_id,
+                                                     subject,
+                                                     destination,
+                                                     success_callback,
+                                                     failure_callback);
+    }
 
-      auto start_thread = [&] (std::string const &endpoint)
-        {
-          v.push_back(std::make_pair(
-                        elle::make_unique<reactor::VThread<bool>>(
-                          sched,
-                          elle::sprintf("slug_connect(%s)", endpoint),
-                          [&] () -> int
-                          {
-                            try
-                            {
-                              slug_connect(endpoint);
-                            }
-                            catch (elle::Exception const &e)
-                            {
-                              ELLE_WARN("slug_connect failed: %s", e.what());
-                              return false;
-                            }
-                            return true;
-                          }),
-                        endpoint));
-        };
+    float
+    NetworkManager::progress(std::string const& network_id)
+    {
+      ELLE_TRACE_SCOPE("%s: getting progress for %s",
+                       *this, network_id);
 
-      ELLE_DEBUG("Connecting...")
-        std::for_each(std::begin(addresses), std::end(addresses), start_thread);
-
-      int i = 0;
-      for (auto &t : v)
-      {
-        reactor::VThread<bool> &vt = *t.first;
-        sched.current()->wait(vt);
-        if (vt.result() == true)
-        {
-          i++;
-          ELLE_LOG("connection to %s succeed", t.second);
-        }
-        else
-        {
-          ELLE_WARN("connection to %s failed", t.second);
-        }
-      }
-      ELLE_TRACE("finish connecting to %d node%s", i, i > 1 ? "s" : "");
-      return i;
+      return this->_infinit_instance_manager.progress(network_id);
     }
 
     static
@@ -701,6 +642,8 @@ namespace surface
       ELLE_ASSERT(this->_device.id == sender_device_id ||
                   this->_device.id == recipient_device_id);
 
+      bool const sender = recipient_device_id != this->_device.id;
+
       namespace proto = infinit::protocol;
 
       /// Check if network is valid
@@ -719,7 +662,7 @@ namespace surface
         std::string theirs_device;
         std::string ours_device;
 
-        if (recipient_device_id == this->_device.id)
+        if (!sender)
         {
           theirs_device = sender_device_id;
           ours_device = recipient_device_id;
@@ -758,136 +701,15 @@ namespace surface
       ELLE_DEBUG("fallback")
         std::for_each(begin(fallback), end(fallback), _print);
 
-      // Very sophisticated heuristic to deduce the addresses to try first.
-      class Round
-      {
-        typedef std::vector<std::string> Addresses;
-      public:
-        explicit
-        Round(std::string const& name, Addresses const& addresses):
-          _name(name),
-          _addresses(addresses)
-        {}
+      auto peers_count = this->_infinit_instance_manager.connect_try(
+        network_id, fallback, false);
 
-        ELLE_ATTRIBUTE_R(std::string, name);
-        ELLE_ATTRIBUTE_R(Addresses, addresses);
-      };
-
-      static std::string _nat = "nat";
-      static std::string _local = "local";
-      static std::string _forwarder = "forwarder";
-
-      std::vector<Round> rounds;
-      {
-        std::vector<std::string> common = _find_commond_addr(externals,
-                                                             my_externals);
-        // sort the list, in order to have a deterministic behavior
-        std::sort(begin(externals), end(externals));
-        std::sort(begin(locals), end(locals));
-        std::sort(begin(fallback), end(fallback));
-
-        if (externals.empty() || my_externals.empty())
-        {
-          rounds.emplace_back(_local, locals);
-          rounds.emplace_back(_forwarder, fallback);
-        }
-        else if (common.empty())
-        {
-          // if there is no common external address, then we can try them first.
-          rounds.emplace_back(_nat, externals);
-          // then, we know we can not connect locally, so try to fallback
-          rounds.emplace_back(_forwarder, fallback);
-        }
-        else
-        {
-          // if there is a common external address, we can try to connect to
-          // local endpoints
-          std::vector<std::string> addr = _find_commond_addr(locals,
-                                                             my_locals);
-
-          rounds.emplace_back(_local, locals);
-          if (addr.empty())
-          {
-            // wtf, you are trying to do a local exchange, this is stupid, but
-            // let it be.
-            rounds.emplace_back(_nat, externals);
-            rounds.emplace_back(_forwarder, fallback);
-          }
-        }
-      }
-
-      // Finish by calling the RPC to notify 8infinit of all the IPs of the peer
-      {
-        lune::Phrase phrase;
-
-        this->wait_portal(network_id);
-
-        phrase.load(this->_self.id, network_id, "slug");
-
-        ELLE_DEBUG("Connect to the local 8infint instance (%s:%d)",
-                   elle::String{"127.0.0.1"},
-                   phrase.port);
-
-        // Connect to the server.
-        reactor::network::TCPSocket socket{
-          sched,
-          elle::String("127.0.0.1"),
-          phrase.port,
-        };
-
-        proto::Serializer serializer{sched, socket};
-        proto::ChanneledStream channels{sched, serializer};
-        hole::implementations::slug::control::RPC rpcs{channels};
-
-        ELLE_DEBUG("connection rounds:")
-        {
-          int i = 0;
-          for (auto const& round: rounds)
-          {
-            ++i;
-            ELLE_TRACE("- round[%s]: %s", i, round.name())
-            {
-              for (auto const& addr: round.addresses())
-              {
-                ELLE_TRACE("-- %s", addr);
-              }
-            }
-          }
-        }
-
-        int round_number = 0;
-        bool success = false;
-        for (auto const& round: rounds)
-        {
-          ++round_number;
-          ELLE_TRACE("round[%s]: %s", round_number, round.name())
-          {
-            for (auto const& addr : round.addresses())
-              ELLE_DEBUG("-- %s", addr);
-          }
-
-          this->_reporter.store("connection_method_attempt",
-                                {{MKey::value, round.name()}});
-          if (_connect_try(sched, rpcs, round.addresses()) > 0)
-          {
-            this->_reporter.store("connection_method_succeed",
-                                  {{MKey::value, round.name()}});
-            success = true;
-            break;
-          }
-          else
-          {
-            this->_reporter.store("connection_method_fail",
-                                  {{MKey::value, round.name()}});
-          }
-        }
-        if (!success)
-          throw elle::Exception{"Unable to connect"};
-      }
+      if (peers_count == 0)
+        throw elle::Exception("Unable to connect");
     }
 
     void
-    NetworkManager::wait_portal(std::string const& network_id)
+    NetworkManager::launch(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
 
@@ -895,7 +717,24 @@ namespace surface
       //     obviously been created and prepared!
       this->prepare(network_id);
 
-      this->_infinit_instance_manager.wait_portal(network_id);
+      // XXX: do not restore the identity every time.
+      lune::Identity identity;
+      if (identity.Restore(this->_meta.identity()) == elle::Status::Error)
+        throw std::runtime_error("Couldn't restore the identity.");
+
+      this->_infinit_instance_manager.launch(
+        network_id,
+        identity,
+        this->one(network_id).descriptor);
+    }
+
+    /*----------.
+    | Printable |
+    `----------*/
+    void
+    NetworkManager::print(std::ostream& stream) const
+    {
+      stream << "NetworkManager(" << this->_meta.email() << ")";
     }
   }
 }

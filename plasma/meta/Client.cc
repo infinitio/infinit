@@ -271,6 +271,8 @@ namespace plasma
     Client::Client(std::string const& server,
                    uint16_t port,
                    bool check_errors):
+      _host(server),
+      _port(port),
       _root_url{elle::sprintf("http://%s:%d", server, port)},
       _check_errors{check_errors},
       _identity{},
@@ -282,8 +284,6 @@ namespace plasma
     Client::~Client()
     {
     }
-
-
 
     // - API calls ------------------------------------------------------------
     // XXX add login with token method.
@@ -829,7 +829,7 @@ namespace plasma
     void
     Client::print(std::ostream& stream) const
     {
-      stream << "meta::Client(" << this->_email << ")";
+      stream << "meta::Client(" << this->_host << ":" << this->_port << " @" << this->_email << ")";
     }
   }
 }

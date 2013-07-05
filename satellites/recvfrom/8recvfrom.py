@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.2
 # -*- encoding: utf-8 -*-
 
 from functools import partial
@@ -24,10 +24,7 @@ def on_transaction(state, transaction, new):
     print("Transaction ({})".format(transaction),
           state.transaction_status(transaction))
     if state.transaction_status(transaction) == state.TransactionStatus.started:
-        if getattr(state, "started_transactions", None):
-            state.started_transactions.append(transaction)
-        else:
-            state.started_transactions = [transaction]
+        state.started_transactions.append(transaction)
     elif state.transaction_status(transaction) == state.TransactionStatus.canceled:
         state.number_of_transactions -= 1
         if state.number_of_transactions == 0:
@@ -122,6 +119,7 @@ def main(state, sender):
     state.pull_notifications(0, 0)
     state.notifications_read()
     state.running = True
+    state.started_transactions = []
     transactions = state.transactions()
 
     state.on_error_callback(partial(on_error, state))
@@ -144,7 +142,7 @@ def main(state, sender):
         state.accept_transaction(transaction_id)
 
         while state.running:
-            if getattr(state, "started_transactions", None):
+            if state.started_transactions:
                 for t in (T for T in state.started_transactions if T in to_handle):
                     progress = state.transaction_progress(t)
                     print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, t, state.transaction_first_filename(t)), end=" "),
