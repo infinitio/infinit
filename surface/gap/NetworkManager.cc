@@ -637,12 +637,14 @@ namespace surface
                                      std::string const& recipient_device_id,
                                      reactor::Scheduler& sched)
     {
-      ELLE_DEBUG_METHOD(network_id, sender_device_id, recipient_device_id);
+      ELLE_DEBUG_SCOPE("notify8infinit net(%s), send(%s), rec(%s)",
+                       network_id, sender_device_id, recipient_device_id);
 
       ELLE_ASSERT(this->_device.id == sender_device_id ||
                   this->_device.id == recipient_device_id);
 
       bool const sender = recipient_device_id != this->_device.id;
+      ELLE_DEBUG_SCOPE("action as the %s", sender ? "sender" : "recipient");
 
       namespace proto = infinit::protocol;
 
@@ -701,11 +703,24 @@ namespace surface
       ELLE_DEBUG("fallback")
         std::for_each(begin(fallback), end(fallback), _print);
 
-      auto peers_count = this->_infinit_instance_manager.connect_try(
-        network_id, fallback, false);
 
-      if (peers_count == 0)
+      // Forward.
+      if (!this->_infinit_instance_manager.connect_try(network_id,
+                                                       fallback,
+                                                       false))
         throw elle::Exception("Unable to connect");
+
+      // XXX: Local.
+      // if (!sender)
+      // {
+      //   this->_infinit_instance_manager.connect_try(network_id,
+      //                                               locals,
+      //                                               sender);
+      // }
+      // else
+      // {
+      //   //success = this->_infinit_instance_manager.is_connected(network_id);
+      // }
     }
 
     void

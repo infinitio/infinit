@@ -129,7 +129,7 @@ namespace surface
       float
       progress(std::string const& network_id);
 
-      int
+      bool
       connect_try(std::string const& network_id,
                   std::vector<std::string> const& addresses,
                   bool sender);

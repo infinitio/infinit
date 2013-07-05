@@ -364,19 +364,19 @@ namespace surface
         });
     }
 
-    int
+    bool
     InfinitInstanceManager::connect_try(std::string const& network_id,
                                         std::vector<std::string> const& addresses,
                                         bool sender)
     {
-      ELLE_TRACE_SCOPE("%s: connecting infinit of network %s to %s",
+      ELLE_TRACE_SCOPE("%s: connecting infinit of network %s to %s ",
                        *this, network_id, addresses);
 
       auto& instance = this->_instance(network_id);
 
-      return instance.scheduler.mt_run<int>(
+      return instance.scheduler.mt_run<bool>(
         elle::sprintf("connecting nodes for %s", network_id),
-        [&] () -> int
+        [&] () -> bool
         {
           auto& hole = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
 
@@ -399,24 +399,22 @@ namespace surface
                                                     ip, port));
             };
 
-          int i = 0;
+          bool succeed = false;
           for (auto const& address: addresses)
           {
             try
             {
               slug_connect(address);
-              ++i;
+              succeed = true;
               ELLE_LOG("%s: connection to %s succeed", *this, address);
+              break;
             }
             catch (elle::Exception const& e)
             {
               ELLE_WARN("%s: connection to %s failed", *this, address);
             }
           }
-
-          ELLE_TRACE("%s: finish connecting to %d node%s",
-                     *this, i, i > 1 ? "s" : "");
-          return i;
+          return succeed;
         });
     }
 
