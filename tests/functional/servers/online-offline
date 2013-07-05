@@ -1,17 +1,19 @@
 #!/usr/bin/env python3.2
 
+import hashlib
 import utils
-import gap
 import time
 import plasma
 import pythia
-import sys
+import itertools
+
+ADMIN_TOKEN = pythia.constants.ADMIN_TOKEN
 
 count = 0
 
-# That logs us.
-def register(client, fullname, email):
-    client.register(fullname, email, "password", fullname + "_device", "bitebite")
+def hash_password(login, password):
+    to_hash = login + "MEGABIET" + password + login + "MEGABIET"
+    return hashlib.sha256(to_hash.encode()).hexdigest()
 
 def new_swagger_callback(expected, user_id):
     assert(expected == user_id)
@@ -20,67 +22,68 @@ def new_swagger_callback(expected, user_id):
 
 trophonius_control_port = 39075
 
-def hash_password(password):
-    import hashlib
-    return hashlib.sha256(password.encode()).hexdigest()
-
 with utils.Servers() as (meta, tropho):
-    # Create users
-    client = pythia.Admin(server = meta.url)
+
+    proto, addr, port = meta.url.split(":")
+    addr = addr.replace('/', '')
+    port = port.replace('/', '')
+
+    admin = plasma.Meta("127.0.0.1", int(port))
+    print(ADMIN_TOKEN)
+    admin.token = ADMIN_TOKEN
     def register(i):
-        email = 'user%s@infinit.io' % i
-        client.post('/user/register',
-                    {'email': email,
-                     'fullname': 'user%s' % i,
-                     'password': hash_password('user%s' % i),
-                     'activation_code': 'bitebite',
-                 })
-        return client.get('/user/%s/view' % email, {})['_id']
-    user1 = register(1)
-    user2 = register(2)
-    client.post('/user/add_swagger', {'user1': user1, 'user2': user2})
+        meta_client = plasma.Meta("127.0.0.1", int(port))
+        email = 'user{}@infinit.io'.format(i)
+        password = hash_password(email, 'user')
+        res = meta_client.register(email, "User Name",
+                password, "bitebite")
+        assert res.success
+        login = meta_client.login(email, password)
+        assert login.success
+        return meta_client
 
-    # Connect
-    def connect(i):
-        client = pythia.Client(meta.url)
-        params = {'email': 'user%s@infinit.io' % i,
-                  'password': hash_password('user%s' % i)}
-        res = client.post('/user/login', params)
-        client._session['token'] = res['token']
-        device = client.post('/device/create',
-                              {'name': 'device'})
-        return res, device
+    def create_users(number):
+        users = []
+        for i in range(number):
+            users.append(register(i))
+        return users
 
-    def connect_tropho(client, device):
+    user_list = create_users(2)
+    for u1, u2 in itertools.combinations(user_list, 2):
+        admin.add_swaggers(u1.self().id, u2.self().id)
+
+    def create_device(user):
+        res = user.create_device("device");
+        return res.id
+
+    def connect_tropho(user, device_id):
         res = plasma.Trophonius(tropho.host, tropho.port, lambda: None)
-        res.connect(client['_id'], client['token'],
-                    device['created_device_id'])
+        res.connect(user.self().id, user.token, device_id)
         return res
 
-    client1, device1 = connect(1)
-    tropho1 = connect_tropho(client1, device1)
+    tropho_connections = []
+    for user in user_list:
+        device = create_device(user)
+        tropho_connections.append(connect_tropho(user, device))
 
-    client2, device2 = connect(2)
-    tropho2 = connect_tropho(client2, device2)
-
-    def poll(name, client):
+    def poll(client):
+        notifications = []
         notif = client.poll()
         while notif is not None:
-            print('%s: %s' % (name, notif.type))
+            notifications.append(notif)
             notif = client.poll()
-
-    def poll(name, client, notifications):
-        notif = client.poll()
-        while notif is not None:
-            notifications.append(notif.type)
-            notif = client.poll()
+        return notifications
 
     import time
-    notif1 = []
-    notif2 = []
+    user_status = 0
+    import itertools as it
     for i in range(10):
-        poll('user1', tropho1, notif1)
-        poll('user2', tropho2, notif2)
+        notifs = list(map(poll, tropho_connections))
+        print(*notifs)
+        for n in it.chain(*notifs):
+            if n.type == 'user_status' and n.status == True:
+                user_status += 1
         time.sleep(.5)
 
-    assert 'user_status' in notif1
+    print(user_status)
+    assert user_status == 2
