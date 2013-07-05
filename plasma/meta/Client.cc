@@ -111,6 +111,11 @@ SERIALIZE_RESPONSE(plasma::meta::UsersResponse, ar, res)
   ar & named("users", res.users);
 }
 
+SERIALIZE_RESPONSE(plasma::meta::AddSwaggerResponse, ar, res)
+{
+  ar & named("swag", res.direction);
+}
+
 SERIALIZE_RESPONSE(plasma::meta::SwaggersResponse, ar, res)
 {
   ar & named("swaggers", res.swaggers);
@@ -408,6 +413,16 @@ namespace plasma
     Client::get_swaggers() const
     {
       return this->_get<SwaggersResponse>("/user/swaggers");
+    }
+
+    AddSwaggerResponse
+    Client::add_swaggers(std::string const& user1, std::string const& user2) const
+    {
+      json::Dictionary request;
+      request["user1"] = user1;
+      request["user2"] = user2;
+      request["admin_token"] = this->token();
+      return this->_post<AddSwaggerResponse>("/user/add_swagger", request);
     }
 
     // SwaggerResponse
