@@ -500,7 +500,7 @@ namespace surface
         this->_transactions([&tr] (TransactionMapPtr& ptr) {
             auto it = ptr->find(tr.id);
             if (it != ptr->end())
-              if (it->second.status >= tr.status)
+              if (it->second.status > tr.status)
               {
                 throw elle::Exception{
                   elle::sprint(
