@@ -47,8 +47,8 @@ class Trophonius:
              "--runtime-dir", self.__directory.name,
              "--timeout", str(self.timeout),
             ],
-            stdout = subprocess.PIPE,
-            stderr = subprocess.PIPE,
+            #stdout = subprocess.PIPE,
+            #stderr = subprocess.STDOUT,
         )
         while True:
             try:
@@ -69,12 +69,17 @@ class Trophonius:
     def __exit__(self, exception, exception_type, backtrace):
         assert self.instance is not None
         self.instance.terminate()
-        while os.path.exists(self.__port_path('trophonius.sock')) and\
-              os.path.exists(self.__port_path('trophonius.csock')):
-            time.sleep(1)
+        i = 0
+        while os.path.exists(self.__port_path('trophonius.sock')) and \
+              os.path.exists(self.__port_path('trophonius.csock')) and \
+              i < 10:
+            time.sleep(.1)
+            i += 1
         self.__directory.__exit__(exception,
                                   exception_type,
                                   backtrace)
+        if i == 10:
+            raise Exception("Couldn't exit tropho properly")
 
     @property
     def stdout(self):

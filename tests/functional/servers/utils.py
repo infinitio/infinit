@@ -1,3 +1,5 @@
+import sys
+
 import meta
 import trophonius
 
@@ -22,7 +24,7 @@ class Servers:
     def __exit__(self, exception_type, exception, *args):
         self.tropho.__exit__(exception_type, exception, *args)
         self.meta.__exit__(exception_type, exception, *args)
-        if exception is not None and exception_type is not AssertionError:
+        if exception is not None:
             print('======== Trophonius stdout:\n' + self.tropho.stdout,
                   file = sys.stderr)
             print('======== Trophonius stderr:\n' + self.tropho.stderr,
