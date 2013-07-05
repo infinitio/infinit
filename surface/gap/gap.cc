@@ -128,6 +128,31 @@ extern "C"
     return ptr;
   }
 
+  static char**
+  _cpp_stringvector_to_c_stringlist(std::vector<std::string> const& list)
+  {
+    size_t total_size = (1 + list.size()) * sizeof(void*);
+    for (auto const& str : list)
+      total_size += str.size() + 1;
+
+    char** ptr = reinterpret_cast<char**>(malloc(total_size));
+    if (ptr == nullptr)
+      return nullptr;
+
+
+    char** array = ptr;
+    char* cstr = reinterpret_cast<char*>(ptr + (list.size() + 1));
+    for (auto const& str : list)
+      {
+        *array = cstr;
+        ::strncpy(cstr, str.c_str(), str.size() + 1);
+        ++array;
+        cstr += str.size() + 1;
+      }
+    *array = nullptr;
+    return ptr;
+  }
+
   /// - gap ctor & dtor -----------------------------------------------------
 
   static
@@ -461,12 +486,12 @@ extern "C"
       {
         auto const& networks_ids = __TO_CPP(state)->network_manager().all_ids();
 
-        std::list<std::string> res;
+        std::vector<std::string> res;
 
         for (auto const& id : networks_ids)
           res.push_back(id);
 
-        return _cpp_stringlist_to_c_stringlist(res);
+        return _cpp_stringvector_to_c_stringlist(res);
       }
     CATCH_ALL(networks);
 
@@ -740,10 +765,10 @@ extern "C"
     try
       {
         auto users = __TO_CPP(state)->user_manager().search(text);
-        std::list<std::string> result;
+        std::vector<std::string> result;
         for (auto const& pair : users)
           result.push_back(pair.first);
-        return _cpp_stringlist_to_c_stringlist(result);
+        return _cpp_stringvector_to_c_stringlist(result);
       }
     CATCH_ALL(search_users);
 
@@ -778,10 +803,10 @@ extern "C"
     try
       {
         auto swaggers = __TO_CPP(state)->user_manager().swaggers();
-        std::list<std::string> result;
+        std::vector<std::string> result;
         for (auto const& id : swaggers)
           result.push_back(id);
-        return _cpp_stringlist_to_c_stringlist(result);
+        return _cpp_stringvector_to_c_stringlist(result);
       }
     CATCH_ALL(get_swaggers);
 
@@ -1014,13 +1039,13 @@ extern "C"
       {
         auto const& transactions_map = __TO_CPP(state)->transaction_manager().all();
 
-        std::list<std::string> res;
+        std::vector<std::string> res;
 
         for (auto const& transaction_pair : transactions_map)
           res.push_back(transaction_pair.first);
 
         ELLE_DEBUG("gap_transactions() = %s", res);
-        return _cpp_stringlist_to_c_stringlist(res);
+        return _cpp_stringvector_to_c_stringlist(res);
       }
     CATCH_ALL(transactions);
 
