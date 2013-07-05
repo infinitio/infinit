@@ -66,8 +66,6 @@ namespace surface
       _device(device),
       _output_dir{common::system::download_directory()}
     {
-      ELLE_TRACE_METHOD("");
-
       this->_notification_manager.transaction_callback(
         [&] (TransactionNotification const &n, bool) -> void
         {
@@ -82,8 +80,6 @@ namespace surface
 
     TransactionManager::~TransactionManager()
     {
-      ELLE_TRACE_METHOD("");
-
       try
       {
         ELLE_TRACE("destroying the transaction manager");
@@ -99,16 +95,12 @@ namespace surface
     void
     TransactionManager::clear()
     {
-      ELLE_TRACE_METHOD("");
-
       this->_network_manager.clear();
     }
 
     void
     TransactionManager::output_dir(std::string const& dir)
     {
-      ELLE_TRACE_METHOD(dir);
-
       if (!fs::exists(dir))
         throw Exception{gap_error,
                         "directory doesn't exist."};
@@ -124,7 +116,8 @@ namespace surface
     TransactionManager::send_files(std::string const& recipient_id_or_email,
                                    std::unordered_set<std::string> const& files)
     {
-      ELLE_TRACE_METHOD(recipient_id_or_email, files);
+      ELLE_TRACE_SCOPE("%s: send %s to %s",
+                       *this, files, recipient_id_or_email);
 
       if (files.empty())
         throw Exception(gap_no_file, "no files to send");
@@ -209,7 +202,7 @@ namespace surface
     float
     TransactionManager::progress(std::string const& id)
     {
-      ELLE_TRACE_METHOD(id);
+      ELLE_TRACE_SCOPE("%s: get progress for %s", *this, id);
 
       auto const& tr = this->one(id);
       auto const& instance_manager =
@@ -235,7 +228,8 @@ namespace surface
     TransactionManager::update(std::string const& transaction_id,
                                plasma::TransactionStatus status)
     {
-      ELLE_TRACE_METHOD(transaction_id, status);
+      ELLE_TRACE_SCOPE("%s: Update transaction %s with status %s",
+                       *this, transaction_id, status);
 
       ELLE_TRACE("set status %s on transaction %s", status, transaction_id);
       this->_meta.update_transaction(transaction_id, status);
@@ -244,14 +238,13 @@ namespace surface
     void
     TransactionManager::accept_transaction(std::string const& transaction_id)
     {
-      ELLE_TRACE_METHOD(transaction_id);
-
       this->accept_transaction(this->one(transaction_id));
     }
 
     void
     TransactionManager::accept_transaction(Transaction const& transaction)
     {
+      ELLE_TRACE_SCOPE("%s: accept %s", *this, transaction);
       ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
 
       if (transaction.accepted == true)
@@ -311,15 +304,13 @@ namespace surface
     void
     TransactionManager::cancel_transaction(std::string const& transaction_id)
     {
-      ELLE_TRACE_METHOD(transaction_id);
-
       this->_cancel_transaction(this->one(transaction_id));
     }
 
     void
     TransactionManager::_cancel_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG_METHOD(transaction);
+      ELLE_TRACE_SCOPE("%s: cancel %s", *this, transaction);
 
       auto scope_exit = [&, transaction]
         {
@@ -400,7 +391,7 @@ namespace surface
     void
     TransactionManager::_on_cancel_transaction(Transaction const& transaction)
     {
-      ELLE_DEBUG_METHOD(transaction);
+      ELLE_TRACE_SCOPE("%s: cancel callback for %s", *this, transaction);
       /// XXX: False means that peer of the deleter will never remo
       this->_network_manager.delete_(transaction.network_id, false);
     }
@@ -440,9 +431,7 @@ namespace surface
     Transaction const&
     TransactionManager::sync(std::string const& id)
     {
-      ELLE_TRACE_METHOD(id);
-
-      ELLE_TRACE("Synching transaction %s from _meta", id);
+      ELLE_TRACE_SCOPE("%s: sync transaction %s from meta", *this, id);
       this->all(); // ensure _transactions is not null;
       try
       {
@@ -588,7 +577,7 @@ namespace surface
     void
     TransactionManager::_on_user_status(UserStatusNotification const& notif)
     {
-      ELLE_DEBUG_METHOD(notif);
+      ELLE_TRACE_SCOPE("%s: user status callback for %s", *this, notif);
 
       // Search for user related transactions.
       auto to_check = this->_transactions(
@@ -613,7 +602,7 @@ namespace surface
     {
       auto s = this->_states[tr.id];
 
-      ELLE_TRACE_SCOPE("%s: uploading files %s for transaction %s, network %s",
+      ELLE_TRACE_SCOPE("%s: upload files %s for transaction %s, network %s",
                        *this, s.files, tr.id, tr.network_id);
 
       ELLE_DEBUG("%s: state is %s", *this, s.state);
@@ -680,7 +669,7 @@ namespace surface
     void
     TransactionManager::_start_upload(Transaction const& transaction)
     {
-      ELLE_DEBUG_METHOD(transaction);
+      ELLE_TRACE_SCOPE("%s: start upload for %s", *this, transaction);
 
       auto s = this->_states[transaction.id];
 
@@ -720,7 +709,7 @@ namespace surface
     void
     TransactionManager::_start_download(Transaction const& transaction)
     {
-      ELLE_DEBUG_METHOD(transaction);
+      ELLE_TRACE_SCOPE("%s: start download for %s", *this, transaction);
 
       auto state = this->_states[transaction.id];
 
