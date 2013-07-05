@@ -128,6 +128,7 @@ class ApertusMaster(LineReceiver):
         new_apertus = ApertcpusFactory()
         port = reactor.listenTCP(0, new_apertus)
         new_apertus.port = port
+        new_apertus.id = id
         self.factory.slaves.append(new_apertus)
         print("create new link at", port)
         msg = {"endpoint" : "{}:{}".format(self.addr, port.getHost().port), "_id" : id}
