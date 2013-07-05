@@ -15,8 +15,7 @@ recipient_ok = False
 def register(client, fullname, email):
     client.register(fullname, email, "password", fullname + "_device", "bitebite")
 
-def sender_callback(state, transaction_id):
-    status = state.transaction_status(transaction_id)
+def sender_callback(state, status, transaction_id):
     if status == state.TransactionStatus.canceled:
         raise Exception("Transaction canceled")
     elif status == state.TransactionStatus.failed:
@@ -26,8 +25,7 @@ def sender_callback(state, transaction_id):
         assert sender_ok == False
         sender_ok = True;
 
-def recipient_callback(state, transaction_id):
-    status = state.transaction_status(transaction_id)
+def recipient_callback(state, status,  transaction_id):
     if status == state.TransactionStatus.canceled:
         raise Exception("Transaction canceled")
     elif status == state.TransactionStatus.failed:
@@ -41,16 +39,17 @@ def recipient_callback(state, transaction_id):
       time.sleep(2)
       state.accept_transaction(transaction_id)
 
-def transaction_callback(state, is_sender, peer, transaction_id, is_new):
+def transaction_callback(state, is_sender, peer, transaction_id, status, is_new):
     assert is_new
+    print("{}{}Transaction ({})".format(is_new and "New " or "", is_sender and "sender " or "recipient", transaction_id), status)
     if is_sender:
         assert state.transaction_sender_id(transaction_id) == state._id
         assert state.transaction_recipient_id(transaction_id) == peer
-        sender_callback(state, transaction_id)
+        sender_callback(state, status, transaction_id)
     else:
         assert state.transaction_recipient_id(transaction_id) == state._id
         assert state.transaction_sender_id(transaction_id) == peer
-        recipient_callback(state, transaction_id)
+        recipient_callback(state, status, transaction_id)
 
 def connection(meta, trophonius):
     print("meta(%s), trophonius(%s)" % (int(meta.meta_port), int(trophonius.port)))
@@ -69,7 +68,8 @@ def connection(meta, trophonius):
           if os.path.exists(to_send_path):
             os.remove(to_send_path)
           if os.path.exists(destination_directory):
-            os.removedirs(destination_directory)
+              import shutil
+              shutil.rmtree(destination_directory)
 
         try:
             # Create the destination folder.
@@ -87,9 +87,12 @@ def connection(meta, trophonius):
             sender.send_files(recipient._id, [to_send_path,])
 
             while not (sender_ok and recipient_ok):
+                print("poll: ", sender_ok, recipient_ok)
                 sender.poll()
                 recipient.poll()
                 time.sleep(1)
+
+                print("=======")
 
             assert os.path.exists(os.path.join(destination_directory, 'to_send'))
         finally:

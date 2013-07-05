@@ -32,8 +32,7 @@ def login(state, email = None):
     import socket
     state.set_device_name(socket.gethostname().strip())
 
-def on_transaction(state, transaction, new):
-    status = state.transaction_status(transaction)
+def on_transaction(state, transaction, status, new):
     print("{}Transaction ({})".format(new and "New " or "", transaction), status)
     state.current_transaction_id = transaction
     if status in (

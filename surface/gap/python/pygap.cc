@@ -294,7 +294,7 @@ namespace
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-        wrap_call(cb)(notif.id.c_str(), is_new);
+      wrap_call(cb)(notif.id.c_str(), (gap_TransactionStatus) notif.status, is_new);
     };
 
     reinterpret_cast<surface::gap::State*>(state)
