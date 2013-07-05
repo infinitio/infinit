@@ -19,7 +19,6 @@ except:
 import os
 import conf
 import apertus
-import netifaces
 
 import meta.conf
 

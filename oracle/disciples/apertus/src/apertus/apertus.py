@@ -89,7 +89,8 @@ class Apertus(DatagramProtocol):
         host = self.transport.getHost()
         return "{}:{}".format(host.host, host.port)
 
-    def datagramReceived(self, data, (host, port)):
+    def datagramReceived(self, data, addr):
+        host, port = addr
         id = Endpoint(host, port)
         #print(self, "->", id)
         if id not in self.links:
@@ -160,9 +161,7 @@ class ApertusMaster(LineReceiver):
         else:
             print("unhandled command {}".format(request))
 
-
 class Factory(Factory):
-
     def __init__(self, addr):
         self.ap_addr = addr
         self.slaves = []
