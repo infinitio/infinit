@@ -1237,8 +1237,13 @@ namespace hole
       void
       Slug::portal_connect(std::string const& host, int port, bool server)
       {
-        ELLE_TRACE_FUNCTION(host, port);
-        this->_server->accept(host, port);
+        ELLE_TRACE_SCOPE("%s: connect to %s:%s (%s)",
+                         *this, host, port, server ? "server" : "client");
+        if (this->_protocol == reactor::network::Protocol::udt)
+          this->_server->accept(host, port);
+        else
+          if (!server)
+            this->_connect(elle::network::Locus(host, port));
       }
 
       bool
