@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from twisted.internet.protocol import DatagramProtocol, Factory
+from twisted.internet.protocol import DatagramProtocol, Factory, Protocol
 from twisted.protocols.basic import LineReceiver
 from twisted.internet import task, reactor
 from twisted.python import log
@@ -29,6 +29,25 @@ class Endpoint(object):
     @property
     def addr(self):
         return (self.ip, int(self.port))
+
+class Apertcpus(Protocol):
+    def __init__(self, factory, addr):
+        self.factory = factory
+        self.addr = addr
+
+    def dataReceived(self, data):
+        for addr, client in self.factory.clients.items():
+            if addr == self.addr:
+                continue
+            client.transport.write(data)
+
+class ApertcpusFactory(Factory):
+    def __init__(self):
+        self.clients = {}
+
+    def buildProtocol(self, addr):
+        self.clients[addr] = Apertcpus(self, addr)
+        return self.clients[addr]
 
 class Apertus(DatagramProtocol):
 
@@ -93,10 +112,12 @@ class ApertusMaster(LineReceiver):
         endpoints = data["endpoints"]
         id = data["_id"]
         print("add_link", endpoints, id)
-        new_apertus = Apertus(self.addr, id)
+        new_apertus = ApertcpusFactory()
+        port = reactor.listenTCP(0, new_apertus)
+        new_apertus.port = port
         self.factory.slaves.append(new_apertus)
-        print("create new link at", new_apertus.get_endpoint())
-        msg = {"endpoint" : new_apertus.get_endpoint(), "_id" : id}
+        print("create new link at", port)
+        msg = {"endpoint" : "{}:{}".format(self.addr, port.getHost().port), "_id" : id}
         self.sendLine(json.dumps(msg))
 
     def handle_del_link(self, data):
