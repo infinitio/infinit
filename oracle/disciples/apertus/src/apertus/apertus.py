@@ -34,26 +34,29 @@ class Apertcpus(Protocol):
     def __init__(self, factory, addr):
         self.factory = factory
         self.addr = addr
-        self.cached = []
+
+    def connectionMade(self):
+        print(self.connectionMade)
+        cached_l = self.factory.cache
+        if self.factory.cache:
+            self.factory.cache = []
+        for cached in cached_l:
+            self.transport.write(cached)
 
     def dataReceived(self, data):
-        if len(self.factory.clients) == 0:
-            self.cached.append(data)
+        if len(self.factory.clients) == 1:
+            print("caching data")
+            self.factory.cache.append(data)
         else:
-            for cached in self.cached:
-                for addr, client in self.factory.clients.items():
-                    if addr == self.addr:
-                        continue
-                    client.transport.write(cached)
-            self.cached = []
-        for addr, client in self.factory.clients.items():
-            if addr == self.addr:
-                continue
-            client.transport.write(data)
+            for addr, client in self.factory.clients.items():
+                if addr == self.addr:
+                    continue
+                client.transport.write(data)
 
 class ApertcpusFactory(Factory):
     def __init__(self):
         self.clients = {}
+        self.cache = []
 
     def buildProtocol(self, addr):
         self.clients[addr] = Apertcpus(self, addr)
