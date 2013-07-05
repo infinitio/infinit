@@ -32,9 +32,6 @@ struct NotificationConverter
   convert(std::unique_ptr<plasma::trophonius::Notification> const& notif);
 };
 
-to_python_converter<std::unique_ptr<plasma::trophonius::Notification>,
-                    NotificationConverter> notification_converter;
-
 struct NotificationTypeConverter
 {
   static
@@ -45,9 +42,6 @@ struct NotificationTypeConverter
   }
 };
 
-to_python_converter<plasma::trophonius::NotificationType,
-                    NotificationTypeConverter> notificationtype_converter;
-
 using plasma::trophonius::Notification;
 using plasma::trophonius::UserStatusNotification;
 using plasma::trophonius::TransactionNotification;
@@ -57,6 +51,12 @@ using plasma::trophonius::MessageNotification;
 void export_trophonius();
 void export_trophonius()
 {
+  to_python_converter<plasma::trophonius::NotificationType,
+    NotificationTypeConverter> notificationtype_converter;
+
+  to_python_converter<std::unique_ptr<plasma::trophonius::Notification>,
+    NotificationConverter> notification_converter;
+
   class_<Client, boost::noncopyable>(
     "Trophonius", init<std::string const&, uint16_t, object>())
     .def("connect", &Client::connect)
@@ -119,10 +119,10 @@ NotificationConverter::convert(
   }                                                             \
   else                                                          \
 
-  CASE(Notification)
-  CASE(UserStatusNotification)
-  CASE(TransactionNotification)
-  CASE(NetworkUpdateNotification)
   CASE(MessageNotification)
+  CASE(NetworkUpdateNotification)
+  CASE(TransactionNotification)
+  CASE(UserStatusNotification)
+  CASE(Notification)
   return incref(boost::python::object(*notif.release()).ptr());
 }
