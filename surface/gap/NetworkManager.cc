@@ -642,6 +642,8 @@ namespace surface
       ELLE_ASSERT(this->_device.id == sender_device_id ||
                   this->_device.id == recipient_device_id);
 
+      bool const sender = recipient_device_id != this->_device.id;
+
       namespace proto = infinit::protocol;
 
       /// Check if network is valid
@@ -660,7 +662,7 @@ namespace surface
         std::string theirs_device;
         std::string ours_device;
 
-        if (recipient_device_id == this->_device.id)
+        if (!sender)
         {
           theirs_device = sender_device_id;
           ours_device = recipient_device_id;
@@ -786,8 +788,8 @@ namespace surface
 
         this->_reporter.store("connection_method_attempt",
                               {{MKey::value, round.name()}});
-        if (this->_infinit_instance_manager.connect_try(network_id,
-                                                        round.addresses()) > 0)
+        if (this->_infinit_instance_manager.connect_try(
+              network_id, round.addresses(), sender) > 0)
         {
           this->_reporter.store("connection_method_succeed",
                                 {{MKey::value, round.name()}});

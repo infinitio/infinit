@@ -1235,7 +1235,7 @@ namespace hole
       `-------*/
 
       void
-      Slug::portal_connect(std::string const& host, int port)
+      Slug::portal_connect(std::string const& host, int port, bool server)
       {
         ELLE_TRACE_FUNCTION(host, port);
         this->_server->accept(host, port);

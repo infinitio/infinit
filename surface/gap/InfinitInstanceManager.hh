@@ -131,7 +131,8 @@ namespace surface
 
       int
       connect_try(std::string const& network_id,
-                   std::vector<std::string> const& addresses);
+                  std::vector<std::string> const& addresses,
+                  bool sender);
 
     private:
       InfinitInstance&

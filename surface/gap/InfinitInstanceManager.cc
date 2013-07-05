@@ -331,7 +331,8 @@ namespace surface
 
     int
     InfinitInstanceManager::connect_try(std::string const& network_id,
-                                        std::vector<std::string> const& addresses)
+                                        std::vector<std::string> const& addresses,
+                                        bool sender)
     {
       ELLE_TRACE_SCOPE("%s: connecting infinit of network %s to %s",
                        *this, network_id, addresses);
@@ -355,7 +356,7 @@ namespace surface
               auto const &ip = result[0];
               auto const &port = result[1];
               ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
-              hole.portal_connect(ip, std::stoi(port));
+              hole.portal_connect(ip, std::stoi(port), sender);
 
               ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
               if (!hole.portal_wait(ip, std::stoi(port)))

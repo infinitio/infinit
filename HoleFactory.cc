@@ -52,7 +52,8 @@ namespace infinit
           rpcs.slug_connect = std::bind(&Slug::portal_connect,
                                         this,
                                         std::placeholders::_1,
-                                        std::placeholders::_2);
+                                        std::placeholders::_2,
+                                        true);
           rpcs.slug_wait = std::bind(&Slug::portal_wait,
                                      this,
                                      std::placeholders::_1,
