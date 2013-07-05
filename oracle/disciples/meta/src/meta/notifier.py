@@ -54,6 +54,7 @@ class TrophoniusNotify(Notifier):
             msg = json.dumps(message, default = str)
         else:
             log.err('Notification was ill formed.')
+        log.msg("Send %s to trophonius" % msg)
         self.conn.send(msg + "\n")
 
     def notify_some(self,

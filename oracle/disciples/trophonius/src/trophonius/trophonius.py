@@ -47,7 +47,6 @@ class Trophonius(basic.LineReceiver):
     delimiter = "\n"
     def __init__(self, factory):
         self.factory = factory
-        self.devices = None
         self.id = None
         self.token = None
         self.device_id = None
@@ -91,17 +90,11 @@ class Trophonius(basic.LineReceiver):
 
         log.msg("Disconnect user %s" % self.id)
 
-        try:
-            if self.devices is not None:
-                self.devices.remove(self)
-        except Exception as e:
-            log.msg('self.factory.clients.remove(self) failed')
-        finally:
-            if self.meta_client is not None:
-                self.meta_client.post('/user/disconnect', {
-                    'user_id': self.id,
-                    'device_id': self.device_id,
-                })
+        if self.meta_client is not None:
+            self.meta_client.post('/user/disconnect', {
+                'user_id': self.id,
+                'device_id': self.device_id,
+            })
 
     def _send_res(self, res, msg=""):
         if isinstance(res, dict):

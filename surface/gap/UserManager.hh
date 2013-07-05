@@ -7,6 +7,7 @@
 # include <plasma/meta/Client.hh>
 
 # include <elle/Printable.hh>
+# include <elle/threading/Monitor.hh>
 
 # include <unordered_set>
 
@@ -24,23 +25,6 @@ namespace surface
       public Notifiable,
       public elle::Printable
     {
-      /*----------.
-      | Exception |
-      `----------*/
-    public:
-      class Exception:
-        surface::gap::Exception
-      {
-      public:
-        Exception(gap_Status error, std::string const& what):
-          surface::gap::Exception{error, what}
-        {}
-
-        Exception(std::string const& what):
-          surface::gap::Exception{gap_error, what}
-        {}
-      };
-
       /*-----------.
       | Attributes |
       `-----------*/
@@ -63,38 +47,41 @@ namespace surface
       | Cache |
       `------*/
     private:
-      std::map<std::string, User*> _users;
-      std::unordered_set<std::string> _connected_devices;
+      typedef std::unique_ptr<User> UserPtr;
+      // XXX pointers are not needed anymore.
+      typedef std::map<std::string, UserPtr> UserMap;
+      elle::threading::Monitor<UserMap> _users;
 
-      /// XXX.
+      // Hooked to the notification manager, resync users on reconnection.
       void
       _on_resync();
 
-      /// Update the current user container with the current meta user data.
-      User const&
+      // Update the current user container with the current meta user data.
+      User
       _sync(plasma::meta::UserResponse const& res);
+
+      // Force the update of an user.
+      User
+      _sync(std::string const& id);
 
       /*-------.
       | Access |
       `-------*/
     public:
-      /// Force the update of an user.
-      User const&
-      sync(std::string const& id);
 
-      /// Return the cached version of a user if it exists. If not, sync the
+      /// Return the cached version of an user if it exists. If not, sync the
       /// user from meta. You can retrieve it using id or email but only the id
       /// version use caching.
-      User const&
+      User
       one(std::string const& id);
 
-      /// Return the cached version of a user if it exists according to it
+      /// Return the cached version of an user if it exists according to its
       /// public key. If not, sync the user from meta.
-      User const&
+      User
       from_public_key(std::string const& public_key);
 
       /// Search users
-      std::map<std::string, User const*>
+      std::map<std::string, User>
       search(std::string const& text);
 
       /// Device connection status
@@ -121,18 +108,18 @@ namespace surface
       | Storage |
       `--------*/
     private:
-      typedef std::unordered_set<std::string> SwaggersSet;
-      SwaggersSet _swaggers;
+      typedef std::unordered_set<std::string> SwaggerSet;
+      elle::threading::Monitor<SwaggerSet> _swaggers;
       bool _swaggers_dirty;
 
       /*-------.
       | Access |
       `-------*/
     public:
-      SwaggersSet const&
+      SwaggerSet
       swaggers();
 
-      User const&
+      User
       swagger(std::string const& id);
 
      void

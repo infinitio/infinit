@@ -35,8 +35,7 @@ import pythia
 # Users
 #
 def __ensure_user_exists(user):
-    if user is None:
-        return self.error(error.UNKNOWN_USER)
+    assert user is not None
 
 def user_by_id(_id, ensure_user_exists = True):
     assert isinstance(_id, database.ObjectId)
@@ -75,6 +74,29 @@ def is_connected(user_id):
     assert isinstance(user['connected'], bool)
     return user['connected']
 
+def increase_swag(lhs, rhs, notifier_ = None):
+    assert isinstance(lhs, database.ObjectId)
+    assert isinstance(rhs, database.ObjectId)
+
+    lh_user = user_by_id(lhs)
+    rh_user = user_by_id(rhs)
+
+    if lh_user is None or rh_user is None:
+        raise Exception("unknown user")
+
+    for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
+        user['swaggers'][str(peer)] = \
+            user['swaggers'].setdefault(str(peer), 0) + 1;
+        database.users().save(user)
+        if user['swaggers'][str(peer)] == 1: # New swagger.
+            if notifier_ is not None:
+                notifier_.notify_some(
+                    notifier.NEW_SWAGGER,
+                    message = {'user_id': user['_id']},
+                    recipient_ids = [peer,],
+                    store = False,
+                )
+
 class _Page(Page):
     def notify_swaggers(self, notification_id, data, user_id = None):
         if user_id is None:
@@ -84,10 +106,7 @@ class _Page(Page):
             assert isinstance(user_id, database.ObjectId)
             user = user_by_id(user_id)
 
-        swaggers = list(
-            swagger_id for swagger_id in user['swaggers'].keys()
-            if is_connected(database.ObjectId(swagger_id))
-            )
+        swaggers = map(database.ObjectId, user['swaggers'].keys())
         d = {"user_id" : user_id}
         d.update(data)
         self.notifier.notify_some(
@@ -95,29 +114,7 @@ class _Page(Page):
             recipient_ids = swaggers,
             message = d,
             store = False,
-            )
-
-    def increase_swag(self, lhs, rhs):
-        assert isinstance(lhs, database.ObjectId)
-        assert isinstance(rhs, database.ObjectId)
-
-        lh_user = user_by_id(lhs)
-        rh_user = user_by_id(rhs)
-
-        if lh_user is None or rh_user is None:
-            raise Exception("unknown user")
-
-        for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
-            user['swaggers'][str(peer)] = \
-                user['swaggers'].setdefault(str(peer), 0) + 1;
-            database.users().save(user)
-            if user['swaggers'][str(peer)] == 1: # New swagger.
-                self.notifier.notify_some(
-                    notifier.NEW_SWAGGER,
-                    message = {'user_id': user['_id']},
-                    recipient_ids = [peer,],
-                    store = False,
-                )
+        )
 
 
 class Search(Page):
@@ -226,8 +223,9 @@ class AddSwagger(_Page):
             return self.error(error.UNKNOWN, "You're not admin")
 
         print(self.data['user1'], self.data['user2'])
-        self.increase_swag(database.ObjectId(self.data['user1']),
-                           database.ObjectId(self.data['user2']))
+        increase_swag(database.ObjectId(self.data['user1']),
+                      database.ObjectId(self.data['user2']),
+                      notifier_ = self.notifier)
 
         return self.success({"swag":"up"})
 

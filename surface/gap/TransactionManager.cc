@@ -25,10 +25,7 @@
 
 #include <chrono>
 
-//XXX
-#include <cstdlib>
-
-ELLE_LOG_COMPONENT("infinit.surface.gap.Transaction");
+ELLE_LOG_COMPONENT("infinit.surface.gap.TransactionManager");
 
 namespace surface
 {
@@ -49,14 +46,14 @@ namespace surface
       {}
     };
 
-    TransactionManager::TransactionManager(NotificationManager&
-                                           notification_manager,
-                                           NetworkManager& network_manager,
-                                           UserManager& user_manager,
-                                           plasma::meta::Client& meta,
-                                           elle::metrics::Reporter& reporter,
-                                           Self& self,
-                                           Device const& device):
+    TransactionManager::TransactionManager(
+        NotificationManager& notification_manager,
+        NetworkManager& network_manager,
+        UserManager& user_manager,
+        plasma::meta::Client& meta,
+        elle::metrics::Reporter& reporter,
+        Self& self,
+        Device const& device):
       Notifiable(notification_manager),
       _network_manager(network_manager),
       _user_manager(user_manager),
@@ -64,7 +61,30 @@ namespace surface
       _reporter(reporter),
       _self(self),
       _device(device),
-      _output_dir{common::system::download_directory()}
+      _output_dir{common::system::download_directory()},
+      _state_machine{
+        std::bind(&TransactionManager::_on_cancel_transaction,
+                  this,
+                  std::placeholders::_1),
+        std::bind(&TransactionManager::_clean_transaction,
+                  this,
+                  std::placeholders::_1),
+        std::bind(&TransactionManager::_prepare_upload,
+                  this,
+                  std::placeholders::_1),
+        std::bind(&TransactionManager::_start_upload,
+                  this,
+                  std::placeholders::_1),
+        std::bind(&TransactionManager::_start_download,
+                  this,
+                  std::placeholders::_1),
+        std::bind(&UserManager::device_status,
+                  &_user_manager,
+                  std::placeholders::_1,
+                  std::placeholders::_2),
+        self,
+        device,
+      }
     {
       this->_notification_manager.transaction_callback(
         [&] (TransactionNotification const &n, bool) -> void
@@ -466,7 +486,7 @@ namespace surface
     }
 
     void
-    TransactionManager::_on_transaction(plasma::Transaction const& tr)
+    TransactionManager::_on_transaction(Transaction const& tr)
     {
       ELLE_TRACE_SCOPE("%s: transaction callback for %s", *this, tr);
 
@@ -481,93 +501,8 @@ namespace surface
             (*ptr)[tr.id] = tr;
         });
       }
-      if (tr.status == plasma::TransactionStatus::canceled)
-      {
-        this->_on_cancel_transaction(tr);
-        return;
-      }
-      else if (tr.status != plasma::TransactionStatus::created and
-          tr.status != plasma::TransactionStatus::started)
-      {
-        ELLE_DEBUG("Cleaning up finished transaction %s", tr);
-        this->_clean_transaction(tr);
-        return;
-      }
 
-      if (tr.sender_id == this->_self.id)
-      {
-        ELLE_DEBUG_SCOPE("%s: you are the sender", tr);
-        if (tr.sender_device_id != this->_device.id)
-        {
-          ELLE_ERR(
-            "got a transaction %s that does not involve my device", tr);
-          ELLE_ASSERT(false && "invalid transaction_id");
-          return;
-        }
-        if (tr.status == plasma::TransactionStatus::created)
-        {
-          ELLE_DEBUG("sender prepare upload for %s", tr)
-            this->_prepare_upload(tr);
-        }
-        else if (tr.status == plasma::TransactionStatus::started &&
-                 tr.accepted &&
-                 this->_user_manager.device_status(tr.recipient_id,
-                                                   tr.recipient_device_id))
-        {
-          ELLE_DEBUG("sender start upload for %s", tr)
-            this->_start_upload(tr);
-
-        }
-        else
-        {
-          ELLE_DEBUG("sender does nothing for %s", tr);
-        }
-      }
-      else if (tr.recipient_id == this->_self.id)
-      {
-        ELLE_DEBUG_SCOPE("%s: you are the recipient", tr);
-        if (tr.recipient_device_id != this->_device.id)
-        {
-          if (!tr.recipient_device_id.empty())
-          {
-            ELLE_ERR(
-              "got an accepted transaction that does not involve my device: %s",
-              tr);
-            ELLE_ASSERT(false && "invalid transaction_id");
-            return;
-          }
-        }
-        if (tr.status == plasma::TransactionStatus::started &&
-            tr.accepted &&
-            this->_user_manager.device_status(tr.sender_id,
-                                              tr.sender_device_id))
-        {
-          ELLE_DEBUG("recipient start download for %s", tr)
-            this->_start_download(tr);
-        }
-        else
-        {
-#ifdef DEBUG
-          std::string reason;
-          if (tr.status == plasma::TransactionStatus::created)
-            reason = "transaction not started yet";
-          else if (tr.status != plasma::TransactionStatus::started)
-            reason = "transaction is terminated";
-          else if (!tr.accepted)
-            reason = "transaction not accepted yet";
-          else if (!this->_user_manager.device_status(tr.sender_id,
-                                                      tr.sender_device_id))
-            reason = "sender device_id is down";
-          ELLE_DEBUG("recipient does nothing for %s (%s)", tr, reason);
-#endif
-        }
-      }
-      else
-      {
-        ELLE_ERR("got a transaction not related to me:", tr);
-        ELLE_ASSERT(false && "invalid transaction_id");
-        return;
-      }
+      this->_state_machine(tr);
     }
 
     void

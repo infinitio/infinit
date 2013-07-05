@@ -1,5 +1,6 @@
 #include "UserManager.hh"
 
+#include <elle/memory.hh>
 #include <elle/os/path.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
@@ -45,63 +46,60 @@ namespace surface
       ELLE_TRACE_METHOD("");
     }
 
-    User const&
+    User
     UserManager::_sync(plasma::meta::UserResponse const& response)
     {
       ELLE_TRACE_SCOPE("%s: user response: %s", *this, response);
 
-      std::unique_ptr<User> user_ptr{
-        new User{
-          response.id,
-          response.fullname,
-          response.handle,
-          response.public_key,
-          response.status,
-          response.connected_devices,
-        }
-      };
-
-      auto const& user = *(this->_users[response.id] = user_ptr.get());
-      user_ptr.release();
-
-      for (auto const& dev: user.connected_devices)
-        this->_connected_devices.insert(dev);
-
-      return user;
+      auto user = elle::make_unique<User>(
+        response.id,
+        response.fullname,
+        response.handle,
+        response.public_key,
+        response.status,
+        response.connected_devices);
+      this->_users(
+        [&] (UserMap& users) { users[response.id].reset(user.get()); });
+      return *user.release();
     }
 
-    User const&
-    UserManager::sync(std::string const& id)
+    User
+    UserManager::_sync(std::string const& id)
     {
       ELLE_DEBUG_METHOD(id);
 
       return this->_sync(this->_meta.user(id));
     }
 
-    User const&
+    User
     UserManager::one(std::string const& id)
     {
       ELLE_DEBUG_METHOD(id);
-
-      auto it = this->_users.find(id);
-      if (it != this->_users.end())
-      {
-        return *(it->second);
-      }
-
-      return this->sync(id);
+      auto user = this->_users([&] (UserMap& users) {
+          auto it = users.find(id);
+          if (it != users.end())
+            return *(it->second);
+          return User{};
+        });
+      if (not user.id.empty())
+        return user;
+      return this->_sync(id);
     }
 
-    User const&
+    User
     UserManager::from_public_key(std::string const& public_key)
     {
       ELLE_DEBUG_METHOD(public_key);
 
-      for (auto const& pair : this->_users)
-      {
-        if (pair.second->public_key == public_key)
-          return *(pair.second);
-      }
+      auto id = this->_users(
+        [this, public_key] (UserMap& users) -> std::string {
+          for (auto const& pair : users)
+            if (pair.second->public_key == public_key)
+              return pair.first;
+          return "";
+        });
+      if (not id.empty())
+        return this->one(id);
       return this->_sync(this->_meta.user_from_public_key(public_key));
     }
 
@@ -110,8 +108,6 @@ namespace surface
     {
       this->_swaggers_dirty = true;
       auto swaggers = this->swaggers();
-      auto old_connected_devices = this->_connected_devices;
-      this->_connected_devices.clear();
 
       // Skeleton of user notif (we do not care abot device status).
       UserStatusNotification n;
@@ -120,40 +116,30 @@ namespace surface
       n.device_status = false;
       for (auto const& swagger_id: swaggers)
       {
+        auto old_user = this->one(swagger_id);
         auto user = this->_meta.user(swagger_id);
-        auto it = this->_users.find(swagger_id);
-        bool need_resync = (
-          it == this->_users.end() || it->second->status != user.status);
+        bool need_resync = this->_users([this, &user] (UserMap& users)-> bool {
+            auto it = users.find(user.id);
+            return (
+              it == users.end() || it->second->status != user.status);
+          });
 
-        for (auto const& dev: user.connected_devices)
+        if (old_user.connected_devices.size() != user.connected_devices.size())
+          need_resync = true;
+        else
         {
-          // Some device has been connected.
-          if (old_connected_devices.find(dev) == old_connected_devices.end())
-            need_resync = true;
-          this->_connected_devices.insert(dev);
+          old_user.connected_devices.sort();
+          user.connected_devices.sort();
+          std::list<std::string> devices;
+          std::set_difference(
+            old_user.connected_devices.begin(),
+            old_user.connected_devices.end(),
+            user.connected_devices.begin(),
+            user.connected_devices.end(),
+            devices.begin());
+          need_resync = not devices.empty();
         }
-
-        if (it != this->_users.end())
-        {
-          for (auto const& old_dev: it->second->connected_devices)
-            // Some device has been disconnected.
-            if (this->_connected_devices.find(old_dev) ==
-                this->_connected_devices.end())
-              need_resync = true;
-        }
-
-        // Save the user
-        delete this->_users[swagger_id];
-        this->_users[swagger_id] = nullptr;
-        this->_users[swagger_id] = new User{
-          user.id,
-          user.fullname,
-          user.handle,
-          user.public_key,
-          user.status,
-          user.connected_devices,
-        };
-
+        this->_sync(user);
         if (need_resync)
         {
           n.user_id = user.id;
@@ -163,17 +149,15 @@ namespace surface
       }
     }
 
-    std::map<std::string, User const*>
+    std::map<std::string, User>
     UserManager::search(std::string const& text)
     {
       ELLE_TRACE_METHOD(text);
 
-      std::map<std::string, User const*> result;
+      std::map<std::string, User> result;
       auto res = this->_meta.search_users(text);
       for (auto const& user_id : res.users)
-     {
-       result[user_id] = &this->one(user_id);
-     }
+        result[user_id] = this->one(user_id);
       return result;
     }
 
@@ -183,11 +167,15 @@ namespace surface
     {
       ELLE_TRACE_METHOD(user_id, device_id);
 
-      auto user = this->sync(user_id); // Force user synchronisation.
-      bool status = std::find(user.connected_devices.begin(),
-                              user.connected_devices.end(),
-                              device_id) != user.connected_devices.end();
-      ELLE_DEBUG("device %s is %s", device_id, (status ? "up" : "down"));
+      auto user = this->one(user_id);
+      bool status = std::find(
+        user.connected_devices.begin(),
+        user.connected_devices.end(),
+        device_id) != user.connected_devices.end();
+
+      ELLE_DEBUG("user (%s) device's (%s) is %s",
+                 user_id, device_id, (status ? "up" : "down"));
+
       return status;
     }
 
@@ -218,7 +206,7 @@ namespace surface
     }
 
     ///- Swaggers --------------------------------------------------------------
-    UserManager::SwaggersSet const&
+    UserManager::SwaggerSet
     UserManager::swaggers()
     {
       ELLE_TRACE_METHOD("");
@@ -226,24 +214,33 @@ namespace surface
       if (this->_swaggers_dirty)
       {
         auto response = this->_meta.get_swaggers();
-        this->_swaggers.clear();
-        for (auto const& swagger_id: response.swaggers)
-          this->_swaggers.insert(swagger_id);
 
+        this->_swaggers(
+          [&] (SwaggerSet& swaggers) -> SwaggerSet {
+            swaggers.clear();
+            for (auto const& swagger_id: response.swaggers)
+              swaggers.insert(swagger_id);
+            return swaggers;
+          });
         this->_swaggers_dirty = false;
       }
-      return this->_swaggers;
+      return this->_swaggers(
+        [this] (SwaggerSet& swagger) -> SwaggerSet {
+          return swagger;
+        });
     }
 
-    User const&
+    User
     UserManager::swagger(std::string const& id)
     {
       ELLE_TRACE_METHOD(id);
+      this->_swaggers([this, id] (SwaggerSet& swaggers) {
+        if (swaggers.find(id) == swaggers.end())
+          throw Exception{
+            gap_error,
+            "Cannot find any swagger for id '" + id + "'"};
 
-      if (this->swaggers().find(id) == this->swaggers().end())
-        throw Exception{
-          gap_error,
-          "Cannot find any swagger for id '" + id + "'"};
+        });
       return this->one(id);
     }
 
@@ -251,7 +248,7 @@ namespace surface
     UserManager::_on_new_swagger(NewSwaggerNotification const& notification)
     {
       this->one(notification.user_id);
-      this->_swaggers.insert(notification.user_id);
+      this->_swaggers->insert(notification.user_id);
     }
 
     void
@@ -260,27 +257,36 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: received user status notification %s", *this, notif);
 
       auto swagger = this->one(notif.user_id);
+      if (swagger.public_key.empty() && notif.status == gap_user_status_online)
+      {
+        swagger = this->_sync(notif.user_id);
+        ELLE_ASSERT(not swagger.public_key.empty());
+      }
       this->swaggers(); // force up-to-date swaggers
-      this->_swaggers.insert(swagger.id);
+      this->_swaggers->insert(swagger.id);
       ELLE_DEBUG("%s's (id: %s) status changed to %s",
                  swagger.fullname, swagger.id, notif.status);
       ELLE_ASSERT(notif.status == gap_user_status_online ||
                   notif.status == gap_user_status_offline);
 
       // Update user status.
-      auto it = this->_users.find(notif.user_id);
-      ELLE_ASSERT(it != this->_users.end());
-      ELLE_ASSERT(it->second != nullptr);
-      it->second->status = notif.status;
+      this->_users([&] (UserMap& map) {
+        auto it = map.find(notif.user_id);
+        ELLE_ASSERT(it != map.end());
+        ELLE_ASSERT(it->second != nullptr);
+        it->second->status = notif.status;
 
-      // Update connected devices.
-      if (notif.device_id.size() > 0)
-      {
-        if (notif.device_status)
-          this->_connected_devices.insert(notif.device_id);
-        else
-          this->_connected_devices.erase(notif.device_id);
-      }
+        // Update connected devices.
+        if (notif.device_id.size() > 0)
+        {
+          std::remove(
+            it->second->connected_devices.begin(),
+            it->second->connected_devices.end(),
+            notif.device_id);
+          if (notif.device_status)
+            it->second->connected_devices.push_back(notif.device_id);
+        }
+      });
     }
 
     void

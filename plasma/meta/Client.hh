@@ -120,6 +120,11 @@ namespace plasma
       std::list<std::string> users;
     };
 
+    struct AddSwaggerResponse : Response
+    {
+      std::string direction;
+    };
+
     struct SwaggersResponse : Response
     {
       std::list<std::string> swaggers;
@@ -298,6 +303,9 @@ namespace plasma
 
       SwaggersResponse
       get_swaggers() const;
+
+      AddSwaggerResponse
+      add_swaggers(std::string const& user1, std::string const& user2) const;
 
       // SwaggerResponse
       // get_swagger(std::string const& id) const;

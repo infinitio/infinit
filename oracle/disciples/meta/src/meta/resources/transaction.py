@@ -230,10 +230,6 @@ class Create(Page):
 
         transaction_id = database.transactions().insert(transaction)
 
-        sent = first_filename;
-        if transaction['files_count'] > 1:
-            sent +=  " and %i other files" % (transaction['files_count'] - 1)
-
         # XXX: MAIL DESACTIVATED
         from meta.resources import user
         if not user.is_connected(database.ObjectId(recipient_id)):
@@ -261,6 +257,9 @@ class Create(Page):
             message = transaction,
             store = True,
         )
+
+        from user import increase_swag
+        increase_swag(self.user['_id'], recipient['_id'], self.notifier)
 
         return self.success({
             'created_transaction_id': transaction_id,
@@ -340,17 +339,6 @@ class Accept(_UpdateTransaction):
         # XXX: If the sender delete his account while transaction is pending.
         # We should turn all his transaction to canceled.
         assert sender is not None
-
-        # If transfer is accepted, increase popularity of each user.
-        if self.user['_id'] != sender['_id']:
-            # XXX: probably not optimized, we should maybe use database.
-            # find_and_modify and increase the value.
-            sender['swaggers'][str(self.user['_id'])] = \
-                sender['swaggers'].setdefault(str(self.user['_id']), 0) + 1;
-            self.user['swaggers'][str(sender['_id'])] = \
-                self.user['swaggers'].setdefault(str(sender['_id']), 0) + 1;
-            database.users().save(sender)
-            database.users().save(self.user)
 
         device_ids = [transaction['sender_device_id'], transaction['recipient_device_id']]
         self.notifier.notify_some(
@@ -448,7 +436,7 @@ class Update(_UpdateTransaction):
                 device_ids.append(transaction['recipient_device_id'])
             else:
                 recipient = database.users().find_one(database.ObjectId(transaction['recipient_id']))
-                device_ids.extend(recipient['devices'])
+                device_ids.extend(recipient.get('devices', []))
             self.notifier.notify_some(
                 notifier.TRANSACTION,
                 device_ids = device_ids,
