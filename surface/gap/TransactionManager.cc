@@ -217,10 +217,6 @@ namespace surface
       else if (!instance_manager.exists(tr.network_id))
         return 0.0f;
 
-      // XX XX XX XX XX XX
-      //  XXX   XXX   XXX
-      // XX XX XX XX XX XX
-      return (::rand() % 100) / 100.0f;
       return this->_network_manager.progress(tr.network_id);
     }
 
