@@ -34,8 +34,18 @@ class Apertcpus(Protocol):
     def __init__(self, factory, addr):
         self.factory = factory
         self.addr = addr
+        self.cached = []
 
     def dataReceived(self, data):
+        if len(self.factory.clients) == 0:
+            self.cached.append(data)
+        else:
+            for cached in self.cached:
+                for addr, client in self.factory.clients.items():
+                    if addr == self.addr:
+                        continue
+                    client.transport.write(cached)
+            self.cached = []
         for addr, client in self.factory.clients.items():
             if addr == self.addr:
                 continue
