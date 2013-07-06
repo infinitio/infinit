@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 
-import meta
-import trophonius
+import apertus
 import gap
+import meta
 import pythia
+import trophonius
 
 import os
 import time
 
 sender_ok = False
 recipient_ok = False
+
+accepted_transactions=set()
 
 # That logs us.
 def register(client, fullname, email):
@@ -26,6 +29,7 @@ def sender_callback(state, status, transaction_id):
         sender_ok = True;
 
 def recipient_callback(state, status,  transaction_id):
+    global accepted_transactions
     if status == state.TransactionStatus.canceled:
         raise Exception("Transaction canceled")
     elif status == state.TransactionStatus.failed:
@@ -36,8 +40,9 @@ def recipient_callback(state, status,  transaction_id):
         recipient_ok = True;
     elif status == state.TransactionStatus.created and \
           not state.transaction_is_accepted(transaction_id):
-      time.sleep(2)
-      state.accept_transaction(transaction_id)
+        accepted_transactions.add(transaction_id)
+        time.sleep(2)
+        state.accept_transaction(transaction_id)
 
 def transaction_callback(state, is_sender, peer, transaction_id, status, is_new):
     assert is_new
@@ -104,8 +109,8 @@ if __name__ == '__main__':
     # As long as it stands, we need to have a control port.
     trophonius_control_port = 39074
 
-    with meta.Meta(spawn_db = True, no_apertus = True,
-                   trophonius_control_port = trophonius_control_port) as meta, \
-         trophonius.Trophonius(meta_port = meta.meta_port,
-                               control_port = trophonius_control_port) as trophonius:
+
+    with apertus.Apertus() as apertus, \
+        meta.Meta(spawn_db = True, trophonius_control_port = trophonius_control_port, apertus_control_port = apertus.port) as meta, \
+        trophonius.Trophonius(meta_port = meta.meta_port, control_port = trophonius_control_port) as trophonius:
         connection(meta, trophonius)
