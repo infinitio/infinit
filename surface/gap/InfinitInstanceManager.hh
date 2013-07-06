@@ -121,6 +121,7 @@ namespace surface
 
       void
       download_files(std::string const& network_id,
+                     std::vector<std::string> const& addresses,
                      nucleus::neutron::Subject const& subject,
                      std::string const& destination_path,
                      std::function<void ()> success_callback,
@@ -134,7 +135,7 @@ namespace surface
                    std::vector<std::string> const& addresses,
                    bool sender);
 
-      bool
+      void
       connect_try(std::string const& network_id,
                   std::vector<std::string> const& addresses,
                   bool sender);

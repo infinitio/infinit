@@ -287,7 +287,6 @@ namespace surface
                                   {{MKey::value, transaction.id}});
           }
 
-
           this->_network_manager.add_device(transaction.network_id,
                                             this->_device.id);
           this->_network_manager.prepare(transaction.network_id);
@@ -622,9 +621,12 @@ namespace surface
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
 
-        this->_network_manager.notify_8infinit(transaction.network_id,
-                                               transaction.sender_device_id,
-                                               transaction.recipient_device_id);
+        this->_network_manager.infinit_instance_manager().connect_try(
+          transaction.network_id,
+          this->_network_manager.peer_addresses(transaction.network_id,
+                                                transaction.sender_device_id,
+                                                transaction.recipient_device_id),
+          false);
 
         this->_reporter.store("transaction_transferring",
                               {{MKey::attempt, std::to_string(s.tries)},
@@ -660,14 +662,13 @@ namespace surface
         this->_states(
           [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
 
-        this->_network_manager.notify_8infinit(transaction.network_id,
-                                               transaction.sender_device_id,
-                                               transaction.recipient_device_id);
-
         elle::metrics::Reporter& reporter = this->_reporter;
 
         this->_network_manager.download_files(
           transaction.network_id,
+          this->_network_manager.peer_addresses(transaction.network_id,
+                                                transaction.sender_device_id,
+                                                transaction.recipient_device_id),
           this->_self.public_key,
           this->_output_dir,
           [&reporter, transaction, this]

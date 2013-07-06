@@ -312,6 +312,7 @@ namespace surface
 
     void
     InfinitInstanceManager::download_files(std::string const& network_id,
+                                           std::vector<std::string> const& addresses,
                                            nucleus::neutron::Subject const& subject,
                                            std::string const& destination,
                                            std::function<void ()> success_callback,
@@ -326,9 +327,12 @@ namespace surface
       new reactor::Thread(
         instance.scheduler,
         elle::sprintf("download files for %s", network_id),
-        [&instance, subject, destination, success_callback, failure_callback, this]
+        [&instance, subject, destination, success_callback, addresses, failure_callback, this]
         {
           auto& etoile = *instance.etoile;
+          auto& slug = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
+
+          this->_connect_try(slug, addresses, false);
 
           try
           {
@@ -403,7 +407,7 @@ namespace surface
       return succeed;
     }
 
-    bool
+    void
     InfinitInstanceManager::connect_try(std::string const& network_id,
                                         std::vector<std::string> const& addresses,
                                         bool sender)
@@ -412,13 +416,17 @@ namespace surface
                        *this, network_id, addresses);
 
       auto& instance = this->_instance(network_id);
-      auto& hole = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
+      auto& slug = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
 
-      return instance.scheduler.mt_run<bool>(
+      // return instance.scheduler.mt_run<bool>(
+      //   elle::sprintf("connecting nodes for %s", network_id),
+      new reactor::Thread(
+        instance.scheduler,
         elle::sprintf("connecting nodes for %s", network_id),
-        [&] () -> bool
+        [&, addresses]
         {
-          return this->_connect_try(hole, addresses, sender);
+          if (!this->_connect_try(slug, addresses, sender))
+            throw elle::Exception("Unable to connect");
         });
     }
 

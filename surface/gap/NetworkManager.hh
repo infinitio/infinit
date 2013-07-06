@@ -134,6 +134,7 @@ namespace surface
       /// Download files into path 'destination' (wrap).
       void
       download_files(std::string const& network_id,
+                     std::vector<std::string> const& addresses,
                      std::string const& public_key,
                      std::string const& destination,
                      std::function<void ()> success_callback,
@@ -149,15 +150,10 @@ namespace surface
                  std::string const& device_id);
 
       /// Connect 2 devices via infinit.
-      void
-      notify_8infinit(std::string const& network_id,
-                      std::string const& sender_device_id,
-                      std::string const& recipient_device_id);
-      void
-      _notify_8infinit(std::string const& network_id,
-                       std::string const& sender_device_id,
-                       std::string const& recipient_device_id,
-                       reactor::Scheduler& sched);
+      std::vector<std::string>
+      peer_addresses(std::string const& network_id,
+                     std::string const& sender_device_id,
+                     std::string const& recipient_device_id);
 
       /// Give the recipient the write on the root of the network.
       void

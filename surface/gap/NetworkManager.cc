@@ -32,6 +32,7 @@
 #include <reactor/sleep.hh>
 
 #include <elle/format/json.hh>
+#include <elle/container/vector.hh>
 #include <elle/io/Piece.hh>
 #include <elle/os/getenv.hh>
 #include <elle/os/path.hh>
@@ -358,7 +359,6 @@ namespace surface
 
       if (this->_networks->find(network_id) != this->_networks->end())
       {
-        this->_infinit_instance_manager.stop(network_id);
         this->_reporter.store("network_delete_attempt",
                               {{MKey::value,  network_id}});
         ELLE_TRACE("remove network %s from meta", network_id)
@@ -524,6 +524,7 @@ namespace surface
 
     void
     NetworkManager::download_files(std::string const& network_id,
+                                   std::vector<std::string> const& addresses,
                                    std::string const& public_key,
                                    std::string const& destination,
                                    std::function<void ()> success_callback,
@@ -539,6 +540,7 @@ namespace surface
       subject.Create(_public_key);
 
       this->_infinit_instance_manager.download_files(network_id,
+                                                     addresses,
                                                      subject,
                                                      destination,
                                                      success_callback,
@@ -586,58 +588,12 @@ namespace surface
       return common_addr;
     }
 
-
-    auto _print = [] (std::string const &s) { ELLE_DEBUG("-- %s", s); };
-
-    void
-    NetworkManager::notify_8infinit(std::string const& network_id,
+    std::vector<std::string>
+    NetworkManager::peer_addresses(std::string const& network_id,
                                     std::string const& sender_device_id,
                                     std::string const& recipient_device_id)
     {
-      ELLE_TRACE_METHOD(network_id, sender_device_id, recipient_device_id);
-
-      std::exception_ptr exception;
-      {
-        reactor::Scheduler sched;
-        reactor::Thread sync{sched, "notify_8infinit", [&] {
-            try
-            {
-              this->_notify_8infinit(network_id,
-                                     sender_device_id,
-                                     recipient_device_id,
-                                     sched);
-            }
-            // A parsing bug in gcc (fixed in 4.8.3) make this block
-            // mandatory.
-            catch (std::exception const&)
-            {
-              exception = std::current_exception();
-            }
-            catch (...)
-            {
-              exception = std::current_exception();
-            }
-          }
-        };
-
-        sched.run();
-        ELLE_DEBUG("notify finished");
-      }
-      if (exception != std::exception_ptr{})
-      {
-        ELLE_ERR("cannot connect infinit instances: %s",
-                 elle::exception_string(exception));
-        std::rethrow_exception(exception);
-      }
-    }
-
-    void
-    NetworkManager::_notify_8infinit(std::string const& network_id,
-                                     std::string const& sender_device_id,
-                                     std::string const& recipient_device_id,
-                                     reactor::Scheduler& sched)
-    {
-      ELLE_DEBUG_SCOPE("notify8infinit net(%s), send(%s), rec(%s)",
+      ELLE_DEBUG_SCOPE("peer_addresses net(%s), send(%s), rec(%s)",
                        network_id, sender_device_id, recipient_device_id);
 
       ELLE_ASSERT(this->_device.id == sender_device_id ||
@@ -696,6 +652,8 @@ namespace surface
         }
       }
 
+      static auto _print = [] (std::string const &s) { ELLE_DEBUG("-- %s", s); };
+
       ELLE_DEBUG("externals")
         std::for_each(begin(externals), end(externals), _print);
       ELLE_DEBUG("locals")
@@ -703,24 +661,15 @@ namespace surface
       ELLE_DEBUG("fallback")
         std::for_each(begin(fallback), end(fallback), _print);
 
+      std::vector<std::string> addresses;
+      addresses.resize(locals.size() + externals.size() + fallback.size());
 
-      // Forward.
-      if (!this->_infinit_instance_manager.connect_try(network_id,
-                                                       fallback,
-                                                       false))
-        throw elle::Exception("Unable to connect");
+      auto it = addresses.begin();
+      for (auto const& round: {fallback, locals, externals})
+        it = std::copy(round.begin(), round.end(), it);
 
-      // XXX: Local.
-      // if (!sender)
-      // {
-      //   this->_infinit_instance_manager.connect_try(network_id,
-      //                                               locals,
-      //                                               sender);
-      // }
-      // else
-      // {
-      //   //success = this->_infinit_instance_manager.is_connected(network_id);
-      // }
+      ELLE_TRACE("destinations: %s", addresses);
+      return addresses;
     }
 
     void
