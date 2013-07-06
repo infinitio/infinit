@@ -365,6 +365,45 @@ namespace surface
     }
 
     bool
+    InfinitInstanceManager::_connect_try(hole::implementations::slug::Slug& slug,
+                                         std::vector<std::string> const& addresses,
+                                         bool sender)
+    {
+      auto slug_connect = [&] (std::string const& endpoint)
+        {
+          std::vector<std::string> result;
+          boost::split(result, endpoint, boost::is_any_of(":"));
+
+          auto const &ip = result[0];
+          auto const &port = result[1];
+          ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
+          slug.portal_connect(ip, std::stoi(port), sender);
+
+          ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
+          if (!slug.portal_wait(ip, std::stoi(port)))
+            throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
+                                                ip, port));
+        };
+
+      bool succeed = false;
+      for (auto const& address: addresses)
+      {
+        try
+        {
+          slug_connect(address);
+          succeed = true;
+          ELLE_LOG("%s: connection to %s succeed", *this, address);
+          break;
+        }
+        catch (elle::Exception const& e)
+        {
+          ELLE_WARN("%s: connection to %s failed", *this, address);
+        }
+      }
+      return succeed;
+    }
+
+    bool
     InfinitInstanceManager::connect_try(std::string const& network_id,
                                         std::vector<std::string> const& addresses,
                                         bool sender)
@@ -373,48 +412,13 @@ namespace surface
                        *this, network_id, addresses);
 
       auto& instance = this->_instance(network_id);
+      auto& hole = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
 
       return instance.scheduler.mt_run<bool>(
         elle::sprintf("connecting nodes for %s", network_id),
         [&] () -> bool
         {
-          auto& hole = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
-
-          typedef std::unique_ptr<reactor::VThread<bool>> VThreadBoolPtr;
-          std::vector<std::pair<VThreadBoolPtr, std::string>> v;
-
-          auto slug_connect = [&] (std::string const& endpoint)
-            {
-              std::vector<std::string> result;
-              boost::split(result, endpoint, boost::is_any_of(":"));
-
-              auto const &ip = result[0];
-              auto const &port = result[1];
-              ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
-              hole.portal_connect(ip, std::stoi(port), sender);
-
-              ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
-              if (!hole.portal_wait(ip, std::stoi(port)))
-                throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
-                                                    ip, port));
-            };
-
-          bool succeed = false;
-          for (auto const& address: addresses)
-          {
-            try
-            {
-              slug_connect(address);
-              succeed = true;
-              ELLE_LOG("%s: connection to %s succeed", *this, address);
-              break;
-            }
-            catch (elle::Exception const& e)
-            {
-              ELLE_WARN("%s: connection to %s failed", *this, address);
-            }
-          }
-          return succeed;
+          return this->_connect_try(hole, addresses, sender);
         });
     }
 

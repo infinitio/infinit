@@ -130,6 +130,11 @@ namespace surface
       progress(std::string const& network_id);
 
       bool
+      _connect_try(hole::implementations::slug::Slug& slug,
+                   std::vector<std::string> const& addresses,
+                   bool sender);
+
+      bool
       connect_try(std::string const& network_id,
                   std::vector<std::string> const& addresses,
                   bool sender);
