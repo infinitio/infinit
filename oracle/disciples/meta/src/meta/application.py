@@ -20,6 +20,7 @@ class Application(object):
                  mongo_host = None,
                  mongo_port = None,
                  port_file = None,
+                 apertus_control_port = None,
                  no_apertus = False):
         urls = []
         views = {}
@@ -39,8 +40,12 @@ class Application(object):
 
         conf.META_HOST = meta_host
         conf.META_PORT = meta_port
+
         conf.MONGO_HOST = mongo_host
         conf.MONGO_PORT = mongo_port
+
+        if apertus_control_port is not None:
+            conf.APERTUS_CONTROL_PORT = apertus_control_port
 
         conf.NO_APERTUS = no_apertus
 

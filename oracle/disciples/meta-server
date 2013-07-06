@@ -88,6 +88,7 @@ if __name__ == '__main__':
                                   mongo_host="localhost",
                                   mongo_port=mongo.port,
                                   port_file=args.port_file,
+                                  apertus_control_port = args.apertus_control_port,
                                   no_apertus = args.no_apertus,
                 )
                 app.run()
@@ -97,6 +98,7 @@ if __name__ == '__main__':
                               mongo_host=args.mongo_host,
                               mongo_port=args.mongo_port,
                               port_file=args.port_file,
+                              apertus_control_port = args.apertus_control_port,
                               no_apertus = args.no_apertus,
             )
             app.run()
