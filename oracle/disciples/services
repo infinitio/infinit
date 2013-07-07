@@ -33,12 +33,6 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--apertus-control-port',
-    type = int,
-    default = meta.conf.APERTUS_CONTROL_PORT,
-)
-
-parser.add_argument(
     '--trophonius-port',
     type = int,
     default = meta.conf.TROPHONIUS_PORT,
@@ -85,74 +79,91 @@ def main(argv):
     try:
         reset_user_status()
         processes.append(
-            (META_BIN,
-             subprocess.Popen([
+            (
+                META_BIN,
+                subprocess.Popen(
+                    [
                         META_BIN,
                         '--meta-port', str(args.meta_port),
                         '--trophonius-control-port', str(args.trophonius_control_port),
-                        '--apertus-control-port', str(args.apertus_control_port),
-                        ],
-                              stdout=open("meta.stdout", "w"),
-                              stderr=open("meta.stderr", "w"))
-             ))
+                        '--apertus-control-port', str(args.apertus_port),
+                    ],
+                    stdout = open("meta.stdout", "w"),
+                    stderr = open("meta.stderr", "w"))
+            )
+        )
 
         processes.append(
-            (LONGINUS_BIN,
-             subprocess.Popen([
-                        LONGINUS_BIN,
-                        str(args.longinus_port)
-                        ],
-                              stdout=open("longinus.stdout", "w"),
-                              stderr=open("longinus.stderr", "w"))
-             ))
+            (
+                LONGINUS_BIN,
+                subprocess.Popen(
+                    [LONGINUS_BIN, str(args.longinus_port)],
+                    stdout = open("longinus.stdout", "w"),
+                    stderr = open("longinus.stderr", "w")
+                )
+            )
+        )
 
         processes.append(
-            (TROPHONIUS_BIN,
-             subprocess.Popen([
+            (
+                TROPHONIUS_BIN,
+                subprocess.Popen(
+                    [
                         TROPHONIUS_BIN,
                         '--port', str(args.trophonius_port),
                         '--control-port', str(args.trophonius_control_port),
-                        ],
-                              env=dict(INFINIT_META_PORT=str(args.meta_port), **os.environ),
-                              stdout=open("tropho.stdout", "w"),
-                              stderr=open("tropho.stderr", "w"))
-             ))
+                    ],
+                    env = dict(INFINIT_META_PORT=str(args.meta_port), **os.environ),
+                    stdout = open("tropho.stdout", "w"),
+                    stderr = open("tropho.stderr", "w")
+                )
+            )
+        )
 
         processes.append(
-            (APERTUS_BIN,
-             subprocess.Popen([
-                        APERTUS_BIN,
-                        '--port', str(args.apertus_port),
-                        '--control-port', str(args.apertus_control_port)
-                        ],
-                              stdout=open("apertus.stdout", "w"),
-                              stderr=open("apertus.stderr", "w"))
-             ))
+            (
+                APERTUS_BIN,
+                subprocess.Popen(
+                    [APERTUS_BIN, '--port', str(args.apertus_port)],
+                    stdout = open("apertus.stdout", "w"),
+                    stderr = open("apertus.stderr", "w")
+                )
+            )
+        )
+
         processes.append(
-            (HEARTBEAT_BIN,
-             subprocess.Popen([
-                        HEARTBEAT_BIN,
-                        '--port', str(args.heartbeat_port)
-                        ],
-                              stdout=open("heartbeat.stdout", "w"),
-                              stderr=open("heartbeat.stderr", "w"))
-             ))
+            (
+                HEARTBEAT_BIN,
+                subprocess.Popen(
+                    [HEARTBEAT_BIN, '--port', str(args.heartbeat_port)],
+                    stdout = open("heartbeat.stdout", "w"),
+                    stderr = open("heartbeat.stderr", "w")
+                )
+            )
+        )
+
         processes.append(
-            (STUN_BIN,
-             subprocess.Popen([
+            (
+                STUN_BIN,
+                subprocess.Popen(
+                    [
                         STUN_BIN,
                         '--primaryport', str(args.stun_port),
                         '--mode', 'full'
-                        ],
-                              stdout=open("stunserver.stdout", "w"),
-                              stderr=open("stunserver.stderr", "w"))
-             ))
+                    ],
+                    stdout = open("stunserver.stdout", "w"),
+                    stderr = open("stunserver.stderr", "w")
+                )
+            )
+        )
 
-        print("INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port)
-        print("INFINIT_META_PORT=%s" % args.meta_port)
-        print("INFINIT_LONGINUS_PORT=%s" % args.longinus_port)
-        print("INFINIT_HEARTBEAT_PORT=%s" % args.heartbeat_port)
-        print("INFINIT_STUN_PORT=%s" % args.stun_port)
+        print(
+            "INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port,
+            "INFINIT_META_PORT=%s" % args.meta_port,
+            "INFINIT_LONGINUS_PORT=%s" % args.longinus_port,
+            "INFINIT_HEARTBEAT_PORT=%s" % args.heartbeat_port,
+            "INFINIT_STUN_PORT=%s" % args.stun_port,
+        )
 
         running = True
         while running:
@@ -177,7 +188,7 @@ def main(argv):
                     pass
 
 if __name__ == '__main__':
-    try:	    
+    try:
         import sys
         main(sys.argv[1:])
     except Exception as e:
