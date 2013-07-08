@@ -23,7 +23,7 @@ namespace surface
       return elle::os::path::exists(common::infinit::passport_path(this->me().id));
     }
 
-    Device&
+    Device const&
     State::device()
     {
       ELLE_TRACE_METHOD("");
@@ -37,6 +37,7 @@ namespace surface
           elle::io::Path{common::infinit::passport_path(this->me().id)});
         this->_device.reset(new Device{passport.id(), passport.name()});
       }
+      ELLE_ASSERT(this->_device != nullptr);
       return *this->_device;
     }
 

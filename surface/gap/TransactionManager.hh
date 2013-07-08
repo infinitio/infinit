@@ -38,8 +38,8 @@ namespace surface
       // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
       elle::metrics::Reporter& _reporter;
-      Self& _self;
-      Device _device;
+      ELLE_ATTRIBUTE(Self, self);
+      ELLE_ATTRIBUTE(Device, device);
       ELLE_ATTRIBUTE_R(std::string, output_dir);
       ELLE_ATTRIBUTE(TransactionStateMachine, state_machine);
 

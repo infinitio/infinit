@@ -1,10 +1,11 @@
 #ifndef NETWORKMANAGER_HH
 # define NETWORKMANAGER_HH
 
-# include <surface/gap/NotificationManager.hh>
-# include <surface/gap/Exception.hh>
-# include <surface/gap/InfinitInstanceManager.hh>
-# include <surface/gap/metrics.hh>
+# include "Device.hh"
+# include "Exception.hh"
+# include "InfinitInstanceManager.hh"
+# include "NotificationManager.hh"
+# include "metrics.hh"
 
 # include <nucleus/neutron/Permissions.hh>
 
@@ -24,7 +25,6 @@ namespace surface
     `-------*/
     using Self = ::plasma::meta::SelfResponse;
     using Network = ::plasma::meta::NetworkResponse;
-    using Device = ::plasma::meta::Device;
     using Endpoint = ::plasma::meta::EndpointNodeResponse;
 
     class NetworkManager:
@@ -54,8 +54,8 @@ namespace surface
       plasma::meta::Client& _meta;
       elle::metrics::Reporter& _reporter;
       elle::metrics::Reporter& _google_reporter;
-      Self const& _self;
-      Device const& _device;
+      ELLE_ATTRIBUTE(Self, self);
+      ELLE_ATTRIBUTE(Device, device);
       ELLE_ATTRIBUTE_X(InfinitInstanceManager, infinit_instance_manager);
 
       /*-------------.

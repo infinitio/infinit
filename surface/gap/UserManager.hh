@@ -30,7 +30,7 @@ namespace surface
       `-----------*/
     private:
       plasma::meta::Client& _meta;
-      Self const& _self;
+      ELLE_ATTRIBUTE(Self, self);
 
       /*-------------.
       | Construction |

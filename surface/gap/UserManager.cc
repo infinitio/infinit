@@ -27,7 +27,7 @@ namespace surface
                              Self const& self):
       Notifiable{notification_manager},
       _meta(meta),
-      _self(self),
+      _self{self},
       _swaggers_dirty(true)
     {
       ELLE_TRACE_METHOD("");

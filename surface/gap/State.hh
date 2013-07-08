@@ -128,7 +128,7 @@ namespace surface
       std::unique_ptr<Device> _device;
 
     public:
-      Device&
+      Device const&
       device();
       std::string const&
       device_id();

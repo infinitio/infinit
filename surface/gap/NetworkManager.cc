@@ -169,7 +169,7 @@ namespace surface
       _meta(meta),
       _reporter(reporter),
       _google_reporter(google_reporter),
-      _self(me),
+      _self{me},
       _device(device),
       _infinit_instance_manager{me.id, this->_meta.host(), this->_meta.port(), this->_meta.token()}
     {
@@ -668,7 +668,8 @@ namespace surface
       for (auto const& round: {fallback}) //, locals, externals})
         it = std::copy(round.begin(), round.end(), it);
 
-      ELLE_TRACE("destinations: %s", addresses);
+      for (auto const& addr: addresses)
+        ELLE_TRACE("destination address selected: %s", addr);
       return addresses;
     }
 
