@@ -17,7 +17,8 @@
 namespace etoile
 {
   /// Filesystem interface to infinit.
-  class Etoile
+  class Etoile:
+    public elle::Printable
   {
     /*-------------.
     | Construction |
@@ -102,7 +103,14 @@ namespace etoile
     `------*/
   private:
     ELLE_ATTRIBUTE_RX(depot::Depot, depot);
-    ELLE_ATTRIBUTE_r(nucleus::proton::Network, network);
+    ELLE_ATTRIBUTE_r_ACCESSOR(nucleus::proton::Network, network);
+
+  /*----------.
+  | Printable |
+  `----------*/
+  public:
+    void
+    print(std::ostream& stream) const override;
   };
 
 }

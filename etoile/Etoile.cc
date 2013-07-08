@@ -303,4 +303,13 @@ namespace etoile
   {
     return this->_depot.network();
   }
+
+  /*----------.
+  | Printable |
+  `----------*/
+  void
+  Etoile::print(std::ostream& stream) const
+  {
+    stream << "Etoile(" << this->network() << ")";
+  }
 }
