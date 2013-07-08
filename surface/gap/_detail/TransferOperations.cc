@@ -17,6 +17,7 @@
 #include <nucleus/neutron/Entry.hh>
 #include <nucleus/neutron/Permissions.hh>
 #include <nucleus/neutron/Record.hh>
+#include <nucleus/neutron/Group.hh>
 #include <nucleus/neutron/Subject.hh>
 #include <nucleus/neutron/Trait.hh>
 
@@ -37,6 +38,49 @@ namespace surface
   {
     namespace operation_detail
     {
+      namespace user
+      {
+        void
+        add(etoile::Etoile& etoile,
+            nucleus::neutron::Group::Identity const& group,
+            nucleus::neutron::Subject const& subject)
+        {
+          auto identifier = etoile::wall::Group::Load(etoile, group);
+
+          elle::Finally discard{[&]
+            {
+              etoile::wall::Group::Discard(etoile, identifier);
+            }
+          };
+
+          etoile::wall::Group::Add(etoile, identifier, subject);
+          etoile::wall::Group::Store(etoile, identifier);
+
+          discard.abort();
+        }
+
+        void
+        set_permissions(etoile::Etoile& etoile,
+                        nucleus::neutron::Subject const& subject,
+                        nucleus::neutron::Permissions const& permission)
+        {
+          etoile::path::Chemin chemin = etoile::wall::Path::resolve(etoile, "/");
+          auto identifier = etoile::wall::Object::load(etoile, chemin);
+
+          elle::Finally discard{[&]
+            {
+              etoile::wall::Object::discard(etoile, identifier);
+            }
+          };
+
+          etoile::wall::Access::Grant(etoile, identifier, subject, permission);
+          etoile::wall::Object::store(etoile, identifier);
+
+          discard.abort();
+        }
+
+      }
+
       static
       etoile::gear::Identifier
       attach(etoile::Etoile& etoile,
@@ -230,7 +274,8 @@ namespace surface
 
           nucleus::neutron::Offset offset(0);
 
-          // Write the source file's content into the Infinit file freshly created.
+          // Write the source file's content into the Infinit file freshly
+          // created.
           std::streamsize N = 5242880;
           std::ifstream stream(source, std::ios::binary);
           elle::Buffer buffer(N);

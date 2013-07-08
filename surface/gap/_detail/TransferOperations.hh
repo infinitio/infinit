@@ -6,6 +6,9 @@
 # include <nucleus/fwd.hh>
 # include <elle/types.hh>
 
+// XXX
+# include <nucleus/neutron/Group.hh>
+
 # include <unordered_set>
 # include <string>
 
@@ -15,6 +18,19 @@ namespace surface
   {
     namespace operation_detail
     {
+      namespace user
+      {
+        void
+        add(etoile::Etoile& etoile,
+            nucleus::neutron::Group::Identity const& group,
+            nucleus::neutron::Subject const& subject);
+
+        void
+        set_permissions(etoile::Etoile& etoile,
+                        nucleus::neutron::Subject const& subject,
+                        nucleus::neutron::Permissions const& permission);
+      }
+
       namespace to
       {
         void

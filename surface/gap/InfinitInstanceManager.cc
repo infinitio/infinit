@@ -194,9 +194,9 @@ namespace surface
         });
 
       instance.scheduler.terminate();
-
       instance.thread.join();
       this->_instances.erase(network_id);
+      ELLE_LOG("stoped");
     }
 
     bool
@@ -221,18 +221,8 @@ namespace surface
         [&]
         {
           auto& etoile = *instance.etoile;
-          auto identifier = etoile::wall::Group::Load(etoile, group);
 
-          elle::Finally discard{[&]
-            {
-              etoile::wall::Group::Discard(etoile, identifier);
-            }
-          };
-
-          etoile::wall::Group::Add(etoile, identifier, subject);
-          etoile::wall::Group::Store(etoile, identifier);
-
-          discard.abort();
+          operation_detail::user::add(etoile, group, subject);
         });
     }
 
@@ -252,23 +242,8 @@ namespace surface
         {
           auto& etoile = *instance.etoile;
 
-          etoile::path::Chemin chemin = etoile::wall::Path::resolve(etoile, "/");
-          auto identifier = etoile::wall::Object::load(etoile, chemin);
-
-          elle::Finally discard{[&]
-            {
-              etoile::wall::Object::discard(etoile, identifier);
-            }
-          };
-
-          etoile::wall::Access::Grant(etoile,
-                                      identifier,
-                                      subject,
-                                      nucleus::neutron::permissions::write);
-
-          etoile::wall::Object::store(etoile, identifier);
-
-          discard.abort();
+          operation_detail::user::set_permissions(
+            etoile, subject, nucleus::neutron::permissions::write);
         });
     }
 
