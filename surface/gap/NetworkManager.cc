@@ -662,10 +662,10 @@ namespace surface
         std::for_each(begin(fallback), end(fallback), _print);
 
       std::vector<std::string> addresses;
-      addresses.resize(locals.size() + externals.size() + fallback.size());
+      addresses.resize(fallback.size()); // + locals.size() + externals.size());
 
       auto it = addresses.begin();
-      for (auto const& round: {fallback, locals, externals})
+      for (auto const& round: {fallback}) //, locals, externals})
         it = std::copy(round.begin(), round.end(), it);
 
       ELLE_TRACE("destinations: %s", addresses);
