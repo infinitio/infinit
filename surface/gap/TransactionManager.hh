@@ -140,6 +140,7 @@ namespace surface
           preparing,
           running,
           finished,
+          canceled,
         } state;
         int tries;
         OperationId operation;

@@ -331,7 +331,11 @@ namespace surface
     TransactionManager::_cancel_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_SCOPE("%s: cancel %s", *this, transaction);
-
+      this->_states(
+        [&transaction] (StateMap& map)
+        {
+          map[transaction.id].state = State::canceled;
+        });
       auto scope_exit = [&, transaction]
         {
           this->_network_manager.delete_(transaction.network_id, false);
@@ -704,6 +708,11 @@ namespace surface
           },
           [&reporter, transaction, this]
           {
+            // If the transaction was already marked as cancelled, do not mark
+            // it as failed.
+            auto s = this->_states[transaction.id];
+            if (s.state == State::canceled)
+              return;
             reporter.store(
               "transaction_transferring_fail",
               {{MKey::value, transaction.id},
