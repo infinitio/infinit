@@ -175,6 +175,13 @@ namespace hole
                 {
                   host->push(address, block);
                 }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
                 {
                   ELLE_WARN("[%p] remote exception: %s",
@@ -282,10 +289,16 @@ namespace hole
                 {
                   host->push(address, block);
                 }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
                 {
-                  ELLE_WARN("[%p] remote exception: %s",
-                            this, e.what());
+                  ELLE_WARN("[%p] remote exception: %s", this, e.what());
                   continue;
                 }
               }
@@ -386,6 +399,13 @@ namespace hole
                   iblock = elle::cast<ImmutableBlock>::runtime(
                     host->pull(address, nucleus::proton::Revision::Any));
                 }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
                 {
                   ELLE_WARN("%s: remote exception: %s",
@@ -552,17 +572,24 @@ namespace hole
             std::unique_ptr<MutableBlock> block;
 
             try
-              {
-                block =
-                  elle::cast<MutableBlock>::runtime(
-                    host->pull(address, Revision::Last));
-              }
+            {
+              block =
+                elle::cast<MutableBlock>::runtime(
+                  host->pull(address, Revision::Last));
+            }
+            /// XXX: remove when the second catch only chatches remote
+            /// exceptions.
+            catch (reactor::Terminate const&)
+            {
+              throw;
+            }
+            /// XXX: catch only remote exceptions !
             catch (std::exception const& e)
-              {
-                ELLE_WARN("%s: remote exception: %s",
-                          this, e.what());
-                continue;
-              }
+            {
+              ELLE_WARN("%s: remote exception: %s",
+                        this, e.what());
+              continue;
+            }
 
             // Validate the block, depending on its component.
             // Indeed, the Object component requires as additional
@@ -799,17 +826,23 @@ namespace hole
                 std::unique_ptr<MutableBlock> block;
 
                 try
-                  {
-                    block =
-                      elle::cast<MutableBlock>::runtime(
-                        host->pull(address, revision));
-                  }
+                {
+                  block =
+                    elle::cast<MutableBlock>::runtime(
+                      host->pull(address, revision));
+                }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
-                  {
-                    ELLE_WARN("%s: remote exception: %s",
-                              this, e.what());
-                    continue;
-                  }
+                {
+                  ELLE_WARN("%s: remote exception: %s", this, e.what());
+                  continue;
+                }
 
                 // validate the block, depending on its
                 // component.
@@ -1036,10 +1069,16 @@ namespace hole
                 {
                   host->wipe(address);
                 }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
                 {
-                  ELLE_WARN("%s: remote exception: %s",
-                            this, e.what());
+                  ELLE_WARN("%s: remote exception: %s", this, e.what());
                   continue;
                 }
               }
