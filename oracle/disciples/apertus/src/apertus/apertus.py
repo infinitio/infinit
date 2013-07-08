@@ -63,7 +63,7 @@ class ApertcpusFactory(Factory):
         return self.clients[addr]
 
     def die(self):
-        self.transport.loseConnection()
+        self.doStop()
 
 class Apertus(DatagramProtocol):
 
