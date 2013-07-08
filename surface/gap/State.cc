@@ -141,16 +141,14 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: destroying state", *this);
 
-      ELLE_SCOPE_EXIT([&] {
-        try
-        {
-          this->logout();
-        }
-        catch (...)
-        {
-          ELLE_WARN("Couldn't logout: %s", elle::exception_string());
-        }
-      });
+      try
+      {
+        this->logout();
+      }
+      catch (...)
+      {
+        ELLE_WARN("Couldn't logout: %s", elle::exception_string());
+      }
     }
 
     std::string const&
