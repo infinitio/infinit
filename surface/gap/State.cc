@@ -71,8 +71,7 @@ namespace surface
       _trophonius_host{trophonius_host},
       _trophonius_port{trophonius_port}
     {
-      ELLE_TRACE("State(meta(%s,%s), trophonius(%s, %s))",
-                 meta_host, meta_port, trophonius_host, trophonius_port);
+      ELLE_TRACE_SCOPE("%s: create state", *this);
 
       // Start metrics after setting up the logger.
       this->_reporter.start();
@@ -125,7 +124,7 @@ namespace surface
     std::string const&
     State::token_generation_key() const
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_TRACE_SCOPE("%s: generate token", *this);
 
       return this->me().token_generation_key;
     }
@@ -140,7 +139,7 @@ namespace surface
 
     State::~State()
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_TRACE_SCOPE("%s: destroy state", *this);
 
       ELLE_SCOPE_EXIT([&] {
         try
@@ -193,7 +192,7 @@ namespace surface
     State::login(std::string const& email,
                  std::string const& password)
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_TRACE_METHOD("%s: login to meta as %s", *this, email);
 
       this->_meta.token("");
       this->_cleanup();
@@ -266,12 +265,19 @@ namespace surface
                        ;
         identity_infos.close();
       }
+
+      // this->device();
+      // this->notification_manager();
+      // this->user_manager();
+      // this->network_manager();
+      // this->transaction_manager();
+      // this->transaction_manager();
     }
 
     void
     State::_cleanup()
     {
-      ELLE_DEBUG_METHOD("");
+      ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
 
       this->_transaction_manager->reset();
       this->_network_manager->reset();
@@ -357,7 +363,8 @@ namespace surface
                      std::string const& activation_code)
     {
       // !WARNING! Do not log the password.
-      ELLE_TRACE_METHOD(fullname, email, activation_code);
+      ELLE_TRACE_SCOPE("%s: register as %s: email %s and activation_code %s",
+                       *this, fullname, email, activation_code);
 
       // End session the session.
       this->_reporter.store("user_register_attempt");
@@ -388,13 +395,11 @@ namespace surface
     NetworkManager&
     State::network_manager()
     {
-      ELLE_TRACE_METHOD("");
-
       return this->_network_manager(
         [this] (NetworkManagerPtr& manager) -> NetworkManager& {
           if (manager == nullptr)
           {
-            ELLE_TRACE("allocating a new network manager");
+            ELLE_TRACE_SCOPE("%s: allocating a new network manager", *this);
 
             manager.reset(
               new NetworkManager{this->_meta,
@@ -414,7 +419,7 @@ namespace surface
         [this] (NotificationManagerPtr& manager) -> NotificationManager& {
           if (manager == nullptr)
           {
-            ELLE_TRACE("allocating a new notification manager");
+            ELLE_TRACE_SCOPE("%s: allocating a new notification manager", *this);
 
             manager.reset(
               new NotificationManager{this->_trophonius_host,
@@ -434,7 +439,7 @@ namespace surface
         [this] (UserManagerPtr& manager) -> UserManager& {
           if (manager == nullptr)
           {
-            ELLE_TRACE("allocating a new user manager");
+            ELLE_TRACE_SCOPE("%s: allocating a new user manager", *this);
 
             manager.reset(
               new UserManager{this->notification_manager(),
@@ -452,7 +457,7 @@ namespace surface
         [this] (TransactionManagerPtr& manager) -> TransactionManager& {
           if (manager == nullptr)
           {
-            ELLE_TRACE("allocating a new transaction manager");
+            ELLE_TRACE_SCOPE("%s: allocating a new transaction manager", *this);
 
             manager.reset(
               new TransactionManager{this->notification_manager(),
@@ -466,5 +471,18 @@ namespace surface
           return *manager;
         });
     }
+
+    /*----------.
+    | Printable |
+    `----------*/
+    void
+    State::print(std::ostream& stream) const
+    {
+      stream << "state(" << this->_meta.host() << ":" << this->_meta.port();
+      if (!this->_meta.email().empty())
+        stream << " as " << this->_meta.email();
+      stream << ")";
+    }
+
   }
 }

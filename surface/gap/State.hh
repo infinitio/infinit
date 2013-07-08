@@ -18,6 +18,7 @@
 
 # include <elle/format/json/fwd.hh>
 # include <elle/threading/Monitor.hh>
+# include <elle/Printable.hh>
 
 # include <map>
 # include <string>
@@ -52,7 +53,8 @@ namespace surface
       LoggerInitializer();
     };
 
-    class State
+    class State:
+      public elle::Printable
     {
     public:
       ///- Logs ----------------------------------------------------------------
@@ -195,6 +197,14 @@ namespace surface
 
       void
       _cleanup();
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const;
     };
 
   }
