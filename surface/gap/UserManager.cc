@@ -79,7 +79,7 @@ namespace surface
           auto it = users.find(id);
           if (it != users.end())
             return *(it->second);
-          return User{};
+          return User();
         });
       if (not user.id.empty())
         return user;
