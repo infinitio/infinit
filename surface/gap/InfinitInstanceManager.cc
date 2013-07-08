@@ -182,7 +182,7 @@ namespace surface
     void
     InfinitInstanceManager::stop(std::string const& network_id)
     {
-      ELLE_TRACE_METHOD(network_id);
+      ELLE_TRACE("%s: stop network %s", *this, network_id);
 
       ELLE_ASSERT(this->_instances.find(network_id) != this->_instances.end());
 
@@ -192,13 +192,13 @@ namespace surface
         elle::sprintf("stop(%s)", network_id),
         [&instance]
         {
-          instance.etoile.reset();
-          instance.hole.reset();
-
-          instance.keep_alive.terminate();
+          ELLE_DEBUG("terminate all threads")
+            instance.scheduler.terminate_now();
+          ELLE_DEBUG("finalize etoile")
+            instance.etoile.reset();
+          ELLE_DEBUG("finalize hole")
+            instance.hole.reset();
         });
-
-      instance.scheduler.terminate();
       instance.thread.join();
       this->_instances.erase(network_id);
       ELLE_LOG("stopped");
@@ -312,7 +312,8 @@ namespace surface
               std::lock_guard<std::mutex>(instance.progress_mutex);
               instance.progress = progress;
             }
-            catch (std::exception const&)
+            /// XXX: catch less !
+            catch (elle::Exception const&)
             {
               ELLE_WARN("couldn't retreive the progress: %s",
                         elle::exception_string());
@@ -359,7 +360,6 @@ namespace surface
           {
             ELLE_DEBUG("%s: download failed", *this);
             failure_callback();
-            throw;
           }
         },
         true);
