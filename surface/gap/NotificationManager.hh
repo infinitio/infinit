@@ -25,7 +25,8 @@ namespace surface
 
     class Notifiable;
 
-    class NotificationManager: public elle::Printable
+    class NotificationManager:
+      public elle::Printable
     {
       class Exception:
         public surface::gap::Exception
@@ -183,6 +184,9 @@ namespace surface
       NotificationManager& _notification_manager;
 
       Notifiable(NotificationManager& notification_manager);
+
+      virtual
+      ~Notifiable();
     };
   }
 }

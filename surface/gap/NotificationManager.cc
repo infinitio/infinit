@@ -386,15 +386,18 @@ namespace surface
     /*----------.
     | Printable |
     `----------*/
-
     void
     NotificationManager::print(std::ostream& stream) const
     {
       stream << "NotificationManager(" << this->_meta.email() << ")";
     }
 
+    // ---------- Notifiable ---------------------------------------------------
     Notifiable::Notifiable(NotificationManager& notification_manager):
       _notification_manager(notification_manager)
+    {}
+
+    Notifiable::~Notifiable()
     {}
   }
 }
