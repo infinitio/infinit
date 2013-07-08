@@ -12,7 +12,7 @@ import time
 sender_ok = False
 recipient_ok = False
 
-accepted_transactions=set()
+accepted_transactions=list()
 
 # That logs us.
 def register(client, fullname, email):
@@ -40,7 +40,7 @@ def recipient_callback(state, status,  transaction_id):
         recipient_ok = True;
     elif status == state.TransactionStatus.created and \
           not state.transaction_is_accepted(transaction_id):
-        accepted_transactions.add(transaction_id)
+        accepted_transactions.append(transaction_id)
         time.sleep(2)
         state.accept_transaction(transaction_id)
 
@@ -92,12 +92,14 @@ def connection(meta, trophonius):
             sender.send_files(recipient._id, [to_send_path,])
 
             while not (sender_ok and recipient_ok):
+                ## Progress
+                # if len(accepted_transactions) > 0:
+                #     print(sender.transaction_progress(accepted_transactions[0]))
+                #     print(recipient.transaction_progress(accepted_transactions[0]))
                 print("poll: ", sender_ok, recipient_ok)
                 sender.poll()
                 recipient.poll()
                 time.sleep(1)
-
-                print("=======")
 
             assert os.path.exists(os.path.join(destination_directory, 'to_send'))
         finally:
