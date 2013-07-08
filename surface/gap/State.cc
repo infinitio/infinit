@@ -139,7 +139,7 @@ namespace surface
 
     State::~State()
     {
-      ELLE_TRACE_SCOPE("%s: destroy state", *this);
+      ELLE_TRACE_SCOPE("%s: destroying state", *this);
 
       ELLE_SCOPE_EXIT([&] {
         try
