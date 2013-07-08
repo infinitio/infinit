@@ -60,7 +60,7 @@ namespace etoile
               object = etoile.depot().pull_object(
                 location.address(), location.revision());
             }
-          catch (std::runtime_error& e)
+          catch (elle::Exception& e)
             {
               assert(scope != nullptr);
               ELLE_TRACE("clearing the cache in order to evict %s",
@@ -178,7 +178,7 @@ namespace etoile
             if (automaton::Object::Load(*context) == elle::Status::Error)
               throw Exception("unable to load the object");
           }
-        catch (std::exception const& e)
+        catch (elle::Exception const& e)
           {
             ELLE_ASSERT(scope != nullptr);
 

@@ -112,7 +112,7 @@ namespace etoile
             if (automaton::Directory::Load(*context) == elle::Status::Error)
               throw Exception("unable to load the directory");
           }
-        catch (std::exception const&)
+        catch (elle::Exception const&)
           {
             Object::reload<gear::Directory>(etoile, *scope);
           }

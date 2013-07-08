@@ -100,7 +100,7 @@ namespace etoile
           if (automaton::File::Load(*context) == elle::Status::Error)
             throw Exception("unable to load the file");
         }
-        catch (std::exception const&)
+        catch (elle::Exception const&)
         {
           assert(scope != nullptr);
           Object::reload<gear::File>(etoile, *scope);

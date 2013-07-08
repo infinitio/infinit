@@ -110,7 +110,7 @@ namespace etoile
             if (automaton::Link::Load(*context) == elle::Status::Error)
               throw Exception("unable to load the link");
           }
-        catch (std::exception const&)
+        catch (elle::Exception const&)
           {
             assert(scope != nullptr);
             Object::reload<gear::Link>(etoile, *scope);
