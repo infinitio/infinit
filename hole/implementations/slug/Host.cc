@@ -62,7 +62,9 @@ namespace hole
         if (sched != nullptr)
         {
           auto current = sched->current();
-          if (!_rpcs_handler->done() && current != _rpcs_handler)
+          if (this->_rpcs_handler &&
+              !_rpcs_handler->done() &&
+              current != _rpcs_handler)
           {
             _rpcs_handler->terminate_now();
           }
@@ -78,6 +80,7 @@ namespace hole
       {
         auto fn_on_exit = [&] {
           ELLE_LOG("%s: left", *this);
+          this->_rpcs_handler = nullptr;
           this->_slug._remove(*this);
         };
         elle::Finally on_exit(std::move(fn_on_exit));
