@@ -20,7 +20,6 @@
 // #include <elle/memory.hh>
 #include <boost/filesystem.hpp>
 
-
 #include <fstream>
 //#include <iterator>
 
@@ -65,6 +64,16 @@ namespace surface
       _meta{meta_host, meta_port, true},
       _reporter(),
       _google_reporter(),
+      _scheduler{},
+      _keep_alive(this->_scheduler, "State keep alive", [] ()
+                 {
+                   while (true)
+                   {
+                     auto* current = reactor::Scheduler::scheduler()->current();
+                     current->sleep(boost::posix_time::seconds(60));
+                   }
+                 }),
+      _thread(std::bind(&reactor::Scheduler::run, std::ref(this->_scheduler))),
       _me{nullptr},
       _device{nullptr},
       _files_infos{},
@@ -140,6 +149,18 @@ namespace surface
     State::~State()
     {
       ELLE_TRACE_SCOPE("%s: destroying state", *this);
+
+      this->_scheduler.mt_run<void>(
+        "stop state",
+        [this]
+        {
+          this->_keep_alive.terminate_now();
+
+          auto* scheduler = reactor::Scheduler::scheduler();
+          scheduler->terminate_now();
+        });
+
+      this->_thread.join();
 
       try
       {
@@ -300,7 +321,6 @@ namespace surface
               this->_meta.token("");
             }
           });
-        this->_cleanup();
       }
       CATCH_FAILURE_TO_METRICS("user_logout");
 
@@ -458,6 +478,7 @@ namespace surface
               };
             manager.reset(
               new TransactionManager{
+                this->_scheduler,
                 this->notification_manager(),
                 this->network_manager(),
                 this->user_manager(),

@@ -47,6 +47,7 @@ namespace surface
     };
 
     TransactionManager::TransactionManager(
+      reactor::Scheduler& scheduler,
         NotificationManager& notification_manager,
         NetworkManager& network_manager,
         UserManager& user_manager,
@@ -60,6 +61,7 @@ namespace surface
       _user_manager(user_manager),
       _meta(meta),
       _reporter(reporter),
+      _scheduler(scheduler),
       _self{self},
       _device{device},
       _update_remaining_invitations{update_remaining_invitations},
@@ -146,79 +148,86 @@ namespace surface
       if (files.empty())
         throw Exception(gap_no_file, "no files to send");
 
-      auto total_size =
-        [] (std::unordered_set<std::string> const& files) -> size_t
-      {
-        ELLE_TRACE_FUNCTION(files);
-
-        size_t size = 0;
+      new reactor::Thread(
+        this->_scheduler,
+        elle::sprintf("send files %s", recipient_id_or_email),
+        [this, recipient_id_or_email, files]
         {
-          for (auto const& file: files)
+          auto total_size =
+            [] (std::unordered_set<std::string> const& files) -> size_t
+            {
+              ELLE_TRACE_FUNCTION(files);
+
+              size_t size = 0;
+              {
+                for (auto const& file: files)
+                {
+                  auto _size = elle::os::file::size(file);
+                  ELLE_DEBUG("%s: %i", file, _size);
+                  size += _size;
+                }
+              }
+              return size;
+            };
+
+          int size = total_size(files);
+
+          std::string first_file = fs::path(*(files.cbegin())).filename().string();
+
+          elle::utility::Time time; time.Current();
+          std::string network_name = elle::sprintf("%s-%s",
+                                                   recipient_id_or_email,
+                                                   time.nanoseconds);
+
+          std::string network_id = this->_network_manager.create(network_name);
+          // XXX add locally
+
+          // Preparing the network before sending the notification ensures that the
+          // recipient can't prepare it by himself.
+          this->_network_manager.prepare(network_id);
+          this->_network_manager.to_directory(
+            network_id,
+            common::infinit::network_shelter(this->_self().id, network_id));
+
+          plasma::meta::CreateTransactionResponse res;
+          ELLE_DEBUG("Send %s (%sB) to %s via network %s",
+                     first_file, size, recipient_id_or_email, network_id);
+
+          std::string transaction_id = "";
+          try
           {
-            auto _size = elle::os::file::size(file);
-            ELLE_DEBUG("%s: %i", file, _size);
-            size += _size;
+            res = this->_meta.create_transaction(recipient_id_or_email,
+                                                 first_file,
+                                                 files.size(),
+                                                 size,
+                                                 fs::is_directory(first_file),
+                                                 network_id,
+                                                 this->_device().id);
+
+            transaction_id = res.created_transaction_id;
+
+            auto s = this->_states[transaction_id];
+            s.files = files;
+            this->_states(
+              [&transaction_id, &s] (StateMap& map) {map[transaction_id] = s;});
+
+            // Creating a transaction ensures that user has an id.
+            auto recipient = this->_user_manager.one(recipient_id_or_email);
+            ELLE_TRACE("add user %s to network %s", recipient, network_id)
+              this->_meta.network_add_user(network_id, recipient.id);
           }
-        }
-        return size;
-      };
-
-      int size = total_size(files);
-
-      std::string first_file = fs::path(*(files.cbegin())).filename().string();
-
-      elle::utility::Time time; time.Current();
-      std::string network_name = elle::sprintf("%s-%s",
-                                               recipient_id_or_email,
-                                               time.nanoseconds);
-
-      std::string network_id = this->_network_manager.create(network_name);
-      // XXX add locally
-
-      // Preparing the network before sending the notification ensures that the
-      // recipient can't prepare it by himself.
-      this->_network_manager.prepare(network_id);
-      this->_network_manager.to_directory(
-        network_id,
-        common::infinit::network_shelter(this->_self().id, network_id));
-
-      plasma::meta::CreateTransactionResponse res;
-      ELLE_DEBUG("Send %s (%sB) to %s via network %s",
-                 first_file, size, recipient_id_or_email, network_id);
-
-      std::string transaction_id = "";
-      try
-      {
-        res = this->_meta.create_transaction(recipient_id_or_email,
-                                             first_file,
-                                             files.size(),
-                                             size,
-                                             fs::is_directory(first_file),
-                                             network_id,
-                                             this->_device().id);
-
-        transaction_id = res.created_transaction_id;
-
-        auto s = this->_states[transaction_id];
-        s.files = files;
-        this->_states(
-          [&transaction_id, &s] (StateMap& map) {map[transaction_id] = s;});
-
-        // Creating a transaction ensures that user has an id.
-        auto recipient = this->_user_manager.one(recipient_id_or_email);
-        ELLE_TRACE("add user %s to network %s", recipient, network_id)
-          this->_meta.network_add_user(network_id, recipient.id);
-      }
-      catch (...)
-      {
-        ELLE_DEBUG("transaction creation failed: %s", elle::exception_string());
-        if (!transaction_id.empty())
-          this->cancel_transaction(transaction_id);
-        else
-          this->_network_manager.delete_(network_id, false);
-        throw;
-      }
-      this->_update_remaining_invitations(res.remaining_invitations);
+          catch (...)
+          {
+            ELLE_DEBUG("transaction creation failed: %s", elle::exception_string());
+            if (!transaction_id.empty())
+              this->cancel_transaction(transaction_id);
+            else
+              this->_network_manager.delete_(network_id, false);
+            throw;
+          }
+          this->_update_remaining_invitations(res.remaining_invitations);
+        },
+        true);
 
       return 0;
     }

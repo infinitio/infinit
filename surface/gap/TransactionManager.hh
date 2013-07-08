@@ -19,6 +19,7 @@
 
 # include <string>
 # include <unordered_set>
+# include <reactor/scheduler.hh>
 
 namespace surface
 {
@@ -44,6 +45,7 @@ namespace surface
       plasma::meta::Client& _meta;
       elle::metrics::Reporter& _reporter;
 
+      ELLE_ATTRIBUTE(reactor::Scheduler&, scheduler);
       ELLE_ATTRIBUTE(SelfGetter, self);
       ELLE_ATTRIBUTE(DeviceGetter, device);
       ELLE_ATTRIBUTE(UpdateRemainingInvitations, update_remaining_invitations);
@@ -55,6 +57,7 @@ namespace surface
       `-------------*/
     public:
       TransactionManager(
+        reactor::Scheduler& scheduler,
         NotificationManager& notification_manager,
         NetworkManager& network_manager,
         UserManager& user_manager,
