@@ -346,7 +346,8 @@ namespace surface
           auto& etoile = *instance.etoile;
           auto& slug = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
 
-          this->_connect_try(slug, addresses, false);
+          if (!this->_connect_try(slug, addresses, false))
+            throw elle::Exception("Unable to connect");
 
           try
           {
