@@ -104,4 +104,10 @@ namespace hole
     ELLE_TRACE_SCOPE("%s(%s)", __FUNCTION__, address);
     this->_wipe(address);
   }
+
+  void
+  Hole::print(std::ostream& out) const
+  {
+    out << "Hole()";
+  }
 }

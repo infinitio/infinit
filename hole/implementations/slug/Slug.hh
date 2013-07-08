@@ -24,8 +24,7 @@ namespace hole
 
       /// Slug hole implementation.
       class Slug:
-        public Hole,
-        public elle::Printable
+        public Hole
       {
       /*-------------.
       | Construction |
@@ -143,7 +142,7 @@ namespace hole
       public:
         virtual
         void
-        print(std::ostream& stream) const;
+        print(std::ostream& stream) const override;
 
       /*---------.
       | Dumpable |

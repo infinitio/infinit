@@ -4,6 +4,7 @@
 # include <boost/signals.hpp>
 
 # include <elle/attribute.hh>
+# include <elle/Printable.hh>
 # include <elle/types.hh>
 
 # include <nucleus/proton/fwd.hh>
@@ -16,7 +17,8 @@
 namespace hole
 {
   /// The storage layer of an Infinit filesystem.
-  class Hole
+  class Hole:
+    public elle::Printable
   {
   /*-------------.
   | Construction |
@@ -25,7 +27,8 @@ namespace hole
     Hole(storage::Storage& storage,
          elle::Passport const& passport,
          elle::Authority const& authority);
-    virtual ~Hole();
+    virtual
+    ~Hole();
 
   /*--------.
   | Storage |
@@ -66,6 +69,13 @@ namespace hole
     virtual
     void
     _wipe(const nucleus::proton::Address& address) = 0;
+
+  /*----------.
+  | Printable |
+  `----------*/
+  public:
+    void
+    print(std::ostream& out) const override;
 
   /*-----------.
   | Attributes |
