@@ -392,8 +392,8 @@ namespace surface
                 this->_meta,
                 this->_reporter,
                 this->_google_reporter,
-                [this] () -> Self const& { return this->me(); },
-                [this] () -> Device const& { return this->device(); },
+                std::bind(&State::me, this),
+                std::bind(&State::device, this),
               });
           }
           return *manager;
@@ -414,8 +414,8 @@ namespace surface
                 this->_trophonius_host,
                 this->_trophonius_port,
                 this->_meta,
-                [this] () -> Self const& { return this->me(); },
-                [this] () -> Device const& { return this->device(); },
+                std::bind(&State::me, this),
+                std::bind(&State::device, this),
               });
           }
           return *manager;
@@ -435,7 +435,7 @@ namespace surface
               new UserManager{
                 this->notification_manager(),
                 this->_meta,
-                [this] () -> Self const& { return this->me(); }
+                std::bind(&State::me, this)
               });
           }
           return *manager;
@@ -450,7 +450,12 @@ namespace surface
           if (manager == nullptr)
           {
             ELLE_TRACE_SCOPE("%s: allocating a new transaction manager", *this);
-
+            auto update_remaining_invitations =
+              [this] (unsigned int remaining_invitations)
+              {
+                if (this->_me != nullptr)
+                  this->_me->remaining_invitations = remaining_invitations;
+              };
             manager.reset(
               new TransactionManager{
                 this->notification_manager(),
@@ -458,12 +463,9 @@ namespace surface
                 this->user_manager(),
                 this->_meta,
                 this->_reporter,
-                [this] () -> Self const& { return this->me(); },
-                [this] () -> Device const& { return this->device(); },
-                [this] (unsigned int remaining_invitations) {
-                  if (this->_me != nullptr)
-                    this->_me->remaining_invitations = remaining_invitations;
-                },
+                std::bind(&State::me, this),
+                std::bind(&State::device, this),
+                update_remaining_invitations
               });
           }
           return *manager;
