@@ -20,7 +20,7 @@ namespace hole
   {
     namespace slug
     {
-      class Host
+      class Host: public std::enable_shared_from_this<Host>
       {
       public:
         // Enumerations

@@ -1101,7 +1101,8 @@ namespace hole
         (void)opener;
         // Beware: do not yield between the host creation and the
         // authentication, or we might face a race condition.
-        std::shared_ptr<Host> host(new Host(*this, locus, std::move(socket)));
+        auto host = std::make_shared<Host>(*this, locus, std::move(socket));
+        this->_pending[host->locus()] = host;
         // XXX: leak
         ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
         auto loci = host->authenticate(this->passport());
@@ -1123,6 +1124,7 @@ namespace hole
         // XXX: the next line is broken
         host->remote_passport(this->passport());
         this->_hosts[host->locus()] = host;
+        this->_pending.erase(host->locus());
         this->_new_host.signal();
       }
 

@@ -112,9 +112,10 @@ namespace hole
         _remove(Host const& host);
         void
         _remove(elle::network::Locus loc);
+        /// Authenticated hosts.
         Hosts _hosts;
+        /// Not-yet authenticated hosts.
         Hosts _pending;
-
         reactor::Signal _new_host;
 
       /*-------.

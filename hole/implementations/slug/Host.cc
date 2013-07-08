@@ -135,15 +135,6 @@ namespace hole
       Host::_authenticate(elle::Passport const& passport)
       {
         ELLE_TRACE_SCOPE("%s: peer authenticates with %s", *this, passport);
-
-        if (this->_state == State::authenticated)
-        {
-            ELLE_DEBUG("already authenticated");
-            // XXX is this required ?
-            this->_slug._host_register(std::shared_ptr<Host>(this));
-            return this->_slug.loci();
-        }
-
         if (!passport.validate(this->_slug.authority()))
           throw Exception("unable to validate the passport");
         else
@@ -153,7 +144,7 @@ namespace hole
           this->authenticate(this->_slug.passport());
         // If we're authenticated, validate this host.
         if (this->_state == State::authenticated)
-          this->_slug._host_register(std::shared_ptr<Host>(this));
+          this->_slug._host_register(this->shared_from_this());
         // Send back all the hosts we know.
         return this->_slug.loci();
       }
