@@ -562,6 +562,7 @@ namespace surface
     }
 
     static
+    inline
     std::vector<std::string>
     _find_commond_addr(std::vector<std::string> const &externals,
                        std::vector<std::string> const &my_externals)
