@@ -10,14 +10,14 @@ namespace surface
   namespace gap
   {
     TransactionStateMachine::TransactionStateMachine(
-        CanceledCallback canceled,
-        CleanCallback clean,
-        PrepareUploadCallback prepare_upload,
-        StartUploadCallback start_upload,
-        StartDownloadCallback start_download,
-        DeviceStatusCallback device_status,
-        Self self,
-        Device device):
+        CanceledCallback const& canceled,
+        CleanCallback const& clean,
+        PrepareUploadCallback const& prepare_upload,
+        StartUploadCallback const& start_upload,
+        StartDownloadCallback const& start_download,
+        DeviceStatusCallback const& device_status,
+        SelfGetter const& self,
+        DeviceGetter const& device):
       _canceled{canceled},
       _clean{clean},
       _prepare_upload{prepare_upload},
@@ -25,7 +25,7 @@ namespace surface
       _start_download{start_download},
       _device_status{device_status},
       _self{self},
-      _device(device) // XXX bug g++4.7 with braces
+      _device{device} // XXX bug g++4.7 with braces
     {
       ELLE_ASSERT(this->_canceled != nullptr);
       ELLE_ASSERT(this->_clean != nullptr);
@@ -33,6 +33,8 @@ namespace surface
       ELLE_ASSERT(this->_start_upload != nullptr);
       ELLE_ASSERT(this->_device_status != nullptr);
       ELLE_ASSERT(this->_start_download != nullptr);
+      ELLE_ASSERT(this->_self != nullptr);
+      ELLE_ASSERT(this->_device != nullptr);
     }
 
     void
@@ -52,9 +54,9 @@ namespace surface
         return;
       }
 
-      if (tr.sender_id == this->_self.id)
+      if (tr.sender_id == this->_self().id)
       {
-        if (tr.sender_device_id != this->_device.id)
+        if (tr.sender_device_id != this->_device().id)
         {
           ELLE_ERR(
             "got a transaction %s that does not involve my device", tr);
@@ -80,9 +82,9 @@ namespace surface
           ELLE_DEBUG("sender does nothing for %s", tr);
         }
       }
-      else if (tr.recipient_id == this->_self.id)
+      else if (tr.recipient_id == this->_self().id)
       {
-        if (tr.recipient_device_id != this->_device.id)
+        if (tr.recipient_device_id != this->_device().id)
         {
           if (!tr.recipient_device_id.empty())
           {

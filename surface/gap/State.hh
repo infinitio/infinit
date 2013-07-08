@@ -1,17 +1,17 @@
 #ifndef  SURFACE_GAP_STATE_HH
 # define SURFACE_GAP_STATE_HH
 
+# include "Device.hh"
+# include "Exception.hh"
+# include "NetworkManager.hh"
+# include "NotificationManager.hh"
+# include "Self.hh"
+# include "TransactionManager.hh"
+# include "UserManager.hh"
 # include "gap.h"
+# include "metrics.hh"
 
 # include <common/common.hh>
-
-# include <surface/gap/Exception.hh>
-# include <surface/gap/NetworkManager.hh>
-# include <surface/gap/NotificationManager.hh>
-# include <surface/gap/UserManager.hh>
-# include <surface/gap/TransactionManager.hh>
-
-# include <surface/gap/metrics.hh>
 
 # include <plasma/meta/Client.hh>
 # include <plasma/trophonius/Client.hh>
@@ -23,14 +23,10 @@
 # include <map>
 # include <string>
 
-
 namespace surface
 {
   namespace gap
   {
-    using Self = ::plasma::meta::SelfResponse;
-    using Device = ::plasma::meta::Device;
-
     struct FileInfos
     {
       std::string                 mount_point;
@@ -84,12 +80,6 @@ namespace surface
 
     //- Login & register ------------------------------------------------------
       std::unique_ptr<Self> mutable _me;
-
-      void
-      _self_load() const;
-
-      Self&
-      me();
 
       Self const&
       me() const;

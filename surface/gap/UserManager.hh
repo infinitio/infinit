@@ -1,9 +1,10 @@
 #ifndef USERMANAGER_HH
 # define USERMANAGER_HH
 
-# include <surface/gap/Exception.hh>
-# include <surface/gap/NotificationManager.hh>
-# include <surface/gap/usings.hh>
+# include "Exception.hh"
+# include "NotificationManager.hh"
+# include "usings.hh"
+
 # include <plasma/meta/Client.hh>
 
 # include <elle/Printable.hh>
@@ -16,10 +17,6 @@ namespace surface
   namespace gap
   {
     using User = ::plasma::meta::User;
-    using Self = ::plasma::meta::SelfResponse;
-    using NotifManager = ::surface::gap::NotificationManager;
-    using UserStatusNotification = ::surface::gap::UserStatusNotification;
-    using NewSwaggerNotification = ::surface::gap::NewSwaggerNotification;
 
     class UserManager:
       public Notifiable,
@@ -30,15 +27,16 @@ namespace surface
       `-----------*/
     private:
       plasma::meta::Client& _meta;
-      ELLE_ATTRIBUTE(Self, self);
+      typedef std::function<Self const&()> SelfGetter;
+      ELLE_ATTRIBUTE(SelfGetter, self);
 
       /*-------------.
       | Construction |
       `-------------*/
     public:
-      UserManager(NotifManager& notification_manager,
+      UserManager(NotificationManager& notification_manager,
                   plasma::meta::Client& meta,
-                  Self const& self);
+                  SelfGetter const& self);
 
       virtual
       ~UserManager();

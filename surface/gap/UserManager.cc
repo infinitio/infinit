@@ -22,9 +22,9 @@ namespace surface
     namespace fs = boost::filesystem;
     namespace path = elle::os::path;
 
-    UserManager::UserManager(NotifManager& notification_manager,
+    UserManager::UserManager(NotificationManager& notification_manager,
                              plasma::meta::Client& meta,
-                             Self const& self):
+                             SelfGetter const& self):
       Notifiable{notification_manager},
       _meta(meta),
       _self{self},
@@ -202,7 +202,7 @@ namespace surface
     {
       ELLE_TRACE_METHOD(recipient_id, message);
 
-      this->_meta.send_message(recipient_id, this->_self.id, message);
+      this->_meta.send_message(recipient_id, this->_self().id, message);
     }
 
     ///- Swaggers --------------------------------------------------------------

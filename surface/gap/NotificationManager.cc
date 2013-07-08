@@ -21,13 +21,17 @@ namespace surface
     NotificationManager::NotificationManager(std::string const& trophonius_host,
                                              uint16_t trophonius_port,
                                              plasma::meta::Client& meta,
-                                             Self const& self,
-                                             Device const& device):
+                                             SelfGetter const& self,
+                                             DeviceGetter const& device):
       _trophonius{nullptr},
       _meta(meta),
-      _self(self),
-      _device(device)
+      _self{self},
+      _device{device}
     {
+      ELLE_ASSERT(this->_self != nullptr);
+      ELLE_ASSERT(this->_device != nullptr);
+      ELLE_DEBUG("Self = %s", this->_self().id);
+      ELLE_DEBUG("Device = %s", this->_device().id);
       this->_connect(trophonius_host, trophonius_port);
     }
 
@@ -59,7 +63,7 @@ namespace surface
       {
         uint16_t port;
         std::string port_file_path = elle::os::path::join(
-            common::infinit::user_directory(this->_self.id),
+            common::infinit::user_directory(this->_self().id),
             "erginus.sock");
 
         if (elle::os::path::exists(port_file_path))
@@ -108,12 +112,12 @@ namespace surface
       ELLE_LOG("%s: trying to connect to tropho: "
                "id = %s token = %s device_id = %s",
                *this,
-               this->_self.id,
+               this->_self().id,
                this->_meta.token(),
-               this->_device.id);
-      this->_trophonius->connect(this->_self.id,
+               this->_device().id);
+      this->_trophonius->connect(this->_self().id,
                                  this->_meta.token(),
-                                 this->_device.id);
+                                 this->_device().id);
     }
 
     void

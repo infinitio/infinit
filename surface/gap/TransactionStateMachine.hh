@@ -27,6 +27,8 @@ namespace surface
       typedef
         std::function<bool(std::string const&, std::string const&)>
         DeviceStatusCallback;
+      typedef std::function<Self const&()> SelfGetter;
+      typedef std::function<Device const&()> DeviceGetter;
 
     private:
       ELLE_ATTRIBUTE(CanceledCallback, canceled);
@@ -35,18 +37,18 @@ namespace surface
       ELLE_ATTRIBUTE(StartUploadCallback, start_upload);
       ELLE_ATTRIBUTE(StartDownloadCallback, start_download);
       ELLE_ATTRIBUTE(DeviceStatusCallback, device_status);
-      ELLE_ATTRIBUTE(Self, self);
-      ELLE_ATTRIBUTE(Device, device);
+      ELLE_ATTRIBUTE(SelfGetter, self);
+      ELLE_ATTRIBUTE(DeviceGetter, device);
 
     public:
-      TransactionStateMachine(CanceledCallback canceled,
-                              CleanCallback clean,
-                              PrepareUploadCallback prepare_upload,
-                              StartUploadCallback start_upload,
-                              StartDownloadCallback start_download,
-                              DeviceStatusCallback device_status,
-                              Self self,
-                              Device device);
+      TransactionStateMachine(CanceledCallback const& canceled,
+                              CleanCallback const& clean,
+                              PrepareUploadCallback const& prepare_upload,
+                              StartUploadCallback const& start_upload,
+                              StartDownloadCallback const& start_download,
+                              DeviceStatusCallback const& device_status,
+                              SelfGetter const& self,
+                              DeviceGetter const& device);
 
       void
       operator ()(Transaction const& transaction);

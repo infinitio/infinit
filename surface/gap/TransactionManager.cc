@@ -52,15 +52,17 @@ namespace surface
         UserManager& user_manager,
         plasma::meta::Client& meta,
         elle::metrics::Reporter& reporter,
-        Self& self,
-        Device const& device):
+        SelfGetter const& self,
+        DeviceGetter const& device,
+        UpdateRemainingInvitations const& update_remaining_invitations):
       Notifiable(notification_manager),
       _network_manager(network_manager),
       _user_manager(user_manager),
       _meta(meta),
       _reporter(reporter),
-      _self(self),
-      _device(device),
+      _self{self},
+      _device{device},
+      _update_remaining_invitations{update_remaining_invitations},
       _output_dir{common::system::download_directory()},
       _state_machine{
         std::bind(&TransactionManager::_on_cancel_transaction,
@@ -86,6 +88,8 @@ namespace surface
         device,
       }
     {
+      ELLE_ASSERT(this->_self != nullptr);
+      ELLE_ASSERT(this->_device != nullptr);
       this->_notification_manager.transaction_callback(
         [&] (TransactionNotification const &n, bool) -> void
         {
@@ -176,7 +180,7 @@ namespace surface
       this->_network_manager.prepare(network_id);
       this->_network_manager.to_directory(
         network_id,
-        common::infinit::network_shelter(this->_self.id, network_id));
+        common::infinit::network_shelter(this->_self().id, network_id));
 
       plasma::meta::CreateTransactionResponse res;
       ELLE_DEBUG("Send %s (%sB) to %s via network %s",
@@ -191,7 +195,7 @@ namespace surface
                                              size,
                                              fs::is_directory(first_file),
                                              network_id,
-                                             this->_device.id);
+                                             this->_device().id);
 
         transaction_id = res.created_transaction_id;
 
@@ -214,7 +218,7 @@ namespace surface
           this->_network_manager.delete_(network_id, false);
         throw;
       }
-      this->_self.remaining_invitations = res.remaining_invitations;
+      this->_update_remaining_invitations(res.remaining_invitations);
 
       return 0;
     }
@@ -261,7 +265,7 @@ namespace surface
     TransactionManager::accept_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_SCOPE("%s: accept %s", *this, transaction);
-      ELLE_ASSERT_EQ(transaction.recipient_id, this->_self.id);
+      ELLE_ASSERT_EQ(transaction.recipient_id, this->_self().id);
 
       if (transaction.accepted == true)
         throw elle::Exception("Transaction already accepted.");
@@ -288,18 +292,18 @@ namespace surface
           }
 
           this->_network_manager.add_device(transaction.network_id,
-                                            this->_device.id);
+                                            this->_device().id);
           this->_network_manager.prepare(transaction.network_id);
           this->_network_manager.to_directory(
             transaction.network_id,
-            common::infinit::network_shelter(this->_self.id,
+            common::infinit::network_shelter(this->_self().id,
                                              transaction.network_id));
           this->_network_manager.launch(transaction.network_id);
 
           // Long.
           this->_meta.accept_transaction(transaction.id,
-                                         this->_device.id,
-                                         this->_device.name);
+                                         this->_device().id,
+                                         this->_device().name);
         }
         CATCH_FAILURE_TO_METRICS("transaction_accept");
       }
@@ -342,7 +346,7 @@ namespace surface
       CATCH_FAILURE_TO_METRICS("transaction_cancel");
 
       std::string author = (
-        transaction.sender_id == this->_self.id ? "sender" : "recipient");
+        transaction.sender_id == this->_self().id ? "sender" : "recipient");
 
       auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch());
@@ -487,8 +491,8 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: transaction callback for %s", *this, tr);
 
-      ELLE_ASSERT(tr.recipient_id == this->_self.id ||
-                  tr.sender_id == this->_self.id);
+      ELLE_ASSERT(tr.recipient_id == this->_self().id ||
+                  tr.sender_id == this->_self().id);
 
       ELLE_DEBUG("received transaction %s, update local copy", tr)
       {
@@ -554,7 +558,7 @@ namespace surface
         this->_network_manager.prepare(tr.network_id);
         this->_network_manager.to_directory(
         tr.network_id,
-        common::infinit::network_shelter(this->_self.id,
+        common::infinit::network_shelter(this->_self().id,
                                          tr.network_id));
 
         this->_network_manager.launch(tr.network_id);
@@ -672,7 +676,7 @@ namespace surface
           this->_network_manager.peer_addresses(transaction.network_id,
                                                 transaction.sender_device_id,
                                                 transaction.recipient_device_id),
-          this->_self.public_key,
+          this->_self().public_key,
           this->_output_dir,
           [&reporter, transaction, this]
           {

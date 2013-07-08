@@ -32,14 +32,21 @@ namespace surface
       | Attributes |
       `-----------*/
     private:
+      typedef std::function<Self const&()> SelfGetter;
+      typedef std::function<Device const&()> DeviceGetter;
+      typedef std::function<void(unsigned int)> UpdateRemainingInvitations;
+
+    private:
       NetworkManager& _network_manager;
       UserManager& _user_manager;
       // XXX: meta should be constant everywhere.
       // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
       elle::metrics::Reporter& _reporter;
-      ELLE_ATTRIBUTE(Self, self);
-      ELLE_ATTRIBUTE(Device, device);
+
+      ELLE_ATTRIBUTE(SelfGetter, self);
+      ELLE_ATTRIBUTE(DeviceGetter, device);
+      ELLE_ATTRIBUTE(UpdateRemainingInvitations, update_remaining_invitations);
       ELLE_ATTRIBUTE_R(std::string, output_dir);
       ELLE_ATTRIBUTE(TransactionStateMachine, state_machine);
 
@@ -47,13 +54,15 @@ namespace surface
       | Construction |
       `-------------*/
     public:
-      TransactionManager(NotificationManager& notification_manager,
-                         NetworkManager& network_manager,
-                         UserManager& user_manager,
-                         plasma::meta::Client& meta,
-                         elle::metrics::Reporter& reporter,
-                         Self& self,
-                         Device const& device);
+      TransactionManager(
+        NotificationManager& notification_manager,
+        NetworkManager& network_manager,
+        UserManager& user_manager,
+        plasma::meta::Client& meta,
+        elle::metrics::Reporter& reporter,
+        SelfGetter const& self,
+        DeviceGetter const& device,
+        UpdateRemainingInvitations const& update_remaining_invitations);
 
       virtual
       ~TransactionManager();

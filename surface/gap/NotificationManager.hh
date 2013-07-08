@@ -1,8 +1,10 @@
 #ifndef NOTIFICATIONMANAGER_HH
 # define NOTIFICATIONMANAGER_HH
 
+# include "Device.hh"
 # include "Exception.hh"
-# include <surface/gap/usings.hh>
+# include "Self.hh"
+# include "usings.hh"
 
 # include <plasma/trophonius/Client.hh>
 # include <plasma/meta/Client.hh>
@@ -19,9 +21,6 @@ namespace surface
 {
   namespace gap
   {
-    using Self = ::plasma::meta::SelfResponse;
-    using Device = ::plasma::meta::Device;
-
     namespace json = elle::format::json;
 
     class Notifiable;
@@ -44,15 +43,17 @@ namespace surface
       ELLE_ATTRIBUTE(std::unique_ptr<plasma::trophonius::Client>,
                      trophonius);
       ELLE_ATTRIBUTE(plasma::meta::Client&, meta);
-      ELLE_ATTRIBUTE(Self const&, self);
-      ELLE_ATTRIBUTE(Device const&, device);
+      typedef std::function<Self const&()> SelfGetter;
+      typedef std::function<Device const&()> DeviceGetter;
+      ELLE_ATTRIBUTE(SelfGetter, self);
+      ELLE_ATTRIBUTE(DeviceGetter, device);
 
     public:
       NotificationManager(std::string const& trophonius_host,
                           uint16_t trophonius_port,
                           plasma::meta::Client& meta,
-                          Self const& self,
-                          Device const& device);
+                          SelfGetter const& self,
+                          DeviceGetter const& device);
 
       virtual
       ~NotificationManager();

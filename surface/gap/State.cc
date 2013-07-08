@@ -159,8 +159,8 @@ namespace surface
       return this->_meta.token();
     }
 
-    void
-    State::_self_load() const
+    Self const&
+    State::me() const
     {
       if (!this->logged_in())
         throw Exception{gap_internal_error, "you must be logged in"};
@@ -170,20 +170,6 @@ namespace surface
         ELLE_TRACE("loading self info")
           this->_me.reset(new Self{this->_meta.self()});
       }
-    }
-
-    Self const&
-    State::me() const
-    {
-      this->_self_load();
-      ELLE_ASSERT_NEQ(this->_me, nullptr);
-      return *this->_me;
-    }
-
-    Self&
-    State::me()
-    {
-      this->_self_load();
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
     }
@@ -402,11 +388,13 @@ namespace surface
             ELLE_TRACE_SCOPE("%s: allocating a new network manager", *this);
 
             manager.reset(
-              new NetworkManager{this->_meta,
-                                 this->_reporter,
-                                 this->_google_reporter,
-                                 this->me(),
-                                 this->device()});
+              new NetworkManager{
+                this->_meta,
+                this->_reporter,
+                this->_google_reporter,
+                [this] () -> Self const& { return this->me(); },
+                [this] () -> Device const& { return this->device(); },
+              });
           }
           return *manager;
         });
@@ -422,11 +410,13 @@ namespace surface
             ELLE_TRACE_SCOPE("%s: allocating a new notification manager", *this);
 
             manager.reset(
-              new NotificationManager{this->_trophonius_host,
-                                      this->_trophonius_port,
-                                      this->_meta,
-                                      this->me(),
-                                      this->device()});
+              new NotificationManager{
+                this->_trophonius_host,
+                this->_trophonius_port,
+                this->_meta,
+                [this] () -> Self const& { return this->me(); },
+                [this] () -> Device const& { return this->device(); },
+              });
           }
           return *manager;
         });
@@ -442,9 +432,11 @@ namespace surface
             ELLE_TRACE_SCOPE("%s: allocating a new user manager", *this);
 
             manager.reset(
-              new UserManager{this->notification_manager(),
-                              this->_meta,
-                              this->me()});
+              new UserManager{
+                this->notification_manager(),
+                this->_meta,
+                [this] () -> Self const& { return this->me(); }
+              });
           }
           return *manager;
         });
@@ -460,13 +452,19 @@ namespace surface
             ELLE_TRACE_SCOPE("%s: allocating a new transaction manager", *this);
 
             manager.reset(
-              new TransactionManager{this->notification_manager(),
-                                     this->network_manager(),
-                                     this->user_manager(),
-                                     this->_meta,
-                                     this->_reporter,
-                                     this->me(),
-                                     this->device()});
+              new TransactionManager{
+                this->notification_manager(),
+                this->network_manager(),
+                this->user_manager(),
+                this->_meta,
+                this->_reporter,
+                [this] () -> Self const& { return this->me(); },
+                [this] () -> Device const& { return this->device(); },
+                [this] (unsigned int remaining_invitations) {
+                  if (this->_me != nullptr)
+                    this->_me->remaining_invitations = remaining_invitations;
+                },
+              });
           }
           return *manager;
         });

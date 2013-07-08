@@ -5,6 +5,7 @@
 # include "Exception.hh"
 # include "InfinitInstanceManager.hh"
 # include "NotificationManager.hh"
+# include "Self.hh"
 # include "metrics.hh"
 
 # include <nucleus/neutron/Permissions.hh>
@@ -23,7 +24,6 @@ namespace surface
     /*-------.
     | Usings |
     `-------*/
-    using Self = ::plasma::meta::SelfResponse;
     using Network = ::plasma::meta::NetworkResponse;
     using Endpoint = ::plasma::meta::EndpointNodeResponse;
 
@@ -54,8 +54,10 @@ namespace surface
       plasma::meta::Client& _meta;
       elle::metrics::Reporter& _reporter;
       elle::metrics::Reporter& _google_reporter;
-      ELLE_ATTRIBUTE(Self, self);
-      ELLE_ATTRIBUTE(Device, device);
+      typedef std::function<Self const&()> SelfGetter;
+      typedef std::function<Device const&()> DeviceGetter;
+      ELLE_ATTRIBUTE(SelfGetter, self);
+      ELLE_ATTRIBUTE(DeviceGetter, device);
       ELLE_ATTRIBUTE_X(InfinitInstanceManager, infinit_instance_manager);
 
       /*-------------.
@@ -65,8 +67,8 @@ namespace surface
       NetworkManager(plasma::meta::Client& meta,
                      elle::metrics::Reporter& reporter,
                      elle::metrics::Reporter& google_reporter,
-                     Self const& me,
-                     Device const& device);
+                     SelfGetter const& me,
+                     DeviceGetter const& device);
 
       virtual
       ~NetworkManager();

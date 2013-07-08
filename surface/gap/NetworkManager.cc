@@ -164,14 +164,19 @@ namespace surface
     NetworkManager::NetworkManager(plasma::meta::Client& meta,
                                    elle::metrics::Reporter& reporter,
                                    elle::metrics::Reporter& google_reporter,
-                                   Self const& me,
-                                   Device const& device):
+                                   SelfGetter const& self,
+                                   DeviceGetter const& device):
       _meta(meta),
       _reporter(reporter),
       _google_reporter(google_reporter),
-      _self{me},
+      _self{self},
       _device(device),
-      _infinit_instance_manager{me.id, this->_meta.host(), this->_meta.port(), this->_meta.token()}
+      _infinit_instance_manager{
+        _self().id,
+        this->_meta.host(),
+        this->_meta.port(),
+        this->_meta.token(),
+      }
     {
       ELLE_TRACE_METHOD("");
     }
@@ -216,7 +221,7 @@ namespace surface
       // XXX: Device manager.
       if (auto_add)
         this->_meta.network_add_device(response.created_network_id,
-                                       this->_device.id);
+                                       this->_device().id);
 
       return response.created_network_id;
     }
@@ -227,7 +232,7 @@ namespace surface
       ELLE_TRACE_METHOD(network_id);
 
       std::string const network_dir = common::infinit::network_directory(
-        this->_self.id,
+        this->_self().id,
         network_id);
 
       ELLE_DEBUG("network directory: %s", network_dir);
@@ -235,7 +240,7 @@ namespace surface
         elle::os::path::make_path(network_dir);
 
       std::string const description_filename =
-        common::infinit::descriptor_path(this->_self.id, network_id);
+        common::infinit::descriptor_path(this->_self().id, network_id);
 
       ELLE_DEBUG("descriptor path: %s", description_filename);
 
@@ -317,7 +322,7 @@ namespace surface
         identity.Restore(this->_meta.identity());
 
         ELLE_DEBUG("Storing the descriptor of %s for user %s",
-                   network_id, this->_self.id);
+                   network_id, this->_self().id);
         descriptor.store(identity);
 
         nucleus::neutron::Object directory{
@@ -388,7 +393,7 @@ namespace surface
           this->_infinit_instance_manager.stop(network_id);
       }
 
-      auto path = common::infinit::network_directory(this->_self.id,
+      auto path = common::infinit::network_directory(this->_self().id,
                                                      network_id);
       if (elle::os::path::exists(path))
       {
@@ -596,10 +601,10 @@ namespace surface
       ELLE_DEBUG_SCOPE("peer_addresses net(%s), send(%s), rec(%s)",
                        network_id, sender_device_id, recipient_device_id);
 
-      ELLE_ASSERT(this->_device.id == sender_device_id ||
-                  this->_device.id == recipient_device_id);
+      ELLE_ASSERT(this->_device().id == sender_device_id ||
+                  this->_device().id == recipient_device_id);
 
-      bool const sender = recipient_device_id != this->_device.id;
+      bool const sender = recipient_device_id != this->_device().id;
       ELLE_DEBUG_SCOPE("action as the %s", sender ? "sender" : "recipient");
 
       namespace proto = infinit::protocol;
