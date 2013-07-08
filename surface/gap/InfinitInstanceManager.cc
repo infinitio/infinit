@@ -434,7 +434,7 @@ namespace surface
       new reactor::Thread(
         instance.scheduler,
         elle::sprintf("connecting nodes for %s", network_id),
-        [&, addresses]
+        [&, addresses, sender]
         {
           if (!this->_connect_try(slug, addresses, sender))
             throw elle::Exception("Unable to connect");
