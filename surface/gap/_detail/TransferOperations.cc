@@ -586,14 +586,6 @@ namespace surface
 
           (void)descriptor;
 
-          // The difference between the current progress and the last
-          // one which has been pushed in the attributes. Once this
-          // difference is reached, the attributes are updated.
-          //
-          // This is required so as to limit the number of updates while
-          // ensuring a smooth progress.
-          const elle::Real DIFFERENCE = 0.5;
-
           elle::Natural64 stale(_progress);
 
           // Increment the progress counter.
@@ -603,14 +595,16 @@ namespace surface
                      size, stale, increment, _progress);
 
           // Compute the increment in terms of pourcentage of progress.
-          elle::Real difference = (_progress - stale) * 100 / (float) size;
+          auto old_percent = stale * 100 / float(size);
+          auto new_percent = _progress * 100 / float(size);
 
-          ELLE_DEBUG("difference %s", difference);
+          bool update = int(old_percent) != int(new_percent) || _progress == size;
 
           // If the difference is large enough, update the progress in the root
           // directory's attribtues.
-          if ((difference > DIFFERENCE) || (_progress == size))
+          if (update)
           {
+            ELLE_TRACE_SCOPE("%s: write new progres: %s%%", etoile, new_percent);
             // Load the progress file.
             etoile::gear::Identifier identifier(
               etoile::wall::File::load(etoile, chemin));
