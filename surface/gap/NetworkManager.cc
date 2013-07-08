@@ -74,7 +74,7 @@ namespace
     //- identity ---------------------------------------------------------------
     lune::Identity        identity;
     if (identity.Restore(identity_) == e)
-      throw std::runtime_error("Couldn't restore the identity.");
+      throw elle::Exception("Couldn't restore the identity.");
 
     //- group ------------------------------------------------------------------
     nucleus::neutron::Group group(network, identity.pair().K(), "everybody");
@@ -86,7 +86,7 @@ namespace
     //- subject ----------------------------------------------------------------
     nucleus::neutron::Subject subject;
     if (subject.Create(group_address) == elle::Status::Error)
-      throw std::runtime_error("unable to create the group subject");
+      throw elle::Exception("unable to create the group subject");
 
     //- access------------------------------------------------------------------
     nucleus::proton::Porcupine<nucleus::neutron::Access> access_porcupine{
@@ -129,10 +129,10 @@ namespace
                          directory.size(),
                          access_radix,
                          directory.owner_token()) == e)
-      throw std::runtime_error("unable to update the directory");
+      throw elle::Exception("unable to update the directory");
 
     if (directory.Seal(identity.pair().k(), access_fingerprint) == e)
-      throw std::runtime_error("Cannot seal the access");
+      throw elle::Exception("Cannot seal the access");
 
     //- directory address ------------------------------------------------------
     nucleus::proton::Address  directory_address(directory.bind());
@@ -302,7 +302,7 @@ namespace surface
         //     comparer static format avec ceux de reference dans le descriptor]
         //if (descriptor.version() > Infinit::version)
         //{
-        //  throw std::runtime_error("you have to update Infinit");
+        //  throw elle::Exception("you have to update Infinit");
         //}
 
         // XXX[ici plutot compare static/dynamic format car on peut passer
@@ -434,7 +434,7 @@ namespace surface
               return (map[id] = network);
             });
         }
-        catch (std::runtime_error const& e)
+        catch (elle::Exception const& e)
         {
           throw Exception{gap_network_error, e.what()};
         }
@@ -684,7 +684,7 @@ namespace surface
       // XXX: do not restore the identity every time.
       lune::Identity identity;
       if (identity.Restore(this->_meta.identity()) == elle::Status::Error)
-        throw std::runtime_error("Couldn't restore the identity.");
+        throw elle::Exception("Couldn't restore the identity.");
 
       this->_infinit_instance_manager.launch(
         network_id,
