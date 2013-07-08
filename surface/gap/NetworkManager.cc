@@ -362,6 +362,12 @@ namespace surface
           this->delete_local(network_id);
       });
 
+      if (this->infinit_instance_manager().exists(network_id))
+      {
+        ELLE_TRACE("stoping infinit instance for network %s", network_id)
+          this->_infinit_instance_manager.stop(network_id);
+      }
+
       if (this->_networks->find(network_id) != this->_networks->end())
       {
         this->_reporter.store("network_delete_attempt",
@@ -386,12 +392,6 @@ namespace surface
     NetworkManager::delete_local(std::string const& network_id)
     {
       ELLE_TRACE_METHOD(network_id);
-
-      if (this->infinit_instance_manager().exists(network_id))
-      {
-        ELLE_TRACE("stoping infinit instance for network %s", network_id)
-          this->_infinit_instance_manager.stop(network_id);
-      }
 
       auto path = common::infinit::network_directory(this->_self().id,
                                                      network_id);
