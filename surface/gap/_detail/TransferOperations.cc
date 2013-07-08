@@ -3,28 +3,29 @@
 #include <agent/Agent.hh>
 
 #include <etoile/Etoile.hh>
-#include <etoile/wall/Object.hh>
 #include <etoile/abstract/Object.hh>
+#include <etoile/gear/Identifier.hh>
 #include <etoile/wall/Access.hh>
 #include <etoile/wall/Attributes.hh>
-#include <etoile/wall/File.hh>
-#include <etoile/wall/Path.hh>
 #include <etoile/wall/Directory.hh>
-#include <etoile/wall/Link.hh>
+#include <etoile/wall/File.hh>
 #include <etoile/wall/Group.hh>
-#include <etoile/gear/Identifier.hh>
+#include <etoile/wall/Link.hh>
+#include <etoile/wall/Object.hh>
+#include <etoile/wall/Path.hh>
 
-#include <nucleus/neutron/Trait.hh>
 #include <nucleus/neutron/Entry.hh>
-#include <nucleus/neutron/Record.hh>
 #include <nucleus/neutron/Permissions.hh>
+#include <nucleus/neutron/Record.hh>
 #include <nucleus/neutron/Subject.hh>
+#include <nucleus/neutron/Trait.hh>
 
 #include <lune/Descriptor.hh>
 
+#include <elle/Exception.hh>
+#include <elle/finally.hh>
 #include <elle/log.hh>
 #include <elle/system/system.hh>
-#include <elle/finally.hh>
 
 #include <boost/filesystem.hpp>
 
@@ -382,7 +383,7 @@ namespace surface
                 size += dig(etoile, descriptor, subject, directory);
               }
               else
-                throw std::runtime_error("unknown object type");
+                throw elle::Exception("unknown object type");
             }
           }
           else if (boost::filesystem::is_regular_file(path) == true)
@@ -397,7 +398,7 @@ namespace surface
             size += create(etoile, descriptor, subject, source, base);
           }
           else
-            throw std::runtime_error("unknown object type");
+            throw elle::Exception("unknown object type");
 
           return size;
         }
@@ -445,7 +446,7 @@ namespace surface
                                           "infinit:transfer:size"));
 
           if (size_trait == nucleus::neutron::Trait::null())
-            throw std::runtime_error("no transfer size attribute present");
+            throw elle::Exception("no transfer size attribute present");
 
           // Set the size variable.
           elle::Natural64 _size =
@@ -723,7 +724,7 @@ namespace surface
 
                 // Create the directory.
                 if (boost::filesystem::create_directory(path) == false)
-                  throw std::runtime_error("unable to create the directory");
+                  throw elle::Exception("unable to create the directory");
 
                 // Set the progress.
                 _progress = progress(etoile,
@@ -837,7 +838,7 @@ namespace surface
             {
               ELLE_DEBUG("no 'size' attribute present");
 
-              throw std::runtime_error("no transfer size attribute present");
+              throw elle::Exception("no transfer size attribute present");
             }
 
             ELLE_DEBUG("'size' attribute retrieved: %s", size.value());
