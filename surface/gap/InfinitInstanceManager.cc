@@ -6,6 +6,8 @@
 
 #include <HoleFactory.hh>
 
+# include <reactor/duration.hh>
+
 #include <elle/Exception.hh>
 #include <elle/network/Interface.hh>
 #include <elle/log.hh>
@@ -64,7 +66,9 @@ namespace surface
                      current->sleep(boost::posix_time::seconds(60));
                    }
                  }),
-      thread(std::bind(&reactor::Scheduler::run, std::ref(scheduler)))
+      thread(std::bind(&reactor::Scheduler::run, std::ref(scheduler))),
+      progress{0.0f},
+      progress_mutex{}
     {
       this->scheduler.mt_run<void>(
         elle::sprintf("initializer for %s", network_id),
@@ -323,6 +327,29 @@ namespace surface
           }
         },
         true);
+
+      instance.scheduler.every(
+        [&instance]
+        {
+          auto& etoile = *instance.etoile;
+
+          try
+          {
+            float progress = operation_detail::progress::progress(etoile);
+            std::lock_guard<std::mutex>(instance.progress_mutex);
+            instance.progress = progress;
+          }
+          catch (std::exception const&)
+          {
+            ELLE_WARN("couldn't retreive the progress: %s",
+                      elle::exception_string());
+            std::lock_guard<std::mutex>(instance.progress_mutex);
+            instance.progress = 0.0f;
+          }
+        },
+        elle::sprintf("update progress for %s", network_id),
+        boost::posix_time::seconds(1),
+        true);
     }
 
     float
@@ -332,24 +359,8 @@ namespace surface
                        *this, network_id);
 
       auto& instance = this->_instance(network_id);
-
-      return instance.scheduler.mt_run<float>(
-        elle::sprintf("progress for %s", network_id),
-        [&] () -> float
-        {
-          auto& etoile = *instance.etoile;
-
-          try
-          {
-            return operation_detail::progress::progress(etoile);
-          }
-          catch (std::exception const&)
-          {
-            ELLE_WARN("couldn't retreive the progress: %s",
-                      elle::exception_string());
-          }
-          return 0.0f;
-        });
+      std::lock_guard<std::mutex>(instance.progress_mutex);
+      return instance.progress;
     }
 
     bool

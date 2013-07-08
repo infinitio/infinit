@@ -5,6 +5,7 @@
 # include <memory>
 # include <unordered_set>
 # include <string>
+#include <mutex>
 
 # include <elle/serialize/extract.hh>
 # include <elle/system/Process.hh>
@@ -49,6 +50,8 @@ namespace surface
       reactor::Scheduler scheduler;
       reactor::Thread keep_alive;
       std::thread thread;
+      float progress;
+      std::mutex progress_mutex;
 
       InfinitInstance(std::string const& user_id,
                       std::string const& meta_host,
