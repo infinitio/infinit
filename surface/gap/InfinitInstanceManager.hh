@@ -52,6 +52,7 @@ namespace surface
       std::thread thread;
       float progress;
       std::mutex progress_mutex;
+      std::unique_ptr<reactor::Thread> progress_thread;
 
       InfinitInstance(std::string const& user_id,
                       std::string const& meta_host,

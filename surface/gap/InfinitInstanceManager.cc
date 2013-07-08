@@ -68,7 +68,8 @@ namespace surface
                  }),
       thread(std::bind(&reactor::Scheduler::run, std::ref(scheduler))),
       progress{0.0f},
-      progress_mutex{}
+      progress_mutex{},
+      progress_thread{}
     {
       this->scheduler.mt_run<void>(
         elle::sprintf("initializer for %s", network_id),
@@ -297,28 +298,30 @@ namespace surface
 
       auto& instance = this->_instance(network_id);
 
-      instance.scheduler.every(
-        [&instance]
-        {
-          auto& etoile = *instance.etoile;
+      ELLE_ASSERT(instance.progress_thread == nullptr);
 
-          try
+      instance.progress_thread.reset(
+        instance.scheduler.every(
+          [&instance]
           {
-            float progress = operation_detail::progress::progress(etoile);
-            std::lock_guard<std::mutex>(instance.progress_mutex);
-            instance.progress = progress;
-          }
-          catch (std::exception const&)
-          {
-            ELLE_WARN("couldn't retreive the progress: %s",
-                      elle::exception_string());
-            std::lock_guard<std::mutex>(instance.progress_mutex);
-            instance.progress = 0.0f;
-          }
-        },
-        elle::sprintf("update progress for %s", network_id),
-        boost::posix_time::seconds(1),
-        true);
+            auto& etoile = *instance.etoile;
+
+            try
+            {
+              float progress = operation_detail::progress::progress(etoile);
+              std::lock_guard<std::mutex>(instance.progress_mutex);
+              instance.progress = progress;
+            }
+            catch (std::exception const&)
+            {
+              ELLE_WARN("couldn't retreive the progress: %s",
+                        elle::exception_string());
+              std::lock_guard<std::mutex>(instance.progress_mutex);
+              instance.progress = 0.0f;
+            }
+          },
+          elle::sprintf("update progress for %s", network_id),
+          boost::posix_time::seconds(1)));
     }
 
     void
