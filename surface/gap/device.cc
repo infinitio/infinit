@@ -5,7 +5,7 @@
 #include <elle/os/path.hh>
 #include <hole/Passport.hh>
 
-ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+ELLE_LOG_COMPONENT("infinit.surface.gap.Device");
 
 namespace surface
 {
