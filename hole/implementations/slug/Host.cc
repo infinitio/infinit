@@ -442,7 +442,7 @@ namespace hole
       void
       Host::print(std::ostream& stream) const
       {
-        stream << "Host " << _locus;
+        stream << "Host(" << _locus << ")";
       }
 
       std::ostream&

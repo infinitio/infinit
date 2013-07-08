@@ -20,7 +20,9 @@ namespace hole
   {
     namespace slug
     {
-      class Host: public std::enable_shared_from_this<Host>
+      class Host:
+        public std::enable_shared_from_this<Host>,
+        public elle::Printable
       {
       public:
         // Enumerations
@@ -109,7 +111,8 @@ namespace hole
       | Pretty print |
       `-------------*/
       public:
-        void print(std::ostream& stream) const;
+        void
+        print(std::ostream& stream) const;
       };
 
       std::ostream&
