@@ -496,7 +496,7 @@ namespace surface
           // Set the size variable.
           elle::Natural64 _size =
             boost::lexical_cast<elle::Natural64>(size_trait.value());
-          ELLE_ASSERT_NEQ(_size, 0u);
+          ELLE_ASSERT_NEQ(_size, elle::Natural64{0});
 
           ELLE_DEBUG("the 'size' attribute is '%s'", _size);
 
