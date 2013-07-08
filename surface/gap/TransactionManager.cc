@@ -628,6 +628,9 @@ namespace surface
                                                 transaction.recipient_device_id),
           false);
 
+        this->_network_manager.infinit_instance_manager().run_progress(
+          transaction.network_id);
+
         this->_reporter.store("transaction_transferring",
                               {{MKey::attempt, std::to_string(s.tries)},
                                {MKey::network,transaction.network_id},

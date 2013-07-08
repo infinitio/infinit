@@ -290,6 +290,38 @@ namespace surface
     }
 
     void
+    InfinitInstanceManager::run_progress(std::string const& network_id)
+    {
+      ELLE_TRACE_SCOPE("%s: run progress for network %s",
+                       *this, network_id);
+
+      auto& instance = this->_instance(network_id);
+
+      instance.scheduler.every(
+        [&instance]
+        {
+          auto& etoile = *instance.etoile;
+
+          try
+          {
+            float progress = operation_detail::progress::progress(etoile);
+            std::lock_guard<std::mutex>(instance.progress_mutex);
+            instance.progress = progress;
+          }
+          catch (std::exception const&)
+          {
+            ELLE_WARN("couldn't retreive the progress: %s",
+                      elle::exception_string());
+            std::lock_guard<std::mutex>(instance.progress_mutex);
+            instance.progress = 0.0f;
+          }
+        },
+        elle::sprintf("update progress for %s", network_id),
+        boost::posix_time::seconds(1),
+        true);
+    }
+
+    void
     InfinitInstanceManager::download_files(std::string const& network_id,
                                            std::vector<std::string> const& addresses,
                                            nucleus::neutron::Subject const& subject,
@@ -328,28 +360,7 @@ namespace surface
         },
         true);
 
-      instance.scheduler.every(
-        [&instance]
-        {
-          auto& etoile = *instance.etoile;
-
-          try
-          {
-            float progress = operation_detail::progress::progress(etoile);
-            std::lock_guard<std::mutex>(instance.progress_mutex);
-            instance.progress = progress;
-          }
-          catch (std::exception const&)
-          {
-            ELLE_WARN("couldn't retreive the progress: %s",
-                      elle::exception_string());
-            std::lock_guard<std::mutex>(instance.progress_mutex);
-            instance.progress = 0.0f;
-          }
-        },
-        elle::sprintf("update progress for %s", network_id),
-        boost::posix_time::seconds(1),
-        true);
+      this->run_progress(network_id);
     }
 
     float
@@ -425,6 +436,8 @@ namespace surface
           if (!this->_connect_try(slug, addresses, sender))
             throw elle::Exception("Unable to connect");
         });
+
+
     }
 
     InfinitInstance&

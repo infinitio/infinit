@@ -117,6 +117,9 @@ namespace surface
                         nucleus::neutron::Subject const& subject);
 
       void
+      run_progress(std::string const& network_id);
+
+      void
       upload_files(std::string const& network_id,
                    std::unordered_set<std::string> items,
                    std::function<void ()> success_callback,
