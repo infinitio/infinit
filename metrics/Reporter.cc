@@ -168,7 +168,8 @@ namespace elle
     void
     Reporter::_fallback(std::string const& name, TimeMetricPair const& metric)
     {
-
+      (void)name;
+      (void)metric;
     }
 
     void
