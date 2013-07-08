@@ -520,7 +520,7 @@ extern "C"
     return nullptr;
   }
 
-  static
+  static inline
   char**
   gap_network_users(gap_State* state, char const* id)
   {
@@ -538,7 +538,7 @@ extern "C"
     return nullptr;
   }
 
-  static
+  static inline
   void
   gap_network_users_free(char** users)
   {
@@ -821,7 +821,7 @@ extern "C"
   }
 
   /// - Permissions ---------------------------------------------------------
-  static
+  static inline
   void
   gap_file_users_free(char** users)
   {
