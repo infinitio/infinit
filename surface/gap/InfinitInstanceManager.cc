@@ -357,6 +357,8 @@ namespace surface
                                          std::vector<std::string> const& addresses,
                                          bool sender)
     {
+      // XXX: We only use the forwarder at the moment.
+      ELLE_ASSERT_EQ(sender, false);
       auto slug_connect = [&] (std::string const& endpoint)
         {
           std::vector<std::string> result;
