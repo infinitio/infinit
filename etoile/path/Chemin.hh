@@ -41,7 +41,7 @@ namespace etoile
              Venue const& venue,
              elle::Size size);
       /// A copy of \param source.
-      Chemin(Chemin const& source) = default;
+      Chemin(Chemin const& /*source*/) = default;
       // XXX: should not be assignable.
       ELLE_OPERATOR_ASSIGNMENT(Chemin);
     private:

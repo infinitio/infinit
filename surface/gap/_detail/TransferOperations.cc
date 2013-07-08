@@ -584,6 +584,8 @@ namespace surface
 
           ELLE_ASSERT_NEQ(size, 0u);
 
+          (void)descriptor;
+
           // The difference between the current progress and the last
           // one which has been pushed in the attributes. Once this
           // difference is reached, the attributes are updated.

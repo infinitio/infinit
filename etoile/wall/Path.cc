@@ -22,7 +22,7 @@ namespace etoile
     }
 
     // XXX[to move somewhere else]
-    NoSuchFileOrDirectory::NoSuchFileOrDirectory(reactor::Scheduler& sched,
+    NoSuchFileOrDirectory::NoSuchFileOrDirectory(reactor::Scheduler&,
                                                  std::string const& path):
       reactor::Exception(elle::sprintf("no such file or directory: %s", path)),
       _path(path)

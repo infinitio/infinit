@@ -136,6 +136,7 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(context);
 
+      (void)path;
       // determine the rights.
       if (Rights::Determine(context) == elle::Status::Error)
         throw Exception("unable to determine the rights");

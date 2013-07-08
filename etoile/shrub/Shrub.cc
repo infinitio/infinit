@@ -25,6 +25,7 @@ namespace etoile
       _riffles(nullptr),
       _queue()
     {
+      (void)lifespan;
       _sweeper.reset(reactor::Scheduler::scheduler()->every(
                        std::bind(&Shrub::_sweep, this),
                        "Shrub sweeper", sweep_frequency));
