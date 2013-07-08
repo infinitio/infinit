@@ -131,6 +131,7 @@ namespace hole
 
       Slug::~Slug()
       {
+        ELLE_TRACE_SCOPE("%s: finalize", *this);
         for (auto host: Hosts(_hosts))
           this->_remove(*host.second);
 
@@ -167,7 +168,7 @@ namespace hole
 
             // Publish it onto the network.
             {
-              for (auto neighbour: _hosts)
+              for (auto neighbour: Hosts(_hosts))
               {
                 auto host = neighbour.second;
 
@@ -281,7 +282,7 @@ namespace hole
 
             // Publish it onto the network.
             {
-              for (auto neighbour: this->_hosts)
+              for (auto neighbour: Hosts(this->_hosts))
               {
                 auto host = neighbour.second;
 
@@ -386,7 +387,7 @@ namespace hole
                          " fetch %s from the peers", address);
               // Go through the neighbours and retrieve the block from them.
               bool found = false;
-              for (auto neighbour: this->_hosts)
+              for (auto neighbour: Hosts(this->_hosts))
               {
                 auto host = neighbour.second;
                 assert(host != nullptr);
@@ -566,7 +567,7 @@ namespace hole
         ELLE_DEBUG_SCOPE("%s: retrieving the block '%s' from the network",
                          this, address);
 
-        for (auto neighbour: this->_hosts)
+        for (auto neighbour: Hosts(this->_hosts))
           {
             auto host = neighbour.second;
             std::unique_ptr<MutableBlock> block;
@@ -820,7 +821,7 @@ namespace hole
         if (!this->storage().exist(address, revision))
           {
             bool found = false;
-            for (auto neighbour: this->_hosts)
+            for (auto neighbour: Hosts(this->_hosts))
               {
                 auto host = neighbour.second;
                 std::unique_ptr<MutableBlock> block;
@@ -1061,7 +1062,7 @@ namespace hole
 
             // Notify the other hosts of the removal.
             {
-              for (auto neighbour: this->_hosts)
+              for (auto neighbour: Hosts(this->_hosts))
               {
                 auto host = neighbour.second;
 
