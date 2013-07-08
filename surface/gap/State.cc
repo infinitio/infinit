@@ -289,15 +289,17 @@ namespace surface
 
       try
       {
-        try
-        {
-          this->_meta.logout();
-        }
-        catch (...)
-        {
-          ELLE_WARN("logout failed, ignore");
-          this->_meta.token("");
-        }
+        elle::Finally logout([&] {
+            try
+            {
+              this->_meta.logout();
+            }
+            catch (...)
+            {
+              ELLE_WARN("logout failed, ignore");
+              this->_meta.token("");
+            }
+          });
         this->_cleanup();
       }
       CATCH_FAILURE_TO_METRICS("user_logout");
