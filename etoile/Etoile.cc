@@ -29,9 +29,11 @@ namespace etoile
 
   Etoile::~Etoile()
   {
-    for (auto& actor: this->_actors)
-      delete actor.second;
-    this->_actors.clear();
+    auto it = begin(this->_actors);
+    for (; it != end(this->_actors); it = begin(this->_actors))
+    {
+      delete it->second;
+    }
 
     this->_onymous_scopes.clear();
     this->_anonymous_scopes.clear();
