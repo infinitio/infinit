@@ -364,7 +364,16 @@ namespace surface
         {
           auto& etoile = *instance.etoile;
 
-          return operation_detail::progress::progress(etoile);
+          try
+          {
+            return operation_detail::progress::progress(etoile);
+          }
+          catch (std::exception const&)
+          {
+            ELLE_WARN("couldn't retreive the progress: %s",
+                      elle::exception_string());
+          }
+          return 0.0f;
         });
     }
 
