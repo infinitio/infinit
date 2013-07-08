@@ -78,13 +78,8 @@ namespace etoile
   Etoile::scope_annihilate(std::shared_ptr<gear::Scope> const& scope)
   {
     ELLE_TRACE_METHOD(scope);
-
     if (scope->actors.empty() == true)
-    {
       this->scope_relinquish(scope);
-
-      ELLE_ASSERT_EQ(scope.unique(), true);
-    }
   }
 
   void
