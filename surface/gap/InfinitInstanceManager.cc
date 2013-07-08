@@ -201,7 +201,7 @@ namespace surface
       instance.scheduler.terminate();
       instance.thread.join();
       this->_instances.erase(network_id);
-      ELLE_LOG("stoped");
+      ELLE_LOG("stopped");
     }
 
     bool
