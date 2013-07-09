@@ -1,41 +1,69 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.2
 # -*- coding: utf-8 -*-
 
-import json
-import pythia
+import hashlib
+import plasma
 import sys
-
 import trophonius
+import utils
+
+from time import sleep
+
+def __hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 try:
-    meta = trophonius.FakeMeta()
-    with meta:
-        tropho = trophonius.Trophonius(meta_port = meta.port)
-        with tropho:
-            meta_client = pythia.Client(server = meta.url)
-            res = meta_client.post('/user/login', {
-                'email': 'pif@infinit.io',
-                'password': 'paf'
-                })
-            c = trophonius.Client((tropho.host, tropho.port),
-                                  token = res['token'],
-                                  device_id = 'pif',
-                                  user_id = res['_id'])
-            admin = trophonius.Admin((tropho.host,
-                                      tropho.control_port))
-            admin.notify(to=c.user_id, msg={'msg': 'coucou'})
-            # First we received the message confirming the connection
-            while True:
-                answer = c.readline()
-                resp = json.loads(answer)
-                # Ignore pings
-                if resp['notification_type'] == 208:
-                    continue
-                assert resp['response_code'] == 200
-                # Then, we wait for the notification we sent
-                resp = json.loads(c.readline())
-                assert 'msg' in resp and resp['msg'] == 'coucou'
-                break
+    with utils.Servers() as (meta, tropho):
+
+        def login(meta_client, email, password):
+            login = meta_client.login(email, password)
+            assert login.success
+
+        def register_and_login(user_name):
+            meta_client = plasma.Meta('127.0.0.1', int(port))
+            email = user_name.replace(' ', '').lower() + '@infinit.io'
+            password = __hash_password(user_name + 'password')
+            res = meta_client.register(email, user_name, password, 'bitebite')
+            assert res.success
+            login(meta_client, email, password)
+            return meta_client
+
+        def poll(client):
+            notifications = []
+            notif = client.poll()
+            while notif is not None:
+                notifications.append(notif)
+                notif = client.poll()
+            return notifications
+
+        proto, addr, port = meta.url.split(':')
+        addr = addr.replace('/', '')
+        port = port.replace(':', '')
+
+        meta_client = register_and_login('Some User')
+        device = meta_client.create_device('device')
+        tropho_client = plasma.Trophonius(tropho.host, tropho.port, lambda: None)
+        tropho_client.connect(meta_client.self().id,
+                              meta_client.token,
+                              device.id)
+
+        tropho_admin = trophonius.Admin(tropho)
+        tropho_admin.notify(to = device.id, msg = {
+                            "notification_type": 9,
+                            "user_id": "51dc088bd721fb567bc3e6d3",
+                            "timestamp": 1373374603.761489
+        })
+
+        got_notification = False
+        for i in range(3):
+            notifications = poll(tropho_client)
+            for n in notifications:
+                if n.type == 'new_swagger':
+                    got_notification = True
+            sleep(1)
+
+        assert got_notification
+
 except:
     print('Trophonius stdout:\n' + tropho.stdout, file = sys.stderr)
     print('Trophonius stderr:\n' + tropho.stderr, file = sys.stderr)
