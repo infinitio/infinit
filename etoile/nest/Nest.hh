@@ -167,6 +167,25 @@ namespace etoile
       /// pre-publication. Thus, only these blocks are taken into account in
       /// the size calculation.
       ELLE_ATTRIBUTE_R(nucleus::proton::Footprint, size);
+
+      // XXX: was static, copied-pasted with comment.
+      // Compute a static temporary address which will be the same for every
+      // block in the same nest since every such block belongs to the same
+      // object hence within the same network.
+      //
+      // The idea behind this computation is to provide a temporary address
+      // whose footprint (i.e size once serialized) is identical to the final
+      // one. Therefore, it has to somewhat ressemble the final one without
+      // being valid.
+      ELLE_ATTRIBUTE_R(nucleus::proton::Address, some);
+
+      // XXX: was static, copied-pasted with comment.
+      // Also allocate a temporary secret with the same length as the final
+      // one.
+      //
+      // Note that the secret length has been provided in bits though the
+      // string is calculated in characters.
+      ELLE_ATTRIBUTE_R(cryptography::SecretKey, secret);
     };
   }
 }

@@ -32,9 +32,12 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(identifier, name, value);
 
-      gear::Actor* actor = etoile.actor_get(identifier);
+      gear::Actor* actor = nullptr;
+      actor = etoile.actor_get(identifier);
       std::shared_ptr<gear::Scope> scope = actor->scope;
-      gear::Object* context;
+      gear::Object* context = nullptr;
+
+      ELLE_ASSERT(actor != nullptr);
 
       // Declare a critical section.
       {
@@ -43,6 +46,8 @@ namespace etoile
         // retrieve the context.
         if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
+
+        ELLE_ASSERT_NEQ(context, nullptr);
 
         // apply the set automaton on the context.
         if (automaton::Attributes::Set(*context,

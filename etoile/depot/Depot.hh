@@ -6,9 +6,12 @@
 # include <nucleus/proton/fwd.hh>
 # include <nucleus/neutron/fwd.hh>
 
+# include <etoile/gear/Transcript.hh>
+
 # include <hole/Hole.hh>
 
 # include <memory>
+# include <set>
 
 namespace etoile
 {
@@ -32,6 +35,7 @@ namespace etoile
       ELLE_ATTRIBUTE(hole::Hole*, hole);
       ELLE_ATTRIBUTE_r(nucleus::proton::Network, network);
       ELLE_ATTRIBUTE(nucleus::proton::Address, root_address);
+      ELLE_ATTRIBUTE_X(std::set<gear::Transcript*>, queue);
 
     /*-----------.
     | Operations |

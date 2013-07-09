@@ -39,7 +39,15 @@ namespace etoile
       _etoile(etoile),
       _secret_length(secret_length),
       _threshold(threshold),
-      _size(0)
+      _size(0),
+      _some(network,
+            nucleus::proton::Family::content_hash_block,
+            nucleus::neutron::ComponentContents),
+      _secret(cryptography::cipher::Algorithm::aes256,
+              elle::String(static_cast<size_t>(this->_secret_length /
+                                               (sizeof(elle::Character) * 8)),
+                           static_cast<char>('*')))
+
     {
     }
 
@@ -583,7 +591,7 @@ namespace etoile
       //
       // Note that this operation is performed at the end so as to be sure not
       // to block in the process of traversing the queue.
-      journal::Journal::record(this->_etoile, std::move(transcript));
+      journal::Journal::record(this->_etoile.depot(), std::move(transcript));
 
 #if defined(DEBUG) || !defined(NDEBUG)
       this->_check();
@@ -789,38 +797,15 @@ namespace etoile
 
       ELLE_FINALLY_ACTION_DELETE(block);
 
-      // Compute a static temporary address which will be the same for every
-      // block in the same nest since every such block belongs to the same
-      // object hence within the same network.
-      //
-      // The idea behind this computation is to provide a temporary address
-      // whose footprint (i.e size once serialized) is identical to the final
-      // one. Therefore, it has to somewhat ressemble the final one without
-      // being valid.
-      static nucleus::proton::Address some(block->network(),
-                                           block->family(),
-                                           block->component());
-
-      ELLE_ASSERT_EQ(block->network(), some.network());
-      ELLE_ASSERT_EQ(block->family(), some.family());
-      ELLE_ASSERT_EQ(block->component(), some.component());
-
-      // Also allocate a temporary secret with the same length as the final
-      // one.
-      //
-      // Note that the secret length has been provided in bits though the
-      // string is calculated in characters.
-      static cryptography::SecretKey secret{
-        cryptography::cipher::Algorithm::aes256,
-          elle::String(static_cast<size_t>(this->_secret_length /
-                                           (sizeof(elle::Character) * 8)),
-                       static_cast<char>('*'))};
+      ELLE_ASSERT_EQ(block->network(), this->_some.network());
+      ELLE_ASSERT_EQ(block->family(), this->_some.family());
+      ELLE_ASSERT_EQ(block->component(), this->_some.component());
 
       // Create an egg referencing the given block with a temporary address and
       // secret since the block is transient i.e does not live in the storage
       // layer yet.
       std::shared_ptr<nucleus::proton::Egg> egg{
-        new nucleus::proton::Egg{block, some, secret}};
+        new nucleus::proton::Egg{block, this->_some, this->_secret}};
 
       ELLE_ASSERT_NEQ(egg->block(), nullptr);
 
