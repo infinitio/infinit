@@ -109,12 +109,13 @@ class Client:
 
 class Admin(Client):
 
-    def __init__(self, addr):
-        self.connection = socket.create_connection(addr)
+    def __init__(self, tropho):
+        self.connection = socket.create_connection((tropho.host,
+                                                    tropho.control_port))
         self.socket = self.connection.makefile()
 
     def notify(self, to, msg):
-        data = {'to': to}
+        data = {'to_devices': [to]}
         data.update(msg)
         self.sendline(data)
 
