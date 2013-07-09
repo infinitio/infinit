@@ -155,16 +155,16 @@ namespace etoile
           ELLE_ASSERT(scope->context != nullptr);
         }
 
+      // retrieve the context.
+      if (scope->Use(etoile, context) == elle::Status::Error)
+        throw Exception("unable to retrieve the context");
+
+      // allocate an actor.
+      guard.actor(new gear::Actor(scope));
+
       // declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
-
-        // retrieve the context.
-        if (scope->Use(etoile, context) == elle::Status::Error)
-          throw Exception("unable to retrieve the context");
-
-        // allocate an actor.
-        guard.actor(new gear::Actor(scope));
 
         // return the identifier.
         gear::Identifier identifier = guard.actor()->identifier;

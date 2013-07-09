@@ -44,15 +44,16 @@ namespace etoile
 
       std::pair<nucleus::neutron::Group::Identity, gear::Identifier> res;
 
+      // retrieve the context.
+      if (scope->Use(etoile, context) == elle::Status::Error)
+        throw Exception("unable to retrieve the context");
+
+      // allocate an actor.
+      guard.actor(new gear::Actor(scope));
+
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
-
-        // retrieve the context.
-        if (scope->Use(etoile, context) == elle::Status::Error)
-          throw Exception("unable to retrieve the context");
-
-        guard.actor(new gear::Actor(scope));
 
         // return the identifier.
         res.second = guard.actor()->identifier;
@@ -83,15 +84,16 @@ namespace etoile
       gear::Guard guard(scope);
       gear::Group* context;
 
+      // retrieve the context.
+      if (scope->Use(etoile, context) == elle::Status::Error)
+        throw Exception("unable to retrieve the context");
+
+      // allocate an actor.
+      guard.actor(new gear::Actor(scope));
+
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
-
-        // retrieve the context.
-        if (scope->Use(etoile, context) == elle::Status::Error)
-          throw Exception("unable to retrieve the context");
-
-        guard.actor(new gear::Actor(scope));
 
         // return the identifier.
         gear::Identifier identifier = guard.actor()->identifier;

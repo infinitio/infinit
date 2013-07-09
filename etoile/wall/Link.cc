@@ -35,16 +35,16 @@ namespace etoile
       gear::Link* context;
       gear::Identifier identifier;
 
+      // retrieve the context.
+      if (scope->Use(etoile, context) == elle::Status::Error)
+        throw Exception("unable to retrieve the context");
+
+      // allocate an actor.
+      guard.actor(new gear::Actor(scope));
+
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
-
-        // retrieve the context.
-        if (scope->Use(etoile, context) == elle::Status::Error)
-          throw Exception("unable to retrieve the context");
-
-        // allocate an actor.
-        guard.actor(new gear::Actor(scope));
 
         // return the identifier.
         identifier = guard.actor()->identifier;
@@ -84,16 +84,16 @@ namespace etoile
       gear::Guard               guard(scope);
       gear::Link*       context;
 
+      // retrieve the context.
+      if (scope->Use(etoile, context) == elle::Status::Error)
+        throw Exception("unable to retrieve the context");
+
+      // allocate an actor.
+      guard.actor(new gear::Actor(scope));
+
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
-
-        // retrieve the context.
-        if (scope->Use(etoile, context) == elle::Status::Error)
-          throw Exception("unable to retrieve the context");
-
-        // allocate an actor.
-        guard.actor(new gear::Actor(scope));
 
         // return the identifier.
         identifier = guard.actor()->identifier;
