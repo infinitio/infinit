@@ -132,6 +132,8 @@ namespace etoile
       // Update the porcupine.
       context.attributes_porcupine->update(name);
 
+      ELLE_ASSERT(context.object != nullptr);
+
       // administrate the object.
       if (context.object->Administrate(
             context.object->attributes(),
