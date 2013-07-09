@@ -47,8 +47,8 @@ class Trophonius:
              "--runtime-dir", self.__directory.name,
              "--timeout", str(self.timeout),
             ],
-            #stdout = subprocess.PIPE,
-            #stderr = subprocess.STDOUT,
+            # stdout = subprocess.PIPE,
+            # stderr = subprocess.STDOUT,
         )
         while True:
             try:
@@ -125,16 +125,20 @@ class FakeMeta:
         self.instance = None
 
     def __enter__(self):
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(mode='r') as f:
             self.instance = subprocess.Popen(
                 [
                     os.path.join(root_dir, 'fake_meta.py'),
+                    "--port-file", f.name
                 ],
-                stdout = subprocess.PIPE,
-                stderr = subprocess.PIPE,
+                # stdout = subprocess.PIPE,
+                # stderr = subprocess.PIPE,
             )
             self.host = '0.0.0.0'
-            self.port = int(self.instance.stdout.readline())
+            while os.path.getsize(f.name) == 0:
+                time.sleep(0.1)
+            f.seek(0)
+            self.port = int(f.read())
             self.url = "http://{}:{}/".format(self.host, self.port)
         return self
 
