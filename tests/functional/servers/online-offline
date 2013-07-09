@@ -104,8 +104,10 @@ def run(N: "Number of users"):
             user_list.pop(0)
             tropho_connections.pop(0)
             time.sleep(.5)
-        assert online_status == sum(range(N))
-        assert offline_status == sum(range(N))
+
+        print("Got", online_status, "online status notifications, expected is", sum(range(N)))
+        print("Got", offline_status, "offline status notifications, expected is", sum(range(N)))
+        return online_status == sum(range(N)) and offline_status == sum(range(N))
 
 if __name__ == '__main__':
     for i in range(1, 11):
