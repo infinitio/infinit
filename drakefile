@@ -1151,6 +1151,7 @@ def configure(cxx_toolkit = None,
     rule_trophonius, rule_trophonius_check = oracle('trophonius')
     rule_apertus, rule_apertus_check = oracle('apertus')
     rule_meta, rule_meta_check = oracle('meta')
+    rule_walrus, rule_walrus_check = oracle('walrus')
     authority = drake.node('oracle/infinit.auth')
     rule_meta << drake.copy(authority, 'oracle/meta', 'oracle')
 
@@ -1221,9 +1222,6 @@ def configure(cxx_toolkit = None,
   tests_cxx_config.lib_path_runtime('../lib')
   tests_cxx_config += boost.config_test()
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib] + udt_libs
-
-  # walrus = drake.copy(drake.node('tests/unit/walrus.py'), 'lib/python', 'tests/unit')
-  # build << walrus
 
   tests_src_n_lib = [
     ('tests/testing_tests.cc', []),
