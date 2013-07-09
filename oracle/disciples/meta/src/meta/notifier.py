@@ -29,13 +29,6 @@ configfile = open(filepath, 'r')
 for line in configfile:
     eval(_macro_matcher.sub(replacer, line))
 
-FILE_TRANSFER = 7
-FILE_TRANSFER_STATUS = 11
-USER_STATUS = 8
-MESSAGE = 217
-LOGGED_IN = -666
-NETWORK_CHANGED = 128
-
 class Notifier(object):
     def open(self):
         raise Exception('Not implemented')
