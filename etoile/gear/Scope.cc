@@ -55,11 +55,17 @@ namespace etoile
 
       // delete the context.
       if (this->context != nullptr)
+      {
         delete this->context;
+        this->context = nullptr;
+      }
 
       // delete the chronicle.
       if (this->chronicle != nullptr)
+      {
         delete this->chronicle;
+        this->chronicle = nullptr;
+      }
 
       // release the actors, if some remain.
       for (scoutor = this->actors.begin();

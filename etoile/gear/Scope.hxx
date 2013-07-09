@@ -21,12 +21,14 @@ namespace etoile
     elle::Status        Scope::Use(Etoile& etoile,
                                    T*&                          context)
     {
+      ELLE_LOG_COMPONENT("infinit.etoile.gear.Scope");
+
       // first, if the scope's context is null, allocate one.
       if (this->context == nullptr)
-        {
-          // allocate a context according to the nature.
-          this->context = new T(etoile);
-        }
+      {
+        ELLE_TRACE("%s: allocating context", *this);
+        this->context = new T(etoile);
+      }
 
       // Return the context by dynamically casting it; this is required in order
       // to make sure nobody can perform file operations on a directory scope.
