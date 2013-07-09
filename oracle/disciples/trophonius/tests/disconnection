@@ -5,7 +5,7 @@ import json
 import pythia
 import sys
 import time
-import Walrus
+import walrus
 
 import trophonius
 import plasma
@@ -16,14 +16,14 @@ try:
         tropho = trophonius.Trophonius(meta_port = meta.port)
         with tropho:
             print(tropho.port, tropho.host)
-            with Walrus.Walrus(trophonius_host="127.0.0.1", \
+            with walrus.Walrus(trophonius_host="127.0.0.1", \
                     trophonius_port=tropho.port) as w:
                 meta_client = pythia.Client(server = meta.url)
                 res = meta_client.post('/user/login', {
                     'email': 'pif@infinit.io',
                     'password': 'paf'
                     })
-                client = plasma.Trophonius("127.0.0.1", int(w.port()),
+                client = plasma.Trophonius("127.0.0.1", int(w.port),
                                            lambda: print('connected'))
                 client.connect(res['_id'], res['token'], 'device')
                 for i in range(30):

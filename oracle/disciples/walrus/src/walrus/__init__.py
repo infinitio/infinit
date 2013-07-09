@@ -8,7 +8,7 @@ import sys
 import os
 import tempfile
 
-walrus_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "walrus.py")
+walrus_path = "bin/walrus-server"
 
 class Walrus:
     def __init__(self, port=0, control_port=0, trophonius_host="127.0.0.1", trophonius_port=0):
@@ -31,7 +31,7 @@ class Walrus:
         print(args)
         self.instance = subprocess.Popen(args)
         time.sleep(2)
-        self.control = socket.create_connection(("127.0.0.1", self.control_port()))
+        self.control = socket.create_connection(("127.0.0.1", self.control_port))
         return self
 
     def _read_ports(self):
@@ -42,11 +42,13 @@ class Walrus:
                 elif line.startswith("control_port"):
                     drop, self.__control_port = line.strip().split(":")
 
+    @property
     def port(self):
         if self.__port == 0:
             self._read_ports()
         return self.__port
 
+    @property
     def control_port(self):
         if self.__control_port == 0:
             self._read_ports()
