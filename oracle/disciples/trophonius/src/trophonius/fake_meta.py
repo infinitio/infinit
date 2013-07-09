@@ -22,8 +22,12 @@ parser.add_argument(
 class hello:
     def GET(self, name):
         if name == "self" or name == "user/login":
-            return json.dumps({'success': True, "_id": "id", 'token':
-                'token'})
+            return json.dumps({'success': True,
+                              '_id': 'id',
+                              'token': 'token',
+                              'fullname': 'fullname',
+                              'email': 'email',
+                              'identity': 'identity'})
         return json.dumps({'success': True})
     def POST(self, name):
         return self.GET(name)
