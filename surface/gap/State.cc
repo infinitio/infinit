@@ -197,7 +197,7 @@ namespace surface
     State::login(std::string const& email,
                  std::string const& password)
     {
-      ELLE_TRACE_METHOD("%s: login to meta as %s", *this, email);
+      ELLE_TRACE_SCOPE("%s: login to meta as %s", *this, email);
 
       this->_meta.token("");
       this->_cleanup();
