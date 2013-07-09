@@ -5,6 +5,8 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
+#include <functional>
+
 using namespace surface::gap;
 
 namespace
@@ -51,8 +53,8 @@ namespace
                   this,
                   std::placeholders::_1,
                   std::placeholders::_2),
-        _self,
-        _device,
+        std::bind(&TestCase::_self, this),
+        std::bind(&TestCase::_device, this),
       }
     {
       this->_state_machine(tr);
@@ -100,6 +102,18 @@ namespace
                    std::string const& /*device_id*/)
     {
       return true;
+    }
+
+    Self const&
+    _get_self() const
+    {
+      return this->_self;
+    }
+
+    Device const&
+    _get_device() const
+    {
+      return this->_device;
     }
 
     virtual
