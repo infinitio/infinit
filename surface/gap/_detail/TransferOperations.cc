@@ -107,7 +107,7 @@ namespace surface
 
         elle::Finally discard_directory{[&] ()
           {
-            etoile::wall::Group::Discard(etoile, directory);
+            etoile::wall::Directory::discard(etoile, directory);
           }
         };
 
@@ -544,6 +544,11 @@ namespace surface
           // Attach the file to the hierarchy.
           etoile::gear::Identifier directory(attach(etoile, descriptor, subject, file, root));
 
+          ELLE_DEBUG("%s: %s attached to directory %s",
+                     etoile,
+                     file,
+                     directory);
+
           elle::Finally discard_directory{[&] ()
             {
               etoile::wall::Directory::discard(etoile, directory);
@@ -642,33 +647,16 @@ namespace surface
         void
         traverse(etoile::Etoile& etoile,
                  lune::Descriptor const& descriptor,
+                 etoile::path::Chemin const& root_chemin,
                  nucleus::neutron::Subject const& subject,
                  std::string const& source,
-                 std::string const& target)
+                 elle::Natural64 const _size,
+                 std::string const& target,
+                 elle::Natural64 _progress)
         {
           ELLE_TRACE_SCOPE("%s: traverse %s, %s", etoile, source, target);
 
-          // Before everything else, force the creation of the progress file.
-          //
-          // XXX[note that this call could be removed if etoile auto-publish
-          //     blocks which have remained for quite some time main memory]
-
-          etoile::path::Chemin root_chemin(setup(etoile, descriptor, subject));
-
-          // XXX: Chemin is the same of all progress.
-          // Resolve the directory.
           etoile::path::Chemin chemin(etoile::wall::Path::resolve(etoile, source));
-          elle::Natural64 _size(size(etoile));
-
-          // XXX[Antony]: A bit strange, but to avoid keeping a static for
-          // progress, we keep in track the previous value. Let's see if it works =).
-          elle::Natural64 _progress = 0;
-          _progress = progress(etoile,
-                               descriptor,
-                               root_chemin,
-                               _size,
-                               _progress,
-                               0);
 
           // Load the directory.
           etoile::gear::Identifier directory(etoile::wall::Directory::load(etoile, chemin));
@@ -748,7 +736,7 @@ namespace surface
                 }
 
                 // Make sure the right amount has been copied.
-                assert(offset == abstract.size);
+                ELLE_ASSERT_EQ(offset, abstract.size);
 
                 stream.close();
 
@@ -763,7 +751,8 @@ namespace surface
               {
                 ELLE_DEBUG("directory %s", path.c_str());
 
-                // Create the directory.
+                // Create the directory. XXX do something if the directory
+                // already exists.
                 if (boost::filesystem::create_directory(path) == false)
                   throw elle::Exception("unable to create the directory");
 
@@ -778,9 +767,12 @@ namespace surface
                 // Recursively explore the Infinit network.
                 traverse(etoile,
                          descriptor,
+                         root_chemin,
                          subject,
                          _source + elle::system::path::separator,
-                         target);
+                         _size,
+                         target,
+                         _progress);
 
                 // Discard the child.
                 etoile::wall::Object::discard(etoile, child);
@@ -831,12 +823,37 @@ namespace surface
         {
           ELLE_TRACE_SCOPE("%s: receiving %s", etoile, target);
 
+          // Before everything else, force the creation of the progress file.
+          //
+          // XXX[note that this call could be removed if etoile auto-publish
+          //     blocks which have remained for quite some time main memory]
+
+          etoile::path::Chemin root_chemin(setup(etoile, descriptor, subject));
+
+          // XXX: Chemin is the same of all progress.
+          // Resolve the directory.
+          etoile::path::Chemin chemin(etoile::wall::Path::resolve(etoile, std::string(1, elle::system::path::separator)));
+          elle::Natural64 _size(size(etoile));
+
+          // XXX[Antony]: A bit strange, but to avoid keeping a static for
+          // progress, we keep in track the previous value. Let's see if it works =).
+          elle::Natural64 _progress = 0;
+          _progress = progress(etoile,
+                               descriptor,
+                               root_chemin,
+                               _size,
+                               _progress,
+                               0);
+
           // Traverse the Infinit network from the root.
           traverse(etoile,
                    descriptor,
+                   root_chemin,
                    subject,
                    std::string(1, elle::system::path::separator),
-                   target);
+                   _size,
+                   target,
+                   _progress);
         }
       }
 

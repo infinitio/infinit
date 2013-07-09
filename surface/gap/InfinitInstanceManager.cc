@@ -358,7 +358,7 @@ namespace surface
           }
           catch (...)
           {
-            ELLE_DEBUG("%s: download failed", *this);
+            ELLE_ERR("%s: download failed: %s", *this, elle::exception_string());
             failure_callback();
           }
         },
