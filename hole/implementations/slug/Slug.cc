@@ -1149,8 +1149,7 @@ namespace hole
           // confuse us with a registered host and erase it instead of removing
           // us from pending hosts.
           host->remote_passport_reset();
-          this->_pending.erase(host);
-          this->_new_host.signal();
+          this->_remove(host.get());
           throw;
         }
 
@@ -1196,8 +1195,12 @@ namespace hole
       {
         if (host->remote_passport())
         {
-          ELLE_LOG_SCOPE("%s: remove %s from peers", *this, host);
-          this->_hosts.erase(*host->remote_passport());
+          auto it = this->_hosts.find(*host->remote_passport());
+          if (it != this->_hosts.end())
+          {
+            ELLE_LOG_SCOPE("%s: remove %s from peers", *this, *host);
+            this->_hosts.erase(it);
+          }
         }
         else
           for (auto it = this->_pending.begin();
@@ -1205,9 +1208,10 @@ namespace hole
                ++it)
             if (it->get() == host)
             {
-              ELLE_LOG_SCOPE("%s: remove %s from pending peers", *this, host);
+              ELLE_LOG_SCOPE("%s: remove %s from pending peers", *this, *host);
               it = this->_pending.erase(it);
-              return;
+              this->_new_host.signal();
+              break;
             }
       }
 
