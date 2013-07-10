@@ -3,6 +3,7 @@
 
 # include <elle/types.hh>
 
+# include <etoile/etoile.hh>
 # include <etoile/gear/fwd.hh>
 # include <etoile/gear/Identifier.hh>
 # include <etoile/gear/Operation.hh>
@@ -52,6 +53,8 @@ namespace etoile
       // constructors & destructors
       //
       Actor(std::shared_ptr<Scope>);
+      Actor(std::shared_ptr<Scope>,
+            Etoile& etoile);
       ~Actor();
 
       //
