@@ -8,6 +8,10 @@ import os
 import time
 import tempfile
 
+class TestFailure(Exception):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
 def _file_sha1(file):
     sha1 = hashlib.sha1()
     while True:
@@ -16,6 +20,24 @@ def _file_sha1(file):
             break
         sha1.update(data)
     return sha1.hexdigest()
+
+def dir_sha1(dst, src):
+    assert os.path.isdir(dst)
+    assert os.path.isdir(src)
+
+    src_dir, src_dirs, src_files = list(os.walk(src))[0]
+    dst_dir, dst_dirs, dst_files = list(os.walk(dst))[0]
+    src_files.sort()
+    dst_files.sort()
+    for dst_file, src_file in zip(dst_files, src_files):
+        dst_file = os.path.join(dst_dir, dst_file)
+        src_file = os.path.join(src_dir, src_file)
+        if not os.path.exists(dst_file):
+            raise TestFailure("{} does not exists".format(dst_file))
+        if not os.path.exists(src_file):
+            raise TestFailure("{} does not exists".format(src_file))
+        if file_sha1(dst_file) != file_sha1(src_file):
+            raise TestFailure("sha1({}) != sha1({})".format(dst_file, src_file))
 
 def file_sha1(file):
     if isinstance(file, str):
@@ -32,17 +54,9 @@ class RandomTempFile:
     def __init__(self,
                  size = 0,
                  random_ratio : "How many bytes are randomized" = 0.1,
-                 in_directory = False,
                  **kw):
         self.size = size
         self.random_ratio = random_ratio
-        if in_directory: # Update the destination.
-            destination = os.path.join(tempfile.gettempdir(), str(size))
-            import shutil
-            if os.path.isdir(destination):
-                shutil.rmtree(destination)
-            os.makedirs(destination)
-            kw['dir'] = destination
         self.file = tempfile.NamedTemporaryFile(**kw)
         if self.size > 0:
             self.file.truncate(self.size)
@@ -78,6 +92,27 @@ class RandomTempFile:
             self._sha1 = file_sha1(self.file)
         return self._sha1
 
+class RandomDirectory(tempfile.TemporaryDirectory):
+    def __init__(self, number=15):
+        tempfile.TemporaryDirectory.__init__(self, prefix="tmpdir-")
+        self.files = [RandomTempFile(random.randint(1024 * 1024, 1024 * 1024 * 16), dir=self.name) for x in range(number)]
+
+    def __enter__(self):
+        super().__enter__()
+        for f in self.files:
+            f.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception, bt):
+        for f in self.files:
+            f.__exit__(exception_type, exception, bt)
+        super().__exit__(exception_type, exception, bt)
+
+    def __del__(self):
+        for f in self.files:
+            f.__del__()
+        super().__del__()
+
 class Transaction:
 
     def __init__(self, state, id):
@@ -85,6 +120,7 @@ class Transaction:
         self.id = id
         self.state = state
         self.localy_accepted = False
+        self.finished = False
 
     @property
     def status(self):
@@ -131,8 +167,6 @@ class User:
         self.output_dir = output_dir
         self.use_temporary = self.output_dir is None
         self.temporary_output_dir = None
-        self.finished = False
-        self.accepted_transactions=set()
 
     def __enter__(self):
         # state setup
@@ -224,7 +258,7 @@ class User:
             self.transactions[transaction_id].localy_accepted = True
             state.accept_transaction(transaction_id)
         elif status == state.TransactionStatus.finished:
-            self.finished = True
+            self.transactions[transaction_id].finished = True
 
 class TransferReactor:
     def __init__(self, sender = None, recipient = None, files = None):
@@ -254,8 +288,9 @@ class TransferReactor:
 
         transaction_finished = False
         transaction = None
-        while not (sender.finished and recipient.finished) and \
-                time.time() - start < timeout:
+        while True:
+            if not (time.time() - start < timeout):
+                raise TestFailure("{}: timeout".format(self.name))
             time.sleep(0.5)
             self.poll()
             time.sleep(0.1)
@@ -263,31 +298,33 @@ class TransferReactor:
                 assert len(self.recipient.transactions) == 1
                 transaction_id = list(self.recipient.transactions.keys())[0]
                 transaction = self.recipient.transactions[transaction_id]
-                # ?? assert transaction_id in self.sender.transactions
+                if sender.transactions[transaction_id].finished and recipient.transactions[transaction_id].finished:
+                    break
             if transaction is not None:
                 if transaction.status == "finished":
                     print('$' * 80)
                     print("@@@@ FINISHED")
                     transaction_finished = True
                     break
-                print('#' * 80, transaction.progress)
+                progress = transaction.progress
+                print('#' * (80 - len(str(progress)) - 2), progress)
 
         for file, expected_file in zip(self.files, expected_files):
+            print("@@@@ expect file", file, expected_file)
             if os.path.exists(expected_file):
                 print('$' * 80)
                 print("@@@@ Found expected file %s!" % expected_file)
-                if file_sha1(file) != file_sha1(expected_file):
-                    raise TestFailure("Wrong SHA1")
-                return True
-        raise TestFailure(self.name)
+                if os.path.isdir(expected_file) and os.path.isdir(file):
+                    dir_sha1(expected_file, file)
+                elif file_sha1(file) != file_sha1(expected_file):
+                    raise TestFailure("sha1({}) != sha1({})".format(file, expected_file))
+            else:
+                raise TestFailure("{} not found".format(expected_file))
+        return True
 
     def poll(self):
         self.sender.state.poll()
         self.recipient.state.poll()
-
-class TestFailure(Exception):
-    def __init__(self, *args, **kwargs):
-        super().__init__(args, kwargs)
 
 if __name__ == '__main__':
     # XXX: For the moment, there is an interdependence between meta and tropho.
@@ -315,10 +352,12 @@ if __name__ == '__main__':
 
         cases = [
             RandomTempFile(40),
-            RandomTempFile(1000, in_directory = True),
+            RandomTempFile(1000),
             RandomTempFile(4000000),
-            RandomTempFile(400000000),
-            [RandomTempFile(30), RandomTempFile(300)],
+            RandomDirectory(2),
+            [RandomTempFile(40), RandomTempFile(1000)],
+            [RandomTempFile(1000), RandomDirectory(2)],
+            [RandomDirectory(2), RandomTempFile(1000)],
         ]
         for item in cases:
             files = isinstance(item, list) and [file.name for file in item] or [item.name]
@@ -327,4 +366,4 @@ if __name__ == '__main__':
                     sender = sender,
                     recipient = recipient,
                     files = files,
-                ).run(timeout = 30)
+                ).run(timeout = 1024 * 1024)
