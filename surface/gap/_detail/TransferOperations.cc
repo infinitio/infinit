@@ -919,9 +919,10 @@ namespace surface
                 new etoile::path::Chemin(
                   etoile::wall::Path::resolve(etoile, root)));
             }
-            catch (...)
+            // XXX catch less
+            catch (elle::Exception const& err)
             {
-              ELLE_WARN("%s: no '.progress' file present", etoile);
+              ELLE_WARN("%s: no '.progress' file present: %s", etoile, err);
               return 0.0f;
             }
 

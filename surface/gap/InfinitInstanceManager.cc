@@ -305,14 +305,13 @@ namespace surface
           [&instance]
           {
             auto& etoile = *instance.etoile;
-
             try
             {
               float progress = operation_detail::progress::progress(etoile);
               std::lock_guard<std::mutex>(instance.progress_mutex);
               instance.progress = progress;
             }
-            /// XXX: catch less !
+            // XXX: catch less !
             catch (elle::Exception const&)
             {
               ELLE_WARN("couldn't retreive the progress: %s",
@@ -342,7 +341,16 @@ namespace surface
       new reactor::Thread(
         instance.scheduler,
         elle::sprintf("download files for %s", network_id),
-        [&instance, subject, destination, success_callback, addresses, failure_callback, this]
+        [
+          &instance,
+          subject,
+          destination,
+          success_callback,
+          addresses,
+          failure_callback,
+          this,
+          network_id
+        ]
         {
           auto& etoile = *instance.etoile;
           auto& slug = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
