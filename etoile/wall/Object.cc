@@ -43,12 +43,18 @@ namespace etoile
       gear::Guard guard(scope);
       gear::Object* context;
 
-      // XXX[tout ce bloc devrait probablement etre locke]
+      // allocate an actor by passing the etoile instance because the scope's
+      // context may have not been allocated yet.
+      guard.actor(new gear::Actor(scope, etoile));
 
-      // If the scope is new i.e there is no attached context, the system
-      // needs to know what is the genre of the object, e.g directory, in
-      // order allocate an appropriate context.
-      if (scope->context == nullptr)
+      // declare a critical section.
+      {
+        reactor::Lock lock(scope->mutex.write());
+
+        // If the scope is new i.e there is no attached context, the system
+        // needs to know what is the genre of the object, e.g directory, in
+        // order allocate an appropriate context.
+        if (scope->context == nullptr)
         {
           // In this case, the object is manually loaded in order to determine
           // the genre.
@@ -81,6 +87,8 @@ namespace etoile
                 object = etoile.depot().pull_object(
                   location.address(), location.revision());
             }
+
+          ELLE_ASSERT_EQ(scope->context, nullptr);
 
           // Depending on the object's genre, a context is allocated
           // for the scope.
@@ -154,13 +162,11 @@ namespace etoile
           // Directory::* methods could be used.
           ELLE_ASSERT(scope->context != nullptr);
         }
+      }
 
       // retrieve the context.
       if (scope->Use(etoile, context) == elle::Status::Error)
         throw Exception("unable to retrieve the context");
-
-      // allocate an actor.
-      guard.actor(new gear::Actor(scope));
 
       // declare a critical section.
       {
