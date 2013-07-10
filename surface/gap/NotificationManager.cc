@@ -169,13 +169,13 @@ namespace surface
             transaction_id = ptr->id;
           }
 
-          this->_handle_notification(*notif);
+          this->_dispatch_notification(*notif);
           transaction_id = "";
           notif.reset();
           ++count;
         }
       }
-      catch (...)
+      catch (std::exception const&)
       {
         std::string error = elle::sprintf(
           "%s: %s",
@@ -209,10 +209,10 @@ namespace surface
 
       if (!only_new)
         for (auto const& notification: res.old_notifs)
-          this->_handle_notification(notification, false);
+          this->_dispatch_notification(notification, false);
 
       for (auto const& notification: res.notifs)
-        this->_handle_notification(notification, true);
+        this->_dispatch_notification(notification, true);
     }
 
     void
@@ -224,13 +224,13 @@ namespace surface
     }
 
     void
-    NotificationManager::_handle_notification(json::Dictionary const& dict,
-                                              bool new_)
+    NotificationManager::_dispatch_notification(json::Dictionary const& dict,
+                                                bool const is_new)
     {
       try
       {
-        this->_handle_notification(
-          *plasma::trophonius::notification_from_dict(dict), new_);
+        this->_dispatch_notification(
+          *plasma::trophonius::notification_from_dict(dict), is_new);
       }
       catch (std::exception const&)
       {
@@ -242,51 +242,59 @@ namespace surface
     }
 
     void
-    NotificationManager::_handle_notification(Notification const& notif,
-                                              bool new_)
+    NotificationManager::_dispatch_notification(Notification const& notif,
+                                                bool const is_new)
     {
-      try
+      ELLE_TRACE_SCOPE("%s: handle notification", *this);
+      ELLE_DEBUG("%s: %s notification: %s",
+                 *this, is_new ? "new" : "old", notif);
+
+      this->_check_trophonius();
+
+      // Just a ping. We are not supposed to get one here, but if it's the case,
+      // nothing to do with it. If we want to be more strict, we should throw.
+      if (notif.notification_type == NotificationType::ping)
+        return;
+
+      // Connexion established.
+      if (notif.notification_type == NotificationType::connection_enabled)
+        // XXX set _connection_enabled to true
+        return;
+
+      auto handler_list = _notification_handlers.find(notif.notification_type);
+
+      if (handler_list == _notification_handlers.end())
       {
-        ELLE_TRACE_SCOPE("%s: handle notification", *this);
-        ELLE_DEBUG("%s: notification: %s", *this, notif);
-        ELLE_DEBUG("%s: notification is new: %s", *this, new_);
+        ELLE_DEBUG("%s: handler missing for notification '%u'",
+                   *this,
+                   notif.notification_type);
+        return;
+      }
 
-        this->_check_trophonius();
-
-        // Just a ping. We are not supposed to get one here, but if it's the case,
-        // nothing to do with it. If we want to be more strict, we should throw.
-        if (notif.notification_type == NotificationType::ping)
-          return;
-
-        // Connexion established.
-        if (notif.notification_type == NotificationType::connection_enabled)
-          // XXX set _connection_enabled to true
-          return;
-
-        auto handler_list = _notification_handlers.find(notif.notification_type);
-
-        if (handler_list == _notification_handlers.end())
-        {
-          ELLE_DEBUG("%s: handler missing for notification '%u'",
-                     *this,
-                     notif.notification_type);
-          return;
-        }
-
-        for (auto& handler: handler_list->second)
+      for (auto& handler: handler_list->second)
+      {
+        try
         {
           ELLE_DEBUG("%s: firing notification handler (piupiu)", *this);
           ELLE_ASSERT(handler != nullptr);
-          handler(notif, new_);
+          handler(notif, is_new);
           ELLE_DEBUG("%s: notification handler fired (piupiu done)", *this);
         }
-      }
-      catch (std::exception const&)
-      {
-        ELLE_ERR("%s: couldn't handle notification: %s: %s",
-                 *this,
-                 notif,
-                 elle::exception_string());
+        catch (std::exception const&)
+        {
+          ELLE_ERR("%s: couldn't handle notification: %s: %s",
+                   *this,
+                   notif,
+                   elle::exception_string());
+        }
+        catch (...)
+        {
+          ELLE_ERR("%s: couldn't handle notification: %s: fatal error: %s",
+                   *this,
+                   notif,
+                   elle::exception_string());
+          throw;
+        }
       }
     }
 

@@ -146,11 +146,11 @@ namespace surface
 
     private:
       void
-      _handle_notification(json::Dictionary const& dict, bool new_ = true);
-
-
+      _dispatch_notification(json::Dictionary const& dict,
+                             bool is_new = true);
       void
-      _handle_notification(Notification const& notif, bool _new = true);
+      _dispatch_notification(Notification const& notif,
+                             bool const is_new = true);
 
       void
       _on_trophonius_connected();
