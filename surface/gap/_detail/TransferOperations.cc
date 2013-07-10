@@ -379,7 +379,12 @@ namespace surface
             ELLE_DEBUG("root %s", root.c_str());
             ELLE_DEBUG("link %s", base.c_str());
 
-            size += symlink(etoile, descriptor, subject,  source, base);
+            auto _size = symlink(etoile, descriptor, subject,  source, base);
+
+            ELLE_DEBUG("increment size (symlink) '%s' to '%s'",
+                       _size, size + _size);
+
+            size += _size;
           }
           else if (boost::filesystem::is_directory(path) == true)
           {
@@ -393,7 +398,12 @@ namespace surface
             boost::filesystem::recursive_directory_iterator iterator(source);
             boost::filesystem::recursive_directory_iterator end;
 
-            size += dig(etoile, descriptor, subject, base);
+            auto _size = dig(etoile, descriptor, subject, base);
+
+            ELLE_DEBUG("increment size (directory) '%s' to '%s'",
+                       _size, size + _size);
+
+            size += _size;
 
             for (; iterator != end; ++iterator)
             {
@@ -406,7 +416,13 @@ namespace surface
 
                 ELLE_DEBUG("link %s", link.c_str());
 
-                size += symlink(etoile, descriptor, subject, iterator->path().string(), link);
+                auto _size = symlink(etoile, descriptor, subject,
+                                     iterator->path().string(), link);
+
+                ELLE_DEBUG("increment size (symlink) '%s' to '%s'",
+                           _size, size + _size);
+
+                size += _size;
               }
               else if (boost::filesystem::is_regular_file(
                          iterator->path()) == true)
@@ -416,7 +432,13 @@ namespace surface
 
                 ELLE_DEBUG("file %s", file.c_str());
 
-                size += create(etoile, descriptor, subject, iterator->path().string(), file);
+                auto _size = create(etoile, descriptor, subject,
+                                    iterator->path().string(), file);
+
+                ELLE_DEBUG("increment size (file) '%s' to '%s'",
+                           _size, size + _size);
+
+                size += _size;
               }
               else if (boost::filesystem::is_directory(iterator->path()) == true)
               {
@@ -425,7 +447,12 @@ namespace surface
 
                 ELLE_DEBUG("directory %s", directory.c_str());
 
-                size += dig(etoile, descriptor, subject, directory);
+                auto _size = dig(etoile, descriptor, subject, directory);
+
+                ELLE_DEBUG("increment size (directory) '%s' to '%s'",
+                           _size, size + _size);
+
+                size += _size;
               }
               else
                 throw elle::Exception("unknown object type");
@@ -440,7 +467,12 @@ namespace surface
             ELLE_DEBUG("root %s", root.c_str());
             ELLE_DEBUG("file %s", base.c_str());
 
-            size += create(etoile, descriptor, subject, source, base);
+            auto _size = create(etoile, descriptor, subject, source, base);
+
+            ELLE_DEBUG("increment size (file) '%s' to '%s'",
+                       _size, size + _size);
+
+            size += _size;
           }
           else
             throw elle::Exception("unknown object type");
@@ -456,7 +488,17 @@ namespace surface
         {
           elle::Natural64 size = 0;
           for (auto const& item: items)
-            size += store(etoile, descriptor, subject, boost::filesystem::canonical(item).string());
+          {
+            auto _size = store(etoile,
+                               descriptor,
+                               subject,
+                               boost::filesystem::canonical(item).string());
+
+            ELLE_DEBUG("increment size (item) '%s' to '%s'",
+                       _size, size + _size);
+
+            size += _size;
+          }
 
           store_size(etoile, size);
         }
@@ -577,15 +619,15 @@ namespace surface
         }
 
         static
-        elle::Natural64
+        void
         progress(etoile::Etoile& etoile,
                  lune::Descriptor const& descriptor,
                  etoile::path::Chemin const& chemin,
                  elle::Natural64 size,
-                 elle::Natural64 _progress,
+                 elle::Natural64& _progress,
                  elle::Natural64 increment)
         {
-          ELLE_TRACE_SCOPE("%s: progress (+%s)", etoile, increment);
+          ELLE_TRACE_SCOPE("%s: progress %s (+%s)", etoile, _progress, increment);
 
           ELLE_ASSERT_NEQ(size, 0u);
 
@@ -635,12 +677,7 @@ namespace surface
             etoile::wall::File::store(etoile, identifier);
 
             discard_file.abort();
-
-            // Update the stale progress which now is up-to-date.
-            stale = _progress;
           }
-
-          return _progress;
         }
 
         static
@@ -652,9 +689,10 @@ namespace surface
                  std::string const& source,
                  elle::Natural64 const _size,
                  std::string const& target,
-                 elle::Natural64 _progress)
+                 elle::Natural64& _progress)
         {
-          ELLE_TRACE_SCOPE("%s: traverse %s, %s", etoile, source, target);
+          ELLE_TRACE_SCOPE("%s: traverse %s, %s (%s / %s)",
+                           etoile, source, target, _progress, _size);
 
           etoile::path::Chemin chemin(etoile::wall::Path::resolve(etoile, source));
 
@@ -727,12 +765,12 @@ namespace surface
                   offset += data.size();
 
                   // Set the progress.
-                  _progress = progress(etoile,
-                                       descriptor,
-                                       root_chemin,
-                                       _size,
-                                       _progress,
-                                       data.size());
+                  progress(etoile,
+                           descriptor,
+                           root_chemin,
+                           _size,
+                           _progress,
+                           data.size());
                 }
 
                 // Make sure the right amount has been copied.
@@ -757,12 +795,12 @@ namespace surface
                   throw elle::Exception("unable to create the directory");
 
                 // Set the progress.
-                _progress = progress(etoile,
-                                     descriptor,
-                                     root_chemin,
-                                     _size,
-                                     _progress,
-                                     1);
+                progress(etoile,
+                         descriptor,
+                         root_chemin,
+                         _size,
+                         _progress,
+                         1);
 
                 // Recursively explore the Infinit network.
                 traverse(etoile,
@@ -792,12 +830,12 @@ namespace surface
                 boost::filesystem::create_symlink(way, path);
 
                 // Set the progress.
-                _progress = progress(etoile,
-                                     descriptor,
-                                     root_chemin,
-                                     _size,
-                                     _progress,
-                                     way.length());
+                progress(etoile,
+                         descriptor,
+                         root_chemin,
+                         _size,
+                         _progress,
+                         way.length());
 
                 // Discard the child.
                 etoile::wall::Object::discard(etoile, child);
@@ -838,12 +876,12 @@ namespace surface
           // XXX[Antony]: A bit strange, but to avoid keeping a static for
           // progress, we keep in track the previous value. Let's see if it works =).
           elle::Natural64 _progress = 0;
-          _progress = progress(etoile,
-                               descriptor,
-                               root_chemin,
-                               _size,
-                               _progress,
-                               0);
+          progress(etoile,
+                   descriptor,
+                   root_chemin,
+                   _size,
+                   _progress,
+                   0);
 
           // Traverse the Infinit network from the root.
           traverse(etoile,
@@ -854,6 +892,7 @@ namespace surface
                    _size,
                    target,
                    _progress);
+          ELLE_DEBUG("final progress: %s", _progress);
         }
       }
 
