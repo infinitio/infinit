@@ -364,7 +364,7 @@ namespace surface
 
       if (this->infinit_instance_manager().exists(network_id))
       {
-        ELLE_TRACE("stoping infinit instance for network %s", network_id)
+        ELLE_TRACE("stopping infinit instance for network %s", network_id)
           this->_infinit_instance_manager.stop(network_id);
       }
 
