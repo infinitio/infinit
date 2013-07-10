@@ -507,6 +507,13 @@ namespace surface
       ELLE_ASSERT(tr.recipient_id == this->_self().id ||
                   tr.sender_id == this->_self().id);
 
+      if (tr.recipient_device_id != this->_device().id &&
+          tr.sender_device_id != this->_device().id)
+      {
+        ELLE_TRACE("ignore transaction %s: not related to my device", tr);
+        return;
+      }
+
       ELLE_DEBUG("received transaction %s, update local copy", tr)
       {
         // Ensure map is not null
