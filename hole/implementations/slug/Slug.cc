@@ -133,7 +133,7 @@ namespace hole
       {
         ELLE_TRACE_SCOPE("%s: finalize", *this);
         for (auto host: Hosts(_hosts))
-          this->_remove(*host.second);
+          this->_remove(host.second.get());
 
         // Stop serving; we may not be listening, since bind errors are
         // considered warnings (see constructor), in which case we have no
@@ -1107,20 +1107,11 @@ namespace hole
       {
         std::vector<elle::network::Locus> res;
         for (auto host: _hosts)
-          res.push_back(host.first);
+          res.push_back(host.second->locus());
         return std::move(res);
       }
 
-      std::vector<Host*>
-      Slug::hosts()
-      {
-        std::vector<Host*> res;
-        for (auto host: _hosts)
-          res.push_back(host.second.get());
-        return std::move(res);
-      }
-
-      void
+      std::shared_ptr<Host>
       Slug::_connect(elle::network::Locus const& locus)
       {
         ELLE_TRACE_SCOPE("try connecting to %s(%s)", this->protocol(), locus);
@@ -1131,10 +1122,10 @@ namespace hole
             this->protocol(),
             *reactor::Scheduler::scheduler(),
             hostname, locus.port, _connection_timeout));
-        _connect(std::move(socket), locus, true);
+        return _connect(std::move(socket), locus, true);
       }
 
-      void
+      std::shared_ptr<Host>
       Slug::_connect(std::unique_ptr<reactor::network::Socket> socket,
                         elle::network::Locus const& locus, bool opener)
       {
@@ -1142,10 +1133,27 @@ namespace hole
         // Beware: do not yield between the host creation and the
         // authentication, or we might face a race condition.
         auto host = std::make_shared<Host>(*this, locus, std::move(socket));
-        this->_pending[host->locus()] = host;
+        this->_pending.insert(host);
         // XXX: leak
-        ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
-        auto loci = host->authenticate(this->passport());
+        ELLE_TRACE_SCOPE("%s: authenticate to host: %s", *this, locus);
+        try
+        {
+          auto loci = host->authenticate(this->passport());
+        }
+        // XXX: catch only remote exceptions.
+        catch (elle::Exception const&)
+        {
+          ELLE_WARN("%s: authentication to peer failed: %s",
+                    *this, elle::exception_string());
+          // We have to reset the remote passport, otherwise _remove might
+          // confuse us with a registered host and erase it instead of removing
+          // us from pending hosts.
+          host->remote_passport_reset();
+          this->_pending.erase(host);
+          this->_new_host.signal();
+          throw;
+        }
+
         if (this->_state == State::detached)
           this->_state = State::attached;
         // XXX Propagation disabled.
@@ -1155,16 +1163,18 @@ namespace hole
         if (host->authenticated())
           // If the remote machine has authenticated, validate this host.
           this->_host_register(host);
+        return host;
       }
 
       void
       Slug::_host_register(std::shared_ptr<Host> host)
       {
         ELLE_LOG("%s: add host: %s", *this, *host);
-        // XXX: the next line is broken
-        host->remote_passport(this->passport());
-        this->_hosts[host->locus()] = host;
-        this->_pending.erase(host->locus());
+        ELLE_ASSERT(host->remote_passport());
+        ELLE_ASSERT(
+          this->_hosts.find(*host->remote_passport()) == this->_hosts.end());
+        this->_hosts[*host->remote_passport()] = host;
+        this->_pending.erase(host);
         this->_new_host.signal();
       }
 
@@ -1182,28 +1192,23 @@ namespace hole
       }
 
       void
-      Slug::_remove(elle::network::Locus locus)
+      Slug::_remove(Host* host)
       {
-        ELLE_LOG("%s: remove host at %s", *this, locus);
-        auto it_host = this->_hosts.find(locus);
-        // If the Host didn't take care of erasing himself from the list:
-        if (it_host != end(this->_hosts))
+        if (host->remote_passport())
         {
-          std::shared_ptr<Host> host_ptr = it_host->second;
-          this->_hosts.erase(it_host);
-
-          // delete the host if it's still in the map.
-          // This line can yield, so we need to make sure that the host is
-          // erased from the list before calling its destructor.
-          host_ptr.reset();
+          ELLE_LOG_SCOPE("%s: remove %s from peers", *this, host);
+          this->_hosts.erase(*host->remote_passport());
         }
-      }
-
-      void
-      Slug::_remove(Host const& host)
-      {
-        ELLE_LOG("%s: remove host: %s", *this, host);
-        this->_remove(host.locus());
+        else
+          for (auto it = this->_pending.begin();
+               it != this->_pending.end();
+               ++it)
+            if (it->get() == host)
+            {
+              ELLE_LOG_SCOPE("%s: remove %s from pending peers", *this, host);
+              it = this->_pending.erase(it);
+              return;
+            }
       }
 
       /*-------.
@@ -1248,16 +1253,21 @@ namespace hole
           {
             case State::attached:
               {
-                // FIXME: handling via loci is very wrong. IPs are
-                // not uniques, and this reconstruction is lame and
-                // non-injective.
                 using elle::utility::move_on_copy;
                 auto locus = socket->remote_locus();
                 move_on_copy<std::unique_ptr<reactor::network::Socket>>
                   msocket(std::move(socket));
                 auto auth_fn = [&, msocket, locus]
                 {
-                  this->_connect(std::move(msocket.value), locus, false);
+                  try
+                  {
+                    this->_connect(std::move(msocket.value), locus, false);
+                  }
+                  catch (...)
+                  {
+                    // _connect takes care of cleaning up if authentication goes
+                    // wrong.
+                  }
                 };
                 scope.run_background(elle::sprintf("auth %s", locus), auth_fn);
                 break;
@@ -1277,73 +1287,29 @@ namespace hole
       `-------*/
 
       void
-      Slug::portal_connect(std::string const& host, int port, bool server)
+      Slug::portal_connect(std::string const& hostname, int port, bool server)
       {
+        std::shared_ptr<Host> host;
         ELLE_TRACE_SCOPE("%s: connect to %s:%s (%s)",
-                         *this, host, port, server ? "server" : "client");
+                         *this, hostname, port, server ? "server" : "client");
         if (this->_protocol == reactor::network::Protocol::udt)
-          this->_server->accept(host, port);
+          this->_server->accept(hostname, port);
         else
           if (!server)
-            this->_connect(elle::network::Locus(host, port));
-      }
-
-      bool
-      Slug::portal_wait(std::string const& host, int port)
-      {
-        ELLE_TRACE_FUNCTION(host, port);
-
-        elle::network::Locus locus{host, port};
-        ELLE_TRACE("checking if the host '%s' is present and has been "
-                   "authenticated", locus);
-
-        // Wait for host to be in the list
-        ELLE_DEBUG("active wait for %s", locus)
-        {
-          auto& sched = *reactor::Scheduler::scheduler();
-          auto& thread = *sched.current();
-          for (unsigned int max_tries = 10;
-               max_tries != 0;
-               max_tries--)
           {
-            thread.wait(this->_new_host, boost::posix_time::seconds(1));
-            ELLE_DEBUG("(%s) resume from wait. Hosts: %s ", locus, _hosts);
-            auto it = _hosts.find(locus);
-            if (it != end(_hosts))
-            {
-              // Check if this is the second host with the same passport
-              elle::Passport const& pass = it->second->remote_passport();
-
-              ELLE_DEBUG("passport: %s", pass);
-
-              // We compare each passport with the one of the host.
-              // If there is only one host with this passport.
-              int i = 0;
-              for (auto const& p: _hosts)
-              {
-                if (p.second->remote_passport() == pass)
-                {
-                  ELLE_DEBUG("already have this passport");
-                  i++;
-                }
-              }
-              if (i > 1)
-                goto error;
-
-              ELLE_DEBUG("new connection from %s", locus);
-              return true;
-            }
-            else
-            {
-              ELLE_DEBUG("not yet..");
-            }
+            host = this->_connect(elle::network::Locus(hostname, port));
           }
+        while (!host->remote_passport() ||
+               this->_hosts.find(*host->remote_passport()) == this->_hosts.end())
+        {
+          if (this->_pending.find(host) != this->_pending.end())
+          {
+            auto& sched = *reactor::Scheduler::scheduler();
+            sched.current()->wait(this->_new_host);
+          }
+          else
+            throw elle::Exception("peer authentication failed");
         }
-        error:
-        ELLE_DEBUG("out of portal_wait(%s, %s) (%s)",
-                   host, port, this->_hosts.size())
-          this->_remove(locus);
-        return false;
       }
 
       /*---------.

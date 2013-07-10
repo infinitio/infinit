@@ -92,30 +92,27 @@ namespace hole
       `------*/
       public:
         std::vector<elle::network::Locus> loci();
-        std::vector<Host*> hosts();
       private:
         friend class Host;
-        /// XXX We need to stop storing naked pointer.
-        typedef std::unordered_map<elle::network::Locus,
+        typedef std::unordered_map<elle::Passport,
                                    std::shared_ptr<Host>> Hosts;
         void
         _host_register(std::shared_ptr<Host> host);
-        void
+        std::shared_ptr<Host>
         _connect(elle::network::Locus const& locus);
-        void
+        std::shared_ptr<Host>
         _connect(std::unique_ptr<reactor::network::Socket> socket,
                  elle::network::Locus const& locus, bool opener);
         void
         _connect_try(elle::network::Locus const& locus);
         void
-        _remove(Host const& host);
-        void
-        _remove(elle::network::Locus loc);
+        _remove(Host* host);
         /// Authenticated hosts.
-        Hosts _hosts;
+        ELLE_ATTRIBUTE_R(Hosts, hosts);
         /// Not-yet authenticated hosts.
-        Hosts _pending;
-        reactor::Signal _new_host;
+        ELLE_ATTRIBUTE_R(std::set<std::shared_ptr<Host>>, pending);
+        /// Signal that a new host was registered.
+        ELLE_ATTRIBUTE_RX(reactor::Signal, new_host);
 
       /*-------.
       | Server |
@@ -132,8 +129,6 @@ namespace hole
       `-------*/
       public:
         void portal_connect(std::string const& host, int port, bool server);
-        bool portal_wait(std::string const& host, int port);
-
 
       /*----------.
       | Printable |

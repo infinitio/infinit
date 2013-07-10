@@ -8,6 +8,7 @@
 #include <elle/serialize/extract.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/Scope.hh>
 #include <reactor/thread.hh>
 
 #include <common/common.hh>
@@ -143,5 +144,82 @@ BOOST_AUTO_TEST_CASE(test_two_slugs_push_pull_async)
   reactor::Thread t(sched,
                     "main",
                     &two_slugs_push_pull_async);
+  sched.run();
+}
+
+static
+void
+two_slugs_nasty_connect()
+{
+  nucleus::proton::Network n("test network");
+  Slug slug1("slug1", n);
+  Slug slug2("slug2", n);
+
+  slug1.slug.portal_connect("127.0.0.1", slug2.slug.port(), false);
+  BOOST_CHECK_EQUAL(slug1.slug.hosts().size(), 1);
+  BOOST_CHECK_EQUAL(slug2.slug.hosts().size(), 1);
+  BOOST_CHECK_THROW(
+    slug2.slug.portal_connect("127.0.0.1", slug1.slug.port(), false),
+    elle::Exception
+    );
+  BOOST_CHECK_EQUAL(slug1.slug.hosts().size(), 1);
+  BOOST_CHECK_EQUAL(slug2.slug.hosts().size(), 1);
+}
+
+BOOST_AUTO_TEST_CASE(test_two_slugs_nasty_connect)
+{
+  reactor::Scheduler sched;
+  reactor::Thread t(sched,
+                    "main",
+                    &two_slugs_nasty_connect);
+  sched.run();
+}
+
+static
+void
+two_slugs_nasty_connect_parallel()
+{
+  nucleus::proton::Network n("test network");
+  Slug slug1("slug1", n);
+  Slug slug2("slug2", n);
+
+  int errors = 0;
+  {
+    reactor::Scope scope;
+    scope.run_background("connect1", [&errors, &slug1, &slug2] {
+        try
+        {
+          slug1.slug.portal_connect("127.0.0.1", slug2.slug.port(), false);
+        }
+        catch (...)
+        {
+          ++errors;
+        }
+      });
+    scope.run_background("connect2", [&errors, &slug1, &slug2] {
+        try
+        {
+          slug2.slug.portal_connect("127.0.0.1", slug1.slug.port(), false);
+        }
+        catch (...)
+        {
+          ++errors;
+        }
+      });
+    // XXX: join scope
+    reactor::Scheduler::scheduler()->current()->sleep(1_sec);
+  }
+
+  BOOST_CHECK_EQUAL(slug1.slug.hosts().size(), 1);
+  BOOST_CHECK_EQUAL(slug2.slug.hosts().size(), 1);
+  BOOST_CHECK_EQUAL(errors, 1);
+}
+
+BOOST_AUTO_TEST_CASE(test_two_slugs_nasty_connect_parallel)
+{
+  reactor::Scheduler sched;
+  reactor::Thread t(sched,
+                    "main",
+                    &two_slugs_nasty_connect_parallel);
   sched.run();
 }

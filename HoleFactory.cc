@@ -54,10 +54,6 @@ namespace infinit
                                         std::placeholders::_1,
                                         std::placeholders::_2,
                                         true);
-          rpcs.slug_wait = std::bind(&Slug::portal_wait,
-                                     this,
-                                     std::placeholders::_1,
-                                     std::placeholders::_2);
         }
         ),
       _heartbeat(std::move(heartbeat))
@@ -224,7 +220,7 @@ namespace infinit
           this->_implementation =
           new implementations::cirkle::Implementation(network);
           */
-          elle::abort("Cirkle implementation is disabled for now");
+          ELLE_ABORT("Cirkle implementation is disabled for now");
           break;
         }
         default:

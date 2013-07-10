@@ -402,11 +402,6 @@ namespace surface
           auto const &port = result[1];
           ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
           slug.portal_connect(ip, std::stoi(port), sender);
-
-          ELLE_DEBUG("slug_wait(%s, %s)", ip, port)
-          if (!slug.portal_wait(ip, std::stoi(port)))
-            throw elle::Exception(elle::sprintf("slug_wait(%s, %s) failed",
-                                                ip, port));
         };
 
       bool succeed = false;

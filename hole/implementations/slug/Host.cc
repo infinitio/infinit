@@ -58,6 +58,7 @@ namespace hole
       {
         // Stop operations on the socket before it is deleted.
         // Check if we are not committing suicide.
+        ELLE_TRACE_SCOPE("%s: finalize", *this);
         auto sched = reactor::Scheduler::scheduler();
         if (sched != nullptr)
         {
@@ -79,9 +80,9 @@ namespace hole
       Host::_rpc_run()
       {
         auto fn_on_exit = [&] {
-          ELLE_LOG("%s: left", *this);
+          ELLE_TRACE("%s: left", *this);
           this->_rpcs_handler = nullptr;
-          this->_slug._remove(*this);
+          this->_slug._remove(this);
         };
         elle::Finally on_exit(std::move(fn_on_exit));
 
@@ -138,10 +139,62 @@ namespace hole
       Host::_authenticate(elle::Passport const& passport)
       {
         ELLE_TRACE_SCOPE("%s: peer authenticates with %s", *this, passport);
+        if (this->_slug.hosts().find(passport) != this->_slug.hosts().end())
+          throw Exception("already in relation with this passport");
+        while (true)
+        {
+          std::shared_ptr<Host> host;
+          for (auto h: this->_slug.pending())
+          {
+            if (h->_remote_passport && *h->_remote_passport == passport)
+            {
+              ELLE_TRACE("%s: already negociating with this peer", *this);
+              host = h;
+            }
+          }
+          if (!host)
+            break;
+          auto hash = std::hash<elle::Passport>()(this->_slug.passport());
+          auto remote_hash = std::hash<elle::Passport>()
+            (*host->_remote_passport);
+          ELLE_ASSERT_NEQ(hash, remote_hash);
+          if (hash < remote_hash)
+          {
+            ELLE_TRACE_SCOPE("%s: we are master, wait", *this);
+            {
+              auto& sched = *reactor::Scheduler::scheduler();
+              while (true)
+              {
+                sched.current()->wait(this->_slug.new_host());
+                if (this->_slug.hosts().find(passport) !=
+                    this->_slug.hosts().end())
+                {
+                  ELLE_TRACE("%s: previous negociation succeded, reject",
+                             *this);
+                  throw Exception("already in relation with this passport");
+                }
+                for (auto host: this->_slug.pending())
+                  if (host->_remote_passport && *host->_remote_passport == passport)
+                    continue;
+                ELLE_TRACE("%s: previous negociation failed, carry on",
+                             *this);
+                break;
+              }
+            }
+          }
+          else
+          {
+            ELLE_TRACE_SCOPE("%s: peer is master, just carry on", *this);
+            break;
+          }
+        }
         if (!passport.validate(this->_slug.authority()))
           throw Exception("unable to validate the passport");
         else
+        {
           this->_authenticated = true;
+          this->_remote_passport.reset(new elle::Passport(passport));
+        }
         // Also authenticate to this host if we're not already doing so.
         if (this->_state == State::connected)
           this->authenticate(this->_slug.passport());

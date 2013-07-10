@@ -61,12 +61,15 @@ namespace hole
 
       public:
         inline
-        elle::Passport const&
+        elle::Passport*
         remote_passport() const;
-
         inline
         void
         remote_passport(elle::Passport const&);
+        inline
+        void
+        remote_passport_reset();
+
       /*----.
       | RPC |
       `----*/
