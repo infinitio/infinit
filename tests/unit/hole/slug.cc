@@ -160,7 +160,7 @@ two_slugs_nasty_connect()
   BOOST_CHECK_EQUAL(slug2.slug.hosts().size(), 1);
   BOOST_CHECK_THROW(
     slug2.slug.portal_connect("127.0.0.1", slug1.slug.port(), false),
-    elle::Exception
+    hole::implementations::slug::AlreadyConnected
     );
   BOOST_CHECK_EQUAL(slug1.slug.hosts().size(), 1);
   BOOST_CHECK_EQUAL(slug2.slug.hosts().size(), 1);
@@ -190,8 +190,9 @@ two_slugs_nasty_connect_parallel()
         try
         {
           slug1.slug.portal_connect("127.0.0.1", slug2.slug.port(), false);
+          std::cerr << "OUT" << std::endl;
         }
-        catch (...)
+        catch (hole::implementations::slug::AlreadyConnected const&)
         {
           ++errors;
         }
@@ -201,7 +202,7 @@ two_slugs_nasty_connect_parallel()
         {
           slug2.slug.portal_connect("127.0.0.1", slug1.slug.port(), false);
         }
-        catch (...)
+        catch (hole::implementations::slug::AlreadyConnected const&)
         {
           ++errors;
         }

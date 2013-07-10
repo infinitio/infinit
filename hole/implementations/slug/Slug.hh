@@ -21,6 +21,13 @@ namespace hole
   {
     namespace slug
     {
+      class AlreadyConnected:
+        public elle::Exception
+      {
+      public:
+        AlreadyConnected();
+      };
+
 
       /// Slug hole implementation.
       class Slug:
@@ -107,6 +114,14 @@ namespace hole
         _connect_try(elle::network::Locus const& locus);
         void
         _remove(Host* host);
+
+        bool
+        _host_connected(elle::Passport const& passport);
+        std::shared_ptr<Host>
+        _host_pending(elle::Passport const& passport);
+        bool
+        _host_wait(std::shared_ptr<Host> host);
+
         /// Authenticated hosts.
         ELLE_ATTRIBUTE_R(Hosts, hosts);
         /// Not-yet authenticated hosts.

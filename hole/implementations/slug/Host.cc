@@ -131,7 +131,8 @@ namespace hole
         ELLE_TRACE_SCOPE("%s: authenticate with %s", *this, passport);
         this->_state = State::authenticating;
         auto res = _rpcs.authenticate(passport);
-        this->_state = State::authenticated;
+        if (this->_state == State::authenticating)
+          this->_state = State::authenticated;
         return (res);
       }
 
@@ -139,21 +140,20 @@ namespace hole
       Host::_authenticate(elle::Passport const& passport)
       {
         ELLE_TRACE_SCOPE("%s: peer authenticates with %s", *this, passport);
-        if (this->_slug.hosts().find(passport) != this->_slug.hosts().end())
-          throw Exception("already in relation with this passport");
+        this->_remote_passport.reset(new elle::Passport(passport));
+        if (this->_slug._host_connected(passport))
+        {
+          ELLE_TRACE("%s: peer is already connected, reject", *this);
+          this->_state = State::duplicate;
+          throw AlreadyConnected();
+        }
         while (true)
         {
-          std::shared_ptr<Host> host;
-          for (auto h: this->_slug.pending())
-          {
-            if (h->_remote_passport && *h->_remote_passport == passport)
-            {
-              ELLE_TRACE("%s: already negociating with this peer", *this);
-              host = h;
-            }
-          }
+          std::shared_ptr<Host> host(this->_slug._host_pending(passport));
           if (!host)
             break;
+          else
+            ELLE_TRACE("%s: already negociating with this peer", *this);
           auto hash = std::hash<elle::Passport>()(this->_slug.passport());
           auto remote_hash = std::hash<elle::Passport>()
             (*host->_remote_passport);
@@ -162,24 +162,16 @@ namespace hole
           {
             ELLE_TRACE_SCOPE("%s: we are master, wait", *this);
             {
-              auto& sched = *reactor::Scheduler::scheduler();
-              while (true)
+              if (this->_slug._host_wait(host))
               {
-                sched.current()->wait(this->_slug.new_host());
-                if (this->_slug.hosts().find(passport) !=
-                    this->_slug.hosts().end())
-                {
-                  ELLE_TRACE("%s: previous negociation succeded, reject",
-                             *this);
-                  throw Exception("already in relation with this passport");
-                }
-                for (auto host: this->_slug.pending())
-                  if (host->_remote_passport && *host->_remote_passport == passport)
-                    continue;
-                ELLE_TRACE("%s: previous negociation failed, carry on",
-                             *this);
-                break;
+                ELLE_TRACE("%s: previous negociation succeeded, reject",
+                           *this);
+                this->_state = State::duplicate;
+                throw AlreadyConnected();
               }
+              else
+                ELLE_TRACE("%s: previous negociation failed, carry on",
+                           *this);
             }
           }
           else
@@ -193,7 +185,7 @@ namespace hole
         else
         {
           this->_authenticated = true;
-          this->_remote_passport.reset(new elle::Passport(passport));
+          this->_authenticated_signal.signal();
         }
         // Also authenticate to this host if we're not already doing so.
         if (this->_state == State::connected)
@@ -479,8 +471,8 @@ namespace hole
             case Host::State::authenticated:
               stream << "authenticated";
               break;
-            case Host::State::dead:
-              stream << "dead";
+            case Host::State::duplicate:
+              stream << "duplicate";
               break;
           }
         return stream;

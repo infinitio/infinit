@@ -31,7 +31,7 @@ namespace hole
           connected,
           authenticating,
           authenticated,
-          dead,
+          duplicate,
         };
 
       /*-------------.
@@ -69,6 +69,7 @@ namespace hole
         inline
         void
         remote_passport_reset();
+        ELLE_ATTRIBUTE_RX(reactor::Signal, authenticated_signal);
 
       /*----.
       | RPC |
