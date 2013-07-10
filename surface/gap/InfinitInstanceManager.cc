@@ -358,6 +358,8 @@ namespace surface
           if (!this->_connect_try(slug, addresses, false))
             throw elle::Exception("Unable to connect");
 
+          this->run_progress(network_id);
+
           try
           {
             operation_detail::from::receive(etoile, instance.descriptor, subject, destination);
@@ -371,8 +373,6 @@ namespace surface
           }
         },
         true);
-
-      this->run_progress(network_id);
     }
 
     float
