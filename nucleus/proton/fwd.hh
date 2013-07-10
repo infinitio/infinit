@@ -40,7 +40,7 @@ namespace nucleus
     class Root;
     template <typename T>
     class Seam;
-    class Statistics;
+    struct Statistics;
     class Stamp;
     template <typename T>
     class Tree;
