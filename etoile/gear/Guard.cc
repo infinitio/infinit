@@ -45,7 +45,7 @@ namespace etoile
           if (this->_actor != nullptr)
             delete this->_actor;
 
-          if (this->_scope != nullptr)
+          if (this->_scope != nullptr && this->_scope->context != nullptr)
           {
             Etoile& etoile = this->_scope->context->etoile();
 
