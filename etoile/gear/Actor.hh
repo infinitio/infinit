@@ -3,7 +3,7 @@
 
 # include <elle/types.hh>
 
-# include <etoile/etoile.hh>
+# include <etoile/Etoile.hh>
 # include <etoile/gear/fwd.hh>
 # include <etoile/gear/Identifier.hh>
 # include <etoile/gear/Operation.hh>
