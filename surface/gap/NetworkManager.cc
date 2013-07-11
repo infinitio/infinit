@@ -529,7 +529,7 @@ namespace surface
 
     void
     NetworkManager::download_files(std::string const& network_id,
-                                   std::vector<std::string> const& addresses,
+                                   std::vector<round> const& addresses,
                                    std::string const& public_key,
                                    std::string const& destination,
                                    std::function<void ()> success_callback,
@@ -594,7 +594,7 @@ namespace surface
       return common_addr;
     }
 
-    std::vector<std::string>
+    std::vector<round>
     NetworkManager::peer_addresses(std::string const& network_id,
                                     std::string const& sender_device_id,
                                     std::string const& recipient_device_id)
@@ -667,15 +667,18 @@ namespace surface
       ELLE_DEBUG("fallback")
         std::for_each(begin(fallback), end(fallback), _print);
 
-      std::vector<std::string> addresses;
-      addresses.resize(fallback.size()); // + locals.size() + externals.size());
+      std::vector<round> addresses;
 
-      auto it = addresses.begin();
-      for (auto const& round: {fallback}) //, locals, externals})
-        it = std::copy(round.begin(), round.end(), it);
+      for (auto const& addr_list: {locals, fallback})//, externals})
+      {
+        round tmp;
+        tmp.endpoints(std::move(addr_list));
+        addresses.push_back(std::move(tmp));
+      }
 
-      for (auto const& addr: addresses)
-        ELLE_TRACE("destination address selected: %s", addr);
+      ELLE_TRACE("selected addresses:")
+      for (auto& r: addresses)
+        ELLE_TRACE("-- %s", r.endpoints());
       return addresses;
     }
 

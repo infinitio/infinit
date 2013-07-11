@@ -5,7 +5,7 @@
 # include <memory>
 # include <unordered_set>
 # include <string>
-#include <mutex>
+# include <mutex>
 
 # include <elle/serialize/extract.hh>
 # include <elle/system/Process.hh>
@@ -24,6 +24,7 @@
 # include <nucleus/neutron/Object.hh>
 # include <nucleus/proton/Network.hh>
 # include <surface/gap/Exception.hh>
+# include <surface/gap/Rounds.hh>
 
 namespace surface
 {
@@ -128,7 +129,7 @@ namespace surface
 
       void
       download_files(std::string const& network_id,
-                     std::vector<std::string> const& addresses,
+                     std::vector<round> const& addresses,
                      nucleus::neutron::Subject const& subject,
                      std::string const& destination_path,
                      std::function<void ()> success_callback,
@@ -139,12 +140,12 @@ namespace surface
 
       bool
       _connect_try(hole::implementations::slug::Slug& slug,
-                   std::vector<std::string> const& addresses,
+                   std::vector<round> const& addresses,
                    bool sender);
 
       void
       connect_try(std::string const& network_id,
-                  std::vector<std::string> const& addresses,
+                  std::vector<round> const& addresses,
                   bool sender);
 
     private:

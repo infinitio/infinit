@@ -3,6 +3,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/logic/tribool.hpp>
 
 #include <HoleFactory.hh>
 
@@ -30,6 +31,8 @@
 #include <surface/gap/binary_config.hh>
 
 #include <plasma/meta/Client.hh>
+
+#include <reactor/sleep.hh>
 
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.InfinitInstanceManager");
@@ -326,7 +329,7 @@ namespace surface
 
     void
     InfinitInstanceManager::download_files(std::string const& network_id,
-                                           std::vector<std::string> const& addresses,
+                                           std::vector<round> const& addresses,
                                            nucleus::neutron::Subject const& subject,
                                            std::string const& destination,
                                            std::function<void ()> success_callback,
@@ -388,43 +391,112 @@ namespace surface
 
     bool
     InfinitInstanceManager::_connect_try(hole::implementations::slug::Slug& slug,
-                                         std::vector<std::string> const& addresses,
+                                         std::vector<round> const& addresses,
                                          bool sender)
     {
       // XXX: We only use the forwarder at the moment.
       ELLE_ASSERT_EQ(sender, false);
       auto slug_connect = [&] (std::string const& endpoint)
-        {
-          std::vector<std::string> result;
-          boost::split(result, endpoint, boost::is_any_of(":"));
-
-          auto const &ip = result[0];
-          auto const &port = result[1];
-          ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
-          slug.portal_connect(ip, std::stoi(port), sender);
-        };
-
-      bool succeed = false;
-      for (auto const& address: addresses)
       {
-        try
+        std::vector<std::string> result;
+        boost::split(result, endpoint, boost::is_any_of(":"));
+
+        auto const &ip = result[0];
+        auto const &port = result[1];
+        ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
+        slug.portal_connect(ip, std::stoi(port), sender);
+      };
+
+      auto& sched = *reactor::Scheduler::scheduler();
+      for (auto const& r: addresses)
+      {
+        boost::tribool succeed = boost::indeterminate;
+        std::vector<std::unique_ptr<reactor::VThread<bool>>>
+          connection_threads;
+
+        for (std::string const& endpoint: r.endpoints())
         {
-          slug_connect(address);
-          succeed = true;
-          ELLE_LOG("%s: connection to %s succeed", *this, address);
-          break;
+          auto fn = [&, endpoint] () -> bool
+          {
+            namespace slug = hole::implementations::slug;
+            try
+            {
+              slug_connect(endpoint);
+              ELLE_LOG("%s: connection to %s succeed", *this, endpoint);
+              return true;
+            }
+            catch (slug::AlreadyConnected const& ac)
+            {
+              ELLE_LOG("%s: connection to %s succeed (we're already connected)",
+                       *this, endpoint);
+              return true;
+            }
+            catch (elle::Exception const& e)
+            {
+              ELLE_WARN("%s: connection to %s failed", *this, endpoint);
+              return false;
+            }
+          };
+          std::unique_ptr<reactor::VThread<bool>> thread_ptr{
+            new reactor::VThread<bool>{
+              sched,
+              elle::sprintf("connect_try(%s)", endpoint),
+              fn,
+            },
+          };
+          connection_threads.push_back(std::move(thread_ptr));
         }
-        catch (elle::Exception const& e)
+        for (int tries = 0; tries < 10 && indeterminate(succeed); tries++)
         {
-          ELLE_WARN("%s: connection to %s failed", *this, address);
+          size_t finished = 0;
+          for (auto& thread: connection_threads)
+          {
+            if (thread->done())
+            {
+              if (thread->result() == true)
+                finished += 1;
+              else
+              {
+                succeed = false;
+                break;
+              }
+            }
+            if (finished == connection_threads.size())
+            {
+              succeed = true;
+              break;
+            }
+            reactor::Sleep pause{sched, 1_sec};
+            pause.run();
+          }
+        }
+        for (auto& thread: connection_threads)
+          thread->terminate_now();
+        if (succeed)
+        {
+          // Connection successful
+          ELLE_TRACE("connection round(%s) successful", r.endpoints());
+          return true;
+        }
+        else if (!succeed)
+        {
+          // Connection failed
+          ELLE_TRACE("connection round(%s) failed", r.endpoints());
+          continue;
+        }
+        else
+        {
+          // Connection status failed to be determined this is a timeout
+          ELLE_TRACE("connection round(%s) timeout", r.endpoints());
+          continue;
         }
       }
-      return succeed;
+      return false;
     }
 
     void
     InfinitInstanceManager::connect_try(std::string const& network_id,
-                                        std::vector<std::string> const& addresses,
+                                        std::vector<round> const& addresses,
                                         bool sender)
     {
       ELLE_TRACE_SCOPE("%s: connecting infinit of network %s to %s ",

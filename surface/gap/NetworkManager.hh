@@ -7,6 +7,7 @@
 # include "NotificationManager.hh"
 # include "Self.hh"
 # include "metrics.hh"
+# include "Rounds.hh"
 
 # include <nucleus/neutron/Permissions.hh>
 
@@ -136,7 +137,7 @@ namespace surface
       /// Download files into path 'destination' (wrap).
       void
       download_files(std::string const& network_id,
-                     std::vector<std::string> const& addresses,
+                     std::vector<round> const& addresses,
                      std::string const& public_key,
                      std::string const& destination,
                      std::function<void ()> success_callback,
@@ -151,8 +152,9 @@ namespace surface
       add_device(std::string const& network_id,
                  std::string const& device_id);
 
-      /// Connect 2 devices via infinit.
-      std::vector<std::string>
+      /// Get peer addresses.
+      /// Return a list of rounds.
+      std::vector<round>
       peer_addresses(std::string const& network_id,
                      std::string const& sender_device_id,
                      std::string const& recipient_device_id);
