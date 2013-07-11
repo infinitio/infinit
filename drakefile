@@ -954,6 +954,8 @@ def configure(cxx_toolkit = None,
     'surface/gap/TransactionStateMachine.hh',
     'surface/gap/UploadOperation.cc',
     'surface/gap/UploadOperation.hh',
+    'surface/gap/Rounds.cc',
+    'surface/gap/Rounds.hh',
     'surface/gap/UserManager.cc',
     'surface/gap/UserManager.hh')
 
