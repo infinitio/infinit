@@ -416,8 +416,7 @@ namespace surface
 
         for (std::string const& endpoint: r.endpoints())
         {
-          auto fn = [&, endpoint] () -> bool
-          {
+          auto fn = [&, endpoint] () -> bool {
             namespace slug = hole::implementations::slug;
             try
             {
@@ -431,9 +430,10 @@ namespace surface
                        *this, endpoint);
               return true;
             }
-            catch (elle::Exception const& e)
+            catch (std::exception const& e)
             {
-              ELLE_WARN("%s: connection to %s failed", *this, endpoint);
+              ELLE_WARN("%s: connection to %s failed: %s", *this,
+                        endpoint, elle::exception_string());
               return false;
             }
           };
@@ -448,27 +448,27 @@ namespace surface
         }
         for (int tries = 0; tries < 10 && indeterminate(succeed); tries++)
         {
-          size_t finished = 0;
+          size_t failed = 0;
           for (auto& thread: connection_threads)
           {
             if (thread->done())
             {
-              if (thread->result() == true)
-                finished += 1;
-              else
+              if (thread->result() == false)
+                failed += 1;
+              else if (thread->result() == true)
               {
-                succeed = false;
+                succeed = true;
                 break;
               }
             }
-            if (finished == connection_threads.size())
+            if (failed == connection_threads.size())
             {
-              succeed = true;
+              succeed = false;
               break;
             }
-            reactor::Sleep pause{sched, 1_sec};
-            pause.run();
           }
+          reactor::Sleep pause{sched, 1_sec};
+          pause.run();
         }
         for (auto& thread: connection_threads)
           thread->terminate_now();
@@ -478,7 +478,7 @@ namespace surface
           ELLE_TRACE("connection round(%s) successful", r.endpoints());
           return true;
         }
-        else if (!succeed)
+        else if (not succeed)
         {
           // Connection failed
           ELLE_TRACE("connection round(%s) failed", r.endpoints());
