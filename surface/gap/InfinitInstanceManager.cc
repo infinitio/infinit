@@ -442,9 +442,7 @@ namespace surface
         {
           if (!this->_connect_try(slug, addresses, sender))
             throw elle::Exception("Unable to connect");
-        });
-
-
+        }, true);
     }
 
     InfinitInstance&
