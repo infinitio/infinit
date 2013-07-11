@@ -303,28 +303,35 @@ namespace surface
 
       ELLE_ASSERT(instance.progress_thread == nullptr);
 
-      instance.progress_thread.reset(
-        instance.scheduler.every(
-          [&instance]
-          {
-            auto& etoile = *instance.etoile;
-            try
+      auto progress_fn = [&, network_id] {
+
+        auto& current_thread = *instance.scheduler.current();
+        current_thread.wait(instance.start_progress);
+
+        instance.progress_thread.reset(
+          instance.scheduler.every(
+            [&instance]
             {
-              float progress = operation_detail::progress::progress(etoile);
-              std::lock_guard<std::mutex>(instance.progress_mutex);
-              instance.progress = progress;
-            }
-            // XXX: catch less !
-            catch (elle::Exception const&)
-            {
-              ELLE_WARN("couldn't retreive the progress: %s",
-                        elle::exception_string());
-              std::lock_guard<std::mutex>(instance.progress_mutex);
-              instance.progress = 0.0f;
-            }
-          },
-          elle::sprintf("update progress for %s", network_id),
-          boost::posix_time::seconds(1)));
+              auto& etoile = *instance.etoile;
+              try
+              {
+                float progress = operation_detail::progress::progress(etoile);
+                std::lock_guard<std::mutex>(instance.progress_mutex);
+                instance.progress = progress;
+              }
+              // XXX: catch less !
+              catch (elle::Exception const&)
+              {
+                ELLE_WARN("couldn't retreive the progress: %s",
+                          elle::exception_string());
+                std::lock_guard<std::mutex>(instance.progress_mutex);
+                instance.progress = 0.0f;
+              }
+            },
+            elle::sprintf("update progress for %s", network_id),
+            boost::posix_time::seconds(1)));
+      };
+      new reactor::Thread(instance.scheduler, __func__, progress_fn);
     }
 
     void
@@ -340,6 +347,9 @@ namespace surface
                        *this, network_id, destination);
 
       auto& instance = this->_instance(network_id);
+
+      // The progress will wait for the start_progress signal
+      this->run_progress(network_id);
 
       new reactor::Thread(
         instance.scheduler,
@@ -361,8 +371,7 @@ namespace surface
           if (!this->_connect_try(slug, addresses, false))
             throw elle::Exception("Unable to connect");
 
-          this->run_progress(network_id);
-
+          instance.start_progress.signal_one();
           try
           {
             operation_detail::from::receive(etoile, instance.descriptor, subject, destination);
@@ -514,6 +523,8 @@ namespace surface
         {
           if (!this->_connect_try(slug, addresses, sender))
             throw elle::Exception("Unable to connect");
+          // The progress will wait for the start_progress signal
+          instance.start_progress.signal_one();
         }, true);
     }
 

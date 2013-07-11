@@ -645,15 +645,17 @@ namespace surface
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
 
+        // The progress will wait for the start_progress signal, so it's
+        // required to start it before the connect_try.
+        this->_network_manager.infinit_instance_manager().run_progress(
+          transaction.network_id);
+
         this->_network_manager.infinit_instance_manager().connect_try(
           transaction.network_id,
           this->_network_manager.peer_addresses(transaction.network_id,
                                                 transaction.sender_device_id,
                                                 transaction.recipient_device_id),
           false);
-
-        this->_network_manager.infinit_instance_manager().run_progress(
-          transaction.network_id);
 
         this->_reporter.store("transaction_transferring",
                               {{MKey::attempt, std::to_string(s.tries)},

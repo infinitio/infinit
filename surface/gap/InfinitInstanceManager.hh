@@ -12,6 +12,7 @@
 
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
+# include <reactor/signal.hh>
 
 # include <Infinit.hh>
 # include <common/common.hh>
@@ -54,6 +55,7 @@ namespace surface
       float progress;
       std::mutex progress_mutex;
       std::unique_ptr<reactor::Thread> progress_thread;
+      reactor::Signal start_progress;
 
       InfinitInstance(std::string const& user_id,
                       std::string const& meta_host,
