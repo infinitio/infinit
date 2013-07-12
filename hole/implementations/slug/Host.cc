@@ -59,7 +59,6 @@ namespace hole
         // Stop operations on the socket before it is deleted.
         // Check if we are not committing suicide.
         ELLE_TRACE_SCOPE("%s: finalize", *this);
-        this->_socket->flush();
         auto sched = reactor::Scheduler::scheduler();
         if (sched != nullptr)
         {
