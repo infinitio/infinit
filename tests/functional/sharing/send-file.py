@@ -260,16 +260,43 @@ class User:
         elif status == state.TransactionStatus.finished:
             self.transactions[transaction_id].finished = True
 
-class TransferReactor:
-    def __init__(self, sender = None, recipient = None, files = None):
+# class User:
+class IScenario:
+    def __init__(self, sender = None, files = None):
         assert sender is not None
-        assert recipient is not None
         assert files is not None
         assert isinstance(files, list)
         self.sender = sender
-        self.recipient = recipient
         self.files = files
         self.name = " ".join(self.files)
+        self.users = [self.sender]
+
+    def run(self, timeout = 300):
+        raise Exception("Default Scenario can't be run")
+
+    def verify_transfer(self, expected_files):
+        for file, expected_file in zip(self.files, expected_files):
+            print("@@@@ expect file", file, expected_file)
+            if os.path.exists(expected_file):
+                print('$' * 80)
+                print("@@@@ Found expected file %s!" % expected_file)
+                if os.path.isdir(expected_file) and os.path.isdir(file):
+                    dir_sha1(expected_file, file)
+                elif file_sha1(file) != file_sha1(expected_file):
+                    raise TestFailure("sha1({}) != sha1({})".format(file, expected_file))
+            else:
+                raise TestFailure("{} not found".format(expected_file))
+
+    def poll(self):
+        for user in self.users:
+            user.state.poll()
+
+class DefaultScenario(IScenario):
+    def __init__(self, sender = None, recipient = None, files = None):
+        super().__init__(sender, files)
+        assert recipient is not None
+        self.recipient = recipient
+        self.users.append(self.recipient)
 
     def run(self, timeout = 300):
         assert len(self.sender.transactions) == 0
@@ -311,27 +338,19 @@ class TransferReactor:
                 print('#' * (80 - len(str(sender_progress)) - 2), sender_progress)
                 print('%' * (80 - len(str(recipient_progress)) - 2), recipient_progress)
 
-        for file, expected_file in zip(self.files, expected_files):
-            print("@@@@ expect file", file, expected_file)
-            if os.path.exists(expected_file):
-                print('$' * 80)
-                print("@@@@ Found expected file %s!" % expected_file)
-                if os.path.isdir(expected_file) and os.path.isdir(file):
-                    dir_sha1(expected_file, file)
-                elif file_sha1(file) != file_sha1(expected_file):
-                    raise TestFailure("sha1({}) != sha1({})".format(file, expected_file))
-            else:
-                raise TestFailure("{} not found".format(expected_file))
+        self.verify_transfer(expected_files)
         return True
 
-    def poll(self):
-        self.sender.state.poll()
-        self.recipient.state.poll()
-
 if __name__ == '__main__':
-    # XXX: For the moment, there is an interdependence between meta and tropho.
-    # As long as it stands, we need to have a control port.
-    trophonius_control_port = 39074
+
+    cases = [RandomTempFile(40),
+             RandomTempFile(1000),
+             RandomTempFile(4000000),
+             RandomDirectory(2),
+             [RandomTempFile(40), RandomTempFile(1000)],
+             [RandomTempFile(1000), RandomDirectory(2)],
+             [RandomDirectory(2), RandomTempFile(1000)],
+            ]
 
     import utils
     with utils.Servers() as (meta, trophonius, apertus):
@@ -352,19 +371,10 @@ if __name__ == '__main__':
                 ),
         )
 
-        cases = [
-            RandomTempFile(40),
-            RandomTempFile(1000),
-            RandomTempFile(4000000),
-            RandomDirectory(2),
-            [RandomTempFile(40), RandomTempFile(1000)],
-            [RandomTempFile(1000), RandomDirectory(2)],
-            [RandomDirectory(2), RandomTempFile(1000)],
-        ]
         for item in cases:
             files = isinstance(item, list) and [file.name for file in item] or [item.name]
             with sender, recipient:
-                TransferReactor(
+                DefaultScenario(
                     sender = sender,
                     recipient = recipient,
                     files = files,
