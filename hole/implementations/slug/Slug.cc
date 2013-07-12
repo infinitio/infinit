@@ -1207,7 +1207,12 @@ namespace hole
           if (it != this->_hosts.end() && it->second.get() == host)
           {
             ELLE_LOG_SCOPE("%s: remove %s from peers", *this, *host);
-            this->_hosts.erase(it);
+            {
+              // Remove the Host from the map before erasing it. Its destructor
+              // may yield, so avoid having a semi-destructed Host in the map.
+              auto ward = *it;
+              this->_hosts.erase(it);
+            }
             return;
           }
         }
