@@ -2,6 +2,8 @@
 
 #include "binary_config.hh"
 
+#include <metrics/Reporter.hh>
+
 #include <common/common.hh>
 
 #include <elle/log.hh>
@@ -25,7 +27,7 @@ namespace surface
         TransactionManager& transaction_manager,
         NetworkManager& network_manager,
         plasma::meta::SelfResponse const& me,
-        elle::metrics::Reporter& reporter,
+        metrics::Reporter& reporter,
         plasma::Transaction const& transaction,
         std::function<void()> notify):
       Operation{"download_files_for_" + transaction.id},

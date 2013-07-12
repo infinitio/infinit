@@ -7,6 +7,8 @@
 #include "UploadOperation.hh"
 #include "metrics.hh"
 
+#include <metrics/Reporter.hh>
+
 #include <plasma/meta/Client.hh>
 
 #include <common/common.hh>
@@ -31,7 +33,6 @@ namespace surface
 {
   namespace gap
   {
-    using MKey = elle::metrics::Key;
     namespace fs = boost::filesystem;
 
     struct TransactionManager::TransactionProgress
@@ -52,7 +53,7 @@ namespace surface
         NetworkManager& network_manager,
         UserManager& user_manager,
         plasma::meta::Client& meta,
-        elle::metrics::Reporter& reporter,
+        metrics::Reporter& reporter,
         SelfGetter const& self,
         DeviceGetter const& device,
         UpdateRemainingInvitations const& update_remaining_invitations):

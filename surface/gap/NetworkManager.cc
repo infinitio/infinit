@@ -4,6 +4,8 @@
 #include "gap.h"
 #include "metrics.hh"
 
+#include <metrics/Reporter.hh>
+
 #include <common/common.hh>
 
 #include <hole/Passport.hh>
@@ -159,11 +161,10 @@ namespace surface
   namespace gap
   {
     namespace json = elle::format::json;
-    using MKey = elle::metrics::Key;
 
     NetworkManager::NetworkManager(plasma::meta::Client& meta,
-                                   elle::metrics::Reporter& reporter,
-                                   elle::metrics::Reporter& google_reporter,
+                                   metrics::Reporter& reporter,
+                                   metrics::Reporter& google_reporter,
                                    SelfGetter const& self,
                                    DeviceGetter const& device):
       _meta(meta),

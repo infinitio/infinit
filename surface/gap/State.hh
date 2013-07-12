@@ -11,6 +11,8 @@
 # include "gap.h"
 # include "metrics.hh"
 
+# include <metrics/Reporter.hh>
+
 # include <common/common.hh>
 
 # include <plasma/meta/Client.hh>
@@ -60,8 +62,8 @@ namespace surface
       ///- Servers -------------------------------------------------------------
       plasma::meta::Client _meta;
 
-      ELLE_ATTRIBUTE_X(elle::metrics::Reporter, reporter);
-      ELLE_ATTRIBUTE(elle::metrics::Reporter, google_reporter);
+      ELLE_ATTRIBUTE_X(metrics::Reporter, reporter);
+      ELLE_ATTRIBUTE(metrics::Reporter, google_reporter);
 
       ///- Scheduler -----------------------------------------------------------
       ELLE_ATTRIBUTE_R(reactor::Scheduler, scheduler);

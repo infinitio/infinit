@@ -9,6 +9,8 @@
 # include "metrics.hh"
 # include "Rounds.hh"
 
+# include <metrics/fwd.hh>
+
 # include <nucleus/neutron/Permissions.hh>
 
 # include <plasma/meta/Client.hh>
@@ -53,8 +55,8 @@ namespace surface
       // XXX: meta should be constant everywhere.
       // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
-      elle::metrics::Reporter& _reporter;
-      elle::metrics::Reporter& _google_reporter;
+      metrics::Reporter& _reporter;
+      metrics::Reporter& _google_reporter;
       typedef std::function<Self const&()> SelfGetter;
       typedef std::function<Device const&()> DeviceGetter;
       ELLE_ATTRIBUTE(SelfGetter, self);
@@ -66,8 +68,8 @@ namespace surface
       `-------------*/
     public:
       NetworkManager(plasma::meta::Client& meta,
-                     elle::metrics::Reporter& reporter,
-                     elle::metrics::Reporter& google_reporter,
+                     metrics::Reporter& reporter,
+                     metrics::Reporter& google_reporter,
                      SelfGetter const& me,
                      DeviceGetter const& device);
 

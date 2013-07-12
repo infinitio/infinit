@@ -22,7 +22,7 @@ namespace surface
       TransactionManager& _transaction_manager;
       NetworkManager& _network_manager;
       plasma::meta::Client& _meta;
-      elle::metrics::Reporter& _reporter;
+      metrics::Reporter& _reporter;
       plasma::meta::SelfResponse& _self;
       Transaction _transaction;
       std::unordered_set<std::string> _files;
@@ -32,7 +32,7 @@ namespace surface
           TransactionManager& transaction_manager,
           NetworkManager& network_manager,
           plasma::meta::Client& meta,
-          elle::metrics::Reporter& reporter,
+          metrics::Reporter& reporter,
           plasma::meta::SelfResponse& me,
           Transaction const& transaction,
           std::unordered_set<std::string> const& files);

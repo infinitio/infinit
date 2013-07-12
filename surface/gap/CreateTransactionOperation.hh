@@ -23,7 +23,7 @@ namespace surface
       TransactionManager& _transaction_manager;
       NetworkManager& _network_manager;
       UserManager& _user_manager;
-      elle::metrics::Reporter& _reporter;
+      metrics::Reporter& _reporter;
       plasma::meta::Client& _meta;
       plasma::meta::SelfResponse& _me;
       std::string _device_id;
@@ -38,7 +38,7 @@ namespace surface
                                  NetworkManager& network_manager,
                                  UserManager& user_manager,
                                  plasma::meta::Client& meta,
-                                 elle::metrics::Reporter& reporter,
+                                 metrics::Reporter& reporter,
                                  plasma::meta::SelfResponse& me,
                                  std::string const& device_id,
                                  std::string const& recipient_id_or_email,

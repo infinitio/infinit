@@ -12,6 +12,8 @@
 # include "metrics.hh"
 # include "status.hh"
 
+# include <metrics/fwd.hh>
+
 # include <plasma/trophonius/Client.hh>
 # include <plasma/meta/Client.hh>
 
@@ -43,7 +45,7 @@ namespace surface
       // XXX: meta should be constant everywhere.
       // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
-      elle::metrics::Reporter& _reporter;
+      metrics::Reporter& _reporter;
 
       ELLE_ATTRIBUTE(reactor::Scheduler&, scheduler);
       ELLE_ATTRIBUTE(SelfGetter, self);
@@ -62,7 +64,7 @@ namespace surface
         NetworkManager& network_manager,
         UserManager& user_manager,
         plasma::meta::Client& meta,
-        elle::metrics::Reporter& reporter,
+        metrics::Reporter& reporter,
         SelfGetter const& self,
         DeviceGetter const& device,
         UpdateRemainingInvitations const& update_remaining_invitations);

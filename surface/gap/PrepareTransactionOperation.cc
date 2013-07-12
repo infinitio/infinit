@@ -3,8 +3,7 @@
 
 #include <common/common.hh>
 
-#include <elle/os/file.hh>
-#include <elle/os/getenv.hh>
+#include <metrics/Reporter.hh>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
@@ -22,7 +21,7 @@ namespace surface
         TransactionManager& transaction_manager,
         NetworkManager& network_manager,
         plasma::meta::Client& meta,
-        elle::metrics::Reporter& reporter,
+        metrics::Reporter& reporter,
         plasma::meta::SelfResponse& self,
         Transaction const& transaction,
         std::unordered_set<std::string> const& files):

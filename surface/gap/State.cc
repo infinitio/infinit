@@ -13,8 +13,8 @@
 #include <elle/serialize/HexadecimalArchive.hh>
 
 #include <surface/gap/metrics.hh>
-#include <metrics/_details/google.hh>
-#include <metrics/_details/kissmetrics.hh>
+#include <metrics/services/Google.hh>
+#include <metrics/services/KISSmetrics.hh>
 
 
 // #include <elle/memory.hh>
