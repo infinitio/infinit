@@ -230,15 +230,18 @@ def configure(cxx_toolkit = None,
                        openssl = openssl.config(),
                        curl = curl.config())
 
-  elle_lib = drake.copy(elle.elle_dynamic, 'lib', elle.elle_dynamic.path().dirname())
-  cryptography_lib = drake.copy(elle.cryptography_dynamic, 'lib', elle.cryptography_dynamic.path().dirname())
-  reactor_lib = drake.copy(elle.reactor_dynamic, 'lib', elle.reactor_dynamic.path().dirname())
-  curly_lib = drake.copy(elle.curly_dynamic, 'lib', elle.curly_dynamic.path().dirname())
-  curly_sched_lib = drake.copy(elle.curly_sched_dynamic, 'lib', elle.curly_sched_dynamic.path().dirname())
-  curly_asio_lib = drake.copy(elle.curly_asio_dynamic, 'lib', elle.curly_asio_dynamic.path().dirname())
+  def copy_lib(lib, where = 'lib'):
+    return drake.copy(lib, where, lib.path().dirname())
+
+  elle_lib = copy_lib(elle.elle_dynamic)
+  cryptography_lib = copy_lib(elle.cryptography_dynamic)
+  reactor_lib = copy_lib(elle.reactor_dynamic)
+  curly_lib = copy_lib(elle.curly_dynamic)
+  curly_sched_lib = copy_lib(elle.curly_sched_dynamic)
+  curly_asio_lib = copy_lib(elle.curly_asio_dynamic)
+  asio_udt_lib = copy_lib(elle.reactor.asio_udt.library)
+  udt_lib = copy_lib(elle.reactor.asio_udt.udt.library)
   cxx_config += elle.config
-  asio_udt_lib = drake.copy(elle.reactor.asio_udt.library,'lib', 'elle/reactor/asio-udt/lib')
-  udt_lib = drake.copy(elle.reactor.asio_udt.udt.library,'lib', 'elle/reactor/asio-udt/udt/lib')
   cxx_config.add_local_include_path('.')
 
   # Warnings
