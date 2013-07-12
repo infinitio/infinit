@@ -6,6 +6,7 @@
 # include <unordered_set>
 # include <string>
 # include <mutex>
+# include <exception>
 
 # include <elle/serialize/extract.hh>
 # include <elle/system/Process.hh>
@@ -56,6 +57,7 @@ namespace surface
       std::mutex progress_mutex;
       std::unique_ptr<reactor::Thread> progress_thread;
       reactor::Signal start_progress;
+      std::exception_ptr exception;
 
       InfinitInstance(std::string const& user_id,
                       std::string const& meta_host,

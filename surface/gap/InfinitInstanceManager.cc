@@ -70,7 +70,19 @@ namespace surface
                      current->sleep(boost::posix_time::seconds(60));
                    }
                  }),
-      thread(std::bind(&reactor::Scheduler::run, std::ref(scheduler))),
+      thread([&]
+      {
+        try
+        {
+          this->scheduler.run();
+        }
+        catch (...)
+        {
+          ELLE_ERR("scheduling of network(%s) failed. Storing exception: %s",
+                   this->network_id, elle::exception_string());
+          this->exception = std::current_exception();
+        }
+      }),
       progress{0.0f},
       progress_mutex{},
       progress_thread{}
