@@ -30,10 +30,22 @@ class Apertcpus(Protocol):
                     continue
                 client.transport.write(data)
 
+    def connectionLost(self, reason):
+        print(self.connectionLost, reason.getErrorMessage())
+        self.factory.unregister(self)
+
 class ApertcpusFactory(Factory):
-    def __init__(self):
+    def __init__(self, master):
         self.clients = {}
         self.cache = []
+        self.master = master
+
+    def unregister(self, to_remove):
+        for addr, client in self.clients.items():
+            if client is to_remove:
+                del self.clients[addr]
+        if len(self.clients) == 0:
+            self.doStop()
 
     def buildProtocol(self, addr):
         self.clients[addr] = Apertcpus(self, addr)
@@ -42,9 +54,10 @@ class ApertcpusFactory(Factory):
     def stopFactory(self):
         for addr, client in self.clients.items():
             client.transport.loseConnection()
+        self.master.unregister_slave(self)
 
     def __str__(self):
-        return "<ApertcpusFactory(port={port}, clients={clients})>".format(self.__dict__)
+        return "<ApertcpusFactory({} clients)>".format(len(self.clients))
 
     @property
     def port(self):
@@ -65,8 +78,19 @@ class ApertusMaster(LineReceiver):
         self.addr = addr
         self.factory = factory
 
+    def __str__(self):
+        return self.__repr__()
+
     def connectionMade(self):
-        pass
+        print(self.connectionMade)
+
+    def connectionLost(self, reason):
+        print(self.connectionLost, reason.getErrorMessage())
+
+    def unregister_slave(self, tcp_factory):
+        for slave in self.factory.slaves:
+            if slave is tcp_factory:
+                self.factory.slaves.remove(slave)
 
     def handle_add_link(self, data):
         """handle_add_link add a link between two peers"""
@@ -79,16 +103,16 @@ class ApertusMaster(LineReceiver):
             # specific ID.
             assert len(already_connected_ports) == 1
             port = already_connected_ports[0]
-            print("recover link at", port)
+            print("recover link at", port.getHost())
         else:
             # else, create a new listenting port, and append it to the slave
             # list.
-            new_apertus = ApertcpusFactory()
+            new_apertus = ApertcpusFactory(self)
             port = reactor.listenTCP(0, new_apertus)
             new_apertus.port = port
             new_apertus.id = id
             self.factory.slaves.append(new_apertus)
-            print("create new link at", port)
+            print("create new link at", port.getHost())
         msg = {"endpoint" : "{}:{}".format(self.addr, port.getHost().port), "_id" : id}
         self.sendLine(json.dumps(msg))
 
@@ -118,3 +142,6 @@ class Factory(Factory):
 
     def buildProtocol(self, addr):
         return ApertusMaster(self.ap_addr, self)
+
+    def __str__(self):
+        return "<Factory({})>".format(self.ap_addr)
