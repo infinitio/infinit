@@ -306,8 +306,10 @@ class TransferReactor:
                     print("@@@@ FINISHED")
                     transaction_finished = True
                     break
-                progress = transaction.progress
-                print('#' * (80 - len(str(progress)) - 2), progress)
+                sender_progress = self.sender.transactions[transaction_id].progress
+                recipient_progress = self.recipient.transactions[transaction_id].progress
+                print('#' * (80 - len(str(sender_progress)) - 2), sender_progress)
+                print('%' * (80 - len(str(recipient_progress)) - 2), recipient_progress)
 
         for file, expected_file in zip(self.files, expected_files):
             print("@@@@ expect file", file, expected_file)
