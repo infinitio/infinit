@@ -106,6 +106,7 @@ DECLARATION_TEMPLATE = """%(prototype)s
   cpp_state->reporter()[user_id].store(
     "user.%(metric_name)s",
     {%(metric_args)s});
+    return gap_ok;
 }"""
 
 def gen_prototype(name, keys, prefix):
