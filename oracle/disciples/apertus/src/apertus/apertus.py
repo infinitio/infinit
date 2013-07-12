@@ -1,34 +1,11 @@
 from __future__ import print_function
 
-from twisted.internet.protocol import DatagramProtocol, Factory, Protocol
+from twisted.internet.protocol import Factory, Protocol
 from twisted.protocols.basic import LineReceiver
-from twisted.internet import task, reactor
-from twisted.python import log
+from twisted.internet import reactor
 from pprint import pprint
 
-import itertools as it
-
 import json
-import sys
-
-
-class Endpoint(object):
-    def __init__(self, ip, port = 0):
-        self.ip = ip
-        self.port = port
-
-    def __str__(self):
-        return "{}:{}".format(self.ip, self.port)
-
-    def __repr__(self):
-        return "{}:{}".format(self.ip, self.port)
-
-    def __eq__(self, other):
-        return str(self) == str(other)
-
-    @property
-    def addr(self):
-        return (self.ip, int(self.port))
 
 class Apertcpus(Protocol):
     def __init__(self, factory, addr):
@@ -64,51 +41,6 @@ class ApertcpusFactory(Factory):
 
     def die(self):
         self.doStop()
-
-class Apertus(DatagramProtocol):
-
-    def __str__(self):
-        if self.transport != None:
-            repr = "<Apertus(host={}, id={})>".format(self.get_endpoint(), self.id)
-        else:
-            repr = "<Apertus(host=None, id={})>".format(self.id)
-        return repr
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __init__(self, iface, id):
-        self.id = id
-        self.links = []
-        #self.task = task.LoopingCall(self.test_timeout)
-        #self.task.start(5 * 60) # check every five seconds
-        reactor.listenUDP(0, self, interface=iface)
-
-    def port(self):
-        host = self.transport.getHost()
-        return host.port
-
-    def get_endpoint(self):
-        host = self.transport.getHost()
-        return "{}:{}".format(host.host, host.port)
-
-    def datagramReceived(self, data, addr):
-        host, port = addr
-        id = Endpoint(host, port)
-        #print(self, "->", id)
-        if id not in self.links:
-            self.links.append(id)
-
-        for peer in (l for l in self.links if l.addr != id.addr):
-            #print(self, id.addr, "->", peer.addr)
-            self.transport.write(data, peer.addr)
-
-    def die(self):
-        print("SHUTDOWN", self)
-        self.transport.stopListening()
-
-    def debug():
-        pprint(self.links)
 
 class ApertusMaster(LineReceiver):
     """
