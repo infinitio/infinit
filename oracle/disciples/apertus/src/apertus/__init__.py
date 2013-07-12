@@ -42,6 +42,7 @@ class Apertus:
 # in exclusive creation mode ('x') already exists.
             except IOError as e:
                     pass
+            time.sleep(1)
         self.port = 0
         for line in content:
             if line.startswith("control"):

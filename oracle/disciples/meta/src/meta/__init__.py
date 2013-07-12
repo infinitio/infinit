@@ -46,7 +46,6 @@ class Meta:
                 with open(os.path.abspath(self.__port_file), 'r') as f:
                     content = f.readlines()
                     break
-                time.sleep(1)
             except OSError as e:
                 if e.errno is not errno.ENOENT:
                     raise
@@ -55,6 +54,7 @@ class Meta:
 # in exclusive creation mode ('x') already exists.
             except IOError as e:
                     pass
+            time.sleep(1)
         for line in content:
             if line.startswith('meta_port'):
                 self.meta_port = self.__parse_line(line, 'meta_port')
