@@ -811,13 +811,20 @@ def configure(cxx_toolkit = None,
 
   # Agent
   metrics_sources = drake.nodes(
-    'metrics/Reporter.hh',
+    'metrics/Key.cc',
+    'metrics/Key.hh',
+    'metrics/Key.hxx',
+    'metrics/Metric.hh',
     'metrics/Reporter.cc',
-    'metrics/_details/google.hh',
-    'metrics/_details/google.cc',
-    'metrics/_details/kissmetrics.hh',
-    'metrics/_details/kissmetrics.cc',
-    )
+    'metrics/Reporter.hh',
+    'metrics/Reporter.hxx',
+    'metrics/Service.cc',
+    'metrics/Service.hh',
+    'metrics/services/Google.cc',
+    'metrics/services/Google.hh',
+    'metrics/services/KISSmetrics.cc',
+    'metrics/services/KISSmetrics.hh',)
+
   metrics_lib = drake.cxx.DynLib('lib/metrics', metrics_sources,
                                  cxx_toolkit, cxx_config)
 
