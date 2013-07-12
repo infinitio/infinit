@@ -343,14 +343,15 @@ class DefaultScenario(IScenario):
 
 if __name__ == '__main__':
 
-    cases = [RandomTempFile(40),
-             RandomTempFile(1000),
-             RandomTempFile(4000000),
-             RandomDirectory(2),
-             [RandomTempFile(40), RandomTempFile(1000)],
-             [RandomTempFile(1000), RandomDirectory(2)],
-             [RandomDirectory(2), RandomTempFile(1000)],
-            ]
+    cases = [
+        RandomTempFile(40),
+        RandomTempFile(1000),
+        RandomTempFile(4000000),
+        RandomDirectory(2),
+        [RandomTempFile(40), RandomTempFile(1000)],
+        [RandomTempFile(1000), RandomDirectory(2)],
+        [RandomDirectory(2), RandomTempFile(1000)],
+    ]
 
     import utils
     with utils.Servers() as (meta, trophonius, apertus):
@@ -367,6 +368,33 @@ if __name__ == '__main__':
                 trophonius_server = trophonius,
                 fullname = "recipient",
                 email = "recipient@infinit.io",
+                register = True,
+                ),
+        )
+
+        for item in cases:
+            files = isinstance(item, list) and [file.name for file in item] or [item.name]
+            with sender, recipient:
+                DefaultScenario(
+                    sender = sender,
+                    recipient = recipient,
+                    files = files,
+                ).run(timeout = 1024 * 1024)
+
+        os.environ["INFINIT_LOCAL_ADDRESS"] = "128.128.83.31"
+        sender, recipient = (
+            User(
+                meta_server = meta,
+                trophonius_server = trophonius,
+                fullname = "sender",
+                email = "sender2@infinit.io",
+                register = True
+                ),
+            User(
+                meta_server = meta,
+                trophonius_server = trophonius,
+                fullname = "recipient",
+                email = "recipient2@infinit.io",
                 register = True,
                 ),
         )
