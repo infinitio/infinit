@@ -29,6 +29,8 @@
 #define COMMON_DEFAULT_HEARTBEAT_PORT 9898
 #define COMMON_DEFAULT_STUN_HOST "punch.api.development.infinit.io"
 #define COMMON_DEFAULT_STUN_PORT 3478
+#define COMMON_DEFAULT_APERTUS_HOST "apertus.api.development.infinit.io"
+#define COMMON_DEFAULT_APERTUS_PORT 9899
 
 #define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
 #define COMMON_PRODUCTION_META_PROTOCOL "http"
@@ -44,6 +46,8 @@
 #define COMMON_PRODUCTION_HEARTBEAT_PORT 9898
 #define COMMON_PRODUCTION_STUN_HOST "punch.api.development.infinit.io"
 #define COMMON_PRODUCTION_STUN_PORT 3478
+#define COMMON_PRODUCTION_APERTUS_HOST "apertus.api.production.infinit.io"
+#define COMMON_PRODUCTION_APERTUS_PORT 9899
 
 #ifdef INFINIT_PRODUCTION_BUILD
 # define VAR_PREFIX COMMON_PRODUCTION
@@ -92,6 +96,12 @@
 /**/
 # define COMMON_STUN_PORT \
   BOOST_PP_CAT(VAR_PREFIX, _STUN_PORT) \
+/**/
+# define COMMON_APERTUS_HOST \
+  BOOST_PP_CAT(VAR_PREFIX, _APERTUS_HOST) \
+/**/
+# define COMMON_APERTUS_PORT \
+  BOOST_PP_CAT(VAR_PREFIX, _APERTUS_PORT) \
 /**/
 
 
@@ -521,6 +531,29 @@ namespace common
       static std::string const port_string = elle::os::getenv(
         "INFINIT_LONGINUS_PORT",
         std::to_string(COMMON_LONGINUS_PORT)
+      );
+      return std::stoi(port_string);
+    }
+  }
+
+  namespace apertus
+  {
+    std::string
+    host()
+    {
+      static std::string const host_string = elle::os::getenv(
+        "INFINIT_APERTUS_HOST",
+        COMMON_APERTUS_HOST
+      );
+      return host_string;
+    }
+
+    int
+    port()
+    {
+      static std::string const port_string = elle::os::getenv(
+        "INFINIT_APERTUS_PORT",
+        std::to_string(COMMON_APERTUS_PORT)
       );
       return std::stoi(port_string);
     }
