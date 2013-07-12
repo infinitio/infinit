@@ -15,7 +15,6 @@ from meta import database
 from meta import notifier
 from meta import error
 from meta import regexp
-from meta import apertus
 
 class Page(object):
     """
@@ -25,8 +24,6 @@ class Page(object):
     __session__ = None #set by the application
 
     __notifier = None
-
-    __apertus = None
 
     _validators = []
 
@@ -49,17 +46,6 @@ class Page(object):
                 print(e)
                 return self.__notifier
         return self.__notifier
-
-
-    @property
-    def apertus(self):
-        if conf.NO_APERTUS:
-            return None
-
-        if self.__apertus is None:
-            self.__apertus = apertus.Apertus()
-            return self.__apertus
-        return self.__apertus
 
     @property
     def input(self):

@@ -41,12 +41,6 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--apertus-control-port',
-    type = int,
-    default = meta.conf.APERTUS_CONTROL_PORT,
-)
-
-parser.add_argument(
     '--trophonius-control-port',
     type = int,
     default = meta.conf.TROPHONIUS_CONTROL_PORT,
@@ -60,15 +54,6 @@ parser.add_argument(
     default = False,
 )
 
-# if testing, need the possibility to disable apertus.
-# By the way, apertus host/port should be settable.
-parser.add_argument(
-    '--no-apertus',
-    help = 'Disable all code concerning apertus.',
-    action = 'store_true',
-    default = False,
-)
-
 parser.add_argument(
     '--port-file',
     default = 'meta_port_file',
@@ -78,7 +63,6 @@ from meta.application import Application
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    meta.conf.APERTUS_CONTROL_PORT = args.apertus_control_port
     meta.conf.TROPHONIUS_CONTROL_PORT = args.trophonius_control_port
     try:
         if args.spawn_db == True:
@@ -88,8 +72,6 @@ if __name__ == '__main__':
                                   mongo_host="localhost",
                                   mongo_port=mongo.port,
                                   port_file=args.port_file,
-                                  apertus_control_port = args.apertus_control_port,
-                                  no_apertus = args.no_apertus,
                 )
                 app.run()
         else:
@@ -98,8 +80,6 @@ if __name__ == '__main__':
                               mongo_host=args.mongo_host,
                               mongo_port=args.mongo_port,
                               port_file=args.port_file,
-                              apertus_control_port = args.apertus_control_port,
-                              no_apertus = args.no_apertus,
             )
             app.run()
     except KeyboardInterrupt:

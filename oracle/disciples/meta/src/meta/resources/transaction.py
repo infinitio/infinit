@@ -65,41 +65,6 @@ class _UpdateTransaction(Page):
               return tuple(nodes[str(d)] for d in devices)
         return None
 
-    def add_link(self, transaction):
-        sender, receiver = self.network_endpoints(transaction)
-        if self.apertus is not None:
-            ap_endpoint = self.apertus.add_link(
-                str(transaction["network_id"]),
-                sender["externals"],
-                receiver["externals"]
-            )
-
-            # Add the current apertus endpoint to the externals addresses of the
-            # devices.
-            ip, port = ap_endpoint.split(":")
-            sender["fallback"] = receiver["fallback"] = [
-                {"ip" : ip, "port" : port}
-            ]
-
-        network = database.networks().find_one(
-            database.ObjectId(transaction["network_id"]),
-        )
-        network["nodes"][str(transaction["sender_device_id"])] = sender
-        network["nodes"][str(transaction["recipient_device_id"])] = receiver
-        database.networks().save(network)
-
-    def del_link(self, transaction):
-        if self.apertus is not None:
-            endpoints = self.network_endpoints(transaction)
-            if not endpoints:
-                return
-            sender, receiver = endpoints
-            self.apertus.del_link(
-                str(transaction["network_id"]),
-                sender["externals"],
-                receiver["externals"]
-            )
-
 class Create(Page):
     """
     Send a file to a specific user.
@@ -329,9 +294,6 @@ class Accept(_UpdateTransaction):
 
         updated_transaction_id = database.transactions().save(transaction);
 
-        if transaction['status'] == STARTED:
-            self.add_link(transaction)
-
         sender = database.users().find_one(
           database.ObjectId(transaction['sender_id'])
         )
@@ -414,18 +376,6 @@ class Update(_UpdateTransaction):
             return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
 
         new_status = transaction['status'] != status
-        if status == STARTED:
-            #if not transaction['accepted']:
-            #    return self.error(
-            #        error.TRANSACTION_OPERATION_NOT_PERMITTED,
-            #        "Cannot start a transaction not accepted."
-            #    )
-            if transaction['accepted']:
-              if not new_status:
-                  self.del_link(transaction) # Try to delete the link when restarting
-              self.add_link(transaction)
-        elif status in [CANCELED, FINISHED, FAILED]:
-            self.del_link(transaction)
 
         if new_status:
             transaction["status"] = status
