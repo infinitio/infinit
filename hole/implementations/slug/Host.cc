@@ -70,6 +70,17 @@ namespace hole
             _rpcs_handler->terminate_now();
           }
         }
+        try
+        {
+          delete this->_socket.release();
+        }
+        catch (elle::Exception const& e)
+        {
+          // If we have an error cleaning up the socket - namely, the latest
+          // bytes couldn't be sent, just ignored it since the host is being
+          // removed anyway.
+          ELLE_WARN("%s: socket cleanup error ignored: %s", *this, e.what());
+        }
       }
 
       /*-----.
