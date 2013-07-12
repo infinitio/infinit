@@ -24,13 +24,9 @@ class Apertus(object):
         self.conn = socket.socket()
         self.conn.connect((conf.APERTUS_HOST, int(conf.APERTUS_CONTROL_PORT)))
 
-    def add_link(self, _id, endpointsA, endpointsB):
+    def add_link(self, _id, *args):
         request = {
                 "request" : "add_link",
-                "endpoints" : [
-                        endpointsA,
-                        endpointsB
-                    ],
                 "_id": _id,
         }
         msg = json.dumps(request, default = str)
@@ -42,10 +38,9 @@ class Apertus(object):
         except TypeError:
             print("invalid response")
 
-    def del_link(self, _id, *endpoints):
+    def del_link(self, _id, *args):
         request = {
                 "request" : "del_link",
-                "endpoints" : endpoints,
                 "_id": _id,
         }
         msg = json.dumps(request, default = str)

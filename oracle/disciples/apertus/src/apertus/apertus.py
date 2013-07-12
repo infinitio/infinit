@@ -39,8 +39,20 @@ class ApertcpusFactory(Factory):
         self.clients[addr] = Apertcpus(self, addr)
         return self.clients[addr]
 
-    def die(self):
-        self.doStop()
+    def stopFactory(self):
+        for client in self.clients:
+            client.loseConnection()
+
+    def __str__(self):
+        return "<ApertcpusFactory(port={port}, clients={clients})>".format(self.__dict__)
+
+    @property
+    def port(self):
+        return self._port
+
+    @port.setter
+    def port(self, value):
+        self._port = value
 
 class ApertusMaster(LineReceiver):
     """
@@ -58,9 +70,7 @@ class ApertusMaster(LineReceiver):
 
     def handle_add_link(self, data):
         """handle_add_link add a link between two peers"""
-        endpoints = data["endpoints"]
         id = data["_id"]
-        print("add_link", endpoints, id)
         new_apertus = ApertcpusFactory()
         port = reactor.listenTCP(0, new_apertus)
         new_apertus.port = port
@@ -72,17 +82,12 @@ class ApertusMaster(LineReceiver):
 
     def handle_del_link(self, data):
         """handle_del_link del a link between two peers"""
-        endpoints = data["endpoints"]
         id = data["_id"]
-        print("del_link", endpoints, id)
         print("slaves are:", self.factory.slaves)
         for slave in self.factory.slaves:
             print("slave is", slave)
-            print("slave id is:", slave.id)
-            print("id is:", id)
             if slave.id == id:
-                print("KILL", slave)
-                slave.die()
+                slave.doStop()
                 self.factory.slaves.remove(slave)
         pprint(self.factory.slaves)
 
@@ -97,9 +102,9 @@ class ApertusMaster(LineReceiver):
             print("unhandled command {}".format(request))
 
 class Factory(Factory):
-    def __init__(self, addr):
+    def __init__(self, addr, clients):
         self.ap_addr = addr
-        self.slaves = []
+        self.slaves = clients
 
     def buildProtocol(self, addr):
         return ApertusMaster(self.ap_addr, self)
