@@ -6,7 +6,6 @@ import socket
 import json
 
 with apertus.Apertus() as apertus:
-    print(apertus.port)
     connection = socket.create_connection(("127.0.0.1", apertus.port))
     connection.send(bytes(json.dumps({"_id": "toto", "request": "add_link"}) + '\n', encoding='UTF8'))
     data = json.loads(str(connection.recv(4096), encoding="UTF8").strip("\n"))
@@ -15,3 +14,6 @@ with apertus.Apertus() as apertus:
     for message in (bytes(msg, encoding="UTF8") for msg in ("Hello", "World\n\n", "Trompe\033tte")):
         client1.send(message)
         assert client2.recv(4096) == message
+        client2.send(message)
+        assert client1.recv(4096) == message
+
