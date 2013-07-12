@@ -82,76 +82,83 @@ prototypes = [
 
 generated_file = '// This file has been generated. Do not edit it.'
 
-header_header = """%s
+HEADER_TEMPLATE = """%s
 %s
 """
 
-source_header = """%s
+SOURCE_TEMPLATE = """%s
 
 #include <surface/gap/metrics.hh>
 
-using MKey = elle::metrics::Key;
 %s
 """
 
-prototype = """
+PROTOTYPE_TEMPLATE = """
 gap_Status
-%s%s(%s)"""
+%(prefix)s%(name)s(%(args)s)"""
 
-declaration = """%s
+DECLARATION_TEMPLATE = """%(prototype)s
 {
   assert(state != nullptr);
-
-  WRAP_CPP_MANAGER(state,
-                   reporter,
-                   store,
-                   "%s",
-                   %s);
+  auto cpp_state = reinterpret_cast<surface::gap::State*>(state);
+  std::string user_id = (
+    cpp_state->logged_in() ? cpp_state->me().id : "anonymous");
+  cpp_state->reporter()[user_id].store(
+    "user.%(metric_name)s",
+    {%(metric_args)s});
 }"""
 
 def gen_prototype(name, keys, prefix):
-  def line(key):
-    return "char const* %s" % key
+    def keys_to_args(keys):
+        out = ["gap_State* state"]
+        out.extend("char const* %s" % key for key in keys)
+        return ", ".join(out)
 
-  def keys_to_args(keys):
-    out = ["gap_State* state"]
-    out.extend([line(key) for key in keys])
-    return ", ".join(out)
-
-  return prototype % (prefix, name, keys_to_args(keys))
-
-def gen_definition(name, keys = [], prefix = "gap_metrics_"):
-  return gen_prototype(name, keys, prefix) + ";"
+    return PROTOTYPE_TEMPLATE % {
+        'prefix': prefix,
+        'name': name,
+        'args': keys_to_args(keys),
+    }
 
 def gen_declaration(name, keys = [], prefix = "gap_metrics_"):
-  def line(key, marker):
-    return "{%s::%s, %s}" % (marker, key, key)
+    return gen_prototype(name, keys, prefix) + ";"
 
-  def keys_to_args(keys):
-    out = "{%s}" % ", ".join([line(key, "MKey") for key in keys])
-    return out
-
-  return declaration % (gen_prototype(name, keys, prefix),
-                        name,
-                        keys_to_args(keys))
+def gen_definition(name, keys = [], prefix = "gap_metrics_"):
+    return DECLARATION_TEMPLATE % {
+        'prototype': gen_prototype(name, keys, prefix),
+        'metric_name': name.replace('_', '.'),
+        'metric_args': ", ".join(
+            "{MKey::%s, %s}" % (key, key) for key in keys
+        )
+    }
 
 import sys
 
 def main(argv = None):
-  if argv is None:
-    argv = sys.argv
+    if argv is None:
+        argv = sys.argv
 
-  dest = argv[1]
-  with open("%s.h" % dest, "w") as dest_h, open("%s.hh" % dest, "w") as dest_c:
-
-    dest_h.write(header_header % (generated_file,
-                                  "\n".join([gen_definition(proto[0],
-                                                            keys = proto[1:])
-                                             for proto in prototypes])))
-    dest_c.write(source_header % (generated_file,
-                                  "\n".join([gen_declaration(proto[0],
-                                                             keys = proto[1:])
-                                             for proto in prototypes])))
+    dest = argv[1]
+    with open("%s.h" % dest, "w") as dest_h:
+        dest_h.write(
+            HEADER_TEMPLATE % (
+                generated_file,
+                "\n".join(
+                    gen_declaration(proto[0], keys = proto[1:])
+                    for proto in prototypes
+                )
+            )
+        )
+    with open("%s.hh" % dest, "w") as dest_c:
+        dest_c.write(
+            SOURCE_TEMPLATE % (
+                generated_file,
+                "\n".join(
+                    gen_definition(proto[0], keys = proto[1:])
+                    for proto in prototypes
+                )
+            )
+        )
 
 if __name__ == "__main__":
   sys.exit(main())
