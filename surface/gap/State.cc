@@ -264,13 +264,6 @@ namespace surface
                        ;
         identity_infos.close();
       }
-
-      // this->device();
-      // this->notification_manager();
-      // this->user_manager();
-      // this->network_manager();
-      // this->transaction_manager();
-      // this->transaction_manager();
     }
 
     void
