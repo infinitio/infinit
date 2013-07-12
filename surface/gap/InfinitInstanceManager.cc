@@ -16,6 +16,7 @@
 #include <elle/os/getenv.hh>
 #include <elle/os/path.hh>
 #include <elle/system/signal.hh>
+#include <elle/utility/Move.hh>
 
 #include <etoile/Etoile.hh>
 #include <etoile/wall/Access.hh>
@@ -348,7 +349,8 @@ namespace surface
 
     void
     InfinitInstanceManager::download_files(std::string const& network_id,
-                                           std::vector<round> const& addresses,
+                                           std::vector<std::shared_ptr<Round>>
+                                             const& addresses,
                                            nucleus::neutron::Subject const& subject,
                                            std::string const& destination,
                                            std::function<void ()> success_callback,
@@ -413,7 +415,7 @@ namespace surface
 
     bool
     InfinitInstanceManager::_connect_try(hole::implementations::slug::Slug& slug,
-                                         std::vector<round> const& addresses,
+                                         std::vector<std::shared_ptr<Round>> const& addresses,
                                          bool sender)
     {
       // XXX: We only use the forwarder at the moment.
@@ -436,7 +438,7 @@ namespace surface
         std::vector<std::unique_ptr<reactor::VThread<bool>>>
           connection_threads;
 
-        for (std::string const& endpoint: r.endpoints())
+        for (std::string const& endpoint: r->endpoints())
         {
           auto fn = [&, endpoint] () -> bool {
             namespace slug = hole::implementations::slug;
@@ -497,19 +499,19 @@ namespace surface
         if (succeed)
         {
           // Connection successful
-          ELLE_TRACE("connection round(%s) successful", r.endpoints());
+          ELLE_TRACE("connection round(%s) successful", r->endpoints());
           return true;
         }
         else if (not succeed)
         {
           // Connection failed
-          ELLE_TRACE("connection round(%s) failed", r.endpoints());
+          ELLE_TRACE("connection round(%s) failed", r->endpoints());
           continue;
         }
         else
         {
           // Connection status failed to be determined this is a timeout
-          ELLE_TRACE("connection round(%s) timeout", r.endpoints());
+          ELLE_TRACE("connection round(%s) timeout", r->endpoints());
           continue;
         }
       }
@@ -518,7 +520,8 @@ namespace surface
 
     void
     InfinitInstanceManager::connect_try(std::string const& network_id,
-                                        std::vector<round> const& addresses,
+                                        std::vector<std::shared_ptr<Round>>
+                                          const& addresses,
                                         bool sender)
     {
       ELLE_TRACE_SCOPE("%s: connecting infinit of network %s to %s ",

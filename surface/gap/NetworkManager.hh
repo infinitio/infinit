@@ -139,7 +139,7 @@ namespace surface
       /// Download files into path 'destination' (wrap).
       void
       download_files(std::string const& network_id,
-                     std::vector<round> const& addresses,
+                     std::vector<std::shared_ptr<Round>> const& addresses,
                      std::string const& public_key,
                      std::string const& destination,
                      std::function<void ()> success_callback,
@@ -156,7 +156,7 @@ namespace surface
 
       /// Get peer addresses.
       /// Return a list of rounds.
-      std::vector<round>
+      std::vector<std::shared_ptr<Round>>
       peer_addresses(std::string const& network_id,
                      std::string const& sender_device_id,
                      std::string const& recipient_device_id);

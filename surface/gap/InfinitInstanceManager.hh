@@ -131,7 +131,7 @@ namespace surface
 
       void
       download_files(std::string const& network_id,
-                     std::vector<round> const& addresses,
+                     std::vector<std::shared_ptr<Round>> const& addresses,
                      nucleus::neutron::Subject const& subject,
                      std::string const& destination_path,
                      std::function<void ()> success_callback,
@@ -142,12 +142,12 @@ namespace surface
 
       bool
       _connect_try(hole::implementations::slug::Slug& slug,
-                   std::vector<round> const& addresses,
+                   std::vector<std::shared_ptr<Round>> const& addresses,
                    bool sender);
 
       void
       connect_try(std::string const& network_id,
-                  std::vector<round> const& addresses,
+                  std::vector<std::shared_ptr<Round>> const& addresses,
                   bool sender);
 
     private:

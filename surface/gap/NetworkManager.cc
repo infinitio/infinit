@@ -528,7 +528,8 @@ namespace surface
 
     void
     NetworkManager::download_files(std::string const& network_id,
-                                   std::vector<round> const& addresses,
+                                   std::vector<std::shared_ptr<Round>>
+                                     const& addresses,
                                    std::string const& public_key,
                                    std::string const& destination,
                                    std::function<void ()> success_callback,
@@ -593,7 +594,7 @@ namespace surface
       return common_addr;
     }
 
-    std::vector<round>
+    std::vector<std::shared_ptr<Round>>
     NetworkManager::peer_addresses(std::string const& network_id,
                                     std::string const& sender_device_id,
                                     std::string const& recipient_device_id)
@@ -620,7 +621,6 @@ namespace surface
       std::vector<std::string> locals;
       std::vector<std::string> my_externals;
       std::vector<std::string> my_locals;
-      std::vector<std::string> fallback;
       {
         std::string theirs_device;
         std::string ours_device;
@@ -653,7 +653,6 @@ namespace surface
 
           my_externals = std::move(e.externals);
           my_locals = std::move(e.locals);
-          fallback = std::move(e.fallback);
         }
       }
 
@@ -663,21 +662,26 @@ namespace surface
         std::for_each(begin(externals), end(externals), _print);
       ELLE_DEBUG("locals")
         std::for_each(begin(locals), end(locals), _print);
-      ELLE_DEBUG("fallback")
-        std::for_each(begin(fallback), end(fallback), _print);
 
-      std::vector<round> addresses;
+      std::vector<std::shared_ptr<Round>> addresses;
 
-      for (auto const& addr_list: {locals, fallback})//, externals})
+      // XXX: Add externals.
+      for (auto const& addr_list: {locals})
       {
-        round tmp;
-        tmp.endpoints(std::move(addr_list));
+        std::shared_ptr<AddressRound> tmp{new AddressRound};
+        tmp->endpoints(std::move(addr_list));
         addresses.push_back(std::move(tmp));
       }
 
       ELLE_TRACE("selected addresses:")
       for (auto& r: addresses)
-        ELLE_TRACE("-- %s", r.endpoints());
+        ELLE_TRACE("-- %s", r->endpoints());
+
+      namespace apertus = common::apertus;
+      addresses.push_back(std::make_shared<FallbackRound>(apertus::host(),
+                                                          apertus::port(),
+                                                          network_id));
+
       return addresses;
     }
 
