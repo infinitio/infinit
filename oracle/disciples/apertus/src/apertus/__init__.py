@@ -29,7 +29,6 @@ class Apertus:
 
     def __read_port_file(self):
         while True:
-            time.sleep(1)
             try:
                 with open(os.path.abspath(self.__port_file), 'r') as f:
                     content = f.readlines()
