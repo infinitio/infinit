@@ -505,7 +505,9 @@ class Register(Page):
         if user['activation_code'] != 'bitebite': #XXX
             invitation['status'] = 'activated'
             database.invitations().save(invitation)
-        return self.success()
+        return self.success({
+            'registered_user_id': user['_id']
+        })
 
 class GenerateToken(Page):
     """

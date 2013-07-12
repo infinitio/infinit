@@ -74,8 +74,11 @@ namespace plasma
     struct LogoutResponse : Response
     {};
 
-    struct RegisterResponse : Response
-    {};
+    struct RegisterResponse:
+      public Response
+    {
+      std::string registered_user_id;
+    };
 
     struct PullNotificationResponse : Response
     {

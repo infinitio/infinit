@@ -70,8 +70,7 @@ SERIALIZE_RESPONSE(plasma::meta::LogoutResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::RegisterResponse, ar, res)
 {
-  (void) ar;
-  (void) res;
+  ar & named("registered_user_id", res.registered_user_id);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
