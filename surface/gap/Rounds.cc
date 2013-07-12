@@ -45,7 +45,7 @@ namespace surface
     FallbackRound::FallbackRound(std::string const& host,
                                  int port,
                                  std::string const& uid):
-      Round{},
+      Round(),
       _host{host},
       _port{port},
       _uid{uid}
