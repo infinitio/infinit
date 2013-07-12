@@ -44,13 +44,13 @@ namespace surface
 
       ELLE_DEBUG("running transaction '%s'", this->_transaction);
 
-      this->_reporter.store(
-        "preparing",
+      std::string id = this->_transaction.id;
+      this->_reporter[this->_transaction.id].store(
+        "transaction.preparing",
         {
           {MKey::value, this->_transaction.id},
           {MKey::count, std::to_string(this->_transaction.files_count)},
           {MKey::size, std::to_string(this->_transaction.total_size)},
-          {MKey::timestamp, std::to_string(this->_transaction.files_count)},
         });
 
       ELLE_DEBUG("prepare network and directories for %s",
@@ -125,10 +125,10 @@ namespace surface
           }
         }
       }
-      CATCH_FAILURE_TO_METRICS("transaction_preparing");
+      CATCH_FAILURE_TO_METRICS(this->_transaction.id, "transaction.preparing");
 
-      this->_reporter.store(
-        "transaction_prepared",
+      this->_reporter[this->_transaction.id].store(
+        "transaction.prepared",
         {{MKey::value, this->_transaction.id},
          {MKey::network, this->_transaction.network_id},
          {MKey::count, std::to_string(this->_transaction.files_count)},

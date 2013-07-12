@@ -1,30 +1,21 @@
-#ifndef METRICS_HH
-# define METRICS_HH
+#ifndef SURFACE_GAP_METRICS_HH
+# define SURFACE_GAP_METRICS_HH
 
-# include <metrics/Reporter.hh>
+# include <metrics/Key.hh>
 # include <surface/gap/Exception.hh>
 
-# define CATCH_FAILURE_TO_METRICS(prefix)                                       \
-  catch (elle::HTTPException const& e)                                          \
-  {                                                                             \
-    this->_reporter.store(prefix "_fail",                                     \
-                          {{elle::metrics::Key::value,                          \
-                            "http" + std::to_string((int) e.code)}});           \
-    throw;                                                                      \
-  }                                                                             \
-  catch (surface::gap::Exception const& e)                                      \
-  {                                                                             \
-    this->_reporter.store(prefix "_fail",                                     \
-                          {{elle::metrics::Key::value,                          \
-                           "gap" + std::to_string((int) e.code)}});             \
-    throw;                                                                      \
-  }                                                                             \
-  catch (...)                                                                   \
-  {                                                                             \
-    this->_reporter.store(prefix "_fail",                                     \
-                          {{elle::metrics::Key::value, "unknown"}});            \
-    throw;                                                                      \
-  } /* */
+// XXX Rename that macro with the right prefix
+# define CATCH_FAILURE_TO_METRICS(pkey, prefix)                               \
+  catch (std::exception const&)                                               \
+  {                                                                           \
+    this->_reporter[pkey].store(                                              \
+      prefix + std::string{".failed"},                                        \
+      {{metrics::Key::value, elle::exception_string()}});                     \
+    throw;                                                                    \
+  }                                                                           \
+/**/
 
-using MKey = elle::metrics::Key;
+// XXX Remove this using (or put it in a namespace)
+using MKey = ::metrics::Key;
+
 #endif

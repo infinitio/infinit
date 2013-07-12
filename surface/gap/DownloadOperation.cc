@@ -127,8 +127,8 @@ namespace surface
       auto timestamp_tr = std::chrono::duration<double>(
         this->_transaction.timestamp);
       double duration = timestamp_now.count() - timestamp_tr.count();
-      this->_reporter.store(
-        "transaction_transferred",
+      this->_reporter[this->_transaction.id].store(
+        "transaction.transferred",
         {{MKey::duration, std::to_string(duration)},
          {MKey::value, this->_transaction.id},
          {MKey::network, this->_transaction.network_id},

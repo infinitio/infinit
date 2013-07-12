@@ -124,10 +124,13 @@ namespace surface
         identity_infos.close();
       }
 
-      // Initialize google metrics.
-      elle::metrics::google::register_service(this->_google_reporter);
-      // Initialize server.
-      elle::metrics::kissmetrics::register_service(this->_reporter);
+      this->_google_reporter.add_service_class<metrics::services::Google>(
+        common::metrics::google_info_investors());
+
+      this->_reporter.add_service_class<metrics::services::Google>(
+        common::metrics::google_info());
+      this->_reporter.add_service_class<metrics::services::KISSmetrics>(
+        common::metrics::km_info());
     }
 
     std::string const&
@@ -209,26 +212,17 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
 
-      this->_reporter.store("user_login_attempt");
+      this->_reporter["anonymous"].store("user.login.attempt");
 
-      plasma::meta::LoginResponse res;
-      try
-      {
-        res = this->_meta.login(lower_email, password);
-        ELLE_LOG("Logged in as %s token = %s", email, res.token);
-      }
-      CATCH_FAILURE_TO_METRICS("user_login");
-
-      this->_reporter.update_user(res.id);
-      this->_reporter.store("user_login_succeed");
-
-      // XXX: Not necessary but better.
-      this->_google_reporter.update_user(res.id);
-      this->_google_reporter.store("user:login:succeed",
-                                  {{MKey::session, "start"},
-                                   {MKey::status, "succeed"}});
-
-      ELLE_WARN("id: '%s' - fullname: '%s' - lower_email: '%s'",
+      auto res = this->_meta.login(lower_email, password);
+      ELLE_LOG("Logged in as %s token = %s", email, res.token);
+      this->_reporter[res.id].store(
+          "user.login.succeed",
+          {{MKey::session, "start"}, {MKey::status, "succeed"}});
+      this->_google_reporter[res.id].store(
+        "user.login.succeed",
+        {{MKey::session, "start"}, {MKey::status, "succeed"}});
+      ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
                  this->me().id,
                  this->me().fullname,
                  this->me().email);
@@ -301,34 +295,23 @@ namespace surface
       if (this->_meta.token().empty())
         return;
 
-      // End session the session.
-      this->_reporter.store("user_logout_attempt");
+      elle::Finally logout([&] {
+          try
+          {
+            this->_meta.logout();
 
-      // XXX: Not necessary but better.
-      this->_google_reporter.store("user:logout:attempt",
-                                   {{MKey::session, "end"},});
-
-      try
-      {
-        elle::Finally logout([&] {
-            try
-            {
-              this->_meta.logout();
-            }
-            catch (...)
-            {
-              ELLE_WARN("logout failed, ignore");
-              this->_meta.token("");
-            }
-          });
-      }
-      CATCH_FAILURE_TO_METRICS("user_logout");
-
-      // End session the session.
-      this->_reporter.store("user_logout_succeed");
-
-      // XXX: Not necessary but better.
-      this->_google_reporter.store("user:logout:succeed");
+            this->_reporter[this->me().id].store("user.logout");
+            this->_google_reporter[this->me().id].store(
+              "user.logout",
+              {{MKey::session, "end"}});
+          }
+          catch (std::exception const&)
+          {
+            ELLE_WARN("logout failed, ignore exception: %s",
+                      elle::exception_string());
+            this->_meta.token("");
+          }
+        });
     }
 
     std::string
@@ -372,9 +355,6 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: register as %s: email %s and activation_code %s",
                        *this, fullname, email, activation_code);
 
-      // End session the session.
-      this->_reporter.store("user_register_attempt");
-
       std::string lower_email = email;
 
       std::transform(lower_email.begin(),
@@ -383,16 +363,13 @@ namespace surface
                      ::tolower);
 
       // Logout first, and ignore errors.
-      try { this->logout(); } catch (elle::HTTPException const&) {}
+      try { this->logout(); } catch (std::exception const&) {}
 
-      try
-      {
-        this->_meta.register_(lower_email, fullname, password, activation_code);
-      }
-      CATCH_FAILURE_TO_METRICS("user_register");
 
-      // Send file request successful.
-      this->_reporter.store("user_register_succeed");
+      auto res = this->_meta.register_(
+          lower_email, fullname, password, activation_code);
+
+      this->_reporter[res.registered_user_id].store("user.register");
 
       ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);
       this->login(lower_email, password);
