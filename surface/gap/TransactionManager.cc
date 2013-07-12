@@ -481,8 +481,9 @@ namespace surface
       ELLE_ASSERT(tr.recipient_id == this->_self().id ||
                   tr.sender_id == this->_self().id);
 
-      if (tr.recipient_device_id != this->_device().id &&
-          tr.sender_device_id != this->_device().id)
+      if (tr.sender_device_id != this->_device().id &&
+          (tr.recipient_device_id != this->_device().id &&
+           not tr.recipient_device_id.empty()))
       {
         ELLE_TRACE("ignore transaction %s: not related to my device", tr);
         return;
