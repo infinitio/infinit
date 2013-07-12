@@ -381,7 +381,8 @@ namespace surface
           auto& slug = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
 
           if (!this->_connect_try(slug, addresses, false))
-            throw elle::Exception("Unable to connect");
+            throw elle::Exception{
+              elle::sprintf("Unable to connect slug to %s", addresses)};
 
           instance.start_progress.signal_one();
           try
@@ -534,7 +535,8 @@ namespace surface
         [&, addresses, sender]
         {
           if (!this->_connect_try(slug, addresses, sender))
-            throw elle::Exception("Unable to connect");
+            throw elle::Exception{
+              elle::sprintf("Unable to connect slug to %s", addresses)};
           // The progress will wait for the start_progress signal
           instance.start_progress.signal_one();
         }, true);
