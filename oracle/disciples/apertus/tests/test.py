@@ -28,7 +28,7 @@ with Apertus() as apertus:
     data2 = json.loads(str(admin2.recv(4096), encoding="UTF8").strip("\n"))
 
     print(data1, data2)
-    assert data1["endpoint"]== data2["endpoint"]
+    assert data1["endpoint"] == data2["endpoint"]
 
     client1 = socket.create_connection(data1["endpoint"].split(":"))
     client2 = socket.create_connection(data2["endpoint"].split(":"))
