@@ -65,15 +65,25 @@ namespace surface
       _reporter(),
       _google_reporter(),
       _scheduler{},
-      _keep_alive(this->_scheduler, "State keep alive", [] ()
-                 {
-                   while (true)
-                   {
-                     auto* current = reactor::Scheduler::scheduler()->current();
-                     current->sleep(boost::posix_time::seconds(60));
-                   }
-                 }),
-      _thread(std::bind(&reactor::Scheduler::run, std::ref(this->_scheduler))),
+      _keep_alive(this->_scheduler, "State keep alive", [] () {
+                  while (true)
+                  {
+                    auto* current = reactor::Scheduler::scheduler()->current();
+                    current->sleep(boost::posix_time::seconds(60));
+                  }
+      }),
+      _thread([&] {
+              try
+              {
+                this->_scheduler.run();
+              }
+              catch (...)
+              {
+                ELLE_ERR("exception escaped from State scheduler: %s",
+                         elle::exception_string());
+                this->_exception = std::current_exception();
+              }
+      }),
       _me{nullptr},
       _device{nullptr},
       _files_infos{},
