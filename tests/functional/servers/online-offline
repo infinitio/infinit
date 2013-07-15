@@ -110,6 +110,6 @@ def run(N: "Number of users"):
         return online_status == sum(range(N)) and offline_status == sum(range(N))
 
 if __name__ == '__main__':
-    for i in range(1, 11):
+    for i in [1, 2, 5]:
         print("Running tests with", i, "users")
         assert run(i) is True
