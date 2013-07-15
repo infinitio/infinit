@@ -1275,14 +1275,17 @@ def configure(cxx_toolkit = None,
     runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status
 
+  check_functional = drake.Rule('check/functional')
   for test in ['sharing/pingpong-notifications.py',
                'sharing/swaggers.py',
                'servers/online-offline',
              ]:
     test = drake.node('tests/functional/%s' % test)
+    tests << test
     runner = drake.Runner(test)
     runner.reporting = drake.Runner.Reporting.on_failure
-    check << runner.status
+    check_functional << runner.status
+  check << check_functional
 
   build << drake.cxx.Executable("bin/pass",
           drake.nodes('tests/unit/pass.cc', 'common/common.cc') + [reactor_lib,
