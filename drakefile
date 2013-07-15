@@ -952,7 +952,10 @@ def configure(cxx_toolkit = None,
     'surface/gap/Rounds.cc',
     'surface/gap/Rounds.hh',
     'surface/gap/UserManager.cc',
-    'surface/gap/UserManager.hh')
+    'surface/gap/UserManager.hh',
+    'surface/gap/_detail/TransferOperations.hh',
+    'surface/gap/_detail/TransferOperations.cc',
+  )
 
   # GAP
   gap_generator = drake.node('surface/gap/metrics_generator.py')
