@@ -1049,7 +1049,7 @@ extern "C"
         }
 
       __TO_CPP(state)->transaction_manager().send_files(recipient_id, s);
-      return;
+      return gap_ok;
     }
     CATCH_ALL(send_files);
     return ret;
