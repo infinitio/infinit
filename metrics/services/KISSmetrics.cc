@@ -10,24 +10,51 @@ namespace metrics
 {
   namespace services
   {
-    static const std::unordered_map<Key, std::string> keymap{
-      {Key::attempt,   "attempt"},
-      {Key::author,    "author"},
-      {Key::count,     "count"},
-      {Key::duration,  "duration"},
-      {Key::height,    "height"},
-      {Key::input,     "input"},
-      {Key::network,   "network"},
-      {Key::panel,     "panel"},
-      {Key::session,   "session"},
-      {Key::size,      "size"},
-      {Key::status,    "status"},
-      {Key::step,      "step"},
-      {Key::tag,       "_n"},
-      {Key::timestamp, "timestamp"},
-      {Key::value,     "value"},
-      {Key::width,     "witdh"},
-    };
+    static
+    std::string
+    key_string(metrics::Key const k)
+    {
+      switch (k)
+      {
+      case Key::attempt:
+        return "attempt";
+      case Key::author:
+        return "author";
+      case Key::count:
+        return "count";
+      case Key::duration:
+        return "duration";
+      case Key::height:
+        return "height";
+      case Key::input:
+        return "input";
+      case Key::network:
+        return "network";
+      case Key::panel:
+        return "panel";
+      case Key::session:
+        return "session";
+      case Key::size:
+        return "size";
+      case Key::status:
+        return "status";
+      case Key::step:
+        return "step";
+      case Key::tag:
+        return "_n";
+      case Key::timestamp:
+        return "timestamp";
+      case Key::value:
+        return "value";
+      case Key::width:
+        return "witdh";
+      case Key::sender_online:
+        return "sender_online";
+      case Key::recipient_online:
+        return "recipient_online";
+      }
+      return "unknown_key";
+    }
 
     //- KISSmetrics --------------------------------------------------------------
     KISSmetrics::KISSmetrics(std::string const& pkey,
@@ -50,17 +77,17 @@ namespace metrics
         .parameter("_p", this->pkey())
         .parameter("_k", this->info().tracking_id)
         .parameter("version", "1")
-        .parameter(keymap.at(Key::timestamp),
+        .parameter(key_string(Key::timestamp),
                    std::to_string(metric.first.nanoseconds / 1000000UL));
 
       typedef Metric::value_type Field;
 
-      request.parameter(keymap.at(Key::tag), metric.second.at(Key::tag));
+      request.parameter(key_string(Key::tag), metric.second.at(Key::tag));
 
       for (Field f: metric.second)
       {
         if (f.first != Key::tag)
-          request.parameter(keymap.at(f.first), f.second);
+          request.parameter(key_string(f.first), f.second);
       };
 
       request.fire();

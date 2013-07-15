@@ -18,25 +18,51 @@ namespace metrics
 {
   namespace services
   {
-    static const std::unordered_map<metrics::Key, std::string> keymap{
-      {Key::attempt,   "cm10"},
-      {Key::author,    "cm8"},
-      {Key::count,     "cm2"},
-      {Key::duration,  "cm12"},
-      {Key::height,    "cm4"},
-      {Key::input,     "cm6"},
-      {Key::network,   "cm11"},
-      {Key::panel,     "cm7"},
-      {Key::session,   "cs"},
-      {Key::size,      "cm1"},
-      {Key::status,    "cd1"},
-      {Key::step,      "cm9"},
-      {Key::tag,       "cd"},
-      {Key::timestamp, "cm5"},
-      {Key::value,     "cd2"},
-      {Key::width,     "cm3"},
-    };
-
+    static
+    std::string
+    key_string(metrics::Key const k)
+    {
+      switch (k)
+      {
+      case Key::attempt:
+        return "cm10";
+      case Key::author:
+        return "cm8";
+      case Key::count:
+        return "cm2";
+      case Key::duration:
+        return "cm12";
+      case Key::height:
+        return "cm4";
+      case Key::input:
+        return "cm6";
+      case Key::network:
+        return "cm11";
+      case Key::panel:
+        return "cm7";
+      case Key::session:
+        return "cs";
+      case Key::size:
+        return "cm1";
+      case Key::status:
+        return "cd1";
+      case Key::step:
+        return "cm9";
+      case Key::tag:
+        return "cd";
+      case Key::timestamp:
+        return "cm5";
+      case Key::value:
+        return "cd2";
+      case Key::width:
+        return "cm3";
+      case Key::sender_online:
+        return "cm12";
+      case Key::recipient_online:
+        return "cm13";
+      }
+      return "cm2000";
+    }
 
     Google::Google(std::string const& pkey,
                    common::metrics::Info const& info):
@@ -63,12 +89,12 @@ namespace metrics
 
       typedef Metric::value_type Field;
 
-      request.post_field(keymap.at(Key::tag), metric.second.at(Key::tag));
+      request.post_field(key_string(Key::tag), metric.second.at(Key::tag));
 
       for (Field f: metric.second)
       {
         if (f.first != Key::tag)
-          request.post_field(keymap.at(f.first), f.second);
+          request.post_field(key_string(f.first), f.second);
       };
 
       this->_last_sent.Current();

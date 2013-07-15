@@ -11,27 +11,45 @@ namespace metrics
   operator <<(std::ostream& out,
               Key const k)
   {
-    static std::unordered_map<Key, std::string> const map{
-      {Key::attempt,          "attempt"},
-      {Key::author,           "author"},
-      {Key::count,            "count"},
-      {Key::duration,         "duration"},
-      {Key::height,           "height"},
-      {Key::input,            "input"},
-      {Key::network,          "network"},
-      {Key::panel,            "panel"},
-      {Key::session,          "session"},
-      {Key::size,             "size"},
-      {Key::status,           "status"},
-      {Key::step,             "step"},
-      {Key::tag,              "tag"},
-      {Key::timestamp,        "timestamp"},
-      {Key::value,            "value"},
-      {Key::width,            "width"},
-      {Key::sender_online,    "sender_online"},
-      {Key::recipient_online, "recipient_online"},
-    };
-    ELLE_ASSERT(map.find(k) != map.end());
-    return out << map.at(k);
+    switch (k)
+    {
+    case Key::attempt:
+      return out << "attempt";
+    case Key::author:
+      return out << "author";
+    case Key::count:
+      return out << "count";
+    case Key::duration:
+      return out << "duration";
+    case Key::height:
+      return out << "height";
+    case Key::input:
+      return out << "input";
+    case Key::network:
+      return out << "network";
+    case Key::panel:
+      return out << "panel";
+    case Key::session:
+      return out << "session";
+    case Key::size:
+      return out << "size";
+    case Key::status:
+      return out << "status";
+    case Key::step:
+      return out << "step";
+    case Key::tag:
+      return out << "tag";
+    case Key::timestamp:
+      return out << "timestamp";
+    case Key::value:
+      return out << "value";
+    case Key::width:
+      return out << "width";
+    case Key::sender_online:
+      return out << "sender_online";
+    case Key::recipient_online:
+      return out << "recipient_online";
+    }
+    return out << "Unknown metrics key";
   }
 }
