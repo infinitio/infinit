@@ -83,9 +83,6 @@ class _State:
             'user_status_callback',
             'new_swagger_callback',
 
-            # Operation.
-            'operation_status',
-
             # error
             'on_error_callback',
         ]
@@ -102,7 +99,6 @@ class _State:
 
         self.Status = getattr(_gap, "Status")
         self.TransactionStatus = getattr(_gap, "TransactionStatus")
-        self.OperationStatus = getattr(_gap, "OperationStatus")
 
     @property
     def meta_status(self):
