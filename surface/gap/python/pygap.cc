@@ -139,7 +139,7 @@ _hash_password(gap_State* state, std::string email, std::string password)
 }
 
 static
-gap_OperationStatus
+void
 _send_files(gap_State* state,
             std::string const& recipient,
             boost::python::list const& files)
@@ -155,13 +155,13 @@ _send_files(gap_State* state,
       list[i] = boost::python::extract<char const*>(files[i]);
     }
 
-  auto res = gap_send_files(state,
-                            recipient.c_str(),
-                            list);
+  gap_send_files(state,
+                 recipient.c_str(),
+                 list);
 
   free(list);
 
-  return res;
+  return;
 }
 
 
@@ -470,12 +470,4 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transaction_accepted", &gap_transaction_accepted);
   py::def("transaction_status", &gap_transaction_status);
   py::def("transaction_message", &gap_transaction_message);
-
-  //- Operation ------------------------------------------------------------------
-  py::def("operation_status", &gap_operation_status);
-  py::enum_<int>("OperationStatus")
-    .value("failure", gap_operation_status_failure)
-    .value("success", gap_operation_status_success)
-    .value("running", gap_operation_status_running)
-  ;
 }

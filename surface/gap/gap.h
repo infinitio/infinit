@@ -69,34 +69,6 @@ extern "C" {
   gap_Status
   gap_notifications_read(gap_State*);
 
-  //- Operation interface -------------------------------------------------------
-
-  /// Identifier for an operation launched by gap.
-  typedef int gap_OperationId;
-
-  /// Status of an operation.
-  typedef int gap_OperationStatus;
-
-  /// The operation ended with an error.
-  extern gap_OperationStatus gap_operation_status_failure;
-
-  /// The operation successfully ended.
-  extern gap_OperationStatus gap_operation_status_success;
-
-  /// The operation is still running.
-  extern gap_OperationStatus gap_operation_status_running;
-
-  /// Returns the operation status.
-  gap_OperationStatus
-  gap_operation_status(gap_State* state,
-                     gap_OperationId const pid);
-
-  /// Try to finalize an operation. Returns an error if the operation does not
-  /// exist, or if it's still running.
-  gap_Status
-  gap_operation_finalize(gap_State* state,
-                       gap_OperationId const pid);
-
   //- Authentication & registration -------------------------------------------
 
   /// Generate a hash for the password.
@@ -392,9 +364,7 @@ extern "C" {
                         gap_on_error_callback_t cb);
 
   /// Send files to a specific user.
-  ///
-  /// @returns a unique identifier or -1 on error.
-  gap_OperationId
+  void
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files);

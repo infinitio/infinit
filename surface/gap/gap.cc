@@ -1,6 +1,5 @@
 #include "gap.h"
 #include "State.hh"
-#include "OperationManager.hh"
 
 #include <common/common.hh>
 
@@ -278,40 +277,6 @@ extern "C"
     assert(recipient_id != nullptr);
     assert(message != nullptr);
     WRAP_CPP_MANAGER(state, user_manager, send_message, recipient_id, message);
-  }
-
-  //- Operation interface -------------------------------------------------------
-
-  gap_OperationStatus gap_operation_status_failure =
-    (gap_OperationStatus) surface::gap::OperationManager::OperationStatus::failure;
-
-  gap_OperationStatus gap_operation_status_success =
-    (gap_OperationStatus) surface::gap::OperationManager::OperationStatus::success;
-
-  gap_OperationStatus gap_operation_status_running =
-    (gap_OperationStatus) surface::gap::OperationManager::OperationStatus::running;
-
-  gap_OperationStatus
-  gap_operation_status(gap_State* state,
-                     gap_OperationId const pid)
-  {
-    assert(state != nullptr);
-    gap_Status ret = gap_ok;
-    try
-    {
-      return (gap_OperationStatus) __TO_CPP(state)->transaction_manager().status(pid);
-    }
-    CATCH_ALL(operation_status);
-    return ret;
-  }
-
-  /// Try to finalize a operation. Returns an error if the operation
-  /// does not exist, or if it's still running.
-  gap_Status
-  gap_operation_finalize(gap_State* state,
-                       gap_OperationId const pid)
-  {
-    WRAP_CPP_MANAGER(state, transaction_manager, finalize, pid);
   }
 
   //- Authentication ----------------------------------------------------------
@@ -1062,7 +1027,7 @@ extern "C"
     ::free(transactions);
   }
 
-  gap_OperationStatus
+  void
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files)
@@ -1083,11 +1048,11 @@ extern "C"
           ++files;
         }
 
-      return (gap_OperationStatus) __TO_CPP(state)->transaction_manager().send_files(recipient_id, s);
+      __TO_CPP(state)->transaction_manager().send_files(recipient_id, s);
+      return;
     }
     CATCH_ALL(send_files);
-
-    return ret;
+    (void)ret;
   }
 
   gap_Status

@@ -4,7 +4,6 @@
 # include "Device.hh"
 # include "NetworkManager.hh"
 # include "NotificationManager.hh"
-# include "OperationManager.hh"
 # include "Self.hh"
 # include "Transaction.hh"
 # include "TransactionStateMachine.hh"
@@ -30,7 +29,6 @@ namespace surface
   namespace gap
   {
     class TransactionManager:
-      public OperationManager,
       public Notifiable
     {
       /*-----------.
@@ -89,7 +87,7 @@ namespace surface
       /// @brief Send a file list to a specified user.
       ///
       /// Create a network, copy files locally, create transaction.
-      OperationManager::OperationId
+      void
       send_files(std::string const& recipient_id_or_email,
                  std::unordered_set<std::string> const& files);
 
@@ -152,12 +150,10 @@ namespace surface
         } state;
 
         int tries;
-        OperationId operation;
         std::unordered_set<std::string> files;
         State():
           state{none},
-          tries{0},
-          operation{0}
+          tries{0}
         {}
 
         /*----------.

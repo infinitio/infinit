@@ -1,10 +1,6 @@
 #include "TransactionManager.hh"
 
 #include "binary_config.hh"
-#include "CreateTransactionOperation.hh"
-#include "DownloadOperation.hh"
-#include "PrepareTransactionOperation.hh"
-#include "UploadOperation.hh"
 #include "metrics.hh"
 
 #include <metrics/Reporter.hh>
@@ -139,7 +135,7 @@ namespace surface
       this->_output_dir = dir;
     }
 
-    OperationManager::OperationId
+    void
     TransactionManager::send_files(std::string const& recipient_id_or_email,
                                    std::unordered_set<std::string> const& files)
     {
@@ -229,8 +225,6 @@ namespace surface
           this->_update_remaining_invitations(res.remaining_invitations);
         },
         true);
-
-      return 0;
     }
 
     float
@@ -660,11 +654,6 @@ namespace surface
         if (s.state != State::preparing)
           ELLE_DEBUG("cannot start upload of %s, state is not preparing: %s",
                      transaction, (int) s.state);
-        else if (this->status(s.operation) == OperationStatus::failure)
-          ELLE_DEBUG("cannot start upload of %s, prepare failed", transaction);
-        else if (this->status(s.operation) == OperationStatus::running)
-          ELLE_DEBUG("cannot start upload of %s, prepare still running",
-                     transaction);
         else
           ELLE_DEBUG("XXX cannot start upload (should not be printed)");
       }

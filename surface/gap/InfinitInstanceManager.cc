@@ -1,13 +1,13 @@
-#include <signal.h>
-#include <stdlib.h>
-
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/logic/tribool.hpp>
+#include "Exception.hh"
+#include "InfinitInstanceManager.hh"
+#include "binary_config.hh"
+#include "_detail/TransferOperations.hh"
 
 #include <HoleFactory.hh>
 
-# include <reactor/duration.hh>
+#include <common/common.hh>
+
+#include <plasma/meta/Client.hh>
 
 #include <elle/Exception.hh>
 #include <elle/network/Interface.hh>
@@ -25,15 +25,15 @@
 #include <etoile/wall/Path.hh>
 #include <etoile/path/Chemin.hh>
 
-#include <common/common.hh>
-#include <surface/gap/_detail/TransferOperations.hh>
-#include <surface/gap/Exception.hh>
-#include <surface/gap/InfinitInstanceManager.hh>
-#include <surface/gap/binary_config.hh>
-
-#include <plasma/meta/Client.hh>
-
 #include <reactor/sleep.hh>
+#include <reactor/duration.hh>
+
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/logic/tribool.hpp>
+
+#include <signal.h>
+#include <stdlib.h>
 
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.InfinitInstanceManager");
