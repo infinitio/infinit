@@ -222,6 +222,7 @@ namespace plasma
     void
     Client::_check_connection()
     {
+      ELLE_TRACE_SCOPE("%s: check connection status", *this);
       if (_impl->connected == false || _impl->ping_received == false)
       {
         try
@@ -481,6 +482,7 @@ namespace plasma
     std::unique_ptr<Notification>
     Client::poll()
     {
+      ELLE_DEBUG_SCOPE("%s: polling", *this);
       // Poll while something has to be done
       if (size_t count = _impl->io_service.poll())
       {
