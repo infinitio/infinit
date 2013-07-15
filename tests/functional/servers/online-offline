@@ -11,7 +11,7 @@ ADMIN_TOKEN = pythia.constants.ADMIN_TOKEN
 trophonius_control_port = 39075
 
 def run(N: "Number of users"):
-    with utils.Servers() as (meta, tropho):
+    with utils.Servers() as (meta, tropho, apertus):
 
         proto, addr, port = meta.url.split(":")
         addr = addr.replace('/', '')
