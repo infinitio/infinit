@@ -188,12 +188,13 @@ namespace surface
       typedef std::map<std::string, State> StateMap;
       elle::threading::Monitor<StateMap> _states;
 
-    public:
+    protected:
       /// @brief Update transaction status.
       void
-      update(std::string const& transaction_id,
-             plasma::TransactionStatus status);
+      _update(std::string const& transaction_id,
+              plasma::TransactionStatus status);
 
+    public:
       void
       accept_transaction(Transaction const& transaction);
       void

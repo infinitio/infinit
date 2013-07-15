@@ -1091,26 +1091,6 @@ extern "C"
   }
 
   gap_Status
-  gap_update_transaction(gap_State* state,
-                         char const* transaction_id,
-                         gap_TransactionStatus status)
-  {
-    assert(transaction_id != nullptr);
-
-    if(status <= gap_TransactionStatus::gap_transaction_status_none
-       || status >= gap_TransactionStatus::gap_transaction_status__count)
-      return gap_error;
-
-    WRAP_CPP_MANAGER_RET(state,
-                         transaction_manager,
-                         update,
-                         transaction_id,
-                         static_cast<plasma::TransactionStatus>(status));
-
-    return ret;
-  }
-
-  gap_Status
   gap_cancel_transaction(gap_State* state,
                          char const* transaction_id)
   {

@@ -399,13 +399,6 @@ extern "C" {
                  char const* recipient_id,
                  char const* const* files);
 
-
-  /// Update transaction status.
-  gap_Status
-  gap_update_transaction(gap_State* state,
-                         char const* transaction_id,
-                         gap_TransactionStatus status);
-
   /// Cancel transaction.
   gap_Status
   gap_cancel_transaction(gap_State* state,

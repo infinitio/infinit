@@ -255,7 +255,7 @@ namespace surface
     }
 
     void
-    TransactionManager::update(std::string const& transaction_id,
+    TransactionManager::_update(std::string const& transaction_id,
                                plasma::TransactionStatus status)
     {
       ELLE_TRACE_SCOPE("%s: Update transaction %s with status %s",
@@ -591,7 +591,7 @@ namespace surface
           s.files,
           [&reporter, tr, this]
           {
-            this->update(tr.id,
+            this->_update(tr.id,
                          plasma::TransactionStatus::started);
             reporter[tr.id].store(
               "transaction.prepared",
@@ -603,7 +603,7 @@ namespace surface
           },
           [&reporter, tr, this]
           {
-            this->update(tr.id,
+            this->_update(tr.id,
                          plasma::TransactionStatus::failed);
             reporter[tr.id].store(
               "transaction.preparing.failed",
@@ -716,7 +716,7 @@ namespace surface
             this->_states(
               [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
 
-            this->update(transaction.id, plasma::TransactionStatus::finished);
+            this->_update(transaction.id, plasma::TransactionStatus::finished);
           },
           [&reporter, transaction, this]
           {
@@ -726,7 +726,7 @@ namespace surface
             if (s.state == State::canceled)
               return;
 
-            this->update(transaction.id, plasma::TransactionStatus::failed);
+            this->_update(transaction.id, plasma::TransactionStatus::failed);
             reporter[transaction.id].store(
               "transaction.transfering.failed",
               {{MKey::value, transaction.id},
