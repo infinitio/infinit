@@ -71,7 +71,9 @@ namespace surface
                      metrics::Reporter& reporter,
                      metrics::Reporter& google_reporter,
                      SelfGetter const& me,
-                     DeviceGetter const& device);
+                     DeviceGetter const& device,
+                     std::string const& apertus_host,
+                     uint16_t apertus_port);
 
       virtual
       ~NetworkManager();
@@ -183,6 +185,9 @@ namespace surface
       virtual
       void
       print(std::ostream& stream) const override;
+
+      ELLE_ATTRIBUTE_R(std::string, apertus_host);
+      ELLE_ATTRIBUTE_R(uint16_t, apertus_port);
     };
   }
 }

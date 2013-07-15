@@ -59,7 +59,9 @@ namespace surface
     State::State(std::string const& meta_host,
                  uint16_t meta_port,
                  std::string const& trophonius_host,
-                 uint16_t trophonius_port):
+                 uint16_t trophonius_port,
+                 std::string const& apertus_host,
+                 uint16_t apertus_port):
       _logger_intializer{},
       _meta{meta_host, meta_port, true},
       _reporter(),
@@ -88,7 +90,9 @@ namespace surface
       _device{nullptr},
       _files_infos{},
       _trophonius_host{trophonius_host},
-      _trophonius_port{trophonius_port}
+      _trophonius_port{trophonius_port},
+      _apertus_host{apertus_host},
+      _apertus_port{apertus_port}
     {
       ELLE_TRACE_SCOPE("%s: create state", *this);
 
@@ -378,28 +382,6 @@ namespace surface
       this->login(lower_email, password);
     }
 
-    NetworkManager&
-    State::network_manager()
-    {
-      return this->_network_manager(
-        [this] (NetworkManagerPtr& manager) -> NetworkManager& {
-          if (manager == nullptr)
-          {
-            ELLE_TRACE_SCOPE("%s: allocating a new network manager", *this);
-
-            manager.reset(
-              new NetworkManager{
-                this->_meta,
-                this->_reporter,
-                this->_google_reporter,
-                std::bind(&State::me, this),
-                std::bind(&State::device, this),
-              });
-          }
-          return *manager;
-        });
-    }
-
     NotificationManager&
     State::notification_manager()
     {
@@ -416,6 +398,30 @@ namespace surface
                 this->_meta,
                 std::bind(&State::me, this),
                 std::bind(&State::device, this),
+              });
+          }
+          return *manager;
+        });
+    }
+
+    NetworkManager&
+    State::network_manager()
+    {
+      return this->_network_manager(
+        [this] (NetworkManagerPtr& manager) -> NetworkManager& {
+          if (manager == nullptr)
+          {
+            ELLE_TRACE_SCOPE("%s: allocating a new network manager", *this);
+
+            manager.reset(
+              new NetworkManager{
+                this->_meta,
+                this->_reporter,
+                this->_google_reporter,
+                std::bind(&State::me, this),
+                std::bind(&State::device, this),
+                this->_apertus_host,
+                this->_apertus_port
               });
           }
           return *manager;

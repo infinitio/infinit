@@ -198,7 +198,9 @@ extern "C"
   gap_State* gap_configurable_new(char const* meta_host,
                                   unsigned short meta_port,
                                   char const* trophonius_host,
-                                  unsigned short trophonius_port)
+                                  unsigned short trophonius_port,
+                                  char const* apertus_host,
+                                  unsigned short apertus_port)
   {
     if (!initialize_lune())
       return nullptr;
@@ -208,7 +210,9 @@ extern "C"
       return __TO_C(new surface::gap::State(meta_host,
                                             meta_port,
                                             trophonius_host,
-                                            trophonius_port));
+                                            trophonius_port,
+                                            apertus_host,
+                                            apertus_port));
     }
     catch (std::exception const& err)
     {

@@ -31,7 +31,9 @@ extern "C" {
   gap_State* gap_configurable_new(char const* meta_host,
                                   unsigned short meta_port,
                                   char const* trophonius_host,
-                                  unsigned short trophonius_port);
+                                  unsigned short trophonius_port,
+                                  char const* apertus_host,
+                                  unsigned short apertus_port);
 
   /// Release a state.
   void gap_free(gap_State* state);

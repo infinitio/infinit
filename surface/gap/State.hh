@@ -77,7 +77,9 @@ namespace surface
       State(std::string const& meta_host = common::meta::host(),
             uint16_t meta_port = common::meta::port(),
             std::string const& trophonius_host = common::trophonius::host(),
-            uint16_t trophonius_port = common::trophonius::port());
+            uint16_t trophonius_port = common::trophonius::port(),
+            std::string const& apertus_host = common::apertus::host(),
+            uint16_t apertus_port = common::apertus::port());
       ~State();
 
     public:
@@ -164,14 +166,17 @@ namespace surface
       file_name(std::string const& path);
 
     private:
-      typedef std::unique_ptr<NetworkManager> NetworkManagerPtr;
-      elle::threading::Monitor<NetworkManagerPtr> _network_manager;
-
       ELLE_ATTRIBUTE_R(std::string, trophonius_host);
       ELLE_ATTRIBUTE_R(uint16_t, trophonius_port);
 
       typedef std::unique_ptr<NotificationManager> NotificationManagerPtr;
       elle::threading::Monitor<NotificationManagerPtr> _notification_manager;
+
+      ELLE_ATTRIBUTE_R(std::string, apertus_host);
+      ELLE_ATTRIBUTE_R(uint16_t, apertus_port);
+
+      typedef std::unique_ptr<NetworkManager> NetworkManagerPtr;
+      elle::threading::Monitor<NetworkManagerPtr> _network_manager;
 
       typedef std::unique_ptr<UserManager> UserManagerPtr;
       elle::threading::Monitor<UserManagerPtr> _user_manager;

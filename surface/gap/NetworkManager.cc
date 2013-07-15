@@ -166,7 +166,9 @@ namespace surface
                                    metrics::Reporter& reporter,
                                    metrics::Reporter& google_reporter,
                                    SelfGetter const& self,
-                                   DeviceGetter const& device):
+                                   DeviceGetter const& device,
+                                   std::string const& apertus_host,
+                                   uint16_t apertus_port):
       _meta(meta),
       _reporter(reporter),
       _google_reporter(google_reporter),
@@ -177,7 +179,9 @@ namespace surface
         this->_meta.host(),
         this->_meta.port(),
         this->_meta.token(),
-      }
+      },
+      _apertus_host{apertus_host},
+      _apertus_port{apertus_port}
     {
       ELLE_TRACE_METHOD("");
     }
@@ -676,9 +680,8 @@ namespace surface
       for (auto& r: addresses)
         ELLE_TRACE("-- %s", r->endpoints());
 
-      namespace apertus = common::apertus;
-      addresses.push_back(std::make_shared<FallbackRound>(apertus::host(),
-                                                          apertus::port(),
+      addresses.push_back(std::make_shared<FallbackRound>(this->_apertus_host,
+                                                          this->_apertus_port,
                                                           network_id));
 
       return addresses;
