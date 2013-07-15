@@ -18,6 +18,8 @@
 # include <plasma/meta/Client.hh>
 
 # include <elle/attribute.hh>
+# include <elle/container/set.hh>
+# include <elle/Printable.hh>
 
 # include <string>
 # include <unordered_set>
@@ -136,7 +138,8 @@ namespace surface
       | Transaction update |
       `-------------------*/
     private:
-      struct State
+      struct State:
+        public elle::Printable
       {
         enum
         {
@@ -147,6 +150,7 @@ namespace surface
           finished,
           canceled,
         } state;
+
         int tries;
         OperationId operation;
         std::unordered_set<std::string> files;
@@ -155,6 +159,31 @@ namespace surface
           tries{0},
           operation{0}
         {}
+
+        /*----------.
+        | Printable |
+        `----------*/
+        void
+        print(std::ostream& stream) const
+        {
+          stream << "State::State(";
+          switch (this->state)
+          {
+            case none:
+              stream << "none"; break;
+            case accepting:
+              stream << "accepting"; break;
+            case preparing:
+              stream << "preparing"; break;
+            case running:
+              stream << "running"; break;
+            case finished:
+              stream << "finished"; break;
+            case canceled:
+              stream << "canceled"; break;
+          }
+          stream << ", files: " << files << ")";
+        }
       };
       typedef std::map<std::string, State> StateMap;
       elle::threading::Monitor<StateMap> _states;

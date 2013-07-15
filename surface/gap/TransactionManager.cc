@@ -278,13 +278,20 @@ namespace surface
       ELLE_ASSERT_EQ(transaction.recipient_id, this->_self().id);
 
       if (transaction.accepted == true)
-        throw elle::Exception("Transaction already accepted.");
+        throw elle::Exception(
+          elle::sprintf("transaction %s is already accepted.", transaction));
+
 
       auto s = this->_states[transaction.id];
 
+      if (s.state != State::none && s.state != State::accepting)
+        throw elle::Exception(
+          elle::sprintf("transaction %s has with a bad local state %s",
+                        s.state));
+
       if (s.state == State::none)
       {
-        ELLE_DEBUG("%s: change local state to accepted", transaction);
+        ELLE_DEBUG("%s: change local state %s to accepted", transaction, s);
         s.state = State::accepting;
         this->_states([&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
 
@@ -573,7 +580,7 @@ namespace surface
         this->_network_manager.add_user(tr.network_id, recipient_K);
         this->_network_manager.set_permissions(tr.network_id, recipient_K);
 
-        ELLE_DEBUG("%s: changed local state to preparing", tr);
+        ELLE_DEBUG("%s: change local state %s to preparing", tr, s);
         s.state = State::preparing;
         this->_states([&tr, &s] (StateMap& map) {map[tr.id] = s;});
 
@@ -620,9 +627,9 @@ namespace surface
 
       auto s = this->_states[transaction.id];
 
-      if (s.state == State::preparing)
+      if (s.state != State::running && s.state != State::finished)
       {
-        ELLE_DEBUG("%s: change local state %s to running", s.state, transaction);
+        ELLE_DEBUG("%: change local state %s to running", transaction, s);
         s.state = State::running;
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
@@ -672,7 +679,7 @@ namespace surface
 
       if (state.state != State::finished && state.state != State::running)
       {
-        ELLE_DEBUG("%s: change local state to running", transaction);
+        ELLE_DEBUG("%s: change local state %s to running", transaction, state);
         state.state = State::running;
         this->_states(
           [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
@@ -702,8 +709,9 @@ namespace surface
                 {MKey::count, std::to_string(transaction.files_count)},
                 {MKey::size, std::to_string(transaction.total_size)}});
 
-            ELLE_DEBUG("%s: change local state to finished", transaction);
             auto state = this->_states[transaction.id];
+            ELLE_DEBUG("%s: change local state %s to finished",
+                       transaction, state);
             state.state = State::finished;
             this->_states(
               [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
@@ -731,7 +739,7 @@ namespace surface
       {
         if (state.state != State::none)
           ELLE_TRACE("cannot start download of %s, state is not none: %s",
-                     transaction, (int) state.state);
+                     transaction, state);
         else
           ELLE_TRACE("XXX cannot start upload (should not be printed)");
       }
