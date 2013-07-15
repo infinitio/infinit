@@ -623,7 +623,7 @@ namespace surface
 
       if (s.state != State::running && s.state != State::finished)
       {
-        ELLE_DEBUG("%: change local state %s to running", transaction, s);
+        ELLE_DEBUG("%s: change local state %s to running", transaction, s);
         s.state = State::running;
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
