@@ -1276,9 +1276,10 @@ def configure(cxx_toolkit = None,
     check << runner.status
 
   check_functional = drake.Rule('check/functional')
-  for test in ['sharing/pingpong-notifications.py',
-               'sharing/swaggers.py',
+  for test in ['servers/pingpong-notifications.py',
+               'servers/swaggers.py',
                'servers/online-offline',
+               'sharing/send-file.py',
              ]:
     test = drake.node('tests/functional/%s' % test)
     tests << test
