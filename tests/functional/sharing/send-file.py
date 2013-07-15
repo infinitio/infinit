@@ -545,7 +545,7 @@ if __name__ == '__main__':
 
         sender, recipient = (User(meta_server = meta,
                                   trophonius_server = trophonius,
-        apertus_server = apertus,
+                                  apertus_server = apertus,
                                   register = True),
                              GhostUser(meta_server = meta,
                                        trophonius_server = trophonius,
