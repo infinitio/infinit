@@ -210,8 +210,7 @@ namespace surface
         "network.create.succeed",
         {{MKey::value, response.created_network_id}});
 
-      this->_google_reporter[response.created_network_id].store(
-          "network.create.succeed");
+      this->_google_reporter[this->_self().id].store("network.create.succeed");
 
       // XXX: Device manager.
       if (auto_add)
