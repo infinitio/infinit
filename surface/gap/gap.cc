@@ -1027,7 +1027,7 @@ extern "C"
     ::free(transactions);
   }
 
-  void
+  gap_Status
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files)
@@ -1052,7 +1052,7 @@ extern "C"
       return;
     }
     CATCH_ALL(send_files);
-    (void)ret;
+    return ret;
   }
 
   gap_Status

@@ -364,7 +364,7 @@ extern "C" {
                         gap_on_error_callback_t cb);
 
   /// Send files to a specific user.
-  void
+  gap_Status
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files);
