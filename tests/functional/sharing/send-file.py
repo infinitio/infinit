@@ -474,7 +474,7 @@ if __name__ == '__main__':
         [RandomTempFile(4)] * 10,
         RandomTempFile(400),
         RandomDirectory(file_count = 512, min_file_size = 10, max_file_size = 1024),
-        [RandomDirectory(file_count = 10), RandomTempFile(100), RandomTempFile(40000)],
+        [RandomDirectory(file_count = 10, min_file_size = 128, max_file_size = 2048), RandomTempFile(100), RandomTempFile(40000)],
     ]
 
     import utils
