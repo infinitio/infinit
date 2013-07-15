@@ -53,7 +53,6 @@ class _State:
             'send_files',
             'set_output_dir',
             'get_output_dir',
-            'update_transaction',
             'cancel_transaction',
             'accept_transaction',
             'transactions',
