@@ -305,10 +305,12 @@ namespace surface
       elle::Finally logout([&] {
           try
           {
+            auto id = this->me().id;
+
             this->_meta.logout();
 
-            this->_reporter[this->me().id].store("user.logout");
-            this->_google_reporter[this->me().id].store(
+            this->_reporter[id].store("user.logout");
+            this->_google_reporter[id].store(
               "user.logout",
               {{MKey::session, "end"}});
           }
