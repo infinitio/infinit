@@ -67,6 +67,9 @@ class ApertcpusFactory(Factory):
     def port(self, value):
         self._port = value
 
+    def __str__(self):
+        return "ApertcpusFactory: {}".format(self.port.getHost())
+
 class ApertusMaster(LineReceiver):
     """
     This class is intended to control the Apertus servers.

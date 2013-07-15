@@ -19,13 +19,12 @@ except:
 import os
 import conf
 import apertus
-
-import meta.conf
+from . import conf
 
 class Application(object):
     def __init__(self,
-                 ip = meta.conf.APERTUS_HOST,
-                 port = meta.conf.APERTUS_PORT,
+                 ip = conf.HOST,
+                 port = conf.PORT,
                  runtime_dir = ""):
         self.ip = ip
         self.port = port

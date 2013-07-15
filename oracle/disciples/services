@@ -17,6 +17,7 @@ def reset_user_status():
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 import meta.conf
+import apertus.conf
 
 parser = argparse.ArgumentParser(description="Services launcher")
 
@@ -24,12 +25,6 @@ parser.add_argument(
     '--meta-port',
     type = int,
     default = meta.conf.META_PORT,
-)
-
-parser.add_argument(
-    '--apertus-port',
-    type = int,
-    default = meta.conf.APERTUS_PORT,
 )
 
 parser.add_argument(
@@ -45,21 +40,9 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--longinus-port',
+    '--apertus-port',
     type = int,
-    default = meta.conf.LONGINUS_PORT,
-)
-
-parser.add_argument(
-    '--heartbeat-port',
-    type = int,
-    default = meta.conf.HEARTBEAT_PORT,
-)
-
-parser.add_argument(
-    '--stun-port',
-    type = int,
-    default = meta.conf.STUN_PORT,
+    default = apertus.conf.PORT,
 )
 
 DIR = os.path.abspath(os.path.dirname(__file__))
@@ -67,9 +50,6 @@ DIR = os.path.abspath(os.path.dirname(__file__))
 META_BIN = os.path.join(DIR, 'meta-server')
 APERTUS_BIN = os.path.join(DIR, 'apertus-server')
 TROPHONIUS_BIN = os.path.join(DIR, 'trophonius-server')
-LONGINUS_BIN = os.path.join(DIR, 'longinus-server')
-HEARTBEAT_BIN = os.path.join(DIR, 'heartbeat-server')
-STUN_BIN = os.path.join(DIR, 'stun-server')
 
 def main(argv):
     args = parser.parse_args(argv)
@@ -94,17 +74,6 @@ def main(argv):
 
         processes.append(
             (
-                LONGINUS_BIN,
-                subprocess.Popen(
-                    [LONGINUS_BIN, str(args.longinus_port)],
-                    stdout = open("longinus.stdout", "w"),
-                    stderr = open("longinus.stderr", "w")
-                )
-            )
-        )
-
-        processes.append(
-            (
                 TROPHONIUS_BIN,
                 subprocess.Popen(
                     [
@@ -123,35 +92,12 @@ def main(argv):
             (
                 APERTUS_BIN,
                 subprocess.Popen(
-                    [APERTUS_BIN, '--port', str(args.apertus_port)],
+                    [
+                        APERTUS_BIN,
+                        '--port', str(args.apertus_port),
+                    ],
                     stdout = open("apertus.stdout", "w"),
                     stderr = open("apertus.stderr", "w")
-                )
-            )
-        )
-
-        processes.append(
-            (
-                HEARTBEAT_BIN,
-                subprocess.Popen(
-                    [HEARTBEAT_BIN, '--port', str(args.heartbeat_port)],
-                    stdout = open("heartbeat.stdout", "w"),
-                    stderr = open("heartbeat.stderr", "w")
-                )
-            )
-        )
-
-        processes.append(
-            (
-                STUN_BIN,
-                subprocess.Popen(
-                    [
-                        STUN_BIN,
-                        '--primaryport', str(args.stun_port),
-                        '--mode', 'full'
-                    ],
-                    stdout = open("stunserver.stdout", "w"),
-                    stderr = open("stunserver.stderr", "w")
                 )
             )
         )
@@ -159,9 +105,6 @@ def main(argv):
         print(
             "INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port,
             "INFINIT_META_PORT=%s" % args.meta_port,
-            "INFINIT_LONGINUS_PORT=%s" % args.longinus_port,
-            "INFINIT_HEARTBEAT_PORT=%s" % args.heartbeat_port,
-            "INFINIT_STUN_PORT=%s" % args.stun_port,
         )
 
         running = True
@@ -192,4 +135,4 @@ if __name__ == '__main__':
         main(sys.argv[1:])
     except Exception as e:
         print('%s: fatal error: %s' % (sys.argv[0], e))
-        sys.exit(1)
+        raise e

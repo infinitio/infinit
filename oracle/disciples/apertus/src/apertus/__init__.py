@@ -5,7 +5,7 @@
 Apertus can be instancied with Apertus class.
 
 >>> from apertus import Apertus
->>> app = Apertus(port=8080)
+>>> app = Apertus(port=9899)
 >>> app.run()
 
 """
@@ -16,12 +16,12 @@ import subprocess
 import tempfile
 import time
 
+from . import conf
 
 root_dir = os.path.realpath(os.path.dirname(__file__))
 
 class Apertus:
-    def __init__(self,
-                 port = 0):
+    def __init__(self, port = conf.PORT):
         self.port = port
         self.instance = None
         self.__directory = tempfile.TemporaryDirectory()
@@ -40,7 +40,8 @@ class Apertus:
 # OSError. In python 3.3 FileExistsError is now raised if the file opened
 # in exclusive creation mode ('x') already exists.
             except IOError as e:
-                    pass
+                if e.errno is not errno.ENOENT:
+                    raise
             time.sleep(1)
         self.port = 0
         for line in content:

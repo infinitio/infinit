@@ -1,2 +1,5 @@
 SSL_KEY="key"
 SSL_CERT="cert"
+
+PORT=9899
+HOST="127.0.0.1" #0.0.0.0"
