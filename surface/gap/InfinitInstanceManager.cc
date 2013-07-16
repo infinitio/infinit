@@ -311,7 +311,15 @@ namespace surface
             catch (...)
             {
               ELLE_DEBUG("%s: copy failed", *this);
-              failure_callback();
+              try
+              {
+                failure_callback();
+              }
+              catch (...) //elle::Exception const&)
+              {
+                ELLE_ERR("%s: failure callback threw: %s",
+                         *this, elle::exception_string());
+              }
               throw;
             }
           },
@@ -407,7 +415,15 @@ namespace surface
           catch (...)
           {
             ELLE_ERR("%s: download failed: %s", *this, elle::exception_string());
-            failure_callback();
+            try
+            {
+              failure_callback();
+            }
+            catch (...) //elle::Exception const&)
+            {
+              ELLE_ERR("%s: failure callback threw: %s",
+                       *this, elle::exception_string());
+            }
           }
         },
         true);

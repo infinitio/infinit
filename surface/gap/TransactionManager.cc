@@ -584,8 +584,6 @@ namespace surface
           s.files,
           [&reporter, tr, this]
           {
-            this->_update(tr.id,
-                         plasma::TransactionStatus::started);
             reporter[tr.id].store(
               "transaction.prepared",
               {{MKey::value, tr.id},
@@ -593,11 +591,10 @@ namespace surface
                 {MKey::count, std::to_string(tr.files_count)},
                 {MKey::size, std::to_string(tr.total_size)}});
 
+            this->_update(tr.id, plasma::TransactionStatus::started);
           },
           [&reporter, tr, this]
           {
-            this->_update(tr.id,
-                         plasma::TransactionStatus::failed);
             reporter[tr.id].store(
               "transaction.preparing.failed",
               {{MKey::value, tr.id},
@@ -605,7 +602,7 @@ namespace surface
                 {MKey::count, std::to_string(tr.files_count)},
                 {MKey::size, std::to_string(tr.total_size)}});
 
-
+            this->_update(tr.id, plasma::TransactionStatus::failed);
           });
 
         ELLE_DEBUG("%s: finished preparing %s locally for network %s",
