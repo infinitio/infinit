@@ -446,35 +446,36 @@ namespace surface
       auto& sched = *reactor::Scheduler::scheduler();
       for (auto const& r: addresses)
       {
-        boost::tribool succeed = boost::indeterminate;
-        std::vector<std::unique_ptr<reactor::VThread<bool>>>
-          connection_threads;
+        bool succeed = false;
+        std::vector<std::unique_ptr<reactor::Thread>> connection_threads;
 
         for (std::string const& endpoint: r->endpoints())
         {
-          auto fn = [&, endpoint] () -> bool {
+          auto fn = [&, endpoint]
+          {
             namespace slug = hole::implementations::slug;
             try
             {
               slug_connect(endpoint);
               ELLE_LOG("%s: connection to %s succeed", *this, endpoint);
-              return true;
             }
             catch (slug::AlreadyConnected const& ac)
             {
               ELLE_LOG("%s: connection to %s succeed (we're already connected)",
                        *this, endpoint);
-              return true;
+            }
+            catch (reactor::Terminate const&)
+            {
+              throw ;
             }
             catch (std::exception const& e)
             {
               ELLE_WARN("%s: connection to %s failed: %s", *this,
                         endpoint, elle::exception_string());
-              return false;
             }
           };
-          std::unique_ptr<reactor::VThread<bool>> thread_ptr{
-            new reactor::VThread<bool>{
+          std::unique_ptr<reactor::Thread> thread_ptr{
+            new reactor::Thread {
               sched,
               elle::sprintf("connect_try(%s)", endpoint),
               fn,
@@ -482,32 +483,25 @@ namespace surface
           };
           connection_threads.push_back(std::move(thread_ptr));
         }
-        for (int tries = 0; tries < 10 && indeterminate(succeed); tries++)
-        {
-          size_t failed = 0;
+
+        elle::Finally _cleanup([&] {
           for (auto& thread: connection_threads)
-          {
-            if (thread->done())
-            {
-              if (thread->result() == false)
-                failed += 1;
-              else if (thread->result() == true)
-              {
-                succeed = true;
-                break;
-              }
-            }
-            if (failed == connection_threads.size())
-            {
-              succeed = false;
-              break;
-            }
-          }
-          reactor::Sleep pause{sched, 1_sec};
-          pause.run();
+            thread->terminate_now();
+        });
+
+        reactor::Sleep{sched, 1_sec}.run();
+        if (slug.hosts().empty())
+        {
+          auto _this_thread = sched.current();
+          ELLE_DEBUG("waiting for new host");
+          succeed = _this_thread->wait(slug.new_connected_host(), 10_sec);
+          ELLE_DEBUG("finished waiting for new host");
         }
-        for (auto& thread: connection_threads)
-          thread->terminate_now();
+        else
+        {
+          succeed = true;
+        }
+
         if (succeed)
         {
           // Connection successful
@@ -517,13 +511,7 @@ namespace surface
         else if (not succeed)
         {
           // Connection failed
-          ELLE_TRACE("connection round(%s) failed", r->endpoints());
-          continue;
-        }
-        else
-        {
-          // Connection status failed to be determined this is a timeout
-          ELLE_TRACE("connection round(%s) timeout", r->endpoints());
+          ELLE_TRACE("connection round(%s) failed/timeout", r->endpoints());
           continue;
         }
       }
