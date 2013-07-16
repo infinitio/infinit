@@ -54,12 +54,12 @@ namespace plasma
     public:
       bool operator ==(Exception const& e) const;
       bool operator ==(Error const& error) const;
+      bool operator !=(Error const& error) const;
     };
 
     /////////////////////////
     struct DebugResponse : Response
-    {
-    };
+    {};
 
     struct LoginResponse : Response
     {

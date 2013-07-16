@@ -264,6 +264,12 @@ namespace plasma
       return (this->err == error);
     }
 
+    bool
+    Exception::operator !=(Error const& error) const
+    {
+      return !(*this == error);
+    }
+
     namespace json = elle::format::json;
 
      // - Ctor & dtor ----------------------------------------------------------

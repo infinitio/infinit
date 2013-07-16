@@ -409,6 +409,12 @@ namespace surface
     TransactionManager::_on_cancel_transaction(Transaction const& transaction)
     {
       ELLE_TRACE_SCOPE("%s: cancel callback for %s", *this, transaction);
+
+      this->_states(
+        [&transaction] (StateMap& map) {
+          map[transaction.id].state = State::canceled;
+        });
+
       /// XXX: False means that peer of the deleter will never remo
       this->_network_manager.delete_(transaction.network_id, false);
     }
@@ -594,14 +600,22 @@ namespace surface
           s.files,
           [&reporter, tr, this]
           {
-            reporter[tr.id].store(
-              "transaction.prepared",
-              {{MKey::value, tr.id},
-                {MKey::network, tr.network_id},
-                {MKey::count, std::to_string(tr.files_count)},
-                {MKey::size, std::to_string(tr.total_size)}});
+            try
+            {
+              this->_update(tr.id, plasma::TransactionStatus::started);
 
-            this->_update(tr.id, plasma::TransactionStatus::started);
+              reporter[tr.id].store(
+                "transaction.prepared",
+                {{MKey::value, tr.id},
+                 {MKey::network, tr.network_id},
+                 {MKey::count, std::to_string(tr.files_count)},
+                 {MKey::size, std::to_string(tr.total_size)}});
+            }
+            catch (plasma::meta::Exception const& e)
+            {
+              if (e != plasma::meta::Error::transaction_operation_not_permitted)
+                throw;
+            }
           },
           [&reporter, tr, this]
           {
@@ -611,14 +625,22 @@ namespace surface
             if (s.state == State::canceled)
               return;
 
-            reporter[tr.id].store(
-              "transaction.preparing.failed",
-              {{MKey::value, tr.id},
-                {MKey::network, tr.network_id},
-                {MKey::count, std::to_string(tr.files_count)},
-                {MKey::size, std::to_string(tr.total_size)}});
+            try
+            {
+              reporter[tr.id].store(
+                "transaction.preparing.failed",
+                {{MKey::value, tr.id},
+                 {MKey::network, tr.network_id},
+                 {MKey::count, std::to_string(tr.files_count)},
+                 {MKey::size, std::to_string(tr.total_size)}});
 
-            this->_update(tr.id, plasma::TransactionStatus::failed);
+              this->_update(tr.id, plasma::TransactionStatus::failed);
+            }
+            catch (plasma::meta::Exception const& e)
+            {
+              if (e != plasma::meta::Error::transaction_operation_not_permitted)
+                throw;
+            }
           });
 
         ELLE_DEBUG("%s: finished preparing %s locally for network %s",
@@ -658,10 +680,10 @@ namespace surface
           transaction.network_id);
 
         this->_reporter[transaction.id].store(
-            "transaction.transfering",
-            {{MKey::attempt, std::to_string(s.tries)},
-            {MKey::network,transaction.network_id},
-            {MKey::value, transaction.id}});
+          "transaction.transfering",
+          {{MKey::attempt, std::to_string(s.tries)},
+           {MKey::network,transaction.network_id},
+           {MKey::value, transaction.id}});
       }
       else
       {
@@ -701,28 +723,40 @@ namespace surface
           this->_output_dir,
           [&reporter, transaction, this]
           {
-            auto timestamp_now =
-              std::chrono::duration_cast<std::chrono::seconds>(
-                std::chrono::system_clock::now().time_since_epoch());
-            auto timestamp_tr = std::chrono::duration<double>(
-              transaction.timestamp);
-            double duration = timestamp_now.count() - timestamp_tr.count();
-            reporter[transaction.id].store(
-              "transaction.transfered",
-              {{MKey::duration, std::to_string(duration)},
-                {MKey::value, transaction.id},
-                {MKey::network, transaction.network_id},
-                {MKey::count, std::to_string(transaction.files_count)},
-                {MKey::size, std::to_string(transaction.total_size)}});
+            try
+            {
+              this->_update(transaction.id, plasma::TransactionStatus::finished);
+
+              auto timestamp_now =
+                std::chrono::duration_cast<std::chrono::seconds>(
+                  std::chrono::system_clock::now().time_since_epoch());
+              auto timestamp_tr = std::chrono::duration<double>(
+                transaction.timestamp);
+              double duration = timestamp_now.count() - timestamp_tr.count();
+              reporter[transaction.id].store(
+                "transaction.transfered",
+                {{MKey::duration, std::to_string(duration)},
+                 {MKey::value, transaction.id},
+                 {MKey::network, transaction.network_id},
+                 {MKey::count, std::to_string(transaction.files_count)},
+                 {MKey::size, std::to_string(transaction.total_size)}});
+            }
+            catch (plasma::meta::Exception const& e)
+            {
+              if (e != plasma::meta::Error::transaction_operation_not_permitted)
+                throw;
+            }
 
             auto state = this->_states[transaction.id];
             ELLE_DEBUG("%s: change local state %s to finished",
                        transaction, state);
             state.state = State::finished;
             this->_states(
-              [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
-
-            this->_update(transaction.id, plasma::TransactionStatus::finished);
+              [&transaction, &state] (StateMap& map)
+              {
+                map[transaction.id] = state;
+              }
+            );
           },
           [&reporter, transaction, this]
           {
@@ -732,13 +766,22 @@ namespace surface
             if (s.state == State::canceled)
               return;
 
-            this->_update(transaction.id, plasma::TransactionStatus::failed);
-            reporter[transaction.id].store(
-              "transaction.transfering.failed",
-              {{MKey::value, transaction.id},
-                {MKey::network, transaction.network_id},
-                {MKey::count, std::to_string(transaction.files_count)},
-                {MKey::size, std::to_string(transaction.total_size)}});
+            try
+            {
+              reporter[transaction.id].store(
+                "transaction.transfering.failed",
+                {{MKey::value, transaction.id},
+                 {MKey::network, transaction.network_id},
+                 {MKey::count, std::to_string(transaction.files_count)},
+                 {MKey::size, std::to_string(transaction.total_size)}});
+
+              this->_update(transaction.id, plasma::TransactionStatus::failed);
+            }
+            catch (plasma::meta::Exception const& e)
+            {
+              if (e != plasma::meta::Error::transaction_operation_not_permitted)
+                throw;
+            }
           });
       }
       else
