@@ -595,6 +595,12 @@ namespace surface
           },
           [&reporter, tr, this]
           {
+            // If the transaction was already marked as cancelled, do not mark
+            // it as failed.
+            auto s = this->_states[tr.id];
+            if (s.state == State::canceled)
+              return;
+
             reporter[tr.id].store(
               "transaction.preparing.failed",
               {{MKey::value, tr.id},
