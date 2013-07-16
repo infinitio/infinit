@@ -15,6 +15,23 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+// XXX Metrics are always targetting the sandboxes.
+#define COMMON_METRICS_INVESTORS_GOOGLE_TID "UA-31957100-3"
+
+#define COMMON_METRICS_GOOGLE_TID "UA-31957100-5"
+
+#define COMMON_METRICS_KISSMETRICS_TID \
+   "0a79eca82697f0f7f0e6d5183daf8f1ebb81b39e"
+
+#define COMMON_METRICS_KISSMETRICS_USER_TID \
+   "63c77a385e9bf07550da9135b721963ac24d9e12"
+
+#define COMMON_METRICS_KISSMETRICS_NETWORK_TID \
+   "86b2aa67570c82874a96e73af61027496c8fb9e0"
+
+#define COMMON_METRICS_KISSMETRICS_TRANSACTION_TID \
+    "d953090a46a854e355d69335ae30c375498a05b6"
+
 #define COMMON_DEFAULT_INFINIT_HOME ".infinit"
 #define COMMON_DEFAULT_META_PROTOCOL "http"
 #define COMMON_DEFAULT_META_HOST "meta.api.development.infinit.io"
@@ -103,7 +120,6 @@
 # define COMMON_APERTUS_PORT \
   BOOST_PP_CAT(VAR_PREFIX, _APERTUS_PORT) \
 /**/
-
 
 namespace path = elle::os::path;
 
@@ -458,8 +474,6 @@ namespace common
   }
 
 
-  //- scheduled for deletion --------------------------------------------------
-
   namespace metrics
   {
     std::string const&
@@ -479,13 +493,13 @@ namespace common
         80,
         path::join(common::infinit::home(), "ga.id"),
         elle::os::getenv("INFINIT_METRICS_INVESTORS_GOOGLE_TID",
-                         "UA-31957100-3"),
+                         COMMON_METRICS_INVESTORS_GOOGLE_TID),
       };
       return google;
     }
 
     Info const&
-    google_info()
+    google_info(Kind const kind)
     {
       static Info google = {
         "google",
@@ -493,23 +507,55 @@ namespace common
         80,
         path::join(common::infinit::home(), "ga.id"),
         elle::os::getenv("INFINIT_METRICS_GOOGLE_TID",
-                         "UA-31957100-5"),
+                         COMMON_METRICS_GOOGLE_TID),
       };
       return google;
     }
 
+
     Info const&
-    km_info()
+    kissmetrics_info(Kind const kind)
     {
-      static Info km = {
+      static Info const all = {
         "kissmetrics",
         "trk.kissmetrics.com",
         80,
         path::join(common::infinit::home(), "km.id"),
         elle::os::getenv("INFINIT_METRICS_KISSMETRICS_TID",
-                         "0a79eca82697f0f7f0e6d5183daf8f1ebb81b39e"),
+                         COMMON_METRICS_KISSMETRICS_TID),
       };
-      return km;
+      static Info const user = {
+        "kissmetrics",
+        "trk.kissmetrics.com",
+        80,
+        path::join(common::infinit::home(), "km.id"),
+        elle::os::getenv("INFINIT_METRICS_KISSMETRICS_USER_TID",
+                         COMMON_METRICS_KISSMETRICS_USER_TID),
+      };
+      static Info const network = {
+        "kissmetrics",
+        "trk.kissmetrics.com",
+        80,
+        path::join(common::infinit::home(), "km.id"),
+        elle::os::getenv("INFINIT_METRICS_KISSMETRICS_NETWORK_TID",
+                         COMMON_METRICS_KISSMETRICS_NETWORK_TID),
+      };
+      static Info const transaction = {
+        "kissmetrics",
+        "trk.kissmetrics.com",
+        80,
+        path::join(common::infinit::home(), "km.id"),
+        elle::os::getenv("INFINIT_METRICS_KISSMETRICS_TRANSACTION_TID",
+                         COMMON_METRICS_KISSMETRICS_TRANSACTION_TID),
+      };
+      switch (kind)
+      {
+      case Kind::all: return all;
+      case Kind::user: return user;
+      case Kind::network: return network;
+      case Kind::transaction: return transaction;
+      }
+      elle::unreachable();
     }
   }
 

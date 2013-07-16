@@ -188,14 +188,23 @@ namespace common
       std::string const tracking_id;
     };
 
+    /// Kind of metrics to be reported.
+    enum class Kind
+    {
+      all,
+      user,
+      network,
+      transaction
+    };
+
     Info const&
     google_info_investors();
 
     Info const&
-    google_info();
+    google_info(Kind const kind = Kind::all);
 
     Info const&
-    km_info();
+    kissmetrics_info(Kind const kind = Kind::all);
 
     /// Path to the file storing fallbacked metrics.
     std::string const&
