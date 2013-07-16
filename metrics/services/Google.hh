@@ -16,7 +16,7 @@ namespace metrics
       Google(std::string const& pkey,
              common::metrics::Info const& info);
 
-    private:
+    protected:
       void
       _send(TimeMetricPair metric) override;
 
