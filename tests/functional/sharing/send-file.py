@@ -312,7 +312,6 @@ class GhostUser(User):
                          register = True)
 
     def __enter__(self):
-        assert self.email is None
         # Turn the user to a new ghost.
         self.email = email_generator(prefix = "recipient", size = 5)
         self._init_state()
