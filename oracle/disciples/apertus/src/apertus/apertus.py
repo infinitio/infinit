@@ -1,11 +1,85 @@
 from __future__ import print_function
 
+from collections import Counter
+
 from twisted.internet.protocol import Factory, Protocol
 from twisted.protocols.basic import LineReceiver
 from twisted.internet import reactor
+from twisted.internet.endpoints import TCP4ClientEndpoint
 from pprint import pprint
 
+try:
+    from pymongo.objectid import ObjectId
+except ImportError:
+    from bson.objectid import ObjectId
+
 import json
+from functools import partial
+
+class ProxyConnection(LineReceiver):
+    delimiter = "\n"
+    def __init__(self, parent):
+        self.parent = parent
+
+    def lineReceived(self, line):
+        print(self.lineReceived, line)
+        data = json.loads(line)
+        self.parent.parent.sendLine(line)
+        self.transport.loseConnection()
+
+    def connectionLost(self, reason):
+        print(self.connectionLost, reason.getErrorMessage())
+        self.parent.stopFactory()
+
+class ProxyFactory(Factory):
+    def __init__(self, parent):
+        self.parent = parent
+
+    def buildProtocol(self, addr):
+        return ProxyConnection(self)
+
+class Proxyfier(LineReceiver):
+    delimiter = "\n"
+    def __init__(self, parent):
+        self.parent = parent
+
+    def lineReceived(self, line):
+        data = json.loads(line)
+        record = self.parent.instances.find_one({"ids": data["_id"]})
+        print("record is", record)
+        if record is not None:
+            host, port = record['endpoints'][0]
+            client = TCP4ClientEndpoint(reactor, host, port)
+        else:
+            num = Counter()
+            for instance in self.parent.instances.find():
+                num[instance["_id"]] -= len(instance['ids'])
+            _id, value = num.most_common(1)[0]
+            print("found", _id, "with", value, "instances")
+            record = self.parent.instances.find_one({"_id": ObjectId(_id)})
+            host, port = record["endpoints"][0]
+            record["ids"].append(data["_id"])
+            self.parent.instances.save(record)
+            client = TCP4ClientEndpoint(reactor, host, port)
+        connection = client.connect(ProxyFactory(self))
+        connection.addCallback(partial(self._connected, data["_id"], connection))
+
+    def _connected(self, id, connection, proto):
+        print(self._connected, id, connection)
+        data = {
+                'request': 'add_link',
+                '_id' : id,
+        }
+        msg = json.dumps(data)
+        print("send", msg)
+        proto.sendLine(msg)
+
+class Proxy(Factory):
+    def __init__(self, instances):
+        self.instances = instances
+
+    def buildProtocol(self, addr):
+        return Proxyfier(self)
 
 class Apertcpus(Protocol):
     def __init__(self, factory, addr):
@@ -134,17 +208,23 @@ class ApertusMaster(LineReceiver):
         request = data["request"]
         hdl = getattr(self, "handle_{}".format(request), None)
         if hdl is not None:
+            print(hdl)
             hdl(data)
         else:
             print("unhandled command {}".format(request))
 
 class Factory(Factory):
-    def __init__(self, addr, clients):
+    def __init__(self, parent, addr, clients):
         self.ap_addr = addr
         self.slaves = clients
+        self.parent = parent
 
     def buildProtocol(self, addr):
         return ApertusMaster(self.ap_addr, self)
+
+    def stopFactory(self):
+        # remove from db.
+        self.parent.remove_from_db()
 
     def __str__(self):
         return "<Factory({})>".format(self.ap_addr)
