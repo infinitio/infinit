@@ -128,6 +128,7 @@ namespace hole
         ELLE_ATTRIBUTE_R(std::set<std::shared_ptr<Host>>, pending);
         /// Signal that a new host was registered.
         ELLE_ATTRIBUTE_RX(reactor::Signal, new_host);
+        ELLE_ATTRIBUTE_RX(reactor::Signal, new_connected_host);
 
       /*-------.
       | Server |

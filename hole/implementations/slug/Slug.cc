@@ -1183,6 +1183,7 @@ namespace hole
         this->_hosts[*host->remote_passport()] = host;
         this->_pending.erase(host);
         this->_new_host.signal();
+        this->_new_connected_host.signal();
       }
 
       void
