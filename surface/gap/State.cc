@@ -2,7 +2,6 @@
 
 #include <common/common.hh>
 
-// #include <etoile/portal/Portal.hh>
 #include <lune/Identity.hh>
 #include <lune/Dictionary.hh>
 
@@ -16,12 +15,10 @@
 #include <metrics/services/Google.hh>
 #include <metrics/services/KISSmetrics.hh>
 
-
-// #include <elle/memory.hh>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <fstream>
-//#include <iterator>
 
 #include <openssl/sha.h>
 
@@ -55,6 +52,51 @@ namespace surface
       }
     }
 
+    namespace
+    {
+      enum class MetricKind
+      {
+        user,
+        network,
+        transaction
+      };
+
+      template <common::metrics::Kind kind, typename Service>
+      struct MetricKindService:
+          public Service
+      {
+        template <typename... Args>
+        MetricKindService(Args&&... args):
+          Service{std::forward<Args>(args)...}
+        {}
+        static
+        std::string
+        _prefix()
+        {
+          switch (kind)
+          {
+          case common::metrics::Kind::all:
+            return "";
+          case common::metrics::Kind::user:
+            return "user";
+          case common::metrics::Kind::network:
+            return "network";
+          case common::metrics::Kind::transaction:
+            return "transaction";
+          }
+          elle::unreachable();
+        }
+
+        void
+        _send(metrics::TimeMetricPair metric) override
+        {
+          static const std::string prefix = _prefix();
+          if (prefix.empty() or
+              boost::starts_with(metric.second.at(MKey::tag), prefix))
+            Service::_send(std::move(metric));
+        }
+      };
+    }
     // - State ----------------------------------------------------------------
     State::State(std::string const& meta_host,
                  uint16_t meta_port,
@@ -138,13 +180,28 @@ namespace surface
         identity_infos.close();
       }
 
-      this->_google_reporter.add_service_class<metrics::services::Google>(
-        common::metrics::google_info_investors());
+      {
+        using metrics::services::Google;
+        using metrics::services::KISSmetrics;
+        using namespace common::metrics;
 
-      this->_reporter.add_service_class<metrics::services::Google>(
-        common::metrics::google_info());
-      this->_reporter.add_service_class<metrics::services::KISSmetrics>(
-        common::metrics::km_info());
+        this->_google_reporter.add_service_class<Google>(google_info_investors());
+
+        this->_reporter.add_service_class<Google>(google_info());
+        this->_reporter.add_service_class<KISSmetrics>(kissmetrics_info());
+
+        typedef MetricKindService<Kind::user, KISSmetrics> KMUser;
+        this->_reporter.add_service_class<KMUser>(
+          kissmetrics_info(Kind::user));
+
+        typedef MetricKindService<Kind::network, KISSmetrics> KMNetwork;
+        this->_reporter.add_service_class<KMNetwork>(
+          kissmetrics_info(Kind::network));
+
+        typedef MetricKindService<Kind::transaction, KISSmetrics> KMTransaction;
+        this->_reporter.add_service_class<KMTransaction>(
+          kissmetrics_info(Kind::transaction));
+      }
     }
 
     std::string const&
