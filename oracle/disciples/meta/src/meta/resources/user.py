@@ -41,28 +41,32 @@ def user_by_id(_id, ensure_user_exists = True):
     assert isinstance(_id, database.ObjectId)
     user = database.users().find_one(_id)
 
-    ensure_user_exists and __ensure_user_exists(user)
+    if ensure_user_exists:
+        __ensure_user_exists(user)
 
     return user
 
 def user_by_public_key(key, ensure_user_exists = True):
     user = database.users().find_one({'public_key': key})
 
-    ensure_user_exists and __ensure_user_exists(user)
+    if ensure_user_exists:
+        __ensure_user_exists(user)
 
     return user
 
 def user_by_email(email, ensure_user_exists = True):
     user = database.users().find_one({'email': email})
 
-    ensure_user_exists and __ensure_user_exists(user)
+    if ensure_user_exists:
+        __ensure_user_exists(user)
 
     return user
 
 def user_by_handle(handle, ensure_user_exists = True):
     user = database.users().find_one({'lw_handle': handle.lower()})
 
-    ensure_user_exists and __ensure_user_exists(user)
+    if ensure_user_exists:
+        __ensure_user_exists(user)
 
     return user
 
@@ -359,11 +363,14 @@ class One(Page):
     def GET(self, id_or_email):
         id_or_email = id_or_email.lower()
         if '@' in id_or_email:
-            user = user_by_email(id_or_email)
+            user = user_by_email(id_or_email, ensure_user_exists = False)
         else:
-            user = user_by_id(database.ObjectId(id_or_email))
-
-        return self.success(extract_user_fields(user))
+            user = user_by_id(database.ObjectId(id_or_email),
+                              ensure_user_exists = False)
+        if user is None:
+            return self.error(error.UNKNOWN_USER)
+        else:
+            return self.success(extract_user_fields(user))
 
 class FromPublicKey(Page):
     __pattern__ = "/user/from_public_key"
