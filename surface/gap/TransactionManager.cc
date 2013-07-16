@@ -275,7 +275,6 @@ namespace surface
         throw elle::Exception(
           elle::sprintf("transaction %s is already accepted.", transaction));
 
-
       auto s = this->_states[transaction.id];
 
       if (s.state != State::none && s.state != State::accepting)
@@ -628,6 +627,8 @@ namespace surface
         this->_states(
           [&transaction, &s] (StateMap& map) {map[transaction.id] = s;});
 
+        // XXX.
+        this->_network_manager.ensure_launched(transaction.network_id);
         // The progress will wait for the start_progress signal, so it's
         // required to start it before the connect_try.
         this->_network_manager.infinit_instance_manager().run_progress(
@@ -674,6 +675,9 @@ namespace surface
           [&transaction, &state] (StateMap& map) {map[transaction.id] = state;});
 
         auto& reporter = this->_reporter;
+
+        // XXX
+        this->_network_manager.ensure_launched(transaction.network_id);
 
         this->_network_manager.download_files(
           transaction.network_id,

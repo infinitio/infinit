@@ -707,6 +707,15 @@ namespace surface
         this->one(network_id).descriptor);
     }
 
+    void
+    NetworkManager::ensure_launched(std::string const& network_id)
+    {
+      if (this->_infinit_instance_manager.is_running(network_id))
+        return;
+
+      launch(network_id);
+    }
+
     /*----------.
     | Printable |
     `----------*/

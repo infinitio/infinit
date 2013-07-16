@@ -321,8 +321,7 @@ namespace surface
     void
     InfinitInstanceManager::run_progress(std::string const& network_id)
     {
-      ELLE_TRACE_SCOPE("%s: run progress for network %s",
-                       *this, network_id);
+      ELLE_TRACE_SCOPE("%s: run progress for network %s", *this, network_id);
 
       auto& instance = this->_instance(network_id);
 
@@ -426,9 +425,10 @@ namespace surface
     }
 
     bool
-    InfinitInstanceManager::_connect_try(hole::implementations::slug::Slug& slug,
-                                         std::vector<std::shared_ptr<Round>> const& addresses,
-                                         bool sender)
+    InfinitInstanceManager::_connect_try(
+      hole::implementations::slug::Slug& slug,
+      std::vector<std::shared_ptr<Round>> const& addresses,
+      bool sender)
     {
       // XXX: We only use the forwarder at the moment.
       ELLE_ASSERT_EQ(sender, false);
@@ -555,6 +555,12 @@ namespace surface
           // The progress will wait for the start_progress signal
           instance.start_progress.signal_one();
         }, true);
+    }
+
+    bool
+    InfinitInstanceManager::is_running(std::string const& network_id)
+    {
+      return this->_instances.find(network_id) != this->_instances.end();
     }
 
     InfinitInstance&

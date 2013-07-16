@@ -85,6 +85,8 @@ namespace surface
       void
       launch(std::string const& network_id);
 
+      void
+      ensure_launched(std::string const& network_id);
 
       /*------------.
       |  Attributes |

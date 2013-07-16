@@ -152,6 +152,9 @@ namespace surface
                   std::vector<std::shared_ptr<Round>> const& addresses,
                   bool sender);
 
+      bool
+      is_running(std::string const& network_id);
+
     private:
       InfinitInstance&
       _instance(std::string const& network_id);
