@@ -102,8 +102,6 @@ namespace surface
       {
         ELLE_TRACE_SCOPE("%s: attach %s to %s", etoile, object, path);
 
-        elle::Finally yield_guard{[] { yield(); }};
-
         boost::filesystem::path p(path);
         std::string way = p.parent_path().generic_string();
         if (way.empty()) way = std::string(1, elle::system::path::separator);
@@ -163,6 +161,8 @@ namespace surface
 
         // Release the identifier tracking.
         discard_directory.abort();
+
+        yield();
 
         return (directory);
       }
@@ -295,8 +295,6 @@ namespace surface
 
           while (stream.good())
           {
-            elle::Finally yield_guard{[] { yield(); }};
-
             buffer.size(N);
 
             stream.read((char*)buffer.mutable_contents(), buffer.size());
@@ -306,6 +304,8 @@ namespace surface
             etoile::wall::File::write(etoile, file, offset, buffer);
 
             offset += buffer.size();
+
+            yield();
           }
 
           stream.close();
