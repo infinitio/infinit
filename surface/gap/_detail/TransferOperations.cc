@@ -23,6 +23,8 @@
 
 #include <lune/Descriptor.hh>
 
+#include <reactor/scheduler.hh>
+
 #include <elle/Exception.hh>
 #include <elle/finally.hh>
 #include <elle/log.hh>
@@ -38,6 +40,15 @@ namespace surface
   {
     namespace operation_detail
     {
+      static
+      void
+      yield()
+      {
+        reactor::Scheduler* sched = reactor::Scheduler::scheduler();
+        ELLE_ASSERT(sched != nullptr);
+        sched->current()->yield();
+      }
+
       namespace user
       {
         void
@@ -90,6 +101,8 @@ namespace surface
              std::string const& path)
       {
         ELLE_TRACE_SCOPE("%s: attach %s to %s", etoile, object, path);
+
+        elle::Finally yield_guard{[] { yield(); }};
 
         boost::filesystem::path p(path);
         std::string way = p.parent_path().generic_string();
@@ -282,6 +295,8 @@ namespace surface
 
           while (stream.good())
           {
+            elle::Finally yield_guard{[] { yield(); }};
+
             buffer.size(N);
 
             stream.read((char*)buffer.mutable_contents(), buffer.size());
@@ -430,7 +445,7 @@ namespace surface
                 std::string file(
                   iterator->path().string().substr(root.length()));
 
-                ELLE_DEBUG("file %s", file.c_str());
+                ELLE_DEBUG("copying file %s", file.c_str());
 
                 auto _size = create(etoile, descriptor, subject,
                                     iterator->path().string(), file);
