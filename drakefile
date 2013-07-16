@@ -1267,7 +1267,10 @@ def configure(cxx_toolkit = None,
   for test in ['servers/pingpong-notifications.py',
                'servers/swaggers.py',
                'servers/online-offline',
-               'sharing/send-file.py',
+               'sharing/send-file/send-file.py',
+               'sharing/send-file/early-accept.py',
+               'sharing/send-file/forwarder.py',
+               'sharing/send-file/invitation.py',
              ]:
     test = drake.node('tests/functional/%s' % test)
     tests << test
