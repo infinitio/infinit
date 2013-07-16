@@ -103,16 +103,18 @@ namespace surface
 
     TransactionManager::~TransactionManager()
     {
+      ELLE_TRACE_METHOD("");
       try
       {
         ELLE_TRACE("destroying the transaction manager");
         this->clear();
       }
-      catch (...)
+      catch (std::runtime_error const&)
       {
         ELLE_WARN("couldn't clear the transaction manager: %s",
                   elle::exception_string());
       }
+      ELLE_TRACE_METHOD("ended");
     }
 
     void
@@ -340,7 +342,15 @@ namespace surface
       elle::Finally scope_exit{
         [&, transaction] {
           // XXX why not delete local files ?
-          this->_network_manager.delete_(transaction.network_id, false);
+          try
+          {
+            this->_network_manager.delete_(transaction.network_id, false);
+          }
+          catch (elle::Exception const& e)
+          {
+            ELLE_ERR("failed to delete network(%s): %s",
+                     transaction.network_id, elle::exception_string());
+          }
         }};
 
       std::string author = (
