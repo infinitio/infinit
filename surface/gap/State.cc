@@ -240,7 +240,7 @@ namespace surface
       {
         this->logout();
       }
-      catch (...)
+      catch (std::runtime_error const&)
       {
         ELLE_WARN("Couldn't logout: %s", elle::exception_string());
       }
