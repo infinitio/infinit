@@ -61,8 +61,8 @@ class Apertus:
         command.append(self.__directory.name)
         self.instance = subprocess.Popen(
             command,
-            #stdout = subprocess.PIPE,
-            #stderr = subprocess.PIPE,
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
         )
         self.__read_port_file()
         return self

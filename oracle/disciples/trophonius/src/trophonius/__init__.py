@@ -47,8 +47,8 @@ class Trophonius:
              "--runtime-dir", self.__directory.name,
              "--timeout", str(self.timeout),
             ],
-            # stdout = subprocess.PIPE,
-            # stderr = subprocess.STDOUT,
+            stdout = subprocess.PIPE,
+            stderr = subprocess.STDOUT,
         )
         while True:
             try:
