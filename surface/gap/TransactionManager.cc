@@ -114,7 +114,7 @@ namespace surface
         ELLE_WARN("couldn't clear the transaction manager: %s",
                   elle::exception_string());
       }
-      ELLE_TRACE_METHOD("ended");
+      ELLE_TRACE("%s: ~TransactionManager() exited", *this);
     }
 
     void
