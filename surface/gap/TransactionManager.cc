@@ -9,6 +9,8 @@
 
 #include <common/common.hh>
 
+#include <reactor/exception.hh>
+
 #include <elle/assert.hh>
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
@@ -152,49 +154,58 @@ namespace surface
         elle::sprintf("send files %s", recipient_id_or_email),
         [this, recipient_id_or_email, files]
         {
-          auto total_size =
-            [] (std::unordered_set<std::string> const& files) -> size_t
-            {
-              ELLE_TRACE_FUNCTION(files);
-
-              size_t size = 0;
-              {
-                for (auto const& file: files)
-                {
-                  auto _size = elle::os::file::size(file);
-                  ELLE_DEBUG("%s: %i", file, _size);
-                  size += _size;
-                }
-              }
-              return size;
-            };
-
-          int size = total_size(files);
-
-          std::string first_file = fs::path(*(files.cbegin())).filename().string();
-
-          elle::utility::Time time; time.Current();
-          std::string network_name = elle::sprintf("%s-%s",
-                                                   recipient_id_or_email,
-                                                   time.nanoseconds);
-
-          std::string network_id = this->_network_manager.create(network_name);
-          // XXX add locally
-
-          // Preparing the network before sending the notification ensures that the
-          // recipient can't prepare it by himself.
-          this->_network_manager.prepare(network_id);
-          this->_network_manager.to_directory(
-            network_id,
-            common::infinit::network_shelter(this->_self().id, network_id));
-
-          plasma::meta::CreateTransactionResponse res;
-          ELLE_DEBUG("Send %s (%sB) to %s via network %s",
-                     first_file, size, recipient_id_or_email, network_id);
-
-          std::string transaction_id = "";
           try
           {
+            auto total_size =
+              [] (std::unordered_set<std::string> const& files) -> size_t
+              {
+                ELLE_TRACE_FUNCTION(files);
+
+                size_t size = 0;
+                {
+                  for (auto const& file: files)
+                  {
+                    auto _size = elle::os::file::size(file);
+                    ELLE_DEBUG("%s: %i", file, _size);
+                    size += _size;
+                  }
+                }
+                return size;
+              };
+
+            int size = total_size(files);
+
+            std::string first_file = fs::path(*(files.cbegin())).filename().string();
+
+            elle::utility::Time time; time.Current();
+            std::string network_name = elle::sprintf("%s-%s",
+                                                     recipient_id_or_email,
+                                                     time.nanoseconds);
+
+            std::string network_id = this->_network_manager.create(network_name);
+            // XXX add locally
+            bool destroy_locally = false;
+            elle::Finally network_guard(
+              [this, network_id, &destroy_locally] ()
+              {
+                this->_network_manager.delete_(network_id, destroy_locally);
+              }
+              );
+
+            // Preparing the network before sending the notification ensures that the
+            // recipient can't prepare it by himself.
+            this->_network_manager.prepare(network_id);
+            this->_network_manager.to_directory(
+              network_id,
+              common::infinit::network_shelter(this->_self().id, network_id));
+
+            destroy_locally = true;
+
+            plasma::meta::CreateTransactionResponse res;
+            ELLE_DEBUG("Send %s (%sB) to %s via network %s",
+                       first_file, size, recipient_id_or_email, network_id);
+
+            std::string transaction_id = "";
             res = this->_meta.create_transaction(recipient_id_or_email,
                                                  first_file,
                                                  files.size(),
@@ -202,8 +213,15 @@ namespace surface
                                                  fs::is_directory(first_file),
                                                  network_id,
                                                  this->_device().id);
-
             transaction_id = res.created_transaction_id;
+
+            elle::Finally transaction_guard(
+              [this, transaction_id]
+              {
+                this->cancel_transaction(transaction_id);
+              }
+            );
+
 
             auto s = this->_states[transaction_id];
             s.files = files;
@@ -214,17 +232,21 @@ namespace surface
             auto recipient = this->_user_manager.one(recipient_id_or_email);
             ELLE_TRACE("add user %s to network %s", recipient, network_id)
               this->_meta.network_add_user(network_id, recipient.id);
+
+            network_guard.abort();
+            transaction_guard.abort();
+
+            this->_update_remaining_invitations(res.remaining_invitations);
+          }
+          catch (reactor::Terminate const&)
+          {
+            throw;
           }
           catch (...)
           {
-            ELLE_DEBUG("transaction creation failed: %s", elle::exception_string());
-            if (!transaction_id.empty())
-              this->cancel_transaction(transaction_id);
-            else
-              this->_network_manager.delete_(network_id, false);
-            throw;
+            ELLE_DEBUG("transaction creation failed: %s",
+                       elle::exception_string());
           }
-          this->_update_remaining_invitations(res.remaining_invitations);
         },
         true);
     }
