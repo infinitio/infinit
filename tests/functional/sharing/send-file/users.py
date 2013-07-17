@@ -111,8 +111,6 @@ class User:
         return self
 
     def __exit__(self, type, value, tb):
-        import traceback
-        print(type, value, traceback.print_tb(tb))
         # state cleanup
         try:
             if self.state is not None:
