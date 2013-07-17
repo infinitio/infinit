@@ -21,10 +21,7 @@ class Scenario:
 
     def verify_transfer(self, expected_files):
         for file, expected_file in zip(self.files, expected_files):
-            print("@@@@ expect file", file, expected_file)
             if os.path.exists(expected_file):
-                print('$' * 80)
-                print("@@@@ Found expected file %s!" % expected_file)
                 if os.path.isdir(expected_file) and os.path.isdir(file):
                     dir_sha1(expected_file, file)
                 elif file_sha1(file) != file_sha1(expected_file):
@@ -54,9 +51,6 @@ class DefaultScenario(Scenario):
         expected_files = [os.path.join(self.recipient.output_dir, os.path.basename(file))
                               for file in self.files]
 
-        print("Sender file", self.files)
-        print("Recipient file", expected_files)
-
         self.sender.send_files(files = self.files, recipient = self.recipient)
         start = time.time()
 
@@ -76,14 +70,10 @@ class DefaultScenario(Scenario):
                     break
             if transaction is not None:
                 if transaction.status == "finished":
-                    print('$' * 80)
-                    print("@@@@ FINISHED")
                     transaction_finished = True
                     break
                 sender_progress = self.sender.transactions[transaction_id].progress
                 recipient_progress = self.recipient.transactions[transaction_id].progress
-                print('#' * (80 - len(str(sender_progress)) - 2), sender_progress)
-                print('%' * (80 - len(str(recipient_progress)) - 2), recipient_progress)
 
         self.verify_transfer(expected_files)
         return True
@@ -97,7 +87,6 @@ class GhostScenario(Scenario):
         self.recipient = recipient
 
     def run(self, timeout = 300):
-        print("Sender file", self.files)
 
         self.sender.send_files(files = self.files, email = self.recipient.email)
         start = time.time()
@@ -112,7 +101,6 @@ class GhostScenario(Scenario):
                 transaction_id = list(self.sender.transactions.keys())[0]
                 transaction = self.sender.transactions[transaction_id]
             if transaction is not None:
-                print("boite %s" % transaction.status)
                 if transaction.status == "created":
                     break
 
@@ -124,7 +112,6 @@ class GhostScenario(Scenario):
         expected_files = [os.path.join(
                 self.recipient.output_dir, os.path.basename(file))
                           for file in self.files]
-        print("Recipient file", expected_files)
 
         while True:
             if not (time.time() - start < timeout):
@@ -140,14 +127,10 @@ class GhostScenario(Scenario):
                     break
             if transaction is not None:
                 if transaction.status == "finished":
-                    print('$' * 80)
-                    print("@@@@ FINISHED")
                     transaction_finished = True
                     break
                 sender_progress = self.sender.transactions[transaction_id].progress
                 #recipient_progress = self.recipient.transactions[transaction_id].progress
-                print('#' * (80 - len(str(sender_progress)) - 2), sender_progress)
-                #print('%' * (80 - len(str(recipient_progress)) - 2), recipient_progress)
 
         self.verify_transfer(expected_files)
 
