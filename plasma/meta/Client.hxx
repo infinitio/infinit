@@ -144,6 +144,7 @@ namespace plasma
 
       c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
       c.option(CURLOPT_DEBUGDATA, this);
+      c.option(CURLOPT_TIMEOUT, 15);
 
       req.repr(in);
       c.option(CURLOPT_POSTFIELDSIZE, in.str().size());
@@ -172,6 +173,7 @@ namespace plasma
       c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
       c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
       c.option(CURLOPT_DEBUGDATA, this);
+      c.option(CURLOPT_TIMEOUT, 15);
 
       c.url(elle::sprintf("%s%s", this->_root_url, url));
       c.output(resp);
