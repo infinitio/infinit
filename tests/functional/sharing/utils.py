@@ -3,6 +3,7 @@ import sys
 import meta
 import trophonius
 import apertus
+from filesystem import RandomTempFile, RandomDirectory
 
 class Servers:
 
@@ -37,3 +38,11 @@ class Servers:
                   file = sys.stderr)
             print('======== Meta stderr:\n' + self.meta.stderr,
                   file = sys.stderr)
+
+def cases():
+    return [
+        RandomTempFile(100), # Mono file.
+        [RandomTempFile(40)] * 2, # Multi files.
+        RandomDirectory(file_count = 50, min_file_size = 10, max_file_size = 50), # Mono Folder.
+        [RandomDirectory(file_count = 3, min_file_size = 10, max_file_size = 50)] * 2, # Many Folders.
+    ]
