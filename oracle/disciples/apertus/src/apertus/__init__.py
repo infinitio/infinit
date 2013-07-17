@@ -29,6 +29,10 @@ class Apertus:
 
     def __read_port_file(self):
         while True:
+            self.instance.poll()
+            if self.instance.returncode is not None:
+                raise Exception("apertus terminated with status: {}".format(
+                        self.instance.returncode))
             try:
                 with open(os.path.abspath(self.__port_file), 'r') as f:
                     content = f.readlines()

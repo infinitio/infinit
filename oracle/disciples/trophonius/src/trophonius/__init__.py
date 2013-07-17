@@ -50,10 +50,16 @@ class Trophonius:
             stdout = subprocess.PIPE,
             stderr = subprocess.STDOUT,
         )
+        success = False
         while True:
+            self.instance.poll()
+            if self.instance.returncode is not None:
+                raise Exception("trophonius terminated with status: {}".format(
+                        self.instance.returncode))
             try:
                 self.port = self.__read_port('trophonius.sock')
                 self.control_port = self.__read_port('trophonius.csock')
+                success = True
                 break
             except OSError as e:
                 if e.errno is not errno.ENOENT:
