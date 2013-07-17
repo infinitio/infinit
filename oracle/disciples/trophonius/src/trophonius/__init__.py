@@ -48,7 +48,7 @@ class Trophonius:
              "--timeout", str(self.timeout),
             ],
             stdout = subprocess.PIPE,
-            stderr = subprocess.STDOUT,
+            stderr = subprocess.PIPE,
         )
         success = False
         while True:
