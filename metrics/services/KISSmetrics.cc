@@ -4,6 +4,10 @@
 
 #include <boost/algorithm/string/replace.hpp>
 
+#include <curly/curly.hh>
+
+#include <fstream>
+
 ELLE_LOG_COMPONENT("metrics.services.KISSmetrics");
 
 namespace metrics
@@ -90,7 +94,19 @@ namespace metrics
           request.parameter(key_string(f.first), f.second);
       };
 
-      request.fire();
+      static std::ofstream null{"/dev/null"};
+      auto rc = curly::make_get();
+
+      rc.option(CURLOPT_DEBUGFUNCTION, detail::curl_debug_callback);
+      rc.option(CURLOPT_DEBUGDATA, this);
+      rc.option(CURLOPT_TIMEOUT, 15);
+      rc.user_agent(metrics::Reporter::user_agent);
+      rc.url(elle::sprintf("http://%s:%d%s",
+                           this->info().host,
+                           this->info().port,
+                           request.url()));
+      rc.output(null);
+      curly::request r(std::move(rc));
     }
 
     std::string
