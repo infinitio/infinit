@@ -4,7 +4,7 @@
 import os
 from filesystem import RandomDirectory, RandomTempFile
 from users import User
-from scénarii import DefaultScenario
+from scenarii import DefaultScenario
 import utils
 
 if __name__ == '__main__':
