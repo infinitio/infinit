@@ -117,7 +117,7 @@ class User:
         try:
             if self.state is not None:
                 self.state.logout()
-                self.state.__exit__(type, value, traceback)
+                self.state.__exit__(type, value, tb)
         finally:
             self.state = None
 
