@@ -4,7 +4,7 @@
 import os
 import time
 
-from utility import file_sha1
+from utility import file_sha1, dir_sha1
 
 class Scenario:
     def __init__(self, sender = None, files = None):
@@ -68,8 +68,9 @@ class DefaultScenario(Scenario):
             time.sleep(0.5)
             self.poll()
             time.sleep(0.1)
-            if len(self.recipient.transactions):
+            if len(self.recipient.transactions) and len(self.sender.transactions):
                 assert len(self.recipient.transactions) == 1
+                assert len(self.sender.transactions) == 1
                 transaction_id = list(self.recipient.transactions.keys())[0]
                 transaction = self.recipient.transactions[transaction_id]
                 if self.sender.transactions[transaction_id].finished and self.recipient.transactions[transaction_id].finished:
@@ -132,8 +133,9 @@ class GhostScenario(Scenario):
             time.sleep(0.5)
             self.poll()
             time.sleep(0.1)
-            if len(self.recipient.transactions):
+            if len(self.recipient.transactions) and len(self.sender.transactions):
                 assert len(self.recipient.transactions) == 1
+                assert len(self.sender.transactions) == 1
                 transaction_id = list(self.recipient.transactions.keys())[0]
                 transaction = self.recipient.transactions[transaction_id]
                 if self.sender.transactions[transaction_id].finished and self.recipient.transactions[transaction_id].finished:
