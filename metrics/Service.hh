@@ -9,6 +9,7 @@
 
 # include <elle/attribute.hh>
 # include <elle/HttpClient.hh>
+# include <curly/curly.hh>
 
 # include <string>
 # include <memory>
@@ -54,6 +55,16 @@ namespace metrics
 
   /// Kind shortcut for service unique pointer.
   typedef std::unique_ptr<Service> ServicePtr;
+
+  namespace detail
+  {
+    int
+    curl_debug_callback(CURL* handle,
+                        curl_infotype type,
+                        char* what,
+                        size_t what_size,
+                        void* userptr);
+  }
 }
 
 #endif

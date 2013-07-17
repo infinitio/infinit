@@ -9,8 +9,11 @@
 #include <cryptography/oneway.hh>
 
 #include <elle/format/hexadecimal.hh>
+#include <curly/curly.hh>
 
 #include <boost/algorithm/string/replace.hpp>
+
+#include <fstream>
 
 ELLE_LOG_COMPONENT("metrics.google.Service");
 
@@ -101,7 +104,27 @@ namespace metrics
       auto delta = (this->_last_sent - metric.first).nanoseconds / 1000000UL;
       request.post_field("qt", std::to_string(delta));
 
-      request.fire();
+      std::stringstream body;
+      static std::ofstream null{"/dev/null"};
+      body << request.body_string();
+      auto rc = curly::make_post();
+
+      rc.option(CURLOPT_DEBUGFUNCTION, detail::curl_debug_callback);
+      rc.option(CURLOPT_DEBUGDATA, this);
+      rc.option(CURLOPT_TIMEOUT, 15);
+      rc.user_agent(metrics::Reporter::user_agent);
+      rc.url(elle::sprintf("http://%s:%d%s",
+                           this->info().host,
+                           this->info().port,
+                           request.url()));
+      rc.input(body);
+      rc.output(null);
+      rc.headers({
+        {"Content-Type", "application/x-www-form-urlencoded"},
+        {"Content-Length", elle::sprintf("%s", body.str().size())},
+        {"Expect", ""},
+      });
+      curly::request r(std::move(rc));
     }
 
     std::string
