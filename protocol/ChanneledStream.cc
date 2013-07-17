@@ -20,39 +20,40 @@ namespace infinit
     | Construction |
     `-------------*/
 
-    static
     bool
-    handshake(Stream& backend)
+    ChanneledStream::_handshake(Stream& backend)
     {
-      ELLE_TRACE_SCOPE("determining master");
       while (true)
+      {
+        ELLE_TRACE_SCOPE("%s: handshake to determine master", *this);
+        char mine = infinit::cryptography::random::generate<char>();
+        char his;
         {
-          char mine = infinit::cryptography::random::generate<char>();
-          char his;
-          {
-            Packet p;
-            p << mine;
-            backend.write(p);
-            ELLE_DEBUG("my roll: %d", (int)mine);
-          }
-          {
-            Packet p(backend.read());
-            p >> his;
-            ELLE_DEBUG("his roll: %d", (int)his);
-          }
-          if (mine != his)
-            {
-              bool master = mine > his;
-              ELLE_TRACE(master ? "master" : "slave");
-              return master;
-            }
+          Packet p;
+          p << mine;
+          backend.write(p);
+          ELLE_DEBUG("%s: my roll: %d", *this, (int)mine);
         }
+        {
+          Packet p(backend.read());
+          p >> his;
+          ELLE_DEBUG("%s: his roll: %d", *this, (int)his);
+        }
+        if (mine != his)
+        {
+          bool master = mine > his;
+          ELLE_TRACE("%s: %s", *this, master ? "master" : "slave");
+          return master;
+        }
+        else
+          ELLE_DEBUG("rolls are equal, restart handshake");
+      }
     }
 
     ChanneledStream::ChanneledStream(reactor::Scheduler& scheduler,
                                      Stream& backend)
       : Super(scheduler)
-      , _master(handshake(backend))
+      , _master(this->_handshake(backend))
       , _id_current(0)
       , _reading(false)
       , _backend(backend)
@@ -121,43 +122,66 @@ namespace infinit
     }
 
     void
-    ChanneledStream::_read(bool channel, int requested_channel)
+    ChanneledStream::_read(bool new_channel, int requested_channel)
     {
-      ELLE_DEBUG_SCOPE("%s: reading packets.", *this);
-      while (true)
+      ELLE_TRACE_SCOPE("%s: reading packets.", *this);
+      try
+      {
+        while (true)
         {
           _reading = true;
           Packet p(_backend.read());
+          if (p.size() < 4)
+            throw elle::Exception("packet is too small for channel id");
           int channel_id = _uint32_get(p);
           // FIXME: The size of the packet isn't
           // adjusted. This is cosmetic though.
-          ELLE_DEBUG("%s: received %s on channel %s.", *this, p, channel_id);
           auto it = _channels.find(channel_id);
           if (it != _channels.end())
-            {
-              it->second->_packets.push_back(std::move(p));
-              if (channel_id == requested_channel)
-                break;
-              else
-                  it->second->_available.signal_one();
-            }
+          {
+            ELLE_DEBUG("%s: received %s on existing %s.",
+                       *this, p, *it->second);
+            it->second->_packets.push_back(std::move(p));
+            if (channel_id == requested_channel)
+              break;
+            else
+              it->second->_available.signal_one();
+          }
           else
-            {
-              Channel res(*this, channel_id);
-              res._packets.push_back(std::move(p));
-              _channels_new.push_back(std::move(res));
-              if (channel)
-                break;
-              else
-                _channel_available.signal_one();
-            }
+          {
+            Channel res(*this, channel_id);
+            ELLE_DEBUG("%s: received %s on brand new %s.", *this, p, res);
+            res._packets.push_back(std::move(p));
+            _channels_new.push_back(std::move(res));
+            if (new_channel)
+              break;
+            else
+              _channel_available.signal_one();
+          }
         }
-      // Wake another thread so it can read future packets.
-      _reading = false;
-      for (auto channel: _channels)
-        if (channel.second->_available.signal_one())
-          return;
-      _channel_available.signal_one();
+        // Wake another thread so it can read future packets.
+        _reading = false;
+        for (auto channel: _channels)
+          if (channel.second->_available.signal_one())
+            return;
+        _channel_available.signal_one();
+      }
+      catch (...)
+      {
+        // Wake another thread so it fails too.
+        ELLE_DEBUG_SCOPE("%s: read failed, wake next thread.", *this);
+        _reading = false;
+        bool woken = false;
+        for (auto channel: _channels)
+          if (channel.second->_available.signal_one())
+          {
+            woken = true;
+            break;
+          }
+        if (!woken)
+          _channel_available.signal_one();
+        throw;
+      }
     }
 
     Channel
@@ -180,7 +204,7 @@ namespace infinit
       // FIXME: use helper to pop
       Channel res = std::move(_channels_new.front());
       _channels_new.pop_front();
-      ELLE_TRACE("%s: got channel %s", *this, res);
+      ELLE_TRACE("%s: got %s", *this, res);
       return res;
     }
 

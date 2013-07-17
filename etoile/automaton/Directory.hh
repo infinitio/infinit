@@ -25,10 +25,10 @@ namespace etoile
       static elle::Status       Load(gear::Directory&);
 
       static elle::Status       Add(gear::Directory&,
-                                    const path::Slice&,
+                                    const std::string&,
                                     const nucleus::proton::Address&);
       static elle::Status       Lookup(gear::Directory&,
-                                       const path::Slice&,
+                                       const std::string&,
                                        nucleus::neutron::Entry const*&);
       static elle::Status       Consult(gear::Directory&,
                                         const nucleus::neutron::Index&,
@@ -36,10 +36,10 @@ namespace etoile
                                         nucleus::neutron::Range<
                                           nucleus::neutron::Entry>&);
       static elle::Status       Rename(gear::Directory&,
-                                       const path::Slice&,
-                                       const path::Slice&);
+                                       const std::string&,
+                                       const std::string&);
       static elle::Status       Remove(gear::Directory&,
-                                       const path::Slice&);
+                                       const std::string&);
 
       static elle::Status       Discard(gear::Directory&);
       static elle::Status       Destroy(gear::Directory&);

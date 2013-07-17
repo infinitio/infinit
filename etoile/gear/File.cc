@@ -19,8 +19,8 @@ namespace etoile
     ///
     /// the constructor
     ///
-    File::File():
-      Object(NatureFile),
+    File::File(Etoile& etoile):
+      Object(etoile, NatureFile),
 
       contents_porcupine(nullptr),
       contents_nest(nullptr),

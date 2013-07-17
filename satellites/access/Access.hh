@@ -6,7 +6,7 @@
 # include <reactor/network/fwd.hh>
 
 # include <etoile/path/fwd.hh>
-# include <etoile/portal/Manifest.hh>
+# include <etoile/Manifest.hh>
 
 # include <nucleus/neutron/fwd.hh>
 # include <nucleus/neutron/Permissions.hh>
@@ -44,28 +44,28 @@ namespace satellite
     /// Lookup the access record associated with the given identifier.
     static
     void
-    lookup(etoile::path::Way const&,
+    lookup(std::string const& path,
            nucleus::neutron::Subject const&);
     /// Display all the access records for the given path.
     static
     void
-    consult(etoile::path::Way const&);
+    consult(std::string const& path);
     /// Grant access to the entity referenced by the given identifier.
     static
     void
-    grant(etoile::path::Way const&,
+    grant(std::string const& path,
           nucleus::neutron::Subject const&,
           nucleus::neutron::Permissions const);
     /// Revoke an existing access.
     static
     void
-    revoke(etoile::path::Way const&,
+    revoke(std::string const& path,
            nucleus::neutron::Subject const&);
 
     static reactor::network::TCPSocket* socket;
     static infinit::protocol::Serializer* serializer;
     static infinit::protocol::ChanneledStream* channels;
-    static etoile::portal::RPC* rpcs;
+    static etoile::RPC* rpcs;
   };
 
 }

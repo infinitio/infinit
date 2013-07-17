@@ -1,265 +1,565 @@
 // For std::this_thread::sleep_for until gcc4.8
 #define _GLIBCXX_USE_NANOSLEEP 1
 
+#define BOOST_TEST_MODULE heartbeat
+#define BOOST_TEST_DYN_LINK
+#include <boost/test/unit_test.hpp>
+
 #include <surface/gap/State.hh>
 
 #include <lune/Lune.hh>
 #include <elle/os/path.hh>
 #include <elle/os/getenv.hh>
 #include <elle/print.hh>
+#include <elle/types.hh>
 
 #include <thread>
+#include <cassert>
 #include <chrono>
 #include <ctime>
 
 ELLE_LOG_COMPONENT("test.State");
 
-using State = surface::gap::State;
-using TransactionNotification =
-  ::plasma::trophonius::TransactionNotification;
-using TransactionStatusNotification =
-  ::plasma::trophonius::TransactionStatusNotification;
+typedef ::surface::gap::State State;
+typedef std::shared_ptr<State> StatePtr;
+typedef ::plasma::trophonius::TransactionNotification TransactionNotification;
+typedef surface::gap::OperationManager::OperationStatus OperationStatus;
 
-int fail_counter = 0;
+static elle::Status lune_status = lune::Lune::Initialize();
 
+// Create a state from username and email.
+// Try to create the user. If it fails, login.
+// Return a shared_ptr on the ready state.
+static
 void
-auto_accept_transaction_cb(TransactionNotification const &tn, State &s)
+make_login(StatePtr state,
+           std::string user,
+           std::string email)
 {
-  s.transaction_manager().update(tn.transaction.id,
-                                 gap_transaction_status_accepted);
-}
+  if (lune_status != elle::Status::Ok)
+    throw elle::Exception("lune can't be intialize");
 
-void
-close_on_finished_transaction_cb(TransactionStatusNotification const &tn,
-                                 State &,
-                                 bool& finish_test)
-{
-  if (tn.status == gap_transaction_status_canceled)
-    {
-      ELLE_ERR("transaction canceled")
-        ++fail_counter;
-      finish_test = true;
-    }
-  else if (tn.status == gap_transaction_status_finished)
-    finish_test = true;
-}
-
-auto make_login = []
-(State &s, std::string user, std::string email)
-{
+  static std::string password = "ZERTYUIOP";
   try
   {
-    s.register_(user,
-                email,
-                s.hash_password(email, "bitebitebite"),
-                "bitebite");
+    state->register_(user,
+                     email,
+                     state->hash_password(email, password),
+                     "bitebite");
   }
   catch (...)
   {
-    s.login(email,
-            s.hash_password(email, "bitebitebite"));
+    state->login(email, state->hash_password(email, password));
   }
-  s.update_device("device" + user);
+
+  state->update_device("device" + user);
 };
 
+// Polling function.
+// Stop polling when the state is logged out.
+static
 void
-work(surface::gap::State& state)
+work(StatePtr state,
+     bool& finished)
 {
-  while (state.logged_in())
+  while (finished)
   {
-    state.notification_manager().poll();
+    state->notification_manager().poll(1);
     ::sleep(1);
   }
+  ELLE_TRACE("polling finished");
 }
 
-auto make_worker = []
-(State &s) -> std::thread
+// Create a polling worker for a given state.
+static
+std::thread
+make_worker(StatePtr state,
+            bool& finished)
 {
-  return std::move(std::thread{[&] { work(s); }});
+  return std::thread{[&, state] { work(state, finished); }};
 };
 
-void
-error_cb(gap_Status s, std::string const& msg, std::string const& tid)
+// Initialize sender, creating the polling thread that keep state alive during
+// transfer.
+// The callback represent the behavior to adopt on transaction_notification.
+template <typename Callback>
+std::thread
+init_sender(StatePtr state,
+            std::string const& recipient_email,
+            std::string const& to_send,
+            bool& finished,
+            Callback&& callback)
 {
-  // Ugly, but easier to see the error.
-  std::cerr << "==========================================" << std::endl;
-  std::cerr << "(" << s << "): " << msg << std::endl;
-  std::cerr << "==========================================" << std::endl;
-}
-
-std::string email1 = elle::os::getenv("INFINIT_SENDER", "_sender01@infinit.io");
-std::string email2 = elle::os::getenv("INFINIT_RECIEVER", "_rec01@infinit.io");
-
-std::tuple<surface::gap::State*, std::thread*>
-init_sender(std::string const& to_send, unsigned int count = 10)
-{
-  static surface::gap::State state;
   int timeout = 0;
-  bool finish = false;
-  unsigned int counter = 0;
 
-  make_login(state, "Bite", email1);
-  state.notification_manager().transaction_status_callback([&] (TransactionStatusNotification const& t,
-                                                                bool)
-                                                           {
-                                                             close_on_finished_transaction_cb(
-                                                               t, state, finish);
-                                                           });
+  state->notification_manager().transaction_callback(std::move(callback));
 
-  state.notification_manager().on_error_callback(error_cb);
-
-  static std::thread thread = make_worker(state);
+  std::thread thread{make_worker(state, finished)};
 
   try
   {
-    for (counter = 0; counter < count; ++counter)
+    auto operation_id = state->transaction_manager().send_files(recipient_email,
+                                                                {to_send});
+
+    auto operation_status = OperationStatus::running;
+
+    timeout = 30;
+    while (operation_status == OperationStatus::running)
     {
-      ELLE_LOG("%s send / %s", counter, count);
-      auto operation_id = state.transaction_manager().send_files(email2, {to_send});
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      if (--timeout < 0)
+        throw std::runtime_error{"sending files timed out"};
 
-      auto operation_status = surface::gap::OperationManager::OperationStatus::running;
+      operation_status = state->transaction_manager().status(operation_id);
+    }
+    state->transaction_manager().finalize(operation_id);
 
-      timeout = 30;
-      while (operation_status == surface::gap::OperationManager::OperationStatus::running)
-      {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        if (--timeout < 0)
-          throw std::runtime_error{"sending files timed out"};
-
-        operation_status = state.transaction_manager().status(operation_id);
-      }
-      state.transaction_manager().finalize(operation_id);
-
-      timeout = 60;
-      while (!finish)
-      {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        if (--timeout < 0)
-          throw std::runtime_error{"downloading files timed out"};
-      }
-
-      finish = false;
+    timeout = 60;
+    while (timeout > 0)
+    {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      --timeout;
     }
   }
   catch (...)
   {
-    ELLE_ERR("sending failed");
   }
 
-  return std::make_tuple(&state, &thread);
+  return thread;
 }
 
-std::tuple<surface::gap::State*, std::thread*>
-init_recipient()
+// Initialize recipient, creating the polling thread that keep state alive
+// during transfer.
+// The callback represent the behavior to adopt on transaction_notification.
+template <typename Callback>
+std::thread
+init_recipient(StatePtr state,
+               bool& finished,
+               Callback&& callback)
 {
-  static surface::gap::State state;
+  state->notification_manager().transaction_callback(std::move(callback));
 
-  make_login(state, "Bite", email2);
-  state.notification_manager().transaction_callback([&] (TransactionNotification const& t, bool)
-                                                    { auto_accept_transaction_cb(t, state); });
-
-  state.notification_manager().on_error_callback(error_cb);
-
-  static std::thread thread = make_worker(state);
-
-  return std::make_tuple(&state, &thread);
+  std::thread thread{make_worker(state, finished)};
+  return thread;
 }
 
-int
-main(int argc, char** argv)
+BOOST_AUTO_TEST_CASE(state_creation)
 {
-  lune::Lune::Initialize();
+  std::string state_creator_email = "state_creator_email@lol.fr";
 
-  if (argc == 1) // No args
-  {
-    std::string to_send{"to_send"};
+  bool finished = false;
+  StatePtr recipient_state{new State()};
+  make_login(recipient_state, "state_creator", state_creator_email);
 
-    auto const& rstate = init_recipient();
-    auto const& sstate = init_sender(to_send);
+  auto recipient_thread = init_recipient(
+    recipient_state,
+    finished,
+    [&,recipient_state] (TransactionNotification const& t, bool)
+    {}
+  );
 
-    std::get<0>(rstate)->logout();
-    std::get<0>(sstate)->logout();
+  ::sleep(6);
 
-    std::get<1>(rstate)->join();
-    std::get<1>(sstate)->join();
-  }
-  else if (argc == 2 && std::string{argv[1]} == "--from")
-  {
-    auto const& rstate = init_recipient();
+  finished = true;
+  recipient_thread.join();
 
-    std::get<0>(rstate)->notification_manager().user_status_callback(
-      [&rstate] (surface::gap::UserStatusNotification const& notif)
+  recipient_state->logout();
+}
+
+BOOST_AUTO_TEST_CASE(delayed_accept)
+{
+  std::string to_send{"to_send"};
+
+  std::string sender_email = "delayed_acceptsender@lol.fr";
+  std::string recipient_email = "delayed_acceptrecipient@lol.fr";
+
+  static int success_counter = 0;
+
+  StatePtr recipient_state{new State()};
+  make_login(recipient_state, "delayed_acceptrecipient", recipient_email);
+
+  bool recipient_finish = false;
+  auto recipient_thread = init_recipient(
+    recipient_state,
+    recipient_finish,
+    [&, recipient_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
       {
-        auto id = std::get<0>(rstate)->user_manager().one(email1).id;
+        ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
+        recipient_finish = true;
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Recipient] Transaction %s failed", t);
+        recipient_finish = true;
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("[Recipient] Transaction %s finished", t);
+        ++success_counter;
+        recipient_finish = true;
+      }
+      else if (t.status == plasma::TransactionStatus::created && !t.accepted)
+      {
+        ::sleep(6);
+        ELLE_LOG("accepting %s", t);
+        recipient_state->transaction_manager().accept_transaction(t.id);
+      }
+    });
 
-        if (notif.user_id == id && notif.status == 0)
-        {
-          std::this_thread::sleep_for(std::chrono::seconds(3));
-          std::get<0>(rstate)->logout();
-        }
-      });
+  StatePtr sender_state{new State()};
+  make_login(sender_state, "delayed_acceptsender", sender_email);
+  bool sender_finished = false;
+  auto sender_thread = init_sender(
+    sender_state,
+    recipient_email,
+    to_send,
+    sender_finished,
+    [&, sender_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
+      {
+        ELLE_WARN("[Sender] Transaction %s had been canceled", t);
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Sender] Transaction %s failed", t);
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("[Sender] Transaction %s finished", t);
+        ++success_counter;
+        sender_finished = true;
+      }
+    });
 
-    // Hack!!! Will poll 2 times faster but keep the reciepent alive.
-    work(*(std::get<0>(rstate)));
-    std::get<1>(rstate)->join();
-  }
-  else if (argc == 2)
+  recipient_thread.join();
+  sender_thread.join();
+
+  BOOST_CHECK_EQUAL(success_counter, 2);
+}
+
+BOOST_AUTO_TEST_CASE(early_accept)
+{
+  std::string to_send{"to_send"};
+
+  std::string sender_email = "early_acceptsender@lol.fr";
+  std::string recipient_email = "early_acceptrecipient@lol.fr";
+
+  static int success_counter = 0;
+
+  StatePtr recipient_state{new State()};
+  make_login(recipient_state, "early_acceptrecipient", recipient_email);
+  bool recipient_finished = false;
+  auto recipient_thread = init_recipient(
+    recipient_state,
+    recipient_finished,
+    [&, recipient_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
+      {
+        ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
+        recipient_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Recipient] Transaction %s failed", t);
+        recipient_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("[Recipient] Transaction %s finished", t);
+        ++success_counter;
+        recipient_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::created && !t.accepted)
+      {
+        ELLE_LOG("accepting %s", t);
+        recipient_state->transaction_manager().accept_transaction(t.id);
+      }
+    });
+
+  StatePtr sender_state{new State()};
+  make_login(sender_state, "early_acceptsender", sender_email);
+  bool sender_finished = false;
+  auto sender_thread = init_sender(
+    sender_state,
+    recipient_email,
+    to_send,
+    sender_finished,
+    [&, sender_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
+      {
+        ELLE_WARN("[Sender] Transaction %s had been canceled", t);
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Sender] Transaction %s failed", t);
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("[Sender] Transaction %s finished", t);
+        ++success_counter;
+        sender_finished = true;
+      }
+    });
+
+  recipient_thread.join();
+  sender_thread.join();
+
+  BOOST_CHECK_EQUAL(success_counter, 2);
+}
+
+BOOST_AUTO_TEST_CASE(delayed_cancel)
+{
+  std::string to_send{"to_send"};
+
+  std::string sender_email = "delayed_cancelsender@lol.fr";
+  std::string recipient_email = "delayed_cancelrecipient@lol.fr";
+
+  static int cancel_counter = 0;
+
+  StatePtr recipient_state{new State()};
+  make_login(recipient_state, "delayed_cancelrecipient",
+                                    recipient_email);
+
+  bool recipient_finished = false;
+  auto recipient_thread = init_recipient(
+    recipient_state,
+    recipient_finished,
+    [&, recipient_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
+      {
+        ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
+        recipient_finished = true;
+        ++cancel_counter;
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Recipient] Transaction %s failed", t);
+        recipient_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("[Recipient] Transaction %s finished", t);
+        recipient_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::created && !t.accepted)
+      {
+        ::sleep(6);
+        ELLE_LOG("canceling %s", t);
+        recipient_state->transaction_manager().cancel_transaction(t.id);
+      }
+    });
+
+  StatePtr sender_state{new State()};
+  make_login(sender_state, "delayed_cancelsender", sender_email);
+  bool sender_finished = false;
+  auto sender_thread = init_sender(
+    sender_state,
+    recipient_email,
+    to_send,
+    sender_finished,
+    [&, sender_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
+      {
+        ELLE_WARN("[Sender] Transaction %s had been canceled", t);
+        ++cancel_counter;
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Sender] Transaction %s failed", t);
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("[Sender] Transaction %s finished", t);
+        sender_finished = true;
+      }
+    });
+
+  recipient_thread.join();
+  sender_thread.join();
+
+  BOOST_CHECK_EQUAL(cancel_counter, 2);
+}
+
+BOOST_AUTO_TEST_CASE(early_cancel)
+{
+  std::string to_send{"to_send"};
+
+  std::string sender_email = "early_cancelsender@lol.fr";
+  std::string recipient_email = "early_cancelrecipient@lol.fr";
+
+  static int cancel_counter = 0;
+
+  StatePtr recipient_state{new State()};
+  make_login(recipient_state, "early_cancelrecipient", recipient_email);
+  bool recipient_finished = false;
+  auto recipient_thread = init_recipient(
+    recipient_state,
+    recipient_finished,
+    [&, recipient_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
+      {
+        ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
+        recipient_finished = true;
+        ++cancel_counter;
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Recipient] Transaction %s failed", t);
+        recipient_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("Transaction %s finished", t);
+        recipient_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::created && !t.accepted)
+      {
+        ::sleep(6);
+        ELLE_LOG("canceling %s", t);
+        recipient_state->transaction_manager().cancel_transaction(t.id);
+      }
+    });
+
+  StatePtr sender_state{new State()};
+  make_login(sender_state, "cancelsender", sender_email);
+
+  bool sender_finished = false;
+  auto sender_thread = init_sender(
+    sender_state,
+    recipient_email,
+    to_send,
+    sender_finished,
+    [&, sender_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
+      {
+        ELLE_WARN("[Sender] Transaction %s had been canceled", t);
+        ++cancel_counter;
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Sender] Transaction %s failed", t);
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("Transaction %s finished", t);
+        sender_finished = true;
+      }
+    });
+
+  recipient_thread.join();
+  sender_thread.join();
+
+  BOOST_CHECK_EQUAL(cancel_counter, 2);
+}
+
+BOOST_AUTO_TEST_CASE(ghost_user)
+{
+  std::string to_send{"to_send"};
+
+  srand(time(NULL));
+  auto random_string = [] (size_t size = 24) -> std::string
   {
-    auto const& rstate = init_recipient();
-    auto const& sstate = init_sender(argv[1]);
+    static std::string charset = "1234567890abcdef";
+    std::string result;
+    result.resize(size);
 
-    std::get<0>(rstate)->logout();
-    std::get<0>(sstate)->logout();
+    srand(time(NULL));
+    for (size_t i = 0; i < size; i++)
+        result[i] = charset[rand() % charset.length()];
 
-    std::get<1>(rstate)->join();
-    std::get<1>(sstate)->join();
-  }
-  else if (argc == 3 && std::string{argv[1]} == "--to")
-  {
-    auto const& sstate = init_sender(argv[2]);
+    return result;
+  };
 
-    std::get<0>(sstate)->logout();
-    std::get<1>(sstate)->join();
-  }
-  else if (argc == 3 &&
-           std::string{argv[1]} == "--from" &&
-           std::string{argv[2]} == "--4ever")
-  {
-    auto const& rstate = init_recipient();
+  std::string sender_email = random_string() + "@lol.fr";
+  std::string recipient_email = random_string() + "@lol.fr";
 
-    // Hack!!! Will poll 2 times faster but keep the reciepent alive.
-    // Will never stop.
-    work(*(std::get<0>(rstate)));
+  static int success_counter = 0;
 
-    std::get<1>(rstate)->join();
+  std::thread recipient_thread;
 
-  }
-  else if (argc == 3)
-  {
-    auto const& rstate = init_recipient();
-    auto const& sstate = init_sender(std::string{argv[1]}, atoi(argv[2]));
+  StatePtr recipient_state{new State()};
+  StatePtr sender_state{new State()};
+  bool sender_finished = false;
+  make_login(sender_state, "delayed_acceptsender", sender_email);
+  auto sender_thread = init_sender(
+    sender_state,
+    recipient_email,
+    to_send,
+    sender_finished,
+    [&, sender_state, recipient_state] (TransactionNotification const& t, bool)
+    {
+      if (t.status == plasma::TransactionStatus::canceled)
+      {
+        ELLE_WARN("[Sender] Transaction %s had been canceled", t);
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_ERR("[Sender] Transaction %s failed", t);
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::finished)
+      {
+        ELLE_LOG("[Sender] Transaction %s finished", t);
+        ++success_counter;
+        sender_finished = true;
+      }
+      else if (t.status == plasma::TransactionStatus::created &&
+               t.accepted == false)
+      {
+        make_login(recipient_state, "delayed_acceptrecipient", recipient_email);
+        bool recipient_finished = false;
+        recipient_thread = init_recipient(
+          recipient_state,
+          recipient_finished,
+          [&, recipient_state] (TransactionNotification const& t, bool)
+          {
+            if (t.status == plasma::TransactionStatus::canceled)
+            {
+              ELLE_WARN("[Recipient] Transaction %s had been canceled", t);
+              recipient_finished = true;
+            }
+            else if (t.status == plasma::TransactionStatus::failed)
+            {
+              ELLE_ERR("[Recipient] Transaction %s failed", t);
+              recipient_finished = true;
+            }
+            else if (t.status == plasma::TransactionStatus::finished)
+            {
+              ELLE_LOG("[Recipient] Transaction %s finished", t);
+              ++success_counter;
+              recipient_finished = true;
+            }
+            else if (t.status == plasma::TransactionStatus::created && !t.accepted)
+            {
+              ::sleep(6);
+              ELLE_LOG("accepting %s", t);
+              recipient_state->transaction_manager().accept_transaction(t.id);
+            }
+          });
+      }
 
-    std::get<0>(rstate)->logout();
-    std::get<0>(sstate)->logout();
+    });
 
-    std::get<1>(rstate)->join();
-    std::get<1>(sstate)->join();
-  }
-  else if (argc == 4 && std::string{argv[1]} == "--to")
-  {
-    auto const& sstate = init_sender(std::string{argv[2]}, atoi(argv[3]));
+  sender_thread.join();
+  recipient_thread.join();
 
-    std::get<0>(sstate)->logout();
-    std::get<1>(sstate)->join();
-  }
-  else
-  {
-    ELLE_ERR("BAD COMMAND LINE, ask Antony");
-    std::cerr << "FAIL" << std::endl;
-  }
-
-
-  std::cerr << fail_counter << std::endl;
-  elle::print("tests done.");
-  return 0;
+  BOOST_CHECK_EQUAL(success_counter, 2);
 }

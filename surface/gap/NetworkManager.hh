@@ -1,10 +1,15 @@
 #ifndef NETWORKMANAGER_HH
 # define NETWORKMANAGER_HH
 
-# include <surface/gap/NotificationManager.hh>
-# include <surface/gap/Exception.hh>
-# include <surface/gap/InfinitInstanceManager.hh>
-# include <surface/gap/metrics.hh>
+# include "Device.hh"
+# include "Exception.hh"
+# include "InfinitInstanceManager.hh"
+# include "NotificationManager.hh"
+# include "Self.hh"
+# include "metrics.hh"
+# include "Rounds.hh"
+
+# include <metrics/fwd.hh>
 
 # include <nucleus/neutron/Permissions.hh>
 
@@ -12,6 +17,7 @@
 
 # include <reactor/scheduler.hh>
 
+# include <elle/Printable.hh>
 # include <elle/threading/Monitor.hh>
 
 namespace surface
@@ -21,12 +27,11 @@ namespace surface
     /*-------.
     | Usings |
     `-------*/
-    using Self = ::plasma::meta::SelfResponse;
     using Network = ::plasma::meta::NetworkResponse;
-    using Device = ::plasma::meta::Device;
     using Endpoint = ::plasma::meta::EndpointNodeResponse;
 
-    class NetworkManager
+    class NetworkManager:
+      public elle::Printable
     {
       /*-----------------.
       | Module Exception |
@@ -50,21 +55,25 @@ namespace surface
       // XXX: meta should be constant everywhere.
       // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
-      elle::metrics::Reporter& _reporter;
-      elle::metrics::Reporter& _google_reporter;
-      Self const& _self;
-      Device const& _device;
-      ELLE_ATTRIBUTE_R(InfinitInstanceManager, infinit_instance_manager);
+      metrics::Reporter& _reporter;
+      metrics::Reporter& _google_reporter;
+      typedef std::function<Self const&()> SelfGetter;
+      typedef std::function<Device const&()> DeviceGetter;
+      ELLE_ATTRIBUTE(SelfGetter, self);
+      ELLE_ATTRIBUTE(DeviceGetter, device);
+      ELLE_ATTRIBUTE_X(InfinitInstanceManager, infinit_instance_manager);
 
       /*-------------.
       | Construction |
       `-------------*/
     public:
       NetworkManager(plasma::meta::Client& meta,
-                     elle::metrics::Reporter& reporter,
-                     elle::metrics::Reporter& google_reporter,
-                     Self const& me,
-                     Device const& device);
+                     metrics::Reporter& reporter,
+                     metrics::Reporter& google_reporter,
+                     SelfGetter const& me,
+                     DeviceGetter const& device,
+                     std::string const& apertus_host,
+                     uint16_t apertus_port);
 
       virtual
       ~NetworkManager();
@@ -74,8 +83,10 @@ namespace surface
 
     public:
       void
-      wait_portal(std::string const& network_id);
+      launch(std::string const& network_id);
 
+      void
+      ensure_launched(std::string const& network_id);
 
       /*------------.
       |  Attributes |
@@ -110,38 +121,54 @@ namespace surface
       /// Delete a new network.
       std::string
       delete_(std::string const& name,
-              bool force = false);
+              bool remove_directory = true);
+
+      /// Remove local directories (and kill any infinit instances).
+      void
+      delete_local(std::string const& name);
 
       /// Add a user to a network with its mail or id.
       void
       add_user(std::string const& network_id,
-               std::string const& inviter_id,
-               std::string const& user_id,
-               std::string const& identity);
+               std::string const& user_K);
+
+      /// Upload files (wrap instance_manager.upload_files)
+      void
+      upload_files(std::string const& network_id,
+                   std::unordered_set<std::string> const& files,
+                   std::function<void ()> success_callback,
+                   std::function<void ()> failure_callback);
+
+
+      /// Download files into path 'destination' (wrap).
+      void
+      download_files(std::string const& network_id,
+                     std::vector<std::shared_ptr<Round>> const& addresses,
+                     std::string const& public_key,
+                     std::string const& destination,
+                     std::function<void ()> success_callback,
+                     std::function<void ()> failure_callback);
+
+      /// Get the progress on the current network.
+      float
+      progress(std::string const& network_id);
 
       /// Add a device to a network.
       void
       add_device(std::string const& network_id,
                  std::string const& device_id);
 
-      /// Connect 2 devices via infinit.
-      void
-      notify_8infinit(std::string const& network_id,
-                      std::string const& sender_device_id,
-                      std::string const& recipient_device_id);
-      void
-      _notify_8infinit(std::string const& network_id,
-                       std::string const& sender_device_id,
-                       std::string const& recipient_device_id,
-                       reactor::Scheduler& sched);
+      /// Get peer addresses.
+      /// Return a list of rounds.
+      std::vector<std::shared_ptr<Round>>
+      peer_addresses(std::string const& network_id,
+                     std::string const& sender_device_id,
+                     std::string const& recipient_device_id);
 
       /// Give the recipient the write on the root of the network.
       void
       set_permissions(std::string const& network_id,
-                      std::string const& user_id,
-                      std::string const& user_identity,
-                      nucleus::neutron::Permissions permissions);
-
+                      std::string const& peer_pu);
       ///
       void
       to_directory(std::string const& network_id,
@@ -152,6 +179,17 @@ namespace surface
       void
       _on_network_update(NetworkUpdateNotification const& notif);
 
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const override;
+
+      ELLE_ATTRIBUTE_R(std::string, apertus_host);
+      ELLE_ATTRIBUTE_R(uint16_t, apertus_port);
     };
   }
 }

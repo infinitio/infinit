@@ -1,7 +1,10 @@
 #ifndef NOTIFICATIONMANAGER_HH
 # define NOTIFICATIONMANAGER_HH
 
+# include "Device.hh"
 # include "Exception.hh"
+# include "Self.hh"
+# include "usings.hh"
 
 # include <plasma/trophonius/Client.hh>
 # include <plasma/meta/Client.hh>
@@ -18,20 +21,12 @@ namespace surface
 {
   namespace gap
   {
-    using ::plasma::trophonius::Notification;
-    using ::plasma::trophonius::TransactionNotification;
-    using ::plasma::trophonius::UserStatusNotification;
-    using ::plasma::trophonius::MessageNotification;
-    using ::plasma::trophonius::NetworkUpdateNotification;
-    using ::plasma::trophonius::NotificationType;
-    using Self = ::plasma::meta::SelfResponse;
-    using Device = ::plasma::meta::Device;
-
     namespace json = elle::format::json;
 
     class Notifiable;
 
-    class NotificationManager
+    class NotificationManager:
+      public elle::Printable
     {
       class Exception:
         public surface::gap::Exception
@@ -49,20 +44,25 @@ namespace surface
       ELLE_ATTRIBUTE(std::unique_ptr<plasma::trophonius::Client>,
                      trophonius);
       ELLE_ATTRIBUTE(plasma::meta::Client&, meta);
-      ELLE_ATTRIBUTE(Self const&, self);
-      ELLE_ATTRIBUTE(Device const&, device);
+      typedef std::function<Self const&()> SelfGetter;
+      typedef std::function<Device const&()> DeviceGetter;
+      ELLE_ATTRIBUTE(SelfGetter, self);
+      ELLE_ATTRIBUTE(DeviceGetter, device);
 
     public:
-      NotificationManager(plasma::meta::Client& meta,
-                          Self const& self,
-                          Device const& device);
+      NotificationManager(std::string const& trophonius_host,
+                          uint16_t trophonius_port,
+                          plasma::meta::Client& meta,
+                          SelfGetter const& self,
+                          DeviceGetter const& device);
 
       virtual
       ~NotificationManager();
 
     private:
       void
-      _connect();
+      _connect(std::string const& trophonius_host,
+               uint16_t trophonius_port);
 
       void
       _check_trophonius();
@@ -79,22 +79,29 @@ namespace surface
 
     public:
       typedef
-        std::function<void (UserStatusNotification const&)>
+        std::function<void(NewSwaggerNotification const&)>
+        NewSwaggerNotificationCallback;
+
+      typedef
+        std::function<void(UserStatusNotification const&)>
         UserStatusNotificationCallback;
 
       typedef
-        std::function<void (TransactionNotification const&, bool)>
+        std::function<void(TransactionNotification const&, bool)>
         TransactionNotificationCallback;
 
       typedef
-        std::function<void (MessageNotification const&)>
+        std::function<void(MessageNotification const&)>
         MessageNotificationCallback;
 
       typedef
-        std::function<void (NetworkUpdateNotification const&)>
+        std::function<void(NetworkUpdateNotification const&)>
         NetworkUpdateNotificationCallback;
 
     public:
+      void
+      new_swagger_callback(NewSwaggerNotificationCallback const& cb);
+
       void
       user_status_callback(UserStatusNotificationCallback const& cb);
 
@@ -106,6 +113,23 @@ namespace surface
 
       void
       network_update_callback(NetworkUpdateNotificationCallback const& cb);
+
+      /// Fire notification manually.
+      void
+      fire_callbacks(Notification const& notif,
+                     bool const is_new);
+
+    //
+    // ---------- Resync callbacks --------------------------------------------
+    //
+    public:
+      typedef std::function<void(void)> ResyncCallback;
+    private:
+      std::list<ResyncCallback> _resync_callbacks;
+    public:
+      /// Add a callback to be notified when a resynchronization is needed.
+      void
+      add_resync_callback(ResyncCallback const& cb);
 
     public:
       size_t
@@ -122,11 +146,11 @@ namespace surface
 
     private:
       void
-      _handle_notification(json::Dictionary const& dict, bool new_ = true);
-
-
+      _dispatch_notification(json::Dictionary const& dict,
+                             bool is_new = true);
       void
-      _handle_notification(Notification const& notif, bool _new = true);
+      _dispatch_notification(Notification const& notif,
+                             bool const is_new = true);
 
       void
       _on_trophonius_connected();
@@ -145,6 +169,13 @@ namespace surface
       _call_error_handlers(gap_Status status,
                            std::string const& s,
                            std::string const& tid = "");
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      void
+      print(std::ostream& stream) const override;
     };
 
     class Notifiable
@@ -153,6 +184,9 @@ namespace surface
       NotificationManager& _notification_manager;
 
       Notifiable(NotificationManager& notification_manager);
+
+      virtual
+      ~Notifiable();
     };
   }
 }

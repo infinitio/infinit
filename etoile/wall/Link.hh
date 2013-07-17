@@ -24,29 +24,38 @@ namespace etoile
       /// hiearchy i.e orphan.
       static
       gear::Identifier
-      create();
+      create(etoile::Etoile& etoile);
 
-      static elle::Status       Load(const path::Chemin&,
+      static elle::Status       Load(etoile::Etoile& etoile,
+                                     const path::Chemin&,
                                      gear::Identifier&);
 
       /// Bind a target way to the link.
       static
       void
-      bind(gear::Identifier const& identifier,
-           path::Way const& target);
+      bind(etoile::Etoile& etoile,
+           gear::Identifier const& identifier,
+           std::string const& target);
       /// Return the path to which the link is bound.
       static
-      path::Way
-      resolve(gear::Identifier const& identifier);
+      std::string
+      resolve(etoile::Etoile& etoile,
+              gear::Identifier const& identifier);
 
-      static elle::Status       Discard(const gear::Identifier&);
+      static elle::Status       Discard(etoile::Etoile& etoile,
+                                        const gear::Identifier&);
 
       /// Commit the pending modifications by placing the scope in the journal.
       static
       void
-      store(gear::Identifier const& identifier);
+      store(etoile::Etoile& etoile,
+            gear::Identifier const& identifier);
 
-      static elle::Status       Destroy(const gear::Identifier&);
+      /// Destroy a link.
+      static
+      void
+      destroy(etoile::Etoile& etoile,
+              const gear::Identifier&);
     };
 
   }

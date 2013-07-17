@@ -6,6 +6,7 @@
 # include <elle/concept/Fileable.hh>
 # include <elle/network/Port.hh>
 # include <elle/io/Dumpable.hh>
+# include <elle/serialize/construct.hh>
 
 # include <boost/noncopyable.hpp>
 
@@ -29,6 +30,13 @@ namespace lune
     public elle::io::Dumpable,
     private boost::noncopyable
   {
+    /*-------------.
+    | Construction |
+    `-------------*/
+  public:
+    Phrase() {} // XXX to remove along with Create().
+    ELLE_SERIALIZE_CONSTRUCT_DECLARE(Phrase);
+
   public:
     //
     // methods

@@ -1,65 +1,73 @@
 #ifndef SURFACE_GAP_TRANSACTIONMANAGER_HH
 # define SURFACE_GAP_TRANSACTIONMANAGER_HH
 
-# include "status.hh"
+# include "Device.hh"
 # include "NetworkManager.hh"
 # include "NotificationManager.hh"
-# include "OperationManager.hh"
+# include "Self.hh"
+# include "Transaction.hh"
+# include "TransactionStateMachine.hh"
 # include "UserManager.hh"
 # include "metrics.hh"
+# include "status.hh"
 
-# include <plasma/plasma.hh>
+# include <metrics/fwd.hh>
+
 # include <plasma/trophonius/Client.hh>
 # include <plasma/meta/Client.hh>
 
 # include <elle/attribute.hh>
+# include <elle/container/set.hh>
+# include <elle/Printable.hh>
 
 # include <string>
 # include <unordered_set>
+# include <reactor/scheduler.hh>
 
 namespace surface
 {
   namespace gap
   {
-    /*-------.
-    | Usings |
-    `-------*/
-    using ::plasma::Transaction;
-    using Self = ::plasma::meta::SelfResponse;
-    using Device = ::plasma::meta::Device;
-    using NotificationManager = ::surface::gap::NotificationManager;
-    using NetworkManager = ::surface::gap::NetworkManager;
-    using UserManager = ::surface::gap::UserManager;
-
     class TransactionManager:
-      public OperationManager,
       public Notifiable
     {
       /*-----------.
       | Attributes |
       `-----------*/
     private:
+      typedef std::function<Self const&()> SelfGetter;
+      typedef std::function<Device const&()> DeviceGetter;
+      typedef std::function<void(unsigned int)> UpdateRemainingInvitations;
+
+    private:
       NetworkManager& _network_manager;
       UserManager& _user_manager;
       // XXX: meta should be constant everywhere.
       // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
-      elle::metrics::Reporter& _reporter;
-      Self& _self;
-      Device _device;
+      metrics::Reporter& _reporter;
+
+      ELLE_ATTRIBUTE(reactor::Scheduler&, scheduler);
+      ELLE_ATTRIBUTE(SelfGetter, self);
+      ELLE_ATTRIBUTE(DeviceGetter, device);
+      ELLE_ATTRIBUTE(UpdateRemainingInvitations, update_remaining_invitations);
       ELLE_ATTRIBUTE_R(std::string, output_dir);
+      ELLE_ATTRIBUTE(TransactionStateMachine, state_machine);
 
       /*-------------.
       | Construction |
       `-------------*/
     public:
-      TransactionManager(NotificationManager& notification_manager,
-                         NetworkManager& network_manager,
-                         UserManager& user_manager,
-                         plasma::meta::Client& meta,
-                         elle::metrics::Reporter& reporter,
-                         Self& self,
-                         Device const& device);
+      TransactionManager(
+        reactor::Scheduler& scheduler,
+        NotificationManager& notification_manager,
+        NetworkManager& network_manager,
+        UserManager& user_manager,
+        plasma::meta::Client& meta,
+        metrics::Reporter& reporter,
+        SelfGetter const& self,
+        DeviceGetter const& device,
+        UpdateRemainingInvitations const& update_remaining_invitations);
 
       virtual
       ~TransactionManager();
@@ -79,7 +87,7 @@ namespace surface
       /// @brief Send a file list to a specified user.
       ///
       /// Create a network, copy files locally, create transaction.
-      OperationManager::OperationId
+      void
       send_files(std::string const& recipient_id_or_email,
                  std::unordered_set<std::string> const& files);
 
@@ -128,44 +136,77 @@ namespace surface
       | Transaction update |
       `-------------------*/
     private:
-      struct State
+      struct State:
+        public elle::Printable
       {
         enum
         {
           none,     // Unknown transaction.
+          accepting,
           preparing,
           running,
+          finished,
+          canceled,
         } state;
+
         int tries;
-        OperationId operation;
         std::unordered_set<std::string> files;
         State():
           state{none},
-          tries{0},
-          operation{0}
+          tries{0}
         {}
+
+        /*----------.
+        | Printable |
+        `----------*/
+        void
+        print(std::ostream& stream) const
+        {
+          stream << "State::State(";
+          switch (this->state)
+          {
+            case none:
+              stream << "none"; break;
+            case accepting:
+              stream << "accepting"; break;
+            case preparing:
+              stream << "preparing"; break;
+            case running:
+              stream << "running"; break;
+            case finished:
+              stream << "finished"; break;
+            case canceled:
+              stream << "canceled"; break;
+          }
+          stream << ", files: " << files << ")";
+        }
       };
       typedef std::map<std::string, State> StateMap;
       elle::threading::Monitor<StateMap> _states;
 
-    public:
+    protected:
       /// @brief Update transaction status.
       void
-      update(std::string const& transaction_id,
-             plasma::TransactionStatus status);
+      _update(std::string const& transaction_id,
+              plasma::TransactionStatus status);
 
+    public:
       void
       accept_transaction(Transaction const& transaction);
       void
       accept_transaction(std::string const& transaction_id);
 
       void
-      cancel_transaction(Transaction const& transaction);
+      cancel_transaction(std::string const& transaction_id);
 
     private:
+
       void
-      _accept_transaction(Transaction const& transaction,
-                          Operation& operation);
+      _cancel_transaction(Transaction const& transaction);
+
+      void
+      _on_cancel_transaction(Transaction const& transaction);
+
     private:
       void
       _prepare_upload(Transaction const& transaction);

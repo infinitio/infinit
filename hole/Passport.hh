@@ -68,7 +68,6 @@ namespace elle
   private:
     ELLE_SERIALIZE_FRIEND_FOR(Passport);
   };
-
 }
 
 # include <hole/Passport.hxx>

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.2
 # -*- encoding: utf-8 -*-
 
 from functools import partial
@@ -20,19 +20,15 @@ You have to specify your user name in the INFINIT_USER env variable.
 
 """
 
-def on_transaction(state, transaction, new):
-    print("Transaction ({})".format(transaction),
-          state.transaction_status(transaction))
-    if state.transaction_status(transaction) == state.TransactionStatus.started:
-        if getattr(state, "started_transactions", None):
-            state.started_transactions.append(transaction)
-        else:
-            state.started_transactions = [transaction]
-    elif state.transaction_status(transaction) == state.TransactionStatus.canceled:
+def on_transaction(state, transaction, status, new):
+    print("Transaction ({})".format(transaction), status)
+    if status == state.TransactionStatus.started:
+        state.started_transactions.append(transaction)
+    elif status == state.TransactionStatus.canceled:
         state.number_of_transactions -= 1
         if state.number_of_transactions == 0:
             state.running = False
-    elif state.transaction_status(transaction) == state.TransactionStatus.finished:
+    elif status == state.TransactionStatus.finished:
         cnt = state.transaction_files_count(transaction)
         if cnt == 1:
             filename = state.transaction_first_filename(transaction)
@@ -122,6 +118,7 @@ def main(state, sender):
     state.pull_notifications(0, 0)
     state.notifications_read()
     state.running = True
+    state.started_transactions = []
     transactions = state.transactions()
 
     state.on_error_callback(partial(on_error, state))
@@ -144,7 +141,7 @@ def main(state, sender):
         state.accept_transaction(transaction_id)
 
         while state.running:
-            if getattr(state, "started_transactions", None):
+            if state.started_transactions:
                 for t in (T for T in state.started_transactions if T in to_handle):
                     progress = state.transaction_progress(t)
                     print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, t, state.transaction_first_filename(t)), end=" "),
@@ -175,10 +172,10 @@ if __name__ == "__main__":
                 tid = state.current_transaction_id
                 print("Interupted.")
                 print("Cancel the outgoing transaction ({})".format(tid))
-                state.update_transaction(tid, state.TransactionStatus.canceled)
+                state.cancel_transaction(tid)
         except Exception as e:
             if getattr(state, "current_transaction_id", None):
                 tid = state.current_transaction_id
                 print("Interupted. Cancel the outgoing transaction ({})".format(tid))
-                state.update_transaction(tid, state.TransactionStatus.canceled)
+                state.cancel_transaction(tid)
             raise e

@@ -89,7 +89,7 @@ namespace nucleus
       /// nodes).
       void
       write(Offset const& offset,
-            elle::WeakBuffer const& buffer);
+            elle::ConstWeakBuffer buffer);
       /// Return _size_ bytes of the data located at the given relative
       /// offset _offset_ i.e the offset within the internal buffer.
       elle::Buffer

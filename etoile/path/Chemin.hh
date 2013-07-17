@@ -18,8 +18,6 @@ namespace etoile
 {
   namespace path
   {
-
-    ///
     /// this class contains both a logical and physical path referred to
     /// as a chemin i.e path in French.
     ///
@@ -28,50 +26,56 @@ namespace etoile
     ///
     class Chemin
     {
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
-      //
-      // constants
-      //
-      static const Chemin                       Null;
-
-      //
-      // constructors & destructors
-      //
+      /// An empty Chemin.
       Chemin();
+      /// A Chemin composed of the given \param route and \param venue.
       Chemin(Route const& route,
              Venue const& venue);
-      Chemin(Chemin const&) = default;
+      /// A Chemin composed of the given \param route and \param venue limited
+      /// to \param size components.
+      Chemin(Route const& route,
+             Venue const& venue,
+             elle::Size size);
+      /// A copy of \param source.
+      Chemin(Chemin const& /*source*/) = default;
+      // XXX: should not be assignable.
+      ELLE_OPERATOR_ASSIGNMENT(Chemin);
+    private:
+      ELLE_ATTRIBUTE_RX(Route, route);
+      ELLE_ATTRIBUTE_RX(Venue, venue);
 
-      //
-      // methods
-      //
-      elle::Status              Create(const Route&,
-                                       const Venue&,
-                                       const nucleus::neutron::Size =
-                                         std::numeric_limits<
-                                           nucleus::neutron::Size>::max());
+    /*-----------.
+    | Operations |
+    `-----------*/
+    public:
+      /// Whether this starts with \param base.
+      bool
+      derives(const Chemin& chemin) const;
+      /// Generate a Location based on the route and venue.
+      nucleus::proton::Location
+      locate() const;
+      /// Whether this Chemin is empty - default constructed.
+      bool
+      empty() const;
 
-      elle::Boolean             Derives(const Chemin&) const;
+    /*----------.
+    | Orderable |
+    `----------*/
+    public:
+      bool
+      operator==(const Chemin&) const;
+      bool
+      operator<(const Chemin&) const;
 
-      elle::Status              Locate(nucleus::proton::Location&) const;
-
-      //
-      // interfaces
-      //
-
-      ELLE_OPERATOR_ASSIGNMENT(Chemin); // XXX
-
-      elle::Boolean             operator==(const Chemin&) const;
-      elle::Boolean             operator<(const Chemin&) const;
-
-      // dumpable
+    /*---------.
+    | Dumpable |
+    `---------*/
+    public:
       elle::Status              Dump(const elle::Natural32 = 0) const;
-
-      //
-      // attributes
-      //
-      Route                     route;
-      Venue                     venue;
     };
 
     std::ostream&

@@ -21,23 +21,31 @@ namespace hole
   {
     namespace slug
     {
+      class AlreadyConnected:
+        public elle::Exception
+      {
+      public:
+        AlreadyConnected();
+      };
+
 
       /// Slug hole implementation.
       class Slug:
-        public Hole,
-        public elle::Printable
+        public Hole
       {
       /*-------------.
       | Construction |
       `-------------*/
       public:
+        typedef std::vector<elle::network::Locus> Members;
         Slug(hole::storage::Storage& storage,
              elle::Passport const& passport,
              elle::Authority const& authority,
              reactor::network::Protocol protocol,
-             std::vector<elle::network::Locus> const& members,
-             int port,
-             reactor::Duration connection_timeout,
+             Members const& members = Members(),
+             int port = 0,
+             reactor::Duration connection_timeout =
+               boost::posix_time::milliseconds(5000),
              std::unique_ptr<reactor::network::UDPSocket> socket = nullptr);
         virtual ~Slug();
       private:
@@ -91,28 +99,36 @@ namespace hole
       `------*/
       public:
         std::vector<elle::network::Locus> loci();
-        std::vector<Host*> hosts();
       private:
         friend class Host;
-        /// XXX We need to stop storing naked pointer.
-        typedef std::unordered_map<elle::network::Locus, Host*> Hosts;
+        typedef std::unordered_map<elle::Passport,
+                                   std::shared_ptr<Host>> Hosts;
         void
-        _host_register(Host* host);
-        void
+        _host_register(std::shared_ptr<Host> host);
+        std::shared_ptr<Host>
         _connect(elle::network::Locus const& locus);
-        void
+        std::shared_ptr<Host>
         _connect(std::unique_ptr<reactor::network::Socket> socket,
                  elle::network::Locus const& locus, bool opener);
         void
         _connect_try(elle::network::Locus const& locus);
         void
         _remove(Host* host);
-        void
-        _remove(elle::network::Locus loc);
-        Hosts _hosts;
-        Hosts _pending;
 
-        reactor::Signal _new_host;
+        bool
+        _host_connected(elle::Passport const& passport);
+        std::shared_ptr<Host>
+        _host_pending(elle::Passport const& passport);
+        bool
+        _host_wait(std::shared_ptr<Host> host);
+
+        /// Authenticated hosts.
+        ELLE_ATTRIBUTE_R(Hosts, hosts);
+        /// Not-yet authenticated hosts.
+        ELLE_ATTRIBUTE_R(std::set<std::shared_ptr<Host>>, pending);
+        /// Signal that a new host was registered.
+        ELLE_ATTRIBUTE_RX(reactor::Signal, new_host);
+        ELLE_ATTRIBUTE_RX(reactor::Signal, new_connected_host);
 
       /*-------.
       | Server |
@@ -128,9 +144,7 @@ namespace hole
       | Portal |
       `-------*/
       public:
-        void portal_connect(std::string const& host, int port);
-        bool portal_wait(std::string const& host, int port);
-
+        void portal_connect(std::string const& host, int port, bool server);
 
       /*----------.
       | Printable |
@@ -139,7 +153,7 @@ namespace hole
       public:
         virtual
         void
-        print(std::ostream& stream) const;
+        print(std::ostream& stream) const override;
 
       /*---------.
       | Dumpable |

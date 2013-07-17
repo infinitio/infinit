@@ -6,7 +6,7 @@
 # include <reactor/network/fwd.hh>
 
 # include <etoile/path/fwd.hh>
-# include <etoile/portal/Manifest.hh>
+# include <etoile/Manifest.hh>
 
 # include <nucleus/neutron/fwd.hh>
 # include <nucleus/neutron/Permissions.hh>
@@ -60,7 +60,7 @@ namespace satellite
     /// Infinit to the local file system.
     static
     void
-    from_traverse(etoile::path::Way const& way,
+    from_traverse(std::string const& way,
                   elle::String const& target);
     /// Transfer everything from Infinit to the local file system.
     static
@@ -94,7 +94,7 @@ namespace satellite
     static reactor::network::TCPSocket* socket;
     static infinit::protocol::Serializer* serializer;
     static infinit::protocol::ChanneledStream* channels;
-    static etoile::portal::RPC* rpcs;
+    static etoile::RPC* rpcs;
     static lune::Descriptor* descriptor;
   };
 

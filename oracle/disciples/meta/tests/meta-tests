@@ -1,0 +1,36 @@
+#!/usr/bin/env python3.2
+
+import os.path
+import meta
+import subprocess
+import pythia
+import utils
+
+ROOT_DIR=subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip().decode('utf-8')
+META_TEST_DIR=os.path.join(ROOT_DIR, "oracle", "disciples", "meta", "tests")
+
+with meta.Meta(spawn_db = True) as meta:
+    client = utils.create_client(meta)
+    account = client.get('/self')
+    print("account:", account)
+    assert account['success'] is True
+    test_modules = list()
+    for path, dirs, files in os.walk(META_TEST_DIR):
+        for file in files:
+            if file.endswith(".py"):
+                module, ext = os.path.splitext(file)
+                test_modules.append(__import__(module))
+
+    for module in test_modules:
+        print("\n===== Testing {} {}".format(module.__name__,
+            "=" * (64 - len(module.__name__))))
+        try:
+            module.run(client)
+        except AssertionError:
+            print("Module {} failed: AssertionError".format(module.__name__))
+        except Exception as e:
+            print("Module {} failed: {}".format(module.__name__, e))
+        except BaseException as e:
+            print("Module {} failed: {}".format(module.__name__, e))
+        print("=" * 79, end='\n')
+

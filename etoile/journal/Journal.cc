@@ -2,16 +2,15 @@
 
 #include <elle/log.hh>
 
-#include <etoile/journal/Journal.hh>
+#include <etoile/Etoile.hh>
+#include <etoile/Exception.hh>
 #include <etoile/depot/Depot.hh>
+#include <etoile/gear/Action.hh>
 #include <etoile/gear/Scope.hh>
 #include <etoile/gear/Transcript.hh>
-#include <etoile/gear/Action.hh>
-#include <etoile/Exception.hh>
+#include <etoile/journal/Journal.hh>
 
 #include <nucleus/factory.hh>
-
-#include <Infinit.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.journal.Journal");
 
@@ -22,20 +21,13 @@ namespace etoile
 {
   namespace journal
   {
-    /*------------------.
-    | Static Attributes |
-    `------------------*/
-
-#ifdef ETOILE_JOURNAL_THREAD
-    std::set<std::unique_ptr<gear::Transcript>> Journal::_queue;
-#endif
-
     /*---------------.
     | Static Methods |
     `---------------*/
 
     void
-    Journal::record(std::unique_ptr<gear::Transcript>&& transcript)
+    Journal::record(depot::Depot& depot,
+                    std::unique_ptr<gear::Transcript>&& transcript)
     {
       ELLE_TRACE_FUNCTION(transcript);
 
@@ -52,7 +44,7 @@ namespace etoile
       try
        {
          // Insert the transcript in the journal's queue.
-         Journal::_queue.insert(transcript);
+         depot.queue().insert(transcript);
 
          // Spawn a thread and do not wait for it to complete since
          // we want the processing to occur in the background as it
@@ -60,6 +52,7 @@ namespace etoile
          new reactor::Thread(*reactor::Scheduler::scheduler(),
                              "journal process",
                              boost::bind(&Journal::_process,
+                                         depot,
                                          std::move(transcript)),
                              true);
 
@@ -67,21 +60,19 @@ namespace etoile
       catch (std::exception const& err)
         {
           // Remove the transcript since something went wrong.
-          Journal::_queue.erase(transcript);
+          depot.queue().erase(transcript);
 
           throw Exception("unable to spawn a new thread: '%s'", err.what());
         }
 #else
-      Journal::_process(std::move(transcript));
+      Journal::_process(depot, std::move(transcript));
 #endif
     }
 
     elle::Status
-    Journal::Record(gear::Scope*            scope)
+    Journal::Record(std::shared_ptr<gear::Scope> scope)
     {
       ELLE_TRACE_SCOPE("Journal::Record(%s)", *scope);
-
-      ELLE_FINALLY_ACTION_DELETE(scope);
 
       ELLE_ASSERT_EQ(scope->actors.empty(), true);
 
@@ -96,27 +87,23 @@ namespace etoile
       std::unique_ptr<gear::Transcript> transcript{scope->context->cede()};
 
       // Record the transcript for processing.
-      Journal::record(std::move(transcript));
+      Journal::record(scope->context->etoile().depot(), std::move(transcript));
 
       // Update the context's state.
       scope->context->state = gear::Context::StateJournaled;
-
-      ELLE_FINALLY_ABORT(scope);
-
-      // Finally, delete the scope.
-      delete scope;
 
       return elle::Status::Ok;
     }
 
     std::unique_ptr<nucleus::proton::Block>
-    Journal::retrieve(nucleus::proton::Address const& address,
+    Journal::retrieve(depot::Depot& depot,
+                      nucleus::proton::Address const& address,
                       nucleus::proton::Revision const& revision)
     {
       ELLE_TRACE_FUNCTION(address, revision);
 
 #ifdef ETOILE_JOURNAL_THREAD
-      for (auto transcript: Journal::_queue)
+      for (auto transcript: depot.queue())
         {
           ELLE_DEBUG_SCOPE("exploring transcript");
 
@@ -192,7 +179,8 @@ namespace etoile
     }
 
     void
-    Journal::_process(std::unique_ptr<gear::Transcript>&& transcript)
+    Journal::_process(depot::Depot& depot,
+                      std::unique_ptr<gear::Transcript>&& transcript)
     {
       ELLE_TRACE_FUNCTION(transcript);
 
@@ -206,7 +194,7 @@ namespace etoile
             {
             case gear::Action::Type::push:
               {
-                action->apply<depot::Depot>();
+                action->apply<depot::Depot>(depot);
                 break;
               }
             case gear::Action::Type::wipe:
@@ -225,7 +213,7 @@ namespace etoile
               break;
             case gear::Action::Type::wipe:
               {
-                action->apply<depot::Depot>();
+                action->apply<depot::Depot>(depot);
                 break;
               }
             }
@@ -233,7 +221,7 @@ namespace etoile
 
 #ifdef ETOILE_JOURNAL_THREAD
       // Remove the transcript from the queue.
-      Journal::_queue.erase(transcript);
+      depot.queue().erase(transcript);
 #endif
 
       ELLE_DEBUG("transcript processed successfully");

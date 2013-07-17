@@ -2,18 +2,16 @@
 
 #include <reactor/scheduler.hh>
 
+#include <etoile/Etoile.hh>
 #include <etoile/wall/Attributes.hh>
 #include <etoile/gear/Identifier.hh>
 #include <etoile/gear/Scope.hh>
 #include <etoile/gear/Object.hh>
-#include <etoile/gear/Gear.hh>
 #include <etoile/automaton/Attributes.hh>
 #include <etoile/Exception.hh>
 
 #include <nucleus/neutron/Trait.hh>
 #include <nucleus/neutron/Range.hh>
-
-#include <Infinit.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Attributes");
 
@@ -27,30 +25,29 @@ namespace etoile
 //
 
     void
-    Attributes::set(gear::Identifier const& identifier,
+    Attributes::set(etoile::Etoile& etoile,
+                    gear::Identifier const& identifier,
                     elle::String const& name,
                     elle::String const& value)
     {
       ELLE_TRACE_FUNCTION(identifier, name, value);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
-      gear::Object* context;
+      gear::Actor* actor = nullptr;
+      actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
+      gear::Object* context = nullptr;
 
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
+      ELLE_ASSERT(actor != nullptr);
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
+
+        ELLE_ASSERT_NEQ(context, nullptr);
 
         // apply the set automaton on the context.
         if (automaton::Attributes::Set(*context,
@@ -64,21 +61,15 @@ namespace etoile
     }
 
     nucleus::neutron::Trait
-    Attributes::get(gear::Identifier const& identifier,
+    Attributes::get(etoile::Etoile& etoile,
+                    gear::Identifier const& identifier,
                     elle::String const& name)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       nucleus::neutron::Trait const* trait = nullptr;
 
@@ -87,7 +78,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the get automaton on the context.
@@ -105,20 +96,14 @@ namespace etoile
     }
 
     nucleus::neutron::Range<nucleus::neutron::Trait>
-    Attributes::fetch(gear::Identifier const& identifier)
+    Attributes::fetch(etoile::Etoile& etoile,
+                      gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object* context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       nucleus::neutron::Range<nucleus::neutron::Trait> range;
 
@@ -127,7 +112,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the fetch automaton on the context.
@@ -143,28 +128,22 @@ namespace etoile
     /// this method removes the given attribute from the list.
     ///
     elle::Status        Attributes::Omit(
-                          const gear::Identifier&               identifier,
-                          const elle::String&                   name)
+      etoile::Etoile& etoile,
+      const gear::Identifier&               identifier,
+      const elle::String&                   name)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
-      gear::Actor*      actor;
-      gear::Scope*      scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Object*     context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the omit automaton on the context.

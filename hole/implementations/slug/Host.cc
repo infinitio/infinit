@@ -58,14 +58,28 @@ namespace hole
       {
         // Stop operations on the socket before it is deleted.
         // Check if we are not committing suicide.
+        ELLE_TRACE_SCOPE("%s: finalize", *this);
         auto sched = reactor::Scheduler::scheduler();
         if (sched != nullptr)
         {
           auto current = sched->current();
-          if (!_rpcs_handler->done() && current != _rpcs_handler)
+          if (this->_rpcs_handler &&
+              !_rpcs_handler->done() &&
+              current != _rpcs_handler)
           {
             _rpcs_handler->terminate_now();
           }
+        }
+        try
+        {
+          delete this->_socket.release();
+        }
+        catch (elle::Exception const& e)
+        {
+          // If we have an error cleaning up the socket - namely, the latest
+          // bytes couldn't be sent, just ignored it since the host is being
+          // removed anyway.
+          ELLE_WARN("%s: socket cleanup error ignored: %s", *this, e.what());
         }
       }
 
@@ -77,7 +91,8 @@ namespace hole
       Host::_rpc_run()
       {
         auto fn_on_exit = [&] {
-          ELLE_LOG("%s: left", *this);
+          ELLE_TRACE("%s: left", *this);
+          this->_rpcs_handler = nullptr;
           this->_slug._remove(this);
         };
         elle::Finally on_exit(std::move(fn_on_exit));
@@ -127,7 +142,8 @@ namespace hole
         ELLE_TRACE_SCOPE("%s: authenticate with %s", *this, passport);
         this->_state = State::authenticating;
         auto res = _rpcs.authenticate(passport);
-        this->_state = State::authenticated;
+        if (this->_state == State::authenticating)
+          this->_state = State::authenticated;
         return (res);
       }
 
@@ -135,25 +151,59 @@ namespace hole
       Host::_authenticate(elle::Passport const& passport)
       {
         ELLE_TRACE_SCOPE("%s: peer authenticates with %s", *this, passport);
-
-        if (this->_state == State::authenticated)
+        this->_remote_passport.reset(new elle::Passport(passport));
+        if (this->_slug._host_connected(passport))
         {
-            ELLE_DEBUG("already authenticated");
-            // XXX is this required ?
-            this->_slug._host_register(this);
-            return this->_slug.loci();
+          ELLE_TRACE("%s: peer is already connected, reject", *this);
+          this->_state = State::duplicate;
+          throw AlreadyConnected();
         }
-
+        while (true)
+        {
+          std::shared_ptr<Host> host(this->_slug._host_pending(passport));
+          if (!host)
+            break;
+          else
+            ELLE_TRACE("%s: already negociating with this peer", *this);
+          auto hash = std::hash<elle::Passport>()(this->_slug.passport());
+          auto remote_hash = std::hash<elle::Passport>()
+            (*host->_remote_passport);
+          ELLE_ASSERT_NEQ(hash, remote_hash);
+          if (hash < remote_hash)
+          {
+            ELLE_TRACE_SCOPE("%s: we are master, wait", *this);
+            {
+              if (this->_slug._host_wait(host))
+              {
+                ELLE_TRACE("%s: previous negociation succeeded, reject",
+                           *this);
+                this->_state = State::duplicate;
+                throw AlreadyConnected();
+              }
+              else
+                ELLE_TRACE("%s: previous negociation failed, carry on",
+                           *this);
+            }
+          }
+          else
+          {
+            ELLE_TRACE_SCOPE("%s: peer is master, just carry on", *this);
+            break;
+          }
+        }
         if (!passport.validate(this->_slug.authority()))
           throw Exception("unable to validate the passport");
         else
+        {
           this->_authenticated = true;
+          this->_authenticated_signal.signal();
+        }
         // Also authenticate to this host if we're not already doing so.
         if (this->_state == State::connected)
           this->authenticate(this->_slug.passport());
         // If we're authenticated, validate this host.
         if (this->_state == State::authenticated)
-          this->_slug._host_register(this);
+          this->_slug._host_register(this->shared_from_this());
         // Send back all the hosts we know.
         return this->_slug.loci();
       }
@@ -268,7 +318,7 @@ namespace hole
       Host::_pull(nucleus::proton::Address const& address,
                   nucleus::proton::Revision const& revision)
       {
-        ELLE_TRACE_SCOPE("%s: peer retreives block at address %s for revision %s",
+        ELLE_TRACE_SCOPE("%s: peer retrieves block at address %s for revision %s",
                          *this, address, revision);
 
         using nucleus::proton::Block;
@@ -432,8 +482,8 @@ namespace hole
             case Host::State::authenticated:
               stream << "authenticated";
               break;
-            case Host::State::dead:
-              stream << "dead";
+            case Host::State::duplicate:
+              stream << "duplicate";
               break;
           }
         return stream;
@@ -451,7 +501,7 @@ namespace hole
       void
       Host::print(std::ostream& stream) const
       {
-        stream << "Host " << _locus;
+        stream << "Host(" << _locus << ")";
       }
 
       std::ostream&

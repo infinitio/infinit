@@ -1,11 +1,12 @@
 #ifndef  ETOILE_WALL_OBJECT_HXX
 # define ETOILE_WALL_OBJECT_HXX
 
-# include <etoile/gear/Scope.hh>
-# include <etoile/shrub/Shrub.hh>
-# include <etoile/path/Path.hh>
-# include <etoile/path/Chemin.hh>
+# include <etoile/Etoile.hh>
 # include <etoile/Exception.hh>
+# include <etoile/gear/Scope.hh>
+# include <etoile/path/Chemin.hh>
+# include <etoile/path/Path.hh>
+# include <etoile/shrub/Shrub.hh>
 
 namespace etoile
 {
@@ -14,38 +15,34 @@ namespace etoile
 
       template <typename T>
       void
-      Object::reload(gear::Scope& scope)
+      Object::reload(etoile::Etoile& etoile,
+                     gear::Scope& scope)
       {
         ELLE_LOG_COMPONENT("etoile.wall.Object");
         ELLE_TRACE_FUNCTION(scope);
 
         ELLE_TRACE("clearing the cache in order to evict %s",
-                   scope.chemin.route);
+                   scope.chemin.route());
 
-        shrub::Shrub::clear();
+        etoile.shrub().clear();
 
         ELLE_TRACE("try to resolve the route now that the cache was cleaned");
 
-        path::Venue venue;
-        if (path::Path::Resolve(scope.chemin.route,
-                                venue) == elle::Status::Error)
-          throw Exception(elle::sprintf("unable to resolve the route %s",
-                                              scope.chemin.route));
-        scope.chemin = path::Chemin(scope.chemin.route, venue);
+        path::Venue venue =
+          path::Path::Resolve(etoile, scope.chemin.route());
+        scope.chemin = path::Chemin(scope.chemin.route(), venue);
 
         ELLE_DEBUG("route was successfully resolved into %s",
-                   scope.chemin.route);
+                   scope.chemin.route());
 
         ELLE_TRACE("loading object");
 
         T* context = nullptr;
-        if (scope.Use(context) == elle::Status::Error)
+        if (scope.Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to use the context");
 
         // Reset location
-        nucleus::proton::Location location;
-        if (scope.chemin.Locate(location) == elle::Status::Error)
-          throw Exception("unable to locate the object");
+        nucleus::proton::Location location = scope.chemin.locate();
 
         context->location = location;
         // Force the loading.

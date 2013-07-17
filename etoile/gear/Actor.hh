@@ -3,6 +3,7 @@
 
 # include <elle/types.hh>
 
+# include <etoile/Etoile.hh>
 # include <etoile/gear/fwd.hh>
 # include <etoile/gear/Identifier.hh>
 # include <etoile/gear/Operation.hh>
@@ -49,36 +50,11 @@ namespace etoile
         };
 
       //
-      // types
-      //
-      typedef std::map<const Identifier,
-                       Actor*>                          Container;
-      typedef Container::iterator                       Iterator;
-      typedef Container::const_iterator                 Scoutor;
-
-      //
-      // static methods
-      //
-      static elle::Status       Initialize();
-      static elle::Status       Clean();
-
-      static elle::Status       Add(const Identifier&,
-                                    Actor*);
-      static elle::Status       Select(const Identifier&,
-                                       Actor*&);
-      static elle::Status       Remove(const Identifier&);
-
-      static elle::Status       Show(const elle::Natural32 = 0);
-
-      //
-      // static attributes
-      //
-      static Container          Actors;
-
-      //
       // constructors & destructors
       //
-      Actor(Scope*);
+      Actor(std::shared_ptr<Scope>);
+      Actor(std::shared_ptr<Scope>,
+            Etoile& etoile);
       ~Actor();
 
       //
@@ -97,7 +73,7 @@ namespace etoile
       // attributes
       //
       Identifier        identifier;
-      Scope*            scope;
+      std::shared_ptr<Scope> scope;
       State             state;
     };
 

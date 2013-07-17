@@ -13,62 +13,63 @@ namespace etoile
 {
   namespace path
   {
-
-    ///
-    /// this class contains the addresses/revisions corresponding to a route.
-    ///
-    /// a venue is therefore composed of a sequence of Location, each
-    /// of which indicates the address and revision number of the component.
-    ///
+    /// A sequence of Location, each of which indicates the address and revision
+    /// number of the component. This is basically a Route in term of resolved
+    /// data blocks instead of string components.
     class Venue
     {
+    /*------.
+    | Types |
+    `------*/
     public:
-      //
-      // constants
-      //
-      static const Venue                Null;
-
-      //
-      // types
-      //
       typedef std::vector<nucleus::proton::Location> Container;
       typedef Container::iterator               Iterator;
       typedef Container::const_iterator         Scoutor;
 
-      //
-      // constructors & destructors
-      //
+    /*-------------.
+    | Construction |
+    `-------------*/
+    public:
+      /// An empty venue.
       Venue();
-      Venue(Venue const&) = default;
+      /// A copy of \param source.
+      Venue(Venue const& /*source*/) = default;
+      /// A copy of \param source limited to the first \param size components.
+      Venue(Venue const& source, elle::Size size);
+      // XXX: should not be assignable.
+      ELLE_OPERATOR_ASSIGNMENT(Venue);
+    private:
+      ELLE_ATTRIBUTE_RX(Container, elements);
 
-      //
-      // methods
-      //
-      elle::Status              Record(const nucleus::proton::Location&);
-      elle::Status              Record(const nucleus::proton::Address&,
-                                       const nucleus::proton::Revision&);
+    /*-----------.
+    | Operations |
+    `-----------*/
+    public:
+      /// Append the given location.
+      void
+      append(nucleus::proton::Location const& location);
+      /// Append a location composed of the given address and revision.
+      void
+      append(nucleus::proton::Address const& addr,
+             nucleus::proton::Revision const& rev);
+      /// Whether this starts with \param base.
+      bool
+      derives(const Venue& base) const;
 
-      elle::Boolean             Derives(const Venue&) const;
+    /*-----------.
+    | Comparable |
+    `-----------*/
+    public:
+      bool
+      operator==(const Venue&) const;
 
-      elle::Status              Clear();
-
-      //
-      // interfaces
-      //
-
-      ELLE_OPERATOR_ASSIGNMENT(Venue); // XXX
-
-      elle::Boolean             operator==(const Venue&) const;
-
-      // dumpable
-      elle::Status              Dump(const elle::Natural32 = 0) const;
-
-      //
-      // attributes
-      //
-      Container                 elements;
+    /*---------.
+    | Dumpable |
+    `---------*/
+    public:
+      elle::Status
+      Dump(const elle::Natural32 = 0) const;
     };
-
   }
 }
 

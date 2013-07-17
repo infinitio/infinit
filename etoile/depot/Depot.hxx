@@ -29,11 +29,11 @@ namespace etoile
 
       // Try to retrieve the block from the journal, should the block
       // be still in the pipe for being published onto the storage layer.
-      block = journal::Journal::retrieve(address);
+      block = journal::Journal::retrieve(*this, address);
 
       // Otherwise, retrieve the block from the storage layer.
       if (block == nullptr)
-        block = hole().pull(address, revision);
+        block = this->_hole->pull(address, revision);
 
       // Cast it to make sure a node did not return a block of another
       // type.

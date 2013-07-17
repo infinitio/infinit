@@ -1,5 +1,3 @@
-#include <surface/gap/gap.h> // XXX remove dependency
-
 #include "Client.hh"
 
 #include <plasma/plasma.hh>
@@ -34,7 +32,19 @@ ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::Notification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::Notification, ar, value, version)
 {
+  (void)version;
   ar & named("notification_type", value.notification_type);
+}
+
+ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::NewSwaggerNotification);
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NewSwaggerNotification,
+                      ar,
+                      value,
+                      version)
+{
+  (void)version;
+  ar & base_class<plasma::trophonius::Notification>(value);
+  ar & named("user_id", value.user_id);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::UserStatusNotification);
@@ -43,6 +53,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::UserStatusNotification,
                       value,
                       version)
 {
+  (void)version;
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("user_id", value.user_id);
   ar & named("status", value.status);
@@ -56,6 +67,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification,
                       value,
                       version)
 {
+  (void)version;
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & base_class<plasma::Transaction>(value);
 }
@@ -66,6 +78,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification,
                       value,
                       version)
 {
+  (void)version;
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("network_id", value.network_id);
   ar & named("what", value.what);
@@ -77,6 +90,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::MessageNotification,
                       value,
                       version)
 {
+  (void)version;
   ar & base_class<plasma::trophonius::Notification>(value);
   ar & named("sender_id", value.sender_id);
   ar & named("message", value.message);
@@ -89,33 +103,40 @@ namespace plasma
     Notification::~Notification()
     {}
 
+    void
+    Notification::print(std::ostream& stream) const
+    {
+      stream << this->notification_type;
+    }
+
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict)
     {
-      ELLE_DEBUG("convert json %s to Notification instance", dict.repr());
-      NotificationType notification_type = dict["notification_type"]
-        .as<NotificationType>();
+      ELLE_TRACE("convert json %s to Notification instance", dict.repr());
+      NotificationType type = dict["notification_type"].as<NotificationType>();
       using namespace elle::serialize;
       auto extractor = from_string<InputJSONArchive>(dict.repr());
       typedef std::unique_ptr<Notification> Ptr;
-      switch (notification_type)
+      switch (type)
       {
+      case NotificationType::ping:
+        return Ptr(new Notification{extractor});
       case NotificationType::transaction:
-        return Ptr{new TransactionNotification{extractor}};
+        return Ptr(new TransactionNotification{extractor});
+      case NotificationType::new_swagger:
+        return Ptr(new NewSwaggerNotification{extractor});
       case NotificationType::user_status:
-        return Ptr{new UserStatusNotification{extractor}};
+        return Ptr(new UserStatusNotification{extractor});
       case NotificationType::message:
-        return Ptr{new MessageNotification{extractor}};
+        return Ptr(new MessageNotification{extractor});
       case NotificationType::network_update:
-        return Ptr{new NetworkUpdateNotification{extractor}};
+        return Ptr(new NetworkUpdateNotification{extractor});
       case NotificationType::connection_enabled:
-        return Ptr{new Notification{extractor}};
+        return Ptr(new Notification{extractor});
       default:
-        throw elle::Exception{
-          elle::sprint("Unknown notification type", notification_type)};
+        throw elle::Exception{elle::sprint("Unknown notification type", type)};
       }
       elle::unreachable();
-      return Ptr{nullptr};
     }
 
     //- Implementation --------------------------------------------------------
@@ -124,7 +145,9 @@ namespace plasma
       boost::asio::io_service io_service;
       boost::asio::ip::tcp::socket socket;
       boost::asio::deadline_timer connection_checker;
+      boost::asio::deadline_timer ping_timer;
       bool connected;
+      bool ping_received;
       std::string server;
       uint16_t port;
       boost::asio::streambuf request;
@@ -141,7 +164,9 @@ namespace plasma
         io_service{},
         socket{io_service},
         connection_checker{io_service},
+        ping_timer{io_service},
         connected{false},
+        ping_received{false},
         server{server},
         port{port},
         request{},
@@ -153,87 +178,164 @@ namespace plasma
     Client::Client(std::string const& server,
                    uint16_t port,
                    std::function<void()> connect_callback):
-      _impl{new Impl{server, port, connect_callback}}
+      _impl{new Impl{server, port, connect_callback}},
+      _reconnected{0},
+      _ping_period{boost::posix_time::seconds(30)}
     {
       ELLE_ASSERT(connect_callback != nullptr);
-      _impl->connection_checker.expires_from_now(
-        boost::posix_time::seconds(10)
-      );
-      _impl->connection_checker.async_wait(
-          std::bind(&Client::_check_connection, this, std::placeholders::_1)
-      );
     }
 
     Client::~Client()
     {}
 
-    static char const* ping_msg = "PING\n";
+    static char const* ping_msg = "{\"notification_type\": 208}\n";
 
     void
-    Client::_check_connection(boost::system::error_code const& err)
+    Client::_disconnect()
+    {
+      boost::system::error_code err;
+      this->_disconnect(err);
+    }
+
+    void
+    Client::_disconnect(boost::system::error_code& err)
+    {
+      _impl->connected = false;
+      _impl->socket.close(err);
+      _impl->ping_timer.cancel();
+    }
+
+    void
+    Client::_reconnect()
+    {
+      this->_disconnect();
+      this->connect(_impl->user_id,
+                    _impl->user_token,
+                    _impl->user_device_id);
+      this->_reconnected++;
+    }
+
+    /*-----.
+    | Ping |
+    `-----*/
+
+    void
+    Client::_check_connection()
+    {
+      ELLE_TRACE_SCOPE("%s: check connection status", *this);
+      if (_impl->connected == false || _impl->ping_received == false)
+      {
+        try
+        {
+          if (_impl->ping_received == false)
+          {
+            ELLE_WARN("%s: haven't received a ping from Trophonius in %s s",
+                      *this,
+                      this->_ping_timeout);
+          }
+          if (_impl->connected == false)
+          {
+            ELLE_WARN("%s: client has been disconnected from Trophonius",
+                      *this);
+          }
+          ELLE_TRACE("trying to reconnect");
+          this->_reconnect();
+          _impl->last_error = boost::system::error_code{};
+          ELLE_TRACE("reconnected to Trophonius successfully");
+        }
+        catch (std::exception const&)
+        {
+          ELLE_WARN("couldn't reconnect to tropho: %s",
+                    elle::exception_string());
+        }
+      }
+      this->_restart_connection_check_timer();
+    }
+
+    void
+    Client::_on_ping_sent(boost::system::error_code const& err,
+                          size_t const /*bytes_transferred*/)
     {
       if (err)
       {
-        ELLE_WARN("timer failed, stopping connection checks");
-        return;
+        this->_reconnect();
+        ELLE_WARN("timer failed in %s (%s), stopping connection checks",
+                  __func__, err.message());
       }
+    }
 
+    void
+    Client::_send_ping()
+    {
       try
       {
-        ELLE_TRACE("send ping to %s", _impl->socket.remote_endpoint());
+        ELLE_DEBUG_SCOPE("send ping to %s", _impl->socket.remote_endpoint());
         boost::asio::async_write(
           _impl->socket,
           boost::asio::buffer(ping_msg, strlen(ping_msg)),
           std::bind(
-            &Client::_on_write_check, this,
+            &Client::_on_ping_sent, this,
             std::placeholders::_1, std::placeholders::_2
           )
         );
       }
-      catch (std::runtime_error const& e)
+      catch (std::exception const&)
       {
+        ELLE_WARN("couldn't send ping to tropho: %s",
+                  elle::exception_string());
         this->_impl->connected = false;
       }
-      if (_impl->connected == false)
-      {
-        try
-        {
-          ELLE_DEBUG("trying to reconnect to tropho now");
-          this->connect(_impl->user_id,
-                        _impl->user_token,
-                        _impl->user_device_id);
-          _impl->last_error = boost::system::error_code{};
-          ELLE_DEBUG("reconnected to tropho successfully");
-          _impl->connect_callback();
-        }
-        catch (std::exception const& e)
-        {
-          ELLE_WARN("Couldn't reconnect to tropho: %s", e.what());
-        }
-      }
-
+      // Ensure that we try to send a ping every x seconds
+      this->_restart_ping_timer();
     }
 
     void
-    Client::_on_write_check(boost::system::error_code const& err,
-                            size_t const bytes_transferred)
+    Client::_restart_ping_timer()
     {
-      if (err)
-      {
-        _impl->connected = false;
-        ELLE_WARN("trophonius has been disconnected, re-try in 10 seconds");
-      }
-      else if (bytes_transferred == strlen(ping_msg))
-      {
-        ELLE_TRACE("trophonius connected");
-        _impl->connected = true;
-      }
-      _impl->connection_checker.expires_from_now(
-        boost::posix_time::seconds(10)
-      );
+      _impl->ping_timer.expires_from_now(this->_ping_period);
+
+      _impl->ping_timer.async_wait(
+        [this] (boost::system::error_code const& err)
+        {
+          if (err)
+          {
+            if (err.value() != boost::asio::error::operation_aborted)
+              ELLE_WARN("timer failed (%s), stopping connection checks", err);
+            return;
+          }
+          else
+            this->_send_ping();
+        });
+    }
+
+    void
+    Client::_restart_connection_check_timer()
+    {
+      _impl->connection_checker.expires_from_now(this->_ping_period * 2);
+
       _impl->connection_checker.async_wait(
-          std::bind(&Client::_check_connection, this, std::placeholders::_1)
-      );
+        [&] (boost::system::error_code const& err)
+        {
+          if (err)
+          {
+            if (err.value() != boost::asio::error::operation_aborted)
+              ELLE_WARN("timer failed in %s (%s), stopping connection checks",
+                        __func__, err);
+            return;
+          }
+          else
+            this->_check_connection();
+        });
+      _impl->ping_received = false;
+    }
+
+    void
+    Client::ping_period(boost::posix_time::time_duration const& period)
+    {
+      this->_ping_period = period;
+      this->_ping_timeout = period * 2;
+      if (_impl->connected)
+        this->_send_ping();
     }
 
     void
@@ -248,8 +350,8 @@ namespace plasma
       tcp::resolver::query query(_impl->server, elle::sprint(_impl->port));
       tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 
-      ELLE_DEBUG("connecting trophonius client to %s:%s",
-                 _impl->server, _impl->port);
+      ELLE_DEBUG("%s: connecting trophonius client to %s:%s",
+                 *this, _impl->server, _impl->port);
       if (_impl->socket.is_open())
       {
         _impl->socket.close();
@@ -271,16 +373,21 @@ namespace plasma
     {
       if (err || bytes_transferred == 0)
       {
-        if (err)
+        if (err == boost::asio::error::operation_aborted)
         {
-          _impl->last_error = err;
-          //_impl->connected = false;
+          ELLE_WARN("%s: socket read aborted, tropho disconnected", *this);
+          _impl->connected = false;
+          return;
         }
-        ELLE_WARN("something went wrong while reading from socket: %s", err);
+        ELLE_WARN("%s: something went wrong while reading from socket: %s",
+                  *this, err.message());
+        _impl->last_error = err;
+        this->_reconnect();
         return;
       }
 
-      ELLE_TRACE("read %s bytes from the socket (%s available)",
+      ELLE_DUMP("%s: read %s bytes from the socket (%s available)",
+                 *this,
                  bytes_transferred,
                  _impl->response.in_avail());
 
@@ -290,15 +397,29 @@ namespace plasma
       // Transfer socket stream to stringstream that ensure there are no
       // encoding troubles (and make the stream human readable).
       std::unique_ptr<char[]> data{new char[bytes_transferred]};
-      if (!data)
-        throw std::bad_alloc{};
       is.read(data.get(), bytes_transferred);
       std::string msg{data.get(), bytes_transferred};
-      ELLE_DEBUG("Got message: %s", msg);
-
-      this->_notifications.push(
-        notification_from_dict(json::parse(msg)->as_dictionary()));
-
+      ELLE_TRACE_SCOPE("%s: got message: %s", *this, msg);
+      try
+      {
+        auto notif = notification_from_dict(json::parse(msg)->as_dictionary());
+        // While there is no reason to forward the ping notification to the user
+        // this notification is 'ignored', meaning that it's not pushed into the
+        // notification queue.
+        // If we want a behavior on it, just remove that condition.
+        if (notif->notification_type == NotificationType::ping)
+        {
+          ELLE_DEBUG("%s: ping received", *this);
+          _impl->ping_received = true;
+        }
+        else
+          this->_notifications.emplace(notif.release());
+      }
+      catch (std::exception const&)
+      {
+        ELLE_WARN("%s: couldn't handle %s: %s",
+                  *this, msg, elle::exception_string());
+      }
       this->_read_socket();
     }
 
@@ -352,28 +473,33 @@ namespace plasma
           elle::ResponseCode::error, "Writing socket error"};
 
       this->_read_socket();
+      this->_restart_ping_timer();
+      this->_restart_connection_check_timer();
+      _impl->connect_callback();
       return true;
     }
 
     std::unique_ptr<Notification>
     Client::poll()
     {
+      ELLE_DEBUG_SCOPE("%s: polling", *this);
       // Poll while something has to be done
       if (size_t count = _impl->io_service.poll())
       {
-        ELLE_DEBUG("polling io service has triggered %s events", count);
+        ELLE_DEBUG("%s: polling io service has triggered %s events",
+                   *this, count);
       }
 
       std::unique_ptr<Notification> ret;
 
       if (!_notifications.empty())
-        {
-          ELLE_TRACE("Pop notification dictionnary to be handle.");
+      {
+        ELLE_DEBUG("%s: Pop notification dictionnary to be handled.", *this);
 
-          // Fill dictionary.
-          ret.reset(_notifications.front().release());
-          _notifications.pop();
-        }
+        // Fill dictionary.
+        ret.reset(_notifications.front().release());
+        _notifications.pop();
+      }
 
       return ret;
     }
@@ -394,7 +520,7 @@ namespace plasma
         case NotificationType::name:           \
           out << #name;                            \
           break;
-#include <oracle/disciples/meta/notification_type.hh.inc>
+#include <oracle/disciples/meta/src/meta/notification_type.hh.inc>
 #undef NOTIFICATION_TYPE
       }
 
@@ -411,12 +537,19 @@ namespace plasma
         case NetworkUpdate::name:           \
           out << #name;                            \
           break;
-#include <oracle/disciples/meta/resources/network_update.hh.inc>
+#include <oracle/disciples/meta/src/meta/resources/network_update.hh.inc>
 #undef NETWORK_UPDATE
       }
 
       return out;
     }
 
+    void
+    Client::print(std::ostream& stream) const
+    {
+      stream << "tropho::Client("
+             << this->_impl->user_id << ", "
+             << this->_impl->user_device_id << ")";
+    }
   }
 }

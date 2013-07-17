@@ -26,6 +26,15 @@ extern "C" {
   /// Returns NULL on failure.
   gap_State* gap_new();
 
+  /// Create a new state.
+  /// Returns NULL on failure.
+  gap_State* gap_configurable_new(char const* meta_host,
+                                  unsigned short meta_port,
+                                  char const* trophonius_host,
+                                  unsigned short trophonius_port,
+                                  char const* apertus_host,
+                                  unsigned short apertus_port);
+
   /// Release a state.
   void gap_free(gap_State* state);
 
@@ -59,34 +68,6 @@ extern "C" {
 
   gap_Status
   gap_notifications_read(gap_State*);
-
-  //- Operation interface -------------------------------------------------------
-
-  /// Identifier for an operation launched by gap.
-  typedef int gap_OperationId;
-
-  /// Status of an operation.
-  typedef int gap_OperationStatus;
-
-  /// The operation ended with an error.
-  extern gap_OperationStatus gap_operation_status_failure;
-
-  /// The operation successfully ended.
-  extern gap_OperationStatus gap_operation_status_success;
-
-  /// The operation is still running.
-  extern gap_OperationStatus gap_operation_status_running;
-
-  /// Returns the operation status.
-  gap_OperationStatus
-  gap_operation_status(gap_State* state,
-                     gap_OperationId const pid);
-
-  /// Try to finalize an operation. Returns an error if the operation does not
-  /// exist, or if it's still running.
-  gap_Status
-  gap_operation_finalize(gap_State* state,
-                       gap_OperationId const pid);
 
   //- Authentication & registration -------------------------------------------
 
@@ -139,6 +120,12 @@ extern "C" {
     gap_user_status_online = 1,
     gap_user_status_busy = 2,
   } gap_UserStatus;
+
+  typedef void (*gap_new_swagger_callback_t)(char const*);
+
+  gap_Status
+  gap_new_swagger_callback(gap_State* state,
+                           gap_new_swagger_callback_t cb);
 
   typedef void (*gap_user_status_callback_t)(char const*,
                                              gap_UserStatus const);
@@ -377,19 +364,15 @@ extern "C" {
                         gap_on_error_callback_t cb);
 
   /// Send files to a specific user.
-  ///
-  /// @returns a unique identifier or -1 on error.
-  gap_OperationId
+  gap_Status
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files);
 
-
-  /// Update transaction status.
+  /// Cancel transaction.
   gap_Status
-  gap_update_transaction(gap_State* state,
-                         char const* transaction_id,
-                         gap_TransactionStatus status);
+  gap_cancel_transaction(gap_State* state,
+                         char const* transaction_id);
 
   /// Accept a transaction.
   /// This function can only be used by the recipient of the transaction, if
@@ -409,6 +392,10 @@ extern "C" {
   void
   gap_send_file_crash_report(char const* module,
                              char const* filename);
+
+  gap_Status
+  gap_gather_crash_reports(char const* user_id,
+                           char const* network_id);
 
   // Generated file.
   #include <surface/gap/gen_metrics.h>

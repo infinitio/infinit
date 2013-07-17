@@ -46,7 +46,6 @@ namespace infinit
 
     Channel::~Channel()
     {
-      assert(_packets.empty());
       if (_id != 0)
         {
           ELLE_DEBUG_SCOPE("close channel %s", _id);

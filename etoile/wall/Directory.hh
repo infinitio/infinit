@@ -25,45 +25,66 @@ namespace etoile
       /// Create a directory though orphan since not attached to the hierarchy.
       static
       gear::Identifier
-      create();
+      create(etoile::Etoile& etoile);
       /// Load the directory referenced through the given chemin.
       static
       gear::Identifier
-      load(path::Chemin const& chemin);
+      load(etoile::Etoile& etoile,
+           path::Chemin const& chemin);
       /// Add an entry to the given directory.
       static
       void
-      add(gear::Identifier const& parent,
-          path::Slab const& name,
+      add(etoile::Etoile& etoile,
+          gear::Identifier const& parent,
+          std::string const& name,
           gear::Identifier const& child);
 
-      static elle::Status       Lookup(const gear::Identifier&,
-                                       const path::Slab&,
-                                       nucleus::neutron::Entry const*&);
+      /// The directory entry associated with the given name.
+      ///
+      /// This method should be used careful as a pointer to the target entry is
+      /// returned. should this entry be destroyed by another actor's operation,
+      /// accessing it could make the system crash.
+      static
+      nucleus::neutron::Entry const*
+      lookup(etoile::Etoile& etoile,
+             const gear::Identifier&,
+             const std::string&);
 
       /// Return a set of entries located in [index, index + size[.
       static
       nucleus::neutron::Range<nucleus::neutron::Entry>
-      consult(gear::Identifier const& identifer,
+      consult(etoile::Etoile& etoile,
+              gear::Identifier const& identifer,
               nucleus::neutron::Index const& index,
               nucleus::neutron::Size const& size);
 
-      static elle::Status       Rename(const gear::Identifier&,
-                                       const path::Slab&,
-                                       const path::Slab&);
-      static elle::Status       Remove(const gear::Identifier&,
-                                       const path::Slab&);
+      static
+      elle::Status
+      Rename(etoile::Etoile& etoile,
+             const gear::Identifier&,
+             const std::string&,
+             const std::string&);
+      static
+      elle::Status
+      Remove(etoile::Etoile& etoile,
+             const gear::Identifier&,
+             const std::string&);
 
       /// Discard the scope, potentially ignoring some modifications.
       static
       void
-      discard(gear::Identifier const& identifier);
+      discard(etoile::Etoile& etoile,
+              gear::Identifier const& identifier);
       /// Commit the pending modifications by placing the scope in the journal.
       static
       void
-      store(gear::Identifier const& identifier);
+      store(etoile::Etoile& etoile,
+            gear::Identifier const& identifier);
 
-      static elle::Status       Destroy(const gear::Identifier&);
+      static
+      elle::Status
+      Destroy(etoile::Etoile& etoile,
+              const gear::Identifier&);
     };
 
   }

@@ -70,8 +70,7 @@ SERIALIZE_RESPONSE(plasma::meta::LogoutResponse, ar, res)
 
 SERIALIZE_RESPONSE(plasma::meta::RegisterResponse, ar, res)
 {
-  (void) ar;
-  (void) res;
+  ar & named("registered_user_id", res.registered_user_id);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
@@ -94,6 +93,7 @@ SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
   ar & named("identity", res.identity);
   ar & named("remaining_invitations",  res.remaining_invitations);
   ar & named("status", res.status);
+  ar & named("devices", res.devices);
   try
   {
     ar & named("token_generation_key", res.token_generation_key);
@@ -109,6 +109,11 @@ SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
 SERIALIZE_RESPONSE(plasma::meta::UsersResponse, ar, res)
 {
   ar & named("users", res.users);
+}
+
+SERIALIZE_RESPONSE(plasma::meta::AddSwaggerResponse, ar, res)
+{
+  ar & named("swag", res.direction);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::SwaggersResponse, ar, res)
@@ -260,12 +265,20 @@ namespace plasma
       return (this->err == error);
     }
 
+    bool
+    Exception::operator !=(Error const& error) const
+    {
+      return !(*this == error);
+    }
+
     namespace json = elle::format::json;
 
      // - Ctor & dtor ----------------------------------------------------------
     Client::Client(std::string const& server,
                    uint16_t port,
                    bool check_errors):
+      _host(server),
+      _port(port),
       _root_url{elle::sprintf("http://%s:%d", server, port)},
       _check_errors{check_errors},
       _identity{},
@@ -277,8 +290,6 @@ namespace plasma
     Client::~Client()
     {
     }
-
-
 
     // - API calls ------------------------------------------------------------
     // XXX add login with token method.
@@ -410,6 +421,16 @@ namespace plasma
       return this->_get<SwaggersResponse>("/user/swaggers");
     }
 
+    AddSwaggerResponse
+    Client::add_swaggers(std::string const& user1, std::string const& user2) const
+    {
+      json::Dictionary request;
+      request["user1"] = user1;
+      request["user2"] = user2;
+      request["admin_token"] = this->token();
+      return this->_post<AddSwaggerResponse>("/user/add_swagger", request);
+    }
+
     // SwaggerResponse
     // Client::get_swagger(std::string const& id) const
     // {
@@ -482,7 +503,8 @@ namespace plasma
     Client::update_transaction(std::string const& transaction_id,
                                plasma::TransactionStatus status) const
     {
-      ELLE_TRACE("update %s transaction with new status %s",
+      ELLE_TRACE("%s: update %s transaction with new status %s",
+                 *this,
                  transaction_id,
                  status);
       json::Dictionary request{};
@@ -498,7 +520,8 @@ namespace plasma
                                std::string const& device_id,
                                std::string const& device_name) const
     {
-      ELLE_TRACE("accept %s transaction on device %s (%s)",
+      ELLE_TRACE("%s: accept %s transaction on device %s (%s)",
+                 *this,
                  transaction_id,
                  device_name,
                  device_id);
@@ -552,19 +575,14 @@ namespace plasma
     }
 
     PullNotificationResponse
-    Client::pull_notifications(int count, int offset) const
+    Client::pull_notifications(int const count,
+                               int const offset) const
     {
-      json::Dictionary request{std::map<std::string, std::string>
-      {
-      }};
-
+      json::Dictionary request{};
       request["count"] = count;
       request["offset"] = offset;
 
-      auto res = this->_post<PullNotificationResponse>("/notification/get",
-                                                              request);
-
-      return res;
+      return this->_post<PullNotificationResponse>("/notifications", request);
     }
 
     ReadNotificationResponse
@@ -803,11 +821,21 @@ namespace plasma
         case Error::name:                              \
           out << #name << "(" << #comment << ")";      \
           break;
-#include <oracle/disciples/meta/error_code.hh.inc>
+#include <oracle/disciples/meta/src/meta/error_code.hh.inc>
 #undef ERROR_CODE
       }
 
       return out;
+    }
+
+    /*----------.
+    | Printable |
+    `----------*/
+
+    void
+    Client::print(std::ostream& stream) const
+    {
+      stream << "meta::Client(" << this->_host << ":" << this->_port << " @" << this->_email << ")";
     }
   }
 }

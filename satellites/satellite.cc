@@ -39,13 +39,16 @@ namespace infinit
 
   static
   void
-  sighdl(int signum)
+  forward_signal(int signum)
   {
-    ELLE_DEBUG_SCOPE("received signal %s(%d)",
+    ELLE_TRACE_SCOPE("received signal %s(%d)",
                      elle::system::strsignal(signum), signum);
     if (st_pid != -1)
     {
-      ELLE_DEBUG("kill(%d, %s(%d))",
+      // If we are asked to terminate, transform the SIGTERM into SIGKILL.
+      if (signum == SIGTERM)
+        signum = SIGKILL;
+      ELLE_TRACE("kill(%d, %s(%d))",
                  st_pid, elle::system::strsignal(signum), signum);
       kill(st_pid, signum);
     }
@@ -61,9 +64,9 @@ namespace infinit
     int retval = -1;
 
     st_pid = pid;
-    signal(SIGINT, sighdl);
-    signal(SIGTERM, sighdl);
-    signal(SIGQUIT, sighdl);
+    signal(SIGINT, forward_signal);
+    signal(SIGTERM, forward_signal);
+    signal(SIGQUIT, forward_signal);
 
     ELLE_DEBUG("%s[%d]: start tracing", name, pid);
     while ((err = waitpid(pid, &status, 0)) != pid)
@@ -75,6 +78,7 @@ namespace infinit
                                           err, ::strerror(_errno))};
     }
     ELLE_DEBUG("finished waiting %s", pid);
+
     if (WIFEXITED(status))
     {
       retval = WEXITSTATUS(status);
@@ -84,8 +88,9 @@ namespace infinit
     {
       std::stringstream ss;
       int signum = WTERMSIG(status);
-      ELLE_ERR("%s[%d]: stopped by signal %s(%d)", name, pid,
-               elle::system::strsignal(signum), signum);
+      ss << elle::sprintf("%s[%d]: stopped by signal %s(%d)", name, pid,
+                          elle::system::strsignal(signum), signum);
+      ELLE_ERR("%s", ss.str());
       retval = 128 + signum;
 #if defined WCOREDUMP
       if (WCOREDUMP(status))
@@ -136,7 +141,7 @@ namespace infinit
       elle::signal::ScopedGuard sigint{*sched, {SIGINT}, sig_fn};
       action();
       ELLE_DEBUG("quiting %s", name);
-      return 0;
+      return EXIT_SUCCESS;
     }
     catch (Exit const& e)
     {
@@ -144,11 +149,11 @@ namespace infinit
     }
     catch (std::runtime_error const& e)
     {
-      ELLE_ERR("%s: fatal error: %s", name, e.what());
+     ELLE_ERR("%s: fatal error: %s", name, e.what());
       std::cerr << name << ": fatal error: " << e.what() << std::endl;
       elle::crash::report(common::meta::host(), common::meta::port(),
                           name, e.what());
-      return 1;
+      return EXIT_FAILURE;
     }
   }
 
@@ -170,10 +175,12 @@ namespace infinit
     std::string shallfork = elle::os::getenv("INFINIT_NO_FORK", "");
     if (shallfork.empty() && (pid = fork()))
     {
+      // Parent.
       return _satellite_trace(pid, name);
     }
     else
     {
+      // Child.
       ELLE_LOG_COMPONENT("infinit.satellite.child");
       reactor::Scheduler sched;
       try
@@ -181,7 +188,7 @@ namespace infinit
         reactor::VThread<int> main(sched, name, std::bind(_satellite_wrapper,
                                                           name, action));
         sched.run();
-        return main.result();
+        exit(main.result());
       }
       catch (Exit const& e)
       {
@@ -193,7 +200,7 @@ namespace infinit
         std::cerr << name << ": fatal error: " << e << std::endl;
         elle::crash::report(common::meta::host(),common::meta::port(),
                             name, e.what());
-        return 1;
+        exit(EXIT_FAILURE);
       }
       catch (std::runtime_error const& e)
       {
@@ -201,7 +208,7 @@ namespace infinit
         std::cerr << name << ": fatal error: " << e.what() << std::endl;
         elle::crash::report(common::meta::host(),common::meta::port(),
                             name, e.what());
-        return 1;
+        exit(EXIT_FAILURE);
       }
     }
   }

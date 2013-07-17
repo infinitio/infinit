@@ -25,6 +25,13 @@ namespace hole
   {
     namespace slug
     {
+      /*-----------------.
+      | AlreadyConnected |
+      `-----------------*/
+
+      AlreadyConnected::AlreadyConnected()
+        : elle::Exception("already connected to this host")
+      {}
 
       /*-------------.
       | Construction |
@@ -131,8 +138,9 @@ namespace hole
 
       Slug::~Slug()
       {
+        ELLE_TRACE_SCOPE("%s: finalize", *this);
         for (auto host: Hosts(_hosts))
-          this->_remove(host.second);
+          this->_remove(host.second.get());
 
         // Stop serving; we may not be listening, since bind errors are
         // considered warnings (see constructor), in which case we have no
@@ -167,14 +175,21 @@ namespace hole
 
             // Publish it onto the network.
             {
-              for (auto neighbour: _hosts)
+              for (auto neighbour: Hosts(_hosts))
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
 
                 try
                 {
                   host->push(address, block);
                 }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
                 {
                   ELLE_WARN("[%p] remote exception: %s",
@@ -274,18 +289,24 @@ namespace hole
 
             // Publish it onto the network.
             {
-              for (auto neighbour: this->_hosts)
+              for (auto neighbour: Hosts(this->_hosts))
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
 
                 try
                 {
                   host->push(address, block);
                 }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
                 {
-                  ELLE_WARN("[%p] remote exception: %s",
-                            this, e.what());
+                  ELLE_WARN("[%p] remote exception: %s", this, e.what());
                   continue;
                 }
               }
@@ -373,9 +394,9 @@ namespace hole
                          " fetch %s from the peers", address);
               // Go through the neighbours and retrieve the block from them.
               bool found = false;
-              for (auto neighbour: this->_hosts)
+              for (auto neighbour: Hosts(this->_hosts))
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
                 assert(host != nullptr);
 
                 std::unique_ptr<nucleus::proton::ImmutableBlock> iblock;
@@ -386,6 +407,13 @@ namespace hole
                   iblock = elle::cast<ImmutableBlock>::runtime(
                     host->pull(address, nucleus::proton::Revision::Any));
                 }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
                 {
                   ELLE_WARN("%s: remote exception: %s",
@@ -546,23 +574,30 @@ namespace hole
         ELLE_DEBUG_SCOPE("%s: retrieving the block '%s' from the network",
                          this, address);
 
-        for (auto neighbour: this->_hosts)
+        for (auto neighbour: Hosts(this->_hosts))
           {
-            Host* host = neighbour.second;
+            auto host = neighbour.second;
             std::unique_ptr<MutableBlock> block;
 
             try
-              {
-                block =
-                  elle::cast<MutableBlock>::runtime(
-                    host->pull(address, Revision::Last));
-              }
+            {
+              block =
+                elle::cast<MutableBlock>::runtime(
+                  host->pull(address, Revision::Last));
+            }
+            /// XXX: remove when the second catch only chatches remote
+            /// exceptions.
+            catch (reactor::Terminate const&)
+            {
+              throw;
+            }
+            /// XXX: catch only remote exceptions !
             catch (std::exception const& e)
-              {
-                ELLE_WARN("%s: remote exception: %s",
-                          this, e.what());
-                continue;
-              }
+            {
+              ELLE_WARN("%s: remote exception: %s",
+                        this, e.what());
+              continue;
+            }
 
             // Validate the block, depending on its component.
             // Indeed, the Object component requires as additional
@@ -793,23 +828,29 @@ namespace hole
         if (!this->storage().exist(address, revision))
           {
             bool found = false;
-            for (auto neighbour: this->_hosts)
+            for (auto neighbour: Hosts(this->_hosts))
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
                 std::unique_ptr<MutableBlock> block;
 
                 try
-                  {
-                    block =
-                      elle::cast<MutableBlock>::runtime(
-                        host->pull(address, revision));
-                  }
+                {
+                  block =
+                    elle::cast<MutableBlock>::runtime(
+                      host->pull(address, revision));
+                }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
-                  {
-                    ELLE_WARN("%s: remote exception: %s",
-                              this, e.what());
-                    continue;
-                  }
+                {
+                  ELLE_WARN("%s: remote exception: %s", this, e.what());
+                  continue;
+                }
 
                 // validate the block, depending on its
                 // component.
@@ -1028,18 +1069,24 @@ namespace hole
 
             // Notify the other hosts of the removal.
             {
-              for (auto neighbour: this->_hosts)
+              for (auto neighbour: Hosts(this->_hosts))
               {
-                Host* host = neighbour.second;
+                auto host = neighbour.second;
 
                 try
                 {
                   host->wipe(address);
                 }
+                /// XXX: remove when the second catch only chatches remote
+                /// exceptions.
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                /// XXX: catch only remote exceptions.
                 catch (std::exception const& e)
                 {
-                  ELLE_WARN("%s: remote exception: %s",
-                            this, e.what());
+                  ELLE_WARN("%s: remote exception: %s", this, e.what());
                   continue;
                 }
               }
@@ -1067,20 +1114,11 @@ namespace hole
       {
         std::vector<elle::network::Locus> res;
         for (auto host: _hosts)
-          res.push_back(host.first);
+          res.push_back(host.second->locus());
         return std::move(res);
       }
 
-      std::vector<Host*>
-      Slug::hosts()
-      {
-        std::vector<Host*> res;
-        for (auto host: _hosts)
-          res.push_back(host.second);
-        return std::move(res);
-      }
-
-      void
+      std::shared_ptr<Host>
       Slug::_connect(elle::network::Locus const& locus)
       {
         ELLE_TRACE_SCOPE("try connecting to %s(%s)", this->protocol(), locus);
@@ -1091,20 +1129,38 @@ namespace hole
             this->protocol(),
             *reactor::Scheduler::scheduler(),
             hostname, locus.port, _connection_timeout));
-        _connect(std::move(socket), locus, true);
+        return _connect(std::move(socket), locus, true);
       }
 
-      void
+      std::shared_ptr<Host>
       Slug::_connect(std::unique_ptr<reactor::network::Socket> socket,
                         elle::network::Locus const& locus, bool opener)
       {
         (void)opener;
         // Beware: do not yield between the host creation and the
         // authentication, or we might face a race condition.
-        Host* host = new Host(*this, locus, std::move(socket));
+        auto host = std::make_shared<Host>(*this, locus, std::move(socket));
+        this->_pending.insert(host);
         // XXX: leak
-        ELLE_TRACE("%s: authenticate to host: %s", *this, locus);
-        auto loci = host->authenticate(this->passport());
+        ELLE_TRACE_SCOPE("%s: authenticate to host: %s", *this, locus);
+        try
+        {
+          auto loci = host->authenticate(this->passport());
+        }
+        // XXX: catch only remote exceptions.
+        catch (elle::Exception&)
+        {
+          // We have to reset the remote passport, otherwise _remove might
+          // confuse us with a registered host and erase it instead of removing
+          // us from pending hosts.
+          host->remote_passport_reset();
+          this->_remove(host.get());
+          if (host->state() == Host::State::duplicate)
+            throw AlreadyConnected();
+          else
+            throw;
+        }
+
         if (this->_state == State::detached)
           this->_state = State::attached;
         // XXX Propagation disabled.
@@ -1114,16 +1170,20 @@ namespace hole
         if (host->authenticated())
           // If the remote machine has authenticated, validate this host.
           this->_host_register(host);
+        return host;
       }
 
       void
-      Slug::_host_register(Host* host)
+      Slug::_host_register(std::shared_ptr<Host> host)
       {
         ELLE_LOG("%s: add host: %s", *this, *host);
-        // XXX: the next line is broken
-        host->remote_passport(this->passport());
-        this->_hosts[host->locus()] = host;
+        ELLE_ASSERT(host->remote_passport());
+        ELLE_ASSERT(
+          this->_hosts.find(*host->remote_passport()) == this->_hosts.end());
+        this->_hosts[*host->remote_passport()] = host;
+        this->_pending.erase(host);
         this->_new_host.signal();
+        this->_new_connected_host.signal();
       }
 
       void
@@ -1133,35 +1193,72 @@ namespace hole
         {
           _connect(locus);
         }
-      catch (reactor::network::Exception& err)
+        catch (reactor::network::Exception& err)
         {
           ELLE_TRACE("ignore host %s: %s", locus, err.what());
         }
       }
 
       void
-      Slug::_remove(elle::network::Locus locus)
-      {
-        ELLE_LOG("%s: remove host at %s", *this, locus);
-        auto it_host = this->_hosts.find(locus);
-        // If the Host didn't take care of erasing himself from the list:
-        if (it_host != end(this->_hosts))
-        {
-          auto host_ptr = it_host->second;
-          this->_hosts.erase(it_host);
-
-          // delete the host if it's still in the map.
-          // This line can yield, so we need to make sure that the host is
-          // erased from the list before calling its destructor.
-          delete host_ptr;
-        }
-      }
-
-      void
       Slug::_remove(Host* host)
       {
-        ELLE_LOG("%s: remove host: %s", *this, *host);
-        this->_remove(host->locus());
+        if (host->remote_passport())
+        {
+          auto it = this->_hosts.find(*host->remote_passport());
+          if (it != this->_hosts.end() && it->second.get() == host)
+          {
+            ELLE_LOG_SCOPE("%s: remove %s from peers", *this, *host);
+            {
+              // Remove the Host from the map before erasing it. Its destructor
+              // may yield, so avoid having a semi-destructed Host in the map.
+              auto ward = *it;
+              this->_hosts.erase(it);
+            }
+            return;
+          }
+        }
+        for (auto it = this->_pending.begin();
+             it != this->_pending.end();
+             ++it)
+          if (it->get() == host)
+          {
+            ELLE_LOG_SCOPE("%s: remove %s from pending peers", *this, *host);
+            it = this->_pending.erase(it);
+            this->_new_host.signal();
+            break;
+          }
+      }
+
+      bool
+      Slug::_host_connected(elle::Passport const& passport)
+      {
+        return this->_hosts.find(passport) != this->_hosts.end();
+      }
+
+      std::shared_ptr<Host>
+      Slug::_host_pending(elle::Passport const& passport)
+      {
+        for (auto h: this->_pending)
+          if (h->_remote_passport
+              && *h->_remote_passport == passport
+              && h->authenticated())
+            return h;
+        return nullptr;
+      }
+
+      bool
+      Slug::_host_wait(std::shared_ptr<Host> host)
+      {
+        auto& sched = *reactor::Scheduler::scheduler();
+        while (true)
+        {
+          if (host->remote_passport()
+              && this->_host_connected(*host->remote_passport()))
+            return true;
+          if (this->_pending.find(host) == this->_pending.end())
+            return false;
+          sched.current()->wait(this->_new_host);
+        }
       }
 
       /*-------.
@@ -1206,16 +1303,21 @@ namespace hole
           {
             case State::attached:
               {
-                // FIXME: handling via loci is very wrong. IPs are
-                // not uniques, and this reconstruction is lame and
-                // non-injective.
                 using elle::utility::move_on_copy;
                 auto locus = socket->remote_locus();
                 move_on_copy<std::unique_ptr<reactor::network::Socket>>
                   msocket(std::move(socket));
                 auto auth_fn = [&, msocket, locus]
                 {
-                  this->_connect(std::move(msocket.value), locus, false);
+                  try
+                  {
+                    this->_connect(std::move(msocket.value), locus, false);
+                  }
+                  catch (...)
+                  {
+                    // _connect takes care of cleaning up if authentication goes
+                    // wrong.
+                  }
                 };
                 scope.run_background(elle::sprintf("auth %s", locus), auth_fn);
                 break;
@@ -1235,68 +1337,39 @@ namespace hole
       `-------*/
 
       void
-      Slug::portal_connect(std::string const& host, int port)
+      Slug::portal_connect(std::string const& hostname, int port, bool server)
       {
-        ELLE_TRACE_FUNCTION(host, port);
-        this->_server->accept(host, port);
-      }
-
-      bool
-      Slug::portal_wait(std::string const& host, int port)
-      {
-        ELLE_TRACE_FUNCTION(host, port);
-
-        elle::network::Locus locus{host, port};
-        ELLE_TRACE("checking if the host '%s' is present and has been "
-                   "authenticated", locus);
-
-        // Wait for host to be in the list
-        ELLE_DEBUG("active wait for %s", locus)
-        {
-          auto& sched = *reactor::Scheduler::scheduler();
-          auto& thread = *sched.current();
-          for (unsigned int max_tries = 10;
-               max_tries != 0;
-               max_tries--)
+        ELLE_TRACE_SCOPE("%s: connect to %s:%s (%s)",
+                         *this, hostname, port, server ? "server" : "client");
+        if (this->_protocol == reactor::network::Protocol::udt)
+          this->_server->accept(hostname, port);
+        else
+          if (!server)
           {
-            thread.wait(this->_new_host, boost::posix_time::seconds(1));
-            ELLE_DEBUG("(%s) resume from wait. Hosts: %s ", locus, _hosts);
-            auto it = _hosts.find(locus);
-            if (it != end(_hosts))
+            std::shared_ptr<Host> host;
+            try
             {
-              // Check if this is the second host with the same passport
-              elle::Passport const& pass = it->second->remote_passport();
-
-              ELLE_DEBUG("passport: %s", pass);
-
-              // We compare each passport with the one of the host.
-              // If there is only one host with this passport.
-              int i = 0;
-              for (auto const& p: _hosts)
+              host = this->_connect(elle::network::Locus(hostname, port));
+            }
+            catch (elle::Exception const& e)
+            {
+              auto inner = e.inner_exception();
+              if (inner)
               {
-                if (p.second->remote_passport() == pass)
-                {
-                  ELLE_DEBUG("already have this passport");
-                  i++;
-                }
+                std::cerr << ">" << inner->what() << "<" << std::endl;
+                // XXX: until exceptions are serializable
+                if (std::string(inner->what()) ==
+                    "already connected to this host")
+                  throw AlreadyConnected();
               }
-              if (i > 1)
-                goto error;
+              throw;
+            }
 
-              ELLE_DEBUG("new connection from %s", locus);
-              return true;
-            }
-            else
-            {
-              ELLE_DEBUG("not yet..");
-            }
+            if (!this->_host_wait(host))
+              throw elle::Exception("peer didn't authenticate us");
+            if (!host->authenticated())
+              throw AlreadyConnected();
           }
-        }
-        error:
-        ELLE_DEBUG("out of portal_wait(%s, %s) (%s)",
-                   host, port, this->_hosts.size())
-          this->_remove(locus);
-        return false;
       }
 
       /*---------.

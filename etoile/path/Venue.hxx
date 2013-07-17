@@ -1,4 +1,4 @@
-#ifndef  ETOILE_PATH_VENUE_HXX
+#ifndef ETOILE_PATH_VENUE_HXX
 # define ETOILE_PATH_VENUE_HXX
 
 # include <cassert>
@@ -13,7 +13,7 @@ ELLE_SERIALIZE_SIMPLE(etoile::path::Venue,
 {
   enforce(version == 0);
 
-  archive & value.elements;
+  archive & value.elements();
 }
 
 #endif

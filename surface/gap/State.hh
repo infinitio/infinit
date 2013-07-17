@@ -1,33 +1,35 @@
 #ifndef  SURFACE_GAP_STATE_HH
 # define SURFACE_GAP_STATE_HH
 
+# include "Device.hh"
+# include "Exception.hh"
+# include "NetworkManager.hh"
+# include "NotificationManager.hh"
+# include "Self.hh"
+# include "TransactionManager.hh"
+# include "UserManager.hh"
 # include "gap.h"
+# include "metrics.hh"
 
-# include <surface/gap/Exception.hh>
-# include <surface/gap/NetworkManager.hh>
-# include <surface/gap/NotificationManager.hh>
-# include <surface/gap/UserManager.hh>
-# include <surface/gap/TransactionManager.hh>
+# include <metrics/Reporter.hh>
 
-# include <surface/gap/metrics.hh>
+# include <common/common.hh>
 
 # include <plasma/meta/Client.hh>
 # include <plasma/trophonius/Client.hh>
 
 # include <elle/format/json/fwd.hh>
 # include <elle/threading/Monitor.hh>
+# include <elle/Printable.hh>
 
 # include <map>
 # include <string>
-
+# include <exception>
 
 namespace surface
 {
   namespace gap
   {
-    using Self = ::plasma::meta::SelfResponse;
-    using Device = ::plasma::meta::Device;
-
     struct FileInfos
     {
       std::string                 mount_point;
@@ -50,7 +52,8 @@ namespace surface
       LoggerInitializer();
     };
 
-    class State
+    class State:
+      public elle::Printable
     {
     public:
       ///- Logs ----------------------------------------------------------------
@@ -60,12 +63,23 @@ namespace surface
       ///- Servers -------------------------------------------------------------
       plasma::meta::Client _meta;
 
-      ELLE_ATTRIBUTE_X(elle::metrics::Reporter, reporter);
-      ELLE_ATTRIBUTE(elle::metrics::Reporter, google_reporter);
+      ELLE_ATTRIBUTE_X(metrics::Reporter, reporter);
+      ELLE_ATTRIBUTE(metrics::Reporter, google_reporter);
+
+      ///- Scheduler -----------------------------------------------------------
+      ELLE_ATTRIBUTE_R(reactor::Scheduler, scheduler);
+      ELLE_ATTRIBUTE_R(reactor::Thread, keep_alive);
+      ELLE_ATTRIBUTE_R(std::thread, thread);
+      ELLE_ATTRIBUTE(std::exception_ptr, exception);
 
       ///- Construction --------------------------------------------------------
     public:
-      State();
+      State(std::string const& meta_host = common::meta::host(),
+            uint16_t meta_port = common::meta::port(),
+            std::string const& trophonius_host = common::trophonius::host(),
+            uint16_t trophonius_port = common::trophonius::port(),
+            std::string const& apertus_host = common::apertus::host(),
+            uint16_t apertus_port = common::apertus::port());
       ~State();
 
     public:
@@ -77,12 +91,6 @@ namespace surface
 
     //- Login & register ------------------------------------------------------
       std::unique_ptr<Self> mutable _me;
-
-      void
-      _self_load() const;
-
-      Self&
-      me();
 
       Self const&
       me() const;
@@ -121,7 +129,7 @@ namespace surface
       std::unique_ptr<Device> _device;
 
     public:
-      Device&
+      Device const&
       device();
       std::string const&
       device_id();
@@ -158,11 +166,17 @@ namespace surface
       file_name(std::string const& path);
 
     private:
-      typedef std::unique_ptr<NetworkManager> NetworkManagerPtr;
-      elle::threading::Monitor<NetworkManagerPtr> _network_manager;
+      ELLE_ATTRIBUTE_R(std::string, trophonius_host);
+      ELLE_ATTRIBUTE_R(uint16_t, trophonius_port);
 
       typedef std::unique_ptr<NotificationManager> NotificationManagerPtr;
       elle::threading::Monitor<NotificationManagerPtr> _notification_manager;
+
+      ELLE_ATTRIBUTE_R(std::string, apertus_host);
+      ELLE_ATTRIBUTE_R(uint16_t, apertus_port);
+
+      typedef std::unique_ptr<NetworkManager> NetworkManagerPtr;
+      elle::threading::Monitor<NetworkManagerPtr> _network_manager;
 
       typedef std::unique_ptr<UserManager> UserManagerPtr;
       elle::threading::Monitor<UserManagerPtr> _user_manager;
@@ -187,6 +201,14 @@ namespace surface
 
       void
       _cleanup();
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const;
     };
 
   }

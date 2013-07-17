@@ -14,8 +14,6 @@
 
 #include <etoile/gear/Identifier.hh>
 #include <etoile/path/Chemin.hh>
-#include <etoile/path/Way.hh>
-#include <etoile/portal/Manifest.hh>
 
 #include <nucleus/neutron/Range.hh>
 #include <nucleus/neutron/Record.hh>
@@ -39,7 +37,7 @@ namespace satellite
   reactor::network::TCPSocket* Progress::socket = nullptr;
   infinit::protocol::Serializer* Progress::serializer = nullptr;
   infinit::protocol::ChanneledStream* Progress::channels = nullptr;
-  etoile::portal::RPC* Progress::rpcs = nullptr;
+  etoile::RPC* Progress::rpcs = nullptr;
 
   /// Ward helper to make sure objects are discarded on errors.
   class Ward
@@ -83,10 +81,10 @@ namespace satellite
     Progress::channels =
       new infinit::protocol::ChanneledStream(*reactor::Scheduler::scheduler(),
                                              *serializer);
-    Progress::rpcs = new etoile::portal::RPC(*channels);
+    Progress::rpcs = new etoile::RPC(*channels);
 
-    if (!Progress::rpcs->authenticate(phrase.pass))
-      throw reactor::Exception("unable to authenticate to Etoile");
+    // if (!Progress::rpcs->authenticate(phrase.pass))
+    //   throw reactor::Exception("unable to authenticate to Etoile");
   }
 
   void
@@ -103,7 +101,7 @@ namespace satellite
       // Resolve the path to the root directory.
       etoile::path::Chemin chemin(
         Progress::rpcs->pathresolve(
-          etoile::path::Way(elle::system::path::separator)));
+          std::string(1, elle::system::path::separator)));
 
       // Load the root directory.
       etoile::gear::Identifier directory(
@@ -136,17 +134,15 @@ namespace satellite
 
     // (2) Get the progress attribute from the specific file.
     {
-      // The way to the progress-specific file.
       elle::String root(elle::String(1, elle::system::path::separator) +
                         ".progress");
-      etoile::path::Way way(root);
 
       etoile::path::Chemin* chemin(nullptr);
 
       try
         {
           // Resolve the file.
-          chemin = new etoile::path::Chemin(Progress::rpcs->pathresolve(way));
+          chemin = new etoile::path::Chemin(Progress::rpcs->pathresolve(root));
         }
       catch (...)
         {

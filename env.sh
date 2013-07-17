@@ -7,6 +7,8 @@ ELLE_LOG_LEVEL="TRACE"
 
 DISTCC_HOSTS="development.infinit.io"
 
+ulimit -c
+
 infinit_env_init() {
 	export INFINIT_BUILD_DIR=${INFINIT_BUILD_DIR}
 	export INFINIT_SOURCE_DIR=${INFINIT_SOURCE_DIR}

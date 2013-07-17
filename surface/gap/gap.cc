@@ -1,6 +1,5 @@
 #include "gap.h"
 #include "State.hh"
-#include "OperationManager.hh"
 
 #include <common/common.hh>
 
@@ -9,10 +8,14 @@
 #include <elle/log.hh>
 #include <elle/elle.hh>
 #include <elle/HttpClient.hh>
+#include <elle/system/Process.hh>
 #include <elle/container/list.hh>
 #include <CrashReporter.hh>
 
 #include <plasma/meta/Client.hh>
+
+#include <boost/filesystem.hpp>
+#include <boost/range/join.hpp>
 
 #include <cassert>
 #include <cstdlib>
@@ -124,36 +127,104 @@ extern "C"
     return ptr;
   }
 
+  static char**
+  _cpp_stringvector_to_c_stringlist(std::vector<std::string> const& list)
+  {
+    size_t total_size = (1 + list.size()) * sizeof(void*);
+    for (auto const& str : list)
+      total_size += str.size() + 1;
+
+    char** ptr = reinterpret_cast<char**>(malloc(total_size));
+    if (ptr == nullptr)
+      return nullptr;
+
+
+    char** array = ptr;
+    char* cstr = reinterpret_cast<char*>(ptr + (list.size() + 1));
+    for (auto const& str : list)
+      {
+        *array = cstr;
+        ::strncpy(cstr, str.c_str(), str.size() + 1);
+        ++array;
+        cstr += str.size() + 1;
+      }
+    *array = nullptr;
+    return ptr;
+  }
+
   /// - gap ctor & dtor -----------------------------------------------------
 
-  gap_State* gap_new()
+  static
+  bool
+  initialize_lune()
   {
     static bool initialized = false;
     if (!initialized)
+    {
+      if (lune::Lune::Initialize() == elle::Status::Error)
       {
-        initialized = true;
-        if (lune::Lune::Initialize() == elle::Status::Error)
-          {
-            ELLE_ERR("Cannot initialize root components");
-            return nullptr;
-          }
+        ELLE_ERR("Cannot initialize root components");
+        return initialized;
       }
+      initialized = true;
+    }
+    return initialized;
+  }
+
+  gap_State* gap_new()
+  {
+    if (!initialize_lune())
+      return nullptr;
 
     try
-      {
-        return __TO_C(new surface::gap::State());
-      }
+    {
+      return __TO_C(new surface::gap::State());
+    }
     catch (std::exception const& err)
-      {
-        ELLE_ERR("Cannot initialize gap state: %s", err.what());
-        return nullptr;
-      }
+    {
+      ELLE_ERR("Cannot initialize gap state: %s", err.what());
+      return nullptr;
+    }
     catch (...)
-      {
-        ELLE_ERR("Cannot initialize gap state");
-        return nullptr;
-      }
+    {
+      ELLE_ERR("Cannot initialize gap state");
+      return nullptr;
+    }
   }
+
+  /// Create a new state.
+  /// Returns NULL on failure.
+  gap_State* gap_configurable_new(char const* meta_host,
+                                  unsigned short meta_port,
+                                  char const* trophonius_host,
+                                  unsigned short trophonius_port,
+                                  char const* apertus_host,
+                                  unsigned short apertus_port)
+  {
+    if (!initialize_lune())
+      return nullptr;
+
+    try
+    {
+      return __TO_C(new surface::gap::State(meta_host,
+                                            meta_port,
+                                            trophonius_host,
+                                            trophonius_port,
+                                            apertus_host,
+                                            apertus_port));
+    }
+    catch (std::exception const& err)
+    {
+      ELLE_ERR("Cannot initialize gap state: %s", err.what());
+      return nullptr;
+    }
+    catch (...)
+    {
+      ELLE_ERR("Cannot initialize gap state");
+      return nullptr;
+    }
+  }
+
 
   void gap_free(gap_State* state)
   {
@@ -206,40 +277,6 @@ extern "C"
     assert(recipient_id != nullptr);
     assert(message != nullptr);
     WRAP_CPP_MANAGER(state, user_manager, send_message, recipient_id, message);
-  }
-
-  //- Operation interface -------------------------------------------------------
-
-  gap_OperationStatus gap_operation_status_failure =
-    (gap_OperationStatus) surface::gap::OperationManager::OperationStatus::failure;
-
-  gap_OperationStatus gap_operation_status_success =
-    (gap_OperationStatus) surface::gap::OperationManager::OperationStatus::success;
-
-  gap_OperationStatus gap_operation_status_running =
-    (gap_OperationStatus) surface::gap::OperationManager::OperationStatus::running;
-
-  gap_OperationStatus
-  gap_operation_status(gap_State* state,
-                     gap_OperationId const pid)
-  {
-    assert(state != nullptr);
-    gap_Status ret = gap_ok;
-    try
-    {
-      return (gap_OperationStatus) __TO_CPP(state)->transaction_manager().status(pid);
-    }
-    CATCH_ALL(operation_status);
-    return ret;
-  }
-
-  /// Try to finalize a operation. Returns an error if the operation
-  /// does not exist, or if it's still running.
-  gap_Status
-  gap_operation_finalize(gap_State* state,
-                       gap_OperationId const pid)
-  {
-    WRAP_CPP_MANAGER(state, transaction_manager, finalize, pid);
   }
 
   //- Authentication ----------------------------------------------------------
@@ -418,12 +455,12 @@ extern "C"
       {
         auto const& networks_ids = __TO_CPP(state)->network_manager().all_ids();
 
-        std::list<std::string> res;
+        std::vector<std::string> res;
 
         for (auto const& id : networks_ids)
           res.push_back(id);
 
-        return _cpp_stringlist_to_c_stringlist(res);
+        return _cpp_stringvector_to_c_stringlist(res);
       }
     CATCH_ALL(networks);
 
@@ -452,7 +489,7 @@ extern "C"
     return nullptr;
   }
 
-  static
+  static inline
   char**
   gap_network_users(gap_State* state, char const* id)
   {
@@ -470,7 +507,7 @@ extern "C"
     return nullptr;
   }
 
-  static
+  static inline
   void
   gap_network_users_free(char** users)
   {
@@ -521,8 +558,6 @@ extern "C"
       auto const& user = __TO_CPP(state)->user_manager().one(user_id);
       std::string me = __TO_CPP(state)->me().id;
       __TO_CPP(state)->network_manager().add_user(network_id,
-                                                  me,
-                                                  user.id,
                                                   user.public_key);
       ret = gap_ok;
     }
@@ -699,10 +734,10 @@ extern "C"
     try
       {
         auto users = __TO_CPP(state)->user_manager().search(text);
-        std::list<std::string> result;
+        std::vector<std::string> result;
         for (auto const& pair : users)
           result.push_back(pair.first);
-        return _cpp_stringlist_to_c_stringlist(result);
+        return _cpp_stringvector_to_c_stringlist(result);
       }
     CATCH_ALL(search_users);
 
@@ -737,10 +772,10 @@ extern "C"
     try
       {
         auto swaggers = __TO_CPP(state)->user_manager().swaggers();
-        std::list<std::string> result;
+        std::vector<std::string> result;
         for (auto const& id : swaggers)
           result.push_back(id);
-        return _cpp_stringlist_to_c_stringlist(result);
+        return _cpp_stringvector_to_c_stringlist(result);
       }
     CATCH_ALL(get_swaggers);
 
@@ -755,7 +790,7 @@ extern "C"
   }
 
   /// - Permissions ---------------------------------------------------------
-  static
+  static inline
   void
   gap_file_users_free(char** users)
   {
@@ -763,6 +798,25 @@ extern "C"
   }
 
   // - Trophonius -----------------------------------------------------------
+
+  gap_Status
+  gap_new_swagger_callback(gap_State* state,
+                           gap_new_swagger_callback_t cb)
+  {
+    using namespace plasma::trophonius;
+    auto cpp_cb = [cb] (NewSwaggerNotification const& notif) {
+      cb(notif.user_id.c_str());
+    };
+
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->notification_manager().new_swagger_callback(cpp_cb);
+    }
+    CATCH_ALL(new_swagger_callback);
+
+    return ret;
+  }
 
   gap_Status
   gap_user_status_callback(gap_State* state,
@@ -954,13 +1008,13 @@ extern "C"
       {
         auto const& transactions_map = __TO_CPP(state)->transaction_manager().all();
 
-        std::list<std::string> res;
+        std::vector<std::string> res;
 
         for (auto const& transaction_pair : transactions_map)
           res.push_back(transaction_pair.first);
 
         ELLE_DEBUG("gap_transactions() = %s", res);
-        return _cpp_stringlist_to_c_stringlist(res);
+        return _cpp_stringvector_to_c_stringlist(res);
       }
     CATCH_ALL(transactions);
 
@@ -973,7 +1027,7 @@ extern "C"
     ::free(transactions);
   }
 
-  gap_OperationStatus
+  gap_Status
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files)
@@ -994,30 +1048,22 @@ extern "C"
           ++files;
         }
 
-      return (gap_OperationStatus) __TO_CPP(state)->transaction_manager().send_files(recipient_id, s);
+      __TO_CPP(state)->transaction_manager().send_files(recipient_id, s);
+      return gap_ok;
     }
     CATCH_ALL(send_files);
-
     return ret;
   }
 
   gap_Status
-  gap_update_transaction(gap_State* state,
-                         char const* transaction_id,
-                         gap_TransactionStatus status)
+  gap_cancel_transaction(gap_State* state,
+                         char const* transaction_id)
   {
     assert(transaction_id != nullptr);
-
-    if(status <= gap_TransactionStatus::gap_transaction_status_none
-       || status >= gap_TransactionStatus::gap_transaction_status__count)
-      return gap_error;
-
     WRAP_CPP_MANAGER_RET(state,
                          transaction_manager,
-                         update,
-                         transaction_id,
-                         static_cast<plasma::TransactionStatus>(status));
-
+                         cancel_transaction,
+                         transaction_id);
     return ret;
   }
 
@@ -1068,23 +1114,33 @@ extern "C"
     return nullptr;
   }
 
+  static
+  std::string
+  read_file(std::string const& filename)
+  {
+    std::stringstream file_content;
+
+    file_content <<  ">>> " << filename << std::endl;
+
+    std::ifstream f(filename);
+    std::string line;
+    while (f.good() && !std::getline(f, line).eof())
+      file_content << line << std::endl;
+    file_content << "<<< " << filename << std::endl;
+    return file_content.str();
+  }
 
   void
   gap_send_file_crash_report(char const* module,
                              char const* filename)
   {
-    std::string file_content = ">>>\n";
+    std::string file_content;
     if (filename != nullptr)
     {
-      std::ifstream f(filename);
-      std::string line;
-      while (f.good() && !std::getline(f, line).eof())
-        file_content += line + "\n";
-      file_content += "<<< " + std::string{filename} + "\n";
+      file_content = read_file(filename);
     }
     else
       file_content = "<<< No file was specified!";
-
 
     elle::crash::report(common::meta::host(),
                         common::meta::port(),
@@ -1092,6 +1148,78 @@ extern "C"
                         "Crash",
                         elle::Backtrace::current(),
                         file_content);
+  }
+
+  gap_Status
+  gap_gather_crash_reports(char const* _user_id,
+                           char const* _network_id)
+  {
+    try
+    {
+      namespace fs = boost::filesystem;
+      std::string const user_id{_user_id,
+                                _user_id + strlen(_user_id)};
+      std::string const network_id{_network_id,
+                                   _network_id + strlen(_network_id)};
+
+      std::string const user_dir = common::infinit::user_directory(user_id);
+      std::string const network_dir =
+        common::infinit::network_directory(user_id, network_id);
+
+      fs::directory_iterator ndir;
+      fs::directory_iterator udir;
+      try
+      {
+        udir = fs::directory_iterator{user_dir};
+        ndir = fs::directory_iterator{network_dir};
+      }
+      catch (fs::filesystem_error const& e)
+      {
+        return gap_Status::gap_file_not_found;
+      }
+
+      boost::iterator_range<fs::directory_iterator> user_range{
+        udir, fs::directory_iterator{}};
+      boost::iterator_range<fs::directory_iterator> network_range{
+        ndir, fs::directory_iterator{}};
+
+      std::vector<fs::path> logs;
+      for (auto const& dir_ent: boost::join(user_range, network_range))
+      {
+        auto const& path = dir_ent.path();
+
+        if (path.extension() == ".log")
+          logs.push_back(path);
+
+      }
+      std::string filename = elle::sprintf("/tmp/infinit-%s-%s",
+                                           user_id, network_id);
+      std::list<std::string> args{"cjf", filename};
+      for (auto const& log: logs)
+        args.push_back(log.string());
+
+      elle::system::Process tar{"tar", args};
+      tar.wait();
+#if defined(INFINIT_LINUX)
+      std::string b64 = elle::system::check_output("base64", "-w0", filename);
+#else
+      std::string b64 = elle::system::check_output("base64", filename);
+#endif
+
+      auto title = elle::sprintf("Crash: Logs file for user: %s, network: %s",
+                                 user_id, network_id);
+      elle::crash::report(common::meta::host(),
+                          common::meta::port(),
+                          "Logs", title,
+                          elle::Backtrace::current(),
+                          "Logs attached",
+                          b64);
+    }
+    catch (std::exception const& e)
+    {
+      return gap_Status::gap_api_error;
+    }
+    return gap_Status::gap_ok;
   }
 
   // Generated file.

@@ -5,8 +5,8 @@
 #include <elle/os/environ.hh>
 #include <elle/os/getenv.hh>
 #include <elle/log.hh>
-#include <elle/HttpClient.hh>
 #include <elle/system/platform.hh>
+#include <curly/curly.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -259,17 +259,10 @@ namespace elle
            std::string const& module,
            std::string const& signal,
            elle::Backtrace const& bt,
-           std::string const& info)
+           std::string const& info,
+           std::string const& file)
     {
       ELLE_TRACE("Report crash");
-
-      std::unique_ptr<elle::HTTPClient> server{
-        new elle::HTTPClient{
-          host,
-          static_cast<uint16_t>(port),
-          "InfinitDesktop", // User agent
-        }
-      };
 
       elle::format::json::Array bt_arr{}, env_arr{};
       for (auto const& t: bt)
@@ -294,14 +287,29 @@ namespace elle
       request["send"] = !request["email"].as<std::string>().empty();
 #endif
       request["more"] = info;
+      request["file"] = file;
 
+      std::stringstream json_stream;
+      request.repr(json_stream);
+      std::string url = elle::sprintf("http://%s:%d/debug/report", host, port);
       try
         {
-          return server->put("/debug/report", request);
+          // We have to tricks because web.py doesn't handle chunked POST.
+          auto post_config = curly::make_post();
+          post_config.url(url);
+          post_config.option(CURLOPT_POSTFIELDSIZE, json_stream.str().size());
+          post_config.input(json_stream);
+          post_config.user_agent("InfinitDesktop");
+          post_config.headers({
+            {"Content-type", "application/json"},
+            {"Expect", ""}
+          });
+          curly::request r(std::move(post_config));
+          return true;
         }
       catch (...)
         {
-          ELLE_WARN("Unable to put on server: '%s'", request.repr());
+          ELLE_WARN("Unable to put on %s: '%s'", url, json_stream.str());
           return false;
         }
     }

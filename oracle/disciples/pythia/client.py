@@ -17,6 +17,14 @@ except:
         class Forbidden(BaseException): pass
         class NotFound(BaseException): pass
 
+# Python 2/3 compatibility
+try:
+    urlencode = urllib.urlencode
+except:
+    import urllib.parse
+    urlencode = urllib.parse.urlencode
+
+
 from pythia.constants import DEFAULT_SERVER
 
 class Client(object):
@@ -29,8 +37,8 @@ class Client(object):
         404: web.NotFound,
     }
 
-    def __init__(self, server=DEFAULT_SERVER, session={}):
-        self._session = session
+    def __init__(self, server = DEFAULT_SERVER, session = None):
+        self._session = (session is not None and [session] or [{}])[0]
         self._server = server.rstrip('/') + '/'
 
     def get(self, url, params={}, token=None):
@@ -40,7 +48,7 @@ class Client(object):
         return self._req("DELETE", url, params, token or self._session.get('token'))
 
     def _req(self, method, url, params, token):
-        url = self._server + url.lstrip('/') + '?' + urllib.urlencode(params)
+        url = self._server + url.lstrip('/') + '?' + urlencode(params)
         client = httplib2.Http()
         headers = {}
         if token is not None:
@@ -173,4 +181,3 @@ class Client(object):
             'Content-Length': str(len(start) + fsize + len(end)),
         }
         return form_headers, Yielder(start, to_send, end)
-

@@ -156,7 +156,7 @@ namespace nucleus
 
     void
     Data::write(Offset const& offset,
-                elle::WeakBuffer const& buffer)
+                elle::ConstWeakBuffer buffer)
     {
       ELLE_TRACE_METHOD(offset, buffer);
 

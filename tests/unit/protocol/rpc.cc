@@ -70,6 +70,14 @@ except()
   throw std::runtime_error("blablabla");
 }
 
+static
+void
+wait()
+{
+  reactor::Scheduler::scheduler()->current()->sleep(
+    boost::posix_time::seconds(2));
+}
+
 struct DummyRPC:
   public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
                                 elle::serialize::OutputBinaryArchive>
@@ -83,6 +91,7 @@ struct DummyRPC:
     , raise("raise", *this)
     , suicide("suicide", *this)
     , count("count", *this)
+    , wait("wait", *this)
   {}
 
   RemoteProcedure<int> answer;
@@ -91,6 +100,7 @@ struct DummyRPC:
   RemoteProcedure<void> raise;
   RemoteProcedure<void> suicide;
   RemoteProcedure<int> count;
+  RemoteProcedure<void> wait;
 };
 
 /*------.
@@ -126,7 +136,7 @@ runner(reactor::Semaphore& lock,
   port = server.port();
   lock.release();
   lock.release();
-  reactor::network::TCPSocket* socket = server.accept();
+  std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
   infinit::protocol::Serializer s(sched, *socket);
   infinit::protocol::ChanneledStream channels(sched, s);
 
@@ -137,6 +147,7 @@ runner(reactor::Semaphore& lock,
   rpc.raise = &except;
   rpc.suicide = &suicide;
   rpc.count = &count;
+  rpc.wait = &wait;
   try
   {
     if (sync)
@@ -278,6 +289,60 @@ test_parallel(bool sync)
   return 0;
 }
 
+/*--------------.
+| Disconnection |
+`--------------*/
+
+static
+void
+disconnection_caller(reactor::Semaphore& lock,
+                       bool sync,
+                       int& port)
+{
+  auto& sched = *reactor::Scheduler::scheduler();
+  sched.current()->wait(lock);
+  reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
+  infinit::protocol::Serializer s(sched, socket);
+  infinit::protocol::ChanneledStream channels(sched, s);
+
+  DummyRPC rpc(channels);
+
+  reactor::Thread call_1(sched, "Call 1", [&]() {
+      BOOST_CHECK_THROW(rpc.wait(), std::runtime_error);
+    });
+  reactor::Thread call_2(sched, "Call 2", [&]() {
+      BOOST_CHECK_THROW(rpc.wait(), std::runtime_error);
+    });
+  sched.current()->wait({&call_1, &call_2});
+}
+
+static
+int
+test_disconnection()
+{
+  reactor::Scheduler sched;
+  reactor::Semaphore lock;
+  int port = 0;
+
+  reactor::Thread r(sched, "Runner", std::bind(runner,
+                                               std::ref(lock),
+                                               true,
+                                               std::ref(port)));
+  reactor::Thread c1(sched, "Caller", std::bind(disconnection_caller,
+                                                  std::ref(lock),
+                                                  sync,
+                                                  std::ref(port)));
+  reactor::Thread killer(sched, "Killer", [&] {
+      reactor::Scheduler::scheduler()->current()->sleep(
+        boost::posix_time::seconds(1));
+      r.terminate();
+    });
+
+
+  sched.run();
+  return 0;
+}
+
 /*-----------.
 | Test suite |
 `-----------*/
@@ -294,6 +359,7 @@ test_suite()
   rpc->add(BOOST_TEST_CASE(std::bind(test_terminate, false)));
   rpc->add(BOOST_TEST_CASE(std::bind(test_parallel, true)));
   rpc->add(BOOST_TEST_CASE(std::bind(test_parallel, false)));
+  rpc->add(BOOST_TEST_CASE(test_disconnection));
   return true;
 }
 

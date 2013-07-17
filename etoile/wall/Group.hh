@@ -11,6 +11,7 @@
 # include <etoile/abstract/fwd.hh>
 # include <etoile/gear/Identifier.hh>
 # include <etoile/gear/fwd.hh>
+# include <etoile/Etoile.hh>
 
 namespace etoile
 {
@@ -27,48 +28,58 @@ namespace etoile
       /// XXX
       static
       std::pair<nucleus::neutron::Group::Identity, gear::Identifier>
-      Create(elle::String const& description);
+      Create(etoile::Etoile& etoile,
+             elle::String const& description);
       /// XXX
       static
       gear::Identifier
-      Load(typename nucleus::neutron::Group::Identity const& identity);
+      Load(etoile::Etoile& etoile,
+           typename nucleus::neutron::Group::Identity const& identity);
       /// XXX
       static
       abstract::Group
-      Information(const gear::Identifier& identifier);
+      Information(etoile::Etoile& etoile,
+                  const gear::Identifier& identifier);
       /// XXX
       static
       void
-      Add(gear::Identifier const& identifier,
+      Add(etoile::Etoile& etoile,
+          gear::Identifier const& identifier,
           nucleus::neutron::Subject const& subject);
       /// XXX
       static
       nucleus::neutron::Fellow
-      Lookup(gear::Identifier const& identifier,
+      Lookup(etoile::Etoile& etoile,
+             gear::Identifier const& identifier,
              nucleus::neutron::Subject const& subject);
       /// XXX
       static
       nucleus::neutron::Range<nucleus::neutron::Fellow>
-      Consult(gear::Identifier const& identifer,
+      Consult(etoile::Etoile& etoile,
+              gear::Identifier const& identifer,
               nucleus::neutron::Index const& index,
               nucleus::neutron::Size const& size);
       /// XXX
       static
       void
-      Remove(gear::Identifier const& identifier,
+      Remove(etoile::Etoile& etoile,
+             gear::Identifier const& identifier,
              nucleus::neutron::Subject const& subject);
       /// XXX
       static
       void
-      Discard(gear::Identifier const& identifier);
+      Discard(etoile::Etoile& etoile,
+              gear::Identifier const& identifier);
       /// XXX
       static
       void
-      Store(gear::Identifier const& identifier);
+      Store(etoile::Etoile& etoile,
+            gear::Identifier const& identifier);
       /// XXX
       static
       void
-      Destroy(gear::Identifier const& identifier);
+      Destroy(etoile::Etoile& etoile,
+              gear::Identifier const& identifier);
     };
 
   }

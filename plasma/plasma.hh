@@ -13,7 +13,7 @@ namespace plasma
   {
 # define TRANSACTION_STATUS(name, value)                                       \
     name = value,
-# include <oracle/disciples/meta/resources/transaction_status.hh.inc>
+# include <oracle/disciples/meta/src/meta/resources/transaction_status.hh.inc>
 # undef TRANSACTION_STATUS
   };
 

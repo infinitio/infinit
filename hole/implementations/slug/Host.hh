@@ -20,7 +20,9 @@ namespace hole
   {
     namespace slug
     {
-      class Host
+      class Host:
+        public std::enable_shared_from_this<Host>,
+        public elle::Printable
       {
       public:
         // Enumerations
@@ -29,7 +31,7 @@ namespace hole
           connected,
           authenticating,
           authenticated,
-          dead,
+          duplicate,
         };
 
       /*-------------.
@@ -59,12 +61,16 @@ namespace hole
 
       public:
         inline
-        elle::Passport const&
+        elle::Passport*
         remote_passport() const;
-
         inline
         void
         remote_passport(elle::Passport const&);
+        inline
+        void
+        remote_passport_reset();
+        ELLE_ATTRIBUTE_RX(reactor::Signal, authenticated_signal);
+
       /*----.
       | RPC |
       `----*/
@@ -109,7 +115,8 @@ namespace hole
       | Pretty print |
       `-------------*/
       public:
-        void print(std::ostream& stream) const;
+        void
+        print(std::ostream& stream) const;
       };
 
       std::ostream&

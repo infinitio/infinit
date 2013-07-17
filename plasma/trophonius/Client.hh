@@ -5,6 +5,7 @@
 
 # include <elle/HttpClient.hh>
 
+# include <boost/date_time/posix_time/posix_time_types.hpp>
 # include <boost/system/error_code.hpp>
 
 # include <functional>
@@ -18,7 +19,7 @@ namespace plasma
     {
 # define NOTIFICATION_TYPE(name, value)         \
       name = value,
-# include <oracle/disciples/meta/notification_type.hh.inc>
+# include <oracle/disciples/meta/src/meta/notification_type.hh.inc>
 # undef NOTIFICATION_TYPE
     };
 
@@ -26,21 +27,41 @@ namespace plasma
     {
 # define NETWORK_UPDATE(name, value)         \
       name = value,
-# include <oracle/disciples/meta/resources/network_update.hh.inc>
+# include <oracle/disciples/meta/src/meta/resources/network_update.hh.inc>
 # undef NETWORK_UPDATE
     };
 
     /// Base class for all notifications.
-    struct Notification
+    struct Notification: public elle::Printable
     {
       NotificationType notification_type;
 
       ELLE_SERIALIZE_CONSTRUCT(Notification)
       {}
+
+      Notification(NotificationType const type):
+        notification_type{type}
+      {}
+
       virtual ~Notification();
+
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
 
     namespace json = elle::format::json;
+
+    struct NewSwaggerNotification:
+      public Notification
+    {
+      std::string user_id;
+
+      ELLE_SERIALIZE_CONSTRUCT(NewSwaggerNotification,
+                               Notification)
+      {}
+
+    };
 
     struct UserStatusNotification:
       public Notification
@@ -53,6 +74,10 @@ namespace plasma
       ELLE_SERIALIZE_CONSTRUCT(UserStatusNotification,
                                Notification)
       {}
+
+      UserStatusNotification():
+        Notification{NotificationType::user_status}
+      {}
     };
 
     struct TransactionNotification:
@@ -64,7 +89,6 @@ namespace plasma
                                Transaction)
       {}
     };
-
 
     struct NetworkUpdateNotification:
       public Notification
@@ -86,11 +110,13 @@ namespace plasma
       {}
     };
 
-    /// Build a notification object from a dictionnary.
+    /// Build a notification with the 'good' type from a dictionnary.
+    /// The notification type is determined by the "notification_type" field
+    /// presents in the dictionary.
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict);
 
-    class Client
+    class Client: public elle::Printable
     {
     private:
       struct Impl;
@@ -116,25 +142,57 @@ namespace plasma
       bool
       has_notification(void);
 
+      ELLE_ATTRIBUTE_R(int, reconnected);
+      ELLE_ATTRIBUTE_Rw(boost::posix_time::time_duration, ping_period);
+      ELLE_ATTRIBUTE(boost::posix_time::time_duration, ping_timeout);
+
     private:
       std::queue<std::unique_ptr<Notification>> _notifications;
+
+      void
+      _reconnect();
 
       void
       _connect();
 
       void
+      _disconnect();
+
+      void
+      _disconnect(boost::system::error_code& err);
+
+      void
       _read_socket();
+
+      void
+      _restart_ping_timer();
+
+      void
+      _restart_connection_check_timer();
 
       void
       _on_read_socket(boost::system::error_code const& err,
                       size_t bytes_transferred);
 
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
       void
-      _check_connection(boost::system::error_code const& err);
+      print(std::ostream& stream) const override;
 
+    /*-----.
+    | Ping |
+    `-----*/
+    private:
       void
-      _on_write_check(boost::system::error_code const& err,
-                      size_t const bytes_transferred);
+      _check_connection();
+      void
+      _send_ping();
+      void
+      _on_ping_sent(boost::system::error_code const& err,
+                    size_t const bytes_transferred);
     };
 
     std::ostream&

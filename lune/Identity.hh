@@ -63,6 +63,7 @@ namespace lune
 
   public:
     Identity();
+    Identity(std::string const& user_id);
     Identity(Identity const& other);
     ~Identity();
 

@@ -8,6 +8,7 @@
 # include <memory>
 # include <stdexcept>
 # include <string>
+# include <mutex>
 
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>
@@ -27,7 +28,7 @@ namespace plasma
     {
 # define ERR_CODE(name, value, comment)                                         \
       name = value,
-# include <oracle/disciples/meta/error_code.hh.inc>
+# include <oracle/disciples/meta/src/meta/error_code.hh.inc>
 # undef ERR_CODE
     };
 
@@ -53,12 +54,12 @@ namespace plasma
     public:
       bool operator ==(Exception const& e) const;
       bool operator ==(Error const& error) const;
+      bool operator !=(Error const& error) const;
     };
 
     /////////////////////////
     struct DebugResponse : Response
-    {
-    };
+    {};
 
     struct LoginResponse : Response
     {
@@ -73,8 +74,11 @@ namespace plasma
     struct LogoutResponse : Response
     {};
 
-    struct RegisterResponse : Response
-    {};
+    struct RegisterResponse:
+      public Response
+    {
+      std::string registered_user_id;
+    };
 
     struct PullNotificationResponse : Response
     {
@@ -107,6 +111,7 @@ namespace plasma
       std::string email;
       int remaining_invitations;
       std::string token_generation_key;
+      std::list<std::string> devices;
     };
 
     struct InviteUserResponse : Response
@@ -117,6 +122,11 @@ namespace plasma
     struct UsersResponse : Response
     {
       std::list<std::string> users;
+    };
+
+    struct AddSwaggerResponse : Response
+    {
+      std::string direction;
     };
 
     struct SwaggersResponse : Response
@@ -223,8 +233,11 @@ namespace plasma
 
     typedef elle::Buffer UserIcon;
 
-    class Client
+    class Client: public elle::Printable
     {
+      ELLE_ATTRIBUTE_R(std::string, host);
+      ELLE_ATTRIBUTE_R(uint16_t, port);
+
     private:
       std::string _root_url;
       bool _check_errors;
@@ -232,6 +245,8 @@ namespace plasma
       std::string _email;
       std::string _token;
       std::string _user_agent;
+      // XXX Curl is supposed to be thread-safe.
+      std::mutex mutable _mutex;
 
     public:
       Client(std::string const& server,
@@ -293,6 +308,9 @@ namespace plasma
       SwaggersResponse
       get_swaggers() const;
 
+      AddSwaggerResponse
+      add_swaggers(std::string const& user1, std::string const& user2) const;
+
       // SwaggerResponse
       // get_swagger(std::string const& id) const;
 
@@ -336,7 +354,8 @@ namespace plasma
                    std::string const& message) const;
 
       PullNotificationResponse
-      pull_notifications(int count, int offset = 0) const;
+      pull_notifications(int const count,
+                         int const offset = 0) const;
 
       ReadNotificationResponse
       notification_read() const;
@@ -431,6 +450,14 @@ namespace plasma
       void identity(std::string const& str);
       std::string const& email() const;
       void email(std::string const& str);
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
 
     std::ostream&

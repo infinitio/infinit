@@ -139,7 +139,7 @@ _hash_password(gap_State* state, std::string email, std::string password)
 }
 
 static
-gap_OperationStatus
+void
 _send_files(gap_State* state,
             std::string const& recipient,
             boost::python::list const& files)
@@ -155,13 +155,13 @@ _send_files(gap_State* state,
       list[i] = boost::python::extract<char const*>(files[i]);
     }
 
-  auto res = gap_send_files(state,
-                            recipient.c_str(),
-                            list);
+  gap_send_files(state,
+                 recipient.c_str(),
+                 list);
 
   free(list);
 
-  return res;
+  return;
 }
 
 
@@ -265,6 +265,18 @@ namespace
   }
 
   void
+  _gap_new_swagger_callback(gap_State* state,
+                            boost::python::object cb)
+  {
+    using namespace plasma::trophonius;
+    auto cpp_cb = [cb] (NewSwaggerNotification const& notif) {
+      wrap_call(cb)(notif.user_id.c_str());
+    };
+
+    reinterpret_cast<surface::gap::State*>(state)->notification_manager().new_swagger_callback(cpp_cb);
+  }
+
+  void
   _gap_user_status_callback(gap_State* state,
                            boost::python::object cb)
   {
@@ -282,7 +294,7 @@ namespace
   {
     using namespace plasma::trophonius;
     auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-        wrap_call(cb)(notif.id.c_str(), is_new);
+      wrap_call(cb)(notif.id.c_str(), (gap_TransactionStatus) notif.status, is_new);
     };
 
     reinterpret_cast<surface::gap::State*>(state)
@@ -342,7 +354,7 @@ BOOST_PYTHON_MODULE(_gap)
 # define _TS(c) #c
 # define ERR_CODE(name, value_, comment)         \
     .value(_TS(name), gap_ ## name)
-# include <oracle/disciples/meta/error_code.hh.inc>
+# include <oracle/disciples/meta/src/meta/error_code.hh.inc>
 # undef _TS
 # undef ERR_CODE
   ;
@@ -351,7 +363,7 @@ BOOST_PYTHON_MODULE(_gap)
 # define _TS(c) #c
 # define TRANSACTION_STATUS(name, value_)                                       \
     .value(_TS(name), gap_transaction_status_ ## name)
-# include <oracle/disciples/meta/resources/transaction_status.hh.inc>
+# include <oracle/disciples/meta/src/meta/resources/transaction_status.hh.inc>
 # undef TRANSACTION_STATUS
 # undef _TS
   ;
@@ -362,6 +374,9 @@ BOOST_PYTHON_MODULE(_gap)
 
   py::def("new",
           &gap_new,
+          py::return_value_policy<py::return_opaque_pointer>());
+  py::def("configurable_new",
+          &gap_configurable_new,
           py::return_value_policy<py::return_opaque_pointer>());
   py::def("free", &gap_free);
 
@@ -390,25 +405,11 @@ BOOST_PYTHON_MODULE(_gap)
   ///////////////////////////
   // Callbacks.
 
-  py::def(
-    "transaction_callback",
-    &_gap_transaction_callback
-  );
-
-  py::def(
-    "message_callback",
-    &_gap_message_callback
-  );
-
-  py::def(
-    "on_error_callback",
-    &_gap_on_error_callback
-  );
-
-  py::def(
-    "user_status_callback",
-    &_gap_user_status_callback
-  );
+  py::def("transaction_callback", &_gap_transaction_callback);
+  py::def("message_callback", &_gap_message_callback);
+  py::def("on_error_callback", &_gap_on_error_callback);
+  py::def("new_swagger_callback", &_gap_new_swagger_callback);
+  py::def("user_status_callback", &_gap_user_status_callback);
 
    //- Infinit services status -------------------------------------------------
 
@@ -449,11 +450,12 @@ BOOST_PYTHON_MODULE(_gap)
 
   py::def("transactions", &_get_transactions);
   py::def("send_files", &_send_files);
-  py::def("update_transaction", &gap_update_transaction);
+  py::def("cancel_transaction", &gap_cancel_transaction);
   py::def("accept_transaction", &gap_accept_transaction);
   py::def("set_output_dir", &gap_set_output_dir);
   py::def("get_output_dir", &gap_get_output_dir);
   py::def("transaction_progress", &gap_transaction_progress);
+  py::def("transaction_is_accepted", &gap_transaction_accepted);
   py::def("transaction_sender_id", &gap_transaction_sender_id);
   py::def("transaction_sender_fullname", &gap_transaction_sender_fullname);
   py::def("transaction_sender_device_id", &gap_transaction_sender_device_id);
@@ -468,12 +470,4 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transaction_accepted", &gap_transaction_accepted);
   py::def("transaction_status", &gap_transaction_status);
   py::def("transaction_message", &gap_transaction_message);
-
-  //- Operation ------------------------------------------------------------------
-  py::def("operation_status", &gap_operation_status);
-  py::enum_<int>("OperationStatus")
-    .value("failure", gap_operation_status_failure)
-    .value("success", gap_operation_status_success)
-    .value("running", gap_operation_status_running)
-  ;
 }

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.2
 # -*- encoding: utf-8 -*-
 
 import argparse
@@ -32,8 +32,7 @@ def login(state, email = None):
     import socket
     state.set_device_name(socket.gethostname().strip())
 
-def on_transaction(state, transaction, new):
-    status = state.transaction_status(transaction)
+def on_transaction(state, transaction, status, new):
     print("{}Transaction ({})".format(new and "New " or "", transaction), status)
     state.current_transaction_id = transaction
     if status in (
@@ -85,12 +84,12 @@ def go(state, user, files):
         if getattr(state, "current_transaction_id", None):
             tid = state.current_transaction_id
             print("Interrupted. Cancel the outgoing transaction ({})".format(tid))
-            state.update_transaction(tid, state.TransactionStatus.canceled)
+            state.cancel_transaction(tid)
     except Exception as e:
         if getattr(state, "current_transaction_id", None):
             tid = state.current_transaction_id
             print("Interrupted. Cancel the outgoing transaction ({})".format(tid))
-            state.update_transaction(tid, state.TransactionStatus.canceled)
+            state.cancel_transaction(tid)
         raise e
 
 def get_homedir():

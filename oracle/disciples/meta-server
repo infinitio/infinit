@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.7
+from __future__ import print_function
 
 
 """Meta server provide a JSON-RPC API to infinit
@@ -11,13 +12,16 @@ import sys
 import argparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python/meta/mongobox"))
+
 import meta.conf
+import mongobox
 
 parser = argparse.ArgumentParser(description="Meta server")
 
 parser.add_argument(
     '--meta-host',
-    default = "0.0.0.0",
+    default = meta.conf.META_HOST,
 )
 parser.add_argument(
     '--meta-port',
@@ -26,9 +30,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--apertus-control-port',
+    '--mongo-host',
+    default = meta.conf.MONGO_HOST,
+)
+
+parser.add_argument(
+    '--mongo-port',
     type = int,
-    default = meta.conf.APERTUS_CONTROL_PORT,
+    default = meta.conf.MONGO_PORT,
 )
 
 parser.add_argument(
@@ -37,11 +46,41 @@ parser.add_argument(
     default = meta.conf.TROPHONIUS_CONTROL_PORT,
 )
 
+# if testing, need to spawn DB to path that can be accessed
+parser.add_argument(
+    '--spawn-db',
+    help = 'Enabling this will ignore your MongoDB parameters.',
+    action = 'store_true',
+    default = False,
+)
+
+parser.add_argument(
+    '--port-file',
+    default = 'meta_port_file',
+)
+
 from meta.application import Application
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    meta.conf.APERTUS_CONTROL_PORT = args.apertus_control_port
     meta.conf.TROPHONIUS_CONTROL_PORT = args.trophonius_control_port
-    app = Application(ip=args.meta_host, port=args.meta_port)
-    app.run()
+    try:
+        if args.spawn_db == True:
+            with mongobox.MongoBox() as mongo:
+                app = Application(meta_host=args.meta_host,
+                                  meta_port=args.meta_port,
+                                  mongo_host="localhost",
+                                  mongo_port=mongo.port,
+                                  port_file=args.port_file,
+                )
+                app.run()
+        else:
+            app = Application(meta_host=args.meta_host,
+                              meta_port=args.meta_port,
+                              mongo_host=args.mongo_host,
+                              mongo_port=args.mongo_port,
+                              port_file=args.port_file,
+            )
+            app.run()
+    except KeyboardInterrupt:
+        print("Interrupted cleanly")

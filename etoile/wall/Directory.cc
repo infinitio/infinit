@@ -2,6 +2,7 @@
 
 #include <reactor/scheduler.hh>
 
+#include <etoile/Etoile.hh>
 #include <etoile/wall/Directory.hh>
 #include <etoile/gear/Identifier.hh>
 #include <etoile/gear/Scope.hh>
@@ -21,8 +22,6 @@
 #include <nucleus/neutron/Range.hh>
 #include <nucleus/neutron/Entry.hh>
 
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.wall.Directory");
 
 namespace etoile
@@ -35,30 +34,25 @@ namespace etoile
 //
 
     gear::Identifier
-    Directory::create()
+    Directory::create(etoile::Etoile& etoile)
     {
       ELLE_TRACE_FUNCTION("");
 
-      gear::Scope* scope;
-      gear::Directory* context;
-
-      // acquire the scope.
-      if (gear::Scope::Supply(scope) == elle::Status::Error)
-        throw Exception("unable to supply the scope");
-
+      std::shared_ptr<gear::Scope> scope = etoile.scope_supply();
       gear::Guard guard(scope);
+      gear::Directory* context;
       gear::Identifier identifier;
+
+      // retrieve the context.
+      if (scope->Use(etoile, context) == elle::Status::Error)
+        throw Exception("unable to retrieve the context");
+
+      // allocate an actor.
+      guard.actor(new gear::Actor(scope));
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
-
-        // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
-          throw Exception("unable to retrieve the context");
-
-        // allocate an actor.
-        guard.actor(new gear::Actor(scope));
 
         // return the identifier.
         identifier = guard.actor()->identifier;
@@ -81,37 +75,33 @@ namespace etoile
     }
 
     gear::Identifier
-    Directory::load(path::Chemin const& chemin)
+    Directory::load(etoile::Etoile& etoile,
+                    path::Chemin const& chemin)
     {
       ELLE_TRACE_FUNCTION(chemin);
 
-      gear::Scope* scope;
-      gear::Directory* context;
-
-      // acquire the scope.
-      if (gear::Scope::Acquire(chemin, scope) == elle::Status::Error)
-        throw Exception("unable to acquire the scope");
-
+      std::shared_ptr<gear::Scope> scope =
+        etoile.scope_acquire(chemin);
       gear::Guard guard(scope);
+      gear::Directory* context;
       gear::Identifier identifier;
+
+      // retrieve the context.
+      if (scope->Use(etoile, context) == elle::Status::Error)
+        throw Exception("unable to retrieve the context");
+
+      // allocate an actor.
+      guard.actor(new gear::Actor(scope));
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
-        // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
-          throw Exception("unable to retrieve the context");
-
-        // allocate an actor.
-        guard.actor(new gear::Actor(scope));
-
         // return the identifier.
         identifier = guard.actor()->identifier;
 
         // locate the object based on the chemin.
-        if (chemin.Locate(context->location) == elle::Status::Error)
-          throw Exception("unable to locate the directory");
+        context->location = chemin.locate();
 
         ELLE_DEBUG("about to load the directory from the location '%s'",
                    context->location);
@@ -122,9 +112,9 @@ namespace etoile
             if (automaton::Directory::Load(*context) == elle::Status::Error)
               throw Exception("unable to load the directory");
           }
-        catch (std::exception const&)
+        catch (elle::Exception const&)
           {
-            Object::reload<gear::Directory>(*scope);
+            Object::reload<gear::Directory>(etoile, *scope);
           }
 
         ELLE_DEBUG("returning identifier %s on %s", identifier, *scope);
@@ -138,45 +128,33 @@ namespace etoile
     }
 
     void
-    Directory::add(gear::Identifier const& parent,
-                   path::Slab const& name,
+    Directory::add(etoile::Etoile& etoile,
+                   gear::Identifier const& parent,
+                   std::string const& name,
                    gear::Identifier const& child)
     {
       ELLE_TRACE_FUNCTION(parent, name, child);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
       gear::Directory* directory;
       gear::Object* object;
       nucleus::proton::Address address;
 
-      // select the actor.
-      if (gear::Actor::Select(child, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
+      gear::Actor* child_actor = etoile.actor_get(child);
+      std::shared_ptr<gear::Scope> child_scope = child_actor->scope;
 
-      // retrieve the scope.
-      scope = actor->scope;
-
-      // retrieve the context.
-      if (scope->Use(object) == elle::Status::Error)
+      if (child_scope->Use(etoile, object) == elle::Status::Error)
         throw Exception("unable to retrieve the context");
-
-      // keep the address.
       address = object->location.address();
 
-      // select the actor.
-      if (gear::Actor::Select(parent, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
+      gear::Actor* parent_actor = etoile.actor_get(parent);
+      std::shared_ptr<gear::Scope> parent_scope = parent_actor->scope;
 
       // Declare a critical section.
       {
-        reactor::Lock lock(scope->mutex.write());
+        reactor::Lock lock(parent_scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(directory) == elle::Status::Error)
+        if (parent_scope->Use(etoile, directory) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the add automaton on the context.
@@ -186,71 +164,45 @@ namespace etoile
           throw Exception("unable to add the directory entry");
 
         // set the actor's state.
-        actor->state = gear::Actor::StateUpdated;
+        parent_actor->state = gear::Actor::StateUpdated;
       }
     }
 
-    ///
-    /// this method returns the directory entry associated with the
-    /// given name.
-    ///
-    /// note that this method should be used careful as a pointer to the
-    /// target entry is returned. should this entry be destroyed by another
-    /// actor's operation, accessing it could make the system crash.
-    ///
-    elle::Status        Directory::Lookup(
-                          const gear::Identifier&               identifier,
-                          const path::Slab&                     name,
-                          nucleus::neutron::Entry const*& entry)
+    nucleus::neutron::Entry const*
+    Directory::lookup(Etoile& etoile,
+                      const gear::Identifier& identifier,
+                      const std::string& name)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
-      gear::Actor*      actor;
-      gear::Scope*      scope;
-      gear::Directory*  context;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
+      gear::Directory* context;
 
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
-
-      // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex);
-
-        // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
-
-        // apply the lookup automaton on the context.
+        nucleus::neutron::Entry const* entry;
         if (automaton::Directory::Lookup(*context,
                                          name,
                                          entry) == elle::Status::Error)
           throw Exception("unable to lookup the directory entry");
+        return entry;
       }
-
-      return elle::Status::Ok;
     }
 
     nucleus::neutron::Range<nucleus::neutron::Entry>
-    Directory::consult(gear::Identifier const& identifier,
+    Directory::consult(etoile::Etoile& etoile,
+                       gear::Identifier const& identifier,
                        nucleus::neutron::Index const& index,
                        nucleus::neutron::Index const& size)
     {
       ELLE_TRACE_FUNCTION(identifier, index, size);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory* context;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       nucleus::neutron::Range<nucleus::neutron::Entry> range;
 
@@ -259,7 +211,7 @@ namespace etoile
         reactor::Lock lock(scope->mutex);
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the consult automaton on the context.
@@ -276,32 +228,27 @@ namespace etoile
     ///
     /// this method renames a directory entry.
     ///
-    elle::Status        Directory::Rename(
-                          const gear::Identifier&               identifier,
-                          const path::Slab&                     from,
-                          const path::Slab&                     to)
+    elle::Status
+    Directory::Rename(etoile::Etoile& etoile,
+                      const gear::Identifier& identifier,
+                      const std::string& from,
+                      const std::string& to)
     {
       ELLE_TRACE_FUNCTION(identifier, from, to);
 
-      gear::Actor*      actor;
-      gear::Scope*      scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory*  context;
 
-      ELLE_TRACE("select the actor")
-        if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-          throw Exception("unable to select the actor");
-
-      ELLE_TRACE("lock the actor's scope for writing.");
-
-      scope = actor->scope;
+      ELLE_TRACE("lock the actor's scope for writing")
       {
         reactor::Lock lock(scope->mutex.write());
 
-        path::Venue venue(scope->chemin.venue);
+        path::Venue venue(scope->chemin.venue());
         ELLE_TRACE("old venue: %s", venue);
 
         ELLE_TRACE("retrieve the context")
-          if (scope->Use(context) == elle::Status::Error)
+          if (scope->Use(etoile, context) == elle::Status::Error)
             throw Exception("unable to retrieve the context");
 
         ELLE_TRACE("apply the rename automaton on the context")
@@ -312,29 +259,8 @@ namespace etoile
 
         actor->state = gear::Actor::StateUpdated;
 
-        struct
-        {
-          path::Route           from;
-          path::Route           to;
-        }                       routes;
-
-        // Create routes for both the _from_ and _to_ since these
-        // routes are going to be used below several times.
-        ELLE_TRACE("build the route for the previous revision of the entry")
-          {
-            if (routes.from.Create(scope->chemin.route, from) ==
-                elle::Status::Error)
-              throw Exception("unable to create the route");
-            ELLE_TRACE("route: %s", routes.from);
-          }
-
-        ELLE_TRACE("build the route for the new revision of the entry")
-          {
-            if (routes.to.Create(scope->chemin.route, to) ==
-                elle::Status::Error)
-              throw Exception("unable to create the route");
-            ELLE_TRACE("route: %s", routes.to);
-          }
+        path::Route route_from(scope->chemin.route(), from);
+        path::Route route_to(scope->chemin.route(), to);
 
         // Update the scopes should some reference the renamed entry.
         //
@@ -349,27 +275,14 @@ namespace etoile
         //
         // For this reason, the scopes must be updated.
         {
-          struct
-          {
-            path::Chemin        from;
-            path::Chemin        to;
-          }                     chemins;
-
-          if (chemins.from.Create(routes.from, venue) == elle::Status::Error)
-            throw Exception("unable to create the chemin");
-
-          // create the new chemin which includes the new route and
-          // the venue, which has not changed since.
-          if (chemins.to.Create(routes.to, venue) == elle::Status::Error)
-            throw Exception("unable to create the chemin");
+          path::Chemin chemin_from(route_from, venue);
+          path::Chemin chemin_to(route_to, venue);
 
           // Update the scope so as to update all the scopes whose
           // chemins are now inconsistent---i.e referencing the old
           // chemin _chemin.from_.
           ELLE_TRACE("update the scope")
-            if (gear::Scope::Update(chemins.from,
-                                    chemins.to) == elle::Status::Error)
-              throw Exception("unable to update the scopes");
+            etoile.scope_update(chemin_from, chemin_to);
         }
 
         //
@@ -377,12 +290,8 @@ namespace etoile
         //
         {
           // evict the route from the shrub.
-          if (shrub::Shrub::Evict(routes.from) == elle::Status::Error)
-            throw Exception("unable to evict the route from the shrub");
-
-          // evict the route from the shrub.
-          if (shrub::Shrub::Evict(routes.to) == elle::Status::Error)
-            throw Exception("unable to evict the route from the shrub");
+          etoile.shrub().evict(route_from);
+          etoile.shrub().evict(route_to);
         }
       }
 
@@ -392,30 +301,23 @@ namespace etoile
     ///
     /// this method removes a directory entry.
     ///
-    elle::Status        Directory::Remove(
-                          const gear::Identifier&               identifier,
-                          const path::Slab&                     name)
+    elle::Status
+    Directory::Remove(etoile::Etoile& etoile,
+                      const gear::Identifier& identifier,
+                      const std::string& name)
     {
       ELLE_TRACE_FUNCTION(identifier, name);
 
-      gear::Actor*      actor;
-      gear::Scope*      scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory*  context;
-      path::Route       route;
-
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // apply the remove automaton on the context.
@@ -426,17 +328,10 @@ namespace etoile
         // set the actor's state.
         actor->state = gear::Actor::StateUpdated;
 
-        //
-        // invalidate the route in the shrub.
-        //
+        // Invalidate the route in the shrub.
         {
-          // build the route associated with the removed entry.
-          if (route.Create(scope->chemin.route, name) == elle::Status::Error)
-            throw Exception("unable to create the route");
-
-          // evict the route from the shrub.
-          if (shrub::Shrub::Evict(route) == elle::Status::Error)
-            throw Exception("unable to evict the route from the shrub");
+          path::Route route(scope->chemin.route(), name);
+          etoile.shrub().evict(route);
         }
       }
 
@@ -444,29 +339,23 @@ namespace etoile
     }
 
     void
-    Directory::discard(gear::Identifier const& identifier)
+    Directory::discard(etoile::Etoile& etoile,
+                       gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory* context;
 
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
       gear::Guard guard(actor);
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -516,7 +405,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;
@@ -533,29 +422,23 @@ namespace etoile
     }
 
     void
-    Directory::store(gear::Identifier const& identifier)
+    Directory::store(etoile::Etoile& etoile,
+                     gear::Identifier const& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor* actor;
-      gear::Scope* scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory* context;
 
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
       gear::Guard guard(actor);
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -605,7 +488,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;
@@ -624,30 +507,24 @@ namespace etoile
     ///
     /// this method destroys a directory.
     ///
-    elle::Status        Directory::Destroy(
-                          const gear::Identifier&               identifier)
+    elle::Status
+    Directory::Destroy(etoile::Etoile& etoile,
+                       const gear::Identifier& identifier)
     {
       ELLE_TRACE_FUNCTION(identifier);
 
-      gear::Actor*              actor;
-      gear::Scope*              scope;
+      gear::Actor* actor = etoile.actor_get(identifier);
+      std::shared_ptr<gear::Scope> scope = actor->scope;
       gear::Directory*          context;
 
-      // select the actor.
-      if (gear::Actor::Select(identifier, actor) == elle::Status::Error)
-        throw Exception("unable to select the actor");
-
       gear::Guard               guard(actor);
-
-      // retrieve the scope.
-      scope = actor->scope;
 
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
 
         // retrieve the context.
-        if (scope->Use(context) == elle::Status::Error)
+        if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 
         // check the permissions before performing the operation in
@@ -697,7 +574,7 @@ namespace etoile
             //
 
             // record the scope in the journal.
-            if (journal::Journal::Record(scope) == elle::Status::Error)
+            if (journal::Journal::Record(std::move(scope)) == elle::Status::Error)
               throw Exception("unable to record the scope in the journal");
 
             break;

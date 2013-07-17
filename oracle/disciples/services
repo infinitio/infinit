@@ -6,8 +6,18 @@ import time
 import subprocess
 import argparse
 
+def reset_user_status():
+    """XXX We reset all user's status to be "disconnected". We know it's
+    true because there is only on trophonius instance at the moment.
+    The right way to do it is to disconnect all users (in the database)
+    when the trophonius instance goes down.
+    """
+    import meta.database
+    meta.database.users().update({}, {'$set': {'connected': False}})
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 import meta.conf
+import apertus.conf
 
 parser = argparse.ArgumentParser(description="Services launcher")
 
@@ -15,18 +25,6 @@ parser.add_argument(
     '--meta-port',
     type = int,
     default = meta.conf.META_PORT,
-)
-
-parser.add_argument(
-    '--apertus-port',
-    type = int,
-    default = meta.conf.APERTUS_PORT,
-)
-
-parser.add_argument(
-    '--apertus-control-port',
-    type = int,
-    default = meta.conf.APERTUS_CONTROL_PORT,
 )
 
 parser.add_argument(
@@ -42,21 +40,9 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--longinus-port',
+    '--apertus-port',
     type = int,
-    default = meta.conf.LONGINUS_PORT,
-)
-
-parser.add_argument(
-    '--heartbeat-port',
-    type = int,
-    default = meta.conf.HEARTBEAT_PORT,
-)
-
-parser.add_argument(
-    '--stun-port',
-    type = int,
-    default = meta.conf.STUN_PORT,
+    default = apertus.conf.PORT,
 )
 
 DIR = os.path.abspath(os.path.dirname(__file__))
@@ -64,9 +50,6 @@ DIR = os.path.abspath(os.path.dirname(__file__))
 META_BIN = os.path.join(DIR, 'meta-server')
 APERTUS_BIN = os.path.join(DIR, 'apertus-server')
 TROPHONIUS_BIN = os.path.join(DIR, 'trophonius-server')
-LONGINUS_BIN = os.path.join(DIR, 'longinus-server')
-HEARTBEAT_BIN = os.path.join(DIR, 'heartbeat-server')
-STUN_BIN = os.path.join(DIR, 'stun-server')
 
 def main(argv):
     args = parser.parse_args(argv)
@@ -74,85 +57,72 @@ def main(argv):
     processes = []
 
     try:
-        processes.append(subprocess.Popen([
-            META_BIN,
-            '--meta-port', str(args.meta_port),
-            '--trophonius-control-port', str(args.trophonius_control_port),
-            '--apertus-control-port', str(args.apertus_control_port),
-        ],
-        stdout=open("meta.stdout", "w"),
-        stderr=open("meta.stderr", "w"))
+        reset_user_status()
+        processes.append(
+            (
+                META_BIN,
+                subprocess.Popen(
+                    [
+                        META_BIN,
+                        '--meta-port', str(args.meta_port),
+                        '--trophonius-control-port', str(args.trophonius_control_port),
+                    ],
+                    stdout = open("meta.stdout", "w"),
+                    stderr = open("meta.stderr", "w"))
+            )
         )
 
         processes.append(
-            subprocess.Popen([
-                LONGINUS_BIN,
-                str(args.longinus_port)
-            ],
-            stdout=open("longinus.stdout", "w"),
-            stderr=open("longinus.stderr", "w"))
-        )
-
-        processes.append(
-            subprocess.Popen([
+            (
                 TROPHONIUS_BIN,
-                '--port', str(args.trophonius_port),
-                '--control-port', str(args.trophonius_control_port),
-            ],
-            env=dict(INFINIT_META_PORT=str(args.meta_port), **os.environ),
-            stdout=open("tropho.stdout", "w"),
-            stderr=open("tropho.stderr", "w"))
+                subprocess.Popen(
+                    [
+                        TROPHONIUS_BIN,
+                        '--port', str(args.trophonius_port),
+                        '--control-port', str(args.trophonius_control_port),
+                    ],
+                    env = dict(INFINIT_META_PORT=str(args.meta_port), **os.environ),
+                    stdout = open("tropho.stdout", "w"),
+                    stderr = open("tropho.stderr", "w")
+                )
+            )
         )
 
         processes.append(
-            subprocess.Popen([
+            (
                 APERTUS_BIN,
-                '--port', str(args.apertus_port),
-                '--control-port', str(args.apertus_control_port)
-            ],
-            stdout=open("apertus.stdout", "w"),
-            stderr=open("apertus.stderr", "w"))
-        )
-        processes.append(
-            subprocess.Popen([
-                HEARTBEAT_BIN,
-                '--port', str(args.heartbeat_port)
-            ],
-            stdout=open("heartbeat.stdout", "w"),
-            stderr=open("heartbeat.stderr", "w"))
-        )
-        processes.append(
-            subprocess.Popen([
-                STUN_BIN,
-                '--primaryport', str(args.stun_port),
-                '--mode', 'full'
-            ],
-            stdout=open("stunserver.stdout", "w"),
-            stderr=open("stunserver.stderr", "w")) 
+                subprocess.Popen(
+                    [
+                        APERTUS_BIN,
+                        '--port', str(args.apertus_port),
+                    ],
+                    stdout = open("apertus.stdout", "w"),
+                    stderr = open("apertus.stderr", "w")
+                )
+            )
         )
 
-        print("INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port)
-        print("INFINIT_META_PORT=%s" % args.meta_port)
-        print("INFINIT_LONGINUS_PORT=%s" % args.longinus_port)
-        print("INFINIT_HEARTBEAT_PORT=%s" % args.heartbeat_port)
-        print("INFINIT_STUN_PORT=%s" % args.stun_port)
+        print(
+            "INFINIT_TROPHONIUS_PORT=%s" % args.trophonius_port,
+            "INFINIT_META_PORT=%s" % args.meta_port,
+        )
 
         running = True
         while running:
-            for p in processes:
+            for name, p in processes:
                 p.poll()
                 if p.returncode is not None:
-                    running = False
+                    raise Exception('%s failed with error code %s' % (name, p.returncode))
                 time.sleep(0.1)
     except KeyboardInterrupt:
         print("Exiting")
     finally:
-        for p in processes:
+        for name, p in processes:
             try:
                 p.terminate()
             except: pass
 
-        for p in processes:
+        for name, p in processes:
             if p.returncode is None:
                 try:
                     p.kill()
@@ -160,5 +130,9 @@ def main(argv):
                     pass
 
 if __name__ == '__main__':
-    import sys
-    main(sys.argv[1:])
+    try:
+        import sys
+        main(sys.argv[1:])
+    except Exception as e:
+        print('%s: fatal error: %s' % (sys.argv[0], e))
+        raise e

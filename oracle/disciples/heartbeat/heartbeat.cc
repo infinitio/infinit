@@ -12,11 +12,14 @@
 
 #include <satellites/satellite.hh>
 
+#include <boost/program_options.hpp>
+
 #include <sstream>
 #include <algorithm>
 #include <memory>
+#include <unistd.h>
 
-#include <boost/program_options.hpp>
+#include <unistd.h>
 
 ELLE_LOG_COMPONENT("oracle.disciple.heartbeat");
 
@@ -24,49 +27,47 @@ namespace network = reactor::network;
 
 namespace heartbeat
 {
-
-static
-void
-start(int port)
-{
-  ELLE_TRACE_FUNCTION("");
-  auto& sched = *reactor::Scheduler::scheduler();
-
-  network::UDTServer server(sched);
-  reactor::Scope scope;
-
-  server.listen(port);
-  ELLE_LOG("starting %s", server);
-  for (;;)
+  static
+  void
+  start(int port)
   {
-    network::UDTSocket* sockptr{
-      server.accept()
-    };
-    ELLE_LOG("accepting connection on %s", *sockptr);
-    auto client_th = [&, sockptr]
+    ELLE_TRACE_FUNCTION("");
+    auto& sched = *reactor::Scheduler::scheduler();
+
+    network::UDTServer server(sched);
+    reactor::Scope scope;
+
+    server.listen(port);
+    ELLE_LOG("starting %s", server);
+    for (;;)
     {
-      std::unique_ptr<network::UDTSocket> sock{sockptr};
-      std::string msg;
-
-      try
+      network::UDTSocket* sockptr{
+        server.accept()
+      };
+      ELLE_LOG("accepting connection on %s", *sockptr);
+      auto client_th = [&, sockptr]
       {
-        while (1)
+        std::unique_ptr<network::UDTSocket> sock{sockptr};
+        std::string msg;
+
+        try
         {
-          msg.resize(512);
-          size_t bytes = sock->read_some(network::Buffer{msg});
-          msg.resize(bytes);
-          sock->write(network::Buffer{msg});
+          while (1)
+          {
+            msg.resize(512);
+            size_t bytes = sock->read_some(network::Buffer{msg});
+            msg.resize(bytes);
+            sock->write(network::Buffer{msg});
+          }
         }
-      }
-      catch (network::ConnectionClosed const&e)
-      {
-        ELLE_LOG("connection closed with %s", *sock);
-      }
-    };
-    scope.run_background(elle::sprintf("%s", *sockptr), client_th);
+        catch (network::ConnectionClosed const&e)
+        {
+          ELLE_LOG("connection closed with %s", *sock);
+        }
+      };
+      scope.run_background(elle::sprintf("%s", *sockptr), client_th);
+    }
   }
-}
-
 } /* heartbeat */
 
 /// Returns the signal value if process has been signaled.
@@ -105,7 +106,7 @@ main(int ac, const char *av[])
     heartbeat::start(vm["port"].as<int>());
   };
 
-  bool restart = true;
+  int tries = 0;
   do
   {
     int status = infinit::satellite_main("heartbeat-server", std::move(Main));
@@ -114,8 +115,9 @@ main(int ac, const char *av[])
     // otherwise, the process crashed, and we can restart it.
     if (status == 0 ||
         sig_value(status) == SIGINT)
-      restart = false;
+      return EXIT_SUCCESS;
   }
-  while (restart);
+  while (tries++ < 10);
 
+  return EXIT_FAILURE;
 }

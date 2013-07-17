@@ -13,8 +13,6 @@
 
 #include <etoile/gear/Identifier.hh>
 #include <etoile/path/Chemin.hh>
-#include <etoile/path/Way.hh>
-#include <etoile/portal/Manifest.hh>
 
 #include <nucleus/neutron/Range.hh>
 #include <nucleus/neutron/Record.hh>
@@ -46,7 +44,7 @@ namespace satellite
   reactor::network::TCPSocket* Transfer::socket = nullptr;
   infinit::protocol::Serializer* Transfer::serializer = nullptr;
   infinit::protocol::ChanneledStream* Transfer::channels = nullptr;
-  etoile::portal::RPC* Transfer::rpcs = nullptr;
+  etoile::RPC* Transfer::rpcs = nullptr;
   lune::Descriptor* Transfer::descriptor = nullptr;
 
   /// Ward helper to make sure objects are discarded on errors.
@@ -103,10 +101,10 @@ namespace satellite
     Transfer::channels =
       new infinit::protocol::ChanneledStream(*reactor::Scheduler::scheduler(),
                                              *serializer);
-    Transfer::rpcs = new etoile::portal::RPC(*channels);
+    Transfer::rpcs = new etoile::RPC(*channels);
 
-    if (!Transfer::rpcs->authenticate(phrase.pass))
-      throw reactor::Exception("unable to authenticate to Etoile");
+    // if (!Transfer::rpcs->authenticate(phrase.pass))
+    //   throw reactor::Exception("unable to authenticate to Etoile");
   }
 
   etoile::gear::Identifier
@@ -115,8 +113,9 @@ namespace satellite
   {
     ELLE_TRACE_FUNCTION(object, path);
 
-    etoile::path::Slab name;
-    etoile::path::Way way(etoile::path::Way(path), name);
+    boost::filesystem::path p(path);
+    std::string way = p.parent_path().generic_string();
+    std::string name = p.filename().generic_string();
 
     // Resolve parent directory.
     etoile::path::Chemin chemin(Transfer::rpcs->pathresolve(way));
@@ -200,7 +199,7 @@ namespace satellite
       // Resolve the path to the root directory.
       etoile::path::Chemin chemin(
         Transfer::rpcs->pathresolve(
-          etoile::path::Way(elle::system::path::separator)));
+          std::string(1, elle::system::path::separator)));
 
       // Load the root directory.
       etoile::gear::Identifier directory(
@@ -242,7 +241,6 @@ namespace satellite
     // set an attribute.
     elle::String root(elle::String(1, elle::system::path::separator) +
                       ".progress");
-    etoile::path::Way way(root);
 
     // (2) Create the progress file.
     {
@@ -252,7 +250,7 @@ namespace satellite
       Ward ward_file(file);
 
       // Attach the file to the hierarchy.
-      etoile::gear::Identifier directory(Transfer::attach(file, way.path));
+      etoile::gear::Identifier directory(Transfer::attach(file, root));
 
       Ward ward_directory(directory);
 
@@ -275,7 +273,7 @@ namespace satellite
       ward_directory.release();
     }
 
-    return (Transfer::rpcs->pathresolve(way));
+    return (Transfer::rpcs->pathresolve(root));
   }
 
   void
@@ -336,7 +334,7 @@ namespace satellite
   }
 
   void
-  Transfer::from_traverse(etoile::path::Way const& source,
+  Transfer::from_traverse(std::string const& source,
                           elle::String const& target)
   {
     ELLE_TRACE_FUNCTION(source, target);
@@ -364,10 +362,10 @@ namespace satellite
     // Go through the entries.
     for (auto entry: entries)
       {
-        etoile::path::Way _source(source.path +
-                                  entry->name());
+        std::string _source(
+          source + elle::system::path::separator + entry->name());
 
-        ELLE_DEBUG("source %s", _source.path.c_str());
+        ELLE_DEBUG("source %s", _source);
 
         // Resolve the child.
         etoile::path::Chemin chemin(Transfer::rpcs->pathresolve(_source));
@@ -381,7 +379,7 @@ namespace satellite
         etoile::abstract::Object abstract(
           Transfer::rpcs->objectinformation(child));
 
-        elle::String path(target + _source.path);
+        elle::String path(target + _source);
 
         switch (abstract.genre)
           {
@@ -436,7 +434,7 @@ namespace satellite
               Transfer::from_progress(1);
 
               // Recursively explore the Infinit network.
-              Transfer::from_traverse(_source.path +
+              Transfer::from_traverse(_source +
                                       elle::system::path::separator,
                                       target);
 
@@ -452,13 +450,13 @@ namespace satellite
               ELLE_DEBUG("link %s", path.c_str());
 
               // Resolve the link.
-              etoile::path::Way way(Transfer::rpcs->linkresolve(child));
+              std::string way(Transfer::rpcs->linkresolve(child));
 
               // Create the link.
-              boost::filesystem::create_symlink(way.path, path);
+              boost::filesystem::create_symlink(way, path);
 
               // Set the progress.
-              Transfer::from_progress(way.path.length());
+              Transfer::from_progress(way.length());
 
               // Discard the child.
               Transfer::rpcs->objectdiscard(child);
@@ -485,7 +483,7 @@ namespace satellite
     Transfer::connect();
 
     // Traverse the Infinit network from the root.
-    Transfer::from_traverse(etoile::path::Way(elle::system::path::separator),
+    Transfer::from_traverse(std::string(1, elle::system::path::separator),
                             target);
   }
 
@@ -494,7 +492,7 @@ namespace satellite
   {
     ELLE_TRACE_FUNCTION(size);
 
-    etoile::path::Way root(elle::system::path::separator);
+    std::string root(1, elle::system::path::separator);
 
     // Resolve the root directory.
     etoile::path::Chemin chemin(Transfer::rpcs->pathresolve(root));
@@ -614,7 +612,7 @@ namespace satellite
 
     Ward ward_directory(directory);
 
-    etoile::path::Way way(boost::filesystem::read_symlink(source).string());
+    std::string way(boost::filesystem::read_symlink(source).string());
 
     // bind the link.
     Transfer::rpcs->linkbind(link, way);
@@ -630,7 +628,7 @@ namespace satellite
 
     ward_directory.release();
 
-    return (way.path.length());
+    return way.length();
   }
 
   void

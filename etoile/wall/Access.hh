@@ -21,7 +21,8 @@ namespace etoile
       /// The access record associated with the given subject.
       static
       nucleus::neutron::Record
-      lookup(gear::Identifier const&,
+      lookup(etoile::Etoile& etoile,
+             gear::Identifier const&,
              nucleus::neutron::Subject const&);
       /// A subset of the object's access access list.
       ///
@@ -31,13 +32,16 @@ namespace etoile
       /// XXX[should not be the case in the future though]
       static
       nucleus::neutron::Range<nucleus::neutron::Record>
-      consult(gear::Identifier const&,
+      consult(etoile::Etoile& etoile,
+              gear::Identifier const&,
               nucleus::neutron::Index const&,
               nucleus::neutron::Size const&);
-      static elle::Status       Grant(const gear::Identifier&,
+      static elle::Status       Grant(etoile::Etoile& etoile,
+                                      const gear::Identifier&,
                                       const nucleus::neutron::Subject&,
                                       const nucleus::neutron::Permissions&);
-      static elle::Status       Revoke(const gear::Identifier&,
+      static elle::Status       Revoke(etoile::Etoile& etoile,
+                                       const gear::Identifier&,
                                        const nucleus::neutron::Subject&);
     };
 

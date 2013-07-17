@@ -12,6 +12,8 @@
 
 # include <hole/fwd.hh>
 
+# include <etoile/fwd.hh>
+
 ///
 /// this namespace contains several implementations related to the
 /// operating system as the system call interface changes.
@@ -26,6 +28,10 @@ namespace horizon
   hole();
   void
   hole(hole::Hole* hole);
+  etoile::Etoile&
+  etoile();
+  void
+  etoile(etoile::Etoile* etoile);
 
   ///
   /// this class contains general-purpose methods for initializing and

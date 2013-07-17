@@ -1,196 +1,157 @@
-#include <common/common.hh>
-
-#include <elle/Buffer.hh>
-#include <elle/container/map.hh>
-#include <elle/format/hexadecimal.hh>
-#include <elle/serialize/BinaryArchive.hh>
-#include <elle/serialize/ListSerializer.hxx>
-#include <elle/serialize/PairSerializer.hxx>
-#include <elle/serialize/extract.hh>
-#include <elle/serialize/insert.hh>
-#include <elle/utility/Time.hh>
-
-#include <version.hh>
 #include "Reporter.hh"
 
+#include <version.hh>
+#include <common/common.hh>
+
+#include <reactor/scheduler.hh>
+
+#include <elle/log.hh>
+#include <elle/threading/Monitor.hh>
+
 #include <fstream>
-#include <iostream>
-#include <string>
-#include <regex>
 #include <thread>
-#include <mutex>
 
-ELLE_LOG_COMPONENT("elle.metrics.Reporter");
+ELLE_LOG_COMPONENT("metrics.Reporter");
 
-namespace elle
+namespace metrics
 {
-  namespace metrics
-  {
-    std::string Reporter::version =
-      elle::sprintf("%s.%s", INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
-    std::string Reporter::user_agent = elle::sprintf("Infinit/%s (%s)",
-                                                     Reporter::version,
+  std::string Reporter::version =
+    elle::sprintf("%s.%s", INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
+  std::string Reporter::user_agent = elle::sprintf("Infinit/%s (%s)",
+                                                   Reporter::version,
 #ifdef INFINIT_LINUX
-                                                  "Linux x86_64");
+                                                "Linux x86_64");
 #elif INFINIT_MACOSX
-               // XXX[10.7: should adapt to any MacOS X version]
-                                                  "Mac OS X 10.7");
+             // XXX[10.7: should adapt to any MacOS X version]
+                                                "Mac OS X 10.7");
 #else
 # warning "machine not supported"
 #endif
-    /*----.
-    | Key |
-    `----*/
-    std::ostream&
-    operator <<(std::ostream& out,
-                Key k)
-    {
-      return out << (int) k;
-    }
 
-    /*--------.
-    | Service |
-    `--------*/
-    Reporter::Service::Service(std::string const& host,
-                               uint16_t port,
-                               std::string const& user,
-                               std::string const& pretty_name)
-      : _user_id{user}
-      , _server{new elle::HTTPClient{host, port, Reporter::user_agent}}
-      , _name{pretty_name}
+  struct Reporter::Impl
+  {
+    typedef std::function<ServicePtr(std::string const&)> ServiceFactory;
+    typedef std::vector<ServicePtr> ServiceArray;
+    typedef std::unordered_map<std::string, ServiceArray> ServiceMap;
+    typedef std::unordered_map<std::string, Proxy> ProxyMap;
+
+    reactor::Scheduler scheduler;
+    std::unique_ptr<boost::asio::io_service::work> keep_alive;
+    std::unique_ptr<std::thread> thread;
+    std::ofstream fallback_stream;
+    std::vector<ServiceFactory> service_factories;
+    elle::threading::Monitor<ServiceMap> services;
+    elle::threading::Monitor<ProxyMap> proxies;
+
+    Impl():
+      scheduler{},
+      keep_alive{},
+      thread{nullptr},
+      fallback_stream{common::metrics::fallback_path()},
+      service_factories{},
+      services{},
+      proxies{}
     {}
 
-    Reporter::Service::~Service()
-    {}
-
-    void
-    Reporter::Service::update_user(std::string const& user)
+    ServiceArray&
+    get_services(std::string const& pkey)
     {
-      this->_user_id = user;
+      return this->services(
+        [&] (ServiceMap& map) -> ServiceArray& {
+          ServiceArray& services = map[pkey];
+          // Fill services if some are missing.
+          while (services.size() < this->service_factories.size())
+            services.emplace_back(
+              this->service_factories[services.size()](pkey));
+          return services;
+        });
     }
+  };
 
-    /*---------.
-    | Reporter |
-    `---------*/
-    Reporter::Reporter()
-      : _flusher_sched{}
-      , _fallback_stream{common::metrics::fallback_path()}
-    {
-      this->_keep_alive.reset(
-        new boost::asio::io_service::work(_flusher_sched.io_service()));
-    }
+  Reporter::Reporter():
+    _this{new Impl{}}
+  {
+    _this->keep_alive.reset(
+      new boost::asio::io_service::work(_this->scheduler.io_service()));
+  }
 
-    Reporter::~Reporter()
-    {
-      this->_keep_alive.reset();
-      if (this->_run_thread && this->_run_thread->joinable())
-        this->_run_thread->join();
-    }
+  Reporter::~Reporter()
+  {
+    _this->keep_alive.reset();
+    if (_this->thread != nullptr && _this->thread->joinable())
+      _this->thread->join();
+  }
 
-    void
-    Reporter::start()
-    {
-      this->_run_thread.reset(new std::thread{[this] { this->_flusher_sched.run(); }});
-    }
+  void
+  Reporter::start()
+  {
+    _this->thread.reset(new std::thread{[&] { _this->scheduler.run(); }});
+  }
 
-    void
-    Reporter::store(std::string const& caller, Metric const& metric)
-    {
-      ELLE_TRACE("Storing new metric %s", caller);
+  void
+  Reporter::add_service_factory(
+    std::function<ServicePtr(std::string const&)> factory)
+  {
+    _this->service_factories.push_back(factory);
+  }
 
-      // Note that if we want the ability to use initializer list for metric,
-      // we can't declare it as non const..
-      Metric& m = const_cast<Metric &>(metric);
-      m.emplace(Key::tag, caller);
-
-      this->store(TimeMetricPair(elle::utility::Time::current(), m));
-    }
-
-    void
-    Reporter::store(std::string const& caller)
-    {
-      this->store(caller, Metric{});
-    }
-
-    void
-    Reporter::store(std::string const& name,
-                    Key const& key,
-                    std::string const& value)
-    {
-      Metric metric;
-      metric.emplace(key, value);
-      this->store(name, metric);
-    }
-
-    void
-    Reporter::store(TimeMetricPair const& metric)
-    {
-      ELLE_TRACE("metric: %s", metric);
-
-      this->_services(
-        [metric, this] (ServicesMap& services) -> void
+  Reporter::Proxy&
+  Reporter::operator [](std::string const& pkey)
+  {
+    return _this->proxies(
+      [&] (Impl::ProxyMap& proxies) -> Proxy& {
+        auto it = proxies.find(pkey);
+        if (it == proxies.end())
         {
-          for (auto& service: services)
+          proxies.emplace(pkey, Proxy{*this, pkey});
+          return proxies.at(pkey);
+        }
+        return it->second;
+      });
+  }
+
+  void
+  Reporter::_store(std::string const& pkey,
+                   std::string const& event_name,
+                   Metric metric)
+  {
+    TimeMetricPair timed_metric{
+      elle::utility::Time::current(),
+      std::move(metric),
+    };
+
+    ELLE_TRACE("storing new metric %s: %s = %s", pkey, event_name, timed_metric);
+
+    auto& services = _this->get_services(pkey);
+
+    for (auto& service: services)
+    {
+      _this->scheduler.io_service().post(
+        [&service, pkey, timed_metric, event_name, this] {
+          try
           {
-            this->_flusher_sched.io_service().post([&service, metric, this] {
-                try
-                {
-                  service.second->_send(metric);
-                }
-                catch (std::runtime_error const& e)
-                {
-                  ELLE_ERR("error while storing metric %s %s", metric, e.what());
-                  // XXX: Fallback is not threadsafe.
-                  this->_fallback(service.first, metric);
-                }
-              });
+            TimeMetricPair cpy{timed_metric};
+            cpy.second.emplace(
+              Key::tag,
+              service->_format_event_name(event_name));
+            service->_send(cpy);
+          }
+          catch (...)
+          {
+            ELLE_ERR("error while storing timed_metric %s: %s",
+                     timed_metric,
+                     elle::exception_string());
+           this->_fallback(pkey, event_name, timed_metric);
           }
         });
     }
+  }
 
-    void
-    Reporter::_fallback(std::string const& name, TimeMetricPair const& metric)
-    {
-
-    }
-
-    void
-    Reporter::add_service(std::unique_ptr<Service> service)
-    {
-      this->_services(
-        [&] (ServicesMap& services) -> void
-        {
-          services.emplace(service->name(), std::move(service));
-        });
-    }
-
-    Reporter::Service&
-    Reporter::_service(std::string const& name)
-    {
-      return this->_services(
-        [&] (ServicesMap& services) -> Reporter::Service&
-        {
-          return *services.at(name);
-        });
-    }
-
-    void
-    Reporter::update_user(std::string const& user)
-    {
-      this->_services(
-        [&] (ServicesMap& services) -> void
-        {
-          for (auto& serv: services)
-            serv.second->update_user(user);
-        });
-    }
-
-    Reporter&
-    reporter()
-    {
-      static Reporter reporter;
-
-      return reporter;
-    }
-  } // End of metric
-} // End of elle
+  void
+  Reporter::_fallback(std::string const& /*pkey*/,
+                      std::string const& /*event_name*/,
+                      TimeMetricPair const& /*metric*/)
+  {
+    // XXX do fallback
+  }
+}

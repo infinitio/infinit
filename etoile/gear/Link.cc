@@ -19,8 +19,8 @@ namespace etoile
     ///
     /// the constructor
     ///
-    Link::Link():
-      Object(NatureLink),
+    Link::Link(Etoile& etoile):
+      Object(etoile, NatureLink),
 
       contents_porcupine(nullptr),
       contents_nest(nullptr),

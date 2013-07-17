@@ -181,25 +181,46 @@ namespace common
   {
     struct Info
     {
-      std::string host;
-      uint16_t port;
-      std::string id_path;
-      std::string tracking_id;
+      std::string const pretty_name;
+      std::string const host;
+      uint16_t const port;
+      std::string const id_path;
+      std::string const tracking_id;
+    };
+
+    /// Kind of metrics to be reported.
+    enum class Kind
+    {
+      all,
+      user,
+      network,
+      transaction
     };
 
     Info const&
-    google_info();
+    google_info_investors();
 
     Info const&
-    km_info();
+    google_info(Kind const kind = Kind::all);
+
+    Info const&
+    kissmetrics_info(Kind const kind = Kind::all);
 
     /// Path to the file storing fallbacked metrics.
     std::string const&
     fallback_path();
-
   }
 
   namespace longinus
+  {
+    std::string
+    host();
+
+    int
+    port();
+  }
+
+  namespace apertus
   {
     std::string
     host();

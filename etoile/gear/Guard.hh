@@ -5,6 +5,8 @@
 
 # include <etoile/gear/fwd.hh>
 
+# include <memory>
+
 namespace etoile
 {
   namespace gear
@@ -20,7 +22,7 @@ namespace etoile
       // constructors & destructors
       //
     public:
-      Guard(Scope*,
+      Guard(std::shared_ptr<Scope> const&,
             Actor* = nullptr);
       Guard(Actor*);
       ~Guard();
@@ -41,7 +43,7 @@ namespace etoile
       // attributes
       //
     private:
-      Scope*            _scope;
+      std::shared_ptr<Scope> _scope;
       Actor*            _actor;
       elle::Boolean     _track;
     };
