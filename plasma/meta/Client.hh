@@ -111,6 +111,7 @@ namespace plasma
       std::string email;
       int remaining_invitations;
       std::string token_generation_key;
+      std::list<std::string> devices;
     };
 
     struct InviteUserResponse : Response

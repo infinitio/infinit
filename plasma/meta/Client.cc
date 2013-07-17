@@ -93,6 +93,7 @@ SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
   ar & named("identity", res.identity);
   ar & named("remaining_invitations",  res.remaining_invitations);
   ar & named("status", res.status);
+  ar & named("devices", res.devices);
   try
   {
     ar & named("token_generation_key", res.token_generation_key);

@@ -20,7 +20,18 @@ namespace surface
       ELLE_DEBUG("Check for '%s' device existence at '%s'",
                  this->me().id,
                  common::infinit::passport_path(this->me().id));
-      return elle::os::path::exists(common::infinit::passport_path(this->me().id));
+      if (elle::os::path::exists(common::infinit::passport_path(this->me().id)))
+      {
+        elle::Passport passport;
+        passport.load(
+          elle::io::Path{common::infinit::passport_path(this->me().id)});
+        auto it = std::find(this->me().devices.begin(),
+                            this->me().devices.end(),
+                            passport.id());
+        if (it != this->me().devices.end())
+          return true;
+      }
+      return false;
     }
 
     Device const&
@@ -28,8 +39,8 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
 
-      if (!elle::os::path::exists(common::infinit::passport_path(this->me().id)))
-        update_device("XXX");
+      if (!this->has_device())
+        this->update_device("XXX");
       else if (this->_device == nullptr)
       {
         elle::Passport passport;
