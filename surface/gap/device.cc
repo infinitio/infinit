@@ -15,6 +15,8 @@ namespace surface
     State::has_device() const
     {
       ELLE_TRACE_METHOD("");
+      if (this->_device != nullptr)
+        return true;
 
       ELLE_ASSERT(this->me().id.size() > 0 && "not properly initialized");
       ELLE_DEBUG("Check for '%s' device existence at '%s'",
