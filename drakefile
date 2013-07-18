@@ -1271,6 +1271,10 @@ def configure(cxx_toolkit = None,
                'sharing/send-file/early-accept.py',
                'sharing/send-file/forwarder.py',
                'sharing/send-file/invitation.py',
+               'sharing/send-file/sender-cancel.py',
+               'sharing/send-file/sender-early-cancel.py',
+               'sharing/send-file/recipient-early-cancel.py',
+               'sharing/send-file/recipient-cancel.py',
              ]:
     test = drake.node('tests/functional/%s' % test)
     tests << test
