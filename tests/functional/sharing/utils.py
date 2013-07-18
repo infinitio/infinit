@@ -26,6 +26,16 @@ import meta
 import trophonius
 import apertus
 
+def get_random_port():
+    import socket
+    import time
+    s = socket.create_connection(("www.google.com", 80))
+    host, port = s.getsockname()
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.close()
+    time.sleep(1)
+    return port
+
 class Servers:
 
     def __init__(self):
@@ -33,15 +43,18 @@ class Servers:
         self.tropho = None
 
     def __enter__(self):
+        port = get_random_port()
         self.apertus = apertus.Apertus(port=0)
         self.apertus.__enter__()
         self.meta = meta.Meta(
-            spawn_db = True)
+            spawn_db = True,
+            trophonius_control_port = port)
         self.meta.__enter__()
         self.tropho = trophonius.Trophonius(
-            meta_port = self.meta.meta_port)
+            meta_port = self.meta.meta_port,
+            control_port = port
+            )
         self.tropho.__enter__()
-        self.meta.trophonius_control_port = self.tropho.control_port
         return self.meta, self.tropho, self.apertus
 
     def __exit__(self, exception_type, exception, *args):

@@ -63,7 +63,6 @@ from meta.application import Application
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    meta.conf.TROPHONIUS_CONTROL_PORT = args.trophonius_control_port
     try:
         if args.spawn_db == True:
             with mongobox.MongoBox() as mongo:
@@ -71,6 +70,7 @@ if __name__ == '__main__':
                                   meta_port=args.meta_port,
                                   mongo_host="localhost",
                                   mongo_port=mongo.port,
+                                  tropho_control_port=args.trophonius_control_port,
                                   port_file=args.port_file,
                 )
                 app.run()
@@ -79,6 +79,7 @@ if __name__ == '__main__':
                               meta_port=args.meta_port,
                               mongo_host=args.mongo_host,
                               mongo_port=args.mongo_port,
+                              tropho_control_port=args.trophonius_control_port,
                               port_file=args.port_file,
             )
             app.run()
