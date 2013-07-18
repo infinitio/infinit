@@ -4,7 +4,7 @@
 import os
 import time
 
-from utility import file_sha1, dir_sha1, TestFailure
+from utils import file_sha1, dir_sha1, TestFailure
 
 class Scenario:
     def __init__(self, sender = None, files = None):
