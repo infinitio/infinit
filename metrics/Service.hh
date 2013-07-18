@@ -33,6 +33,14 @@ namespace metrics
     /// Timestamp of the last metric sent.
     elle::utility::Time _last_sent;
 
+    static
+    int
+    _curl_debug_callback(CURL* handle,
+                        curl_infotype type,
+                        char* what,
+                        size_t what_size,
+                        void* userptr);
+
   public:
     /// Construct a service with a primary key and its info.
     Service(std::string const& pkey,
@@ -53,18 +61,8 @@ namespace metrics
     _format_event_name(std::string const& name) = 0;
   };
 
-  /// Kind shortcut for service unique pointer.
+  /// Kind shortcut for service pointer.
   typedef std::shared_ptr<Service> ServicePtr;
-
-  namespace detail
-  {
-    int
-    curl_debug_callback(CURL* handle,
-                        curl_infotype type,
-                        char* what,
-                        size_t what_size,
-                        void* userptr);
-  }
 }
 
 #endif

@@ -99,7 +99,7 @@ namespace metrics
       static std::ofstream null{"/dev/null"};
       auto rc = curly::make_get();
 
-      rc.option(CURLOPT_DEBUGFUNCTION, detail::curl_debug_callback);
+      rc.option(CURLOPT_DEBUGFUNCTION, &Service::_curl_debug_callback);
       rc.option(CURLOPT_DEBUGDATA, this);
       rc.option(CURLOPT_TIMEOUT, 15);
       rc.user_agent(metrics::Reporter::user_agent);
