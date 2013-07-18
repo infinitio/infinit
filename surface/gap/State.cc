@@ -283,15 +283,20 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
 
-      this->_reporter["anonymous"].store("user.login.attempt");
+      elle::Finally login_failed{[this, lower_email] {
+        this->_reporter[lower_email].store("user.login.failed");
+        this->_google_reporter[lower_email].store("user.login.failed");
+      }};
 
       auto res = this->_meta.login(lower_email, password);
+      login_failed.abort();
+
       ELLE_LOG("Logged in as %s token = %s", email, res.token);
       this->_reporter[res.id].store(
-          "user.login.succeed",
+          "user.login",
           {{MKey::session, "start"}, {MKey::status, "succeed"}});
       this->_google_reporter[res.id].store(
-        "user.login.succeed",
+        "user.login",
         {{MKey::session, "start"}, {MKey::status, "succeed"}});
       ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
                  this->me().id,

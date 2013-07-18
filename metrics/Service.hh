@@ -51,9 +51,6 @@ namespace metrics
     std::string
     _format_event_name(std::string const& name) = 0;
   };
-
-  /// Kind shortcut for service unique pointer.
-  typedef std::unique_ptr<Service> ServicePtr;
 }
 
 #endif

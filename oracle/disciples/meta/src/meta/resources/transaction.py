@@ -206,7 +206,8 @@ class Create(Page):
             if new_user:
                 meta.invitation.invite_user(
                     invitee_email,
-                    mail_template='send-file',
+                    source = self.user['_id'],
+                    mail_template = 'send-file',
                     reply_to = self.user['email'],
                     filename = first_filename,
                     sendername = self.user['fullname'],
