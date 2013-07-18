@@ -49,6 +49,8 @@ namespace metrics
       return out << "sender_online";
     case Key::recipient_online:
       return out << "recipient_online";
+    case Key::source:
+      return out << "source";
     }
     return out << "Unknown metrics key";
   }

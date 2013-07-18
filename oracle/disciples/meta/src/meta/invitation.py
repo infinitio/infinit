@@ -42,13 +42,22 @@ def move_from_invited_to_userbase(ghost_mail, new_mail):
     except:
         print("Couldn't subscribe", new_mail, "to USERBASE")
 
-def invite_user(mail, send_mail=True, mail_template='invitation-beta', **kw):
+def invite_user(mail,
+                send_mail = True,
+                source = 'infinit',
+                mail_template = 'invitation-beta',
+                **kw):
         code = _generate_code(mail)
         meta.database.invitations().insert({
             'email': mail,
             'status': 'pending',
             'code': code,
+            'source': source,
         })
         subject = XXX_MAILCHIMP_SUCKS_TEMPLATE_SUBJECTS[mail_template] % kw
         if send_mail:
-            meta.mail.send_via_mailchimp(mail, mail_template, subject, accesscode=code, **kw)
+            meta.mail.send_via_mailchimp(mail,
+                                         mail_template,
+                                         subject,
+                                         accesscode=code,
+                                         **kw)

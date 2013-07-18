@@ -513,7 +513,8 @@ class Register(Page):
             invitation['status'] = 'activated'
             database.invitations().save(invitation)
         return self.success({
-            'registered_user_id': user['_id']
+            'registered_user_id': user['_id'],
+            'invitation_source': source or '',
         })
 
 class GenerateToken(Page):
