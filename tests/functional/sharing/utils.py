@@ -33,17 +33,15 @@ class Servers:
         self.tropho = None
 
     def __enter__(self):
-        port = 39075 # XXX
-        self.apertus = apertus.Apertus()
+        self.apertus = apertus.Apertus(port=0)
         self.apertus.__enter__()
         self.meta = meta.Meta(
-            spawn_db = True,
-            trophonius_control_port = port)
+            spawn_db = True)
         self.meta.__enter__()
         self.tropho = trophonius.Trophonius(
-            meta_port = self.meta.meta_port,
-            control_port = port)
+            meta_port = self.meta.meta_port)
         self.tropho.__enter__()
+        self.meta.trophonius_control_port = self.tropho.control_port
         return self.meta, self.tropho, self.apertus
 
     def __exit__(self, exception_type, exception, *args):
@@ -188,3 +186,12 @@ def cases():
         RandomDirectory(file_count = 50, min_file_size = 10, max_file_size = 50), # Mono Folder.
         [RandomDirectory(file_count = 3, min_file_size = 10, max_file_size = 50)] * 2, # Many Folders.
     ]
+
+if __name__ == "__main__":
+    with Servers() as (meta, tropho, apertus):
+        print(meta.meta_port)
+        assert meta.meta_port != 12345
+        print(tropho.port, tropho.control_port)
+        assert tropho.port != 23456
+        print(apertus.port)
+        assert apertus.port != 9899
