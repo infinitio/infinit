@@ -4,7 +4,7 @@
 import os
 import time
 
-from utility import file_sha1, dir_sha1
+from utility import file_sha1, dir_sha1, TestFailure
 
 class Scenario:
     def __init__(self, sender = None, files = None):
@@ -154,3 +154,31 @@ class GhostScenario(Scenario):
         self.verify_transfer(expected_files)
 
         return True
+
+class CancelScenario(DefaultScenario):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def run(self, timeout = 300):
+        assert len(self.sender.transactions) == 0
+        assert len(self.recipient.transactions) == 0
+
+        expected_files = [os.path.join(self.recipient.output_dir, os.path.basename(file))
+                              for file in self.files]
+
+        self.sender.send_files(files = self.files, recipient = self.recipient)
+
+        start = time.time()
+        transaction = None
+        while True:
+            if not (time.time() - start < timeout):
+                raise TestFailure("{}: timeout".format(self.name))
+            time.sleep(0.5)
+            self.poll()
+            time.sleep(0.1)
+            if len(self.recipient.transactions):
+                assert len(self.recipient.transactions) == 1
+                transaction_id = list(self.recipient.transactions.keys())[0]
+                transaction = self.recipient.transactions[transaction_id]
+            if self.sender.transactions[transaction_id].status == "canceled" and self.recipient.transactions[transaction_id].status == "canceled":
+                break
