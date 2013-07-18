@@ -7,7 +7,8 @@ import os
 import sys
 import tempfile
 import time
-from utility import generator, email_generator
+
+from utils import generator, email_generator
 
 class Transaction:
     def __init__(self, state, id):
