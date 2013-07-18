@@ -46,6 +46,17 @@ parser.add_argument(
     default = meta.conf.TROPHONIUS_CONTROL_PORT,
 )
 
+parser.add_argument(
+    '--apertus-host',
+    type = str,
+    default = meta.conf.APERTUS_HOST
+)
+
+parser.add_argument(
+    '--apertus-port',
+    type = int,
+    default = meta.conf.APERTUS_PORT
+)
 # if testing, need to spawn DB to path that can be accessed
 parser.add_argument(
     '--spawn-db',
@@ -70,6 +81,8 @@ if __name__ == '__main__':
                                   meta_port=args.meta_port,
                                   mongo_host="localhost",
                                   mongo_port=mongo.port,
+                                  apertus_host=args.apertus_host,
+                                  apertus_port=args.apertus_port,
                                   tropho_control_port=args.trophonius_control_port,
                                   port_file=args.port_file,
                 )
@@ -79,6 +92,8 @@ if __name__ == '__main__':
                               meta_port=args.meta_port,
                               mongo_host=args.mongo_host,
                               mongo_port=args.mongo_port,
+                              apertus_host=args.apertus_host,
+                              apertus_port=args.apertus_port,
                               tropho_control_port=args.trophonius_control_port,
                               port_file=args.port_file,
             )

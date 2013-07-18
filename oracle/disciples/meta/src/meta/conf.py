@@ -45,4 +45,6 @@ TROPHONIUS_HOST = "localhost"
 LONGINUS_HOST = "localhost"
 LONGINUS_PORT = 9999
 HEARTBEAT_PORT = 9898
+APERTUS_HOST = "apertus.api.development.infinit.io"
+APERTUS_PORT = 9899
 STUN_PORT = 3478
