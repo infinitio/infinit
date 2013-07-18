@@ -318,9 +318,8 @@ namespace plasma
         {
           if (err)
           {
-            if (err.value() != boost::asio::error::operation_aborted)
-              ELLE_WARN("timer failed in %s (%s), stopping connection checks",
-                        __func__, err);
+            ELLE_WARN("timer failed in %s (%s), stopping connection checks",
+                      __func__, err.message());
             return;
           }
           else
