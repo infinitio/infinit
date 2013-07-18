@@ -130,11 +130,11 @@ class User:
         try:
             if self.use_temporary:
                 assert self.temporary_output_dir is not None
-                self.temporary_output_dir.__exit__(type, value, traceback)
-        except:
+                self.temporary_output_dir.__exit__(type, value, tb)
+        except Exception as e:
             import sys
             print(
-                "Couldn't remove", self.output_dir, "output directory",
+                "Couldn't remove", self.output_dir, "output directory: ", e,
                 file = sys.stderr
             )
         finally:
