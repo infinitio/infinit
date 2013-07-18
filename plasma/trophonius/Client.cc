@@ -5,6 +5,7 @@
 #include <elle/assert.hh>
 #include <elle/log.hh>
 #include <elle/print.hh>
+#include <elle/finally.hh>
 #include <elle/serialize/JSONArchive.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/format/json/Dictionary.hxx>
@@ -453,6 +454,14 @@ namespace plasma
 
       std::ostream request_stream(&_impl->request);
 
+      ELLE_AT_SCOPE_EXIT
+      {
+        this->_read_socket();
+        this->_restart_ping_timer();
+        this->_restart_connection_check_timer();
+        _impl->connect_callback();
+      };
+
       // May raise an exception.
       elle::serialize::OutputJSONArchive(request_stream, connection_request);
 
@@ -471,10 +480,6 @@ namespace plasma
         throw elle::HTTPException{
           elle::ResponseCode::error, "Writing socket error"};
 
-      this->_read_socket();
-      this->_restart_ping_timer();
-      this->_restart_connection_check_timer();
-      _impl->connect_callback();
       return true;
     }
 
