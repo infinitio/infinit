@@ -1356,7 +1356,6 @@ namespace hole
               auto inner = e.inner_exception();
               if (inner)
               {
-                std::cerr << ">" << inner->what() << "<" << std::endl;
                 // XXX: until exceptions are serializable
                 if (std::string(inner->what()) ==
                     "already connected to this host")
