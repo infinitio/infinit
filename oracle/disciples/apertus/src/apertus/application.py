@@ -44,6 +44,7 @@ class Application(object):
 
     def remove_from_db(self):
         import pymongo
+        print("remove from db", self)
         database = self.mongo.apertus
         instances = database.instances
         instances.remove(self.id)
