@@ -69,6 +69,9 @@ namespace surface
         std::bind(&TransactionManager::_on_cancel_transaction,
                   this,
                   std::placeholders::_1),
+        std::bind(&TransactionManager::_on_failed_transaction,
+                  this,
+                  std::placeholders::_1),
         std::bind(&TransactionManager::_clean_transaction,
                   this,
                   std::placeholders::_1),
@@ -117,6 +120,14 @@ namespace surface
                   elle::exception_string());
       }
       ELLE_TRACE("%s: ~TransactionManager() exited", *this);
+    }
+
+    void
+    TransactionManager::_on_failed_transaction(Transaction const& tr)
+    {
+      ELLE_DEBUG("failed transaction(%s) with network(%s) for user(%s)",
+                 tr.id, tr.network_id, this->_self().id);
+      //gap_gather_crash_reports(this->self()._id, tr.network_id);
     }
 
     void

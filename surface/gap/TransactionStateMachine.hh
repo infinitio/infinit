@@ -24,6 +24,7 @@ namespace surface
       typedef std::function<void(Transaction const&)> PrepareUploadCallback;
       typedef std::function<void(Transaction const&)> StartUploadCallback;
       typedef std::function<void(Transaction const&)> StartDownloadCallback;
+      typedef std::function<void(Transaction const&)> FailedCallback;
       typedef
         std::function<bool(std::string const&, std::string const&)>
         DeviceStatusCallback;
@@ -32,6 +33,7 @@ namespace surface
 
     private:
       ELLE_ATTRIBUTE(CanceledCallback, canceled);
+      ELLE_ATTRIBUTE(FailedCallback, failed);
       ELLE_ATTRIBUTE(CleanCallback, clean);
       ELLE_ATTRIBUTE(PrepareUploadCallback, prepare_upload);
       ELLE_ATTRIBUTE(StartUploadCallback, start_upload);
@@ -42,6 +44,7 @@ namespace surface
 
     public:
       TransactionStateMachine(CanceledCallback const& canceled,
+                              FailedCallback const& failed,
                               CleanCallback const& clean,
                               PrepareUploadCallback const& prepare_upload,
                               StartUploadCallback const& start_upload,
