@@ -2,7 +2,6 @@
 # -*- encoding: utf-8 --*
 
 import os
-from filesystem import RandomDirectory, RandomTempFile
 from users import GhostUser, User
 from scenarii import GhostScenario
 import utils
