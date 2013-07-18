@@ -48,6 +48,15 @@ class Application(object):
         instances = database.instances
         instances.remove(self.id)
 
+    def unset_id(self, id):
+        import pymongo
+        print("remove", id, "from set")
+        database = self.mongo.apertus
+        instances = database.instances
+        record = instances.find_one({"ids" : id})
+        record["ids"].remove(id)
+        instances.save(record)
+
     def run(self):
         log.startLogging(sys.stderr)
         print("Mongo activated")

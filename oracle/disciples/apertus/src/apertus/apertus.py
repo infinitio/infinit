@@ -167,7 +167,9 @@ class ApertusMaster(LineReceiver):
     def unregister_slave(self, tcp_factory):
         for slave in self.factory.slaves:
             if slave is tcp_factory:
+                id = slave.id
                 self.factory.slaves.remove(slave)
+                self.factory.parent.unset_id(id)
 
     def handle_add_link(self, data):
         """handle_add_link add a link between two peers"""
