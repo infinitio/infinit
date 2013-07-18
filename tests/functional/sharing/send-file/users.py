@@ -6,6 +6,7 @@ import gap
 import os
 import sys
 import tempfile
+import time
 from utility import generator, email_generator
 
 class Transaction:
@@ -40,6 +41,9 @@ class Transaction:
     def __repr__(self):
         return "Transaction(%s, %s, localy_accepted: %s)" % (self.id, self.status, self.localy_accepted)
 
+# Default user. Accept transaction when 'started' status is triggered except if
+# early_accept is specified. In this case, he accepts on 'created'.
+# On __init__, register the first time and just login afterward.
 class User:
     def __init__(self,
                  meta_server = None,
@@ -179,6 +183,7 @@ class User:
         elif status == state.TransactionStatus.finished:
             self.transactions[transaction_id].finished = True
 
+# This user recreate a new email and reregister on __enter__.
 class GhostUser(User):
 
     def __init__(self,
@@ -205,3 +210,38 @@ class GhostUser(User):
         self.email = None
         self.register = True
         super().__exit__(type, value, traceback)
+
+# This user does nothing.
+class DoNothingUser(User):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+        def on_transaction(self, transaction_id, status, is_new):
+            pass
+
+# This user cancel transaction when the specified state is triggered
+# after a specified delay.
+class CancelUser(User):
+    def __init__(self, when = None, delay = 0, *args, **kwargs):
+        assert when is not None
+        assert when in ["created", "started"]
+        self.when = when
+        self.delay = delay
+        super().__init__(*args, **kwargs)
+
+    def on_transaction(self, transaction_id, status, is_new):
+        assert is_new
+        state = self.state
+        assert self.id == state.transaction_recipient_id(transaction_id) or \
+               self.id == state.transaction_sender_id(transaction_id)
+        is_sender = (self.id == self.state.transaction_sender_id(transaction_id))
+        if status == state.TransactionStatus.canceled:
+            pass
+        elif status == state.TransactionStatus.failed:
+            print("Transaction failed")
+        elif status == state.TransactionStatus.created and self.when == "created":
+            time.sleep(self.delay / 1000)
+            state.cancel_transaction(transaction_id)
+        elif status == state.TransactionStatus.started and self.when == "started":
+            time.sleep(self.delay / 1000)
+            state.cancel_transaction(transaction_id)
