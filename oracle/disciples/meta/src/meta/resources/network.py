@@ -268,7 +268,8 @@ class Endpoints(_Page):
 
         res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
         res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
-        res['fallback'] = ["{}:{}".format(*a) for a in addrs['fallback']]
+        res['fallback'] = ["{}:{}".format(*a)
+                           for a in self.__application__.fallback]
 
         return self.success(res)
 

@@ -48,7 +48,9 @@ class Servers:
         port = get_random_port()
         self.meta = meta.Meta(
             spawn_db = True,
-            trophonius_control_port = port)
+            trophonius_control_port = port,
+            apertus_host = "127.0.0.1",
+            apertus_port = self.apertus.port)
         self.meta.__enter__()
         self.tropho = trophonius.Trophonius(
             meta_port = self.meta.meta_port,

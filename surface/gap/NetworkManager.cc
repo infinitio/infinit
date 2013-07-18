@@ -635,6 +635,7 @@ namespace surface
       std::vector<std::string> locals;
       std::vector<std::string> my_externals;
       std::vector<std::string> my_locals;
+      std::vector<std::string> fallback;
       {
         std::string theirs_device;
         std::string ours_device;
@@ -667,6 +668,7 @@ namespace surface
 
           my_externals = std::move(e.externals);
           my_locals = std::move(e.locals);
+          fallback = std::move(e.fallback);
         }
       }
 
@@ -676,6 +678,8 @@ namespace surface
         std::for_each(begin(externals), end(externals), _print);
       ELLE_DEBUG("locals")
         std::for_each(begin(locals), end(locals), _print);
+      ELLE_DEBUG("fallback")
+        std::for_each(begin(fallback), end(fallback), _print);
 
       std::vector<std::shared_ptr<Round>> addresses;
 
@@ -691,9 +695,19 @@ namespace surface
       for (auto& r: addresses)
         ELLE_TRACE("-- %s", r->endpoints());
 
-      addresses.push_back(std::make_shared<FallbackRound>(this->_apertus_host,
-                                                          this->_apertus_port,
-                                                          network_id));
+      if (!fallback.empty())
+      {
+        std::vector<std::string> splited;
+        boost::split(splited, *begin(fallback), boost::is_any_of(":"));
+
+        if (splited.size() == 2)
+        {
+          std::string host = splited[0];
+          int port = std::stoi(splited[1]);
+          addresses.push_back(std::make_shared<FallbackRound>(host, port,
+                                                              network_id));
+        }
+      }
 
       return addresses;
     }

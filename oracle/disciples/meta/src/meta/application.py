@@ -20,6 +20,8 @@ class Application(object):
                  tropho_control_port = 0,
                  mongo_host = None,
                  mongo_port = None,
+                 apertus_host = None,
+                 apertus_port = None,
                  port_file = None):
         urls = []
         views = {}
@@ -29,6 +31,7 @@ class Application(object):
         self.port = meta_port
         self.mongo_host = mongo_host
         self.mongo_port = mongo_port
+        self.fallback = [(apertus_host, apertus_port)]
         self.tropho_control_port = tropho_control_port
         for resource in resources.ALL:
             id_ = str(id(resource))

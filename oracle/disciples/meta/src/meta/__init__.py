@@ -23,9 +23,13 @@ class Meta:
                  meta_host = '0.0.0.0',
                  meta_port = 0,
                  trophonius_control_port = None,
+                 apertus_host = None,
+                 apertus_port = None,
                  spawn_db = False):
         self.meta_host = meta_host
         self.meta_port = meta_port
+        self.apertus_host = apertus_host
+        self.apertus_port = apertus_port
         self.spawn_db = spawn_db
         self.trophonius_control_port = trophonius_control_port
         self.instance = None
@@ -72,6 +76,10 @@ class Meta:
         command.append(self.meta_host)
         command.append('--meta-port')
         command.append(str(self.meta_port))
+        command.append('--apertus-port')
+        command.append(str(self.apertus_port))
+        command.append('--apertus-host')
+        command.append(str(self.apertus_host))
         if self.trophonius_control_port is not None:
             command.append('--trophonius-control-port')
             command.append(str(self.trophonius_control_port))
