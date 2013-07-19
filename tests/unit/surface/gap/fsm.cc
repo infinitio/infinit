@@ -103,8 +103,8 @@ namespace surface
           boost::filesystem::path(*(this->_files.cbegin())).filename().string();
 
         this->_transaction_id = this->_state.meta().create_transaction(
-          this->_recipient, first_file, files.size(), size,
-          boost::filesystem::::is_directory(first_file), this->_network_id,
+          this->_recipient, first_file, this->_files.size(), size,
+          boost::filesystem::is_directory(first_file), this->_network_id,
           this->_state.device().id).created_transaction_id;
       }
 
