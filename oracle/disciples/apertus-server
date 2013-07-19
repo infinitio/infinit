@@ -5,10 +5,11 @@ from __future__ import print_function
 
 import sys, os
 import argparse
-import apertus.conf
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python/apertus/mongobox"))
+
+import apertus.conf
 
 parser = argparse.ArgumentParser(description="Apertus launcher")
 
