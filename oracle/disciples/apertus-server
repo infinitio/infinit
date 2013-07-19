@@ -43,8 +43,12 @@ from apertus.application import Application
 if __name__ == '__main__':
     args = parser.parse_args()
     import pymongo
-    mongo_client = pymongo.MongoClient(host = args.mongo_host,
-                                       port = args.mongo_port)
+    try:
+        mongo_client = pymongo.MongoClient(host = args.mongo_host,
+                                           port = args.mongo_port)
+    except AttributeError:
+        mongo_client = pymongo.Connection(host, port)
+
     assert mongo_client is not None
 
     application = Application(
