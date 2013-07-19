@@ -454,13 +454,14 @@ namespace plasma
 
       std::ostream request_stream(&_impl->request);
 
-      ELLE_AT_SCOPE_EXIT
+      elle::Finally read_socket_guard(
+      [&]
       {
         this->_read_socket();
         this->_restart_ping_timer();
         this->_restart_connection_check_timer();
         _impl->connect_callback();
-      };
+      });
 
       // May raise an exception.
       elle::serialize::OutputJSONArchive(request_stream, connection_request);
