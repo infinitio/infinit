@@ -72,8 +72,6 @@ def main(argv):
                         META_BIN,
                         '--meta-port', str(args.meta_port),
                         '--trophonius-control-port', str(args.trophonius_control_port),
-                        '--apertus-host', str(args.apertus_host),
-                        '--apertus-port', str(args.apertus_port),
                     ],
                     stdout = open("meta.stdout", "w"),
                     stderr = open("meta.stderr", "w"))
