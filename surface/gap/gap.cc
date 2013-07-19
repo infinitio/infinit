@@ -1151,6 +1151,74 @@ extern "C"
   }
 
   gap_Status
+  gap_send_last_crash_logs(char const* _crash_report, char const* _state_log)
+  {
+    try
+    {
+      std::string const infinit_dir = common::infinit::home();
+      std::string const crash_report{_crash_report,
+                                     _crash_report + strlen(_crash_report)};
+      std::string const state_log{_state_log,
+                                  _state_log + strlen(_state_log)};
+      std::string const finder_log{"finder-plugin.log"};
+      std::string const crash_report_path = infinit_dir + "/" + crash_report;
+      std::string const state_log_path = infinit_dir + "/" + state_log;
+      std::string const finder_log_path = "/tmp/" + finder_log;
+
+      std::string const crash_archive = "/tmp/infinit-crash-archive";
+
+      std::list<std::string> args{"cjf", crash_archive};
+      if (boost::filesystem::exists(state_log_path))
+      {
+        args.push_back("-C");
+        args.push_back(infinit_dir);
+        args.push_back(state_log);
+      }
+      if (boost::filesystem::exists(crash_report_path))
+      {
+        args.push_back("-C");
+        args.push_back(infinit_dir);
+        args.push_back(crash_report);
+      }
+      if (boost::filesystem::exists(finder_log_path))
+      {
+        args.push_back("-C");
+        args.push_back("/tmp");
+        args.push_back(finder_log);
+      }
+
+      if (args.size() > 1)
+      {
+        elle::system::Process tar{"tar", args};
+        tar.wait();
+#if defined(INFINIT_LINUX)
+        std::string b64 = elle::system::check_output("base64",
+                                                     "-w0",
+                                                     crash_archive);
+#else
+        std::string b64 = elle::system::check_output("base64", crash_archive);
+#endif
+        auto title = elle::sprintf("Application Crash Report");
+        elle::crash::report(common::meta::host(),
+                            common::meta::port(),
+                            "Logs", title,
+                            elle::Backtrace::current(),
+                            "Logs attached",
+                            b64);
+      }
+      else
+      {
+        ELLE_WARN("no logs to send");
+      }
+    }
+    catch (std::exception const& e)
+    {
+      return gap_Status::gap_api_error;
+    }
+    return gap_Status::gap_ok;
+  }
+
+  gap_Status
   gap_gather_crash_reports(char const* _user_id,
                            char const* _network_id)
   {
