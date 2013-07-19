@@ -21,9 +21,20 @@
 #include <nucleus/neutron/Subject.hh>
 #include <nucleus/neutron/Trait.hh>
 
+#include <nucleus/neutron/Access.hh>
+#include <nucleus/neutron/Genre.hh>
+#include <nucleus/neutron/Object.hh>
+#include <nucleus/neutron/Subject.hh>
+#include <nucleus/neutron/Trait.hh>
+#include <nucleus/proton/Address.hh>
+#include <nucleus/proton/Porcupine.hh>
+
 #include <lune/Descriptor.hh>
 
 #include <reactor/scheduler.hh>
+
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
 
 #include <elle/Exception.hh>
 #include <elle/finally.hh>
@@ -40,6 +51,102 @@ namespace surface
   {
     namespace operation_detail
     {
+      namespace blocks
+      {
+        NetworkBlocks
+        create(std::string const& id,
+               lune::Identity const& identity)
+        {
+          ELLE_TRACE_FUNCTION(id, identity);
+
+          // XXX this value depends on the network policy and openness.
+          static nucleus::neutron::Permissions permissions =
+            nucleus::neutron::permissions::read;
+
+          auto e = elle::Status::Error;
+          auto genreDirectory = nucleus::neutron::Genre::directory;
+
+          ELLE_DEBUG("Create proton network from id '%s'.", id);
+          nucleus::proton::Network network(id);
+
+          //- group ------------------------------------------------------------------
+          nucleus::neutron::Group group(network, identity.pair().K(), "everybody");
+          group.seal(identity.pair().k());
+
+          //- group address ----------------------------------------------------------
+          nucleus::proton::Address  group_address(group.bind());
+
+          //- subject ----------------------------------------------------------------
+          nucleus::neutron::Subject subject;
+          if (subject.Create(group_address) == elle::Status::Error)
+            throw elle::Exception("unable to create the group subject");
+
+          //- access------------------------------------------------------------------
+          nucleus::proton::Porcupine<nucleus::neutron::Access> access_porcupine{
+            nucleus::proton::nest::none()};
+
+          nucleus::proton::Door<nucleus::neutron::Access> access_door =
+            access_porcupine.lookup(subject);
+
+          access_door.open();
+          access_door().insert(new nucleus::neutron::Record{subject, permissions});
+          access_door.close();
+          access_porcupine.update(subject);
+
+          // XXX[cf: etoile/automaton/Access.hh>, until no longer encrypted]
+#define ACCESS_SECRET_KEY_LENGTH 256
+#define ACCESS_SECRET_KEY "no-secret-key"
+
+          // XXX
+          static cryptography::SecretKey secret_key(
+            cryptography::cipher::Algorithm::aes256,
+            ACCESS_SECRET_KEY);
+
+          ELLE_ASSERT_EQ(access_porcupine.strategy(),
+                         nucleus::proton::Strategy::value);
+
+          cryptography::Digest access_fingerprint =
+            nucleus::neutron::access::fingerprint(access_porcupine);
+
+          nucleus::proton::Radix access_radix = access_porcupine.seal(secret_key);
+
+          //- directory --------------------------------------------------------------
+          nucleus::neutron::Object directory{
+            network,
+              identity.pair().K(),
+              genreDirectory
+              };
+
+          if (directory.Update(directory.author(),
+                               directory.contents(),
+                               directory.size(),
+                               access_radix,
+                               directory.owner_token()) == e)
+            throw elle::Exception("unable to update the directory");
+
+          if (directory.Seal(identity.pair().k(), access_fingerprint) == e)
+            throw elle::Exception("Cannot seal the access");
+
+          //- directory address ------------------------------------------------------
+          nucleus::proton::Address  directory_address(directory.bind());
+
+          NetworkBlocks nb;
+          using elle::serialize::to_string;
+          using OutputArchive = elle::serialize::OutputBase64Archive;
+          to_string<OutputArchive>(nb.root_block) << directory;
+          to_string<OutputArchive>(nb.root_address) << directory_address;
+          to_string<OutputArchive>(nb.group_block) << group;
+          to_string<OutputArchive>(nb.group_address) << group_address;
+
+          ELLE_DEBUG("root block %s", nb.root_block);
+          ELLE_DEBUG("root address %s", nb.root_address);
+          ELLE_DEBUG("group block %s", nb.group_block);
+          ELLE_DEBUG("group address %s", nb.group_address);
+
+          return nb;
+        }
+      }
+
       static
       void
       yield()

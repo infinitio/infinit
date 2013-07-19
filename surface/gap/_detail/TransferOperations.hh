@@ -18,6 +18,21 @@ namespace surface
   {
     namespace operation_detail
     {
+      namespace blocks
+      {
+        struct NetworkBlocks
+        {
+          elle::io::Unique root_block;
+          elle::io::Unique root_address;
+          elle::io::Unique group_block;
+          elle::io::Unique group_address;
+        };
+
+        NetworkBlocks
+        create(std::string const& id,
+               lune::Identity const& identity);
+      }
+
       namespace user
       {
         void

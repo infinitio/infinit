@@ -206,7 +206,7 @@ namespace surface
                        first_file, size, recipient_id_or_email, network_id);
 
             std::string transaction_id = "";
-            res = this->_meta.create_transaction(recipient_id_or_email,
+             res = this->_meta.create_transaction(recipient_id_or_email,
                                                  first_file,
                                                  files.size(),
                                                  size,
