@@ -61,7 +61,7 @@ namespace surface
       LoggerInitializer _logger_intializer;
 
       ///- Servers -------------------------------------------------------------
-      plasma::meta::Client _meta;
+      ELLE_ATTRIBUTE_R(plasma::meta::Client, meta);
 
       ELLE_ATTRIBUTE_X(metrics::Reporter, reporter);
       ELLE_ATTRIBUTE(metrics::Reporter, google_reporter);
