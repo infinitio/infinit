@@ -1187,7 +1187,7 @@ extern "C"
         args.push_back(finder_log);
       }
 
-      if (args.size() > 1)
+      if (args.size() > 3)
       {
         elle::system::Process tar{"tar", args};
         tar.wait();
