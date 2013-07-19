@@ -55,11 +55,6 @@ namespace metrics
            std::string const& event_name,
            Metric metric);
 
-    void
-    _fallback(std::string const& pkey,
-              std::string const& event_name,
-              TimeMetricPair const& metric);
-
   protected:
     struct Impl;
     std::unique_ptr<Impl> _this;
