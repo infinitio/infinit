@@ -54,7 +54,7 @@ namespace metrics
   };
 
   /// Kind shortcut for service unique pointer.
-  typedef std::unique_ptr<Service> ServicePtr;
+  typedef std::shared_ptr<Service> ServicePtr;
 
   namespace detail
   {

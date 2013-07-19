@@ -63,7 +63,7 @@ class Trophonius(basic.LineReceiver):
         return "<{}()>".format(self.__class__.__name__)
 
     def connectionMade(self):
-        log.msg("New connection from", self.transport.getPeer())
+        print(self.connectionMade, self.transport.getPeer())
         self._ping_service = task.LoopingCall(self.sendLine,
                 json.dumps({"notification_type": 208}))
         self._ping_service.start(self.factory.application.timeout / 2)
@@ -77,7 +77,7 @@ class Trophonius(basic.LineReceiver):
     def connectionLost(self, reason):
         self.reason = self.reason or reason.getErrorMessage()
 
-        log.msg("Connection lost with", self.transport.getPeer(), self.reason)
+        print(self.connectionLost, self.transport.getPeer(), self.reason)
 
         if self.id is None:
             return

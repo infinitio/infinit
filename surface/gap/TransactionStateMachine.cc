@@ -11,6 +11,7 @@ namespace surface
   {
     TransactionStateMachine::TransactionStateMachine(
         CanceledCallback const& canceled,
+        FailedCallback const& failed,
         CleanCallback const& clean,
         PrepareUploadCallback const& prepare_upload,
         StartUploadCallback const& start_upload,
@@ -19,6 +20,7 @@ namespace surface
         SelfGetter const& self,
         DeviceGetter const& device):
       _canceled{canceled},
+      _failed{failed},
       _clean{clean},
       _prepare_upload{prepare_upload},
       _start_upload{start_upload},
@@ -41,11 +43,17 @@ namespace surface
     TransactionStateMachine::operator ()(Transaction const& tr)
     {
       ELLE_TRACE_SCOPE("Evaluate %s", tr);
-      if (tr.status == plasma::TransactionStatus::canceled)
+      if (tr.status == plasma::TransactionStatus::failed)
+      {
+        ELLE_DEBUG("fire failed callback")
+          this->_failed(tr);
+      }
+      else if (tr.status == plasma::TransactionStatus::canceled)
       {
         ELLE_DEBUG("fire canceled callback")
           this->_canceled(tr);
       }
+
       if (tr.status != plasma::TransactionStatus::created and
                tr.status != plasma::TransactionStatus::started)
       {

@@ -78,6 +78,7 @@ namespace plasma
       public Response
     {
       std::string registered_user_id;
+      std::string invitation_source;
     };
 
     struct PullNotificationResponse : Response

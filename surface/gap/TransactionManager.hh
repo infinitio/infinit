@@ -207,6 +207,9 @@ namespace surface
       void
       _on_cancel_transaction(Transaction const& transaction);
 
+      void
+      _on_failed_transaction(Transaction const& transaction);
+
     private:
       void
       _prepare_upload(Transaction const& transaction);

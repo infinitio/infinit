@@ -25,6 +25,7 @@ namespace metrics
     width,
     sender_online,
     recipient_online,
+    source,
   };
 
   std::ostream&

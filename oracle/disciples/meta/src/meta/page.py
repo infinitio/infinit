@@ -21,7 +21,9 @@ class Page(object):
     Base class for all page, simplifies the use of viewers.
     It also wrap access (and cache) to session and users in a lazy load manner
     """
-    __session__ = None #set by the application
+    __session__ = None # Set by the application.
+
+    __application__ = None # Set by the application.
 
     __notifier = None
 
@@ -40,8 +42,9 @@ class Page(object):
     def notifier(self):
         if self.__notifier is None:
             try:
+                port = self.__application__.tropho_control_port
                 self.__notifier = notifier.TrophoniusNotify()
-                self.__notifier.open()
+                self.__notifier.open(("127.0.0.1", port))
             except Exception as e:
                 print(e)
                 return self.__notifier

@@ -71,6 +71,7 @@ SERIALIZE_RESPONSE(plasma::meta::LogoutResponse, ar, res)
 SERIALIZE_RESPONSE(plasma::meta::RegisterResponse, ar, res)
 {
   ar & named("registered_user_id", res.registered_user_id);
+  ar & named("invitation_source", res.invitation_source);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)

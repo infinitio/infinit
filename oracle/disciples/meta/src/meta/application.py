@@ -17,6 +17,7 @@ class Application(object):
     def __init__(self,
                  meta_host = 'localhost',
                  meta_port = 8080,
+                 tropho_control_port = 0,
                  mongo_host = None,
                  mongo_port = None,
                  port_file = None):
@@ -28,6 +29,7 @@ class Application(object):
         self.port = meta_port
         self.mongo_host = mongo_host
         self.mongo_port = mongo_port
+        self.tropho_control_port = tropho_control_port
         for resource in resources.ALL:
             id_ = str(id(resource))
             urls.extend([resource.__pattern__, id_])
@@ -48,6 +50,7 @@ class Application(object):
         session = Session(self.app, SessionStore(database.sessions()))
         for cls in views.itervalues():
             cls.__session__ = session
+            cls.__application__ = self
 
     def run(self):
         """

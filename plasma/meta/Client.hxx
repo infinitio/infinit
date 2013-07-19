@@ -82,6 +82,7 @@ namespace plasma
         {CURLINFO_DATA_OUT, ">>"},
       };
       // get rid of \n
+      ELLE_ASSERT_GT(what_size, 0u);
       if (what[what_size - 1] == '\n')
       {
         what_size--;
@@ -108,13 +109,16 @@ namespace plasma
         std::vector<std::string> v;
 
         boost::split(v, msg, boost::algorithm::is_any_of("\n"));
-        ELLE_TRACE_SCOPE("%s: %s %s", *client, sym, v[0]);
-        int i = 0;
-        for (auto const&s : v)
+        if (v.size() > 0)
         {
-          if (i++ == 0)
-            continue;
-          ELLE_DEBUG("%s: %s %s", *client, sym, s);
+          ELLE_TRACE_SCOPE("%s: %s %s", *client, sym, v[0]);
+          int i = 0;
+          for (auto const&s : v)
+          {
+            if (i++ == 0)
+              continue;
+            ELLE_DEBUG("%s: %s %s", *client, sym, s);
+          }
         }
       }
       else if (type == CURLINFO_DATA_IN || type == CURLINFO_DATA_OUT)

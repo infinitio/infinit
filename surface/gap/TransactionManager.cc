@@ -69,6 +69,9 @@ namespace surface
         std::bind(&TransactionManager::_on_cancel_transaction,
                   this,
                   std::placeholders::_1),
+        std::bind(&TransactionManager::_on_failed_transaction,
+                  this,
+                  std::placeholders::_1),
         std::bind(&TransactionManager::_clean_transaction,
                   this,
                   std::placeholders::_1),
@@ -117,6 +120,14 @@ namespace surface
                   elle::exception_string());
       }
       ELLE_TRACE("%s: ~TransactionManager() exited", *this);
+    }
+
+    void
+    TransactionManager::_on_failed_transaction(Transaction const& tr)
+    {
+      ELLE_DEBUG("failed transaction(%s) with network(%s) for user(%s)",
+                 tr.id, tr.network_id, this->_self().id);
+      //gap_gather_crash_reports(this->self()._id, tr.network_id);
     }
 
     void
@@ -353,6 +364,44 @@ namespace surface
       this->_cancel_transaction(this->one(transaction_id));
     }
 
+    static
+    metrics::Metric
+    transaction_metric(Self const& self,
+                       UserManager& user_manager,
+                       Transaction const& tr)
+    {
+      std::string author = (
+        tr.sender_id == self.id ? "sender" : "recipient");
+
+      auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+      auto timestamp_tr = std::chrono::duration<double>(tr.timestamp);
+      double duration = timestamp_now.count() - timestamp_tr.count();
+
+      return metrics::Metric{
+        {MKey::author, author},
+        {MKey::duration, std::to_string(duration)},
+        {MKey::count, std::to_string(tr.files_count)},
+        {MKey::size, std::to_string(tr.total_size)},
+        {MKey::network, tr.network_id},
+        {MKey::value, tr.id},
+        {
+          MKey::sender_online,
+          user_manager.device_status(tr.sender_id,
+                                     tr.sender_device_id) ?
+            "true" :
+            "false"
+        },
+        {
+          MKey::recipient_online,
+          user_manager.device_status(tr.recipient_id,
+                                     tr.recipient_device_id) ?
+            "true" :
+            "false"
+        },
+      };
+    }
+
     void
     TransactionManager::_cancel_transaction(Transaction const& transaction)
     {
@@ -375,37 +424,12 @@ namespace surface
           }
         }};
 
-      std::string author = (
-        transaction.sender_id == this->_self().id ? "sender" : "recipient");
-
-      auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::system_clock::now().time_since_epoch());
-      auto timestamp_tr = std::chrono::duration<double>(
-        transaction.timestamp);
-      double duration = timestamp_now.count() - timestamp_tr.count();
-
-      metrics::Metric metric{
-        {MKey::author, author},
-        {MKey::duration, std::to_string(duration)},
-        {MKey::value, transaction.id},
-        {
-          MKey::sender_online,
-          this->_user_manager.device_status(transaction.sender_id,
-                                            transaction.sender_device_id) ?
-            "true" :
-            "false"
-        },
-        {
-          MKey::recipient_online,
-          this->_user_manager.device_status(transaction.recipient_id,
-                                            transaction.recipient_device_id) ?
-            "true" :
-            "false"
-        },
-      };
 
       auto& reporter = this->_reporter[transaction.id];
 
+      auto metric = transaction_metric(this->_self(),
+                                       this->_user_manager,
+                                       transaction);
       if (transaction.status == plasma::TransactionStatus::created)
       {
         if (transaction.accepted)
@@ -591,11 +615,7 @@ namespace surface
 
         this->_reporter[tr.id].store(
           "transaction.preparing",
-          {
-            {MKey::value, tr.id},
-            {MKey::count, std::to_string(tr.files_count)},
-            {MKey::size, std::to_string(tr.total_size)},
-          });
+          transaction_metric(this->_self(), this->_user_manager, tr));
         this->_network_manager.prepare(tr.network_id);
         this->_network_manager.to_directory(
         tr.network_id,
@@ -628,10 +648,7 @@ namespace surface
 
               reporter[tr.id].store(
                 "transaction.prepared",
-                {{MKey::value, tr.id},
-                 {MKey::network, tr.network_id},
-                 {MKey::count, std::to_string(tr.files_count)},
-                 {MKey::size, std::to_string(tr.total_size)}});
+                transaction_metric(this->_self(), this->_user_manager, tr));
             }
             catch (plasma::meta::Exception const& e)
             {
@@ -651,10 +668,7 @@ namespace surface
             {
               reporter[tr.id].store(
                 "transaction.preparing.failed",
-                {{MKey::value, tr.id},
-                 {MKey::network, tr.network_id},
-                 {MKey::count, std::to_string(tr.files_count)},
-                 {MKey::size, std::to_string(tr.total_size)}});
+                transaction_metric(this->_self(), this->_user_manager, tr));
 
               this->_update(tr.id, plasma::TransactionStatus::failed);
             }
@@ -703,9 +717,7 @@ namespace surface
 
         this->_reporter[transaction.id].store(
           "transaction.transfering",
-          {{MKey::attempt, std::to_string(s.tries)},
-           {MKey::network,transaction.network_id},
-           {MKey::value, transaction.id}});
+          transaction_metric(this->_self(), this->_user_manager, transaction));
       }
       else
       {
@@ -749,19 +761,9 @@ namespace surface
             {
               this->_update(transaction.id, plasma::TransactionStatus::finished);
 
-              auto timestamp_now =
-                std::chrono::duration_cast<std::chrono::seconds>(
-                  std::chrono::system_clock::now().time_since_epoch());
-              auto timestamp_tr = std::chrono::duration<double>(
-                transaction.timestamp);
-              double duration = timestamp_now.count() - timestamp_tr.count();
               reporter[transaction.id].store(
                 "transaction.transfered",
-                {{MKey::duration, std::to_string(duration)},
-                 {MKey::value, transaction.id},
-                 {MKey::network, transaction.network_id},
-                 {MKey::count, std::to_string(transaction.files_count)},
-                 {MKey::size, std::to_string(transaction.total_size)}});
+                transaction_metric(this->_self(), this->_user_manager, transaction));
             }
             catch (plasma::meta::Exception const& e)
             {
@@ -792,10 +794,7 @@ namespace surface
             {
               reporter[transaction.id].store(
                 "transaction.transfering.failed",
-                {{MKey::value, transaction.id},
-                 {MKey::network, transaction.network_id},
-                 {MKey::count, std::to_string(transaction.files_count)},
-                 {MKey::size, std::to_string(transaction.total_size)}});
+                transaction_metric(this->_self(), this->_user_manager, transaction));
 
               this->_update(transaction.id, plasma::TransactionStatus::failed);
             }

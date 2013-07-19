@@ -127,7 +127,8 @@ namespace metrics
     for (auto& service: services)
     {
       _this->scheduler.io_service().post(
-        [&service, pkey, timed_metric, event_name, this] {
+        // Note: `service` is a shared_ptr, copyied by the lambda
+        [service, pkey, timed_metric, event_name, this] {
           try
           {
             TimeMetricPair cpy{timed_metric};
