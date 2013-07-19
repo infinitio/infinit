@@ -1134,20 +1134,25 @@ extern "C"
   gap_send_file_crash_report(char const* module,
                              char const* filename)
   {
-    std::string file_content;
-    if (filename != nullptr)
+    try
     {
-      file_content = read_file(filename);
-    }
-    else
-      file_content = "<<< No file was specified!";
+      std::string file_content;
+      if (filename != nullptr)
+        file_content = read_file(filename);
+      else
+        file_content = "<<< No file was specified!";
 
-    elle::crash::report(common::meta::host(),
-                        common::meta::port(),
-                        (module != nullptr ? module : "(nil)"),
-                        "Crash",
-                        elle::Backtrace::current(),
-                        file_content);
+      elle::crash::report(common::meta::host(),
+                          common::meta::port(),
+                          (module != nullptr ? module : "(nil)"),
+                          "Crash",
+                          elle::Backtrace::current(),
+                          file_content);
+    }
+    catch (...)
+    {
+      ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
+    }
   }
 
   gap_Status
@@ -1211,11 +1216,12 @@ extern "C"
         ELLE_WARN("no logs to send");
       }
     }
-    catch (std::exception const& e)
+    catch (...)
     {
-      return gap_Status::gap_api_error;
+      ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
+      return gap_api_error;
     }
-    return gap_Status::gap_ok;
+    return gap_ok;
   }
 
   gap_Status
@@ -1283,11 +1289,12 @@ extern "C"
                           "Logs attached",
                           b64);
     }
-    catch (std::exception const& e)
+    catch (...)
     {
-      return gap_Status::gap_api_error;
+      ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
+      return gap_error;
     }
-    return gap_Status::gap_ok;
+    return gap_ok;
   }
 
   // Generated file.
