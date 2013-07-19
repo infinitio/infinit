@@ -2,7 +2,7 @@
 
 #include <metrics/Reporter.hh>
 
-#include <elle/Finally.hh>
+#include <elle/finally.hh>
 
 namespace metrics
 {
