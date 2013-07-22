@@ -3,10 +3,10 @@
 	url = git://github.com/hotgloupi/troll.git
 [submodule "surface/macosx"]
 	path = surface/macosx
-	url = git@development.infinit.io:infinit-macosx
+	url = git@git.infinit.io:infinit-macosx
 [submodule "elle"]
 	path = elle
-	url = git@development.infinit.io:elle
+	url = git@git.infinit.io:elle
 [submodule "documentation/finder-injection/FinderMenu"]
 	path = documentation/finder-injection/FinderMenu
 	url = https://github.com/infinitelabs/FinderMenu.git
