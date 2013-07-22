@@ -2,6 +2,10 @@ from __future__ import print_function
 
 import sys
 
+import platform
+if "Linux" in platform.uname():
+    from twisted.internet import epollreactor
+    epollreactor.install()
 
 from OpenSSL import SSL, crypto
 

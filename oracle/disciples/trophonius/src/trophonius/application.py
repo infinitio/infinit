@@ -6,10 +6,12 @@ from __future__ import print_function
 import sys
 import conf
 
-from twisted.internet import reactor
+import platform
+if "Linux" in platform.uname():
+    from twisted.internet import epollreactor
+    epollreactor.install()
 
-from twisted.internet import reactor, protocol
-from twisted.python import filepath
+from twisted.internet import reactor
 from twisted.python import log
 
 from OpenSSL import crypto
