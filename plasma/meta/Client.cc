@@ -495,14 +495,17 @@ namespace plasma
       request["is_directory"] = is_dir;
       request["files_count"] = count;
 
-      auto res = this->_post<CreateTransactionResponse>("/transaction/create", request);
+      auto res = this->_post<CreateTransactionResponse>(
+        "/transaction/create", request);
 
       return res;
     }
 
     UpdateTransactionResponse
     Client::update_transaction(std::string const& transaction_id,
-                               plasma::TransactionStatus status) const
+                               plasma::TransactionStatus status,
+                               std::string const& device_id,
+                               std::string const& device_name) const
     {
       ELLE_TRACE("%s: update %s transaction with new status %s",
                  *this,
@@ -511,6 +514,14 @@ namespace plasma
       json::Dictionary request{};
       request["transaction_id"] = transaction_id;
       request["status"] = (int) status;
+
+      if (status == plasma::TransactionStatus::accepted)
+      {
+        ELLE_ASSERT_GT(device_id.length(), 0u);
+        ELLE_ASSERT_GT(device_name.length(), 0u);
+        request["device_id"] = device_id;
+        request["device_name"] = device_name;
+      }
 
       return this->_post<UpdateTransactionResponse>("/transaction/update",
                                                     request);
@@ -522,17 +533,12 @@ namespace plasma
                                std::string const& device_name) const
     {
       ELLE_TRACE("%s: accept %s transaction on device %s (%s)",
-                 *this,
-                 transaction_id,
-                 device_name,
-                 device_id);
-      json::Dictionary request{};
-      request["transaction_id"] = transaction_id;
-      request["device_id"] = device_id;
-      request["device_name"] = device_name;
+                 *this, transaction_id, device_name, device_id);
 
-      return this->_post<UpdateTransactionResponse>("/transaction/accept",
-                                                    request);
+      return this->update_transaction(transaction_id,
+                                      plasma::TransactionStatus::accepted,
+                                      device_id,
+                                      device_name);
     }
 
     TransactionResponse
