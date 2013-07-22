@@ -1,4 +1,5 @@
 #include "NetworkManager.hh"
+#include "TransactionManager.hh"
 
 #include "binary_config.hh"
 #include "gap.h"
@@ -179,7 +180,9 @@ namespace surface
         this->_meta.host(),
         this->_meta.port(),
         this->_meta.token(),
+        this->_reporter,
       },
+      _transaction_manager{nullptr},
       _apertus_host{apertus_host},
       _apertus_port{apertus_port}
     {
@@ -191,6 +194,13 @@ namespace surface
       ELLE_TRACE_METHOD("");
 
       this->clear();
+    }
+
+    void
+    NetworkManager::transaction_manager(TransactionManager* man)
+    {
+      this->_transaction_manager = man;
+      this->_infinit_instance_manager.transaction_manager(man);
     }
 
     void

@@ -548,6 +548,7 @@ namespace surface
                 std::bind(&State::device, this),
                 update_remaining_invitations
               });
+            this->network_manager().transaction_manager(manager.get());
           }
           return *manager;
         });
