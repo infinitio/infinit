@@ -47,7 +47,10 @@ class Servers:
         self.apertus = apertus.Apertus(port=0)
         self.apertus.__enter__()
         self.meta = meta.Meta(
-            spawn_db = True)
+            spawn_db = True,
+            trophonius_control_port = port,
+            apertus_host = "127.0.0.1",
+            apertus_port = self.apertus.port)
         self.meta.__enter__()
         self.tropho = trophonius.Trophonius(
             meta_port = self.meta.meta_port,

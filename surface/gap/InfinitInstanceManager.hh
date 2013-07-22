@@ -27,6 +27,7 @@
 # include <nucleus/proton/Network.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/Rounds.hh>
+# include <metrics/fwd.hh>
 
 namespace surface
 {
@@ -37,6 +38,7 @@ namespace surface
     `------*/
     typedef std::unique_ptr<elle::system::Process> SystemProcessPtr;
 
+    class TransactionManager;
     struct InfinitInstance
     {
       // XXX: we might want to keep the passport/identity/... in the manager
@@ -58,6 +60,7 @@ namespace surface
       std::unique_ptr<reactor::Thread> progress_thread;
       reactor::Signal start_progress;
       std::exception_ptr exception;
+      bool forwarder = false;
 
       InfinitInstance(std::string const& user_id,
                       std::string const& meta_host,
@@ -76,12 +79,14 @@ namespace surface
       `-----------*/
     private:
       typedef std::unique_ptr<InfinitInstance> InfinitInstancePtr;
-      std::map<std::string, InfinitInstancePtr> _instances;
+      typedef std::map<std::string, InfinitInstancePtr> InstanceMap;
+      ELLE_ATTRIBUTE_X(InstanceMap, instances);
       ELLE_ATTRIBUTE(std::string, user_id);
       ELLE_ATTRIBUTE(std::string, meta_host);
       ELLE_ATTRIBUTE(uint16_t, meta_port);
       ELLE_ATTRIBUTE(std::string, token);
-
+      ELLE_ATTRIBUTE(metrics::Reporter&, reporter);
+      ELLE_ATTRIBUTE_RW(TransactionManager*, transaction_manager);
 
       /*-------------.
       | Construction |
@@ -91,7 +96,8 @@ namespace surface
       InfinitInstanceManager(std::string const& user_id,
                              std::string const& meta_host,
                              uint16_t meta_port,
-                             std::string const& token);
+                             std::string const& token,
+                             metrics::Reporter& reporter);
 
     public:
       virtual
@@ -142,7 +148,7 @@ namespace surface
       float
       progress(std::string const& network_id);
 
-      bool
+      int
       _connect_try(hole::implementations::slug::Slug& slug,
                    std::vector<std::shared_ptr<Round>> const& addresses,
                    bool sender);

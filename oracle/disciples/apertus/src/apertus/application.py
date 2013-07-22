@@ -2,6 +2,10 @@ from __future__ import print_function
 
 import sys
 
+import platform
+if "Linux" in platform.uname():
+    from twisted.internet import epollreactor
+    epollreactor.install()
 
 from OpenSSL import SSL, crypto
 
@@ -44,6 +48,7 @@ class Application(object):
 
     def remove_from_db(self):
         import pymongo
+        print("remove from db", self)
         database = self.mongo.apertus
         instances = database.instances
         instances.remove(self.id)
@@ -54,6 +59,9 @@ class Application(object):
         database = self.mongo.apertus
         instances = database.instances
         record = instances.find_one({"ids" : id})
+        if record is None:
+            # We are not in master/slave mode.
+            return
         record["ids"].remove(id)
         instances.save(record)
 

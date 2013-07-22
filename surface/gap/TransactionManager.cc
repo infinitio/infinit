@@ -364,7 +364,6 @@ namespace surface
       this->_cancel_transaction(this->one(transaction_id));
     }
 
-    static
     metrics::Metric
     transaction_metric(Self const& self,
                        UserManager& user_manager,
@@ -759,11 +758,19 @@ namespace surface
           {
             try
             {
-              this->_update(transaction.id, plasma::TransactionStatus::finished);
+              auto& imap =
+                this->_network_manager.infinit_instance_manager().instances();
+              auto& instance = imap[transaction.network_id];
+              this->_update(transaction.id,
+                            plasma::TransactionStatus::finished);
 
-              reporter[transaction.id].store(
-                "transaction.transfered",
-                transaction_metric(this->_self(), this->_user_manager, transaction));
+              auto metric =
+                transaction_metric(this->_self(),
+                                   this->_user_manager,
+                                   transaction);
+              if (instance->forwarder)
+                metric[MKey::method] = 2;
+              reporter[transaction.id].store("transaction.transfered", metric);
             }
             catch (plasma::meta::Exception const& e)
             {

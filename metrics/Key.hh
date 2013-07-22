@@ -13,19 +13,20 @@ namespace metrics
     duration,
     height,
     input,
+    method,
     network,
     panel,
+    recipient_online,
+    sender_online,
     session,
     size,
+    source,
     status,
     step,
     tag,
     timestamp,
     value,
     width,
-    sender_online,
-    recipient_online,
-    source,
   };
 
   std::ostream&

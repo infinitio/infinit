@@ -41,14 +41,14 @@ namespace surface
 
     private:
       NetworkManager& _network_manager;
-      UserManager& _user_manager;
+      ELLE_ATTRIBUTE_R(UserManager&, user_manager);
       // XXX: meta should be constant everywhere.
       // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
       metrics::Reporter& _reporter;
 
       ELLE_ATTRIBUTE(reactor::Scheduler&, scheduler);
-      ELLE_ATTRIBUTE(SelfGetter, self);
+      ELLE_ATTRIBUTE_R(SelfGetter, self);
       ELLE_ATTRIBUTE(DeviceGetter, device);
       ELLE_ATTRIBUTE(UpdateRemainingInvitations, update_remaining_invitations);
       ELLE_ATTRIBUTE_R(std::string, output_dir);
@@ -230,6 +230,11 @@ namespace surface
       void
       _on_user_status(UserStatusNotification const& notif);
     };
+
+    metrics::Metric
+    transaction_metric(Self const& self,
+                       UserManager& user_manager,
+                       Transaction const& tr);
   }
 }
 
