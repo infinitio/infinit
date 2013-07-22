@@ -1,5 +1,6 @@
 #include "Exception.hh"
 #include "InfinitInstanceManager.hh"
+#include "TransactionManager.hh"
 #include "binary_config.hh"
 #include "_detail/TransferOperations.hh"
 
@@ -31,6 +32,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/logic/tribool.hpp>
+
+#include <metrics/Reporter.hh>
 
 #include <signal.h>
 #include <stdlib.h>
@@ -157,11 +160,13 @@ namespace surface
     InfinitInstanceManager::InfinitInstanceManager(std::string const& user_id,
                                                    std::string const& meta_host,
                                                    uint16_t meta_port,
-                                                   std::string const& token):
+                                                   std::string const& token,
+                                                   metrics::Reporter& rep):
       _user_id{user_id},
       _meta_host(meta_host),
       _meta_port(meta_port),
-      _token{token}
+      _token{token},
+      _reporter(rep)
     {
       ELLE_TRACE_METHOD(user_id, meta_host, meta_port, token);
     }
@@ -401,9 +406,32 @@ namespace surface
           auto& etoile = *instance.etoile;
           auto& slug = dynamic_cast<hole::implementations::slug::Slug&>(*instance.hole);
 
-          if (!this->_connect_try(slug, addresses, false))
+          int res = 0;
+          if ((res = this->_connect_try(slug, addresses, false)) == -1)
+          {
             throw elle::Exception{
               elle::sprintf("Unable to connect slug to %s", addresses)};
+          }
+          else if (res + 1 == addresses.size())
+          {
+            instance.forwarder = true;
+            std::string tr_id;
+            auto all = this->_transaction_manager->all();
+            auto pred = [&] (std::pair<std::string, plasma::Transaction> const& p)
+            {
+              if (p.second.network_id == network_id)
+                return true;
+              return false;
+            };
+            auto it = std::find_if(begin(all), end(all), pred);
+            ELLE_ASSERT_NEQ(it, end(all));
+            tr_id = it->second.network_id;
+            auto metric = transaction_metric(this->_transaction_manager->self()(),
+                                             this->_transaction_manager->user_manager(),
+                                             it->second);
+            metric[MKey::method] = 2;
+            this->_reporter[tr_id].store("transaction.transfering", metric);
+          }
 
           instance.start_progress.signal_one();
           try
@@ -440,7 +468,7 @@ namespace surface
       return instance.progress;
     }
 
-    bool
+    int
     InfinitInstanceManager::_connect_try(
       hole::implementations::slug::Slug& slug,
       std::vector<std::shared_ptr<Round>> const& addresses,
@@ -459,9 +487,11 @@ namespace surface
         slug.portal_connect(ip, std::stoi(port), sender);
       };
 
+      size_t tries = 0;
       auto& sched = *reactor::Scheduler::scheduler();
       for (auto const& r: addresses)
       {
+        tries++;
         bool succeed = false;
         std::vector<std::unique_ptr<reactor::Thread>> connection_threads;
 
@@ -522,7 +552,7 @@ namespace surface
         {
           // Connection successful
           ELLE_TRACE("connection round(%s) successful", r->endpoints());
-          return true;
+          return tries;
         }
         else if (not succeed)
         {
@@ -531,7 +561,7 @@ namespace surface
           continue;
         }
       }
-      return false;
+      return -1;
     }
 
     void
@@ -551,11 +581,34 @@ namespace surface
       new reactor::Thread(
         instance.scheduler,
         elle::sprintf("connecting nodes for %s", network_id),
-        [&, addresses, sender]
+        [&, addresses, sender, network_id]
         {
-          if (!this->_connect_try(slug, addresses, sender))
+          int res = 0;
+          if ((res = this->_connect_try(slug, addresses, sender)) == -1)
+          {
             throw elle::Exception{
               elle::sprintf("Unable to connect slug to %s", addresses)};
+          }
+          else if (res + 1 == addresses.size())
+          {
+            instance.forwarder = true;
+            std::string tr_id;
+            auto all = this->_transaction_manager->all();
+            auto pred = [&] (std::pair<std::string, plasma::Transaction> const& p)
+            {
+              if (p.second.network_id == network_id)
+                return true;
+              return false;
+            };
+            auto it = std::find_if(begin(all), end(all), pred);
+            ELLE_ASSERT_NEQ(it, end(all));
+            tr_id = it->first;
+            auto metric = transaction_metric(this->_transaction_manager->self()(),
+                                             this->_transaction_manager->user_manager(),
+                                             it->second);
+            metric[MKey::method] = 2;
+            this->_reporter[tr_id].store("transaction.transfering", metric);
+          }
           // The progress will wait for the start_progress signal
           instance.start_progress.signal_one();
         }, true);

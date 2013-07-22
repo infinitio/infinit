@@ -30,6 +30,8 @@ namespace surface
     using Network = ::plasma::meta::NetworkResponse;
     using Endpoint = ::plasma::meta::EndpointNodeResponse;
 
+    class TransactionManager;
+
     class NetworkManager:
       public elle::Printable
     {
@@ -62,6 +64,7 @@ namespace surface
       ELLE_ATTRIBUTE(SelfGetter, self);
       ELLE_ATTRIBUTE(DeviceGetter, device);
       ELLE_ATTRIBUTE_X(InfinitInstanceManager, infinit_instance_manager);
+      ELLE_ATTRIBUTE_Rw(TransactionManager*, transaction_manager);
 
       /*-------------.
       | Construction |
@@ -87,6 +90,9 @@ namespace surface
 
       void
       ensure_launched(std::string const& network_id);
+
+      void
+      register_transaction_manager(TransactionManager& manager);
 
       /*------------.
       |  Attributes |
