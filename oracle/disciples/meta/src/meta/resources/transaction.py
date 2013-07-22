@@ -214,131 +214,96 @@ class Create(Page):
                     user_id = str(self.user['_id']),
                 )
 
-        device_ids = [transaction['sender_device_id']]
-        recipient = database.users().find_one(database.ObjectId(recipient_id))
-        self.notifier.notify_some(
-            notifier.TRANSACTION,
-            device_ids = device_ids,
-            recipient_ids = [recipient['_id']],
-            message = transaction,
-            store = True,
-        )
-
         from user import increase_swag
-        increase_swag(self.user['_id'], recipient['_id'], self.notifier)
+        increase_swag(self.user['_id'], recipient_id, self.notifier)
 
         return self.success({
             'created_transaction_id': transaction_id,
             'remaining_invitations': self.user.get('remaining_invitations', 0),
         })
 
-class Accept(_UpdateTransaction):
+class Update(Page):
     """
-    Use to accept a file transfer.
-    Maybe more in the future but be careful, for the moment, user MUST be the recipient.
-    POST {
-        'transaction_id' : the id of the transaction.
-        'device_id': the device id on which the user accepted the transaction.
-        'device_name': the device name on which the user accepted the transaction.
-    }
-    -> {
-        'updated_transaction_id': the network id or empty string if refused.
-    }
-    *-> TransactionNotification
-
-    Errors:
-        The transaction doesn't exists.
-        The use is not the recipient.
-        Recipient and sender devices are the same.
     """
-    __pattern__ = "/transaction/accept"
+    __pattern__ = "/transaction/update"
 
-    _validators = [
-        ('transaction_id', regexp.TransactionValidator),
-        ('device_id', regexp.DeviceIDValidator),
-        ('device_name', regexp.NonEmptyValidator),
-    ]
+    def validate_ownership(self, transaction):
+        # Check that user has rights on the transaction
+        is_sender = self.user['_id'] == transaction['sender_id']
+        is_receiver = self.user['_id'] == transaction['recipient_id']
+        if not (is_sender or is_receiver):
+            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+        return is_sender
 
-    def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
-
-        tr_id = database.ObjectId(self.data['transaction_id'])
-
-        transaction =  database.transactions().find_one(tr_id)
-
-        if not transaction:
-            return self.error(error.TRANSACTION_DOESNT_EXIST)
+    def on_accept(self, transaction):
+        if 'device_id' not in self.data or 'device_name' not in self.data:
+            return self.error(
+                error.TRANSACTION_OPERATION_NOT_PERMITTED,
+                "'device_id' or 'device_name' key is missing")
 
         device_id = database.ObjectId(self.data["device_id"])
         if device_id not in self.user['devices']:
             return self.error(error.DEVICE_NOT_VALID)
 
-        if self.user['_id'] != transaction['recipient_id']:
-            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
-        if device_id == transaction['sender_device_id']:
-            return self.error(
-              error.TRANSACTION_CANT_BE_ACCEPTED,
-              "Sender and recipient devices are the same."
-            )
-
         transaction.update({
-            'recipient_fullname': self.user['fullname'],
-            'recipient_device_name' : self.data['device_name'],
-            'recipient_device_id': device_id,
-            'accepted': True,
-        })
+                'recipient_fullname': self.user['fullname'],
+                'recipient_device_name' : self.data['device_name'],
+                'recipient_device_id': device_id,
+                })
 
-        updated_transaction_id = database.transactions().save(transaction);
+    def update_status(self, transaction, status, is_sender):
+        final_status = [REJECTED, CANCELED, FAILED, FINISHED]
+        if transaction['status'] in final_status:
+            return self.error(
+                error.TRANSACTION_ALREADY_FINALIZED,
+                "Cannot change status from %s to %s." % (transaction['status'], self.data['status'])
+                )
 
-        sender = database.users().find_one(
-          database.ObjectId(transaction['sender_id'])
-        )
+        transitions = {
+            CREATED: {True: [INITIALIZED, CANCELED, FAILED], False: [ACCEPTED, REJECTED]},
+            INITIALIZED: {True: [CANCELED, FAILED], False: [ACCEPTED, REJECTED, CANCELED, FAILED]},
+            ACCEPTED: {True: [READY, CANCELED, FAILED], False: [CANCELED]},
+            READY: {True: [CANCELED, FAILED], False: [FINISHED, CANCELED, FAILED]},
+            # FINISHED: {True: [], False: []},
+            # CANCELED: {True: [], False: []},
+            # FAILED: {True: [], False: []},
+            # REJECTED: {True: [], False: []}
+        }
 
-        # XXX: If the sender delete his account while transaction is pending.
-        # We should turn all his transaction to canceled.
-        assert sender is not None
+        if status not in transitions[transaction['status']][is_sender]:
+            return self.error(
+                error.TRANSACTION_OPERATION_NOT_PERMITTED,
+                "Cannot change status from %s to %s." % (transaction['status'], self.data['status'])
+                )
+
+        from functools import partial
+
+        callbacks = {
+            INITIALIZED: None,
+            ACCEPTED: partial(self.on_accept, transaction),
+            READY: None,
+            FINISHED: None,
+            CANCELED: None,
+            FAILED: None,
+            REJECTED: None
+        }
+
+        cb = callbacks[status]
+        if cb is not None:
+            cb()
+
+        transaction['status'] = status
+        database.transactions().save(transaction)
 
         device_ids = [transaction['sender_device_id'], transaction['recipient_device_id']]
+        recipient = database.users().find_one(database.ObjectId(transaction['recipient_id']))
         self.notifier.notify_some(
             notifier.TRANSACTION,
             device_ids = device_ids,
+            recipient_ids = [recipient['_id']],
             message = transaction,
             store = True,
-        )
-
-        return self.success({
-            'updated_transaction_id': str(updated_transaction_id),
-        })
-
-
-class Update(_UpdateTransaction):
-    """
-    Update the transaction status. Accepted values:
-        * from sender: [started, canceled, failed]
-        * from receiver: [canceled, finished]
-
-        If the sender send the status STARTED while the transaction is already
-        started, a notification will be sent again, as to restart the
-        connection.
-
-        POST {
-            'transaction_id': <string>,
-            'status': <TransactionStatus>,
-        }
-        -> {
-            'updated_transaction_id' : the (new) id
-        }
-
-    Errors:
-        The transaction is not valid.
-        You are not involved in this transaction.
-    """
-    __pattern__ = "/transaction/update"
+       )
 
     def POST(self):
         self.requireLoggedIn()
@@ -349,51 +314,16 @@ class Update(_UpdateTransaction):
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
 
-        # Check if status is mutable
-        if transaction['status'] not in [CREATED, STARTED]:
-            return self.error(
-                error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                "Cannot change status of an ended transaction."
-            )
-
-        # Check that user has rights on the transaction
-        is_sender = self.user['_id'] == transaction['sender_id']
-        is_receiver = self.user['_id'] == transaction['recipient_id']
-        if not (is_sender or is_receiver):
-            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+        is_sender = self.validate_ownership(transaction)
 
         # Check input fied
         if 'status' not in self.data:
             return self.error(
                 error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                "'status' key is missing"
-            )
+                "'status' key is missing")
 
-        # Validate status value
-        status = int(self.data['status'])
-        if is_sender and status not in [STARTED, CANCELED, FAILED]:
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
-        elif is_receiver and status not in [STARTED, CANCELED, FINISHED, FAILED]:
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
+        self.update_status(transaction, self.data['status'], is_sender)
 
-        new_status = transaction['status'] != status
-
-        if new_status:
-            transaction["status"] = status
-            database.transactions().save(transaction)
-        if new_status or status == STARTED:
-            device_ids = [transaction['sender_device_id']]
-            if transaction['accepted']:
-                device_ids.append(transaction['recipient_device_id'])
-            else:
-                recipient = database.users().find_one(database.ObjectId(transaction['recipient_id']))
-                device_ids.extend(recipient.get('devices', []))
-            self.notifier.notify_some(
-                notifier.TRANSACTION,
-                device_ids = device_ids,
-                message = transaction,
-                store = True,
-            )
         return self.success({
             'updated_transaction_id': transaction['_id'],
         })
