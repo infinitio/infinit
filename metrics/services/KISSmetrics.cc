@@ -58,6 +58,8 @@ namespace metrics
         return "recipient_online";
       case Key::source:
         return "source";
+      case Key::method:
+        return "method";
       }
       return "unknown_key";
     }
