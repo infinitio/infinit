@@ -55,6 +55,9 @@ class Application(object):
         database = self.mongo.apertus
         instances = database.instances
         record = instances.find_one({"ids" : id})
+        if record is None:
+            # We are not in master/slave mode.
+            return
         record["ids"].remove(id)
         instances.save(record)
 
