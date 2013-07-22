@@ -1,0 +1,120 @@
+#ifndef RECEIVEMACHINE_HH
+# define RECEIVEMACHINE_HH
+
+# include <plasma/meta/Client.hh>
+
+# include <reactor/waitable.hh>
+# include <reactor/signal.hh>
+
+# include <surface/gap/TransferMachine.hh>
+
+# include <memory>
+# include <string>
+# include <unordered_set>
+
+namespace surface
+{
+  namespace gap
+  {
+    struct ReceiveMachine:
+      public TransferMachine
+    {
+
+    public:
+      ReceiveMachine(plasma::meta::Client const& meta,
+                     std::string const& user_id,
+                     std::string const& device_id,
+                     elle::Passport const& passport,
+                     lune::Identity const& identity,
+                     std::string const& transaction_id);
+    public:
+      virtual
+      ~ReceiveMachine();
+
+    public:
+      void
+      on_transaction_update(plasma::meta::TransactionResponse const& transaction);
+
+      void
+      on_user_update(plasma::meta::UserResponse const& user);
+
+      void
+      on_network_update(plasma::meta::NetworkResponse const& network);
+
+      void
+      accept();
+
+      void
+      rejected();
+
+    private:
+      ReceiveMachine(plasma::meta::Client const& meta,
+                     std::string const& user_id,
+                     std::string const& device_id,
+                     elle::Passport const& passport,
+                     lune::Identity const& identity);
+
+    private:
+      void
+      _wait_for_decision();
+
+      void
+      _accept();
+
+      void
+      _reject();
+
+      void
+      _publish_interfaces();
+
+      void
+      _connection();
+
+      void
+      _transfer();
+
+      void
+      _clean();
+
+      void
+      _fail();
+
+      /*-----------------------.
+      | Machine implementation |
+      `-----------------------*/
+      ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_decision_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, accept_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, reject_state);
+      // Common on both sender and recipient process, could be put in base class.
+      ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, connection_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, transfer_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, clean_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, fail_state);
+
+      // User status signal.
+      ELLE_ATTRIBUTE(reactor::Signal, peer_online);
+      ELLE_ATTRIBUTE(reactor::Signal, peer_offline);
+
+      // Slug signal.
+      ELLE_ATTRIBUTE(reactor::Signal, peer_connected);
+      ELLE_ATTRIBUTE(reactor::Signal, peer_disconnected);
+
+      // Transaction status signals.
+      ELLE_ATTRIBUTE(reactor::Signal, accepted);
+      ELLE_ATTRIBUTE(reactor::Signal, rejected);
+      ELLE_ATTRIBUTE(reactor::Signal, finished);
+      ELLE_ATTRIBUTE(reactor::Signal, ready);
+      ELLE_ATTRIBUTE(reactor::Signal, canceled);
+      ELLE_ATTRIBUTE(reactor::Signal, failed);
+
+      /*-----------------.
+      | Transaction data |
+      `-----------------*/
+      ELLE_ATTRIBUTE(std::string, recipient);
+      ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
+    };
+  }
+}
+
+#endif
