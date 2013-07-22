@@ -1,5 +1,7 @@
 #include "State.hh"
 
+#include <surface/gap/SendMachine.hh>
+
 #include <common/common.hh>
 
 #include <lune/Identity.hh>
@@ -130,7 +132,6 @@ namespace surface
       }),
       _me{nullptr},
       _device{nullptr},
-      _files_infos{},
       _trophonius_host{trophonius_host},
       _trophonius_port{trophonius_port},
       _apertus_host{apertus_host},
@@ -218,6 +219,25 @@ namespace surface
       ELLE_TRACE_METHOD("");
 
       return common::infinit::user_directory(this->me().id);
+    }
+
+    void
+    State::send_files(std::string const& recipient,
+                      std::unordered_set<std::string>&& files)
+    {
+      lune::Identity identity{};
+
+      if (identity.Restore(this->meta().identity()) == elle::Status::Error)
+        throw elle::Exception("Couldn't restore the identity.");
+
+      this->_transfers.emplace_back(
+        new SendMachine(this->meta(),
+                        this->me().id,
+                        this->device_id(),
+                        this->passport(),
+                        identity,
+                        recipient,
+                        std::move(files)));
     }
 
     State::~State()

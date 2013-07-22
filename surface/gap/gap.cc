@@ -1048,7 +1048,7 @@ extern "C"
           ++files;
         }
 
-      __TO_CPP(state)->transaction_manager().send_files(recipient_id, s);
+      __TO_CPP(state)->send_files(recipient_id, std::move(s));
       return gap_ok;
     }
     CATCH_ALL(send_files);

@@ -45,10 +45,10 @@ namespace surface
         this->update_device("XXX");
       else if (this->_device == nullptr)
       {
-        elle::Passport passport;
-        passport.load(
+        this->_passport.load(
           elle::io::Path{common::infinit::passport_path(this->me().id)});
-        this->_device.reset(new Device{passport.id(), passport.name()});
+        this->_device.reset(
+          new Device{this->_passport.id(), this->_passport.name()});
       }
       ELLE_ASSERT(this->_device != nullptr);
       return *this->_device;
@@ -98,11 +98,10 @@ namespace surface
         passport_string = res.passport;
       }
 
-      elle::Passport passport;
-      if (passport.Restore(passport_string) == elle::Status::Error)
+      if (this->_passport.Restore(passport_string) == elle::Status::Error)
         throw Exception(gap_wrong_passport, "Cannot load the passport");
 
-      passport.store(elle::io::Path(passport_path));
+      this->_passport.store(elle::io::Path(passport_path));
     }
   }
 }

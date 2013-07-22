@@ -11,6 +11,8 @@
 # include "gap.h"
 # include "metrics.hh"
 
+# include "TransferMachine.hh"
+
 # include <metrics/Reporter.hh>
 
 # include <common/common.hh>
@@ -125,10 +127,16 @@ namespace surface
       std::string const&
       token_generation_key() const;
 
+      void
+      send_files(std::string const& recipient,
+                 std::unordered_set<std::string>&& files);
+
     private:
       std::unique_ptr<Device> _device;
 
     public:
+      ELLE_ATTRIBUTE_R(elle::Passport, passport);
+
       Device const&
       device();
       std::string const&
@@ -148,22 +156,6 @@ namespace surface
       void
       update_device(std::string const& name,
                     bool force_create = false);
-    ///
-    /// File infos
-    ///
-    private:
-      std::map<std::string, FileInfos*> _files_infos;
-    public:
-      /// Retrieve files infos.
-      // FileInfos const&
-      // file_infos(std::string const& abspath);
-
-      /// Get size of a given path.
-      size_t
-      file_size(std::string const& path);
-
-      std::string
-      file_name(std::string const& path);
 
     private:
       ELLE_ATTRIBUTE_R(std::string, trophonius_host);
@@ -183,6 +175,9 @@ namespace surface
 
       typedef std::unique_ptr<TransactionManager> TransactionManagerPtr;
       elle::threading::Monitor<TransactionManagerPtr> _transaction_manager;
+
+      typedef std::unique_ptr<TransferMachine> TransferMachinePtr;
+      std::vector<TransferMachinePtr> _transfers;
 
     public:
       NetworkManager&
