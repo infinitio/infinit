@@ -261,7 +261,7 @@ class Invite(Page):
                 return self.error(error.UNKNOWN, "Already invited!")
             else:
                 database.invitations().remove({'email': email})
-        meta.invitation.invite_user(email, send_mail = send_mail)
+        meta.invitation.invite_user(email, send_mail = send_mail, source = 'infinit')
         return self.success()
 
 
@@ -449,6 +449,7 @@ class Register(Page):
 
         user['email'] = user['email'].lower()
 
+        source = None
         if database.users().find_one({
             'accounts': [{ 'type': 'email', 'id':user['email']}],
             'register_status': 'ok',
@@ -463,6 +464,7 @@ class Register(Page):
             if not invitation:
                 return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
             ghost_email = invitation['email']
+            source = invitation['source']
             meta.invitation.move_from_invited_to_userbase(ghost_email, user['email'])
         else:
             ghost_email = user['email']
@@ -513,7 +515,8 @@ class Register(Page):
             invitation['status'] = 'activated'
             database.invitations().save(invitation)
         return self.success({
-            'registered_user_id': user['_id']
+            'registered_user_id': user['_id'],
+            'invitation_source': source or '',
         })
 
 class GenerateToken(Page):

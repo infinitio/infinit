@@ -283,15 +283,20 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
 
-      this->_reporter["anonymous"].store("user.login.attempt");
+      elle::Finally login_failed{[this, lower_email] {
+        this->_reporter[lower_email].store("user.login.failed");
+        this->_google_reporter[lower_email].store("user.login.failed");
+      }};
 
       auto res = this->_meta.login(lower_email, password);
+      login_failed.abort();
+
       ELLE_LOG("Logged in as %s token = %s", email, res.token);
       this->_reporter[res.id].store(
-          "user.login.succeed",
+          "user.login",
           {{MKey::session, "start"}, {MKey::status, "succeed"}});
       this->_google_reporter[res.id].store(
-        "user.login.succeed",
+        "user.login",
         {{MKey::session, "start"}, {MKey::status, "succeed"}});
       ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
                  this->me().id,
@@ -431,13 +436,23 @@ namespace surface
       // Logout first, and ignore errors.
       try { this->logout(); } catch (std::exception const&) {}
 
+      elle::Finally register_failed{[this, lower_email] {
+        this->_reporter[lower_email].store("user.register.failed");
+      }};
 
       auto res = this->_meta.register_(
-          lower_email, fullname, password, activation_code);
+        lower_email, fullname, password, activation_code);
 
-      this->_reporter[res.registered_user_id].store("user.register");
+      register_failed.abort();
+
 
       ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);
+
+      elle::Finally registered_metric{[this, res] {
+        this->_reporter[res.registered_user_id].store(
+          "user.register",
+          {{MKey::source, res.invitation_source}});
+      }};
       this->login(lower_email, password);
     }
 

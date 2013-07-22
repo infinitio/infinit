@@ -39,8 +39,9 @@ class TrophoniusNotify(Notifier):
     def __init__(self):
         self.conn = socket.socket()
 
-    def open(self):
-        self.conn.connect((conf.TROPHONIUS_HOST, int(conf.TROPHONIUS_CONTROL_PORT)))
+    def open(self, addr):
+        print("connect to trophonius at", addr)
+        self.conn.connect(addr)
 
     def __send_notification(self, message):
         if isinstance(message, dict):

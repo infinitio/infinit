@@ -91,13 +91,12 @@ class GetBacktrace(Page):
             meta.mail.send(
                 email,
                 subject = meta.mail.BACKTRACE_SUBJECT % {"user": _id, "module": module, "signal": signal},
-                content = meta.mail.BACKTRACE_CONTENT %
-                {
+                content = meta.mail.BACKTRACE_CONTENT % {
                     "user": _id,
-                    "bt":   '\n'.join('{}'.format(l) for l in backtrace),
-                    "env":  '\n'.join('{}'.format(l) for l in env),
-                    "spec": '\n'.join('{}'.format(l) for l in spec),
-                    "more": '\n'.join('{}'.format(l) for l in more),
+                    "bt":   u'\n'.join(backtrace),
+                    "env":  u'\n'.join(env),
+                    "spec": u'\n'.join(spec),
+                    "more": u'\n'.join(more),
                 },
                 attached = file
                 )

@@ -63,6 +63,8 @@ namespace metrics
         return "cm12";
       case Key::recipient_online:
         return "cm13";
+      case Key::source:
+        return "cm14";
       }
       return "cm2000";
     }
@@ -109,7 +111,7 @@ namespace metrics
       body << request.body_string();
       auto rc = curly::make_post();
 
-      rc.option(CURLOPT_DEBUGFUNCTION, detail::curl_debug_callback);
+      rc.option(CURLOPT_DEBUGFUNCTION, &Service::_curl_debug_callback);
       rc.option(CURLOPT_DEBUGDATA, this);
       rc.option(CURLOPT_TIMEOUT, 15);
       rc.user_agent(metrics::Reporter::user_agent);
