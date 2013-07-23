@@ -70,6 +70,12 @@ parser.add_argument(
     default = 'meta_port_file',
 )
 
+parser.add_argument(
+    '--fcgi',
+    default=False,
+    action="store_true",
+)
+
 from meta.application import Application
 
 if __name__ == '__main__':
@@ -85,6 +91,7 @@ if __name__ == '__main__':
                                   apertus_port=args.apertus_port,
                                   tropho_control_port=args.trophonius_control_port,
                                   port_file=args.port_file,
+                                  fcgi=args.fcgi,
                 )
                 app.run()
         else:
@@ -96,6 +103,7 @@ if __name__ == '__main__':
                               apertus_port=args.apertus_port,
                               tropho_control_port=args.trophonius_control_port,
                               port_file=args.port_file,
+                              fcgi=args.fcgi,
             )
             app.run()
     except KeyboardInterrupt:
