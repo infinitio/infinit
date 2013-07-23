@@ -371,6 +371,34 @@ namespace surface
       new reactor::Thread(instance.scheduler, __func__, progress_fn);
     }
 
+    static
+    void
+    send_metric(TransactionManager& tm,
+                metrics::Reporter& reporter,
+                std::string const& network_id,
+                bool forwarder)
+    {
+      std::string tr_id;
+      auto all = tm.all();
+      auto pred = [&] (std::pair<std::string, plasma::Transaction> const& p)
+      {
+        if (p.second.network_id == network_id)
+          return true;
+        return false;
+      };
+      auto it = std::find_if(begin(all), end(all), pred);
+      ELLE_ASSERT_NEQ(it, end(all));
+      tr_id = it->first;
+      auto metric = transaction_metric(tm.self()(),
+                                       tm.user_manager(),
+                                       it->second);
+      if (forwarder)
+        metric[MKey::method] = 2;
+      else
+        metric[MKey::method] = 1;
+      reporter[tr_id].store("transaction.transfering", metric);
+    }
+
     void
     InfinitInstanceManager::download_files(std::string const& network_id,
                                            std::vector<std::shared_ptr<Round>>
@@ -412,46 +440,12 @@ namespace surface
             throw elle::Exception{
               elle::sprintf("Unable to connect slug to %s", addresses)};
           }
-          else if (res + 1 == addresses.size())
-          {
+          else if (size_t(res + 1) == addresses.size())
             instance.forwarder = true;
-            std::string tr_id;
-            auto all = this->_transaction_manager->all();
-            auto pred = [&] (std::pair<std::string, plasma::Transaction> const& p)
-            {
-              if (p.second.network_id == network_id)
-                return true;
-              return false;
-            };
-            auto it = std::find_if(begin(all), end(all), pred);
-            ELLE_ASSERT_NEQ(it, end(all));
-            tr_id = it->second.network_id;
-            auto metric = transaction_metric(this->_transaction_manager->self()(),
-                                             this->_transaction_manager->user_manager(),
-                                             it->second);
-            metric[MKey::method] = 2;
-            this->_reporter[tr_id].store("transaction.transfering", metric);
-          }
           else
-          {
             instance.forwarder = false;
-            std::string tr_id;
-            auto all = this->_transaction_manager->all();
-            auto pred = [&] (std::pair<std::string, plasma::Transaction> const& p)
-            {
-              if (p.second.network_id == network_id)
-                return true;
-              return false;
-            };
-            auto it = std::find_if(begin(all), end(all), pred);
-            ELLE_ASSERT_NEQ(it, end(all));
-            tr_id = it->second.network_id;
-            auto metric = transaction_metric(this->_transaction_manager->self()(),
-                                             this->_transaction_manager->user_manager(),
-                                             it->second);
-            metric[MKey::method] = 1;
-            this->_reporter[tr_id].store("transaction.transfering", metric);
-          }
+          send_metric(*this->_transaction_manager, this->_reporter,
+                      network_id, instance.forwarder);
 
           instance.start_progress.signal_one();
           try
@@ -608,26 +602,6 @@ namespace surface
           {
             throw elle::Exception{
               elle::sprintf("Unable to connect slug to %s", addresses)};
-          }
-          else if (res + 1 == addresses.size())
-          {
-            instance.forwarder = true;
-            std::string tr_id;
-            auto all = this->_transaction_manager->all();
-            auto pred = [&] (std::pair<std::string, plasma::Transaction> const& p)
-            {
-              if (p.second.network_id == network_id)
-                return true;
-              return false;
-            };
-            auto it = std::find_if(begin(all), end(all), pred);
-            ELLE_ASSERT_NEQ(it, end(all));
-            tr_id = it->first;
-            auto metric = transaction_metric(this->_transaction_manager->self()(),
-                                             this->_transaction_manager->user_manager(),
-                                             it->second);
-            metric[MKey::method] = 2;
-            this->_reporter[tr_id].store("transaction.transfering", metric);
           }
           // The progress will wait for the start_progress signal
           instance.start_progress.signal_one();
