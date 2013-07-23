@@ -9,7 +9,25 @@ import sys
 import shutil
 import socket
 
-from .utils import find_executable, get_free_port
+def find_executable(executable):
+    """Scan PATH for an executable.
+    """
+    for path in os.environ.get('PATH', '').split(os.pathsep):
+        path = os.path.abspath(path)
+        executable_path = os.path.join(path, executable)
+        if os.path.isfile(executable_path):
+            return executable_path
+
+def get_free_port(host="localhost"):
+    """Get a free port on the machine.
+    """
+    temp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    temp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    temp_sock.bind((host, 0))
+    port = temp_sock.getsockname()[1]
+    temp_sock.close()
+    del temp_sock
+    return port
 
 MONGOD_BIN = 'mongod'
 DEFAULT_ARGS = [
@@ -140,4 +158,3 @@ class MongoBox(object):
 
     def __exit__(self, *args, **kwargs):
         self.stop()
-
