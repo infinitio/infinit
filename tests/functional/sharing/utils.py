@@ -46,20 +46,25 @@ class Servers:
 
     def __enter__(self):
         port = get_random_port()
+        if self.__apertus:
+            self.apertus = apertus.Apertus(port = 0)
+            self.apertus.__enter__()
+        kwargs = {}
+        if self.__apertus:
+            kwargs = {
+                'apertus_host': self.apertus.host,
+                'apertus_port': self.apertus.port,
+            }
         self.meta = meta.Meta(
             spawn_db = True,
             trophonius_control_port = port,
-            apertus_host = "127.0.0.1",
-            apertus_port = self.apertus.port)
+            *kwargs)
         self.meta.__enter__()
         self.tropho = trophonius.Trophonius(
             meta_port = self.meta.meta_port,
             control_port = port
             )
         self.tropho.__enter__()
-        if self.__apertus:
-            self.apertus = apertus.Apertus(port = 0)
-            self.apertus.__enter__()
         return self.meta, self.tropho, self.apertus
 
     def __exit__(self, exception_type, exception, *args):
