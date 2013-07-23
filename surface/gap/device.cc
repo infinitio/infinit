@@ -37,7 +37,7 @@ namespace surface
     }
 
     Device const&
-    State::device()
+    State::device() const
     {
       ELLE_TRACE_METHOD("");
 
@@ -55,7 +55,7 @@ namespace surface
     }
 
     std::string const&
-    State::device_id()
+    State::device_id() const
     {
       ELLE_TRACE_METHOD("");
 
@@ -63,7 +63,7 @@ namespace surface
     }
 
     std::string const&
-    State::device_name()
+    State::device_name() const
     {
       ELLE_TRACE_METHOD("");
 
@@ -71,7 +71,7 @@ namespace surface
     }
 
     void
-    State::update_device(std::string const& name, bool force_create)
+    State::update_device(std::string const& name, bool force_create) const
     {
       ELLE_TRACE_METHOD(name, force_create);
 
@@ -103,5 +103,15 @@ namespace surface
 
       this->_passport.store(elle::io::Path(passport_path));
     }
+
+    elle::Passport const&
+    State::passport() const
+    {
+      if (!this->has_device())
+        this->update_device("XXX");
+
+      return this->_passport;
+    }
+
   }
 }

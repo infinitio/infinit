@@ -11,8 +11,6 @@
 # include "gap.h"
 # include "metrics.hh"
 
-# include "TransferMachine.hh"
-
 # include <metrics/Reporter.hh>
 
 # include <common/common.hh>
@@ -32,6 +30,8 @@ namespace surface
 {
   namespace gap
   {
+    class TransferMachine;
+
     struct FileInfos
     {
       std::string                 mount_point;
@@ -132,17 +132,25 @@ namespace surface
                  std::unordered_set<std::string>&& files);
 
     private:
-      std::unique_ptr<Device> _device;
+      ELLE_ATTRIBUTE_P(std::unique_ptr<Device>, device, mutable);
 
     public:
-      ELLE_ATTRIBUTE_R(elle::Passport, passport);
-
       Device const&
-      device();
+      device() const;
       std::string const&
-      device_id();
+      device_id() const;
       std::string const&
-      device_name();
+      device_name() const;
+
+      ELLE_ATTRIBUTE_P(elle::Passport, passport, mutable);
+      ELLE_ATTRIBUTE_P(lune::Identity, identity, mutable);
+    public:
+      elle::Passport const&
+      passport() const;
+
+      lune::Identity const&
+      identity() const;
+
 
     ///
     /// Manage local device.
@@ -155,7 +163,7 @@ namespace surface
       /// Create or update the local device.
       void
       update_device(std::string const& name,
-                    bool force_create = false);
+                    bool force_create = false) const;
 
     private:
       ELLE_ATTRIBUTE_R(std::string, trophonius_host);

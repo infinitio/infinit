@@ -1,6 +1,8 @@
 #include "State.hh"
 
+#include <surface/gap/TransferMachine.hh>
 #include <surface/gap/SendMachine.hh>
+#include <surface/gap/ReceiveMachine.hh>
 
 #include <common/common.hh>
 
@@ -225,19 +227,8 @@ namespace surface
     State::send_files(std::string const& recipient,
                       std::unordered_set<std::string>&& files)
     {
-      lune::Identity identity{};
-
-      if (identity.Restore(this->meta().identity()) == elle::Status::Error)
-        throw elle::Exception("Couldn't restore the identity.");
-
       this->_transfers.emplace_back(
-        new SendMachine(this->meta(),
-                        this->me().id,
-                        this->device_id(),
-                        this->passport(),
-                        identity,
-                        recipient,
-                        std::move(files)));
+        new SendMachine{*this, recipient, std::move(files)});
     }
 
     State::~State()
@@ -474,6 +465,18 @@ namespace surface
           {{MKey::source, res.invitation_source}});
       }};
       this->login(lower_email, password);
+    }
+
+    lune::Identity const&
+    State::identity() const
+    {
+      if (!this->logged_in())
+        throw Exception{gap_internal_error, "you must be logged in"};
+
+      if (this->_identity.Restore(this->meta().identity()) == elle::Status::Error)
+        throw elle::Exception("Couldn't restore the identity.");
+
+      return this->_identity;
     }
 
     NotificationManager&
