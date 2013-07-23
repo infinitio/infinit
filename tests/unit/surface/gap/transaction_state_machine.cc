@@ -15,6 +15,7 @@ namespace
   {
   private:
     ELLE_ATTRIBUTE_R(bool, is_canceled);
+    ELLE_ATTRIBUTE_R(bool, is_failed);
     ELLE_ATTRIBUTE_R(bool, has_cleaned);
     ELLE_ATTRIBUTE_R(bool, has_prepared_upload);
     ELLE_ATTRIBUTE_R(bool, has_started_upload);
@@ -35,6 +36,9 @@ namespace
       _device(_make_device(is_sender)),
       _state_machine{
         std::bind(&TestCase::_canceled,
+                  this,
+                  std::placeholders::_1),
+        std::bind(&TestCase::_failed,
                   this,
                   std::placeholders::_1),
         std::bind(&TestCase::_clean,
@@ -66,6 +70,13 @@ namespace
     _canceled(Transaction const&)
     {
       this->_is_canceled = true;
+    }
+
+    virtual
+    void
+    _failed(Transaction const&)
+    {
+      this->_is_failed = true;
     }
 
     virtual
@@ -150,107 +161,113 @@ namespace
   }
 }
 
-BOOST_AUTO_TEST_CASE(simple)
+BOOST_AUTO_TEST_CASE(created)
 {
-  // created
-  {
-    auto tr = make_transaction(TransactionStatus::created);
-    TestCase test(tr);
-    BOOST_CHECK(not test.is_canceled());
-    BOOST_CHECK(not test.has_cleaned());
-    BOOST_CHECK(test.has_prepared_upload());
-    BOOST_CHECK(not test.has_started_upload());
-    BOOST_CHECK(not test.has_started_download());
-  }
+  auto tr = make_transaction(TransactionStatus::created);
+  TestCase test(tr);
+  BOOST_CHECK(not test.is_canceled());
+  BOOST_CHECK(not test.is_failed());
+  BOOST_CHECK(not test.has_cleaned());
+  BOOST_CHECK(test.has_prepared_upload());
+  BOOST_CHECK(not test.has_started_upload());
+  BOOST_CHECK(not test.has_started_download());
+}
 
-  // created accepted
-  {
-    auto tr = make_transaction(TransactionStatus::created);
-    tr.accepted = true;
-    TestCase test(tr);
-    BOOST_CHECK(not test.is_canceled());
-    BOOST_CHECK(not test.has_cleaned());
-    BOOST_CHECK(test.has_prepared_upload());
-    BOOST_CHECK(not test.has_started_upload());
-    BOOST_CHECK(not test.has_started_download());
-  }
+BOOST_AUTO_TEST_CASE(created_accepted)
+{
+  auto tr = make_transaction(TransactionStatus::created);
+  tr.accepted = true;
+  TestCase test(tr);
+  BOOST_CHECK(not test.is_canceled());
+  BOOST_CHECK(not test.is_failed());
+  BOOST_CHECK(not test.has_cleaned());
+  BOOST_CHECK(test.has_prepared_upload());
+  BOOST_CHECK(not test.has_started_upload());
+  BOOST_CHECK(not test.has_started_download());
+}
 
-  // started
-  {
-    auto tr = make_transaction(TransactionStatus::started);
-    TestCase test(tr);
-    BOOST_CHECK(not test.is_canceled());
-    BOOST_CHECK(not test.has_cleaned());
-    BOOST_CHECK(not test.has_prepared_upload());
-    BOOST_CHECK(not test.has_started_upload());
-    BOOST_CHECK(not test.has_started_download());
-  }
+BOOST_AUTO_TEST_CASE(started)
+{
+  auto tr = make_transaction(TransactionStatus::started);
+  TestCase test(tr);
+  BOOST_CHECK(not test.is_canceled());
+  BOOST_CHECK(not test.is_failed());
+  BOOST_CHECK(not test.has_cleaned());
+  BOOST_CHECK(not test.has_prepared_upload());
+  BOOST_CHECK(not test.has_started_upload());
+  BOOST_CHECK(not test.has_started_download());
+}
 
-  // started accepted
-  {
-    auto tr = make_transaction(TransactionStatus::started);
-    tr.accepted = true;
-    TestCase test(tr);
-    BOOST_CHECK(not test.is_canceled());
-    BOOST_CHECK(not test.has_cleaned());
-    BOOST_CHECK(not test.has_prepared_upload());
-    BOOST_CHECK(test.has_started_upload());
-    BOOST_CHECK(not test.has_started_download());
-  }
+BOOST_AUTO_TEST_CASE(started_accepted)
+{
+  auto tr = make_transaction(TransactionStatus::started);
+  tr.accepted = true;
+  TestCase test(tr);
+  BOOST_CHECK(not test.is_canceled());
+  BOOST_CHECK(not test.is_failed());
+  BOOST_CHECK(not test.has_cleaned());
+  BOOST_CHECK(not test.has_prepared_upload());
+  BOOST_CHECK(test.has_started_upload());
+  BOOST_CHECK(not test.has_started_download());
+}
 
-  // started (recipient)
-  {
-    auto tr = make_transaction(TransactionStatus::started);
-    TestCase test(tr, false);
-    BOOST_CHECK(not test.is_canceled());
-    BOOST_CHECK(not test.has_cleaned());
-    BOOST_CHECK(not test.has_prepared_upload());
-    BOOST_CHECK(not test.has_started_upload());
-    BOOST_CHECK(not test.has_started_download());
-  }
+BOOST_AUTO_TEST_CASE(started_recipient)
+{
+  auto tr = make_transaction(TransactionStatus::started);
+  TestCase test(tr, false);
+  BOOST_CHECK(not test.is_canceled());
+  BOOST_CHECK(not test.is_failed());
+  BOOST_CHECK(not test.has_cleaned());
+  BOOST_CHECK(not test.has_prepared_upload());
+  BOOST_CHECK(not test.has_started_upload());
+  BOOST_CHECK(not test.has_started_download());
+}
 
-  // started accepted (recipient)
-  {
-    auto tr = make_transaction(TransactionStatus::started);
-    tr.accepted = true;
-    TestCase test(tr, false);
-    BOOST_CHECK(not test.is_canceled());
-    BOOST_CHECK(not test.has_cleaned());
-    BOOST_CHECK(not test.has_prepared_upload());
-    BOOST_CHECK(not test.has_started_upload());
-    BOOST_CHECK(test.has_started_download());
-  }
+BOOST_AUTO_TEST_CASE(started_accepted_recipient)
+{
+  auto tr = make_transaction(TransactionStatus::started);
+  tr.accepted = true;
+  TestCase test(tr, false);
+  BOOST_CHECK(not test.is_canceled());
+  BOOST_CHECK(not test.is_failed());
+  BOOST_CHECK(not test.has_cleaned());
+  BOOST_CHECK(not test.has_prepared_upload());
+  BOOST_CHECK(not test.has_started_upload());
+  BOOST_CHECK(test.has_started_download());
+}
 
-  // canceled
-  {
-    auto tr = make_transaction(TransactionStatus::canceled);
-    TestCase test(tr);
-    BOOST_CHECK(test.is_canceled());
-    BOOST_CHECK(test.has_cleaned());
-    BOOST_CHECK(not test.has_prepared_upload());
-    BOOST_CHECK(not test.has_started_upload());
-    BOOST_CHECK(not test.has_started_download());
-  }
+BOOST_AUTO_TEST_CASE(canceled)
+{
+  auto tr = make_transaction(TransactionStatus::canceled);
+  TestCase test(tr);
+  BOOST_CHECK(test.is_canceled());
+  BOOST_CHECK(not test.is_failed());
+  BOOST_CHECK(test.has_cleaned());
+  BOOST_CHECK(not test.has_prepared_upload());
+  BOOST_CHECK(not test.has_started_upload());
+  BOOST_CHECK(not test.has_started_download());
+}
 
-  // finished
-  {
-    auto tr = make_transaction(TransactionStatus::finished);
-    TestCase test(tr);
-    BOOST_CHECK(not test.is_canceled());
-    BOOST_CHECK(test.has_cleaned());
-    BOOST_CHECK(not test.has_prepared_upload());
-    BOOST_CHECK(not test.has_started_upload());
-    BOOST_CHECK(not test.has_started_download());
-  }
+BOOST_AUTO_TEST_CASE(finished)
+{
+  auto tr = make_transaction(TransactionStatus::finished);
+  TestCase test(tr);
+  BOOST_CHECK(not test.is_canceled());
+  BOOST_CHECK(not test.is_failed());
+  BOOST_CHECK(test.has_cleaned());
+  BOOST_CHECK(not test.has_prepared_upload());
+  BOOST_CHECK(not test.has_started_upload());
+  BOOST_CHECK(not test.has_started_download());
+}
 
-  // failed
-  {
-    auto tr = make_transaction(TransactionStatus::failed);
-    TestCase test(tr);
-    BOOST_CHECK(not test.is_canceled());
-    BOOST_CHECK(test.has_cleaned());
-    BOOST_CHECK(not test.has_prepared_upload());
-    BOOST_CHECK(not test.has_started_upload());
-    BOOST_CHECK(not test.has_started_download());
-  }
+BOOST_AUTO_TEST_CASE(failed)
+{
+  auto tr = make_transaction(TransactionStatus::failed);
+  TestCase test(tr);
+  BOOST_CHECK(not test.is_canceled());
+  BOOST_CHECK(test.is_failed());
+  BOOST_CHECK(test.has_cleaned());
+  BOOST_CHECK(not test.has_prepared_upload());
+  BOOST_CHECK(not test.has_started_upload());
+  BOOST_CHECK(not test.has_started_download());
 }
