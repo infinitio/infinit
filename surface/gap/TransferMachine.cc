@@ -1,5 +1,6 @@
 #include "TransferMachine.hh"
 
+#include <surface/gap/State.hh>
 #include <lune/Descriptor.hh>
 
 #include <Infinit.hh>
@@ -14,20 +15,12 @@ namespace surface
 {
   namespace gap
   {
-    TransferMachine::TransferMachine(plasma::meta::Client const& meta,
-                                     std::string const& user_id,
-                                     std::string const& device_id,
-                                     elle::Passport const& passport,
-                                     lune::Identity const& identity):
+    TransferMachine::TransferMachine(surface::gap::State const& state):
       _scheduler(),
       _scheduler_thread(),
       _machine(),
       _machine_thread(),
-      _meta(meta),
-      _user_id(user_id),
-      _device_id(device_id),
-      _passport(passport),
-      _identity(identity)
+      _state(state)
     {}
 
     TransferMachine::~TransferMachine()
@@ -93,7 +86,7 @@ namespace surface
       if (!this->_descriptor)
       {
         using namespace elle::serialize;
-        std::string descriptor = this->meta().network(this->network_id()).descriptor; //; // Pull it from networks.
+        std::string descriptor = this->state().meta().network(this->network_id()).descriptor; //; // Pull it from networks.
 
         ELLE_ASSERT_NEQ(descriptor.length(), 0u);
 
@@ -112,7 +105,7 @@ namespace surface
         this->_storage.reset(
           new hole::storage::Directory(
             this->network().name(),
-            common::infinit::network_shelter(this->_user_id,
+            common::infinit::network_shelter(this->state().me().id,
                                              this->network().name())));
       }
       ELLE_ASSERT(this->_storage != nullptr);
@@ -126,7 +119,7 @@ namespace surface
       {
         this->_hole.reset(
           new hole::implementations::slug::Slug(
-            this->storage(), this->_passport, Infinit::authority(),
+          this->storage(), this->state().passport(), Infinit::authority(),
             reactor::network::Protocol::tcp));
       }
       ELLE_ASSERT(this->_hole != nullptr);
@@ -139,7 +132,7 @@ namespace surface
       if (!this->_etoile)
       {
         this->_etoile.reset(
-          new etoile::Etoile(this->_identity.pair(),
+          new etoile::Etoile(this->state().identity().pair(),
                              &(this->hole()),
                              this->descriptor().meta().root()));
       }

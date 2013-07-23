@@ -26,14 +26,12 @@ namespace surface
 {
   namespace gap
   {
+    class State;
+
     class TransferMachine
     {
     public:
-      TransferMachine(plasma::meta::Client const& meta,
-                      std::string const& user_id,
-                      std::string const& device_id,
-                      elle::Passport const& passport,
-                      lune::Identity const& identity);
+      TransferMachine(surface::gap::State const& state);
 
       virtual
       ~TransferMachine() = 0;
@@ -53,15 +51,7 @@ namespace surface
       reactor::fsm::Machine _machine;
       std::unique_ptr<reactor::Thread> _machine_thread;
 
-      ELLE_ATTRIBUTE_R(plasma::meta::Client const&, meta);
-
-      /*-----.
-      | User |
-      `-----*/
-      ELLE_ATTRIBUTE_R(std::string, user_id);
-      ELLE_ATTRIBUTE_R(std::string, device_id);
-      ELLE_ATTRIBUTE_R(elle::Passport, passport);
-      ELLE_ATTRIBUTE_R(lune::Identity, identity);
+      ELLE_ATTRIBUTE_R(surface::gap::State const&, state);
 
       /*------------.
       | Transaction |

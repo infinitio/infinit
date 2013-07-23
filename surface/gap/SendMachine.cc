@@ -21,12 +21,8 @@ namespace surface
 {
   namespace gap
   {
-    SendMachine::SendMachine(plasma::meta::Client const& meta,
-                             std::string const& user_id,
-                             std::string const& device_id,
-                             elle::Passport const& passport,
-                             lune::Identity const& identity):
-      TransferMachine(meta, user_id, device_id, passport, identity),
+    SendMachine::SendMachine(surface::gap::State const& state):
+      TransferMachine(state),
       _request_network_state(
         this->_machine.state_make(
           std::bind(&SendMachine::_request_network, this))),
@@ -99,14 +95,10 @@ namespace surface
     SendMachine::~SendMachine()
     {}
 
-    SendMachine::SendMachine(plasma::meta::Client const& meta,
-                                   std::string const& user_id,
-                                   std::string const& device_id,
-                                   elle::Passport const& passport,
-                                   lune::Identity const& identity,
-                                   std::string const& recipient,
-                                   std::unordered_set<std::string>&& files):
-      SendMachine(meta, user_id, device_id, passport, identity)
+    SendMachine::SendMachine(surface::gap::State const& state,
+                             std::string const& recipient,
+                             std::unordered_set<std::string>&& files):
+      SendMachine(state)
     {
       ELLE_LOG_SCOPE("%s: send %s to %s", *this, files, recipient);
 
@@ -117,7 +109,7 @@ namespace surface
 
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
 
-      _recipient = recipient;
+      this->_recipient = recipient;
       this->run();
     }
 
@@ -167,16 +159,16 @@ namespace surface
       std::cerr << "network_name: " << network_name << std::endl;
 
       this->network_id(
-        this->meta().create_network(network_name).created_network_id);
+        this->state().meta().create_network(network_name).created_network_id);
 
-      // this->_state.reporter()[this->_network_id].store(
+      // this->state().reporter()[this->_network_id].store(
       //   "network.create.succeed",
       //   {{MKey::value, this->_network_id}});
 
       // this->_google_reporter[this->_self().id].store("network.create.succeed");
 
-      this->meta().network_add_device(
-        this->network().name(), this->device_id());
+      this->state().meta().network_add_device(
+        this->network().name(), this->state().device_id());
       ELLE_LOG("this->_network_id: %s", this->network().name());
     }
 
@@ -209,34 +201,29 @@ namespace surface
         boost::filesystem::path(*(this->_files.cbegin())).filename().string();
 
       // Create transaction.
-      this->transaction_id(this->meta().create_transaction(
+      this->transaction_id(this->state().meta().create_transaction(
                              this->_recipient, first_file, this->_files.size(), size,
                              boost::filesystem::is_directory(first_file), this->network().name(),
-                             this->device_id()).created_transaction_id);
+                             this->state().device_id()).created_transaction_id);
 
       // XXX: Ensure recipient is an id.
-      this->_recipient = this->meta().user(this->_recipient).id;
-      this->meta().network_add_user(
+      this->_recipient = this->state().meta().user(this->_recipient).id;
+      this->state().meta().network_add_user(
         this->network().name(), this->_recipient);
 
-      auto e = elle::Status::Error;
-      lune::Identity identity;
-      if (identity.Restore(this->meta().identity()) == e)
-        throw elle::Exception("Couldn't restore the identity.");
-
       auto nb = operation_detail::blocks::create(this->network().name(),
-                                                 identity);
+                                                 this->state().identity());
 
-      this->meta().update_network(this->network().name(),
-                                  nullptr,
-                                  &nb.root_block,
-                                  &nb.root_address,
-                                  &nb.group_block,
-                                  &nb.group_address);
+      this->state().meta().update_network(this->network().name(),
+                                         nullptr,
+                                         &nb.root_block,
+                                         &nb.root_address,
+                                         &nb.group_block,
+                                         &nb.group_address);
 
-      auto network = this->meta().network(this->network().name());
+      auto network = this->state().meta().network(this->network().name());
 
-      this->descriptor().store(identity);
+      this->descriptor().store(this->state().identity());
 
       using namespace elle::serialize;
       {
@@ -286,7 +273,7 @@ namespace surface
     void
     SendMachine::_set_permissions()
     {
-      auto peer_public_key = this->meta().user(this->_recipient).public_key;
+      auto peer_public_key = this->state().meta().user(this->_recipient).public_key;
 
       ELLE_ASSERT_NEQ(peer_public_key.length(), 0u);
 
@@ -296,7 +283,7 @@ namespace surface
       nucleus::neutron::Subject subject;
       subject.Create(public_key);
 
-      auto group_address = this->meta().network(this->network_id()).group_address;
+      auto group_address = this->state().meta().network(this->network_id()).group_address;
 
       nucleus::neutron::Group::Identity group;
       group.Restore(group_address);

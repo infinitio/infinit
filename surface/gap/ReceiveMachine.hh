@@ -1,7 +1,7 @@
 #ifndef RECEIVEMACHINE_HH
 # define RECEIVEMACHINE_HH
 
-# include <plasma/meta/Client.hh>
+# include <surface/gap/State.hh>
 
 # include <reactor/waitable.hh>
 # include <reactor/signal.hh>
@@ -21,11 +21,7 @@ namespace surface
     {
 
     public:
-      ReceiveMachine(plasma::meta::Client const& meta,
-                     std::string const& user_id,
-                     std::string const& device_id,
-                     elle::Passport const& passport,
-                     lune::Identity const& identity,
+      ReceiveMachine(surface::gap::State const& state,
                      std::string const& transaction_id);
     public:
       virtual
@@ -48,11 +44,7 @@ namespace surface
       rejected();
 
     private:
-      ReceiveMachine(plasma::meta::Client const& meta,
-                     std::string const& user_id,
-                     std::string const& device_id,
-                     elle::Passport const& passport,
-                     lune::Identity const& identity);
+      ReceiveMachine(surface::gap::State const& state);
 
     private:
       void

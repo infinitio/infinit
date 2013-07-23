@@ -1,7 +1,8 @@
 #ifndef SENDMACHINE_HH
 # define SENDMACHINE_HH
 
-#include <surface/gap/TransferMachine.hh>
+# include <surface/gap/TransferMachine.hh>
+# include <surface/gap/State.hh>
 
 namespace surface
 {
@@ -11,17 +12,12 @@ namespace surface
       public TransferMachine
     {
     public:
-      virtual
-      ~SendMachine();
-
-    public:
-      SendMachine(plasma::meta::Client const& meta,
-                  std::string const& user_id,
-                  std::string const& device_id,
-                  elle::Passport const& passport,
-                  lune::Identity const& identity,
+      SendMachine(surface::gap::State const& state,
                   std::string const& recipient,
                   std::unordered_set<std::string>&& files);
+
+      virtual
+      ~SendMachine();
 
     public:
       void
@@ -34,11 +30,7 @@ namespace surface
       on_network_update(plasma::meta::NetworkResponse const& network);
 
     private:
-      SendMachine(plasma::meta::Client const& meta,
-                  std::string const& user_id,
-                  std::string const& device_id,
-                  elle::Passport const& passport,
-                  lune::Identity const& identity);
+      SendMachine(surface::gap::State const& state);
 
     private:
       void

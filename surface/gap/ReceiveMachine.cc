@@ -13,12 +13,8 @@ namespace surface
 {
   namespace gap
   {
-    ReceiveMachine::ReceiveMachine(plasma::meta::Client const& meta,
-                                       std::string const& user_id,
-                                       std::string const& device_id,
-                                       elle::Passport const& passport,
-                                       lune::Identity const& identity):
-      TransferMachine(meta, user_id, device_id, passport, identity),
+    ReceiveMachine::ReceiveMachine(surface::gap::State const& state):
+      TransferMachine(state),
       _wait_for_decision_state(
         this->_machine.state_make(
           std::bind(&ReceiveMachine::_wait_for_decision, this))),
@@ -86,13 +82,9 @@ namespace surface
     ReceiveMachine::~ReceiveMachine()
     {}
 
-    ReceiveMachine::ReceiveMachine(plasma::meta::Client const& meta,
-                                   std::string const& user_id,
-                                   std::string const& device_id,
-                                   elle::Passport const& passport,
-                                   lune::Identity const& identity,
+    ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    std::string const& transaction_id):
-      ReceiveMachine(meta, user_id, device_id, passport, identity)
+      ReceiveMachine(state)
     {
       this->transaction_id(transaction_id);
     }
@@ -151,23 +143,23 @@ namespace surface
     void
     ReceiveMachine::_wait_for_decision()
     {
-      this->network_id(this->meta().transaction(this->transaction_id()).network_id);
+      this->network_id(this->state().meta().transaction(this->transaction_id()).network_id);
     }
 
     void
     ReceiveMachine::_accept()
     {
-      this->meta().update_transaction(this->transaction_id(),
-                                      plasma::TransactionStatus::accepted,
-                                      this->device_id(),
-                                      "bite");
+      this->state().meta().update_transaction(this->transaction_id(),
+                                              plasma::TransactionStatus::accepted,
+                                              this->state().device_id(),
+                                              "bite");
     }
 
     void
     ReceiveMachine::_reject()
     {
-      this->meta().update_transaction(this->transaction_id(),
-                                      plasma::TransactionStatus::rejected);
+      this->state().meta().update_transaction(this->transaction_id(),
+                                              plasma::TransactionStatus::rejected);
     }
 
     void
