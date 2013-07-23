@@ -1,30 +1,28 @@
-#include "Client.hh"
+#include <fcntl.h>
+#include <fstream>
+#include <iostream>
 
-#include <plasma/plasma.hh>
-
-#include <elle/assert.hh>
-#include <elle/log.hh>
-#include <elle/print.hh>
-#include <elle/finally.hh>
-#include <elle/serialize/JSONArchive.hh>
-#include <elle/serialize/extract.hh>
-#include <elle/format/json/Dictionary.hxx>
-#include <elle/format/json/Parser.hh>
-#include <elle/serialize/ListSerializer.hxx>
-#include <elle/serialize/Serializer.hh>
-#include <elle/serialize/NamedValue.hh>
-
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read_until.hpp>
 #include <boost/asio/streambuf.hpp>
-#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/write.hpp>
-#include <boost/asio/deadline_timer.hpp>
 
-#include <iostream>
-#include <fstream>
+#include <elle/assert.hh>
+#include <elle/finally.hh>
+#include <elle/format/json/Dictionary.hh>
+#include <elle/format/json/Parser.hh>
+#include <elle/log.hh>
+#include <elle/print.hh>
+#include <elle/serialize/JSONArchive.hh>
+#include <elle/serialize/ListSerializer.hxx>
+#include <elle/serialize/NamedValue.hh>
+#include <elle/serialize/Serializer.hh>
+#include <elle/serialize/extract.hh>
 
-#include <fcntl.h>
+#include <plasma/plasma.hh>
+#include <plasma/trophonius/Client.hh>
 
 ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 
