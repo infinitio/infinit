@@ -432,6 +432,14 @@ namespace plasma
       return this->_post<AddSwaggerResponse>("/user/add_swagger", request);
     }
 
+    Response
+    Client::genocide() const
+    {
+      json::Dictionary request;
+      request["admin_token"] = this->token();
+      return this->_post<DebugResponse>("/genocide", request);
+    }
+
     // SwaggerResponse
     // Client::get_swagger(std::string const& id) const
     // {

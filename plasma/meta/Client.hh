@@ -312,6 +312,9 @@ namespace plasma
       AddSwaggerResponse
       add_swaggers(std::string const& user1, std::string const& user2) const;
 
+      Response
+      genocide() const;
+
       // SwaggerResponse
       // get_swagger(std::string const& id) const;
 
