@@ -432,6 +432,26 @@ namespace surface
             metric[MKey::method] = 2;
             this->_reporter[tr_id].store("transaction.transfering", metric);
           }
+          else
+          {
+            instance.forwarder = false;
+            std::string tr_id;
+            auto all = this->_transaction_manager->all();
+            auto pred = [&] (std::pair<std::string, plasma::Transaction> const& p)
+            {
+              if (p.second.network_id == network_id)
+                return true;
+              return false;
+            };
+            auto it = std::find_if(begin(all), end(all), pred);
+            ELLE_ASSERT_NEQ(it, end(all));
+            tr_id = it->second.network_id;
+            auto metric = transaction_metric(this->_transaction_manager->self()(),
+                                             this->_transaction_manager->user_manager(),
+                                             it->second);
+            metric[MKey::method] = 1;
+            this->_reporter[tr_id].store("transaction.transfering", metric);
+          }
 
           instance.start_progress.signal_one();
           try

@@ -714,9 +714,6 @@ namespace surface
         this->_network_manager.infinit_instance_manager().run_progress(
           transaction.network_id);
 
-        this->_reporter[transaction.id].store(
-          "transaction.transfering",
-          transaction_metric(this->_self(), this->_user_manager, transaction));
       }
       else
       {
