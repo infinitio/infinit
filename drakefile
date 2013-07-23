@@ -1304,7 +1304,15 @@ def configure(cxx_toolkit = None,
              ]:
     test = drake.node('tests/functional/%s' % test)
     tests << test
-    runner = drake.Runner(test)
+    pythonpath = [
+      drake.path_src('tests/functional/lib'),
+      drake.path_build('lib/python'),
+    ]
+    env = {
+      'PYTHONPATH': ':'.join(map(str, pythonpath)),
+      'PATH': os.environ['PATH']
+    }
+    runner = drake.Runner(test, env = env)
     runner.reporting = drake.Runner.Reporting.on_failure
     check_functional << runner.status
   check << check_functional
