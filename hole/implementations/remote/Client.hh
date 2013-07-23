@@ -26,7 +26,7 @@ namespace hole
       | Construction |
       `-------------*/
       public:
-        Client(elle::Passport const& passport, std::string const& host, int port);
+        Client(papier::Passport const& passport, std::string const& host, int port);
         ~Client();
 
       /*----.

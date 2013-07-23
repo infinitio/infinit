@@ -7,19 +7,18 @@
 #include <cryptography/Code.hh>
 #include <cryptography/SecretKey.hh>
 
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
 
-#include <lune/Identity.hh>
-#include <lune/Lune.hh>
+#include <papier/Identity.hh>
 
 #include <common/common.hh>
 
 namespace path = elle::os::path;
 
-namespace lune
+namespace papier
 {
 
-  ELLE_LOG_COMPONENT("infinit.lune.Identity");
+  ELLE_LOG_COMPONENT("infinit.papier.Identity");
 
 //
 // ---------- constructors & destructors --------------------------------------
@@ -139,7 +138,7 @@ namespace lune
   /// this method seals the identity with the authority.
   ///
   elle::Status
-  Identity::Seal(elle::Authority const& authority)
+  Identity::Seal(papier::Authority const& authority)
   {
     // check the code.
     if (this->code == nullptr)
@@ -159,7 +158,7 @@ namespace lune
   /// this method verifies the validity of the identity.
   ///
   elle::Status
-  Identity::Validate(elle::Authority const& authority)
+  Identity::Validate(papier::Authority const& authority)
     const
   {
     // check the code.

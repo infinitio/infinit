@@ -1,7 +1,7 @@
 #ifndef HOLE_IMPLEMENTATIONS_SLUG_HOST_HXX
 # define HOLE_IMPLEMENTATIONS_SLUG_HOST_HXX
 
-# include <hole/Passport.hh>
+# include <papier/Passport.hh>
 
 namespace hole
 {
@@ -9,16 +9,16 @@ namespace hole
   {
     namespace slug
     {
-      elle::Passport*
+      papier::Passport*
       Host::remote_passport() const
       {
         return this->_remote_passport.get();
       }
 
       void
-      Host::remote_passport(elle::Passport const& p)
+      Host::remote_passport(papier::Passport const& p)
       {
-        this->_remote_passport.reset(new elle::Passport{p});
+        this->_remote_passport.reset(new papier::Passport{p});
       }
 
       void

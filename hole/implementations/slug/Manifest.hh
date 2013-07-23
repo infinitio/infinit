@@ -5,6 +5,8 @@
 # include <elle/serialize/BinaryArchive.hh>
 # include <elle/fwd.hh>
 
+# include <papier/Passport.hh>
+
 # include <nucleus/fwd.hh>
 
 # include <protocol/RPC.hh>
@@ -20,7 +22,7 @@ namespace hole
                                       elle::serialize::OutputBinaryArchive>
       {
         RemoteProcedure<std::vector<elle::network::Locus>,
-                        elle::Passport const&> authenticate;
+                        papier::Passport const&> authenticate;
         RemoteProcedure<void, nucleus::proton::Address const&,
                         nucleus::Derivable&> push;
         RemoteProcedure<nucleus::Derivable,

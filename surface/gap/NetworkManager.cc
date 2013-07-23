@@ -9,13 +9,14 @@
 
 #include <common/common.hh>
 
-#include <hole/Passport.hh>
+#include <papier/Passport.hh>
+
 #include <hole/implementations/slug/Manifest.hh>
 #include <hole/storage/Directory.hh>
 
 // This should be outside.
-#include <lune/Descriptor.hh>
-#include <lune/Identity.hh>
+#include <papier/Descriptor.hh>
+#include <papier/Identity.hh>
 #include <lune/Lune.hh>
 #include <lune/Phrase.hh>
 #include <lune/Set.hh>
@@ -75,7 +76,7 @@ namespace
     nucleus::proton::Network network(id);
 
     //- identity ---------------------------------------------------------------
-    lune::Identity        identity;
+    papier::Identity        identity;
     if (identity.Restore(identity_) == e)
       throw elle::Exception("Couldn't restore the identity.");
 
@@ -305,7 +306,7 @@ namespace surface
 
         ELLE_DEBUG("Create lune descriptor of %s", network_id);
 
-        lune::Descriptor descriptor{
+        papier::Descriptor descriptor{
           from_string<InputBase64Archive>(network.descriptor)
         };
         ELLE_DEBUG("Lune descriptor created");
@@ -326,7 +327,7 @@ namespace surface
         //  static_assert(false, "migrate the descriptor here & send to meta");
         //}
 
-        lune::Identity identity;
+        papier::Identity identity;
         identity.Restore(this->_meta.identity());
 
         ELLE_DEBUG("Storing the descriptor of %s for user %s",
@@ -707,7 +708,7 @@ namespace surface
       this->prepare(network_id);
 
       // XXX: do not restore the identity every time.
-      lune::Identity identity;
+      papier::Identity identity;
       if (identity.Restore(this->_meta.identity()) == elle::Status::Error)
         throw elle::Exception("Couldn't restore the identity.");
 

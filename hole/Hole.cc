@@ -21,8 +21,8 @@ namespace hole
   `-------------*/
 
   Hole::Hole(storage::Storage& storage,
-             elle::Passport const& passport,
-             elle::Authority const& authority):
+             papier::Passport const& passport,
+             papier::Authority const& authority):
     _storage(storage),
     _passport(passport),
     _authority(authority)

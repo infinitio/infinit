@@ -13,7 +13,7 @@
 #  error "unsupported platform"
 # endif
 
-# include <horizon/Policy.hh>
+# include <papier/Policy.hh>
 
 namespace horizon
 {

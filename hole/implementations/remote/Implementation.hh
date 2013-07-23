@@ -24,8 +24,8 @@ namespace hole
       `-------------*/
       public:
         Implementation(hole::storage::Storage& storage,
-                       elle::Passport const& passport,
-                       elle::Authority const& authority,
+                       papier::Passport const& passport,
+                       papier::Authority const& authority,
                        elle::network::Locus const& server);
         ~Implementation();
         ELLE_ATTRIBUTE_R(elle::network::Locus, server_locus);

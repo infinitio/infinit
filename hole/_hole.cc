@@ -97,7 +97,7 @@ namespace hole
 
     elle::io::Path passport_path(lune::Lune::Passport);
     passport_path.Complete(elle::io::Piece{"%USER%", Infinit::User});
-    elle::Passport passport;
+    papier::Passport passport;
     passport.load(passport_path);
 
     std::unique_ptr<hole::Hole> hole(

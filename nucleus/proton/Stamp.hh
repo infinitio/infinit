@@ -8,7 +8,7 @@
 # include <cryptography/fwd.hh>
 # include <cryptography/Signature.hh>
 
-# include <hole/Authority.hh>
+# include <papier/Authority.hh>
 
 # include <nucleus/proton/Location.hh>
 
@@ -55,7 +55,7 @@ namespace nucleus
 
       elle::Status      Seal(cryptography::PrivateKey const&);
       elle::Status
-      Validate(elle::Authority const& authority);
+      Validate(papier::Authority const& authority);
 
       //
       // operators

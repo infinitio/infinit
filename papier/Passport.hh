@@ -1,5 +1,5 @@
-#ifndef ELLE_PASSPORT_HH
-# define ELLE_PASSPORT_HH
+#ifndef PAPIER_PASSPORT_HH
+# define PAPIER_PASSPORT_HH
 
 # include <elle/attribute.hh>
 # include <elle/Printable.hh>
@@ -9,12 +9,12 @@
 
 # include <cryptography/Signature.hh>
 
-# include <hole/Authority.hh>
+# include <papier/Authority.hh>
 
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-namespace elle
+namespace papier
 {
   ///
   /// this class uniquely identify a device through a label which is
@@ -46,12 +46,12 @@ namespace elle
     Passport(elle::String const& id,
              elle::String const& name,
              cryptography::PublicKey const& owner_K,
-             elle::Authority const& authority);
+             papier::Authority const& authority);
 
   public:
     /// Check the passport signature.
     bool
-    validate(elle::Authority const&) const;
+    validate(papier::Authority const&) const;
 
     /// Dump the passport.
     void
@@ -70,6 +70,6 @@ namespace elle
   };
 }
 
-# include <hole/Passport.hxx>
+# include <papier/Passport.hxx>
 
 #endif

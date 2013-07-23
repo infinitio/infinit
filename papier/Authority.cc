@@ -8,12 +8,12 @@
 #include <cryptography/Code.hh>
 #include <cryptography/SecretKey.hh>
 
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
 #include <hole/Exception.hh>
 
-ELLE_LOG_COMPONENT("infinit.lune.Authority")
+ELLE_LOG_COMPONENT("infinit.papier.Authority")
 
-namespace elle
+namespace papier
 {
   /*-------------.
   | Construction |
@@ -49,8 +49,8 @@ namespace elle
     _k(nullptr),
     _code(nullptr)
   {
-    if (!elle::Authority::exists(path))
-      throw Exception
+    if (!papier::Authority::exists(path))
+      throw elle::Exception
         (elle::sprintf("unable to locate the authority file %s", path));
     this->load(path);
   }
@@ -154,5 +154,32 @@ namespace elle
   {
     ELLE_ASSERT_NEQ(this->_code, nullptr);
     return *this->_code;
+  }
+
+  /*-----------------.
+  | Global authority |
+  `-----------------*/
+
+  /// The Infinit authority public key which can be used to verify the
+  /// authenticity of the various certificates populating the Infinit system.
+  std::string const key("AAAAAAAAAAAAAgAAwvtjO51oHrOMK/K33ajUm4lnYKWW5dUtyK5Pih7gDrtlpEPy7QWAiYjY8Kinlctca2owzcPXrvFE34gxQE/xz11KLzw4ypn4/ABdzjaTgGoCNLJ2OX99IPk6sEjIHwFxR9YcewD6uED2FQgv4OfOROHaL8hmHzRc0/BxjKwtI6fT7Y/e1v2LMig6r30abqcLrZN+v+3rPHN4hb8n1Jz7kRxRbtglFPLDpvI5LUKEGmu3FPKWWZiJsyFuuLUoC9WsheDDZoHYjyrzMD0k7Sp5YVGBBDthZc6SQDp1ktPSTou1Opk+1IxHp/we1/HNhULvGvr6B1KYZJhb/R55H0k6GcaRQmNEKgiLcF6Z9lA5asK49CC/tlZjKRkXkLBKR9zGIODsweY+O9y3AeGX+Pfk9itPals2egsxc/q2mbRaC9svY2TXMwiSO4EPiedqvpuTKj1KTcRbQrp5mSxG1nzaCGyCmUeGzoBJZLNVJHpytAfwf0oYWfo9NOD9dkKkkL5jxfW3+MOwEx4i0tP3xdKmt6wC6CSXedFVm55oOcz2YgARG3hw0vBdLtl3jxfbXAFjCNnpkMrCEMfjzs5ecFVwhmM8OEPqHpyYJYO/9ipwXAKRPugFzMvoyggSA6G5JfVEwuCgOp2v82ldsKl0sC34/mBeKrJvjaZAXm39f6jTw/sAAAMAAAABAAE=");
+
+  static
+  papier::Authority
+  _authority()
+  {
+    cryptography::PublicKey K;
+
+    assert(!key.empty());
+    if (K.Restore(key) == elle::Status::Error)
+      throw elle::Exception("unable to restore the authority's public key");
+    return papier::Authority(K);
+  }
+
+  papier::Authority
+  authority()
+  {
+    static papier::Authority authority(_authority());
+    return authority;
   }
 }

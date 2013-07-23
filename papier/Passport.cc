@@ -3,12 +3,11 @@
 
 #include <cryptography/PrivateKey.hh>
 
-#include <hole/Passport.hh>
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
+#include <papier/Passport.hh>
 
-namespace elle
+namespace papier
 {
-
   /*-------------.
   | Construction |
   `-------------*/
@@ -18,7 +17,7 @@ namespace elle
   Passport::Passport(elle::String const& id,
                      elle::String const& name,
                      cryptography::PublicKey const& owner_K,
-                     elle::Authority const& authority)
+                     papier::Authority const& authority)
     : _id{id}
     , _name{name}
     , _owner_K{owner_K}
@@ -34,7 +33,7 @@ namespace elle
   /// this method verifies the validity of the passport.
   ///
   bool
-  Passport::validate(elle::Authority const& authority) const
+  Passport::validate(papier::Authority const& authority) const
   {
     return (authority.K().verify(this->_signature,
                                  elle::serialize::make_tuple(_id, _owner_K)));

@@ -12,7 +12,7 @@ using namespace infinit;
 
 #include <lune/Lune.hh>
 #include <lune/Dictionary.hh>
-#include <lune/Identity.hh>
+#include <papier/Identity.hh>
 #include <lune/Map.hh>
 
 #include <nucleus/proton/Address.hh>
@@ -39,10 +39,10 @@ namespace satellite
     // check the arguments.
     //
     {
-      lune::Identity    identity;
+      papier::Identity    identity;
 
       // does the user identity exist.
-      if (lune::Identity::exists(user) == false)
+      if (papier::Identity::exists(user) == false)
         throw elle::Exception("this user does not seem to exist");
     }
 
@@ -112,10 +112,10 @@ namespace satellite
     // check the arguments.
     //
     {
-      lune::Identity    identity;
+      papier::Identity    identity;
 
       // does the user identity exist.
-      if (lune::Identity::exists(user) == false)
+      if (papier::Identity::exists(user) == false)
         throw elle::Exception("this user does not seem to exist");
     }
 
@@ -172,10 +172,10 @@ namespace satellite
     // check the arguments.
     //
     {
-      lune::Identity    identity;
+      papier::Identity    identity;
 
       // does the user identity exist.
-      if (lune::Identity::exists(user) == false)
+      if (papier::Identity::exists(user) == false)
         throw elle::Exception("this user does not seem to exist");
     }
 
@@ -250,10 +250,10 @@ namespace satellite
     // check the arguments.
     //
     {
-      lune::Identity    identity;
+      papier::Identity    identity;
 
       // does the user identity exist.
-      if (lune::Identity::exists(user) == false)
+      if (papier::Identity::exists(user) == false)
         throw elle::Exception("this user does not seem to exist");
     }
 

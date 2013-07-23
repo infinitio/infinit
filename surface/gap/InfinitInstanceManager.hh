@@ -21,8 +21,8 @@
 # include <hole/Hole.hh>
 # include <hole/implementations/slug/Slug.hh>
 # include <hole/storage/Directory.hh>
-# include <lune/Identity.hh>
-# include <lune/Descriptor.hh>
+# include <papier/Identity.hh>
+# include <papier/Descriptor.hh>
 # include <nucleus/neutron/Object.hh>
 # include <nucleus/proton/Network.hh>
 # include <surface/gap/Exception.hh>
@@ -46,9 +46,9 @@ namespace surface
       std::string network_id;
       std::string mount_point;
       nucleus::proton::Network network;
-      lune::Identity identity;
-      elle::Passport passport;
-      lune::Descriptor descriptor;
+      papier::Identity identity;
+      papier::Passport passport;
+      papier::Descriptor descriptor;
       hole::storage::Directory storage;
       std::unique_ptr<hole::implementations::slug::Slug> hole;
       std::unique_ptr<etoile::Etoile> etoile;
@@ -67,7 +67,7 @@ namespace surface
                       uint16_t meta_port,
                       std::string const& token,
                       std::string const& network_id,
-                      lune::Identity const& identity,
+                      papier::Identity const& identity,
                       std::string const& descriptor); //XXX: Should be movable.
     };
 
@@ -106,11 +106,11 @@ namespace surface
       void
       clear();
 
-      // Change descriptor_digest that to lune::Descriptor&& as soon as
-      // lune::Descriptor is movable.
+      // Change descriptor_digest that to papier::Descriptor&& as soon as
+      // papier::Descriptor is movable.
       void
       launch(std::string const& network_id,
-             lune::Identity const& identity,
+             papier::Identity const& identity,
              std::string const& descriptor_digest);
 
       bool

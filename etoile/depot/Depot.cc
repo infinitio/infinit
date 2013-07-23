@@ -1,6 +1,6 @@
 #include <etoile/depot/Depot.hh>
 
-#include <lune/Descriptor.hh>
+#include <papier/Descriptor.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>

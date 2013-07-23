@@ -1,5 +1,5 @@
-#ifndef LUNE_DESCRIPTOR_HXX
-# define LUNE_DESCRIPTOR_HXX
+#ifndef PAPIER_DESCRIPTOR_HXX
+# define PAPIER_DESCRIPTOR_HXX
 
 # include <elle/serialize/Pointer.hh>
 
@@ -9,7 +9,7 @@
 
 # include <hole/Model.hh>
 
-ELLE_SERIALIZE_SIMPLE(lune::Descriptor,
+ELLE_SERIALIZE_SIMPLE(papier::Descriptor,
                       archive,
                       value,
                       version)
@@ -78,7 +78,7 @@ upgrade<2>(val);
     }
 }
 
-ELLE_SERIALIZE_UPGRADE_FORMAT(lune::Descriptor, value, 1, var)
+ELLE_SERIALIZE_UPGRADE_FORMAT(papier::Descriptor, value, 1, var)
 {
 
 }

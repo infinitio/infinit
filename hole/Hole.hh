@@ -7,9 +7,9 @@
 # include <elle/Printable.hh>
 # include <elle/types.hh>
 
-# include <nucleus/proton/fwd.hh>
+# include <papier/Passport.hh>
 
-# include <hole/Passport.hh>
+# include <nucleus/proton/fwd.hh>
 
 # include <hole/fwd.hh>
 # include <hole/storage/Storage.hh>
@@ -25,8 +25,8 @@ namespace hole
   `-------------*/
   public:
     Hole(storage::Storage& storage,
-         elle::Passport const& passport,
-         elle::Authority const& authority);
+         papier::Passport const& passport,
+         papier::Authority const& authority);
     virtual
     ~Hole();
 
@@ -81,8 +81,8 @@ namespace hole
   | Attributes |
   `-----------*/
   private:
-    ELLE_ATTRIBUTE_R(elle::Passport, passport);
-    ELLE_ATTRIBUTE_R(elle::Authority, authority);
+    ELLE_ATTRIBUTE_R(papier::Passport, passport);
+    ELLE_ATTRIBUTE_R(papier::Authority, authority);
   };
 }
 

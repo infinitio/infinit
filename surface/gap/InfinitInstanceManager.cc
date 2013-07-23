@@ -50,7 +50,7 @@ namespace surface
                                      uint16_t meta_port,
                                      std::string const& token,
                                      std::string const& network_id,
-                                     lune::Identity const& identity,
+                                     papier::Identity const& identity,
                                      std::string const& descriptor):
       network_id(network_id),
       mount_point(),
@@ -100,7 +100,7 @@ namespace surface
           this->hole.reset(new hole::implementations::slug::Slug(
                              storage,
                              passport,
-                             Infinit::authority(),
+                             papier::authority(),
                              reactor::network::Protocol::tcp));
 
           ELLE_TRACE_SCOPE("publish breached addresses to meta(%s,%s)",
@@ -196,7 +196,7 @@ namespace surface
 
     void
     InfinitInstanceManager::launch(std::string const& network_id,
-                                   lune::Identity const& identity,
+                                   papier::Identity const& identity,
                                    std::string const& descriptor_digest)
     {
       ELLE_TRACE_SCOPE("%s: launch network %s", *this, network_id);
