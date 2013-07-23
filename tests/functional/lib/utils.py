@@ -58,14 +58,14 @@ class Servers:
         kwargs = {}
         if self.__apertus:
             kwargs = {
-                'apertus_host': self.apertus.host,
+                'apertus_host': 'localhost',
                 'apertus_port': self.apertus.port,
             }
         self.meta = meta.Meta(
             trophonius_control_port = port,
             mongo_host = 'localhost',
             mongo_port = self.mongo.port,
-            *kwargs)
+            **kwargs)
         self.meta.__enter__()
         self.tropho = trophonius.Trophonius(
             meta_port = self.meta.meta_port,

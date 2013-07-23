@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.2
 # -*- encoding: utf-8 -*-
 
 import os, sys, time
