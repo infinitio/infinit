@@ -35,6 +35,10 @@ class Meta:
         self.instance = None
         self.__directory = tempfile.TemporaryDirectory()
         self.__port_file = None
+        self.stdout = None
+        self.stderr = None
+        self.__stdout = tempfile.NamedTemporaryFile()
+        self.__stderr = tempfile.NamedTemporaryFile()
 
     def __parse_line(self, line = None, item = None):
         if line.startswith(item + ':'):
@@ -69,6 +73,8 @@ class Meta:
         command.append(os.path.join(root_dir, '..', '..', '..',
                                     'bin', 'meta-server'))
         self.__directory.__enter__()
+        self.__stdout.__enter__()
+        self.__stderr.__enter__()
         self.__port_file = '%s/port' % self.__directory.name
         command.append('--port-file')
         command.append(self.__port_file)
@@ -87,8 +93,8 @@ class Meta:
           command.append('--spawn-db')
         self.instance = subprocess.Popen(
             command,
-            stdout = subprocess.PIPE,
-            stderr = subprocess.PIPE,
+            stdout = self.__stdout,
+            stderr = self.__stderr,
         )
         self.__read_port_file()
         self.url = 'http://%s:%s' % (self.meta_host, self.meta_port)
@@ -98,12 +104,12 @@ class Meta:
         assert self.instance is not None
         import signal
         self.instance.send_signal(signal.SIGINT)
+        self.__stderr.flush()
+        with open(self.__stderr.name, 'rb') as f:
+            self.stderr = f.read().decode('utf-8')
+        self.__stderr.__exit__(*args)
+        self.__stdout.flush()
+        with open(self.__stdout.name, 'rb') as f:
+            self.stdout = f.read().decode('utf-8')
+        self.__stdout.__exit__(*args)
         self.__directory.__exit__(*args)
-
-    @property
-    def stdout(self):
-      return self.instance.stdout.read().decode('utf-8')
-
-    @property
-    def stderr(self):
-      return self.instance.stderr.read().decode('utf-8')
