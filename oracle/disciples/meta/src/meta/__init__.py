@@ -80,7 +80,7 @@ class Meta:
         self.instance = subprocess.Popen(
             command,
             stdout = subprocess.PIPE,
-            stderr = subprocess.STDOUT,
+            stderr = subprocess.PIPE,
         )
         self.__read_port_file()
         self.url = 'http://%s:%s' % (self.meta_host, self.meta_port)
