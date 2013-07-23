@@ -22,15 +22,17 @@ class Meta:
     def __init__(self,
                  meta_host = '0.0.0.0',
                  meta_port = 0,
+                 mongo_host = None,
+                 mongo_port = None,
                  trophonius_control_port = None,
                  apertus_host = None,
-                 apertus_port = None,
-                 spawn_db = False):
+                 apertus_port = None):
         self.meta_host = meta_host
         self.meta_port = meta_port
+        self.__mongo_host = mongo_host
+        self.__mongo_port = mongo_port
         self.apertus_host = apertus_host
         self.apertus_port = apertus_port
-        self.spawn_db = spawn_db
         self.trophonius_control_port = trophonius_control_port
         self.instance = None
         self.__directory = tempfile.TemporaryDirectory()
@@ -48,8 +50,11 @@ class Meta:
         while True:
             self.instance.poll()
             if self.instance.returncode is not None:
-                raise Exception("meta terminated with status: {}".format(
-                        self.instance.returncode))
+                self.__stderr.flush()
+                with open(self.__stderr.name, 'rb') as f:
+                    output = f.read().decode('utf-8')
+                raise Exception("meta terminated with status %s: %s" %
+                                (self.instance.returncode, output))
             try:
                 with open(os.path.abspath(self.__port_file), 'r') as f:
                     content = f.readlines()
@@ -82,6 +87,12 @@ class Meta:
         command.append(self.meta_host)
         command.append('--meta-port')
         command.append(str(self.meta_port))
+        if self.__mongo_host is not None:
+            command.append('--mongo-host')
+            command.append(self.__mongo_host)
+        if self.__mongo_port is not None:
+            command.append('--mongo-port')
+            command.append(str(self.__mongo_port))
         if self.apertus_host is not None:
             command.append('--apertus-host')
             command.append(str(self.apertus_host))
@@ -91,8 +102,6 @@ class Meta:
         if self.trophonius_control_port is not None:
             command.append('--trophonius-control-port')
             command.append(str(self.trophonius_control_port))
-        if self.spawn_db:
-          command.append('--spawn-db')
         self.instance = subprocess.Popen(
             command,
             stdout = self.__stdout,

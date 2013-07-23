@@ -12,10 +12,8 @@ import sys
 import argparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python/meta/mongobox"))
 
 import meta.conf
-import mongobox
 
 parser = argparse.ArgumentParser(description="Meta server")
 
@@ -31,11 +29,13 @@ parser.add_argument(
 
 parser.add_argument(
     '--mongo-host',
+    help = 'The MongoDB host to connect to',
     default = meta.conf.MONGO_HOST,
 )
 
 parser.add_argument(
     '--mongo-port',
+    help = 'The MongoDB port to connect to',
     type = int,
     default = meta.conf.MONGO_PORT,
 )
@@ -57,13 +57,6 @@ parser.add_argument(
     type = int,
     default = meta.conf.APERTUS_PORT
 )
-# if testing, need to spawn DB to path that can be accessed
-parser.add_argument(
-    '--spawn-db',
-    help = 'Enabling this will ignore your MongoDB parameters.',
-    action = 'store_true',
-    default = False,
-)
 
 parser.add_argument(
     '--port-file',
@@ -81,30 +74,16 @@ from meta.application import Application
 if __name__ == '__main__':
     args = parser.parse_args()
     try:
-        if args.spawn_db == True:
-            with mongobox.MongoBox() as mongo:
-                app = Application(meta_host=args.meta_host,
-                                  meta_port=args.meta_port,
-                                  mongo_host="localhost",
-                                  mongo_port=mongo.port,
-                                  apertus_host=args.apertus_host,
-                                  apertus_port=args.apertus_port,
-                                  tropho_control_port=args.trophonius_control_port,
-                                  port_file=args.port_file,
-                                  fcgi=args.fcgi,
-                )
-                app.run()
-        else:
-            app = Application(meta_host=args.meta_host,
-                              meta_port=args.meta_port,
-                              mongo_host=args.mongo_host,
-                              mongo_port=args.mongo_port,
-                              apertus_host=args.apertus_host,
-                              apertus_port=args.apertus_port,
-                              tropho_control_port=args.trophonius_control_port,
-                              port_file=args.port_file,
-                              fcgi=args.fcgi,
-            )
-            app.run()
+        app = Application(meta_host=args.meta_host,
+                          meta_port=args.meta_port,
+                          mongo_host=args.mongo_host,
+                          mongo_port=args.mongo_port,
+                          apertus_host=args.apertus_host,
+                          apertus_port=args.apertus_port,
+                          tropho_control_port=args.trophonius_control_port,
+                          port_file=args.port_file,
+                          fcgi = args.fcgi,
+                      )
+        app.run()
     except KeyboardInterrupt:
         print("Interrupted cleanly")

@@ -7,6 +7,9 @@
 import sys
 import os
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../mongobox'))
+import mongobox
+
 #------------------------------------------------------------------------------
 # Email generation
 #------------------------------------------------------------------------------
@@ -39,15 +42,20 @@ def get_random_port():
 class Servers:
 
     def __init__(self, apertus = True):
+        self.mongo = None
         self.meta = None
         self.tropho = None
         self.__apertus = apertus
         self.apertus = None
 
     def __enter__(self):
+        self.mongo = mongobox.MongoBox()
+        self.mongo.__enter__()
         port = get_random_port()
         if self.__apertus:
-            self.apertus = apertus.Apertus(port = 0)
+            self.apertus = apertus.Apertus(port = 0,
+                                           mongo_host = 'localhost',
+                                           mongo_port = self.mongo.port)
             self.apertus.__enter__()
         kwargs = {}
         if self.__apertus:
@@ -56,8 +64,9 @@ class Servers:
                 'apertus_port': self.apertus.port,
             }
         self.meta = meta.Meta(
-            spawn_db = True,
             trophonius_control_port = port,
+            mongo_host = 'localhost',
+            mongo_port = self.mongo.port,
             *kwargs)
         self.meta.__enter__()
         self.tropho = trophonius.Trophonius(
@@ -70,6 +79,9 @@ class Servers:
     def __exit__(self, exception_type, exception, *args):
         self.tropho.__exit__(exception_type, exception, *args)
         self.meta.__exit__(exception_type, exception, *args)
+        if self.apertus is not None:
+            self.apertus.__exit__(exception_type, exception, *args)
+        self.mongo.__exit__(exception_type, exception, *args)
         if self.apertus is not None:
             self.apertus.__exit__(exception_type, exception, *args)
         if exception is not None:
