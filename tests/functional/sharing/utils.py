@@ -38,14 +38,14 @@ def get_random_port():
 
 class Servers:
 
-    def __init__(self):
+    def __init__(self, apertus = True):
         self.meta = None
         self.tropho = None
+        self.__apertus = apertus
+        self.apertus = None
 
     def __enter__(self):
         port = get_random_port()
-        self.apertus = apertus.Apertus(port=0)
-        self.apertus.__enter__()
         self.meta = meta.Meta(
             spawn_db = True,
             trophonius_control_port = port)
@@ -55,12 +55,16 @@ class Servers:
             control_port = port
             )
         self.tropho.__enter__()
+        if self.__apertus:
+            self.apertus = apertus.Apertus(port = 0)
+            self.apertus.__enter__()
         return self.meta, self.tropho, self.apertus
 
     def __exit__(self, exception_type, exception, *args):
         self.tropho.__exit__(exception_type, exception, *args)
         self.meta.__exit__(exception_type, exception, *args)
-        self.apertus.__exit__(exception_type, exception, *args)
+        if self.apertus is not None:
+            self.apertus.__exit__(exception_type, exception, *args)
         if exception is not None:
             print('======== Trophonius stdout:\n' + self.tropho.stdout,
                   file = sys.stderr)
