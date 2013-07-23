@@ -82,10 +82,12 @@ class Meta:
         command.append(self.meta_host)
         command.append('--meta-port')
         command.append(str(self.meta_port))
-        command.append('--apertus-port')
-        command.append(str(self.apertus_port))
-        command.append('--apertus-host')
-        command.append(str(self.apertus_host))
+        if self.apertus_host is not None:
+            command.append('--apertus-host')
+            command.append(str(self.apertus_host))
+        if self.apertus_port is not None:
+            command.append('--apertus-port')
+            command.append(str(self.apertus_port))
         if self.trophonius_control_port is not None:
             command.append('--trophonius-control-port')
             command.append(str(self.trophonius_control_port))
