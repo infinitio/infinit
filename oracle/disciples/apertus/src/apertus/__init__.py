@@ -74,7 +74,7 @@ class Apertus:
             command.append(self.__mongo_host)
         if self.__mongo_port is not None:
             command.append('--mongo-port')
-            command.append(self.__mongo_port)
+            command.append(str(self.__mongo_port))
         self.instance = subprocess.Popen(
             command,
             stdout = subprocess.PIPE,
