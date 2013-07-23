@@ -1199,9 +1199,22 @@ def configure(cxx_toolkit = None,
         'oracle/disciples/metalib/network.hh',
         'oracle/disciples/metalib/passport.cc',
         'oracle/disciples/metalib/passport.hh',
+        # XXX
+        'common/common.cc',
+        'common/common.hh',
+        'Infinit.cc',
         )
+      metalib_libs = [
+        hole_lib,
+        nucleus_lib,
+        lune_lib,
+        cryptography_lib,
+        protocol_lib,
+        reactor_lib,
+        elle_lib,
+      ]
       metalib_lib = drake.cxx.Module('lib/python/metalib',
-                                     metalib_sources + infinit_libs,
+                                     metalib_sources + metalib_libs,
                                      cxx_toolkit, metalib_config)
 
       oracles << metalib_lib
