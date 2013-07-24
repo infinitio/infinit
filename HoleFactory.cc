@@ -9,14 +9,15 @@
 
 #include <common/common.hh>
 
-#include <lune/Descriptor.hh>
+#include <papier/Descriptor.hh>
 
 #include <hole/implementations/local/Implementation.hh>
 #include <hole/implementations/remote/Implementation.hh>
 #include <hole/implementations/slug/Manifest.hh>
 #include <hole/implementations/slug/Slug.hh>
-#include <hole/Authority.hh>
-#include <hole/Passport.hh>
+
+#include <papier/Authority.hh>
+#include <papier/Passport.hh>
 
 #include <plasma/meta/Client.hh>
 
@@ -35,8 +36,8 @@ namespace infinit
   public:
     typedef hole::implementations::slug::Slug Super;
     PortaledSlug(hole::storage::Storage& storage,
-                 elle::Passport const& passport,
-                 elle::Authority const& authority,
+                 papier::Passport const& passport,
+                 papier::Authority const& authority,
                  reactor::network::Protocol protocol,
                  std::vector<elle::network::Locus> const& members,
                  int port,
@@ -73,10 +74,10 @@ namespace infinit
   };
 
   std::unique_ptr<hole::Hole>
-  hole_factory(lune::Descriptor const& descriptor,
+  hole_factory(papier::Descriptor const& descriptor,
                hole::storage::Storage& storage,
-               elle::Passport const& passport,
-               elle::Authority const& authority,
+               papier::Passport const& passport,
+               papier::Authority const& authority,
                std::vector<elle::network::Locus> const& members,
                std::string const& _meta_host,
                uint16_t _meta_port,

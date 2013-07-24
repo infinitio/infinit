@@ -5,7 +5,8 @@
 
 #include <reactor/network/exception.hh>
 
-#include <hole/Passport.hh>
+#include <papier/Passport.hh>
+
 #include <hole/Exception.hh>
 
 #include <nucleus/Derivable.hh>
@@ -136,7 +137,7 @@ namespace hole
       }
 
       std::vector<elle::network::Locus>
-      Host::authenticate(elle::Passport const& passport)
+      Host::authenticate(papier::Passport const& passport)
       {
         assert(this->state() == State::connected);
         ELLE_TRACE_SCOPE("%s: authenticate with %s", *this, passport);
@@ -148,10 +149,10 @@ namespace hole
       }
 
       std::vector<elle::network::Locus>
-      Host::_authenticate(elle::Passport const& passport)
+      Host::_authenticate(papier::Passport const& passport)
       {
         ELLE_TRACE_SCOPE("%s: peer authenticates with %s", *this, passport);
-        this->_remote_passport.reset(new elle::Passport(passport));
+        this->_remote_passport.reset(new papier::Passport(passport));
         if (this->_slug._host_connected(passport))
         {
           ELLE_TRACE("%s: peer is already connected, reject", *this);
@@ -165,8 +166,8 @@ namespace hole
             break;
           else
             ELLE_TRACE("%s: already negociating with this peer", *this);
-          auto hash = std::hash<elle::Passport>()(this->_slug.passport());
-          auto remote_hash = std::hash<elle::Passport>()
+          auto hash = std::hash<papier::Passport>()(this->_slug.passport());
+          auto remote_hash = std::hash<papier::Passport>()
             (*host->_remote_passport);
           ELLE_ASSERT_NEQ(hash, remote_hash);
           if (hash < remote_hash)

@@ -269,15 +269,9 @@ def configure(cxx_toolkit = None,
   lune_sources = drake.nodes(
     'lune/Configuration.cc',
     'lune/Configuration.hh',
-    'lune/Descriptor.cc',
-    'lune/Descriptor.hh',
-    'lune/Descriptor.hxx',
     'lune/Dictionary.cc',
     'lune/Dictionary.hh',
     'lune/Dictionary.hxx',
-    'lune/Identity.cc',
-    'lune/Identity.hh',
-    'lune/Identity.hxx',
     'lune/Lune.cc',
     'lune/Lune.hh',
     'lune/Map.hh',
@@ -285,8 +279,6 @@ def configure(cxx_toolkit = None,
     'lune/Phrase.cc',
     'lune/Phrase.hh',
     'lune/Phrase.hxx',
-    'lune/Policy.cc',
-    'lune/Policy.hh',
     'lune/Set.cc',
     'lune/Set.hh',
     'lune/Set.hxx',
@@ -559,16 +551,37 @@ def configure(cxx_toolkit = None,
                                  infinit_sources + [reactor_lib, curly_lib],
                                  cxx_toolkit, infinit_cxx_config)
 
+  # Papier
+  papier_sources = drake.nodes(
+    'papier/Authority.cc',
+    'papier/Authority.hh',
+    'papier/Authority.hxx',
+    'papier/Descriptor.cc',
+    'papier/Descriptor.hh',
+    'papier/Descriptor.hxx',
+    'papier/Identity.cc',
+    'papier/Identity.hh',
+    'papier/Identity.hxx',
+    'papier/Passport.cc',
+    'papier/Passport.hh',
+    'papier/Passport.hxx',
+    'hole/Openness.cc',
+    'hole/Openness.hh',
+    'hole/Model.cc',
+    'hole/Model.hh',
+    'horizon/Policy.cc',
+    'horizon/Policy.hh',
+  )
+  papier_cxx_config = drake.cxx.Config(cxx_config)
+  papier_cxx_config.lib_path_runtime('.')
+  papier_lib = drake.cxx.DynLib('lib/papier',
+                                papier_sources + [],
+                                cxx_toolkit, papier_cxx_config)
+
   # Hole
   hole_sources = drake.nodes(
     'hole/Exception.cc',
     'hole/Exception.hh',
-    'hole/Authority.cc',
-    'hole/Authority.hh',
-    'hole/Authority.hxx',
-    'hole/Passport.cc',
-    'hole/Passport.hh',
-    'hole/Passport.hxx',
     'hole/Hole.cc',
     'hole/Hole.hh',
     'hole/Label.cc',
@@ -778,6 +791,8 @@ def configure(cxx_toolkit = None,
       'horizon/Horizon.cc',
       'horizon/Horizon.hh',
       'horizon/operations.hh',
+      'horizon/Policy.cc',
+      'horizon/Policy.hh',
       )
     if cxx_toolkit.os == drake.os.linux:
       horizon_sources += drake.nodes(
@@ -862,6 +877,7 @@ def configure(cxx_toolkit = None,
     agent_lib,
     etoile_lib,
     hole_lib,
+    papier_lib,
     infinit_lib,
     lune_lib,
     nucleus_lib,
@@ -1199,9 +1215,18 @@ def configure(cxx_toolkit = None,
         'oracle/disciples/metalib/network.hh',
         'oracle/disciples/metalib/passport.cc',
         'oracle/disciples/metalib/passport.hh',
+        # XXX
+        'common/common.cc',
+        'common/common.hh',
         )
+      metalib_libs = [
+        nucleus_lib,
+        papier_lib,
+        cryptography_lib,
+        elle_lib,
+      ]
       metalib_lib = drake.cxx.Module('lib/python/metalib',
-                                     metalib_sources + infinit_libs,
+                                     metalib_sources + metalib_libs,
                                      cxx_toolkit, metalib_config)
 
       oracles << metalib_lib
@@ -1264,9 +1289,10 @@ def configure(cxx_toolkit = None,
     check << runner.status
 
   check_functional = drake.Rule('check/functional')
-  for test in ['servers/pingpong-notifications.py',
-               'servers/swaggers.py',
+  for test in ['servers/genocide',
+               'servers/pingpong-notifications.py',
                'servers/online-offline',
+               'servers/swaggers.py',
                'sharing/send-file/send-file.py',
                'sharing/send-file/early-accept.py',
                'sharing/send-file/forwarder.py',

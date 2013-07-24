@@ -38,8 +38,8 @@ namespace hole
       `-------------*/
 
       Slug::Slug(hole::storage::Storage& storage,
-                 elle::Passport const& passport,
-                 elle::Authority const& authority,
+                 papier::Passport const& passport,
+                 papier::Authority const& authority,
                  reactor::network::Protocol protocol,
                  std::vector<elle::network::Locus> const& members,
                  int port,
@@ -1230,13 +1230,13 @@ namespace hole
       }
 
       bool
-      Slug::_host_connected(elle::Passport const& passport)
+      Slug::_host_connected(papier::Passport const& passport)
       {
         return this->_hosts.find(passport) != this->_hosts.end();
       }
 
       std::shared_ptr<Host>
-      Slug::_host_pending(elle::Passport const& passport)
+      Slug::_host_pending(papier::Passport const& passport)
       {
         for (auto h: this->_pending)
           if (h->_remote_passport

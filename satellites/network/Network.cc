@@ -7,7 +7,7 @@
 #include <etoile/nest/Nest.hh>
 #include <etoile/automaton/Access.hh>
 
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
 #include <hole/Hole.hh>
 #include <hole/Openness.hh>
 #include <hole/storage/Directory.hh>
@@ -19,8 +19,8 @@
 #include <elle/utility/Parser.hh>
 
 #include <lune/Lune.hh>
-#include <lune/Descriptor.hh>
-#include <lune/Identity.hh>
+#include <papier/Descriptor.hh>
+#include <papier/Identity.hh>
 
 #include <nucleus/proton/Network.hh>
 #include <nucleus/proton/MutableBlock.hh>
@@ -32,7 +32,7 @@
 #include <nucleus/neutron/Genre.hh>
 #include <nucleus/neutron/Access.hh>
 
-#include <horizon/Policy.hh>
+#include <papier/Policy.hh>
 
 #include <Infinit.hh>
 #include <Program.hh>
@@ -54,14 +54,14 @@ namespace satellite
                                         horizon::Policy const& policy,
                                         const elle::String&     administrator)
   {
-    lune::Identity identity;
+    papier::Identity identity;
 
     //
     // test the arguments.
     //
     {
       // does the network already exist.
-      if (lune::Descriptor::exists(administrator, name) == true)
+      if (papier::Descriptor::exists(administrator, name) == true)
         throw elle::Exception("this network seems to already exist");
 
       // check the model.
@@ -69,12 +69,12 @@ namespace satellite
         throw elle::Exception("please specify the model of the network");
 
       // does the administrator user exist.
-      if (lune::Identity::exists(administrator) == false)
+      if (papier::Identity::exists(administrator) == false)
         throw elle::Exception("the administrator user does not seem to exist");
     }
 
     // Retrieve the authority.
-    elle::Authority authority(elle::io::Path{lune::Lune::Authority});
+    papier::Authority authority(elle::io::Path{lune::Lune::Authority});
     {
       elle::String              prompt;
       elle::String              pass;
@@ -252,7 +252,7 @@ namespace satellite
     // create the network's descriptor.
     //
     {
-      lune::Descriptor    descriptor(identifier,
+      papier::Descriptor    descriptor(identifier,
                                      identity.pair().K(),
                                      model,
                                      directory_address,
@@ -260,8 +260,8 @@ namespace satellite
                                      name,
                                      openness,
                                      policy,
-                                     lune::Descriptor::History,
-                                     lune::Descriptor::Extent,
+                                     papier::Descriptor::History,
+                                     papier::Descriptor::Extent,
                                      Infinit::version,
                                      authority);
 
@@ -286,8 +286,8 @@ namespace satellite
       elle::io::Path        path;
 
       // does the network exist.
-      if (lune::Descriptor::exists(administrator, name) == true)
-        lune::Descriptor::erase(administrator, name);
+      if (papier::Descriptor::exists(administrator, name) == true)
+        papier::Descriptor::erase(administrator, name);
     }
 
     //
@@ -360,11 +360,11 @@ namespace satellite
     //
     {
       // does the network exist.
-      if (lune::Descriptor::exists(administrator, name) == false)
+      if (papier::Descriptor::exists(administrator, name) == false)
         throw elle::Exception("this network does not seem to exist");
     }
 
-    lune::Descriptor descriptor(administrator, name);
+    papier::Descriptor descriptor(administrator, name);
 
     // validate the descriptor.
     descriptor.validate(Infinit::authority());

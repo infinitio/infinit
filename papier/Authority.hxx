@@ -6,7 +6,7 @@
 
 # include <elle/serialize/Pointer.hh>
 
-ELLE_SERIALIZE_SIMPLE(elle::Authority,
+ELLE_SERIALIZE_SIMPLE(papier::Authority,
                       archive,
                       value,
                       version)

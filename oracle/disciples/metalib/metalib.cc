@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-#include <lune/Lune.hh>
-
 #include "identity.hh"
 #include "passport.hh"
 #include "network.hh"
@@ -91,23 +89,11 @@ PyMODINIT_FUNC initmetalib(void);
 
 PyMODINIT_FUNC initmetalib(void)
 {
-  fprintf(stderr, "init module\n");
-
-  fprintf(stderr, "elle initialized\n");
-  if (lune::Lune::Initialize() == elle::Status::Error)
-    {
-      std::cerr << "Cannot initialize lune\n";
-      return;
-    }
-  fprintf(stderr, "lune initialized\n");
-
   PyObject* module = Py_InitModule3(
       METALIB_MOD_NAME,
       _metalib_methods,
       _metalib_doc
   );
-
-  fprintf(stderr, "python module initialized\n");
   char error_name[] = "metalib.MetaError";
 
   metalib_MetaError = PyErr_NewException(error_name, nullptr, nullptr);

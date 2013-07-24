@@ -39,8 +39,8 @@ namespace hole
       public:
         typedef std::vector<elle::network::Locus> Members;
         Slug(hole::storage::Storage& storage,
-             elle::Passport const& passport,
-             elle::Authority const& authority,
+             papier::Passport const& passport,
+             papier::Authority const& authority,
              reactor::network::Protocol protocol,
              Members const& members = Members(),
              int port = 0,
@@ -101,7 +101,7 @@ namespace hole
         std::vector<elle::network::Locus> loci();
       private:
         friend class Host;
-        typedef std::unordered_map<elle::Passport,
+        typedef std::unordered_map<papier::Passport,
                                    std::shared_ptr<Host>> Hosts;
         void
         _host_register(std::shared_ptr<Host> host);
@@ -116,9 +116,9 @@ namespace hole
         _remove(Host* host);
 
         bool
-        _host_connected(elle::Passport const& passport);
+        _host_connected(papier::Passport const& passport);
         std::shared_ptr<Host>
-        _host_pending(elle::Passport const& passport);
+        _host_pending(papier::Passport const& passport);
         bool
         _host_wait(std::shared_ptr<Host> host);
 

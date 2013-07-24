@@ -36,6 +36,15 @@ class Root(Page):
 #             return self.error(error.UNKNOWN, "Notifier is not ready.")
 #         return self.success({})
 
+class Status(Page):
+    """
+    Page to check server status.
+    """
+    __pattern__ = "/status"
+    def GET(self):
+        return self.success({"status" : "ok"})
+
+
 # XXX : Remove that cheat
 class ScratchDB(Page):
     """

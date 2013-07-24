@@ -7,8 +7,8 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <lune/Identity.hh>
-#include <hole/Authority.hh>
+#include <papier/Identity.hh>
+#include <papier/Authority.hh>
 
 // XXX When Qt is out, remove this
 #ifdef slots
@@ -26,7 +26,7 @@ using namespace infinit;
 /// this method creates a new user by generating a new key pair and
 /// storing a user block.
 ///
-static lune::Identity create_identity(elle::String const& id,
+static papier::Identity create_identity(elle::String const& id,
                                       elle::String const& authority_file,
                                       elle::String const& authority_password,
                                       elle::String const& login,
@@ -34,9 +34,9 @@ static lune::Identity create_identity(elle::String const& id,
 {
   cryptography::KeyPair pair =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    lune::Identity::keypair_length);
+                                    papier::Identity::keypair_length);
   elle::io::Path                    authority_path;
-  lune::Identity                    identity;
+  papier::Identity                    identity;
 
   // check the argument.
   if (login.empty() == true)
@@ -46,7 +46,7 @@ static lune::Identity create_identity(elle::String const& id,
     throw std::runtime_error("unable to create authority path");
 
   // Load the authority file.
-  elle::Authority authority(authority_path);
+  papier::Authority authority(authority_path);
 
   // decrypt the authority.
   if (authority.Decrypt(authority_password) == elle::Status::Error)

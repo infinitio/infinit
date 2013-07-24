@@ -3,7 +3,7 @@
 
 #include <Infinit.hh>
 #include <elle/types.hh>
-#include <lune/Identity.hh>
+#include <papier/Identity.hh>
 #include <nucleus/neutron/Subject.hh>
 
 ///
@@ -33,7 +33,7 @@ namespace agent
     //
     // static attributes
     //
-    static lune::Identity Identity;
+    static papier::Identity Identity;
     static nucleus::neutron::Subject Subject;
     static elle::String         meta_token;
   };

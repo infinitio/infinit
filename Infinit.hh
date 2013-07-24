@@ -5,7 +5,7 @@
 #include <elle/types.hh>
 #include <elle/utility/fwd.hh>
 
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
 #include <lune/Configuration.hh>
 
 class Infinit
@@ -14,14 +14,12 @@ public:
   //
   // constants
   //
-  static elle::String const Key;
   static const elle::Version version;
   static const elle::String             Copyright;
 
   //
   // globals
   //
-  static elle::Authority authority();
   static lune::Configuration            Configuration;
 
   static elle::utility::Parser*         Parser;

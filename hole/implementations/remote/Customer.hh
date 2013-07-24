@@ -51,7 +51,7 @@ namespace hole
       `----*/
       public:
         bool
-        challenge(elle::Passport const& passport);
+        challenge(papier::Passport const& passport);
         void
         push(const nucleus::proton::Address& address,
              nucleus::Derivable const& derivable);

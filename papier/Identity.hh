@@ -1,5 +1,5 @@
-#ifndef LUNE_IDENTITY_HH
-# define LUNE_IDENTITY_HH
+#ifndef PAPIER_IDENTITY_HH
+# define PAPIER_IDENTITY_HH
 
 # include <elle/attribute.hh>
 # include <elle/operator.hh>
@@ -10,12 +10,10 @@
 # include <cryptography/fwd.hh>
 # include <cryptography/KeyPair.hh>
 # include <cryptography/Signature.hh>
-// XXX[temporary: for cryptography]
-using namespace infinit;
 
-# include <lune/fwd.hh>
+# include <papier/Authority.hh>
 
-namespace lune
+namespace papier
 {
 
   ///
@@ -77,8 +75,8 @@ namespace lune
 
     elle::Status        Clear();
 
-    elle::Status        Seal(elle::Authority const&);
-    elle::Status        Validate(elle::Authority const&) const;
+    elle::Status        Seal(papier::Authority const&);
+    elle::Status        Validate(papier::Authority const&) const;
 
   private:
     /// XXX
@@ -115,6 +113,6 @@ namespace lune
 
 }
 
-#include <lune/Identity.hxx>
+#include <papier/Identity.hxx>
 
 #endif

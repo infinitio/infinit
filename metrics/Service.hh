@@ -13,6 +13,7 @@
 
 # include <string>
 # include <memory>
+# include <deque>
 
 namespace metrics
 {
@@ -21,12 +22,13 @@ namespace metrics
   /// A service is used by a reporter to send metrics.
   class Service
   {
-    friend Reporter;
   protected:
     /// Primary key.
     ELLE_ATTRIBUTE_R(std::string, pkey);
     /// Info describing how to communicate to the service.
     ELLE_ATTRIBUTE_R(common::metrics::Info const, info);
+    ELLE_ATTRIBUTE(std::deque<TimeMetricPair>, queue);
+
   protected: // XXX use ELLE_ATTRIBUTE when protected is available
     /// Own http client.
     std::unique_ptr<elle::HTTPClient> _server;
@@ -49,16 +51,28 @@ namespace metrics
     virtual
     ~Service();
 
-  protected:
+  public:
     /// Send the metric to the service server.
+    void
+    send(TimeMetricPair metric);
+
+  private:
+    // Flush all elements in the queue.
+    void
+    _flush();
+
+  protected:
+    /// Service specific way to send a metric. `send()` rely on the fact that
+    /// this method will throw if the metric cannot be sent.
     virtual
     void
     _send(TimeMetricPair metric) = 0;
 
+  public:
     /// Transform a dotted name the a name compatible with the concrete service.
     virtual
     std::string
-    _format_event_name(std::string const& name) = 0;
+    format_event_name(std::string const& name) = 0;
   };
 
   /// Kind shortcut for service pointer.

@@ -4,6 +4,8 @@
 # include <elle/fwd.hh>
 # include <elle/types.hh>
 
+# include <papier/Passport.hh>
+
 # include <nucleus/fwd.hh>
 
 # include <nucleus/Derivable.hh>
@@ -19,7 +21,7 @@ namespace hole
       struct RPC: public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
                                                 elle::serialize::OutputBinaryArchive>
       {
-        RemoteProcedure<bool, elle::Passport const&> challenge;
+        RemoteProcedure<bool, papier::Passport const&> challenge;
         RemoteProcedure<void,
                         nucleus::proton::Address const&,
                         nucleus::Derivable&> push;

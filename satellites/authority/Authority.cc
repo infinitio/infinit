@@ -43,7 +43,7 @@ namespace satellite
       throw elle::Exception("unable to read the input");
 
     // Create the authority with the generated key pair.
-    elle::Authority authority{
+    papier::Authority authority{
       cryptography::KeyPair::generate(
         cryptography::Cryptosystem::rsa,
         Authority::Length)};
@@ -63,7 +63,7 @@ namespace satellite
   Authority::Destroy()
   {
     // Erase the authority file.
-    elle::Authority::erase(elle::io::Path(lune::Lune::Authority));
+    papier::Authority::erase(elle::io::Path(lune::Lune::Authority));
 
     return elle::Status::Ok;
   }
@@ -78,7 +78,7 @@ namespace satellite
     elle::io::Unique        unique;
 
     // check if the authority exists.
-    if (elle::Authority::exists(elle::io::Path(lune::Lune::Authority)) == false)
+    if (papier::Authority::exists(elle::io::Path(lune::Lune::Authority)) == false)
       throw elle::Exception("unable to locate the authority file");
 
     // prompt the user for the passphrase.
@@ -91,7 +91,7 @@ namespace satellite
       throw elle::Exception("unable to read the input");
 
     // Load the authority.
-    elle::Authority authority{elle::io::Path(lune::Lune::Authority)};
+    papier::Authority authority{elle::io::Path(lune::Lune::Authority)};
 
     // decrypt the authority.
     if (authority.Decrypt(pass) == elle::Status::Error)

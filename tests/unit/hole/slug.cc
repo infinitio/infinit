@@ -26,7 +26,7 @@
 infinit::cryptography::KeyPair authority_keys =
   infinit::cryptography::KeyPair::generate(
   infinit::cryptography::Cryptosystem::rsa, 1024);
-elle::Authority authority(authority_keys);
+papier::Authority authority(authority_keys);
 
 
 struct Slug
@@ -54,7 +54,7 @@ public:
 
   hole::storage::Memory storage;
   infinit::cryptography::KeyPair keys;
-  elle::Passport passport;
+  papier::Passport passport;
   hole::implementations::slug::Slug slug;
 };
 

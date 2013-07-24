@@ -21,16 +21,22 @@ from . import conf
 root_dir = os.path.realpath(os.path.dirname(__file__))
 
 class Apertus:
-    def __init__(self, port = conf.PORT):
+    def __init__(self,
+                 port = conf.PORT,
+                 mongo_host = None,
+                 mongo_port = None):
         self.port = port
         self.instance = None
         self.__directory = tempfile.TemporaryDirectory()
+        self.__mongo_host = mongo_host
+        self.__mongo_port = mongo_port
         self.__port_file = None
 
     def __read_port_file(self):
         while True:
             self.instance.poll()
             if self.instance.returncode is not None:
+                print(self.instance.stderr.read().decode('utf-8'))
                 raise Exception("apertus terminated with status: {}".format(
                         self.instance.returncode))
             try:
@@ -63,6 +69,12 @@ class Apertus:
         command.append(str(self.port))
         command.append('--runtime-dir')
         command.append(self.__directory.name)
+        if self.__mongo_host is not None:
+            command.append('--mongo-host')
+            command.append(self.__mongo_host)
+        if self.__mongo_port is not None:
+            command.append('--mongo-port')
+            command.append(self.__mongo_port)
         self.instance = subprocess.Popen(
             command,
             stdout = subprocess.PIPE,

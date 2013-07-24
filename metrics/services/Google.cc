@@ -132,7 +132,7 @@ namespace metrics
     }
 
     std::string
-    Google::_format_event_name(std::string const& name)
+    Google::format_event_name(std::string const& name)
     {
       return boost::replace_all_copy(name, ".", ":");
     }

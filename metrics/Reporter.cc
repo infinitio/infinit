@@ -129,30 +129,21 @@ namespace metrics
       _this->scheduler.io_service().post(
         // Note: `service` is a shared_ptr, copyied by the lambda
         [service, pkey, timed_metric, event_name, this] {
+          TimeMetricPair cpy{timed_metric};
+          cpy.second.emplace(
+            Key::tag,
+            service->format_event_name(event_name));
           try
           {
-            TimeMetricPair cpy{timed_metric};
-            cpy.second.emplace(
-              Key::tag,
-              service->_format_event_name(event_name));
-            service->_send(cpy);
+            service->send(cpy);
           }
-          catch (...)
+          catch (std::exception const&)
           {
             ELLE_ERR("error while storing timed_metric %s: %s",
-                     timed_metric,
+                     cpy,
                      elle::exception_string());
-           this->_fallback(pkey, event_name, timed_metric);
           }
         });
     }
-  }
-
-  void
-  Reporter::_fallback(std::string const& /*pkey*/,
-                      std::string const& /*event_name*/,
-                      TimeMetricPair const& /*metric*/)
-  {
-    // XXX do fallback
   }
 }

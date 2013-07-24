@@ -125,7 +125,7 @@ namespace surface
     void
     TransactionManager::_on_failed_transaction(Transaction const& tr)
     {
-      ELLE_DEBUG("failed transaction(%s) with network(%s) for user(%s)",
+      ELLE_ERR("failed transaction(%s) with network(%s) for user(%s)",
                  tr.id, tr.network_id, this->_self().id);
       //gap_gather_crash_reports(this->self()._id, tr.network_id);
     }
@@ -255,7 +255,7 @@ namespace surface
           }
           catch (...)
           {
-            ELLE_DEBUG("transaction creation failed: %s",
+            ELLE_ERR("transaction creation failed: %s",
                        elle::exception_string());
           }
         },
@@ -714,9 +714,6 @@ namespace surface
         this->_network_manager.infinit_instance_manager().run_progress(
           transaction.network_id);
 
-        this->_reporter[transaction.id].store(
-          "transaction.transfering",
-          transaction_metric(this->_self(), this->_user_manager, transaction));
       }
       else
       {

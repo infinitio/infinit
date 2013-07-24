@@ -3,7 +3,8 @@
 
 #include <Infinit.hh>
 
-#include <lune/Identity.hh>
+#include <papier/Authority.hh>
+#include <papier/Identity.hh>
 
 #include <elle/io/Console.hh>
 #include <elle/io/Path.hh>
@@ -14,9 +15,10 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
+#include <papier/Passport.hh>
+
 #include <hole/Hole.hh>
-#include <hole/Passport.hh>
 
 #include <lune/Lune.hh>
 
@@ -40,7 +42,7 @@ namespace satellite
     //
     {
       // check if the authority exists.
-      if (elle::Authority::exists(elle::io::Path(lune::Lune::Authority))
+      if (papier::Authority::exists(elle::io::Path(lune::Lune::Authority))
           == false)
         throw elle::Exception("unable to locate the authority file");
     }
@@ -59,7 +61,7 @@ namespace satellite
       throw elle::Exception("unable to read the input");
 
     // load the authority.
-    elle::Authority authority(elle::io::Path{lune::Lune::Authority});
+    papier::Authority authority(elle::io::Path{lune::Lune::Authority});
 
     // decrypt the authority.
     if (authority.Decrypt(pass) == elle::Status::Error)
@@ -75,10 +77,10 @@ namespace satellite
         cryptography::random::generate<elle::String>(id_length)
       };
 
-      lune::Identity identity{};
+      papier::Identity identity{};
       identity.load(user);
 
-      elle::Passport passport{
+      papier::Passport passport{
         id, passport_name, identity.pair().K(), authority
       };
 
@@ -99,8 +101,8 @@ namespace satellite
     passport_path.Complete(elle::io::Piece{"%USER%", user});
 
     // does the passport exist.
-    if (elle::Passport::exists(passport_path) == true)
-      elle::Passport::erase(passport_path);
+    if (papier::Passport::exists(passport_path) == true)
+      papier::Passport::erase(passport_path);
 
     return elle::Status::Ok;
   }
@@ -118,11 +120,11 @@ namespace satellite
     //
     {
       // does the passport exist.
-      if (elle::Passport::exists(passport_path) == false)
+      if (papier::Passport::exists(passport_path) == false)
         throw elle::Exception("this passport does not seem to exist");
     }
 
-    elle::Passport      passport;
+    papier::Passport      passport;
 
     //
     // retrieve the passport.
@@ -132,7 +134,7 @@ namespace satellite
       passport.load(passport_path);
 
       // validate the passport.
-      if (passport.validate(Infinit::authority()) == false)
+      if (passport.validate(papier::authority()) == false)
         throw elle::Exception("unable to validate the passport");
     }
 

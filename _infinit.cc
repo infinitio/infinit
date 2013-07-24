@@ -36,7 +36,7 @@
 # include <horizon/Horizon.hh>
 #endif
 
-#include <lune/Descriptor.hh>
+#include <papier/Descriptor.hh>
 #include <lune/Lune.hh>
 
 #include <plasma/meta/Client.hh>
@@ -122,7 +122,7 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
     for (auto const& peer: options["peer"].as<std::vector<std::string>>())
       members.push_back(elle::network::Locus(peer));
 
-  lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+  papier::Descriptor descriptor(Infinit::User, Infinit::Network);
 
   // initialize the Lune library.
   if (lune::Lune::Initialize() == elle::Status::Error)
@@ -165,13 +165,14 @@ Infinit(elle::Natural32 argc, elle::Character* argv[])
   };
 
   ELLE_DEBUG("loading passport");
-  elle::Passport passport{
+  papier::Passport passport{
     elle::serialize::from_file(common::infinit::passport_path(Infinit::User))
   };
 
   ELLE_DEBUG("constructing hole");
   std::unique_ptr<hole::Hole> hole(
-    infinit::hole_factory(descriptor, storage, passport, Infinit::authority(), members));
+    infinit::hole_factory(descriptor, storage, passport,
+                          papier::authority(), members));
   ELLE_DEBUG("hole constructed");
 #ifdef INFINIT_HORIZON
   ELLE_DEBUG("INFINIT_HORIZON enable");

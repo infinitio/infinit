@@ -7,9 +7,9 @@
 
 #include <common/common.hh>
 #include <etoile/Etoile.hh>
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
 #include <lune/Dictionary.hh>
-#include <lune/Identity.hh>
+#include <papier/Identity.hh>
 #include <lune/Lune.hh>
 #include <satellites/satellite.hh>
 #include <satellites/user/User.hh>
@@ -30,17 +30,17 @@ namespace satellite
   elle::Status          User::Create(elle::String const&        id,
                                      const elle::String&        name)
   {
-    elle::String        prompt;
-    elle::String        pass;
-    lune::Identity      identity;
-    lune::Dictionary    dictionary;
+    elle::String prompt;
+    elle::String pass;
+    papier::Identity identity;
+    lune::Dictionary dictionary;
 
     // check the argument.
     if (name.empty() == true)
       throw elle::Exception("unable to create a user without a user name");
 
     // check if the user already exists.
-    if (lune::Identity::exists(name) == true)
+    if (papier::Identity::exists(name) == true)
       throw elle::Exception("this user seems to already exist");
 
     // prompt the user for the passphrase.
@@ -53,7 +53,7 @@ namespace satellite
       throw elle::Exception("unable to read the input");
 
     // load the authority.
-    elle::Authority authority(elle::io::Path{lune::Lune::Authority});
+    papier::Authority authority(elle::io::Path{lune::Lune::Authority});
 
     // decrypt the authority.
     if (authority.Decrypt(pass) == elle::Status::Error)
@@ -74,7 +74,7 @@ namespace satellite
           name,
           cryptography::KeyPair::generate(
             cryptography::Cryptosystem::rsa,
-            lune::Identity::keypair_length)) == elle::Status::Error)
+            papier::Identity::keypair_length)) == elle::Status::Error)
       throw elle::Exception("unable to create the identity");
 
     // encrypt the identity.
@@ -103,18 +103,18 @@ namespace satellite
     // remove the identity.
     //
     {
-      lune::Identity    identity;
+      papier::Identity    identity;
 
       // check the argument.
       if (name.empty() == true)
         throw elle::Exception("unable to destroy a user without a user name");
 
       // check if the user already exists.
-      if (lune::Identity::exists(name) == false)
+      if (papier::Identity::exists(name) == false)
         throw elle::Exception("this user does not seem to exist");
 
       // destroy the identity.
-      lune::Identity::erase(name);
+      papier::Identity::erase(name);
     }
 
     //
@@ -161,7 +161,7 @@ namespace satellite
   {
     elle::String        prompt;
     elle::String        pass;
-    lune::Identity      identity;
+    papier::Identity      identity;
     cryptography::PublicKey     K;
     elle::io::Unique        unique;
 
@@ -170,7 +170,7 @@ namespace satellite
       throw elle::Exception("unable to create a user without a user name");
 
     // check if the user already exists.
-    if (lune::Identity::exists(name) == false)
+    if (papier::Identity::exists(name) == false)
       throw elle::Exception("this user does not seem to exist");
 
     // prompt the user for the passphrase.
@@ -186,7 +186,7 @@ namespace satellite
     identity.load(name);
 
     // verify the identity.
-    if (identity.Validate(Infinit::authority()) == elle::Status::Error)
+    if (identity.Validate(papier::authority()) == elle::Status::Error)
       throw elle::Exception("the identity seems to be invalid");
 
     // decrypt the identity.

@@ -58,7 +58,7 @@ namespace nucleus
     /// oracle.
     ///
     elle::Status
-    Stamp::Validate(elle::Authority const& authority)
+    Stamp::Validate(papier::Authority const& authority)
     {
       ELLE_ASSERT(this->_signature != nullptr);
 
