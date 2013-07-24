@@ -4,7 +4,6 @@ import sys
 import os
 import subprocess
 import shutil
-import stat
 
 def cmd(*args, **kwargs):
     return subprocess.check_output(list(args), **kwargs)
@@ -16,17 +15,9 @@ def fatal(*args):
     error(*args)
     sys.exit(1)
 
-def which(executable):
-    path = os.environ["PATH"]
-    for d in path.split(":"):
-        file = os.path.join(d,executable)
-        if os.path.exists(file):
-            return file
-
 DIR_SOURCE = os.path.abspath(os.environ["DIR_SOURCE"])
 DIR_BUILD = os.path.abspath(os.environ["DIR_BUILD"])
 DIR_INSTALL = os.path.abspath(os.environ["DIR_INSTALL"])
-DEBUG = os.environ.get("MAKE_DEBUG_INSTALL", False)
 
 for d in [DIR_SOURCE, DIR_BUILD]:
     if not os.path.isdir(d):
@@ -44,267 +35,15 @@ DIR_INSTALL_CLIENT = "%s/client" % DIR_INSTALL
 shutil.rmtree(DIR_INSTALL_CLIENT, True)
 os.makedirs(DIR_INSTALL_CLIENT)
 
-
-def to_add(lib):
-
-    patterns_exclude = {
-        'startswith': [
-            "/usr/lib/libstdc++",
-        ],
-
-        'contains': [
-            "/lib64/ld-linux-x86-64",
-            "/lib/ld-linux-x86-64",
-            "libICE",
-            "libSM",
-            "libX",
-            "libaudio",
-            "libbz2",
-            "libffi",
-            "libfontconfig",
-            "libfreetype",
-            "libglib",
-            "libgobject",
-            "libgthread",
-            "libpcre",
-            "librt",
-            "libtinfo",
-            "libuuid",
-            "libxcb",
-            "linux-vdso",
-            "linux-gate",
-            "libSystem",
-            "SystemConfiguration",
-            "CoreFoundation",
-            "ApplicationServices",
-            "Security",
-            "CoreServices",
-            "CoreText",
-            "ImageIO",
-            "Carbon",
-            "AppKit",
-            "libobjc",
-            "Foundation",
-            "libfuse.so.",
-            "libutil.so",
-            "libpthread.",
-            "libc.",
-            "libm.",
-            "libdl.",
-            "Cocoa",
-            "libcache",
-            "libcommonCrypto",
-            "libcompiler_rt",
-            "libcopyfile",
-            "libdispatch",
-            "libdnsinfo",
-            "libdyld",
-            "libkeymgr",
-            "liblaunch",
-            "libmacho",
-            "libquarantine",
-            "libremovefile",
-            "libsystem",
-            "libunc",
-            "libunwind",
-            "libxpc",
-            "libfuse4x",
-            "libcurl",
-            "libidn",
-            "libssh2",
-            "liblber",
-            "libldap_r",
-            "libgssapi",
-        ]
-    }
-    if 'linux' in sys.platform.lower():
-        patterns_exclude['contains'].extend([
-            'libQt',
-        ])
-
-    patterns_include = {
-        'startswith': [
-            "/root/infinit/",
-        ],
-        'contains': [
-            "libetoile.",
-            "libelle.",
-            "libhole.",
-            "libnucleus.",
-            "libinfinit.",
-            "liblune.",
-
-            "libgcc_s",
-            "libstdc++",
-            "libpth.",
-            "libz.",
-            "libboost",
-            "libcrypto",
-            "libQt",
-            "libexpat",
-            "libpng",
-            "libncurses",
-            "libssl",
-            "libpython",
-            "Python",
-            "libgap",
-            "_gap.so",
-            "libintl.",
-            "libiconv.",
-        ]
-    }
-    if any(lib.startswith(p) for p in patterns_exclude['startswith']) or \
-       any(p in lib for p in patterns_exclude['contains']):
-        return False
-    elif any(lib.startswith(p) for p in patterns_include['startswith']) or \
-         any(p in lib for p in patterns_include['contains']):
-        return True
-    else:
-        raise Exception("lib not specified: %s" % lib)
-
-DIR_INSTALL_CLIENT_BIN = os.path.join(DIR_INSTALL_CLIENT, "bin")
-DIR_INSTALL_CLIENT_LIB = os.path.join(DIR_INSTALL_CLIENT, "lib")
-
-
-if which("otool"):
-    def get_binary_dependencies(arg):
-        deps = cmd('otool', '-L', arg).decode("utf-8")
-        deps = deps.split("\n")[:-1]
-        if not deps:
-            return []
-        return (
-            dep.strip().split(" ")[0] for dep in deps[1:]
-        )
-elif which("ldd"):
-    def get_binary_dependencies(arg):
-        deps = cmd('ldd', arg).decode("utf-8")
-        deps = deps.split('\n')
-        if not deps:
-            return
-        for dep in deps[1:]:
-            dep = dep.strip()
-            if not dep or '=>' not in dep:
-                return
-            yield dep.split('=>')[1].strip().split(' ')[0].strip()
-else:
-    raise Exception("otool or ldd needed")
-
-if 'darwin' in sys.platform:
-    if not  which("install_name_tool"):
-        raise Exception("You need install_name_tool !")
-    def patch_binary_for(binary, dependency, from_="@loader_path", real_dependency_path=None):
-        if real_dependency_path is None:
-            real_dependency_path = dependency
-        relpath = os.path.relpath(
-            real_dependency_path,
-            start=os.path.dirname(binary)
-        )
-        cmd(
-            "install_name_tool",
-            "-change", dependency,
-            os.path.join(from_, relpath),
-            binary
-        )
-else:
-    def patch_binary_for(*args, **kwargs):
-        pass
-
-if 'linux' in sys.platform:
-    if not which("patchelf"):
-        raise Exception("patchelf needed on linux")
-    def patch_binary(binary, lib_dir):
-        reldir = os.path.relpath(lib_dir, start=os.path.dirname(binary))
-        cmd(
-            'patchelf',
-            #'--debug',
-            '--set-rpath', os.path.join('$ORIGIN', reldir),
-            dst
-        )
-else:
-    def patch_binary(binary, lib_dir):
-        pass
-
-def is_binary(path):
-    if not stat.S_IXUSR & os.stat(src)[stat.ST_MODE]:
-        return False
-    with open(path, 'rb') as f:
-        if f.read(2) == b'#!':
-            return False
-    return True
-
-def fill_dependencies(dependencies, binary_path, kind, indent=1):
-    print('-' * indent, binary_path)
-    node = dependencies.setdefault(binary_path, {})
-    node['kind'] = kind
-    childs = node.setdefault('childs', set())
-    node['is_binary'] = is_binary(binary_path)
-    if not node['is_binary']:
-        return
-    from pprint import pprint
-    l_dep = list(get_binary_dependencies(binary_path))
-    pprint(l_dep)
-    for dependency in l_dep:
-        if '@executable_path' in dependency:
-            continue
-        print('-'*indent + '> dep', dependency)
-        if not to_add(dependency):
-            #print('-'*indent + '> IGNORE', dependency)
-            continue
-        childs.add(dependency)
-        if dependency not in dependencies:
-            fill_dependencies(dependencies, dependency, 'lib', indent + 1)
-
-LIBRARY_EXT = "darwin" in sys.platform and "dylib" or "so"
-
-infinit_files = [
-    ("bin/8infinit", "bin"),
-    ("bin/8access", "bin"),
-    ("bin/8group", "bin"),
-    ("bin/infinit-cli", "bin"),
-    ("lib/libgap." + LIBRARY_EXT, "lib"),
-    ("lib/python/_gap.so", "python"),
-    ("lib/python/gap.py", "python"),
-]
-
-#dependencies = {}
-#for src_rel, kind in infinit_files:
-#    src = os.path.join(DIR_BUILD, src_rel)
-#    fill_dependencies(dependencies, src, kind)
-#
-#for src, node in dependencies.items():
-#    dst_dir = os.path.join(DIR_INSTALL_CLIENT, node['kind'])
-#    if not os.path.exists(dst_dir):
-#        os.makedirs(dst_dir)
-#    dst = os.path.join(DIR_INSTALL_CLIENT, node['kind'], os.path.basename(src))
-#    shutil.copy(src, dst)
-#    if not node['is_binary']:
-#        continue
-#    os.chmod(dst, stat.S_IRWXU)
-#    if not DEBUG:
-#        print("Strip", dst)
-#        cmd('strip', '-S', dst)
-#    else:
-#        print("DO NOT STRIP", dst)
-#    patch_binary(dst, DIR_INSTALL_CLIENT_LIB)
-#    for child in node['childs']:
-#        patch_binary_for(
-#            dst,
-#            child,
-#            real_dependency_path=os.path.join(
-#                DIR_INSTALL_CLIENT_LIB,
-#                os.path.basename(child)
-#            )
-#        )
-#
-#print("Prepare the manifest")
-#cmd(os.path.join(DIR_SOURCE,'farm/make_manifest'), DIR_INSTALL_CLIENT, major, minor, rev)
-
 DIR_INSTALL_SERVER = os.path.join(DIR_INSTALL, "server")
 shutil.rmtree(DIR_INSTALL_SERVER, True)
 os.makedirs(DIR_INSTALL_SERVER)
 
+with open(os.path.join(DIR_INSTALL, "VERSION"), "w+") as version_file:
+    version_file.write("{}\n".format(version))
+
 for d in ['bin', 'lib', 'oracle/meta/']:
     src = os.path.join(DIR_BUILD, d)
     dst = os.path.join(DIR_INSTALL_SERVER, d)
-    print(src, "->", dst)
+    print("install", src, "->", dst)
     shutil.copytree(src, dst)
