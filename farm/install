@@ -303,7 +303,8 @@ DIR_INSTALL_SERVER = os.path.join(DIR_INSTALL, "server")
 shutil.rmtree(DIR_INSTALL_SERVER, True)
 os.makedirs(DIR_INSTALL_SERVER)
 
-for d in ['bin', 'lib']:
+for d in ['bin', 'lib', 'oracle/meta/']:
     src = os.path.join(DIR_BUILD, d)
     dst = os.path.join(DIR_INSTALL_SERVER, d)
+    print(src, "->", dst)
     shutil.copytree(src, dst)
