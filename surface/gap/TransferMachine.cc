@@ -86,6 +86,12 @@ namespace surface
       return {this->state().me().id, this->peer_id()};
     }
 
+    bool
+    TransferMachine::is_sender(std::string const& user_id)
+    {
+      return this->_state.me().id == user_id;
+    }
+
     nucleus::proton::Network&
     TransferMachine::network()
     {

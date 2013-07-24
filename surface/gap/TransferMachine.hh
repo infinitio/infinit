@@ -93,6 +93,10 @@ namespace surface
       std::vector<std::string>
       peers() const;
 
+    public:
+      bool
+      is_sender(std::string const& user_id);
+
       /*--------.
       | Network |
       `--------*/
