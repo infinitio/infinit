@@ -926,8 +926,6 @@ def configure(cxx_toolkit = None,
 
   ## GAP:
   gap_sources = drake.nodes(
-    'surface/gap/binary_config.hh',
-    'surface/gap/binary_config.cc',
     'surface/gap/device.cc',
     'surface/gap/Exception.hh',
     'surface/gap/gap.cc',
