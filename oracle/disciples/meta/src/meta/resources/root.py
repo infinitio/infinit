@@ -76,6 +76,7 @@ class GetBacktrace(Page):
         env = self.data.get('env', [])
         spec = self.data.get('spec', [])
         more = self.data.get('more', [])
+        version = self.data.get('version', 'unknown version')
         file = self.data.get('file', "")
         if not isinstance(more, list):
             more = [more]
@@ -85,6 +86,7 @@ class GetBacktrace(Page):
         import meta.database
         meta.database.crashes().insert(
              {
+                 "version": version,
                  "user": _id,
                  "module": module,
                  "signal": signal,
@@ -101,6 +103,7 @@ class GetBacktrace(Page):
                 email,
                 subject = meta.mail.BACKTRACE_SUBJECT % {"user": _id, "module": module, "signal": signal},
                 content = meta.mail.BACKTRACE_CONTENT % {
+                    "version": version,
                     "user": _id,
                     "bt":   u'\n'.join(backtrace),
                     "env":  u'\n'.join(env),
