@@ -11,11 +11,12 @@
 #include <reactor/Scope.hh>
 #include <reactor/thread.hh>
 
+#include <papier/Passport.hh>
+
 #include <common/common.hh>
 #include <hole/Hole.hh>
 #include <hole/implementations/slug/Slug.hh>
 #include <hole/storage/Memory.hh>
-#include <hole/Passport.hh>
 #include <nucleus/factory.hh>
 #include <nucleus/neutron/Component.hh>
 #include <nucleus/neutron/Group.hh>

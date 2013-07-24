@@ -241,7 +241,7 @@ namespace plasma
 
     private:
       std::string _root_url;
-      bool _check_errors;
+      //bool _check_errors;
       std::string _identity;
       std::string _email;
       std::string _token;

@@ -74,7 +74,7 @@ namespace metrics
     void
     inline
     store(std::string const& name,
-          Metric metric = {});
+          Metric metric = Metric());
   };
 }
 

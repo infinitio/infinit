@@ -1,7 +1,7 @@
 #include <elle/log.hh>
 #include <elle/print.hh>
 #include <elle/serialize/JSONArchive.hh>
-#include <elle/format/json/Dictionary.hxx>
+#include <elle/format/json/Dictionary.hh>
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/MapSerializer.hxx>
 
@@ -277,11 +277,11 @@ namespace plasma
      // - Ctor & dtor ----------------------------------------------------------
     Client::Client(std::string const& server,
                    uint16_t port,
-                   bool check_errors):
+                   bool /*check_errors*/):
       _host(server),
       _port(port),
       _root_url{elle::sprintf("http://%s:%d", server, port)},
-      _check_errors{check_errors},
+      /*_check_errors{check_errors},*/
       _identity{},
       _email{},
       _token{},
