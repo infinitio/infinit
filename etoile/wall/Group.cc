@@ -44,12 +44,8 @@ namespace etoile
 
       std::pair<nucleus::neutron::Group::Identity, gear::Identifier> res;
 
-      // retrieve the context.
-      if (scope->Use(etoile, context) == elle::Status::Error)
-        throw Exception("unable to retrieve the context");
-
       // allocate an actor.
-      guard.actor(new gear::Actor(scope));
+      guard.actor(new gear::Actor(etoile, scope));
 
       // Declare a critical section.
       {
@@ -57,6 +53,10 @@ namespace etoile
 
         // return the identifier.
         res.second = guard.actor()->identifier;
+
+        // retrieve the context.
+        if (scope->Use(etoile, context) == elle::Status::Error)
+          throw Exception("unable to retrieve the context");
 
         // apply the create automaton on the context.
         if (automaton::Group::Create(*context,
@@ -84,12 +84,8 @@ namespace etoile
       gear::Guard guard(scope);
       gear::Group* context;
 
-      // retrieve the context.
-      if (scope->Use(etoile, context) == elle::Status::Error)
-        throw Exception("unable to retrieve the context");
-
       // allocate an actor.
-      guard.actor(new gear::Actor(scope));
+      guard.actor(new gear::Actor(etoile, scope));
 
       // Declare a critical section.
       {
@@ -97,6 +93,10 @@ namespace etoile
 
         // return the identifier.
         gear::Identifier identifier = guard.actor()->identifier;
+
+        // retrieve the context.
+        if (scope->Use(etoile, context) == elle::Status::Error)
+          throw Exception("unable to retrieve the context");
 
         context->location =
           nucleus::proton::Location(identity,

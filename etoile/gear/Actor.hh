@@ -52,9 +52,8 @@ namespace etoile
       //
       // constructors & destructors
       //
-      Actor(std::shared_ptr<Scope>);
-      Actor(std::shared_ptr<Scope>,
-            Etoile& etoile);
+      Actor(Etoile& etoile,
+            std::shared_ptr<Scope>);
       ~Actor();
 
       //
@@ -72,6 +71,9 @@ namespace etoile
       //
       // attributes
       //
+    private:
+      ELLE_ATTRIBUTE(Etoile&, etoile);
+    public: // XXX
       Identifier        identifier;
       std::shared_ptr<Scope> scope;
       State             state;
