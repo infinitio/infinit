@@ -51,24 +51,6 @@ _gap_generation_key(gap_State* state)
 }
 
 static boost::python::object
-_get_networks(gap_State* state)
-{
-  assert(state != nullptr);
-
-  boost::python::list networks_;
-  char** networks = gap_networks(state);
-  if (networks != nullptr)
-    {
-      for (char** ptr = networks; *ptr != nullptr; ++ptr)
-        {
-          networks_.append(boost::python::str(std::string(*ptr)));
-        }
-        gap_networks_free(networks);
-    }
-  return networks_;
-}
-
-static boost::python::object
 _get_transactions(gap_State* state)
 {
   assert(state != nullptr);
@@ -393,9 +375,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("register", &gap_register);
   py::def("user_directory", *_gap_user_directory);
 
-  py::def("invite_user", &gap_invite_user);
-  py::def("send_message", &gap_message);
-
   //- Notifications ------------------------------------------------------------
 
   py::def("pull_notifications", &gap_pull_notifications);
@@ -419,13 +398,6 @@ BOOST_PYTHON_MODULE(_gap)
 
   py::def("device_status", &gap_device_status);
   py::def("set_device_name", &gap_set_device_name);
-
-  //- Network -----------------------------------------------------------------
-
-  py::def("networks", &_get_networks);
-  py::def("create_network", &gap_create_network);
-  py::def("network_name", &gap_network_name, by_value());
-  py::def("network_add_user", &gap_network_add_user);
 
   //- Users -------------------------------------------------------------------
 

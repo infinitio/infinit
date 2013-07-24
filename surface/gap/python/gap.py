@@ -29,8 +29,6 @@ class _State:
             'set_device_name',
 
             'logout',
-            'invite_user',
-            'send_message',
             'token',
             'generation_key',
 
@@ -42,12 +40,6 @@ class _State:
             'email',
             'remaining_invitations',
             'user_directory',
-
-            # Networks.
-            'create_network',
-            'networks',
-            'network_add_user',
-            'network_name',
 
             # Transaction
             'send_files',

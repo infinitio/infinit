@@ -223,14 +223,6 @@ namespace surface
       return common::infinit::user_directory(this->me().id);
     }
 
-    void
-    State::send_files(std::string const& recipient,
-                      std::unordered_set<std::string>&& files)
-    {
-      this->_transfers.emplace_back(
-        new SendMachine{*this, recipient, std::move(files)});
-    }
-
     State::~State()
     {
       ELLE_TRACE_SCOPE("%s: destroying state", *this);
@@ -368,6 +360,24 @@ namespace surface
         std::bind(&surface::gap::State::_on_network_notification,
                   this,
                   std::placeholders::_1));
+
+      this->_init_transactions();
+    }
+
+    void
+    State::_init_transactions()
+    {
+      for (auto& transaction_pair: this->transaction_manager().all())
+      {
+        if (transaction_pair.second.sender_id == this->me().id)
+        {
+          //this->_transfers.emplace_back(new SendMachine{*this, recipient, {}});
+        }
+        else
+        {
+          this->_transfers.emplace_back(new ReceiveMachine{*this, transaction_pair.first});
+        }
+      }
     }
 
     void
@@ -529,13 +539,7 @@ namespace surface
 
             manager.reset(
               new NetworkManager{
-                this->_meta,
-                this->_reporter,
-                this->_google_reporter,
-                std::bind(&State::me, this),
-                std::bind(&State::device, this),
-                this->_apertus_host,
-                this->_apertus_port
+                this->notification_manager(), this->_meta,
               });
           }
           return *manager;
@@ -553,9 +557,7 @@ namespace surface
 
             manager.reset(
               new UserManager{
-                this->notification_manager(),
-                this->_meta,
-                std::bind(&State::me, this)
+                this->notification_manager(), this->_meta
               });
           }
           return *manager;
@@ -570,25 +572,19 @@ namespace surface
           if (manager == nullptr)
           {
             ELLE_TRACE_SCOPE("%s: allocating a new transaction manager", *this);
-            auto update_remaining_invitations =
-              [this] (unsigned int remaining_invitations)
-              {
-                if (this->_me != nullptr)
-                  this->_me->remaining_invitations = remaining_invitations;
-              };
+            // auto update_remaining_invitations =
+            //   [this] (unsigned int remaining_invitations)
+            //   {
+            //     if (this->_me != nullptr)
+            //       this->_me->remaining_invitations = remaining_invitations;
+            //   };
             manager.reset(
               new TransactionManager{
-                this->_scheduler,
                 this->notification_manager(),
-                this->network_manager(),
-                this->user_manager(),
-                this->_meta,
-                this->_reporter,
+                this->meta(),
                 std::bind(&State::me, this),
-                std::bind(&State::device, this),
-                update_remaining_invitations
+                std::bind(&State::device, this)
               });
-            this->network_manager().transaction_manager(manager.get());
           }
           return *manager;
         });
@@ -605,6 +601,22 @@ namespace surface
         stream << " as " << this->_meta.email();
       stream << ")";
     }
+
+    void
+    State::output_dir(std::string const& dir)
+    {
+      if (!fs::exists(dir))
+        throw Exception{gap_error,
+                        "directory doesn't exist."};
+
+      if (!fs::is_directory(dir))
+        throw Exception{gap_error,
+                        "not a directroy."};
+
+      this->_output_dir = dir;
+    }
+
+
 
     TransferMachine&
     State::_find_machine(std::function<bool (TransferMachinePtr const&)> func) const
@@ -694,8 +706,19 @@ namespace surface
     }
 
     void
+    State::send_files(std::string const& recipient,
+                      std::unordered_set<std::string>&& files)
+    {
+      ELLE_TRACE_SCOPE("%s: send file %s to %s", *this, files, recipient);
+      this->_transfers.emplace_back(
+        new SendMachine{*this, recipient, std::move(files)});
+    }
+
+    void
     State::accept_transaction(std::string const& transaction_id)
     {
+      ELLE_TRACE_SCOPE("%s: accept transaction %s", *this, transaction_id);
+
       try
       {
         auto& transfer_machine = this->_machine_by_transaction(transaction_id);
@@ -711,5 +734,12 @@ namespace surface
         throw;
       }
     }
+
+    void
+    State::cancel_transaction(std::string const& transaction_id) {}
+
+    void
+    State::reject_transaction(std::string const& transaction_id) {}
+
   }
 }

@@ -20,6 +20,12 @@
 # include <plasma/meta/Client.hh>
 # include <plasma/trophonius/Client.hh>
 
+# include <hole/Passport.hh>
+# include <lune/Identity.hh>
+
+# include <reactor/scheduler.hh>
+# include <reactor/thread.hh>
+
 # include <elle/format/json/fwd.hh>
 # include <elle/threading/Monitor.hh>
 # include <elle/Printable.hh>
@@ -129,10 +135,6 @@ namespace surface
       std::string const&
       token_generation_key() const;
 
-      void
-      send_files(std::string const& recipient,
-                 std::unordered_set<std::string>&& files);
-
     private:
       ELLE_ATTRIBUTE_P(std::unique_ptr<Device>, device, mutable);
 
@@ -185,6 +187,33 @@ namespace surface
       typedef std::unique_ptr<TransactionManager> TransactionManagerPtr;
       elle::threading::Monitor<TransactionManagerPtr> _transaction_manager;
 
+    public:
+      NetworkManager&
+      network_manager();
+
+      NotificationManager&
+      notification_manager();
+
+      UserManager&
+      user_manager();
+
+      TransactionManager&
+      transaction_manager();
+
+    private:
+
+      void
+      _cleanup();
+
+    /*-------------.
+    | Transactions |
+    `-------------*/
+      ELLE_ATTRIBUTE_Rw(std::string, output_dir);
+
+    private:
+      void
+      _init_transactions();
+
       void
       _on_user_notification(UserStatusNotification const&);
 
@@ -210,26 +239,21 @@ namespace surface
       TransferMachine&
       _machine_by_network(std::string const& network_id) const;
 
+    public:
+      //- Sender ---------------------------------------------------------------
+      void
+      send_files(std::string const& recipient,
+                 std::unordered_set<std::string>&& files);
+
+      //- Recipient ------------------------------------------------------------
       void
       accept_transaction(std::string const& transaction_id);
 
-    public:
-      NetworkManager&
-      network_manager();
-
-      NotificationManager&
-      notification_manager();
-
-      UserManager&
-      user_manager();
-
-      TransactionManager&
-      transaction_manager();
-
-    private:
+      void
+      cancel_transaction(std::string const& transaction_id);
 
       void
-      _cleanup();
+      reject_transaction(std::string const& transaction_id);
 
     /*----------.
     | Printable |

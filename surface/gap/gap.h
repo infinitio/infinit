@@ -212,10 +212,6 @@ extern "C" {
                        char const* transaction_id);
 
   /// - Message ---------------------------------------------------------------
-  gap_Status
-  gap_message(gap_State* state,
-              char const* recipient_id,
-              char const* message);
 
   typedef void (*gap_message_callback_t)(char const* sender_id, char const* message);
   gap_Status
@@ -226,11 +222,6 @@ extern "C" {
   gap_Status
   gap_poll(gap_State* state);
 
-
-  gap_Status
-  gap_invite_user(gap_State* state,
-                  char const* email);
-
   /// - Device ----------------------------------------------------------------
 
   /// Returns the local device status.
@@ -239,33 +230,6 @@ extern "C" {
   /// Update the local device name.
   gap_Status gap_set_device_name(gap_State* state,
                                  char const* name);
-
-  /// - Network -------------------------------------------------------------
-
-  /// Create a new network.
-  char const*
-  gap_create_network(gap_State* state,
-                     char const* name);
-
-  /// Prepare a network.
-  gap_Status
-  gap_prepare_network(gap_State* state,
-                      char const* network_id);
-
-  /// Retrieve all user networks ids. Returned value is null in case of
-  /// error, or is a null-terminated array of null-terminated strings.
-  char** gap_networks(gap_State* state);
-
-  /// Release the pointer returned by gap_networks,
-  void gap_networks_free(char** networks);
-
-  /// Get the network name from its id.
-  char const* gap_network_name(gap_State* state, char const* id);
-
-  /// Invite a user to join a network with its id or email.
-  gap_Status gap_network_add_user(gap_State* state,
-                                  char const* network_id,
-                                  char const* user_id);
 
   /// - Self ------------------------------------------------------------------
 
@@ -372,6 +336,11 @@ extern "C" {
   /// Cancel transaction.
   gap_Status
   gap_cancel_transaction(gap_State* state,
+                         char const* transaction_id);
+
+  /// Reject transaction.
+  gap_Status
+  gap_reject_transaction(gap_State* state,
                          char const* transaction_id);
 
   /// Accept a transaction.

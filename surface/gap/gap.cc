@@ -258,27 +258,6 @@ extern "C"
     return gap_ok;
   }
 
-
-  gap_Status
-  gap_invite_user(gap_State* state,
-                  char const* email)
-  {
-    assert(state != nullptr);
-    assert(email != nullptr);
-
-    WRAP_CPP_MANAGER(state, user_manager, invite, email);
-  }
-
-  gap_Status
-  gap_message(gap_State* state,
-              const char* recipient_id,
-              const char* message)
-  {
-    assert(recipient_id != nullptr);
-    assert(message != nullptr);
-    WRAP_CPP_MANAGER(state, user_manager, send_message, recipient_id, message);
-  }
-
   //- Authentication ----------------------------------------------------------
 
   char* gap_hash_password(gap_State* state,
@@ -397,7 +376,7 @@ extern "C"
 
     if (ret == gap_ok && device_name != nullptr)
     {
-      WRAP_CPP(state, update_device, device_name, true);
+      WRAP_CPP(state, device);//, true);
     }
     return ret;
   }
@@ -442,129 +421,9 @@ extern "C"
                                  char const* name)
   {
     assert(name != nullptr);
-    WRAP_CPP(state, update_device, name);
+    // WRAP_CPP(state, update_device, name);
+    return gap_ok;
   }
-
-  /// - Network -------------------------------------------------------------
-
-  char** gap_networks(gap_State* state)
-  {
-    assert(state != nullptr);
-    gap_Status ret = gap_ok;
-    try
-      {
-        auto const& networks_ids = __TO_CPP(state)->network_manager().all_ids();
-
-        std::vector<std::string> res;
-
-        for (auto const& id : networks_ids)
-          res.push_back(id);
-
-        return _cpp_stringvector_to_c_stringlist(res);
-      }
-    CATCH_ALL(networks);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  void gap_networks_free(char** networks)
-  {
-    ::free(networks);
-  }
-
-  char const* gap_network_name(gap_State* state, char const* id)
-  {
-    assert(state != nullptr);
-    assert(id != nullptr);
-    gap_Status ret;
-    try
-      {
-        auto const& network = __TO_CPP(state)->network_manager().one(id);
-        return network.name.c_str();
-      }
-    CATCH_ALL(network_name);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  static inline
-  char**
-  gap_network_users(gap_State* state, char const* id)
-  {
-    assert(state != nullptr);
-    assert(id != nullptr);
-    gap_Status ret;
-    try
-      {
-        auto const& network = __TO_CPP(state)->network_manager().one(id);
-        return _cpp_stringlist_to_c_stringlist(network.users);
-      }
-    CATCH_ALL(network_users);
-
-    (void) ret;
-    return nullptr;
-  }
-
-  static inline
-  void
-  gap_network_users_free(char** users)
-  {
-    ::free(users);
-  }
-
-  char const*
-  gap_create_network(gap_State* state,
-                     char const* name)
-  {
-    assert(name != nullptr);
-    gap_Status ret;
-    try
-    {
-      auto network_id = __TO_CPP(state)->network_manager().create(name);
-      return network_id.c_str();
-    }
-    CATCH_ALL(create_network);
-    (void) ret;
-    return nullptr;
-  }
-
-  gap_Status
-  gap_prepare_network(gap_State* state,
-                     char const* id)
-  {
-    assert(id != nullptr);
-    gap_Status ret;
-    try
-    {
-      __TO_CPP(state)->network_manager().prepare(id);
-      ret = gap_ok;
-    }
-    CATCH_ALL(prepare_network);
-    return ret;
-  }
-
-  gap_Status
-  gap_network_add_user(gap_State* state,
-                       char const* network_id,
-                       char const* user_id)
-  {
-    assert(network_id != nullptr);
-    assert(user_id != nullptr);
-    gap_Status ret;
-    try
-    {
-      auto const& user = __TO_CPP(state)->user_manager().one(user_id);
-      std::string me = __TO_CPP(state)->me().id;
-      __TO_CPP(state)->network_manager().add_user(network_id,
-                                                  user.public_key);
-      ret = gap_ok;
-    }
-    CATCH_ALL(network_add_user);
-    return ret;
-  }
-
 
   /// - Self ----------------------------------------------------------------
   char const*
@@ -953,7 +812,8 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      return __TO_CPP(state)->transaction_manager().progress(transaction_id);
+      // XXX[antony]
+      return 0.0f; //return __TO_CPP(state)->transaction_manager().progress(transaction_id);
     }
     CATCH_ALL(transaction_progress);
 
@@ -1059,11 +919,29 @@ extern "C"
   gap_cancel_transaction(gap_State* state,
                          char const* transaction_id)
   {
+    assert(state != nullptr);
     assert(transaction_id != nullptr);
-    WRAP_CPP_MANAGER_RET(state,
-                         transaction_manager,
-                         cancel_transaction,
-                         transaction_id);
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->cancel_transaction(transaction_id);
+    }
+    CATCH_ALL(cancel_transaction);
+    return ret;
+  }
+
+  gap_Status
+  gap_reject_transaction(gap_State* state,
+                         char const* transaction_id)
+  {
+    assert(state != nullptr);
+    assert(transaction_id != nullptr);
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->reject_transaction(transaction_id);
+    }
+    CATCH_ALL(reject_transaction);
     return ret;
   }
 
@@ -1076,7 +954,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      __TO_CPP(state)->transaction_manager().accept_transaction(transaction_id);
+      __TO_CPP(state)->accept_transaction(transaction_id);
     }
     CATCH_ALL(accept_transaction);
     return ret;
@@ -1088,12 +966,12 @@ extern "C"
   {
     assert(state != nullptr);
     assert(output_path != nullptr);
-
-    WRAP_CPP_MANAGER_RET(state,
-                         transaction_manager,
-                         output_dir,
-                         output_path);
-
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->output_dir(output_path);
+    }
+    CATCH_ALL(set_output_dir);
     return ret;
   }
 
@@ -1105,7 +983,7 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      auto const& directory = __TO_CPP(state)->transaction_manager().output_dir();
+      auto const& directory = __TO_CPP(state)->output_dir();
       return directory.c_str();
     }
     CATCH_ALL(get_output_directory);
