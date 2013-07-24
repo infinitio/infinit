@@ -43,12 +43,8 @@ namespace etoile
       gear::Directory* context;
       gear::Identifier identifier;
 
-      // retrieve the context.
-      if (scope->Use(etoile, context) == elle::Status::Error)
-        throw Exception("unable to retrieve the context");
-
       // allocate an actor.
-      guard.actor(new gear::Actor(scope));
+      guard.actor(new gear::Actor(etoile, scope));
 
       // Declare a critical section.
       {
@@ -56,6 +52,10 @@ namespace etoile
 
         // return the identifier.
         identifier = guard.actor()->identifier;
+
+        // retrieve the context.
+        if (scope->Use(etoile, context) == elle::Status::Error)
+          throw Exception("unable to retrieve the context");
 
         // apply the create automaton on the context.
         if (automaton::Directory::Create(*context) == elle::Status::Error)
@@ -86,12 +86,8 @@ namespace etoile
       gear::Directory* context;
       gear::Identifier identifier;
 
-      // retrieve the context.
-      if (scope->Use(etoile, context) == elle::Status::Error)
-        throw Exception("unable to retrieve the context");
-
       // allocate an actor.
-      guard.actor(new gear::Actor(scope));
+      guard.actor(new gear::Actor(etoile, scope));
 
       // Declare a critical section.
       {
@@ -99,6 +95,10 @@ namespace etoile
 
         // return the identifier.
         identifier = guard.actor()->identifier;
+
+        // retrieve the context.
+        if (scope->Use(etoile, context) == elle::Status::Error)
+          throw Exception("unable to retrieve the context");
 
         // locate the object based on the chemin.
         context->location = chemin.locate();
@@ -135,16 +135,8 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(parent, name, child);
 
-      gear::Directory* directory;
-      gear::Object* object;
-      nucleus::proton::Address address;
-
       gear::Actor* child_actor = etoile.actor_get(child);
       std::shared_ptr<gear::Scope> child_scope = child_actor->scope;
-
-      if (child_scope->Use(etoile, object) == elle::Status::Error)
-        throw Exception("unable to retrieve the context");
-      address = object->location.address();
 
       gear::Actor* parent_actor = etoile.actor_get(parent);
       std::shared_ptr<gear::Scope> parent_scope = parent_actor->scope;
@@ -154,8 +146,16 @@ namespace etoile
         reactor::Lock lock(parent_scope->mutex.write());
 
         // retrieve the context.
+        gear::Directory* directory;
+        gear::Object* object;
+
+        if (child_scope->Use(etoile, object) == elle::Status::Error)
+          throw Exception("unable to retrieve the context");
+
         if (parent_scope->Use(etoile, directory) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
+
+        nucleus::proton::Address address = object->location.address();
 
         // apply the add automaton on the context.
         if (automaton::Directory::Add(*directory,

@@ -65,6 +65,7 @@ namespace etoile
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex);
+
         // retrieve the context.
         if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
@@ -98,6 +99,7 @@ namespace etoile
       // Declare a critical section.
       {
         reactor::Lock lock(scope->mutex.write());
+
         // retrieve the context.
         if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");

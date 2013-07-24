@@ -562,13 +562,13 @@ namespace etoile
         std::shared_ptr<Scope> scope = this->context->etoile().scope_supply();
         gear::Guard guard(scope);
 
+        // allocate an actor on the new scope, making the scope valid
+        // for triggering automata.
+        guard.actor(new gear::Actor(this->context->etoile(), scope));
+
         // retrieve the context.
         if (scope->Use(this->context->etoile(), context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
-
-        // allocate an actor on the new scope, making the scope valid
-        // for triggering automata.
-        guard.actor(new gear::Actor(scope));
 
         //
         // swap the contexts.

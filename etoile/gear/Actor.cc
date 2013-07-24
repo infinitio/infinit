@@ -11,10 +11,9 @@ namespace etoile
 // ---------- constructors & destructors --------------------------------------
 //
 
-    ///
-    /// default constructor.
-    ///
-    Actor::Actor(std::shared_ptr<Scope> scope):
+    Actor::Actor(Etoile& etoile,
+                 std::shared_ptr<Scope> scope):
+      _etoile(etoile),
       scope(scope),
       state(Actor::StateClean)
     {
@@ -22,30 +21,10 @@ namespace etoile
       if (this->identifier.Generate() == elle::Status::Error)
         return;
 
-      ELLE_ASSERT_NEQ(this->scope->context, nullptr);
-
-      Etoile& etoile = this->scope->context->etoile();
-
-      etoile.actor_add(*this);
+      this->_etoile.actor_add(*this);
 
       // add the actor to the scope's set.
-      if (scope->Attach(this) == elle::Status::Error)
-        return;
-    }
-
-    Actor::Actor(std::shared_ptr<Scope> scope,
-                 Etoile& etoile):
-      scope(scope),
-      state(Actor::StateClean)
-    {
-      // generate an identifier.
-      if (this->identifier.Generate() == elle::Status::Error)
-        return;
-
-      etoile.actor_add(*this);
-
-      // add the actor to the scope's set.
-      if (scope->Attach(this) == elle::Status::Error)
+      if (this->scope->Attach(this) == elle::Status::Error)
         return;
     }
 
@@ -58,9 +37,7 @@ namespace etoile
       if (this->scope->Detach(this) == elle::Status::Error)
         return;
 
-      Etoile& etoile = this->scope->context->etoile();
-
-      etoile.actor_remove(*this);
+      this->_etoile.actor_remove(*this);
     }
 
 //
