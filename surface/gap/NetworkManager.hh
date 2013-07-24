@@ -1,21 +1,10 @@
 #ifndef NETWORKMANAGER_HH
 # define NETWORKMANAGER_HH
 
-# include "Device.hh"
 # include "Exception.hh"
-# include "InfinitInstanceManager.hh"
 # include "NotificationManager.hh"
-# include "Self.hh"
-# include "metrics.hh"
-# include "Rounds.hh"
-
-# include <metrics/fwd.hh>
-
-# include <nucleus/neutron/Permissions.hh>
 
 # include <plasma/meta/Client.hh>
-
-# include <reactor/scheduler.hh>
 
 # include <elle/Printable.hh>
 # include <elle/threading/Monitor.hh>
@@ -28,11 +17,11 @@ namespace surface
     | Usings |
     `-------*/
     using Network = ::plasma::meta::NetworkResponse;
-    using Endpoint = ::plasma::meta::EndpointNodeResponse;
 
     class TransactionManager;
 
     class NetworkManager:
+      public Notifiable,
       public elle::Printable
     {
       /*-----------------.
@@ -53,60 +42,36 @@ namespace surface
       /*-----------.
       | Attributes |
       `-----------*/
-    private:
-      // XXX: meta should be constant everywhere.
-      // But httpclient fire can't be constant.
       plasma::meta::Client& _meta;
-      metrics::Reporter& _reporter;
-      metrics::Reporter& _google_reporter;
-      typedef std::function<Self const&()> SelfGetter;
-      typedef std::function<Device const&()> DeviceGetter;
-      ELLE_ATTRIBUTE(SelfGetter, self);
-      ELLE_ATTRIBUTE(DeviceGetter, device);
-      ELLE_ATTRIBUTE_X(InfinitInstanceManager, infinit_instance_manager);
-      ELLE_ATTRIBUTE_Rw(TransactionManager*, transaction_manager);
 
       /*-------------.
       | Construction |
       `-------------*/
     public:
-      NetworkManager(plasma::meta::Client& meta,
-                     metrics::Reporter& reporter,
-                     metrics::Reporter& google_reporter,
-                     SelfGetter const& me,
-                     DeviceGetter const& device,
-                     std::string const& apertus_host,
-                     uint16_t apertus_port);
+      NetworkManager(surface::gap::NotificationManager& notification_manager,
+                     plasma::meta::Client& meta);
 
       virtual
       ~NetworkManager();
-
-      void
-      clear();
-
-    public:
-      void
-      launch(std::string const& network_id);
-
-      void
-      ensure_launched(std::string const& network_id);
-
-      void
-      register_transaction_manager(TransactionManager& manager);
 
       /*------------.
       |  Attributes |
       `------------*/
     protected:
       typedef std::map<std::string, Network> NetworkMap;
-      typedef elle::threading::Monitor<NetworkMap> NetworkMapMonitor;
+      typedef std::unique_ptr<NetworkMap> NetworkMapPtr;
+      typedef elle::threading::Monitor<NetworkMapPtr> NetworkMapMonitor;
     protected:
       NetworkMapMonitor _networks;
 
     public:
-      /// Retrieve all networks.
+      /// Retrieve all network ids.
       std::vector<std::string>
       all_ids();
+
+      /// Retrieve all networks.
+      NetworkMap const&
+      all();
 
       /// Retrieve a network.
       Network
@@ -115,76 +80,10 @@ namespace surface
       Network
       sync(std::string const& id);
 
-      /// Create a new network.
-      std::string
-      create(std::string const& name,
-             bool auto_add = true);
-
-      /// Prepare directories and files for the network to be launched.
-      void
-      prepare(std::string const& network_id);
-
-      /// Delete a new network.
-      std::string
-      delete_(std::string const& name,
-              bool remove_directory = true);
-
-      /// Remove local directories (and kill any infinit instances).
-      void
-      delete_local(std::string const& name);
-
-      /// Add a user to a network with its mail or id.
-      void
-      add_user(std::string const& network_id,
-               std::string const& user_K);
-
-      /// Upload files (wrap instance_manager.upload_files)
-      void
-      upload_files(std::string const& network_id,
-                   std::unordered_set<std::string> const& files,
-                   std::function<void ()> success_callback,
-                   std::function<void ()> failure_callback);
-
-
-      /// Download files into path 'destination' (wrap).
-      void
-      download_files(std::string const& network_id,
-                     std::vector<std::shared_ptr<Round>> const& addresses,
-                     std::string const& public_key,
-                     std::string const& destination,
-                     std::function<void ()> success_callback,
-                     std::function<void ()> failure_callback);
-
-      /// Get the progress on the current network.
-      float
-      progress(std::string const& network_id);
-
-      /// Add a device to a network.
-      void
-      add_device(std::string const& network_id,
-                 std::string const& device_id);
-
-      /// Get peer addresses.
-      /// Return a list of rounds.
-      std::vector<std::shared_ptr<Round>>
-      peer_addresses(std::string const& network_id,
-                     std::string const& sender_device_id,
-                     std::string const& recipient_device_id);
-
-      /// Give the recipient the write on the root of the network.
-      void
-      set_permissions(std::string const& network_id,
-                      std::string const& peer_pu);
-      ///
-      void
-      to_directory(std::string const& network_id,
-                   std::string const& path);
-
     private:
       /// On NetworkUpdate.
       void
       _on_network_update(NetworkUpdateNotification const& notif);
-
 
     /*----------.
     | Printable |
@@ -193,9 +92,6 @@ namespace surface
       virtual
       void
       print(std::ostream& stream) const override;
-
-      ELLE_ATTRIBUTE_R(std::string, apertus_host);
-      ELLE_ATTRIBUTE_R(uint16_t, apertus_port);
     };
   }
 }
