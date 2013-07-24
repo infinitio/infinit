@@ -11,6 +11,8 @@
 
 #include <functional>
 
+ELLE_LOG_COMPONENT("surface.gap.TransferMachine");
+
 namespace surface
 {
   namespace gap
@@ -21,14 +23,19 @@ namespace surface
       _machine(),
       _machine_thread(),
       _state(state)
-    {}
+    {
+      ELLE_TRACE_SCOPE("%s: creating transfer machine", *this);
+    }
 
     TransferMachine::~TransferMachine()
-    {}
+    {
+      ELLE_TRACE_SCOPE("%s: destroying transfer machine", *this);
+    }
 
     void
     TransferMachine::run()
     {
+      ELLE_TRACE_SCOPE("%s: running transfer machine", *this);
       ELLE_ASSERT(this->_scheduler_thread == nullptr);
 
       this->_machine_thread.reset(
@@ -108,8 +115,10 @@ namespace surface
     lune::Descriptor const&
     TransferMachine::descriptor()
     {
+      ELLE_TRACE_SCOPE("%s: get descriptor", *this);
       if (!this->_descriptor)
       {
+        ELLE_DEBUG_SCOPE("building descriptor");
         using namespace elle::serialize;
         std::string descriptor = this->state().meta().network(this->network_id()).descriptor; //; // Pull it from networks.
 
@@ -125,8 +134,10 @@ namespace surface
     hole::storage::Directory&
     TransferMachine::storage()
     {
+      ELLE_TRACE_SCOPE("%s: get storage", *this);
       if (!this->_storage)
       {
+        ELLE_DEBUG_SCOPE("building storage");
         this->_storage.reset(
           new hole::storage::Directory(
             this->network().name(),
@@ -140,8 +151,10 @@ namespace surface
     hole::implementations::slug::Slug&
     TransferMachine::hole()
     {
+      ELLE_TRACE_SCOPE("%s: get hole", *this);
       if (!this->_hole)
       {
+        ELLE_DEBUG_SCOPE("building hole");
         this->_hole.reset(
           new hole::implementations::slug::Slug(
           this->storage(), this->state().passport(), Infinit::authority(),
@@ -154,8 +167,10 @@ namespace surface
     etoile::Etoile&
     TransferMachine::etoile()
     {
+      ELLE_TRACE_SCOPE("%s: get etoile", *this);
       if (!this->_etoile)
       {
+        ELLE_DEBUG_SCOPE("building descriptor");
         this->_etoile.reset(
           new etoile::Etoile(this->state().identity().pair(),
                              &(this->hole()),

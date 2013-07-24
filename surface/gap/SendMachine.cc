@@ -100,7 +100,7 @@ namespace surface
                              std::unordered_set<std::string>&& files):
       SendMachine(state)
     {
-      ELLE_LOG_SCOPE("%s: send %s to %s", *this, files, recipient);
+      ELLE_TRACE_SCOPE("%s: send %s to %s", *this, files, recipient);
 
       if (files.empty())
         throw elle::Exception("no files to send");
@@ -116,6 +116,9 @@ namespace surface
     void
     SendMachine::on_transaction_update(plasma::Transaction const& transaction)
     {
+      ELLE_TRACE_SCOPE("%s: update with new transaction %s",
+                       *this, transaction);
+
       ELLE_ASSERT_EQ(this->transaction_id(), transaction.id);
       switch (transaction.status)
       {

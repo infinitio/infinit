@@ -7,7 +7,7 @@
 
 #include <reactor/thread.hh>
 
-ELLE_LOG_COMPONENT("surface.gap.SendMachine");
+ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine");
 
 namespace surface
 {
@@ -40,7 +40,6 @@ namespace surface
         this->_machine.state_make(
           std::bind(&ReceiveMachine::_fail, this)))
     {
-
       this->_machine.transition_add(_wait_for_decision_state,
                                     _accept_state,
                                     reactor::Waitables{&_accepted});
@@ -86,12 +85,17 @@ namespace surface
                                    std::string const& transaction_id):
       ReceiveMachine(state)
     {
+      ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
+                       *this, transaction_id);
       this->transaction_id(transaction_id);
     }
 
     void
     ReceiveMachine::on_transaction_update(plasma::Transaction const& transaction)
     {
+      ELLE_TRACE_SCOPE("%s: update with new transaction %s",
+                       *this, transaction);
+
       ELLE_ASSERT_EQ(this->transaction_id(), transaction.id);
       switch (transaction.status)
       {
@@ -131,12 +135,14 @@ namespace surface
     void
     ReceiveMachine::accept()
     {
+      ELLE_TRACE_SCOPE("%s: accept transaction %s", *this, this->transaction_id());
       this->_accepted.signal();
     }
 
     void
     ReceiveMachine::rejected()
     {
+      ELLE_TRACE_SCOPE("%s: reject transaction %s", *this, this->transaction_id());
       this->_rejected.signal();
     }
 

@@ -34,7 +34,7 @@ namespace surface
       TransferMachine(surface::gap::State const& state);
 
       virtual
-      ~TransferMachine() = 0;
+      ~TransferMachine();
 
     public:
       void
