@@ -1,6 +1,8 @@
 #ifndef SENDMACHINE_HH
 # define SENDMACHINE_HH
 
+# include "usings.hh"
+
 # include <surface/gap/TransferMachine.hh>
 # include <surface/gap/State.hh>
 
@@ -20,14 +22,18 @@ namespace surface
       ~SendMachine();
 
     public:
+      virtual
       void
-      on_transaction_update(plasma::meta::TransactionResponse const& transaction);
+      on_transaction_update(plasma::Transaction const& transaction) override;
 
+      virtual
       void
-      on_user_update(plasma::meta::UserResponse const& user);
+      on_user_update(plasma::meta::User const& user) override;
 
+      virtual
       void
-      on_network_update(plasma::meta::NetworkResponse const& network);
+      on_network_update(plasma::meta::NetworkResponse const& network) override;
+
 
     private:
       SendMachine(surface::gap::State const& state);
@@ -95,7 +101,6 @@ namespace surface
       /*-----------------.
       | Transaction data |
       `-----------------*/
-      ELLE_ATTRIBUTE(std::string, recipient);
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
     };
   }

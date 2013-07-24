@@ -109,12 +109,12 @@ namespace surface
 
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
 
-      this->_recipient = recipient;
+      this->peer_id(recipient);
       this->run();
     }
 
     void
-    SendMachine::on_transaction_update(plasma::meta::TransactionResponse const& transaction)
+    SendMachine::on_transaction_update(plasma::Transaction const& transaction)
     {
       ELLE_ASSERT_EQ(this->transaction_id(), transaction.id);
       switch (transaction.status)
@@ -141,7 +141,7 @@ namespace surface
     }
 
     void
-    SendMachine::on_user_update(plasma::meta::UserResponse const& user)
+    SendMachine::on_user_update(plasma::meta::User const& user)
     {
     }
 
@@ -155,7 +155,7 @@ namespace surface
     {
       elle::utility::Time time; time.Current();
       std::string network_name =
-        elle::sprintf("%s-%s", this->_recipient, time.nanoseconds);
+        elle::sprintf("%s-%s", this->peer_id(), time.nanoseconds);
       std::cerr << "network_name: " << network_name << std::endl;
 
       this->network_id(
@@ -202,14 +202,14 @@ namespace surface
 
       // Create transaction.
       this->transaction_id(this->state().meta().create_transaction(
-                             this->_recipient, first_file, this->_files.size(), size,
+                             this->peer_id(), first_file, this->_files.size(), size,
                              boost::filesystem::is_directory(first_file), this->network().name(),
                              this->state().device_id()).created_transaction_id);
 
       // XXX: Ensure recipient is an id.
-      this->_recipient = this->state().meta().user(this->_recipient).id;
+      this->peer_id(this->state().meta().user(this->peer_id()).id);
       this->state().meta().network_add_user(
-        this->network().name(), this->_recipient);
+        this->network().name(), this->peer_id());
 
       auto nb = operation_detail::blocks::create(this->network().name(),
                                                  this->state().identity());
@@ -273,7 +273,7 @@ namespace surface
     void
     SendMachine::_set_permissions()
     {
-      auto peer_public_key = this->state().meta().user(this->_recipient).public_key;
+      auto peer_public_key = this->state().meta().user(this->peer_id()).public_key;
 
       ELLE_ASSERT_NEQ(peer_public_key.length(), 0u);
 

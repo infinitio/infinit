@@ -42,7 +42,7 @@ namespace surface
     }
 
     std::string const&
-    TransferMachine::transaction_id()
+    TransferMachine::transaction_id() const
     {
       ELLE_ASSERT_GT(this->_transaction_id.length(), 0u);
       return this->_transaction_id;
@@ -55,7 +55,7 @@ namespace surface
     }
 
     std::string const&
-    TransferMachine::network_id()
+    TransferMachine::network_id() const
     {
       ELLE_ASSERT_GT(this->_network_id.length(), 0u);
       return this->_network_id;
@@ -65,6 +65,25 @@ namespace surface
     TransferMachine::network_id(std::string const& id)
     {
       this->_network_id = id;
+    }
+
+    std::string const&
+    TransferMachine::peer_id() const
+    {
+      ELLE_ASSERT_GT(this->_peer_id.length(), 0u);
+      return this->_peer_id;
+    }
+
+    void
+    TransferMachine::peer_id(std::string const& id)
+    {
+      this->_peer_id = id;
+    }
+
+    std::vector<std::string>
+    TransferMachine::peers() const
+    {
+      return {this->state().me().id, this->peer_id()};
     }
 
     nucleus::proton::Network&

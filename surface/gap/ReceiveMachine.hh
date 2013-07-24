@@ -23,20 +23,22 @@ namespace surface
     public:
       ReceiveMachine(surface::gap::State const& state,
                      std::string const& transaction_id);
-    public:
       virtual
       ~ReceiveMachine();
 
+      virtual
+      void
+      on_transaction_update(plasma::Transaction const& transaction) override;
+
+      virtual
+      void
+      on_user_update(plasma::meta::User const& user) override;
+
+      virtual
+      void
+      on_network_update(plasma::meta::NetworkResponse const& network) override;
+
     public:
-      void
-      on_transaction_update(plasma::meta::TransactionResponse const& transaction);
-
-      void
-      on_user_update(plasma::meta::UserResponse const& user);
-
-      void
-      on_network_update(plasma::meta::NetworkResponse const& network);
-
       void
       accept();
 

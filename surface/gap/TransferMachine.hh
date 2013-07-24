@@ -40,6 +40,18 @@ namespace surface
       void
       run();
 
+      virtual
+      void
+      on_transaction_update(plasma::Transaction const& transaction) = 0;
+
+      virtual
+      void
+      on_user_update(plasma::meta::User const& user) = 0;
+
+      virtual
+      void
+      on_network_update(plasma::meta::NetworkResponse const& network) = 0;
+
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/
@@ -57,21 +69,38 @@ namespace surface
       | Transaction |
       `------------*/
       ELLE_ATTRIBUTE(std::string, transaction_id);
-    protected:
+    public:
       std::string const&
-      transaction_id();
+      transaction_id() const;
 
+    protected:
       void
       transaction_id(std::string const& id);
+
+    protected:
+      ELLE_ATTRIBUTE(std::string, peer_id);
+
+    public:
+      std::string const&
+      peer_id() const;
+
+    protected:
+      void
+      peer_id(std::string const& id);
+
+
+    public:
+      std::vector<std::string>
+      peers() const;
 
       /*--------.
       | Network |
       `--------*/
       ELLE_ATTRIBUTE(std::string, network_id);
-    protected:
+    public:
       std::string const&
-      network_id();
-
+      network_id() const;
+    protected:
       void
       network_id(std::string const& id);
 

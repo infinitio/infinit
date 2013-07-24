@@ -90,7 +90,7 @@ namespace surface
     }
 
     void
-    ReceiveMachine::on_transaction_update(plasma::meta::TransactionResponse const& transaction)
+    ReceiveMachine::on_transaction_update(plasma::Transaction const& transaction)
     {
       ELLE_ASSERT_EQ(this->transaction_id(), transaction.id);
       switch (transaction.status)
@@ -119,7 +119,7 @@ namespace surface
     }
 
     void
-    ReceiveMachine::on_user_update(plasma::meta::UserResponse const& user)
+    ReceiveMachine::on_user_update(plasma::meta::User const& user)
     {
     }
 
