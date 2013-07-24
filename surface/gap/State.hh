@@ -11,6 +11,8 @@
 # include "gap.h"
 # include "metrics.hh"
 
+# include "usings.hh"
+
 # include <metrics/Reporter.hh>
 
 # include <common/common.hh>
@@ -151,7 +153,6 @@ namespace surface
       lune::Identity const&
       identity() const;
 
-
     ///
     /// Manage local device.
     ///
@@ -184,8 +185,33 @@ namespace surface
       typedef std::unique_ptr<TransactionManager> TransactionManagerPtr;
       elle::threading::Monitor<TransactionManagerPtr> _transaction_manager;
 
+      void
+      _on_user_notification(UserStatusNotification const&);
+
+      void
+      _on_transaction_notification(TransactionNotification const&, bool);
+
+      void
+      _on_network_notification(NetworkUpdateNotification const&);
+
       typedef std::unique_ptr<TransferMachine> TransferMachinePtr;
       std::vector<TransferMachinePtr> _transfers;
+
+      // template std::vector<TransferMachinePtr>::iterator??
+      TransferMachine&
+      _find_machine(std::function<bool (TransferMachinePtr const&)> func) const;
+
+      TransferMachine&
+      _machine_by_user(std::string const& user_id) const;
+
+      TransferMachine&
+      _machine_by_transaction(std::string const& transaction_id) const;
+
+      TransferMachine&
+      _machine_by_network(std::string const& network_id) const;
+
+      void
+      accept_transaction(std::string const& transaction_id);
 
     public:
       NetworkManager&

@@ -351,6 +351,23 @@ namespace surface
                        ;
         identity_infos.close();
       }
+
+      // XXX: Will create the notification mananger :/
+      this->notification_manager().user_status_callback(
+        std::bind(&surface::gap::State::_on_user_notification,
+                  this,
+                  std::placeholders::_1));
+
+      this->notification_manager().transaction_callback(
+        std::bind(&surface::gap::State::_on_transaction_notification,
+                  this,
+                  std::placeholders::_1,
+                  std::placeholders::_2));
+
+      this->notification_manager().network_update_callback(
+        std::bind(&surface::gap::State::_on_network_notification,
+                  this,
+                  std::placeholders::_1));
     }
 
     void
@@ -589,5 +606,110 @@ namespace surface
       stream << ")";
     }
 
+    TransferMachine&
+    State::_find_machine(std::function<bool (TransferMachinePtr const&)> func) const
+    {
+      auto it =
+        std::find_if(std::begin(this->_transfers),
+                     std::end(this->_transfers),
+                     func);
+
+      if (it != std::end(this->_transfers))
+      {
+        return *(*it);
+      }
+      else
+      {
+        throw Exception(gap_error, "machine doesnt exist");
+      }
+    }
+
+    TransferMachine&
+    State::_machine_by_user(std::string const& user_id) const
+    {
+      return this->_find_machine(
+        [&] (TransferMachinePtr const& machine)
+        {
+          auto const& peers = machine->peers(); // under-optimized.
+          return std::find(std::begin(peers), std::end(peers), user_id) != std::end(peers);
+        });
+    }
+
+    TransferMachine&
+    State::_machine_by_transaction(std::string const& transaction_id) const
+    {
+      return this->_find_machine(
+        [&] (TransferMachinePtr const& machine)
+        {
+          return machine->transaction_id() == transaction_id;
+        });
+    }
+
+    TransferMachine&
+    State::_machine_by_network(std::string const& network_id) const
+    {
+      return this->_find_machine(
+        [&] (TransferMachinePtr const& machine)
+        {
+          return machine->network_id() == network_id;
+        });
+    }
+
+    void
+    State::_on_user_notification(UserStatusNotification const& notif)
+    {
+    }
+
+    void
+    State::_on_network_notification(NetworkUpdateNotification const& notif)
+    {
+    }
+
+    void
+    State::_on_transaction_notification(TransactionNotification const& notif,
+                                        bool)
+    {
+      ELLE_TRACE_SCOPE("%s: transaction_notification %s", *this, notif);
+      auto const& transaction = this->transaction_manager().one(notif.id);
+
+      try
+      {
+        auto& transfer_machine = this->_machine_by_transaction(notif.id);
+        transfer_machine.on_transaction_update(transaction);
+      }
+      catch (Exception const& e)
+      {
+        if (e.code == gap_error) // XXX:
+        {
+          if (notif.status == plasma::TransactionStatus::initialized)
+            this->_transfers.emplace_back(new ReceiveMachine{*this, notif.id});
+          else
+            ELLE_ERR("%s: machine not found for transaction %s",
+                     *this, transaction);
+          return;
+        }
+        else
+          throw;
+      }
+    }
+
+    void
+    State::accept_transaction(std::string const& transaction_id)
+    {
+      try
+      {
+        auto& transfer_machine = this->_machine_by_transaction(transaction_id);
+
+        if (!transfer_machine.is_sender(this->me().id))
+        {
+          auto& receive_machine = (ReceiveMachine&) transfer_machine;
+          receive_machine.accept();
+        }
+      }
+      catch (Exception const&)
+      {
+        throw;
+      }
+    }
   }
 }
