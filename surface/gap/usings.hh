@@ -7,6 +7,7 @@ namespace surface
 {
   namespace gap
   {
+    using ::plasma::Transaction;
     using ::plasma::trophonius::Notification;
     using ::plasma::trophonius::TransactionNotification;
     using ::plasma::trophonius::NewSwaggerNotification;
