@@ -82,7 +82,7 @@ int main(int argc, char** argv)
     state.login(user, hashed_password);
     // state.update_device("lust");
 
-    state.transaction_manager().send_files(to, { file.c_str() });
+    state.send_files(to, { file.c_str() });
 
     bool stop = false;
     state.notification_manager().transaction_callback(
