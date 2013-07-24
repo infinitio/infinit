@@ -1,15 +1,7 @@
 #include "UserManager.hh"
 
-#include <elle/memory.hh>
-#include <elle/os/path.hh>
-#include <elle/serialize/HexadecimalArchive.hh>
-
-#include <common/common.hh>
-
-#include <lune/Dictionary.hh>
-#include <lune/Identity.hh>
-
-#include <boost/filesystem.hpp>
+#include <elle/log.hh>
+#include <elle/assert.hh>
 
 #include <surface/gap/gap.h> // for user_status_online...
 
@@ -19,15 +11,10 @@ namespace surface
 {
   namespace gap
   {
-    namespace fs = boost::filesystem;
-    namespace path = elle::os::path;
-
     UserManager::UserManager(NotificationManager& notification_manager,
-                             plasma::meta::Client& meta,
-                             SelfGetter const& self):
+                             plasma::meta::Client& meta):
       Notifiable{notification_manager},
       _meta(meta),
-      _self{self},
       _swaggers_dirty(true)
     {
       ELLE_TRACE_METHOD("");
@@ -51,13 +38,14 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: user response: %s", *this, response);
 
-      auto user = elle::make_unique<User>(
-        response.id,
-        response.fullname,
-        response.handle,
-        response.public_key,
-        response.status,
-        response.connected_devices);
+      auto user = std::unique_ptr<User>(
+        new User{
+          response.id,
+          response.fullname,
+          response.handle,
+          response.public_key,
+          response.status,
+          response.connected_devices});
       this->_users(
         [&] (UserMap& users) { users[response.id].reset(user.get()); });
       return *user.release();
@@ -194,15 +182,6 @@ namespace surface
 
       auto response = this->_meta.invite_user(email);
       return response._id;
-    }
-
-    void
-    UserManager::send_message(std::string const& recipient_id,
-                              std::string const& message)
-    {
-      ELLE_TRACE_METHOD(recipient_id, message);
-
-      this->_meta.send_message(recipient_id, this->_self().id, message);
     }
 
     ///- Swaggers --------------------------------------------------------------

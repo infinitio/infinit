@@ -7,6 +7,7 @@
 
 # include <plasma/meta/Client.hh>
 
+# include <elle/attribute.hh>
 # include <elle/Printable.hh>
 # include <elle/threading/Monitor.hh>
 
@@ -28,15 +29,12 @@ namespace surface
     private:
       plasma::meta::Client& _meta;
       typedef std::function<Self const&()> SelfGetter;
-      ELLE_ATTRIBUTE(SelfGetter, self);
-
       /*-------------.
       | Construction |
       `-------------*/
     public:
       UserManager(NotificationManager& notification_manager,
-                  plasma::meta::Client& meta,
-                  SelfGetter const& self);
+                  plasma::meta::Client& meta);
 
       virtual
       ~UserManager();
@@ -95,11 +93,6 @@ namespace surface
       `-------------*/
       std::string
       invite(std::string const& email);
-
-      /// Send message to user @id via trophonius
-      void
-      send_message(std::string const& recipient_id,
-                   std::string const& message);
 
       //- Swaggers -------------------------------------------------------------
       /*--------.
