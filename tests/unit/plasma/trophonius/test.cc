@@ -116,6 +116,10 @@ BOOST_AUTO_TEST_CASE(test)
 BOOST_AUTO_TEST_CASE(ping)
 {
   reactor::Scheduler sched;
+
+  reactor::Semaphore sync_client;
+  reactor::Semaphore sync_server;
+
   int port = -1;
   namespace network = reactor::network;
   reactor::Thread* client_thread = nullptr;
@@ -128,13 +132,9 @@ BOOST_AUTO_TEST_CASE(ping)
     server.listen(0);
     port = server.port();
     ELLE_LOG("listen on port %s", port);
+    sync_client.release(); // Listening
     std::unique_ptr<network::TCPSocket> socket{server.accept()};
     ELLE_LOG("connection accepted");
-
-    std::string buf(512, '\0');
-    size_t bytes = socket->read_some(network::Buffer(buf));
-    buf.resize(bytes);
-    ELLE_LOG("read: %s",  buf);
 
     auto send_ping = [&]
     {
@@ -147,14 +147,6 @@ BOOST_AUTO_TEST_CASE(ping)
     };
     reactor::Thread ping{sched, "ping", std::move(send_ping)};
 
-    for (int i = 0; i < 2; i++)
-    {
-      std::string buf(512, '\0');
-
-      bytes = socket->read_some(network::Buffer(buf));
-      buf.resize(bytes);
-      ELLE_LOG("read: %s", buf);
-    }
     auto* this_thread = sched.current();
     this_thread->wait(ping);
     client_thread->terminate_now();
@@ -164,11 +156,9 @@ BOOST_AUTO_TEST_CASE(ping)
   auto client = [&]
   {
     using namespace plasma::trophonius;
-    sleep(1_sec);
     plasma::trophonius::Client c("127.0.0.1", port, [] {});
     c.ping_period(1_sec);
-
-    sleep(1_sec);
+    wait(sync_client); // Listening
     c.connect("", "", "");
     while (1)
     {
