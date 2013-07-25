@@ -2,13 +2,15 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 #include <elle/system/Process.hh>
-#include <reactor/thread.hh>
-#include <reactor/scheduler.hh>
-#include <reactor/network/tcp-server.hh>
-#include <reactor/network/tcp-socket.hh>
+
+#include <reactor/duration.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
+#include <reactor/network/tcp-server.hh>
+#include <reactor/network/tcp-socket.hh>
+#include <reactor/scheduler.hh>
 #include <reactor/sleep.hh>
+#include <reactor/thread.hh>
 
 #include <memory>
 #include <common/common.hh>
@@ -22,13 +24,9 @@ ELLE_LOG_COMPONENT("infinit.plasma.trophonius.test");
 
 static
 void
-sleep(int sec)
+sleep(boost::posix_time::time_duration const& d)
 {
-  using namespace reactor;
-  reactor::Sleep op(*reactor::Scheduler::scheduler(),
-                    boost::posix_time::seconds(sec));
-
-  op.run();
+  reactor::Scheduler::scheduler()->current()->sleep(d);
 }
 
 BOOST_AUTO_TEST_CASE(test)
@@ -63,8 +61,7 @@ BOOST_AUTO_TEST_CASE(test)
 
       ELLE_LOG("write: %s", data);
       socket->write(network::Buffer(data));
-
-      sleep(5);
+      sleep(5_sec);
     }
   };
   reactor::Thread s{sched, "server", std::move(serv)};
@@ -72,17 +69,17 @@ BOOST_AUTO_TEST_CASE(test)
   auto client = [&]
   {
     using namespace plasma::trophonius;
-    sleep(1);
+    sleep(1_sec);
     plasma::trophonius::Client c("127.0.0.1", port, [] {});
 
-    sleep(1);
+    sleep(1_sec);
     c.connect("", "", "");
     int msg = 0;
     while (1)
     {
       ELLE_LOG("poll notifications");
       std::unique_ptr<Notification> notif = c.poll();
-      sleep(1);
+      sleep(1_sec);
 
       if (!notif)
         continue;
@@ -121,10 +118,10 @@ BOOST_AUTO_TEST_CASE(ping)
 
     auto send_ping = [&]
     {
-      sleep(30);
+      sleep(30_sec);
       std::string msg = "{\"notification_type\": 208}\n";
       socket->write(network::Buffer(msg));
-      sleep(30);
+      sleep(30_sec);
       msg = "{\"notification_type\": 208}\n";
       socket->write(network::Buffer(msg));
     };
@@ -147,16 +144,16 @@ BOOST_AUTO_TEST_CASE(ping)
   auto client = [&]
   {
     using namespace plasma::trophonius;
-    sleep(1);
+    sleep(1_sec);
     plasma::trophonius::Client c("127.0.0.1", port, [] {});
 
-    sleep(1);
+    sleep(1_sec);
     c.connect("", "", "");
     while (1)
     {
       ELLE_LOG("poll notifications");
       std::unique_ptr<Notification> notif = c.poll();
-      sleep(1);
+      sleep(1_sec);
 
       if (!notif)
         continue;
@@ -215,16 +212,16 @@ BOOST_AUTO_TEST_CASE(noping)
   auto client = [&]
   {
     using namespace plasma::trophonius;
-    sleep(1);
+    sleep(1_sec);
     plasma::trophonius::Client c("127.0.0.1", port, [] {});
 
-    sleep(1);
+    sleep(1_sec);
     c.connect("", "", "");
     while (1)
     {
       ELLE_LOG("poll notifications");
       std::unique_ptr<Notification> notif = c.poll();
-      sleep(1);
+      sleep(1_sec);
 
       if (!notif)
         continue;
