@@ -9,6 +9,7 @@
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/tcp-socket.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/semaphore.hh>
 #include <reactor/sleep.hh>
 #include <reactor/thread.hh>
 
@@ -29,11 +30,21 @@ sleep(boost::posix_time::time_duration const& d)
   reactor::Scheduler::scheduler()->current()->sleep(d);
 }
 
+static
+void
+wait(reactor::Waitable& w)
+{
+  reactor::Scheduler::scheduler()->current()->wait(w);
+}
+
 BOOST_AUTO_TEST_CASE(test)
 {
   reactor::Scheduler sched;
   int port = -1;
   namespace network = reactor::network;
+
+  reactor::Semaphore sync_client;
+  reactor::Semaphore sync_server;
 
   auto serv = [&]
   {
@@ -42,6 +53,7 @@ BOOST_AUTO_TEST_CASE(test)
     server.listen(0);
     port = server.port();
     ELLE_LOG("listen on port %s", port);
+    sync_client.release(); // Listening
     for (int i = 0; i < 2; i++)
     {
       std::unique_ptr<network::TCPSocket> socket{server.accept()};
@@ -63,7 +75,9 @@ BOOST_AUTO_TEST_CASE(test)
 
       ELLE_LOG("write: %s", data);
       socket->write(network::Buffer(data));
-      sleep(5_sec);
+      sync_client.release(); // Answered
+      wait(sync_server); // Polled
+      sync_client.release(); // Disconnected
     }
   };
   reactor::Thread s{sched, "server", std::move(serv)};
@@ -71,24 +85,21 @@ BOOST_AUTO_TEST_CASE(test)
   auto client = [&]
   {
     using namespace plasma::trophonius;
-    sleep(1_sec);
     plasma::trophonius::Client c("127.0.0.1", port, [] {});
-
-    sleep(1_sec);
+    wait(sync_client); // Listening
     c.connect("", "", "");
-    int msg = 0;
-    while (1)
+    for (int i = 0; i < 2; ++i)
     {
+      wait(sync_client); // Answered
       ELLE_LOG("poll notifications");
       std::unique_ptr<Notification> notif = c.poll();
-      sleep(1_sec);
-
-      if (!notif)
-        continue;
-      msg++;
+      BOOST_CHECK(notif);
       ELLE_LOG("got notification: %s", notif->notification_type);
-      if (msg == 2)
+      sync_server.release(); // Polled
+      wait(sync_client); // Disconnected
+      if (i == 1)
         break;
+      BOOST_CHECK(!c.poll());
     }
   };
   reactor::Thread c{sched, "client", std::move(client)};
