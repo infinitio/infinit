@@ -63,6 +63,12 @@ parser.add_argument(
     default = 'meta_port_file',
 )
 
+parser.add_argument(
+    '--fcgi',
+    default = False,
+    action = 'store_true',
+)
+
 from meta.application import Application
 
 if __name__ == '__main__':
