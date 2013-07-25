@@ -93,7 +93,9 @@ namespace surface
     }
 
     SendMachine::~SendMachine()
-    {}
+    {
+      this->_stop();
+    }
 
     SendMachine::SendMachine(surface::gap::State const& state,
                              std::string const& recipient,

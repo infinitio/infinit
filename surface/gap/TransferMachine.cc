@@ -7,7 +7,9 @@
 
 #include <common/common.hh>
 
-# include <reactor/fsm/Machine.hh>
+#include <reactor/fsm/Machine.hh>
+
+#include <elle/printf.hh>
 
 #include <functional>
 
@@ -33,6 +35,30 @@ namespace surface
     }
 
     void
+    TransferMachine::_stop()
+    {
+      ELLE_TRACE_SCOPE("%s: stop machine for transaction %s",
+                       *this, this->_network_id);
+
+      ELLE_ASSERT(this->_scheduler_thread != nullptr);
+
+      this->_scheduler.mt_run<void>(
+        elle::sprintf("stop(%s)", this->_network_id),
+        [this]
+        {
+          ELLE_DEBUG("terminate all threads")
+            this->_scheduler.terminate_now();
+          ELLE_DEBUG("finalize etoile")
+            this->_etoile.reset();
+          ELLE_DEBUG("finalize hole")
+            this->_hole.reset();
+        });
+      this->_scheduler_thread->join();
+
+      this->_scheduler_thread.release();
+    }
+
+    void
     TransferMachine::run()
     {
       ELLE_TRACE_SCOPE("%s: running transfer machine", *this);
@@ -45,7 +71,21 @@ namespace surface
           [&] { this->_machine.run(); }});
 
       this->_scheduler_thread.reset(
-        new std::thread{[&] { this->_scheduler.run(); }});
+        new std::thread{
+          [&]
+          {
+            try
+            {
+              this->_scheduler.run();
+            }
+            catch (...)
+            {
+              ELLE_ERR("scheduling of network(%s) failed. Storing exception: %s",
+                       this->_network_id, elle::exception_string());
+              // this->exception = std::current_exception();
+            }
+          }
+        });
     }
 
     std::string const&

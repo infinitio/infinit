@@ -79,7 +79,9 @@ namespace surface
     }
 
     ReceiveMachine::~ReceiveMachine()
-    {}
+    {
+      this->_stop();
+    }
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    std::string const& transaction_id):

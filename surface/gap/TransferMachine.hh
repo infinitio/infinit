@@ -52,6 +52,10 @@ namespace surface
       void
       on_network_update(plasma::meta::NetworkResponse const& network) = 0;
 
+    protected:
+      void
+      _stop();
+
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/
@@ -127,7 +131,7 @@ namespace surface
       storage();
 
       ELLE_ATTRIBUTE(std::unique_ptr<hole::implementations::slug::Slug>, hole);
-
+    protected:
       hole::implementations::slug::Slug&
       hole();
 
