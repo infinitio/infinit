@@ -9,7 +9,7 @@
 
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/udp-socket.hh>
-#include <reactor/network/udt-rdv-server.hh>
+//#include <reactor/network/udt-rdv-server.hh>
 
 #include <hole/Exception.hh>
 #include <hole/implementations/slug/Host.hh>
@@ -87,11 +87,12 @@ namespace hole
 
           if (socket)
           {
-            // XXX: for now rebinding a socket is only available with UDT.
-            ELLE_ASSERT_EQ(this->protocol(), reactor::network::Protocol::udt);
-            this->_server =
-              elle::make_unique<reactor::network::UDTRendezVousServer>(
-                  *reactor::Scheduler::scheduler(), std::move(socket));
+            ELLE_ABORT("UDT is disabled");
+            // // XXX: for now rebinding a socket is only available with UDT.
+            // ELLE_ASSERT_EQ(this->protocol(), reactor::network::Protocol::udt);
+            // this->_server =
+            //   elle::make_unique<reactor::network::UDTRendezVousServer>(
+            //       *reactor::Scheduler::scheduler(), std::move(socket));
           }
           else
           {
@@ -1342,7 +1343,8 @@ namespace hole
         ELLE_TRACE_SCOPE("%s: connect to %s:%s (%s)",
                          *this, hostname, port, server ? "server" : "client");
         if (this->_protocol == reactor::network::Protocol::udt)
-          this->_server->accept(hostname, port);
+          // this->_server->accept(hostname, port);
+          ELLE_ABORT("UDT is disabled");
         else
           if (!server)
           {
