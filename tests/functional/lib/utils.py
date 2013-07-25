@@ -39,11 +39,12 @@ def get_random_port():
 
 class Servers:
 
-    def __init__(self, apertus = True):
+    def __init__(self, trophonius = True, apertus = True):
         self.mongo = None
         self.meta = None
         self.tropho = None
         self.__apertus = apertus
+        self.__trophonius = trophonius
         self.apertus = None
 
     def __enter__(self):
@@ -229,3 +230,41 @@ if __name__ == "__main__":
         assert tropho.port != 23456
         print(apertus.port)
         assert apertus.port != 9899
+
+## ---- ##
+## Meta ##
+## ---- ##
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_client(meta):
+    import pythia
+    session = {}
+    client = pythia.Client(session = session,
+                           server = meta.url)
+
+    email = 'testkaka@infinit.io'
+    password = 'kittens'
+    password_hash = hash_password(password)
+    fullname = 'Pif Pif'
+    activation_code = 'bitebite'
+
+    res = pythia.Admin(server = meta.url).post('/user/register',
+                                               {'email': email,
+                                                'fullname': fullname,
+                                                'password': password_hash,
+                                                'activation_code': activation_code,
+                                            })
+    if not res['success']:
+        raise Exception("Cannot register: " + res['error'])
+    res = client.post('/user/login', {'email': email,
+                                      'password': password_hash,
+    })
+
+    if not res['success']:
+        print(res)
+        raise Exception("Cannot login!")
+    session['token'] = res['token']
+    print("Got token:", res['token'])
+    return client

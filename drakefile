@@ -1130,13 +1130,15 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/pythia/__init__.py',
       )
 
-    # Set PYTHONPATH for oracle tests.
-    try:
-      pythonpath = os.environ['PYTHONPATH']
-    except:
-      pythonpath = ''
-    pythonpath = '%s:%s' % (drake.path_build('lib/python'), pythonpath)
-    os.environ['PYTHONPATH'] = pythonpath
+    # PYTHONPATH for oracle and functional tests.
+    pythonpath = [
+      drake.path_src('tests/functional/lib'),
+      drake.path_build('lib/python'),
+    ]
+    env = {
+      'PYTHONPATH': ':'.join(map(str, pythonpath)),
+      'PATH': os.environ['PATH']
+    }
 
     def oracle(name):
       root = drake.Path('oracle/disciples/%s' % name)
@@ -1152,7 +1154,7 @@ def configure(cxx_toolkit = None,
         test = drake.node(test)
         if not test.path().executable:
           continue
-        runner = drake.Runner(test)
+        runner = drake.Runner(test, env = env)
         runner.reporting = drake.Runner.Reporting.on_failure
         rule_check << runner.status
       oracles << rule
@@ -1301,14 +1303,6 @@ def configure(cxx_toolkit = None,
              ]:
     test = drake.node('tests/functional/%s' % test)
     tests << test
-    pythonpath = [
-      drake.path_src('tests/functional/lib'),
-      drake.path_build('lib/python'),
-    ]
-    env = {
-      'PYTHONPATH': ':'.join(map(str, pythonpath)),
-      'PATH': os.environ['PATH']
-    }
     runner = drake.Runner(test, env = env)
     runner.reporting = drake.Runner.Reporting.on_failure
     check_functional << runner.status
