@@ -57,7 +57,9 @@ BOOST_AUTO_TEST_CASE(test)
       ELLE_LOG("read: %s", buf);
 
       std::string data =
-        R"({"notification_type": 217, "sender_id": "id", "message": "hello"})";
+        "{\"notification_type\": 217,"
+        "\"sender_id\": \"id\", "
+        "\"message\": \"hello\"}\n";
 
       ELLE_LOG("write: %s", data);
       socket->write(network::Buffer(data));
