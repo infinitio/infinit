@@ -1,6 +1,9 @@
 #define BOOST_TEST_MODULE trophonius
 #define BOOST_TEST_DYN_LINK
+#include <boost/date_time/posix_time/date_duration_operators.hpp>
 #include <boost/test/unit_test.hpp>
+
+#include <elle/finally.hh>
 #include <elle/system/Process.hh>
 
 #include <reactor/duration.hh>
@@ -115,6 +118,10 @@ BOOST_AUTO_TEST_CASE(test)
 
 BOOST_AUTO_TEST_CASE(ping)
 {
+  boost::posix_time::time_duration const period = 100_ms;
+  boost::posix_time::time_duration const run_time = 3_sec;
+  int periods = run_time.total_milliseconds() / period.total_milliseconds();
+
   reactor::Scheduler sched;
 
   reactor::Semaphore sync_client;
@@ -122,7 +129,6 @@ BOOST_AUTO_TEST_CASE(ping)
 
   int port = -1;
   namespace network = reactor::network;
-  reactor::Thread* client_thread = nullptr;
 
   auto serv = [&]
   {
@@ -136,42 +142,55 @@ BOOST_AUTO_TEST_CASE(ping)
     std::unique_ptr<network::TCPSocket> socket{server.accept()};
     ELLE_LOG("connection accepted");
 
-    auto send_ping = [&]
+    std::unique_ptr<Thread> ping(sched.every([&] {
+          std::string msg = "{\"notification_type\": 208}\n";
+          ELLE_LOG("send ping");
+          socket->write(network::Buffer(msg));
+        }, "ping", period));
+    elle::Finally end_ping([&] { ping->terminate_now(); });
+
+    auto previous = boost::posix_time::microsec_clock::local_time();
+    int received = 0;
+    elle::Finally check([&] {
+        BOOST_CHECK_LE(std::abs(received - periods), 1);
+      });
+    while (true)
     {
-      sleep(1_sec);
-      std::string msg = "{\"notification_type\": 208}\n";
-      socket->write(network::Buffer(msg));
-      sleep(1_sec);
-      msg = "{\"notification_type\": 208}\n";
-      socket->write(network::Buffer(msg));
-    };
-    reactor::Thread ping{sched, "ping", std::move(send_ping)};
-
-    auto* this_thread = sched.current();
-    this_thread->wait(ping);
-    client_thread->terminate_now();
-  };
-  reactor::Thread s{sched, "server", std::move(serv)};
-
-  auto client = [&]
-  {
-    using namespace plasma::trophonius;
-    plasma::trophonius::Client c("127.0.0.1", port, [] {});
-    c.ping_period(1_sec);
-    wait(sync_client); // Listening
-    c.connect("", "", "");
-    while (1)
-    {
-      ELLE_LOG("poll notifications");
-      std::unique_ptr<Notification> notif = c.poll();
-      sleep(1_sec);
-
-      if (!notif)
+      std::string buf(512, '\0');
+      size_t bytes = socket->read_some(network::Buffer(buf));
+      buf.resize(bytes);
+      if (buf[buf.length() - 1] != '\n')
         continue;
+      auto now = boost::posix_time::microsec_clock::local_time();
+      auto diff = now - previous;
+      ELLE_LOG("got ping after %s", diff);
+      BOOST_CHECK_LT(diff, period * 11 / 10);
+      previous = now;
+      ++received;
     }
   };
-  reactor::Thread c{sched, "client", std::move(client)};
-  client_thread = &c;
+
+  auto client_thread = [&]
+  {
+    plasma::trophonius::Client client("127.0.0.1", port, [] {});
+    elle::Finally check([&] { BOOST_CHECK_EQUAL(client.reconnected(), 0); });
+    client.ping_period(period);
+    wait(sync_client); // Listening
+    client.connect("", "", "");
+    while (true)
+    {
+      ELLE_LOG("poll notifications");
+      std::unique_ptr<plasma::trophonius::Notification> notif = client.poll();
+      sleep(period);
+    }
+  };
+
+  reactor::Thread s(sched, "server", serv);
+  reactor::Thread c(sched, "client", client_thread);
+  reactor::Thread j(sched, "janitor", [&] {
+      sleep(run_time);
+      sched.terminate();
+    });
   sched.run();
 }
 
