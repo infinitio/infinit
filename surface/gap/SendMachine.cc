@@ -298,10 +298,41 @@ namespace surface
         this->etoile(), subject, nucleus::neutron::permissions::write);
     }
 
+    // XXX: Same for sender and recipient.
     void
     SendMachine::_publish_interfaces()
     {
+      typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
+      AddressContainer addresses;
 
+      // In order to test the fallback, we can fake our local addresses.
+      // It should also work for nated network.
+      if (elle::os::getenv("INFINIT_LOCAL_ADDRESS", "").length() > 0)
+      {
+        addresses.emplace_back(elle::os::getenv("INFINIT_LOCAL_ADDRESS"),
+                               this->hole().port());
+      }
+      else
+      {
+        auto interfaces = elle::network::Interface::get_map(
+          elle::network::Interface::Filter::only_up |
+          elle::network::Interface::Filter::no_loopback |
+          elle::network::Interface::Filter::no_autoip
+          );
+        for (auto const& pair: interfaces)
+          if (pair.second.ipv4_address.size() > 0 &&
+              pair.second.mac_address.size() > 0)
+          {
+            auto const &ipv4 = pair.second.ipv4_address;
+            addresses.emplace_back(ipv4, this->hole().port());
+          }
+      }
+      ELLE_DEBUG("addresses: %s", addresses);
+
+      AddressContainer public_addresses;
+
+      this->state().meta().network_connect_device(
+        this->network_id(), this->state().passport().id(), addresses, public_addresses);
     }
 
     void
