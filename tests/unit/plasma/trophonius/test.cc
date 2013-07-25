@@ -39,6 +39,8 @@ wait(reactor::Waitable& w)
 
 BOOST_AUTO_TEST_CASE(test)
 {
+  static int const reconnections = 5;
+
   reactor::Scheduler sched;
   int port = -1;
   namespace network = reactor::network;
@@ -54,7 +56,7 @@ BOOST_AUTO_TEST_CASE(test)
     port = server.port();
     ELLE_LOG("listen on port %s", port);
     sync_client.release(); // Listening
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < reconnections; i++)
     {
       std::unique_ptr<network::TCPSocket> socket{server.accept()};
       ELLE_LOG("connection accepted");
@@ -88,7 +90,7 @@ BOOST_AUTO_TEST_CASE(test)
     plasma::trophonius::Client c("127.0.0.1", port, [] {});
     wait(sync_client); // Listening
     c.connect("", "", "");
-    for (int i = 0; i < 2; ++i)
+    for (int i = 0; i < reconnections; ++i)
     {
       wait(sync_client); // Answered
       ELLE_LOG("poll notifications");
@@ -99,9 +101,12 @@ BOOST_AUTO_TEST_CASE(test)
                         plasma::trophonius::NotificationType::message);
       sync_server.release(); // Polled
       wait(sync_client); // Disconnected
-      if (i == 1)
-        break;
-      BOOST_CHECK(!c.poll());
+      if (i == reconnections - 1)
+      {
+        BOOST_CHECK_THROW(c.poll(), std::runtime_error);
+      }
+      else
+        BOOST_CHECK(!c.poll());
     }
   };
   reactor::Thread c{sched, "client", std::move(client)};
