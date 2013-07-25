@@ -95,6 +95,8 @@ BOOST_AUTO_TEST_CASE(test)
       std::unique_ptr<Notification> notif = c.poll();
       BOOST_CHECK(notif);
       ELLE_LOG("got notification: %s", notif->notification_type);
+      BOOST_CHECK_EQUAL(notif->notification_type,
+                        plasma::trophonius::NotificationType::message);
       sync_server.release(); // Polled
       wait(sync_client); // Disconnected
       if (i == 1)
