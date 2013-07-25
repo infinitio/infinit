@@ -138,10 +138,10 @@ BOOST_AUTO_TEST_CASE(ping)
 
     auto send_ping = [&]
     {
-      sleep(30_sec);
+      sleep(1_sec);
       std::string msg = "{\"notification_type\": 208}\n";
       socket->write(network::Buffer(msg));
-      sleep(30_sec);
+      sleep(1_sec);
       msg = "{\"notification_type\": 208}\n";
       socket->write(network::Buffer(msg));
     };
@@ -166,6 +166,7 @@ BOOST_AUTO_TEST_CASE(ping)
     using namespace plasma::trophonius;
     sleep(1_sec);
     plasma::trophonius::Client c("127.0.0.1", port, [] {});
+    c.ping_period(1_sec);
 
     sleep(1_sec);
     c.connect("", "", "");
