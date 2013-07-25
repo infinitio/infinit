@@ -18,6 +18,8 @@
 
 #include <plasma/trophonius/Client.hh>
 
+ELLE_LOG_COMPONENT("infinit.plasma.trophonius.test");
+
 static
 void
 sleep(int sec)
@@ -41,11 +43,11 @@ BOOST_AUTO_TEST_CASE(test)
 
     server.listen(0);
     port = server.port();
-    std::cout << "listen on port " << port << std::endl;
+    ELLE_LOG("listen on port %s", port);
     for (int i = 0; i < 2; i++)
     {
       std::unique_ptr<network::TCPSocket> socket{server.accept()};
-      std::cout << "Connection accepted" << std::endl;
+      ELLE_LOG("connection accepted");
 
       std::string buf(512, '\0');
 
@@ -54,11 +56,12 @@ BOOST_AUTO_TEST_CASE(test)
 
       bytes = socket->read_some(network::Buffer(buf), 1_sec);
       buf.resize(bytes);
-      std::cout << "Read: " << buf << std::endl;
+      ELLE_LOG("read: %s", buf);
 
       std::string data =
         R"({"notification_type": 217, "sender_id": "id", "message": "hello"})";
 
+      ELLE_LOG("write: %s", data);
       socket->write(network::Buffer(data));
 
       sleep(5);
@@ -77,14 +80,14 @@ BOOST_AUTO_TEST_CASE(test)
     int msg = 0;
     while (1)
     {
-      std::cout << "polling notifications" << std::endl;
+      ELLE_LOG("poll notifications");
       std::unique_ptr<Notification> notif = c.poll();
       sleep(1);
 
       if (!notif)
         continue;
       msg++;
-      std::cout << msg << " HAVE NOTIF: " << notif->notification_type << std::endl;
+      ELLE_LOG("got notification: %s", notif->notification_type);
       if (msg == 2)
         break;
     }
@@ -107,14 +110,14 @@ BOOST_AUTO_TEST_CASE(ping)
 
     server.listen(0);
     port = server.port();
-    std::cout << "listen on port " << port << std::endl;
+    ELLE_LOG("listen on port %s", port);
     std::unique_ptr<network::TCPSocket> socket{server.accept()};
-    std::cout << "Connection accepted" << std::endl;
+    ELLE_LOG("connection accepted");
 
     std::string buf(512, '\0');
     size_t bytes = socket->read_some(network::Buffer(buf));
     buf.resize(bytes);
-    std::cout << "Server read: " << buf << std::endl;
+    ELLE_LOG("read: %s",  buf);
 
     auto send_ping = [&]
     {
@@ -133,7 +136,7 @@ BOOST_AUTO_TEST_CASE(ping)
 
       bytes = socket->read_some(network::Buffer(buf));
       buf.resize(bytes);
-      std::cout << "Server read: " << buf << std::endl;
+      ELLE_LOG("read: %s", buf);
     }
     auto* this_thread = sched.current();
     this_thread->wait(ping);
@@ -151,7 +154,7 @@ BOOST_AUTO_TEST_CASE(ping)
     c.connect("", "", "");
     while (1)
     {
-      std::cout << "polling notifications" << std::endl;
+      ELLE_LOG("poll notifications");
       std::unique_ptr<Notification> notif = c.poll();
       sleep(1);
 
@@ -178,18 +181,18 @@ BOOST_AUTO_TEST_CASE(noping)
 
     server.listen(0);
     port = server.port();
-    std::cout << "listen on port " << port << std::endl;
+    ELLE_LOG("listen on port %s", port);
     for (int times = 0; times < 2; times++)
     {
       std::unique_ptr<network::TCPSocket> socket{server.accept()};
-      std::cout << "Connection accepted" << std::endl;
+      ELLE_LOG("connection accepted");
 
       try
       {
         std::string buf(512, '\0');
         size_t bytes = socket->read_some(network::Buffer(buf));
         buf.resize(bytes);
-        std::cout << "Server read: " << buf << std::endl;
+        ELLE_LOG("read: %s", buf);
 
         for (int i = 0; i < 2; i++)
         {
@@ -197,7 +200,7 @@ BOOST_AUTO_TEST_CASE(noping)
 
           bytes = socket->read_some(network::Buffer(buf));
           buf.resize(bytes);
-          std::cout << "Server read: " << buf << std::endl;
+          ELLE_LOG("read: %s", buf);
         }
       }
       catch (reactor::network::ConnectionClosed const&)
@@ -219,7 +222,7 @@ BOOST_AUTO_TEST_CASE(noping)
     c.connect("", "", "");
     while (1)
     {
-      std::cout << "polling notifications" << std::endl;
+      ELLE_LOG("poll notifications");
       std::unique_ptr<Notification> notif = c.poll();
       sleep(1);
 
