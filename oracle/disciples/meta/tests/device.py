@@ -27,9 +27,8 @@ def run(client):
     assert res['success'] is True
     assert res["deleted_device_id"] == devices[0]
 
-if __name__ == "__main__":
-    import utils
-    import meta
-    with meta.Meta(spawn_db = True) as meta:
-        client = utils.create_client(meta)
-        run(client)
+import utils
+with utils.Servers(trophonius = False, apertus = False) \
+     as (meta, troph, apertus):
+    client = utils.create_client(meta)
+    run(client)

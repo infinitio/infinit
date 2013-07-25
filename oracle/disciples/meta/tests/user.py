@@ -31,8 +31,8 @@ def run(client):
     res, user1 = login('user1')
     assert res['success'] is True
 
-if __name__ == "__main__":
-    import meta
-    with meta.Meta(spawn_db = True) as meta:
-        client = utils.create_client(meta)
-        run(client)
+import utils
+with utils.Servers(trophonius = False, apertus = False) \
+     as (meta, troph, apertus):
+    client = utils.create_client(meta)
+    run(client)
