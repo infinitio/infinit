@@ -368,7 +368,17 @@ namespace surface
                                         bool const is_new)
     {
       for (auto const& cb: this->_notification_handlers[notif.notification_type])
-        cb(notif, is_new);
+      {
+        try
+        {
+          cb(notif, is_new);
+        }
+        catch (std::exception const&)
+        {
+          ELLE_ERR("%s: callback for %s failed", *this, notif);
+          throw;
+        }
+      }
     }
 
     void

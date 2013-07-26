@@ -74,7 +74,7 @@ namespace surface
         std::function<void(Notification const&, bool)>
         NotificationHandler;
       typedef
-        std::map<NotificationType, std::list<NotificationHandler>>
+        std::map<NotificationType, std::vector<NotificationHandler>>
         NotificationHandlerMap;
 
       NotificationHandlerMap _notification_handlers;
