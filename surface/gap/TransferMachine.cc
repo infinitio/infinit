@@ -376,7 +376,8 @@ namespace surface
     bool
     TransferMachine::is_sender()
     {
-      return this->_state.me().id == this->_state.transaction_manager().one(this->transaction_id()).sender_id;
+      return this->_state.me().id ==
+        this->_state.transaction_manager().one(this->transaction_id()).sender_id;
     }
 
     nucleus::proton::Network&
@@ -461,6 +462,25 @@ namespace surface
       return *this->_etoile;
     }
 
+    /*----------.
+    | Printable |
+    `----------*/
 
+    std::string
+    TransferMachine::type() const
+    {
+      return "TransferMachine";
+    }
+
+    void
+    TransferMachine::print(std::ostream& stream) const
+    {
+      stream << this->type() << "(u=" << this->state().me().id;
+      if (!this->_network_id.empty())
+        stream << ", n=" << this->_network_id;
+      if (!this->_transaction_id.empty())
+        stream << ", t=" << this->_transaction_id;
+      stream << ")";
+    }
   }
 }

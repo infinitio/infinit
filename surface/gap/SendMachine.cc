@@ -293,5 +293,16 @@ namespace surface
     SendMachine::_fail()
     {
     }
+
+    /*----------.
+    | Printable |
+    `----------*/
+
+    std::string
+    SendMachine::type() const
+    {
+      return "SendMachine";
+    }
+
   }
 }

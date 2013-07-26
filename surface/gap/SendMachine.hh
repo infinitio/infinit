@@ -78,6 +78,13 @@ namespace surface
       | Transaction data |
       `-----------------*/
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
+
+    public:
+      /*----------.
+      | Printable |
+      `----------*/
+      std::string
+      type() const override;
     };
   }
 }

@@ -84,6 +84,14 @@ namespace surface
       `-----------------*/
       ELLE_ATTRIBUTE(std::string, recipient);
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
+
+    public:
+      /*----------.
+      | Printable |
+      `----------*/
+
+      std::string
+      type() const override;
     };
   }
 }

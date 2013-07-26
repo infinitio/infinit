@@ -178,5 +178,10 @@ namespace surface
     {
     }
 
+    std::string
+    ReceiveMachine::type() const
+    {
+      return "ReceiveMachine";
+    }
   }
 }

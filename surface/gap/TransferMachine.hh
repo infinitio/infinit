@@ -1,7 +1,9 @@
 #ifndef TRANSFERMACHINE_HH
 # define TRANSFERMACHINE_HH
 
-# include "usings.hh"
+# include <surface/gap/usings.hh>
+
+# include <plasma/meta/Client.hh>
 
 # include <papier/fwd.hh>
 
@@ -12,13 +14,13 @@
 
 # include <nucleus/proton/Network.hh>
 
-# include <plasma/meta/Client.hh>
-
 # include <reactor/fsm.hh>
 # include <reactor/network/Protocol.hh>
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
 # include <reactor/waitable.hh>
+
+# include <elle/Printable.hh>
 
 # include <thread>
 
@@ -28,7 +30,8 @@ namespace surface
   {
     class State;
 
-    class TransferMachine
+    class TransferMachine:
+      public elle::Printable
     {
     public:
       TransferMachine(surface::gap::State const& state);
@@ -189,6 +192,18 @@ namespace surface
     protected:
       etoile::Etoile&
       etoile();
+
+    public:
+
+      virtual
+      std::string
+      type() const;
+
+      /*----------.
+      | Printable |
+      `----------*/
+      void
+      print(std::ostream& stream) const override;
     };
   }
 }
