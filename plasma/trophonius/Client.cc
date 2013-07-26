@@ -1,30 +1,29 @@
-#include "Client.hh"
+#include <csignal>
+#include <fcntl.h>
+#include <fstream>
+#include <iostream>
 
-#include <plasma/plasma.hh>
-
-#include <elle/assert.hh>
-#include <elle/log.hh>
-#include <elle/print.hh>
-#include <elle/finally.hh>
-#include <elle/serialize/JSONArchive.hh>
-#include <elle/serialize/extract.hh>
-#include <elle/format/json/Dictionary.hxx>
-#include <elle/format/json/Parser.hh>
-#include <elle/serialize/ListSerializer.hxx>
-#include <elle/serialize/Serializer.hh>
-#include <elle/serialize/NamedValue.hh>
-
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read_until.hpp>
 #include <boost/asio/streambuf.hpp>
-#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/write.hpp>
-#include <boost/asio/deadline_timer.hpp>
 
-#include <iostream>
-#include <fstream>
+#include <elle/assert.hh>
+#include <elle/finally.hh>
+#include <elle/format/json/Dictionary.hh>
+#include <elle/format/json/Parser.hh>
+#include <elle/log.hh>
+#include <elle/print.hh>
+#include <elle/serialize/JSONArchive.hh>
+#include <elle/serialize/ListSerializer.hxx>
+#include <elle/serialize/NamedValue.hh>
+#include <elle/serialize/Serializer.hh>
+#include <elle/serialize/extract.hh>
 
-#include <fcntl.h>
+#include <plasma/plasma.hh>
+#include <plasma/trophonius/Client.hh>
 
 ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 
@@ -149,6 +148,9 @@ namespace plasma
         return Ptr(new PeerConnectionUpdateNotification{extractor});
       case NotificationType::connection_enabled:
         return Ptr(new Notification{extractor});
+      // XXX: Handle at upper levels (?)
+      case NotificationType::suicide:
+        kill(getpid(), SIGKILL);
       default:
         throw elle::Exception{elle::sprint("Unknown notification type", type)};
       }
@@ -469,13 +471,14 @@ namespace plasma
 
       std::ostream request_stream(&_impl->request);
 
-      ELLE_AT_SCOPE_EXIT
+      elle::Finally read_socket_guard(
+      [&]
       {
         this->_read_socket();
         this->_restart_ping_timer();
         this->_restart_connection_check_timer();
         _impl->connect_callback();
-      };
+      });
 
       // May raise an exception.
       elle::serialize::OutputJSONArchive(request_stream, connection_request);

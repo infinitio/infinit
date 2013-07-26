@@ -4,8 +4,8 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <lune/Descriptor.hh>
-#include <lune/Identity.hh>
+#include <papier/Descriptor.hh>
+#include <papier/Identity.hh>
 
 #include <nucleus/neutron/Access.hh>
 #include <nucleus/neutron/Object.hh>
@@ -69,7 +69,7 @@ add_class(std::string const& name, T const& val)
   }
 }
 
-struct Authority: elle::Authority
+struct Authority: papier::Authority
 {
   Authority()
   {
@@ -84,9 +84,9 @@ struct Authority: elle::Authority
 };
 
 struct Identity:
-  lune::Identity
+  papier::Identity
 {
-  Identity(elle::Authority& auth,
+  Identity(papier::Authority& auth,
            std::string const& id,
            std::string const& login,
            std::string const& password)
@@ -113,7 +113,7 @@ struct Group
   nucleus::proton::Address    address;
   nucleus::neutron::Subject   subject;
 
-  Group(lune::Identity& identity, std::string const& name):
+  Group(papier::Identity& identity, std::string const& name):
     block{identity.pair.K, name}
   {
     this->block.seal(identity.pair.k);
@@ -152,7 +152,7 @@ struct Directory
   nucleus::neutron::Object  block;
   nucleus::proton::Address  address;
 
-  Directory(lune::Identity& identity, Access& access)
+  Directory(papier::Identity& identity, Access& access)
   {
     if (this->block.Create(nucleus::neutron::Genre::directory,
                            identity.pair.K) == elle::Status::Error)
@@ -208,10 +208,10 @@ int main(int ac, char** av)
 
 
   Authority auth;
-  ADD_CLASS(elle::Authority, auth);
+  ADD_CLASS(papier::Authority, auth);
 
   Identity identity(auth, "identity id", "login@example.com", "football");
-  ADD_CLASS(lune::Identity, identity);
+  ADD_CLASS(papier::Identity, identity);
 
   Group group(identity, "everybody");
   ADD_CLASS(nucleus::neutron::Group, group.block);

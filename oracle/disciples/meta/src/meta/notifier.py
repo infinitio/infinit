@@ -57,6 +57,15 @@ class TrophoniusNotify(Notifier):
                     device_ids = None,
                     message = None,
                     store = True):
+        """Send notification to clients.
+
+        notification_type -- Notification id to send.
+        recipient_ids     -- User to send the notification to.
+        device_ids        -- Devices to send the notification to.
+        message           -- The payload.
+        store             -- Whether to store the notification in the
+                             database.
+        """
         # Check that we either have a list of recipients or devices
         assert (recipient_ids is not None) or (device_ids is not None)
         assert message is not None

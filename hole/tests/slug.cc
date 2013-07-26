@@ -54,18 +54,18 @@ static std::vector<elle::network::Locus> members()
 
 cryptography::KeyPair keys =
   cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa, 1024);
-elle::Authority authority(keys);
+papier::Authority authority(keys);
 cryptography::KeyPair user_keys =
   cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa, 1024);
-elle::Passport passport("n'importe quoi", "n'importe quoi",
+papier::Passport passport("n'importe quoi", "n'importe quoi",
                         user_keys.K(), authority);
 
 class Slug: public hole::implementations::slug::Implementation
 {
 public:
   Slug(nucleus::proton::Network const& network,
-       elle::Passport const& passport = ::passport,
-       elle::Authority const& authority = ::authority,
+       papier::Passport const& passport = ::passport,
+       papier::Authority const& authority = ::authority,
        std::vector<elle::network::Locus> const& members = ::members())
     : hole::implementations::slug::Implementation(
       _storage, passport, authority,

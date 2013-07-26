@@ -1,5 +1,5 @@
-#ifndef LUNE_DESCRIPTOR_HH
-# define LUNE_DESCRIPTOR_HH
+#ifndef PAPIER_DESCRIPTOR_HH
+# define PAPIER_DESCRIPTOR_HH
 
 # include <elle/Version.hh>
 # include <elle/serialize/fwd.hh>
@@ -10,9 +10,9 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-# include <lune/fwd.hh>
+# include <papier/Authority.hh>
+# include <papier/Identity.hh>
 
-# include <hole/Authority.hh>
 # include <hole/Model.hh>
 # include <hole/fwd.hh>
 
@@ -24,7 +24,7 @@ using namespace infinit;
 
 # include <boost/noncopyable.hpp>
 
-namespace lune
+namespace papier
 {
   /// Represent a network descriptor which, as the name
   /// indicates, describes a network's parameters such as the
@@ -152,7 +152,7 @@ namespace lune
                elle::Boolean history,
                elle::Natural32 extent,
                elle::Version const& version,
-               elle::Authority const& authority);
+               papier::Authority const& authority);
     ELLE_SERIALIZE_CONSTRUCT_DECLARE(Descriptor);
 
     /*--------.
@@ -164,7 +164,7 @@ namespace lune
     seal(cryptography::PrivateKey const& administrator_k);
     /// XXX
     void
-    validate(elle::Authority const& authority) const;
+    validate(papier::Authority const& authority) const;
     /// XXX
     Meta const&
     meta() const;
@@ -228,7 +228,7 @@ namespace lune
            nucleus::neutron::Group::Identity const& everybody,
            elle::Boolean history,
            elle::Natural32 extent,
-           elle::Authority const& authority);
+           papier::Authority const& authority);
       ~Meta();
 
       //
@@ -237,7 +237,7 @@ namespace lune
     public:
       /// XXX
       void
-      validate(elle::Authority const& authority) const;
+      validate(papier::Authority const& authority) const;
       /// XXX
       elle::String const&
       id() const;
@@ -435,6 +435,6 @@ namespace lune
   };
 }
 
-# include <lune/Descriptor.hxx>
+# include <papier/Descriptor.hxx>
 
 #endif

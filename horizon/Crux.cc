@@ -22,11 +22,11 @@
 #include <horizon/Crib.hh>
 #include <horizon/Crux.hh>
 #include <horizon/Handle.hh>
-#include <horizon/Policy.hh>
 #include <horizon/Horizon.hh>
+#include <horizon/Policy.hh>
 #include <horizon/finally.hh>
 
-#include <lune/Descriptor.hh>
+#include <papier/Descriptor.hh>
 
 #include <nucleus/neutron/Entry.hh>
 #include <nucleus/neutron/Record.hh>
@@ -486,7 +486,7 @@ namespace horizon
       return (-EPERM);
 
     // FIXME: do not re-parse the descriptor every time.
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+    papier::Descriptor descriptor(Infinit::User, Infinit::Network);
 
     switch (descriptor.data().policy())
       {
@@ -1158,7 +1158,7 @@ namespace horizon
     HORIZON_FINALLY_ACTION_DISCARD(etoile(), link);
 
     // FIXME: do not re-parse the descriptor every time.
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+    papier::Descriptor descriptor(Infinit::User, Infinit::Network);
 
     switch (descriptor.data().policy())
       {
@@ -1340,7 +1340,7 @@ namespace horizon
 
 
     // FIXME: do not re-parse the descriptor every time.
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+    papier::Descriptor descriptor(Infinit::User, Infinit::Network);
 
     switch (descriptor.data().policy())
       {

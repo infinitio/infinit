@@ -27,6 +27,10 @@ class Trophonius:
         self.instance = None
         self.__directory = tempfile.TemporaryDirectory()
         self.timeout = timeout
+        self.stdout = None
+        self.stderr = None
+        self.__stdout = tempfile.NamedTemporaryFile()
+        self.__stderr = tempfile.NamedTemporaryFile()
 
     def __port_path(self, path):
         return os.path.join(self.__directory.name, path)
@@ -37,6 +41,8 @@ class Trophonius:
 
     def __enter__(self):
         self.__directory.__enter__()
+        self.__stdout.__enter__()
+        self.__stderr.__enter__()
         path = os.path.join(
           root_dir, '..', '..', '..', 'bin', 'trophonius-server')
         self.instance = subprocess.Popen(
@@ -47,8 +53,8 @@ class Trophonius:
              "--runtime-dir", self.__directory.name,
              "--timeout", str(self.timeout),
             ],
-            stdout = subprocess.PIPE,
-            stderr = subprocess.PIPE,
+            stdout = self.__stdout,
+            stderr = self.__stderr,
         )
         success = False
         while True:
@@ -72,7 +78,7 @@ class Trophonius:
             time.sleep(1)
         return self
 
-    def __exit__(self, exception, exception_type, backtrace):
+    def __exit__(self, *args):
         assert self.instance is not None
         self.instance.terminate()
         i = 0
@@ -81,19 +87,17 @@ class Trophonius:
               i < 10:
             time.sleep(.1)
             i += 1
-        self.__directory.__exit__(exception,
-                                  exception_type,
-                                  backtrace)
+        self.__stderr.flush()
+        with open(self.__stderr.name, 'rb') as f:
+            self.stderr = f.read().decode('utf-8')
+        self.__stderr.__exit__(*args)
+        self.__stdout.flush()
+        with open(self.__stdout.name, 'rb') as f:
+            self.stdout = f.read().decode('utf-8')
+        self.__stdout.__exit__(*args)
+        self.__directory.__exit__(*args)
         if i == 10:
             raise Exception("Couldn't exit tropho properly")
-
-    @property
-    def stdout(self):
-      return self.instance.stdout.read().decode('utf-8')
-
-    @property
-    def stderr(self):
-      return self.instance.stderr.read().decode('utf-8')
 
 
 class Client:

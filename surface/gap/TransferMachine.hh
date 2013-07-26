@@ -3,10 +3,9 @@
 
 # include "usings.hh"
 
-# include <lune/Identity.hh>
-# include <lune/Lune.hh>
+# include <papier/fwd.hh>
 
-# include <etoile/Etoile.hh>
+# include <etoile/fwd.hh>
 
 # include <hole/storage/Directory.hh>
 # include <hole/implementations/slug/Slug.hh>
@@ -168,9 +167,9 @@ namespace surface
       nucleus::proton::Network&
       network();
 
-      ELLE_ATTRIBUTE(std::unique_ptr<lune::Descriptor>, descriptor);
+      ELLE_ATTRIBUTE(std::unique_ptr<papier::Descriptor>, descriptor);
     protected:
-      lune::Descriptor const&
+      papier::Descriptor const&
       descriptor();
 
       /*-------.

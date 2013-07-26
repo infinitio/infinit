@@ -1,16 +1,19 @@
 #ifndef SURFACE_GAP_DETAILS_TRANSFEROPERATIONS_HH
 # define SURFACE_GAP_DETAILS_TRANSFEROPERATIONS_HH
 
+# include <unordered_set>
+# include <string>
+
+# include <elle/types.hh>
+
+# include <papier/fwd.hh>
 # include <etoile/fwd.hh>
 # include <lune/fwd.hh>
+
 # include <nucleus/fwd.hh>
-# include <elle/types.hh>
 
 // XXX
 # include <nucleus/neutron/Group.hh>
-
-# include <unordered_set>
-# include <string>
 
 namespace surface
 {
@@ -30,7 +33,7 @@ namespace surface
 
         NetworkBlocks
         create(std::string const& id,
-               lune::Identity const& identity);
+               papier::Identity const& identity);
       }
 
       namespace user
@@ -50,7 +53,7 @@ namespace surface
       {
         void
         send(etoile::Etoile& etoile,
-             lune::Descriptor const& descriptor,
+             papier::Descriptor const& descriptor,
              nucleus::neutron::Subject const& subject,
              std::unordered_set<std::string> items);
       }
@@ -59,7 +62,7 @@ namespace surface
       {
         void
         receive(etoile::Etoile& etoile,
-                lune::Descriptor const& descriptor,
+                papier::Descriptor const& descriptor,
                 nucleus::neutron::Subject const& subject,
                 std::string const& target);
       }

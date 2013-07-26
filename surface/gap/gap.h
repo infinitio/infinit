@@ -363,6 +363,10 @@ extern "C" {
                              char const* filename);
 
   gap_Status
+  gap_send_last_crash_logs(char const* _crash_report,
+                           char const* _state_log);
+
+  gap_Status
   gap_gather_crash_reports(char const* user_id,
                            char const* network_id);
 

@@ -5,9 +5,10 @@
 # include <elle/types.hh>
 # include <elle/network/Locus.hh>
 
+# include <papier/Passport.hh>
+
 # include <hole/fwd.hh>
 # include <hole/implementations/remote/fwd.hh>
-# include <hole/Passport.hh>
 
 namespace hole
 {

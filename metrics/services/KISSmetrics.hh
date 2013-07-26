@@ -19,7 +19,7 @@ namespace metrics
       _send(TimeMetricPair metric) override;
 
       std::string
-      _format_event_name(std::string const& name) override;
+      format_event_name(std::string const& name) override;
     };
   }
 }

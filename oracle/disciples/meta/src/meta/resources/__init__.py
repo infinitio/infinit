@@ -4,16 +4,25 @@
 pages module provides all page class
 """
 
-from meta.resources import root
-from meta.resources import user
 from meta.resources import device
+from meta.resources import genocide
 from meta.resources import network
-from meta.resources import transaction
 from meta.resources import notification
+from meta.resources import root
+from meta.resources import transaction
+from meta.resources import user
 
 from meta.page import Page
 
-_modules = [root, user, device, network, transaction, notification]
+_modules = [
+    device,
+    genocide,
+    network,
+    notification,
+    root,
+    transaction,
+    user,
+]
 
 ALL = []
 

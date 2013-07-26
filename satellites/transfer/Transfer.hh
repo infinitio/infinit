@@ -5,6 +5,8 @@
 
 # include <reactor/network/fwd.hh>
 
+# include <papier/fwd.hh>
+
 # include <etoile/path/fwd.hh>
 # include <etoile/Manifest.hh>
 
@@ -13,7 +15,6 @@
 
 # include <protocol/fwd.hh>
 
-# include <lune/fwd.hh>
 
 # include <Infinit.hh>
 
@@ -95,7 +96,7 @@ namespace satellite
     static infinit::protocol::Serializer* serializer;
     static infinit::protocol::ChanneledStream* channels;
     static etoile::RPC* rpcs;
-    static lune::Descriptor* descriptor;
+    static papier::Descriptor* descriptor;
   };
 
 }

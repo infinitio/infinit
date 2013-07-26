@@ -1,15 +1,10 @@
-#include "SendMachine.hh"
-
-#include "Rounds.hh"
-
+#include <surface/gap/SendMachine.hh>
+#include <surface/gap/Rounds.hh>
 #include <surface/gap/_detail/TransferOperations.hh>
 
+#include <papier/Descriptor.hh>
+
 #include <nucleus/neutron/Object.hh>
-
-#include <lune/Descriptor.hh>
-#include <hole/Passport.hh>
-#include <lune/Identity.hh>
-
 #include <nucleus/neutron/Subject.hh>
 
 #include <reactor/thread.hh>

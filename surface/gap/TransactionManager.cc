@@ -133,10 +133,10 @@ namespace surface
                   "ignore transaction update %s: local status of %s is greater",
                   tr, it->second)};
             }
+
             (*ptr)[tr.id] = tr;
         });
       }
     }
-
   }
 }

@@ -45,7 +45,7 @@ namespace etoile
 
       // allocate an actor by passing the etoile instance because the scope's
       // context may have not been allocated yet.
-      guard.actor(new gear::Actor(scope, etoile));
+      guard.actor(new gear::Actor(etoile, scope));
 
       // declare a critical section.
       {
@@ -162,18 +162,13 @@ namespace etoile
           // Directory::* methods could be used.
           ELLE_ASSERT(scope->context != nullptr);
         }
-      }
-
-      // retrieve the context.
-      if (scope->Use(etoile, context) == elle::Status::Error)
-        throw Exception("unable to retrieve the context");
-
-      // declare a critical section.
-      {
-        reactor::Lock lock(scope->mutex.write());
 
         // return the identifier.
         gear::Identifier identifier = guard.actor()->identifier;
+
+        // retrieve the context.
+        if (scope->Use(etoile, context) == elle::Status::Error)
+          throw Exception("unable to retrieve the context");
 
         // locate the object based on the chemin.
         context->location = scope->chemin.locate();
@@ -215,6 +210,7 @@ namespace etoile
 
         // retrieve the context.
         gear::Object* context;
+
         if (scope->Use(etoile, context) == elle::Status::Error)
           throw Exception("unable to retrieve the context");
 

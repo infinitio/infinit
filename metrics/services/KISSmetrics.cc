@@ -114,7 +114,7 @@ namespace metrics
     }
 
     std::string
-    KISSmetrics::_format_event_name(std::string const& name)
+    KISSmetrics::format_event_name(std::string const& name)
     {
       return boost::replace_all_copy(name, ".", "_");
     }

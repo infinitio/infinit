@@ -7,23 +7,23 @@ namespace horizon
   operator <<(std::ostream& stream, Policy policy)
   {
     switch (policy)
-      {
+    {
       case Policy::accessible:
-        {
-          stream << "accessible";
-          break;
-        }
-      case Policy::editable:
-        {
-          stream << "editable";
-          break;
-        }
-      case Policy::confidential:
-        {
-          stream << "confidential";
-          break;
-        }
+      {
+        stream << "accessible";
+        break;
       }
+      case Policy::editable:
+      {
+        stream << "editable";
+        break;
+      }
+      case Policy::confidential:
+      {
+        stream << "confidential";
+        break;
+      }
+    }
 
     return (stream);
   }

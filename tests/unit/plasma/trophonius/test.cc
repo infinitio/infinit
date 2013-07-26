@@ -1,14 +1,20 @@
 #define BOOST_TEST_MODULE trophonius
 #define BOOST_TEST_DYN_LINK
+#include <boost/date_time/posix_time/date_duration_operators.hpp>
 #include <boost/test/unit_test.hpp>
+
+#include <elle/finally.hh>
 #include <elle/system/Process.hh>
-#include <reactor/thread.hh>
-#include <reactor/scheduler.hh>
-#include <reactor/network/tcp-server.hh>
-#include <reactor/network/tcp-socket.hh>
+
+#include <reactor/duration.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
+#include <reactor/network/tcp-server.hh>
+#include <reactor/network/tcp-socket.hh>
+#include <reactor/scheduler.hh>
+#include <reactor/semaphore.hh>
 #include <reactor/sleep.hh>
+#include <reactor/thread.hh>
 
 #include <memory>
 #include <common/common.hh>
@@ -18,22 +24,32 @@
 
 #include <plasma/trophonius/Client.hh>
 
+ELLE_LOG_COMPONENT("infinit.plasma.trophonius.test");
+
 static
 void
-sleep(int sec)
+sleep(boost::posix_time::time_duration const& d)
 {
-  using namespace reactor;
-  reactor::Sleep op(*reactor::Scheduler::scheduler(),
-                    boost::posix_time::seconds(sec));
+  reactor::Scheduler::scheduler()->current()->sleep(d);
+}
 
-  op.run();
+static
+void
+wait(reactor::Waitable& w)
+{
+  reactor::Scheduler::scheduler()->current()->wait(w);
 }
 
 BOOST_AUTO_TEST_CASE(test)
 {
+  static int const reconnections = 5;
+
   reactor::Scheduler sched;
   int port = -1;
   namespace network = reactor::network;
+
+  reactor::Semaphore sync_client;
+  reactor::Semaphore sync_server;
 
   auto serv = [&]
   {
@@ -41,11 +57,12 @@ BOOST_AUTO_TEST_CASE(test)
 
     server.listen(0);
     port = server.port();
-    std::cout << "listen on port " << port << std::endl;
-    for (int i = 0; i < 2; i++)
+    ELLE_LOG("listen on port %s", port);
+    sync_client.release(); // Listening
+    for (int i = 0; i < reconnections; i++)
     {
       std::unique_ptr<network::TCPSocket> socket{server.accept()};
-      std::cout << "Connection accepted" << std::endl;
+      ELLE_LOG("connection accepted");
 
       std::string buf(512, '\0');
 
@@ -54,14 +71,18 @@ BOOST_AUTO_TEST_CASE(test)
 
       bytes = socket->read_some(network::Buffer(buf), 1_sec);
       buf.resize(bytes);
-      std::cout << "Read: " << buf << std::endl;
+      ELLE_LOG("read: %s", buf);
 
       std::string data =
-        R"({"notification_type": 217, "sender_id": "id", "message": "hello"})";
+        "{\"notification_type\": 217,"
+        "\"sender_id\": \"id\", "
+        "\"message\": \"hello\"}\n";
 
+      ELLE_LOG("write: %s", data);
       socket->write(network::Buffer(data));
-
-      sleep(5);
+      sync_client.release(); // Answered
+      wait(sync_server); // Polled
+      sync_client.release(); // Disconnected
     }
   };
   reactor::Thread s{sched, "server", std::move(serv)};
@@ -69,24 +90,26 @@ BOOST_AUTO_TEST_CASE(test)
   auto client = [&]
   {
     using namespace plasma::trophonius;
-    sleep(1);
     plasma::trophonius::Client c("127.0.0.1", port, [] {});
-
-    sleep(1);
+    wait(sync_client); // Listening
     c.connect("", "", "");
-    int msg = 0;
-    while (1)
+    for (int i = 0; i < reconnections; ++i)
     {
-      std::cout << "polling notifications" << std::endl;
+      wait(sync_client); // Answered
+      ELLE_LOG("poll notifications");
       std::unique_ptr<Notification> notif = c.poll();
-      sleep(1);
-
-      if (!notif)
-        continue;
-      msg++;
-      std::cout << msg << " HAVE NOTIF: " << notif->notification_type << std::endl;
-      if (msg == 2)
-        break;
+      BOOST_CHECK(notif);
+      ELLE_LOG("got notification: %s", notif->notification_type);
+      BOOST_CHECK_EQUAL(notif->notification_type,
+                        plasma::trophonius::NotificationType::message);
+      sync_server.release(); // Polled
+      wait(sync_client); // Disconnected
+      if (i == reconnections - 1)
+      {
+        BOOST_CHECK_THROW(c.poll(), std::runtime_error);
+      }
+      else
+        BOOST_CHECK(!c.poll());
     }
   };
   reactor::Thread c{sched, "client", std::move(client)};
@@ -95,10 +118,17 @@ BOOST_AUTO_TEST_CASE(test)
 
 BOOST_AUTO_TEST_CASE(ping)
 {
+  boost::posix_time::time_duration const period = 100_ms;
+  boost::posix_time::time_duration const run_time = 3_sec;
+  int periods = run_time.total_milliseconds() / period.total_milliseconds();
+
   reactor::Scheduler sched;
+
+  reactor::Semaphore sync_client;
+  reactor::Semaphore sync_server;
+
   int port = -1;
   namespace network = reactor::network;
-  reactor::Thread* client_thread = nullptr;
 
   auto serv = [&]
   {
@@ -107,69 +137,76 @@ BOOST_AUTO_TEST_CASE(ping)
 
     server.listen(0);
     port = server.port();
-    std::cout << "listen on port " << port << std::endl;
+    ELLE_LOG("listen on port %s", port);
+    sync_client.release(); // Listening
     std::unique_ptr<network::TCPSocket> socket{server.accept()};
-    std::cout << "Connection accepted" << std::endl;
+    ELLE_LOG("connection accepted");
 
-    std::string buf(512, '\0');
-    size_t bytes = socket->read_some(network::Buffer(buf));
-    buf.resize(bytes);
-    std::cout << "Server read: " << buf << std::endl;
+    std::unique_ptr<Thread> ping(sched.every([&] {
+          std::string msg = "{\"notification_type\": 208}\n";
+          ELLE_LOG("send ping");
+          socket->write(network::Buffer(msg));
+        }, "ping", period));
+    elle::Finally end_ping([&] { ping->terminate_now(); });
 
-    auto send_ping = [&]
-    {
-      sleep(30);
-      std::string msg = "{\"notification_type\": 208}\n";
-      socket->write(network::Buffer(msg));
-      sleep(30);
-      msg = "{\"notification_type\": 208}\n";
-      socket->write(network::Buffer(msg));
-    };
-    reactor::Thread ping{sched, "ping", std::move(send_ping)};
-
-    for (int i = 0; i < 2; i++)
+    auto previous = boost::posix_time::microsec_clock::local_time();
+    int received = 0;
+    elle::Finally check([&] {
+        BOOST_CHECK_LE(std::abs(received - periods), 1);
+      });
+    while (true)
     {
       std::string buf(512, '\0');
-
-      bytes = socket->read_some(network::Buffer(buf));
+      size_t bytes = socket->read_some(network::Buffer(buf));
       buf.resize(bytes);
-      std::cout << "Server read: " << buf << std::endl;
-    }
-    auto* this_thread = sched.current();
-    this_thread->wait(ping);
-    client_thread->terminate_now();
-  };
-  reactor::Thread s{sched, "server", std::move(serv)};
-
-  auto client = [&]
-  {
-    using namespace plasma::trophonius;
-    sleep(1);
-    plasma::trophonius::Client c("127.0.0.1", port, [] {});
-
-    sleep(1);
-    c.connect("", "", "");
-    while (1)
-    {
-      std::cout << "polling notifications" << std::endl;
-      std::unique_ptr<Notification> notif = c.poll();
-      sleep(1);
-
-      if (!notif)
+      if (buf[buf.length() - 1] != '\n')
         continue;
+      auto now = boost::posix_time::microsec_clock::local_time();
+      auto diff = now - previous;
+      ELLE_LOG("got ping after %s", diff);
+      BOOST_CHECK_LT(diff, period * 11 / 10);
+      previous = now;
+      ++received;
     }
   };
-  reactor::Thread c{sched, "client", std::move(client)};
-  client_thread = &c;
+
+  auto client_thread = [&]
+  {
+    plasma::trophonius::Client client("127.0.0.1", port, [] {});
+    elle::Finally check([&] { BOOST_CHECK_EQUAL(client.reconnected(), 0); });
+    client.ping_period(period);
+    wait(sync_client); // Listening
+    client.connect("", "", "");
+    while (true)
+    {
+      ELLE_LOG("poll notifications");
+      std::unique_ptr<plasma::trophonius::Notification> notif = client.poll();
+      sleep(period);
+    }
+  };
+
+  reactor::Thread s(sched, "server", serv);
+  reactor::Thread c(sched, "client", client_thread);
+  reactor::Thread j(sched, "janitor", [&] {
+      sleep(run_time);
+      sched.terminate();
+    });
   sched.run();
 }
 
 BOOST_AUTO_TEST_CASE(noping)
 {
+  boost::posix_time::time_duration const period = 100_ms;
+  boost::posix_time::time_duration const run_time = 3_sec;
+  int periods = run_time.total_milliseconds() / period.total_milliseconds();
+
   reactor::Scheduler sched;
+
+  reactor::Semaphore sync_client;
+  reactor::Semaphore sync_server;
+
   int port = -1;
   namespace network = reactor::network;
-  reactor::Thread* client_thread = nullptr;
 
   auto serv = [&]
   {
@@ -178,56 +215,68 @@ BOOST_AUTO_TEST_CASE(noping)
 
     server.listen(0);
     port = server.port();
-    std::cout << "listen on port " << port << std::endl;
-    for (int times = 0; times < 2; times++)
+    ELLE_LOG("listen on port %s", port);
+    sync_client.release(); // Listening
+    while (true)
     {
       std::unique_ptr<network::TCPSocket> socket{server.accept()};
-      std::cout << "Connection accepted" << std::endl;
+      ELLE_LOG("connection accepted");
 
-      try
+      auto start = boost::posix_time::microsec_clock::local_time();
+      while (true)
       {
         std::string buf(512, '\0');
         size_t bytes = socket->read_some(network::Buffer(buf));
         buf.resize(bytes);
-        std::cout << "Server read: " << buf << std::endl;
-
-        for (int i = 0; i < 2; i++)
-        {
-          std::string buf(512, '\0');
-
-          bytes = socket->read_some(network::Buffer(buf));
-          buf.resize(bytes);
-          std::cout << "Server read: " << buf << std::endl;
-        }
+        if (buf[buf.length() - 1] != '\n')
+          continue;
+        ELLE_LOG("got auth");
+        break;
       }
-      catch (reactor::network::ConnectionClosed const&)
+      while (true)
       {
-        //continue;
+        std::string buf(512, '\0');
+        size_t bytes = socket->read_some(network::Buffer(buf));
+        buf.resize(bytes);
+        if (buf[buf.length() - 1] != '\n')
+          continue;
+        auto ping_time = boost::posix_time::microsec_clock::local_time() - start;
+        ELLE_LOG("got ping after %s", ping_time);
+        BOOST_CHECK_LT(ping_time, period * 11 / 10);
+        // The client, not receiving pings, shall disconnect.
+        BOOST_CHECK_THROW(socket->read_some(network::Buffer(buf)),
+                          std::runtime_error);
+        auto disconnection_time =
+          boost::posix_time::microsec_clock::local_time() - start;
+        ELLE_LOG("disconnection after %s", disconnection_time);
+        BOOST_CHECK_LT(disconnection_time, period * 22 / 10);
+        break;
       }
     }
-    client_thread->terminate_now();
   };
-  reactor::Thread s{sched, "server", std::move(serv)};
 
-  auto client = [&]
+  auto client_thread = [&]
   {
-    using namespace plasma::trophonius;
-    sleep(1);
-    plasma::trophonius::Client c("127.0.0.1", port, [] {});
-
-    sleep(1);
-    c.connect("", "", "");
-    while (1)
+    plasma::trophonius::Client client("127.0.0.1", port, [] {});
+    elle::Finally check([&] {
+        BOOST_CHECK_LE(client.reconnected() - (periods / 2), 1);
+      });
+    client.ping_period(period);
+    wait(sync_client); // Listening
+    client.connect("", "", "");
+    while (true)
     {
-      std::cout << "polling notifications" << std::endl;
-      std::unique_ptr<Notification> notif = c.poll();
-      sleep(1);
-
-      if (!notif)
-        continue;
+      ELLE_LOG("poll notifications");
+      std::unique_ptr<plasma::trophonius::Notification> notif = client.poll();
+      sleep(period);
     }
   };
-  reactor::Thread c{sched, "client", std::move(client)};
-  client_thread = &c;
+
+  reactor::Thread s(sched, "server", serv);
+  reactor::Thread c(sched, "client", client_thread);
+  reactor::Thread j(sched, "janitor", [&] {
+      sleep(run_time);
+      sched.terminate();
+    });
   sched.run();
 }

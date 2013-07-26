@@ -1,7 +1,8 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 
-#include <hole/Passport.hh>
+#include <papier/Passport.hh>
+
 #include <hole/Exception.hh>
 
 #include <nucleus/proton/Address.hh>
@@ -83,7 +84,7 @@ namespace hole
       `----*/
 
       bool
-      Customer::challenge(elle::Passport const& passport)
+      Customer::challenge(papier::Passport const& passport)
       {
         ELLE_TRACE_SCOPE("%s: challenge", *this);
         if (!passport.validate(this->_server.hole().authority()))

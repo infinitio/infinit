@@ -1,7 +1,7 @@
-#ifndef  LUNE_PASSPORT_HXX
-# define LUNE_PASSPORT_HXX
+#ifndef PAPIER_PASSPORT_HXX
+# define PAPIER_PASSPORT_HXX
 
-ELLE_SERIALIZE_SIMPLE(elle::Passport,
+ELLE_SERIALIZE_SIMPLE(papier::Passport,
                       archive,
                       value,
                       version)
@@ -17,10 +17,10 @@ ELLE_SERIALIZE_SIMPLE(elle::Passport,
 namespace std
 {
   template<>
-  struct hash<elle::Passport>
+  struct hash<papier::Passport>
   {
   public:
-    std::size_t operator()(elle::Passport const& s) const
+    std::size_t operator()(papier::Passport const& s) const
     {
       // XXX: The id is definitely not unique.
       return std::hash<std::string>()(s.id());

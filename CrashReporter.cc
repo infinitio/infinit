@@ -1,22 +1,21 @@
 #include <CrashReporter.hh>
 
-#include <elle/format/json.hh>
-#include <elle/os/path.hh>
-#include <elle/os/environ.hh>
-#include <elle/os/getenv.hh>
-#include <elle/log.hh>
-#include <elle/system/platform.hh>
-#include <curly/curly.hh>
-
-#include <reactor/scheduler.hh>
+#include <fstream>
+#include <map>
+#include <signal.h>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include <fstream>
-#include <map>
-
-#include <signal.h>
+#include <curly/curly.hh>
+#include <elle/format/json.hh>
+#include <elle/log.hh>
+#include <elle/os/environ.hh>
+#include <elle/os/getenv.hh>
+#include <elle/os/path.hh>
+#include <elle/system/platform.hh>
+#include <reactor/scheduler.hh>
+#include <version.hh>
 
 ELLE_LOG_COMPONENT("elle.CrashReporter");
 
@@ -279,6 +278,7 @@ namespace elle
       request["signal"] = signal;
       request["backtrace"] = bt_arr;
       request["env"] = env_arr;
+      request["version"] = INFINIT_VERSION;
 
       request["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
 #ifdef INFINIT_PRODUCTION_BUILD

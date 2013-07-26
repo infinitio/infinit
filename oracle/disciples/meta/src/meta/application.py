@@ -22,10 +22,12 @@ class Application(object):
                  mongo_port = None,
                  apertus_host = None,
                  apertus_port = None,
-                 port_file = None):
+                 port_file = None,
+                 fcgi = None):
         urls = []
         views = {}
 
+        self.fcgi = fcgi
         self.port_file = port_file
         self.host = meta_host
         self.port = meta_port
@@ -59,13 +61,19 @@ class Application(object):
         """
         Run the web server
         """
-        from wsgiref.simple_server import make_server
-        httpd = make_server(self.host, self.port, self.app.wsgifunc())
-        self.port = httpd.server_port
-        if self.port_file != None:
-            with open(self.port_file, 'w') as f:
-                f.write('meta_host:' + self.host + '\n')
-                f.write('meta_port:' + str(self.port) + '\n')
-                f.write('mongo_host:' + self.mongo_host + '\n')
-                f.write('mongo_port:' + str(self.mongo_port) + '\n')
-        httpd.serve_forever()
+        print(self.fcgi)
+        if self.fcgi:
+            print("start fcgi server")
+            web.wsgi.runwsgi = lambda func, addr=None: web.wsgi.runfcgi(func, addr)
+            self.app.run()
+        else:
+            from wsgiref.simple_server import make_server
+            httpd = make_server(self.host, self.port, self.app.wsgifunc())
+            self.port = httpd.server_port
+            if self.port_file != None:
+                with open(self.port_file, 'w') as f:
+                    f.write('meta_host:' + self.host + '\n')
+                    f.write('meta_port:' + str(self.port) + '\n')
+                    f.write('mongo_host:' + self.mongo_host + '\n')
+                    f.write('mongo_port:' + str(self.mongo_port) + '\n')
+            httpd.serve_forever()

@@ -9,6 +9,8 @@
 #include <reactor/scheduler.hh>
 #include <reactor/network/tcp-socket.hh>
 
+#include <papier/Descriptor.hh>
+
 #include <protocol/Serializer.hh>
 
 #include <etoile/gear/Identifier.hh>
@@ -20,7 +22,6 @@
 
 #include <lune/Lune.hh>
 #include <lune/Phrase.hh>
-#include <lune/Descriptor.hh>
 
 #include <common/common.hh>
 
@@ -45,7 +46,7 @@ namespace satellite
   infinit::protocol::Serializer* Transfer::serializer = nullptr;
   infinit::protocol::ChanneledStream* Transfer::channels = nullptr;
   etoile::RPC* Transfer::rpcs = nullptr;
-  lune::Descriptor* Transfer::descriptor = nullptr;
+  papier::Descriptor* Transfer::descriptor = nullptr;
 
   /// Ward helper to make sure objects are discarded on errors.
   class Ward
@@ -876,7 +877,7 @@ namespace satellite
 
     // FIXME: do not re-parse the descriptor every time.
     Transfer::descriptor =
-      new lune::Descriptor(Infinit::User, Infinit::Network);
+      new papier::Descriptor(Infinit::User, Infinit::Network);
 
     elle::String path;
 

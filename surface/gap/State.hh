@@ -20,8 +20,8 @@
 # include <plasma/meta/Client.hh>
 # include <plasma/trophonius/Client.hh>
 
-# include <hole/Passport.hh>
-# include <lune/Identity.hh>
+# include <papier/Passport.hh>
+# include <papier/Identity.hh>
 
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
@@ -140,13 +140,13 @@ namespace surface
       std::string const&
       device_name() const;
 
-      ELLE_ATTRIBUTE_P(elle::Passport, passport, mutable);
-      ELLE_ATTRIBUTE_P(lune::Identity, identity, mutable);
+      ELLE_ATTRIBUTE_P(papier::Passport, passport, mutable);
+      ELLE_ATTRIBUTE_P(papier::Identity, identity, mutable);
     public:
-      elle::Passport const&
+      papier::Passport const&
       passport() const;
 
-      lune::Identity const&
+      papier::Identity const&
       identity() const;
 
 

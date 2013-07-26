@@ -6,7 +6,7 @@
 
 #include <common/common.hh>
 
-#include <lune/Identity.hh>
+#include <papier/Identity.hh>
 #include <lune/Dictionary.hh>
 
 #include <elle/log.hh>
@@ -277,7 +277,7 @@ namespace surface
 
       std::string identity_clear;
 
-      lune::Identity identity;
+      papier::Identity identity;
 
       // Decrypt the identity
       if (identity.Restore(res.identity)    == elle::Status::Error ||
@@ -465,7 +465,7 @@ namespace surface
       this->login(lower_email, password);
     }
 
-    lune::Identity const&
+    papier::Identity const&
     State::identity() const
     {
       if (!this->logged_in())

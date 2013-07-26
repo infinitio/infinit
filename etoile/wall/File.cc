@@ -35,11 +35,7 @@ namespace etoile
       gear::File* context;
       gear::Identifier identifier;
 
-      // retrieve the context.
-      if (scope->Use(etoile, context) == elle::Status::Error)
-        throw Exception("unable to retrieve the context");
-
-      guard.actor(new gear::Actor(scope));
+      guard.actor(new gear::Actor(etoile, scope));
 
       // Declare a critical section.
       {
@@ -47,6 +43,10 @@ namespace etoile
 
         // return the identifier.
         identifier = guard.actor()->identifier;
+
+        // retrieve the context.
+        if (scope->Use(etoile, context) == elle::Status::Error)
+          throw Exception("unable to retrieve the context");
 
         // apply the create automaton on the context.
         if (automaton::File::Create(*context) == elle::Status::Error)
@@ -77,12 +77,8 @@ namespace etoile
       gear::File* context;
       gear::Identifier identifier;
 
-      // retrieve the context.
-      if (scope->Use(etoile, context) == elle::Status::Error)
-        throw Exception("unable to retrieve the context");
-
       // allocate an actor.
-      guard.actor(new gear::Actor(scope));
+      guard.actor(new gear::Actor(etoile, scope));
 
       // declare a critical section.
       {
@@ -90,6 +86,10 @@ namespace etoile
 
         // return the identifier.
         identifier = guard.actor()->identifier;
+
+        // retrieve the context.
+        if (scope->Use(etoile, context) == elle::Status::Error)
+          throw Exception("unable to retrieve the context");
 
         // locate the object based on the chemin.
         context->location = chemin.locate();

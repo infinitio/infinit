@@ -239,14 +239,14 @@ def configure(cxx_toolkit = None,
   curly_lib = copy_lib(elle.curly_dynamic)
   curly_sched_lib = copy_lib(elle.curly_sched_dynamic)
   curly_asio_lib = copy_lib(elle.curly_asio_dynamic)
-  asio_udt_lib = copy_lib(elle.reactor.asio_udt.library)
-  udt_lib = copy_lib(elle.reactor.asio_udt.udt.library)
   cxx_config += elle.config
   cxx_config.add_local_include_path('.')
 
   # Warnings
   cxx_config.warnings.parentheses = False
   cxx_config.warnings.empty_body = False
+  # Clang/GCC disagree on std::hash struct versus class.
+  cxx_config.warnings.mismatched_tags = False
   cxx_config.warnings.missing_declarations = \
     drake.cxx.Config.Warnings.Error
   cxx_config.warnings.return_type = \
@@ -269,15 +269,9 @@ def configure(cxx_toolkit = None,
   lune_sources = drake.nodes(
     'lune/Configuration.cc',
     'lune/Configuration.hh',
-    'lune/Descriptor.cc',
-    'lune/Descriptor.hh',
-    'lune/Descriptor.hxx',
     'lune/Dictionary.cc',
     'lune/Dictionary.hh',
     'lune/Dictionary.hxx',
-    'lune/Identity.cc',
-    'lune/Identity.hh',
-    'lune/Identity.hxx',
     'lune/Lune.cc',
     'lune/Lune.hh',
     'lune/Map.hh',
@@ -285,8 +279,6 @@ def configure(cxx_toolkit = None,
     'lune/Phrase.cc',
     'lune/Phrase.hh',
     'lune/Phrase.hxx',
-    'lune/Policy.cc',
-    'lune/Policy.hh',
     'lune/Set.cc',
     'lune/Set.hh',
     'lune/Set.hxx',
@@ -546,8 +538,8 @@ def configure(cxx_toolkit = None,
     'CrashReporter.cc',
     'CrashReporter.hh',
     'HoleFactory.cc',
-    'heartbeat.cc',
-    'heartbeat.hh',
+    #'heartbeat.cc',
+    #'heartbeat.hh',
     'Infinit.cc',
     'Program.cc',
     'Program.hh',
@@ -559,24 +551,43 @@ def configure(cxx_toolkit = None,
                                  infinit_sources + [reactor_lib, curly_lib],
                                  cxx_toolkit, infinit_cxx_config)
 
+  # Papier
+  papier_sources = drake.nodes(
+    'papier/Authority.cc',
+    'papier/Authority.hh',
+    'papier/Authority.hxx',
+    'papier/Descriptor.cc',
+    'papier/Descriptor.hh',
+    'papier/Descriptor.hxx',
+    'papier/Identity.cc',
+    'papier/Identity.hh',
+    'papier/Identity.hxx',
+    'papier/Passport.cc',
+    'papier/Passport.hh',
+    'papier/Passport.hxx',
+    'hole/Openness.cc',
+    'hole/Openness.hh',
+    'hole/Model.cc',
+    'hole/Model.hh',
+    'hole/Model.hxx',
+    'horizon/Policy.cc',
+    'horizon/Policy.hh',
+  )
+  papier_cxx_config = drake.cxx.Config(cxx_config)
+  papier_cxx_config.lib_path_runtime('.')
+  papier_lib = drake.cxx.DynLib('lib/papier',
+                                papier_sources + [],
+                                cxx_toolkit, papier_cxx_config)
+
   # Hole
   hole_sources = drake.nodes(
     'hole/Exception.cc',
     'hole/Exception.hh',
-    'hole/Authority.cc',
-    'hole/Authority.hh',
-    'hole/Authority.hxx',
-    'hole/Passport.cc',
-    'hole/Passport.hh',
-    'hole/Passport.hxx',
     'hole/Hole.cc',
     'hole/Hole.hh',
     'hole/Label.cc',
     'hole/Label.hh',
     'hole/Label.hxx',
-    'hole/Model.cc',
-    'hole/Model.hh',
-    'hole/Model.hxx',
     'hole/Openness.cc',
     'hole/Openness.hh',
     'hole/algorithms/assignment/Assignment.hh',
@@ -778,6 +789,8 @@ def configure(cxx_toolkit = None,
       'horizon/Horizon.cc',
       'horizon/Horizon.hh',
       'horizon/operations.hh',
+      'horizon/Policy.cc',
+      'horizon/Policy.hh',
       )
     if cxx_toolkit.os == drake.os.linux:
       horizon_sources += drake.nodes(
@@ -862,6 +875,7 @@ def configure(cxx_toolkit = None,
     agent_lib,
     etoile_lib,
     hole_lib,
+    papier_lib,
     infinit_lib,
     lune_lib,
     nucleus_lib,
@@ -874,8 +888,6 @@ def configure(cxx_toolkit = None,
   ]
   if enable_horizon:
     infinit_libs.append(horizon_slib)
-  udt_libs = [asio_udt_lib, udt_lib]
-  infinit_libs += udt_libs # FIXME: no need to depend on UDT
   infinit_libs += curly_libs
 
   # 8infinit
@@ -1118,13 +1130,15 @@ def configure(cxx_toolkit = None,
       'oracle/disciples/pythia/__init__.py',
       )
 
-    # Set PYTHONPATH for oracle tests.
-    try:
-      pythonpath = os.environ['PYTHONPATH']
-    except:
-      pythonpath = ''
-    pythonpath = '%s:%s' % (drake.path_build('lib/python'), pythonpath)
-    os.environ['PYTHONPATH'] = pythonpath
+    # PYTHONPATH for oracle and functional tests.
+    pythonpath = [
+      drake.path_src('tests/functional/lib'),
+      drake.path_build('lib/python'),
+    ]
+    env = {
+      'PYTHONPATH': ':'.join(map(str, pythonpath)),
+      'PATH': os.environ['PATH']
+    }
 
     def oracle(name):
       root = drake.Path('oracle/disciples/%s' % name)
@@ -1140,7 +1154,7 @@ def configure(cxx_toolkit = None,
         test = drake.node(test)
         if not test.path().executable:
           continue
-        runner = drake.Runner(test)
+        runner = drake.Runner(test, env = env)
         runner.reporting = drake.Runner.Reporting.on_failure
         rule_check << runner.status
       oracles << rule
@@ -1159,32 +1173,33 @@ def configure(cxx_toolkit = None,
                                  'lib/python',
                                  'oracle/disciples')
 
-    heartbeat_config = drake.cxx.Config(cxx_config)
-    heartbeat_config += boost.config_program()
-    heartbeat_config.lib('udt')
-    heartbeat_config.lib_path_runtime('../lib')
-    heartbeat_config.add_local_include_path('oracle/disciples/')
-    heartbeat_config.add_local_include_path('.')
-    heartbeat_config.lib('reactor')
-    heartbeat_config.lib('elle')
+    # heartbeat_config = drake.cxx.Config(cxx_config)
+    # heartbeat_config += boost.config_program()
+    # heartbeat_config.lib('udt')
+    # heartbeat_config.lib_path_runtime('../lib')
+    # heartbeat_config.add_local_include_path('oracle/disciples/')
+    # heartbeat_config.add_local_include_path('.')
+    # heartbeat_config.lib('reactor')
+    # heartbeat_config.lib('elle')
 
-    heartbeat_sources = drake.nodes(
-      'oracle/disciples/heartbeat/heartbeat.cc',
-      'satellites/satellite.cc',
-      'satellites/satellite.hh',
-      'common/common.cc',
-      'common/common.hh',
-      'CrashReporter.cc',
-      'CrashReporter.hh',
-      )
+    # heartbeat_sources = drake.nodes(
+    #   'oracle/disciples/heartbeat/heartbeat.cc',
+    #   'satellites/satellite.cc',
+    #   'satellites/satellite.hh',
+    #   'common/common.cc',
+    #   'common/common.hh',
+    #   'CrashReporter.cc',
+    #   'CrashReporter.hh',
+    #   )
 
-    heartbeat = drake.cxx.Executable('bin/heartbeat-server',
-        heartbeat_sources + [reactor_lib, elle_lib, curly_lib] + udt_libs,
-        cxx_toolkit, heartbeat_config)
+    # heartbeat = drake.cxx.Executable('bin/heartbeat-server',
+    #     heartbeat_sources + [reactor_lib, elle_lib, curly_lib] + udt_libs,
+    #     cxx_toolkit, heartbeat_config)
+
+    # oracles << heartbeat
 
     oracles << oracle_source_copy
     oracles << oracle_lib_copy
-    oracles << heartbeat
 
     # Oracle/metalib
     if python_enabled:
@@ -1199,9 +1214,18 @@ def configure(cxx_toolkit = None,
         'oracle/disciples/metalib/network.hh',
         'oracle/disciples/metalib/passport.cc',
         'oracle/disciples/metalib/passport.hh',
+        # XXX
+        'common/common.cc',
+        'common/common.hh',
         )
+      metalib_libs = [
+        nucleus_lib,
+        papier_lib,
+        cryptography_lib,
+        elle_lib,
+      ]
       metalib_lib = drake.cxx.Module('lib/python/metalib',
-                                     metalib_sources + infinit_libs,
+                                     metalib_sources + metalib_libs,
                                      cxx_toolkit, metalib_config)
 
       oracles << metalib_lib
@@ -1212,7 +1236,7 @@ def configure(cxx_toolkit = None,
   # Install
   install = drake.Rule('install')
   install << drake.copy(infinit_bin, prefix)
-  install << drake.copy(infinit_libs + [udt_lib, asio_udt_lib], prefix)
+  install << drake.copy(infinit_libs, prefix)
 
   # Tests
   tests_cxx_config = drake.cxx.Config(cxx_config)
@@ -1221,7 +1245,7 @@ def configure(cxx_toolkit = None,
   tests_cxx_config.lib_path_runtime('../../lib')
   tests_cxx_config.lib_path_runtime('../lib')
   tests_cxx_config += boost.config_test()
-  nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib] + udt_libs
+  nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib]
 
   tests_src_n_lib = [
     ('tests/testing_tests.cc', []),
@@ -1234,16 +1258,16 @@ def configure(cxx_toolkit = None,
     #('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
     (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, reactor_lib]),
     #(('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc'),  [elle_lib, plasma_lib, curly_lib]),
-    ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib] + udt_libs),
-    (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib, curly_lib] + udt_libs),
+    ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib]),
+    (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib, curly_lib]),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib]),
     ('tests/unit/surface/gap/transaction_state_machine.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib]),
     ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
-    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib] + udt_libs),
+    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib]),
     #('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     #('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + infinit_libs),
     ('tests/unit/hole/slug.cc', infinit_libs),
-    (('tests/unit/heartbeat.cc', 'heartbeat.cc', 'heartbeat.hh', 'common/common.cc'), [reactor_lib, elle_lib] + udt_libs),
+    #(('tests/unit/heartbeat.cc', 'heartbeat.cc', 'heartbeat.hh', 'common/common.cc'), [reactor_lib, elle_lib]),
     ('tests/unit/signal_handling.cc', infinit_libs),
   ]
 
@@ -1264,9 +1288,10 @@ def configure(cxx_toolkit = None,
     check << runner.status
 
   check_functional = drake.Rule('check/functional')
-  for test in ['servers/pingpong-notifications.py',
-               'servers/swaggers.py',
+  for test in ['servers/genocide',
+               'servers/pingpong-notifications.py',
                'servers/online-offline',
+               'servers/swaggers.py',
                'sharing/send-file/send-file.py',
                'sharing/send-file/early-accept.py',
                'sharing/send-file/forwarder.py',
@@ -1278,12 +1303,12 @@ def configure(cxx_toolkit = None,
              ]:
     test = drake.node('tests/functional/%s' % test)
     tests << test
-    runner = drake.Runner(test)
+    runner = drake.Runner(test, env = env)
     runner.reporting = drake.Runner.Reporting.on_failure
     check_functional << runner.status
   check << check_functional
 
-  build << drake.cxx.Executable("bin/pass",
-          drake.nodes('tests/unit/pass.cc', 'common/common.cc') + [reactor_lib,
-              elle_lib] + udt_libs,
-          cxx_toolkit, tests_cxx_config)
+  # build << drake.cxx.Executable("bin/pass",
+  #         drake.nodes('tests/unit/pass.cc', 'common/common.cc') + [reactor_lib,
+  #             elle_lib] + udt_libs,
+  #         cxx_toolkit, tests_cxx_config)

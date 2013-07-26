@@ -1,6 +1,6 @@
 #include <elle/Authority.hh>
-#include <lune/Descriptor.hh>
-#include <lune/Identity.hh>
+#include <papier/Descriptor.hh>
+#include <papier/Identity.hh>
 
 #include <nucleus/neutron/Access.hh>
 #include <nucleus/neutron/Object.hh>
@@ -15,11 +15,11 @@
 #include <iostream>
 #include <fstream>
 
-elle::Authority authorities[elle::serialize::StaticFormat<elle::Authority>::version];
+papier::Authority authorities[elle::serialize::StaticFormat<papier::Authority>::version];
 
 static
 void
-check_instance(elle::Authority const& value)
+check_instance(papier::Authority const& value)
 {
   //authorities[value.version()];
 
@@ -28,7 +28,7 @@ check_instance(elle::Authority const& value)
 
 static
 void
-check_instance(lune::Identity const& value)
+check_instance(papier::Identity const& value)
 {
 
 }
@@ -109,8 +109,8 @@ check_class(std::string const& name)
 
 int main()
 {
-  CHECK_CLASS(elle::Authority);
-  CHECK_CLASS(lune::Identity);
+  CHECK_CLASS(papier::Authority);
+  CHECK_CLASS(papier::Identity);
   CHECK_CLASS(nucleus::neutron::Group);
   CHECK_CLASS(nucleus::neutron::Subject);
   CHECK_CLASS(nucleus::neutron::Access);

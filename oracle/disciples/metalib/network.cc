@@ -11,8 +11,8 @@ using namespace infinit;
 
 #include <hole/Model.hh>
 
-#include <lune/Identity.hh>
-#include <lune/Descriptor.hh>
+#include <papier/Identity.hh>
+#include <papier/Descriptor.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Block.hh>
@@ -20,11 +20,12 @@ using namespace infinit;
 #include <nucleus/neutron/Trait.hh>
 
 #include <hole/Openness.hh>
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
 
 #include <horizon/Policy.hh>
 
 #include <Infinit.hh>
+#include <version.hh>
 
 // XXX When Qt is out, remove this
 #ifdef slots
@@ -59,7 +60,7 @@ generate_network_descriptor(elle::String const& id,
   if (authority_path.Create(authority_file) == elle::Status::Error)
     throw std::runtime_error("unable to create authority path");
 
-  elle::Authority authority(authority_path);
+  papier::Authority authority(authority_path);
 
   if (authority.Decrypt(authority_password) == elle::Status::Error)
     throw std::runtime_error("unable to decrypt the authority");
@@ -75,11 +76,11 @@ generate_network_descriptor(elle::String const& id,
   if (group_address.Restore(group_address_) != elle::Status::Ok)
     throw std::runtime_error("Unable to restore group address");
 
-  lune::Identity identity;
+  papier::Identity identity;
   if (identity.Restore(identity_) != elle::Status::Ok)
     throw std::runtime_error("Unable to restore the identity");
 
-  lune::Descriptor descriptor(id,
+  papier::Descriptor descriptor(id,
                               identity.pair().K(),
                               model,
                               directory_address,
@@ -87,9 +88,10 @@ generate_network_descriptor(elle::String const& id,
                               name,
                               openness,
                               policy,
-                              lune::Descriptor::History,
-                              lune::Descriptor::Extent,
-                              Infinit::version,
+                              papier::Descriptor::History,
+                              papier::Descriptor::Extent,
+                              elle::Version(INFINIT_VERSION_MAJOR,
+                                            INFINIT_VERSION_MINOR),
                               authority);
 
   descriptor.seal(identity.pair().k());

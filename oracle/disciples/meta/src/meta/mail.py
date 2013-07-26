@@ -74,6 +74,11 @@ BACKTRACE_CONTENT = u"""
 %(user)s
 
 ---------
+VERSION
+---------
+%(version)s
+
+---------
 BACKTRACE
 ---------
 %(bt)s

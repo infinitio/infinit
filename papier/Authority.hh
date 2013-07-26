@@ -1,5 +1,5 @@
-#ifndef ELLE_AUTHORITY_HH
-# define ELLE_AUTHORITY_HH
+#ifndef PAPIER_AUTHORITY_HH
+# define PAPIER_AUTHORITY_HH
 
 # include <elle/types.hh>
 # include <elle/attribute.hh>
@@ -12,7 +12,7 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-namespace elle
+namespace papier
 {
   /// This class represents the authority.
   ///
@@ -91,8 +91,15 @@ namespace elle
 
   };
 
+
+  /// Infinit authority public key.
+  extern std::string const key;
+
+  /// Infinit authority.
+  papier::Authority
+  authority();
 }
 
-#include <hole/Authority.hxx>
+#include <papier/Authority.hxx>
 
 #endif

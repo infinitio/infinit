@@ -22,7 +22,7 @@
 infinit::cryptography::KeyPair authority_keys =
   infinit::cryptography::KeyPair::generate(
   infinit::cryptography::Cryptosystem::rsa, 1024);
-elle::Authority authority(authority_keys);
+papier::Authority authority(authority_keys);
 
 infinit::cryptography::KeyPair keys =
   infinit::cryptography::KeyPair::generate(
@@ -41,7 +41,7 @@ test()
   auto root_addr = root.bind();
 
   hole::storage::Memory storage(network);
-  elle::Passport passport("passport", "host", keys.K(), authority);
+  papier::Passport passport("passport", "host", keys.K(), authority);
 
   std::unique_ptr<hole::Hole> slug(
     new hole::implementations::slug::Slug(storage,

@@ -13,7 +13,7 @@ def reset_user_status():
     when the trophonius instance goes down.
     """
     import meta.database
-    meta.database.users().update({}, {'$set': {'connected': False}})
+    meta.database.users().update(spec={}, document={"$set": {"connected":False}}, multi=True)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 import meta.conf
@@ -72,7 +72,7 @@ def main(argv):
                         META_BIN,
                         '--meta-port', str(args.meta_port),
                         '--trophonius-control-port', str(args.trophonius_control_port),
-                        '--apertus-host', str(args.apertus_host),
+                        '--apertus-host', args.apertus_host,
                         '--apertus-port', str(args.apertus_port),
                     ],
                     stdout = open("meta.stdout", "w"),

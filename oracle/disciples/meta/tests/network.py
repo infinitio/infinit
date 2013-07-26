@@ -34,9 +34,8 @@ def run(client):
     assert network['name'] == "THIS IS A NEW `network` NAME"
     print("updated network", network)
 
-if __name__ == "__main__":
-    import utils
-    import meta
-    with meta.Meta(spawn_db = True) as meta:
-        client = utils.create_client(meta)
-        run(client)
+import utils
+with utils.Servers(trophonius = False, apertus = False) \
+     as (meta, troph, apertus):
+    client = utils.create_client(meta)
+    run(client)

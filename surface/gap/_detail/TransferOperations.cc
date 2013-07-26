@@ -29,7 +29,7 @@
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Porcupine.hh>
 
-#include <lune/Descriptor.hh>
+#include <papier/Descriptor.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -55,7 +55,7 @@ namespace surface
       {
         NetworkBlocks
         create(std::string const& id,
-               lune::Identity const& identity)
+               papier::Identity const& identity)
         {
           ELLE_TRACE_FUNCTION(id, identity);
 
@@ -202,7 +202,7 @@ namespace surface
       static
       etoile::gear::Identifier
       attach(etoile::Etoile& etoile,
-             lune::Descriptor const& descriptor,
+             papier::Descriptor const& descriptor,
              nucleus::neutron::Subject const& subject,
              etoile::gear::Identifier const& object,
              std::string const& path)
@@ -279,7 +279,7 @@ namespace surface
         static
         elle::Natural64
         symlink(etoile::Etoile& etoile,
-                lune::Descriptor const& descriptor,
+                papier::Descriptor const& descriptor,
                 nucleus::neutron::Subject const& subject,
                 std::string const& source,
                 std::string const& target)
@@ -364,7 +364,7 @@ namespace surface
         static
         elle::Natural64
         create(etoile::Etoile& etoile,
-               lune::Descriptor const& descriptor,
+               papier::Descriptor const& descriptor,
                nucleus::neutron::Subject const& subject,
                std::string const& source,
                std::string const& target)
@@ -435,7 +435,7 @@ namespace surface
         static
         elle::Natural64
         dig(etoile::Etoile& etoile,
-            lune::Descriptor const& descriptor,
+            papier::Descriptor const& descriptor,
             nucleus::neutron::Subject const& subject,
             std::string const& path)
         {
@@ -482,7 +482,7 @@ namespace surface
         static
         elle::Natural64
         store(etoile::Etoile& etoile,
-              lune::Descriptor const& descriptor,
+              papier::Descriptor const& descriptor,
               nucleus::neutron::Subject const& subject,
               std::string const& source)
         {
@@ -604,7 +604,7 @@ namespace surface
 
         void
         send(etoile::Etoile& etoile,
-             lune::Descriptor const& descriptor,
+             papier::Descriptor const& descriptor,
              nucleus::neutron::Subject const& subject,
              std::unordered_set<std::string> items)
         {
@@ -676,7 +676,7 @@ namespace surface
         static
         etoile::path::Chemin
         setup(etoile::Etoile& etoile,
-              lune::Descriptor const& descriptor,
+              papier::Descriptor const& descriptor,
               nucleus::neutron::Subject const& subject)
         {
           ELLE_TRACE_SCOPE("%s: setup", etoile);
@@ -743,7 +743,7 @@ namespace surface
         static
         void
         progress(etoile::Etoile& etoile,
-                 lune::Descriptor const& descriptor,
+                 papier::Descriptor const& descriptor,
                  etoile::path::Chemin const& chemin,
                  elle::Natural64 size,
                  elle::Natural64& _progress,
@@ -805,7 +805,7 @@ namespace surface
         static
         void
         traverse(etoile::Etoile& etoile,
-                 lune::Descriptor const& descriptor,
+                 papier::Descriptor const& descriptor,
                  etoile::path::Chemin const& root_chemin,
                  nucleus::neutron::Subject const& subject,
                  std::string const& source,
@@ -977,7 +977,7 @@ namespace surface
 
         void
         receive(etoile::Etoile& etoile,
-                lune::Descriptor const& descriptor,
+                papier::Descriptor const& descriptor,
                 nucleus::neutron::Subject const& subject,
                 std::string const& target)
         {

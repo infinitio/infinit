@@ -22,8 +22,8 @@ namespace hole
       `-------------*/
 
       Implementation::Implementation(storage::Storage& storage,
-                                     elle::Passport const& passport,
-                                     elle::Authority const& authority):
+                                     papier::Passport const& passport,
+                                     papier::Authority const& authority):
         Hole(storage, passport, authority)
       {
         Local::Computer = new Machine(*this);

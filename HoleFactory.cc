@@ -9,18 +9,18 @@
 
 #include <common/common.hh>
 
-#include <lune/Descriptor.hh>
+#include <papier/Descriptor.hh>
 
 #include <hole/implementations/local/Implementation.hh>
 #include <hole/implementations/remote/Implementation.hh>
 #include <hole/implementations/slug/Manifest.hh>
 #include <hole/implementations/slug/Slug.hh>
-#include <hole/Authority.hh>
-#include <hole/Passport.hh>
+
+#include <papier/Authority.hh>
+#include <papier/Passport.hh>
 
 #include <plasma/meta/Client.hh>
 
-#include <heartbeat.hh>
 #include <HoleFactory.hh>
 #include <Infinit.hh>
 #include <Portal.hh>
@@ -35,14 +35,13 @@ namespace infinit
   public:
     typedef hole::implementations::slug::Slug Super;
     PortaledSlug(hole::storage::Storage& storage,
-                 elle::Passport const& passport,
-                 elle::Authority const& authority,
+                 papier::Passport const& passport,
+                 papier::Authority const& authority,
                  reactor::network::Protocol protocol,
                  std::vector<elle::network::Locus> const& members,
                  int port,
                  reactor::Duration connection_timeout,
-                 std::unique_ptr<reactor::network::UDPSocket> socket,
-                 std::unique_ptr<reactor::Thread> heartbeat):
+                 std::unique_ptr<reactor::network::UDPSocket> socket):
       Super(storage, passport, authority,
             protocol, members, port, connection_timeout, std::move(socket)),
       _portal(
@@ -55,28 +54,20 @@ namespace infinit
                                         std::placeholders::_2,
                                         true);
         }
-        ),
-      _heartbeat(std::move(heartbeat))
+        )
     {}
 
     ~PortaledSlug()
-    {
-      if (this->_heartbeat)
-        this->_heartbeat->terminate_now();
-    }
+    {}
 
     Portal<hole::implementations::slug::control::RPC> _portal;
-
-  private:
-    ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, heartbeat);
-
   };
 
   std::unique_ptr<hole::Hole>
-  hole_factory(lune::Descriptor const& descriptor,
+  hole_factory(papier::Descriptor const& descriptor,
                hole::storage::Storage& storage,
-               elle::Passport const& passport,
-               elle::Authority const& authority,
+               papier::Passport const& passport,
+               papier::Authority const& authority,
                std::vector<elle::network::Locus> const& members,
                std::string const& _meta_host,
                uint16_t _meta_port,
@@ -152,17 +143,9 @@ namespace infinit
             ELLE_TRACE("punch failed: %s", e.what());
           }
 
-          // If the punch succeed, we start the heartbeat thread.
-          std::unique_ptr<reactor::Thread> heartbeat;
-          if (socket)
-            heartbeat.reset(heartbeat::start(*socket,
-                                             common::heartbeat::host(),
-                                             common::heartbeat::port()));
-
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,
-                                        std::move(socket),
-                                        std::move(heartbeat));
+                                        std::move(socket));
 
           // Create the hole.
           std::unique_ptr<hole::Hole> hole(slug);

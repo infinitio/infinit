@@ -3,7 +3,8 @@
 #include <common/common.hh>
 
 #include <elle/os/path.hh>
-#include <hole/Passport.hh>
+
+#include <papier/Passport.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.Device");
 
@@ -24,7 +25,7 @@ namespace surface
                  common::infinit::passport_path(this->me().id));
       if (elle::os::path::exists(common::infinit::passport_path(this->me().id)))
       {
-        elle::Passport passport;
+        papier::Passport passport;
         passport.load(
           elle::io::Path{common::infinit::passport_path(this->me().id)});
         auto it = std::find(this->me().devices.begin(),
@@ -89,7 +90,7 @@ namespace surface
       else
       {
         ELLE_DEBUG("Loading passport from '%s'.", passport_path);
-        elle::Passport passport;
+        papier::Passport passport;
         passport.load(elle::io::Path{passport_path});
 
         ELLE_DEBUG("Passport id: %s", passport.id());
@@ -104,7 +105,7 @@ namespace surface
       this->_passport.store(elle::io::Path(passport_path));
     }
 
-    elle::Passport const&
+    papier::Passport const&
     State::passport() const
     {
       if (!this->has_device())

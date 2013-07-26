@@ -11,11 +11,12 @@
 #include <reactor/Scope.hh>
 #include <reactor/thread.hh>
 
+#include <papier/Passport.hh>
+
 #include <common/common.hh>
 #include <hole/Hole.hh>
 #include <hole/implementations/slug/Slug.hh>
 #include <hole/storage/Memory.hh>
-#include <hole/Passport.hh>
 #include <nucleus/factory.hh>
 #include <nucleus/neutron/Component.hh>
 #include <nucleus/neutron/Group.hh>
@@ -26,7 +27,7 @@
 infinit::cryptography::KeyPair authority_keys =
   infinit::cryptography::KeyPair::generate(
   infinit::cryptography::Cryptosystem::rsa, 1024);
-elle::Authority authority(authority_keys);
+papier::Authority authority(authority_keys);
 
 
 struct Slug
@@ -54,7 +55,7 @@ public:
 
   hole::storage::Memory storage;
   infinit::cryptography::KeyPair keys;
-  elle::Passport passport;
+  papier::Passport passport;
   hole::implementations::slug::Slug slug;
 };
 

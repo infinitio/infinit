@@ -1,11 +1,12 @@
-#include "Service.hh"
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
-#include <metrics/Reporter.hh>
+#include <elle/finally.hh>
 
 #include <curly/curly.hh>
 
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
+#include <metrics/Reporter.hh>
+#include <metrics/Service.hh>
 
 namespace metrics
 {
@@ -19,6 +20,31 @@ namespace metrics
 
   Service::~Service()
   {}
+
+  void
+  Service::send(TimeMetricPair metric)
+  {
+    elle::Finally save_metric{
+      [this, metric] {
+        this->_queue.emplace_back(std::move(metric));
+      }
+    };
+    this->_flush();
+    this->_send(std::move(metric));
+    // Everything went fine, no need to enqueue the metric.
+    save_metric.abort();
+  }
+
+  void
+  Service::_flush()
+  {
+    while (this->_queue.size() > 0)
+    {
+      this->_send(this->_queue.front());
+      // Metric sent, we can remove it from the queue
+      this->_queue.pop_front();
+    }
+  }
 
   int
   Service::_curl_debug_callback(CURL* handle,

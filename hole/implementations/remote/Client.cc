@@ -1,8 +1,9 @@
 #include <elle/log.hh>
 #include <elle/network/Locus.hh>
 
+#include <papier/Passport.hh>
+
 #include <hole/Hole.hh>
-#include <hole/Passport.hh>
 #include <hole/implementations/remote/Client.hh>
 #include <hole/implementations/remote/Manifest.hh>
 
@@ -26,7 +27,7 @@ namespace hole
       | Construction |
       `-------------*/
 
-      Client::Client(elle::Passport const& passport,
+      Client::Client(papier::Passport const& passport,
                      std::string const& host,
                      int port)
         : _state(State::connected)

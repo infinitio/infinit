@@ -1,12 +1,13 @@
-#include "TransferMachine.hh"
-#include "Rounds.hh"
-
+#include <surface/gap/TransferMachine.hh>
+#include <surface/gap/Rounds.hh>
 #include <surface/gap/State.hh>
-#include <lune/Descriptor.hh>
-
-#include <Infinit.hh>
 
 #include <common/common.hh>
+
+#include <papier/Descriptor.hh>
+#include <papier/Authority.hh>
+
+#include <etoile/Etoile.hh>
 
 #include <reactor/fsm/Machine.hh>
 #include <reactor/exception.hh>
@@ -391,7 +392,7 @@ namespace surface
       return *this->_network;
     }
 
-    lune::Descriptor const&
+    papier::Descriptor const&
     TransferMachine::descriptor()
     {
       ELLE_TRACE_SCOPE("%s: get descriptor", *this);
@@ -399,12 +400,13 @@ namespace surface
       {
         ELLE_DEBUG_SCOPE("building descriptor");
         using namespace elle::serialize;
-        std::string descriptor = this->state().meta().network(this->network_id()).descriptor; //; // Pull it from networks.
+        std::string descriptor =
+          this->state().network_manager().one(this->network_id()).descriptor;
 
         ELLE_ASSERT_NEQ(descriptor.length(), 0u);
 
         this->_descriptor.reset(
-          new lune::Descriptor(from_string<InputBase64Archive>(descriptor)));
+          new papier::Descriptor(from_string<InputBase64Archive>(descriptor)));
       }
       ELLE_ASSERT(this->_descriptor != nullptr);
       return *this->_descriptor;
@@ -436,7 +438,7 @@ namespace surface
         ELLE_DEBUG_SCOPE("building hole");
         this->_hole.reset(
           new hole::implementations::slug::Slug(
-          this->storage(), this->state().passport(), Infinit::authority(),
+          this->storage(), this->state().passport(), papier::authority(),
             reactor::network::Protocol::tcp));
       }
       ELLE_ASSERT(this->_hole != nullptr);

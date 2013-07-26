@@ -5,14 +5,14 @@ from __future__ import print_function
 
 import sys, os
 import argparse
-import apertus.conf
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python/apertus/mongobox"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python/meta/mongobox"))
+
+import apertus.conf
+import mongobox
 
 parser = argparse.ArgumentParser(description="Apertus launcher")
-
-import mongobox
 
 parser.add_argument(
     '--port', type = int, default = apertus.conf.PORT
@@ -43,8 +43,12 @@ from apertus.application import Application
 if __name__ == '__main__':
     args = parser.parse_args()
     import pymongo
-    mongo_client = pymongo.MongoClient(host = args.mongo_host,
-                                       port = args.mongo_port)
+    try:
+        mongo_client = pymongo.MongoClient(host = args.mongo_host,
+                                           port = args.mongo_port)
+    except AttributeError:
+        mongo_client = pymongo.Connection(args.mongo_host, args.mongo_port)
+
     assert mongo_client is not None
 
     application = Application(

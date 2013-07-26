@@ -662,9 +662,9 @@ Main(elle::Natural32,
 #ifdef PORCUPINE_SERIALIZE_TEST
       cryptography::KeyPair pair_authority{
         cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa, 1024)};
-      elle::Authority authority(pair_authority);
+      papier::Authority authority(pair_authority);
 
-      elle::Passport passport(elle::String{"node"},
+      papier::Passport passport(elle::String{"node"},
                               elle::String{"me"},
                               _user->K(),
                               authority);

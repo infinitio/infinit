@@ -7,22 +7,19 @@
 
 #include <cryptography/PrivateKey.hh>
 
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
 #include <hole/Openness.hh>
 
-#include <lune/Descriptor.hh>
-#include <lune/Lune.hh>
-#include <lune/Identity.hh>
+#include <papier/Descriptor.hh>
+#include <papier/Identity.hh>
 
 #include <nucleus/proton/Address.hh>
 #include <nucleus/neutron/Subject.hh>
 
-#include <Infinit.hh>
-
-namespace lune
+namespace papier
 {
 
-  ELLE_LOG_COMPONENT("infinit.lune.Descriptor");
+  ELLE_LOG_COMPONENT("infinit.papier.Descriptor");
 
   ///
   /// this constant defines whether or not the history functionality
@@ -53,7 +50,7 @@ namespace lune
                               "network %s does not seem to exist for user %s",
                               network, user));
     this->load(user, network);
-    this->validate(Infinit::authority());
+    this->validate(papier::authority());
   }
 
   Descriptor::Descriptor(elle::String const& id,
@@ -67,7 +64,7 @@ namespace lune
                          elle::Boolean history,
                          elle::Natural32 extent,
                          elle::Version const& version,
-                         elle::Authority const& authority):
+                         papier::Authority const& authority):
     _meta(id, administrator_K, model, root, everybody, history, extent,
           authority),
     _data(name, openness, policy, version)
@@ -89,7 +86,7 @@ namespace lune
   }
 
   void
-  Descriptor::validate(elle::Authority const& authority) const
+  Descriptor::validate(papier::Authority const& authority) const
   {
     this->_meta.validate(authority);
     this->_data.validate(this->_meta.administrator_K());
@@ -183,7 +180,7 @@ namespace lune
                          nucleus::neutron::Group::Identity const& everybody,
                          elle::Boolean history,
                          elle::Natural32 extent,
-                         elle::Authority const& authority):
+                         papier::Authority const& authority):
     _id(id),
     _administrator_K(administrator_K),
     _model(model),
@@ -193,7 +190,7 @@ namespace lune
     _extent(extent),
     _signature(nullptr)
   {
-    if (authority.type != elle::Authority::TypePair)
+    if (authority.type != papier::Authority::TypePair)
       throw std::runtime_error("unable to sign with a public authority");
 
     delete this->_signature;
@@ -217,7 +214,7 @@ namespace lune
   }
 
   void
-  Descriptor::Meta::validate(elle::Authority const& authority) const
+  Descriptor::Meta::validate(papier::Authority const& authority) const
   {
     ELLE_ASSERT(this->_signature != nullptr);
 
@@ -468,32 +465,32 @@ namespace lune
   }
 
   /// Makes it easier to generate the accessors to the formats.
-#define LUNE_DESCRIPTOR_FORMAT_ACCESSOR(_name_)                         \
+#define PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(_name_)                         \
   elle::serialize::Format const&                                        \
   Descriptor::Data::format_ ## _name_ () const                          \
   {                                                                     \
     return (this->_formats._name_);                                     \
   }
 
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(content_hash_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(contents);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(immutable_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(imprint_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(mutable_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(owner_key_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(public_key_block);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(access);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(attributes);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(catalog);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(data);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(ensemble);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(group);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(object);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(reference);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(user);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(identity);
-  LUNE_DESCRIPTOR_FORMAT_ACCESSOR(descriptor);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(block);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(content_hash_block);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(contents);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(immutable_block);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(imprint_block);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(mutable_block);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(owner_key_block);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(public_key_block);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(access);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(attributes);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(catalog);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(data);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(ensemble);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(group);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(object);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(reference);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(user);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(identity);
+  PAPIER_DESCRIPTOR_FORMAT_ACCESSOR(descriptor);
 
   elle::Status
   Descriptor::Data::Dump(const elle::Natural32  margin) const
@@ -517,30 +514,30 @@ namespace lune
     std::cout << alignment << elle::io::Dumpable::Shift
               << "[Formats]" << std::endl;
 
-#define LUNE_DESCRIPTOR_FORMAT_DUMPER(_name_)                           \
+#define PAPIER_DESCRIPTOR_FORMAT_DUMPER(_name_)                           \
     std::cout << alignment << elle::io::Dumpable::Shift                 \
               << elle::io::Dumpable::Shift << "[" << #_name_ << "] "    \
               << this->_formats._name_ << std::endl;
 
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(content_hash_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(contents);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(immutable_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(imprint_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(mutable_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(owner_key_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(public_key_block);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(access);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(attributes);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(catalog);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(data);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(ensemble);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(group);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(object);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(reference);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(user);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(identity);
-    LUNE_DESCRIPTOR_FORMAT_DUMPER(descriptor);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(block);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(content_hash_block);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(contents);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(immutable_block);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(imprint_block);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(mutable_block);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(owner_key_block);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(public_key_block);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(access);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(attributes);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(catalog);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(data);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(ensemble);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(group);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(object);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(reference);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(user);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(identity);
+    PAPIER_DESCRIPTOR_FORMAT_DUMPER(descriptor);
 
     if (this->_signature != nullptr)
       {

@@ -8,8 +8,8 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <hole/Passport.hh>
-#include <hole/Authority.hh>
+#include <papier/Authority.hh>
+#include <papier/Passport.hh>
 
 // XXX When Qt is out, remove this
 #ifdef slots
@@ -25,14 +25,14 @@ using namespace infinit;
 // ---------- functions  ------------------------------------------------------
 //
 
-static elle::Passport create_passport(elle::String const& id,
+static papier::Passport create_passport(elle::String const& id,
                                       elle::String const& name,
                                       elle::String const& user_pubkey,
                                       elle::String const& authority_file,
                                       elle::String const& authority_password)
 {
   // Load the authority file.
-  elle::Authority authority{elle::io::Path{authority_file}};
+  papier::Authority authority{elle::io::Path{authority_file}};
 
   // decrypt the authority.
   if (authority.Decrypt(authority_password) == elle::Status::Error)
@@ -41,7 +41,7 @@ static elle::Passport create_passport(elle::String const& id,
   cryptography::PublicKey pubkey{};
   pubkey.Restore(user_pubkey);
 
-  elle::Passport passport{
+  papier::Passport passport{
       id, name, pubkey, authority
   };
 

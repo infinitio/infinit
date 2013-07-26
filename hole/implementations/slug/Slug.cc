@@ -9,7 +9,7 @@
 
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/udp-socket.hh>
-#include <reactor/network/udt-rdv-server.hh>
+//#include <reactor/network/udt-rdv-server.hh>
 
 #include <hole/Exception.hh>
 #include <hole/implementations/slug/Host.hh>
@@ -38,8 +38,8 @@ namespace hole
       `-------------*/
 
       Slug::Slug(hole::storage::Storage& storage,
-                 elle::Passport const& passport,
-                 elle::Authority const& authority,
+                 papier::Passport const& passport,
+                 papier::Authority const& authority,
                  reactor::network::Protocol protocol,
                  std::vector<elle::network::Locus> const& members,
                  int port,
@@ -87,11 +87,12 @@ namespace hole
 
           if (socket)
           {
-            // XXX: for now rebinding a socket is only available with UDT.
-            ELLE_ASSERT_EQ(this->protocol(), reactor::network::Protocol::udt);
-            this->_server =
-              elle::make_unique<reactor::network::UDTRendezVousServer>(
-                  *reactor::Scheduler::scheduler(), std::move(socket));
+            ELLE_ABORT("UDT is disabled");
+            // // XXX: for now rebinding a socket is only available with UDT.
+            // ELLE_ASSERT_EQ(this->protocol(), reactor::network::Protocol::udt);
+            // this->_server =
+            //   elle::make_unique<reactor::network::UDTRendezVousServer>(
+            //       *reactor::Scheduler::scheduler(), std::move(socket));
           }
           else
           {
@@ -1230,13 +1231,13 @@ namespace hole
       }
 
       bool
-      Slug::_host_connected(elle::Passport const& passport)
+      Slug::_host_connected(papier::Passport const& passport)
       {
         return this->_hosts.find(passport) != this->_hosts.end();
       }
 
       std::shared_ptr<Host>
-      Slug::_host_pending(elle::Passport const& passport)
+      Slug::_host_pending(papier::Passport const& passport)
       {
         for (auto h: this->_pending)
           if (h->_remote_passport
@@ -1342,7 +1343,8 @@ namespace hole
         ELLE_TRACE_SCOPE("%s: connect to %s:%s (%s)",
                          *this, hostname, port, server ? "server" : "client");
         if (this->_protocol == reactor::network::Protocol::udt)
-          this->_server->accept(hostname, port);
+          // this->_server->accept(hostname, port);
+          ELLE_ABORT("UDT is disabled");
         else
           if (!server)
           {

@@ -6,6 +6,7 @@
 
 import sys
 import os
+import mongobox
 
 #------------------------------------------------------------------------------
 # Email generation
@@ -38,19 +39,34 @@ def get_random_port():
 
 class Servers:
 
-    def __init__(self):
+    def __init__(self, trophonius = True, apertus = True):
+        self.mongo = None
         self.meta = None
         self.tropho = None
+        self.__apertus = apertus
+        self.__trophonius = trophonius
+        self.apertus = None
 
     def __enter__(self):
+        self.mongo = mongobox.MongoBox()
+        self.mongo.__enter__()
         port = get_random_port()
-        self.apertus = apertus.Apertus(port=0)
-        self.apertus.__enter__()
+        if self.__apertus:
+            self.apertus = apertus.Apertus(port = 0,
+                                           mongo_host = 'localhost',
+                                           mongo_port = self.mongo.port)
+            self.apertus.__enter__()
+        kwargs = {}
+        if self.__apertus:
+            kwargs = {
+                'apertus_host': 'localhost',
+                'apertus_port': self.apertus.port,
+            }
         self.meta = meta.Meta(
-            spawn_db = True,
             trophonius_control_port = port,
-            apertus_host = "127.0.0.1",
-            apertus_port = self.apertus.port)
+            mongo_host = 'localhost',
+            mongo_port = self.mongo.port,
+            **kwargs)
         self.meta.__enter__()
         self.tropho = trophonius.Trophonius(
             meta_port = self.meta.meta_port,
@@ -63,7 +79,11 @@ class Servers:
     def __exit__(self, exception_type, exception, *args):
         self.tropho.__exit__(exception_type, exception, *args)
         self.meta.__exit__(exception_type, exception, *args)
-        self.apertus.__exit__(exception_type, exception, *args)
+        if self.apertus is not None:
+            self.apertus.__exit__(exception_type, exception, *args)
+        self.mongo.__exit__(exception_type, exception, *args)
+        if self.apertus is not None:
+            self.apertus.__exit__(exception_type, exception, *args)
         if exception is not None:
             print('======== Trophonius stdout:\n' + self.tropho.stdout,
                   file = sys.stderr)
@@ -211,3 +231,41 @@ if __name__ == "__main__":
         assert tropho.port != 23456
         print(apertus.port)
         assert apertus.port != 9899
+
+## ---- ##
+## Meta ##
+## ---- ##
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_client(meta):
+    import pythia
+    session = {}
+    client = pythia.Client(session = session,
+                           server = meta.url)
+
+    email = 'testkaka@infinit.io'
+    password = 'kittens'
+    password_hash = hash_password(password)
+    fullname = 'Pif Pif'
+    activation_code = 'bitebite'
+
+    res = pythia.Admin(server = meta.url).post('/user/register',
+                                               {'email': email,
+                                                'fullname': fullname,
+                                                'password': password_hash,
+                                                'activation_code': activation_code,
+                                            })
+    if not res['success']:
+        raise Exception("Cannot register: " + res['error'])
+    res = client.post('/user/login', {'email': email,
+                                      'password': password_hash,
+    })
+
+    if not res['success']:
+        print(res)
+        raise Exception("Cannot login!")
+    session['token'] = res['token']
+    print("Got token:", res['token'])
+    return client

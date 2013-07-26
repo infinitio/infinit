@@ -22,8 +22,10 @@ namespace
     _send(metrics::TimeMetricPair) override
     {
     }
+
+  public:
     std::string
-    _format_event_name(std::string const& name)
+    format_event_name(std::string const& name) override
     {
       return name;
     }

@@ -22,7 +22,7 @@
 #include <nucleus/neutron/Fellow.hh>
 #include <nucleus/neutron/Subject.hh>
 
-#include <lune/Descriptor.hh>
+#include <papier/Descriptor.hh>
 #include <lune/Lune.hh>
 #include <lune/Phrase.hh>
 
@@ -403,7 +403,7 @@ namespace satellite
         throw elle::Exception("unable to retrieve the network name");
       }
 
-    lune::Descriptor descriptor(Infinit::User, Infinit::Network);
+    papier::Descriptor descriptor(Infinit::User, Infinit::Network);
 
     // check the mutually exclusive options.
     if ((Infinit::Parser->Test("Information") == true) &&

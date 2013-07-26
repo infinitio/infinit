@@ -9,10 +9,10 @@
 namespace infinit
 {
   std::unique_ptr<hole::Hole>
-  hole_factory(lune::Descriptor const& descriptor,
+  hole_factory(papier::Descriptor const& descriptor,
                hole::storage::Storage& storage,
-               elle::Passport const& passport,
-               elle::Authority const& authority,
+               papier::Passport const& passport,
+               papier::Authority const& authority,
                std::vector<elle::network::Locus> const& members,
                std::string const& host = "",
                uint16_t port = 0, // XXX: Ugly, we should use boost::optional.
