@@ -76,12 +76,6 @@ namespace surface
       ELLE_ATTRIBUTE_X(metrics::Reporter, reporter);
       ELLE_ATTRIBUTE(metrics::Reporter, google_reporter);
 
-      ///- Scheduler -----------------------------------------------------------
-      ELLE_ATTRIBUTE_R(reactor::Scheduler, scheduler);
-      ELLE_ATTRIBUTE_R(reactor::Thread, keep_alive);
-      ELLE_ATTRIBUTE_R(std::thread, thread);
-      ELLE_ATTRIBUTE(std::exception_ptr, exception);
-
       ///- Construction --------------------------------------------------------
     public:
       State(std::string const& meta_host = common::meta::host(),
