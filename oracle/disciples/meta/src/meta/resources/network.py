@@ -511,6 +511,26 @@ class ConnectDevice(_Page):
               "to network", network['name'], "(%s)" % network_id,
               "with", node)
 
+        # Here we assert that, at the step of the process, all nodes have been
+        # added to the network, regardless of their connection status.
+        # If all the nodes are connected, we fire an notification.
+        assert len(network['nodes']) > 1
+        all_nodes_ready = True
+        for node in network['nodes'].values():
+            if all_nodes_ready == False:
+                break
+            all_nodes_ready &= (node['locals'] != None and \
+                                node['externals'] != None and \
+                                node['fallback'] != None)
+
+        if all_nodes_ready:
+            self.notifier.notify_some(
+                notifier.PEER_CONNECTION_UPDATE,
+                device_ids = list(network['nodes']),
+                message = { "network_id": str(network['_id']), "devices": list(network['nodes'].keys()), "status": True },
+                store = False,
+            )
+
         return self.success({
             "updated_network_id": str(network_id)
         })

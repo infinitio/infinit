@@ -94,8 +94,20 @@ namespace plasma
       public Notification
     {
       std::string network_id;
-      /* NetworkUpdate */ int what;
+      NetworkUpdate what;
       ELLE_SERIALIZE_CONSTRUCT(NetworkUpdateNotification,
+                               Notification)
+      {}
+    };
+
+    struct PeerConnectionUpdateNotification:
+      public Notification
+    {
+      std::string network_id;
+      bool status;
+      std::vector<std::string> devices;
+
+      ELLE_SERIALIZE_CONSTRUCT(PeerConnectionUpdateNotification,
                                Notification)
       {}
     };
