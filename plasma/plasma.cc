@@ -10,6 +10,12 @@ namespace plasma
   Transaction::~Transaction()
   {}
 
+  void
+  Transaction::print(std::ostream& stream) const
+  {
+    stream << *this;
+  }
+
   std::ostream&
   operator <<(std::ostream& out,
               plasma::TransactionStatus t)

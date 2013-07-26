@@ -2,6 +2,7 @@
 # define PLASMA_PLASMA_HH
 
 # include <elle/serialize/construct.hh>
+# include <elle/Printable.hh>
 
 # include <iosfwd>
 # include <string>
@@ -17,7 +18,8 @@ namespace plasma
 # undef TRANSACTION_STATUS
   };
 
-  struct Transaction
+  struct Transaction:
+    public elle::Printable
   {
   public:
     Transaction();
@@ -44,6 +46,10 @@ namespace plasma
     TransactionStatus status;
     bool accepted;
     double timestamp;
+
+    virtual
+    void
+    print(std::ostream& stream) const override;
   };
 
   std::ostream&
