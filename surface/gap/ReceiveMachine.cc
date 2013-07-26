@@ -159,7 +159,6 @@ namespace surface
       nucleus::neutron::Subject subject;
       subject.Create(this->state().identity().pair().K());
 
-      std::cerr << this->state().output_dir() << std::endl;
       operation_detail::from::receive(this->etoile(),
                                       this->descriptor(),
                                       subject,
