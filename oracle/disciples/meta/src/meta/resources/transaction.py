@@ -295,12 +295,17 @@ class Update(Page):
         transaction['status'] = status
         database.transactions().save(transaction)
 
-        device_ids = [transaction['sender_device_id'], transaction['recipient_device_id']]
-        recipient = database.users().find_one(database.ObjectId(transaction['recipient_id']))
+        device_ids = [transaction['sender_device_id']]
+        recipient_ids = None
+        if isinstance(transaction['recipient_device_id'], database.ObjectId):
+            device_ids.append(transaction['recipient_device_id'])
+        else:
+            recipient_ids = [transaction['recipient_id']]
+
         self.notifier.notify_some(
             notifier.TRANSACTION,
             device_ids = device_ids,
-            recipient_ids = [recipient['_id']],
+            recipient_ids = recipient_ids,
             message = transaction,
             store = True,
        )
