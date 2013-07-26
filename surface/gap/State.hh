@@ -217,19 +217,20 @@ namespace surface
         PeerConnectionUpdateNotification const& notif);
 
       typedef std::unique_ptr<TransferMachine> TransferMachinePtr;
-      std::vector<TransferMachinePtr> _transfers;
+      typedef std::vector<TransferMachinePtr> Transfers;
+      typedef Transfers::const_iterator TransferIterator;
+      Transfers _transfers;
 
-      // template std::vector<TransferMachinePtr>::iterator??
-      TransferMachine&
+      TransferIterator
       _find_machine(std::function<bool (TransferMachinePtr const&)> func) const;
 
-      TransferMachine&
+      TransferIterator
       _machine_by_user(std::string const& user_id) const;
 
-      TransferMachine&
+      TransferIterator
       _machine_by_transaction(std::string const& transaction_id) const;
 
-      TransferMachine&
+      TransferIterator
       _machine_by_network(std::string const& network_id) const;
 
     public:

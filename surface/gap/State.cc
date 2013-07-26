@@ -590,99 +590,95 @@ namespace surface
       this->_output_dir = dir;
     }
 
-    TransferMachine&
+    State::TransferIterator
     State::_find_machine(std::function<bool (TransferMachinePtr const&)> func) const
     {
-      auto it =
-        std::find_if(std::begin(this->_transfers),
-                     std::end(this->_transfers),
-                     func);
-
-      if (it != std::end(this->_transfers))
-      {
-        return *(*it);
-      }
-      else
-      {
-        throw Exception(gap_error, "machine doesnt exist");
-      }
+      State::TransferIterator it = std::find_if(this->_transfers.begin(),
+                                                this->_transfers.end(),
+                                                func);
+      return it;
     }
 
-    TransferMachine&
+    State::TransferIterator
     State::_machine_by_user(std::string const& user_id) const
     {
       return this->_find_machine(
         [&] (TransferMachinePtr const& machine)
         {
-          auto const& peers = machine->peers(); // under-optimized.
-          return std::find(std::begin(peers), std::end(peers), user_id) != std::end(peers);
+          return machine->concerns_user(user_id);
         });
     }
 
-    TransferMachine&
+    State::TransferIterator
     State::_machine_by_transaction(std::string const& transaction_id) const
     {
       return this->_find_machine(
         [&] (TransferMachinePtr const& machine)
         {
-          return machine->transaction_id() == transaction_id;
+          return machine->concerns_transaction(transaction_id);
         });
     }
 
-    TransferMachine&
+    State::TransferIterator
     State::_machine_by_network(std::string const& network_id) const
     {
       return this->_find_machine(
         [&] (TransferMachinePtr const& machine)
         {
-          return machine->network_id() == network_id;
+          return machine->concerns_network(network_id);
         });
     }
 
     void
     State::_on_transaction_notification(TransactionNotification const& notif,
-                                        bool)
+                                        bool is_new)
     {
       ELLE_TRACE_SCOPE("%s: transaction_notification %s", *this, notif);
+
+      if (!is_new)
+      {
+        ELLE_DEBUG("%s: dropping old notification", *this);
+        return;
+      }
+
       auto const& transaction = this->transaction_manager().one(notif.id);
 
-      try
+      TransferIterator it = this->_machine_by_transaction(notif.id);
+
+      if (it == std::end(this->_transfers) and notif.status == plasma::TransactionStatus::initialized)
       {
-        auto& transfer_machine = this->_machine_by_transaction(notif.id);
-        transfer_machine.on_transaction_update(transaction);
+        this->_transfers.emplace_back(new ReceiveMachine{*this, notif.id});
+        it = std::prev(_transfers.end());
       }
-      catch (Exception const& e)
+      else if (it == std::end(this->_transfers))
       {
-        if (e.code == gap_error) // XXX:
-        {
-          if (notif.status == plasma::TransactionStatus::initialized)
-            this->_transfers.emplace_back(new ReceiveMachine{*this, notif.id});
-          else
-            ELLE_ERR("%s: machine not found for transaction %s",
-                     *this, transaction);
-          return;
-        }
-        else
-          throw;
+        ELLE_ERR("%s: machine not found for transaction %s",
+                 *this, transaction);
+        throw Exception(gap_error, "machine doesn't exists");
       }
+
+      ELLE_ASSERT(*it != nullptr);
+
+      auto& transfer_machine = **it;
+      transfer_machine.on_transaction_update(transaction);
     }
 
     void
     State::_on_peer_connection_update_notification(
       PeerConnectionUpdateNotification const& notif)
     {
-      ELLE_TRACE_SCOPE("%s: network_notification %s", *this, notif);
+      TransferIterator it = this->_machine_by_network(notif.network_id);
 
-      try
-      {
-        auto& transfer_machine = this->_machine_by_network(notif.network_id);
-        transfer_machine.on_peer_connection_update(notif);
-      }
-      catch (Exception const& e)
+      if (it == std::end(this->_transfers))
       {
         ELLE_ERR("%s: machine not found for network %s", *this, notif.network_id);
-        throw;
+        throw Exception(gap_error, "machine doesn't exists");
       }
+
+      ELLE_ASSERT(*it != nullptr);
+
+      auto& transfer_machine = **it;
+      transfer_machine.on_peer_connection_update(notif);
     }
 
     void
@@ -701,7 +697,8 @@ namespace surface
 
       try
       {
-        auto& transfer_machine = this->_machine_by_transaction(transaction_id);
+        ELLE_ASSERT(*this->_machine_by_transaction(transaction_id) != nullptr);
+        auto& transfer_machine = **this->_machine_by_transaction(transaction_id);
 
         if (transfer_machine.is_sender())
           throw Exception(gap_error, "only recipient can accept transactions");
@@ -723,7 +720,8 @@ namespace surface
 
       try
       {
-        auto& transfer_machine = this->_machine_by_transaction(transaction_id);
+        ELLE_ASSERT(*this->_machine_by_transaction(transaction_id) != nullptr);
+        auto& transfer_machine = **this->_machine_by_transaction(transaction_id);
 
         if (transfer_machine.is_sender())
           throw Exception(gap_error, "only recipient can reject transactions");
@@ -745,7 +743,8 @@ namespace surface
 
       try
       {
-        auto& transfer_machine = this->_machine_by_transaction(transaction_id);
+        ELLE_ASSERT(*this->_machine_by_transaction(transaction_id) != nullptr);
+        auto& transfer_machine = **this->_machine_by_transaction(transaction_id);
         transfer_machine.cancel();
       }
       catch (Exception const&)

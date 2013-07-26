@@ -54,6 +54,16 @@ namespace surface
       void
       cancel();
 
+    public:
+      bool
+      concerns_network(std::string const& network_id);
+
+      bool
+      concerns_transaction(std::string const& transaction_id);
+
+      bool
+      concerns_user(std::string const& user_id);
+
     protected:
       void
       _stop();
@@ -127,11 +137,10 @@ namespace surface
       | Transaction |
       `------------*/
       ELLE_ATTRIBUTE(std::string, transaction_id);
-    public:
+    protected:
       std::string const&
       transaction_id() const;
 
-    protected:
       void
       transaction_id(std::string const& id);
 
@@ -147,10 +156,6 @@ namespace surface
       peer_id(std::string const& id);
 
     public:
-      std::vector<std::string>
-      peers() const;
-
-    public:
       bool
       is_sender();
 
@@ -158,10 +163,10 @@ namespace surface
       | Network |
       `--------*/
       ELLE_ATTRIBUTE(std::string, network_id);
-    public:
+    protected:
       std::string const&
       network_id() const;
-    protected:
+
       void
       network_id(std::string const& id);
 

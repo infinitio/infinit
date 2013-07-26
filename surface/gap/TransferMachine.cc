@@ -114,6 +114,24 @@ namespace surface
       this->_canceled.signal();
     }
 
+    bool
+    TransferMachine::concerns_network(std::string const& network_id)
+    {
+      return this->_network_id == network_id;
+    }
+
+    bool
+    TransferMachine::concerns_transaction(std::string const& transaction_id)
+    {
+      return this->_transaction_id == transaction_id;
+    }
+
+    bool
+    TransferMachine::concerns_user(std::string const& user_id)
+    {
+      return (user_id == this->state().me().id) || (user_id == this->_peer_id);
+    }
+
     void
     TransferMachine::_stop()
     {
@@ -365,12 +383,6 @@ namespace surface
     TransferMachine::peer_id(std::string const& id)
     {
       this->_peer_id = id;
-    }
-
-    std::vector<std::string>
-    TransferMachine::peers() const
-    {
-      return {this->state().me().id, this->peer_id()};
     }
 
     bool
