@@ -1,14 +1,13 @@
 #include "ReceiveMachine.hh"
 
+#include "Rounds.hh"
 #include <surface/gap/_detail/TransferOperations.hh>
 
 #include <hole/Passport.hh>
 #include <lune/Identity.hh>
 
 #include <reactor/thread.hh>
-#include <elle/os/getenv.hh>
-#include <elle/network/Interface.hh>
-
+#include <reactor/exception.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine");
 
@@ -27,15 +26,6 @@ namespace surface
       _reject_state(
         this->_machine.state_make(
           std::bind(&ReceiveMachine::_reject, this))),
-      _publish_interfaces_state(
-        this->_machine.state_make(
-          std::bind(&ReceiveMachine::_publish_interfaces, this))),
-      _connection_state(
-        this->_machine.state_make(
-          std::bind(&ReceiveMachine::_connection, this))),
-      _transfer_state(
-        this->_machine.state_make(
-          std::bind(&ReceiveMachine::_transfer, this))),
       _clean_state(
         this->_machine.state_make(
           std::bind(&ReceiveMachine::_clean, this))),
@@ -52,33 +42,15 @@ namespace surface
                                     reactor::Waitables{&_rejected});
 
       this->_machine.transition_add(_accept_state,
-                                    _publish_interfaces_state,
+                                    _transfer_core_state,
                                     reactor::Waitables{&_ready});
 
-      this->_machine.transition_add(_publish_interfaces_state,
-                                    _connection_state,
-                                    reactor::Waitables{&_peer_online});
-      this->_machine.transition_add(_connection_state,
-                                    _publish_interfaces_state,
-                                    reactor::Waitables{&_peer_offline});
-
-      this->_machine.transition_add(_connection_state,
-                                    _connection_state,
-                                    reactor::Waitables{&_peer_online});
-
-      this->_machine.transition_add(_connection_state,
-                                    _transfer_state,
-                                    reactor::Waitables{&_peer_connected});
-      this->_machine.transition_add(_transfer_state,
-                                    _connection_state,
-                                    reactor::Waitables{&_peer_disconnected});
-
-      this->_machine.transition_add(_transfer_state,
+      this->_machine.transition_add(_transfer_core_state,
                                     _clean_state);
       // Exception handling.
       // this->_m.transition_add_catch(_request_network_state, _fail);
 
-      this->run();
+      this->run(this->_wait_for_decision_state);
     }
 
     ReceiveMachine::~ReceiveMachine()
@@ -104,9 +76,6 @@ namespace surface
       ELLE_ASSERT_EQ(this->transaction_id(), transaction.id);
       switch (transaction.status)
       {
-        // case plasma::TransactionStatus::accepted:
-        //   this->_accepted.signal();
-        //   break;
         case plasma::TransactionStatus::canceled:
           this->_canceled.signal();
           break;
@@ -120,21 +89,28 @@ namespace surface
           this->_ready.signal();
           break;
         case plasma::TransactionStatus::created:
+        case plasma::TransactionStatus::accepted:
         case plasma::TransactionStatus::initialized:
         case plasma::TransactionStatus::rejected:
         case plasma::TransactionStatus::_count:
+        case plasma::TransactionStatus::none:
+        case plasma::TransactionStatus::started:
           break;
       }
     }
 
     void
-    ReceiveMachine::on_user_update(plasma::meta::User const& user)
+    ReceiveMachine::on_peer_connection_update(PeerConnectionUpdateNotification const& notif)
     {
-    }
+      ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
+                       *this, notif);
 
-    void
-    ReceiveMachine::on_network_update(plasma::meta::NetworkResponse const& network)
-    {
+      ELLE_ASSERT_EQ(this->network_id(), notif.network_id);
+
+      if (notif.status)
+        this->_peer_online.signal();
+      else
+        this->_peer_offline.signal();
     }
 
     void
@@ -154,73 +130,45 @@ namespace surface
     void
     ReceiveMachine::_wait_for_decision()
     {
+      ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
       this->network_id(this->state().meta().transaction(this->transaction_id()).network_id);
     }
 
     void
     ReceiveMachine::_accept()
     {
+      ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
       this->state().meta().update_transaction(this->transaction_id(),
                                               plasma::TransactionStatus::accepted,
                                               this->state().device_id(),
-                                              "bite");
+                                              this->state().device_name());
+
+      this->state().meta().network_add_device(
+        this->network_id(), this->state().device_id());
     }
 
     void
     ReceiveMachine::_reject()
     {
+      ELLE_TRACE_SCOPE("%s: rejected %s", *this, this->transaction_id());
       this->state().meta().update_transaction(this->transaction_id(),
                                               plasma::TransactionStatus::rejected);
     }
 
-
-    // XXX: Same for sender and recipient.
     void
-    ReceiveMachine::_publish_interfaces()
+    ReceiveMachine::_transfer_operation()
     {
-      typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
-      AddressContainer addresses;
+      nucleus::neutron::Subject subject;
+      subject.Create(this->state().identity().pair().K());
 
-      // In order to test the fallback, we can fake our local addresses.
-      // It should also work for nated network.
-      if (elle::os::getenv("INFINIT_LOCAL_ADDRESS", "").length() > 0)
-      {
-        addresses.emplace_back(elle::os::getenv("INFINIT_LOCAL_ADDRESS"),
-                               this->hole().port());
-      }
-      else
-      {
-        auto interfaces = elle::network::Interface::get_map(
-          elle::network::Interface::Filter::only_up |
-          elle::network::Interface::Filter::no_loopback |
-          elle::network::Interface::Filter::no_autoip
-          );
-        for (auto const& pair: interfaces)
-          if (pair.second.ipv4_address.size() > 0 &&
-              pair.second.mac_address.size() > 0)
-          {
-            auto const &ipv4 = pair.second.ipv4_address;
-            addresses.emplace_back(ipv4, this->hole().port());
-          }
-      }
-      ELLE_DEBUG("addresses: %s", addresses);
+      std::cerr << this->state().output_dir() << std::endl;
+      operation_detail::from::receive(this->etoile(),
+                                      this->descriptor(),
+                                      subject,
+                                      this->state().output_dir());
 
-      AddressContainer public_addresses;
-
-      this->state().meta().network_connect_device(
-        this->network_id(), this->state().passport().id(), addresses, public_addresses);
-    }
-
-    void
-    ReceiveMachine::_connection()
-    {
-
-    }
-
-    void
-    ReceiveMachine::_transfer()
-    {
-
+      this->state().meta().update_transaction(this->transaction_id(),
+                                              plasma::TransactionStatus::finished);
     }
 
     void

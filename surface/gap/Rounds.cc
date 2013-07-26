@@ -13,21 +13,20 @@ namespace surface
 {
   namespace gap
   {
-    Round::Round():
-      _name{}
+    Round::Round(std::string const& name):
+      _name{name}
     {}
 
     Round::~Round()
     {
     }
 
-    Round::Round(Round&& r):
-      _name{std::move(r._name)}
-    {}
-
-    Round::Round(Round const& r):
-      _name{r._name}
+    AddressRound::AddressRound(std::string const& name,
+                               std::vector<std::string>&& endpoints):
+      Round(name),
+      _endpoints(std::move(endpoints))
     {
+      ELLE_TRACE("creating AddressRound(%s, %s)", name, this->_endpoints);
     }
 
     std::vector<std::string>
@@ -36,21 +35,16 @@ namespace surface
       return this->_endpoints;
     }
 
-    void
-    AddressRound::endpoints(std::vector<std::string> const& addrs)
-    {
-      this->_endpoints = addrs;
-    }
-
-    FallbackRound::FallbackRound(std::string const& host,
+    FallbackRound::FallbackRound(std::string const& name,
+                                 std::string const& host,
                                  int port,
                                  std::string const& uid):
-      Round(),
+      Round(name),
       _host{host},
       _port{port},
       _uid{uid}
     {
-      ELLE_TRACE("creating FallbackRound(%s, %s, %s)", host, port, uid);
+      ELLE_TRACE("creating FallbackRound(%s, %s, %s, %s)", name, host, port, uid);
     }
 
     std::vector<std::string>

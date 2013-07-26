@@ -12,46 +12,50 @@ namespace surface
     {
       class Round
       {
-      private:
-        ELLE_ATTRIBUTE_RW(std::string, name);
       public:
-        Round();
-        Round(Round&& r);
-        Round(Round const& r);
-        virtual ~Round();
+        Round(std::string const& name);
+
+        virtual
+        ~Round();
 
         virtual
         std::vector<std::string>
         endpoints() = 0;
+
+      private:
+        ELLE_ATTRIBUTE_R(std::string, name);
       };
 
       class AddressRound:
         public Round
       {
-      private:
-        std::vector<std::string> _endpoints;
       public:
-        std::vector<std::string>
-        endpoints();
+        AddressRound(std::string const& name,
+                     std::vector<std::string>&& enpoints);
 
-        void
-        endpoints(std::vector<std::string> const&);
+        std::vector<std::string>
+        endpoints() override;
+
+        ELLE_ATTRIBUTE(std::vector<std::string>, endpoints);
       };
 
       class FallbackRound:
         public Round
       {
+      public:
+        FallbackRound(std::string const& name,
+                      std::string const& host,
+                      int port,
+                      std::string const& uid);
+
+        std::vector<std::string>
+        endpoints() override;
+
       private:
-        std::vector<std::string> _endpoints;
+        ELLE_ATTRIBUTE(std::vector<std::string>, endpoints);
         ELLE_ATTRIBUTE(std::string, host);
         ELLE_ATTRIBUTE(int, port);
         ELLE_ATTRIBUTE(std::string , uid);
-      public:
-        FallbackRound(std::string const& host,
-                      int port,
-                      std::string const& uid);
-        std::vector<std::string>
-        endpoints();
       };
     }
 }

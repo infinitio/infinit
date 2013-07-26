@@ -1,12 +1,13 @@
 #ifndef TRANSFERMACHINE_HH
 # define TRANSFERMACHINE_HH
 
+# include "usings.hh"
+
 # include <lune/Identity.hh>
 # include <lune/Lune.hh>
 
 # include <etoile/Etoile.hh>
 
-# include <hole/Passport.hh>
 # include <hole/storage/Directory.hh>
 # include <hole/implementations/slug/Slug.hh>
 
@@ -38,7 +39,7 @@ namespace surface
 
     public:
       void
-      run();
+      run(reactor::fsm::State& initial_state);
 
       virtual
       void
@@ -46,11 +47,7 @@ namespace surface
 
       virtual
       void
-      on_user_update(plasma::meta::User const& user) = 0;
-
-      virtual
-      void
-      on_network_update(plasma::meta::NetworkResponse const& network) = 0;
+      on_peer_connection_update(PeerConnectionUpdateNotification const& notif) = 0;
 
     protected:
       void
@@ -65,7 +62,56 @@ namespace surface
 
     protected:
       reactor::fsm::Machine _machine;
-      std::unique_ptr<reactor::Thread> _machine_thread;
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_thread);
+
+    private:
+      /*-------------.
+      | Core Machine |
+      `-------------*/
+      void
+      _transfer_core();
+
+    protected:
+      reactor::fsm::State& _transfer_core_state;
+
+    private:
+      reactor::fsm::Machine _core_machine;
+
+      void
+      _publish_interfaces();
+
+      void
+      _connection();
+
+      void
+      _wait_for_peer();
+
+      void
+      _transfer();
+
+      virtual
+      void
+      _transfer_operation() = 0;
+
+    protected:
+      // Common on both sender and recipient process.
+      ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, connection_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_peer_state); // Broken: I you disconnect, which is quasi transparent, you must publish your interfaces.
+
+    protected:
+      // This state has to be protected to allow the children to start the
+      // machine in this state.
+      reactor::fsm::State& _transfer_state;
+
+    protected:
+      // User status signal.
+      reactor::Signal _peer_online;
+      reactor::Signal _peer_offline;
+
+      // Slug?
+      reactor::Signal _peer_connected;
+      reactor::Signal _peer_disconnected;
 
       ELLE_ATTRIBUTE_R(surface::gap::State const&, state);
 
@@ -99,7 +145,7 @@ namespace surface
 
     public:
       bool
-      is_sender(std::string const& user_id);
+      is_sender();
 
       /*--------.
       | Network |

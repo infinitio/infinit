@@ -28,12 +28,7 @@ namespace surface
 
       virtual
       void
-      on_user_update(plasma::meta::User const& user) override;
-
-      virtual
-      void
-      on_network_update(plasma::meta::NetworkResponse const& network) override;
-
+      on_peer_connection_update(PeerConnectionUpdateNotification const& notif) override;
 
     private:
       SendMachine(surface::gap::State const& state);
@@ -55,13 +50,7 @@ namespace surface
       _set_permissions();
 
       void
-      _publish_interfaces();
-
-      void
-      _connection();
-
-      void
-      _transfer();
+      _transfer_operation() override;
 
       void
       _clean();
@@ -77,20 +66,8 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::fsm::State&, copy_files_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_accept_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, set_permissions_state);
-      // Common on both sender and recipient process, could be put in base class.
-      ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
-      ELLE_ATTRIBUTE(reactor::fsm::State&, connection_state);
-      ELLE_ATTRIBUTE(reactor::fsm::State&, transfer_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, clean_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, fail_state);
-
-      // User status signal.
-      ELLE_ATTRIBUTE(reactor::Signal, peer_online);
-      ELLE_ATTRIBUTE(reactor::Signal, peer_offline);
-
-      // Slug signal.
-      ELLE_ATTRIBUTE(reactor::Signal, peer_connected);
-      ELLE_ATTRIBUTE(reactor::Signal, peer_disconnected);
 
       // Transaction status signals.
       ELLE_ATTRIBUTE(reactor::Signal, accepted);

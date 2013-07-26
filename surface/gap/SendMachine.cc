@@ -1,6 +1,6 @@
 #include "SendMachine.hh"
 
-#include "ReceiveMachine.hh"
+#include "Rounds.hh"
 
 #include <surface/gap/_detail/TransferOperations.hh>
 
@@ -9,6 +9,11 @@
 #include <lune/Descriptor.hh>
 #include <hole/Passport.hh>
 #include <lune/Identity.hh>
+
+#include <nucleus/neutron/Subject.hh>
+
+#include <reactor/thread.hh>
+#include <reactor/exception.hh>
 
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
@@ -38,15 +43,6 @@ namespace surface
       _set_permissions_state(
         this->_machine.state_make(
           std::bind(&SendMachine::_set_permissions, this))),
-      _publish_interfaces_state(
-        this->_machine.state_make(
-          std::bind(&SendMachine::_publish_interfaces, this))),
-      _connection_state(
-        this->_machine.state_make(
-          std::bind(&SendMachine::_connection, this))),
-      _transfer_state(
-        this->_machine.state_make(
-          std::bind(&SendMachine::_transfer, this))),
       _clean_state(
         this->_machine.state_make(
           std::bind(&SendMachine::_clean, this))),
@@ -64,27 +60,8 @@ namespace surface
                                     _set_permissions_state,
                                     reactor::Waitables{&_accepted});
       this->_machine.transition_add(_set_permissions_state,
-                                    _publish_interfaces_state);
-
-      this->_machine.transition_add(_publish_interfaces_state,
-                                    _connection_state,
-                                    reactor::Waitables{&_peer_online});
-      this->_machine.transition_add(_connection_state,
-                                    _publish_interfaces_state,
-                                    reactor::Waitables{&_peer_offline});
-
-      this->_machine.transition_add(_connection_state,
-                                    _connection_state,
-                                    reactor::Waitables{&_peer_online});
-
-      this->_machine.transition_add(_connection_state,
-                                    _transfer_state,
-                                    reactor::Waitables{&_peer_connected});
-      this->_machine.transition_add(_transfer_state,
-                                    _connection_state,
-                                    reactor::Waitables{&_peer_disconnected});
-
-      this->_machine.transition_add(_transfer_state,
+                                    _transfer_core_state);
+      this->_machine.transition_add(_transfer_core_state,
                                     _clean_state,
                                     reactor::Waitables{&_finished});
 
@@ -112,7 +89,7 @@ namespace surface
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
 
       this->peer_id(recipient);
-      this->run();
+      this->run(this->_request_network_state);
     }
 
     void
@@ -137,6 +114,8 @@ namespace surface
           this->_finished.signal();
           break;
         case plasma::TransactionStatus::created:
+        case plasma::TransactionStatus::none:
+        case plasma::TransactionStatus::started:
         case plasma::TransactionStatus::initialized:
         case plasma::TransactionStatus::ready:
         case plasma::TransactionStatus::rejected:
@@ -146,13 +125,17 @@ namespace surface
     }
 
     void
-    SendMachine::on_user_update(plasma::meta::User const& user)
+    SendMachine::on_peer_connection_update(PeerConnectionUpdateNotification const& notif)
     {
-    }
+      ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
+                       *this, notif);
 
-    void
-    SendMachine::on_network_update(plasma::meta::NetworkResponse const& network)
-    {
+      ELLE_ASSERT_EQ(this->network_id(), notif.network_id);
+
+      if (notif.status)
+        this->_peer_online.signal();
+      else
+        this->_peer_offline.signal();
     }
 
     void
@@ -161,7 +144,6 @@ namespace surface
       elle::utility::Time time; time.Current();
       std::string network_name =
         elle::sprintf("%s-%s", this->peer_id(), time.nanoseconds);
-      std::cerr << "network_name: " << network_name << std::endl;
 
       this->network_id(
         this->state().meta().create_network(network_name).created_network_id);
@@ -296,55 +278,15 @@ namespace surface
       operation_detail::user::add(this->etoile(), group, subject);
       operation_detail::user::set_permissions(
         this->etoile(), subject, nucleus::neutron::permissions::write);
-    }
 
-    // XXX: Same for sender and recipient.
-    void
-    SendMachine::_publish_interfaces()
-    {
-      typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
-      AddressContainer addresses;
-
-      // In order to test the fallback, we can fake our local addresses.
-      // It should also work for nated network.
-      if (elle::os::getenv("INFINIT_LOCAL_ADDRESS", "").length() > 0)
-      {
-        addresses.emplace_back(elle::os::getenv("INFINIT_LOCAL_ADDRESS"),
-                               this->hole().port());
-      }
-      else
-      {
-        auto interfaces = elle::network::Interface::get_map(
-          elle::network::Interface::Filter::only_up |
-          elle::network::Interface::Filter::no_loopback |
-          elle::network::Interface::Filter::no_autoip
-          );
-        for (auto const& pair: interfaces)
-          if (pair.second.ipv4_address.size() > 0 &&
-              pair.second.mac_address.size() > 0)
-          {
-            auto const &ipv4 = pair.second.ipv4_address;
-            addresses.emplace_back(ipv4, this->hole().port());
-          }
-      }
-      ELLE_DEBUG("addresses: %s", addresses);
-
-      AddressContainer public_addresses;
-
-      this->state().meta().network_connect_device(
-        this->network_id(), this->state().passport().id(), addresses, public_addresses);
-    }
-
-    void
-    SendMachine::_connection()
-    {
+      this->state().meta().update_transaction(this->transaction_id(),
+                                              plasma::TransactionStatus::ready);
 
     }
 
     void
-    SendMachine::_transfer()
+    SendMachine::_transfer_operation()
     {
-
     }
 
     void
