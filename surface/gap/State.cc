@@ -640,16 +640,6 @@ namespace surface
     }
 
     void
-    State::_on_user_notification(UserStatusNotification const& notif)
-    {
-    }
-
-    void
-    State::_on_network_notification(NetworkUpdateNotification const& notif)
-    {
-    }
-
-    void
     State::_on_transaction_notification(TransactionNotification const& notif,
                                         bool)
     {
@@ -678,6 +668,24 @@ namespace surface
     }
 
     void
+    State::_on_peer_connection_update_notification(
+      PeerConnectionUpdateNotification const& notif)
+    {
+      ELLE_TRACE_SCOPE("%s: network_notification %s", *this, notif);
+
+      try
+      {
+        auto& transfer_machine = this->_machine_by_network(notif.network_id);
+        transfer_machine.on_peer_connection_update(notif);
+      }
+      catch (Exception const& e)
+      {
+        ELLE_ERR("%s: machine not found for network %s", *this, notif.network_id);
+        throw;
+      }
+    }
+
+    void
     State::send_files(std::string const& recipient,
                       std::unordered_set<std::string>&& files)
     {
@@ -695,23 +703,58 @@ namespace surface
       {
         auto& transfer_machine = this->_machine_by_transaction(transaction_id);
 
-        if (!transfer_machine.is_sender(this->me().id))
-        {
-          auto& receive_machine = (ReceiveMachine&) transfer_machine;
-          receive_machine.accept();
-        }
+        if (transfer_machine.is_sender())
+          throw Exception(gap_error, "only recipient can accept transactions");
+
+        auto& receive_machine = (ReceiveMachine&) transfer_machine;
+        receive_machine.accept();
       }
       catch (Exception const&)
       {
+        ELLE_ERR("%s: no machine was found for %s", transaction_id);
         throw;
       }
     }
 
     void
-    State::cancel_transaction(std::string const& transaction_id) {}
+    State::reject_transaction(std::string const& transaction_id)
+    {
+      ELLE_TRACE_SCOPE("%s: reject transaction %s", *this, transaction_id);
+
+      try
+      {
+        auto& transfer_machine = this->_machine_by_transaction(transaction_id);
+
+        if (transfer_machine.is_sender())
+          throw Exception(gap_error, "only recipient can reject transactions");
+
+        auto& receive_machine = (ReceiveMachine&) transfer_machine;
+        receive_machine.reject();
+      }
+      catch (Exception const&)
+      {
+        ELLE_ERR("%s: no machine was found for %s", transaction_id);
+        throw;
+      }
+    }
 
     void
-    State::reject_transaction(std::string const& transaction_id) {}
+    State::cancel_transaction(std::string const& transaction_id)
+    {
+      ELLE_TRACE_SCOPE("%s: reject transaction %s", *this, transaction_id);
+
+      try
+      {
+        auto& transfer_machine = this->_machine_by_transaction(transaction_id);
+        transfer_machine.cancel();
+      }
+      catch (Exception const&)
+      {
+        ELLE_ERR("%s: no machine was found for %s", transaction_id);
+        throw;
+      }
+    }
+
 
   }
 }

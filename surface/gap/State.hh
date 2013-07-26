@@ -149,6 +149,7 @@ namespace surface
       lune::Identity const&
       identity() const;
 
+
     ///
     /// Manage local device.
     ///
@@ -204,20 +205,16 @@ namespace surface
     /*-------------.
     | Transactions |
     `-------------*/
-      ELLE_ATTRIBUTE_Rw(std::string, output_dir);
-
     private:
       void
       _init_transactions();
 
       void
-      _on_user_notification(UserStatusNotification const&);
-
-      void
       _on_transaction_notification(TransactionNotification const&, bool);
 
       void
-      _on_network_notification(NetworkUpdateNotification const&);
+      _on_peer_connection_update_notification(
+        PeerConnectionUpdateNotification const& notif);
 
       typedef std::unique_ptr<TransferMachine> TransferMachinePtr;
       std::vector<TransferMachinePtr> _transfers;
