@@ -114,6 +114,7 @@ namespace surface
       _google_reporter(),
       _me{nullptr},
       _device{nullptr},
+      _output_dir{common::system::download_directory()},
       _trophonius_host{trophonius_host},
       _trophonius_port{trophonius_port},
       _apertus_host{apertus_host},

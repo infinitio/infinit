@@ -162,6 +162,8 @@ namespace surface
       update_device(std::string const& name,
                     bool force_create = false) const;
 
+      ELLE_ATTRIBUTE_Rw(std::string, output_dir);
+
     private:
       ELLE_ATTRIBUTE_R(std::string, trophonius_host);
       ELLE_ATTRIBUTE_R(uint16_t, trophonius_port);
