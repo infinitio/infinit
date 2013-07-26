@@ -248,6 +248,8 @@ namespace surface
       this->_meta.token("");
       this->_cleanup();
 
+      ELLE_ASSERT_EQ(this->_transfers.size(), 0u);
+
       std::string lower_email = email;
 
       std::transform(lower_email.begin(),
@@ -331,7 +333,6 @@ namespace surface
                   std::placeholders::_1));
 
       this->_init_transactions();
-
       this->notification_manager().connect();
     }
 
@@ -356,6 +357,22 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
 
+      // XXX: Could be improved a lot.
+      // XXX: Not thread safe.
+      while (this->_transfers.size())
+      {
+        try
+        {
+          this->_transfers.pop_back();
+        }
+        catch (std::exception const& e)
+        {
+          ELLE_ERR("%s: error while deleting machine: %s",
+                   *this, elle::exception_string());
+          throw;
+        }
+      }
+
       this->_transaction_manager->reset();
       this->_network_manager->reset();
       this->_user_manager->reset();
@@ -373,7 +390,9 @@ namespace surface
       if (this->_meta.token().empty())
         return;
 
-      elle::Finally logout([&] {
+      elle::Finally logout(
+        [&]
+        {
           try
           {
             auto id = this->me().id;
@@ -392,6 +411,8 @@ namespace surface
             this->_meta.token("");
           }
         });
+
+      elle::Finally clean([&] { this->_cleanup(); });
     }
 
     std::string
