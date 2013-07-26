@@ -49,6 +49,9 @@ namespace surface
       void
       on_peer_connection_update(PeerConnectionUpdateNotification const& notif) = 0;
 
+      void
+      cancel();
+
     protected:
       void
       _stop();
@@ -63,6 +66,9 @@ namespace surface
     protected:
       reactor::fsm::Machine _machine;
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_thread);
+
+    protected:
+      reactor::Signal _canceled;
 
     private:
       /*-------------.
@@ -137,7 +143,6 @@ namespace surface
     protected:
       void
       peer_id(std::string const& id);
-
 
     public:
       std::vector<std::string>

@@ -107,6 +107,13 @@ namespace surface
     }
 
     void
+    TransferMachine::cancel()
+    {
+      ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->transaction_id());
+      this->_canceled.signal();
+    }
+
+    void
     TransferMachine::_stop()
     {
       ELLE_TRACE_SCOPE("%s: stop machine for transaction %s",

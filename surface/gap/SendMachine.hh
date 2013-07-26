@@ -72,7 +72,6 @@ namespace surface
       // Transaction status signals.
       ELLE_ATTRIBUTE(reactor::Signal, accepted);
       ELLE_ATTRIBUTE(reactor::Signal, finished);
-      ELLE_ATTRIBUTE(reactor::Signal, canceled);
       ELLE_ATTRIBUTE(reactor::Signal, failed);
 
       /*-----------------.

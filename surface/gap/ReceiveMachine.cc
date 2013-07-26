@@ -121,7 +121,7 @@ namespace surface
     }
 
     void
-    ReceiveMachine::rejected()
+    ReceiveMachine::reject()
     {
       ELLE_TRACE_SCOPE("%s: reject transaction %s", *this, this->transaction_id());
       this->_rejected.signal();

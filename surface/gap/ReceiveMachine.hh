@@ -39,7 +39,7 @@ namespace surface
       accept();
 
       void
-      rejected();
+      reject();
 
     private:
       ReceiveMachine(surface::gap::State const& state);
@@ -77,7 +77,6 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::Signal, rejected);
       ELLE_ATTRIBUTE(reactor::Signal, finished);
       ELLE_ATTRIBUTE(reactor::Signal, ready);
-      ELLE_ATTRIBUTE(reactor::Signal, canceled);
       ELLE_ATTRIBUTE(reactor::Signal, failed);
 
       /*-----------------.
