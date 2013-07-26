@@ -122,6 +122,12 @@ namespace plasma
       stream << this->notification_type;
     }
 
+    void
+    TransactionNotification::print(std::ostream& stream) const
+    {
+      stream << *dynamic_cast<Transaction const*>(this);
+    }
+
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict)
     {

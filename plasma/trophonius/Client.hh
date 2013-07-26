@@ -88,6 +88,10 @@ namespace plasma
                                Notification,
                                Transaction)
       {}
+
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
 
     struct NetworkUpdateNotification:
