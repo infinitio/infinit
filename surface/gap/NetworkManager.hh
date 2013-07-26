@@ -40,16 +40,16 @@ namespace surface
       };
 
       /*-----------.
-      | Attributes |
+      |  Attributes |
       `-----------*/
-      plasma::meta::Client& _meta;
+      ELLE_ATTRIBUTE(plasma::meta::Client const&, meta);
 
       /*-------------.
       | Construction |
       `-------------*/
     public:
       NetworkManager(surface::gap::NotificationManager& notification_manager,
-                     plasma::meta::Client& meta);
+                     plasma::meta::Client const& meta);
 
       virtual
       ~NetworkManager();

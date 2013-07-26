@@ -27,38 +27,16 @@ namespace surface
       | Attributes |
       `-----------*/
     private:
-      plasma::meta::Client& _meta;
-      typedef std::function<Self const&()> SelfGetter;
+      ELLE_ATTRIBUTE_R(plasma::meta::Client const&, meta);
       /*-------------.
       | Construction |
       `-------------*/
     public:
       UserManager(NotificationManager& notification_manager,
-                  plasma::meta::Client& meta);
+                  plasma::meta::Client const& meta);
 
       virtual
       ~UserManager();
-
-      /*------.
-      | Cache |
-      `------*/
-    private:
-      typedef std::unique_ptr<User> UserPtr;
-      // XXX pointers are not needed anymore.
-      typedef std::map<std::string, UserPtr> UserMap;
-      elle::threading::Monitor<UserMap> _users;
-
-      // Hooked to the notification manager, resync users on reconnection.
-      void
-      _on_resync();
-
-      // Update the current user container with the current meta user data.
-      User
-      _sync(plasma::meta::UserResponse const& res);
-
-      // Force the update of an user.
-      User
-      _sync(std::string const& id);
 
       /*-------.
       | Access |
@@ -93,6 +71,27 @@ namespace surface
       `-------------*/
       std::string
       invite(std::string const& email);
+
+      /*------.
+      | Cache |
+      `------*/
+    private:
+      typedef std::unique_ptr<User> UserPtr;
+      // XXX pointers are not needed anymore.
+      typedef std::map<std::string, UserPtr> UserMap;
+      elle::threading::Monitor<UserMap> _users;
+
+      // Hooked to the notification manager, resync users on reconnection.
+      void
+      _on_resync();
+
+      // Update the current user container with the current meta user data.
+      User
+      _sync(plasma::meta::UserResponse const& res);
+
+      // Force the update of an user.
+      User
+      _sync(std::string const& id);
 
       //- Swaggers -------------------------------------------------------------
       /*--------.

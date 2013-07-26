@@ -14,6 +14,7 @@ namespace surface
     using ::plasma::trophonius::UserStatusNotification;
     using ::plasma::trophonius::MessageNotification;
     using ::plasma::trophonius::NetworkUpdateNotification;
+    using ::plasma::trophonius::PeerConnectionUpdateNotification;
     using ::plasma::trophonius::NotificationType;
   }
 }

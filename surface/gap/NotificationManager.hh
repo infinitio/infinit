@@ -41,9 +41,10 @@ namespace surface
         {}
       };
 
-      ELLE_ATTRIBUTE(std::unique_ptr<plasma::trophonius::Client>,
-                     trophonius);
-      ELLE_ATTRIBUTE(plasma::meta::Client&, meta);
+      ELLE_ATTRIBUTE(std::string, trophonius_host);
+      ELLE_ATTRIBUTE(uint16_t, trophonius_port);
+      ELLE_ATTRIBUTE(std::unique_ptr<plasma::trophonius::Client>, trophonius);
+      ELLE_ATTRIBUTE(plasma::meta::Client const&, meta);
       typedef std::function<Self const&()> SelfGetter;
       typedef std::function<Device const&()> DeviceGetter;
       ELLE_ATTRIBUTE(SelfGetter, self);
@@ -52,18 +53,19 @@ namespace surface
     public:
       NotificationManager(std::string const& trophonius_host,
                           uint16_t trophonius_port,
-                          plasma::meta::Client& meta,
+                          plasma::meta::Client const& meta,
                           SelfGetter const& self,
-                          DeviceGetter const& device);
+                          DeviceGetter const& device,
+                          bool auto_connect = true);
 
       virtual
       ~NotificationManager();
 
-    private:
+    public:
       void
-      _connect(std::string const& trophonius_host,
-               uint16_t trophonius_port);
+      connect();
 
+    private:
       void
       _check_trophonius();
 
@@ -98,6 +100,10 @@ namespace surface
         std::function<void(NetworkUpdateNotification const&)>
         NetworkUpdateNotificationCallback;
 
+      typedef
+        std::function<void(PeerConnectionUpdateNotification const&)>
+        PeerConnectionUpdateNotificationCallback;
+
     public:
       void
       new_swagger_callback(NewSwaggerNotificationCallback const& cb);
@@ -113,6 +119,9 @@ namespace surface
 
       void
       network_update_callback(NetworkUpdateNotificationCallback const& cb);
+
+      void
+      peer_connection_update_callback(PeerConnectionUpdateNotificationCallback const& cb);
 
       /// Fire notification manually.
       void

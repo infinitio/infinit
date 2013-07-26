@@ -12,7 +12,7 @@ namespace surface
     namespace json = elle::format::json;
 
     NetworkManager::NetworkManager(surface::gap::NotificationManager& notification_manager,
-                                   plasma::meta::Client& meta):
+                                   plasma::meta::Client const& meta):
       Notifiable(notification_manager),
       _meta(meta)
     {

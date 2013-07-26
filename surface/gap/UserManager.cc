@@ -12,7 +12,7 @@ namespace surface
   namespace gap
   {
     UserManager::UserManager(NotificationManager& notification_manager,
-                             plasma::meta::Client& meta):
+                             plasma::meta::Client const& meta):
       Notifiable{notification_manager},
       _meta(meta),
       _swaggers_dirty(true)

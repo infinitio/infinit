@@ -20,9 +20,12 @@ namespace surface
 
     NotificationManager::NotificationManager(std::string const& trophonius_host,
                                              uint16_t trophonius_port,
-                                             plasma::meta::Client& meta,
+                                             plasma::meta::Client const& meta,
                                              SelfGetter const& self,
-                                             DeviceGetter const& device):
+                                             DeviceGetter const& device,
+                                             bool auto_connect):
+      _trophonius_host(trophonius_host),
+      _trophonius_port(trophonius_port),
       _trophonius{nullptr},
       _meta(meta),
       _self{self},
@@ -32,7 +35,8 @@ namespace surface
       ELLE_ASSERT(this->_device != nullptr);
       ELLE_DEBUG("Self = %s", this->_self().id);
       ELLE_DEBUG("Device = %s", this->_device().id);
-      this->_connect(trophonius_host, trophonius_port);
+      if (auto_connect)
+        this->connect();
     }
 
     NotificationManager::~NotificationManager()
@@ -52,12 +56,14 @@ namespace surface
     //    - if it's not: we start it TODO
     //  - We use common::trophonius::{port, host} if the file is not there
     void
-    NotificationManager::_connect(std::string const& trophonius_host,
-                                  uint16_t trophonius_port)
+    NotificationManager::connect()
     {
-      ELLE_LOG("%s: connect(%s,%s)", *this, trophonius_host, trophonius_port);
+      ELLE_LOG("%s: connect(%s,%s)",
+               *this, this->_trophonius_host, this->_trophonius_port);
 
-      ELLE_ASSERT_EQ(this->_trophonius, nullptr);
+      if (this->_trophonius != nullptr)
+        throw Exception(gap_error,
+                        "trying to connect an already connected trophonius");
 
       try
       {
@@ -97,8 +103,8 @@ namespace surface
       {
         this->_trophonius.reset(
           new plasma::trophonius::Client{
-            trophonius_host,
-            trophonius_port,
+            this->_trophonius_host,
+            this->_trophonius_port,
             std::bind(&NotificationManager::_on_trophonius_connected, this),
           });
       }
@@ -308,6 +314,18 @@ namespace surface
 
       using Type = NotificationType;
       this->_notification_handlers[Type::network_update].push_back(fn);
+    }
+
+    void
+    NotificationManager::peer_connection_update_callback(
+      PeerConnectionUpdateNotificationCallback const& cb)
+    {
+      auto fn = [cb] (Notification const& notif, bool) -> void {
+        return cb(static_cast<PeerConnectionUpdateNotification const&>(notif));
+      };
+
+      using Type = NotificationType;
+      this->_notification_handlers[Type::peer_connection_update].push_back(fn);
     }
 
     void

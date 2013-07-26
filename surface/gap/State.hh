@@ -173,32 +173,32 @@ namespace surface
       ELLE_ATTRIBUTE_R(uint16_t, trophonius_port);
 
       typedef std::unique_ptr<NotificationManager> NotificationManagerPtr;
-      elle::threading::Monitor<NotificationManagerPtr> _notification_manager;
+      elle::threading::Monitor<NotificationManagerPtr> mutable _notification_manager;
 
       ELLE_ATTRIBUTE_R(std::string, apertus_host);
       ELLE_ATTRIBUTE_R(uint16_t, apertus_port);
 
       typedef std::unique_ptr<NetworkManager> NetworkManagerPtr;
-      elle::threading::Monitor<NetworkManagerPtr> _network_manager;
+      elle::threading::Monitor<NetworkManagerPtr> mutable _network_manager;
 
       typedef std::unique_ptr<UserManager> UserManagerPtr;
-      elle::threading::Monitor<UserManagerPtr> _user_manager;
+      elle::threading::Monitor<UserManagerPtr> mutable _user_manager;
 
       typedef std::unique_ptr<TransactionManager> TransactionManagerPtr;
-      elle::threading::Monitor<TransactionManagerPtr> _transaction_manager;
+      elle::threading::Monitor<TransactionManagerPtr> mutable _transaction_manager;
 
     public:
       NetworkManager&
-      network_manager();
+      network_manager() const;
 
       NotificationManager&
-      notification_manager();
+      notification_manager(bool auto_connect = false) const;
 
       UserManager&
-      user_manager();
+      user_manager() const;
 
       TransactionManager&
-      transaction_manager();
+      transaction_manager() const;
 
     private:
 

@@ -344,24 +344,26 @@ namespace surface
         identity_infos.close();
       }
 
-      // XXX: Will create the notification mananger :/
-      this->notification_manager().user_status_callback(
-        std::bind(&surface::gap::State::_on_user_notification,
-                  this,
-                  std::placeholders::_1));
+      this->notification_manager();
+      this->user_manager();
+      this->network_manager();
+      this->transaction_manager();
 
+      // XXX: Will create the notification mananger :/
       this->notification_manager().transaction_callback(
         std::bind(&surface::gap::State::_on_transaction_notification,
                   this,
                   std::placeholders::_1,
                   std::placeholders::_2));
 
-      this->notification_manager().network_update_callback(
-        std::bind(&surface::gap::State::_on_network_notification,
+      this->notification_manager().peer_connection_update_callback(
+        std::bind(&surface::gap::State::_on_peer_connection_update_notification,
                   this,
                   std::placeholders::_1));
 
       this->_init_transactions();
+
+      this->notification_manager().connect();
     }
 
     void
@@ -507,10 +509,10 @@ namespace surface
     }
 
     NotificationManager&
-    State::notification_manager()
+    State::notification_manager(bool auto_connect) const
     {
       return this->_notification_manager(
-        [this] (NotificationManagerPtr& manager) -> NotificationManager& {
+        [this, auto_connect] (NotificationManagerPtr& manager) -> NotificationManager& {
           if (manager == nullptr)
           {
             ELLE_TRACE_SCOPE("%s: allocating a new notification manager", *this);
@@ -522,6 +524,7 @@ namespace surface
                 this->_meta,
                 std::bind(&State::me, this),
                 std::bind(&State::device, this),
+                auto_connect,
               });
           }
           return *manager;
@@ -529,7 +532,7 @@ namespace surface
     }
 
     NetworkManager&
-    State::network_manager()
+    State::network_manager() const
     {
       return this->_network_manager(
         [this] (NetworkManagerPtr& manager) -> NetworkManager& {
@@ -539,7 +542,8 @@ namespace surface
 
             manager.reset(
               new NetworkManager{
-                this->notification_manager(), this->_meta,
+                this->notification_manager(),
+                this->_meta,
               });
           }
           return *manager;
@@ -547,7 +551,7 @@ namespace surface
     }
 
     UserManager&
-    State::user_manager()
+    State::user_manager() const
     {
       return this->_user_manager(
         [this] (UserManagerPtr& manager) -> UserManager& {
@@ -557,7 +561,8 @@ namespace surface
 
             manager.reset(
               new UserManager{
-                this->notification_manager(), this->_meta
+                this->notification_manager(),
+                this->_meta
               });
           }
           return *manager;
@@ -565,7 +570,7 @@ namespace surface
     }
 
     TransactionManager&
-    State::transaction_manager()
+    State::transaction_manager() const
     {
       return this->_transaction_manager(
         [this] (TransactionManagerPtr& manager) -> TransactionManager& {
@@ -615,8 +620,6 @@ namespace surface
 
       this->_output_dir = dir;
     }
-
-
 
     TransferMachine&
     State::_find_machine(std::function<bool (TransferMachinePtr const&)> func) const
