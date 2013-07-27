@@ -33,6 +33,27 @@ namespace surface
     class TransferMachine:
       public elle::Printable
     {
+      //---------- Signal ------------------------------------------------------
+      /// Allow to check if the signal has been pre triggered.
+      /// Notice that the pre trigger evaluation reset the state.
+    public:
+      class Signal
+      {
+      public:
+        Signal(std::string const& name = std::string());
+        bool signal();
+        bool signal_one();
+
+        operator reactor::Signal* ();
+
+        ELLE_ATTRIBUTE_R(reactor::Signal, signal);
+        ELLE_ATTRIBUTE_r(bool, signaled);
+
+        bool
+        signaled();
+      };
+
+
     public:
       TransferMachine(surface::gap::State const& state);
 
@@ -80,7 +101,7 @@ namespace surface
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_thread);
 
     protected:
-      reactor::Signal _canceled;
+      Signal _canceled;
 
     private:
       /*-------------.
@@ -124,12 +145,12 @@ namespace surface
 
     protected:
       // User status signal.
-      reactor::Signal _peer_online;
-      reactor::Signal _peer_offline;
+      Signal _peer_online;
+      Signal _peer_offline;
 
       // Slug?
-      reactor::Signal _peer_connected;
-      reactor::Signal _peer_disconnected;
+      Signal _peer_connected;
+      Signal _peer_disconnected;
 
       ELLE_ATTRIBUTE_R(surface::gap::State const&, state);
 

@@ -24,6 +24,41 @@ namespace surface
 {
   namespace gap
   {
+
+    //---------- Signal --------------------------------------------------------
+    TransferMachine::Signal::Signal(std::string const& name):
+      _signal(name),
+      _signaled(false)
+    {}
+
+    bool
+    TransferMachine::Signal::signal()
+    {
+      this->_signaled = !this->_signal.signal();
+      return this->_signaled;
+    }
+
+    bool
+    TransferMachine::Signal::signal_one()
+    {
+      this->_signaled = !this->_signal.signal_one();
+      return this->_signaled;
+    }
+
+    TransferMachine::Signal::operator reactor::Signal* ()
+    {
+      return &this->_signal;
+    }
+
+    bool
+    TransferMachine::Signal::signaled()
+    {
+      bool old = this->_signaled;
+      this->_signaled = false;
+      return old;
+    }
+
+    //---------- TransferMachine -----------------------------------------------
     TransferMachine::TransferMachine(surface::gap::State const& state):
       _scheduler(),
       _scheduler_thread(),
@@ -51,16 +86,16 @@ namespace surface
 
       this->_core_machine.transition_add(_publish_interfaces_state,
                                          _connection_state,
-                                         reactor::Waitables{&_peer_online});
+                                         reactor::Waitables{this->_peer_online});
       this->_core_machine.transition_add(_connection_state,
                                          _wait_for_peer_state,
-                                         reactor::Waitables{&_peer_offline});
+                                         reactor::Waitables{this->_peer_offline});
       this->_core_machine.transition_add(_wait_for_peer_state,
                                          _connection_state,
-                                         reactor::Waitables{&_peer_online});
+                                         reactor::Waitables{this->_peer_online});
       this->_core_machine.transition_add(_connection_state,
                                          _connection_state,
-                                         reactor::Waitables{&_peer_online});
+                                         reactor::Waitables{this->_peer_online});
       this->_core_machine.transition_add(_connection_state,
                                          _transfer_state);
     }

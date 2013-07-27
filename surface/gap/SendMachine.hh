@@ -70,9 +70,10 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::fsm::State&, fail_state);
 
       // Transaction status signals.
-      ELLE_ATTRIBUTE(reactor::Signal, accepted);
-      ELLE_ATTRIBUTE(reactor::Signal, finished);
-      ELLE_ATTRIBUTE(reactor::Signal, failed);
+      ELLE_ATTRIBUTE(TransferMachine::Signal, accepted);
+      ELLE_ATTRIBUTE(TransferMachine::Signal, rejected);
+      ELLE_ATTRIBUTE(TransferMachine::Signal, finished);
+      ELLE_ATTRIBUTE(TransferMachine::Signal, failed);
 
       /*-----------------.
       | Transaction data |

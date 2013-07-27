@@ -31,20 +31,45 @@ namespace surface
         this->_machine.state_make(
           std::bind(&ReceiveMachine::_fail, this)))
     {
+      // Normal process.
       this->_machine.transition_add(_wait_for_decision_state,
                                     _accept_state,
-                                    reactor::Waitables{&_accepted});
-
+                                    reactor::Waitables{this->_accepted},
+                                    false,
+                                    [&] () -> bool
+                                    {
+                                      return this->_accepted.signaled();
+                                    });
       this->_machine.transition_add(_wait_for_decision_state,
                                     _reject_state,
-                                    reactor::Waitables{&_rejected});
-
+                                    reactor::Waitables{this->_rejected},
+                                    false,
+                                    [&] () -> bool
+                                    {
+                                      return this->_rejected.signaled();
+                                    });
       this->_machine.transition_add(_accept_state,
                                     _transfer_core_state,
-                                    reactor::Waitables{&_ready});
+                                    reactor::Waitables{this->_ready},
+                                    false,
+                                    [&] () -> bool
+                                    {
+                                      return this->_ready.signaled();
+                                    });
+      this->_machine.transition_add(_transfer_core_state, _clean_state);
 
-      this->_machine.transition_add(_transfer_core_state,
-                                    _clean_state);
+      // Cancel.
+      this->_machine.transition_add(_wait_for_decision_state, _clean_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_accept_state, _clean_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_reject_state, _clean_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_transfer_core_state, _clean_state, reactor::Waitables{this->_canceled}, true);
+
+      // Exception.
+      this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
+      this->_machine.transition_add_catch(_accept_state, _fail_state);
+      this->_machine.transition_add_catch(_reject_state, _fail_state);
+      this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
+
       // Exception handling.
       // this->_m.transition_add_catch(_request_network_state, _fail);
 

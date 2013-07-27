@@ -21,6 +21,7 @@ namespace surface
 {
   namespace gap
   {
+    using TransactionStatus = plasma::TransactionStatus;
     SendMachine::SendMachine(surface::gap::State const& state):
       TransferMachine(state),
       _request_network_state(
@@ -51,14 +52,35 @@ namespace surface
                                     _copy_files_state);
       this->_machine.transition_add(_copy_files_state,
                                     _wait_for_accept_state);
-      this->_machine.transition_add(_wait_for_accept_state,
-                                    _set_permissions_state,
-                                    reactor::Waitables{&_accepted});
+      this->_machine.transition_add(
+        _wait_for_accept_state,
+        _set_permissions_state,
+        reactor::Waitables{this->_accepted},
+        false,
+        [&] () -> bool
+        {
+          return this->state().transaction_manager().one(
+            this->transaction_id()).status == TransactionStatus::accepted;
+        }
+        );
+
+      this->_machine.transition_add(
+        _wait_for_accept_state,
+        _clean_state,
+        reactor::Waitables{this->_rejected},
+        false,
+        [&] () -> bool
+        {
+          return this->state().transaction_manager().one(
+            this->transaction_id()).status == TransactionStatus::rejected;
+        }
+        );
+
       this->_machine.transition_add(_set_permissions_state,
                                     _transfer_core_state);
       this->_machine.transition_add(_transfer_core_state,
                                     _clean_state,
-                                    reactor::Waitables{&_finished});
+                                    reactor::Waitables{this->_finished});
 
       // Exception handling.
       // this->_m.transition_add_catch(_request_network_state, _fail);
@@ -108,12 +130,14 @@ namespace surface
         case plasma::TransactionStatus::finished:
           this->_finished.signal();
           break;
+        case plasma::TransactionStatus::rejected:
+          this->_rejected.signal();
+          break;
         case plasma::TransactionStatus::created:
         case plasma::TransactionStatus::none:
         case plasma::TransactionStatus::started:
         case plasma::TransactionStatus::initialized:
         case plasma::TransactionStatus::ready:
-        case plasma::TransactionStatus::rejected:
         case plasma::TransactionStatus::_count:
           break;
       }
@@ -183,10 +207,11 @@ namespace surface
         boost::filesystem::path(*(this->_files.cbegin())).filename().string();
 
       // Create transaction.
-      this->transaction_id(this->state().meta().create_transaction(
-                             this->peer_id(), first_file, this->_files.size(), size,
-                             boost::filesystem::is_directory(first_file), this->network().name(),
-                             this->state().device_id()).created_transaction_id);
+      this->transaction_id(
+        this->state().meta().create_transaction(
+          this->peer_id(), first_file, this->_files.size(), size,
+          boost::filesystem::is_directory(first_file), this->network().name(),
+          this->state().device_id()).created_transaction_id);
 
       // XXX: Ensure recipient is an id.
       this->peer_id(this->state().meta().user(this->peer_id()).id);
@@ -227,6 +252,9 @@ namespace surface
 
         this->storage().store(group_address, group);
       }
+
+      this->state().meta().update_transaction(this->transaction_id(),
+                                              plasma::TransactionStatus::initialized);
     }
 
     void
