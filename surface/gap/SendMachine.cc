@@ -38,13 +38,7 @@ namespace surface
           std::bind(&SendMachine::_wait_for_accept, this))),
       _set_permissions_state(
         this->_machine.state_make(
-          std::bind(&SendMachine::_set_permissions, this))),
-      _clean_state(
-        this->_machine.state_make(
-          std::bind(&SendMachine::_clean, this))),
-      _fail_state(
-        this->_machine.state_make(
-          std::bind(&SendMachine::_fail, this)))
+          std::bind(&SendMachine::_set_permissions, this)))
     {
       this->_machine.transition_add(_request_network_state,
                                     _create_transaction_state);
@@ -78,12 +72,20 @@ namespace surface
 
       this->_machine.transition_add(_set_permissions_state,
                                     _transfer_core_state);
-      this->_machine.transition_add(_transfer_core_state,
-                                    _clean_state,
-                                    reactor::Waitables{this->_finished});
 
-      // Exception handling.
-      // this->_m.transition_add_catch(_request_network_state, _fail);
+      // Cancel.
+      this->_machine.transition_add(_request_network_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_create_transaction_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_copy_files_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_wait_for_accept_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_set_permissions_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+
+      // Exception.
+      this->_machine.transition_add_catch(_request_network_state, _fail_state);
+      this->_machine.transition_add_catch(_create_transaction_state, _fail_state);
+      this->_machine.transition_add_catch(_copy_files_state, _fail_state);
+      this->_machine.transition_add_catch(_wait_for_accept_state, _fail_state);
+      this->_machine.transition_add_catch(_set_permissions_state, _fail_state);
     }
 
     SendMachine::~SendMachine()
@@ -160,6 +162,8 @@ namespace surface
     void
     SendMachine::_request_network()
     {
+      ELLE_TRACE_SCOPE("%s: request network", *this);
+
       elle::utility::Time time; time.Current();
       std::string network_name =
         elle::sprintf("%s-%s", this->peer_id(), time.nanoseconds);
@@ -181,8 +185,8 @@ namespace surface
     void
     SendMachine::_create_transaction()
     {
-      ELLE_LOG("%s", __PRETTY_FUNCTION__);
-      ELLE_ASSERT_NEQ(this->network_id().length(), 0u);
+      ELLE_TRACE_SCOPE("%s: create transaction with netowrk %s",
+                       *this, this->network_id());
 
       auto total_size =
         [] (std::unordered_set<std::string> const& files) -> size_t
@@ -206,15 +210,21 @@ namespace surface
       std::string first_file =
         boost::filesystem::path(*(this->_files.cbegin())).filename().string();
 
-      // Create transaction.
+      ELLE_DEBUG("create transaction");
       this->transaction_id(
         this->state().meta().create_transaction(
           this->peer_id(), first_file, this->_files.size(), size,
           boost::filesystem::is_directory(first_file), this->network().name(),
           this->state().device_id()).created_transaction_id);
 
+      ELLE_TRACE("created transaction: %s", this->transaction_id());
+
       // XXX: Ensure recipient is an id.
+
+      ELLE_DEBUG("store peer id");
       this->peer_id(this->state().meta().user(this->peer_id()).id);
+      ELLE_TRACE("peer id: %s", this->peer_id());
+
       this->state().meta().network_add_user(
         this->network().name(), this->peer_id());
 
@@ -283,6 +293,8 @@ namespace surface
     void
     SendMachine::_set_permissions()
     {
+      ELLE_TRACE_SCOPE("%s: transfer operation %s", *this, this->transaction_id());
+
       auto peer_public_key = this->state().meta().user(this->peer_id()).public_key;
 
       ELLE_ASSERT_NEQ(peer_public_key.length(), 0u);
@@ -310,16 +322,7 @@ namespace surface
     void
     SendMachine::_transfer_operation()
     {
-    }
-
-    void
-    SendMachine::_clean()
-    {
-    }
-
-    void
-    SendMachine::_fail()
-    {
+      // Nothing to do.
     }
 
     /*----------.

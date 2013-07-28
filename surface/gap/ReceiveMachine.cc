@@ -7,6 +7,8 @@
 #include <reactor/thread.hh>
 #include <reactor/exception.hh>
 
+#include <boost/filesystem.hpp>
+
 ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine");
 
 namespace surface
@@ -23,13 +25,7 @@ namespace surface
           std::bind(&ReceiveMachine::_accept, this))),
       _reject_state(
         this->_machine.state_make(
-          std::bind(&ReceiveMachine::_reject, this))),
-      _clean_state(
-        this->_machine.state_make(
-          std::bind(&ReceiveMachine::_clean, this))),
-      _fail_state(
-        this->_machine.state_make(
-          std::bind(&ReceiveMachine::_fail, this)))
+          std::bind(&ReceiveMachine::_reject, this)))
     {
       // Normal process.
       this->_machine.transition_add(_wait_for_decision_state,
@@ -59,19 +55,16 @@ namespace surface
       this->_machine.transition_add(_transfer_core_state, _clean_state);
 
       // Cancel.
-      this->_machine.transition_add(_wait_for_decision_state, _clean_state, reactor::Waitables{this->_canceled}, true);
-      this->_machine.transition_add(_accept_state, _clean_state, reactor::Waitables{this->_canceled}, true);
-      this->_machine.transition_add(_reject_state, _clean_state, reactor::Waitables{this->_canceled}, true);
-      this->_machine.transition_add(_transfer_core_state, _clean_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_accept_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_reject_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_transfer_core_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
 
       // Exception.
       this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
       this->_machine.transition_add_catch(_accept_state, _fail_state);
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
-
-      // Exception handling.
-      // this->_m.transition_add_catch(_request_network_state, _fail);
 
       this->run(this->_wait_for_decision_state);
     }
@@ -181,6 +174,8 @@ namespace surface
     void
     ReceiveMachine::_transfer_operation()
     {
+      ELLE_TRACE_SCOPE("%s: transfer operation %s", *this, this->transaction_id());
+
       nucleus::neutron::Subject subject;
       subject.Create(this->state().identity().pair().K());
 
@@ -189,18 +184,8 @@ namespace surface
                                       subject,
                                       this->state().output_dir());
 
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              plasma::TransactionStatus::finished);
-    }
-
-    void
-    ReceiveMachine::_clean()
-    {
-    }
-
-    void
-    ReceiveMachine::_fail()
-    {
+      this->state().meta().update_transaction(
+        this->transaction_id(), plasma::TransactionStatus::finished);
     }
 
     std::string

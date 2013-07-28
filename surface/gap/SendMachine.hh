@@ -52,12 +52,6 @@ namespace surface
       void
       _transfer_operation() override;
 
-      void
-      _clean();
-
-      void
-      _fail();
-
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/
@@ -66,14 +60,10 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::fsm::State&, copy_files_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_accept_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, set_permissions_state);
-      ELLE_ATTRIBUTE(reactor::fsm::State&, clean_state);
-      ELLE_ATTRIBUTE(reactor::fsm::State&, fail_state);
 
       // Transaction status signals.
       ELLE_ATTRIBUTE(TransferMachine::Signal, accepted);
       ELLE_ATTRIBUTE(TransferMachine::Signal, rejected);
-      ELLE_ATTRIBUTE(TransferMachine::Signal, finished);
-      ELLE_ATTRIBUTE(TransferMachine::Signal, failed);
 
       /*-----------------.
       | Transaction data |

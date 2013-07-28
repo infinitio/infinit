@@ -101,18 +101,47 @@ namespace surface
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_thread);
 
     protected:
-      Signal _canceled;
-
-    private:
-      /*-------------.
-      | Core Machine |
-      `-------------*/
       void
       _transfer_core();
 
-    protected:
-      reactor::fsm::State& _transfer_core_state;
+      void
+      _finish();
 
+      void
+      _fail();
+
+      void
+      _cancel();
+
+      void
+      _finiliaze(plasma::TransactionStatus);
+
+    private:
+      void
+      _clean();
+
+    protected:
+      virtual
+      void
+      _transfer_operation() = 0;
+
+    protected:
+      // This state has to be protected to allow the children to start the
+      // machine in this state.
+      reactor::fsm::State& _transfer_core_state;
+      reactor::fsm::State& _finish_state;
+      reactor::fsm::State& _cancel_state;
+      reactor::fsm::State& _fail_state;
+      reactor::fsm::State& _clean_state;
+
+    protected:
+      Signal _finished;
+      Signal _canceled;
+      Signal _failed;
+
+      /*-------------.
+      | Core Machine |
+      `-------------*/
     private:
       reactor::fsm::Machine _core_machine;
 
@@ -128,20 +157,16 @@ namespace surface
       void
       _transfer();
 
-      virtual
       void
-      _transfer_operation() = 0;
+      _core_stoped();
 
-    protected:
       // Common on both sender and recipient process.
       ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, connection_state);
-      ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_peer_state); // Broken: I you disconnect, which is quasi transparent, you must publish your interfaces.
-
-    protected:
-      // This state has to be protected to allow the children to start the
-      // machine in this state.
-      reactor::fsm::State& _transfer_state;
+      // Broken: I you disconnect, which is quasi transparent, you must publish your interfaces.
+      ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_peer_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, transfer_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, core_stoped_state);
 
     protected:
       // User status signal.

@@ -16,6 +16,8 @@
 #include <elle/network/Interface.hh>
 #include <elle/printf.hh>
 
+#include <boost/filesystem.hpp>
+
 #include <functional>
 
 ELLE_LOG_COMPONENT("surface.gap.TransferMachine");
@@ -67,6 +69,18 @@ namespace surface
       _transfer_core_state(
         this->_machine.state_make(
           std::bind(&TransferMachine::_transfer_core, this))),
+      _finish_state(
+        this->_machine.state_make(
+          std::bind(&TransferMachine::_finish, this))),
+      _cancel_state(
+        this->_machine.state_make(
+          std::bind(&TransferMachine::_cancel, this))),
+      _fail_state(
+        this->_machine.state_make(
+          std::bind(&TransferMachine::_fail, this))),
+      _clean_state(
+        this->_machine.state_make(
+          std::bind(&TransferMachine::_clean, this))),
       _core_machine(),
       _publish_interfaces_state(
         this->_core_machine.state_make(
@@ -80,9 +94,32 @@ namespace surface
       _transfer_state(
         this->_core_machine.state_make(
           std::bind(&TransferMachine::_transfer, this))),
+      _core_stoped_state(
+        this->_core_machine.state_make(
+          std::bind(&TransferMachine::_core_stoped, this))),
       _state(state)
     {
       ELLE_TRACE_SCOPE("%s: creating transfer machine", *this);
+
+      this->_machine.transition_add(_transfer_core_state,
+                                    _finish_state,
+                                    reactor::Waitables{this->_finished});
+
+      this->_machine.transition_add(_transfer_core_state,
+                                    _cancel_state,
+                                    reactor::Waitables{this->_canceled});
+
+      this->_machine.transition_add_catch(_transfer_core_state,
+                                          _fail_state);
+
+      this->_machine.transition_add(_finish_state,
+                                    _clean_state);
+
+      this->_machine.transition_add(_cancel_state,
+                                    _clean_state);
+
+      this->_machine.transition_add(_fail_state,
+                                    _clean_state);
 
       this->_core_machine.transition_add(_publish_interfaces_state,
                                          _connection_state,
@@ -98,6 +135,16 @@ namespace surface
                                          reactor::Waitables{this->_peer_online});
       this->_core_machine.transition_add(_connection_state,
                                          _transfer_state);
+
+      // Cancel.
+      this->_core_machine.transition_add(_publish_interfaces_state, _core_stoped_state, reactor::Waitables{this->_canceled}, true);
+      this->_core_machine.transition_add(_connection_state, _core_stoped_state, reactor::Waitables{this->_canceled}, true);
+      this->_core_machine.transition_add(_transfer_core_state, _core_stoped_state, reactor::Waitables{this->_canceled}, true);
+
+      // Exception.
+      this->_core_machine.transition_add_catch(_publish_interfaces_state, _core_stoped_state);
+      this->_core_machine.transition_add_catch(_connection_state, _core_stoped_state);
+      this->_core_machine.transition_add_catch(_transfer_core_state, _core_stoped_state);
     }
 
     TransferMachine::~TransferMachine()
@@ -110,6 +157,135 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer core machine", *this);
       this->_core_machine.run();
+    }
+
+    void
+    TransferMachine::_clean()
+    {
+
+      ELLE_TRACE_SCOPE("%s: clean %s", *this, this->transaction_id());
+      auto path = common::infinit::network_directory(
+        this->state().me().id, this->network_id());
+
+      if (boost::filesystem::exists(path))
+      {
+        ELLE_DEBUG("%s: remove network at %s", *this, path);
+
+        boost::filesystem::remove_all(path);
+      }
+
+      try
+      {
+        this->state().meta().delete_network(this->network_id());
+      }
+      catch (reactor::Terminate const&)
+      {
+        ELLE_TRACE("%s: machine terminated before deleting network: %s",
+                   *this, elle::exception_string());
+        throw;
+      }
+      catch (std::exception const&)
+      {
+        ELLE_ERR("%s: clean failed: network %s wasn't deleted: %s",
+                 *this, this->network_id(), elle::exception_string());
+      }
+    }
+
+    void
+    TransferMachine::_finish()
+    {
+      ELLE_TRACE_SCOPE("%s: machine finished", *this);
+      this->_finiliaze(plasma::TransactionStatus::finished);
+    }
+
+    void
+    TransferMachine::_cancel()
+    {
+      ELLE_TRACE_SCOPE("%s: machine canceled", *this);
+      this->_finiliaze(plasma::TransactionStatus::canceled);
+    }
+
+    void
+    TransferMachine::_fail()
+    {
+      ELLE_TRACE_SCOPE("%s: machine failed", *this);
+      this->_finiliaze(plasma::TransactionStatus::failed);
+    }
+
+    void
+    TransferMachine::_finiliaze(plasma::TransactionStatus status)
+    {
+      ELLE_TRACE_SCOPE("%s: finalize machine: %s", *this, status);
+
+      try
+      {
+        if (this->_machine.exception() != std::exception_ptr{})
+          throw this->_machine.exception();
+      }
+      catch (reactor::Terminate const&)
+      {
+        ELLE_TRACE("%s: machine terminated cleanly: %s", *this, elle::exception_string());
+        throw;
+      }
+      catch (...)
+      {
+        ELLE_ERR("%s: transaction failed: %s", *this, elle::exception_string());
+      }
+
+      if (!this->_transaction_id.empty())
+      {
+        try
+        {
+          this->state().meta().update_transaction(
+            this->transaction_id(), status);
+        }
+        catch (reactor::Terminate const&)
+        {
+          ELLE_TRACE("%s: machine terminated while canceling transaction: %s",
+                     *this, elle::exception_string());
+          throw;
+        }
+        catch (plasma::meta::Exception const& e)
+        {
+          if (e.err == plasma::meta::Error::transaction_already_finalized)
+            ELLE_TRACE("%s: transaction finalized", *this);
+          else
+            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                     *this, this->transaction_id(), elle::exception_string());
+        }
+        catch (std::exception const&)
+        {
+          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                   *this, this->transaction_id(), elle::exception_string());
+        }
+      }
+      else
+      {
+        ELLE_DEBUG("%s: transaction id is still empty", *this);
+      }
+
+      if (!this->_network_id.empty())
+      {
+        try
+        {
+          this->state().meta().delete_network(this->network_id());
+        }
+        catch (reactor::Terminate const&)
+        {
+          ELLE_TRACE("%s: machine terminated while deleting netork: %s",
+                     *this, elle::exception_string());
+          throw;
+        }
+        catch (std::exception const&)
+        {
+          ELLE_ERR("%s: deleting network %s failed: %s",
+                   *this, this->network_id(), elle::exception_string());
+        }
+      }
+      else
+      {
+        ELLE_DEBUG("%s: network id is still empty", *this);
+      }
     }
 
     void
@@ -376,6 +552,12 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
       this->_transfer_operation();
+    }
+
+    void
+    TransferMachine::_core_stoped()
+    {
+      ELLE_TRACE_SCOPE("%s: core machine stoped", *this);
     }
 
     /*-----------.
