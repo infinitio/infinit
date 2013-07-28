@@ -120,7 +120,7 @@ namespace surface
 
       this->transaction_id(transaction.id);
       this->network_id(transaction.network_id);
-      this->peer_id(transaction.sender_id);
+      this->peer_id(transaction.recipient_id);
 
       switch (transaction.status)
       {
