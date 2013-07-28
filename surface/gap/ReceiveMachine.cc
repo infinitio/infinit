@@ -65,8 +65,6 @@ namespace surface
       this->_machine.transition_add_catch(_accept_state, _fail_state);
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
-
-      this->run(this->_wait_for_decision_state);
     }
 
     ReceiveMachine::~ReceiveMachine()
@@ -75,12 +73,51 @@ namespace surface
     }
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
-                                   std::string const& transaction_id):
+                                   plasma::Transaction const& transaction):
       ReceiveMachine(state)
     {
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
-                       *this, transaction_id);
-      this->transaction_id(transaction_id);
+                       *this, transaction);
+      this->transaction_id(transaction.id);
+      this->network_id(transaction.network_id);
+      this->peer_id(transaction.sender_id);
+
+      auto& null = this->_machine.state_make([] {});
+      switch (transaction.status)
+      {
+        case plasma::TransactionStatus::initialized:
+          this->run(this->_wait_for_decision_state);
+          break;
+        case plasma::TransactionStatus::accepted:
+          this->_machine.transition_add(null,
+                                        this->_transfer_core_state,
+                                        reactor::Waitables{this->_ready},
+                                        false,
+                                        [&] () -> bool
+                                        {
+                                          return this->_ready.signaled();
+                                        });
+          this->run(null);
+          break;
+        case plasma::TransactionStatus::ready:
+          this->run(this->_transfer_core_state);
+          break;
+        case plasma::TransactionStatus::finished:
+          this->run(this->_finish_state);
+          break;
+        case plasma::TransactionStatus::canceled:
+          this->run(this->_cancel_state);
+          break;
+        case plasma::TransactionStatus::failed:
+          this->run(this->_fail_state);
+          break;
+        case plasma::TransactionStatus::rejected:
+        case plasma::TransactionStatus::started:
+        case plasma::TransactionStatus::created:
+        case plasma::TransactionStatus::none:
+        case plasma::TransactionStatus::_count:
+          break;
+      }
     }
 
     void
@@ -104,7 +141,6 @@ namespace surface
         case plasma::TransactionStatus::ready:
           this->_ready.signal();
           break;
-        case plasma::TransactionStatus::created:
         case plasma::TransactionStatus::accepted:
         case plasma::TransactionStatus::initialized:
         case plasma::TransactionStatus::rejected:
@@ -154,13 +190,14 @@ namespace surface
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
+
+      this->state().meta().network_add_device(
+        this->network_id(), this->state().device_id());
+
       this->state().meta().update_transaction(this->transaction_id(),
                                               plasma::TransactionStatus::accepted,
                                               this->state().device_id(),
                                               this->state().device_name());
-
-      this->state().meta().network_add_device(
-        this->network_id(), this->state().device_id());
     }
 
     void

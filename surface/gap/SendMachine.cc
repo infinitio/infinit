@@ -111,6 +111,46 @@ namespace surface
       this->run(this->_request_network_state);
     }
 
+    SendMachine::SendMachine(surface::gap::State const& state,
+                             plasma::Transaction const& transaction):
+      SendMachine(state)
+    {
+      ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
+                       *this, transaction);
+
+      this->transaction_id(transaction.id);
+      this->network_id(transaction.network_id);
+      this->peer_id(transaction.sender_id);
+
+      switch (transaction.status)
+      {
+        case plasma::TransactionStatus::initialized:
+          this->run(this->_wait_for_accept_state);
+          break;
+        case plasma::TransactionStatus::accepted:
+          this->run(this->_set_permissions_state);
+          break;
+        case plasma::TransactionStatus::ready:
+          this->run(this->_transfer_core_state);
+          break;
+        case plasma::TransactionStatus::finished:
+          this->run(this->_finish_state);
+          break;
+        case plasma::TransactionStatus::canceled:
+          this->run(this->_cancel_state);
+          break;
+        case plasma::TransactionStatus::failed:
+          this->run(this->_fail_state);
+          break;
+        case plasma::TransactionStatus::rejected:
+        case plasma::TransactionStatus::started:
+        case plasma::TransactionStatus::created:
+        case plasma::TransactionStatus::none:
+        case plasma::TransactionStatus::_count:
+          break;
+      }
+    }
+
     void
     SendMachine::on_transaction_update(plasma::Transaction const& transaction)
     {

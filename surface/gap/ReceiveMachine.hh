@@ -22,7 +22,8 @@ namespace surface
 
     public:
       ReceiveMachine(surface::gap::State const& state,
-                     std::string const& transaction_id);
+                     plasma::Transaction const& transaction);
+
       virtual
       ~ReceiveMachine();
 

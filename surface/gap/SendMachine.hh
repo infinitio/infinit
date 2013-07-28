@@ -18,6 +18,9 @@ namespace surface
                   std::string const& recipient,
                   std::unordered_set<std::string>&& files);
 
+      SendMachine(surface::gap::State const& state,
+                  plasma::Transaction const& transaction);
+
       virtual
       ~SendMachine();
 
