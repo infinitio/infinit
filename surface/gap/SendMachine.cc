@@ -74,11 +74,11 @@ namespace surface
                                     _transfer_core_state);
 
       // Cancel.
-      this->_machine.transition_add(_request_network_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      this->_machine.transition_add(_create_transaction_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      this->_machine.transition_add(_copy_files_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      this->_machine.transition_add(_wait_for_accept_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      this->_machine.transition_add(_set_permissions_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      // this->_machine.transition_add(_request_network_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      // this->_machine.transition_add(_create_transaction_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      // this->_machine.transition_add(_copy_files_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      // this->_machine.transition_add(_wait_for_accept_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      // this->_machine.transition_add(_set_permissions_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
 
       // Exception.
       this->_machine.transition_add_catch(_request_network_state, _fail_state);
