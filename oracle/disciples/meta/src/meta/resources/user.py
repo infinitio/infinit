@@ -514,6 +514,15 @@ class Register(Page):
         if user['activation_code'] != 'bitebite': #XXX
             invitation['status'] = 'activated'
             database.invitations().save(invitation)
+
+        self.notify_swaggers(
+            notifier.NEW_SWAGGER,
+            {
+                'user_id' : str(user_id),
+            },
+            user_id = user_id,
+        )
+
         return self.success({
             'registered_user_id': user['_id'],
             'invitation_source': source or '',
@@ -643,6 +652,17 @@ class _DeviceAccess(_Page):
             {"$set": {"connected": value}},
             multi = False,
         )
+
+        # Suxx.
+        for network in database.networks().find({"nodes": {"$exists": str(device['_id'])}}):
+            network['nodes'][device['_id']] = {"locals": None, "externals": None, "fallback": None}
+            database.networks().save(network)
+            self.notifier.notify_some(
+                notifier.PEER_CONNECTION_UPDATE,
+                device_ids = list(network['nodes']),
+                message = { "network_id": str(network['_id']), "devices": list(network['nodes'].keys()), "status": False },
+                store = False,
+            )
 
         self.notify_swaggers(
             notifier.USER_STATUS,
