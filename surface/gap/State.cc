@@ -760,7 +760,7 @@ namespace surface
     void
     State::cancel_transaction(std::string const& transaction_id)
     {
-      ELLE_TRACE_SCOPE("%s: reject transaction %s", *this, transaction_id);
+      ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, transaction_id);
 
       try
       {
