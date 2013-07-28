@@ -337,7 +337,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: transfer operation %s", *this, this->transaction_id());
 
-      auto peer_public_key = this->state().meta().user(this->peer_id()).public_key;
+      auto peer_public_key = this->state().user_manager().one(this->peer_id()).public_key;
 
       ELLE_ASSERT_NEQ(peer_public_key.length(), 0u);
 
@@ -347,7 +347,7 @@ namespace surface
       nucleus::neutron::Subject subject;
       subject.Create(public_key);
 
-      auto group_address = this->state().meta().network(this->network_id()).group_address;
+      auto group_address = this->state().network_manager().one(this->network_id()).group_address;
 
       nucleus::neutron::Group::Identity group;
       group.Restore(group_address);
