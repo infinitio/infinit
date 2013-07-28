@@ -143,11 +143,12 @@ namespace surface
           this->run(this->_fail_state);
           break;
         case plasma::TransactionStatus::rejected:
-        case plasma::TransactionStatus::started:
         case plasma::TransactionStatus::created:
+          break;
+        case plasma::TransactionStatus::started:
         case plasma::TransactionStatus::none:
         case plasma::TransactionStatus::_count:
-          break;
+          elle::unreachable();
       }
     }
 
@@ -175,13 +176,14 @@ namespace surface
         case plasma::TransactionStatus::rejected:
           this->_rejected.signal();
           break;
+        case plasma::TransactionStatus::initialized:
+        case plasma::TransactionStatus::ready:
+          break;
         case plasma::TransactionStatus::created:
         case plasma::TransactionStatus::none:
         case plasma::TransactionStatus::started:
-        case plasma::TransactionStatus::initialized:
-        case plasma::TransactionStatus::ready:
         case plasma::TransactionStatus::_count:
-          break;
+          elle::unreachable();
       }
     }
 
