@@ -635,12 +635,7 @@ class Delete(_Page):
         if network is None:
             return self.error(error.NETWORK_NOT_FOUND)
         if len(network) == 1:
-            if self.data['force']:
-                return self.success({
-                    'deleted_network_id': network_id
-                });
-            else:
-                return self.error(error.NETWORK_NOT_FOUND)
+            return self.success({'deleted_network_id': network_id})
 
         # copy users to notify them.
         users = network['users'][::]
@@ -664,6 +659,4 @@ class Delete(_Page):
             {}
         )
 
-        return  self.success({
-            'deleted_network_id': network_id,
-        })
+        return  self.success({'deleted_network_id': network_id,})
