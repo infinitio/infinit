@@ -155,6 +155,12 @@ namespace surface
         ELLE_ERR("%s: clean failed: network %s wasn't deleted: %s",
                  *this, this->network_id(), elle::exception_string());
       }
+
+      ELLE_DEBUG("finalize etoile")
+        this->_etoile.reset();
+      ELLE_DEBUG("finalize hole")
+        this->_hole.reset();
+
       ELLE_DEBUG("%s: cleaned", *this);
     }
 
@@ -321,35 +327,6 @@ namespace surface
                        *this, this->_network_id);
 
       ELLE_ASSERT(this->_scheduler_thread != nullptr);
-
-      // XXX: Hackish: If the transfer is finished, the scheduler is done, so
-      // we can't use mt run.
-      if (!this->_scheduler.done())
-      {
-        this->_scheduler.mt_run<void>(
-          elle::sprintf("stop(%s)", this->_network_id),
-          [this]
-          {
-            elle::Finally release(
-              [this]
-              {
-                ELLE_DEBUG("finalize etoile")
-                  this->_etoile.reset();
-                ELLE_DEBUG("finalize hole")
-                  this->_hole.reset();
-              });
-
-            ELLE_DEBUG("terminate all threads")
-              this->_scheduler.terminate_now();
-          });
-      }
-      else
-      {
-        ELLE_DEBUG("finalize etoile")
-          this->_etoile.reset();
-        ELLE_DEBUG("finalize hole")
-          this->_hole.reset();
-      }
 
       this->_scheduler_thread->join();
       this->_scheduler_thread.reset();
