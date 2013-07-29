@@ -81,8 +81,21 @@ namespace surface
       /*----------.
       | Reporters |
       `----------*/
-      ELLE_ATTRIBUTE_X(metrics::Reporter, reporter);
-      ELLE_ATTRIBUTE(metrics::Reporter, google_reporter);
+      ELLE_ATTRIBUTE_P(metrics::Reporter, reporter, mutable);
+      ELLE_ATTRIBUTE_P(metrics::Reporter, google_reporter, mutable);
+
+    public:
+      metrics::Reporter&
+      reporter() const
+      {
+        return this->_reporter;
+      }
+
+      metrics::Reporter&
+      google_reporter() const
+      {
+        return this->_google_reporter;
+      }
 
       /*-------------.
       | Construction |
