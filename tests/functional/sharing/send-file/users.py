@@ -22,9 +22,11 @@ class Transaction:
     def status(self):
         return {
             self.state.TransactionStatus.created: "created",
-            self.state.TransactionStatus.started: "started",
+            self.state.TransactionStatus.initialized: "initialized",
             self.state.TransactionStatus.canceled: "canceled",
+            self.state.TransactionStatus.accepted: "accepted",
             self.state.TransactionStatus.failed: "failed",
+            self.state.TransactionStatus.ready: "ready",
             self.state.TransactionStatus.finished: "finished",
         }[self.state.transaction_status(self.id)]
 
@@ -42,8 +44,7 @@ class Transaction:
     def __repr__(self):
         return "Transaction(%s, %s, localy_accepted: %s)" % (self.id, self.status, self.localy_accepted)
 
-# Default user. Accept transaction when 'started' status is triggered except if
-# early_accept is specified. In this case, he accepts on 'created'.
+# Default user. Accept transaction when 'initialized' status is triggered.
 # On __init__, register the first time and just login afterward.
 class User:
     def __init__(self,
@@ -52,7 +53,6 @@ class User:
                  apertus_server = None,
                  fullname = None,
                  register = False,
-                 early_accept = False,
                  output_dir = None):
         assert meta_server is not None
         assert trophonius_server is not None
@@ -64,7 +64,6 @@ class User:
         self.fullname = fullname is None and generator(6) or fullname
         self.email = self.fullname + "@infinit.io"
         self.register = register
-        self.early_accept = early_accept
         self.output_dir = output_dir
         self.use_temporary = self.output_dir is None
         self.temporary_output_dir = None
@@ -78,6 +77,16 @@ class User:
             "0.0.0.0", int(self.apertus_server.port)
         )
         self.state.__enter__()
+
+        if self.use_temporary:
+            assert self.temporary_output_dir is None
+            self.temporary_output_dir = tempfile.TemporaryDirectory()
+            self.temporary_output_dir.__enter__()
+            self.output_dir = self.temporary_output_dir.name
+        if not os.path.exists(self.output_dir):
+            os.path.makedirs(self.output_dir)
+        assert os.path.isdir(self.output_dir)
+        self.state.set_output_dir(self.output_dir)
 
     def _register_or_login(self):
         if self.register:
@@ -93,18 +102,6 @@ class User:
             self.register = False
         else:
             self.state.login(self.email, "password")
-
-        # Setting output dir requiere the TransactionManager, which requiere
-        # to be logged in...
-        if self.use_temporary:
-            assert self.temporary_output_dir is None
-            self.temporary_output_dir = tempfile.TemporaryDirectory()
-            self.temporary_output_dir.__enter__()
-            self.output_dir = self.temporary_output_dir.name
-        if not os.path.exists(self.output_dir):
-            os.path.makedirs(self.output_dir)
-        assert os.path.isdir(self.output_dir)
-        self.state.set_output_dir(self.output_dir)
         self.state.transaction_callback(self._on_transaction)
 
         self.id = self.state._id
@@ -177,8 +174,7 @@ class User:
             print("Transaction canceled")
             sys.exit(1)
         elif not is_sender and not self.transactions[transaction_id].localy_accepted:
-            if self.early_accept and status == state.TransactionStatus.created or \
-               not self.early_accept and status == state.TransactionStatus.started:
+            if status == state.TransactionStatus.initialized:
                 self.transactions[transaction_id].localy_accepted = True
                 state.accept_transaction(transaction_id)
         elif status == state.TransactionStatus.finished:
@@ -198,7 +194,6 @@ class GhostUser(User):
                          apertus_server = apertus_server,
                          fullname = fullname,
                          output_dir = output_dir,
-                         early_accept = False,
                          register = True)
 
     def __enter__(self):
@@ -240,9 +235,8 @@ class CancelUser(User):
             pass
         elif status == state.TransactionStatus.failed:
             print("Transaction failed")
-        elif status == state.TransactionStatus.created and self.when == "created":
-            time.sleep(self.delay / 1000)
-            state.cancel_transaction(transaction_id)
-        elif status == state.TransactionStatus.started and self.when == "started":
+        elif (status == state.TransactionStatus.initialized and self.when == "initialized") or \
+             (status == state.TransactionStatus.ready and self.when == "ready") or \
+             (status == state.TransactionStatus.accepted and self.when == "accepted"):
             time.sleep(self.delay / 1000)
             state.cancel_transaction(transaction_id)
