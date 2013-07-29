@@ -256,8 +256,13 @@ class Update(Page):
         if transaction['status'] in final_status:
             return self.error(
                 error.TRANSACTION_ALREADY_FINALIZED,
-                "Cannot change status from %s to %s." % (transaction['status'], self.data['status'])
+                "Cannot change status from %s to %s." % (transaction['status'], status)
                 )
+
+        if transaction['status'] == status:
+            return self.error(
+                error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
+                "Cannont change status from %s to %s." % (transaction['status'], status))
 
         transitions = {
             CREATED: {True: [INITIALIZED, CANCELED, FAILED], False: [ACCEPTED, REJECTED]},
@@ -352,7 +357,7 @@ class All(Page):
                     {'sender_id': self.user['_id']}
                 ],
                 'status': {
-                    '$nin': [CANCELED, FINISHED, FAILED]
+                    '$nin': [CANCELED, FINISHED, FAILED, CREATED, REJECTED]
                 }
             }, fields = ['_id'])
         )

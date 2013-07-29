@@ -185,18 +185,43 @@ namespace surface
       this->state().meta().network_add_device(
         this->network_id(), this->state().device_id());
 
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              plasma::TransactionStatus::accepted,
-                                              this->state().device_id(),
-                                              this->state().device_name());
+      try
+      {
+        this->state().meta().update_transaction(this->transaction_id(),
+                                                plasma::TransactionStatus::accepted,
+                                                this->state().device_id(),
+                                                this->state().device_name());
+      }
+      catch (plasma::meta::Exception const& e)
+      {
+        if (e.err == plasma::meta::Error::transaction_already_has_this_status)
+          ELLE_TRACE("%s: transaction already accepted: %s", *this, e.what());
+        else if (e.err == plasma::meta::Error::transaction_operation_not_permitted)
+          ELLE_TRACE("%s: transaction can't be accepted: %s", *this, e.what());
+        else
+          throw;
+      }
     }
 
     void
     ReceiveMachine::_reject()
     {
       ELLE_TRACE_SCOPE("%s: rejected %s", *this, this->transaction_id());
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              plasma::TransactionStatus::rejected);
+
+      try
+      {
+        this->state().meta().update_transaction(this->transaction_id(),
+                                                plasma::TransactionStatus::rejected);
+      }
+      catch (plasma::meta::Exception const& e)
+      {
+        if (e.err == plasma::meta::Error::transaction_already_has_this_status)
+          ELLE_TRACE("%s: transaction already rejected: %s", *this, e.what());
+        else if (e.err == plasma::meta::Error::transaction_already_finalized)
+          ELLE_TRACE("%s: transaction can't be rejected: %s", *this, e.what());
+        else
+          throw;
+      }
     }
 
     void
@@ -211,9 +236,6 @@ namespace surface
                                       this->descriptor(),
                                       subject,
                                       this->state().output_dir());
-
-      this->state().meta().update_transaction(
-        this->transaction_id(), plasma::TransactionStatus::finished);
     }
 
     std::string

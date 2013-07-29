@@ -34,4 +34,5 @@ ERR_CODE(transaction_operation_not_permitted, -50003,  "This operation is not pe
 ERR_CODE(transaction_cant_be_accepted,        -50004,  "You can't accept this transaction.")
 ERR_CODE(no_more_invitation,                  -50005,  "You don't have invitation anymore.")
 ERR_CODE(transaction_already_finalized,       -50006,  "This operation has already been finalized")
+ERR_CODE(transaction_already_has_this_status, -50007,  "This operation has already been done.")
 ERR_CODE(unknown,                             -666666, "Unknown error.")
