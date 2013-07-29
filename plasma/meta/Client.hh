@@ -242,12 +242,12 @@ namespace plasma
       ELLE_ATTRIBUTE_R(uint16_t, port);
 
     private:
-      std::string _root_url;
+      ELLE_ATTRIBUTE_R(std::string, root_url);
       //bool _check_errors;
-      std::string _identity;
-      std::string _email;
-      std::string _token;
-      std::string _user_agent;
+      ELLE_ATTRIBUTE_RW(std::string, identity);
+      ELLE_ATTRIBUTE_RW(std::string, email);
+      ELLE_ATTRIBUTE_RW(std::string, token);
+      ELLE_ATTRIBUTE_R(std::string, user_agent);
       // XXX Curl is supposed to be thread-safe.
       std::mutex mutable _mutex;
 
@@ -453,14 +453,6 @@ namespace plasma
       device_endpoints(std::string const& network_id,
                        std::string const& self_device_id,
                        std::string const& device_id) const;
-
-    public:
-      void token(std::string const& tok);
-      std::string const& token() const;
-      std::string const& identity() const;
-      void identity(std::string const& str);
-      std::string const& email() const;
-      void email(std::string const& str);
 
     /*----------.
     | Printable |

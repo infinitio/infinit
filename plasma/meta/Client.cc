@@ -784,42 +784,6 @@ namespace plasma
 
     //- Properties ------------------------------------------------------------
 
-    void
-    Client::token(std::string const& tok)
-    {
-      this->_token = tok;
-    }
-
-    std::string const&
-    Client::token() const
-    {
-      return this->_token;
-    }
-
-    std::string const&
-    Client::identity() const
-    {
-      return _identity;
-    }
-
-    void
-    Client::identity(std::string const& str)
-    {
-      _identity = str;
-    }
-
-    std::string const&
-    Client::email() const
-    {
-      return _email;
-    }
-
-    void
-    Client::email(std::string const& str)
-    {
-      _email = str;
-    }
-
     std::ostream&
     operator <<(std::ostream& out,
                 Error e)
