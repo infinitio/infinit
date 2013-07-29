@@ -1,6 +1,7 @@
 #include <surface/gap/TransferMachine.hh>
 #include <surface/gap/Rounds.hh>
 #include <surface/gap/State.hh>
+#include <metrics/Metric.hh>
 
 #include <common/common.hh>
 
@@ -712,6 +713,52 @@ namespace surface
       }
       ELLE_ASSERT(this->_etoile != nullptr);
       return *this->_etoile;
+    }
+
+    metrics::Metric
+    TransferMachine::network_metric()
+    {
+      return metrics::Metric{
+        {MKey::value, this->network_id()},
+      };
+    }
+
+    metrics::Metric
+    TransferMachine::transaction_metric()
+    {
+      auto const& transaction =
+        this->state().transaction_manager().one(this->transaction_id());
+
+      auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+      auto timestamp_tr = std::chrono::duration<double>(transaction.timestamp);
+      double duration = timestamp_now.count() - timestamp_tr.count();
+
+      bool peer_online = this->is_sender() ?
+        this->state().user_manager().device_status(
+          transaction.recipient_id, transaction.recipient_device_id):
+        this->state().user_manager().device_status(
+          transaction.sender_id, transaction.sender_device_id);
+
+      std::string author{this->is_sender() ? "sender" : "recipient"};
+      std::string sender_status{this->is_sender() ? "true"
+                                                  : (peer_online ? "true"
+                                                                 : "false")};
+
+      std::string recipient_status{this->is_sender() ? "true"
+                                                     : (peer_online ? "true"
+                                                                    : "false")};
+
+      return metrics::Metric{
+        {MKey::author, author},
+        {MKey::duration, std::to_string(duration)},
+        {MKey::count, std::to_string(transaction.files_count)},
+        {MKey::size, std::to_string(transaction.total_size)},
+        {MKey::network, transaction.network_id},
+        {MKey::value, transaction.id},
+        {MKey::sender_online, sender_status},
+        {MKey::recipient_online, recipient_status},
+      };
     }
 
     /*----------.

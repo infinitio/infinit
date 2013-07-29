@@ -14,6 +14,8 @@
 
 # include <nucleus/proton/Network.hh>
 
+# include <metrics/fwd.hh>
+
 # include <reactor/fsm.hh>
 # include <reactor/network/Protocol.hh>
 # include <reactor/scheduler.hh>
@@ -248,6 +250,15 @@ namespace surface
       virtual
       std::string
       type() const;
+
+      /*--------.
+      | Metrics |
+      `--------*/
+      metrics::Metric
+      network_metric();
+
+      metrics::Metric
+      transaction_metric();
 
       /*----------.
       | Printable |
