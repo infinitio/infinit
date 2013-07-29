@@ -13,6 +13,8 @@
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>
 
+# include <curly/curly.hh>
+
 # include <plasma/plasma.hh>
 
 # include <elle/HttpClient.hh>
@@ -263,6 +265,11 @@ namespace plasma
       template <typename T>
       T
       _get(std::string const& url) const;
+
+      template <typename T>
+      T
+      _query(std::string const& url,
+             curly::request_configuration& c) const;
 
       template <typename T>
       T
