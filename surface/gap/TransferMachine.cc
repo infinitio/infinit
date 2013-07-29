@@ -355,17 +355,35 @@ namespace surface
 
       ELLE_ASSERT(this->_scheduler_thread != nullptr);
 
-      this->_scheduler.mt_run<void>(
-        elle::sprintf("stop(%s)", this->_network_id),
-        [this]
-        {
-          ELLE_DEBUG("terminate all threads")
-            this->_scheduler.terminate_now();
-          ELLE_DEBUG("finalize etoile")
-            this->_etoile.reset();
-          ELLE_DEBUG("finalize hole")
-            this->_hole.reset();
-        });
+      // XXX: Hackish: If the transfer is finished, the scheduler is done, so
+      // we can't use mt run.
+      if (!this->_scheduler.done())
+      {
+        this->_scheduler.mt_run<void>(
+          elle::sprintf("stop(%s)", this->_network_id),
+          [this]
+          {
+            elle::Finally release(
+              [this]
+              {
+                ELLE_DEBUG("finalize etoile")
+                  this->_etoile.reset();
+                ELLE_DEBUG("finalize hole")
+                  this->_hole.reset();
+              });
+
+            ELLE_DEBUG("terminate all threads")
+              this->_scheduler.terminate_now();
+          });
+      }
+      else
+      {
+        ELLE_DEBUG("finalize etoile")
+          this->_etoile.reset();
+        ELLE_DEBUG("finalize hole")
+          this->_hole.reset();
+      }
+
       this->_scheduler_thread->join();
       this->_scheduler_thread.reset();
     }
@@ -485,7 +503,7 @@ namespace surface
               slug_connect(endpoint);
               ELLE_LOG("%s: connection to %s succeed", *this, endpoint);
             }
-            catch (slug::AlreadyConnected const& ac)
+            catch (slug::AlreadyConnected const&)
             {
               ELLE_LOG("%s: connection to %s succeed (we're already connected)",
                        *this, endpoint);
@@ -503,7 +521,7 @@ namespace surface
 
           ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
           std::unique_ptr<reactor::Thread> thread_ptr{
-            new reactor::Thread (*reactor::Scheduler::scheduler(),
+            new reactor::Thread (this->_scheduler,
                                  elle::sprintf("connect_try(%s)", endpoint),
                                  fn)};
           connection_threads.push_back(std::move(thread_ptr));
@@ -519,8 +537,7 @@ namespace surface
 
         if (this->hole().hosts().empty())
         {
-          ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-          auto _this_thread = reactor::Scheduler::scheduler()->current();
+          auto _this_thread = this->_scheduler.current();
           ELLE_DEBUG("waiting for new host");
           succeed = _this_thread->wait(this->hole().new_connected_host(), 10_sec);
           ELLE_DEBUG("finished waiting for new host");

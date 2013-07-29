@@ -53,7 +53,6 @@ namespace surface
         signaled();
       };
 
-
     public:
       TransferMachine(surface::gap::State const& state);
 
