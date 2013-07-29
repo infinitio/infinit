@@ -66,17 +66,27 @@ namespace surface
       public elle::Printable
     {
     public:
-      ///- Logs ----------------------------------------------------------------
-      // XXX: LoggerInitializer is the first member of state.
+      /*-------.
+      | Logger |
+      `-------*/
+      // XXX: LoggerInitializer must be the first member of state.
+      // His construction force the instanciation of the logger.
       LoggerInitializer _logger_intializer;
 
-      ///- Servers -------------------------------------------------------------
+      /*--------.
+      | Servers |
+      `--------*/
       ELLE_ATTRIBUTE_R(plasma::meta::Client, meta);
 
+      /*----------.
+      | Reporters |
+      `----------*/
       ELLE_ATTRIBUTE_X(metrics::Reporter, reporter);
       ELLE_ATTRIBUTE(metrics::Reporter, google_reporter);
 
-      ///- Construction --------------------------------------------------------
+      /*-------------.
+      | Construction |
+      `-------------*/
     public:
       State(std::string const& meta_host = common::meta::host(),
             uint16_t meta_port = common::meta::port(),
@@ -93,7 +103,7 @@ namespace surface
         return !this->_meta.token().empty();
       }
 
-    //- Login & register ------------------------------------------------------
+      //- Login & register -----------------------------------------------------
       std::unique_ptr<Self> mutable _me;
 
       Self const&
@@ -234,12 +244,16 @@ namespace surface
       _machine_by_network(std::string const& network_id) const;
 
     public:
-      //- Sender ---------------------------------------------------------------
+      /*-------.
+      | Sender |
+      `-------*/
       void
       send_files(std::string const& recipient,
                  std::unordered_set<std::string>&& files);
 
-      //- Recipient ------------------------------------------------------------
+      /*----------.
+      | Recipient |
+      `----------*/
       void
       accept_transaction(std::string const& transaction_id);
 
