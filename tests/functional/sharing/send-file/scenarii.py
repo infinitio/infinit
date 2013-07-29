@@ -67,11 +67,10 @@ class DefaultScenario(Scenario):
                 assert len(self.sender.transactions) == 1
                 transaction_id = list(self.recipient.transactions.keys())[0]
                 transaction = self.recipient.transactions[transaction_id]
-                if self.sender.transactions[transaction_id].finished and self.recipient.transactions[transaction_id].finished:
-                    break
             if transaction is not None:
-                if transaction.status == "finished":
-                    transaction_finished = True
+                if transaction.status == "finished" and \
+                   self.sender.transactions[transaction_id].finished and \
+                   self.recipient.transactions[transaction_id].finished:
                     break
                 sender_progress = self.sender.transactions[transaction_id].progress
                 recipient_progress = self.recipient.transactions[transaction_id].progress
@@ -125,11 +124,10 @@ class GhostScenario(Scenario):
                 assert len(self.sender.transactions) == 1
                 transaction_id = list(self.recipient.transactions.keys())[0]
                 transaction = self.recipient.transactions[transaction_id]
-                if self.sender.transactions[transaction_id].finished and self.recipient.transactions[transaction_id].finished:
-                    break
             if transaction is not None:
-                if transaction.status == "finished":
-                    transaction_finished = True
+                if transaction.status == "finished" and \
+                   self.sender.transactions[transaction_id].finished and \
+                   self.recipient.transactions[transaction_id].finished:
                     break
                 sender_progress = self.sender.transactions[transaction_id].progress
                 #recipient_progress = self.recipient.transactions[transaction_id].progress
