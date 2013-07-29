@@ -387,6 +387,13 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
 
+      this->_notification_manager(
+        [&] (std::unique_ptr<NotificationManager> const& ptr)
+        {
+          if (ptr != nullptr)
+            ptr->disconnect();
+        });
+
       if (this->_meta.token().empty())
         return;
 

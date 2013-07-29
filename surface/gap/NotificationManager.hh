@@ -65,6 +65,9 @@ namespace surface
       void
       connect();
 
+      void
+      disconnect();
+
     private:
       void
       _check_trophonius();

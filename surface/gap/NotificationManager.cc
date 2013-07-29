@@ -127,6 +127,12 @@ namespace surface
     }
 
     void
+    NotificationManager::disconnect()
+    {
+      this->_trophonius.reset();
+    }
+
+    void
     NotificationManager::_check_trophonius()
     {
       if (this->_trophonius == nullptr)
