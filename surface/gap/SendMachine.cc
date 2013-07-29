@@ -316,7 +316,7 @@ namespace surface
     void
     SendMachine::_copy_files()
     {
-      ELLE_LOG("%s", __PRETTY_FUNCTION__);
+      ELLE_TRACE_SCOPE("%s: copy the files", *this);
 
       nucleus::neutron::Subject subject;
       subject.Create(this->descriptor().meta().administrator_K());
@@ -328,7 +328,7 @@ namespace surface
     void
     SendMachine::_wait_for_accept()
     {
-      ELLE_LOG("%s", __PRETTY_FUNCTION__);
+      ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
 
       // There are two ways to go to the next step:
       // - Checking local state, meaning that during the copy, we recieved an
