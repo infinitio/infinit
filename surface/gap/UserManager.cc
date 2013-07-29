@@ -226,7 +226,7 @@ namespace surface
     void
     UserManager::_on_new_swagger(NewSwaggerNotification const& notification)
     {
-      this->one(notification.user_id);
+      this->_sync(notification.user_id);
       this->_swaggers->insert(notification.user_id);
     }
 
