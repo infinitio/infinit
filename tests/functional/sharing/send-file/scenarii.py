@@ -101,7 +101,7 @@ class GhostScenario(Scenario):
                 transaction_id = list(self.sender.transactions.keys())[0]
                 transaction = self.sender.transactions[transaction_id]
             if transaction is not None:
-                if transaction.status == "created":
+                if transaction.status == "initialized":
                     break
 
         transaction = None
@@ -161,5 +161,8 @@ class CancelScenario(DefaultScenario):
                 assert len(self.recipient.transactions) == 1
                 transaction_id = list(self.recipient.transactions.keys())[0]
                 transaction = self.recipient.transactions[transaction_id]
-            if self.sender.transactions[transaction_id].status == "canceled" and self.recipient.transactions[transaction_id].status == "canceled":
-                break
+            if transaction is not None:
+                if transaction.status == "canceled" and \
+                    self.sender.transactions[transaction_id].status == "canceled" and \
+                    self.recipient.transactions[transaction_id].status == "canceled":
+                    break
