@@ -65,8 +65,8 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::fsm::State&, set_permissions_state);
 
       // Transaction status signals.
-      ELLE_ATTRIBUTE(TransferMachine::Signal, accepted);
-      ELLE_ATTRIBUTE(TransferMachine::Signal, rejected);
+      ELLE_ATTRIBUTE(reactor::Barrier, accepted);
+      ELLE_ATTRIBUTE(reactor::Barrier, rejected);
 
       /*-----------------.
       | Transaction data |

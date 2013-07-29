@@ -27,40 +27,6 @@ namespace surface
 {
   namespace gap
   {
-
-    //---------- Signal --------------------------------------------------------
-    TransferMachine::Signal::Signal(std::string const& name):
-      _signal(name),
-      _signaled(false)
-    {}
-
-    bool
-    TransferMachine::Signal::signal()
-    {
-      this->_signaled = !this->_signal.signal();
-      return this->_signaled;
-    }
-
-    bool
-    TransferMachine::Signal::signal_one()
-    {
-      this->_signaled = !this->_signal.signal_one();
-      return this->_signaled;
-    }
-
-    TransferMachine::Signal::operator reactor::Signal* ()
-    {
-      return &this->_signal;
-    }
-
-    bool
-    TransferMachine::Signal::signaled()
-    {
-      bool old = this->_signaled;
-      this->_signaled = false;
-      return old;
-    }
-
     //---------- TransferMachine -----------------------------------------------
     TransferMachine::TransferMachine(surface::gap::State const& state):
       _scheduler(),
@@ -69,46 +35,46 @@ namespace surface
       _machine_thread(),
       _transfer_core_state(
         this->_machine.state_make(
-          std::bind(&TransferMachine::_transfer_core, this))),
+          "transfer core", std::bind(&TransferMachine::_transfer_core, this))),
       _finish_state(
         this->_machine.state_make(
-          std::bind(&TransferMachine::_finish, this))),
+          "finish", std::bind(&TransferMachine::_finish, this))),
       _cancel_state(
         this->_machine.state_make(
-          std::bind(&TransferMachine::_cancel, this))),
+          "cancel", std::bind(&TransferMachine::_cancel, this))),
       _fail_state(
         this->_machine.state_make(
-          std::bind(&TransferMachine::_fail, this))),
+          "fail", std::bind(&TransferMachine::_fail, this))),
       _clean_state(
         this->_machine.state_make(
-          std::bind(&TransferMachine::_clean, this))),
+          "clean", std::bind(&TransferMachine::_clean, this))),
       _core_machine(),
       _publish_interfaces_state(
         this->_core_machine.state_make(
-          std::bind(&TransferMachine::_publish_interfaces, this))),
+          "publish interfaces", std::bind(&TransferMachine::_publish_interfaces, this))),
       _connection_state(
         this->_core_machine.state_make(
-          std::bind(&TransferMachine::_connection, this))),
+          "connection", std::bind(&TransferMachine::_connection, this))),
       _wait_for_peer_state(
         this->_core_machine.state_make(
-          std::bind(&TransferMachine::_wait_for_peer, this))),
+          "wait for peer", std::bind(&TransferMachine::_wait_for_peer, this))),
       _transfer_state(
         this->_core_machine.state_make(
-          std::bind(&TransferMachine::_transfer, this))),
+          "transfer", std::bind(&TransferMachine::_transfer, this))),
       _core_stoped_state(
         this->_core_machine.state_make(
-          std::bind(&TransferMachine::_core_stoped, this))),
+          "core stoped", std::bind(&TransferMachine::_core_stoped, this))),
       _state(state)
     {
       ELLE_TRACE_SCOPE("%s: creating transfer machine", *this);
 
       this->_machine.transition_add(_transfer_core_state,
                                     _finish_state,
-                                    reactor::Waitables{this->_finished});
+                                    reactor::Waitables{&this->_finished});
 
       this->_machine.transition_add(_transfer_core_state,
                                     _cancel_state,
-                                    reactor::Waitables{this->_canceled});
+                                    reactor::Waitables{&this->_canceled});
 
       this->_machine.transition_add_catch(_transfer_core_state,
                                           _fail_state);
@@ -124,23 +90,23 @@ namespace surface
 
       this->_core_machine.transition_add(_publish_interfaces_state,
                                          _connection_state,
-                                         reactor::Waitables{this->_peer_online});
+                                         reactor::Waitables{&this->_peer_online});
       this->_core_machine.transition_add(_connection_state,
                                          _wait_for_peer_state,
-                                         reactor::Waitables{this->_peer_offline});
+                                         reactor::Waitables{&this->_peer_offline});
       this->_core_machine.transition_add(_wait_for_peer_state,
                                          _connection_state,
-                                         reactor::Waitables{this->_peer_online});
+                                         reactor::Waitables{&this->_peer_online});
       this->_core_machine.transition_add(_connection_state,
                                          _connection_state,
-                                         reactor::Waitables{this->_peer_online});
+                                         reactor::Waitables{&this->_peer_online});
       this->_core_machine.transition_add(_connection_state,
                                          _transfer_state);
 
       // Cancel.
-      this->_core_machine.transition_add(_publish_interfaces_state, _core_stoped_state, reactor::Waitables{this->_canceled}, true);
-      this->_core_machine.transition_add(_connection_state, _core_stoped_state, reactor::Waitables{this->_canceled}, true);
-      this->_core_machine.transition_add(_transfer_core_state, _core_stoped_state, reactor::Waitables{this->_canceled}, true);
+      this->_core_machine.transition_add(_publish_interfaces_state, _core_stoped_state, reactor::Waitables{&this->_canceled}, true);
+      this->_core_machine.transition_add(_connection_state, _core_stoped_state, reactor::Waitables{&this->_canceled}, true);
+      this->_core_machine.transition_add(_transfer_core_state, _core_stoped_state, reactor::Waitables{&this->_canceled}, true);
 
       // Exception.
       this->_core_machine.transition_add_catch(_publish_interfaces_state, _core_stoped_state);
@@ -327,7 +293,7 @@ namespace surface
     TransferMachine::cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->transaction_id());
-      this->_canceled.signal();
+      this->_canceled.open();
     }
 
     bool

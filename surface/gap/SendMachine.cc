@@ -26,19 +26,19 @@ namespace surface
       TransferMachine(state),
       _request_network_state(
         this->_machine.state_make(
-          std::bind(&SendMachine::_request_network, this))),
+          "request network", std::bind(&SendMachine::_request_network, this))),
       _create_transaction_state(
         this->_machine.state_make(
-          std::bind(&SendMachine::_create_transaction, this))),
+          "create transaction", std::bind(&SendMachine::_create_transaction, this))),
       _copy_files_state(
         this->_machine.state_make(
-          std::bind(&SendMachine::_copy_files, this))),
+          "copy files", std::bind(&SendMachine::_copy_files, this))),
       _wait_for_accept_state(
         this->_machine.state_make(
-          std::bind(&SendMachine::_wait_for_accept, this))),
+          "wait for accept", std::bind(&SendMachine::_wait_for_accept, this))),
       _set_permissions_state(
         this->_machine.state_make(
-          std::bind(&SendMachine::_set_permissions, this)))
+          "set permissions", std::bind(&SendMachine::_set_permissions, this)))
     {
       this->_machine.transition_add(_request_network_state,
                                     _create_transaction_state);
@@ -49,7 +49,7 @@ namespace surface
       this->_machine.transition_add(
         _wait_for_accept_state,
         _set_permissions_state,
-        reactor::Waitables{this->_accepted},
+        reactor::Waitables{&this->_accepted},
         false,
         [&] () -> bool
         {
@@ -61,7 +61,7 @@ namespace surface
       this->_machine.transition_add(
         _wait_for_accept_state,
         _clean_state,
-        reactor::Waitables{this->_rejected},
+        reactor::Waitables{&this->_rejected},
         false,
         [&] () -> bool
         {
@@ -74,11 +74,11 @@ namespace surface
                                     _transfer_core_state);
 
       // Cancel.
-      // this->_machine.transition_add(_request_network_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      // this->_machine.transition_add(_create_transaction_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      // this->_machine.transition_add(_copy_files_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      // this->_machine.transition_add(_wait_for_accept_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      // this->_machine.transition_add(_set_permissions_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_request_network_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(_create_transaction_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(_copy_files_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(_wait_for_accept_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(_set_permissions_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
 
       // Exception.
       this->_machine.transition_add_catch(_request_network_state, _fail_state);
@@ -167,19 +167,19 @@ namespace surface
       switch (transaction.status)
       {
         case plasma::TransactionStatus::accepted:
-          this->_accepted.signal();
+          this->_accepted.open();
           break;
         case plasma::TransactionStatus::canceled:
-          this->_canceled.signal();
+          this->_canceled.open();
           break;
         case plasma::TransactionStatus::failed:
-          this->_failed.signal();
+          this->_failed.open();
           break;
         case plasma::TransactionStatus::finished:
-          this->_finished.signal();
+          this->_finished.open();
           break;
         case plasma::TransactionStatus::rejected:
-          this->_rejected.signal();
+          this->_rejected.open();
           break;
         case plasma::TransactionStatus::initialized:
         case plasma::TransactionStatus::ready:
@@ -218,11 +218,12 @@ namespace surface
       this->network_id(
         this->state().meta().create_network(network_name).created_network_id);
 
-      // this->state().reporter()[this->_network_id].store(
-      //   "network.create.succeed",
-      //   {{MKey::value, this->_network_id}});
+      this->state().reporter()[this->network_id()].store(
+        "network.create.succeed",
+        {{MKey::value, this->network_id()}});
 
-      // this->_google_reporter[this->_self().id].store("network.create.succeed");
+      this->state().google_reporter()[this->state().me().id].store(
+        "network.create.succeed");
 
       this->state().meta().network_add_device(
         this->network().name(), this->state().device_id());
@@ -321,8 +322,14 @@ namespace surface
       nucleus::neutron::Subject subject;
       subject.Create(this->descriptor().meta().administrator_K());
 
+      this->state().reporter()[this->transaction_id()].store(
+        "transaction.preparing", this->transaction_metric());
+
       operation_detail::to::send(
         this->etoile(), this->descriptor(), subject, this->_files);
+
+      this->state().reporter()[this->transaction_id()].store(
+        "transaction.prepared", this->transaction_metric());
     }
 
     void

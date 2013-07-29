@@ -19,39 +19,28 @@ namespace surface
       TransferMachine(state),
       _wait_for_decision_state(
         this->_machine.state_make(
-          std::bind(&ReceiveMachine::_wait_for_decision, this))),
+          "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
       _accept_state(
         this->_machine.state_make(
-          std::bind(&ReceiveMachine::_accept, this))),
+          "accept", std::bind(&ReceiveMachine::_accept, this))),
       _reject_state(
         this->_machine.state_make(
-          std::bind(&ReceiveMachine::_reject, this)))
+          "reject", std::bind(&ReceiveMachine::_reject, this)))
     {
       // Normal process.
       this->_machine.transition_add(_wait_for_decision_state,
                                     _accept_state,
-                                    reactor::Waitables{this->_accepted},
-                                    false,
-                                    [&] () -> bool
-                                    {
-                                      return this->_accepted.signaled();
-                                    });
+                                    reactor::Waitables{&this->_accepted},
+                                    false);
       this->_machine.transition_add(_wait_for_decision_state,
                                     _reject_state,
-                                    reactor::Waitables{this->_rejected},
-                                    false,
-                                    [&] () -> bool
-                                    {
-                                      return this->_rejected.signaled();
-                                    });
+                                    reactor::Waitables{&this->_rejected},
+                                    false);
       this->_machine.transition_add(_accept_state,
                                     _transfer_core_state,
-                                    reactor::Waitables{this->_ready},
-                                    false,
-                                    [&] () -> bool
-                                    {
-                                      return this->_ready.signaled();
-                                    });
+                                    reactor::Waitables{&this->_ready},
+                                    false);
+
       this->_machine.transition_add(_transfer_core_state, _clean_state);
 
       // Cancel.
@@ -91,12 +80,7 @@ namespace surface
         case plasma::TransactionStatus::accepted:
           this->_machine.transition_add(null,
                                         this->_transfer_core_state,
-                                        reactor::Waitables{this->_ready},
-                                        false,
-                                        [&] () -> bool
-                                        {
-                                          return this->_ready.signaled();
-                                        });
+                                        reactor::Waitables{&this->_ready});
           this->run(null);
           break;
         case plasma::TransactionStatus::ready:
@@ -118,7 +102,6 @@ namespace surface
         case plasma::TransactionStatus::none:
         case plasma::TransactionStatus::_count:
           elle::unreachable();
-
       }
     }
 
@@ -132,20 +115,24 @@ namespace surface
       switch (transaction.status)
       {
         case plasma::TransactionStatus::canceled:
-          this->_canceled.signal();
+          this->_canceled.open();
           break;
         case plasma::TransactionStatus::failed:
-          this->_failed.signal();
+          this->_failed.open();
           break;
         case plasma::TransactionStatus::finished:
-          this->_finished.signal();
+          this->_finished.open();
           break;
         case plasma::TransactionStatus::ready:
-          this->_ready.signal();
+          this->_ready.open();
           break;
         case plasma::TransactionStatus::accepted:
-        case plasma::TransactionStatus::initialized:
+          this->_accepted.open();
+          break;
         case plasma::TransactionStatus::rejected:
+          this->_accepted.open();
+          break;
+        case plasma::TransactionStatus::initialized:
           break;
         case plasma::TransactionStatus::created:
         case plasma::TransactionStatus::started:
@@ -173,14 +160,14 @@ namespace surface
     ReceiveMachine::accept()
     {
       ELLE_TRACE_SCOPE("%s: accept transaction %s", *this, this->transaction_id());
-      this->_accepted.signal();
+      this->_accepted.open();
     }
 
     void
     ReceiveMachine::reject()
     {
       ELLE_TRACE_SCOPE("%s: reject transaction %s", *this, this->transaction_id());
-      this->_rejected.signal();
+      this->_rejected.open();
     }
 
     void
