@@ -221,7 +221,6 @@ namespace surface
 
       this->state().meta().network_add_device(
         this->network().name(), this->state().device_id());
-      ELLE_LOG("this->_network_id: %s", this->network().name());
     }
 
     void
@@ -335,7 +334,7 @@ namespace surface
     void
     SendMachine::_set_permissions()
     {
-      ELLE_TRACE_SCOPE("%s: transfer operation %s", *this, this->transaction_id());
+      ELLE_TRACE_SCOPE("%s: set permissions %s", *this, this->transaction_id());
 
       auto peer_public_key = this->state().user_manager().one(this->peer_id()).public_key;
 
@@ -358,7 +357,6 @@ namespace surface
 
       this->state().meta().update_transaction(this->transaction_id(),
                                               plasma::TransactionStatus::ready);
-
     }
 
     void

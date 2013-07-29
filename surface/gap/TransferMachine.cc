@@ -162,7 +162,6 @@ namespace surface
     void
     TransferMachine::_clean()
     {
-
       ELLE_TRACE_SCOPE("%s: clean %s", *this, this->transaction_id());
       auto path = common::infinit::network_directory(
         this->state().me().id, this->network_id());
@@ -189,6 +188,7 @@ namespace surface
         ELLE_ERR("%s: clean failed: network %s wasn't deleted: %s",
                  *this, this->network_id(), elle::exception_string());
       }
+      ELLE_DEBUG("%s: cleaned", *this);
     }
 
     void
@@ -196,6 +196,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: machine finished", *this);
       this->_finiliaze(plasma::TransactionStatus::finished);
+      ELLE_DEBUG("%s: finished", *this);
     }
 
     void
@@ -203,6 +204,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: machine canceled", *this);
       this->_finiliaze(plasma::TransactionStatus::canceled);
+      ELLE_DEBUG("%s: canceled", *this);
     }
 
     void
@@ -210,6 +212,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: machine failed", *this);
       this->_finiliaze(plasma::TransactionStatus::failed);
+      ELLE_DEBUG("%s: failed", *this);
     }
 
     void
@@ -248,7 +251,7 @@ namespace surface
         catch (plasma::meta::Exception const& e)
         {
           if (e.err == plasma::meta::Error::transaction_already_finalized)
-            ELLE_TRACE("%s: transaction finalized", *this);
+            ELLE_TRACE("%s: transaction already finalized", *this);
           else
             ELLE_ERR("%s: unable to finalize the transaction %s: %s",
                      *this, this->transaction_id(), elle::exception_string());
@@ -286,6 +289,7 @@ namespace surface
       {
         ELLE_DEBUG("%s: network id is still empty", *this);
       }
+      ELLE_DEBUG("%s: finalized", *this);
     }
 
     void
@@ -369,7 +373,6 @@ namespace surface
     /*-------------.
     | Core Machine |
     `-------------*/
-
     void
     TransferMachine::_publish_interfaces()
     {
@@ -405,6 +408,7 @@ namespace surface
 
       this->state().meta().network_connect_device(
         this->network_id(), this->state().passport().id(), addresses, public_addresses);
+      ELLE_DEBUG("%s: interfaces published", *this);
     }
 
     void
@@ -539,6 +543,7 @@ namespace surface
           continue;
         }
       }
+      ELLE_DEBUG("%s: peers connected", *this);
     }
 
     void
@@ -552,6 +557,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
       this->_transfer_operation();
+      ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
     }
 
     void
