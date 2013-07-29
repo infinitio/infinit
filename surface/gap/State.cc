@@ -482,8 +482,7 @@ namespace surface
 
       register_failed.abort();
 
-
-      ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);
+      ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
 
       elle::Finally registered_metric{[this, res] {
         this->_reporter[res.registered_user_id].store(
