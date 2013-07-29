@@ -666,28 +666,17 @@ namespace surface
 
       TransferIterator it = this->_machine_by_transaction(notif.id);
 
-      //
-      if (it == std::end(this->_transfers) and notif.status == plasma::TransactionStatus::initialized)
+      if (it == std::end(this->_transfers))
       {
-        this->_transfers.emplace_back(new ReceiveMachine{*this, transaction});
-        it = std::prev(this->_transfers.end());
-      }
-      else if (it == std::end(this->_transfers))
-      {
-        // XXX: Hack
-        if (transaction.status == plasma::TransactionStatus::finished ||
-            transaction.status == plasma::TransactionStatus::canceled ||
-            transaction.status == plasma::TransactionStatus::failed ||
-            transaction.status == plasma::TransactionStatus::rejected)
+        if (transaction.sender_id == this->me().id)
         {
-          ELLE_TRACE("%s: the transaction %s has already been finalized, drop",
-                     *this, transaction);
-          return;
+          this->_transfers.emplace_back(new SendMachine{*this, transaction});
         }
-
-        ELLE_ERR("%s: machine not found for transaction %s",
-                 *this, transaction);
-        throw Exception(gap_error, "machine doesn't exists");
+        else
+        {
+          this->_transfers.emplace_back(new ReceiveMachine{*this, transaction});
+        }
+        it = std::prev(this->_transfers.end());
       }
 
       ELLE_ASSERT(*it != nullptr);
