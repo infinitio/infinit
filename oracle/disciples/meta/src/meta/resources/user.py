@@ -655,7 +655,7 @@ class _DeviceAccess(_Page):
 
         # XXX.
         for network in database.networks().find({"nodes": {"$exists": str(device['_id'])}}):
-            network['nodes'][device['_id']] = {"locals": None, "externals": None, "fallback": None}
+            network['nodes'][str(device['_id'])] = {"locals": None, "externals": None, "fallback": None}
             database.networks().save(network)
             self.notifier.notify_some(
                 notifier.PEER_CONNECTION_UPDATE,
