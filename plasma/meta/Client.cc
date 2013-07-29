@@ -801,6 +801,61 @@ namespace plasma
       return out;
     }
 
+    /*---------.
+    | Requests |
+    `---------*/
+
+    static
+    void
+    _query(std::string const& url,
+           curly::request_configuration& c,
+           std::ostream& resp,
+           Client const* client)
+    {
+      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+      c.option(CURLOPT_DEBUGDATA, client);
+      c.option(CURLOPT_TIMEOUT, 15);
+      c.url(elle::sprintf("%s%s", client->root_url(), url));
+      c.user_agent(client->user_agent());
+      c.headers({
+        {"Authorization", client->token()},
+        {"Connection", "close"},
+      });
+
+      c.output(resp);
+
+      curly::request request(std::move(c));
+    }
+
+    void
+    Client::_post(std::string const& url,
+                  elle::format::json::Object const& req,
+                  std::ostream& resp) const
+    {
+      // XXX Curl is supposed to be thread-safe.
+      std::unique_lock<std::mutex> lock(this->_mutex);
+      curly::request_configuration c = curly::make_post();
+
+      std::stringstream input;
+      req.repr(input);
+      c.option(CURLOPT_POSTFIELDSIZE, input.str().size());
+      c.input(input);
+
+      _query(url, c, resp, this);
+    }
+
+    void
+    Client::_get(std::string const& url,
+                 std::ostream& resp) const
+    {
+      // XXX Curl is supposed to be thread-safe.
+      std::unique_lock<std::mutex> lock(this->_mutex);
+      curly::request_configuration c = curly::make_get();
+
+      _query(url, c, resp, this);
+    }
+
     /*----------.
     | Printable |
     `----------*/

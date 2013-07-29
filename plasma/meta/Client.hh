@@ -13,8 +13,6 @@
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>
 
-# include <curly/curly.hh>
-
 # include <plasma/plasma.hh>
 
 # include <elle/HttpClient.hh>
@@ -257,19 +255,27 @@ namespace plasma
              bool check_errors = true);
       ~Client();
 
+
+    /*---------.
+    | Requests |
+    `---------*/
+    public:
       template <typename T>
       T
       _post(std::string const& url,
             elle::format::json::Object const& req) const;
+      void
+      _post(std::string const& url,
+            elle::format::json::Object const& req,
+            std::ostream& resp) const;
 
       template <typename T>
       T
       _get(std::string const& url) const;
 
-      template <typename T>
-      T
-      _query(std::string const& url,
-             curly::request_configuration& c) const;
+      void
+      _get(std::string const& url,
+           std::ostream& resp) const;
 
       template <typename T>
       T

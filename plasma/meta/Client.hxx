@@ -137,53 +137,21 @@ namespace plasma
 
     template <typename T>
     T
-    Client::_query(std::string const& url,
-                   curly::request_configuration& c) const
-    {
-      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
-      c.option(CURLOPT_DEBUGDATA, this);
-      c.option(CURLOPT_TIMEOUT, 15);
-      c.url(elle::sprintf("%s%s", this->_root_url, url));
-      c.user_agent(this->_user_agent);
-      c.headers({
-        {"Authorization", this->_token},
-        {"Connection", "close"},
-      });
-
-      std::stringstream resp;
-      c.output(resp);
-
-      curly::request request(std::move(c));
-      return this->_deserialize_answer<T>(resp);
-    }
-
-    template <typename T>
-    T
     Client::_post(std::string const& url,
                   elle::format::json::Object const& req) const
     {
-      // XXX Curl is supposed to be thread-safe.
-      std::unique_lock<std::mutex> lock(this->_mutex);
-      curly::request_configuration c = curly::make_post();
-
-      std::stringstream input;
-      req.repr(input);
-      c.option(CURLOPT_POSTFIELDSIZE, input.str().size());
-      c.input(input);
-
-      return this->_query<T>(url, c);
+      std::stringstream resp;
+      this->_post(url, req, resp);
+      return this->_deserialize_answer<T>(resp);
     }
 
     template <typename T>
     T
     Client::_get(std::string const& url) const
     {
-      // XXX Curl is supposed to be thread-safe.
-      std::unique_lock<std::mutex> lock(this->_mutex);
-      curly::request_configuration c = curly::make_get();
-
-      return this->_query<T>(url, c);
+      std::stringstream resp;
+      this->_get(url, resp);
+      return this->_deserialize_answer<T>(resp);
     }
 
     template <typename T>
