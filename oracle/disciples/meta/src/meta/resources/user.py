@@ -418,7 +418,7 @@ class Avatar(Page):
         database.users().save(self.user)
         return self.success()
 
-class Register(Page):
+class Register(_Page):
     """
     Register a new user
         POST {
