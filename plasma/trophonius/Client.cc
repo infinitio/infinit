@@ -201,10 +201,11 @@ namespace plasma
 
     Client::Client(std::string const& server,
                    uint16_t port,
-                   std::function<void()> connect_callback):
+                   std::function<void()> connect_callback,
+                   long ping_period):
       _impl{new Impl{server, port, connect_callback}},
       _reconnected{0},
-      _ping_period{boost::posix_time::seconds(30)}
+     _ping_period{boost::posix_time::seconds{ping_period}}
     {
       ELLE_ASSERT(connect_callback != nullptr);
     }
@@ -282,9 +283,8 @@ namespace plasma
     {
       if (err)
       {
+        ELLE_WARN("send ping failed: %s", err.message());
         this->_reconnect();
-        ELLE_WARN("timer failed in %s (%s), stopping connection checks",
-                  __func__, err.message());
       }
     }
 
@@ -316,6 +316,7 @@ namespace plasma
     void
     Client::_restart_ping_timer()
     {
+      ELLE_TRACE_SCOPE("%s: restart ping timer", *this);
       _impl->ping_timer.expires_from_now(this->_ping_period);
 
       _impl->ping_timer.async_wait(
@@ -335,6 +336,7 @@ namespace plasma
     void
     Client::_restart_connection_check_timer()
     {
+      ELLE_TRACE_SCOPE("%s: restart connection check timer", *this);
       _impl->connection_checker.expires_from_now(this->_ping_period * 2);
 
       _impl->connection_checker.async_wait(

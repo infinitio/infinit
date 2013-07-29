@@ -141,7 +141,8 @@ namespace plasma
     public:
       Client(std::string const& server,
              uint16_t port,
-             std::function<void()> connect_callback);
+             std::function<void()> connect_callback,
+             long ping_period = 30);
 
       ~Client();
 
