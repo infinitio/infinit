@@ -44,10 +44,10 @@ namespace surface
       this->_machine.transition_add(_transfer_core_state, _clean_state);
 
       // Cancel.
-      // this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      // this->_machine.transition_add(_accept_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      // this->_machine.transition_add(_reject_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
-      // this->_machine.transition_add(_transfer_core_state, _cancel_state, reactor::Waitables{this->_canceled}, true);
+      this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(_accept_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(_reject_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(_transfer_core_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
 
       // Exception.
       this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
