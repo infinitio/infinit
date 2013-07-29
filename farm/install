@@ -42,7 +42,7 @@ os.makedirs(DIR_INSTALL_SERVER)
 with open(os.path.join(DIR_INSTALL, "VERSION"), "w+") as version_file:
     version_file.write("{}\n".format(version))
 
-for d in ['bin', 'lib', 'oracle/meta/']:
+for d in ['bin', 'lib', 'oracle/meta/', 'prod']:
     src = os.path.join(DIR_BUILD, d)
     dst = os.path.join(DIR_INSTALL_SERVER, d)
     print("install", src, "->", dst)
