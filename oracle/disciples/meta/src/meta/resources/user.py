@@ -653,7 +653,7 @@ class _DeviceAccess(_Page):
             multi = False,
         )
 
-        # Suxx.
+        # XXX.
         for network in database.networks().find({"nodes": {"$exists": str(device['_id'])}}):
             network['nodes'][device['_id']] = {"locals": None, "externals": None, "fallback": None}
             database.networks().save(network)
