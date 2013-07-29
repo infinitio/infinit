@@ -125,6 +125,11 @@ namespace surface
       switch (transaction.status)
       {
         case plasma::TransactionStatus::initialized:
+          // XXX: This is wrong. If the local copy was not over, the transfer
+          // will fail. We should add a state on the server or use a local
+          // journal to make sure the copy was over.
+          // For the moment, none of thoose options are implemented and there
+          // is no way to know if the copy was successfull.
           this->run(this->_wait_for_accept_state);
           break;
         case plasma::TransactionStatus::accepted:
