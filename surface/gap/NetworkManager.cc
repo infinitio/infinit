@@ -64,8 +64,9 @@ namespace surface
         [](NetworkMapPtr const& map)
         {
           std::vector<std::string> res{map->size()};
+          unsigned int i = 0;
           for (auto const& pair: *map)
-            res.emplace_back(pair.first);
+            res[i++] = pair.first;
           return res;
         }
       );
