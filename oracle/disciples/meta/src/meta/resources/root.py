@@ -3,6 +3,8 @@
 import json
 
 from meta.page import Page
+from meta import error, database
+from pythia.constants import ADMIN_TOKEN
 
 class Root(Page):
     """
@@ -55,6 +57,47 @@ class ScratchDB(Page):
 
     def GET(self):
         return self.success({})
+
+class Ghostify(Page):
+    """
+    Turn the user to a ghost.
+    """
+
+    __pattern__ = "/ghostify"
+
+    def POST(self):
+        if self.data['admin_token'] != ADMIN_TOKEN:
+            return self.error(error.UNKNOWN, "You're not admin")
+
+        email = self.data['email']
+        user = database.users().find_one({"email": email})
+
+        if user is None:
+            return self.error(error.UNKNOWN_USER)
+
+        # Invalidate all transactions.
+        # XXX: Peers should be notified.
+        from meta.resources import transaction
+        database.transactions().update(
+            {"$or": [{"sender_id": user['_id']}, {"recipient_id": user['_id']}]},
+            {"$set": {"status": transaction.CANCELED}}, multi=True)
+
+        # Ghostify user.
+        ghost = self.registerUser(
+            _id = user['_id'],
+            email = user['email'],
+            register_status = 'ghost',
+            notifications = [],
+            networks = [],
+            swaggers = user['swaggers'],
+            accounts = [{'type':'email', 'id': user['email']}],
+            remaining_invitations = user['remaining_invitations'],
+        )
+
+        from meta.invitation import invite_user
+        invite_user(user['email'])
+
+        return self.success({'ghost': str(user['_id'])})
 
 class GetBacktrace(Page):
     """

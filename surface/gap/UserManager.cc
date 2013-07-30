@@ -187,15 +187,6 @@ namespace surface
       return this->_meta.user_icon(id);
     }
 
-    std::string
-    UserManager::invite(std::string const& email)
-    {
-      ELLE_TRACE_METHOD(email);
-
-      auto response = this->_meta.invite_user(email);
-      return response._id;
-    }
-
     void
     UserManager::send_message(std::string const& recipient_id,
                               std::string const& message)

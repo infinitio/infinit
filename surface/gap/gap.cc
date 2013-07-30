@@ -258,17 +258,6 @@ extern "C"
     return gap_ok;
   }
 
-
-  gap_Status
-  gap_invite_user(gap_State* state,
-                  char const* email)
-  {
-    assert(state != nullptr);
-    assert(email != nullptr);
-
-    WRAP_CPP_MANAGER(state, user_manager, invite, email);
-  }
-
   gap_Status
   gap_message(gap_State* state,
               const char* recipient_id,

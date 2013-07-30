@@ -226,11 +226,6 @@ extern "C" {
   gap_Status
   gap_poll(gap_State* state);
 
-
-  gap_Status
-  gap_invite_user(gap_State* state,
-                  char const* email);
-
   /// - Device ----------------------------------------------------------------
 
   /// Returns the local device status.

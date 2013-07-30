@@ -315,6 +315,9 @@ namespace plasma
       Response
       genocide() const;
 
+      Response
+      ghostify(std::string const& email) const;
+
       // SwaggerResponse
       // get_swagger(std::string const& id) const;
 
@@ -326,7 +329,9 @@ namespace plasma
                     std::string const& name) const;
 
       InviteUserResponse
-      invite_user(std::string const& email) const;
+      invite_user(std::string const& email,
+                  bool dont_send_email,
+                  bool force) const;
 
       TransactionResponse
       transaction(std::string const& _id) const;

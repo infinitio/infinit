@@ -393,7 +393,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("register", &gap_register);
   py::def("user_directory", *_gap_user_directory);
 
-  py::def("invite_user", &gap_invite_user);
   py::def("send_message", &gap_message);
 
   //- Notifications ------------------------------------------------------------

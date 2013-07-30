@@ -470,7 +470,7 @@ class Register(Page):
             ghost_email = user['email']
 
         ghost = database.users().find_one({
-            'accounts': [{ 'type': 'email', 'id':ghost_email}],
+            'accounts': [{ 'type': 'email', 'id': ghost_email}],
             'register_status': 'ghost',
         })
 
@@ -508,7 +508,7 @@ class Register(Page):
             accounts = [
                 {'type':'email', 'id': user['email']}
             ],
-            remaining_invitations = 3, #XXX
+            remaining_invitations = not ghost and 3 or ghost.get('remaining_invitations', 3),
             status = False,
         )
         if user['activation_code'] != 'bitebite': #XXX

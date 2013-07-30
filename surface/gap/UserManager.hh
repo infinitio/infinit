@@ -93,9 +93,6 @@ namespace surface
       /*-------------.
       | Interraction |
       `-------------*/
-      std::string
-      invite(std::string const& email);
-
       /// Send message to user @id via trophonius
       void
       send_message(std::string const& recipient_id,
