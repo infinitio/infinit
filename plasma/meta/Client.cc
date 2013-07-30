@@ -250,7 +250,7 @@ namespace plasma
   {
 
     Exception::Exception(Error const& error, std::string const& message)
-      : std::runtime_error(message)
+      : elle::Exception(message)
       , err{error}
     {}
 

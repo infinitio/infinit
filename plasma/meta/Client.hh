@@ -16,7 +16,7 @@
 # include <plasma/plasma.hh>
 
 # include <elle/HttpClient.hh>
-
+# include <elle/Exception.hh>
 
 namespace plasma
 {
@@ -46,7 +46,7 @@ namespace plasma
     };
 
     struct Exception
-      : public std::runtime_error
+      : public elle::Exception
     {
       Error const err;
       Exception(Error const& error, std::string const& message = "");
