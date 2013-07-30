@@ -5,8 +5,12 @@
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/MapSerializer.hxx>
 
-#include "Client.hh"
+#include <reactor/scheduler.hh>
+
 #include <curly/curly.hh>
+#include <curly/curly_sched.hh>
+
+#include <plasma/meta/Client.hh>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -825,7 +829,9 @@ namespace plasma
 
       c.output(resp);
 
-      curly::request request(std::move(c));
+      curly::sched_request request(*reactor::Scheduler::scheduler(),
+                                   std::move(c));
+      request.run();
     }
 
     void
