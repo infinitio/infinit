@@ -82,12 +82,15 @@ int main(int argc, char** argv)
     state.login(user, hashed_password);
     // state.update_device("lust");
 
-    state.send_files(to, { file.c_str() });
+    auto id = state.send_files(to, { file.c_str() });
 
     bool stop = false;
     state.notification_manager().transaction_callback(
       [&] (plasma::trophonius::TransactionNotification const& t, bool)
       {
+        // if (transaction_id != t.id)
+        //   return;
+
         if (t.status == plasma::TransactionStatus::finished ||
             t.status == plasma::TransactionStatus::canceled)
           stop = true;
@@ -95,6 +98,8 @@ int main(int argc, char** argv)
 
     while (!stop)
       state.notification_manager().poll(1);
+
+    state.join_transaction(id);
   }
   catch (std::runtime_error const& e)
   {
