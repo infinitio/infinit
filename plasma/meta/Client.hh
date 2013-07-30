@@ -313,6 +313,9 @@ namespace plasma
       add_swaggers(std::string const& user1, std::string const& user2) const;
 
       Response
+      ghostify(std::string const& email) const;
+
+      Response
       genocide() const;
 
       // SwaggerResponse

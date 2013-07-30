@@ -3,6 +3,8 @@
 import json
 
 from meta.page import Page
+from meta import error, database
+from pythia.constants import ADMIN_TOKEN
 
 class Root(Page):
     """
@@ -21,20 +23,6 @@ class Root(Page):
             'server': 'Meta 0.1',
             'logged_in': self.user is not None,
         })
-
-# class Debug(Page):
-#     """
-#     This class is for debug purpose only
-#     """
-#     __pattern__ = "/debug"
-
-#     def POST(self):
-#         msg = self.data
-#         if self.notifier is not None:
-#             self.notifier.send_notification(msg)
-#         else:
-#             return self.error(error.UNKNOWN, "Notifier is not ready.")
-#         return self.success({})
 
 class Status(Page):
     """
@@ -55,6 +43,47 @@ class ScratchDB(Page):
 
     def GET(self):
         return self.success({})
+
+class Ghostify(Page):
+    """
+    Turn the user to a ghost.
+    """
+
+    __pattern__ = "/ghostify"
+
+    def POST(self):
+        if 'admin_token' not in self.data or self.data['admin_token'] != ADMIN_TOKEN:
+            return self.error(error.UNKNOWN, "You're not admin")
+
+        email = self.data['email']
+        user = database.users().find_one({"email": email})
+
+        if user is None:
+            return self.error(error.UNKNOWN_USER)
+
+        # Invalidate all transactions.
+        # XXX: Peers should be notified.
+        from meta.resources import transaction
+        database.transactions().update(
+            {"$or": [{"sender_id": user['_id']}, {"recipient_id": user['_id']}]},
+            {"$set": {"status": transaction.CANCELED}}, multi=True)
+
+        # Ghostify user.
+        ghost = self.registerUser(
+            _id = user['_id'],
+            email = user['email'],
+            register_status = 'ghost',
+            notifications = [],
+            networks = [],
+            swaggers = user['swaggers'],
+            accounts = [{'type':'email', 'id': user['email']}],
+            remaining_invitations = user['remaining_invitations'],
+        )
+
+        from meta.invitation import invite_user
+        invite_user(user['email'])
+
+        return self.success({'ghost': str(user['_id'])})
 
 class GetBacktrace(Page):
     """

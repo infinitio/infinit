@@ -433,6 +433,15 @@ namespace plasma
     }
 
     Response
+    Client::ghostify(std::string const& email) const
+    {
+      json::Dictionary request;
+      request["admin_token"] = this->token();
+      request["email"] = email;
+      return this->_post<DebugResponse>("/ghostify", request);
+    }
+
+    Response
     Client::genocide() const
     {
       json::Dictionary request;
