@@ -440,15 +440,6 @@ namespace plasma
       return this->_post<DebugResponse>("/genocide", request);
     }
 
-    Response
-    Client::ghostify(std::string const& email) const
-    {
-      json::Dictionary request;
-      request["admin_token"] = this->token();
-      request["email"] = email;
-      return this->_post<DebugResponse>("/ghostify", request);
-    }
-
     // SwaggerResponse
     // Client::get_swagger(std::string const& id) const
     // {
@@ -481,17 +472,12 @@ namespace plasma
     }
 
     InviteUserResponse
-    Client::invite_user(std::string const& email,
-                        bool dont_send_email,
-                        bool force) const
+    Client::invite_user(std::string const& email) const
     {
       json::Dictionary request{std::map<std::string, std::string>
         {
-          {"email", email},
+          {"email", email}
         }};
-
-      request["dont_send_email"] = dont_send_email;
-      request["force"] = force;
 
       auto res = this->_post<InviteUserResponse>("/user/invite", request);
 

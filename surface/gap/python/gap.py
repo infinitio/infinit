@@ -29,6 +29,7 @@ class _State:
             'set_device_name',
 
             'logout',
+            'invite_user',
             'send_message',
             'token',
             'generation_key',
