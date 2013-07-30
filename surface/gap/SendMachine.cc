@@ -40,15 +40,16 @@ namespace surface
         this->_machine.state_make(
           "set permissions", std::bind(&SendMachine::_set_permissions, this)))
     {
-      this->_machine.transition_add(_request_network_state,
-                                    _create_transaction_state);
-      this->_machine.transition_add(_create_transaction_state,
-                                    _copy_files_state);
-      this->_machine.transition_add(_copy_files_state,
-                                    _wait_for_accept_state);
       this->_machine.transition_add(
-        _wait_for_accept_state,
-        _set_permissions_state,
+        this->_request_network_state, this->_create_transaction_state);
+      this->_machine.transition_add(
+        this->_create_transaction_state, this->_copy_files_state);
+      this->_machine.transition_add(
+        this->_copy_files_state, this->_wait_for_accept_state);
+
+      this->_machine.transition_add(
+        this->_wait_for_accept_state,
+        this->_set_permissions_state,
         reactor::Waitables{&this->_accepted},
         false,
         [&] () -> bool
@@ -59,8 +60,8 @@ namespace surface
         );
 
       this->_machine.transition_add(
-        _wait_for_accept_state,
-        _clean_state,
+        this->_wait_for_accept_state,
+        this->_reject_state,
         reactor::Waitables{&this->_rejected},
         false,
         [&] () -> bool
@@ -70,22 +71,36 @@ namespace surface
         }
         );
 
-      this->_machine.transition_add(_set_permissions_state,
-                                    _transfer_core_state);
+      this->_machine.transition_add(
+        this->_set_permissions_state, this->_transfer_core_state);
 
       // Cancel.
-      this->_machine.transition_add(_request_network_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(_create_transaction_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(_copy_files_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(_wait_for_accept_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(_set_permissions_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
-
+      this->_machine.transition_add(this->_request_network_state,
+                                    this->_cancel_state,
+                                    reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(this->_create_transaction_state,
+                                    this->_cancel_state,
+                                    reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(this->_copy_files_state,
+                                    this->_cancel_state,
+                                    reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(this->_wait_for_accept_state,
+                                    this->_cancel_state,
+                                    reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(this->_set_permissions_state,
+                                    this->_cancel_state,
+                                    reactor::Waitables{&this->_canceled}, true);
       // Exception.
-      this->_machine.transition_add_catch(_request_network_state, _fail_state);
-      this->_machine.transition_add_catch(_create_transaction_state, _fail_state);
-      this->_machine.transition_add_catch(_copy_files_state, _fail_state);
-      this->_machine.transition_add_catch(_wait_for_accept_state, _fail_state);
-      this->_machine.transition_add_catch(_set_permissions_state, _fail_state);
+      this->_machine.transition_add_catch(
+        this->_request_network_state, this->_fail_state);
+      this->_machine.transition_add_catch(
+        this->_create_transaction_state, this->_fail_state);
+      this->_machine.transition_add_catch(
+        this->_copy_files_state, this->_fail_state);
+      this->_machine.transition_add_catch(
+        this->_wait_for_accept_state, this->_fail_state);
+      this->_machine.transition_add_catch(
+        this->_set_permissions_state, this->_fail_state);
     }
 
     SendMachine::~SendMachine()
@@ -167,22 +182,43 @@ namespace surface
       switch (transaction.status)
       {
         case plasma::TransactionStatus::accepted:
-          this->_accepted.open();
+          ELLE_DEBUG("%s: open accepted barrier", *this);
+          this->scheduler().mt_run<void>("open accepted barrier", [this]
+            {
+              this->_accepted.open();
+            });
           break;
         case plasma::TransactionStatus::canceled:
-          this->_canceled.open();
+          ELLE_DEBUG("%s: open canceled barrier", *this);
+          this->scheduler().mt_run<void>("open canceled barrier", [this]
+            {
+              this->_canceled.open();
+            });
           break;
         case plasma::TransactionStatus::failed:
-          this->_failed.open();
+          ELLE_DEBUG("%s: open failed barrier", *this);
+          this->scheduler().mt_run<void>("open failed barrier", [this]
+            {
+              this->_failed.open();
+            });
           break;
         case plasma::TransactionStatus::finished:
-          this->_finished.open();
+          ELLE_DEBUG("%s: open finished barrier", *this);
+          this->scheduler().mt_run<void>("open finished barrier", [this]
+            {
+              this->_finished.open();
+            });
           break;
         case plasma::TransactionStatus::rejected:
-          this->_rejected.open();
+          ELLE_DEBUG("%s: open rejected barrier", *this);
+          this->scheduler().mt_run<void>("open rejected barrier", [this]
+            {
+              this->_rejected.open();
+            });
           break;
         case plasma::TransactionStatus::initialized:
         case plasma::TransactionStatus::ready:
+          ELLE_DEBUG("%s: ignore status %s", *this, transaction.status);
           break;
         case plasma::TransactionStatus::created:
         case plasma::TransactionStatus::none:
@@ -201,9 +237,21 @@ namespace surface
       ELLE_ASSERT_EQ(this->network_id(), notif.network_id);
 
       if (notif.status)
-        this->_peer_online.signal();
+      {
+        ELLE_DEBUG("%s: signal peer online", *this);
+        this->scheduler().mt_run<void>("signal peer online", [this]
+          {
+            this->_peer_online.signal();
+          });
+      }
       else
-        this->_peer_offline.signal();
+      {
+        ELLE_DEBUG("%s: signal peer offline", *this);
+        this->scheduler().mt_run<void>("signal peer offline", [this]
+          {
+            this->_peer_offline.signal();
+          });
+      }
     }
 
     void

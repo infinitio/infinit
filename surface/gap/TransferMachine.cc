@@ -27,10 +27,19 @@ namespace surface
 {
   namespace gap
   {
+    static
+    uint16_t
+    generate_id()
+    {
+      static uint16_t id = 0;
+      return id++;
+    }
+
     //---------- TransferMachine -----------------------------------------------
     TransferMachine::TransferMachine(surface::gap::State const& state):
       _scheduler(),
       _scheduler_thread(),
+      _id(generate_id()),
       _machine(),
       _machine_thread(),
       _transfer_core_state(
@@ -39,6 +48,9 @@ namespace surface
       _finish_state(
         this->_machine.state_make(
           "finish", std::bind(&TransferMachine::_finish, this))),
+      _reject_state(
+        this->_machine.state_make(
+          "reject", std::bind(&TransferMachine::_reject, this))),
       _cancel_state(
         this->_machine.state_make(
           "cancel", std::bind(&TransferMachine::_cancel, this))),
@@ -68,50 +80,46 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: creating transfer machine", *this);
 
-      this->_machine.transition_add(_transfer_core_state,
-                                    _finish_state,
+      // Normal way.
+      this->_machine.transition_add(this->_transfer_core_state,
+                                    this->_finish_state,
                                     reactor::Waitables{&this->_finished});
+      this->_machine.transition_add(this->_finish_state, this->_clean_state);
 
-      this->_machine.transition_add(_transfer_core_state,
-                                    _cancel_state,
-                                    reactor::Waitables{&this->_canceled});
+      // Cancel way.
+      this->_machine.transition_add(this->_transfer_core_state,
+                                    this->_cancel_state,
+                                    reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(this->_cancel_state, this->_clean_state);
 
-      this->_machine.transition_add_catch(_transfer_core_state,
-                                          _fail_state);
+      // Fail way.
+      this->_machine.transition_add_catch(this->_transfer_core_state,
+                                          this->_fail_state);
+      this->_machine.transition_add(this->_fail_state, this->_clean_state);
 
-      this->_machine.transition_add(_finish_state,
-                                    _clean_state);
+      // Reject.
+      this->_machine.transition_add(this->_reject_state, this->_clean_state);
 
-      this->_machine.transition_add(_cancel_state,
-                                    _clean_state);
-
-      this->_machine.transition_add(_fail_state,
-                                    _clean_state);
-
-      this->_core_machine.transition_add(_publish_interfaces_state,
-                                         _connection_state,
+      /*-------------.
+      | Core Machine |
+      `-------------*/
+      this->_core_machine.transition_add(this->_publish_interfaces_state,
+                                         this->_connection_state,
                                          reactor::Waitables{&this->_peer_online});
-      this->_core_machine.transition_add(_connection_state,
-                                         _wait_for_peer_state,
+      this->_core_machine.transition_add(this->_connection_state,
+                                         this->_wait_for_peer_state,
                                          reactor::Waitables{&this->_peer_offline});
-      this->_core_machine.transition_add(_wait_for_peer_state,
-                                         _connection_state,
+      this->_core_machine.transition_add(this->_wait_for_peer_state,
+                                         this->_connection_state,
                                          reactor::Waitables{&this->_peer_online});
-      this->_core_machine.transition_add(_connection_state,
-                                         _connection_state,
+      this->_core_machine.transition_add(this->_connection_state,
+                                         this->_connection_state,
                                          reactor::Waitables{&this->_peer_online});
-      this->_core_machine.transition_add(_connection_state,
-                                         _transfer_state);
 
-      // Cancel.
-      this->_core_machine.transition_add(_publish_interfaces_state, _core_stoped_state, reactor::Waitables{&this->_canceled}, true);
-      this->_core_machine.transition_add(_connection_state, _core_stoped_state, reactor::Waitables{&this->_canceled}, true);
-      this->_core_machine.transition_add(_transfer_core_state, _core_stoped_state, reactor::Waitables{&this->_canceled}, true);
-
-      // Exception.
-      this->_core_machine.transition_add_catch(_publish_interfaces_state, _core_stoped_state);
-      this->_core_machine.transition_add_catch(_connection_state, _core_stoped_state);
-      this->_core_machine.transition_add_catch(_transfer_core_state, _core_stoped_state);
+      this->_core_machine.transition_add(
+        this->_connection_state, this->_transfer_state);
+      this->_core_machine.transition_add(
+        this->_transfer_state, this->_core_stoped_state);
     }
 
     TransferMachine::~TransferMachine()
@@ -124,6 +132,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer core machine", *this);
       this->_core_machine.run();
+      ELLE_DEBUG("%s: transfer core finished", *this);
     }
 
     void
@@ -170,6 +179,14 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: machine finished", *this);
       this->_finiliaze(plasma::TransactionStatus::finished);
       ELLE_DEBUG("%s: finished", *this);
+    }
+
+    void
+    TransferMachine::_reject()
+    {
+      ELLE_TRACE_SCOPE("%s: machine rejected", *this);
+      this->_finiliaze(plasma::TransactionStatus::rejected);
+      ELLE_DEBUG("%s: rejected", *this);
     }
 
     void
@@ -320,6 +337,21 @@ namespace surface
       return (user_id == this->state().me().id) || (user_id == this->_peer_id);
     }
 
+    bool
+    TransferMachine::has_id(uint16_t id)
+    {
+      return (id == this->_id);
+    }
+
+    void
+    TransferMachine::join()
+    {
+      ELLE_ASSERT(this->_scheduler_thread != nullptr);
+
+      if (this->_scheduler_thread->joinable())
+        this->_scheduler_thread->join();
+    }
+
     void
     TransferMachine::_stop()
     {
@@ -328,8 +360,36 @@ namespace surface
 
       ELLE_ASSERT(this->_scheduler_thread != nullptr);
 
-      this->_scheduler_thread->join();
+      if (!this->_scheduler.done())
+      {
+        this->_scheduler.mt_run<void>(
+          "terminate",
+          [this]
+          {
+            ELLE_DEBUG("%s: terminate scheduler", *this)
+              this->_scheduler.terminate_now();
+            ELLE_DEBUG("%s: finalize etoile", *this)
+              this->_etoile.reset();
+            ELLE_DEBUG("%s: finalize hole", *this)
+              this->_hole.reset();
+          });
+      }
+      else
+      {
+        ELLE_ASSERT(this->_etoile == nullptr);
+        ELLE_ASSERT(this->_hole == nullptr);
+      }
+
+      this->join();
       this->_scheduler_thread.reset();
+    }
+
+    reactor::Scheduler&
+    TransferMachine::scheduler() const
+    {
+      ELLE_ASSERT(this->_scheduler_thread != nullptr);
+      ELLE_ASSERT(!this->_scheduler.done());
+      return this->_scheduler;
     }
 
     /*-------------.

@@ -22,26 +22,23 @@ namespace surface
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
       _accept_state(
         this->_machine.state_make(
-          "accept", std::bind(&ReceiveMachine::_accept, this))),
-      _reject_state(
-        this->_machine.state_make(
-          "reject", std::bind(&ReceiveMachine::_reject, this)))
+          "accept", std::bind(&ReceiveMachine::_accept, this)))
     {
-      // Normal process.
-      this->_machine.transition_add(_wait_for_decision_state,
-                                    _accept_state,
-                                    reactor::Waitables{&this->_accepted},
-                                    false);
-      this->_machine.transition_add(_wait_for_decision_state,
-                                    _reject_state,
-                                    reactor::Waitables{&this->_rejected},
-                                    false);
-      this->_machine.transition_add(_accept_state,
-                                    _transfer_core_state,
-                                    reactor::Waitables{&this->_ready},
-                                    false);
+      // Normal way.
+      this->_machine.transition_add(this->_wait_for_decision_state,
+                                    this->_accept_state,
+                                    reactor::Waitables{&this->_accepted});
+      this->_machine.transition_add(this->_accept_state,
+                                    this->_transfer_core_state,
+                                    reactor::Waitables{&this->_ready});
 
-      this->_machine.transition_add(_transfer_core_state, _clean_state);
+      this->_machine.transition_add(this->_transfer_core_state,
+                                    this->_finish_state);
+
+      // Reject way.
+      this->_machine.transition_add(this->_wait_for_decision_state,
+                                    this->_reject_state,
+                                    reactor::Waitables{&this->_rejected});
 
       // Cancel.
       this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
@@ -115,24 +112,37 @@ namespace surface
       switch (transaction.status)
       {
         case plasma::TransactionStatus::canceled:
-          this->_canceled.open();
+          ELLE_DEBUG("%s: open canceled barrier", *this);
+          this->scheduler().mt_run<void>("open canceled barrier", [this]
+            {
+              this->_canceled.open();
+            });
           break;
         case plasma::TransactionStatus::failed:
-          this->_failed.open();
+          ELLE_DEBUG("%s: open failed barrier", *this);
+          this->scheduler().mt_run<void>("open failed barrier", [this]
+            {
+              this->_failed.open();
+            });
           break;
         case plasma::TransactionStatus::finished:
-          this->_finished.open();
+          ELLE_DEBUG("%s: open finished barrier", *this);
+          this->scheduler().mt_run<void>("open finished barrier", [this]
+            {
+              this->_finished.open();
+            });
           break;
         case plasma::TransactionStatus::ready:
-          this->_ready.open();
+          ELLE_DEBUG("%s: open ready barrier", *this);
+          this->scheduler().mt_run<void>("open ready barrier", [this]
+            {
+              this->_ready.open();
+            });
           break;
         case plasma::TransactionStatus::accepted:
-          this->_accepted.open();
-          break;
         case plasma::TransactionStatus::rejected:
-          this->_accepted.open();
-          break;
         case plasma::TransactionStatus::initialized:
+          ELLE_DEBUG("%s: ignore status %s", *this, transaction.status);
           break;
         case plasma::TransactionStatus::created:
         case plasma::TransactionStatus::started:
@@ -151,23 +161,41 @@ namespace surface
       ELLE_ASSERT_EQ(this->network_id(), notif.network_id);
 
       if (notif.status)
-        this->_peer_online.signal();
+      {
+        ELLE_DEBUG("%s: peer online signaled", *this);
+          this->scheduler().mt_run<void>("signal peer online", [this]
+            {
+              this->_peer_online.signal();
+            });
+      }
       else
-        this->_peer_offline.signal();
+      {
+        ELLE_DEBUG("%s: peer offline signaled", *this);
+        this->scheduler().mt_run<void>("signal peer offline", [this]
+          {
+            this->_peer_offline.signal();
+          });
+      }
     }
 
     void
     ReceiveMachine::accept()
     {
-      ELLE_TRACE_SCOPE("%s: accept transaction %s", *this, this->transaction_id());
-      this->_accepted.open();
+      ELLE_TRACE_SCOPE("%s: open accept barrier %s", *this, this->transaction_id());
+      this->scheduler().mt_run<void>("open accept barrier", [this]
+        {
+          this->_accepted.open();
+        });
     }
 
     void
     ReceiveMachine::reject()
     {
-      ELLE_TRACE_SCOPE("%s: reject transaction %s", *this, this->transaction_id());
-      this->_rejected.open();
+      ELLE_TRACE_SCOPE("%s: open rejected barrier %s", *this, this->transaction_id());
+      this->scheduler().mt_run<void>("open reject barrier", [this]
+        {
+          this->_rejected.open();
+        });
     }
 
     void
@@ -198,27 +226,6 @@ namespace surface
           ELLE_TRACE("%s: transaction already accepted: %s", *this, e.what());
         else if (e.err == plasma::meta::Error::transaction_operation_not_permitted)
           ELLE_TRACE("%s: transaction can't be accepted: %s", *this, e.what());
-        else
-          throw;
-      }
-    }
-
-    void
-    ReceiveMachine::_reject()
-    {
-      ELLE_TRACE_SCOPE("%s: rejected %s", *this, this->transaction_id());
-
-      try
-      {
-        this->state().meta().update_transaction(this->transaction_id(),
-                                                plasma::TransactionStatus::rejected);
-      }
-      catch (plasma::meta::Exception const& e)
-      {
-        if (e.err == plasma::meta::Error::transaction_already_has_this_status)
-          ELLE_TRACE("%s: transaction already rejected: %s", *this, e.what());
-        else if (e.err == plasma::meta::Error::transaction_already_finalized)
-          ELLE_TRACE("%s: transaction can't be rejected: %s", *this, e.what());
         else
           throw;
       }

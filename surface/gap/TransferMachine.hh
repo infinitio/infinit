@@ -67,6 +67,13 @@ namespace surface
       bool
       concerns_user(std::string const& user_id);
 
+      bool
+      has_id(uint16_t id);
+
+    public:
+      void
+      join();
+
     protected:
       void
       _stop();
@@ -75,8 +82,12 @@ namespace surface
       | Machine implementation |
       `-----------------------*/
     private:
-      ELLE_ATTRIBUTE(reactor::Scheduler, scheduler);
+      ELLE_ATTRIBUTE_P(reactor::Scheduler, scheduler, mutable);
+    public:
+      reactor::Scheduler&
+      scheduler() const;
       ELLE_ATTRIBUTE(std::unique_ptr<std::thread>, scheduler_thread);
+      ELLE_ATTRIBUTE_R(uint16_t, id);
 
     protected:
       reactor::fsm::Machine _machine;
@@ -88,6 +99,9 @@ namespace surface
 
       void
       _finish();
+
+      void
+      _reject();
 
       void
       _fail();
@@ -112,12 +126,14 @@ namespace surface
       // machine in this state.
       reactor::fsm::State& _transfer_core_state;
       reactor::fsm::State& _finish_state;
+      reactor::fsm::State& _reject_state;
       reactor::fsm::State& _cancel_state;
       reactor::fsm::State& _fail_state;
       reactor::fsm::State& _clean_state;
 
     protected:
       reactor::Barrier _finished;
+      reactor::Barrier _rejected;
       reactor::Barrier _canceled;
       reactor::Barrier _failed;
 
