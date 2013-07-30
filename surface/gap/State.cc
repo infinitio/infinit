@@ -656,6 +656,16 @@ namespace surface
         });
     }
 
+    State::TransferIterator
+    State::_machine_by_id(uint16_t id) const
+    {
+      return this->_find_machine(
+        [&] (TransferMachinePtr const& machine)
+        {
+          return machine->has_id(id);
+        });
+    }
+
     void
     State::_on_transaction_notification(TransactionNotification const& notif,
                                         bool is_new)
@@ -709,16 +719,20 @@ namespace surface
       transfer_machine.on_peer_connection_update(notif);
     }
 
-    void
+    uint16_t
     State::send_files(std::string const& recipient,
                       std::unordered_set<std::string>&& files)
     {
       ELLE_TRACE_SCOPE("%s: send file %s to %s", *this, files, recipient);
-      this->_transfers.emplace_back(
-        new SendMachine{*this, recipient, std::move(files)});
+
+      std::unique_ptr<SendMachine> p{new SendMachine{*this, recipient, std::move(files)}};
+      uint16_t tid = p->id();
+      this->_transfers.emplace_back(std::move(p));
+
+      return tid;
     }
 
-    void
+    uint16_t
     State::accept_transaction(std::string const& transaction_id)
     {
       ELLE_TRACE_SCOPE("%s: accept transaction %s", *this, transaction_id);
@@ -731,17 +745,20 @@ namespace surface
         if (transfer_machine.is_sender())
           throw Exception(gap_error, "only recipient can accept transactions");
 
+        uint16_t id = transfer_machine.id();
         auto& receive_machine = (ReceiveMachine&) transfer_machine;
         receive_machine.accept();
+        return id;
       }
       catch (Exception const&)
       {
         ELLE_ERR("%s: no machine was found for %s", transaction_id);
         throw;
       }
+      return 0;
     }
 
-    void
+    uint16_t
     State::reject_transaction(std::string const& transaction_id)
     {
       ELLE_TRACE_SCOPE("%s: reject transaction %s", *this, transaction_id);
@@ -755,16 +772,19 @@ namespace surface
           throw Exception(gap_error, "only recipient can reject transactions");
 
         auto& receive_machine = (ReceiveMachine&) transfer_machine;
+        uint16_t id = receive_machine.id();
         receive_machine.reject();
+        return id;
       }
       catch (Exception const&)
       {
         ELLE_ERR("%s: no machine was found for %s", transaction_id);
         throw;
       }
+      return 0;
     }
 
-    void
+    uint16_t
     State::cancel_transaction(std::string const& transaction_id)
     {
       ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, transaction_id);
@@ -773,15 +793,36 @@ namespace surface
       {
         ELLE_ASSERT(*this->_machine_by_transaction(transaction_id) != nullptr);
         auto& transfer_machine = **this->_machine_by_transaction(transaction_id);
+        uint16_t id = transfer_machine.id();
         transfer_machine.cancel();
+        return id;
       }
       catch (Exception const&)
       {
         ELLE_ERR("%s: no machine was found for %s", transaction_id);
         throw;
       }
+      return 0;
     }
 
+    void
+    State::join_transaction(uint16_t id)
+    {
+      ELLE_TRACE_SCOPE("%s: join transaction %s", *this, id);
+
+      try
+      {
+        ELLE_ASSERT(*this->_machine_by_id(id) != nullptr);
+        auto& transfer_machine = **this->_machine_by_id(id);
+
+        transfer_machine.join();
+      }
+      catch (Exception const&)
+      {
+        ELLE_ERR("%s: no machine was found for %s", id);
+        throw;
+      }
+    }
 
   }
 }
