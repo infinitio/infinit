@@ -427,7 +427,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("set_output_dir", &gap_set_output_dir);
   py::def("get_output_dir", &gap_get_output_dir);
   py::def("transaction_progress", &gap_transaction_progress);
-  py::def("transaction_is_accepted", &gap_transaction_accepted);
   py::def("transaction_sender_id", &gap_transaction_sender_id);
   py::def("transaction_sender_fullname", &gap_transaction_sender_fullname);
   py::def("transaction_sender_device_id", &gap_transaction_sender_device_id);
@@ -439,7 +438,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transaction_files_count", &gap_transaction_files_count);
   py::def("transaction_total_size", &gap_transaction_total_size);
   py::def("transaction_is_directory", &gap_transaction_is_directory);
-  py::def("transaction_accepted", &gap_transaction_accepted);
   py::def("transaction_status", &gap_transaction_status);
   py::def("transaction_message", &gap_transaction_message);
 }

@@ -190,7 +190,6 @@ class Create(Page):
 
             'timestamp': time.time(),
             'status': CREATED,
-            'accepted': False,
         }
 
         transaction_id = database.transactions().insert(transaction)
@@ -388,7 +387,6 @@ class One(Page):
             'is_directory' :
 
             'status' : <TransactionStatus>,
-            'accepted': <bool>
         }
     """
 

@@ -43,7 +43,6 @@ namespace plasma
       << ", t=" << t.timestamp
       << ", file=" << t.first_filename
       << ", status=" << (plasma::TransactionStatus) t.status
-      << ", accepted=" <<  t.accepted
       << ") "
       << "from " << t.sender_fullname << " (" << t.sender_id << ") "
       << "on device " << t.sender_device_id << ", "

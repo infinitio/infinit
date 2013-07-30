@@ -49,7 +49,6 @@ class _State:
             'accept_transaction',
             'transactions',
             'transaction_progress',
-            'transaction_is_accepted',
             'transaction_sender_id',
             'transaction_sender_fullname',
             'transaction_sender_device_id',
@@ -61,7 +60,6 @@ class _State:
             'transaction_files_count',
             'transaction_total_size',
             'transaction_is_directory',
-            'transaction_accepted',
             'transaction_status',
 
             # Notifications

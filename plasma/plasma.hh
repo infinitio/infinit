@@ -44,7 +44,6 @@ namespace plasma
     int total_size;
     bool is_directory;
     TransactionStatus status;
-    bool accepted;
     double timestamp;
 
     virtual

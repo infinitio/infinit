@@ -40,7 +40,6 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & named("timestamp", res.timestamp);
   ar & named("is_directory", res.is_directory);
   ar & named("status", res.status);
-  ar & named("accepted", res.accepted);
 }
 
 #endif

@@ -797,7 +797,6 @@ extern "C"
   DEFINE_TRANSACTION_GETTER_INT(total_size)
   DEFINE_TRANSACTION_GETTER_DOUBLE(timestamp)
   DEFINE_TRANSACTION_GETTER_BOOL(is_directory)
-  DEFINE_TRANSACTION_GETTER_BOOL(accepted)
   // _transform_ is a cast from plasma::TransactionStatus
   DEFINE_TRANSACTION_GETTER(gap_TransactionStatus,
                             status,
