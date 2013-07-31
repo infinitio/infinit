@@ -95,7 +95,8 @@ BOOST_AUTO_TEST_CASE(timeout)
   {
     wait(sync_client); // Listening
     plasma::meta::Client c("127.0.0.1", port);
-    c.debug();
+    BOOST_CHECK_THROW(c.debug(), std::runtime_error);
+    s.terminate();
   };
   reactor::Thread c(sched, "client", client);
   sched.run();
