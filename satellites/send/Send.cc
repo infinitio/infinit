@@ -63,7 +63,6 @@ parse_options(int argc, char** argv)
   return vm;
 }
 
-
 int main(int argc, char** argv)
 {
   try
@@ -82,14 +81,17 @@ int main(int argc, char** argv)
     state.login(user, hashed_password);
     // state.update_device("lust");
 
-    auto id = state.send_files(to, { file.c_str() });
+    auto mid = state.send_files(to, { file.c_str() });
 
     bool stop = false;
+    std::string transaction_id;
     state.notification_manager().transaction_callback(
       [&] (plasma::trophonius::TransactionNotification const& t, bool)
       {
-        // if (transaction_id != t.id)
-        //   return;
+        if (state.transaction_id(mid) != t.id)
+          return;
+
+        transaction_id = t.id;
 
         if (t.status == plasma::TransactionStatus::finished ||
             t.status == plasma::TransactionStatus::canceled)
@@ -99,7 +101,7 @@ int main(int argc, char** argv)
     while (!stop)
       state.notification_manager().poll(1);
 
-    state.join_transaction(id);
+    state.join_transaction(transaction_id);
   }
   catch (std::runtime_error const& e)
   {

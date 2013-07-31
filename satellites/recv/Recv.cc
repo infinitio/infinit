@@ -4,6 +4,7 @@
 #include <boost/program_options.hpp>
 
 #include <elle/Exception.hh>
+#include <elle/assert.hh>
 
 #include <lune/Lune.hh>
 #include <surface/gap/gap.h>
@@ -59,7 +60,6 @@ parse_options(int argc, char** argv)
   return vm;
 }
 
-
 int main(int argc, char** argv)
 {
   try
@@ -93,7 +93,7 @@ int main(int argc, char** argv)
       throw std::runtime_error("invalid id");
 
     auto transaction_id = transactions[indice];
-    auto id = state.accept_transaction(transaction_id);
+    auto mid = state.accept_transaction(transaction_id);
 
     bool stop = false;
     state.notification_manager().transaction_callback(
@@ -101,6 +101,8 @@ int main(int argc, char** argv)
       {
         if (transaction_id != t.id)
           return;
+
+        ELLE_ASSERT(transaction_id == state.transaction_id(mid));
 
         if (t.status == plasma::TransactionStatus::finished ||
             t.status == plasma::TransactionStatus::canceled)
@@ -110,7 +112,7 @@ int main(int argc, char** argv)
     while (!stop)
       state.notification_manager().poll(1);
 
-    state.join_transaction(id);
+    state.join_transaction(transaction_id);
   }
   catch (std::runtime_error const& e)
   {
