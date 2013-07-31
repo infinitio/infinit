@@ -18,17 +18,31 @@ class Transaction:
         self.localy_accepted = False
         self.finished = False
 
+    def status_dict(self, reverse = False):
+        if reverse:
+            return {
+                 "created": self.state.TransactionStatus.created,
+                 "initialized": self.state.TransactionStatus.initialized,
+                 "canceled": self.state.TransactionStatus.canceled,
+                 "accepted": self.state.TransactionStatus.accepted,
+                 "failed": self.state.TransactionStatus.failed,
+                 "ready": self.state.TransactionStatus.ready,
+                 "finished": self.state.TransactionStatus.finished,
+                 }
+        else:
+            return {
+                self.state.TransactionStatus.created: "created",
+                self.state.TransactionStatus.initialized: "initialized",
+                self.state.TransactionStatus.canceled: "canceled",
+                self.state.TransactionStatus.accepted: "accepted",
+                self.state.TransactionStatus.failed: "failed",
+                self.state.TransactionStatus.ready: "ready",
+                self.state.TransactionStatus.finished: "finished",
+        }
+
     @property
     def status(self):
-        return {
-            self.state.TransactionStatus.created: "created",
-            self.state.TransactionStatus.initialized: "initialized",
-            self.state.TransactionStatus.canceled: "canceled",
-            self.state.TransactionStatus.accepted: "accepted",
-            self.state.TransactionStatus.failed: "failed",
-            self.state.TransactionStatus.ready: "ready",
-            self.state.TransactionStatus.finished: "finished",
-        }[self.state.transaction_status(self.id)]
+        return self.status_dict()[self.state.transaction_status(self.id)]
 
     @property
     def progress(self):
@@ -68,6 +82,7 @@ class User:
         self.use_temporary = self.output_dir is None
         self.temporary_output_dir = None
         self.machine_id = 0
+        self.transactions = dict()
 
     def _init_state(self):
         # state setup
@@ -129,10 +144,8 @@ class User:
                 self.temporary_output_dir.__exit__(type, value, tb)
         except Exception as e:
             import sys
-            print(
-                "Couldn't remove", self.output_dir, "output directory: ", e,
-                file = sys.stderr
-            )
+            print("Couldn't remove %s output directory: %s" % (self.output_dir, e),
+                  file = sys.stderr)
         finally:
             self.temporary_output_dir = None
 
@@ -159,7 +172,7 @@ class User:
             self.transactions[transaction_id] = Transaction(
                 self.state,
                 transaction_id
-            )
+                )
         self.on_transaction(transaction_id, status, is_new)
 
     def on_transaction(self, transaction_id, status, is_new):
@@ -170,17 +183,14 @@ class User:
         is_sender = (self.id == self.state.transaction_sender_id(transaction_id))
         if status == state.TransactionStatus.canceled:
             print("Transaction canceled")
-            sys.exit(1)
         elif status == state.TransactionStatus.failed:
             print("Transaction canceled")
-            sys.exit(1)
         elif not is_sender and not self.transactions[transaction_id].localy_accepted:
             if status == state.TransactionStatus.initialized:
                 self.transactions[transaction_id].localy_accepted = True
                 self.machine_id = state.accept_transaction(transaction_id)
         elif status == state.TransactionStatus.finished:
             self.transactions[transaction_id].finished = True
-            print("Join")
             self.state.join_transaction(transaction_id)
 
 # This user recreate a new email and reregister on __enter__.
@@ -223,14 +233,15 @@ class DoNothingUser(User):
 class CancelUser(User):
     def __init__(self, when = None, delay = 0, *args, **kwargs):
         assert when is not None
-        assert when in ["created", "started"]
+        assert when in ["initialized", "ready", "accepted"]
+        super().__init__(*args, **kwargs)
         self.when = when
         self.delay = delay
-        super().__init__(*args, **kwargs)
 
     def on_transaction(self, transaction_id, status, is_new):
         assert is_new
         state = self.state
+        transaction = self.transactions[transaction_id]
         assert self.id == state.transaction_recipient_id(transaction_id) or \
                self.id == state.transaction_sender_id(transaction_id)
         is_sender = (self.id == self.state.transaction_sender_id(transaction_id))
@@ -238,8 +249,6 @@ class CancelUser(User):
             pass
         elif status == state.TransactionStatus.failed:
             print("Transaction failed")
-        elif (status == state.TransactionStatus.initialized and self.when == "initialized") or \
-             (status == state.TransactionStatus.ready and self.when == "ready") or \
-             (status == state.TransactionStatus.accepted and self.when == "accepted"):
+        if (status == transaction.status_dict(reverse = True)[self.when]):
             time.sleep(self.delay / 1000)
             state.cancel_transaction(transaction_id)
