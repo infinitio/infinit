@@ -388,7 +388,6 @@ namespace surface
     TransferMachine::scheduler() const
     {
       ELLE_ASSERT(this->_scheduler_thread != nullptr);
-      ELLE_ASSERT(!this->_scheduler.done());
       return this->_scheduler;
     }
 

@@ -183,6 +183,7 @@ namespace surface
       {
         case plasma::TransactionStatus::accepted:
           ELLE_DEBUG("%s: open accepted barrier", *this);
+          if (this->scheduler().done()) return;
           this->scheduler().mt_run<void>("open accepted barrier", [this]
             {
               this->_accepted.open();
@@ -190,6 +191,7 @@ namespace surface
           break;
         case plasma::TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this);
+          if (this->scheduler().done()) return;
           this->scheduler().mt_run<void>("open canceled barrier", [this]
             {
               this->_canceled.open();
@@ -197,6 +199,7 @@ namespace surface
           break;
         case plasma::TransactionStatus::failed:
           ELLE_DEBUG("%s: open failed barrier", *this);
+          if (this->scheduler().done()) return;
           this->scheduler().mt_run<void>("open failed barrier", [this]
             {
               this->_failed.open();
@@ -204,6 +207,7 @@ namespace surface
           break;
         case plasma::TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this);
+          if (this->scheduler().done()) return;
           this->scheduler().mt_run<void>("open finished barrier", [this]
             {
               this->_finished.open();
@@ -211,6 +215,7 @@ namespace surface
           break;
         case plasma::TransactionStatus::rejected:
           ELLE_DEBUG("%s: open rejected barrier", *this);
+          if (this->scheduler().done()) return;
           this->scheduler().mt_run<void>("open rejected barrier", [this]
             {
               this->_rejected.open();
