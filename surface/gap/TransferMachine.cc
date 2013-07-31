@@ -28,10 +28,10 @@ namespace surface
   namespace gap
   {
     static
-    uint16_t
+    uint32_t
     generate_id()
     {
-      static uint16_t id = 0;
+      static uint32_t id = 0;
       return id++;
     }
 
@@ -338,7 +338,7 @@ namespace surface
     }
 
     bool
-    TransferMachine::has_id(uint16_t id)
+    TransferMachine::has_id(uint32_t id)
     {
       return (id == this->_id);
     }

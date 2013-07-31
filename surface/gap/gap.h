@@ -2,6 +2,7 @@
 # define SURFACE_GAP_GAP_H
 
 # include <stddef.h>
+# include <stdint.h>
 
 # ifdef __cplusplus
 extern "C" {
@@ -190,10 +191,6 @@ extern "C" {
   gap_transaction_is_directory(gap_State*,
                                char const*);
 
-  gap_Bool
-  gap_transaction_accepted(gap_State* state,
-                           char const* transaction_id);
-
   gap_TransactionStatus
   gap_transaction_status(gap_State*,
                          char const*);
@@ -328,27 +325,40 @@ extern "C" {
                         gap_on_error_callback_t cb);
 
   /// Send files to a specific user.
-  gap_Status
+  /// If the return value is 0, the operation failed.
+  uint32_t
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files);
 
   /// Cancel transaction.
-  gap_Status
+  /// If the return value is 0, the operation failed.
+  uint32_t
   gap_cancel_transaction(gap_State* state,
                          char const* transaction_id);
 
   /// Reject transaction.
-  gap_Status
+  /// This function can only be used by the recipient of the transaction, if
+  /// not already rejected or accepted.
+  /// If the return value is 0, the operation failed.
+  uint32_t
   gap_reject_transaction(gap_State* state,
                          char const* transaction_id);
 
   /// Accept a transaction.
   /// This function can only be used by the recipient of the transaction, if
-  /// not already accepted.
-  gap_Status
+  /// not already accepted or rejected.
+  /// If the return value is 0, the operation failed.
+  uint32_t
   gap_accept_transaction(gap_State* state,
                          char const* transaction_id);
+
+  /// Join a transaction.
+  /// This function will block as long as the transaction is not terminated
+  /// and cleaned.
+  gap_Status
+  gap_join_transaction(gap_State* state,
+                       char const* transaction_id);
 
   // Set output directory.
   gap_Status

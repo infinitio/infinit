@@ -257,32 +257,38 @@ namespace surface
       _machine_by_network(std::string const& network_id) const;
 
       TransferIterator
-      _machine_by_id(uint16_t id) const;
+      _machine_by_id(uint32_t id) const;
 
     public:
+      std::string const&
+      transaction_id(uint32_t id) const;
+
       /*-------.
       | Sender |
       `-------*/
-      uint16_t
+      uint32_t
       send_files(std::string const& recipient,
                  std::unordered_set<std::string>&& files);
 
       /*----------.
       | Recipient |
       `----------*/
-      uint16_t
+      uint32_t
       accept_transaction(std::string const& transaction_id);
 
-      uint16_t
+      uint32_t
       cancel_transaction(std::string const& transaction_id);
 
-      uint16_t
+      uint32_t
       reject_transaction(std::string const& transaction_id);
 
       /// In order to ensure a cleanup of the transaction, it's better to keep
-      /// a track of it and join it when your file is received.
+      /// a track of it and join it when your file is received or sent.
+      // void
+      // join_transaction(uint32_t id);
+
       void
-      join_transaction(uint16_t id);
+      join_transaction(std::string const& transaction_id);
 
     /*----------.
     | Printable |

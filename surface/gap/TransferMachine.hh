@@ -68,7 +68,7 @@ namespace surface
       concerns_user(std::string const& user_id);
 
       bool
-      has_id(uint16_t id);
+      has_id(uint32_t id);
 
     public:
       void
@@ -87,7 +87,7 @@ namespace surface
       reactor::Scheduler&
       scheduler() const;
       ELLE_ATTRIBUTE(std::unique_ptr<std::thread>, scheduler_thread);
-      ELLE_ATTRIBUTE_R(uint16_t, id);
+      ELLE_ATTRIBUTE_R(uint32_t, id);
 
     protected:
       reactor::fsm::Machine _machine;
@@ -181,10 +181,12 @@ namespace surface
       | Transaction |
       `------------*/
       ELLE_ATTRIBUTE(std::string, transaction_id);
-    protected:
+
+    public:
       std::string const&
       transaction_id() const;
 
+    protected:
       void
       transaction_id(std::string const& id);
 

@@ -424,6 +424,8 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("send_files", &_send_files);
   py::def("cancel_transaction", &gap_cancel_transaction);
   py::def("accept_transaction", &gap_accept_transaction);
+  py::def("reject_transaction", &gap_reject_transaction);
+  py::def("join_transaction", &gap_join_transaction);
   py::def("set_output_dir", &gap_set_output_dir);
   py::def("get_output_dir", &gap_get_output_dir);
   py::def("transaction_progress", &gap_transaction_progress);

@@ -886,7 +886,7 @@ extern "C"
     ::free(transactions);
   }
 
-  gap_Status
+  uint32_t
   gap_send_files(gap_State* state,
                  char const* recipient_id,
                  char const* const* files)
@@ -896,7 +896,6 @@ extern "C"
     assert(files != nullptr);
 
     gap_Status ret = gap_ok;
-
     try
     {
       std::unordered_set<std::string> s;
@@ -907,14 +906,14 @@ extern "C"
           ++files;
         }
 
-      __TO_CPP(state)->send_files(recipient_id, std::move(s));
-      return gap_ok;
+      return __TO_CPP(state)->send_files(recipient_id, std::move(s));
     }
     CATCH_ALL(send_files);
-    return ret;
+    (void) ret;
+    return 0;
   }
 
-  gap_Status
+  uint32_t
   gap_cancel_transaction(gap_State* state,
                          char const* transaction_id)
   {
@@ -923,13 +922,14 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      __TO_CPP(state)->cancel_transaction(transaction_id);
+      return __TO_CPP(state)->cancel_transaction(transaction_id);
     }
     CATCH_ALL(cancel_transaction);
-    return ret;
+    (void) ret;
+    return 0;
   }
 
-  gap_Status
+  uint32_t
   gap_reject_transaction(gap_State* state,
                          char const* transaction_id)
   {
@@ -938,13 +938,14 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      __TO_CPP(state)->reject_transaction(transaction_id);
+      return __TO_CPP(state)->reject_transaction(transaction_id);
     }
     CATCH_ALL(reject_transaction);
-    return ret;
+    (void) ret;
+    return 0;
   }
 
-  gap_Status
+  uint32_t
   gap_accept_transaction(gap_State* state,
                          char const* transaction_id)
   {
@@ -953,11 +954,29 @@ extern "C"
     gap_Status ret = gap_ok;
     try
     {
-      __TO_CPP(state)->accept_transaction(transaction_id);
+      return __TO_CPP(state)->accept_transaction(transaction_id);
     }
     CATCH_ALL(accept_transaction);
+    (void) ret;
+    return 0;
+  }
+
+  gap_Status
+  gap_join_transaction(gap_State* state,
+                       char const* transaction_id)
+  {
+    assert(state != nullptr);
+    assert(transaction_id != nullptr);
+    gap_Status ret = gap_ok;
+    try
+    {
+      __TO_CPP(state)->join_transaction(transaction_id);
+      return ret;
+    }
+    CATCH_ALL(join_transaction);
     return ret;
   }
+
 
   gap_Status
   gap_set_output_dir(gap_State* state,
