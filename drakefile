@@ -1061,6 +1061,8 @@ def configure(cxx_toolkit = None,
     'transfer',
     'user',
     'dump',
+    'recv',
+    'send',
     ]:
     satellite(name)
 
