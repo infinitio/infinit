@@ -67,6 +67,7 @@ class User:
         self.output_dir = output_dir
         self.use_temporary = self.output_dir is None
         self.temporary_output_dir = None
+        self.machine_id = 0
 
     def _init_state(self):
         # state setup
@@ -147,11 +148,11 @@ class User:
         # import lepl.apps.rfc3696
         # validator = lepl.apps.rfc3696.Email()
         # assert validator(email)
-        self.state.send_files(email, files)
+        self.machine_id = self.state.send_files(email, files)
 
     def _send_to_user(self, files, recipient):
         assert isinstance(recipient, User)
-        self.state.send_files(recipient.id, files)
+        self.machine_id = self.state.send_files(recipient.id, files)
 
     def _on_transaction(self, transaction_id, status, is_new):
         if transaction_id not in self.transactions:
@@ -176,9 +177,11 @@ class User:
         elif not is_sender and not self.transactions[transaction_id].localy_accepted:
             if status == state.TransactionStatus.initialized:
                 self.transactions[transaction_id].localy_accepted = True
-                state.accept_transaction(transaction_id)
+                self.machine_id = state.accept_transaction(transaction_id)
         elif status == state.TransactionStatus.finished:
             self.transactions[transaction_id].finished = True
+            print("Join")
+            self.state.join_transaction(transaction_id)
 
 # This user recreate a new email and reregister on __enter__.
 class GhostUser(User):
