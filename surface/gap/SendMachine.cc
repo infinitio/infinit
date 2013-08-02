@@ -179,44 +179,43 @@ namespace surface
                        *this, transaction);
 
       ELLE_ASSERT_EQ(this->transaction_id(), transaction.id);
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      auto& scheduler = *reactor::Scheduler::scheduler();
+
       switch (transaction.status)
       {
         case plasma::TransactionStatus::accepted:
           ELLE_DEBUG("%s: open accepted barrier", *this);
-          if (this->scheduler().done()) return;
-          this->scheduler().mt_run<void>("open accepted barrier", [this]
+          scheduler.mt_run<void>("open accepted barrier", [this]
             {
               this->_accepted.open();
             });
           break;
         case plasma::TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this);
-          if (this->scheduler().done()) return;
-          this->scheduler().mt_run<void>("open canceled barrier", [this]
+          scheduler.mt_run<void>("open canceled barrier", [this]
             {
               this->_canceled.open();
             });
           break;
         case plasma::TransactionStatus::failed:
           ELLE_DEBUG("%s: open failed barrier", *this);
-          if (this->scheduler().done()) return;
-          this->scheduler().mt_run<void>("open failed barrier", [this]
+          scheduler.mt_run<void>("open failed barrier", [this]
             {
               this->_failed.open();
             });
           break;
         case plasma::TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this);
-          if (this->scheduler().done()) return;
-          this->scheduler().mt_run<void>("open finished barrier", [this]
+          scheduler.mt_run<void>("open finished barrier", [this]
             {
               this->_finished.open();
             });
           break;
         case plasma::TransactionStatus::rejected:
           ELLE_DEBUG("%s: open rejected barrier", *this);
-          if (this->scheduler().done()) return;
-          this->scheduler().mt_run<void>("open rejected barrier", [this]
+          scheduler.mt_run<void>("open rejected barrier", [this]
             {
               this->_rejected.open();
             });
@@ -230,32 +229,6 @@ namespace surface
         case plasma::TransactionStatus::started:
         case plasma::TransactionStatus::_count:
           elle::unreachable();
-      }
-    }
-
-    void
-    SendMachine::on_peer_connection_update(PeerConnectionUpdateNotification const& notif)
-    {
-      ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
-                       *this, notif);
-
-      ELLE_ASSERT_EQ(this->network_id(), notif.network_id);
-
-      if (notif.status)
-      {
-        ELLE_DEBUG("%s: signal peer online", *this);
-        this->scheduler().mt_run<void>("signal peer online", [this]
-          {
-            this->_peer_online.signal();
-          });
-      }
-      else
-      {
-        ELLE_DEBUG("%s: signal peer offline", *this);
-        this->scheduler().mt_run<void>("signal peer offline", [this]
-          {
-            this->_peer_offline.signal();
-          });
       }
     }
 

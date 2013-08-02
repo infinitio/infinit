@@ -50,9 +50,8 @@ namespace surface
       void
       on_transaction_update(plasma::Transaction const& transaction) = 0;
 
-      virtual
       void
-      on_peer_connection_update(PeerConnectionUpdateNotification const& notif) = 0;
+      on_peer_connection_update(PeerConnectionUpdateNotification const& notif);
 
       void
       cancel();
@@ -81,12 +80,6 @@ namespace surface
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/
-    private:
-      ELLE_ATTRIBUTE_P(reactor::Scheduler, scheduler, mutable);
-    public:
-      reactor::Scheduler&
-      scheduler() const;
-      ELLE_ATTRIBUTE(std::unique_ptr<std::thread>, scheduler_thread);
       ELLE_ATTRIBUTE_R(uint32_t, id);
 
     protected:
@@ -114,6 +107,12 @@ namespace surface
 
     private:
       void
+      _local_clean();
+
+      void
+      _remote_clean();
+
+      void
       _clean();
 
     protected:
@@ -129,7 +128,8 @@ namespace surface
       reactor::fsm::State& _reject_state;
       reactor::fsm::State& _cancel_state;
       reactor::fsm::State& _fail_state;
-      reactor::fsm::State& _clean_state;
+      reactor::fsm::State& _remote_clean_state;
+      reactor::fsm::State& _local_clean_state;
 
     protected:
       reactor::Barrier _finished;

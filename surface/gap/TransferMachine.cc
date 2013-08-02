@@ -37,8 +37,6 @@ namespace surface
 
     //---------- TransferMachine -----------------------------------------------
     TransferMachine::TransferMachine(surface::gap::State const& state):
-      _scheduler(),
-      _scheduler_thread(),
       _id(generate_id()),
       _machine(),
       _machine_thread(),
@@ -57,9 +55,12 @@ namespace surface
       _fail_state(
         this->_machine.state_make(
           "fail", std::bind(&TransferMachine::_fail, this))),
-      _clean_state(
+      _remote_clean_state(
         this->_machine.state_make(
-          "clean", std::bind(&TransferMachine::_clean, this))),
+          "remote clean", std::bind(&TransferMachine::_remote_clean, this))),
+      _local_clean_state(
+        this->_machine.state_make(
+          "local clean", std::bind(&TransferMachine::_local_clean, this))),
       _core_machine(),
       _publish_interfaces_state(
         this->_core_machine.state_make(
@@ -84,21 +85,27 @@ namespace surface
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_finish_state,
                                     reactor::Waitables{&this->_finished});
-      this->_machine.transition_add(this->_finish_state, this->_clean_state);
+      this->_machine.transition_add(this->_finish_state,
+                                    this->_remote_clean_state);
 
       // Cancel way.
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_cancel_state,
                                     reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(this->_cancel_state, this->_clean_state);
+      this->_machine.transition_add(this->_cancel_state,
+                                    this->_remote_clean_state);
 
       // Fail way.
       this->_machine.transition_add_catch(this->_transfer_core_state,
                                           this->_fail_state);
-      this->_machine.transition_add(this->_fail_state, this->_clean_state);
-
+      this->_machine.transition_add(this->_fail_state,
+                                    this->_remote_clean_state);
       // Reject.
-      this->_machine.transition_add(this->_reject_state, this->_clean_state);
+      this->_machine.transition_add(this->_reject_state,
+                                    this->_remote_clean_state);
+
+      this->_machine.transition_add(this->_remote_clean_state,
+                                    this->_local_clean_state);
 
       /*-------------.
       | Core Machine |
@@ -136,9 +143,9 @@ namespace surface
     }
 
     void
-    TransferMachine::_clean()
+    TransferMachine::_local_clean()
     {
-      ELLE_TRACE_SCOPE("%s: clean %s", *this, this->transaction_id());
+      ELLE_TRACE_SCOPE("%s: clean local %s", *this, this->transaction_id());
       auto path = common::infinit::network_directory(
         this->state().me().id, this->network_id());
 
@@ -148,6 +155,18 @@ namespace surface
 
         boost::filesystem::remove_all(path);
       }
+
+
+      ELLE_DEBUG("finalize etoile")
+        this->_etoile.reset();
+      ELLE_DEBUG("finalize hole")
+        this->_hole.reset();
+    }
+
+    void
+    TransferMachine::_remote_clean()
+    {
+      ELLE_TRACE_SCOPE("%s: clean remote %s", *this, this->transaction_id());
 
       try
       {
@@ -164,11 +183,6 @@ namespace surface
         ELLE_ERR("%s: clean failed: network %s wasn't deleted: %s",
                  *this, this->network_id(), elle::exception_string());
       }
-
-      ELLE_DEBUG("finalize etoile")
-        this->_etoile.reset();
-      ELLE_DEBUG("finalize hole")
-        this->_hole.reset();
 
       ELLE_DEBUG("%s: cleaned", *this);
     }
@@ -286,30 +300,44 @@ namespace surface
     TransferMachine::run(reactor::fsm::State& initial_state)
     {
       ELLE_TRACE_SCOPE("%s: running transfer machine", *this);
-      ELLE_ASSERT(this->_scheduler_thread == nullptr);
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      auto& scheduler = *reactor::Scheduler::scheduler();
 
       this->_machine_thread.reset(
         new reactor::Thread{
-          this->_scheduler,
+          scheduler,
           "run",
           [&] { this->_machine.run(initial_state); }});
+    }
 
-      this->_scheduler_thread.reset(
-        new std::thread{
-          [&]
+    void
+    TransferMachine::on_peer_connection_update(PeerConnectionUpdateNotification const& notif)
+    {
+      ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
+                       *this, notif);
+
+      ELLE_ASSERT_EQ(this->network_id(), notif.network_id);
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      auto& scheduler = *reactor::Scheduler::scheduler();
+
+      if (notif.status)
+      {
+        ELLE_DEBUG("%s: signal peer online", *this);
+        scheduler.mt_run<void>("signal peer online", [this]
           {
-            try
-            {
-              this->_scheduler.run();
-            }
-            catch (...)
-            {
-              ELLE_ERR("scheduling of network(%s) failed. Storing exception: %s",
-                       this->_network_id, elle::exception_string());
-              // this->exception = std::current_exception();
-            }
-          }
-        });
+            this->_peer_online.signal();
+          });
+      }
+      else
+      {
+        ELLE_DEBUG("%s: signal peer offline", *this);
+        scheduler.mt_run<void>("signal peer offline", [this]
+          {
+            this->_peer_offline.signal();
+          });
+      }
     }
 
     void
@@ -346,10 +374,7 @@ namespace surface
     void
     TransferMachine::join()
     {
-      ELLE_ASSERT(this->_scheduler_thread != nullptr);
 
-      if (this->_scheduler_thread->joinable())
-        this->_scheduler_thread->join();
     }
 
     void
@@ -358,37 +383,12 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: stop machine for transaction %s",
                        *this, this->_network_id);
 
-      ELLE_ASSERT(this->_scheduler_thread != nullptr);
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
-      if (!this->_scheduler.done())
-      {
-        this->_scheduler.mt_run<void>(
-          "terminate",
-          [this]
-          {
-            ELLE_DEBUG("%s: terminate scheduler", *this)
-              this->_scheduler.terminate_now();
-            ELLE_DEBUG("%s: finalize etoile", *this)
-              this->_etoile.reset();
-            ELLE_DEBUG("%s: finalize hole", *this)
-              this->_hole.reset();
-          });
-      }
-      else
-      {
-        ELLE_ASSERT(this->_etoile == nullptr);
-        ELLE_ASSERT(this->_hole == nullptr);
-      }
-
-      this->join();
-      this->_scheduler_thread.reset();
-    }
-
-    reactor::Scheduler&
-    TransferMachine::scheduler() const
-    {
-      ELLE_ASSERT(this->_scheduler_thread != nullptr);
-      return this->_scheduler;
+      ELLE_DEBUG("%s: finalize etoile", *this)
+        this->_etoile.reset();
+      ELLE_DEBUG("%s: finalize hole", *this)
+        this->_hole.reset();
     }
 
     /*-------------.
@@ -523,8 +523,11 @@ namespace surface
           };
 
           ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+          auto& scheduler = *reactor::Scheduler::scheduler();
+
           std::unique_ptr<reactor::Thread> thread_ptr{
-            new reactor::Thread (this->_scheduler,
+            new reactor::Thread (scheduler,
                                  elle::sprintf("connect_try(%s)", endpoint),
                                  fn)};
           connection_threads.push_back(std::move(thread_ptr));
@@ -540,9 +543,15 @@ namespace surface
 
         if (this->hole().hosts().empty())
         {
-          auto _this_thread = this->_scheduler.current();
+          ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+          auto& scheduler = *reactor::Scheduler::scheduler();
+
+          ELLE_ASSERT(scheduler.current() != nullptr);
+          auto& this_thread = *scheduler.current();
+
           ELLE_DEBUG("waiting for new host");
-          succeed = _this_thread->wait(this->hole().new_connected_host(), 10_sec);
+          succeed = this_thread.wait(this->hole().new_connected_host(), 10_sec);
           ELLE_DEBUG("finished waiting for new host");
         }
         else

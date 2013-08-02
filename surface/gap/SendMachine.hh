@@ -29,10 +29,6 @@ namespace surface
       void
       on_transaction_update(plasma::Transaction const& transaction) override;
 
-      virtual
-      void
-      on_peer_connection_update(PeerConnectionUpdateNotification const& notif) override;
-
     private:
       SendMachine(surface::gap::State const& state);
 
