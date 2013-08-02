@@ -254,8 +254,8 @@ def configure(cxx_toolkit = None,
 
   curly_libs = [
     curly_lib,
-    curly_sched_lib,
     curly_asio_lib,
+    curly_sched_lib,
   ]
 
   # Fuse
@@ -495,8 +495,32 @@ def configure(cxx_toolkit = None,
     'protocol/8rpc.cc'
     )
 
+  ## ------- ##
+  ## Metrics ##
+  ## ------- ##
 
-  # Plasma
+  metrics_sources = drake.nodes(
+    'metrics/Key.cc',
+    'metrics/Key.hh',
+    'metrics/Key.hxx',
+    'metrics/Metric.hh',
+    'metrics/Reporter.cc',
+    'metrics/Reporter.hh',
+    'metrics/Reporter.hxx',
+    'metrics/Service.cc',
+    'metrics/Service.hh',
+    'metrics/services/Google.cc',
+    'metrics/services/Google.hh',
+    'metrics/services/KISSmetrics.cc',
+    'metrics/services/KISSmetrics.hh',)
+
+  metrics_lib = drake.cxx.DynLib('lib/metrics',
+                                 metrics_sources + curly_libs + [cryptography_lib],
+                                 cxx_toolkit, cxx_config_libs)
+
+  ## ------ ##
+  ## Plasma ##
+  ## ------ ##
   plasma_sources = drake.nodes(
     'plasma/meta/Client.cc',
     'plasma/meta/Client.hh',
@@ -506,24 +530,23 @@ def configure(cxx_toolkit = None,
     'plasma/plasma.hh',
     'plasma/plasma.hxx',
     'plasma/plasma.cc',
-    ) + curly_libs \
-      + [
-          elle_lib,
-        ]
-  plasma_lib = drake.cxx.DynLib('lib/plasma', plasma_sources,
-                                cxx_toolkit, cxx_config_libs)
-  plasma_python_sources = plasma_sources + [
-    drake.node('plasma/python.cc'),
-    drake.node('plasma/trophonius/python.cc'),
-    drake.node('plasma/meta/python.cc'),
-  ]
+    )
+  plasma_lib = drake.cxx.DynLib(
+    'lib/plasma',
+    plasma_sources + curly_libs + [metrics_lib, elle_lib],
+    cxx_toolkit, cxx_config_libs)
+
+  plasma_python_sources = drake.nodes(
+    'plasma/python.cc',
+    'plasma/trophonius/python.cc',
+    'plasma/meta/python.cc')
   plasma_python_cxx_config = drake.cxx.Config(cxx_config)
   plasma_python_cxx_config += python3
   plasma_python_cxx_config += boost.config_python()
   plasma_python_cxx_config.lib_path_runtime('..')
   plasma_python_lib = drake.cxx.Module(
     'lib/python/plasma',
-    plasma_python_sources,
+    plasma_python_sources + [plasma_lib],
     cxx_toolkit, plasma_python_cxx_config)
   rule_plasma = drake.Rule('plasma')
   rule_plasma << plasma_python_lib
@@ -825,26 +848,6 @@ def configure(cxx_toolkit = None,
                                    cxx_toolkit, cxx_config)
     horizon_slib = drake.cxx.StaticLib('lib/horizon', horizon_sources,
                                        cxx_toolkit, cxx_config)
-
-  # Agent
-  metrics_sources = drake.nodes(
-    'metrics/Key.cc',
-    'metrics/Key.hh',
-    'metrics/Key.hxx',
-    'metrics/Metric.hh',
-    'metrics/Reporter.cc',
-    'metrics/Reporter.hh',
-    'metrics/Reporter.hxx',
-    'metrics/Service.cc',
-    'metrics/Service.hh',
-    'metrics/services/Google.cc',
-    'metrics/services/Google.hh',
-    'metrics/services/KISSmetrics.cc',
-    'metrics/services/KISSmetrics.hh',)
-
-  metrics_lib = drake.cxx.DynLib('lib/metrics', metrics_sources + [plasma_lib],
-                                 cxx_toolkit, cxx_config)
-
 
   ## ----- ##
   ## Tests ##
