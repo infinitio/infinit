@@ -92,10 +92,12 @@ BOOST_AUTO_TEST_CASE(test)
     using namespace plasma::trophonius;
     plasma::trophonius::Client c("127.0.0.1", port, [] {});
     wait(sync_client); // Listening
+    ELLE_LOG("connect");
     c.connect("", "", "");
     for (int i = 0; i < reconnections; ++i)
     {
       wait(sync_client); // Answered
+      BOOST_CHECK_EQUAL(c.reconnected(), i);
       ELLE_LOG("poll notifications");
       std::unique_ptr<Notification> notif = c.poll();
       BOOST_CHECK(notif);
@@ -104,12 +106,6 @@ BOOST_AUTO_TEST_CASE(test)
                         plasma::trophonius::NotificationType::message);
       sync_server.release(); // Polled
       wait(sync_client); // Disconnected
-      if (i == reconnections - 1)
-      {
-        BOOST_CHECK_THROW(c.poll(), std::runtime_error);
-      }
-      else
-        BOOST_CHECK(!c.poll());
     }
   };
   reactor::Thread c{sched, "client", std::move(client)};
@@ -181,7 +177,6 @@ BOOST_AUTO_TEST_CASE(ping)
     {
       ELLE_LOG("poll notifications");
       std::unique_ptr<plasma::trophonius::Notification> notif = client.poll();
-      sleep(period);
     }
   };
 
@@ -230,27 +225,35 @@ BOOST_AUTO_TEST_CASE(noping)
         buf.resize(bytes);
         if (buf[buf.length() - 1] != '\n')
           continue;
-        ELLE_LOG("got auth");
+        ELLE_LOG("got auth: %s", buf);
         break;
       }
-      while (true)
+      std::string buf(512, '\0');
+      int pings = 0;
+      try
       {
-        std::string buf(512, '\0');
-        size_t bytes = socket->read_some(network::Buffer(buf));
-        buf.resize(bytes);
-        if (buf[buf.length() - 1] != '\n')
-          continue;
-        auto ping_time = boost::posix_time::microsec_clock::local_time() - start;
-        ELLE_LOG("got ping after %s", ping_time);
-        BOOST_CHECK_LT(ping_time, period * 11 / 10);
+        while (true)
+        {
+          size_t bytes = socket->read_some(network::Buffer(buf));
+          buf.resize(bytes);
+          if (buf[buf.length() - 1] != '\n')
+            continue;
+          auto now = boost::posix_time::microsec_clock::local_time();
+          auto ping_time = now - start;
+          ELLE_LOG("got ping after %s: %s", ping_time, buf);
+          ++pings;
+          BOOST_CHECK_LT(ping_time, period * 11 / 10);
+          start = now;
+        }
+      }
+      catch (reactor::network::ConnectionClosed const&)
+      {
         // The client, not receiving pings, shall disconnect.
-        BOOST_CHECK_THROW(socket->read_some(network::Buffer(buf)),
-                          std::runtime_error);
         auto disconnection_time =
           boost::posix_time::microsec_clock::local_time() - start;
         ELLE_LOG("disconnection after %s", disconnection_time);
+        BOOST_CHECK_GE(pings, 1);
         BOOST_CHECK_LT(disconnection_time, period * 22 / 10);
-        break;
       }
     }
   };
@@ -259,16 +262,15 @@ BOOST_AUTO_TEST_CASE(noping)
   {
     plasma::trophonius::Client client("127.0.0.1", port, [] {});
     elle::Finally check([&] {
-        BOOST_CHECK_LE(client.reconnected() - (periods / 2), 1);
+        BOOST_CHECK_LE(std::abs(client.reconnected() - (periods / 2)), 1);
       });
     client.ping_period(period);
     wait(sync_client); // Listening
     client.connect("", "", "");
     while (true)
     {
-      ELLE_LOG("poll notifications");
-      std::unique_ptr<plasma::trophonius::Notification> notif = client.poll();
-      sleep(period);
+      ELLE_LOG("poll notifications")
+        std::unique_ptr<plasma::trophonius::Notification> notif = client.poll();
     }
   };
 

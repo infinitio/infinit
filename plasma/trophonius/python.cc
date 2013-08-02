@@ -60,7 +60,6 @@ void export_trophonius()
   class_<Client, boost::noncopyable>(
     "Trophonius", init<std::string const&, uint16_t, object>())
     .def("connect", &Client::connect)
-    .def("has_notification", &Client::has_notification)
     .def("poll", &Client::poll)
     .add_property("retries", &Client::reconnected)
     .add_property("ping_period",

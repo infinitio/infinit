@@ -140,53 +140,17 @@ namespace plasma
     Client::_post(std::string const& url,
                   elle::format::json::Object const& req) const
     {
-      // XXX Curl is supposed to be thread-safe.
-      std::unique_lock<std::mutex> lock(this->_mutex);
-      std::stringstream in;
-      std::stringstream out;
-      curly::request_configuration c = curly::make_post();
-
-      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
-      c.option(CURLOPT_DEBUGDATA, this);
-      c.option(CURLOPT_TIMEOUT, 15);
-
-      req.repr(in);
-      c.option(CURLOPT_POSTFIELDSIZE, in.str().size());
-      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-      c.url(elle::sprintf("%s%s", this->_root_url, url));
-      c.user_agent(this->_user_agent);
-      c.input(in);
-      c.output(out);
-      c.headers({
-        {"Authorization", this->_token},
-        {"Connection", "close"},
-      });
-      curly::request request(std::move(c));
-      return this->_deserialize_answer<T>(out);
+      std::stringstream resp;
+      this->_post(url, req, resp);
+      return this->_deserialize_answer<T>(resp);
     }
 
     template <typename T>
     T
     Client::_get(std::string const& url) const
     {
-      // XXX Curl is supposed to be thread-safe.
-      std::unique_lock<std::mutex> lock(this->_mutex);
       std::stringstream resp;
-      curly::request_configuration c = curly::make_get();
-
-      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
-      c.option(CURLOPT_DEBUGDATA, this);
-      c.option(CURLOPT_TIMEOUT, 15);
-
-      c.url(elle::sprintf("%s%s", this->_root_url, url));
-      c.output(resp);
-      c.user_agent(this->_user_agent);
-      c.headers({
-        {"Authorization", this->_token},
-        {"Connection", "close"},
-      });
-      curly::request request(std::move(c));
+      this->_get(url, resp);
       return this->_deserialize_answer<T>(resp);
     }
 

@@ -5,8 +5,12 @@
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/MapSerializer.hxx>
 
-#include "Client.hh"
+#include <reactor/scheduler.hh>
+
 #include <curly/curly.hh>
+#include <curly/curly_sched.hh>
+
+#include <plasma/meta/Client.hh>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -790,42 +794,6 @@ namespace plasma
 
     //- Properties ------------------------------------------------------------
 
-    void
-    Client::token(std::string const& tok)
-    {
-      this->_token = tok;
-    }
-
-    std::string const&
-    Client::token() const
-    {
-      return this->_token;
-    }
-
-    std::string const&
-    Client::identity() const
-    {
-      return _identity;
-    }
-
-    void
-    Client::identity(std::string const& str)
-    {
-      _identity = str;
-    }
-
-    std::string const&
-    Client::email() const
-    {
-      return _email;
-    }
-
-    void
-    Client::email(std::string const& str)
-    {
-      _email = str;
-    }
-
     std::ostream&
     operator <<(std::ostream& out,
                 Error e)
@@ -841,6 +809,65 @@ namespace plasma
       }
 
       return out;
+    }
+
+    /*---------.
+    | Requests |
+    `---------*/
+
+    static
+    void
+    _query(std::string const& url,
+           curly::request_configuration& c,
+           std::ostream& resp,
+           Client const* client)
+    {
+      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+      c.option(CURLOPT_DEBUGDATA, client);
+      c.option(CURLOPT_TIMEOUT, 15);
+      c.url(elle::sprintf("%s%s", client->root_url(), url));
+      c.user_agent(client->user_agent());
+      c.headers({
+        {"Authorization", client->token()},
+        {"Connection", "close"},
+      });
+
+      c.output(resp);
+
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      curly::sched_request request(*reactor::Scheduler::scheduler(),
+                                   std::move(c));
+      request.run();
+    }
+
+    void
+    Client::_post(std::string const& url,
+                  elle::format::json::Object const& req,
+                  std::ostream& resp) const
+    {
+      // XXX Curl is supposed to be thread-safe.
+      std::unique_lock<std::mutex> lock(this->_mutex);
+      curly::request_configuration c = curly::make_post();
+
+      std::stringstream input;
+      req.repr(input);
+      c.option(CURLOPT_POSTFIELDSIZE, input.str().size());
+      c.input(input);
+
+      _query(url, c, resp, this);
+    }
+
+    void
+    Client::_get(std::string const& url,
+                 std::ostream& resp) const
+    {
+      // XXX Curl is supposed to be thread-safe.
+      std::unique_lock<std::mutex> lock(this->_mutex);
+      curly::request_configuration c = curly::make_get();
+
+      _query(url, c, resp, this);
     }
 
     /*----------.
