@@ -12,7 +12,7 @@ namespace metrics
     {
     public:
       KISSmetrics(std::string const& pkey,
-                  common::metrics::Info const& info);
+                  Service::Info const& info);
 
     protected:
       void

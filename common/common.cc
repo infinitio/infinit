@@ -477,17 +477,25 @@ namespace common
   namespace metrics
   {
     std::string const&
-    fallback_path()
+    google_fallback_path()
     {
-      static std::string const fb_path = path::join(common::infinit::home(),
-                                                    "analytics.fallback");
+      static std::string const fb_path = path::join(
+        common::infinit::home(), "google_analytics.fallback");
       return fb_path;
     }
 
-    Info const&
+    std::string const&
+    fallback_path()
+    {
+      static std::string const fb_path = path::join(
+        common::infinit::home(), "analytics.fallback");
+      return fb_path;
+    }
+
+    ::metrics::Service::Info const&
     google_info_investors()
     {
-      static Info google = {
+      static ::metrics::Service::Info google = {
         "google",
         "www.google-analytics.com",
         80,
@@ -498,10 +506,10 @@ namespace common
       return google;
     }
 
-    Info const&
-    google_info(Kind const kind)
+    ::metrics::Service::Info const&
+    google_info(::metrics::Kind const kind)
     {
-      static Info google = {
+      static ::metrics::Service::Info google = {
         "google",
         "www.google-analytics.com",
         80,
@@ -512,11 +520,10 @@ namespace common
       return google;
     }
 
-
-    Info const&
-    kissmetrics_info(Kind const kind)
+    ::metrics::Service::Info const&
+    kissmetrics_info(::metrics::Kind const kind)
     {
-      static Info const all = {
+      static ::metrics::Service::Info const all = {
         "kissmetrics",
         "trk.kissmetrics.com",
         80,
@@ -524,7 +531,7 @@ namespace common
         elle::os::getenv("INFINIT_METRICS_KISSMETRICS_TID",
                          COMMON_METRICS_KISSMETRICS_TID),
       };
-      static Info const user = {
+      static ::metrics::Service::Info const user = {
         "kissmetrics",
         "trk.kissmetrics.com",
         80,
@@ -532,7 +539,7 @@ namespace common
         elle::os::getenv("INFINIT_METRICS_KISSMETRICS_USER_TID",
                          COMMON_METRICS_KISSMETRICS_USER_TID),
       };
-      static Info const network = {
+      static ::metrics::Service::Info const network = {
         "kissmetrics",
         "trk.kissmetrics.com",
         80,
@@ -540,7 +547,7 @@ namespace common
         elle::os::getenv("INFINIT_METRICS_KISSMETRICS_NETWORK_TID",
                          COMMON_METRICS_KISSMETRICS_NETWORK_TID),
       };
-      static Info const transaction = {
+      static ::metrics::Service::Info const transaction = {
         "kissmetrics",
         "trk.kissmetrics.com",
         80,
@@ -550,10 +557,10 @@ namespace common
       };
       switch (kind)
       {
-      case Kind::all: return all;
-      case Kind::user: return user;
-      case Kind::network: return network;
-      case Kind::transaction: return transaction;
+        case ::metrics::Kind::all: return all;
+        case ::metrics::Kind::user: return user;
+        case ::metrics::Kind::network: return network;
+        case ::metrics::Kind::transaction: return transaction;
       }
       elle::unreachable();
     }

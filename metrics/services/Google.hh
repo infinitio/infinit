@@ -14,7 +14,7 @@ namespace metrics
       std::string const _hashed_pkey;
     public:
       Google(std::string const& pkey,
-             common::metrics::Info const& info);
+             Service::Info const& info);
 
     protected:
       void

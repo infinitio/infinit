@@ -11,7 +11,7 @@
 namespace metrics
 {
   Service::Service(std::string const& pkey,
-                   common::metrics::Info const& info):
+                   Info const& info):
     _pkey{pkey},
     _info(info),
     _server{

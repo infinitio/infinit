@@ -58,14 +58,7 @@ namespace surface
 
     namespace
     {
-      enum class MetricKind
-      {
-        user,
-        network,
-        transaction
-      };
-
-      template <common::metrics::Kind kind, typename Service>
+      template <metrics::Kind kind, typename Service>
       struct MetricKindService:
           public Service
       {
@@ -79,13 +72,13 @@ namespace surface
         {
           switch (kind)
           {
-          case common::metrics::Kind::all:
+          case metrics::Kind::all:
             return "";
-          case common::metrics::Kind::user:
+          case metrics::Kind::user:
             return "user";
-          case common::metrics::Kind::network:
+          case metrics::Kind::network:
             return "network";
-          case common::metrics::Kind::transaction:
+          case metrics::Kind::transaction:
             return "transaction";
           }
           elle::unreachable();
@@ -110,8 +103,8 @@ namespace surface
                  uint16_t apertus_port):
       _logger_intializer{},
       _meta{meta_host, meta_port, true},
-      _reporter(),
-      _google_reporter(),
+      _reporter(common::metrics::fallback_path()),
+      _google_reporter(common::metrics::google_fallback_path()),
       _scheduler{},
       _keep_alive(this->_scheduler, "State keep alive", [] () {
           while (true)
@@ -187,24 +180,27 @@ namespace surface
       {
         using metrics::services::Google;
         using metrics::services::KISSmetrics;
-        using namespace common::metrics;
+        using namespace metrics;
 
-        this->_google_reporter.add_service_class<Google>(google_info_investors());
+        this->_google_reporter.add_service_class<Google>(
+          common::metrics::google_info_investors());
 
-        this->_reporter.add_service_class<Google>(google_info());
-        this->_reporter.add_service_class<KISSmetrics>(kissmetrics_info());
+        this->_reporter.add_service_class<Google>(
+          common::metrics::google_info());
+        this->_reporter.add_service_class<KISSmetrics>(
+          common::metrics::kissmetrics_info());
 
-        typedef MetricKindService<Kind::user, KISSmetrics> KMUser;
+        typedef MetricKindService<metrics::Kind::user, KISSmetrics> KMUser;
         this->_reporter.add_service_class<KMUser>(
-          kissmetrics_info(Kind::user));
+          common::metrics::kissmetrics_info(Kind::user));
 
         typedef MetricKindService<Kind::network, KISSmetrics> KMNetwork;
         this->_reporter.add_service_class<KMNetwork>(
-          kissmetrics_info(Kind::network));
+          common::metrics::kissmetrics_info(Kind::network));
 
         typedef MetricKindService<Kind::transaction, KISSmetrics> KMTransaction;
         this->_reporter.add_service_class<KMTransaction>(
-          kissmetrics_info(Kind::transaction));
+          common::metrics::kissmetrics_info(Kind::transaction));
       }
     }
 

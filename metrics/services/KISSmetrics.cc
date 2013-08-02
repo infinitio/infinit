@@ -66,7 +66,7 @@ namespace metrics
 
     //- KISSmetrics --------------------------------------------------------------
     KISSmetrics::KISSmetrics(std::string const& pkey,
-                             common::metrics::Info const& info):
+                             Service::Info const& info):
       Service{pkey, info}
     {}
 

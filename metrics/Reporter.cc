@@ -1,7 +1,6 @@
 #include "Reporter.hh"
 
 #include <version.hh>
-#include <common/common.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -43,11 +42,11 @@ namespace metrics
     elle::threading::Monitor<ServiceMap> services;
     elle::threading::Monitor<ProxyMap> proxies;
 
-    Impl():
+    Impl(std::string const& fallback_path):
       scheduler{},
       keep_alive{},
       thread{nullptr},
-      fallback_stream{common::metrics::fallback_path()},
+      fallback_stream{fallback_path},
       service_factories{},
       services{},
       proxies{}
@@ -59,8 +58,7 @@ namespace metrics
       return this->services(
         [&] (ServiceMap& map) -> ServiceArray& {
           ServiceArray& services = map[pkey];
-          // Fill services if some are missing.
-          while (services.size() < this->service_factories.size())
+          while (services.size() < service_factories.size())
             services.emplace_back(
               this->service_factories[services.size()](pkey));
           return services;
@@ -68,8 +66,8 @@ namespace metrics
     }
   };
 
-  Reporter::Reporter():
-    _this{new Impl{}}
+  Reporter::Reporter(std::string const& fallback_path):
+    _this{new Impl{fallback_path}}
   {
     _this->keep_alive.reset(
       new boost::asio::io_service::work(_this->scheduler.io_service()));

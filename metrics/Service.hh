@@ -5,8 +5,6 @@
 
 # include "Metric.hh"
 
-# include <common/common.hh>
-
 # include <elle/attribute.hh>
 # include <elle/HttpClient.hh>
 # include <curly/curly.hh>
@@ -22,11 +20,21 @@ namespace metrics
   /// A service is used by a reporter to send metrics.
   class Service
   {
+  public:
+    struct Info
+    {
+      std::string const pretty_name;
+      std::string const host;
+      uint16_t const port;
+      std::string const id_path;
+      std::string const tracking_id;
+    };
+
   protected:
     /// Primary key.
     ELLE_ATTRIBUTE_R(std::string, pkey);
     /// Info describing how to communicate to the service.
-    ELLE_ATTRIBUTE_R(common::metrics::Info const, info);
+    ELLE_ATTRIBUTE_R(Info const, info);
     ELLE_ATTRIBUTE(std::deque<TimeMetricPair>, queue);
 
   protected: // XXX use ELLE_ATTRIBUTE when protected is available
@@ -46,7 +54,7 @@ namespace metrics
   public:
     /// Construct a service with a primary key and its info.
     Service(std::string const& pkey,
-            common::metrics::Info const& info);
+            Info const& info);
 
     virtual
     ~Service();
