@@ -84,6 +84,11 @@ namespace surface
       ELLE_ATTRIBUTE_P(metrics::Reporter, reporter, mutable);
       ELLE_ATTRIBUTE_P(metrics::Reporter, google_reporter, mutable);
 
+      ELLE_ATTRIBUTE_R(reactor::Scheduler, scheduler);
+      ELLE_ATTRIBUTE_R(reactor::Thread, keep_alive);
+      ELLE_ATTRIBUTE(std::thread, scheduler_thread);
+      ELLE_ATTRIBUTE(std::exception_ptr, exception);
+
     public:
       metrics::Reporter&
       reporter() const

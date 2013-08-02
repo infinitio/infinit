@@ -112,6 +112,26 @@ namespace surface
       _meta{meta_host, meta_port, true},
       _reporter(),
       _google_reporter(),
+      _scheduler{},
+      _keep_alive(this->_scheduler, "State keep alive", [] () {
+          while (true)
+          {
+            auto* current = reactor::Scheduler::scheduler()->current();
+            current->sleep(boost::posix_time::seconds(60));
+          }
+      }),
+      _scheduler_thread([&] {
+          try
+          {
+            this->_scheduler.run();
+          }
+          catch (...)
+          {
+            ELLE_ERR("exception escaped from State scheduler: %s",
+                     elle::exception_string());
+            this->_exception = std::current_exception();
+          }
+      }),
       _me{nullptr},
       _device{nullptr},
       _output_dir{common::system::download_directory()},
@@ -207,6 +227,18 @@ namespace surface
     State::~State()
     {
       ELLE_TRACE_SCOPE("%s: destroying state", *this);
+
+      this->_scheduler.mt_run<void>(
+        "stop state",
+        [this]
+        {
+          this->_keep_alive.terminate_now();
+
+          auto* scheduler = reactor::Scheduler::scheduler();
+          scheduler->terminate_now();
+        });
+
+      this->_scheduler_thread.join();
 
       try
       {
