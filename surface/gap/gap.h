@@ -39,6 +39,9 @@ extern "C" {
   /// Release a state.
   void gap_free(gap_State* state);
 
+  void
+  gap_test(gap_State* state, char* string);
+
   /// Enable debug messages.
   void gap_enable_debug(gap_State* state);
 

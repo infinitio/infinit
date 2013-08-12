@@ -3,8 +3,8 @@
 
 typedef enum
 {
-  gap_ok = 0,
-  gap_error = -1,
+  gap_ok = 1,
+  gap_error = 0,
   gap_network_error = -2,
   gap_internal_error = -3,
   gap_no_device_error = -4,
