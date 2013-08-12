@@ -847,6 +847,7 @@ namespace plasma
                   elle::format::json::Object const& req,
                   std::ostream& resp) const
     {
+      ELLE_TRACE_SCOPE("%s: post on %s", *this, url);
       // XXX Curl is supposed to be thread-safe.
       std::unique_lock<std::mutex> lock(this->_mutex);
       curly::request_configuration c = curly::make_post();
@@ -863,6 +864,8 @@ namespace plasma
     Client::_get(std::string const& url,
                  std::ostream& resp) const
     {
+      ELLE_TRACE_SCOPE("%s: get on %s", *this, url);
+
       // XXX Curl is supposed to be thread-safe.
       std::unique_lock<std::mutex> lock(this->_mutex);
       curly::request_configuration c = curly::make_get();
