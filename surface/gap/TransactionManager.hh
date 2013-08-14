@@ -39,8 +39,9 @@ namespace surface
       /*--------.
       | Storage |
       `--------*/
-    private:
+    public:
       typedef std::map<std::string, plasma::Transaction> TransactionsMap;
+    private:
       typedef std::unique_ptr<TransactionsMap> TransactionMapPtr;
       elle::threading::Monitor<TransactionMapPtr> _transactions;
 

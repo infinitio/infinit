@@ -5,7 +5,7 @@
 # include "NotificationManager.hh"
 # include "usings.hh"
 
-# include <plasma/meta/Client.hh>
+# include <plasma/meta/fwd.hh>
 
 # include <elle/attribute.hh>
 # include <elle/Printable.hh>
@@ -97,8 +97,9 @@ namespace surface
       /*--------.
       | Storage |
       `--------*/
-    private:
+    public:
       typedef std::unordered_set<std::string> SwaggerSet;
+    private:
       elle::threading::Monitor<SwaggerSet> _swaggers;
       bool _swaggers_dirty;
 
