@@ -6,8 +6,7 @@
 # include "Self.hh"
 # include "usings.hh"
 
-# include <plasma/trophonius/Client.hh>
-# include <plasma/meta/Client.hh>
+# include <plasma/fwd.hh>
 
 # include <elle/attribute.hh>
 # include <elle/format/json/fwd.hh>
