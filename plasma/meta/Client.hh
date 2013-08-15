@@ -1,22 +1,21 @@
 #ifndef  PLASMA_META_CLIENT_HH
 # define PLASMA_META_CLIENT_HH
 
-# include <functional>
-# include <list>
-# include <vector>
-# include <map>
-# include <memory>
-# include <stdexcept>
-# include <string>
-# include <mutex>
+# include <plasma/plasma.hh>
 
+# include <elle/Exception.hh>
+# include <elle/HttpClient.hh>
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>
 
-# include <plasma/plasma.hh>
-
-# include <elle/HttpClient.hh>
-# include <elle/Exception.hh>
+# include <functional>
+# include <list>
+# include <map>
+# include <memory>
+# include <mutex>
+# include <stdexcept>
+# include <string>
+# include <vector>
 
 namespace plasma
 {
@@ -99,8 +98,13 @@ namespace plasma
       std::string fullname;
       std::string handle;
       std::string public_key;
-      bool status;
-      std::list<std::string> connected_devices;
+      std::vector<std::string> connected_devices;
+
+      bool
+      status() const
+      {
+        return !this->connected_devices.empty();
+      }
     };
 
     struct UserResponse : User, Response
@@ -162,18 +166,22 @@ namespace plasma
       std::list<std::string> networks;
     };
 
-    struct NetworkResponse : Response
+    struct Network
     {
-      std::string              _id;
-      std::string              owner;
-      std::string              name;
-      std::string              model;
-      std::string              root_block;
-      std::string              root_address;
-      std::string              group_block;
-      std::string              group_address;
-      std::string              descriptor;
-      std::list<std::string>        users;
+      std::string _id;
+      std::string owner;
+      std::string name;
+      std::string model;
+      std::string root_block;
+      std::string root_address;
+      std::string group_block;
+      std::string group_address;
+      std::string descriptor;
+      std::list<std::string> users;
+    };
+
+    struct NetworkResponse : Network, Response
+    {
     };
 
     struct CreateNetworkResponse : Response

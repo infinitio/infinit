@@ -5,7 +5,7 @@
 # include <plasma/meta/Client.hh>
 
 # include <elle/serialize/JSONArchive.hh>
-
+# include <elle/serialize/SetSerializer.hxx>
 # include <boost/algorithm/string/split.hpp>
 # include <boost/algorithm/string/classification.hpp>
 
@@ -180,6 +180,31 @@ namespace plasma
       return ret;
     }
   }
+}
+
+namespace std
+{
+  template<>
+  struct hash<plasma::meta::Network>
+  {
+  public:
+    std::size_t
+    operator()(plasma::meta::Network const& network) const
+    {
+      return std::hash<std::string>()(network._id);
+    }
+  };
+
+  template<>
+  struct hash<plasma::meta::User>
+  {
+  public:
+    std::size_t
+    operator()(plasma::meta::User const& user) const
+    {
+      return std::hash<std::string>()(user.id);
+    }
+  };
 }
 
 #endif

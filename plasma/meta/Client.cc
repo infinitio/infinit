@@ -4,6 +4,7 @@
 #include <elle/format/json/Dictionary.hh>
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/MapSerializer.hxx>
+#include <elle/serialize/SetSerializer.hxx>
 
 #include <reactor/scheduler.hh>
 
@@ -78,26 +79,27 @@ SERIALIZE_RESPONSE(plasma::meta::RegisterResponse, ar, res)
   ar & named("invitation_source", res.invitation_source);
 }
 
-SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
+ELLE_SERIALIZE_SIMPLE(plasma::meta::User, ar, res, version)
 {
+  enforce(version == 0);
   ar & named("_id", res.id);
   ar & named("fullname", res.fullname);
   ar & named("handle", res.handle);
   ar & named("public_key", res.public_key);
-  ar & named("status", res.status);
   ar & named("connected_devices", res.connected_devices);
+}
+SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
+{
+  ar & static_cast<plasma::meta::User&>(res);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
 {
-  ar & named("_id", res.id);
-  ar & named("fullname", res.fullname);
-  ar & named("handle", res.handle);
+  ar & static_cast<plasma::meta::User&>(res);
+
   ar & named("email", res.email);
-  ar & named("public_key", res.public_key);
   ar & named("identity", res.identity);
   ar & named("remaining_invitations",  res.remaining_invitations);
-  ar & named("status", res.status);
   ar & named("devices", res.devices);
   try
   {

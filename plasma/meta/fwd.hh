@@ -25,6 +25,7 @@ namespace plasma
     struct CreateTransactionResponse;
     struct UpdateTransactionResponse;
     struct NetworksResponse;
+    struct Network;
     struct NetworkResponse;
     struct CreateNetworkResponse;
     struct DeleteNetworkResponse;
