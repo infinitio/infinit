@@ -49,6 +49,9 @@ namespace plasma
     virtual
     void
     print(std::ostream& stream) const override;
+
+    bool
+    empty() const;
   };
 
   std::ostream&

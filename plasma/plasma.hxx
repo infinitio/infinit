@@ -42,4 +42,17 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & named("status", res.status);
 }
 
+namespace std
+{
+  template<>
+  struct hash<plasma::Transaction>
+  {
+  public:
+    std::size_t operator()(plasma::Transaction const& tr) const
+    {
+      return std::hash<std::string>()(tr.id);
+    }
+  };
+}
+
 #endif

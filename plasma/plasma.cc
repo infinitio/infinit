@@ -10,6 +10,12 @@ namespace plasma
   Transaction::~Transaction()
   {}
 
+  bool
+  Transaction::empty() const
+  {
+    return this->id.empty();
+  }
+
   void
   Transaction::print(std::ostream& stream) const
   {
