@@ -1,12 +1,9 @@
 #ifndef TRANSFERMACHINE_HH
 # define TRANSFERMACHINE_HH
 
-# include <surface/gap/usings.hh>
-
-# include <plasma/meta/Client.hh>
+# include <plasma/fwd.hh>
 
 # include <papier/fwd.hh>
-
 # include <etoile/fwd.hh>
 
 # include <hole/storage/Directory.hh>
@@ -37,21 +34,23 @@ namespace surface
       public elle::Printable
     {
     public:
-      TransferMachine(surface::gap::State const& state);
+      typedef plasma::Transaction Data;
+    public:
+      TransferMachine(surface::gap::State const& state,
+                      Data& transaction);
 
       virtual
       ~TransferMachine();
-
     public:
       void
       run(reactor::fsm::State& initial_state);
 
       virtual
       void
-      on_transaction_update(plasma::Transaction const& transaction) = 0;
+      transaction_status_update(plasma::TransactionStatus status) = 0;
 
       void
-      on_peer_connection_update(PeerConnectionUpdateNotification const& notif);
+      peer_connection_update(bool user_status);
 
       void
       cancel();
@@ -65,6 +64,9 @@ namespace surface
 
       bool
       concerns_user(std::string const& user_id);
+
+      bool
+      concerns_device(std::string const& device_id);
 
       bool
       has_id(uint32_t id);
@@ -180,8 +182,7 @@ namespace surface
       /*------------.
       | Transaction |
       `------------*/
-      ELLE_ATTRIBUTE(std::string, transaction_id);
-
+      ELLE_ATTRIBUTE_R(Data&, data);
     public:
       std::string const&
       transaction_id() const;
@@ -189,9 +190,6 @@ namespace surface
     protected:
       void
       transaction_id(std::string const& id);
-
-    protected:
-      ELLE_ATTRIBUTE(std::string, peer_id);
 
     public:
       std::string const&
@@ -202,13 +200,10 @@ namespace surface
       peer_id(std::string const& id);
 
     public:
+      virtual
       bool
-      is_sender();
+      is_sender() const = 0;
 
-      /*--------.
-      | Network |
-      `--------*/
-      ELLE_ATTRIBUTE(std::string, network_id);
     protected:
       std::string const&
       network_id() const;

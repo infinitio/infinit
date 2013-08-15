@@ -15,8 +15,10 @@ namespace surface
 {
   namespace gap
   {
-    ReceiveMachine::ReceiveMachine(surface::gap::State const& state):
-      TransferMachine(state),
+    ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
+                                   TransferMachine::Data& data,
+                                   bool):
+      TransferMachine(state, data),
       _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
@@ -59,17 +61,14 @@ namespace surface
     }
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
-                                   plasma::Transaction const& transaction):
-      ReceiveMachine(state)
+                                   TransferMachine::Data& data):
+      ReceiveMachine(state, data, true)
     {
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
-                       *this, transaction);
-      this->transaction_id(transaction.id);
-      this->network_id(transaction.network_id);
-      this->peer_id(transaction.sender_id);
+                       *this, data);
 
       auto& null = this->_machine.state_make([] {});
-      switch (transaction.status)
+      switch (data.status)
       {
         case plasma::TransactionStatus::initialized:
           this->run(this->_wait_for_decision_state);
@@ -103,17 +102,15 @@ namespace surface
     }
 
     void
-    ReceiveMachine::on_transaction_update(plasma::Transaction const& transaction)
+    ReceiveMachine::transaction_status_update(plasma::TransactionStatus status)
     {
-      ELLE_TRACE_SCOPE("%s: update with new transaction %s",
-                       *this, transaction);
+      ELLE_TRACE_SCOPE("%s: update with new transaction status %s",
+                       *this, status);
 
-      ELLE_ASSERT_EQ(this->transaction_id(), transaction.id);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       auto& scheduler = *reactor::Scheduler::scheduler();
 
-      switch (transaction.status)
+      switch (status)
       {
         case plasma::TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this);
@@ -146,7 +143,7 @@ namespace surface
         case plasma::TransactionStatus::accepted:
         case plasma::TransactionStatus::rejected:
         case plasma::TransactionStatus::initialized:
-          ELLE_DEBUG("%s: ignore status %s", *this, transaction.status);
+          ELLE_DEBUG("%s: ignore status %s", *this, status);
           break;
         case plasma::TransactionStatus::created:
         case plasma::TransactionStatus::started:

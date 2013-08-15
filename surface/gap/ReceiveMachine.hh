@@ -22,14 +22,14 @@ namespace surface
 
     public:
       ReceiveMachine(surface::gap::State const& state,
-                     plasma::Transaction const& transaction);
+                     TransferMachine::Data& data);
 
       virtual
       ~ReceiveMachine();
 
       virtual
       void
-      on_transaction_update(plasma::Transaction const& transaction) override;
+      transaction_status_update(plasma::TransactionStatus status) override;
 
     public:
       void
@@ -39,7 +39,9 @@ namespace surface
       reject();
 
     private:
-      ReceiveMachine(surface::gap::State const& state);
+      ReceiveMachine(surface::gap::State const& state,
+                     TransferMachine::Data& data,
+                     bool);
 
     private:
       void
@@ -72,6 +74,14 @@ namespace surface
       `-----------------*/
       ELLE_ATTRIBUTE(std::string, recipient);
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
+
+    public:
+      virtual
+      bool
+      is_sender() const override
+      {
+        return false;
+      }
 
     public:
       /*----------.

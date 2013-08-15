@@ -22,8 +22,10 @@ namespace surface
   namespace gap
   {
     using TransactionStatus = plasma::TransactionStatus;
-    SendMachine::SendMachine(surface::gap::State const& state):
-      TransferMachine(state),
+    SendMachine::SendMachine(surface::gap::State const& state,
+                             TransferMachine::Data& data,
+                             bool):
+      TransferMachine(state, data),
       _request_network_state(
         this->_machine.state_make(
           "request network", std::bind(&SendMachine::_request_network, this))),
@@ -54,8 +56,9 @@ namespace surface
         false,
         [&] () -> bool
         {
-          return this->state().transaction_manager().one(
-            this->transaction_id()).status == TransactionStatus::accepted;
+          // return this->state().transaction_manager().one(
+          //   this->transaction_id()).status == TransactionStatus::accepted;
+          return false;
         }
         );
 
@@ -66,8 +69,9 @@ namespace surface
         false,
         [&] () -> bool
         {
-          return this->state().transaction_manager().one(
-            this->transaction_id()).status == TransactionStatus::rejected;
+          // return this->state().transaction_manager().one(
+          //   this->transaction_id()).status == TransactionStatus::rejected;
+          return false;
         }
         );
 
@@ -110,8 +114,9 @@ namespace surface
 
     SendMachine::SendMachine(surface::gap::State const& state,
                              std::string const& recipient,
-                             std::unordered_set<std::string>&& files):
-      SendMachine(state)
+                             std::unordered_set<std::string>&& files,
+                             TransferMachine::Data& data):
+      SendMachine(state, data, true)
     {
       ELLE_TRACE_SCOPE("%s: send %s to %s", *this, files, recipient);
 
@@ -127,17 +132,13 @@ namespace surface
     }
 
     SendMachine::SendMachine(surface::gap::State const& state,
-                             plasma::Transaction const& transaction):
-      SendMachine(state)
+                             TransferMachine::Data& data):
+      SendMachine(state, data)
     {
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
-                       *this, transaction);
+                       *this, this->data());
 
-      this->transaction_id(transaction.id);
-      this->network_id(transaction.network_id);
-      this->peer_id(transaction.recipient_id);
-
-      switch (transaction.status)
+      switch (data.status)
       {
         case plasma::TransactionStatus::initialized:
           // XXX: This is wrong. If the local copy was not over, the transfer
@@ -173,17 +174,15 @@ namespace surface
     }
 
     void
-    SendMachine::on_transaction_update(plasma::Transaction const& transaction)
+    SendMachine::transaction_status_update(plasma::TransactionStatus status)
     {
-      ELLE_TRACE_SCOPE("%s: update with new transaction %s",
-                       *this, transaction);
+      ELLE_TRACE_SCOPE("%s: update with new transaction status %s",
+                       *this, status);
 
-      ELLE_ASSERT_EQ(this->transaction_id(), transaction.id);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       auto& scheduler = *reactor::Scheduler::scheduler();
 
-      switch (transaction.status)
+      switch (status)
       {
         case plasma::TransactionStatus::accepted:
           ELLE_DEBUG("%s: open accepted barrier", *this);
@@ -222,7 +221,7 @@ namespace surface
           break;
         case plasma::TransactionStatus::initialized:
         case plasma::TransactionStatus::ready:
-          ELLE_DEBUG("%s: ignore status %s", *this, transaction.status);
+          ELLE_DEBUG("%s: ignore status %s", *this, status);
           break;
         case plasma::TransactionStatus::created:
         case plasma::TransactionStatus::none:
@@ -374,7 +373,8 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: set permissions %s", *this, this->transaction_id());
 
-      auto peer_public_key = this->state().user_manager().one(this->peer_id()).public_key;
+      //auto peer_public_key = this->state().user_manager().one(this->peer_id()).public_key;
+      std::string peer_public_key;
 
       ELLE_ASSERT_NEQ(peer_public_key.length(), 0u);
 
@@ -384,7 +384,8 @@ namespace surface
       nucleus::neutron::Subject subject;
       subject.Create(public_key);
 
-      auto group_address = this->state().network_manager().one(this->network_id()).group_address;
+      //auto group_address = this->state().network_manager().one(this->network_id()).group_address;
+      std::string group_address;
 
       nucleus::neutron::Group::Identity group;
       group.Restore(group_address);
