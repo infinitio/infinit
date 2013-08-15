@@ -3,11 +3,7 @@
 
 # include "Device.hh"
 # include "Exception.hh"
-# include "NetworkManager.hh"
-# include "NotificationManager.hh"
 # include "Self.hh"
-# include "TransactionManager.hh"
-# include "UserManager.hh"
 # include "gap.h"
 # include "metrics.hh"
 
