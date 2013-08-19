@@ -8,7 +8,7 @@
 extern "C" {
 # endif
 
-#include <surface/gap/status.hh>
+#include <surface/gap/enums.hh>
 
   //typedef enum
   //{
@@ -125,13 +125,13 @@ extern "C" {
     gap_user_status_busy = 2,
   } gap_UserStatus;
 
-  typedef void (*gap_new_swagger_callback_t)(char const*);
+  typedef void (*gap_new_swagger_callback_t)(uint32_t id);
 
   gap_Status
   gap_new_swagger_callback(gap_State* state,
                            gap_new_swagger_callback_t cb);
 
-  typedef void (*gap_user_status_callback_t)(char const*,
+  typedef void (*gap_user_status_callback_t)(uint32_t id,
                                              gap_UserStatus const);
 
   gap_Status
@@ -139,8 +139,9 @@ extern "C" {
                            gap_user_status_callback_t cb);
 
   /// New transaction callback.
-  typedef void (*gap_transaction_callback_t)(char const* transaction_id,
-                                             int is_new);
+  typedef void (*gap_transaction_callback_t)(uint32_t id,
+                                             TransferState status);
+
   gap_Status
   gap_transaction_callback(gap_State* state,
                            gap_transaction_callback_t cb);
@@ -148,63 +149,63 @@ extern "C" {
   /// Transaction getters.
   char const*
   gap_transaction_sender_id(gap_State*,
-                            char const*);
+                            uint32_t);
 
   char const*
   gap_transaction_sender_fullname(gap_State*,
-                                  char const*);
+                                  uint32_t);
 
   char const*
   gap_transaction_sender_device_id(gap_State*,
-                                   char const*);
+                                   uint32_t);
 
   char const*
   gap_transaction_recipient_id(gap_State*,
-                               char const*);
+                               uint32_t);
 
   char const*
   gap_transaction_recipient_fullname(gap_State*,
-                                     char const*);
+                                     uint32_t);
 
   char const*
   gap_transaction_recipient_device_id(gap_State*,
-                                      char const*);
+                                      uint32_t);
 
   char const*
   gap_transaction_network_id(gap_State*,
-                             char const*);
+                             uint32_t);
 
   char const*
   gap_transaction_first_filename(gap_State*,
-                                 char const*);
+                                 uint32_t);
 
   int
   gap_transaction_files_count(gap_State*,
-                              char const*);
+                              uint32_t);
 
   int
   gap_transaction_total_size(gap_State*,
-                             char const*);
+                             uint32_t);
 
   double
   gap_transaction_timestamp(gap_State* state,
-                            char const* transaction_id);
+                            uint32_t);
 
   gap_Bool
   gap_transaction_is_directory(gap_State*,
-                               char const*);
+                               uint32_t);
 
   gap_TransactionStatus
   gap_transaction_status(gap_State*,
-                         char const*);
+                         uint32_t);
 
   char const*
   gap_transaction_message(gap_State*,
-                          char const*);
+                          uint32_t);
 
   float
   gap_transaction_progress(gap_State* state,
-                           char const* transaction_id);
+                           uint32_t);
 
   /// Force transaction to be fetched again from server.
   gap_Status
@@ -252,10 +253,32 @@ extern "C" {
   /// - User ------------------------------------------------------------------
 
   /// Retrieve user fullname.
-  char const* gap_user_fullname(gap_State* state, char const* id);
+  char const*
+  gap_user_fullname(gap_State* state,
+                    uint32_t id);
 
   /// Retrieve user handle.
-  char const* gap_user_handle(gap_State* state, char const* id);
+  char const*
+  gap_user_handle(gap_State* state,
+                  uint32_t id);
+
+  /// @brief Retrieve user icon from a user_id
+  /// @note data with be freed with gap_user_icon_free when the call is
+  /// successfull.
+  gap_Status
+  gap_user_icon(gap_State* state,
+                uint32_t user_id,
+                void** data,
+                size_t* size);
+
+  /// Free a previously allocated user icon.
+  void
+  gap_user_icon_free(void* data);
+
+  /// Retrieve user with its email.
+  char const*
+  gap_user_by_email(gap_State* state,
+                    char const* email);
 
   // The user directory
   char const*
@@ -263,38 +286,25 @@ extern "C" {
 
   /// Retrieve user status.
   gap_UserStatus
-  gap_user_status(gap_State* state, char const* user_id);
-
-  /// @brief Retrieve user icon from a user_id
-  /// @note data with be freed with gap_user_icon_free when the call is
-  /// successfull.
-  gap_Status
-  gap_user_icon(gap_State* state,
-                char const* user_id,
-                void** data,
-                size_t* size);
-
-  /// Free a previously allocated user icon.
-  void gap_user_icon_free(void* data);
-
-  /// Retrieve user with its email.
-  char const* gap_user_by_email(gap_State* state, char const* email);
+  gap_user_status(gap_State* state, uint32_t id);
 
   /// Search users.
-  char** gap_search_users(gap_State* state, char const* text);
+  uint32_t*
+  gap_search_users(gap_State* state, char const* text);
 
   /// Free the search users result.
-  void gap_search_users_free(char** users);
+  void
+  gap_search_users_free(uint32_t* users);
 
   /// - Swaggers --------------------------------------------------------------
 
   /// Get the list of user's swaggers.
-  char**
+  uint32_t*
   gap_swaggers(gap_State* state);
 
   /// Free swagger list.
   void
-  gap_swaggers_free(char** swaggers);
+  gap_swaggers_free(uint32_t* swaggers);
 
   /// - Permissions ---------------------------------------------------------
 
@@ -309,12 +319,12 @@ extern "C" {
   } gap_Permission;
 
   /// Get the list of transaction ids involving the user.
-  char**
+  uint32_t*
   gap_transactions(gap_State* state);
 
   /// Free transaction list.
   void
-  gap_transactions_free(char** transactions);
+  gap_transactions_free(uint32_t* transactions);
 
   /// Error callback type. The arguments are respectively error code, reason
   /// and optionally a transaction id.
@@ -338,7 +348,7 @@ extern "C" {
   /// If the return value is 0, the operation failed.
   uint32_t
   gap_cancel_transaction(gap_State* state,
-                         char const* transaction_id);
+                         uint32_t id);
 
   /// Reject transaction.
   /// This function can only be used by the recipient of the transaction, if
@@ -346,7 +356,7 @@ extern "C" {
   /// If the return value is 0, the operation failed.
   uint32_t
   gap_reject_transaction(gap_State* state,
-                         char const* transaction_id);
+                         uint32_t id);
 
   /// Accept a transaction.
   /// This function can only be used by the recipient of the transaction, if
@@ -354,14 +364,14 @@ extern "C" {
   /// If the return value is 0, the operation failed.
   uint32_t
   gap_accept_transaction(gap_State* state,
-                         char const* transaction_id);
+                         uint32_t id);
 
   /// Join a transaction.
   /// This function will block as long as the transaction is not terminated
   /// and cleaned.
-  gap_Status
+  uint32_t
   gap_join_transaction(gap_State* state,
-                       char const* transaction_id);
+                       uint32_t id);
 
   // Set output directory.
   gap_Status

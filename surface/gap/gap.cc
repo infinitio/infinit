@@ -1,5 +1,7 @@
-#include "gap.h"
-#include "State.hh"
+#include <surface/gap/gap.h>
+#include <surface/gap/gap_bridge.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/Transaction.hh>
 
 #include <common/common.hh>
 
@@ -28,258 +30,21 @@
 
 ELLE_LOG_COMPONENT("infinit.surface.gap");
 
-extern "C"
+template <typename T>
+inline static
+T*
+vector_to_pointer(std::vector<T> const& values)
 {
+  T* out = (T*) malloc(sizeof(T) * values.size() + 1);
 
-  /// - Utils -----------------------------------------------------------------
-  struct gap_State
-  {
-    ELLE_ATTRIBUTE_X(reactor::Scheduler, scheduler);
-    ELLE_ATTRIBUTE_R(reactor::Thread, keep_alive);
-    ELLE_ATTRIBUTE_R(std::thread, scheduler_thread);
-    ELLE_ATTRIBUTE(std::unique_ptr<surface::gap::State>, state);
-    ELLE_ATTRIBUTE_R(std::exception_ptr, exception);
-  public:
-    // reactor::Scheduler&
-    // scheduler() const
-    // {
-    //   return this->_scheduler;
-    // }
+  if (out == nullptr)
+    return nullptr;
 
-    surface::gap::State&
-    state()
-    {
-      return *this->_state;
-    }
+  memcpy(out, values.data(), values.size() * sizeof(T));
 
-  public:
-    gap_State(char const* meta_host,
-              unsigned short meta_port,
-              char const* trophonius_host,
-              unsigned short trophonius_port,
-              char const* apertus_host,
-              unsigned short apertus_port):
-      _scheduler{},
-      _keep_alive{this->_scheduler, "State keep alive",
-                  [this]
-                  {
-                    while (true)
-                    {
-                      auto& current = *this->_scheduler.current();
-                      current.sleep(boost::posix_time::seconds(60));
-                    }
-                  }},
-      _scheduler_thread{
-        [&]
-        {
-          try
-          {
-            this->_scheduler.run();
-          }
-          catch (...)
-          {
-            ELLE_ERR("exception escaped from State scheduler: %s",
-                     elle::exception_string());
-            this->_exception = std::current_exception();
-          }
-        }}
-    {
-      this->_scheduler.mt_run<void>(
-        "creating state",
-        [&]
-        {
-          this->_state.reset(
-            new surface::gap::State{
-              meta_host, meta_port, trophonius_host, trophonius_port,
-                apertus_host, apertus_port});
-        });
-    }
+  out[values.size()] = 0;
 
-    gap_State():
-      _scheduler{},
-      _keep_alive{this->_scheduler, "State keep alive",
-                  []
-                  {
-                    while (true)
-                    {
-                      auto& current = *reactor::Scheduler::scheduler()->current();
-                      current.sleep(boost::posix_time::seconds(60));
-                    }
-                  }},
-      _scheduler_thread{
-        [&]
-        {
-          try
-          {
-            this->_scheduler.run();
-          }
-          catch (...)
-          {
-            ELLE_ERR("exception escaped from State scheduler: %s",
-                     elle::exception_string());
-            this->_exception = std::current_exception();
-          }
-        }}
-    {
-      this->_scheduler.mt_run<void>(
-        "creating state",
-        [&]
-        {
-          this->_state.reset(new surface::gap::State{});
-        });
-    }
-
-    ~gap_State()
-    {
-      elle::Finally sched_destruction{
-        [&] ()
-        {
-          this->_scheduler.mt_run<void>(
-            "destroying sched",
-            []
-            {
-              auto& scheduler = *reactor::Scheduler::scheduler();
-              scheduler.terminate_now();
-            });
-
-          this->_scheduler_thread.join();
-        }
-      };
-
-      elle::Finally state_destruction{
-        [&] ()
-        {
-          this->_scheduler.mt_run<void>(
-            "destroying state",
-            [&] () -> void
-            {
-              this->_state.reset();
-            });
-        }
-      };
-    }
-
-  };
-}
-
-class _Ret
-{
-public:
-  virtual
-  gap_Status
-  status() const = 0;
-};
-
-template <typename Type>
-class Ret: public _Ret
-{
-public:
-  template <typename... Args>
-  Ret(Args&&... args):
-    _value{std::forward<Args>(args)...}
-  {}
-
-  Type
-  value() const
-  {
-    return this->_value.second;
-  }
-
-  gap_Status
-  status() const
-  {
-    return this->_value.first;
-  }
-
-  operator gap_Status() const
-  {
-    return this->status();
-  }
-
-  operator Type() const
-  {
-    return this->value();
-  }
-
-private:
-  std::pair<gap_Status, Type> _value;
-};
-
-template <>
-class Ret<gap_Status>
-{
-public:
-  template <typename... Args>
-  Ret(gap_Status status, Args&&... args):
-    _status{status}
-  {}
-
-  operator gap_Status() const
-  {
-    return this->status();
-  }
-
-  ELLE_ATTRIBUTE_R(gap_Status, status);
-};
-
-template <typename Type>
-Ret<Type>
-run(gap_State* state,
-    std::string const& name,
-    std::function<Type (surface::gap::State&)> const& function)
-{
-  assert(state != nullptr);
-
-  gap_Status ret = gap_ok;
-  try
-  {
-    reactor::Scheduler& scheduler = state->scheduler();
-
-    return Ret<Type>(
-      ret,
-      scheduler.mt_run<Type>
-      (
-        name,
-        [&] () { return function(state->state()); }
-        )
-      );
-  }
-  catch (elle::HTTPException const& err)
-  {
-    ELLE_ERR("%s: error: %s", name, err.what());
-    if (err.code == elle::ResponseCode::error)
-      ret = gap_network_error;
-    else if (err.code == elle::ResponseCode::internal_server_error)
-      ret = gap_api_error;
-    else
-      ret = gap_internal_error;
-  }
-  catch (plasma::meta::Exception const& err)
-  {
-    ELLE_ERR("%s: error: %s", name, err.what());
-    ret = (gap_Status) err.err;
-  }
-  catch (surface::gap::Exception const& err)
-  {
-    ELLE_ERR("%s: error: %s", name, err.what());
-    ret = err.code;
-  }
-  catch (elle::Exception const& err)
-  {
-    ELLE_ERR("%s: error: %s", name, err.what());
-    ret = gap_internal_error;
-  }
-  catch (std::exception const& err)
-  {
-    ELLE_ERR("%s: error: %s", name, err.what());
-    ret = gap_internal_error;
-  }
-  catch (...)
-  {
-    ELLE_ERR("%s: unknown error type", name);
-    ret = gap_internal_error;
-  }
-  return Ret<Type>{ret, Type{}};
+  return out;
 }
 
 extern "C"
@@ -294,7 +59,6 @@ extern "C"
     char** ptr = reinterpret_cast<char**>(malloc(total_size));
     if (ptr == nullptr)
       return nullptr;
-
 
     char** array = ptr;
     char* cstr = reinterpret_cast<char*>(ptr + (list.size() + 1));
@@ -516,7 +280,7 @@ extern "C"
       "token",
       [&] (surface::gap::State& state) -> std::string
       {
-        return state.token();
+        return state.meta().token();
       });
 
     if (ret.status() != gap_ok)
@@ -588,13 +352,15 @@ extern "C"
   gap_Status
   gap_poll(gap_State* state)
   {
-    return run<gap_Status>(state,
-                         "poll",
-                         [&] (surface::gap::State& state) -> gap_Status
-                         {
-                           state.notification_manager().poll();
-                           return gap_ok;
-                         });
+    try
+    {
+      state->state().poll();
+    }
+    catch (...) // XXX.
+    {
+      return gap_error;
+    }
+    return gap_ok;
   }
 
   /// - Device --------------------------------------------------------------
@@ -634,7 +400,7 @@ extern "C"
                             "user token",
                             [&] (surface::gap::State& state) -> char const*
                             {
-                              auto token = state.token();
+                              auto token = state.meta().token();
                               return token.c_str();
                             });
   }
@@ -694,47 +460,53 @@ extern "C"
                             });
   }
 
-  char const* gap_user_fullname(gap_State* state, char const* id)
+  char const* gap_user_fullname(gap_State* state,
+                                uint32_t id)
   {
+    assert(id != 0);
     return run<char const*>(state,
                             "user fullname",
                             [&] (surface::gap::State& state) -> char const*
                             {
-                              auto const& user = state.user_manager().one(id);
+                              auto const& user = state.user(id);
                               return user.fullname.c_str();
                             });
+    return nullptr;
   }
 
-  char const* gap_user_handle(gap_State* state, char const* id)
+  char const* gap_user_handle(gap_State* state,
+                              uint32_t id)
   {
-    assert(id != nullptr);
+    assert(id != 0);
     return run<char const*>(state,
                             "user handle",
                             [&] (surface::gap::State& state) -> char const*
                             {
-                              auto const& user = state.user_manager().one(id);
+                              auto const& user = state.user(id);
                               return user.handle.c_str();
                             });
+    return nullptr;
   }
 
   gap_Status
   gap_user_icon(gap_State* state,
-                char const* user_id,
+                uint32_t id,
                 void** data,
                 size_t* size)
   {
-    assert(user_id != nullptr);
+    assert(id != 0);
     *data = nullptr;
     *size = 0;
     return run<gap_Status>(state,
                            "user icon",
                             [&] (surface::gap::State& state) -> gap_Status
                             {
-                              auto pair = state.user_manager().icon(user_id).release();
+                              auto pair = state.icon(id).release();
                               *data = pair.first.release();
                               *size = pair.second;
                               return gap_ok;
                             });
+   return gap_ok;
   }
 
   void
@@ -743,81 +515,90 @@ extern "C"
     free(data);
   }
 
-  char const*
-  gap_user_by_email(gap_State* state, char const* email)
-  {
-    assert(email != nullptr);
-    return run<char const*>(state,
-                            "user by email",
-                            [&] (surface::gap::State& state) -> char const*
-                            {
-                              auto const& user = state.user_manager().one(email);
-                              return user.id.c_str();
-                            });
-  }
+  // char const*
+  // gap_user_by_email(gap_State* state,
+  //                   char const* email)
+  // {
+  //   assert(email != nullptr);
+  //   return run<char const*>(
+  //     state,
+  //     "user by email",
+  //     [&] (surface::gap::State& state) -> char const*
+  //     {
+  //       auto const& user =
+  //         state.user([&] (surface::gap::State::UserPair const& pair)
+  //                    {
+  //                      pair.second.email == email;
+  //                    });
+  //       return user.id.c_str();
+  //     });
+  //   return nullptr;
+  // }
 
-  char**
-  gap_search_users(gap_State* state, char const* text)
+  uint32_t*
+  gap_search_users(gap_State* state,
+                   char const* text)
   {
     assert(text != nullptr);
-    auto ret = run<std::map<std::string, surface::gap::User>>(
+    auto ret = run<surface::gap::State::UserIndexes>(
       state,
       "users",
-      [&] (surface::gap::State& state) -> std::map<std::string, surface::gap::User>
+      [&] (surface::gap::State& state) -> surface::gap::State::UserIndexes
       {
-        return state.user_manager().search(text);
+        return state.user_search(text);
       });
 
     if (ret.status() != gap_ok)
       return nullptr;
 
-    std::vector<std::string> result;
-    for (auto const& pair : ret.value())
-      result.push_back(pair.first);
-    return _cpp_stringvector_to_c_stringlist(result);
+    std::vector<uint32_t> values(ret.value().size());
+    std::copy(std::begin(ret.value()), std::end(ret.value()), values.begin());
+
+    return vector_to_pointer(values);
   }
 
-  void gap_search_users_free(char** users)
+  void gap_search_users_free(uint32_t* users)
   {
     ::free(users);
   }
 
   gap_UserStatus
-  gap_user_status(gap_State* state, char const* user_id)
+  gap_user_status(gap_State* state,
+                  uint32_t id)
   {
-    assert(user_id != nullptr);
+    assert(id != 0);
 
     return run<gap_UserStatus>(
       state,
       "user status",
       [&] (surface::gap::State& state) -> gap_UserStatus
       {
-        return (gap_UserStatus) state.user_manager().one(user_id).status;
+        return (gap_UserStatus) state.users().at(id).status();
       });
   }
 
-  char**
+  uint32_t*
   gap_swaggers(gap_State* state)
   {
-    auto ret = run<surface::gap::UserManager::SwaggerSet>(
+    auto ret = run<surface::gap::State::UserIndexes>(
       state,
       "swaggers",
-      [&] (surface::gap::State& state) -> surface::gap::UserManager::SwaggerSet
+      [&] (surface::gap::State& state) -> surface::gap::State::UserIndexes
       {
-        return state.user_manager().swaggers();
+        return state.swaggers();
       });
 
     if (ret.status() != gap_ok)
       return nullptr;
 
-    std::vector<std::string> result;
-    for (auto const& id : ret.value())
-      result.push_back(id);
-    return _cpp_stringvector_to_c_stringlist(result);
+    std::vector<uint32_t> values(ret.value().size());
+    std::copy(std::begin(ret.value()), std::end(ret.value()), values.begin());
+
+    return vector_to_pointer(values);
   }
 
   void
-  gap_swaggers_free(char** swaggers)
+  gap_swaggers_free(uint32_t* swaggers)
   {
     ::free(swaggers);
   }
@@ -836,17 +617,17 @@ extern "C"
   gap_new_swagger_callback(gap_State* state,
                            gap_new_swagger_callback_t cb)
   {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (NewSwaggerNotification const& notif) {
-      cb(notif.user_id.c_str());
-    };
+    auto cpp_cb = [cb] (surface::gap::State::NewSwaggerNotification const& notif)
+      {
+        cb(notif.id);
+      };
 
     return run<gap_Status>(
       state,
       "new swagger callback",
       [&] (surface::gap::State& state) -> gap_Status
       {
-        state.notification_manager().new_swagger_callback(cpp_cb);
+        state.attach_callback<surface::gap::State::NewSwaggerNotification>(cpp_cb);
         return gap_ok;
       });
   }
@@ -855,29 +636,28 @@ extern "C"
   gap_user_status_callback(gap_State* state,
                            gap_user_status_callback_t cb)
   {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (UserStatusNotification const& notif) {
-        cb(notif.user_id.c_str(), (gap_UserStatus) notif.status);
+    auto cpp_cb = [cb] (surface::gap::State::UserStatusNotification const& notif)
+    {
+      cb(notif.id, (gap_UserStatus) notif.status);
     };
 
     return run<gap_Status>(
       state,
-      "user status callback",
+      "user callback",
       [&] (surface::gap::State& state) -> gap_Status
       {
-        state.notification_manager().user_status_callback(cpp_cb);
+        state.attach_callback<surface::gap::State::UserStatusNotification>(cpp_cb);
         return gap_ok;
       });
-
   }
 
   gap_Status
   gap_transaction_callback(gap_State* state,
                            gap_transaction_callback_t cb)
   {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-        cb(notif.id.c_str(), is_new);
+    auto cpp_cb = [cb] (surface::gap::TransferMachine::Notification const& notif)
+    {
+      cb(notif.id, notif.status);
     };
 
     return run<gap_Status>(
@@ -885,7 +665,7 @@ extern "C"
       "transaction callback",
       [&] (surface::gap::State& state) -> gap_Status
       {
-        state.notification_manager().transaction_callback(cpp_cb);
+        state.attach_callback<surface::gap::TransferMachine::Notification>(cpp_cb);
         return gap_ok;
       });
   }
@@ -894,58 +674,60 @@ extern "C"
   gap_message_callback(gap_State* state,
                        gap_message_callback_t cb)
   {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (MessageNotification const& notif) {
-        cb(notif.sender_id.c_str(), notif.message.c_str());
-    };
+    // using namespace plasma::trophonius;
+    // auto cpp_cb = [cb] (MessageNotification const& notif) {
+    //     cb(notif.sender_id.c_str(), notif.message.c_str());
+    // };
 
-    return run<gap_Status>(
-      state,
-      "message callback",
-      [&] (surface::gap::State& state) -> gap_Status
-      {
-        state.notification_manager().message_callback(cpp_cb);
-        return gap_ok;
-      });
+    // return run<gap_Status>(
+    //   state,
+    //   "message callback",
+    //   [&] (surface::gap::State& state) -> gap_Status
+    //   {
+    //     state.notification_manager().message_callback(cpp_cb);
+    //     return gap_ok;
+    //   });
+    return gap_ok;
   }
 
   gap_Status
   gap_on_error_callback(gap_State* state,
                         gap_on_error_callback_t cb)
   {
-    auto cpp_cb = [cb] (gap_Status s,
-                        std::string const& str,
-                        std::string const& tid)
-    {
-      cb(s, str.c_str(), tid.c_str());
-    };
+    // auto cpp_cb = [cb] (gap_Status s,
+    //                     std::string const& str,
+    //                     std::string const& tid)
+    // {
+    //   cb(s, str.c_str(), tid.c_str());
+    // };
 
-    return run<gap_Status>(
-      state,
-      "error callback",
-      [&] (surface::gap::State& state) -> gap_Status
-      {
-        state.notification_manager().on_error_callback(cpp_cb);
-        return gap_ok;
-      });
+    // return run<gap_Status>(
+    //   state,
+    //   "error callback",
+    //   [&] (surface::gap::State& state) -> gap_Status
+    //   {
+    //     state.notification_manager().on_error_callback(cpp_cb);
+    //     return gap_ok;
+    //   });
+    return gap_ok;
   }
 
   /// Transaction getters.
-#define DEFINE_TRANSACTION_GETTER(_type_, _field_, _transform_)               \
-  _type_                                                                      \
-  gap_transaction_ ## _field_(gap_State* state,                               \
-                              char const* _id)                                \
-  {                                                                           \
-    assert(_id != nullptr);                                                   \
-    return run<_type_>(                                          \
-      state,                                                                  \
-      #_field_,                                                               \
-      [&] (surface::gap::State& state) -> _type_                              \
-      {                                                                       \
-        return _transform_(state.transaction_manager().one(_id)._field_);     \
-      });                                                                    \
-  }                                                                           \
-  /**/
+#define DEFINE_TRANSACTION_GETTER(_type_, _field_, _transform_)                \
+  _type_                                                                       \
+  gap_transaction_ ## _field_(gap_State* state,                                \
+                              uint32_t _id)                                    \
+  {                                                                            \
+    assert(_id != 0);                                                          \
+    return run<_type_>(                                                        \
+      state,                                                                   \
+      #_field_,                                                                \
+      [&] (surface::gap::State& state) -> _type_                               \
+      {                                                                        \
+        return _transform_(state.transactions().at(_id)->data()->_field_);        \
+      });                                                                      \
+  }                                                                            \
+/**/
 
 #define NO_TRANSFORM
 #define GET_CSTR(_expr_) (_expr_).c_str()
@@ -983,9 +765,9 @@ extern "C"
 
   float
   gap_transaction_progress(gap_State* state,
-                           char const* transaction_id)
+                           uint32_t id)
   {
-    assert(transaction_id != nullptr);
+    assert(id != 0);
 
     return run<float>(
       state,
@@ -1008,7 +790,7 @@ extern "C"
       "sync",
       [&] (surface::gap::State& state) -> gap_Status
       {
-        state.transaction_manager().sync(transaction_id);
+        //state.transaction_manager().sync(transaction_id);
         return gap_ok;
       });
   }
@@ -1025,7 +807,7 @@ extern "C"
       "pull",
       [&] (surface::gap::State& state) -> gap_Status
       {
-        state.notification_manager().pull(count, offset, false);
+        // state.notification_manager().pull(count, offset, false);
         return gap_ok;
       });
   }
@@ -1035,55 +817,59 @@ extern "C"
                              int count,
                              int offset)
   {
-    return run<gap_Status>(
-      state,
-      "pull new",
-      [&] (surface::gap::State& state) -> gap_Status
-      {
-        state.notification_manager().pull(count, offset, true);
-        return gap_ok;
-      });
+    // return run<gap_Status>(
+    //   state,
+    //   "pull new",
+    //   [&] (surface::gap::State& state) -> gap_Status
+    //   {
+    //     state.notification_manager().pull(count, offset, true);
+    //     return gap_ok;
+    //   });
+    return gap_ok;
   }
 
   gap_Status
   gap_notifications_read(gap_State* state)
   {
-    return run<gap_Status>(
-      state,
-      "read",
-      [&] (surface::gap::State& state) -> gap_Status
-      {
-        state.notification_manager().read();
-        return gap_ok;
-      });
+    // return run<gap_Status>(
+    //   state,
+    //   "read",
+    //   [&] (surface::gap::State& state) -> gap_Status
+    //   {
+    //     state.notification_manager().read();
+    //     return gap_ok;
+    //   });
+    return gap_ok;
   }
 
-  char**
+  uint32_t*
   gap_transactions(gap_State* state)
   {
     assert(state != nullptr);
 
-    auto ret = run<surface::gap::TransactionManager::TransactionsMap>(
+    auto ret = run<std::vector<uint32_t>>(
       state,
-      "read",
-      [&] (surface::gap::State& state) -> surface::gap::TransactionManager::TransactionsMap
+      "transactions",
+      [&] (surface::gap::State& state) -> std::vector<uint32_t>
       {
-        return state.transaction_manager().all();
+        std::vector<uint32_t> values;
+        auto const& trs = state.transactions();
+
+        for(auto it = std::begin(trs); it != std::end(trs); ++it)
+        {
+          values.push_back(it->first);
+        }
+
+        return values;
       });
 
     if (ret.status() != gap_ok)
       return nullptr;
 
-    std::vector<std::string> res;
-
-    for (auto const& transaction_pair : ret.value())
-      res.push_back(transaction_pair.first);
-
-    ELLE_DEBUG("gap_transactions() = %s", res);
-    return _cpp_stringvector_to_c_stringlist(res);
+    return vector_to_pointer(ret.value());
   }
 
-  void gap_transactions_free(char** transactions)
+  void gap_transactions_free(uint32_t* transactions)
   {
     ::free(transactions);
   }
@@ -1110,63 +896,67 @@ extern "C"
       [&] (surface::gap::State& state) -> uint32_t
       {
         return state.send_files(recipient_id, std::move(s));
+        return 0;
       });
   }
 
   uint32_t
   gap_cancel_transaction(gap_State* state,
-                         char const* transaction_id)
+                         uint32_t id)
   {
-    assert(transaction_id != nullptr);
+    assert(id != 0);
     return run<uint32_t>(
       state,
       "cancel transaction",
       [&] (surface::gap::State& state) -> uint32_t
       {
-        return state.cancel_transaction(transaction_id);
+        state.transactions().at(id)->cancel();
+        return id;
       });
   }
 
   uint32_t
   gap_reject_transaction(gap_State* state,
-                         char const* transaction_id)
+                         uint32_t id)
   {
-    assert(transaction_id != nullptr);
+    assert(id != 0);
     return run<uint32_t>(
       state,
       "reject transaction",
       [&] (surface::gap::State& state) -> uint32_t
       {
-        return state.reject_transaction(transaction_id);
+        state.transactions().at(id)->reject();
+        return id;
       });
   }
 
   uint32_t
   gap_accept_transaction(gap_State* state,
-                         char const* transaction_id)
+                         uint32_t id)
   {
-    assert(transaction_id != nullptr);
+    assert(id != 0);
     return run<uint32_t>(
       state,
       "accept transaction",
       [&] (surface::gap::State& state) -> uint32_t
       {
-        return state.accept_transaction(transaction_id);
+        state.transactions().at(id)->accept();
+        return id;
       });
   }
 
-  gap_Status
+  uint32_t
   gap_join_transaction(gap_State* state,
-                       char const* transaction_id)
+                       uint32_t id)
   {
-    assert(transaction_id != nullptr);
-    return run<gap_Status>(
+    assert(id != 0);
+    return run<uint32_t>(
       state,
       "join transaction",
-      [&] (surface::gap::State& state) -> gap_Status
+      [&] (surface::gap::State& state) -> uint32_t
       {
-        state.join_transaction(transaction_id);
-        return gap_ok;
+        state.transactions().at(id)->join();
+        return id;
       });
   }
 
