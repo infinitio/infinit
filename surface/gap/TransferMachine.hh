@@ -1,6 +1,8 @@
-#ifndef TRANSFERMACHINE_HH
-# define TRANSFERMACHINE_HH
+#ifndef SURFACE_GAP_TRANSFERMACHINE_HH
+# define SURFACE_GAP_TRANSFERMACHINE_HH
 
+# include <surface/gap/TransferMachineStatus.hh>
+# include <surface/gap/Notification.hh>
 # include <plasma/fwd.hh>
 
 # include <papier/fwd.hh>
@@ -34,10 +36,24 @@ namespace surface
       public elle::Printable
     {
     public:
+      class Notification:
+        public surface::gap::Notification
+      {
+      public:
+        static surface::gap::Notification::Type type;
+
+        Notification(uint32_t id, TransferState status);
+
+        uint32_t id;
+        TransferState status;
+      };
+
+    public:
       typedef plasma::Transaction Data;
     public:
       TransferMachine(surface::gap::State const& state,
-                      Data& transaction);
+                      uint32_t id,
+                      std::shared_ptr<TransferMachine::Data> transaction);
 
       virtual
       ~TransferMachine();
@@ -182,7 +198,8 @@ namespace surface
       /*------------.
       | Transaction |
       `------------*/
-      ELLE_ATTRIBUTE_R(Data&, data);
+      ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
+
     public:
       std::string const&
       transaction_id() const;
@@ -249,10 +266,10 @@ namespace surface
       | Metrics |
       `--------*/
       metrics::Metric
-      network_metric();
+      network_metric() const;
 
       metrics::Metric
-      transaction_metric();
+      transaction_metric() const;
 
       /*----------.
       | Printable |

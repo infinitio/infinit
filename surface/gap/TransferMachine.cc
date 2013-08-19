@@ -27,19 +27,20 @@ namespace surface
 {
   namespace gap
   {
-    static
-    uint32_t
-    generate_id()
-    {
-      static uint32_t id = 0;
-      return id++;
-    }
+    Notification::Type TransferMachine::Notification::type = NotificationType_TransactionUpdate;
+
+    TransferMachine::Notification::Notification(uint32_t id,
+                                                TransferState status):
+      id(id),
+      status(status)
+    {}
 
     //---------- TransferMachine -----------------------------------------------
     TransferMachine::TransferMachine(surface::gap::State const& state,
-                                     Data& data):
-      _data(data),
-      _id(generate_id()),
+                                     uint32_t id,
+                                     std::shared_ptr<TransferMachine::Data> data):
+      _data(std::move(data)),
+      _id(id),
       _machine(),
       _machine_thread(),
       _transfer_core_state(
@@ -81,7 +82,7 @@ namespace surface
           "core stoped", std::bind(&TransferMachine::_core_stoped, this))),
       _state(state)
     {
-      ELLE_TRACE_SCOPE("%s: creating transfer machine", *this);
+      ELLE_TRACE_SCOPE("%s: creating transfer machine: %s", *this, this->_data);
 
       // Normal way.
       this->_machine.transition_add(this->_transfer_core_state,
@@ -129,11 +130,13 @@ namespace surface
         this->_connection_state, this->_transfer_state);
       this->_core_machine.transition_add(
         this->_transfer_state, this->_core_stoped_state);
+
+      this->state().enqueue<Notification>(Notification(id, TransferState_NewTransaction));
     }
 
     TransferMachine::~TransferMachine()
     {
-      ELLE_TRACE_SCOPE("%s: destroying transfer machine", *this);
+      ELLE_WARN("%s: destroying transfer machine", *this);
     }
 
     void
@@ -148,6 +151,7 @@ namespace surface
     TransferMachine::_local_clean()
     {
       ELLE_TRACE_SCOPE("%s: clean local %s", *this, this->transaction_id());
+      this->state().enqueue(Notification(this->id(), TransferState_CleanLocal));
       auto path = common::infinit::network_directory(
         this->state().me().id, this->network_id());
 
@@ -157,7 +161,6 @@ namespace surface
 
         boost::filesystem::remove_all(path);
       }
-
 
       ELLE_DEBUG("finalize etoile")
         this->_etoile.reset();
@@ -169,6 +172,7 @@ namespace surface
     TransferMachine::_remote_clean()
     {
       ELLE_TRACE_SCOPE("%s: clean remote %s", *this, this->transaction_id());
+      this->state().enqueue(Notification(this->id(), TransferState_CleanRemote));
 
       try
       {
@@ -193,6 +197,7 @@ namespace surface
     TransferMachine::_finish()
     {
       ELLE_TRACE_SCOPE("%s: machine finished", *this);
+      this->state().enqueue(Notification(this->id(), TransferState_Finished));
       this->_finiliaze(plasma::TransactionStatus::finished);
       ELLE_DEBUG("%s: finished", *this);
     }
@@ -201,6 +206,7 @@ namespace surface
     TransferMachine::_reject()
     {
       ELLE_TRACE_SCOPE("%s: machine rejected", *this);
+      this->state().enqueue(Notification(this->id(), TransferState_Rejected));
       this->_finiliaze(plasma::TransactionStatus::rejected);
       ELLE_DEBUG("%s: rejected", *this);
     }
@@ -209,6 +215,7 @@ namespace surface
     TransferMachine::_cancel()
     {
       ELLE_TRACE_SCOPE("%s: machine canceled", *this);
+      this->state().enqueue(Notification(this->id(), TransferState_Canceled));
       this->_finiliaze(plasma::TransactionStatus::canceled);
       ELLE_DEBUG("%s: canceled", *this);
     }
@@ -217,6 +224,7 @@ namespace surface
     TransferMachine::_fail()
     {
       ELLE_TRACE_SCOPE("%s: machine failed", *this);
+      this->state().enqueue(Notification(this->id(), TransferState_Failed));
       this->_finiliaze(plasma::TransactionStatus::failed);
       ELLE_DEBUG("%s: failed", *this);
     }
@@ -241,7 +249,7 @@ namespace surface
         ELLE_ERR("%s: transaction failed: %s", *this, elle::exception_string());
       }
 
-      if (!this->_data.empty())
+      if (!this->_data->empty())
       {
         try
         {
@@ -349,33 +357,33 @@ namespace surface
     bool
     TransferMachine::concerns_network(std::string const& network_id)
     {
-      return this->_data.network_id == network_id;
+      return this->_data->network_id == network_id;
     }
 
     bool
     TransferMachine::concerns_transaction(std::string const& transaction_id)
     {
-      return this->_data.id == transaction_id;
+      return this->_data->id == transaction_id;
     }
 
     bool
     TransferMachine::concerns_user(std::string const& user_id)
     {
-      return (user_id == this->_data.sender_id) ||
-             (user_id == this->_data.recipient_id);
+      return (user_id == this->_data->sender_id) ||
+             (user_id == this->_data->recipient_id);
     }
 
     bool
     TransferMachine::concerns_device(std::string const& device_id)
     {
-      return (device_id == this->_data.sender_device_id) ||
-             (device_id == this->_data.recipient_device_id);
+      return (device_id == this->_data->sender_device_id) ||
+             (device_id == this->_data->recipient_device_id);
     }
 
     bool
     TransferMachine::has_id(uint32_t id)
     {
-      return (id == this->_id);
+      return (id == this->id());
     }
 
     void
@@ -398,6 +406,8 @@ namespace surface
         this->_hole.reset();
     }
 
+
+
     /*-------------.
     | Core Machine |
     `-------------*/
@@ -405,6 +415,7 @@ namespace surface
     TransferMachine::_publish_interfaces()
     {
       ELLE_TRACE_SCOPE("%s: publish interfaces", *this);
+      this->state().enqueue(Notification(this->id(), TransferState_PublishInterfaces));
       typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
       AddressContainer addresses;
 
@@ -443,6 +454,7 @@ namespace surface
     TransferMachine::_connection()
     {
       ELLE_TRACE_SCOPE("%s: connecting peers", *this);
+      this->state().enqueue(Notification(this->id(), TransferState_Connect));
 
       // XXX.
       // auto const& transaction = this->state().transaction_manager().one(
@@ -587,6 +599,7 @@ namespace surface
     TransferMachine::_wait_for_peer()
     {
       ELLE_TRACE_SCOPE("%s: waiting for peer to reconnect", *this);
+      this->state().enqueue(Notification(this->id(), TransferState_PeerDisconnected));
     }
 
     void
@@ -609,39 +622,43 @@ namespace surface
     std::string const&
     TransferMachine::transaction_id() const
     {
-      ELLE_ASSERT(!this->_data.id.empty());
-      return this->_data.id;
+      ELLE_ASSERT(!this->_data->id.empty());
+      return this->_data->id;
     }
 
     void
     TransferMachine::transaction_id(std::string const& id)
     {
-      if (!this->_data.id.empty())
+      ELLE_ERR("%s: check", __PRETTY_FUNCTION__);
+      if (!this->_data->id.empty())
       {
-        ELLE_ASSERT_EQ(this->_data.id, id);
+        ELLE_ASSERT_EQ(this->_data->id, id);
         return;
       }
 
-      this->_data.id = id;
+      ELLE_ERR("%s", __PRETTY_FUNCTION__);
+      this->_data->id = id;
     }
 
     std::string const&
     TransferMachine::network_id() const
     {
-      ELLE_ASSERT(!this->_data.network_id.empty());
-      return this->_data.network_id;
+      ELLE_ASSERT(!this->_data->network_id.empty());
+      return this->_data->network_id;
     }
 
     void
     TransferMachine::network_id(std::string const& id)
     {
-      if (!this->_data.network_id.empty())
+      ELLE_ERR("%s: check", __PRETTY_FUNCTION__);
+      if (!this->_data->network_id.empty())
       {
-        ELLE_ASSERT_EQ(this->_data.network_id, id);
+        ELLE_ASSERT_EQ(this->_data->network_id, id);
         return;
       }
 
-      this->_data.network_id = id;
+      ELLE_ERR("%s", __PRETTY_FUNCTION__);
+      this->_data->network_id = id;
     }
 
     std::string const&
@@ -649,48 +666,50 @@ namespace surface
     {
       if (this->is_sender())
       {
-        ELLE_ASSERT(!this->_data.recipient_id.empty());
-        return this->_data.recipient_id;
+        ELLE_ASSERT(!this->_data->recipient_id.empty());
+        return this->_data->recipient_id;
       }
       else
       {
-        ELLE_ASSERT(!this->_data.sender_id.empty());
-        return this->_data.sender_id;
+        ELLE_ASSERT(!this->_data->sender_id.empty());
+        return this->_data->sender_id;
       }
     }
 
     void
     TransferMachine::peer_id(std::string const& id)
     {
+      ELLE_ERR("%s", __PRETTY_FUNCTION__);
       if (this->is_sender())
       {
-        if (!this->_data.recipient_id.empty() && this->_data.recipient_id != id)
+        if (!this->_data->recipient_id.empty() && this->_data->recipient_id != id)
           ELLE_WARN("%s: replace recipient id from %s to %s",
-                    *this, this->_data.recipient_id, id);
-        this->_data.recipient_id = id;
+                    *this, this->_data->recipient_id, id);
+        ELLE_ERR("%s: send", __PRETTY_FUNCTION__);
+        this->_data->recipient_id = id;
       }
       else
       {
-        if (!this->_data.sender_id.empty() && this->_data.sender_id != id)
+        if (!this->_data->sender_id.empty() && this->_data->sender_id != id)
           ELLE_WARN("%s: replace sender id from %s to %s",
-                    *this, this->_data.sender_id, id);
-        this->_data.sender_id = id;
+                    *this, this->_data->sender_id, id);
+        ELLE_ERR("%s: rec", __PRETTY_FUNCTION__);
+        this->_data->sender_id = id;
       }
     }
-
 
     nucleus::proton::Network&
     TransferMachine::network()
     {
       if (!this->_network)
       {
-        ELLE_ASSERT(!this->_data.network_id.empty());
+        ELLE_ASSERT(!this->_data->network_id.empty());
         this->_network.reset(
-          new nucleus::proton::Network(this->_data.network_id));
+          new nucleus::proton::Network(this->_data->network_id));
       }
 
       ELLE_ASSERT(this->_network != nullptr);
-      ELLE_ASSERT_EQ(this->_network->name(), this->_data.network_id);
+      ELLE_ASSERT_EQ(this->_network->name(), this->_data->network_id);
       return *this->_network;
     }
 
@@ -702,13 +721,13 @@ namespace surface
       {
         ELLE_DEBUG_SCOPE("building descriptor");
         using namespace elle::serialize;
-        // std::string descriptor =
-        //   this->state().network_manager().one(this->network_id()).descriptor;
+        std::string descriptor =
+          this->state().meta().network(this->network_id()).descriptor; //network_manager().one(this->network_id()).descriptor;
 
-        // ELLE_ASSERT_NEQ(descriptor.length(), 0u);
+        ELLE_ASSERT_NEQ(descriptor.length(), 0u);
 
-        // this->_descriptor.reset(
-        //   new papier::Descriptor(from_string<InputBase64Archive>(descriptor)));
+        this->_descriptor.reset(
+          new papier::Descriptor(from_string<InputBase64Archive>(descriptor)));
       }
       ELLE_ASSERT(this->_descriptor != nullptr);
       return *this->_descriptor;
@@ -764,7 +783,7 @@ namespace surface
     }
 
     metrics::Metric
-    TransferMachine::network_metric()
+    TransferMachine::network_metric() const
     {
       return metrics::Metric{
         {MKey::value, this->network_id()},
@@ -772,42 +791,40 @@ namespace surface
     }
 
     metrics::Metric
-    TransferMachine::transaction_metric()
+    TransferMachine::transaction_metric() const
     {
-      // auto const& transaction =
-      //   this->state().transaction_manager().one(this->transaction_id());
+      auto const& transaction = *this->data();
 
-      // auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
-      //   std::chrono::system_clock::now().time_since_epoch());
-      // auto timestamp_tr = std::chrono::duration<double>(transaction.timestamp);
-      // double duration = timestamp_now.count() - timestamp_tr.count();
+      auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+      auto timestamp_tr = std::chrono::duration<double>(transaction.timestamp);
+      double duration = timestamp_now.count() - timestamp_tr.count();
 
-      // bool peer_online = this->is_sender() ?
-      //   this->state().user_manager().device_status(
-      //     transaction.recipient_id, transaction.recipient_device_id):
-      //   this->state().user_manager().device_status(
-      //     transaction.sender_id, transaction.sender_device_id);
+      bool peer_online = this->is_sender() ?
+        this->_state.device_status(
+          transaction.recipient_id, transaction.recipient_device_id):
+        this->_state.device_status(
+          transaction.sender_id, transaction.sender_device_id);
 
-      // std::string author{this->is_sender() ? "sender" : "recipient"};
-      // std::string sender_status{this->is_sender() ? "true"
-      //                                             : (peer_online ? "true"
-      //                                                            : "false")};
+      std::string author{this->is_sender() ? "sender" : "recipient"};
+      std::string sender_status{this->is_sender() ? "true"
+                                                  : (peer_online ? "true"
+                                                                 : "false")};
 
-      // std::string recipient_status{this->is_sender() ? "true"
-      //                                                : (peer_online ? "true"
-      //                                                               : "false")};
+      std::string recipient_status{this->is_sender() ? "true"
+                                                     : (peer_online ? "true"
+                                                                    : "false")};
 
-      // return metrics::Metric{
-      //   {MKey::author, author},
-      //   {MKey::duration, std::to_string(duration)},
-      //   {MKey::count, std::to_string(transaction.files_count)},
-      //   {MKey::size, std::to_string(transaction.total_size)},
-      //   {MKey::network, transaction.network_id},
-      //   {MKey::value, transaction.id},
-      //   {MKey::sender_online, sender_status},
-      //   {MKey::recipient_online, recipient_status},
-      // };
-      return metrics::Metric{};
+      return metrics::Metric{
+        {MKey::author, author},
+        {MKey::duration, std::to_string(duration)},
+        {MKey::count, std::to_string(transaction.files_count)},
+        {MKey::size, std::to_string(transaction.total_size)},
+        {MKey::network, transaction.network_id},
+        {MKey::value, transaction.id},
+        {MKey::sender_online, sender_status},
+        {MKey::recipient_online, recipient_status},
+      };
     }
 
     /*----------.
@@ -823,11 +840,14 @@ namespace surface
     void
     TransferMachine::print(std::ostream& stream) const
     {
-      stream << this->type() << "(u=" << this->state().me().id;
-      if (!this->_data.network_id.empty())
-        stream << ", n=" << this->_data.network_id;
-      if (!this->_data.id.empty())
-        stream << ", t=" << this->_data.id;
+      auto const& data = *this->_data;
+      auto const& me = this->state().me();
+
+      stream << this->type() << "(u=" << me.id;
+      if (!data.network_id.empty())
+        stream << ", n=" << data.network_id;
+      if (!data.id.empty())
+        stream << ", t=" << data.id;
       stream << ")";
     }
   }

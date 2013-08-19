@@ -13,12 +13,14 @@ namespace surface
     {
     public:
       SendMachine(surface::gap::State const& state,
+                  uint32_t id,
                   std::string const& recipient,
                   std::unordered_set<std::string>&& files,
-                  TransferMachine::Data& data);
+                  std::shared_ptr<Data> data);
 
       SendMachine(surface::gap::State const& state,
-                  TransferMachine::Data& data);
+                  uint32_t id,
+                  std::shared_ptr<Data> data);
 
       virtual
       ~SendMachine();
@@ -30,7 +32,8 @@ namespace surface
 
     private:
       SendMachine(surface::gap::State const& state,
-                  TransferMachine::Data& data,
+                  uint32_t id,
+                  std::shared_ptr<Data> data,
                   bool);
 
     private:

@@ -16,9 +16,10 @@ namespace surface
   namespace gap
   {
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
-                                   TransferMachine::Data& data,
+                                   uint32_t id,
+                                   std::shared_ptr<TransferMachine::Data> data,
                                    bool):
-      TransferMachine(state, data),
+      TransferMachine(state, id, std::move(data)),
       _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
@@ -61,14 +62,15 @@ namespace surface
     }
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
-                                   TransferMachine::Data& data):
-      ReceiveMachine(state, data, true)
+                                   uint32_t id,
+                                   std::shared_ptr<TransferMachine::Data> data):
+      ReceiveMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
                        *this, data);
 
       auto& null = this->_machine.state_make([] {});
-      switch (data.status)
+      switch (this->data()->status)
       {
         case plasma::TransactionStatus::initialized:
           this->run(this->_wait_for_decision_state);
@@ -186,23 +188,28 @@ namespace surface
     ReceiveMachine::_wait_for_decision()
     {
       ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
-      this->network_id(this->state().meta().transaction(this->transaction_id()).network_id);
+      this->state().enqueue(Notification(this->id(), TransferState_RecipientWaitForDecision));
+
+      auto network_id =
+        this->state().meta().transaction(this->transaction_id()).network_id;
+      this->network_id(network_id);
     }
 
     void
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
+      this->state().enqueue(Notification(this->id(), TransferState_RecipientAccepted));
 
       this->state().meta().network_add_device(
-        this->network_id(), this->state().device_id());
+        this->network_id(), this->state().device().id);
 
       try
       {
         this->state().meta().update_transaction(this->transaction_id(),
                                                 plasma::TransactionStatus::accepted,
-                                                this->state().device_id(),
-                                                this->state().device_name());
+                                                this->state().device().id,
+                                                this->state().device().name);
       }
       catch (plasma::meta::Exception const& e)
       {

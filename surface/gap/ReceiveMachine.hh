@@ -22,7 +22,8 @@ namespace surface
 
     public:
       ReceiveMachine(surface::gap::State const& state,
-                     TransferMachine::Data& data);
+                     uint32_t id,
+                     std::shared_ptr<TransferMachine::Data> data);
 
       virtual
       ~ReceiveMachine();
@@ -40,7 +41,8 @@ namespace surface
 
     private:
       ReceiveMachine(surface::gap::State const& state,
-                     TransferMachine::Data& data,
+                     uint32_t id,
+                     std::shared_ptr<TransferMachine::Data> data,
                      bool);
 
     private:
