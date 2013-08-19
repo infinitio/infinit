@@ -7,6 +7,18 @@ namespace surface
 {
   namespace gap
   {
+    State::TransactionNotFoundException::TransactionNotFoundException(
+      uint32_t id):
+      Exception{
+      gap_transaction_doesnt_exist, elle::sprintf("unknown transaction %s", id)}
+    {}
+
+    State::TransactionNotFoundException::TransactionNotFoundException(
+      std::string const& id):
+      Exception{
+      gap_transaction_doesnt_exist, elle::sprintf("unknown transaction %s", id)}
+   {}
+
     uint32_t
     State::send_files(std::string const& peer_id,
                       std::unordered_set<std::string>&& files)
@@ -90,7 +102,20 @@ namespace surface
     void
     State::_on_peer_connection_update(
       plasma::trophonius::PeerConnectionUpdateNotification const& notif)
-    {}
+    {
+      auto it = std::find_if(
+        std::begin(this->_transactions),
+        std::end(this->_transactions),
+        [&] (std::pair<const uint32_t, TransactionPtr> const& pair)
+        {
+          return pair.second->data()->network_id == notif.network_id;
+        });
+
+      if (it == std::end(this->_transactions))
+        throw TransactionNotFoundException(notif.network_id);
+
+      it->second->on_peer_connection_update(notif);
+    }
 
   }
 }

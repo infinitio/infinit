@@ -975,6 +975,9 @@ def configure(cxx_toolkit = None,
     'surface/gap/_detail/TransferOperations.hh',
     'surface/gap/_detail/TransferOperations.cc',
     'surface/gap/_detail/Papiers.cc',
+    'surface/gap/_detail/Network.cc',
+    'surface/gap/_detail/Transaction.cc',
+    'surface/gap/_detail/User.cc',
   )
 
   # GAP
