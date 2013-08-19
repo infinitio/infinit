@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-ELLE_LOG_COMPONENT ("plasma.Plasma");
-
 namespace plasma
 {
   bool
@@ -44,7 +42,7 @@ namespace plasma
       << ", net=" << t.network_id
       << ", t=" << t.timestamp
       << ", file=" << t.first_filename
-      << ", status=" << (plasma::TransactionStatus) t.status
+      << ", status=" << t.status
       << ") "
       << "from " << t.sender_fullname << " (" << t.sender_id << ") "
       << "on device " << t.sender_device_id << ", "
