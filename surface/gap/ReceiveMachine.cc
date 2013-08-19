@@ -101,6 +101,8 @@ namespace surface
         case plasma::TransactionStatus::_count:
           elle::unreachable();
       }
+
+      this->state().enqueue<Notification>(Notification(id, TransferState_NewTransaction));
     }
 
     void
@@ -110,37 +112,24 @@ namespace surface
                        *this, status);
 
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      auto& scheduler = *reactor::Scheduler::scheduler();
 
       switch (status)
       {
         case plasma::TransactionStatus::canceled:
-          ELLE_DEBUG("%s: open canceled barrier", *this);
-          scheduler.mt_run<void>("open canceled barrier", [this]
-            {
-              this->_canceled.open();
-            });
+          ELLE_DEBUG("%s: open canceled barrier", *this)
+            this->_canceled.open();
           break;
         case plasma::TransactionStatus::failed:
-          ELLE_DEBUG("%s: open failed barrier", *this);
-          scheduler.mt_run<void>("open failed barrier", [this]
-            {
-              this->_failed.open();
-            });
+          ELLE_DEBUG("%s: open failed barrier", *this)
+            this->_failed.open();
           break;
         case plasma::TransactionStatus::finished:
-          ELLE_DEBUG("%s: open finished barrier", *this);
-          scheduler.mt_run<void>("open finished barrier", [this]
-            {
-              this->_finished.open();
-            });
+          ELLE_DEBUG("%s: open finished barrier", *this)
+            this->_finished.open();
           break;
         case plasma::TransactionStatus::ready:
-          ELLE_DEBUG("%s: open ready barrier", *this);
-          scheduler.mt_run<void>("open ready barrier", [this]
-            {
-              this->_ready.open();
-            });
+          ELLE_DEBUG("%s: open ready barrier", *this)
+            this->_ready.open();
           break;
         case plasma::TransactionStatus::accepted:
         case plasma::TransactionStatus::rejected:
@@ -161,13 +150,7 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: open accept barrier %s", *this, this->transaction_id());
 
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-      auto& scheduler = *reactor::Scheduler::scheduler();
-
-      scheduler.mt_run<void>("open accept barrier", [this]
-        {
-          this->_accepted.open();
-        });
+      this->_accepted.open();
     }
 
     void
@@ -176,12 +159,7 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: open rejected barrier %s", *this, this->transaction_id());
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
-      auto& scheduler = *reactor::Scheduler::scheduler();
-
-      scheduler.mt_run<void>("open reject barrier", [this]
-        {
-          this->_rejected.open();
-        });
+      this->_rejected.open();
     }
 
     void
@@ -189,10 +167,6 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
       this->state().enqueue(Notification(this->id(), TransferState_RecipientWaitForDecision));
-
-      auto network_id =
-        this->state().meta().transaction(this->transaction_id()).network_id;
-      this->network_id(network_id);
     }
 
     void
@@ -201,6 +175,8 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
       this->state().enqueue(Notification(this->id(), TransferState_RecipientAccepted));
 
+      ELLE_TRACE("%s: add device %s to network %s",
+                 *this, this->state().device().id, this->network_id());
       this->state().meta().network_add_device(
         this->network_id(), this->state().device().id);
 

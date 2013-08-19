@@ -130,8 +130,6 @@ namespace surface
         this->_connection_state, this->_transfer_state);
       this->_core_machine.transition_add(
         this->_transfer_state, this->_core_stoped_state);
-
-      this->state().enqueue<Notification>(Notification(id, TransferState_NewTransaction));
     }
 
     TransferMachine::~TransferMachine()
@@ -327,23 +325,17 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
                        *this, user_status);
 
-      auto& scheduler = *reactor::Scheduler::scheduler();
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
       if (user_status)
       {
-        ELLE_DEBUG("%s: signal peer online", *this);
-        scheduler.mt_run<void>("signal peer online", [this]
-          {
-            this->_peer_online.signal();
-          });
+        ELLE_DEBUG("%s: signal peer online", *this)
+          this->_peer_online.signal();
       }
       else
       {
-        ELLE_DEBUG("%s: signal peer offline", *this);
-        scheduler.mt_run<void>("signal peer offline", [this]
-          {
-            this->_peer_offline.signal();
-          });
+        ELLE_DEBUG("%s: signal peer offline", *this)
+          this->_peer_offline.signal();
       }
     }
 
@@ -456,45 +448,43 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: connecting peers", *this);
       this->state().enqueue(Notification(this->id(), TransferState_Connect));
 
-      // XXX.
-      // auto const& transaction = this->state().transaction_manager().one(
-      //   this->transaction_id());
+      auto const& transaction = *this->data();
 
-      // auto endpoints = this->state().meta().device_endpoints(
-      //   this->network_id(),
-      //   is_sender() ? transaction.sender_device_id : transaction.recipient_device_id,
-      //   is_sender() ? transaction.recipient_device_id : transaction.sender_device_id);
+      auto endpoints = this->state().meta().device_endpoints(
+        this->network_id(),
+        is_sender() ? transaction.sender_device_id : transaction.recipient_device_id,
+        is_sender() ? transaction.recipient_device_id : transaction.sender_device_id);
 
       static auto print = [] (std::string const &s) { ELLE_DEBUG("-- %s", s); };
 
-      // ELLE_DEBUG("locals")
-      //   std::for_each(begin(endpoints.locals), end(endpoints.locals), print);
-      // ELLE_DEBUG("externals")
-      //   std::for_each(begin(endpoints.externals), end(endpoints.externals), print);
-      // ELLE_DEBUG("fallback")
-      //   std::for_each(begin(endpoints.fallback), end(endpoints.fallback), print);
+      ELLE_DEBUG("locals")
+        std::for_each(begin(endpoints.locals), end(endpoints.locals), print);
+      ELLE_DEBUG("externals")
+        std::for_each(begin(endpoints.externals), end(endpoints.externals), print);
+      ELLE_DEBUG("fallback")
+        std::for_each(begin(endpoints.fallback), end(endpoints.fallback), print);
 
       std::vector<std::unique_ptr<Round>> addresses;
 
-      // addresses.emplace_back(new AddressRound("local", std::move(endpoints.locals)));
+      addresses.emplace_back(new AddressRound("local", std::move(endpoints.locals)));
 
-      // // XXX: This MUST be done before inserting fallback, cause endpoints() is
-      // // lazy. If you try to display endpoints for fallback, it will enable the
-      // // connection.
-      // ELLE_TRACE("%s: selected addresses (%s):", *this, addresses.size())
-      //   for (auto& r: addresses)
-      //     ELLE_TRACE("-- %s", r->endpoints());
+      // XXX: This MUST be done before inserting fallback, cause endpoints() is
+      // lazy. If you try to display endpoints for fallback, it will enable the
+      // connection.
+      ELLE_TRACE("%s: selected addresses (%s):", *this, addresses.size())
+        for (auto& r: addresses)
+          ELLE_TRACE("-- %s", r->endpoints());
 
-      // if (!endpoints.fallback.empty())
-      // {
-      //   std::vector<std::string> splited;
-      //   boost::split(splited, *std::begin(endpoints.fallback), boost::is_any_of(":"));
-      //   ELLE_ASSERT_EQ(splited.size(), 2u);
+      if (!endpoints.fallback.empty())
+      {
+        std::vector<std::string> splited;
+        boost::split(splited, *std::begin(endpoints.fallback), boost::is_any_of(":"));
+        ELLE_ASSERT_EQ(splited.size(), 2u);
 
-      //   std::string host = splited[0];
-      //   int port = std::stoi(splited[1]);
-      //   addresses.emplace_back(new FallbackRound("fallback", host, port, this->network_id()));
-      // }
+        std::string host = splited[0];
+        int port = std::stoi(splited[1]);
+        addresses.emplace_back(new FallbackRound("fallback", host, port, this->network_id()));
+      }
 
       size_t tries = 0;
       for (auto const& r: addresses)
@@ -629,14 +619,12 @@ namespace surface
     void
     TransferMachine::transaction_id(std::string const& id)
     {
-      ELLE_ERR("%s: check", __PRETTY_FUNCTION__);
       if (!this->_data->id.empty())
       {
         ELLE_ASSERT_EQ(this->_data->id, id);
         return;
       }
 
-      ELLE_ERR("%s", __PRETTY_FUNCTION__);
       this->_data->id = id;
     }
 
@@ -650,14 +638,12 @@ namespace surface
     void
     TransferMachine::network_id(std::string const& id)
     {
-      ELLE_ERR("%s: check", __PRETTY_FUNCTION__);
       if (!this->_data->network_id.empty())
       {
         ELLE_ASSERT_EQ(this->_data->network_id, id);
         return;
       }
 
-      ELLE_ERR("%s", __PRETTY_FUNCTION__);
       this->_data->network_id = id;
     }
 
@@ -679,13 +665,11 @@ namespace surface
     void
     TransferMachine::peer_id(std::string const& id)
     {
-      ELLE_ERR("%s", __PRETTY_FUNCTION__);
       if (this->is_sender())
       {
         if (!this->_data->recipient_id.empty() && this->_data->recipient_id != id)
           ELLE_WARN("%s: replace recipient id from %s to %s",
                     *this, this->_data->recipient_id, id);
-        ELLE_ERR("%s: send", __PRETTY_FUNCTION__);
         this->_data->recipient_id = id;
       }
       else
@@ -693,7 +677,6 @@ namespace surface
         if (!this->_data->sender_id.empty() && this->_data->sender_id != id)
           ELLE_WARN("%s: replace sender id from %s to %s",
                     *this, this->_data->sender_id, id);
-        ELLE_ERR("%s: rec", __PRETTY_FUNCTION__);
         this->_data->sender_id = id;
       }
     }
@@ -843,7 +826,8 @@ namespace surface
       auto const& data = *this->_data;
       auto const& me = this->state().me();
 
-      stream << this->type() << "(u=" << me.id;
+      stream << this->type() << "(id=" << this->id()
+             << ", (u=" << me.id;
       if (!data.network_id.empty())
         stream << ", n=" << data.network_id;
       if (!data.id.empty())

@@ -57,9 +57,9 @@ namespace surface
         false,
         [&] () -> bool
         {
-          // return this->state().transaction_manager().one(
-          //   this->transaction_id()).status == TransactionStatus::accepted;
           return false;
+          return this->state().transactions().at(this->id())->data()->status ==
+            TransactionStatus::accepted;
         }
         );
 
@@ -70,9 +70,9 @@ namespace surface
         false,
         [&] () -> bool
         {
-          // return this->state().transaction_manager().one(
-          //   this->transaction_id()).status == TransactionStatus::rejected;
           return false;
+          return this->state().transactions().at(this->id())->data()->status ==
+            TransactionStatus::rejected;
         }
         );
 
@@ -137,7 +137,7 @@ namespace surface
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::shared_ptr<TransferMachine::Data> data):
-      SendMachine(state, id, std::move(data))
+      SendMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
                        *this, this->data());
@@ -184,44 +184,28 @@ namespace surface
                        *this, status);
 
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      auto& scheduler = *reactor::Scheduler::scheduler();
 
       switch (status)
       {
         case plasma::TransactionStatus::accepted:
-          ELLE_DEBUG("%s: open accepted barrier", *this);
-          scheduler.mt_run<void>("open accepted barrier", [this]
-            {
-              this->_accepted.open();
-            });
+          ELLE_DEBUG("%s: open accepted barrier", *this)
+            this->_accepted.open();
           break;
         case plasma::TransactionStatus::canceled:
-          ELLE_DEBUG("%s: open canceled barrier", *this);
-          scheduler.mt_run<void>("open canceled barrier", [this]
-            {
-              this->_canceled.open();
-            });
+          ELLE_DEBUG("%s: open canceled barrier", *this)
+            this->_canceled.open();
           break;
         case plasma::TransactionStatus::failed:
-          ELLE_DEBUG("%s: open failed barrier", *this);
-          scheduler.mt_run<void>("open failed barrier", [this]
-            {
-              this->_failed.open();
-            });
+          ELLE_DEBUG("%s: open failed barrier", *this)
+            this->_failed.open();
           break;
         case plasma::TransactionStatus::finished:
-          ELLE_DEBUG("%s: open finished barrier", *this);
-          scheduler.mt_run<void>("open finished barrier", [this]
-            {
-              this->_finished.open();
-            });
+          ELLE_DEBUG("%s: open finished barrier", *this)
+            this->_finished.open();
           break;
         case plasma::TransactionStatus::rejected:
-          ELLE_DEBUG("%s: open rejected barrier", *this);
-          scheduler.mt_run<void>("open rejected barrier", [this]
-            {
-              this->_rejected.open();
-            });
+          ELLE_DEBUG("%s: open rejected barrier", *this)
+            this->_rejected.open();
           break;
         case plasma::TransactionStatus::initialized:
         case plasma::TransactionStatus::ready:
@@ -384,8 +368,13 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: set permissions %s", *this, this->transaction_id());
       this->state().enqueue(Notification(this->id(), TransferState_GrantPermissions));
 
-      //auto peer_public_key = this->state().user_manager().one(this->peer_id()).public_key;
-      std::string peer_public_key;
+      ELLE_DEBUG("%s: peer object id %s", *this, this->peer_id());
+      auto id = this->state().user_indexes().at(this->peer_id());
+      ELLE_DEBUG("%s: peer id %s", *this, id);
+      auto peer = this->state().users().at(id);
+      ELLE_DEBUG("%s: peer is %s", *this, peer);
+
+      auto peer_public_key = peer.public_key;
 
       ELLE_ASSERT_NEQ(peer_public_key.length(), 0u);
 
@@ -395,8 +384,10 @@ namespace surface
       nucleus::neutron::Subject subject;
       subject.Create(public_key);
 
-      //auto group_address = this->state().network_manager().one(this->network_id()).group_address;
-      std::string group_address;
+      ELLE_DEBUG("%s: network id %s", *this, this->network_id());
+      auto network = this->state().meta().network(this->network_id());
+      ELLE_DEBUG("%s: network %s", *this, network);
+      auto group_address = network.group_address;
 
       nucleus::neutron::Group::Identity group;
       group.Restore(group_address);

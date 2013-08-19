@@ -9,8 +9,7 @@ namespace std
   public:
     std::size_t operator()(surface::gap::TransferMachine const& tm) const
     {
-      // XXX: The id is definitely not unique.
-      return (size_t)tm.id;
+      return (size_t) tm.id;
     }
   };
 }

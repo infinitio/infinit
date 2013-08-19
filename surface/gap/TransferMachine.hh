@@ -1,7 +1,7 @@
 #ifndef SURFACE_GAP_TRANSFERMACHINE_HH
 # define SURFACE_GAP_TRANSFERMACHINE_HH
 
-# include <surface/gap/TransferMachineStatus.hh>
+# include <surface/gap/enums.hh>
 # include <surface/gap/Notification.hh>
 # include <plasma/fwd.hh>
 
