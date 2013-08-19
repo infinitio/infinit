@@ -134,6 +134,8 @@ namespace plasma
     class Client:
       public elle::Printable
     {
+    public:
+      typedef std::function<void (bool)> ConnectCallback;
     private:
       struct Impl;
       std::unique_ptr<Impl> _impl;
@@ -141,7 +143,7 @@ namespace plasma
     public:
       Client(std::string const& server,
              uint16_t port,
-             std::function<void()> connect_callback);
+             ConnectCallback connect_callback);
 
       ~Client();
 

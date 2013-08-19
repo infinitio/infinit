@@ -184,11 +184,11 @@ namespace plasma
       std::string user_id;
       std::string user_token;
       std::string user_device_id;
-      std::function<void()> connect_callback;
+      Client::ConnectCallback connect_callback;
 
       Impl(std::string const& server,
            uint16_t port,
-           std::function<void()> connect_callback):
+           Client::ConnectCallback connect_callback):
         _reconnected{0},
         _socket(),
         _connected(),
@@ -265,6 +265,7 @@ namespace plasma
       void
       _disconnect()
       {
+        this->connect_callback(false);
         this->_connected.close();
         this->_socket->socket()->close();
         this->_socket.reset();
@@ -436,7 +437,7 @@ namespace plasma
 
     Client::Client(std::string const& server,
                    uint16_t port,
-                   std::function<void()> connect_callback):
+                   ConnectCallback connect_callback):
       _impl{new Impl{server, port, connect_callback}},
       _ping_period(default_ping_period)
     {
@@ -481,7 +482,7 @@ namespace plasma
       elle::Finally guard(
         [&]
         {
-          _impl->connect_callback();
+          _impl->connect_callback(true);
         });
 
       return true;

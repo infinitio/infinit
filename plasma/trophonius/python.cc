@@ -9,7 +9,7 @@ class Client: public plasma::trophonius::Client
 public:
   Client(std::string const& host, uint16_t port, object on_connection):
     plasma::trophonius::Client(host, port,
-                               [=]() {on_connection();})
+                               [=](bool value) { on_connection(value); })
   {}
 
   int
