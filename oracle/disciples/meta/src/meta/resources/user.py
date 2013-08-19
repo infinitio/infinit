@@ -299,6 +299,7 @@ class Self(Page):
             'public_key': self.user['public_key'],
             'accounts': self.user['accounts'],
             'remaining_invitations': self.user.get('remaining_invitations', 0),
+            'connected_devices': self.user.get('connected_devices', []),
             'status': is_connected(database.ObjectId(self.user['_id'])),
             'token_generation_key': self.user.get('token_generation_key', ''),
         })
