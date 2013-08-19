@@ -22,11 +22,16 @@ namespace plasma
     public elle::Printable
   {
   public:
-    Transaction();
+    Transaction() = default;
+    Transaction(Transaction&&) = default;
+    Transaction(Transaction const&) = default;
+    Transaction&
+    operator =(Transaction const&) = default;
+
     ELLE_SERIALIZE_CONSTRUCT(Transaction)
     {}
     virtual
-    ~Transaction();
+    ~Transaction() = default;
 
   public:
     std::string id;

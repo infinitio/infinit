@@ -2,14 +2,10 @@
 
 #include <iostream>
 
+ELLE_LOG_COMPONENT ("plasma.Plasma");
+
 namespace plasma
 {
-  Transaction::Transaction()
-  {}
-
-  Transaction::~Transaction()
-  {}
-
   bool
   Transaction::empty() const
   {
