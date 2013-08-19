@@ -73,6 +73,20 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::TransactionNotification,
   ar & base_class<plasma::Transaction>(value);
 }
 
+ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::PeerConnectionUpdateNotification);
+ELLE_SERIALIZE_SIMPLE(plasma::trophonius::PeerConnectionUpdateNotification,
+                      ar,
+                      value,
+                      version)
+{
+  (void)version;
+  ar & base_class<plasma::trophonius::Notification>(value);
+  ar & named("network_id", value.network_id);
+  ar & named("status", value.status);
+  ar & named("devices", value. devices);
+}
+
+
 ELLE_SERIALIZE_NO_FORMAT(plasma::trophonius::NetworkUpdateNotification);
 ELLE_SERIALIZE_SIMPLE(plasma::trophonius::NetworkUpdateNotification,
                       ar,
@@ -134,6 +148,8 @@ namespace plasma
         return Ptr(new Notification{extractor});
       case NotificationType::transaction:
         return Ptr(new TransactionNotification{extractor});
+      case NotificationType::peer_connection_update:
+        return Ptr(new PeerConnectionUpdateNotification{extractor});
       case NotificationType::new_swagger:
         return Ptr(new NewSwaggerNotification{extractor});
       case NotificationType::user_status:

@@ -60,7 +60,6 @@ namespace plasma
       ELLE_SERIALIZE_CONSTRUCT(NewSwaggerNotification,
                                Notification)
       {}
-
     };
 
     struct UserStatusNotification:
