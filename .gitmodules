@@ -10,3 +10,6 @@
 [submodule "documentation/finder-injection/FinderMenu"]
 	path = documentation/finder-injection/FinderMenu
 	url = https://github.com/infinitelabs/FinderMenu.git
+[submodule "surface/osx"]
+	path = surface/osx
+	url = git@git.infinit.io:osx-app
