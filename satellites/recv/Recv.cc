@@ -3,6 +3,8 @@
 
 #include <boost/program_options.hpp>
 
+#include <reactor/scheduler.hh>
+#include <reactor/sleep.hh>
 #include <elle/Exception.hh>
 #include <elle/assert.hh>
 
@@ -67,56 +69,64 @@ int main(int argc, char** argv)
     auto options = parse_options(argc, argv);
     std::string const user = options["user"].as<std::string>();
     std::string const password = options["password"].as<std::string>();
+    lune::Lune::Initialize(); //XXX
 
-    lune::Lune::Initialize(); // XXX
+    reactor::Scheduler sched;
 
-    surface::gap::State state;
-
-    auto hashed_password = state.hash_password(user, password);
-    state.login(user, hashed_password);
-    // state.update_device("lust");
-
-    auto transactions = state.transaction_manager().all_ids();
-
-    if (transactions.empty())
-      throw std::runtime_error("no transactions");
-
-    uint16_t i = 0;
-    for (auto const& tr: transactions)
-      std::cout << "[" << i++ << "]" << tr << std::endl;
-
-    std::cout << "indice: ";
-    uint16_t indice;
-    std::cin >> indice;
-
-    if (indice >= transactions.size())
-      throw std::runtime_error("invalid id");
-
-    auto transaction_id = transactions[indice];
-    auto mid = state.accept_transaction(transaction_id);
-
-    bool stop = false;
-    state.notification_manager().transaction_callback(
-      [&] (plasma::trophonius::TransactionNotification const& t, bool)
+    reactor::VThread<int> t
+    {
+      sched,
+      "recv",
+      [&] () -> int
       {
-        if (transaction_id != t.id)
-          return;
+        surface::gap::State state;
+        bool stop = false;
 
-        ELLE_ASSERT(transaction_id == state.transaction_id(mid));
+        state.attach_callback<surface::gap::State::UserStatusNotification>(
+          [&] (surface::gap::State::UserStatusNotification const& notif)
+          {
+            std::cerr << "LUL: " << notif.id  << " - "<< notif.status << std::endl;
+          });
 
-        if (t.status == plasma::TransactionStatus::finished ||
-            t.status == plasma::TransactionStatus::canceled)
-          stop = true;
-      });
+        state.attach_callback<surface::gap::TransferMachine::Notification>(
+          [&] (surface::gap::TransferMachine::Notification const& notif)
+          {
+            if (notif.status == TransferState_RecipientWaitForDecision)
+            {
+              std::cerr << "lol" << std::endl;
+              state.transactions().at(notif.id)->accept();
+            }
+            else if (notif.status == TransferState_Finished)
+            {
+              std::cerr << "finished" << std::endl;
+              state.transactions().at(notif.id)->join();
+              stop = true;
+            }
 
-    while (!stop)
-      state.notification_manager().poll(1);
+          });
 
-    state.join_transaction(transaction_id);
+        auto hashed_password = state.hash_password(user, password);
+        state.login(user, hashed_password);
+
+        do
+        {
+          std::cerr << "a" << std::endl;
+          state.poll();
+          reactor::Sleep s{sched, boost::posix_time::seconds{1}};
+          s.run();
+        }
+        while (stop != true);
+
+        return 0;
+      }
+    };
+
+    sched.run();
   }
   catch (std::runtime_error const& e)
   {
     std::cerr << argv[0] << ": " << e.what() << "." << std::endl;
     return 1;
   }
+  return 0;
 }

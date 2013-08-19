@@ -3,6 +3,8 @@
 
 #include <boost/program_options.hpp>
 
+#include <reactor/scheduler.hh>
+#include <reactor/sleep.hh>
 #include <elle/Exception.hh>
 
 #include <lune/Lune.hh>
@@ -73,39 +75,82 @@ int main(int argc, char** argv)
     std::string const to = options["to"].as<std::string>();
     std::string const file = options["file"].as<std::string>();
 
+    bool stop = false;
     lune::Lune::Initialize(); // XXX
 
-    surface::gap::State state;
+    reactor::Scheduler sched;
 
-    auto hashed_password = state.hash_password(user, password);
-    state.login(user, hashed_password);
-    // state.update_device("lust");
-
-    auto mid = state.send_files(to, { file.c_str() });
-
-    bool stop = false;
-    std::string transaction_id;
-    state.notification_manager().transaction_callback(
-      [&] (plasma::trophonius::TransactionNotification const& t, bool)
+    reactor::VThread<int> t
+    {
+      sched,
+      "sendto",
+      [&] () -> int
       {
-        if (state.transaction_id(mid) != t.id)
-          return;
+        surface::gap::State state;
 
-        transaction_id = t.id;
+        state.attach_callback<surface::gap::State::UserStatusNotification>(
+          [&] (surface::gap::State::UserStatusNotification const& notif)
+          {
+            std::cerr << "LUL: " << notif.id  << " - "<< notif.status << std::endl;
+          });
 
-        if (t.status == plasma::TransactionStatus::finished ||
-            t.status == plasma::TransactionStatus::canceled)
-          stop = true;
-      });
+        state.attach_callback<surface::gap::TransferMachine::Notification>(
+          [&] (surface::gap::TransferMachine::Notification const& notif)
+          {
+            std::cerr << "LOL: " << notif.id  << " - "<< notif.status << std::endl;
 
-    while (!stop)
-      state.notification_manager().poll(1);
+            if (notif.status == TransferState_Finished)
+            {
+              std::cerr << "finished" << std::endl;
+              state.transactions().at(notif.id)->join();
+              stop = true;
+            }
+          });
+        auto hashed_password = state.hash_password(user, password);
+        state.login(user, hashed_password);
+        // state.update_device("lust");
 
-    state.join_transaction(transaction_id);
+        auto mid = state.send_files(to, { file.c_str() });
+
+        do
+        {
+          state.poll();
+          reactor::Sleep s{sched, boost::posix_time::seconds{1}};
+          s.run();
+        }
+        while (stop != true);
+
+        return 0;
+      }
+    };
+
+    sched.run();
+
+    // bool stop = false;
+    // std::string transaction_id;
+    // state.notification_manager().transaction_callback(
+    //   [&] (plasma::trophonius::TransactionNotification const& t, bool)
+    //   {
+    //     if (state.transaction_id(mid) != t.id)
+    //       return;
+
+    //     transaction_id = t.id;
+
+    //     if (t.status == plasma::TransactionStatus::finished ||
+    //         t.status == plasma::TransactionStatus::canceled)
+    //       stop = true;
+    //   });
+
+    // while (!stop)
+    //   state.notification_manager().poll(1);
+
+    // state.join_transaction(transaction_id);
   }
   catch (std::runtime_error const& e)
   {
     std::cerr << argv[0] << ": " << e.what() << "." << std::endl;
     return 1;
   }
+
+  return 0;
 }
