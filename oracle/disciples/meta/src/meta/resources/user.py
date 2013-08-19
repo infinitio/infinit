@@ -655,15 +655,16 @@ class _DeviceAccess(_Page):
         )
 
         # XXX.
-        for network in database.networks().find({"nodes": {"$exists": str(device['_id'])}}):
-            network['nodes'][str(device['_id'])] = {"locals": None, "externals": None, "fallback": None}
-            database.networks().save(network)
-            self.notifier.notify_some(
-                notifier.PEER_CONNECTION_UPDATE,
-                device_ids = list(network['nodes']),
-                message = { "network_id": str(network['_id']), "devices": list(network['nodes'].keys()), "status": False },
-                store = False,
-            )
+        if value is False:
+            for network in database.networks().find({"nodes": {"$exists": str(device['_id'])}}):
+                network['nodes'][str(device['_id'])] = {"locals": None, "externals": None, "fallback": None}
+                database.networks().save(network)
+                self.notifier.notify_some(
+                    notifier.PEER_CONNECTION_UPDATE,
+                    device_ids = list(network['nodes']),
+                    message = { "network_id": str(network['_id']), "devices": list(network['nodes'].keys()), "status": False },
+                    store = False,
+                    )
 
         self.notify_swaggers(
             notifier.USER_STATUS,
