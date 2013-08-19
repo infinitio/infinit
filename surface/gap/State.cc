@@ -1,4 +1,5 @@
 #include "State.hh"
+#include <metrics/Kind.hh>
 
 #include <surface/gap/TransferMachine.hh>
 #include <surface/gap/SendMachine.hh>
@@ -94,7 +95,16 @@ namespace surface
         }
       };
     }
-    // - State ----------------------------------------------------------------
+
+    State::ConnectionStatus::ConnectionStatus(bool status):
+      status(status)
+    {}
+
+    Notification::Type State::ConnectionStatus::type = NotificationType_ConnectionStatus;
+
+    /*-------------------------.
+    | Construction/Destruction |
+    `-------------------------*/
     State::State(std::string const& meta_host,
                  uint16_t meta_port,
                  std::string const& trophonius_host,
@@ -103,35 +113,15 @@ namespace surface
                  uint16_t apertus_port):
       _logger_intializer{},
       _meta{meta_host, meta_port, true},
-      _reporter(common::metrics::fallback_path()),
-      _google_reporter(common::metrics::google_fallback_path()),
-      _scheduler{},
-      _keep_alive(this->_scheduler, "State keep alive", [] () {
-          while (true)
-          {
-            auto* current = reactor::Scheduler::scheduler()->current();
-            current->sleep(boost::posix_time::seconds(60));
-          }
-      }),
-      _scheduler_thread([&] {
-          try
-          {
-            this->_scheduler.run();
-          }
-          catch (...)
-          {
-            ELLE_ERR("exception escaped from State scheduler: %s",
-                     elle::exception_string());
-            this->_exception = std::current_exception();
-          }
-      }),
+      _trophonius{trophonius_host, trophonius_port, [this] (bool status)
+        {
+          this->enqueue<ConnectionStatus>(ConnectionStatus(status));
+      }},
+      _reporter{common::metrics::fallback_path()},
+      _google_reporter{common::metrics::google_fallback_path()},
       _me{nullptr},
       _device{nullptr},
-      _output_dir{common::system::download_directory()},
-      _trophonius_host{trophonius_host},
-      _trophonius_port{trophonius_port},
-      _apertus_host{apertus_host},
-      _apertus_port{apertus_port}
+      _output_dir{common::system::download_directory()}
     {
       ELLE_TRACE_SCOPE("%s: create state", *this);
 
@@ -155,7 +145,7 @@ namespace surface
 
         ELLE_TRACE_SCOPE("loading token generating key: %s", token_genkey);
         this->_meta.generate_token(token_genkey);
-        this->_me.reset(new Self{this->_meta.self()});
+        this->_me.reset(new Self{this->meta().self()});
 
         std::ofstream identity_infos{
           common::infinit::identity_path(this->me().id)};
@@ -165,7 +155,7 @@ namespace surface
           ELLE_ERR("Cannot open identity file");
         }
 
-        identity_infos << this->_meta.token() << "\n"
+        identity_infos << this->meta().token() << "\n"
                        << this->me().identity << "\n"
                        << this->me().email << "\n"
                        << this->me().id << "\n"
@@ -180,61 +170,29 @@ namespace surface
       {
         using metrics::services::Google;
         using metrics::services::KISSmetrics;
-        using namespace metrics;
 
-        this->_google_reporter.add_service_class<Google>(
-          common::metrics::google_info_investors());
+        this->_google_reporter.add_service_class<Google>(common::metrics::google_info_investors());
 
-        this->_reporter.add_service_class<Google>(
-          common::metrics::google_info());
-        this->_reporter.add_service_class<KISSmetrics>(
-          common::metrics::kissmetrics_info());
+        this->_reporter.add_service_class<Google>(common::metrics::google_info());
+        this->_reporter.add_service_class<KISSmetrics>(common::metrics::kissmetrics_info());
 
         typedef MetricKindService<metrics::Kind::user, KISSmetrics> KMUser;
         this->_reporter.add_service_class<KMUser>(
-          common::metrics::kissmetrics_info(Kind::user));
+          common::metrics::kissmetrics_info(metrics::Kind::user));
 
-        typedef MetricKindService<Kind::network, KISSmetrics> KMNetwork;
+        typedef MetricKindService<metrics::Kind::network, KISSmetrics> KMNetwork;
         this->_reporter.add_service_class<KMNetwork>(
-          common::metrics::kissmetrics_info(Kind::network));
+          common::metrics::kissmetrics_info(metrics::Kind::network));
 
-        typedef MetricKindService<Kind::transaction, KISSmetrics> KMTransaction;
+        typedef MetricKindService<metrics::Kind::transaction, KISSmetrics> KMTransaction;
         this->_reporter.add_service_class<KMTransaction>(
-          common::metrics::kissmetrics_info(Kind::transaction));
+          common::metrics::kissmetrics_info(metrics::Kind::transaction));
       }
-    }
-
-    std::string const&
-    State::token_generation_key() const
-    {
-      ELLE_TRACE_SCOPE("%s: generate token", *this);
-
-      return this->me().token_generation_key;
-    }
-
-    std::string
-    State::user_directory()
-    {
-      ELLE_TRACE_METHOD("");
-
-      return common::infinit::user_directory(this->me().id);
     }
 
     State::~State()
     {
       ELLE_TRACE_SCOPE("%s: destroying state", *this);
-
-      this->_scheduler.mt_run<void>(
-        "stop state",
-        [this]
-        {
-          this->_keep_alive.terminate_now();
-
-          auto* scheduler = reactor::Scheduler::scheduler();
-          scheduler->terminate_now();
-        });
-
-      this->_scheduler_thread.join();
 
       try
       {
@@ -246,37 +204,30 @@ namespace surface
       }
     }
 
-    std::string const&
-    State::token()
+    plasma::meta::Client const&
+    State::meta(bool authentication_required) const
     {
-      return this->_meta.token();
-    }
-
-    Self const&
-    State::me() const
-    {
-      if (!this->logged_in())
+      if (authentication_required && this->_meta.token().empty())
         throw Exception{gap_internal_error, "you must be logged in"};
 
-      if (this->_me == nullptr)
-      {
-        ELLE_TRACE("loading self info")
-          this->_me.reset(new Self{this->_meta.self()});
-      }
-      ELLE_ASSERT_NEQ(this->_me, nullptr);
-      return *this->_me;
+      return this->_meta;
     }
 
+    /*----------------------.
+    | Login/Logout/Register |
+    `----------------------*/
     void
     State::login(std::string const& email,
                  std::string const& password)
     {
       ELLE_TRACE_SCOPE("%s: login to meta as %s", *this, email);
 
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
+
       this->_meta.token("");
       this->_cleanup();
-
-      ELLE_ASSERT_EQ(this->_transfers.size(), 0u);
 
       std::string lower_email = email;
 
@@ -343,71 +294,22 @@ namespace surface
         identity_infos.close();
       }
 
-      this->notification_manager();
-      this->user_manager();
-      this->network_manager();
-      this->transaction_manager();
-
-      // XXX: Will create the notification mananger :/
-      this->notification_manager().transaction_callback(
-        std::bind(&surface::gap::State::_on_transaction_notification,
-                  this,
-                  std::placeholders::_1,
-                  std::placeholders::_2));
-
-      this->notification_manager().peer_connection_update_callback(
-        std::bind(&surface::gap::State::_on_peer_connection_update_notification,
-                  this,
-                  std::placeholders::_1));
-
-      this->_init_transactions();
-      this->notification_manager().connect();
-    }
-
-    void
-    State::_init_transactions()
-    {
-      for (auto& transaction_pair: this->transaction_manager().all())
-      {
-        if (transaction_pair.second.sender_id == this->me().id)
-        {
-          this->_transfers.emplace_back(new SendMachine{*this, transaction_pair.second});
-        }
-        else
-        {
-          this->_transfers.emplace_back(new ReceiveMachine{*this, transaction_pair.second});
-        }
-      }
-    }
-
-    void
-    State::_cleanup()
-    {
-      ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
-
-      // XXX: Could be improved a lot.
-      // XXX: Not thread safe.
-      while (this->_transfers.size())
-      {
-        try
-        {
-          this->_transfers.pop_back();
-        }
-        catch (std::exception const& e)
-        {
-          ELLE_ERR("%s: error while deleting machine: %s",
-                   *this, elle::exception_string());
-          throw;
-        }
-      }
-
-      this->_transaction_manager->reset();
-      this->_network_manager->reset();
-      this->_user_manager->reset();
-      this->_notification_manager->reset();
-
-      this->_device.reset();
-      this->_me.reset();
+      this->_trophonius.connect(
+        this->me().id, this->_meta.token(), this->device().id);
+      this->_polling_thread.reset(
+        new reactor::Thread{
+          scheduler,
+          "poll",
+          [&]
+          {
+            while (true)
+            {
+              this->handle_notification(this->_trophonius.poll());
+              ELLE_TRACE("%s: notification pulled", *this);
+            }
+          }});
+      this->swaggers();
+      this->transactions_init();
     }
 
     void
@@ -415,15 +317,14 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
 
-      this->_notification_manager(
-        [&] (std::unique_ptr<NotificationManager> const& ptr)
-        {
-          if (ptr != nullptr)
-            ptr->disconnect();
-        });
+      this->_users.clear();
+      this->transactions_clear();
 
-      if (this->_meta.token().empty())
+      if (this->meta(false).token().empty())
         return;
+
+      this->_polling_thread->terminate_now();
+      this->_polling_thread.reset();
 
       elle::Finally logout(
         [&]
@@ -448,6 +349,15 @@ namespace surface
         });
 
       elle::Finally clean([&] { this->_cleanup(); });
+    }
+
+    void
+    State::_cleanup()
+    {
+      ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
+
+      this->_device.reset();
+      this->_me.reset();
     }
 
     std::string
@@ -505,7 +415,7 @@ namespace surface
         this->_reporter[lower_email].store("user.register.failed");
       }};
 
-      auto res = this->_meta.register_(
+      auto res = this->meta(false).register_(
         lower_email, fullname, password, activation_code);
 
       register_failed.abort();
@@ -520,115 +430,35 @@ namespace surface
       this->login(lower_email, password);
     }
 
-    papier::Identity const&
-    State::identity() const
+    std::string const&
+    State::token_generation_key() const
     {
-      if (!this->logged_in())
-        throw Exception{gap_internal_error, "you must be logged in"};
+      ELLE_TRACE_SCOPE("%s: generate token", *this);
 
-      if (this->_identity.Restore(this->meta().identity()) == elle::Status::Error)
-        throw elle::Exception("Couldn't restore the identity.");
-
-      return this->_identity;
+      return this->me().token_generation_key;
     }
 
-    NotificationManager&
-    State::notification_manager(bool auto_connect) const
+    Self const&
+    State::me() const
     {
-      return this->_notification_manager(
-        [this, auto_connect] (NotificationManagerPtr& manager) -> NotificationManager& {
-          if (manager == nullptr)
-          {
-            ELLE_TRACE_SCOPE("%s: allocating a new notification manager", *this);
+      static reactor::Mutex me_mutex;
 
-            manager.reset(
-              new NotificationManager{
-                this->_trophonius_host,
-                this->_trophonius_port,
-                this->_meta,
-                std::bind(&State::me, this),
-                std::bind(&State::device, this),
-                auto_connect,
-              });
-          }
-          return *manager;
-        });
+      reactor::Lock m(me_mutex);
+      if (this->_me == nullptr)
+      {
+        ELLE_TRACE("loading self info")
+          this->_me.reset(new Self{this->meta().self()});
+      }
+      ELLE_ASSERT_NEQ(this->_me, nullptr);
+      return *this->_me;
     }
 
-    NetworkManager&
-    State::network_manager() const
+    std::string
+    State::user_directory()
     {
-      return this->_network_manager(
-        [this] (NetworkManagerPtr& manager) -> NetworkManager& {
-          if (manager == nullptr)
-          {
-            ELLE_TRACE_SCOPE("%s: allocating a new network manager", *this);
+      ELLE_TRACE_METHOD("");
 
-            manager.reset(
-              new NetworkManager{
-                this->notification_manager(),
-                this->_meta,
-              });
-          }
-          return *manager;
-        });
-    }
-
-    UserManager&
-    State::user_manager() const
-    {
-      return this->_user_manager(
-        [this] (UserManagerPtr& manager) -> UserManager& {
-          if (manager == nullptr)
-          {
-            ELLE_TRACE_SCOPE("%s: allocating a new user manager", *this);
-
-            manager.reset(
-              new UserManager{
-                this->notification_manager(),
-                this->_meta
-              });
-          }
-          return *manager;
-        });
-    }
-
-    TransactionManager&
-    State::transaction_manager() const
-    {
-      return this->_transaction_manager(
-        [this] (TransactionManagerPtr& manager) -> TransactionManager& {
-          if (manager == nullptr)
-          {
-            ELLE_TRACE_SCOPE("%s: allocating a new transaction manager", *this);
-            // auto update_remaining_invitations =
-            //   [this] (unsigned int remaining_invitations)
-            //   {
-            //     if (this->_me != nullptr)
-            //       this->_me->remaining_invitations = remaining_invitations;
-            //   };
-            manager.reset(
-              new TransactionManager{
-                this->notification_manager(),
-                this->meta(),
-                std::bind(&State::me, this),
-                std::bind(&State::device, this)
-              });
-          }
-          return *manager;
-        });
-    }
-
-    /*----------.
-    | Printable |
-    `----------*/
-    void
-    State::print(std::ostream& stream) const
-    {
-      stream << "state(" << this->_meta.host() << ":" << this->_meta.port();
-      if (!this->_meta.email().empty())
-        stream << " as " << this->_meta.email();
-      stream << ")";
+      return common::infinit::user_directory(this->me().id);
     }
 
     void
@@ -645,248 +475,151 @@ namespace surface
       this->_output_dir = dir;
     }
 
-    State::TransferIterator
-    State::_find_machine(std::function<bool (TransferMachinePtr const&)> func) const
+    void
+    State::handle_notification(
+      std::unique_ptr<plasma::trophonius::Notification>&& notif)
     {
-      State::TransferIterator it = std::find_if(this->_transfers.begin(),
-                                                this->_transfers.end(),
-                                                func);
-      return it;
-    }
+      ELLE_TRACE_SCOPE("%s: new notification %s", *this, *notif);
+      switch(notif->notification_type)
+      {
+        case plasma::trophonius::NotificationType::user_status:
+          ELLE_ASSERT(
+            dynamic_cast<plasma::trophonius::UserStatusNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_swagger_status_update(
+            *static_cast<plasma::trophonius::UserStatusNotification const*>(
+              notif.release()));
+          break;
+        case plasma::trophonius::NotificationType::transaction:
+          ELLE_ASSERT(
+            dynamic_cast<plasma::trophonius::TransactionNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_transaction_update_notification(
+            *static_cast<plasma::trophonius::TransactionNotification const*>(
+              notif.release()));
+          break;
+        case plasma::trophonius::NotificationType::new_swagger:
+          ELLE_ASSERT(
+            dynamic_cast<plasma::trophonius::NewSwaggerNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_new_swagger(
+            *static_cast<plasma::trophonius::NewSwaggerNotification const*>(
+              notif.release()));
+          break;
+        case plasma::trophonius::NotificationType::peer_connection_update:
+          ELLE_ASSERT(
+            dynamic_cast<plasma::trophonius::PeerConnectionUpdateNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_peer_connection_update(
+            *static_cast<plasma::trophonius::PeerConnectionUpdateNotification const*>(
+              notif.release()));
+          break;
+        case plasma::trophonius::NotificationType::none:
+        case plasma::trophonius::NotificationType::network_update:
+        case plasma::trophonius::NotificationType::message:
+        case plasma::trophonius::NotificationType::ping:
+        case plasma::trophonius::NotificationType::connection_enabled:
+        case plasma::trophonius::NotificationType::suicide:
+          break;
+      }
+    };
 
-    State::TransferIterator
-    State::_machine_by_user(std::string const& user_id) const
-    {
-      return this->_find_machine(
-        [&] (TransferMachinePtr const& machine)
-        {
-          return machine->concerns_user(user_id);
-        });
-    }
-
-    State::TransferIterator
-    State::_machine_by_transaction(std::string const& transaction_id) const
-    {
-      return this->_find_machine(
-        [&] (TransferMachinePtr const& machine)
-        {
-          return machine->concerns_transaction(transaction_id);
-        });
-    }
-
-    State::TransferIterator
-    State::_machine_by_network(std::string const& network_id) const
-    {
-      return this->_find_machine(
-        [&] (TransferMachinePtr const& machine)
-        {
-          return machine->concerns_network(network_id);
-        });
-    }
-
-    State::TransferIterator
-    State::_machine_by_id(uint32_t id) const
-    {
-      return this->_find_machine(
-        [&] (TransferMachinePtr const& machine)
-        {
-          return machine->has_id(id);
-        });
-    }
+    /*-------------------.
+    | External Callbacks |
+    `-------------------*/
 
     void
-    State::_on_transaction_notification(TransactionNotification const& notif,
-                                        bool is_new)
+    State::poll() const
     {
-      ELLE_TRACE_SCOPE("%s: transaction_notification %s", *this, notif);
-
-      if (!is_new)
-      {
-        ELLE_DEBUG("%s: dropping old notification", *this);
+      if (this->_runners.empty())
         return;
-      }
 
-      auto const& transaction = this->transaction_manager().one(notif.id);
+      ELLE_WARN("poll");
 
-      TransferIterator it = this->_machine_by_transaction(notif.id);
-
-      if (it == std::end(this->_transfers))
-      {
-        if (transaction.sender_id == this->me().id)
-        {
-          this->_transfers.emplace_back(new SendMachine{*this, transaction});
-        }
-        else
-        {
-          this->_transfers.emplace_back(new ReceiveMachine{*this, transaction});
-        }
-        it = std::prev(this->_transfers.end());
-      }
-
-      ELLE_ASSERT(*it != nullptr);
-
-      auto& transfer_machine = **it;
-      transfer_machine.on_transaction_update(transaction);
+      auto const& runner = this->_runners.front();
+      (*runner)();
+      this->_runners.pop();
     }
 
+    /*----------.
+    | Printable |
+    `----------*/
     void
-    State::_on_peer_connection_update_notification(
-      PeerConnectionUpdateNotification const& notif)
+    State::print(std::ostream& stream) const
     {
-      TransferIterator it = this->_machine_by_network(notif.network_id);
-
-      if (it == std::end(this->_transfers))
-      {
-        ELLE_ERR("%s: machine not found for network %s", *this, notif.network_id);
-        throw Exception(gap_error, "machine doesn't exists");
-      }
-
-      ELLE_ASSERT(*it != nullptr);
-
-      auto& transfer_machine = **it;
-      transfer_machine.on_peer_connection_update(notif);
+      stream << "state(" << this->meta(false).host()
+             << ":" << this->meta(false).port();
+      if (!this->meta(false).email().empty())
+        stream << " as " << this->meta(false).email();
+      stream << ")";
     }
 
-    uint32_t
-    State::send_files(std::string const& recipient,
-                      std::unordered_set<std::string>&& files)
+    std::ostream&
+    operator <<(std::ostream& out,
+                TransferState const& t)
     {
-      ELLE_TRACE_SCOPE("%s: send file %s to %s", *this, files, recipient);
-
-      std::unique_ptr<SendMachine> p{new SendMachine{*this, recipient, std::move(files)}};
-      uint32_t tid = p->id();
-      this->_transfers.emplace_back(std::move(p));
-
-      return tid;
+      switch (t)
+      {
+        case TransferState_NewTransaction:
+          return out << "NewTransaction";
+        case TransferState_SenderCreateNetwork:
+          return out << "SenderCreateNetwork";
+        case TransferState_SenderCreateTransaction:
+          return out << "SenderCreateTransaction";
+        case TransferState_SenderCopyFiles:
+          return out << "SenderCopyFiles";
+        case TransferState_SenderWaitForDecision:
+          return out << "SenderWaitForDecision";
+        case TransferState_RecipientWaitForDecision:
+          return out << "RecipientWaitForDecision";
+        case TransferState_RecipientAccepted:
+          return out << "RecipientAccepted";
+        case TransferState_GrantPermissions:
+          return out << "GrantPermissions";
+        case TransferState_PublishInterfaces:
+          return out << "PublishInterfaces";
+        case TransferState_Connect:
+          return out << "Connect";
+        case TransferState_PeerDisconnected:
+          return out << "PeerDisconnected";
+        case TransferState_PeerConnectionLost:
+          return out << "PeerConnectionLost";
+        case TransferState_Transfer:
+          return out << "Transfer";
+        case TransferState_CleanLocal:
+          return out << "CleanLocal";
+        case TransferState_CleanRemote:
+          return out << "CleanRemote";
+        case TransferState_Finished:
+          return out << "Finished";
+        case TransferState_Rejected:
+          return out << "Rejected";
+        case TransferState_Canceled:
+          return out << "Canceled";
+        case TransferState_Failed:
+          return out << "Failed";
+      }
+      return out;
     }
 
-    uint32_t
-    State::accept_transaction(std::string const& transaction_id)
+    std::ostream&
+    operator <<(std::ostream& out,
+                NotificationType const& t)
     {
-      ELLE_TRACE_SCOPE("%s: accept transaction %s", *this, transaction_id);
-
-      try
+      switch (t)
       {
-        ELLE_ASSERT(*this->_machine_by_transaction(transaction_id) != nullptr);
-        auto& transfer_machine = **this->_machine_by_transaction(transaction_id);
-
-        if (transfer_machine.is_sender())
-          throw Exception(gap_error, "only recipient can accept transactions");
-
-        uint32_t id = transfer_machine.id();
-        auto& receive_machine = (ReceiveMachine&) transfer_machine;
-        receive_machine.accept();
-        return id;
+        case NotificationType_NewTransaction:
+          return out << "NewTransaction";
+        case NotificationType_TransactionUpdate:
+          return out << "TransactionUpdate";
+        case NotificationType_UserStatusUpdate:
+          return out << "UserStatusUpdate";
+        case NotificationType_NewSwagger:
+          return out << "NewSwagger";
+        case NotificationType_ConnectionStatus:
+          return out << "ConnectionStatus";
       }
-      catch (Exception const&)
-      {
-        ELLE_ERR("%s: no machine was found for %s", transaction_id);
-        throw;
-      }
-      return 0;
+      return out;
     }
-
-    uint32_t
-    State::reject_transaction(std::string const& transaction_id)
-    {
-      ELLE_TRACE_SCOPE("%s: reject transaction %s", *this, transaction_id);
-
-      try
-      {
-        ELLE_ASSERT(*this->_machine_by_transaction(transaction_id) != nullptr);
-        auto& transfer_machine = **this->_machine_by_transaction(transaction_id);
-
-        if (transfer_machine.is_sender())
-          throw Exception(gap_error, "only recipient can reject transactions");
-
-        auto& receive_machine = (ReceiveMachine&) transfer_machine;
-        uint32_t id = receive_machine.id();
-        receive_machine.reject();
-        return id;
-      }
-      catch (Exception const&)
-      {
-        ELLE_ERR("%s: no machine was found for %s", transaction_id);
-        throw;
-      }
-      return 0;
-    }
-
-    uint32_t
-    State::cancel_transaction(std::string const& transaction_id)
-    {
-      ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, transaction_id);
-
-      try
-      {
-        ELLE_ASSERT(*this->_machine_by_transaction(transaction_id) != nullptr);
-        auto& transfer_machine = **this->_machine_by_transaction(transaction_id);
-        uint32_t id = transfer_machine.id();
-        transfer_machine.cancel();
-        return id;
-      }
-      catch (Exception const&)
-      {
-        ELLE_ERR("%s: no machine was found for %s", transaction_id);
-        throw;
-      }
-      return 0;
-    }
-
-    std::string const&
-    State::transaction_id(uint32_t id) const
-    {
-      try
-      {
-        ELLE_ASSERT(*this->_machine_by_id(id) != nullptr);
-        auto& transfer_machine = **this->_machine_by_id(id);
-
-        return transfer_machine.transaction_id();
-      }
-      catch (Exception const&)
-      {
-        ELLE_ERR("%s: no machine was found for %s", id);
-        throw;
-      }
-    }
-
-    // void
-    // State::join_transaction(uint32_t id)
-    // {
-    //   ELLE_TRACE_SCOPE("%s: join transaction %s", *this, id);
-
-    //   try
-    //   {
-    //     ELLE_ASSERT(*this->_machine_by_id(id) != nullptr);
-    //     auto& transfer_machine = **this->_machine_by_id(id);
-
-    //     transfer_machine.join();
-    //   }
-    //   catch (Exception const&)
-    //   {
-    //     ELLE_ERR("%s: no machine was found for %s", id);
-    //     throw;
-    //   }
-    // }
-
-    void
-    State::join_transaction(std::string const& transaction_id)
-    {
-      ELLE_TRACE_SCOPE("%s: join transaction %s", *this, transaction_id);
-
-      try
-      {
-        ELLE_ASSERT(*this->_machine_by_transaction(transaction_id) != nullptr);
-        auto& transfer_machine = **this->_machine_by_transaction(transaction_id);
-
-        transfer_machine.join();
-      }
-      catch (Exception const&)
-      {
-        ELLE_ERR("%s: no machine was found for %s", transaction_id);
-        throw;
-      }
-    }
-
   }
 }

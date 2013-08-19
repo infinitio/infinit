@@ -5,11 +5,9 @@
 # include "Exception.hh"
 # include "Self.hh"
 # include "gap.h"
-# include "metrics.hh"
-
-# include "usings.hh"
-
-# include <metrics/Reporter.hh>
+# include <surface/gap/Notification.hh>
+# include <surface/gap/Transaction.hh>
+# include <surface/gap/metrics.hh>
 
 # include <common/common.hh>
 
@@ -21,6 +19,7 @@
 
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
+# include <reactor/mutex.hh>
 
 # include <elle/format/json/fwd.hh>
 # include <elle/threading/Monitor.hh>
@@ -29,27 +28,13 @@
 # include <map>
 # include <string>
 # include <exception>
+# include <unordered_set>
 
 namespace surface
 {
   namespace gap
   {
-    class TransferMachine;
-
-    struct FileInfos
-    {
-      std::string                 mount_point;
-      std::string                 network_id;
-      std::string                 absolute_path;
-      std::string                 relative_path;
-      std::map<std::string, int>  accesses;
-    };
-
-    // Used to represent all users in the state class.
-    using Nodes = ::plasma::meta::NetworkNodesResponse;
-    using Network = ::plasma::meta::NetworkResponse;
-    using ::plasma::Transaction;
-
+    class Transaction;
     // XXX: In order to ensure the logger is initialized at the begining of
     // state LoggerInitializer MUST be the first member of State.
     class LoggerInitializer
@@ -72,18 +57,17 @@ namespace surface
       /*--------.
       | Servers |
       `--------*/
-      ELLE_ATTRIBUTE_R(plasma::meta::Client, meta);
+      ELLE_ATTRIBUTE(plasma::meta::Client, meta);
+      ELLE_ATTRIBUTE_R(plasma::trophonius::Client, trophonius);
+
+      plasma::meta::Client const&
+      meta(bool authentication_required  = true) const;
 
       /*----------.
       | Reporters |
       `----------*/
       ELLE_ATTRIBUTE_P(metrics::Reporter, reporter, mutable);
       ELLE_ATTRIBUTE_P(metrics::Reporter, google_reporter, mutable);
-
-      ELLE_ATTRIBUTE_R(reactor::Scheduler, scheduler);
-      ELLE_ATTRIBUTE_R(reactor::Thread, keep_alive);
-      ELLE_ATTRIBUTE(std::thread, scheduler_thread);
-      ELLE_ATTRIBUTE(std::exception_ptr, exception);
 
     public:
       metrics::Reporter&
@@ -101,6 +85,16 @@ namespace surface
       /*-------------.
       | Construction |
       `-------------*/
+      class ConnectionStatus:
+        public Notification
+      {
+      public:
+        static Notification::Type type;
+        ConnectionStatus(bool status);
+
+        bool status;
+      };
+
     public:
       State(std::string const& meta_host = common::meta::host(),
             uint16_t meta_port = common::meta::port(),
@@ -146,37 +140,93 @@ namespace surface
       std::string
       user_directory();
 
-      /// Retrieve current user token.
-      std::string const&
-      token();
-
       std::string const&
       token_generation_key() const;
 
+      ELLE_ATTRIBUTE_Rw(std::string, output_dir);
+    private:
+      void
+      _cleanup();
+
+      /*-------------------.
+      | External Callbacks |
+      `-------------------*/
+
+      class _Runner
+      {
+      public:
+        virtual
+        void
+        operator () () const = 0;
+      };
+
+      template <typename T>
+      class Runner:
+        public _Runner
+      {
+      public:
+        typedef std::function<void (T const&)> Callback;
+
+        Runner(Callback cb, T notif);
+
+        void
+        operator () () const override;
+
+        Callback _cb;
+        T _notification;
+      };
+
+      typedef std::function<void (Notification const&)> Callback;
+      //ELLE_ATTRIBUTE_R(std::map<Notification::Type, std::vector<Callback>>, callbacks);
+      mutable std::map<Notification::Type, std::vector<Callback>> _callbacks;
+      // The unique_ptr is mandatory.
+      //ELLE_ATTRIBUTE(std::queue<std::unique_ptr<_Runner>>, runners);
+      mutable std::queue<std::unique_ptr<_Runner>> _runners;
+    public:
+      template <typename T>
+      void
+      attach_callback(std::function<void (T const&)> cb) const;
+
+      template <typename T>
+      void
+      enqueue(T const& notif) const;
+
+      void
+      poll() const;
+
+      /*--------------.
+      | Notifications |
+      `--------------*/
+      ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Thread>, polling_thread);
+
+      void
+      handle_notification(
+        std::unique_ptr<plasma::trophonius::Notification>&& notification);
+
+      // For lisibility purpose, papiers, user, network and transaction methods
+      // are located in specific files in _detail.
+      /*--------.
+      | Papiers |
+      `--------*/
     private:
       ELLE_ATTRIBUTE_P(std::unique_ptr<Device>, device, mutable);
 
     public:
+      /// Get the remote device informations.
       Device const&
       device() const;
-      std::string const&
-      device_id() const;
-      std::string const&
-      device_name() const;
 
       ELLE_ATTRIBUTE_P(papier::Passport, passport, mutable);
       ELLE_ATTRIBUTE_P(papier::Identity, identity, mutable);
     public:
+      /// Get the local passport of the logged user.
       papier::Passport const&
       passport() const;
 
+      /// Get the local identity of the logged user.
       papier::Identity const&
       identity() const;
 
-
-    ///
-    /// Manage local device.
-    ///
     public:
       /// Check if the local device has been created.
       bool
@@ -187,121 +237,239 @@ namespace surface
       update_device(std::string const& name,
                     bool force_create = false) const;
 
-      ELLE_ATTRIBUTE_Rw(std::string, output_dir);
+      // Could be factorized.
+      /*------.
+      | Users |
+      `------*/
+      class UserNotFoundException:
+        public Exception
+      {
+      public:
+        UserNotFoundException(uint32_t id);
+        UserNotFoundException(std::string const& id);
+      };
 
-    private:
-      ELLE_ATTRIBUTE_R(std::string, trophonius_host);
-      ELLE_ATTRIBUTE_R(uint16_t, trophonius_port);
+      class NotASwaggerException:
+        public Exception
+      {
+      public:
+        NotASwaggerException(uint32_t id);
+        NotASwaggerException(std::string const& id);
+      };
 
-      typedef std::unique_ptr<NotificationManager> NotificationManagerPtr;
-      elle::threading::Monitor<NotificationManagerPtr> mutable _notification_manager;
+      class UserStatusNotification:
+        public Notification
+      {
+      public:
+        static Notification::Type type;
 
-      ELLE_ATTRIBUTE_R(std::string, apertus_host);
-      ELLE_ATTRIBUTE_R(uint16_t, apertus_port);
+        UserStatusNotification(uint32_t id,
+                               bool status);
 
-      typedef std::unique_ptr<NetworkManager> NetworkManagerPtr;
-      elle::threading::Monitor<NetworkManagerPtr> mutable _network_manager;
+        uint32_t id;
+        bool status;
+      };
 
-      typedef std::unique_ptr<UserManager> UserManagerPtr;
-      elle::threading::Monitor<UserManagerPtr> mutable _user_manager;
+      class NewSwaggerNotification:
+        public Notification
+      {
+      public:
+        static Notification::Type type;
 
-      typedef std::unique_ptr<TransactionManager> TransactionManagerPtr;
-      elle::threading::Monitor<TransactionManagerPtr> mutable _transaction_manager;
+        NewSwaggerNotification(uint32_t id);
 
-    public:
-      NetworkManager&
-      network_manager() const;
-
-      NotificationManager&
-      notification_manager(bool auto_connect = false) const;
-
-      UserManager&
-      user_manager() const;
-
-      TransactionManager&
-      transaction_manager() const;
-
-    private:
-
-      void
-      _cleanup();
-
-    /*-------------.
-    | Transactions |
-    `-------------*/
-    private:
-      void
-      _init_transactions();
-
-      void
-      _on_transaction_notification(TransactionNotification const&, bool);
-
-      void
-      _on_peer_connection_update_notification(
-        PeerConnectionUpdateNotification const& notif);
-
-      typedef std::unique_ptr<TransferMachine> TransferMachinePtr;
-      typedef std::vector<TransferMachinePtr> Transfers;
-      typedef Transfers::const_iterator TransferIterator;
-      Transfers _transfers;
-
-      TransferIterator
-      _find_machine(std::function<bool (TransferMachinePtr const&)> func) const;
-
-      TransferIterator
-      _machine_by_user(std::string const& user_id) const;
-
-      TransferIterator
-      _machine_by_transaction(std::string const& transaction_id) const;
-
-      TransferIterator
-      _machine_by_network(std::string const& network_id) const;
-
-      TransferIterator
-      _machine_by_id(uint32_t id) const;
+        uint32_t id;
+      };
 
     public:
-      std::string const&
-      transaction_id(uint32_t id) const;
+      typedef plasma::meta::User User;
+      typedef std::pair<uint32_t, User> UserPair;
+      typedef std::unordered_map<uint32_t, User> UserMap;
+      typedef std::unordered_set<User> Users;
+      typedef std::map<std::string, uint32_t> UserIndexMap;
+      typedef std::unordered_set<uint32_t> UserIndexes;
 
-      /*-------.
-      | Sender |
-      `-------*/
+      ELLE_ATTRIBUTE_RP(UserMap, users, mutable);
+      ELLE_ATTRIBUTE_RP(UserIndexMap, user_indexes, mutable);
+      ELLE_ATTRIBUTE_RP(UserIndexes, swagger_indexes, mutable);
+      ELLE_ATTRIBUTE(bool, swaggers_dirty);
+      ELLE_ATTRIBUTE(reactor::Mutex, swagger_mutex);
+
+    public:
+      void
+      clear_users();
+
+      User
+      user_sync(User const& user) const;
+
+      User
+      user_sync(std::string const& id) const;
+
+      User
+      user(std::string const& user_id,
+           bool merge = true) const;
+
+      User
+      user(uint32_t id) const;
+
+      User
+      user(std::function<bool (UserPair const&)> const& func) const;
+
+      User
+      user_from_public_key(std::string const& public_key) const;
+
+      void
+      _user_on_resync();
+
+      UserIndexes
+      user_search(std::string const& text) const;
+
+      bool
+      device_status(std::string const& user_id,
+                    std::string const& device_id) const;
+
+      elle::Buffer
+      icon(uint32_t id);
+
+      std::string
+      invite(std::string const& email);
+
+      ///- Swaggers --------------------------------------------------------------
+      UserIndexes
+      swaggers();
+
+      User
+      swagger(std::string const& user_id);
+
+      User
+      swagger(uint32_t id);
+
+      void
+      swaggers_dirty();
+
+      void
+      _on_new_swagger(plasma::trophonius::NewSwaggerNotification const& notif);
+
+      void
+      _on_swagger_status_update(plasma::trophonius::UserStatusNotification const& notif);
+
+      /*---------.
+      | Networks |
+      `---------*/
+    //   class NetworkNotFoundException:
+    //     public Exception
+    //   {
+    //   public:
+    //     NetworkNotFoundException(uint32_t id);
+    //     NetworkNotFoundException(std::string const& id);
+    //   };
+
+    //   typedef plasma::meta::Network Network;
+    //   typedef std::pair<uint32_t, Network> NetworkPair;
+    //   typedef std::unordered_map<uint32_t, Network> NetworkMap;
+    //   typedef std::unordered_map<uint32_t, std::string> NetworkIndexMap;
+    //   typedef std::unordered_set<uint32_t> NetworkIndexes;
+
+    // public:
+    //   ELLE_ATTRIBUTE_R(NetworkMap, users);
+
+    //   /// Synchronise network.
+    //   Network const&
+    //   network_sync(Network const& network);
+
+    //   /// Synchronise network.
+    //   Network const&
+    //   network_sync(std::string const& id);
+
+    //   /// Retrieve a network.
+    //   Network const&
+    //   network(std::string const& id);
+
+    //   /// Retrieve a network.
+    //   Network const&
+    //   network(uint32_t id);
+
+    //   /// Create a new network.
+    //   uint32_t
+    //   network_create(std::string const& name,
+    //                  bool auto_add = true);
+
+    //   /// Prepare directories and files for the network to be launched.
+    //   void
+    //   network_prepare(std::string const& network_id);
+
+    //   /// Delete a new network.
+    //   std::string
+    //   network_delete(std::string const& name,
+    //                  bool force = false);
+
+    //   /// Add a user to a network with its mail or id.
+    //   void
+    //   network_add_user(std::string const& network_id,
+    //            std::string const& inviter_id,
+    //            std::string const& user_id,
+    //            std::string const& identity);
+
+    //   void
+    //   on_network_update_notification(
+    //     plasma::trophonius::NetworkUpdateNotification const& notif);
+
+      // /*-------------.
+      // | Transactions |
+      // `-------------*/
+      class TransactionNotFoundException:
+        public Exception
+      {
+      public:
+        TransactionNotFoundException(uint32_t id);
+        TransactionNotFoundException(std::string const& id);
+      };
+
+
+      typedef std::unique_ptr<Transaction> TransactionPtr;
+      typedef std::unordered_map<uint32_t, std::unique_ptr<Transaction>> Transactions;
+      typedef std::map<std::string, uint32_t> TransactionIndexMap;
+      typedef std::unordered_set<uint32_t> TransactionIndexes;
+
+      ELLE_ATTRIBUTE_R(Transactions, transactions);
+
       uint32_t
-      send_files(std::string const& recipient,
+      send_files(std::string const& peer_id,
                  std::unordered_set<std::string>&& files);
 
-      /*----------.
-      | Recipient |
-      `----------*/
-      uint32_t
-      accept_transaction(std::string const& transaction_id);
-
-      uint32_t
-      cancel_transaction(std::string const& transaction_id);
-
-      uint32_t
-      reject_transaction(std::string const& transaction_id);
-
-      /// In order to ensure a cleanup of the transaction, it's better to keep
-      /// a track of it and join it when your file is received or sent.
-      // void
-      // join_transaction(uint32_t id);
+      void
+      transactions_init();
 
       void
-      join_transaction(std::string const& transaction_id);
+      transactions_clear();
 
-    /*----------.
-    | Printable |
-    `----------*/
+      void
+      _on_transaction_update_notification(
+        plasma::trophonius::TransactionNotification const& notif);
+
+      void
+      _on_peer_connection_update(
+        plasma::trophonius::PeerConnectionUpdateNotification const& notif);
+
+      /*----------.
+      | Printable |
+      `----------*/
     public:
       virtual
       void
       print(std::ostream& stream) const;
     };
 
+    std::ostream&
+    operator <<(std::ostream& out,
+                TransferState const& t);
+
+    std::ostream&
+    operator <<(std::ostream& out,
+                NotificationType const& t);
   }
 }
 
+#include <surface/gap/State.hxx>
 
 #endif
