@@ -32,17 +32,17 @@ def login(state, email = None):
     import socket
     state.set_device_name(socket.gethostname().strip())
 
-def on_transaction(state, transaction, status, new):
-    print("{}Transaction ({})".format(new and "New " or "", transaction), status)
-    state.current_transaction_id = transaction
+def on_transaction(state, transaction, status):
+    print("{}Transaction".format(transaction), status)
+    # state.current_transaction_id = transaction
     if status in (
-       state.TransactionStatus.canceled,
-       state.TransactionStatus.finished,
-       state.TransactionStatus.failed,
+       state.TransactionStatus.Finished,
+       state.TransactionStatus.Rejected,
+       state.TransactionStatus.Canceled,
+       state.TransactionStatus.Failed,
     ):
         state.running = False
-    elif state.transaction_accepted(transaction)\
-        and status == state.TransactionStatus.started:
+    elif state.TransactionStatus.GrantPermissions:
         state.started = True
 
 def on_error(state, status, message, tid):

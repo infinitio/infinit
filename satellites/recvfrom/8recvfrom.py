@@ -20,15 +20,16 @@ You have to specify your user name in the INFINIT_USER env variable.
 
 """
 
-def on_transaction(state, transaction, status, new):
+def on_transaction(state, transaction, status):
     print("Transaction ({})".format(transaction), status)
-    if status == state.TransactionStatus.started:
+    if status == state.TransactionStatus.RecipientAccepted:
         state.started_transactions.append(transaction)
-    elif status == state.TransactionStatus.canceled:
+    elif status == state.TransactionStatus.Canceled or \
+            status == state.TransactionStatus.Failed:
         state.number_of_transactions -= 1
         if state.number_of_transactions == 0:
             state.running = False
-    elif status == state.TransactionStatus.finished:
+    elif status == state.TransactionStatus.Finished:
         cnt = state.transaction_files_count(transaction)
         if cnt == 1:
             filename = state.transaction_first_filename(transaction)
@@ -112,6 +113,9 @@ def select_transactions(state, l_transactions, sender):
 
 
 def main(state, sender):
+    state.on_error_callback(partial(on_error, state))
+    state.transaction_callback(partial(on_transaction, state))
+
     id = login(state)
 
     # Pull only new notifications to ensure the transaction has been fetched.
@@ -120,9 +124,6 @@ def main(state, sender):
     state.running = True
     state.started_transactions = []
     transactions = state.transactions()
-
-    state.on_error_callback(partial(on_error, state))
-    state.transaction_callback(partial(on_transaction, state))
 
     if len(transactions) > 1:
         to_handle = list(select_transactions(state, transactions, sender))
