@@ -210,7 +210,9 @@ namespace plasma
         _read_thread(*reactor::Scheduler::scheduler(),
                      elle::sprintf("%s read thread", *this),
                      [&] () { this->read_thread(); })
-      {}
+      {
+        ELLE_TRACE_SCOPE("%s: Trophonius impl created", *this);
+      }
 
       ~Impl()
       {
@@ -305,6 +307,7 @@ namespace plasma
       void
       ping_thread()
       {
+        ELLE_TRACE_SCOPE("start ping thread");
         static std::string const ping_msg("{\"notification_type\": 208}\n");
 
         while (true)
@@ -332,6 +335,7 @@ namespace plasma
       void
       pong_thread()
       {
+        ELLE_TRACE_SCOPE("start pong thread");
         while (true)
         {
           reactor::Scheduler::scheduler()->current()->wait(this->_connected);
@@ -350,6 +354,7 @@ namespace plasma
       void
       read_thread()
       {
+        ELLE_TRACE_SCOPE("start read thread");
         elle::Buffer buffer;
         buffer.capacity(1024);
         while (true)
@@ -415,6 +420,7 @@ namespace plasma
       {
         if (this->_notifications.empty())
           this->_notifications_available.wait();
+        ELLE_TRACE("%s new notification", *this);
         ELLE_ASSERT(!this->_notifications.empty());
         std::unique_ptr<Notification> res(
           this->_notifications.front().release());
@@ -442,6 +448,7 @@ namespace plasma
       _ping_period(default_ping_period)
     {
       ELLE_ASSERT(connect_callback != nullptr);
+      ELLE_TRACE_SCOPE("%s: created", *this);
     }
 
     void
