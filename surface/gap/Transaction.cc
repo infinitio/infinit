@@ -64,6 +64,12 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: created transaction for a new send: %s", *this, this->_data);
     }
 
+    Transaction::~Transaction()
+    {
+      // this->_machine->stop();
+      // this->_machine->join();
+    }
+
     void
     Transaction::accept()
     {
@@ -114,7 +120,7 @@ namespace surface
     {
       static std::vector<plasma::TransactionStatus> final{
         plasma::TransactionStatus::rejected,
-        plasma::TransactionStatus::finished,
+          plasma::TransactionStatus::finished,
         plasma::TransactionStatus::canceled,
         plasma::TransactionStatus::failed};
       return final;
@@ -146,7 +152,6 @@ namespace surface
 
       *(this->_data) = data;
 
-      ELLE_ERR("%s: status", __PRETTY_FUNCTION__);
       this->_data->status = data.status;
 
       ELLE_DEBUG("%s: updating machine", *this);
@@ -161,13 +166,14 @@ namespace surface
 
       ELLE_ASSERT_EQ(this->_data->network_id, update.network_id);
 
-      ELLE_ASSERT(
-        std::find(update.devices.begin(), update.devices.end(),
-                  this->_data->sender_device_id) != update.devices.end());
+      // XXX.
+      // ELLE_ASSERT(
+      //   std::find(update.devices.begin(), update.devices.end(),
+      //             this->_data->sender_device_id) != update.devices.end());
 
-      ELLE_ASSERT(
-        std::find(update.devices.begin(), update.devices.end(),
-                  this->_data->recipient_device_id) != update.devices.end());
+      // ELLE_ASSERT(
+      //   std::find(update.devices.begin(), update.devices.end(),
+      //             this->_data->recipient_device_id) != update.devices.end());
 
       this->_machine->peer_connection_update(update.status);
     }

@@ -2,7 +2,7 @@
 # define SURFACE_GAP_DETAIL_TRANSACTION_HH
 
 # include <surface/gap/Notification.hh>
-# include <surface/gap/TransferMachineStatus.hh>
+# include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/TransferMachine.hh>
@@ -50,6 +50,9 @@ namespace surface
       Transaction(surface::gap::State const& state,
                   std::string const& peer_id,
                   std::unordered_set<std::string>&& files);
+
+      ~Transaction();
+
       void
       accept();
 
