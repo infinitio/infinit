@@ -1,7 +1,7 @@
-
 #include <wrappers/boost/python.hh>
 
 #include <surface/gap/gap.h>
+#include <surface/gap/gap_bridge.hh>
 
 #include <surface/gap/State.hh>
 
@@ -56,15 +56,16 @@ _get_transactions(gap_State* state)
   assert(state != nullptr);
 
   boost::python::list transactions_;
-  char** transactions = gap_transactions(state);
+  uint32_t* transactions = gap_transactions(state);
+  uint32_t* todel = transactions;
   if (transactions != nullptr)
+  {
+    while (*transactions != 0)
     {
-      for (char** ptr = transactions; *ptr != nullptr; ++ptr)
-        {
-          transactions_.append(boost::python::str(std::string(*ptr)));
-        }
-        gap_transactions_free(transactions);
+      transactions_.append(boost::python::object(*(transactions++)));
     }
+    gap_transactions_free(todel);
+  }
   return transactions_;
 }
 
@@ -74,15 +75,17 @@ _get_swaggers(gap_State* state)
   assert(state != nullptr);
 
   boost::python::list swaggers_;
-  char** swaggers = gap_swaggers(state);
+  uint32_t* swaggers = gap_swaggers(state);
+  uint32_t* todel = swaggers;
   if (swaggers != nullptr)
+  {
+    while (*swaggers != 0)
     {
-      for (char** ptr = swaggers; *ptr != nullptr; ++ptr)
-        {
-          swaggers_.append(boost::python::str(std::string(*ptr)));
-        }
-        gap_swaggers_free(swaggers);
+      swaggers_.append(boost::python::object(*(swaggers++)));
     }
+    gap_swaggers_free(todel);
+  }
+
   return swaggers_;
 }
 
@@ -93,15 +96,17 @@ _search_users(gap_State* state, std::string text)
   assert(text.length() > 0);
 
   boost::python::list users_;
-  char** users = gap_search_users(state, text.c_str());
+  uint32_t* users = gap_search_users(state, text.c_str());
+  uint32_t* todel = users;
   if (users != nullptr)
+  {
+    while (*users != 0)
     {
-      for (char** ptr = users; *ptr != nullptr; ++ptr)
-        {
-          users_.append(boost::python::str(std::string(*ptr)));
-        }
-        gap_search_users_free(users);
+      users_.append(boost::python::object(*(users++)));
     }
+    gap_search_users_free(todel);
+  }
+
   return users_;
 }
 
@@ -121,7 +126,7 @@ _hash_password(gap_State* state, std::string email, std::string password)
 }
 
 static
-void
+uint32_t
 _send_files(gap_State* state,
             std::string const& recipient,
             boost::python::list const& files)
@@ -133,32 +138,22 @@ _send_files(gap_State* state,
     throw std::bad_alloc();
 
   for (int i = 0; i < len; ++i)
-    {
-      list[i] = boost::python::extract<char const*>(files[i]);
-    }
+  {
+    list[i] = boost::python::extract<char const*>(files[i]);
+  }
 
-  gap_send_files(state,
-                 recipient.c_str(),
-                 list);
+  auto id = gap_send_files(state,
+                           recipient.c_str(),
+                           list);
 
   free(list);
 
-  return;
+  return id;
 }
 
 
 namespace
 {
-  template<typename T>
-  struct wrap
-  {
-    boost::python::object o;
-    void operator ()(T const* b)
-    {
-      this->o(boost::python::ptr(b));
-    }
-  };
-
   namespace detail {
     static
     std::string
@@ -219,9 +214,17 @@ namespace
       wrapper(T const &callback)
         : _callback(callback)
       {}
+
       template <class ...ARGS>
       void
       operator() (ARGS &&... args)
+      {
+        this->call(std::forward<ARGS>(args)...);
+      }
+
+      template <class ...ARGS>
+      void
+      call(ARGS&&... args)
       {
         try
         {
@@ -236,6 +239,7 @@ namespace
           };
         }
       }
+
     };
   } /* detail */
 
@@ -250,37 +254,58 @@ namespace
   _gap_new_swagger_callback(gap_State* state,
                             boost::python::object cb)
   {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (NewSwaggerNotification const& notif) {
-      wrap_call(cb)(notif.user_id.c_str());
-    };
+    auto cpp_cb = [cb] (surface::gap::State::NewSwaggerNotification const& notif)
+      {
+        wrap_call(cb)(notif.id);
+      };
 
-    reinterpret_cast<surface::gap::State*>(state)->notification_manager().new_swagger_callback(cpp_cb);
+    run<int>(
+      state,
+      "new swagger callback",
+      [&] (surface::gap::State& state) -> int
+      {
+        state.attach_callback<surface::gap::State::NewSwaggerNotification>(cpp_cb);
+        return 0;
+      });
   }
 
   void
   _gap_user_status_callback(gap_State* state,
                            boost::python::object cb)
   {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (UserStatusNotification const& notif) {
-        wrap_call(cb)(notif.user_id.c_str(), (gap_UserStatus) notif.status);
-    };
+    auto cpp_cb = [cb] (surface::gap::State::UserStatusNotification const& notif)
+      {
+        wrap_call(cb)(notif.id, (gap_UserStatus) notif.status);
+      };
 
-    reinterpret_cast<surface::gap::State*>(state)->notification_manager().user_status_callback(cpp_cb);
+    run<int>(
+      state,
+      "user status callback",
+      [&] (surface::gap::State& state)
+      {
+        state.attach_callback<surface::gap::State::UserStatusNotification>(cpp_cb);
+        return 0;
+      });
   }
 
   void
   _gap_transaction_callback(gap_State* state,
-                           boost::python::object cb)
+                            boost::python::object cb)
   {
-    using namespace plasma::trophonius;
-    auto cpp_cb = [cb] (TransactionNotification const& notif, bool is_new) {
-      wrap_call(cb)(notif.id.c_str(), (gap_TransactionStatus) notif.status, is_new);
+    auto cpp_cb = [cb] (surface::gap::TransferMachine::Notification const& notif)
+    {
+      cb(notif.id, notif.status);
     };
 
-    reinterpret_cast<surface::gap::State*>(state)
-      ->notification_manager().transaction_callback(cpp_cb);
+    run<int>(
+      state,
+      "transaction callback",
+      [&] (surface::gap::State& state) -> int
+      {
+        state.attach_callback<surface::gap::TransferMachine::Notification>(cpp_cb);
+        return 0;
+      });
+
   }
 
   void
@@ -292,7 +317,7 @@ namespace
         wrap_call(cb)(notif.sender_id.c_str(), notif.message.c_str());
     };
 
-    reinterpret_cast<surface::gap::State*>(state)->notification_manager().message_callback(cpp_cb);
+    // reinterpret_cast<surface::gap::State*>(state)->notification_manager().message_callback(cpp_cb);
   }
 
   void
@@ -306,13 +331,13 @@ namespace
       wrap_call(cb)(status, str.c_str(), tid.c_str());
     };
 
-    reinterpret_cast<surface::gap::State*>(state)->notification_manager().on_error_callback(cpp_cb);
+    // reinterpret_cast<surface::gap::State*>(state)->notification_manager().on_error_callback(cpp_cb);
   }
 }
 
 extern "C"
 {
-  struct gap_State { /* dummy declaration for boost::python */ };
+  //struct gap_State { /* dummy declaration for boost::python */ };
   PyObject* PyInit__gap(); // Pacify -Wmissing-declarations.
 }
 
@@ -341,18 +366,31 @@ BOOST_PYTHON_MODULE(_gap)
 # undef ERR_CODE
   ;
 
-  py::enum_<gap_TransactionStatus>("TransactionStatus")
-# define _TS(c) #c
-# define TRANSACTION_STATUS(name, value_)                                       \
-    .value(_TS(name), gap_transaction_status_ ## name)
-# include <oracle/disciples/meta/src/meta/resources/transaction_status.hh.inc>
-# undef TRANSACTION_STATUS
-# undef _TS
+  py::enum_<TransferState>("TransactionStatus")
+    .value("NewTransaction", TransferState_NewTransaction)
+    .value("SenderCreateNetwork", TransferState_SenderCreateNetwork)
+    .value("SenderCreateTransaction", TransferState_SenderCreateTransaction)
+    .value("SenderCopyFiles", TransferState_SenderCopyFiles)
+    .value("SenderWaitForDecision", TransferState_SenderWaitForDecision)
+    .value("RecipientWaitForDecision", TransferState_RecipientWaitForDecision)
+    .value("RecipientAccepted", TransferState_RecipientAccepted)
+    .value("GrantPermissions", TransferState_GrantPermissions)
+    .value("PublishInterfaces", TransferState_PublishInterfaces)
+    .value("Connect", TransferState_Connect)
+    .value("PeerDisconnected", TransferState_PeerDisconnected)
+    .value("PeerConnectionLost", TransferState_PeerConnectionLost)
+    .value("Transfer", TransferState_Transfer)
+    .value("CleanLocal", TransferState_CleanLocal)
+    .value("CleanRemote", TransferState_CleanRemote)
+    .value("Finished", TransferState_Finished)
+    .value("Rejected", TransferState_Rejected)
+    .value("Canceled", TransferState_Canceled)
+    .value("Failed", TransferState_Failed)
   ;
 
   //- gap ctor and dtor -------------------------------------------------------
 
-  py::class_<gap_State>("State");
+  py::class_<gap_State, boost::noncopyable>("State");
 
   py::def("new",
           &gap_new,
@@ -421,7 +459,7 @@ BOOST_PYTHON_MODULE(_gap)
   //- Transactions- ------------------------------------------------------------
 
   py::def("transactions", &_get_transactions);
-  py::def("send_files", &_send_files);
+  py::def("send_files", &_send_files, by_value());
   py::def("cancel_transaction", &gap_cancel_transaction);
   py::def("accept_transaction", &gap_accept_transaction);
   py::def("reject_transaction", &gap_reject_transaction);

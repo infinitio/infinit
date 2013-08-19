@@ -61,7 +61,7 @@ class _State:
             'transaction_total_size',
             'transaction_is_directory',
             'transaction_status',
-            'join_transaction',
+            # 'join_transaction',
 
             # Notifications
             'poll',
