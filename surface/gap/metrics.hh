@@ -2,6 +2,7 @@
 # define SURFACE_GAP_METRICS_HH
 
 # include <metrics/Key.hh>
+# include <metrics/Reporter.hh>
 # include <surface/gap/Exception.hh>
 
 // XXX Rename that macro with the right prefix
