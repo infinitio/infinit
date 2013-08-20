@@ -839,11 +839,10 @@ namespace plasma
 
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
-      // curly::sched_request request(*reactor::Scheduler::scheduler(),
-      //                              std::move(c));
-      // request.run();
-
-      curly::request{std::move(c)};
+      curly::sched_request{
+        *reactor::Scheduler::scheduler(),
+        std::move(c)
+      }.run();
     }
 
     void
