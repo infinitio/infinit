@@ -151,7 +151,7 @@ namespace surface
         sched.every(
           [&] () { this->_retrieve_progress(); },
           "pull progress",
-          boost::posix_time::milliseconds(50)));
+          boost::posix_time::milliseconds(300)));
 
       elle::Finally kill_progress(
         [&] ()
