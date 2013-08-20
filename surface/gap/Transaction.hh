@@ -31,6 +31,9 @@ namespace surface
         {
           accept,
           reject,
+          join,
+          cancel,
+          progress,
         };
 
         BadOperation(Type type);
@@ -64,6 +67,9 @@ namespace surface
 
       void
       join();
+
+      float
+      progress() const;
 
       void
       on_transaction_update(Data const& data);

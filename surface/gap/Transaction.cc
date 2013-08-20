@@ -49,8 +49,8 @@ namespace surface
       }
       else
       {
-        ELLE_TRACE("%s: no machine can be launch for data %s cause it's not "\
-                   "your device (%s)", *this, data, state.device().id);
+        ELLE_WARN("%s: no machine can be launch for data %s cause it's not "\
+                  "your device (%s)", *this, this->_data, state.device().id);
       }
     }
 
@@ -74,7 +74,12 @@ namespace surface
     Transaction::accept()
     {
       ELLE_TRACE_SCOPE("%s: accepting transaction", *this);
-      ELLE_ASSERT(this->_machine != nullptr);
+
+      if (this->_machine == nullptr)
+      {
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        throw BadOperation(BadOperation::Type::accept);
+      }
 
       if (!dynamic_cast<ReceiveMachine*>(this->_machine.get()))
       {
@@ -95,6 +100,7 @@ namespace surface
         ELLE_ERR("%s: reject on a send machine", *this);
         throw BadOperation(BadOperation::Type::reject);
       }
+
       static_cast<ReceiveMachine*>(this->_machine.get())->reject();
     }
 
@@ -102,7 +108,12 @@ namespace surface
     Transaction::cancel()
     {
       ELLE_TRACE_SCOPE("%s: canceling transaction", *this);
-      ELLE_ASSERT(this->_machine != nullptr);
+      if (this->_machine == nullptr)
+      {
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        throw BadOperation(BadOperation::Type::cancel);
+      }
+
       this->_machine->cancel();
     }
 
@@ -110,8 +121,27 @@ namespace surface
     Transaction::join()
     {
       ELLE_TRACE_SCOPE("%s: joining transaction", *this);
-      ELLE_ASSERT(this->_machine != nullptr);
+      if (this->_machine == nullptr)
+      {
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        throw BadOperation(BadOperation::Type::join);
+      }
+
       this->_machine->join();
+    }
+
+    float
+    Transaction::progress() const
+    {
+      ELLE_TRACE_SCOPE("%s: progress transaction", *this);
+
+      if (this->_machine == nullptr)
+      {
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        throw BadOperation(BadOperation::Type::progress);
+      }
+
+      return this->_machine->progress();
     }
 
     static
@@ -130,6 +160,12 @@ namespace surface
     Transaction::on_transaction_update(Data const& data)
     {
       ELLE_TRACE_SCOPE("%s: update transaction data with %s", *this, data);
+
+      if (this->_machine == nullptr)
+      {
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        return;
+      }
 
       if (this->_data->status == data.status)
       {
@@ -163,6 +199,12 @@ namespace surface
       plasma::trophonius::PeerConnectionUpdateNotification const& update)
     {
       ELLE_TRACE_SCOPE("%s: update peer status with %s", *this, update);
+
+      if (this->_machine == nullptr)
+      {
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        return;
+      }
 
       ELLE_ASSERT_EQ(this->_data->network_id, update.network_id);
 
