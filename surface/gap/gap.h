@@ -341,8 +341,15 @@ extern "C" {
   /// If the return value is 0, the operation failed.
   uint32_t
   gap_send_files(gap_State* state,
-                 char const* recipient_id,
+                 uint32_t id,
                  char const* const* files);
+
+  /// Send files to a specific user.
+  /// If the return value is 0, the operation failed.
+  uint32_t
+  gap_send_files_by_email(gap_State* state,
+                          char const* recipient_id,
+                          char const* const* files);
 
   /// Cancel transaction.
   /// If the return value is 0, the operation failed.
