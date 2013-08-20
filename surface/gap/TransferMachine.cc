@@ -793,12 +793,6 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: retrive progress", *this);
 
-      if (this->_etoile == nullptr)
-      {
-        ELLE_WARN("%s: etoile is null", *this);
-        return;
-      }
-
       float progress =
         surface::gap::operation_detail::progress::progress(this->etoile());
 
