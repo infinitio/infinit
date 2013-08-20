@@ -2,9 +2,10 @@
 # define SURFACE_GAP_ENUMS_HH
 
 // This are a shared enums between C++ and C.
-
+# ifdef __cplusplus
 extern "C"
 {
+# endif
   typedef enum
   {
     TransferState_NewTransaction = 0,
@@ -62,6 +63,8 @@ extern "C"
 # include <oracle/disciples/meta/src/meta/resources/transaction_status.hh.inc>
 # undef TRANSACTION_STATUS
   } gap_TransactionStatus;
+# ifdef __cplusplus
 }
+# endif
 
 #endif

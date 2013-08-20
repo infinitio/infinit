@@ -8,7 +8,7 @@
 extern "C" {
 # endif
 
-#include <surface/gap/enums.hh>
+# include <surface/gap/enums.hh>
 
   //typedef enum
   //{
