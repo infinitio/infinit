@@ -66,8 +66,7 @@ namespace surface
 
     Transaction::~Transaction()
     {
-      // this->_machine->stop();
-      // this->_machine->join();
+      this->_machine.reset();
     }
 
     void
