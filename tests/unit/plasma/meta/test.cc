@@ -34,9 +34,7 @@ void
 _debug_queries(int count)
 {
   ELLE_LOG("test multiple debug queries");
-
   reactor::Scheduler sched;
-
   reactor::Barrier listening;
 
   int port = -1;
@@ -101,7 +99,7 @@ static
 void
 debug_queries()
 {
-  _debug_queries(3);
+  _debug_queries(30);
 }
 
 static
