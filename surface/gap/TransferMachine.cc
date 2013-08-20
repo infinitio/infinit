@@ -1,4 +1,5 @@
 #include <surface/gap/TransferMachine.hh>
+#include <surface/gap/_detail/TransferOperations.hh>
 #include <surface/gap/Rounds.hh>
 #include <surface/gap/State.hh>
 #include <metrics/Metric.hh>
@@ -43,6 +44,8 @@ namespace surface
       _id(id),
       _machine(),
       _machine_thread(),
+      _progress(0.0f),
+      _progress_mutex(),
       _transfer_core_state(
         this->_machine.state_make(
           "transfer core", std::bind(&TransferMachine::_transfer_core, this))),
@@ -141,6 +144,21 @@ namespace surface
     TransferMachine::_transfer_core()
     {
       ELLE_TRACE_SCOPE("%s: start transfer core machine", *this);
+
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
+      this->_pull_progress_thread.reset(
+        sched.every(
+          [&] () { this->_retrieve_progress(); },
+          "pull progress",
+          boost::posix_time::milliseconds(50)));
+
+      elle::Finally kill_progress(
+        [&] ()
+        {
+          this->_pull_progress_thread->terminate_now();
+          this->_pull_progress_thread.reset();
+        });
       this->_core_machine.run();
       ELLE_DEBUG("%s: transfer core finished", *this);
     }
@@ -597,6 +615,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
       this->_transfer_operation();
+
       ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
     }
 
@@ -764,6 +783,33 @@ namespace surface
       ELLE_ASSERT(this->_etoile != nullptr);
       return *this->_etoile;
     }
+
+    void
+    TransferMachine::_retrieve_progress()
+    {
+      ELLE_TRACE_SCOPE("%s: retrive progress", *this);
+
+      if (this->_etoile == nullptr)
+      {
+        ELLE_WARN("%s: etoile is null", *this);
+        return;
+      }
+
+      float progress =
+        surface::gap::operation_detail::progress::progress(this->etoile());
+
+      ELLE_DEBUG("%s: progress is %s", *this, progress);
+
+      reactor::Lock l(this->_progress_mutex);
+      this->_progress = progress;
+    }
+
+    float
+    TransferMachine::progress() const
+    {
+      reactor::Lock l(this->_progress_mutex);
+      return this->_progress;
+    };
 
     metrics::Metric
     TransferMachine::network_metric() const

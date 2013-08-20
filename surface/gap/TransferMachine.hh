@@ -19,6 +19,7 @@
 # include <reactor/network/Protocol.hh>
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
+# include <reactor/mutex.hh>
 # include <reactor/waitable.hh>
 # include <reactor/Barrier.hh>
 
@@ -175,6 +176,13 @@ namespace surface
 
       void
       _core_stoped();
+
+      ELLE_ATTRIBUTE_r(float, progress);
+      ELLE_ATTRIBUTE_P(reactor::Mutex, progress_mutex, mutable);
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, pull_progress_thread);
+
+      void
+      _retrieve_progress();
 
       // Common on both sender and recipient process.
       ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
