@@ -851,8 +851,6 @@ namespace plasma
                   std::ostream& resp) const
     {
       ELLE_TRACE_SCOPE("%s: post on %s", *this, url);
-      // XXX Curl is supposed to be thread-safe.
-      std::unique_lock<std::mutex> lock(this->_mutex);
       curly::request_configuration c = curly::make_post();
 
       std::stringstream input;
@@ -868,9 +866,6 @@ namespace plasma
                  std::ostream& resp) const
     {
       ELLE_TRACE_SCOPE("%s: get on %s", *this, url);
-
-      // XXX Curl is supposed to be thread-safe.
-      std::unique_lock<std::mutex> lock(this->_mutex);
       curly::request_configuration c = curly::make_get();
 
       _query(url, c, resp, this);

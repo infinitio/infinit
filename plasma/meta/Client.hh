@@ -12,7 +12,6 @@
 # include <list>
 # include <map>
 # include <memory>
-# include <mutex>
 # include <stdexcept>
 # include <string>
 # include <vector>
@@ -254,8 +253,6 @@ namespace plasma
       ELLE_ATTRIBUTE_RW(std::string, email);
       ELLE_ATTRIBUTE_RW(std::string, token);
       ELLE_ATTRIBUTE_R(std::string, user_agent);
-      // XXX Curl is supposed to be thread-safe.
-      std::mutex mutable _mutex;
 
     public:
       Client(std::string const& server,
