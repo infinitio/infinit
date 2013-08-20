@@ -34,7 +34,10 @@ namespace surface
 {
   namespace gap
   {
+    static const uint32_t null_id = 0;
+
     class Transaction;
+
     // XXX: In order to ensure the logger is initialized at the begining of
     // state LoggerInitializer MUST be the first member of State.
     class LoggerInitializer

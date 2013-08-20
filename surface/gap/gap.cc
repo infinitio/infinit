@@ -138,6 +138,12 @@ extern "C"
     }
   }
 
+  uint32_t
+  gap_null()
+  {
+    return surface::gap::null_id;
+  }
+
   /// Create a new state.
   /// Returns NULL on failure.
   gap_State* gap_configurable_new(char const* meta_host,
@@ -463,7 +469,7 @@ extern "C"
   char const* gap_user_fullname(gap_State* state,
                                 uint32_t id)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
     return run<char const*>(state,
                             "user fullname",
                             [&] (surface::gap::State& state) -> char const*
@@ -477,7 +483,7 @@ extern "C"
   char const* gap_user_handle(gap_State* state,
                               uint32_t id)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
     return run<char const*>(state,
                             "user handle",
                             [&] (surface::gap::State& state) -> char const*
@@ -494,7 +500,7 @@ extern "C"
                 void** data,
                 size_t* size)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
     *data = nullptr;
     *size = 0;
     return run<gap_Status>(state,
@@ -561,7 +567,7 @@ extern "C"
   gap_user_status(gap_State* state,
                   uint32_t id)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
 
     return run<gap_UserStatus>(
       state,
@@ -713,7 +719,7 @@ extern "C"
   gap_transaction_ ## _field_(gap_State* state,                                \
                               uint32_t _id)                                    \
   {                                                                            \
-    assert(_id != 0);                                                          \
+    assert(_id != surface::gap::null_id);                                                          \
     return run<_type_>(                                                        \
       state,                                                                   \
       #_field_,                                                                \
@@ -766,7 +772,7 @@ extern "C"
   gap_transaction_progress(gap_State* state,
                            uint32_t id)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
 
     return run<float>(
       state,
@@ -904,7 +910,7 @@ extern "C"
                  uint32_t id,
                  char const* const* files)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
     assert(files != nullptr);
 
     std::unordered_set<std::string> s;
@@ -929,7 +935,7 @@ extern "C"
   gap_cancel_transaction(gap_State* state,
                          uint32_t id)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
     return run<uint32_t>(
       state,
       "cancel transaction",
@@ -944,7 +950,7 @@ extern "C"
   gap_reject_transaction(gap_State* state,
                          uint32_t id)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
     return run<uint32_t>(
       state,
       "reject transaction",
@@ -959,7 +965,7 @@ extern "C"
   gap_accept_transaction(gap_State* state,
                          uint32_t id)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
     return run<uint32_t>(
       state,
       "accept transaction",
@@ -974,7 +980,7 @@ extern "C"
   gap_join_transaction(gap_State* state,
                        uint32_t id)
   {
-    assert(id != 0);
+    assert(id != surface::gap::null_id);
     return run<uint32_t>(
       state,
       "join transaction",

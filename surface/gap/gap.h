@@ -39,6 +39,10 @@ extern "C" {
   /// Release a state.
   void gap_free(gap_State* state);
 
+  /// The 'error' value of ids.
+  uint32_t
+  gap_null();
+
   void
   gap_test(gap_State* state, char* string);
 

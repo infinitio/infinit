@@ -46,7 +46,7 @@ namespace surface
     uint32_t
     generate_id()
     {
-      static uint32_t id = 0;
+      static uint32_t id = null_id;
       return ++id;
     }
 
