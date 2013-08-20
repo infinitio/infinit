@@ -179,11 +179,11 @@ extern "C" {
   gap_transaction_first_filename(gap_State*,
                                  uint32_t);
 
-  int
+  unsigned int
   gap_transaction_files_count(gap_State*,
                               uint32_t);
 
-  int
+  uint64_t
   gap_transaction_total_size(gap_State*,
                              uint32_t);
 

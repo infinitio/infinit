@@ -738,6 +738,9 @@ extern "C"
 #define DEFINE_TRANSACTION_GETTER_INT(_field_)                                \
   DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                       \
 /**/
+#define DEFINE_TRANSACTION_GETTER_INT(_field_)                                \
+  DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                       \
+/**/
 #define DEFINE_TRANSACTION_GETTER_DOUBLE(_field_)                             \
   DEFINE_TRANSACTION_GETTER(double, _field_, NO_TRANSFORM)                    \
 /**/
@@ -754,8 +757,8 @@ extern "C"
   DEFINE_TRANSACTION_GETTER_STR(network_id)
   DEFINE_TRANSACTION_GETTER_STR(first_filename)
   DEFINE_TRANSACTION_GETTER_STR(message)
-  DEFINE_TRANSACTION_GETTER_INT(files_count)
-  DEFINE_TRANSACTION_GETTER_INT(total_size)
+  DEFINE_TRANSACTION_GETTER(unsigned int, files_count, NO_TRANSFORM)
+  DEFINE_TRANSACTION_GETTER(uint64_t, total_size, NO_TRANSFORM)
   DEFINE_TRANSACTION_GETTER_DOUBLE(timestamp)
   DEFINE_TRANSACTION_GETTER_BOOL(is_directory)
   // _transform_ is a cast from plasma::TransactionStatus

@@ -45,8 +45,8 @@ namespace plasma
     std::string network_id;
     std::string message;
     std::string first_filename;
-    int files_count;
-    int total_size;
+    unsigned int files_count;
+    uint64_t total_size;
     bool is_directory;
     TransactionStatus status;
     double timestamp;
