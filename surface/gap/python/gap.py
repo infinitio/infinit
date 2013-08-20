@@ -43,6 +43,7 @@ class _State:
 
             # Transaction
             'send_files',
+            'send_files_by_email',
             'set_output_dir',
             'get_output_dir',
             'cancel_transaction',
