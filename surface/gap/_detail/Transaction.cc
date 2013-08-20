@@ -11,19 +11,24 @@ namespace surface
       uint32_t id):
       Exception{
       gap_transaction_doesnt_exist, elle::sprintf("unknown transaction %s", id)}
-    {}
+    {
+      ELLE_ERR("transaction %s not found", id);
+    }
 
     State::TransactionNotFoundException::TransactionNotFoundException(
       std::string const& id):
       Exception{
       gap_transaction_doesnt_exist, elle::sprintf("unknown transaction %s", id)}
-   {}
+   {
+     ELLE_ERR("transaction %s not found", id);
+   }
 
     uint32_t
     State::send_files(std::string const& peer_id,
                       std::unordered_set<std::string>&& files)
     {
-      auto tr = TransactionPtr{new Transaction{*this, peer_id, std::move(files)}};
+      auto tr =
+        TransactionPtr{new Transaction{*this, peer_id, std::move(files)}};
       auto id = tr->id();
       this->_transactions.emplace(id, std::move(tr));
       return id;
@@ -40,7 +45,8 @@ namespace surface
 
       for (auto const& id: transactions_ids)
       {
-        auto tr = TransactionPtr{new Transaction{*this, this->meta().transaction(id)}};
+        auto tr =
+          TransactionPtr{new Transaction{*this, this->meta().transaction(id)}};
         auto _id = tr->id();
 
         this->_transactions.emplace(_id, std::move(tr));
@@ -115,11 +121,13 @@ namespace surface
         std::end(this->_transactions),
         [&] (std::pair<const uint32_t, TransactionPtr> const& pair)
         {
+          ELLE_ASSERT(pair.second != nullptr);
           return pair.second->data()->network_id == notif.network_id;
         });
 
       if (it == std::end(this->_transactions))
-        throw TransactionNotFoundException(notif.network_id);
+        throw TransactionNotFoundException(
+          elle::sprintf("network %s", notif.network_id));
 
       it->second->on_peer_connection_update(notif);
     }
