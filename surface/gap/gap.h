@@ -276,7 +276,7 @@ extern "C" {
   gap_user_icon_free(void* data);
 
   /// Retrieve user with its email.
-  char const*
+  uint32_t
   gap_user_by_email(gap_State* state,
                     char const* email);
 

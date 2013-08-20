@@ -515,25 +515,20 @@ extern "C"
     free(data);
   }
 
-  // char const*
-  // gap_user_by_email(gap_State* state,
-  //                   char const* email)
-  // {
-  //   assert(email != nullptr);
-  //   return run<char const*>(
-  //     state,
-  //     "user by email",
-  //     [&] (surface::gap::State& state) -> char const*
-  //     {
-  //       auto const& user =
-  //         state.user([&] (surface::gap::State::UserPair const& pair)
-  //                    {
-  //                      pair.second.email == email;
-  //                    });
-  //       return user.id.c_str();
-  //     });
-  //   return nullptr;
-  // }
+  uint32_t
+  gap_user_by_email(gap_State* state,
+                    char const* email)
+  {
+    assert(email != nullptr);
+    return run<uint32_t>(
+      state,
+      "user by email",
+      [&] (surface::gap::State& state) -> uint32_t
+      {
+        auto user = state.user(email, true);
+        return state.user_indexes().at(user.id);
+      });
+  }
 
   uint32_t*
   gap_search_users(gap_State* state,
