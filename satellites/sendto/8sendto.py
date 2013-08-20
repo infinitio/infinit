@@ -54,7 +54,7 @@ def on_error(state, status, message, tid):
 
 def main(state, user, files):
 
-    id = state.send_files(user, files)
+    id = state.send_files_by_email(user, files)
 
     state.transaction_callback(partial(on_transaction, state))
     state.on_error_callback(partial(on_error, state))

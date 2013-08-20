@@ -127,8 +127,34 @@ _hash_password(gap_State* state, std::string email, std::string password)
 
 static
 uint32_t
+_send_files_by_email(gap_State* state,
+                     std::string const& recipient,
+                     boost::python::list const& files)
+{
+  boost::python::ssize_t len = boost::python::len(files);
+  char const** list = (char const**) calloc(sizeof(char*), (len + 1));
+
+  if (list == nullptr)
+    throw std::bad_alloc();
+
+  for (int i = 0; i < len; ++i)
+  {
+    list[i] = boost::python::extract<char const*>(files[i]);
+  }
+
+  auto id = gap_send_files_by_email(state,
+                                    recipient.c_str(),
+                                    list);
+
+  free(list);
+
+  return id;
+}
+
+static
+uint32_t
 _send_files(gap_State* state,
-            std::string const& recipient,
+            uint32_t peer_id,
             boost::python::list const& files)
 {
   boost::python::ssize_t len = boost::python::len(files);
@@ -142,15 +168,12 @@ _send_files(gap_State* state,
     list[i] = boost::python::extract<char const*>(files[i]);
   }
 
-  auto id = gap_send_files(state,
-                           recipient.c_str(),
-                           list);
+  auto id = gap_send_files(state, peer_id, list);
 
   free(list);
 
   return id;
 }
-
 
 namespace
 {
@@ -460,6 +483,7 @@ BOOST_PYTHON_MODULE(_gap)
 
   py::def("transactions", &_get_transactions);
   py::def("send_files", &_send_files, by_value());
+  py::def("send_files_by_email", &_send_files_by_email, by_value());
   py::def("cancel_transaction", &gap_cancel_transaction);
   py::def("accept_transaction", &gap_accept_transaction);
   py::def("reject_transaction", &gap_reject_transaction);
