@@ -494,6 +494,21 @@ extern "C"
     return nullptr;
   }
 
+  char const*
+  gap_user_realid(gap_State* state,
+                  uint32_t id)
+  {
+    assert(id != surface::gap::null_id);
+    return run<char const*>(state,
+                            "user handle",
+                            [&] (surface::gap::State& state) -> char const*
+                            {
+                              auto const& user = state.user(id);
+                              return user.id.c_str();
+                            });
+  }
+
+
   gap_Status
   gap_user_icon(gap_State* state,
                 uint32_t id,

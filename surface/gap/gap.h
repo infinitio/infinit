@@ -266,6 +266,10 @@ extern "C" {
   gap_user_handle(gap_State* state,
                   uint32_t id);
 
+  char const*
+  gap_user_realid(gap_State* state,
+                  uint32_t id);
+
   /// @brief Retrieve user icon from a user_id
   /// @note data with be freed with gap_user_icon_free when the call is
   /// successfull.
