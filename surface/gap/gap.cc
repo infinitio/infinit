@@ -397,7 +397,7 @@ extern "C"
   gap_user_token(gap_State* state)
   {
     return run<char const*>(state,
-                            "user token",
+                            "self token",
                             [&] (surface::gap::State& state) -> char const*
                             {
                               auto token = state.meta().token();
@@ -409,7 +409,7 @@ extern "C"
   gap_self_email(gap_State* state)
   {
     return run<char const*>(state,
-                            "user email",
+                            "self email",
                             [&] (surface::gap::State& state) -> char const*
                             {
                               auto email = state.me().email;
@@ -417,16 +417,16 @@ extern "C"
                             });
   }
 
-  char const*
+  uint32_t
   gap_self_id(gap_State* state)
   {
-    return run<char const*>(state,
-                            "user id",
-                            [&] (surface::gap::State& state) -> char const*
-                            {
-                              auto id = state.me().id;
-                              return id.c_str();
-                            });
+    return run<uint32_t>(
+      state,
+      "self id",
+      [&] (surface::gap::State& state) -> uint32_t
+      {
+        return state.user_indexes().at(state.me().id);
+      });
   }
 
   /// Get current user remaining invitations.
@@ -731,6 +731,7 @@ extern "C"
 
 #define NO_TRANSFORM
 #define GET_CSTR(_expr_) (_expr_).c_str()
+#define GET_USER_ID(_expr_) (state.user_indexes().at(_expr_))
 
 #define DEFINE_TRANSACTION_GETTER_STR(_field_)                                \
   DEFINE_TRANSACTION_GETTER(char const*, _field_, GET_CSTR)                   \
@@ -748,10 +749,10 @@ extern "C"
   DEFINE_TRANSACTION_GETTER(gap_Bool, _field_, NO_TRANSFORM)                  \
 /**/
 
-  DEFINE_TRANSACTION_GETTER_STR(sender_id)
+  DEFINE_TRANSACTION_GETTER(uint32_t, sender_id, GET_USER_ID)
   DEFINE_TRANSACTION_GETTER_STR(sender_fullname)
   DEFINE_TRANSACTION_GETTER_STR(sender_device_id)
-  DEFINE_TRANSACTION_GETTER_STR(recipient_id)
+  DEFINE_TRANSACTION_GETTER(uint32_t, recipient_id, GET_USER_ID)
   DEFINE_TRANSACTION_GETTER_STR(recipient_fullname)
   DEFINE_TRANSACTION_GETTER_STR(recipient_device_id)
   DEFINE_TRANSACTION_GETTER_STR(network_id)

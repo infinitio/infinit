@@ -308,6 +308,7 @@ namespace surface
               ELLE_TRACE("%s: notification pulled", *this);
             }
           }});
+      this->user(this->me().id);
       this->swaggers();
       this->transactions_init();
     }

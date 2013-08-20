@@ -147,7 +147,7 @@ extern "C" {
                            gap_transaction_callback_t cb);
 
   /// Transaction getters.
-  char const*
+  uint32_t
   gap_transaction_sender_id(gap_State*,
                             uint32_t);
 
@@ -159,7 +159,7 @@ extern "C" {
   gap_transaction_sender_device_id(gap_State*,
                                    uint32_t);
 
-  char const*
+  uint32_t
   gap_transaction_recipient_id(gap_State*,
                                uint32_t);
 
@@ -243,7 +243,7 @@ extern "C" {
   gap_self_email(gap_State* state);
 
   /// Get current user id.
-  char const*
+  uint32_t
   gap_self_id(gap_State* state);
 
   /// Get current user remaining invitations.

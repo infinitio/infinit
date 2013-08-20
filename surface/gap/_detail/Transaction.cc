@@ -77,6 +77,11 @@ namespace surface
     State::_on_transaction_update_notification(
       plasma::trophonius::TransactionNotification const& notif)
     {
+      ELLE_TRACE_SCOPE("%s: transaction notification", *this);
+
+      this->user(notif.sender_id);
+      this->user(notif.recipient_id);
+
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
@@ -103,6 +108,8 @@ namespace surface
     State::_on_peer_connection_update(
       plasma::trophonius::PeerConnectionUpdateNotification const& notif)
     {
+      ELLE_TRACE_SCOPE("%s: peer connection notification", *this);
+
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
