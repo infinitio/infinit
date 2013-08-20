@@ -414,9 +414,13 @@ namespace surface
         this->_etoile.reset();
       ELLE_DEBUG("%s: finalize hole", *this)
         this->_hole.reset();
+
+      if (this->_machine_thread != nullptr)
+      {
+        this->_machine_thread->terminate_now();
+        this->_machine_thread.reset();
+      }
     }
-
-
 
     /*-------------.
     | Core Machine |
