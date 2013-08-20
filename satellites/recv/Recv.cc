@@ -110,7 +110,6 @@ int main(int argc, char** argv)
 
         do
         {
-          std::cerr << "a" << std::endl;
           state.poll();
           reactor::Sleep s{sched, boost::posix_time::seconds{1}};
           s.run();
