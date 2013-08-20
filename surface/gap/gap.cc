@@ -779,8 +779,7 @@ extern "C"
       "progress",
       [&] (surface::gap::State& state) -> float
       {
-        // state.transaction_manager().progress(transaction_id);
-        return gap_ok;
+        return state.transactions().at(id)->progress();
       });
   }
 
