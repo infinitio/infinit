@@ -399,7 +399,18 @@ namespace surface
     void
     TransferMachine::join()
     {
+      ELLE_TRACE_SCOPE("%s: join machine", *this);
 
+      if (this->_machine_thread == nullptr)
+      {
+        ELLE_WARN("%s: thread already destroyed", *this);
+        return;
+      }
+
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+      reactor::Thread* current = reactor::Scheduler::scheduler()->current();
+      ELLE_ASSERT(current != nullptr);
+      current->wait(*this->_machine_thread.get());
     }
 
     void
