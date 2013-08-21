@@ -447,8 +447,7 @@ namespace surface
       transactions_clear();
 
       void
-      _on_transaction_update_notification(
-        plasma::trophonius::TransactionNotification const& notif);
+      _on_transaction_update(plasma::Transaction const& notif);
 
       void
       _on_peer_connection_update(

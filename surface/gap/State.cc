@@ -493,11 +493,9 @@ namespace surface
           break;
         case plasma::trophonius::NotificationType::transaction:
           ELLE_ASSERT(
-            dynamic_cast<plasma::trophonius::TransactionNotification const*>(
-              notif.get()) != nullptr);
-          this->_on_transaction_update_notification(
-            *static_cast<plasma::trophonius::TransactionNotification const*>(
-              notif.release()));
+            dynamic_cast<plasma::Transaction const*>(notif.get()) != nullptr);
+          this->_on_transaction_update(
+            *static_cast<plasma::trophonius::TransactionNotification const*>(notif.release()));
           break;
         case plasma::trophonius::NotificationType::new_swagger:
           ELLE_ASSERT(

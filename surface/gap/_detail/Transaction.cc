@@ -80,8 +80,7 @@ namespace surface
     }
 
     void
-    State::_on_transaction_update_notification(
-      plasma::trophonius::TransactionNotification const& notif)
+    State::_on_transaction_update(plasma::Transaction const& notif)
     {
       ELLE_TRACE_SCOPE("%s: transaction notification", *this);
 
