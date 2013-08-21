@@ -131,7 +131,7 @@ namespace surface
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
 
       this->peer_id(recipient);
-      this->run(this->_request_network_state);
+      this->_run(this->_request_network_state);
     }
 
     SendMachine::SendMachine(surface::gap::State const& state,
@@ -150,22 +150,22 @@ namespace surface
           // journal to make sure the copy was over.
           // For the moment, none of thoose options are implemented and there
           // is no way to know if the copy was successfull.
-          this->run(this->_wait_for_accept_state);
+          this->_run(this->_wait_for_accept_state);
           break;
         case plasma::TransactionStatus::accepted:
-          this->run(this->_set_permissions_state);
+          this->_run(this->_set_permissions_state);
           break;
         case plasma::TransactionStatus::ready:
-          this->run(this->_transfer_core_state);
+          this->_run(this->_transfer_core_state);
           break;
         case plasma::TransactionStatus::finished:
-          this->run(this->_finish_state);
+          this->_run(this->_finish_state);
           break;
         case plasma::TransactionStatus::canceled:
-          this->run(this->_cancel_state);
+          this->_run(this->_cancel_state);
           break;
         case plasma::TransactionStatus::failed:
-          this->run(this->_fail_state);
+          this->_run(this->_fail_state);
           break;
         case plasma::TransactionStatus::rejected:
         case plasma::TransactionStatus::created:

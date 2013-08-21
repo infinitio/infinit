@@ -73,25 +73,25 @@ namespace surface
       switch (this->data()->status)
       {
         case plasma::TransactionStatus::initialized:
-          this->run(this->_wait_for_decision_state);
+          this->_run(this->_wait_for_decision_state);
           break;
         case plasma::TransactionStatus::accepted:
           this->_machine.transition_add(null,
                                         this->_transfer_core_state,
                                         reactor::Waitables{&this->_ready});
-          this->run(null);
+          this->_run(null);
           break;
         case plasma::TransactionStatus::ready:
-          this->run(this->_transfer_core_state);
+          this->_run(this->_transfer_core_state);
           break;
         case plasma::TransactionStatus::finished:
-          this->run(this->_finish_state);
+          this->_run(this->_finish_state);
           break;
         case plasma::TransactionStatus::canceled:
-          this->run(this->_cancel_state);
+          this->_run(this->_cancel_state);
           break;
         case plasma::TransactionStatus::failed:
-          this->run(this->_fail_state);
+          this->_run(this->_fail_state);
           break;
         case plasma::TransactionStatus::rejected:
         case plasma::TransactionStatus::created:

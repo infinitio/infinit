@@ -40,12 +40,9 @@ namespace surface
     TransferMachine::TransferMachine(surface::gap::State const& state,
                                      uint32_t id,
                                      std::shared_ptr<TransferMachine::Data> data):
-      _data(std::move(data)),
       _id(id),
       _machine(),
       _machine_thread(),
-      _progress(0.0f),
-      _progress_mutex(),
       _transfer_core_state(
         this->_machine.state_make(
           "transfer core", std::bind(&TransferMachine::_transfer_core, this))),
@@ -83,7 +80,15 @@ namespace surface
       _core_stoped_state(
         this->_core_machine.state_make(
           "core stoped", std::bind(&TransferMachine::_core_stoped, this))),
-      _state(state)
+      _peer_online(),
+      _peer_offline(),
+      _peer_connected(),
+      _peer_disconnected(),
+      _progress(0.0f),
+      _progress_mutex(),
+      _pull_progress_thread(),
+      _state(state),
+      _data(std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: creating transfer machine: %s", *this, this->_data);
 
@@ -323,7 +328,7 @@ namespace surface
     }
 
     void
-    TransferMachine::run(reactor::fsm::State& initial_state)
+    TransferMachine::_run(reactor::fsm::State& initial_state)
     {
       ELLE_TRACE_SCOPE("%s: running transfer machine", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);

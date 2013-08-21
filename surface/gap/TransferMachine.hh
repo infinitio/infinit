@@ -58,43 +58,56 @@ namespace surface
 
       virtual
       ~TransferMachine();
-    public:
+    protected:
+      /// Launch the reactor::Machine at the given state.
       void
-      run(reactor::fsm::State& initial_state);
+      _run(reactor::fsm::State& initial_state);
 
+      /// Kill the reactor::Machine.
+      void
+      _stop();
+
+    public:
+      /// Use to notify that the transaction has been updated on the remote.
       virtual
       void
       transaction_status_update(plasma::TransactionStatus status) = 0;
 
+      /// Use to notify that the peer status changed to connected or
+      /// disconnected.
       void
       peer_connection_update(bool user_status);
 
+      /// Cancel the transaction.
       void
       cancel();
 
-    public:
-      bool
-      concerns_network(std::string const& network_id);
-
-      bool
-      concerns_transaction(std::string const& transaction_id);
-
-      bool
-      concerns_user(std::string const& user_id);
-
-      bool
-      concerns_device(std::string const& device_id);
-
-      bool
-      has_id(uint32_t id);
-
-    public:
+      /// Join the machine thread.
+      /// The machine must be in his way to a final state, otherwise the caller
+      /// will deadlock.
       void
       join();
 
-    protected:
-      void
-      _stop();
+    public:
+      /// Returns if the machine is releated to the given network object id.
+      bool
+      concerns_network(std::string const& network_id);
+
+      /// Returns if the machine is releated to the given transaction object id.
+      bool
+      concerns_transaction(std::string const& transaction_id);
+
+      /// Returns if the machine is releated to the given user object id.
+      bool
+      concerns_user(std::string const& user_id);
+
+      /// Returns if the machine is releated to the given device object id.
+      bool
+      concerns_device(std::string const& device_id);
+
+      /// Returns if the machine is releated to the given transaction id.
+      bool
+      has_id(uint32_t id);
 
       /*-----------------------.
       | Machine implementation |
@@ -177,13 +190,6 @@ namespace surface
       void
       _core_stoped();
 
-      ELLE_ATTRIBUTE_r(float, progress);
-      ELLE_ATTRIBUTE_P(reactor::Mutex, progress_mutex, mutable);
-      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, pull_progress_thread);
-
-      void
-      _retrieve_progress();
-
       // Common on both sender and recipient process.
       ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, connection_state);
@@ -200,6 +206,13 @@ namespace surface
       // Slug?
       reactor::Signal _peer_connected;
       reactor::Signal _peer_disconnected;
+
+      ELLE_ATTRIBUTE_r(float, progress);
+      ELLE_ATTRIBUTE_P(reactor::Mutex, progress_mutex, mutable);
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, pull_progress_thread);
+
+      void
+      _retrieve_progress();
 
       ELLE_ATTRIBUTE_R(surface::gap::State const&, state);
 
