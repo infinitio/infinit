@@ -118,7 +118,7 @@ namespace hole
               _acceptor.reset(new reactor::Thread(
                                 *reactor::Scheduler::scheduler(),
                                 "Slug accept",
-                                [&] {this->_accept();}));
+                                [&] { this->_accept(); }));
             }
             catch (reactor::Exception& e)
             {
@@ -141,13 +141,23 @@ namespace hole
       {
         ELLE_TRACE_SCOPE("%s: finalize", *this);
         for (auto host: Hosts(_hosts))
+        {
+          ELLE_DEBUG("%s: remove host %s", *this, *host.second.get());
           this->_remove(host.second.get());
+        }
+
+        ELLE_DEBUG("%s: hosts cleaned", *this);
 
         // Stop serving; we may not be listening, since bind errors are
         // considered warnings (see constructor), in which case we have no
         // acceptor.
         if (_acceptor)
+        {
+          ELLE_DEBUG("%s: terminate acceptor", *this);
           _acceptor->terminate_now();
+        }
+
+        ELLE_DEBUG("%s: slug successfully destroyed", *this);
       }
 
       void
