@@ -152,19 +152,6 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: start transfer core machine", *this);
 
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
-      this->_pull_progress_thread.reset(
-        sched.every(
-          [&] () { this->_retrieve_progress(); },
-          "pull progress",
-          boost::posix_time::milliseconds(300)));
-
-      elle::Finally kill_progress(
-        [&] ()
-        {
-          this->_pull_progress_thread->terminate_now();
-          this->_pull_progress_thread.reset();
-        });
       this->_core_machine.run();
       ELLE_DEBUG("%s: transfer core finished", *this);
     }
@@ -638,6 +625,20 @@ namespace surface
     TransferMachine::_transfer()
     {
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
+      this->_pull_progress_thread.reset(
+        sched.every(
+          [&] () { this->_retrieve_progress(); },
+          "pull progress",
+          boost::posix_time::milliseconds(300)));
+
+      elle::Finally kill_progress(
+        [&] ()
+        {
+          this->_pull_progress_thread->terminate_now();
+          this->_pull_progress_thread.reset();
+        });
       this->_transfer_operation();
 
       ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
