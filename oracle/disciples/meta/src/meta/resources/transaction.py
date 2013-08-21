@@ -347,21 +347,28 @@ class All(Page):
     """
     __pattern__ = "/transactions"
 
-    def GET(self):
+    def POST(self):
         self.requireLoggedIn()
-        transaction_ids = (
+
+        filter_ = self.data.get('filter', [CANCELED, FINISHED, FAILED, CREATED, REJECTED])
+        inclusive = self.data.get('type', False)
+        limit = self.data.get('count', 0)
+
+        transaction_ids = list(
             t['_id'] for t in database.transactions().find({
                 '$or':[
                     {'recipient_id': self.user['_id']},
                     {'sender_id': self.user['_id']}
                 ],
-                'status': {
-                    '$nin': [CANCELED, FINISHED, FAILED, CREATED, REJECTED]
+                'status':
+                {
+                    '$%s' % (inclusive and 'in' or 'nin') : filter_
                 }
-            }, fields = ['_id'])
+            }, fields = ['_id'], limit = limit)
         )
+
         return self.success({
-            'transactions': list(transaction_ids)
+            'transactions': transaction_ids,
         })
 
 class One(Page):
