@@ -358,15 +358,37 @@ extern "C"
   gap_Status
   gap_poll(gap_State* state)
   {
+    gap_Status ret = gap_ok;
     try
     {
       state->state().poll();
     }
+    catch (elle::HTTPException const& err)
+    {
+      ELLE_ERR("poll error: %s", err.what());
+      if (err.code == elle::ResponseCode::error)
+        ret = gap_network_error;
+      else if (err.code == elle::ResponseCode::internal_server_error)
+        ret = gap_api_error;
+      else
+        ret = gap_internal_error;
+    }
+    catch (plasma::meta::Exception const& err)
+    {
+      ELLE_ERR("poll error: %s", err.what());
+      ret = (gap_Status) err.err;
+    }
+    catch (surface::gap::Exception const& err)
+    {
+      ELLE_ERR("poll error: %s", err.what());
+      ret = err.code;
+    }
     catch (...) // XXX.
     {
-      return gap_error;
+      ELLE_ERR("poll error %s", elle::exception_string());
+      ret = gap_error;
     }
-    return gap_ok;
+    return ret;
   }
 
   /// - Device --------------------------------------------------------------
