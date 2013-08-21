@@ -41,15 +41,39 @@ namespace surface
 
       ELLE_ASSERT(this->_transactions.empty());
 
-      auto transactions_ids = this->meta().transactions().transactions;
-
-      for (auto const& id: transactions_ids)
       {
-        auto tr =
-          TransactionPtr{new Transaction{*this, this->meta().transaction(id)}};
-        auto _id = tr->id();
+        std::list<std::string> transactions_ids{
+          std::move(this->meta().transactions().transactions)};
 
-        this->_transactions.emplace(_id, std::move(tr));
+        for (auto const& id: transactions_ids)
+        {
+          auto tr =
+            TransactionPtr{new Transaction{*this, this->meta().transaction(id)}};
+          auto _id = tr->id();
+
+          this->_transactions.emplace(std::move(_id), std::move(tr));
+        }
+      }
+
+      // History.
+      {
+        static std::vector<plasma::TransactionStatus> final{
+          plasma::TransactionStatus::rejected,
+            plasma::TransactionStatus::finished,
+            plasma::TransactionStatus::canceled,
+            plasma::TransactionStatus::failed};
+
+        std::list<std::string> transactions_ids{
+          std::move(this->meta().transactions(final, true, 5).transactions)};
+
+        for (auto const& id: transactions_ids)
+        {
+          auto tr =
+            TransactionPtr{new Transaction{*this, this->meta().transaction(id)}};
+          auto _id = tr->id();
+
+          this->_transactions.emplace(_id, std::move(tr));
+        }
       }
     }
 
