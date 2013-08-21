@@ -115,6 +115,7 @@ namespace surface
       this->_machine.transition_add(this->_reject_state,
                                     this->_remote_clean_state);
 
+      // Clean.
       this->_machine.transition_add(this->_remote_clean_state,
                                     this->_local_clean_state);
 
@@ -187,6 +188,7 @@ namespace surface
         this->_etoile.reset();
       ELLE_DEBUG("finalize hole")
         this->_hole.reset();
+      ELLE_DEBUG("%s: local state successfully cleaned", *this);
     }
 
     void
@@ -219,7 +221,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: machine finished", *this);
       this->state().enqueue(Notification(this->id(), TransferState_Finished));
-      this->_finiliaze(plasma::TransactionStatus::finished);
+      this->_finalize(plasma::TransactionStatus::finished);
       ELLE_DEBUG("%s: finished", *this);
     }
 
@@ -228,7 +230,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: machine rejected", *this);
       this->state().enqueue(Notification(this->id(), TransferState_Rejected));
-      this->_finiliaze(plasma::TransactionStatus::rejected);
+      this->_finalize(plasma::TransactionStatus::rejected);
       ELLE_DEBUG("%s: rejected", *this);
     }
 
@@ -237,7 +239,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: machine canceled", *this);
       this->state().enqueue(Notification(this->id(), TransferState_Canceled));
-      this->_finiliaze(plasma::TransactionStatus::canceled);
+      this->_finalize(plasma::TransactionStatus::canceled);
       ELLE_DEBUG("%s: canceled", *this);
     }
 
@@ -246,12 +248,12 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: machine failed", *this);
       this->state().enqueue(Notification(this->id(), TransferState_Failed));
-      this->_finiliaze(plasma::TransactionStatus::failed);
+      this->_finalize(plasma::TransactionStatus::failed);
       ELLE_DEBUG("%s: failed", *this);
     }
 
     void
-    TransferMachine::_finiliaze(plasma::TransactionStatus status)
+    TransferMachine::_finalize(plasma::TransactionStatus status)
     {
       ELLE_TRACE_SCOPE("%s: finalize machine: %s", *this, status);
 
@@ -415,7 +417,9 @@ namespace surface
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       reactor::Thread* current = reactor::Scheduler::scheduler()->current();
       ELLE_ASSERT(current != nullptr);
+      ELLE_DEBUG("%s: start joining", *this);
       current->wait(*this->_machine_thread.get());
+      ELLE_DEBUG("%s: successfully joined", *this);
     }
 
     void

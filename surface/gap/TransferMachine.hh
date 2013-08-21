@@ -135,7 +135,7 @@ namespace surface
       _cancel();
 
       void
-      _finiliaze(plasma::TransactionStatus);
+      _finalize(plasma::TransactionStatus);
 
     private:
       void
