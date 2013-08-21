@@ -317,7 +317,7 @@ namespace
   {
     auto cpp_cb = [cb] (surface::gap::TransferMachine::Notification const& notif)
     {
-      cb(notif.id, notif.status);
+      wrap_call(cb)(notif.id, notif.status);
     };
 
     run<int>(
