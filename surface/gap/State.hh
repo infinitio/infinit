@@ -286,7 +286,7 @@ namespace surface
 
     public:
       typedef plasma::meta::User User;
-      typedef std::pair<uint32_t, User> UserPair;
+      typedef std::pair<const uint32_t, User> UserPair;
       typedef std::unordered_map<uint32_t, User> UserMap;
       typedef std::unordered_set<User> Users;
       typedef std::map<std::string, uint32_t> UserIndexMap;
@@ -428,9 +428,10 @@ namespace surface
         TransactionNotFoundException(std::string const& id);
       };
 
-
       typedef std::unique_ptr<Transaction> TransactionPtr;
-      typedef std::unordered_map<uint32_t, std::unique_ptr<Transaction>> Transactions;
+      typedef std::pair<uint32_t, TransactionPtr> TransactionPair;
+      typedef std::pair<const uint32_t, TransactionPtr> TransactionConstPair;
+      typedef std::unordered_map<uint32_t, TransactionPtr> Transactions;
       typedef std::map<std::string, uint32_t> TransactionIndexMap;
       typedef std::unordered_set<uint32_t> TransactionIndexes;
 

@@ -90,7 +90,7 @@ namespace surface
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
-        [&] (std::pair<const uint32_t, TransactionPtr> const& pair)
+        [&] (TransactionConstPair const& pair)
         {
           return pair.second->data()->id == notif.id;
         });
@@ -118,7 +118,7 @@ namespace surface
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
-        [&] (std::pair<const uint32_t, TransactionPtr> const& pair)
+        [&] (TransactionConstPair const& pair)
         {
           ELLE_ASSERT(pair.second != nullptr);
           return pair.second->data()->network_id == notif.network_id;
