@@ -72,8 +72,7 @@ def select_transactions(state, l_transactions, sender):
     # select pending transactions matching the sender id (if not None)
     enumeration = list(enumerate(
             l for l in l_transactions
-            if state.transaction_status(l) == state.TransactionStatus.initialized
-            and (sender is None or state.transaction_sender_id(l) == sender_id)
+            if (sender is None or state.transaction_sender_id(l) == sender_id)
     ))
 
     if len(enumeration) == 1:
