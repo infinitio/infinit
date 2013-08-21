@@ -5,6 +5,7 @@
 #include <reactor/scheduler.hh>
 
 #include <elle/log.hh>
+#include <elle/os/getenv.hh>
 #include <elle/threading/Monitor.hh>
 
 #include <fstream>
@@ -113,6 +114,9 @@ namespace metrics
                    std::string const& event_name,
                    Metric metric)
   {
+    if (elle::os::in_env("INFINIT_NO_METRICS"))
+      return;
+
     TimeMetricPair timed_metric{
       elle::utility::Time::current(),
       std::move(metric),
