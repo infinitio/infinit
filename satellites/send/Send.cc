@@ -75,7 +75,6 @@ int main(int argc, char** argv)
     std::string const to = options["to"].as<std::string>();
     std::string const file = options["file"].as<std::string>();
 
-    bool stop = false;
     lune::Lune::Initialize(); // XXX
 
     reactor::Scheduler sched;
@@ -87,22 +86,26 @@ int main(int argc, char** argv)
       [&] () -> int
       {
         surface::gap::State state;
+        bool stop = false;
+        uint32_t id = surface::gap::null_id;
 
         state.attach_callback<surface::gap::State::UserStatusNotification>(
           [&] (surface::gap::State::UserStatusNotification const& notif)
           {
-            std::cerr << "LUL: " << notif.id  << " - "<< notif.status << std::endl;
           });
 
         state.attach_callback<surface::gap::TransferMachine::Notification>(
           [&] (surface::gap::TransferMachine::Notification const& notif)
           {
-            std::cerr << "LOL: " << notif.id  << " - "<< notif.status << std::endl;
+            if (id == surface::gap::null_id)
+              return;
+
+            if (notif.id != id)
+              return;
 
             if (notif.status == TransferState_Finished)
             {
-              std::cerr << "finished" << std::endl;
-              state.transactions().at(notif.id)->join();
+              state.transactions().at(id)->join();
               stop = true;
             }
           });
@@ -110,7 +113,7 @@ int main(int argc, char** argv)
         state.login(user, hashed_password);
         // state.update_device("lust");
 
-        auto mid = state.send_files(to, { file.c_str() });
+        id = state.send_files(to, { file.c_str() });
 
         do
         {
