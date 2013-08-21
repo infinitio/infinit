@@ -115,7 +115,7 @@ namespace surface
       _meta{meta_host, meta_port, true},
       _trophonius{trophonius_host, trophonius_port, [this] (bool status)
         {
-          this->enqueue<ConnectionStatus>(ConnectionStatus(status));
+          this->on_connection_changed(status);
       }},
       _reporter{common::metrics::fallback_path()},
       _google_reporter{common::metrics::google_fallback_path()},
@@ -310,7 +310,7 @@ namespace surface
           }});
       this->user(this->me().id);
       this->swaggers();
-      this->transactions_init();
+      this->_transactions_init();
     }
 
     void
@@ -319,7 +319,7 @@ namespace surface
       ELLE_TRACE_METHOD("");
 
       this->_users.clear();
-      this->transactions_clear();
+      this->_transactions_clear();
 
       if (this->meta(false).token().empty())
         return;
@@ -474,6 +474,17 @@ namespace surface
                         "not a directroy."};
 
       this->_output_dir = dir;
+    }
+
+    void
+    State::on_connection_changed(bool connection_status)
+    {
+      ELLE_TRACE_SCOPE(
+        "%s: connection %s", *this, connection_status ? "established" : "lost");
+
+      this->enqueue<ConnectionStatus>(ConnectionStatus(connection_status));
+      this->_user_resync();
+      this->_transaction_resync();
     }
 
     void

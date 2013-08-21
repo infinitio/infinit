@@ -35,7 +35,7 @@ namespace surface
     }
 
     void
-    State::transactions_init()
+    State::_transactions_init()
     {
       ELLE_TRACE_SCOPE("%s: pull transactions", *this);
 
@@ -54,7 +54,21 @@ namespace surface
     }
 
     void
-    State::transactions_clear()
+    State::_transaction_resync()
+    {
+      ELLE_TRACE_SCOPE("%s: resync transactions", *this);
+
+      auto transactions_ids = this->meta().transactions().transactions;
+
+      for (auto const& id: transactions_ids)
+      {
+        ELLE_DEBUG("%s: update transaction %s", *this, id);
+        this->_on_transaction_update(this->meta().transaction(id));
+      }
+    }
+
+    void
+    State::_transactions_clear()
     {
       ELLE_TRACE_SCOPE("%s: clear transactions", *this);
 

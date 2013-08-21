@@ -203,6 +203,9 @@ namespace surface
       ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Thread>, polling_thread);
 
       void
+      on_connection_changed(bool connection_status);
+
+      void
       handle_notification(
         std::unique_ptr<plasma::trophonius::Notification>&& notification);
 
@@ -322,7 +325,7 @@ namespace surface
       user_from_public_key(std::string const& public_key) const;
 
       void
-      _user_on_resync();
+      _user_resync();
 
       UserIndexes
       user_search(std::string const& text) const;
@@ -441,11 +444,15 @@ namespace surface
       send_files(std::string const& peer_id,
                  std::unordered_set<std::string>&& files);
 
+    private:
       void
-      transactions_init();
+      _transactions_init();
 
       void
-      transactions_clear();
+      _transaction_resync();
+
+      void
+      _transactions_clear();
 
       void
       _on_transaction_update(plasma::Transaction const& notif);

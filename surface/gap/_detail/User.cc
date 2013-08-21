@@ -207,8 +207,9 @@ namespace surface
     }
 
     void
-    State::_user_on_resync()
+    State::_user_resync()
     {
+      ELLE_TRACE_SCOPE("%s: resync user", *this);
       this->_swaggers_dirty = true;
 
       for (auto const& swagger_id: this->swaggers())
