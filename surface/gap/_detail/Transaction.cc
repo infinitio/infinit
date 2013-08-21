@@ -126,8 +126,13 @@ namespace surface
         });
 
       if (it == std::end(this->_transactions))
-        throw TransactionNotFoundException(
-          elle::sprintf("network %s", notif.network_id));
+      {
+        ELLE_ERR("%s: no transaction found for network %s",
+                 *this, notif.network_id);
+        return;
+        // throw TransactionNotFoundException(
+        //   elle::sprintf("network %s", notif.network_id));
+      }
 
       it->second->on_peer_connection_update(notif);
     }
