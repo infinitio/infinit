@@ -349,8 +349,18 @@ namespace plasma
       TransactionResponse
       transaction(std::string const& _id) const;
 
+      /// Get the list of transactions that have a spectific status.
+      /// The status can be pass threw 'status' list argument, allowing to
+      /// search for many status matching.
+      /// 'inclusive' is used to inverse the research result, by searching
+      /// inclusivly or exclusivly in the status list.
+      /// NB: If you let the default argument, it returns the 'non finished'
+      /// transactions.
+      /// 'count' is use to set a limit of transactions id to be pulled.
       TransactionsResponse
-      transactions() const;
+      transactions(std::vector<TransactionStatus> const& status = {},
+                   bool inclusive = true,
+                   int count = 0) const;
 
       CreateTransactionResponse
       create_transaction(std::string const& recipient_id_or_email,

@@ -562,9 +562,25 @@ namespace plasma
     }
 
     TransactionsResponse
-    Client::transactions() const
+    Client::transactions(std::vector<TransactionStatus> const& status,
+                         bool inclusive,
+                         int count) const
     {
-      return this->_get<TransactionsResponse>("/transactions");
+      json::Dictionary request{};
+      if (status.size() > 0)
+      {
+        json::Array status_array;
+        for (TransactionStatus statu: status)
+        {
+          status_array.push_back((int) statu);
+        }
+
+        request["filter"] = std::move(status_array);
+        request["type"] = inclusive;
+        request["count"] = count;
+      }
+
+      return this->_post<TransactionsResponse>("/transactions", request);
     }
 
     MessageResponse
