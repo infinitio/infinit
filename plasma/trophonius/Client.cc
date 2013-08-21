@@ -267,7 +267,7 @@ namespace plasma
       void
       _disconnect()
       {
-        this->connect_callback(false);
+        elle::Finally _disconnect{[this] { this->connect_callback(false); }};
         this->_connected.close();
         this->_socket->socket()->close();
         this->_socket.reset();
@@ -287,6 +287,7 @@ namespace plasma
           try
           {
             this->_connect();
+            this->connect_callback(true);
             break;
           }
           catch (elle::Exception const&)
@@ -485,12 +486,6 @@ namespace plasma
       _impl->user_device_id = device_id;
       this->_impl->_connect();
       ELLE_LOG("%s: connected to trophonius", *this);
-
-      elle::Finally guard(
-        [&]
-        {
-          _impl->connect_callback(true);
-        });
 
       return true;
     }
