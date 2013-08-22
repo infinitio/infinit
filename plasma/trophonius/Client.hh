@@ -153,6 +153,9 @@ namespace plasma
               std::string const& token,
               std::string const& device_id);
 
+      void
+      disconnect();
+
       //GenericNotification
       std::unique_ptr<Notification>
       poll();

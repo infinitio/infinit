@@ -267,10 +267,12 @@ namespace plasma
       void
       _disconnect()
       {
-        elle::Finally _disconnect{[this] { this->connect_callback(false); }};
         this->_connected.close();
-        this->_socket->socket()->close();
-        this->_socket.reset();
+        if (this->_socket != nullptr)
+        {
+          this->_socket->socket()->close();
+          this->_socket.reset();
+        }
       }
 
       void
@@ -282,6 +284,7 @@ namespace plasma
           return;
         }
         this->_disconnect();
+        this->connect_callback(false);
         while (true)
         {
           try
@@ -488,6 +491,12 @@ namespace plasma
       ELLE_LOG("%s: connected to trophonius", *this);
 
       return true;
+    }
+
+    void
+    Client::disconnect()
+    {
+      this->_impl->_disconnect();
     }
 
     std::unique_ptr<Notification>
