@@ -12,6 +12,7 @@ namespace surface
       public TransferMachine
     {
     public:
+      // Construct from send files.
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
                   std::string const& recipient,
@@ -19,9 +20,18 @@ namespace surface
                   std::string const& message,
                   std::shared_ptr<Data> data);
 
+      // Construct from snapshot (with curren_state and files).
+      SendMachine(surface::gap::State const& state,
+                             uint32_t id,
+                             std::unordered_set<std::string> files,
+                             TransferState current_state,
+                             std::shared_ptr<TransferMachine::Data> data);
+
+      // XXX: Add putain de commentaire de la vie.
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
-                  std::shared_ptr<Data> data);
+                  std::shared_ptr<TransferMachine::Data> data);
+
 
       virtual
       ~SendMachine();
@@ -36,6 +46,9 @@ namespace surface
                   uint32_t id,
                   std::shared_ptr<Data> data,
                   bool);
+
+      Snapshot
+      _make_snapshot() const override;
 
     private:
       void

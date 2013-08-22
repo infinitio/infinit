@@ -3,29 +3,33 @@
 
 # include <surface/gap/enums.hh>
 # include <surface/gap/Notification.hh>
-# include <plasma/fwd.hh>
+//# include <plasma/fwd.hh>
+# include <plasma/plasma.hh>
 
-# include <papier/fwd.hh>
 # include <etoile/fwd.hh>
+# include <metrics/fwd.hh>
+# include <papier/fwd.hh>
 
-# include <hole/storage/Directory.hh>
 # include <hole/implementations/slug/Slug.hh>
+# include <hole/storage/Directory.hh>
 
 # include <nucleus/proton/Network.hh>
 
-# include <metrics/fwd.hh>
-
+# include <reactor/Barrier.hh>
 # include <reactor/fsm.hh>
+# include <reactor/mutex.hh>
 # include <reactor/network/Protocol.hh>
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
-# include <reactor/mutex.hh>
 # include <reactor/waitable.hh>
-# include <reactor/Barrier.hh>
 
 # include <elle/Printable.hh>
+# include <elle/serialize/construct.hh>
+
+# include <boost/filesystem.hpp>
 
 # include <thread>
+# include <unordered_set>
 
 namespace surface
 {
@@ -36,6 +40,25 @@ namespace surface
     class TransferMachine:
       public elle::Printable
     {
+    public:
+      typedef plasma::Transaction Data;
+
+    public:
+      class Snapshot
+      {
+      public:
+        Snapshot(Data const& data,
+                 TransferState const state,
+                 std::unordered_set<std::string> const& files = {});
+
+        ELLE_SERIALIZE_CONSTRUCT(Snapshot){}
+
+      public:
+        Data data;
+        std::unordered_set<std::string> files;
+        TransferState state;
+      };
+
     public:
       class Notification:
         public surface::gap::Notification
@@ -50,16 +73,26 @@ namespace surface
       };
 
     public:
-      typedef plasma::Transaction Data;
-    public:
       TransferMachine(surface::gap::State const& state,
                       uint32_t id,
                       std::shared_ptr<TransferMachine::Data> transaction);
 
       virtual
       ~TransferMachine();
+
+    private:
+      ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
+
     protected:
-      /// Launch the reactor::Machine at the given state.
+      virtual
+      Snapshot
+      _make_snapshot() const;
+    private:
+      void
+      _save_snapshot() const;
+
+    protected:
+      /// Launch the reactor::chine at the given state.
       void
       _run(reactor::fsm::State& initial_state);
 
@@ -117,6 +150,14 @@ namespace surface
     protected:
       reactor::fsm::Machine _machine;
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_thread);
+
+    protected:
+      // XXX: Remove when ELLE_ATTRIBUTE handle protected methods.
+      TransferState _current_state;
+
+    protected:
+      void
+      current_state(TransferState const& state);
 
     protected:
       void
@@ -193,7 +234,7 @@ namespace surface
       // Common on both sender and recipient process.
       ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, connection_state);
-      // Broken: I you disconnect, which is quasi transparent, you must publish your interfaces.
+      // XXX: I you disconnect, which is quasi transparent, you must publish your interfaces.
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_peer_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, transfer_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, core_stoped_state);
@@ -220,6 +261,11 @@ namespace surface
       | Transaction |
       `------------*/
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
+    //   ELLE_ATTRIBUTE(Journal, journal);
+
+    // protected:
+    //   Journal&
+    //   journal();
 
     public:
       std::string const&
@@ -298,7 +344,14 @@ namespace surface
       void
       print(std::ostream& stream) const override;
     };
+
+
+    std::ostream&
+    operator <<(std::ostream& out,
+                TransferState const& t);
   }
 }
+
+# include <surface/gap/TransferMachine.hxx>
 
 #endif

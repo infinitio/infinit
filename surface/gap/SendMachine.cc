@@ -113,28 +113,10 @@ namespace surface
       this->_stop();
     }
 
-    SendMachine::SendMachine(surface::gap::State const& state,
-                             uint32_t id,
-                             std::string const& recipient,
-                             std::unordered_set<std::string>&& files,
-                             std::string const& message,
-                             std::shared_ptr<TransferMachine::Data> data):
-      SendMachine(state, id, std::move(data), true)
+    SendMachine::Snapshot
+    SendMachine::_make_snapshot() const
     {
-      ELLE_WARN("%s: %s", __PRETTY_FUNCTION__, this->data());
-      ELLE_TRACE_SCOPE("%s: send %s to %s", *this, files, recipient);
-
-      this->_message = message;
-
-      if (files.empty())
-        throw elle::Exception("no files to send");
-
-      std::swap(this->_files, files);
-
-      ELLE_ASSERT_NEQ(this->_files.size(), 0u);
-
-      this->peer_id(recipient);
-      this->_run(this->_request_network_state);
+      return Snapshot{*this->data(), this->_current_state, this->_files};
     }
 
     SendMachine::SendMachine(surface::gap::State const& state,
@@ -142,17 +124,13 @@ namespace surface
                              std::shared_ptr<TransferMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
-      ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
+      ELLE_WARN_SCOPE("%s: constructing machine for transaction data %s "
+                      "(not found on local snapshots)",
                        *this, this->data());
 
       switch (this->data()->status)
       {
         case plasma::TransactionStatus::initialized:
-          // XXX: This is wrong. If the local copy was not over, the transfer
-          // will fail. We should add a state on the server or use a local
-          // journal to make sure the copy was over.
-          // For the moment, none of thoose options are implemented and there
-          // is no way to know if the copy was successfull.
           this->_run(this->_wait_for_accept_state);
           break;
         case plasma::TransactionStatus::accepted:
@@ -178,6 +156,94 @@ namespace surface
         case plasma::TransactionStatus::_count:
           elle::unreachable();
       }
+    }
+
+
+    SendMachine::SendMachine(surface::gap::State const& state,
+                             uint32_t id,
+                             std::string const& recipient,
+                             std::unordered_set<std::string>&& files,
+                             std::string const& message,
+                             std::shared_ptr<TransferMachine::Data> data):
+      SendMachine(state, id, std::move(data), true)
+    {
+      ELLE_TRACE_SCOPE("%s: send %s to %s", *this, files, recipient);
+
+      this->_message = message;
+
+      if (files.empty())
+        throw elle::Exception("no files to send");
+
+      std::swap(this->_files, files);
+
+      ELLE_ASSERT_NEQ(this->_files.size(), 0u);
+
+      this->peer_id(recipient);
+      this->_run(this->_request_network_state);
+    }
+
+    SendMachine::SendMachine(surface::gap::State const& state,
+                             uint32_t id,
+                             std::unordered_set<std::string> files,
+                             TransferState current_state,
+                             std::shared_ptr<TransferMachine::Data> data):
+      SendMachine(state, id, std::move(data), true)
+    {
+      ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
+                       *this, *this->data(), current_state);
+      this->_files = std::move(files);
+      this->_current_state = current_state;
+      switch (current_state)
+      {
+        case TransferState_NewTransaction:
+          elle::unreachable();
+        case TransferState_SenderCreateNetwork:
+          this->_run(this->_request_network_state);
+          break;
+        case TransferState_SenderCreateTransaction:
+          this->_run(this->_create_transaction_state);
+          break;
+        case TransferState_SenderCopyFiles:
+          this->_run(this->_copy_files_state);
+          break;
+        case TransferState_SenderWaitForDecision:
+          this->_run(this->_wait_for_accept_state);
+          break;
+        case TransferState_RecipientWaitForDecision:
+        case TransferState_RecipientAccepted:
+          elle::unreachable();
+        case TransferState_GrantPermissions:
+          this->_run(this->_set_permissions_state);
+          break;
+        case TransferState_PublishInterfaces:
+        case TransferState_Connect:
+        case TransferState_PeerDisconnected:
+        case TransferState_PeerConnectionLost:
+        case TransferState_Transfer:
+          this->_run(this->_transfer_core_state);
+          break;
+        case TransferState_CleanLocal:
+          this->_run(this->_local_clean_state);
+          break;
+        case TransferState_CleanRemote:
+          this->_run(this->_remote_clean_state);
+          break;
+        case TransferState_Finished:
+          this->_run(this->_finish_state);
+          break;
+        case TransferState_Rejected:
+          this->_run(this->_reject_state);
+          break;
+        case TransferState_Canceled:
+          this->_run(this->_cancel_state);
+          break;
+        case TransferState_Failed:
+          this->_run(this->_fail_state);
+          break;
+        default:
+          elle::unreachable();
+      }
+      this->current_state(current_state);
     }
 
     void
@@ -225,9 +291,8 @@ namespace surface
     void
     SendMachine::_request_network()
     {
-      ELLE_WARN("%s: %s", __PRETTY_FUNCTION__, this->data());
-      this->state().enqueue(Notification(this->id(), TransferState_SenderCreateNetwork));
       ELLE_TRACE_SCOPE("%s: request network", *this);
+      this->current_state(TransferState_SenderCreateNetwork);
 
       elle::utility::Time time; time.Current();
       std::string network_name =
@@ -253,7 +318,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: create transaction with netowrk %s",
                        *this, this->network_id());
-      this->state().enqueue(Notification(this->id(), TransferState_SenderCreateTransaction));
+      this->current_state(TransferState_SenderCreateTransaction);
 
       auto total_size =
         [] (std::unordered_set<std::string> const& files) -> size_t
@@ -345,7 +410,7 @@ namespace surface
     SendMachine::_copy_files()
     {
       ELLE_TRACE_SCOPE("%s: copy the files", *this);
-      this->state().enqueue(Notification(this->id(), TransferState_SenderCopyFiles));
+      this->current_state(TransferState_SenderCopyFiles);
 
       nucleus::neutron::Subject subject;
       subject.Create(this->descriptor().meta().administrator_K());
@@ -364,7 +429,7 @@ namespace surface
     SendMachine::_wait_for_accept()
     {
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
-      this->state().enqueue(Notification(this->id(), TransferState_SenderWaitForDecision));
+      this->current_state(TransferState_SenderWaitForDecision);
 
       // There are two ways to go to the next step:
       // - Checking local state, meaning that during the copy, we recieved an
@@ -376,7 +441,7 @@ namespace surface
     SendMachine::_set_permissions()
     {
       ELLE_TRACE_SCOPE("%s: set permissions %s", *this, this->transaction_id());
-      this->state().enqueue(Notification(this->id(), TransferState_GrantPermissions));
+      this->current_state(TransferState_GrantPermissions);
 
       ELLE_DEBUG("%s: peer object id %s", *this, this->peer_id());
       auto id = this->state().user_indexes().at(this->peer_id());

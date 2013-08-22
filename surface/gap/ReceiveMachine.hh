@@ -21,10 +21,16 @@ namespace surface
     {
 
     public:
+      // Construct from notification.
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
                      std::shared_ptr<TransferMachine::Data> data);
 
+      // Construct from snapshot (with current_state).
+      ReceiveMachine(surface::gap::State const& state,
+                     uint32_t id,
+                     TransferState const current_state,
+                     std::shared_ptr<TransferMachine::Data> data);
       virtual
       ~ReceiveMachine();
 

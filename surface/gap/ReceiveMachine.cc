@@ -56,9 +56,61 @@ namespace surface
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
     }
 
-    ReceiveMachine::~ReceiveMachine()
+    ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
+                                   uint32_t id,
+                                   TransferState const current_state,
+                                   std::shared_ptr<TransferMachine::Data> data):
+      ReceiveMachine(state, id, std::move(data), true)
     {
-      this->_stop();
+      ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
+                       *this, *this->data(), current_state);
+
+      switch (current_state)
+      {
+        case TransferState_NewTransaction:
+          //
+          break;
+        case TransferState_SenderCreateNetwork:
+        case TransferState_SenderCreateTransaction:
+        case TransferState_SenderCopyFiles:
+        case TransferState_SenderWaitForDecision:
+          elle::unreachable();
+        case TransferState_RecipientWaitForDecision:
+          this->_run(this->_wait_for_decision_state);
+          break;
+        case TransferState_RecipientAccepted:
+          this->_run(this->_accept_state);
+          break;
+        case TransferState_GrantPermissions:
+          elle::unreachable();
+        case TransferState_PublishInterfaces:
+        case TransferState_Connect:
+        case TransferState_PeerDisconnected:
+        case TransferState_PeerConnectionLost:
+        case TransferState_Transfer:
+          this->_run(this->_transfer_core_state);
+          break;
+        case TransferState_CleanLocal:
+          this->_run(this->_local_clean_state);
+          break;
+        case TransferState_CleanRemote:
+          this->_run(this->_remote_clean_state);
+          break;
+        case TransferState_Finished:
+          this->_run(this->_finish_state);
+          break;
+        case TransferState_Rejected:
+          this->_run(this->_reject_state);
+          break;
+        case TransferState_Canceled:
+          this->_run(this->_cancel_state);
+          break;
+        case TransferState_Failed:
+          this->_run(this->_fail_state);
+          break;
+        default:
+          elle::unreachable();
+      }
     }
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
@@ -101,8 +153,11 @@ namespace surface
         case plasma::TransactionStatus::_count:
           elle::unreachable();
       }
+    }
 
-      this->state().enqueue<Notification>(Notification(id, TransferState_NewTransaction));
+    ReceiveMachine::~ReceiveMachine()
+    {
+      this->_stop();
     }
 
     void
@@ -166,14 +221,14 @@ namespace surface
     ReceiveMachine::_wait_for_decision()
     {
       ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
-      this->state().enqueue(Notification(this->id(), TransferState_RecipientWaitForDecision));
+      this->current_state(TransferState_RecipientWaitForDecision);
     }
 
     void
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
-      this->state().enqueue(Notification(this->id(), TransferState_RecipientAccepted));
+      this->current_state(TransferState_RecipientAccepted);
 
       ELLE_TRACE("%s: add device %s to network %s",
                  *this, this->state().device().id, this->network_id());
