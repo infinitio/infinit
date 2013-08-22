@@ -39,10 +39,12 @@ namespace surface
 
     TransferMachine::Snapshot::Snapshot(Data const& data,
                                         TransferState const state,
-                                        std::unordered_set<std::string> const& files):
+                                        std::unordered_set<std::string> const& files,
+                                        std::string const& message):
       data(data),
       state(state),
-      files(files)
+      files(files),
+      message(message)
     {}
 
     //---------- TransferMachine -----------------------------------------------

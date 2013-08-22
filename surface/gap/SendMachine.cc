@@ -116,7 +116,7 @@ namespace surface
     SendMachine::Snapshot
     SendMachine::_make_snapshot() const
     {
-      return Snapshot{*this->data(), this->_current_state, this->_files};
+      return Snapshot{*this->data(), this->_current_state, this->_files, this->_message};
     }
 
     SendMachine::SendMachine(surface::gap::State const& state,
@@ -158,7 +158,6 @@ namespace surface
       }
     }
 
-
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::string const& recipient,
@@ -186,6 +185,7 @@ namespace surface
                              uint32_t id,
                              std::unordered_set<std::string> files,
                              TransferState current_state,
+                             std::string const& message,
                              std::shared_ptr<TransferMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
@@ -193,6 +193,7 @@ namespace surface
                        *this, *this->data(), current_state);
       this->_files = std::move(files);
       this->_current_state = current_state;
+      this->_message = message;
       switch (current_state)
       {
         case TransferState_NewTransaction:

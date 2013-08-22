@@ -21,7 +21,7 @@ namespace surface
 
     // - Exception -------------------------------------------------------------
     Transaction::BadOperation::BadOperation(Type type):
-      Exception(gap_error, "bite"),
+      Exception(gap_error, elle::sprintf("%s", type)),
       _type(type)
     {}
 
@@ -31,20 +31,21 @@ namespace surface
       _data(new Data{std::move(data)}),
       _machine()
     {
+      ELLE_TRACE_SCOPE("%s: construct from data %s", *this, *this->_data);
       ELLE_ASSERT(state.me().id == this->_data->sender_id ||
                   state.me().id == this->_data->recipient_id);
 
       if (state.me().id == this->_data->sender_id &&
           state.device().id == this->_data->sender_device_id)
       {
-        ELLE_TRACE("%s: create send machine from data: %s", *this, this->_data);
+        ELLE_TRACE("%s: create send machine from data: %s", *this, *this->_data);
         this->_machine.reset(new SendMachine{state, this->_id, this->_data});
       }
       else if (state.me().id == this->_data->recipient_id &&
                (this->_data->recipient_device_id.empty() ||
                 state.device().id == this->_data->recipient_device_id))
       {
-        ELLE_TRACE("%s: create receive machine from data: %s", *this, this->_data);
+        ELLE_TRACE("%s: create receive machine from data: %s", *this, *this->_data);
         this->_machine.reset(new ReceiveMachine{state, this->_id, this->_data});
       }
       else
@@ -54,14 +55,41 @@ namespace surface
       }
     }
 
+    Transaction::Transaction(State const& state,
+                             TransferMachine::Snapshot snapshot):
+      _id(generate_id()),
+      _data(new Data{std::move(snapshot.data)}),
+      _machine()
+    {
+      ELLE_TRACE_SCOPE("%s: construct from snapshot (%s) with data %s",
+                       *this, snapshot.state, *this->_data);
+
+      if (state.me().id == this->_data->sender_id &&
+          state.device().id == this->_data->sender_device_id)
+      {
+        ELLE_TRACE("%s: create send machine from data: %s", *this, *this->_data);
+        this->_machine.reset(new SendMachine{state, this->_id, snapshot.files, snapshot.state, snapshot.message, this->_data});
+      }
+      else if (state.me().id == this->_data->recipient_id &&
+               (this->_data->recipient_device_id.empty() ||
+                state.device().id == this->_data->recipient_device_id))
+      {
+        ELLE_TRACE("%s: create receive machine from data: %s", *this, *this->_data);
+        this->_machine.reset(new ReceiveMachine{state, this->_id, snapshot.state, this->_data});
+      }
+      else
+      {
+        throw Exception(gap_internal_error, "invalid snapshot");
+      }
+    }
+
     Transaction::Transaction(surface::gap::State const& state,
                              std::string const& peer_id,
                              std::unordered_set<std::string>&& files,
                              std::string const& message):
       _id(generate_id()),
-      _data{new Data{}},
-      _machine(new SendMachine{
-        state, this->_id, peer_id, std::move(files), message, this->_data})
+      _data{new Data{state.me().id, state.me().fullname, state.device().id}},
+      _machine(new SendMachine{state, this->_id, peer_id, std::move(files), message, this->_data})
     {
       ELLE_TRACE_SCOPE("%s: created transaction for a new send: %s", *this, this->_data);
     }

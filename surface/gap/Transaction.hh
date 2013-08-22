@@ -48,6 +48,9 @@ namespace surface
       Transaction(State const& state,
                   Data&& data);
 
+      Transaction(State const& state,
+                  TransferMachine::Snapshot data);
+
       Transaction(Transaction&&) = default;
 
       Transaction(surface::gap::State const& state,

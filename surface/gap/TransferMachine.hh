@@ -49,14 +49,16 @@ namespace surface
       public:
         Snapshot(Data const& data,
                  TransferState const state,
-                 std::unordered_set<std::string> const& files = {});
+                 std::unordered_set<std::string> const& files = {},
+                 std::string const& message = "");
 
         ELLE_SERIALIZE_CONSTRUCT(Snapshot){}
 
       public:
         Data data;
-        std::unordered_set<std::string> files;
         TransferState state;
+        std::unordered_set<std::string> files;
+        std::string message;
       };
 
     public:
