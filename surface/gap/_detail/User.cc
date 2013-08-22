@@ -192,8 +192,8 @@ namespace surface
       std::sort(std::begin(old_user_devices), std::end(old_user_devices));
       std::sort(std::begin(new_user_devices), std::end(new_user_devices));
 
-      std::vector<T> plus(old_user_devices.size());
-      std::vector<T> minus(new_user_devices.size());
+      std::vector<T> plus(new_user_devices.size());
+      std::vector<T> minus(old_user_devices.size());
 
       {
         auto it = std::set_difference(
