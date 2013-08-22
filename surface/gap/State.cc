@@ -179,7 +179,6 @@ namespace surface
         typedef MetricKindService<metrics::Kind::user, KISSmetrics> KMUser;
         this->_reporter.add_service_class<KMUser>(
           common::metrics::kissmetrics_info(metrics::Kind::user));
-
         typedef MetricKindService<metrics::Kind::network, KISSmetrics> KMNetwork;
         this->_reporter.add_service_class<KMNetwork>(
           common::metrics::kissmetrics_info(metrics::Kind::network));
@@ -568,54 +567,6 @@ namespace surface
       if (!this->meta(false).email().empty())
         stream << " as " << this->meta(false).email();
       stream << ")";
-    }
-
-    std::ostream&
-    operator <<(std::ostream& out,
-                TransferState const& t)
-    {
-      switch (t)
-      {
-        case TransferState_NewTransaction:
-          return out << "NewTransaction";
-        case TransferState_SenderCreateNetwork:
-          return out << "SenderCreateNetwork";
-        case TransferState_SenderCreateTransaction:
-          return out << "SenderCreateTransaction";
-        case TransferState_SenderCopyFiles:
-          return out << "SenderCopyFiles";
-        case TransferState_SenderWaitForDecision:
-          return out << "SenderWaitForDecision";
-        case TransferState_RecipientWaitForDecision:
-          return out << "RecipientWaitForDecision";
-        case TransferState_RecipientAccepted:
-          return out << "RecipientAccepted";
-        case TransferState_GrantPermissions:
-          return out << "GrantPermissions";
-        case TransferState_PublishInterfaces:
-          return out << "PublishInterfaces";
-        case TransferState_Connect:
-          return out << "Connect";
-        case TransferState_PeerDisconnected:
-          return out << "PeerDisconnected";
-        case TransferState_PeerConnectionLost:
-          return out << "PeerConnectionLost";
-        case TransferState_Transfer:
-          return out << "Transfer";
-        case TransferState_CleanLocal:
-          return out << "CleanLocal";
-        case TransferState_CleanRemote:
-          return out << "CleanRemote";
-        case TransferState_Finished:
-          return out << "Finished";
-        case TransferState_Rejected:
-          return out << "Rejected";
-        case TransferState_Canceled:
-          return out << "Canceled";
-        case TransferState_Failed:
-          return out << "Failed";
-      }
-      return out;
     }
 
     std::ostream&

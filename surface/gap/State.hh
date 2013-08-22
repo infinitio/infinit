@@ -473,10 +473,6 @@ namespace surface
 
     std::ostream&
     operator <<(std::ostream& out,
-                TransferState const& t);
-
-    std::ostream&
-    operator <<(std::ostream& out,
                 NotificationType const& t);
   }
 }
