@@ -111,19 +111,19 @@ namespace surface
         std::list<std::string> transactions_ids{
           std::move(this->meta().transactions(final, true, 5).transactions)};
 
-        for (auto const& id: transactions_ids)
-        {
-          plasma::Transaction transaction{this->meta().transaction(id)};
+        // for (auto const& id: transactions_ids)
+        // {
+        //   plasma::Transaction transaction{this->meta().transaction(id)};
 
-          this->user(transaction.sender_id);
-          this->user(transaction.recipient_id);
+        //   this->user(transaction.sender_id);
+        //   this->user(transaction.recipient_id);
 
-          auto tr =
-            TransactionPtr{new Transaction{*this, std::move(transaction)}};
-          auto _id = tr->id();
+        //   auto tr =
+        //     TransactionPtr{new Transaction{*this, std::move(transaction)}};
+        //   auto _id = tr->id();
 
-          this->_transactions.emplace(_id, std::move(tr));
-        }
+        //   this->_transactions.emplace(_id, std::move(tr));
+        // }
       }
     }
 
