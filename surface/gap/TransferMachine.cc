@@ -366,7 +366,7 @@ namespace surface
           [&]
           {
             this->_machine.run(initial_state);
-            ELLE_TRACE("%s: machine finished properly");
+            ELLE_TRACE("%s: machine finished properly", *this);
             boost::filesystem::remove(this->_snapshot_path);
           }});
     }
