@@ -318,14 +318,20 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
 
+      /// First step must be to disconnect from trophonius.
+      /// If not, you can pull notification that
+      if (this->_polling_thread != nullptr)
+      {
+        this->_polling_thread->terminate_now();
+        this->_polling_thread.reset();
+      }
+      this->_trophonius.disconnect();
+
       this->_users.clear();
       this->_transactions_clear();
 
       if (this->meta(false).token().empty())
         return;
-
-      this->_polling_thread->terminate_now();
-      this->_polling_thread.reset();
 
       elle::Finally logout(
         [&]
@@ -544,7 +550,7 @@ namespace surface
       if (this->_runners.empty())
         return;
 
-      ELLE_WARN("poll");
+      ELLE_DEBUG("poll");
 
       auto const& runner = this->_runners.front();
       (*runner)();
