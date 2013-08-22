@@ -1,6 +1,7 @@
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
 
+#include <boost/filesystem.hpp>
 ELLE_LOG_COMPONENT("surface.gap.State.Transaction");
 
 namespace surface
@@ -43,20 +44,59 @@ namespace surface
       ELLE_ASSERT(this->_transactions.empty());
 
       {
+        std::string snapshots_path =
+          common::infinit::transaction_snapshots_directory(this->me().id);
+        boost::filesystem::create_directories(snapshots_path);
+
+        boost::filesystem::recursive_directory_iterator iterator(snapshots_path);
+        boost::filesystem::recursive_directory_iterator end;
+
+        for (; iterator != end; ++iterator)
+        {
+          auto snapshot_path = iterator->path().string().c_str();
+          ELLE_ERR("path %s", snapshot_path);
+
+          elle::Finally delete_snapshot([&snapshot_path]
+            {
+              boost::filesystem::remove(snapshot_path);
+            });
+
+          std::unique_ptr<TransferMachine::Snapshot> snapshot;
+          try
+          {
+            snapshot.reset(
+              new TransferMachine::Snapshot(
+                elle::serialize::from_file(snapshot_path)));
+          }
+          catch (std::exception const&)
+          {
+            ELLE_ERR("%s: couldn't load snapshot at %s: %s",
+                     *this, snapshot_path, elle::exception_string());
+            continue;
+          }
+
+          try
+          {
+            auto tr = TransactionPtr{new Transaction{*this, std::move(*snapshot.release())}};
+            auto _id = tr->id();
+            this->_transactions.emplace(std::move(_id), std::move(tr));
+          }
+          catch (std::exception const&)
+          {
+            ELLE_ERR("%s: couldn't create transaction from snapshot at %s: %s",
+                     *this, snapshot_path, elle::exception_string());
+            continue;
+          }
+        }
+      }
+
+      {
         std::list<std::string> transactions_ids{
           std::move(this->meta().transactions().transactions)};
 
         for (auto const& id: transactions_ids)
         {
-          plasma::Transaction transaction{this->meta().transaction(id)};
-
-          this->user(transaction.sender_id);
-          this->user(transaction.recipient_id);
-
-          auto tr = TransactionPtr{new Transaction{*this, std::move(transaction)}};
-          auto _id = tr->id();
-
-          this->_transactions.emplace(std::move(_id), std::move(tr));
+          this->_on_transaction_update(std::move(this->meta().transaction(id)));
         }
       }
 
