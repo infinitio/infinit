@@ -175,6 +175,11 @@ namespace surface
       {
         ELLE_ERR("%s: no transaction found for network %s",
                  *this, notif.network_id);
+        ELLE_DEBUG("%s: transactions", *this)
+          for (auto const& tr: this->transactions())
+          {
+            ELLE_DEBUG("-- %s: %s", tr.first, *tr.second);
+          }
         return;
         // throw TransactionNotFoundException(
         //   elle::sprintf("network %s", notif.network_id));

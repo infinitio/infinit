@@ -111,6 +111,10 @@ namespace surface
           return this->user_sync(user_id);
         }
 
+        ELLE_DEBUG("%s: user %s has not been found", *this, user_id)
+          for (auto const& user: this->users())
+            ELLE_DEBUG("-- %s: %s", user.first, user.second);
+
         throw State::UserNotFoundException(user_id);
       }
     }
@@ -126,6 +130,10 @@ namespace surface
       }
       catch (std::out_of_range const&)
       {
+        ELLE_DEBUG("%s: user %s has not been found", *this, id)
+          for (auto const& user: this->users())
+            ELLE_DEBUG("-- %s: %s", user.first, user.second);
+
         throw State::UserNotFoundException(id);
       }
     }
@@ -145,7 +153,13 @@ namespace surface
       if (res != end)
         return res->second;
       else
+      {
+        ELLE_DEBUG("%s: user has not been found (from find)", *this)
+          for (auto const& user: this->users())
+            ELLE_DEBUG("-- %s: %s", user.first, user.second);
+
         throw State::UserNotFoundException("from find");
+      }
     }
 
     State::User
