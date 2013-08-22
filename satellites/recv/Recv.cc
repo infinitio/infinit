@@ -85,22 +85,24 @@ int main(int argc, char** argv)
         state.attach_callback<surface::gap::State::UserStatusNotification>(
           [&] (surface::gap::State::UserStatusNotification const& notif)
           {
-            std::cerr << "LUL: " << notif.id  << " - "<< notif.status << std::endl;
+            std::cerr << "UserStatusNotification(" << notif.id
+                      << ", status: " << notif.status << std::endl;
+
           });
 
         state.attach_callback<surface::gap::TransferMachine::Notification>(
           [&] (surface::gap::TransferMachine::Notification const& notif)
           {
+            std::cerr << "TransactionNotification(" << notif.id
+                      << ", status: " << notif.status << std::endl;
             if (notif.status == TransferState_RecipientWaitForDecision)
             {
-              std::cerr << "lol" << std::endl;
               state.transactions().at(notif.id)->accept();
             }
             else if (notif.status == TransferState_Finished)
             {
               std::cerr << "finished" << std::endl;
               state.transactions().at(notif.id)->join();
-              stop = true;
             }
 
           });
