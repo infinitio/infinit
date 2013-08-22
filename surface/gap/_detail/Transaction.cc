@@ -47,8 +47,12 @@ namespace surface
 
         for (auto const& id: transactions_ids)
         {
-          auto tr =
-            TransactionPtr{new Transaction{*this, this->meta().transaction(id)}};
+          plasma::Transaction transaction{this->meta().transaction(id)};
+
+          this->user(transaction.sender_id);
+          this->user(transaction.recipient_id);
+
+          auto tr = TransactionPtr{new Transaction{*this, std::move(transaction)}};
           auto _id = tr->id();
 
           this->_transactions.emplace(std::move(_id), std::move(tr));
@@ -68,8 +72,13 @@ namespace surface
 
         for (auto const& id: transactions_ids)
         {
+          plasma::Transaction transaction{this->meta().transaction(id)};
+
+          this->user(transaction.sender_id);
+          this->user(transaction.recipient_id);
+
           auto tr =
-            TransactionPtr{new Transaction{*this, this->meta().transaction(id)}};
+            TransactionPtr{new Transaction{*this, std::move(transaction)}};
           auto _id = tr->id();
 
           this->_transactions.emplace(_id, std::move(tr));
