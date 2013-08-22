@@ -4,6 +4,28 @@
 
 namespace plasma
 {
+  Transaction::Transaction(std::string const& sender_id,
+                           std::string const& sender_fullname,
+                           std::string const& sender_device_id):
+    id(),
+    sender_id(sender_id),
+    sender_fullname(sender_fullname),
+    sender_device_id(sender_device_id),
+    recipient_id(),
+    recipient_fullname(),
+    recipient_device_id(),
+    recipient_device_name(),
+    network_id(),
+    message(),
+    first_filename(),
+    files_count(),
+    total_size(),
+    is_directory(),
+    status(TransactionStatus::created),
+    timestamp()
+  {
+  }
+
   bool
   Transaction::empty() const
   {

@@ -23,6 +23,9 @@ namespace plasma
   {
   public:
     Transaction() = default;
+    Transaction(std::string const& sender_id,
+                std::string const& sender_fullname,
+                std::string const& sender_device_id);
     Transaction(Transaction&&) = default;
     Transaction(Transaction const&) = default;
     Transaction&
