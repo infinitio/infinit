@@ -144,7 +144,7 @@ _send_files_by_email(gap_State* state,
 
   auto id = gap_send_files_by_email(state,
                                     recipient.c_str(),
-                                    list);
+                                    list, "Sent by command line");
 
   free(list);
 
@@ -168,7 +168,7 @@ _send_files(gap_State* state,
     list[i] = boost::python::extract<char const*>(files[i]);
   }
 
-  auto id = gap_send_files(state, peer_id, list);
+  auto id = gap_send_files(state, peer_id, list, "sent from cmdline");
 
   free(list);
 

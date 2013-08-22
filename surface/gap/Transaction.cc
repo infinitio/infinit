@@ -56,10 +56,12 @@ namespace surface
 
     Transaction::Transaction(surface::gap::State const& state,
                              std::string const& peer_id,
-                             std::unordered_set<std::string>&& files):
+                             std::unordered_set<std::string>&& files,
+                             std::string const& message):
       _id(generate_id()),
       _data{new Data{}},
-      _machine(new SendMachine{state, this->_id, peer_id, std::move(files), this->_data})
+      _machine(new SendMachine{
+        state, this->_id, peer_id, std::move(files), message, this->_data})
     {
       ELLE_TRACE_SCOPE("%s: created transaction for a new send: %s", *this, this->_data);
     }

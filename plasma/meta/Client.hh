@@ -376,7 +376,8 @@ namespace plasma
                          size_t size,
                          bool is_dir,
                          std::string const& network_id,
-                         std::string const& device_id) const;
+                         std::string const& device_id,
+                         std::string const& message = "") const;
 
       UpdateTransactionResponse
       update_transaction(std::string const& transaction_id,

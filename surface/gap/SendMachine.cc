@@ -117,11 +117,14 @@ namespace surface
                              uint32_t id,
                              std::string const& recipient,
                              std::unordered_set<std::string>&& files,
+                             std::string const& message,
                              std::shared_ptr<TransferMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
       ELLE_WARN("%s: %s", __PRETTY_FUNCTION__, this->data());
       ELLE_TRACE_SCOPE("%s: send %s to %s", *this, files, recipient);
+
+      this->_message = message;
 
       if (files.empty())
         throw elle::Exception("no files to send");
@@ -277,9 +280,16 @@ namespace surface
       ELLE_DEBUG("create transaction");
       this->transaction_id(
         this->state().meta().create_transaction(
-          this->peer_id(), first_file, this->_files.size(), size,
-          boost::filesystem::is_directory(first_file), this->network().name(),
-          this->state().device().id).created_transaction_id);
+          this->peer_id(),
+          first_file,
+          this->_files.size(),
+          size,
+          boost::filesystem::is_directory(first_file),
+          this->network().name(),
+          this->state().device().id,
+          this->_message
+          ).created_transaction_id
+        );
 
       ELLE_TRACE("created transaction: %s", this->transaction_id());
 

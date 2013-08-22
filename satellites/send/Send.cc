@@ -113,7 +113,7 @@ int main(int argc, char** argv)
         state.login(user, hashed_password);
         // state.update_device("lust");
 
-        id = state.send_files(to, { file.c_str() });
+        id = state.send_files(to, {file.c_str()}, "");
 
         do
         {

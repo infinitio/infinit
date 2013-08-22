@@ -16,6 +16,7 @@ namespace surface
                   uint32_t id,
                   std::string const& recipient,
                   std::unordered_set<std::string>&& files,
+                  std::string const& message,
                   std::shared_ptr<Data> data);
 
       SendMachine(surface::gap::State const& state,
@@ -72,6 +73,7 @@ namespace surface
       | Transaction data |
       `-----------------*/
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
+      ELLE_ATTRIBUTE(std::string, message);
 
     public:
       virtual

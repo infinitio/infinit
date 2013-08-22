@@ -964,7 +964,8 @@ extern "C"
   uint32_t
   gap_send_files_by_email(gap_State* state,
                           char const* recipient_id,
-                          char const* const* files)
+                          char const* const* files,
+                          char const* message)
   {
     assert(recipient_id != nullptr);
     assert(files != nullptr);
@@ -982,7 +983,7 @@ extern "C"
       "send files",
       [&] (surface::gap::State& state) -> uint32_t
       {
-        return state.send_files(recipient_id, std::move(s));
+        return state.send_files(recipient_id, std::move(s), message);
         return 0;
       });
   }
@@ -990,7 +991,8 @@ extern "C"
   uint32_t
   gap_send_files(gap_State* state,
                  uint32_t id,
-                 char const* const* files)
+                 char const* const* files,
+                 char const* message)
   {
     assert(id != surface::gap::null_id);
     assert(files != nullptr);
@@ -1008,8 +1010,9 @@ extern "C"
       "send files",
       [&] (surface::gap::State& state) -> uint32_t
       {
-        return state.send_files(state.users().at(id).id, std::move(s));
-        return 0;
+        return state.send_files(state.users().at(id).id,
+                                std::move(s),
+                                message);
       });
   }
 

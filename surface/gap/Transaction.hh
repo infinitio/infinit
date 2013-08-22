@@ -52,7 +52,8 @@ namespace surface
 
       Transaction(surface::gap::State const& state,
                   std::string const& peer_id,
-                  std::unordered_set<std::string>&& files);
+                  std::unordered_set<std::string>&& files,
+                  std::string const& message);
 
       ~Transaction();
 

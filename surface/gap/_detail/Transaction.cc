@@ -25,10 +25,11 @@ namespace surface
 
     uint32_t
     State::send_files(std::string const& peer_id,
-                      std::unordered_set<std::string>&& files)
+                      std::unordered_set<std::string>&& files,
+                      std::string const& message)
     {
-      auto tr =
-        TransactionPtr{new Transaction{*this, peer_id, std::move(files)}};
+      auto tr = TransactionPtr{
+          new Transaction{*this, peer_id, std::move(files), message}};
       auto id = tr->id();
       this->_transactions.emplace(id, std::move(tr));
       return id;

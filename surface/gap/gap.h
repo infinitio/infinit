@@ -363,14 +363,16 @@ extern "C" {
   uint32_t
   gap_send_files(gap_State* state,
                  uint32_t id,
-                 char const* const* files);
+                 char const* const* files,
+                 char const* message);
 
-  /// Send files to a specific user.
+  /// Send files along with a message.
   /// If the return value is 0, the operation failed.
   uint32_t
   gap_send_files_by_email(gap_State* state,
                           char const* recipient_id,
-                          char const* const* files);
+                          char const* const* files,
+                          char const* message);
 
   /// Cancel transaction.
   /// If the return value is 0, the operation failed.

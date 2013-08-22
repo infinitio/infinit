@@ -514,22 +514,22 @@ namespace plasma
                                size_t size,
                                bool is_dir,
                                std::string const& network_id,
-                               std::string const& device_id) const
+                               std::string const& device_id,
+                               std::string const& message) const
     {
-      json::Dictionary request{std::map<std::string, std::string>{
-          {"recipient_id_or_email", recipient_id_or_email},
-          {"first_filename", first_filename},
-          {"device_id", device_id},
-          {"network_id", network_id},
-      }};
+      json::Dictionary request;
+
+      request["recipient_id_or_email"] = recipient_id_or_email;
+      request["first_filename"] = first_filename;
+      request["device_id"] = device_id;
+      request["network_id"] = network_id;
       request["total_size"] = size;
       request["is_directory"] = is_dir;
       request["files_count"] = count;
+      request["message"] = message;
 
-      auto res = this->_post<CreateTransactionResponse>(
-        "/transaction/create", request);
-
-      return res;
+      return this->_post<CreateTransactionResponse>("/transaction/create",
+                                                    request);
     }
 
     UpdateTransactionResponse
