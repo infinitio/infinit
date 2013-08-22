@@ -68,6 +68,14 @@ namespace common
     std::string
     user_directory(std::string const& user_id);
 
+    /// Returns user directory path.
+    std::string
+    transactions_directory(std::string const& user_id);
+
+    /// Returns user diaries directory path.
+    std::string
+    transaction_snapshots_directory(std::string const& user_id);
+
     /// The path to the identity file.
     std::string
     identity_path(std::string const& user_id);

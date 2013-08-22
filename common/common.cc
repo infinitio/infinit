@@ -311,6 +311,18 @@ namespace common
     }
 
     std::string
+    transactions_directory(std::string const& user_id)
+    {
+      return path::join(user_directory(user_id), "transaction");
+    }
+
+    std::string
+    transaction_snapshots_directory(std::string const& user_id)
+    {
+      return path::join(transactions_directory(user_id), ".snapshot");
+    }
+
+    std::string
     identity_path(std::string const& user_id)
     {
       return path::join(
