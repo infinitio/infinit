@@ -101,6 +101,7 @@ SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
   ar & named("identity", res.identity);
   ar & named("remaining_invitations",  res.remaining_invitations);
   ar & named("devices", res.devices);
+  ar & named("favorites", res.favorites);
   try
   {
     ar & named("token_generation_key", res.token_generation_key);
@@ -436,6 +437,22 @@ namespace plasma
       request["user2"] = user2;
       request["admin_token"] = this->token();
       return this->_post<AddSwaggerResponse>("/user/add_swagger", request);
+    }
+
+    Response
+    Client::favorite(std::string const& user) const
+    {
+      json::Dictionary request;
+      request["user_id"] = user;
+      return this->_post<DebugResponse>("/user/favorite", request);
+    }
+
+    Response
+    Client::unfavorite(std::string const& user) const
+    {
+      json::Dictionary request;
+      request["user_id"] = user;
+      return this->_post<DebugResponse>("/user/unfavorite", request);
     }
 
     Response

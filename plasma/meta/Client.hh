@@ -116,6 +116,7 @@ namespace plasma
       int remaining_invitations;
       std::string token_generation_key;
       std::list<std::string> devices;
+      std::list<std::string> favorites;
     };
 
     struct InviteUserResponse : Response
@@ -329,6 +330,12 @@ namespace plasma
 
       AddSwaggerResponse
       add_swaggers(std::string const& user1, std::string const& user2) const;
+
+      Response
+      favorite(std::string const& user) const;
+
+      Response
+      unfavorite(std::string const& user) const;
 
       Response
       genocide() const;

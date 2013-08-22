@@ -469,6 +469,26 @@ extern "C"
                     });
   }
 
+  uint32_t*
+  gap_self_favorites(gap_State* state)
+  {
+    auto ret = run<std::vector<uint32_t>>(
+      state,
+      "swaggers",
+      [&] (surface::gap::State& state) -> std::vector<uint32_t>
+      {
+        std::vector<uint32_t> values;
+        for (auto const& fav: state.me().favorites)
+          values.push_back(state.user_indexes().at(fav));
+        return values;
+      });
+
+    if (ret.status() != gap_ok)
+      return nullptr;
+
+    return vector_to_pointer(ret.value());
+  }
+
   /// - User ----------------------------------------------------------------
 
   char const*
@@ -639,6 +659,32 @@ extern "C"
   gap_swaggers_free(uint32_t* swaggers)
   {
     ::free(swaggers);
+  }
+
+  gap_Status
+  gap_favorite(gap_State* state,
+               uint32_t const user_id)
+  {
+    return run<gap_Status>(
+      state,
+      "favorite",
+      [&user_id] (surface::gap::State& state ) {
+        state.meta().favorite(state.users().at(user_id).id);
+        return gap_ok;
+      });
+  }
+
+  gap_Status
+  gap_unfavorite(gap_State* state,
+                 uint32_t const user_id)
+  {
+    return run<gap_Status>(
+      state,
+      "favorite",
+      [&user_id] (surface::gap::State& state ) {
+        state.meta().unfavorite(state.users().at(user_id).id);
+        return gap_ok;
+      });
   }
 
   /// - Permissions ---------------------------------------------------------

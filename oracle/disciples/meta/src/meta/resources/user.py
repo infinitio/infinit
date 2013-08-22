@@ -265,6 +265,39 @@ class Invite(Page):
         return self.success()
 
 
+class Favorite(Page):
+    """Add a user to favorites
+    POST {"user_id": other_user_id} -> {}
+    """
+
+    __pattern__ = "/user/favorite"
+
+    def POST(self):
+        self.requireLoggedIn()
+        fav = database.ObjectId(self.data['user_id'])
+        lst = self.user.setdefault('favorites', [])
+        if new_fav not in lst:
+            lst.append(fav)
+            database.users().save(self.user)
+        return self.success()
+
+class Unfavorite(Page):
+    """Remove a user from favorites
+    POST {"user_id": other_user_id} -> {}
+    """
+
+    __pattern__ = "/user/unfavorite"
+
+    def POST(self):
+        self.requireLoggedIn()
+        fav = database.ObjectId(self.data['user_id'])
+        lst = self.user.setdefault('favorites', [])
+        if fav in lst:
+            lst.remove(fav)
+            database.users().save(self.user)
+        return self.success()
+
+
 class Self(Page):
     """
     Get self infos
@@ -279,8 +312,9 @@ class Self(Page):
                 'public_key': 'public_key string',
                 'accounts': [
                     {'type':'account type', 'id':'unique account identifier'}
-                ]
-                'token_generation_key' : ...
+                ],
+                'token_generation_key' : ...,
+                'favorites': [user_id1, user_id2, ...],
             }
     """
 
@@ -302,6 +336,7 @@ class Self(Page):
             'connected_devices': self.user.get('connected_devices', []),
             'status': is_connected(database.ObjectId(self.user['_id'])),
             'token_generation_key': self.user.get('token_generation_key', ''),
+            'favorites': self.user.get('favorites', []),
         })
 
 class Invitations(Page):

@@ -254,6 +254,9 @@ extern "C" {
   int
   gap_self_remaining_invitations(gap_State* state);
 
+  uint32_t*
+  gap_self_favorites(gap_State* state);
+
   /// - User ------------------------------------------------------------------
 
   /// Retrieve user fullname.
@@ -313,6 +316,16 @@ extern "C" {
   /// Free swagger list.
   void
   gap_swaggers_free(uint32_t* swaggers);
+
+  /// Mark a user as favorite.
+  gap_Status
+  gap_favorite(gap_State* state,
+               uint32_t const user_id);
+
+  /// Unmark a user as favorite.
+  gap_Status
+  gap_unfavorite(gap_State* state,
+                 uint32_t const user_id);
 
   /// - Permissions ---------------------------------------------------------
 
