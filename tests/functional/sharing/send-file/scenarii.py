@@ -54,26 +54,22 @@ class DefaultScenario(Scenario):
         self.sender.send_files(files = self.files, recipient = self.recipient)
         start = time.time()
 
-        transaction_finished = False
-        transaction = None
         while True:
             if not (time.time() - start < timeout):
                 raise TestFailure("{}: timeout".format(self.name))
             time.sleep(0.5)
             self.poll()
             time.sleep(0.1)
-            if len(self.recipient.transactions) and len(self.sender.transactions):
-                assert len(self.recipient.transactions) == 1
-                assert len(self.sender.transactions) == 1
-                transaction_id = list(self.recipient.transactions.keys())[0]
-                transaction = self.recipient.transactions[transaction_id]
-            if transaction is not None:
-                if transaction.status == "finished" and \
-                   self.sender.transactions[transaction_id].finished and \
-                   self.recipient.transactions[transaction_id].finished:
-                    break
-                sender_progress = self.sender.transactions[transaction_id].progress
-                recipient_progress = self.recipient.transactions[transaction_id].progress
+            transactions = list(self.sender.transactions.values()) + list(self.recipient.transactions.values())
+            if len(transactions) < 2:
+                continue
+            finished = set([tr.finished for tr in transactions])
+            if len(finished) == 1 and list(finished)[0] == True:
+                break
+            for tr in self.sender.transactions.values():
+                print("Sender progress for %s : %s" % (tr.id, tr.progress))
+            for tr in self.recipient.transactions.values():
+                print("Recipient progress for %s : %s" % (tr.id, tr.progress))
 
         self.verify_transfer(expected_files)
         return True
@@ -101,11 +97,11 @@ class GhostScenario(Scenario):
                 transaction_id = list(self.sender.transactions.keys())[0]
                 transaction = self.sender.transactions[transaction_id]
             if transaction is not None:
-                if transaction.status == "initialized":
+                if transaction.status == transaction.status_dict("SenderCopyFiles", reverse = True):
                     break
 
-        transaction = None
-        transaction_finished = False
+        sender_transaction = None
+        recipient_transaction = None
         self.recipient._register_or_login()
         self.users.append(self.recipient)
 
@@ -125,7 +121,7 @@ class GhostScenario(Scenario):
                 transaction_id = list(self.recipient.transactions.keys())[0]
                 transaction = self.recipient.transactions[transaction_id]
             if transaction is not None:
-                if transaction.status == "finished" and \
+                if transaction.status == transaction.status_dict("Finished", reverse = True) and \
                    self.sender.transactions[transaction_id].finished and \
                    self.recipient.transactions[transaction_id].finished:
                     break

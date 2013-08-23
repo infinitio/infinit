@@ -11,46 +11,62 @@ import time
 from utils import generator, email_generator
 
 class Transaction:
-    def __init__(self, state, id):
-        assert isinstance(id, str)
+    def __init__(self, state, id, status):
         self.id = id
         self.state = state
         self.localy_accepted = False
         self.finished = False
+        self.status = status
 
     def status_dict(self, reverse = False):
         if reverse:
             return {
-                 "created": self.state.TransactionStatus.created,
-                 "initialized": self.state.TransactionStatus.initialized,
-                 "canceled": self.state.TransactionStatus.canceled,
-                 "accepted": self.state.TransactionStatus.accepted,
-                 "failed": self.state.TransactionStatus.failed,
-                 "ready": self.state.TransactionStatus.ready,
-                 "finished": self.state.TransactionStatus.finished,
-                 }
+                "NewTransaction": self.state.TransferState.NewTransaction,
+                "SenderCreateNetwork": self.state.TransferState.SenderCreateNetwork,
+                "SenderCreateTransaction": self.state.TransferState.SenderCreateTransaction,
+                "SenderCopyFiles": self.state.TransferState.SenderCopyFiles,
+                "SenderWaitForDecision": self.state.TransferState.SenderWaitForDecision,
+                "RecipientWaitForDecision": self.state.TransferState.RecipientWaitForDecision,
+                "RecipientAccepted": self.state.TransferState.RecipientAccepted,
+                "GrantPermissions": self.state.TransferState.GrantPermissions,
+                "PublishInterfaces": self.state.TransferState.PublishInterfaces,
+                "Connect": self.state.TransferState.Connect,
+                "PeerDisconnected": self.state.TransferState.PeerDisconnected,
+                "PeerConnectionLost": self.state.TransferState.PeerConnectionLost,
+                "Transfer": self.state.TransferState.Transfer,
+                "CleanLocal": self.state.TransferState.CleanLocal,
+                "CleanRemote": self.state.TransferState.CleanRemote,
+                "Finished": self.state.TransferState.Finished,
+                "Rejected": self.state.TransferState.Rejected,
+                "Canceled": self.state.TransferState.Canceled,
+                "Failed": self.state.TransferState.Failed,
+                }
         else:
             return {
-                self.state.TransactionStatus.created: "created",
-                self.state.TransactionStatus.initialized: "initialized",
-                self.state.TransactionStatus.canceled: "canceled",
-                self.state.TransactionStatus.accepted: "accepted",
-                self.state.TransactionStatus.failed: "failed",
-                self.state.TransactionStatus.ready: "ready",
-                self.state.TransactionStatus.finished: "finished",
+                self.state.TransferState.NewTransaction: "NewTransaction",
+                self.state.TransferState.SenderCreateNetwork: "SenderCreateNetwork",
+                self.state.TransferState.SenderCreateTransaction: "SenderCreateTransaction",
+                self.state.TransferState.SenderCopyFiles: "SenderCopyFiles",
+                self.state.TransferState.SenderWaitForDecision: "SenderWaitForDecision",
+                self.state.TransferState.RecipientWaitForDecision: "RecipientWaitForDecision",
+                self.state.TransferState.RecipientAccepted: "RecipientAccepted",
+                self.state.TransferState.GrantPermissions: "GrantPermissions",
+                self.state.TransferState.PublishInterfaces: "PublishInterfaces",
+                self.state.TransferState.Connect: "Connect",
+                self.state.TransferState.PeerDisconnected: "PeerDisconnected",
+                self.state.TransferState.PeerConnectionLost: "PeerConnectionLost",
+                self.state.TransferState.Transfer: "Transfer",
+                self.state.TransferState.CleanLocal: "CleanLocal",
+                self.state.TransferState.CleanRemote: "CleanRemote",
+                self.state.TransferState.Finished: "Finished",
+                self.state.TransferState.Rejected: "Rejected",
+                self.state.TransferState.Canceled: "Canceled",
+                self.state.TransferState.Failed: "Failed",
         }
-
-    @property
-    def status(self):
-        return self.status_dict()[self.state.transaction_status(self.id)]
 
     @property
     def progress(self):
         return self.state.transaction_progress(self.id)
-
-    # @property
-    # def status(self):
-    #     return self.state.transaction_status(self.id)
 
     def __str__(self):
         return "Transaction(%s, %s, localy_accepted: %s)" % (self.id, self.status, self.localy_accepted)
@@ -161,37 +177,40 @@ class User:
         # import lepl.apps.rfc3696
         # validator = lepl.apps.rfc3696.Email()
         # assert validator(email)
-        self.machine_id = self.state.send_files(email, files)
+        self.machine_id = self.state.send_files_by_email(email, files)
 
     def _send_to_user(self, files, recipient):
         assert isinstance(recipient, User)
-        self.machine_id = self.state.send_files(recipient.id, files)
+        self.machine_id = self.state.send_files_by_email(recipient.email, files)
 
-    def _on_transaction(self, transaction_id, status, is_new):
+    def _on_transaction(self, transaction_id, status):
         if transaction_id not in self.transactions:
             self.transactions[transaction_id] = Transaction(
-                self.state,
-                transaction_id
-                )
-        self.on_transaction(transaction_id, status, is_new)
+                self.state, transaction_id, status)
+        else:
+            self.transactions[transaction_id].status = status
 
-    def on_transaction(self, transaction_id, status, is_new):
-        assert is_new
+        self.on_transaction(transaction_id, status)
+
+    def on_transaction(self, transaction_id, status):
         state = self.state
+        print("{} Transaction {} {}".format(state._id, transaction_id, status))
         assert self.id == state.transaction_recipient_id(transaction_id) or \
                self.id == state.transaction_sender_id(transaction_id)
         is_sender = (self.id == self.state.transaction_sender_id(transaction_id))
-        if status == state.TransactionStatus.canceled:
+        if status == state.TransactionStatus.Canceled:
             print("Transaction canceled")
-        elif status == state.TransactionStatus.failed:
-            print("Transaction canceled")
-        elif not is_sender and not self.transactions[transaction_id].localy_accepted:
-            if status == state.TransactionStatus.initialized:
-                self.transactions[transaction_id].localy_accepted = True
-                self.machine_id = state.accept_transaction(transaction_id)
-        elif status == state.TransactionStatus.finished:
+            state.join_transaction(transaction_id)
+        elif status == state.TransactionStatus.Failed:
+            print("Transaction failed")
+            state.join_transaction(transaction_id)
+        elif not is_sender and status == state.TransactionStatus.RecipientWaitForDecision:
+            self.machine_id = state.accept_transaction(transaction_id)
+        elif status == state.TransactionStatus.Finished:
             self.transactions[transaction_id].finished = True
+            print("{} join {}".format(state._id, status))
             self.state.join_transaction(transaction_id)
+            print("{} joined {}".format(state._id, status))
 
 # This user recreate a new email and reregister on __enter__.
 class GhostUser(User):
@@ -233,7 +252,6 @@ class DoNothingUser(User):
 class CancelUser(User):
     def __init__(self, when = None, delay = 0, *args, **kwargs):
         assert when is not None
-        assert when in ["initialized", "ready", "accepted"]
         super().__init__(*args, **kwargs)
         self.when = when
         self.delay = delay
@@ -245,10 +263,12 @@ class CancelUser(User):
         assert self.id == state.transaction_recipient_id(transaction_id) or \
                self.id == state.transaction_sender_id(transaction_id)
         is_sender = (self.id == self.state.transaction_sender_id(transaction_id))
-        if status == state.TransactionStatus.canceled:
-            pass
-        elif status == state.TransactionStatus.failed:
+        if status == state.TransactionStatus.Canceled:
+            state.join_transaction(transaction_id)
+        elif status == state.TransactionStatus.Failed:
             print("Transaction failed")
+            state.join_transaction(transaction_id)
         if (status == transaction.status_dict(reverse = True)[self.when]):
             time.sleep(self.delay / 1000)
             state.cancel_transaction(transaction_id)
+            state.join_transaction(transaction_id)
