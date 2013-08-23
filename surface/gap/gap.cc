@@ -716,10 +716,10 @@ extern "C"
       "is_favorite",
       [&user_id] (surface::gap::State& state) {
         std::string id = state.users().at(user_id).id;
-        auto it = std::find(favorites.begin(),
-                            favorites.end(),
+        auto it = std::find(state.me().favorites.begin(),
+                            state.me().favorites.end(),
                             id);
-        return (it != favorites.end());
+        return (it != state.me().favorites.end());
       }
     );
   }
