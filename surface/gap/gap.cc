@@ -669,7 +669,15 @@ extern "C"
       state,
       "favorite",
       [&user_id] (surface::gap::State& state ) {
-        state.meta().favorite(state.users().at(user_id).id);
+        std::string id = state.users().at(user_id).id;
+        state.meta().favorite(id);
+        // XXX Should be notification driven
+        std::list<std::string>& favorites =
+          const_cast<std::list<std::string>&>(state.me().favorites);
+        if (std::find(favorites.begin(),
+                      favorites.end(),
+                      id) != favorites.end())
+          favorites.push_back(id);
         return gap_ok;
       });
   }
@@ -682,7 +690,16 @@ extern "C"
       state,
       "favorite",
       [&user_id] (surface::gap::State& state ) {
-        state.meta().unfavorite(state.users().at(user_id).id);
+        std::string id = state.users().at(user_id).id;
+        state.meta().unfavorite(id);
+        // XXX Should be notification driven
+        std::list<std::string>& favorites =
+          const_cast<std::list<std::string>&>(state.me().favorites);
+        auto it = std::find(favorites.begin(),
+                            favorites.end(),
+                            id);
+        if (it != favorites.end())
+          favorites.erase(it);
         return gap_ok;
       });
   }
