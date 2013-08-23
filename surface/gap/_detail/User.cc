@@ -344,6 +344,10 @@ namespace surface
             this->_user_indexes.at(this->user(user_id).id));
         }
 
+        // Initialize index for favorite users.
+        for (auto const& user_id: this->me().favorites)
+          this->user(user_id);
+
         this->_swaggers_dirty = false;
       }
 
