@@ -30,14 +30,9 @@ def on_transaction(state, transaction, status):
         if state.number_of_transactions == 0:
             state.running = False
     elif status == state.TransactionStatus.Finished:
-        cnt = state.transaction_files_count(transaction)
-        if cnt == 1:
-            filename = state.transaction_first_filename(transaction)
+        for f in state.transaction_files(transaction):
             print("File received at '{}'".format(
-                os.path.join(state.get_output_dir(), filename)))
-        else:
-            print("{} files received in '{}'".format(
-                cnt, state.get_output_dir()))
+                os.path.join(state.get_output_dir(), f)))
         state.number_of_transactions -= 1
         if state.number_of_transactions == 0:
             state.running = False

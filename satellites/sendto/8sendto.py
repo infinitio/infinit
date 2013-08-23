@@ -66,7 +66,7 @@ def main(state, user, files):
         if state.current_transaction_id is not None and state.started:
             tid = state.current_transaction_id
             progress = state.transaction_progress(tid)
-            filename = state.transaction_first_filename(tid)
+            filename = state.transaction_files(tid)[0]
             print(
                "\rProgress {2}: [{0:50s}] {1:.1f}% of {3}".format(
                    '#' * int(progress * 50), progress * 100,
