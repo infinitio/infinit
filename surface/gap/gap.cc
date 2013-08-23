@@ -474,7 +474,7 @@ extern "C"
   {
     auto ret = run<std::vector<uint32_t>>(
       state,
-      "swaggers",
+      "favorites",
       [&] (surface::gap::State& state) -> std::vector<uint32_t>
       {
         std::vector<uint32_t> values;

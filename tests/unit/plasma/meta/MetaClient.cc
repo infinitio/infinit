@@ -1004,7 +1004,7 @@ _check_transaction_data(plasma::Transaction const& tr)
   BOOST_CHECK(!tr.recipient_fullname.empty());
   BOOST_CHECK(!tr.network_id.empty());
   BOOST_CHECK(!!tr.message.empty());
-  BOOST_CHECK(!tr.first_filename.empty());
+  BOOST_CHECK(!tr.files.empty());
   BOOST_CHECK_PREDICATE(std::not_equal_to<int>(), (tr.files_count)(0));
   BOOST_CHECK_PREDICATE(std::not_equal_to<int>(), (tr.total_size)(0));
 
@@ -1033,7 +1033,7 @@ _check_transaction_data(plasma::Transaction const& tr,
   BOOST_CHECK_EQUAL(tr.recipient_fullname, recipient.user.fullname);
   BOOST_CHECK_EQUAL(tr.network_id, sender.network_id);
   BOOST_CHECK(tr.message.empty());
-  BOOST_CHECK_EQUAL(tr.first_filename, filename);
+  BOOST_CHECK_EQUAL(tr.files[0], filename);
   BOOST_CHECK_EQUAL(tr.files_count, count);
   BOOST_CHECK_EQUAL(tr.total_size, size);
   BOOST_CHECK_EQUAL(tr.is_directory, is_dir);

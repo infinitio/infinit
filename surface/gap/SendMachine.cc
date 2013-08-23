@@ -343,11 +343,21 @@ namespace surface
       std::string first_file =
         boost::filesystem::path(*(this->_files.cbegin())).filename().string();
 
+      std::list<std::string> file_list{this->_files.size()};
+      std::transform(
+        this->_files.begin(),
+        this->_files.end(),
+        file_list.begin(),
+        [] (std::string const& el) {
+          return boost::filesystem::path(el).filename().string();
+        });
+      ELLE_ASSERT_EQ(file_list.size(), this->_files.size());
+
       ELLE_DEBUG("create transaction");
       this->transaction_id(
         this->state().meta().create_transaction(
           this->peer_id(),
-          first_file,
+          file_list,
           this->_files.size(),
           size,
           boost::filesystem::is_directory(first_file),

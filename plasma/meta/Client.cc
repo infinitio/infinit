@@ -509,7 +509,7 @@ namespace plasma
 
     CreateTransactionResponse
     Client::create_transaction(std::string const& recipient_id_or_email,
-                               std::string const& first_filename,
+                               std::list<std::string> const& files,
                                size_t count,
                                size_t size,
                                bool is_dir,
@@ -520,7 +520,7 @@ namespace plasma
       json::Dictionary request;
 
       request["recipient_id_or_email"] = recipient_id_or_email;
-      request["first_filename"] = first_filename;
+      request["files"] = files;
       request["device_id"] = device_id;
       request["network_id"] = network_id;
       request["total_size"] = size;

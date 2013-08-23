@@ -371,7 +371,7 @@ namespace plasma
 
       CreateTransactionResponse
       create_transaction(std::string const& recipient_id_or_email,
-                         std::string const& first_filename,
+                         std::list<std::string> const& files,
                          size_t count,
                          size_t size,
                          bool is_dir,
