@@ -80,6 +80,7 @@ namespace surface
         this->_machine.state_make(
           "local clean", std::bind(&TransferMachine::_local_clean, this))),
       _core_machine(),
+      _core_machine_thread(),
       _publish_interfaces_state(
         this->_core_machine.state_make(
           "publish interfaces", std::bind(&TransferMachine::_publish_interfaces, this))),
@@ -186,7 +187,20 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer core machine", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      this->_core_machine.run();
+
+      reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
+
+      this->_core_machine_thread.reset(
+        new reactor::Thread{
+          scheduler,
+          "run core",
+          [&]
+          {
+            this->_core_machine.run();
+            ELLE_TRACE("%s: core machine finished properly", *this);
+          }});
+      scheduler.current()->wait(*this->_core_machine_thread);
+
       ELLE_DEBUG("%s: transfer core finished", *this);
     }
 
@@ -462,9 +476,17 @@ namespace surface
       ELLE_DEBUG("%s: finalize hole", *this)
         this->_hole.reset();
 
+      if (this->_core_machine_thread != nullptr)
+      {
+        ELLE_DEBUG("%s: terminate machine thread", *this)
+          this->_core_machine_thread->terminate_now();
+        this->_core_machine_thread.reset();
+      }
+
       if (this->_machine_thread != nullptr)
       {
-        this->_machine_thread->terminate_now();
+        ELLE_DEBUG("%s: terminate machine thread", *this)
+          this->_machine_thread->terminate_now();
         this->_machine_thread.reset();
       }
     }

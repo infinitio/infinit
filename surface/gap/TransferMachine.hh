@@ -217,6 +217,7 @@ namespace surface
       `-------------*/
     private:
       reactor::fsm::Machine _core_machine;
+      std::unique_ptr<reactor::Thread> _core_machine_thread;
 
       void
       _publish_interfaces();
