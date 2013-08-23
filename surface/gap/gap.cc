@@ -478,8 +478,11 @@ extern "C"
       [&] (surface::gap::State& state) -> std::vector<uint32_t>
       {
         std::vector<uint32_t> values;
-        for (auto const& fav: state.me().favorites)
+        for (std::string const& fav: state.me().favorites)
+        {
+          state.user(fav); // update user indexes
           values.push_back(state.user_indexes().at(fav));
+        }
         return values;
       });
 
