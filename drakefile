@@ -563,23 +563,6 @@ def configure(cxx_toolkit = None,
   agent_lib = drake.cxx.DynLib('lib/agent', agent_sources,
                                cxx_toolkit, cxx_config)
 
-  # Infinit
-  infinit_sources = drake.nodes(
-    'CrashReporter.cc',
-    'CrashReporter.hh',
-    'HoleFactory.cc',
-    #'heartbeat.cc',
-    #'heartbeat.hh',
-    'Infinit.cc',
-    'Program.cc',
-    'Program.hh',
-    'common/common.cc',
-    ) + [version]
-  infinit_cxx_config = drake.cxx.Config(cxx_config)
-  infinit_cxx_config.lib_path_runtime('.')
-  infinit_lib = drake.cxx.DynLib('lib/infinit',
-                                 infinit_sources + [reactor_lib, curly_lib],
-                                 cxx_toolkit, infinit_cxx_config)
 
   # Papier
   papier_sources = drake.nodes(
@@ -675,9 +658,26 @@ def configure(cxx_toolkit = None,
     'hole/storage/Memory.cc',
     'hole/storage/Memory.hh',
     )
-  hole_lib = drake.cxx.DynLib('lib/hole', hole_sources,
+  hole_lib = drake.cxx.DynLib('lib/hole', hole_sources + [papier_lib],
                               cxx_toolkit, cxx_config)
 
+  # Infinit
+  infinit_sources = drake.nodes(
+    'CrashReporter.cc',
+    'CrashReporter.hh',
+    'HoleFactory.cc',
+    #'heartbeat.cc',
+    #'heartbeat.hh',
+    'Infinit.cc',
+    'Program.cc',
+    'Program.hh',
+    'common/common.cc',
+    ) + [version]
+  infinit_cxx_config = drake.cxx.Config(cxx_config)
+  infinit_cxx_config.lib_path_runtime('.')
+  infinit_lib = drake.cxx.DynLib('lib/infinit',
+                                 infinit_sources + [reactor_lib, curly_lib, agent_lib, hole_lib],
+                                 cxx_toolkit, infinit_cxx_config)
 # XXX
 #  hole_tests_root = drake.Path('hole/tests')
 #  for test in ['slug']:
@@ -904,6 +904,8 @@ def configure(cxx_toolkit = None,
   infinit_bin_config = drake.cxx.Config(cxx_config)
   infinit_bin_config += boost.config_thread()
   infinit_bin_config += boost.config_program()
+  infinit_bin_config += boost.config_system()
+  infinit_bin_config += boost.config_filesystem()
   infinit_bin_config.lib_path_runtime('../lib')
   if enable_horizon:
     infinit_bin_config.lib('fuse')
