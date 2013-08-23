@@ -880,7 +880,8 @@ extern "C"
   DEFINE_TRANSACTION_GETTER_STR(message)
   DEFINE_TRANSACTION_GETTER(uint32_t, files_count, NO_TRANSFORM)
   DEFINE_TRANSACTION_GETTER(uint64_t, total_size, NO_TRANSFORM)
-  DEFINE_TRANSACTION_GETTER_DOUBLE(timestamp)
+  DEFINE_TRANSACTION_GETTER_DOUBLE(ctime)
+  DEFINE_TRANSACTION_GETTER_DOUBLE(mtime)
   DEFINE_TRANSACTION_GETTER_BOOL(is_directory)
   // _transform_ is a cast from plasma::TransactionStatus
   DEFINE_TRANSACTION_GETTER(gap_TransactionStatus,

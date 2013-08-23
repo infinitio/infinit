@@ -22,9 +22,9 @@ namespace plasma
     total_size(),
     is_directory(),
     status(TransactionStatus::created),
-    timestamp()
-  {
-  }
+    ctime(),
+    mtime()
+  {}
 
   bool
   Transaction::empty() const
@@ -62,7 +62,8 @@ namespace plasma
     out
       << "<Transaction(" << t.id
       << ", net=" << t.network_id
-      << ", t=" << t.timestamp
+      << ", ctime=" << t.ctime
+      << ", mtime=" << t.mtime
       << ", files=" << elle::sprint(t.files)
       << ", status=" << t.status
       << ") "

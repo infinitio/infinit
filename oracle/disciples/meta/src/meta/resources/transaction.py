@@ -188,7 +188,8 @@ class Create(Page):
             'total_size': self.data['total_size'],
             'is_directory': self.data['is_directory'],
 
-            'timestamp': time.time(),
+            'ctime': time.time(),
+            'mtime': time.time(),
             'status': CREATED,
         }
 
@@ -297,6 +298,7 @@ class Update(Page):
             cb()
 
         transaction['status'] = status
+        transaction['modification_time'] = time.time()
         database.transactions().save(transaction)
 
         device_ids = [transaction['sender_device_id']]

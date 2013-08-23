@@ -38,7 +38,8 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & named("files", res.files);
   ar & named("files_count", res.files_count);
   ar & named("total_size", res.total_size);
-  ar & named("timestamp", res.timestamp);
+  ar & named("ctime", res.ctime);
+  ar & named("mtime", res.mtime);
   ar & named("is_directory", res.is_directory);
   ar & named("status", res.status);
 }

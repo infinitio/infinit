@@ -192,8 +192,12 @@ extern "C" {
                              uint32_t);
 
   double
-  gap_transaction_timestamp(gap_State* state,
-                            uint32_t);
+  gap_transaction_ctime(gap_State* state,
+                        uint32_t);
+
+  double
+  gap_transaction_mtime(gap_State* state,
+                        uint32_t);
 
   gap_Bool
   gap_transaction_is_directory(gap_State*,

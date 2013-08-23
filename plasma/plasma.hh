@@ -53,7 +53,8 @@ namespace plasma
     uint64_t total_size;
     bool is_directory;
     TransactionStatus status;
-    double timestamp;
+    double ctime;
+    double mtime;
 
     virtual
     void

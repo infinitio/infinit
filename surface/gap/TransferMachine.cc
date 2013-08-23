@@ -908,7 +908,7 @@ namespace surface
 
       auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch());
-      auto timestamp_tr = std::chrono::duration<double>(transaction.timestamp);
+      auto timestamp_tr = std::chrono::duration<double>(transaction.mtime);
       double duration = timestamp_now.count() - timestamp_tr.count();
 
       bool peer_online = this->is_sender() ?
