@@ -840,9 +840,8 @@ extern "C"
   DEFINE_TRANSACTION_GETTER_STR(recipient_fullname)
   DEFINE_TRANSACTION_GETTER_STR(recipient_device_id)
   DEFINE_TRANSACTION_GETTER_STR(network_id)
-  DEFINE_TRANSACTION_GETTER_STR(first_filename)
   DEFINE_TRANSACTION_GETTER_STR(message)
-  DEFINE_TRANSACTION_GETTER(unsigned int, files_count, NO_TRANSFORM)
+  DEFINE_TRANSACTION_GETTER(uint32_t, files_count, NO_TRANSFORM)
   DEFINE_TRANSACTION_GETTER(uint64_t, total_size, NO_TRANSFORM)
   DEFINE_TRANSACTION_GETTER_DOUBLE(timestamp)
   DEFINE_TRANSACTION_GETTER_BOOL(is_directory)
@@ -850,6 +849,24 @@ extern "C"
   DEFINE_TRANSACTION_GETTER(gap_TransactionStatus,
                             status,
                             (gap_TransactionStatus))
+  char**
+  gap_transaction_files(gap_State* state,
+                        uint32_t const transaction_id)
+  {
+    assert(state != nullptr);
+    assert(transaction_id != surface::gap::null_id);
+
+    auto result = run<std::list<std::string>>(
+      state,
+      "transaction_files",
+      [&] (surface::gap::State& state) {
+        return state.transactions().at(transaction_id)->data()->files;
+      }
+    );
+    if (result.status() != gap_ok)
+      return nullptr;
+    return _cpp_stringlist_to_c_stringlist(result.value());
+  }
 
   float
   gap_transaction_progress(gap_State* state,

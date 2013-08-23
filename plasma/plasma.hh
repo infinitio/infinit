@@ -5,6 +5,7 @@
 # include <elle/Printable.hh>
 
 # include <iosfwd>
+# include <list>
 # include <string>
 
 namespace plasma
@@ -47,8 +48,8 @@ namespace plasma
     std::string recipient_device_name;
     std::string network_id;
     std::string message;
-    std::string first_filename;
-    unsigned int files_count;
+    std::list<std::string> files;
+    uint32_t files_count;
     uint64_t total_size;
     bool is_directory;
     TransactionStatus status;

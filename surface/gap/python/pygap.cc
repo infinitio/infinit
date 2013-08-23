@@ -89,6 +89,24 @@ _get_swaggers(gap_State* state)
   return swaggers_;
 }
 
+static
+boost::python::object
+_transaction_files(gap_State* state,
+                   uint32_t const id)
+{
+  assert(state != nullptr);
+
+  boost::python::list files;
+  char** res = gap_transaction_files(state, id);
+  if (res != nullptr)
+  {
+    while (*res != 0)
+      files.append(boost::python::object(*(res++)));
+    free(res);
+  }
+  return files;
+}
+
 static boost::python::object
 _search_users(gap_State* state, std::string text)
 {
@@ -498,7 +516,7 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transaction_recipient_fullname", &gap_transaction_recipient_fullname);
   py::def("transaction_recipient_device_id", &gap_transaction_recipient_device_id);
   py::def("transaction_network_id", &gap_transaction_network_id);
-  py::def("transaction_first_filename", &gap_transaction_first_filename);
+  py::def("transaction_files", &_transaction_files);
   py::def("transaction_files_count", &gap_transaction_files_count);
   py::def("transaction_total_size", &gap_transaction_total_size);
   py::def("transaction_is_directory", &gap_transaction_is_directory);

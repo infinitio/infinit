@@ -179,9 +179,9 @@ extern "C" {
   gap_transaction_network_id(gap_State*,
                              uint32_t);
 
-  char const*
-  gap_transaction_first_filename(gap_State*,
-                                 uint32_t);
+  char**
+  gap_transaction_files(gap_State* state,
+                        uint32_t const transaction_id);
 
   unsigned int
   gap_transaction_files_count(gap_State*,

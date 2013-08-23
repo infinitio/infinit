@@ -3,6 +3,7 @@
 
 # include <elle/serialize/Serializer.hh>
 # include <elle/serialize/NamedValue.hh>
+# include <elle/serialize/ListSerializer.hxx>
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::Transaction);
 
@@ -34,7 +35,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & named("recipient_device_name", res.recipient_device_name);
   ar & named("network_id", res.network_id);
   ar & named("message", res.message);
-  ar & named("first_filename", res.first_filename);
+  ar & named("files", res.files);
   ar & named("files_count", res.files_count);
   ar & named("total_size", res.total_size);
   ar & named("timestamp", res.timestamp);

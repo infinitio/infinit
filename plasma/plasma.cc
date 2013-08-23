@@ -17,7 +17,7 @@ namespace plasma
     recipient_device_name(),
     network_id(),
     message(),
-    first_filename(),
+    files(),
     files_count(),
     total_size(),
     is_directory(),
@@ -63,7 +63,7 @@ namespace plasma
       << "<Transaction(" << t.id
       << ", net=" << t.network_id
       << ", t=" << t.timestamp
-      << ", file=" << t.first_filename
+      << ", files=" << elle::sprint(t.files)
       << ", status=" << t.status
       << ") "
       << "from " << t.sender_fullname << " (" << t.sender_id << ") "
