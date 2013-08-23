@@ -76,13 +76,10 @@ def select_transactions(state, l_transactions, sender):
 
     # ask for user input
     for index, t in enumeration:
-        first_filename  = state.transaction_first_filename(t)
-        fullname        = state.transaction_sender_fullname(t)
-        file_number     = state.transaction_files_count(t)
-        if file_number > 1:
-            print("[{}] {} files from {} ({})".format(index, file_number, fullname, t))
-        else:
-            print("[{}] {} from {} ({})".format(index, first_filename, fullname, t))
+        files = state.transaction_files(t)
+        fullname = state.transaction_sender_fullname(t)
+        file_number = state.transaction_files_count(t)
+        print("[{}] {} files from {} ({})".format(index, file_number, fullname, t))
 
     selected = input("transaction numbers [all]> ")
     if selected:
@@ -139,7 +136,7 @@ def main(state, sender):
             if state.started_transactions:
                 for t in (T for T in state.started_transactions if T in to_handle):
                     progress = state.transaction_progress(t)
-                    print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, t, state.transaction_first_filename(t)), end=" "),
+                    print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, t, state.transaction_files(t)), end=" "),
                     print("\r", end="")
             time.sleep(0.5)
             state.poll()

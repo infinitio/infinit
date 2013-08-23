@@ -73,7 +73,7 @@ class Create(Page):
 
     POST {
         'recipient_id_or_email': "email@pif.net", #required
-        'first_filename': "The first file name",
+        'files': ["The first file name", "file2"],
         'files_count': 32
         'total_size': 42 (ko)
         'is_directory': bool
@@ -98,7 +98,7 @@ class Create(Page):
     ]
 
     _mendatory_fields = [
-        ('first_filename', basestring),
+        ('files', list),
         ('files_count', int),
         ('total_size', int),
         ('is_directory', int),
@@ -115,7 +115,7 @@ class Create(Page):
         message = 'message' in self.data and self.data['message'] or ""
 
         id_or_email = self.data['recipient_id_or_email'].strip().lower()
-        first_filename = self.data['first_filename'].strip()
+        files = self.data['files']
         network_id = self.data['network_id'].strip()
         device_id = self.data['device_id'].strip()
 
@@ -183,7 +183,7 @@ class Create(Page):
 
             'message': message,
 
-            'first_filename': first_filename,
+            'files': files,
             'files_count': self.data['files_count'],
             'total_size': self.data['total_size'],
             'is_directory': self.data['is_directory'],
@@ -208,7 +208,7 @@ class Create(Page):
                     source = self.user['_id'],
                     mail_template = 'send-file',
                     reply_to = self.user['email'],
-                    filename = first_filename,
+                    filename = files[0],
                     sendername = self.user['fullname'],
                     user_id = str(self.user['_id']),
                 )
@@ -388,7 +388,7 @@ class One(Page):
 
             'network_id' :
 
-            'first_filename' :
+            'files' :
             'files_count' :
             'total_size' :
             'is_directory' :
