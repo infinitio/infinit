@@ -676,7 +676,7 @@ extern "C"
           const_cast<std::list<std::string>&>(state.me().favorites);
         if (std::find(favorites.begin(),
                       favorites.end(),
-                      id) != favorites.end())
+                      id) == favorites.end())
           favorites.push_back(id);
         return gap_ok;
       });
