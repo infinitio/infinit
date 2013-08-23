@@ -46,11 +46,11 @@ namespace surface
 
     public:
       Transaction(State const& state,
-                  Data&& data);
+                  Data&& data,
+                  bool history = false);
 
       Transaction(State const& state,
-                  TransferMachine::Snapshot data,
-                  bool history = false);
+                  TransferMachine::Snapshot data);
 
       Transaction(Transaction&&) = default;
 

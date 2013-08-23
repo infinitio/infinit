@@ -37,7 +37,7 @@ namespace surface
                   state.me().id == this->_data->recipient_id);
       if (history)
       {
-        ELLE_DEGUG("%s: history", *this);
+        ELLE_DEBUG("%s: history", *this);
         return;
       }
       if (state.me().id == this->_data->sender_id &&
