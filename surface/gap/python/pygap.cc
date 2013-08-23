@@ -101,7 +101,7 @@ _transaction_files(gap_State* state,
   if (res != nullptr)
   {
     while (*res != 0)
-      files.append(boost::python::object(*(res++)));
+      files.append(boost::python::object(std::string{*(res++)}));
     free(res);
   }
   return files;
