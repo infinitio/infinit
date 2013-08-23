@@ -1,4 +1,4 @@
-#include <surface/gap/TransferMachine.hh>
+a#include <surface/gap/TransferMachine.hh>
 #include <surface/gap/_detail/TransferOperations.hh>
 #include <surface/gap/Rounds.hh>
 #include <surface/gap/State.hh>
@@ -667,6 +667,7 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
+      this->current_state(TransferState_Transfer);
       this->_pull_progress_thread.reset(
         sched.every(
           [&] () { this->_retrieve_progress(); },
