@@ -49,7 +49,8 @@ namespace surface
                   Data&& data);
 
       Transaction(State const& state,
-                  TransferMachine::Snapshot data);
+                  TransferMachine::Snapshot data,
+                  bool history = false);
 
       Transaction(Transaction&&) = default;
 

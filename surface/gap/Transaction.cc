@@ -26,7 +26,8 @@ namespace surface
     {}
 
     Transaction::Transaction(State const& state,
-                             Data&& data):
+                             Data&& data,
+                             bool history):
       _id(generate_id()),
       _data(new Data{std::move(data)}),
       _machine()
@@ -34,7 +35,11 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: construct from data %s", *this, *this->_data);
       ELLE_ASSERT(state.me().id == this->_data->sender_id ||
                   state.me().id == this->_data->recipient_id);
-
+      if (history)
+      {
+        ELLE_DEGUG("%s: history", *this);
+        return;
+      }
       if (state.me().id == this->_data->sender_id &&
           state.device().id == this->_data->sender_device_id)
       {
