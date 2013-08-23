@@ -327,6 +327,11 @@ extern "C" {
   gap_unfavorite(gap_State* state,
                  uint32_t const user_id);
 
+  /// Check if a user is a favorite.
+  gap_Bool
+  gap_is_favorite(gap_State* state,
+                  uint32_t const user_id);
+
   /// - Permissions ---------------------------------------------------------
 
   typedef enum gap_Permission

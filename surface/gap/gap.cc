@@ -707,6 +707,23 @@ extern "C"
       });
   }
 
+  gap_Bool
+  gap_is_favorite(gap_State* state,
+                  uint32_t const user_id)
+  {
+    return run<gap_Bool>(
+      state,
+      "is_favorite",
+      [&user_id] (surface::gap::State& state) {
+        std::string id = state.users().at(user_id).id;
+        auto it = std::find(favorites.begin(),
+                            favorites.end(),
+                            id);
+        return (it != favorites.end());
+      }
+    );
+  }
+
   /// - Permissions ---------------------------------------------------------
   static inline
   void
