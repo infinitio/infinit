@@ -100,8 +100,9 @@ _transaction_files(gap_State* state,
   char** res = gap_transaction_files(state, id);
   if (res != nullptr)
   {
-    while (*res != 0)
-      files.append(boost::python::object(std::string{*(res++)}));
+    char** user = res;
+    while (*user != nullptr)
+      files.append(boost::python::object(std::string{*(user++)}));
     free(res);
   }
   return files;
