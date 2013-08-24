@@ -276,7 +276,7 @@ class Favorite(Page):
         self.requireLoggedIn()
         fav = database.ObjectId(self.data['user_id'])
         lst = self.user.setdefault('favorites', [])
-        if new_fav not in lst:
+        if fav not in lst:
             lst.append(fav)
             database.users().save(self.user)
         return self.success()
