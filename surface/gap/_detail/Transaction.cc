@@ -2,12 +2,24 @@
 #include <surface/gap/Transaction.hh>
 
 #include <boost/filesystem.hpp>
+
+#include <atomic>
+
 ELLE_LOG_COMPONENT("surface.gap.State.Transaction");
 
 namespace surface
 {
   namespace gap
   {
+    /// Generate a id for local user.
+    static
+    uint32_t
+    generate_id()
+    {
+      static std::atomic<uint32_t> id{null_id};
+      return ++id;
+    }
+
     State::TransactionNotFoundException::TransactionNotFoundException(
       uint32_t id):
       Exception{
@@ -29,10 +41,11 @@ namespace surface
                       std::unordered_set<std::string>&& files,
                       std::string const& message)
     {
-      auto tr = TransactionPtr{
-          new Transaction{*this, peer_id, std::move(files), message}};
-      auto id = tr->id();
-      this->_transactions.emplace(id, std::move(tr));
+      auto id = generate_id();
+      this->_transactions.emplace(
+        std::piecewise_construct,
+        std::make_tuple(id),
+        std::forward_as_tuple(*this, id, peer_id, std::move(files), message));
       return id;
     }
 
@@ -77,9 +90,13 @@ namespace surface
 
           try
           {
-            auto tr = TransactionPtr{new Transaction{*this, std::move(*snapshot.release())}};
-            auto _id = tr->id();
-            this->_transactions.emplace(std::move(_id), std::move(tr));
+            this->user(snapshot->data.sender_id);
+            this->user(snapshot->data.recipient_id);
+            auto _id = generate_id();
+            this->_transactions.emplace(
+              std::piecewise_construct,
+              std::make_tuple(_id),
+              std::forward_as_tuple(*this, _id, std::move(*snapshot.release())));
           }
           catch (std::exception const&)
           {
@@ -118,12 +135,13 @@ namespace surface
           this->user(transaction.sender_id);
           this->user(transaction.recipient_id);
 
-          // true stands for history.
-          auto tr =
-            TransactionPtr{new Transaction{*this, std::move(transaction), true}};
-          auto _id = tr->id();
+          auto _id = generate_id();
 
-          this->_transactions.emplace(_id, std::move(tr));
+          // true stands for history.
+          this->_transactions.emplace(
+            std::piecewise_construct,
+            std::make_tuple(_id),
+            std::forward_as_tuple(*this, _id, std::move(transaction), true));
         }
       }
     }
@@ -181,20 +199,21 @@ namespace surface
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
-          return pair.second->data()->id == notif.id;
+          return pair.second.data()->id == notif.id;
         });
 
       if (it == std::end(this->_transactions))
       {
         plasma::Transaction data = notif;
-        auto tr = TransactionPtr{new Transaction{*this, std::move(data)}};
-        auto id = tr->id();
-
-        this->_transactions.emplace(id, std::move(tr));
+        auto id = generate_id();
+        this->_transactions.emplace(
+          std::piecewise_construct,
+          std::make_tuple(id),
+          std::forward_as_tuple(*this, id, std::move(data)));
       }
       else
       {
-        it->second->on_transaction_update(notif);
+        it->second.on_transaction_update(notif);
       }
     }
 
@@ -209,8 +228,7 @@ namespace surface
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
-          ELLE_ASSERT(pair.second != nullptr);
-          return pair.second->data()->network_id == notif.network_id;
+          return pair.second.data()->network_id == notif.network_id;
         });
 
       if (it == std::end(this->_transactions))
@@ -220,14 +238,14 @@ namespace surface
         ELLE_DEBUG("%s: transactions", *this)
           for (auto const& tr: this->transactions())
           {
-            ELLE_DEBUG("-- %s: %s", tr.first, *tr.second);
+            ELLE_DEBUG("-- %s: %s", tr.first, tr.second);
           }
         return;
         // throw TransactionNotFoundException(
         //   elle::sprintf("network %s", notif.network_id));
       }
 
-      it->second->on_peer_connection_update(notif);
+      it->second.on_peer_connection_update(notif);
     }
 
   }

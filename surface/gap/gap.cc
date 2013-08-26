@@ -839,15 +839,15 @@ extern "C"
   gap_transaction_ ## _field_(gap_State* state,                                \
                               uint32_t _id)                                    \
   {                                                                            \
-    assert(_id != surface::gap::null_id);                                                          \
+    assert(_id != surface::gap::null_id);                                      \
     return run<_type_>(                                                        \
       state,                                                                   \
       #_field_,                                                                \
       [&] (surface::gap::State& state) -> _type_                               \
       {                                                                        \
-        return _transform_(state.transactions().at(_id)->data()->_field_);        \
+        return _transform_(state.transactions().at(_id).data()->_field_);      \
       });                                                                      \
-  }                                                                            \
+      }                                                                        \
 /**/
 
 #define NO_TRANSFORM
@@ -898,7 +898,7 @@ extern "C"
       state,
       "transaction_files",
       [&] (surface::gap::State& state) {
-        return state.transactions().at(transaction_id)->data()->files;
+        return state.transactions().at(transaction_id).data()->files;
       }
     );
     if (result.status() != gap_ok)
@@ -917,7 +917,7 @@ extern "C"
       "progress",
       [&] (surface::gap::State& state) -> float
       {
-        return state.transactions().at(id)->progress();
+        return state.transactions().at(id).progress();
       });
   }
 
@@ -1081,7 +1081,7 @@ extern "C"
       "cancel transaction",
       [&] (surface::gap::State& state) -> uint32_t
       {
-        state.transactions().at(id)->cancel();
+        state.transactions().at(id).cancel();
         return id;
       });
   }
@@ -1096,7 +1096,7 @@ extern "C"
       "reject transaction",
       [&] (surface::gap::State& state) -> uint32_t
       {
-        state.transactions().at(id)->reject();
+        state.transactions().at(id).reject();
         return id;
       });
   }
@@ -1111,7 +1111,7 @@ extern "C"
       "accept transaction",
       [&] (surface::gap::State& state) -> uint32_t
       {
-        state.transactions().at(id)->accept();
+        state.transactions().at(id).accept();
         return id;
       });
   }
@@ -1126,7 +1126,7 @@ extern "C"
       "join transaction",
       [&] (surface::gap::State& state) -> uint32_t
       {
-        state.transactions().at(id)->join();
+        state.transactions().at(id).join();
         return id;
       });
   }

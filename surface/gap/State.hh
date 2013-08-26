@@ -8,6 +8,7 @@
 # include <surface/gap/Notification.hh>
 # include <surface/gap/Transaction.hh>
 # include <surface/gap/metrics.hh>
+# include <surface/gap/Transaction.hh>
 
 # include <common/common.hh>
 
@@ -35,8 +36,6 @@ namespace surface
   namespace gap
   {
     static const uint32_t null_id = 0;
-
-    class Transaction;
 
     // XXX: In order to ensure the logger is initialized at the begining of
     // state LoggerInitializer MUST be the first member of State.
@@ -431,14 +430,15 @@ namespace surface
         TransactionNotFoundException(std::string const& id);
       };
 
-      typedef std::unique_ptr<Transaction> TransactionPtr;
-      typedef std::pair<uint32_t, TransactionPtr> TransactionPair;
-      typedef std::pair<const uint32_t, TransactionPtr> TransactionConstPair;
-      typedef std::unordered_map<uint32_t, TransactionPtr> Transactions;
+      // typedef std::unique_ptr<Transaction> TransactionPtr;
+      typedef std::pair<uint32_t, Transaction> TransactionPair;
+      typedef std::pair<const uint32_t, Transaction> TransactionConstPair;
+      typedef std::unordered_map<uint32_t, Transaction> Transactions;
       typedef std::map<std::string, uint32_t> TransactionIndexMap;
       typedef std::unordered_set<uint32_t> TransactionIndexes;
 
       ELLE_ATTRIBUTE_R(Transactions, transactions);
+      Transactions& transactions() {  return this->_transactions; }
 
       uint32_t
       send_files(std::string const& peer_id,

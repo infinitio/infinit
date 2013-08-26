@@ -46,15 +46,18 @@ namespace surface
 
     public:
       Transaction(State const& state,
+                  uint32_t id,
                   Data&& data,
                   bool history = false);
 
       Transaction(State const& state,
+                  uint32_t id,
                   TransferMachine::Snapshot data);
 
       Transaction(Transaction&&) = default;
 
       Transaction(surface::gap::State const& state,
+                  uint32_t id,
                   std::string const& peer_id,
                   std::unordered_set<std::string>&& files,
                   std::string const& message);

@@ -97,12 +97,12 @@ int main(int argc, char** argv)
                       << ", status: " << notif.status << std::endl;
             if (notif.status == TransferState_RecipientWaitForDecision)
             {
-              state.transactions().at(notif.id)->accept();
+              state.transactions().at(notif.id).accept();
             }
             else if (notif.status == TransferState_Finished)
             {
               std::cerr << "finished" << std::endl;
-              state.transactions().at(notif.id)->join();
+              state.transactions().at(notif.id).join();
             }
 
           });

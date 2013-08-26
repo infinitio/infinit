@@ -105,7 +105,7 @@ int main(int argc, char** argv)
 
             if (notif.status == TransferState_Finished)
             {
-              state.transactions().at(id)->join();
+              state.transactions().at(id).join();
               stop = true;
             }
           });

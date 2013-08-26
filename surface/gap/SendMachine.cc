@@ -58,7 +58,7 @@ namespace surface
         [&] () -> bool
         {
           return false;
-          return this->state().transactions().at(this->id())->data()->status ==
+          return this->state().transactions().at(this->id()).data()->status ==
             TransactionStatus::accepted;
         }
         );
@@ -71,7 +71,7 @@ namespace surface
         [&] () -> bool
         {
           return false;
-          return this->state().transactions().at(this->id())->data()->status ==
+          return this->state().transactions().at(this->id()).data()->status ==
             TransactionStatus::rejected;
         }
         );
