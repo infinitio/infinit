@@ -81,7 +81,7 @@ namespace surface
 
       // Cancel.
       this->_machine.transition_add(this->_request_network_state,
-                                    this->_cancel_state,
+                                    this->_remote_clean_state,
                                     reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(this->_create_transaction_state,
                                     this->_cancel_state,
@@ -97,7 +97,7 @@ namespace surface
                                     reactor::Waitables{&this->_canceled}, true);
       // Exception.
       this->_machine.transition_add_catch(
-        this->_request_network_state, this->_fail_state);
+        this->_request_network_state, this->_remote_clean_state);
       this->_machine.transition_add_catch(
         this->_create_transaction_state, this->_fail_state);
       this->_machine.transition_add_catch(
