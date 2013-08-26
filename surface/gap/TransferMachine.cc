@@ -96,6 +96,12 @@ namespace surface
       _core_stoped_state(
         this->_core_machine.state_make(
           "core stoped", std::bind(&TransferMachine::_core_stoped, this))),
+      _core_failed_state(
+        this->_core_machine.state_make(
+          "core failed", std::bind(&TransferMachine::_core_failed, this))),
+      _core_paused_state(
+        this->_core_machine.state_make(
+          "core paused", std::bind(&TransferMachine::_core_paused, this))),
       _peer_online(),
       _peer_offline(),
       _peer_connected(),
@@ -125,6 +131,11 @@ namespace surface
       // Fail way.
       this->_machine.transition_add_catch(this->_transfer_core_state,
                                           this->_fail_state);
+
+      this->_machine.transition_add(this->_transfer_core_state,
+                                    this->_fail_state,
+                                    reactor::Waitables{&this->_failed}, true);
+
       this->_machine.transition_add(this->_fail_state,
                                     this->_remote_clean_state);
       // Reject.
@@ -134,6 +145,35 @@ namespace surface
       // Clean.
       this->_machine.transition_add(this->_remote_clean_state,
                                     this->_local_clean_state);
+
+      auto& end_state = this->_machine.state_make(
+        [this]
+        {
+          ELLE_TRACE_SCOPE("%s: end of machine", *this);
+        });
+
+      this->_machine.transition_add(this->_local_clean_state, end_state);
+
+      // XXX: Create a temporary state non handled exception on final states.
+      // If something went wrong like a connection troubles, we don't want an
+      // exception
+      // to escape into scheduler.
+      // A better way to handle this could be a retry state.
+      // If the exception is not too critical, we could restart in the last
+      // state.
+      auto& err = this->_machine.state_make(
+        [this]
+        {
+          ELLE_ERR("%s: something went wrong while cleaning: escaping", *this);
+        });
+
+      this->_machine.transition_add_catch(this->_fail_state, err);
+      this->_machine.transition_add_catch(this->_cancel_state, err);
+      this->_machine.transition_add_catch(this->_finish_state, err);
+      this->_machine.transition_add_catch(this->_remote_clean_state, err);
+      this->_machine.transition_add_catch(this->_local_clean_state, err);
+
+
 
       /*-------------.
       | Core Machine |
@@ -155,6 +195,15 @@ namespace surface
         this->_connection_state, this->_transfer_state);
       this->_core_machine.transition_add(
         this->_transfer_state, this->_core_stoped_state);
+
+      this->_core_machine.transition_add_catch(this->_publish_interfaces_state,
+                                               this->_core_failed_state);
+      this->_core_machine.transition_add_catch(this->_wait_for_peer_state,
+                                               this->_core_failed_state);
+      this->_core_machine.transition_add_catch(this->_connection_state,
+                                               this->_core_failed_state);
+      this->_core_machine.transition_add_catch(this->_transfer_state,
+                                               this->_core_failed_state);
     }
 
     TransferMachine::~TransferMachine()
@@ -196,10 +245,20 @@ namespace surface
           "run core",
           [&]
           {
-            this->_core_machine.run();
-            ELLE_TRACE("%s: core machine finished properly", *this);
+            try
+            {
+              this->_core_machine.run();
+              ELLE_TRACE("%s: core machine finished properly", *this);
+            }
+            catch (std::exception const&)
+            {
+              ELLE_ERR("%s: something went wrong while transfering", *this);
+            }
           }});
       scheduler.current()->wait(*this->_core_machine_thread);
+
+      if (this->_failed.opened())
+        throw Exception(gap_error, "an error occured");
 
       ELLE_DEBUG("%s: transfer core finished", *this);
     }
@@ -207,17 +266,20 @@ namespace surface
     void
     TransferMachine::_local_clean()
     {
-      ELLE_TRACE_SCOPE("%s: clean local %s", *this, this->transaction_id());
+      ELLE_TRACE_SCOPE("%s: clean local %s", *this, this->data()->network_id);
       this->current_state(TransferState_CleanLocal);
 
-      auto path = common::infinit::network_directory(
-        this->state().me().id, this->network_id());
-
-      if (boost::filesystem::exists(path))
+      if (!this->data()->network_id.empty())
       {
-        ELLE_DEBUG("%s: remove network at %s", *this, path);
+        auto path = common::infinit::network_directory(
+          this->state().me().id, this->network_id());
 
-        boost::filesystem::remove_all(path);
+        if (boost::filesystem::exists(path))
+        {
+          ELLE_DEBUG("%s: remove network at %s", *this, path);
+
+          boost::filesystem::remove_all(path);
+        }
       }
 
       ELLE_DEBUG("finalize etoile")
@@ -230,23 +292,27 @@ namespace surface
     void
     TransferMachine::_remote_clean()
     {
-      ELLE_TRACE_SCOPE("%s: clean remote %s", *this, this->transaction_id());
+      ELLE_TRACE_SCOPE("%s: clean remote network %s",
+                       *this, this->data()->network_id);
       this->current_state(TransferState_CleanRemote);
 
-      try
+      if (!this->data()->network_id.empty())
       {
-        this->state().meta().delete_network(this->network_id());
-      }
-      catch (reactor::Terminate const&)
-      {
-        ELLE_TRACE("%s: machine terminated before deleting network: %s",
-                   *this, elle::exception_string());
-        throw;
-      }
-      catch (std::exception const&)
-      {
-        ELLE_ERR("%s: clean failed: network %s wasn't deleted: %s",
-                 *this, this->network_id(), elle::exception_string());
+        try
+        {
+          this->state().meta().delete_network(this->network_id());
+        }
+        catch (reactor::Terminate const&)
+        {
+          ELLE_TRACE("%s: machine terminated before deleting network: %s",
+                     *this, elle::exception_string());
+          throw;
+        }
+        catch (std::exception const&)
+        {
+          ELLE_ERR("%s: clean failed: network %s wasn't deleted: %s",
+                   *this, this->network_id(), elle::exception_string());
+        }
       }
 
       ELLE_DEBUG("%s: cleaned", *this);
@@ -408,7 +474,7 @@ namespace surface
     void
     TransferMachine::cancel()
     {
-      ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->transaction_id());
+      ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
       this->_canceled.open();
     }
 
@@ -459,7 +525,10 @@ namespace surface
       reactor::Thread* current = reactor::Scheduler::scheduler()->current();
       ELLE_ASSERT(current != nullptr);
       ELLE_DEBUG("%s: start joining", *this);
-      current->wait(*this->_machine_thread.get());
+      if (this->_machine_thread.get() != nullptr)
+      {
+        current->wait(*this->_machine_thread.get());
+      }
       ELLE_DEBUG("%s: successfully joined", *this);
     }
 
@@ -711,6 +780,19 @@ namespace surface
     TransferMachine::_core_stoped()
     {
       ELLE_TRACE_SCOPE("%s: core machine stoped", *this);
+    }
+
+    void
+    TransferMachine::_core_failed()
+    {
+      ELLE_TRACE_SCOPE("%s: core machine failed", *this);
+      this->_failed.open();
+    }
+
+    void
+    TransferMachine::_core_paused()
+    {
+      ELLE_TRACE_SCOPE("%s: core machine paused", *this);
     }
 
     /*-----------.
@@ -985,6 +1067,8 @@ namespace surface
           return out << "RecipientAccepted";
         case TransferState_GrantPermissions:
           return out << "GrantPermissions";
+        case TransferState_RecipientWaitForReady:
+          return out << "RecipientWaitForReady";
         case TransferState_PublishInterfaces:
           return out << "PublishInterfaces";
         case TransferState_Connect:

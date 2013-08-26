@@ -234,6 +234,12 @@ namespace surface
       void
       _core_stoped();
 
+      void
+      _core_failed();
+
+      void
+      _core_paused();
+
       // Common on both sender and recipient process.
       ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, connection_state);
@@ -241,6 +247,8 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_peer_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, transfer_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, core_stoped_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, core_failed_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, core_paused_state);
 
     protected:
       // User status signal.
