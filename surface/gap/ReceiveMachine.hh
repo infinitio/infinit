@@ -59,6 +59,9 @@ namespace surface
       _accept();
 
       void
+      _wait_for_ready();
+
+      void
       _transfer_operation() override;
 
       void
@@ -72,6 +75,7 @@ namespace surface
       `-----------------------*/
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_decision_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, accept_state);
+      ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_ready_state);
 
       // Transaction status signals.
       ELLE_ATTRIBUTE(reactor::Barrier, accepted);

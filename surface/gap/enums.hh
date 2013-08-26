@@ -6,6 +6,9 @@
 extern "C"
 {
 # endif
+  // The values of the enums are used in the snapshot.
+  // To add a state, add it a the end to avoid the invalidation of the locally
+  // stored snapshots.
   typedef enum
   {
     TransferState_NewTransaction = 0,
@@ -15,18 +18,19 @@ extern "C"
     TransferState_SenderWaitForDecision = 4,
     TransferState_RecipientWaitForDecision = 5,
     TransferState_RecipientAccepted = 6,
-    TransferState_GrantPermissions = 7,
-    TransferState_PublishInterfaces = 8,
-    TransferState_Connect = 9,
-    TransferState_PeerDisconnected = 10,
-    TransferState_PeerConnectionLost = 11,
-    TransferState_Transfer = 12,
-    TransferState_CleanLocal = 13,
-    TransferState_CleanRemote = 14,
-    TransferState_Finished = 15,
-    TransferState_Rejected = 16,
-    TransferState_Canceled = 17,
-    TransferState_Failed = 18,
+    TransferState_RecipientWaitForReady = 7,
+    TransferState_GrantPermissions = 8,
+    TransferState_PublishInterfaces = 9,
+    TransferState_Connect = 10,
+    TransferState_PeerDisconnected = 11,
+    TransferState_PeerConnectionLost = 12,
+    TransferState_Transfer = 13,
+    TransferState_CleanLocal = 14,
+    TransferState_CleanRemote = 15,
+    TransferState_Finished = 16,
+    TransferState_Rejected = 17,
+    TransferState_Canceled = 18,
+    TransferState_Failed = 19,
   } TransferState;
 
   typedef enum

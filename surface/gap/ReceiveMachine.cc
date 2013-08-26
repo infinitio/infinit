@@ -25,16 +25,21 @@ namespace surface
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
       _accept_state(
         this->_machine.state_make(
-          "accept", std::bind(&ReceiveMachine::_accept, this)))
+          "accept", std::bind(&ReceiveMachine::_accept, this))),
+      _wait_for_ready_state(
+        this->_machine.state_make(
+          "wait for ready", std::bind(&ReceiveMachine::_wait_for_ready, this)))
+
     {
       // Normal way.
       this->_machine.transition_add(this->_wait_for_decision_state,
                                     this->_accept_state,
                                     reactor::Waitables{&this->_accepted});
       this->_machine.transition_add(this->_accept_state,
+                                    this->_wait_for_ready_state);
+      this->_machine.transition_add(this->_wait_for_ready_state,
                                     this->_transfer_core_state,
                                     reactor::Waitables{&this->_ready});
-
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_finish_state);
 
@@ -45,12 +50,14 @@ namespace surface
 
       // Cancel.
       this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(_wait_for_ready_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(_accept_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(_reject_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(_transfer_core_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
 
       // Exception.
       this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
+      this->_machine.transition_add_catch(_wait_for_ready_state, _fail_state);
       this->_machine.transition_add_catch(_accept_state, _fail_state);
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
@@ -80,6 +87,9 @@ namespace surface
           break;
         case TransferState_RecipientAccepted:
           this->_run(this->_accept_state);
+          break;
+        case TransferState_RecipientWaitForReady:
+          this->_run(this->_wait_for_ready_state);
           break;
         case TransferState_GrantPermissions:
           elle::unreachable();
@@ -121,17 +131,13 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
                        *this, data);
 
-      auto& null = this->_machine.state_make([] {});
       switch (this->data()->status)
       {
         case plasma::TransactionStatus::initialized:
           this->_run(this->_wait_for_decision_state);
           break;
         case plasma::TransactionStatus::accepted:
-          this->_machine.transition_add(null,
-                                        this->_transfer_core_state,
-                                        reactor::Waitables{&this->_ready});
-          this->_run(null);
+          this->_run(this->_wait_for_ready_state);
           break;
         case plasma::TransactionStatus::ready:
           this->_run(this->_transfer_core_state);
@@ -251,6 +257,13 @@ namespace surface
         else
           throw;
       }
+    }
+
+    void
+    ReceiveMachine::_wait_for_ready()
+    {
+      ELLE_TRACE_SCOPE("%s: wait for ready %s", *this, this->transaction_id());
+      this->current_state(TransferState_RecipientWaitForReady);
     }
 
     void
