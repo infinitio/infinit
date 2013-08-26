@@ -118,6 +118,7 @@ class ApertcpusFactory(Factory):
         for addr, client in self.clients.items():
             if client is to_remove:
                 del self.clients[addr]
+                break
         if len(self.clients) == 0:
             self.doStop()
 
