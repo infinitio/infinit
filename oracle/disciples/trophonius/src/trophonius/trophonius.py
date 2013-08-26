@@ -56,6 +56,21 @@ class Trophonius(basic.LineReceiver):
         self._ping_service = None
         self.reason = None
 
+    def __deinit(self):
+        # It's actually important to remove references of this instance
+        # in the clients dictionary, else the memory won't be free
+        if self.device_id in self.factory.clients:
+            self.factory.clients.pop(self.device_id)
+        self.factory = None
+        self.id = None
+        self.token = None
+        self.device_id = None
+        self.state = None
+        self.meta_client = None
+        self._alive_service = None
+        self._ping_service = None
+        self.reason = None
+
     def __str__(self):
         if hasattr(self, "id"):
             return "<{}({})>".format(self.__class__.__name__,
@@ -79,22 +94,25 @@ class Trophonius(basic.LineReceiver):
 
         print(self.connectionLost, self.transport.getPeer(), self.reason)
 
-        if self.id is None:
-            return
+        try:
+            if self.id is None:
+                return # self.__deinit() still called !
 
-        if self._alive_service is not None and self._alive_service.active():
-            self._alive_service.cancel()
+            if self._alive_service is not None and self._alive_service.active():
+                self._alive_service.cancel()
 
-        if self._ping_service is not None:
-            self._ping_service.stop()
+            if self._ping_service is not None:
+                self._ping_service.stop()
 
-        log.msg("Disconnect user %s" % self.id)
+            log.msg("Disconnect user %s" % self.id)
 
-        if self.meta_client is not None:
-            self.meta_client.post('/user/disconnect', {
-                'user_id': self.id,
-                'device_id': self.device_id,
-            })
+            if self.meta_client is not None:
+                self.meta_client.post('/user/disconnect', {
+                    'user_id': self.id,
+                    'device_id': self.device_id,
+                })
+        finally:
+            self.__deinit()
 
     def _send_res(self, res, msg=""):
         if isinstance(res, dict):
