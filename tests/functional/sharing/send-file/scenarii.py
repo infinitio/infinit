@@ -57,19 +57,15 @@ class DefaultScenario(Scenario):
         while True:
             if not (time.time() - start < timeout):
                 raise TestFailure("{}: timeout".format(self.name))
-            time.sleep(0.5)
             self.poll()
-            time.sleep(0.1)
             transactions = list(self.sender.transactions.values()) + list(self.recipient.transactions.values())
             if len(transactions) < 2:
                 continue
             finished = set([tr.finished for tr in transactions])
             if len(finished) == 1 and list(finished)[0] == True:
                 break
-            for tr in self.sender.transactions.values():
-                print("Sender progress for %s : %s" % (tr.id, tr.progress))
-            for tr in self.recipient.transactions.values():
-                print("Recipient progress for %s : %s" % (tr.id, tr.progress))
+            for tr in self.sender.transactions.values(): tr.progress
+            for tr in self.recipient.transactions.values(): tr.progress
 
         self.verify_transfer(expected_files)
         return True
@@ -125,8 +121,8 @@ class GhostScenario(Scenario):
                    self.sender.transactions[transaction_id].finished and \
                    self.recipient.transactions[transaction_id].finished:
                     break
-                sender_progress = self.sender.transactions[transaction_id].progress
-                #recipient_progress = self.recipient.transactions[transaction_id].progress
+                self.sender.transactions[transaction_id].progress
+                self.recipient.transactions[transaction_id].progress
 
         self.verify_transfer(expected_files)
 
@@ -147,18 +143,15 @@ class CancelScenario(DefaultScenario):
 
         start = time.time()
         transaction = None
+
         while True:
             if not (time.time() - start < timeout):
                 raise TestFailure("{}: timeout".format(self.name))
-            time.sleep(0.5)
             self.poll()
-            time.sleep(0.1)
-            if len(self.recipient.transactions):
-                assert len(self.recipient.transactions) == 1
-                transaction_id = list(self.recipient.transactions.keys())[0]
-                transaction = self.recipient.transactions[transaction_id]
-            if transaction is not None:
-                if transaction.status == "canceled" and \
-                    self.sender.transactions[transaction_id].status == "canceled" and \
-                    self.recipient.transactions[transaction_id].status == "canceled":
-                    break
+            time.sleep(0)
+            transactions = list(self.sender.transactions.values()) + list(self.recipient.transactions.values())
+            canceled = set([tr.final for tr in transactions])
+            if len(canceled) == 1 and list(canceled)[0] == True:
+                break
+            for tr in self.sender.transactions.values(): tr.progress
+            for tr in self.recipient.transactions.values(): tr.progress

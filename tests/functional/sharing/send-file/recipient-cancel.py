@@ -10,18 +10,18 @@ if __name__ == '__main__':
     import utils
     files = [utils.RandomTempFile(100)]
     with utils.Servers() as (meta, trophonius, apertus):
-        for status in ["initialized", "accepted", "ready"]:
-            for delay in [10, 100, 1000]:
-                sender, recipient = (CancelUser(meta_server = meta,
+        for status in ["RecipientWaitForDecision", "RecipientAccepted", "RecipientWaitForReady", "PublishInterfaces", "Connect", "Transfer"]:
+            for delay in [0, 10, 1000]:
+                sender, recipient = (User(meta_server = meta,
+                                          trophonius_server = trophonius,
+                                          apertus_server = apertus,
+                                          register = True),
+                                     CancelUser(meta_server = meta,
                                                 trophonius_server = trophonius,
                                                 apertus_server = apertus,
                                                 register = True,
                                                 when = status,
-                                                delay = delay), # ms
-                                     User(meta_server = meta,
-                                          trophonius_server = trophonius,
-                                          apertus_server = apertus,
-                                          register = True))
+                                                delay = delay))
                 with sender, recipient:
                     CancelScenario(sender = sender,
                                    recipient = recipient,
