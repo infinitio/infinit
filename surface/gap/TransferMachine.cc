@@ -192,6 +192,23 @@ namespace surface
                                          reactor::Waitables{&this->_peer_online});
 
       this->_core_machine.transition_add(
+        this->_publish_interfaces_state,
+        this->_core_stoped_state,
+        reactor::Waitables{&this->_canceled}, true);
+      this->_core_machine.transition_add(
+        this->_connection_state,
+        this->_core_stoped_state,
+        reactor::Waitables{&this->_canceled}, true);
+      this->_core_machine.transition_add(
+        this->_wait_for_peer_state,
+        this->_core_stoped_state,
+        reactor::Waitables{&this->_canceled}, true);
+      this->_core_machine.transition_add(
+        this->_transfer_state,
+        this->_core_stoped_state,
+        reactor::Waitables{&this->_canceled}, true);
+
+      this->_core_machine.transition_add(
         this->_connection_state, this->_transfer_state);
       this->_core_machine.transition_add(
         this->_transfer_state, this->_core_stoped_state);
