@@ -106,6 +106,15 @@ namespace hole
         {
           ELLE_WARN("%s: discarded: %s", *this, e.what());
         }
+        catch (reactor::Terminate const&)
+        {
+          throw;
+        }
+        catch (...)
+        {
+          ELLE_ERR("exception escaped from rpcs: %s", elle::exception_string());
+          throw;
+        }
       }
 
       /*----.
