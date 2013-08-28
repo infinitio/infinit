@@ -236,6 +236,8 @@ def configure(cxx_toolkit = None,
   elle_lib = copy_lib(elle.elle_dynamic)
   cryptography_lib = copy_lib(elle.cryptography_dynamic)
   reactor_lib = copy_lib(elle.reactor_dynamic)
+  asio_fs_lib = copy_lib(elle.asio_fs)
+  # asio_udt_lib = copy_lib(elle.asio_udt)
   curly_lib = copy_lib(elle.curly_dynamic)
   curly_sched_lib = copy_lib(elle.curly_sched_dynamic)
   curly_asio_lib = copy_lib(elle.curly_asio_dynamic)
@@ -882,6 +884,7 @@ def configure(cxx_toolkit = None,
   ## -------- ##
 
   infinit_libs = [
+    asio_fs_lib,
     agent_lib,
     etoile_lib,
     hole_lib,
