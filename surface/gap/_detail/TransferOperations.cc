@@ -32,6 +32,7 @@
 #include <papier/Descriptor.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/fs/File.hh>
 
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
@@ -396,26 +397,20 @@ namespace surface
 
           // Write the source file's content into the Infinit file freshly
           // created.
-          std::streamsize N = 5242880;
-          std::ifstream stream(source, std::ios::binary);
-          elle::Buffer buffer(N);
-
-          while (stream.good())
           {
-            buffer.size(N);
+            std::streamsize N = 5242880;
+            reactor::fs::File f{*reactor::Scheduler::scheduler(), source};
+            elle::Buffer buffer;
 
-            stream.read((char*)buffer.mutable_contents(), buffer.size());
-
-            buffer.size(stream.gcount());
-
-            etoile::wall::File::write(etoile, file, offset, buffer);
-
-            offset += buffer.size();
-
-            yield();
+            do
+            {
+              buffer.size(N);
+              f.read_some(buffer);
+              etoile::wall::File::write(etoile, file, offset, buffer);
+              offset += buffer.size();
+            } while (buffer.size() == N);
           }
 
-          stream.close();
 
           // Store file.
           etoile::wall::File::store(etoile, file);
