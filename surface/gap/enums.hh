@@ -54,6 +54,7 @@ extern "C"
     gap_no_file = -6,
     gap_file_not_found = -7,
     gap_api_error = -10,
+    gap_peer_to_peer_error = -11,
 # define ERR_CODE(name, value, comment)                                         \
     gap_ ## name = value,
 # include <oracle/disciples/meta/src/meta/error_code.hh.inc>
