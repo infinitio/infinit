@@ -217,10 +217,10 @@ class RandomDirectory(tempfile.TemporaryDirectory):
 #------------------------------------------------------------------------------
 def cases():
     return [
-        RandomTempFile(100 * 1024 * 1024), # Mono file.
-        # [RandomTempFile(40)] * 2, # Multi files.
-        # RandomDirectory(file_count = 50, min_file_size = 10, max_file_size = 50), # Mono Folder.
-        # [RandomDirectory(file_count = 3, min_file_size = 10, max_file_size = 50)] * 2, # Many Folders.
+        RandomTempFile(1024), # Mono file.
+        [RandomTempFile(40)] * 2, # Multi files.
+        RandomDirectory(file_count = 50, min_file_size = 10, max_file_size = 50), # Mono Folder.
+        [RandomDirectory(file_count = 3, min_file_size = 10, max_file_size = 50)] * 2, # Many Folders.
     ]
 
 if __name__ == "__main__":
