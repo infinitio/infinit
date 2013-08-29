@@ -24,7 +24,7 @@ namespace surface
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
                   std::unordered_set<std::string> files,
-                  TransferState current_state,
+                  TransferMachine::State current_state,
                   std::string const& message,
                   std::shared_ptr<TransferMachine::Data> data);
 

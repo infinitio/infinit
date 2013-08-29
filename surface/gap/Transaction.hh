@@ -42,6 +42,19 @@ namespace surface
       };
 
     public:
+      class Notification:
+        public surface::gap::Notification
+      {
+      public:
+        static surface::gap::Notification::Type type;
+
+        Notification(uint32_t id, gap_TransactionStatus status);
+
+        uint32_t id;
+        gap_TransactionStatus status;
+      };
+
+    public:
       typedef plasma::Transaction Data;
 
     public:
@@ -64,6 +77,7 @@ namespace surface
 
       ~Transaction();
 
+      public:
       void
       accept();
 
@@ -79,9 +93,14 @@ namespace surface
       float
       progress() const;
 
-      TransferState
-      state() const;
+    private:
+      bool
+      last_status(gap_TransactionStatus);
 
+      void
+      _notify_on_status_update(surface::gap::State const& state);
+
+    public:
       void
       on_transaction_update(Data const& data);
 
@@ -95,7 +114,8 @@ namespace surface
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
       ELLE_ATTRIBUTE(std::unique_ptr<TransferMachine>, machine);
-
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_state_thread);
+      ELLE_ATTRIBUTE_r(gap_TransactionStatus, last_status);
       /*--------.
       | Helpers |
       `--------*/

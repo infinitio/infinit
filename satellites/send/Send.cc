@@ -94,8 +94,8 @@ int main(int argc, char** argv)
           {
           });
 
-        state.attach_callback<surface::gap::TransferMachine::Notification>(
-          [&] (surface::gap::TransferMachine::Notification const& notif)
+        state.attach_callback<surface::gap::Transaction::Notification>(
+          [&] (surface::gap::Transaction::Notification const& notif)
           {
             if (id == surface::gap::null_id)
               return;
@@ -103,7 +103,7 @@ int main(int argc, char** argv)
             if (notif.id != id)
               return;
 
-            if (notif.status == TransferState_Finished)
+            if (notif.status == gap_transaction_finished)
             {
               state.transactions().at(id).join();
               stop = true;

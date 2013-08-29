@@ -43,12 +43,42 @@ namespace surface
     public:
       typedef plasma::Transaction Data;
 
+      // The values of the enums are used in the snapshot.
+      // To add a state, add it a the end to avoid the invalidation of the locally
+      // stored snapshots.
+      enum class State
+      {
+        NewTransaction = 0,
+        SenderCreateNetwork = 1,
+        SenderCreateTransaction = 2,
+        SenderCopyFiles = 3,
+        SenderWaitForDecision = 4,
+        RecipientWaitForDecision = 5,
+        RecipientAccepted = 6,
+        RecipientWaitForReady = 7,
+        GrantPermissions = 8,
+        PublishInterfaces = 9,
+        Connect = 10,
+        PeerDisconnected = 11,
+        PeerConnectionLost = 12,
+        Transfer = 13,
+        CleanLocal = 14,
+        CleanRemote = 15,
+        Finished = 16,
+        Rejected = 17,
+        Canceled = 18,
+        Failed = 19,
+        Over = 20,
+
+        None = 99,
+      };
+
     public:
       class Snapshot
       {
       public:
         Snapshot(Data const& data,
-                 TransferState const state,
+                 State const state,
                  std::unordered_set<std::string> const& files = {},
                  std::string const& message = "");
 
@@ -56,22 +86,9 @@ namespace surface
 
       public:
         Data data;
-        TransferState state;
+        State state;
         std::unordered_set<std::string> files;
         std::string message;
-      };
-
-    public:
-      class Notification:
-        public surface::gap::Notification
-      {
-      public:
-        static surface::gap::Notification::Type type;
-
-        Notification(uint32_t id, TransferState status);
-
-        uint32_t id;
-        TransferState status;
       };
 
     public:
@@ -155,14 +172,15 @@ namespace surface
 
     protected:
       // XXX: Remove when ELLE_ATTRIBUTE handle protected methods.
-      TransferState _current_state;
+      State _current_state;
+      ELLE_ATTRIBUTE_X(reactor::Signal, state_changed);
 
     protected:
       void
-      current_state(TransferState const& state);
+      current_state(State const& state);
 
     public:
-      TransferState
+      State
       current_state() const;
 
     protected:
@@ -358,7 +376,7 @@ namespace surface
 
     std::ostream&
     operator <<(std::ostream& out,
-                TransferState const& t);
+                TransferMachine::State const& t);
   }
 }
 

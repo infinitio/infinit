@@ -1,4 +1,5 @@
 #include <surface/gap/Transaction.hh>
+#include <surface/gap/enums.hh>
 
 #include <surface/gap/TransferMachine.hh>
 #include <surface/gap/ReceiveMachine.hh>
@@ -10,6 +11,75 @@ namespace surface
 {
   namespace gap
   {
+    Notification::Type Transaction::Notification::type = NotificationType_TransactionUpdate;
+    Transaction::Notification::Notification(uint32_t id,
+                                            gap_TransactionStatus status):
+      id(id),
+      status(status)
+    {}
+
+    static
+    gap_TransactionStatus
+    _transaction_status(Transaction::Data const& data,
+                        TransferMachine::State state)
+    {
+      switch (data.status)
+      {
+        case plasma::TransactionStatus::finished:
+          return gap_transaction_finished;
+        case plasma::TransactionStatus::rejected:
+          return gap_transaction_rejected;
+        case plasma::TransactionStatus::failed:
+          return gap_transaction_failed;
+        case plasma::TransactionStatus::canceled:
+          return gap_transaction_canceled;
+        default:
+          switch (state)
+          {
+            case TransferMachine::State::NewTransaction:
+            case TransferMachine::State::SenderCreateNetwork:
+            case TransferMachine::State::SenderCreateTransaction:
+              // The sender is pending creating the transaction.
+              return gap_transaction_pending;
+            case TransferMachine::State::SenderCopyFiles:
+              return gap_transaction_copying;
+            case TransferMachine::State::SenderWaitForDecision:
+              return gap_transaction_waiting_for_accept;
+            case TransferMachine::State::RecipientWaitForDecision:
+              // The recipient is pending creating waiting for decision.
+              return gap_transaction_waiting_for_accept;
+            case TransferMachine::State::RecipientAccepted:
+            case TransferMachine::State::RecipientWaitForReady:
+              // The recipient has accepted.
+              return gap_transaction_accepted;
+            case TransferMachine::State::GrantPermissions:
+              // The sender recieved the 'accepted'.
+              return gap_transaction_accepted;
+            case TransferMachine::State::PublishInterfaces:
+            case TransferMachine::State::Connect:
+            case TransferMachine::State::PeerDisconnected:
+            case TransferMachine::State::PeerConnectionLost:
+            case TransferMachine::State::Transfer:
+              return gap_transaction_running;
+            case TransferMachine::State::CleanLocal:
+            case TransferMachine::State::CleanRemote:
+            case TransferMachine::State::Over:
+              return gap_transaction_cleaning;
+            case TransferMachine::State::Finished:
+              return gap_transaction_finished;
+            case TransferMachine::State::Rejected:
+              return gap_transaction_rejected;
+            case TransferMachine::State::Canceled:
+              return gap_transaction_canceled;
+            case TransferMachine::State::Failed:
+              return gap_transaction_failed;
+            case TransferMachine::State::None:
+              return gap_transaction_none;
+          }
+      }
+      throw Exception(gap_api_error, "no transaction status can be deduced");
+    }
+
     // - Exception -------------------------------------------------------------
     Transaction::BadOperation::BadOperation(Type type):
       Exception(gap_error, elle::sprintf("%s", type)),
@@ -22,7 +92,8 @@ namespace surface
                              bool history):
       _id(id),
       _data(new Data{std::move(data)}),
-      _machine()
+      _machine(),
+      _last_status(gap_transaction_none)
     {
       ELLE_TRACE_SCOPE("%s: construct from data %s", *this, *this->_data);
       ELLE_ASSERT(state.me().id == this->_data->sender_id ||
@@ -32,6 +103,7 @@ namespace surface
         ELLE_DEBUG("%s: history", *this);
         return;
       }
+
       if (state.me().id == this->_data->sender_id &&
           state.device().id == this->_data->sender_device_id)
       {
@@ -50,6 +122,16 @@ namespace surface
         ELLE_WARN("%s: no machine can be launch for data %s cause it's not "\
                   "your device (%s)", *this, this->_data, state.device().id);
       }
+
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+      this->_machine_state_thread.reset(
+        new reactor::Thread{
+          *reactor::Scheduler::scheduler(),
+          "notify fsm update",
+          [this, &state] ()
+          {
+            this->_notify_on_status_update(state);
+          }});
     }
 
     Transaction::Transaction(State const& state,
@@ -57,7 +139,8 @@ namespace surface
                              TransferMachine::Snapshot snapshot):
       _id(id),
       _data(new Data{std::move(snapshot.data)}),
-      _machine()
+      _machine(),
+      _last_status(gap_transaction_none)
     {
       ELLE_TRACE_SCOPE("%s: construct from snapshot (%s) with data %s",
                        *this, snapshot.state, *this->_data);
@@ -79,6 +162,16 @@ namespace surface
       {
         throw Exception(gap_internal_error, "invalid snapshot");
       }
+
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+      this->_machine_state_thread.reset(
+        new reactor::Thread{
+          *reactor::Scheduler::scheduler(),
+          "notify fsm update",
+          [this, &state]
+          {
+            this->_notify_on_status_update(state);
+          }});
     }
 
     Transaction::Transaction(surface::gap::State const& state,
@@ -87,15 +180,48 @@ namespace surface
                              std::unordered_set<std::string>&& files,
                              std::string const& message):
       _id(id),
-      _data{new Data{state.me().id, state.me().fullname, state.device().id}},
-      _machine(new SendMachine{state, this->_id, peer_id, std::move(files), message, this->_data})
+      _data(new Data{state.me().id, state.me().fullname, state.device().id}),
+      _machine(new SendMachine{state, this->_id, peer_id, std::move(files), message, this->_data}),
+      _last_status(gap_transaction_none)
     {
       ELLE_TRACE_SCOPE("%s: created transaction for a new send: %s", *this, this->_data);
+
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+      this->_machine_state_thread.reset(
+        new reactor::Thread{
+          *reactor::Scheduler::scheduler(),
+          "notify fsm update",
+          [this, &state]
+          {
+            this->_notify_on_status_update(state);
+          }});
     }
 
     Transaction::~Transaction()
     {
+      if (this->_machine_state_thread)
+      {
+        this->_machine_state_thread->terminate_now();
+        this->_machine_state_thread.reset();
+      }
       this->_machine.reset();
+    }
+
+    void
+    Transaction::_notify_on_status_update(surface::gap::State const& state)
+    {
+      while (this->_machine != nullptr)
+      {
+        reactor::Thread& current =
+          *reactor::Scheduler::scheduler()->current();
+
+        current.wait(this->_machine->state_changed());
+        if (this->last_status(
+              _transaction_status(
+                *this->data(),
+                this->_machine->current_state())))
+          state.enqueue(Notification(this->id(), this->last_status()));
+      }
     }
 
     void
@@ -158,14 +284,23 @@ namespace surface
       this->_machine->join();
     }
 
-    TransferState
-    Transaction::state() const
+    bool
+    Transaction::last_status(gap_TransactionStatus status)
     {
-      ELLE_TRACE_SCOPE("%s: rejecting transaction", *this);
-      if (this->_machine == nullptr)
-        return TransferState_Over;
+      if (this->_last_status == status)
+        return false;
 
-      return this->_machine->current_state();
+      this->_last_status = status;
+      return true;
+    }
+
+    gap_TransactionStatus
+    Transaction::last_status() const
+    {
+      if (this->_last_status == gap_transaction_none)
+        return _transaction_status(*this->data(), TransferMachine::State::None);
+
+      return this->_last_status;
     }
 
     float

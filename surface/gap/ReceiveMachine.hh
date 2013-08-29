@@ -29,7 +29,7 @@ namespace surface
       // Construct from snapshot (with current_state).
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
-                     TransferState const current_state,
+                     TransferMachine::State const current_state,
                      std::shared_ptr<TransferMachine::Data> data);
       virtual
       ~ReceiveMachine();

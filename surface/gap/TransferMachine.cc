@@ -30,16 +30,8 @@ namespace surface
 {
   namespace gap
   {
-    Notification::Type TransferMachine::Notification::type = NotificationType_TransactionUpdate;
-
-    TransferMachine::Notification::Notification(uint32_t id,
-                                                TransferState status):
-      id(id),
-      status(status)
-    {}
-
     TransferMachine::Snapshot::Snapshot(Data const& data,
-                                        TransferState const state,
+                                        State const state,
                                         std::unordered_set<std::string> const& files,
                                         std::string const& message):
       data(data),
@@ -275,15 +267,15 @@ namespace surface
     }
 
     void
-    TransferMachine::current_state(TransferState const& state)
+    TransferMachine::current_state(TransferMachine::State const& state)
     {
       ELLE_TRACE_SCOPE("%s: set new progress to %s", *this, state);
       this->_current_state = state;
       this->_save_snapshot();
-      this->state().enqueue(Notification(this->id(), state));
+      this->_state_changed.signal();
     }
 
-    TransferState
+    TransferMachine::State
     TransferMachine::current_state() const
     {
       return this->_current_state;
@@ -325,7 +317,7 @@ namespace surface
     TransferMachine::_local_clean()
     {
       ELLE_TRACE_SCOPE("%s: clean local %s", *this, this->data()->network_id);
-      this->current_state(TransferState_CleanLocal);
+      this->current_state(State::CleanLocal);
 
       if (!this->data()->network_id.empty())
       {
@@ -352,7 +344,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: clean remote network %s",
                        *this, this->data()->network_id);
-      this->current_state(TransferState_CleanRemote);
+      this->current_state(State::CleanRemote);
 
       if (!this->data()->network_id.empty())
       {
@@ -390,7 +382,7 @@ namespace surface
     TransferMachine::_finish()
     {
       ELLE_TRACE_SCOPE("%s: machine finished", *this);
-      this->current_state(TransferState_Finished);
+      this->current_state(State::Finished);
       this->_finalize(plasma::TransactionStatus::finished);
       ELLE_DEBUG("%s: finished", *this);
     }
@@ -399,7 +391,7 @@ namespace surface
     TransferMachine::_reject()
     {
       ELLE_TRACE_SCOPE("%s: machine rejected", *this);
-      this->current_state(TransferState_Rejected);
+      this->current_state(State::Rejected);
       this->_finalize(plasma::TransactionStatus::rejected);
       ELLE_DEBUG("%s: rejected", *this);
     }
@@ -408,7 +400,7 @@ namespace surface
     TransferMachine::_cancel()
     {
       ELLE_TRACE_SCOPE("%s: machine canceled", *this);
-      this->current_state(TransferState_Canceled);
+      this->current_state(State::Canceled);
       this->_finalize(plasma::TransactionStatus::canceled);
       ELLE_DEBUG("%s: canceled", *this);
     }
@@ -417,7 +409,7 @@ namespace surface
     TransferMachine::_fail()
     {
       ELLE_TRACE_SCOPE("%s: machine failed", *this);
-      this->current_state(TransferState_Failed);
+      this->current_state(State::Failed);
       this->_finalize(plasma::TransactionStatus::failed);
       ELLE_DEBUG("%s: failed", *this);
     }
@@ -627,7 +619,7 @@ namespace surface
         this->_machine_thread.reset();
       }
 
-      this->_current_state = TransferState_Over;
+      this->_current_state = State::Over;
     }
 
     /*-------------.
@@ -637,7 +629,7 @@ namespace surface
     TransferMachine::_publish_interfaces()
     {
       ELLE_TRACE_SCOPE("%s: publish interfaces", *this);
-      this->current_state(TransferState_PublishInterfaces);
+      this->current_state(State::PublishInterfaces);
       typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
       AddressContainer addresses;
 
@@ -676,7 +668,7 @@ namespace surface
     TransferMachine::_connection()
     {
       ELLE_TRACE_SCOPE("%s: connecting peers", *this);
-      this->current_state(TransferState_Connect);
+      this->current_state(State::Connect);
 
       auto const& transaction = *this->data();
 
@@ -822,7 +814,7 @@ namespace surface
     TransferMachine::_wait_for_peer()
     {
       ELLE_TRACE_SCOPE("%s: waiting for peer to reconnect", *this);
-      this->current_state(TransferState_PeerDisconnected);
+      this->current_state(State::PeerDisconnected);
     }
 
     void
@@ -831,7 +823,7 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
-      this->current_state(TransferState_Transfer);
+      this->current_state(State::Transfer);
       this->_pull_progress_thread.reset(
         sched.every(
           [&] () { this->_retrieve_progress(); },
@@ -1113,51 +1105,51 @@ namespace surface
 
     std::ostream&
     operator <<(std::ostream& out,
-                TransferState const& t)
+                TransferMachine::State const& t)
     {
       switch (t)
       {
-        case TransferState_NewTransaction:
+        case TransferMachine::State::NewTransaction:
           return out << "NewTransaction";
-        case TransferState_SenderCreateNetwork:
+        case TransferMachine::State::SenderCreateNetwork:
           return out << "SenderCreateNetwork";
-        case TransferState_SenderCreateTransaction:
+        case TransferMachine::State::SenderCreateTransaction:
           return out << "SenderCreateTransaction";
-        case TransferState_SenderCopyFiles:
+        case TransferMachine::State::SenderCopyFiles:
           return out << "SenderCopyFiles";
-        case TransferState_SenderWaitForDecision:
+        case TransferMachine::State::SenderWaitForDecision:
           return out << "SenderWaitForDecision";
-        case TransferState_RecipientWaitForDecision:
+        case TransferMachine::State::RecipientWaitForDecision:
           return out << "RecipientWaitForDecision";
-        case TransferState_RecipientAccepted:
+        case TransferMachine::State::RecipientAccepted:
           return out << "RecipientAccepted";
-        case TransferState_GrantPermissions:
+        case TransferMachine::State::GrantPermissions:
           return out << "GrantPermissions";
-        case TransferState_RecipientWaitForReady:
+        case TransferMachine::State::RecipientWaitForReady:
           return out << "RecipientWaitForReady";
-        case TransferState_PublishInterfaces:
+        case TransferMachine::State::PublishInterfaces:
           return out << "PublishInterfaces";
-        case TransferState_Connect:
+        case TransferMachine::State::Connect:
           return out << "Connect";
-        case TransferState_PeerDisconnected:
+        case TransferMachine::State::PeerDisconnected:
           return out << "PeerDisconnected";
-        case TransferState_PeerConnectionLost:
+        case TransferMachine::State::PeerConnectionLost:
           return out << "PeerConnectionLost";
-        case TransferState_Transfer:
+        case TransferMachine::State::Transfer:
           return out << "Transfer";
-        case TransferState_CleanLocal:
+        case TransferMachine::State::CleanLocal:
           return out << "CleanLocal";
-        case TransferState_CleanRemote:
+        case TransferMachine::State::CleanRemote:
           return out << "CleanRemote";
-        case TransferState_Finished:
+        case TransferMachine::State::Finished:
           return out << "Finished";
-        case TransferState_Rejected:
+        case TransferMachine::State::Rejected:
           return out << "Rejected";
-        case TransferState_Canceled:
+        case TransferMachine::State::Canceled:
           return out << "Canceled";
-        case TransferState_Failed:
+        case TransferMachine::State::Failed:
           return out << "Failed";
-        case TransferState_Over:
+        case TransferMachine::State::Over:
           return out << "Over";
       }
       return out;

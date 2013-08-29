@@ -90,16 +90,16 @@ int main(int argc, char** argv)
 
           });
 
-        state.attach_callback<surface::gap::TransferMachine::Notification>(
-          [&] (surface::gap::TransferMachine::Notification const& notif)
+        state.attach_callback<surface::gap::Transaction::Notification>(
+          [&] (surface::gap::Transaction::Notification const& notif)
           {
             std::cerr << "TransactionNotification(" << notif.id
                       << ", status: " << notif.status << std::endl;
-            if (notif.status == TransferState_RecipientWaitForDecision)
+            if (notif.status == gap_transaction_waiting_for_accept)
             {
               state.transactions().at(notif.id).accept();
             }
-            else if (notif.status == TransferState_Finished)
+            else if (notif.status == gap_transaction_finished)
             {
               std::cerr << "finished" << std::endl;
               state.transactions().at(notif.id).join();

@@ -65,7 +65,7 @@ namespace surface
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
-                                   TransferState const current_state,
+                                   TransferMachine::State const current_state,
                                    std::shared_ptr<TransferMachine::Data> data):
       ReceiveMachine(state, id, std::move(data), true)
     {
@@ -74,48 +74,48 @@ namespace surface
 
       switch (current_state)
       {
-        case TransferState_NewTransaction:
+        case TransferMachine::State::NewTransaction:
           //
           break;
-        case TransferState_SenderCreateNetwork:
-        case TransferState_SenderCreateTransaction:
-        case TransferState_SenderCopyFiles:
-        case TransferState_SenderWaitForDecision:
+        case TransferMachine::State::SenderCreateNetwork:
+        case TransferMachine::State::SenderCreateTransaction:
+        case TransferMachine::State::SenderCopyFiles:
+        case TransferMachine::State::SenderWaitForDecision:
           elle::unreachable();
-        case TransferState_RecipientWaitForDecision:
+        case TransferMachine::State::RecipientWaitForDecision:
           this->_run(this->_wait_for_decision_state);
           break;
-        case TransferState_RecipientAccepted:
+        case TransferMachine::State::RecipientAccepted:
           this->_run(this->_accept_state);
           break;
-        case TransferState_RecipientWaitForReady:
+        case TransferMachine::State::RecipientWaitForReady:
           this->_run(this->_wait_for_ready_state);
           break;
-        case TransferState_GrantPermissions:
+        case TransferMachine::State::GrantPermissions:
           elle::unreachable();
-        case TransferState_PublishInterfaces:
-        case TransferState_Connect:
-        case TransferState_PeerDisconnected:
-        case TransferState_PeerConnectionLost:
-        case TransferState_Transfer:
+        case TransferMachine::State::PublishInterfaces:
+        case TransferMachine::State::Connect:
+        case TransferMachine::State::PeerDisconnected:
+        case TransferMachine::State::PeerConnectionLost:
+        case TransferMachine::State::Transfer:
           this->_run(this->_transfer_core_state);
           break;
-        case TransferState_CleanLocal:
+        case TransferMachine::State::CleanLocal:
           this->_run(this->_local_clean_state);
           break;
-        case TransferState_CleanRemote:
+        case TransferMachine::State::CleanRemote:
           this->_run(this->_remote_clean_state);
           break;
-        case TransferState_Finished:
+        case TransferMachine::State::Finished:
           this->_run(this->_finish_state);
           break;
-        case TransferState_Rejected:
+        case TransferMachine::State::Rejected:
           this->_run(this->_reject_state);
           break;
-        case TransferState_Canceled:
+        case TransferMachine::State::Canceled:
           this->_run(this->_cancel_state);
           break;
-        case TransferState_Failed:
+        case TransferMachine::State::Failed:
           this->_run(this->_fail_state);
           break;
         default:
@@ -227,14 +227,14 @@ namespace surface
     ReceiveMachine::_wait_for_decision()
     {
       ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
-      this->current_state(TransferState_RecipientWaitForDecision);
+      this->current_state(TransferMachine::State::RecipientWaitForDecision);
     }
 
     void
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
-      this->current_state(TransferState_RecipientAccepted);
+      this->current_state(TransferMachine::State::RecipientAccepted);
 
       ELLE_TRACE("%s: add device %s to network %s",
                  *this, this->state().device().id, this->network_id());
@@ -263,7 +263,7 @@ namespace surface
     ReceiveMachine::_wait_for_ready()
     {
       ELLE_TRACE_SCOPE("%s: wait for ready %s", *this, this->transaction_id());
-      this->current_state(TransferState_RecipientWaitForReady);
+      this->current_state(TransferMachine::State::RecipientWaitForReady);
     }
 
     void

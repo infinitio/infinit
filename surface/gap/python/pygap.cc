@@ -334,7 +334,7 @@ namespace
   _gap_transaction_callback(gap_State* state,
                             boost::python::object cb)
   {
-    auto cpp_cb = [cb] (surface::gap::TransferMachine::Notification const& notif)
+    auto cpp_cb = [cb] (surface::gap::Transaction::Notification const& notif)
     {
       wrap_call(cb)(notif.id, notif.status);
     };
@@ -344,7 +344,7 @@ namespace
       "transaction callback",
       [&] (surface::gap::State& state) -> int
       {
-        state.attach_callback<surface::gap::TransferMachine::Notification>(cpp_cb);
+        state.attach_callback<surface::gap::Transaction::Notification>(cpp_cb);
         return 0;
       });
 
@@ -408,28 +408,19 @@ BOOST_PYTHON_MODULE(_gap)
 # undef ERR_CODE
   ;
 
-  py::enum_<TransferState>("TransactionStatus")
-    .value("NewTransaction", TransferState_NewTransaction)
-    .value("SenderCreateNetwork", TransferState_SenderCreateNetwork)
-    .value("SenderCreateTransaction", TransferState_SenderCreateTransaction)
-    .value("SenderCopyFiles", TransferState_SenderCopyFiles)
-    .value("SenderWaitForDecision", TransferState_SenderWaitForDecision)
-    .value("RecipientWaitForDecision", TransferState_RecipientWaitForDecision)
-    .value("RecipientAccepted", TransferState_RecipientAccepted)
-    .value("RecipientWaitForReady", TransferState_RecipientWaitForReady)
-    .value("GrantPermissions", TransferState_GrantPermissions)
-    .value("PublishInterfaces", TransferState_PublishInterfaces)
-    .value("Connect", TransferState_Connect)
-    .value("PeerDisconnected", TransferState_PeerDisconnected)
-    .value("PeerConnectionLost", TransferState_PeerConnectionLost)
-    .value("Transfer", TransferState_Transfer)
-    .value("CleanLocal", TransferState_CleanLocal)
-    .value("CleanRemote", TransferState_CleanRemote)
-    .value("Finished", TransferState_Finished)
-    .value("Rejected", TransferState_Rejected)
-    .value("Canceled", TransferState_Canceled)
-    .value("Failed", TransferState_Failed)
-    .value("Over", TransferState_Over)
+  py::enum_<gap_TransactionStatus>("TransactionStatus")
+    .value("none", gap_transaction_none)
+    .value("pending", gap_transaction_pending)
+    .value("copying", gap_transaction_copying)
+    .value("waiting_for_accept", gap_transaction_waiting_for_accept)
+    .value("accepted", gap_transaction_accepted)
+    .value("preparing", gap_transaction_preparing)
+    .value("running", gap_transaction_running)
+    .value("cleaning", gap_transaction_cleaning)
+    .value("finished", gap_transaction_finished)
+    .value("failed", gap_transaction_failed)
+    .value("canceled", gap_transaction_canceled)
+    .value("rejected", gap_transaction_rejected)
   ;
 
   //- gap ctor and dtor -------------------------------------------------------
@@ -523,6 +514,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transaction_files_count", &gap_transaction_files_count);
   py::def("transaction_total_size", &gap_transaction_total_size);
   py::def("transaction_is_directory", &gap_transaction_is_directory);
-  py::def("transaction_state", &gap_transaction_state);
+  py::def("transaction_status", &gap_transaction_status);
   py::def("transaction_message", &gap_transaction_message);
 }

@@ -24,49 +24,33 @@ class Transaction:
     def status_dict(self, reverse = False):
         if reverse:
             return {
-                "NewTransaction": self.state.TransactionStatus.NewTransaction,
-                "SenderCreateNetwork": self.state.TransactionStatus.SenderCreateNetwork,
-                "SenderCreateTransaction": self.state.TransactionStatus.SenderCreateTransaction,
-                "SenderCopyFiles": self.state.TransactionStatus.SenderCopyFiles,
-                "SenderWaitForDecision": self.state.TransactionStatus.SenderWaitForDecision,
-                "RecipientWaitForDecision": self.state.TransactionStatus.RecipientWaitForDecision,
-                "RecipientAccepted": self.state.TransactionStatus.RecipientAccepted,
-                "RecipientWaitForReady": self.state.TransactionStatus.RecipientWaitForReady,
-                "GrantPermissions": self.state.TransactionStatus.GrantPermissions,
-                "PublishInterfaces": self.state.TransactionStatus.PublishInterfaces,
-                "Connect": self.state.TransactionStatus.Connect,
-                "PeerDisconnected": self.state.TransactionStatus.PeerDisconnected,
-                "PeerConnectionLost": self.state.TransactionStatus.PeerConnectionLost,
-                "Transfer": self.state.TransactionStatus.Transfer,
-                "CleanLocal": self.state.TransactionStatus.CleanLocal,
-                "CleanRemote": self.state.TransactionStatus.CleanRemote,
-                "Finished": self.state.TransactionStatus.Finished,
-                "Rejected": self.state.TransactionStatus.Rejected,
-                "Canceled": self.state.TransactionStatus.Canceled,
-                "Failed": self.state.TransactionStatus.Failed,
+                "none": self.state.TransactionStatus.none,
+                "pending": self.state.TransactionStatus.pending,
+                "copying": self.state.TransactionStatus.copying,
+                "waiting_for_accept": self.state.TransactionStatus.waiting_for_accept,
+                "accepted": self.state.TransactionStatus.accepted,
+                "preparing": self.state.TransactionStatus.preparing,
+                "running": self.state.TransactionStatus.running,
+                "cleaning": self.state.TransactionStatus.cleaning,
+                "finished": self.state.TransactionStatus.finished,
+                "failed": self.state.TransactionStatus.failed,
+                "canceled": self.state.TransactionStatus.canceled,
+                "rejected": self.state.TransactionStatus.rejected,
                 }
         else:
             return {
-                self.state.TransactionStatus.NewTransaction: "NewTransaction",
-                self.state.TransactionStatus.SenderCreateNetwork: "SenderCreateNetwork",
-                self.state.TransactionStatus.SenderCreateTransaction: "SenderCreateTransaction",
-                self.state.TransactionStatus.SenderCopyFiles: "SenderCopyFiles",
-                self.state.TransactionStatus.SenderWaitForDecision: "SenderWaitForDecision",
-                self.state.TransactionStatus.RecipientWaitForDecision: "RecipientWaitForDecision",
-                self.state.TransactionStatus.RecipientAccepted: "RecipientAccepted",
-                self.state.TransactionStatus.RecipientWaitForReady: "RecipientWaitForReady",
-                self.state.TransactionStatus.GrantPermissions: "GrantPermissions",
-                self.state.TransactionStatus.PublishInterfaces: "PublishInterfaces",
-                self.state.TransactionStatus.Connect: "Connect",
-                self.state.TransactionStatus.PeerDisconnected: "PeerDisconnected",
-                self.state.TransactionStatus.PeerConnectionLost: "PeerConnectionLost",
-                self.state.TransactionStatus.Transfer: "Transfer",
-                self.state.TransactionStatus.CleanLocal: "CleanLocal",
-                self.state.TransactionStatus.CleanRemote: "CleanRemote",
-                self.state.TransactionStatus.Finished: "Finished",
-                self.state.TransactionStatus.Rejected: "Rejected",
-                self.state.TransactionStatus.Canceled: "Canceled",
-                self.state.TransactionStatus.Failed: "Failed",
+                self.state.TransactionStatus.none: "none",
+                self.state.TransactionStatus.pending: "pending",
+                self.state.TransactionStatus.copying: "copying",
+                self.state.TransactionStatus.waiting_for_accept: "waiting_for_accept",
+                self.state.TransactionStatus.accepted: "accepted",
+                self.state.TransactionStatus.preparing: "preparing",
+                self.state.TransactionStatus.running: "running",
+                self.state.TransactionStatus.cleaning: "cleaning",
+                self.state.TransactionStatus.finished: "finished",
+                self.state.TransactionStatus.failed: "failed",
+                self.state.TransactionStatus.canceled: "canceled",
+                self.state.TransactionStatus.rejected: "rejected",
         }
     @property
     def finished_status(self):
@@ -158,6 +142,11 @@ class User:
     def __enter__(self):
         self._init_state()
         self._register_or_login()
+
+        cprint("+" * 40, color = Color.Blue)
+        for transaction in self.state.transactions():
+            cprint(self.state.transaction_status(transaction), color = Color.Blue)
+
         return self
 
     def __exit__(self, type, value, tb):
@@ -215,21 +204,21 @@ class User:
                self.id == state.transaction_sender_id(transaction_id)
         transaction = self.transactions[transaction_id]
         is_sender = (self.id == self.state.transaction_sender_id(transaction_id))
-        if status == state.TransactionStatus.Canceled:
+        if status == state.TransactionStatus.canceled:
             print("%s Transaction canceled" % status)
             transaction.canceled = True
             state.join_transaction(transaction_id)
-        elif status == state.TransactionStatus.Failed:
+        elif status == state.TransactionStatus.failed:
             print("%s Transaction failed" % status)
             transaction.failed = True
             state.join_transaction(transaction_id)
-        elif status == state.TransactionStatus.Rejected:
+        elif status == state.TransactionStatus.rejected:
             print("%s Transaction rejected" % status)
             transaction.rejected = True
             state.join_transaction(transaction_id)
-        elif not is_sender and status == state.TransactionStatus.RecipientWaitForDecision:
+        elif not is_sender and status == state.TransactionStatus.waiting_for_accept:
             self.machine_id = state.accept_transaction(transaction_id)
-        elif status == state.TransactionStatus.Finished:
+        elif status == state.TransactionStatus.finished:
             transaction.finished = True
             print("{} join {}".format(state._id, status))
             self.state.join_transaction(transaction_id)
@@ -284,16 +273,16 @@ class CancelUser(User):
         transaction = self.transactions[transaction_id]
         cprint("Transaction %s %s: when %s" % (transaction_id, status, self.when), color=Color.Green)
         is_sender = (self.id == self.state.transaction_sender_id(transaction_id))
-        if status == state.TransactionStatus.Canceled:
+        if status == state.TransactionStatus.canceled:
             transaction.canceled = True
             state.join_transaction(transaction_id)
-        elif status == state.TransactionStatus.Rejected:
+        elif status == state.TransactionStatus.rejected:
             transaction.rejected = True
             state.join_transaction(transaction_id)
-        elif status == state.TransactionStatus.Failed:
+        elif status == state.TransactionStatus.failed:
             transaction.failed = True
             state.join_transaction(transaction_id)
-        elif not is_sender and status == state.TransactionStatus.RecipientWaitForDecision:
+        elif not is_sender and status == state.TransactionStatus.waiting_for_accept:
             self.machine_id = state.accept_transaction(transaction_id)
         if (status == transaction.status_dict(reverse = True)[self.when]):
             time.sleep(self.delay / 1000)

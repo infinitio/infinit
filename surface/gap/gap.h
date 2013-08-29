@@ -144,7 +144,7 @@ extern "C" {
 
   /// New transaction callback.
   typedef void (*gap_transaction_callback_t)(uint32_t id,
-                                             TransferState status);
+                                             gap_TransactionStatus status);
 
   gap_Status
   gap_transaction_callback(gap_State* state,
@@ -203,9 +203,9 @@ extern "C" {
   gap_transaction_is_directory(gap_State*,
                                uint32_t);
 
-  TransferState
-  gap_transaction_state(gap_State* state,
-                        uint32_t const);
+  gap_TransactionStatus
+  gap_transaction_status(gap_State* state,
+                         uint32_t const);
 
   char const*
   gap_transaction_message(gap_State*,
@@ -215,10 +215,10 @@ extern "C" {
   gap_transaction_progress(gap_State* state,
                            uint32_t);
 
-  /// Force transaction to be fetched again from server.
-  gap_Status
-  gap_transaction_sync(gap_State* state,
-                       char const* transaction_id);
+  /* /// Force transaction to be fetched again from server. */
+  /* gap_Status */
+  /* gap_transaction_sync(gap_State* state, */
+  /*                      char const* transaction_id); */
 
   /// - Message ---------------------------------------------------------------
 

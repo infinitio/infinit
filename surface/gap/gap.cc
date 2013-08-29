@@ -776,7 +776,7 @@ extern "C"
   gap_transaction_callback(gap_State* state,
                            gap_transaction_callback_t cb)
   {
-    auto cpp_cb = [cb] (surface::gap::TransferMachine::Notification const& notif)
+    auto cpp_cb = [cb] (surface::gap::Transaction::Notification const& notif)
     {
       cb(notif.id, notif.status);
     };
@@ -786,7 +786,7 @@ extern "C"
       "transaction callback",
       [&] (surface::gap::State& state) -> gap_Status
       {
-        state.attach_callback<surface::gap::TransferMachine::Notification>(cpp_cb);
+        state.attach_callback<surface::gap::Transaction::Notification>(cpp_cb);
         return gap_ok;
       });
   }
@@ -885,19 +885,19 @@ extern "C"
   DEFINE_TRANSACTION_GETTER_BOOL(is_directory)
   // _transform_ is a cast from plasma::TransactionStatus
 
-  TransferState
-  gap_transaction_state(gap_State* state,
+  gap_TransactionStatus
+  gap_transaction_status(gap_State* state,
                         uint32_t const transaction_id)
   {
     assert(state != nullptr);
     assert(transaction_id != surface::gap::null_id);
 
-    return run<TransferState>(
+    return run<gap_TransactionStatus>(
       state,
       "transaction state",
       [&] (surface::gap::State& state)
       {
-        return state.transactions().at(transaction_id).state();
+        return state.transactions().at(transaction_id).last_status();
       }
     );
   }
@@ -933,22 +933,6 @@ extern "C"
       [&] (surface::gap::State& state) -> float
       {
         return state.transactions().at(id).progress();
-      });
-  }
-
-  gap_Status
-  gap_transaction_sync(gap_State* state,
-                         char const* transaction_id)
-  {
-    assert(transaction_id != nullptr);
-
-    return run<gap_Status>(
-      state,
-      "sync",
-      [&] (surface::gap::State& state) -> gap_Status
-      {
-        //state.transaction_manager().sync(transaction_id);
-        return gap_ok;
       });
   }
 
