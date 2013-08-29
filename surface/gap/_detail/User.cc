@@ -390,7 +390,7 @@ namespace surface
       plasma::trophonius::NewSwaggerNotification const& notif)
     {
       ELLE_TRACE_SCOPE("%s: new swagger notification %s", *this, notif);
-      uint32_t id = this->_user_indexes.at(this->user(notif.user_id).id);
+      uint32_t id = this->_user_indexes.at(this->user_sync(notif.user_id).id);
       {
         reactor::Lock lock(this->_swagger_mutex);
         this->_swagger_indexes.insert(id);
