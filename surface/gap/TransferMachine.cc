@@ -100,9 +100,6 @@ namespace surface
       _core_stoped_state(
         this->_core_machine.state_make(
           "core stoped", std::bind(&TransferMachine::_core_stoped, this))),
-      _core_failed_state(
-        this->_core_machine.state_make(
-          "core failed", std::bind(&TransferMachine::_core_failed, this))),
       _core_paused_state(
         this->_core_machine.state_make(
           "core paused", std::bind(&TransferMachine::_core_paused, this))),
