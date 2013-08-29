@@ -176,6 +176,15 @@ namespace surface
       std::swap(this->_files, files);
 
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
+      this->data()->files.resize(this->_files.size());
+      std::transform(
+        this->_files.begin(),
+        this->_files.end(),
+        this->data()->files.begin(),
+        [] (std::string const& el) {
+          return boost::filesystem::path(el).filename().string();
+        });
+      ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
 
       this->peer_id(recipient);
       this->_run(this->_request_network_state);
@@ -192,6 +201,18 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
                        *this, *this->data(), current_state);
       this->_files = std::move(files);
+
+      ELLE_ASSERT_NEQ(this->_files.size(), 0u);
+      this->data()->files.resize(this->_files.size());
+      std::transform(
+        this->_files.begin(),
+        this->_files.end(),
+        this->data()->files.begin(),
+        [] (std::string const& el) {
+          return boost::filesystem::path(el).filename().string();
+        });
+      ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
+
       this->_current_state = current_state;
       this->_message = message;
       switch (current_state)
@@ -357,8 +378,8 @@ namespace surface
       this->transaction_id(
         this->state().meta().create_transaction(
           this->peer_id(),
-          file_list,
-          this->_files.size(),
+          this->data()->files,
+          this->data()->files.size(),
           size,
           boost::filesystem::is_directory(first_file),
           this->network().name(),
