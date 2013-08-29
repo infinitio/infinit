@@ -1249,6 +1249,8 @@ def configure(cxx_toolkit = None,
       oracles << metalib_lib
 
     oracles << stun_server
+    oracles << curl_lib
+    oracles << openssl_lib
     build << oracles
 
   # Install
