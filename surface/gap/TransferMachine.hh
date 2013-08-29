@@ -194,6 +194,9 @@ namespace surface
       void
       _clean();
 
+      void
+      _end();
+
     protected:
       virtual
       void
@@ -209,6 +212,7 @@ namespace surface
       reactor::fsm::State& _fail_state;
       reactor::fsm::State& _remote_clean_state;
       reactor::fsm::State& _local_clean_state;
+      reactor::fsm::State& _end_state;
 
     protected:
       reactor::Barrier _finished;
@@ -239,9 +243,6 @@ namespace surface
       _core_stoped();
 
       void
-      _core_failed();
-
-      void
       _core_paused();
 
       // Common on both sender and recipient process.
@@ -251,7 +252,6 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_peer_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, transfer_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, core_stoped_state);
-      ELLE_ATTRIBUTE(reactor::fsm::State&, core_failed_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, core_paused_state);
 
     protected:
@@ -276,11 +276,6 @@ namespace surface
       | Transaction |
       `------------*/
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
-    //   ELLE_ATTRIBUTE(Journal, journal);
-
-    // protected:
-    //   Journal&
-    //   journal();
 
     public:
       std::string const&

@@ -16,6 +16,7 @@
 
 #include <cryptography/oneway.hh>
 
+#include <elle/container/list.hh>
 #include <elle/os/getenv.hh>
 #include <elle/network/Interface.hh>
 #include <elle/printf.hh>
@@ -79,6 +80,9 @@ namespace surface
       _local_clean_state(
         this->_machine.state_make(
           "local clean", std::bind(&TransferMachine::_local_clean, this))),
+      _end_state(
+        this->_machine.state_make(
+          "end", std::bind(&TransferMachine::_end, this))),
       _core_machine(),
       _core_machine_thread(),
       _publish_interfaces_state(
@@ -146,50 +150,57 @@ namespace surface
       this->_machine.transition_add(this->_remote_clean_state,
                                     this->_local_clean_state);
 
-      auto& end_state = this->_machine.state_make(
-        [this]
-        {
-          ELLE_TRACE_SCOPE("%s: end of machine", *this);
-        });
-
-      this->_machine.transition_add(this->_local_clean_state, end_state);
-
-      // XXX: Create a temporary state non handled exception on final states.
-      // If something went wrong like a connection troubles, we don't want an
-      // exception
-      // to escape into scheduler.
-      // A better way to handle this could be a retry state.
-      // If the exception is not too critical, we could restart in the last
-      // state.
-      auto& err = this->_machine.state_make(
-        [this]
-        {
-          ELLE_ERR("%s: something went wrong while cleaning: escaping", *this);
-        });
-
-      this->_machine.transition_add_catch(this->_fail_state, err);
-      this->_machine.transition_add_catch(this->_cancel_state, err);
-      this->_machine.transition_add_catch(this->_finish_state, err);
-      this->_machine.transition_add_catch(this->_remote_clean_state, err);
-      this->_machine.transition_add_catch(this->_local_clean_state, err);
-
-
+      // The catch transitions just open the barrier to logging purpose.
+      // The snapshot will be kept.
+      this->_machine.transition_add_catch(this->_fail_state, this->_end_state)
+        .action([this] { ELLE_ERR("%s: Failure failed", *this); });
+      this->_machine.transition_add_catch(this->_cancel_state, this->_end_state)
+        .action([this]
+                {
+                  ELLE_ERR("%s: Cancellation failed", *this);
+                  this->_failed.open();
+                });
+      this->_machine.transition_add_catch(this->_finish_state, this->_end_state)
+        .action([this]
+                {
+                  ELLE_ERR("%s: Termination failed", *this);
+                  this->_failed.open();
+                });
+      this->_machine.transition_add_catch(this->_remote_clean_state,
+                                          this->_end_state)
+        .action([this]
+                {
+                  ELLE_ERR("%s: Remote clean failed", *this);
+                  this->_failed.open();
+                });
+      this->_machine.transition_add_catch(this->_local_clean_state,
+                                          this->_end_state)
+        .action([this]
+                {
+                  ELLE_ERR("%s: Local clean failed", *this);
+                  this->_failed.open();
+                });
+      this->_machine.transition_add(this->_local_clean_state, this->_end_state);
 
       /*-------------.
       | Core Machine |
       `-------------*/
-      this->_core_machine.transition_add(this->_publish_interfaces_state,
-                                         this->_connection_state,
-                                         reactor::Waitables{&this->_peer_online});
-      this->_core_machine.transition_add(this->_connection_state,
-                                         this->_wait_for_peer_state,
-                                         reactor::Waitables{&this->_peer_offline});
-      this->_core_machine.transition_add(this->_wait_for_peer_state,
-                                         this->_connection_state,
-                                         reactor::Waitables{&this->_peer_online});
-      this->_core_machine.transition_add(this->_connection_state,
-                                         this->_connection_state,
-                                         reactor::Waitables{&this->_peer_online});
+      this->_core_machine.transition_add(
+        this->_publish_interfaces_state,
+        this->_connection_state,
+        reactor::Waitables{&this->_peer_online});
+      this->_core_machine.transition_add(
+        this->_connection_state,
+        this->_wait_for_peer_state,
+        reactor::Waitables{&this->_peer_offline});
+      this->_core_machine.transition_add(
+        this->_wait_for_peer_state,
+        this->_connection_state,
+        reactor::Waitables{&this->_peer_online});
+      this->_core_machine.transition_add(
+        this->_connection_state,
+        this->_connection_state,
+        reactor::Waitables{&this->_peer_online});
 
       this->_core_machine.transition_add(
         this->_publish_interfaces_state,
@@ -213,14 +224,40 @@ namespace surface
       this->_core_machine.transition_add(
         this->_transfer_state, this->_core_stoped_state);
 
-      this->_core_machine.transition_add_catch(this->_publish_interfaces_state,
-                                               this->_core_failed_state);
-      this->_core_machine.transition_add_catch(this->_wait_for_peer_state,
-                                               this->_core_failed_state);
-      this->_core_machine.transition_add_catch(this->_connection_state,
-                                               this->_core_failed_state);
-      this->_core_machine.transition_add_catch(this->_transfer_state,
-                                               this->_core_failed_state);
+      this->_core_machine.transition_add_catch(
+        this->_publish_interfaces_state,
+        this->_core_stoped_state)
+        .action([this]
+                {
+                  ELLE_ERR("%s: interface publication failed", *this);
+                  this->_failed.open();
+                });
+      this->_core_machine.transition_add_catch(
+        this->_wait_for_peer_state,
+        this->_core_stoped_state)
+        .action([this]
+                {
+                  ELLE_ERR("%s: peer wait failed", *this);
+                  this->_failed.open();
+                });
+
+      this->_core_machine.transition_add_catch(
+        this->_connection_state,
+        this->_core_stoped_state)
+        .action([this]
+                {
+                  ELLE_ERR("%s: connection failed", *this);
+                  this->_failed.open();
+                });
+
+      this->_core_machine.transition_add_catch(
+        this->_transfer_state,
+        this->_core_stoped_state)
+        .action([this]
+                {
+                  ELLE_ERR("%s: transfer failed", *this);
+                  this->_failed.open();
+                });
     }
 
     TransferMachine::~TransferMachine()
@@ -243,7 +280,7 @@ namespace surface
     void
     TransferMachine::current_state(TransferState const& state)
     {
-      ELLE_TRACE_SCOPE("%s: set new state to %s", *this, state);
+      ELLE_TRACE_SCOPE("%s: set new progress to %s", *this, state);
       this->_current_state = state;
       this->_save_snapshot();
       this->state().enqueue(Notification(this->id(), state));
@@ -340,6 +377,16 @@ namespace surface
       }
 
       ELLE_DEBUG("%s: cleaned", *this);
+    }
+
+    void
+    TransferMachine::_end()
+    {
+      ELLE_TRACE_SCOPE("%s: finish transfer machine", *this);
+      if (this->_failed.opened())
+        ELLE_WARN("fail barrier was opened");
+      if (this->_canceled.opened())
+        ELLE_WARN("cancel barrier was opened");
     }
 
     void
@@ -809,13 +856,6 @@ namespace surface
     TransferMachine::_core_stoped()
     {
       ELLE_TRACE_SCOPE("%s: core machine stoped", *this);
-    }
-
-    void
-    TransferMachine::_core_failed()
-    {
-      ELLE_TRACE_SCOPE("%s: core machine failed", *this);
-      this->_failed.open();
     }
 
     void
