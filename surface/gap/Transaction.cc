@@ -171,7 +171,7 @@ namespace surface
     float
     Transaction::progress() const
     {
-      ELLE_TRACE_SCOPE("%s: progress transaction", *this);
+      ELLE_DEBUG_SCOPE("%s: progress transaction", *this);
 
       if (this->_machine == nullptr)
       {
