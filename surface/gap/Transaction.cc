@@ -158,6 +158,16 @@ namespace surface
       this->_machine->join();
     }
 
+    TransferState
+    Transaction::state() const
+    {
+      ELLE_TRACE_SCOPE("%s: rejecting transaction", *this);
+      if (this->_machine == nullptr)
+        return TransferState_Over;
+
+      return this->_machine->current_state();
+    }
+
     float
     Transaction::progress() const
     {

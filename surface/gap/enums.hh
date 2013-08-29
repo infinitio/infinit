@@ -31,6 +31,7 @@ extern "C"
     TransferState_Rejected = 17,
     TransferState_Canceled = 18,
     TransferState_Failed = 19,
+    TransferState_Over = 20,
   } TransferState;
 
   typedef enum

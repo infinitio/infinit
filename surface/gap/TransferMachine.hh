@@ -161,6 +161,10 @@ namespace surface
       void
       current_state(TransferState const& state);
 
+    public:
+      TransferState
+      current_state() const;
+
     protected:
       void
       _transfer_core();

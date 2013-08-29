@@ -243,9 +243,16 @@ namespace surface
     void
     TransferMachine::current_state(TransferState const& state)
     {
+      ELLE_TRACE_SCOPE("%s: set new state to %s", *this, state);
       this->_current_state = state;
       this->_save_snapshot();
       this->state().enqueue(Notification(this->id(), state));
+    }
+
+    TransferState
+    TransferMachine::current_state() const
+    {
+      return this->_current_state;
     }
 
     void
@@ -575,6 +582,8 @@ namespace surface
           this->_machine_thread->terminate_now();
         this->_machine_thread.reset();
       }
+
+      this->_current_state = TransferState_Over;
     }
 
     /*-------------.

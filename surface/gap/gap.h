@@ -203,9 +203,9 @@ extern "C" {
   gap_transaction_is_directory(gap_State*,
                                uint32_t);
 
-  gap_TransactionStatus
-  gap_transaction_status(gap_State*,
-                         uint32_t);
+  TransferState
+  gap_transaction_state(gap_State* state,
+                        uint32_t const);
 
   char const*
   gap_transaction_message(gap_State*,

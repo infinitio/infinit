@@ -884,9 +884,24 @@ extern "C"
   DEFINE_TRANSACTION_GETTER_DOUBLE(mtime)
   DEFINE_TRANSACTION_GETTER_BOOL(is_directory)
   // _transform_ is a cast from plasma::TransactionStatus
-  DEFINE_TRANSACTION_GETTER(gap_TransactionStatus,
-                            status,
-                            (gap_TransactionStatus))
+
+  TransferState
+  gap_transaction_state(gap_State* state,
+                        uint32_t const transaction_id)
+  {
+    assert(state != nullptr);
+    assert(transaction_id != surface::gap::null_id);
+
+    return run<TransferState>(
+      state,
+      "transaction state",
+      [&] (surface::gap::State& state)
+      {
+        return state.transactions().at(transaction_id).state();
+      }
+    );
+  }
+
   char**
   gap_transaction_files(gap_State* state,
                         uint32_t const transaction_id)

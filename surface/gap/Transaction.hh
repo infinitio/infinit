@@ -79,6 +79,9 @@ namespace surface
       float
       progress() const;
 
+      TransferState
+      state() const;
+
       void
       on_transaction_update(Data const& data);
 
