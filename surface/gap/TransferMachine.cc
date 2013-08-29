@@ -1120,6 +1120,8 @@ namespace surface
           return out << "Canceled";
         case TransferState_Failed:
           return out << "Failed";
+        case TransferState_Over:
+          return out << "Over";
       }
       return out;
     }
