@@ -6,33 +6,21 @@
 extern "C"
 {
 # endif
-  // The values of the enums are used in the snapshot.
-  // To add a state, add it a the end to avoid the invalidation of the locally
-  // stored snapshots.
   typedef enum
   {
-    TransferState_NewTransaction = 0,
-    TransferState_SenderCreateNetwork = 1,
-    TransferState_SenderCreateTransaction = 2,
-    TransferState_SenderCopyFiles = 3,
-    TransferState_SenderWaitForDecision = 4,
-    TransferState_RecipientWaitForDecision = 5,
-    TransferState_RecipientAccepted = 6,
-    TransferState_RecipientWaitForReady = 7,
-    TransferState_GrantPermissions = 8,
-    TransferState_PublishInterfaces = 9,
-    TransferState_Connect = 10,
-    TransferState_PeerDisconnected = 11,
-    TransferState_PeerConnectionLost = 12,
-    TransferState_Transfer = 13,
-    TransferState_CleanLocal = 14,
-    TransferState_CleanRemote = 15,
-    TransferState_Finished = 16,
-    TransferState_Rejected = 17,
-    TransferState_Canceled = 18,
-    TransferState_Failed = 19,
-    TransferState_Over = 20,
-  } TransferState;
+    gap_transaction_none,
+    gap_transaction_pending,
+    gap_transaction_copying,
+    gap_transaction_waiting_for_accept,
+    gap_transaction_accepted,
+    gap_transaction_preparing,
+    gap_transaction_running,
+    gap_transaction_cleaning,
+    gap_transaction_finished,
+    gap_transaction_failed,
+    gap_transaction_canceled,
+    gap_transaction_rejected,
+  } gap_TransactionStatus;
 
   typedef enum
   {
@@ -61,14 +49,6 @@ extern "C"
 # undef ERR_CODE
   } gap_Status;
 
-  //- Transaction -------------------------------------------------------------
-  typedef enum
-  {
-# define TRANSACTION_STATUS(name, value)                                        \
-    gap_transaction_status_ ## name = value,
-# include <oracle/disciples/meta/src/meta/resources/transaction_status.hh.inc>
-# undef TRANSACTION_STATUS
-  } gap_TransactionStatus;
 # ifdef __cplusplus
 }
 # endif
