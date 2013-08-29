@@ -679,6 +679,15 @@ namespace surface
         ++tries;
         bool succeed = false;
         std::vector<std::unique_ptr<reactor::Thread>> connection_threads;
+        elle::Finally _cleanup{
+          [&]
+          {
+            ELLE_DEBUG_SCOPE("%s: termintating connection threads", *this);
+            for (auto& thread: connection_threads)
+              thread->terminate_now();
+            ELLE_DEBUG("all connection threads are over");
+          }
+        };
 
         for (std::string const& endpoint: r->endpoints())
         {
@@ -729,14 +738,6 @@ namespace surface
           connection_threads.push_back(std::move(thread_ptr));
         }
 
-        elle::Finally _cleanup{
-          [&]
-          {
-            for (auto& thread: connection_threads)
-              thread->terminate_now();
-          }
-        };
-
         if (this->hole().hosts().empty())
         {
           ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
@@ -758,17 +759,19 @@ namespace surface
         if (succeed)
         {
           // Connection successful
-          ELLE_TRACE("connection round(%s) successful", r->endpoints());
+          ELLE_TRACE("%s: connection round(%s) successful",
+                     *this, r->endpoints());
           return;
         }
         else if (not succeed)
         {
           // Connection failed
-          ELLE_TRACE("connection round(%s) failed/timeout", r->endpoints());
+          ELLE_TRACE("%s connection round(%s) failed/timeout",
+                     *this, r->endpoints());
           continue;
         }
       }
-      ELLE_DEBUG("%s: peers connected", *this);
+      throw Exception(gap_peer_to_peer_error, "connection rounds failed");
     }
 
     void
