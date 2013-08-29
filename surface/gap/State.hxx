@@ -40,7 +40,7 @@ namespace surface
       ELLE_LOG_COMPONENT("surface.gap.State");
       try
       {
-        ELLE_LOG("run cb");
+        ELLE_DEBUG("enqueue cb");
         for (auto const& cb: this->_callbacks.at(T::type))
           this->_runners.emplace(new Runner<T>(cb, notif));
       }
