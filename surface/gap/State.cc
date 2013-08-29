@@ -120,8 +120,8 @@ namespace surface
       _reporter{common::metrics::fallback_path()},
       _google_reporter{common::metrics::google_fallback_path()},
       _me{nullptr},
-      _device{nullptr},
-      _output_dir{common::system::download_directory()}
+      _output_dir{common::system::download_directory()},
+      _device{nullptr}
     {
       ELLE_TRACE_SCOPE("%s: create state", *this);
 
