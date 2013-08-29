@@ -126,7 +126,7 @@ namespace surface
             plasma::TransactionStatus::failed};
 
         std::list<std::string> transactions_ids{
-          std::move(this->meta().transactions(final, true, 5).transactions)};
+          std::move(this->meta().transactions(final, true, 100).transactions)};
 
         for (auto const& id: transactions_ids)
         {
