@@ -429,6 +429,7 @@ BOOST_PYTHON_MODULE(_gap)
     .value("Rejected", TransferState_Rejected)
     .value("Canceled", TransferState_Canceled)
     .value("Failed", TransferState_Failed)
+    .value("Over", TransferState_Over)
   ;
 
   //- gap ctor and dtor -------------------------------------------------------
