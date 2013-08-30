@@ -1151,6 +1151,8 @@ namespace surface
           return out << "Failed";
         case TransferMachine::State::Over:
           return out << "Over";
+        case TransferMachine::State::None:
+          return out << "None";
       }
       return out;
     }
