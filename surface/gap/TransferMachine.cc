@@ -738,7 +738,7 @@ namespace surface
               auto const &ip = result[0];
               auto const &port = result[1];
               ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
-              this->hole().portal_connect(ip, std::stoi(port), is_sender());
+              this->hole().portal_connect(ip, std::stoi(port), false);
             };
 
             namespace slug = hole::implementations::slug;
