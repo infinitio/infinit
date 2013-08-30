@@ -142,6 +142,13 @@ extern "C" {
   gap_user_status_callback(gap_State* state,
                            gap_user_status_callback_t cb);
 
+  // Owne connection status changed.
+  typedef void (*gap_connection_callback_t)(gap_UserStatus const);
+
+  gap_Status
+  gap_connection_callback(gap_State* state,
+                          gap_connection_callback_t cb);
+
   /// New transaction callback.
   typedef void (*gap_transaction_callback_t)(uint32_t id,
                                              gap_TransactionStatus status);
