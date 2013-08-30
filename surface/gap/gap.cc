@@ -73,30 +73,6 @@ extern "C"
     return ptr;
   }
 
-  static char**
-  _cpp_stringvector_to_c_stringlist(std::vector<std::string> const& list)
-  {
-    size_t total_size = (1 + list.size()) * sizeof(void*);
-    for (auto const& str : list)
-      total_size += str.size() + 1;
-
-    char** ptr = reinterpret_cast<char**>(malloc(total_size));
-    if (ptr == nullptr)
-      return nullptr;
-
-    char** array = ptr;
-    char* cstr = reinterpret_cast<char*>(ptr + (list.size() + 1));
-    for (auto const& str : list)
-      {
-        *array = cstr;
-        ::strncpy(cstr, str.c_str(), str.size() + 1);
-        ++array;
-        cstr += str.size() + 1;
-      }
-    *array = nullptr;
-    return ptr;
-  }
-
   /// - gap ctor & dtor -----------------------------------------------------
 
   static
