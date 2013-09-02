@@ -1203,36 +1203,23 @@ extern "C"
   {
     try
     {
-      std::string const infinit_dir = common::infinit::home();
-      std::string const crash_report{_crash_report,
-                                     _crash_report + strlen(_crash_report)};
-      std::string const state_log{_state_log,
-                                  _state_log + strlen(_state_log)};
-      std::string const finder_log{"finder-plugin.log"};
-      std::string const crash_report_path = infinit_dir + "/" + crash_report;
-      std::string const state_log_path = infinit_dir + "/" + state_log;
-      std::string const finder_log_path = "/tmp/" + finder_log;
+      boost::filesystem::path crash_report_path(_crash_report);
+      boost::filesystem::path state_log_path(_state_log);
 
       std::string const crash_archive = "/tmp/infinit-crash-archive";
 
       std::list<std::string> args{"cjf", crash_archive};
-      if (boost::filesystem::exists(state_log_path))
-      {
-        args.push_back("-C");
-        args.push_back(infinit_dir);
-        args.push_back(state_log);
-      }
       if (boost::filesystem::exists(crash_report_path))
       {
         args.push_back("-C");
-        args.push_back(infinit_dir);
-        args.push_back(crash_report);
+        args.push_back(crash_report_path.parent_path().string());
+        args.push_back(crash_report_path.filename().string());
       }
-      if (boost::filesystem::exists(finder_log_path))
+      if (boost::filesystem::exists(state_log_path))
       {
         args.push_back("-C");
-        args.push_back("/tmp");
-        args.push_back(finder_log);
+        args.push_back(state_log_path.parent_path().string());
+        args.push_back(state_log_path.filename().string());
       }
 
       if (args.size() > 3)
