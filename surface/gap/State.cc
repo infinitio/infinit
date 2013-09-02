@@ -488,8 +488,11 @@ namespace surface
         "%s: connection %s", *this, connection_status ? "established" : "lost");
 
       this->enqueue<ConnectionStatus>(ConnectionStatus(connection_status));
-      this->_user_resync();
-      this->_transaction_resync();
+      if (connection_status)
+      {
+        this->_user_resync();
+        this->_transaction_resync();
+      }
     }
 
     void
