@@ -554,9 +554,17 @@ namespace surface
 
       ELLE_DEBUG("poll");
 
-      auto const& runner = this->_runners.front();
-      (*runner)();
-      this->_runners.pop();
+      elle::Finally pop{ [this] { this->_runners.pop(); } };
+
+      try
+      {
+        auto const& runner = this->_runners.front();
+        (*runner)();
+      }
+      catch (...)
+      {
+        ELLE_ERR("%s: %s", *this, elle::exception_string());
+      }
     }
 
     /*----------.
