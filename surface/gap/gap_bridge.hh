@@ -24,6 +24,19 @@ extern "C"
     ELLE_ATTRIBUTE_R(std::thread, scheduler_thread);
     ELLE_ATTRIBUTE(std::unique_ptr<surface::gap::State>, state);
     ELLE_ATTRIBUTE_R(std::exception_ptr, exception);
+    ELLE_ATTRIBUTE_R(std::function<void (std::string const&)>, critical_callback);
+
+    gap_Status
+    gap_critical_callback(gap_State* state,
+                          gap_critical_callback_t cb)
+    {
+      this->_critical_callback = [&] (std::string const& error)
+        {
+          cb(error.c_str());
+        };
+      return gap_ok;
+    }
+
   public:
     // reactor::Scheduler&
     // scheduler() const
@@ -67,6 +80,9 @@ extern "C"
             ELLE_ERR("exception escaped from State scheduler: %s",
                      elle::exception_string());
             this->_exception = std::current_exception();
+            if (this->_critical_callback)
+              this->_critical_callback(elle::exception_string());
+
           }
         }}
     {
@@ -105,6 +121,8 @@ extern "C"
             ELLE_ERR("exception escaped from State scheduler: %s",
                      elle::exception_string());
             this->_exception = std::current_exception();
+            if (this->_critical_callback)
+              this->_critical_callback(elle::exception_string());
           }
         }}
     {
@@ -145,7 +163,6 @@ extern "C"
         }
       };
     }
-
   };
 }
 

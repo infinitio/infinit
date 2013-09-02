@@ -39,6 +39,14 @@ extern "C" {
   /// Release a state.
   void gap_free(gap_State* state);
 
+  /// Callback to be executed if an exception escape from the scheduler.
+  typedef void (*gap_critical_callback_t)(char const*);
+
+  gap_Status
+  gap_critical_callback(gap_State* state,
+                        gap_critical_callback_t cb);
+
+
   /// The 'error' value of ids.
   uint32_t
   gap_null();
@@ -137,12 +145,11 @@ extern "C" {
 
   typedef void (*gap_user_status_callback_t)(uint32_t id,
                                              gap_UserStatus const);
-
   gap_Status
   gap_user_status_callback(gap_State* state,
                            gap_user_status_callback_t cb);
 
-  // Owne connection status changed.
+  // Own connection status changed.
   typedef void (*gap_connection_callback_t)(gap_UserStatus const);
 
   gap_Status
