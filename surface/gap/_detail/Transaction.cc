@@ -107,14 +107,17 @@ namespace surface
         }
       }
 
-      {
-        std::list<std::string> transactions_ids{
-          std::move(this->meta().transactions().transactions)};
+      this->_transaction_resync();
+    }
 
-        for (auto const& id: transactions_ids)
-        {
-          this->_on_transaction_update(std::move(this->meta().transaction(id)));
-        }
+    void
+    State::_transaction_resync()
+    {
+      ELLE_TRACE_SCOPE("%s: resync transactions", *this);
+
+      for (auto const& id: this->meta().transactions().transactions)
+      {
+        this->_on_transaction_update(std::move(this->meta().transaction(id)));
       }
 
       // History.
@@ -143,20 +146,6 @@ namespace surface
             std::make_tuple(_id),
             std::forward_as_tuple(*this, _id, std::move(transaction), true));
         }
-      }
-    }
-
-    void
-    State::_transaction_resync()
-    {
-      ELLE_TRACE_SCOPE("%s: resync transactions", *this);
-
-      auto transactions_ids = this->meta().transactions().transactions;
-
-      for (auto const& id: transactions_ids)
-      {
-        ELLE_DEBUG("%s: update transaction %s", *this, id);
-        this->_on_transaction_update(this->meta().transaction(id));
       }
     }
 

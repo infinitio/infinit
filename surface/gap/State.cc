@@ -310,8 +310,8 @@ namespace surface
             }
           }});
       this->user(this->me().id);
-      this->swaggers();
       this->_transactions_init();
+      this->on_connection_changed(true);
     }
 
     void

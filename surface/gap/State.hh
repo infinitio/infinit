@@ -298,7 +298,6 @@ namespace surface
       ELLE_ATTRIBUTE_RP(UserMap, users, mutable);
       ELLE_ATTRIBUTE_RP(UserIndexMap, user_indexes, mutable);
       ELLE_ATTRIBUTE_RP(UserIndexes, swagger_indexes, mutable);
-      ELLE_ATTRIBUTE(bool, swaggers_dirty);
       ELLE_ATTRIBUTE(reactor::Mutex, swagger_mutex);
 
     public:

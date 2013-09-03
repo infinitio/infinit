@@ -56,7 +56,6 @@ namespace surface
       this->_users.clear();
       this->_user_indexes.clear();
       this->_swagger_indexes.clear();
-      this->_swaggers_dirty = true;
     }
 
     State::User
@@ -122,7 +121,7 @@ namespace surface
     State::User
     State::user(uint32_t id) const
     {
-      ELLE_TRACE_SCOPE("%s: sync user from id %s", *this, id);
+      ELLE_TRACE_SCOPE("%s: get user from id %s", *this, id);
 
       try
       {
@@ -224,9 +223,11 @@ namespace surface
     State::_user_resync()
     {
       ELLE_TRACE_SCOPE("%s: resync user", *this);
-      this->_swaggers_dirty = true;
 
-      for (auto const& swagger_id: this->swaggers())
+      this->_swagger_indexes.clear();
+      auto swaggers = this->meta().get_swaggers().swaggers;
+
+      for (std::string const& swagger_id: swaggers)
       {
         // Compare the cached user with the remote one, and calculate the
         // diff.
@@ -267,7 +268,13 @@ namespace surface
 
             this->handle_notification(std::move(notif));
           }
+
+        this->_swagger_indexes.insert(
+          this->_user_indexes.at(swagger_id));
       }
+
+      for (std::string const& user_id: this->me().favorites)
+        this->user(user_id);
     }
 
     State::UserIndexes
@@ -324,32 +331,6 @@ namespace surface
     State::swaggers()
     {
       ELLE_TRACE_SCOPE("%s: get swagger list", *this);
-
-      // XXX
-      // If one Thread is lock on scheded swaggers request, and an other is
-      // querying for swaggers, swaggers_dirty will be wrong. So mutex sounds
-      // good here.
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-      reactor::Lock lock(this->_swagger_mutex);
-
-      if (this->_swaggers_dirty)
-      {
-        ELLE_DEBUG("%s: swaggers were dirty", *this);
-        this->_swagger_indexes.clear();
-        for (auto const& user_id: this->meta().get_swaggers().swaggers)
-        {
-          ELLE_DEBUG("%s: get swagger %s", *this, user_id);
-          this->_swagger_indexes.insert(
-            this->_user_indexes.at(this->user(user_id).id));
-        }
-
-        // Initialize index for favorite users.
-        for (auto const& user_id: this->me().favorites)
-          this->user(user_id);
-
-        this->_swaggers_dirty = false;
-      }
 
       return this->_swagger_indexes;
     }
@@ -462,14 +443,6 @@ namespace surface
       this->enqueue<UserStatusNotification>(
         UserStatusNotification(
           this->_user_indexes.at(swagger.id), notif.status));
-    }
-
-    void
-    State::swaggers_dirty()
-    {
-      ELLE_TRACE_METHOD("");
-
-      this->_swaggers_dirty = true;
     }
   }
 }
