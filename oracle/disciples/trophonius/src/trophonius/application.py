@@ -97,9 +97,9 @@ class Application(object):
             f.write(str(port))
 
     def run(self):
+        log.startLogging(DailyLogFile.fromFullPath("./trophonius.log"))
         if not all(os.path.exists(file) for file in (conf.SSL_KEY, conf.SSL_CERT)):
             self.create_self_signed_cert(".")
-        log.startLogging(DailyFileLog.fromFullPath("./trophonius.log"))
 
         factory = trophonius.TrophoFactory(self)
         meta_factory = trophonius.MetaTrophoFactory(self)
