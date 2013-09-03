@@ -239,7 +239,7 @@ run(gap_State* state,
   try
   {
     reactor::Scheduler& scheduler = state->scheduler();
-
+    ELLE_DEBUG("running %s", name);
     return Ret<Type>(
       ret,
       scheduler.mt_run<Type>
@@ -251,7 +251,7 @@ run(gap_State* state,
   }
   catch (elle::HTTPException const& err)
   {
-    ELLE_ERR("%s: error: %s", name, err.what());
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
     if (err.code == elle::ResponseCode::error)
       ret = gap_network_error;
     else if (err.code == elle::ResponseCode::internal_server_error)
@@ -261,22 +261,22 @@ run(gap_State* state,
   }
   catch (plasma::meta::Exception const& err)
   {
-    ELLE_ERR("%s: error: %s", name, err.what());
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = (gap_Status) err.err;
   }
   catch (surface::gap::Exception const& err)
   {
-    ELLE_ERR("%s: error: %s", name, err.what());
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = err.code;
   }
-  catch (elle::Exception const& err)
+  catch (elle::Exception const&)
   {
-    ELLE_ERR("%s: error: %s", name, err.what());
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = gap_internal_error;
   }
-  catch (std::exception const& err)
+  catch (std::exception const&)
   {
-    ELLE_ERR("%s: error: %s", name, err.what());
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = gap_internal_error;
   }
   catch (...)
