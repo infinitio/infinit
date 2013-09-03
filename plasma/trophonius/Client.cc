@@ -367,17 +367,29 @@ namespace plasma
           auto socket = this->_socket;
           try
           {
-            ELLE_DEBUG("%s: reading message", *this)
-              socket->getline(
-                reinterpret_cast<char*>(buffer.mutable_contents()),
-                buffer.capacity(), '\n');
-            // XXX: handle bigger messages.
-            ELLE_ASSERT_LT(socket->gcount(), buffer.capacity());
-            buffer.size(socket->gcount());
+            buffer.size(0);
+            ELLE_DEBUG("%s: reading message", *this);
+            size_t idx = 0;
+            while (true)
+            {
+              socket->getline(((char*)buffer.mutable_contents()) + idx, buffer.capacity() - idx, '\n');
+              if (!socket->fail())
+              {
+                buffer.size(idx + socket->gcount());
+                break;
+              }
+              idx = buffer.capacity() - 1;
+              buffer.capacity(buffer.capacity() * 2);
+              socket->clear();
+            }
             if (buffer.size() == 0)
+            {
+              ELLE_ERR("Empty line read from tropho: bad:%s fail:%s eof:%s gcount:%s",
+                       socket->bad(), socket->fail(), socket->eof(), socket->gcount());
               // XXX getline should not return an empty buffer, but throw a
               // massive exception.
-              throw elle::Exception{"%s: read an empty buffer"};
+              throw elle::Exception{"read an empty buffer"};
+            }
           }
           catch (elle::Exception const&)
           {
