@@ -374,6 +374,10 @@ namespace plasma
             // XXX: handle bigger messages.
             ELLE_ASSERT_LT(socket->gcount(), buffer.capacity());
             buffer.size(socket->gcount());
+            if (buffer.size() == 0)
+              // XXX getline should not return an empty buffer, but throw a
+              // massive exception.
+              throw elle::Exception{"%s: read an empty buffer"};
           }
           catch (elle::Exception const&)
           {
