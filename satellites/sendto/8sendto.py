@@ -36,13 +36,13 @@ def on_transaction(state, transaction, status):
     print("{}Transaction".format(transaction), status)
     # state.current_transaction_id = transaction
     if status in (
-       state.TransactionStatus.Finished,
-       state.TransactionStatus.Rejected,
-       state.TransactionStatus.Canceled,
-       state.TransactionStatus.Failed,
+       state.TransactionStatus.finished,
+       state.TransactionStatus.rejected,
+       state.TransactionStatus.canceled,
+       state.TransactionStatus.failed,
     ):
         state.running = False
-    elif state.TransactionStatus.GrantPermissions:
+    elif state.TransactionStatus.preparing:
         state.started = True
 
 def on_error(state, status, message, tid):
