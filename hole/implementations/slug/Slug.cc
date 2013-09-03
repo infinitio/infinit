@@ -3,6 +3,7 @@
 #include <elle/container/map.hh>
 #include <elle/container/vector.hh>
 #include <elle/memory.hh>
+#include <elle/Measure.hh>
 #include <elle/utility/Move.hh>
 
 #include <cryptography/random.hh>
@@ -178,11 +179,11 @@ namespace hole
             // network.
 
             // Store the block locally.
-            {
+            ELLE_MEASURE("Validating the block")
               block.validate(address);
 
+            ELLE_MEASURE("Storing the block")
               this->storage().store(address, block);
-            }
 
             // Publish it onto the network.
             {

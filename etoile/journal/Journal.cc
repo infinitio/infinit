@@ -1,6 +1,7 @@
 #include <boost/foreach.hpp>
 
 #include <elle/log.hh>
+#include <elle/Measure.hh>
 
 #include <etoile/Etoile.hh>
 #include <etoile/Exception.hh>
@@ -184,40 +185,44 @@ namespace etoile
     {
       ELLE_TRACE_FUNCTION(transcript);
 
-      ELLE_DEBUG("pushing blocks");
-
-      // XXX[to improve in the future]
-      // Go through the blocks which needs to be pushed.
-      for (auto action: *transcript)
+      ELLE_DEBUG("pushing blocks")
+      {
+        ELLE_MEASURE_SCOPE("Pushing blocks");
+        // XXX[to improve in the future]
+        // Go through the blocks which needs to be pushed.
+        for (auto action: *transcript)
         {
           switch (action->type())
+          {
+          case gear::Action::Type::push:
             {
-            case gear::Action::Type::push:
-              {
-                action->apply<depot::Depot>(depot);
-                break;
-              }
-            case gear::Action::Type::wipe:
+              action->apply<depot::Depot>(depot);
               break;
             }
+          case gear::Action::Type::wipe:
+            break;
+          }
         }
+      }
 
-      ELLE_DEBUG("wiping blocks");
-
-      // Then, process the blocks to wipe.
-      for (auto action: *transcript)
+      ELLE_DEBUG("wiping blocks")
+      {
+        ELLE_MEASURE_SCOPE("Wiping blocks");
+        // Then, process the blocks to wipe.
+        for (auto action: *transcript)
         {
           switch (action->type())
+          {
+          case gear::Action::Type::push:
+            break;
+          case gear::Action::Type::wipe:
             {
-            case gear::Action::Type::push:
+              action->apply<depot::Depot>(depot);
               break;
-            case gear::Action::Type::wipe:
-              {
-                action->apply<depot::Depot>(depot);
-                break;
-              }
             }
+          }
         }
+      }
 
 #ifdef ETOILE_JOURNAL_THREAD
       // Remove the transcript from the queue.

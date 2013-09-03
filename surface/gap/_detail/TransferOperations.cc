@@ -34,15 +34,17 @@
 #include <reactor/scheduler.hh>
 #include <reactor/fs/File.hh>
 
-#include <elle/serialize/extract.hh>
-#include <elle/serialize/insert.hh>
-
 #include <elle/Exception.hh>
+#include <elle/Measure.hh>
 #include <elle/finally.hh>
 #include <elle/log.hh>
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
 #include <elle/system/system.hh>
 
 #include <boost/filesystem.hpp>
+
+#include <chrono>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap._detail.TransferOperations");
 
@@ -398,33 +400,43 @@ namespace surface
           // Write the source file's content into the Infinit file freshly
           // created.
           {
+            ELLE_MEASURE_SCOPE("Writing source file");
             std::streamsize N = 5242880;
-            reactor::fs::File f{*reactor::Scheduler::scheduler(), source};
+            //reactor::fs::File f{*reactor::Scheduler::scheduler(), source};
+            std::ifstream stream{source};
             elle::Buffer buffer;
 
             do
             {
               buffer.size(N);
-              f.read_some(buffer);
-              etoile::wall::File::write(etoile, file, offset, buffer);
+              //f.read_some(buffer);
+              {
+                ELLE_MEASURE_SCOPE("Reading from file");
+                std::streamsize readbytes = stream.readsome((char*)buffer.mutable_contents(), buffer.size());
+                buffer.size(readbytes);
+              }
+              {
+                ELLE_MEASURE_SCOPE("etoile::wall::File::write");
+                etoile::wall::File::write(etoile, file, offset, buffer);
+              }
               offset += buffer.size();
+              reactor::Scheduler::scheduler()->current()->yield();
             } while (buffer.size() == N);
           }
 
-
-          // Store file.
-          etoile::wall::File::store(etoile, file);
+          ELLE_MEASURE("Storing file")
+            etoile::wall::File::store(etoile, file);
 
           // Release the identifier tracking.
           discard_file.abort();
 
-          // Store parent directory.
-          etoile::wall::Directory::store(etoile, directory);
+          ELLE_MEASURE("Storing parent directory")
+            etoile::wall::Directory::store(etoile, directory);
 
           discard_directory.abort();
 
           // Return the number of bytes composing the file having been copied.
-          return (static_cast<elle::Natural64>(offset));
+          return static_cast<elle::Natural64>(offset);
         }
 
         static
