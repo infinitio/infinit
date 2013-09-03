@@ -12,8 +12,10 @@ namespace
   {
   public:
     TestService(std::string const& pkey):
-      metrics::Service{pkey, common::metrics::Info{
-        "Pretty name", "host addr", 101, "id path", "tracking id"
+      metrics::Service{
+        pkey,
+        metrics::Service::Info{
+          "Pretty name", "host addr", 101, "id path", "tracking id"
       }}
     {}
 
@@ -35,7 +37,7 @@ namespace
 int main(void)
 {
   // Initialize server.
-  metrics::Reporter reporter{};
+  metrics::Reporter reporter{"/tmp"};
   reporter.add_service_class<TestService>();
   reporter.start();
   reporter["test_id"].store("user.landing");

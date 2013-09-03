@@ -28,6 +28,18 @@ namespace metrics
       uint16_t const port;
       std::string const id_path;
       std::string const tracking_id;
+
+      Info(std::string const& pretty_name,
+           std::string const& host,
+           uint16_t port,
+           std::string const& id_path,
+           std::string const& tracking_id):
+        pretty_name(pretty_name),
+        host(host),
+        port(port),
+        id_path(id_path),
+        tracking_id(tracking_id)
+      {}
     };
 
   protected:
