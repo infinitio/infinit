@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE(test)
   auto client = [&]
   {
     using namespace plasma::trophonius;
-    plasma::trophonius::Client c("127.0.0.1", port, [] {});
+    plasma::trophonius::Client c("127.0.0.1", port, [] (bool) {});
     wait(sync_client); // Listening
     ELLE_LOG("connect");
     c.connect("", "", "");
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE(ping)
 
   auto client_thread = [&]
   {
-    plasma::trophonius::Client client("127.0.0.1", port, [] {});
+    plasma::trophonius::Client client("127.0.0.1", port, [] (bool) {});
     elle::Finally check([&] { BOOST_CHECK_EQUAL(client.reconnected(), 0); });
     client.ping_period(period);
     wait(sync_client); // Listening
@@ -260,7 +260,7 @@ BOOST_AUTO_TEST_CASE(noping)
 
   auto client_thread = [&]
   {
-    plasma::trophonius::Client client("127.0.0.1", port, [] {});
+    plasma::trophonius::Client client("127.0.0.1", port, [] (bool) {});
     elle::Finally check([&] {
         BOOST_CHECK_LE(std::abs(client.reconnected() - (periods / 2)), 1);
       });
