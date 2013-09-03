@@ -41,8 +41,11 @@ namespace surface
       try
       {
         ELLE_DEBUG("enqueue cb");
+        std::lock_guard<std::mutex> lock(this->_poll_lock);
         for (auto const& cb: this->_callbacks.at(T::type))
+        {
           this->_runners.emplace(new Runner<T>(cb, notif));
+        }
       }
       catch (std::out_of_range const&)
       {

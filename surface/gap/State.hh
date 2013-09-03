@@ -30,6 +30,7 @@
 # include <string>
 # include <exception>
 # include <unordered_set>
+# include <mutex>
 
 namespace surface
 {
@@ -195,6 +196,8 @@ namespace surface
 
       void
       poll() const;
+
+      ELLE_ATTRIBUTE_P(std::mutex, poll_lock, mutable);
 
       /*--------------.
       | Notifications |

@@ -560,21 +560,24 @@ namespace surface
     void
     State::poll() const
     {
+      ELLE_DEBUG("poll");
+
       if (this->_runners.empty())
         return;
 
-      ELLE_DEBUG("poll");
-
-      elle::Finally pop{ [this] { this->_runners.pop(); } };
-
-      try
+      // I'm the only consumer.
+      while (!this->_runners.empty())
       {
-        auto const& runner = this->_runners.front();
+        ELLE_ASSERT(!this->_runners.empty());
+        std::unique_ptr<_Runner> runner = nullptr;
+
+        {
+          std::lock_guard<std::mutex> lock{this->_poll_lock};
+          std::swap(runner, this->_runners.front());
+          this->_runners.pop();
+        }
+
         (*runner)();
-      }
-      catch (...)
-      {
-        ELLE_ERR("%s: %s", *this, elle::exception_string());
       }
     }
 
