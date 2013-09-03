@@ -303,6 +303,8 @@ namespace surface
           {
             while (true)
             {
+              reactor::Scheduler::scheduler()->current()->wait(
+                this->_polling_barrier);
               this->handle_notification(this->_trophonius.poll());
               ELLE_TRACE("%s: notification pulled", *this);
             }
@@ -487,12 +489,21 @@ namespace surface
       ELLE_TRACE_SCOPE(
         "%s: connection %s", *this, connection_status ? "established" : "lost");
 
+      // Lock polling.
+      if (!connection_status)
+        this->_polling_barrier.close();
+
       if (connection_status)
       {
         this->_user_resync();
         this->_transaction_resync();
       }
+
       this->enqueue<ConnectionStatus>(ConnectionStatus(connection_status));
+
+      // Unlock polling.
+      if (connection_status)
+        this->_polling_barrier.open();
     }
 
     void

@@ -200,6 +200,7 @@ namespace surface
       | Notifications |
       `--------------*/
       ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Thread>, polling_thread);
+      ELLE_ATTRIBUTE(reactor::Barrier, polling_barrier);
 
       void
       on_connection_changed(bool connection_status);
