@@ -313,7 +313,7 @@ class Update(Page):
             device_ids = device_ids,
             recipient_ids = recipient_ids,
             message = transaction,
-            store = True,
+            store = False,
        )
 
     def POST(self):
