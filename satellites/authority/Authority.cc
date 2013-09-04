@@ -288,6 +288,6 @@ namespace satellite
 
 int main(int argc, char** argv)
 {
-  return satellite_main("8authority", std::bind(satellite::Authority,
-                                                argc, argv));
+  auto entry_point = [&] { satellite::Authority(argc, argv); };
+  return satellite_main("8authority", entry_point);
 }

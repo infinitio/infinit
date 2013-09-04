@@ -117,7 +117,7 @@ namespace nucleus
 
       // go through the right seam's inlets until the future size is reached
       // after which all the remaining inlets will be moved to the left seam.
-      for (; i != rend; ++i)
+      for (; !(i == rend); ++i)
         {
           typename X::I* inlet = i->second;
 
@@ -140,7 +140,7 @@ namespace nucleus
 
       // go through the remaining inlets in order to move them to
       // the left seam.
-      for (auto j = i; j != rend; ++j)
+      for (auto j = i; !(j == rend); ++j)
         {
           typename X::I* inlet = j->second;
 

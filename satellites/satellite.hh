@@ -19,7 +19,7 @@ namespace infinit
   };
 
   int
-  satellite_main(std::string const& name, std::function<void ()> const& action);
+  satellite_main(std::string const& name, std::function<void ()> action);
 }
 
 #endif

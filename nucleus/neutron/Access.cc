@@ -125,7 +125,7 @@ namespace nucleus
       // Go through the right access's records until the future size is
       // reached after which all the remaining records will be moved to
       // the left access.
-      for (; i != rend; ++i)
+      for (; !(i == rend); ++i)
         {
           auto& record = i->second;
 
@@ -146,7 +146,7 @@ namespace nucleus
 
       // Go through the remaining records in order to move them to
       // the left access.
-      for (auto j = i; j != rend; ++j)
+      for (auto j = i; !(j == rend); ++j)
         {
           auto& record = j->second;
 
