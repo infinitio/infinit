@@ -110,7 +110,9 @@ namespace surface
       // Normal way.
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_finish_state,
-                                    reactor::Waitables{&this->_finished});
+                                    reactor::Waitables{&this->_finished},
+                                    true);
+
       this->_machine.transition_add(this->_finish_state,
                                     this->_remote_clean_state);
 
@@ -190,7 +192,6 @@ namespace surface
         this->_connection_state,
         this->_connection_state,
         reactor::Waitables{&this->_peer_online});
-
       this->_core_machine.transition_add(
         this->_publish_interfaces_state,
         this->_core_stoped_state,
@@ -209,9 +210,19 @@ namespace surface
         reactor::Waitables{&this->_canceled}, true);
 
       this->_core_machine.transition_add(
-        this->_connection_state, this->_transfer_state);
+        this->_connection_state,
+        this->_transfer_state,
+        reactor::Waitables{&this->_peer_connected});
+
       this->_core_machine.transition_add(
-        this->_transfer_state, this->_core_stoped_state);
+        this->_transfer_state,
+        this->_core_stoped_state,
+        reactor::Waitables{&this->_finished},
+        true);
+
+      this->_core_machine.transition_add(
+        this->_transfer_state, this->_connection_state,
+        reactor::Waitables{&this->_peer_disconnected});
 
       this->_core_machine.transition_add_catch(
         this->_publish_interfaces_state,
@@ -797,6 +808,7 @@ namespace surface
           // Connection successful
           ELLE_TRACE("%s: connection round(%s) successful",
                      *this, r->endpoints());
+          this->_peer_connected.signal();
           return;
         }
         else if (not succeed)
@@ -828,14 +840,8 @@ namespace surface
         sched.every(
           [&] () { this->_retrieve_progress(); },
           "pull progress",
-          boost::posix_time::milliseconds(300)));
+          100_ms));
 
-      elle::Finally kill_progress(
-        [&] ()
-        {
-          this->_pull_progress_thread->terminate_now();
-          this->_pull_progress_thread.reset();
-        });
       this->_transfer_operation();
 
       ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
@@ -844,6 +850,12 @@ namespace surface
     void
     TransferMachine::_core_stoped()
     {
+      if (this->_pull_progress_thread)
+      {
+        this->_pull_progress_thread->terminate_now();
+        this->_pull_progress_thread.reset();
+      }
+
       ELLE_TRACE_SCOPE("%s: core machine stoped", *this);
     }
 

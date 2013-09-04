@@ -418,5 +418,21 @@ namespace surface
     {
       return this->_data->network_id == network_id;
     }
+
+    void
+    Transaction::print(std::ostream& stream) const
+    {
+      stream << "Transaction(data: ";
+      if (this->_data != nullptr)
+        stream << *this->_data;
+      else
+        stream << "null";
+      stream << ", machine: ";
+      if (this->_machine != nullptr)
+        stream << *this->_machine;
+      else
+        stream << "null";
+      stream << ")";
+    }
   }
 }

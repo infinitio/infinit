@@ -278,6 +278,8 @@ namespace surface
                                       this->descriptor(),
                                       subject,
                                       this->state().output_dir());
+
+      this->_finished.open();
     }
 
     std::string

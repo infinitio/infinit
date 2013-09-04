@@ -20,7 +20,8 @@ namespace surface
 {
   namespace gap
   {
-    class Transaction
+    class Transaction:
+      public elle::Printable
     {
       // - Exception -----------------------------------------------------------
       class BadOperation:
@@ -131,6 +132,14 @@ namespace surface
 
       bool
       concerns_network(std::string const& network_id) const;
+
+      /*----------.
+      | Printable |
+      `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const;
     };
   }
 }
