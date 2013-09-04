@@ -42,7 +42,8 @@ def on_transaction(state, transaction, status):
        state.TransactionStatus.failed,
     ):
         state.running = False
-    elif state.TransactionStatus.preparing:
+    elif state.TransactionStatus.running:
+        state.current_transaction_id = transaction
         state.started = True
 
 def on_error(state, status, message, tid):
@@ -67,14 +68,10 @@ def main(state, user, files):
             tid = state.current_transaction_id
             progress = state.transaction_progress(tid)
             filename = state.transaction_files(tid)[0]
-            print(
-               "\rProgress {2}: [{0:50s}] {1:.1f}% of {3}".format(
-                   '#' * int(progress * 50), progress * 100,
-                   tid, filename
-               ),
-               end=""
-            )
-        time.sleep(1)
+            print("\rProgress {2}: [{0:50s}] {1:.1f}% of {3}".format(
+                  '#' * int(progress * 50), progress * 100, tid, filename),
+                  end="")
+        time.sleep(0.1)
         state.poll()
 
 def go(state, user, files):
