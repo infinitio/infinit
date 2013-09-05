@@ -58,7 +58,7 @@ namespace surface
       this->_swagger_indexes.clear();
     }
 
-    State::User
+    State::User const&
     State::user_sync(State::User const& user) const
     {
       ELLE_TRACE_SCOPE("%s: user response: %s", *this, user);
@@ -83,7 +83,7 @@ namespace surface
       return this->_users.at(id);
     }
 
-    State::User
+    State::User const&
     State::user_sync(std::string const& id) const
     {
       ELLE_TRACE_SCOPE("%s: sync user from object id %s", *this, id);
@@ -91,7 +91,7 @@ namespace surface
       return this->user_sync(this->meta().user(id));
     }
 
-    State::User
+    State::User const&
     State::user(std::string const& user_id,
                 bool merge) const
     {
@@ -118,7 +118,7 @@ namespace surface
       }
     }
 
-    State::User
+    State::User const&
     State::user(uint32_t id) const
     {
       ELLE_TRACE_SCOPE("%s: get user from id %s", *this, id);
@@ -137,7 +137,7 @@ namespace surface
       }
     }
 
-    State::User
+    State::User const&
     State::user(std::function<bool (State::UserPair const&)> const& func) const
     {
       ELLE_TRACE_SCOPE("%s: find user", *this);
@@ -161,7 +161,7 @@ namespace surface
       }
     }
 
-    State::User
+    State::User const&
     State::user_from_public_key(std::string const& public_key) const
     {
       ELLE_TRACE_SCOPE("%s: user from public key %s", *this, public_key);

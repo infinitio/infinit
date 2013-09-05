@@ -307,23 +307,23 @@ namespace surface
       void
       clear_users();
 
-      User
+      User const&
       user_sync(User const& user) const;
 
-      User
+      User const&
       user_sync(std::string const& id) const;
 
-      User
+      User const&
       user(std::string const& user_id,
            bool merge = true) const;
 
-      User
+      User const&
       user(uint32_t id) const;
 
-      User
+      User const&
       user(std::function<bool (UserPair const&)> const& func) const;
 
-      User
+      User const&
       user_from_public_key(std::string const& public_key) const;
 
       void
