@@ -103,6 +103,7 @@ namespace hole
         friend class Host;
         typedef std::unordered_map<papier::Passport,
                                    std::shared_ptr<Host>> Hosts;
+      private:
         void
         _host_register(std::shared_ptr<Host> host);
         std::shared_ptr<Host>
@@ -117,6 +118,12 @@ namespace hole
 
         bool
         _host_connected(papier::Passport const& passport);
+
+      public:
+        bool
+        host_connected(cryptography::PublicKey const& K) const;
+
+      private:
         std::shared_ptr<Host>
         _host_pending(papier::Passport const& passport);
         bool
@@ -129,6 +136,7 @@ namespace hole
         /// Signal that a new host was registered.
         ELLE_ATTRIBUTE_RX(reactor::Signal, new_host);
         ELLE_ATTRIBUTE_RX(reactor::Signal, new_connected_host);
+        ELLE_ATTRIBUTE_RX(reactor::Signal, disconnected_host);
 
       /*-------.
       | Server |

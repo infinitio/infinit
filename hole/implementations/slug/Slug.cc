@@ -1225,6 +1225,7 @@ namespace hole
               // may yield, so avoid having a semi-destructed Host in the map.
               auto ward = *it;
               this->_hosts.erase(it);
+              this->_disconnected_host.signal();
             }
             return;
           }
@@ -1245,6 +1246,18 @@ namespace hole
       Slug::_host_connected(papier::Passport const& passport)
       {
         return this->_hosts.find(passport) != this->_hosts.end();
+      }
+
+      bool
+      Slug::host_connected(cryptography::PublicKey const& K) const
+      {
+        return std::find_if(
+          this->_hosts.begin(),
+          this->_hosts.end(),
+          [&K] (std::pair<papier::Passport, std::shared_ptr<Host>> const& pair) -> bool
+          {
+            return pair.first.owner_K() == K;
+          }) != this->_hosts.end();
       }
 
       std::shared_ptr<Host>

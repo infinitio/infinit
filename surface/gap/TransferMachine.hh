@@ -119,6 +119,8 @@ namespace surface
       void
       _stop();
 
+      ELLE_ATTRIBUTE(reactor::Mutex, stop_mutex);
+
     public:
       /// Use to notify that the transaction has been updated on the remote.
       virtual
@@ -277,10 +279,6 @@ namespace surface
       reactor::Signal _peer_online;
       reactor::Signal _peer_offline;
 
-      // Slug?
-      reactor::Signal _peer_connected;
-      reactor::Signal _peer_disconnected;
-
       ELLE_ATTRIBUTE_r(float, progress);
       ELLE_ATTRIBUTE_P(reactor::Mutex, progress_mutex, mutable);
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, pull_progress_thread);
@@ -310,6 +308,9 @@ namespace surface
     protected:
       void
       peer_id(std::string const& id);
+
+      cryptography::PublicKey
+      peer_K() const;
 
     public:
       virtual

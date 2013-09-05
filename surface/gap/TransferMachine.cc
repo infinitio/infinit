@@ -18,6 +18,7 @@
 
 #include <elle/container/list.hh>
 #include <elle/os/getenv.hh>
+#include <elle/serialize/extract.hh>
 #include <elle/network/Interface.hh>
 #include <elle/printf.hh>
 #include <elle/serialize/insert.hh>
@@ -97,8 +98,6 @@ namespace surface
           "core paused", std::bind(&TransferMachine::_core_paused, this))),
       _peer_online(),
       _peer_offline(),
-      _peer_connected(),
-      _peer_disconnected(),
       _progress(0.0f),
       _progress_mutex(),
       _pull_progress_thread(),
@@ -210,19 +209,10 @@ namespace surface
         reactor::Waitables{&this->_canceled}, true);
 
       this->_core_machine.transition_add(
-        this->_connection_state,
-        this->_transfer_state,
-        reactor::Waitables{&this->_peer_connected});
-
-      this->_core_machine.transition_add(
         this->_transfer_state,
         this->_core_stoped_state,
         reactor::Waitables{&this->_finished},
         true);
-
-      this->_core_machine.transition_add(
-        this->_transfer_state, this->_connection_state,
-        reactor::Waitables{&this->_peer_disconnected});
 
       this->_core_machine.transition_add_catch(
         this->_publish_interfaces_state,
@@ -263,6 +253,8 @@ namespace surface
     TransferMachine::~TransferMachine()
     {
       ELLE_TRACE_SCOPE("%s: destroying transfer machine", *this);
+
+      this->_stop();
     }
 
     TransferMachine::Snapshot
@@ -299,6 +291,32 @@ namespace surface
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
       reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
+
+      auto const& peer_public_key = this->peer_K();
+
+      this->_core_machine.transition_add(
+        this->_connection_state,
+        this->_transfer_state,
+        reactor::Waitables{&this->hole().new_connected_host()},
+        false,
+        reactor::fsm::Machine::PreTrigger{},
+        [&] () -> bool
+        {
+          return this->hole().host_connected(peer_public_key);
+        }
+        );
+
+      this->_core_machine.transition_add(
+        this->_transfer_state,
+        this->_connection_state,
+        reactor::Waitables{&this->hole().disconnected_host()},
+        false,
+        reactor::fsm::Machine::PreTrigger{},
+        [&] () -> bool
+        {
+          return !this->hole().host_connected(peer_public_key);
+        }
+        );
 
       this->_core_machine_thread.reset(
         new reactor::Thread{
@@ -611,10 +629,14 @@ namespace surface
 
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
-      ELLE_DEBUG("%s: finalize etoile", *this)
-        this->_etoile.reset();
-      ELLE_DEBUG("%s: finalize hole", *this)
-        this->_hole.reset();
+      reactor::Lock l{this->_stop_mutex};
+
+      if (this->_etoile)
+        ELLE_DEBUG("%s: finalize etoile", *this)
+          this->_etoile.reset();
+      if (this->_hole)
+        ELLE_DEBUG("%s: finalize hole", *this)
+          this->_hole.reset();
 
       if (this->_core_machine_thread != nullptr)
       {
@@ -630,6 +652,7 @@ namespace surface
         this->_machine_thread.reset();
       }
 
+      // Don't store it via the setter.
       this->_current_state = State::Over;
     }
 
@@ -808,7 +831,6 @@ namespace surface
           // Connection successful
           ELLE_TRACE("%s: connection round(%s) successful",
                      *this, r->endpoints());
-          this->_peer_connected.signal();
           return;
         }
         else if (not succeed)
@@ -919,6 +941,31 @@ namespace surface
         ELLE_ASSERT(!this->_data->sender_id.empty());
         return this->_data->sender_id;
       }
+    }
+
+    cryptography::PublicKey
+    TransferMachine::peer_K() const
+    {
+      std::string K_str;
+      if (this->is_sender())
+      {
+        ELLE_ASSERT(!this->_data->recipient_id.empty());
+        K_str = this->state().user(this->_data->recipient_id).public_key;
+      }
+      else
+      {
+        ELLE_ASSERT(!this->_data->sender_id.empty());
+        K_str = this->state().user(this->_data->sender_id).public_key;
+      }
+
+      if (K_str.empty())
+        throw Exception(gap_api_error, "peer has no public key");
+
+      auto extractor =
+        elle::serialize::from_string<
+          elle::serialize::InputBase64Archive>(K_str);
+
+      return infinit::cryptography::PublicKey(extractor);
     }
 
     void
