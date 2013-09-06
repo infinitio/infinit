@@ -298,7 +298,7 @@ class Update(Page):
             cb()
 
         transaction['status'] = status
-        transaction['modification_time'] = time.time()
+        transaction['mtime'] = time.time()
         database.transactions().save(transaction)
 
         device_ids = [transaction['sender_device_id']]
