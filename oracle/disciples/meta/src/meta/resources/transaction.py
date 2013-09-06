@@ -354,22 +354,26 @@ class All(Page):
 
         filter_ = self.data.get('filter', [CANCELED, FINISHED, FAILED, CREATED, REJECTED])
         inclusive = self.data.get('type', False)
-        limit = self.data.get('count', 0)
+        limit = min(int(self.data.get('count', 100)), 100)
+
+
 
         transaction_ids = list(
             t['_id'] for t in database.transactions().find({
-                '$or':[
-                    {'recipient_id': self.user['_id']},
-                    {'sender_id': self.user['_id']}
-                ],
-                'status':
-                {
-                    '$%s' % (inclusive and 'in' or 'nin') : filter_
+                    '$query': {
+                        '$or':[
+                            {'recipient_id': self.user['_id']},
+                            {'sender_id': self.user['_id']}
+                        ],
+                        'status': {
+                            '$%s' % (inclusive and 'in' or 'nin'): filter_,
+                        },
+                    },
+                    '$sort': { 'mtime': -1 },
                 },
-                '$sort': {
-                    'mtime': -1,
-                },
-            }, fields = ['_id'], limit = limit)
+                fields = ['_id'],
+                limit = limit
+            )
         )
 
         return self.success({
