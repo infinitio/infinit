@@ -670,7 +670,7 @@ class _DeviceAccess(_Page):
 
         # Add / remove device from db
         req = {'_id': user_id}
-        update_action = value and '$push' or '$pull'
+        update_action = value and '$addToSet' or '$pull'
         database.users().update(
             req,
             {
