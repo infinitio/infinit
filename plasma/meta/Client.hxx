@@ -81,8 +81,14 @@ namespace plasma
         {CURLINFO_DATA_IN, "<<"},
         {CURLINFO_DATA_OUT, ">>"},
       };
+
       // get rid of \n
-      ELLE_ASSERT_GT(what_size, 0u);
+      if (what_size == 0)
+      {
+        ELLE_DEBUG("debug callback is empty");
+        return 0;
+      }
+
       if (what[what_size - 1] == '\n')
       {
         what_size--;
