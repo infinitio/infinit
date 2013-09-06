@@ -13,7 +13,7 @@ def reset_user_status():
     when the trophonius instance goes down.
     """
     import meta.database
-    meta.database.users().update(spec={}, document={"$set": {"connected":False}}, multi=True)
+    meta.database.users().update(spec={}, document={"$set": {"connected":False, "connected_devices": []}}, multi=True)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 import meta.conf
