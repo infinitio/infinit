@@ -1,8 +1,12 @@
 #ifndef  SURFACE_GAP_GAP_H
 # define SURFACE_GAP_GAP_H
 
-# include <stddef.h>
-# include <stdint.h>
+// XXX Used to ensure that generated gap.h in Obj-C doesn't contain system
+// XXX declarations
+# ifndef SURFACE_GAP_NO_SYSTEM_INCLUDE
+#  include <stddef.h>
+#  include <stdint.h>
+# endif
 
 # ifdef __cplusplus
 extern "C" {
