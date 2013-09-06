@@ -365,7 +365,10 @@ class All(Page):
                 'status':
                 {
                     '$%s' % (inclusive and 'in' or 'nin') : filter_
-                }
+                },
+                '$sort': {
+                    'mtime': -1,
+                },
             }, fields = ['_id'], limit = limit)
         )
 
