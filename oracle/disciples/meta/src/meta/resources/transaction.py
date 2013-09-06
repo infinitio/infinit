@@ -369,10 +369,12 @@ class All(Page):
                             '$%s' % (inclusive and 'in' or 'nin'): filter_,
                         },
                     },
-                    '$sort': { 'mtime': -1 },
                 },
                 fields = ['_id'],
-                limit = limit
+                limit = limit,
+                sort = [
+                    ('mtime', -1),
+                ],
             )
         )
 
