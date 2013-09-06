@@ -411,11 +411,20 @@ class AddDevice(_Page):
         device_id = database.ObjectId(self.data["device_id"])
 
         network = self.network(network_id)
+        if self.user['_id'] not in network["users"]:
+            return self.error(error.NETWORK_DOESNT_BELONG_TO_YOU)
         device = database.devices().find_one(device_id)
         if not device:
             return self.error(error.DEVICE_NOT_FOUND)
 
+        if not device["owner"] == self.user["_id"]:
+            return self.error(error.DEVICE_NOT_FOUND)
+
         if str(device_id) not in network['nodes']:
+            # XXX: for the moment, only 1 device per user can be added.
+            if len(network["nodes"]) >= 2:
+                return self.error(error.MAXIMUM_DEVICE_NUMBER_REACHED)
+
             network['nodes'][str(device_id)] = {
                     "locals": None,
                     "externals": None,
