@@ -57,7 +57,8 @@ namespace surface
         false,
         [&] () -> bool
         {
-          return false;
+          // Pre Trigger the condition if the accepted barrier has already been
+          // opened.
           return this->state().transactions().at(this->id()).data()->status ==
             TransactionStatus::accepted;
         }
@@ -70,7 +71,8 @@ namespace surface
         false,
         [&] () -> bool
         {
-          return false;
+          // Pre Trigger the condition if the rejected barrier has already been
+          // opened.
           return this->state().transactions().at(this->id()).data()->status ==
             TransactionStatus::rejected;
         }
@@ -176,14 +178,18 @@ namespace surface
       std::swap(this->_files, files);
 
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
+
+      // Copy filenames into data structure to be sent to meta.
       this->data()->files.resize(this->_files.size());
       std::transform(
         this->_files.begin(),
         this->_files.end(),
         this->data()->files.begin(),
-        [] (std::string const& el) {
+        [] (std::string const& el)
+        {
           return boost::filesystem::path(el).filename().string();
         });
+
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
 
       this->peer_id(recipient);
@@ -203,12 +209,15 @@ namespace surface
       this->_files = std::move(files);
 
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
+
+      // Copy filenames into data structure to be sent to meta.
       this->data()->files.resize(this->_files.size());
       std::transform(
         this->_files.begin(),
         this->_files.end(),
         this->data()->files.begin(),
-        [] (std::string const& el) {
+        [] (std::string const& el)
+        {
           return boost::filesystem::path(el).filename().string();
         });
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
