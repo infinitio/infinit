@@ -15,18 +15,18 @@ ELLE_LOG_COMPONENT("metrics.Reporter");
 
 namespace metrics
 {
-  std::string Reporter::version =
-    elle::sprintf("%s.%s", INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
-  std::string Reporter::user_agent = elle::sprintf("Infinit/%s (%s)",
-                                                   Reporter::version,
+  std::string Reporter::version = INFINIT_VERSION;
+  std::string Reporter::user_agent = elle::sprintf(
+    "Infinit/%s (%s)",
+    Reporter::version,
 #ifdef INFINIT_LINUX
-                                                "Linux x86_64");
+    "Linux"
 #elif INFINIT_MACOSX
-             // XXX[10.7: should adapt to any MacOS X version]
-                                                "Mac OS X 10.7");
+    "OS X"
 #else
 # warning "machine not supported"
 #endif
+  );
 
   struct Reporter::Impl
   {
