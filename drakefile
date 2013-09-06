@@ -586,12 +586,58 @@ def configure(cxx_toolkit = None,
     'hole/Model.hxx',
     'horizon/Policy.cc',
     'horizon/Policy.hh',
+    'common/common.cc', # FIXME: papier must not use common.
   )
   papier_cxx_config = drake.cxx.Config(cxx_config)
   papier_cxx_config.lib_path_runtime('.')
   papier_lib = drake.cxx.DynLib('lib/papier',
-                                papier_sources + [],
+                                papier_sources + [nucleus_lib],
                                 cxx_toolkit, papier_cxx_config)
+
+  # Station
+  station_build = drake.Rule('station/build')
+  station_sources = drake.nodes(
+    'station/src/station/AlreadyConnected.cc',
+    'station/src/station/AlreadyConnected.hh',
+    'station/src/station/ConnectionFailure.hh',
+    'station/src/station/InvalidPassport.cc',
+    'station/src/station/InvalidPassport.hh',
+    'station/src/station/Host.cc',
+    'station/src/station/Host.hh',
+    'station/src/station/Station.cc',
+    'station/src/station/Station.hh',
+  )
+  cxx_config.add_local_include_path('station/src')
+  station_cxx_config = drake.cxx.Config(cxx_config)
+  station_cxx_config.lib_path_runtime('.')
+  station_lib = drake.cxx.DynLib('lib/station',
+                                 station_sources + [papier_lib,
+                                                    cryptography_lib,
+                                                    reactor_lib,
+                                                    elle_lib],
+                                 cxx_toolkit, station_cxx_config)
+  station_build << station_lib
+  station_tests = drake.Rule('station/tests')
+  station_check = drake.Rule('station/check')
+  station_cxx_config_tests = drake.cxx.Config(station_cxx_config)
+  station_cxx_config_tests += boost.config_test()
+  station_cxx_config_tests += boost.config_system()
+  station_cxx_config_tests.lib_path_runtime('../../lib')
+  for name in ['station']:
+    test = drake.cxx.Executable(
+      'station/tests/%s' % name,
+      [
+        drake.node('station/tests/%s.cc' % name),
+        station_lib,
+        papier_lib,
+        cryptography_lib,
+        reactor_lib,
+        elle_lib,
+      ],
+      cxx_toolkit, station_cxx_config_tests)
+    station_tests << test
+    runner = drake.Runner(exe = test)
+    station_check << runner.status
 
   # Hole
   hole_sources = drake.nodes(
