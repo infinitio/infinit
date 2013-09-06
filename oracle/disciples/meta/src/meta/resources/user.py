@@ -678,14 +678,13 @@ class _DeviceAccess(_Page):
             },
             multi = False,
         )
+        user = database.users().find_one(user_id)
 
         # Disconnect only user with an empty list of connected device.
-        if value is False:
-            req['connected_devices'] = []
         req = {'_id': user_id}
         database.users().update(
             req,
-            {"$set": {"connected": value}},
+            {"$set": {"connected": bool(user["connected_devices"])}},
             multi = False,
         )
 
