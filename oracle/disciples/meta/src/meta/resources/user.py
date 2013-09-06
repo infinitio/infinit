@@ -688,9 +688,17 @@ class _DeviceAccess(_Page):
             multi = False,
         )
 
-        # XXX.
+        # XXX:
+        # This should not be in user.py, but it's the only place
+        # we know the device has been disconnected.
         if value is False:
-            for network in database.networks().find({"nodes": {"$exists": str(device['_id'])}}):
+            networks = database.networks().find(
+                {
+                    "nodes.%s" % str(device['_id']): {"$exists": True}
+                }
+            )
+
+            for network in networks:
                 network['nodes'][str(device['_id'])] = {"locals": None, "externals": None, "fallback": None}
                 database.networks().save(network)
                 self.notifier.notify_some(
@@ -698,7 +706,7 @@ class _DeviceAccess(_Page):
                     device_ids = list(network['nodes']),
                     message = { "network_id": str(network['_id']), "devices": list(network['nodes'].keys()), "status": False },
                     store = False,
-                    )
+                )
 
         self.notify_swaggers(
             notifier.USER_STATUS,
