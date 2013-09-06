@@ -183,12 +183,15 @@ namespace surface
       this->user(notif.sender_id);
       this->user(notif.recipient_id);
 
+      ELLE_ASSERT(!notif.id.empty());
+
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
-          return pair.second.data()->id == notif.id;
+          return !pair.second.data()->id.empty() &&
+                 pair.second.data()->id == notif.id;
         });
 
       if (it == std::end(this->_transactions))
@@ -212,12 +215,14 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: peer connection notification", *this);
 
+      ELLE_ASSERT(!notif.network_id.empty());
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
-          return pair.second.data()->network_id == notif.network_id;
+          return !pair.second.data()->network_id.empty() &&
+                 pair.second.data()->network_id == notif.network_id;
         });
 
       if (it == std::end(this->_transactions))
