@@ -29,33 +29,21 @@ namespace surface
                              std::shared_ptr<TransferMachine::Data> data,
                              bool):
       TransferMachine(state, id, std::move(data)),
-      _request_network_state(
-        this->_machine.state_make(
-          "request network", std::bind(&SendMachine::_request_network, this))),
       _create_transaction_state(
         this->_machine.state_make(
           "create transaction", std::bind(&SendMachine::_create_transaction, this))),
-      _copy_files_state(
-        this->_machine.state_make(
-          "copy files", std::bind(&SendMachine::_copy_files, this))),
       _wait_for_accept_state(
         this->_machine.state_make(
           "wait for accept", std::bind(&SendMachine::_wait_for_accept, this))),
-      _set_permissions_state(
-        this->_machine.state_make(
-          "set permissions", std::bind(&SendMachine::_set_permissions, this))),
       _current_file()
     {
       this->_machine.transition_add(
-        this->_request_network_state, this->_create_transaction_state);
-      this->_machine.transition_add(
-        this->_create_transaction_state, this->_copy_files_state);
-      this->_machine.transition_add(
-        this->_copy_files_state, this->_wait_for_accept_state);
+        this->_create_transaction_state,
+        this->_wait_for_accept_state);
 
       this->_machine.transition_add(
         this->_wait_for_accept_state,
-        this->_set_permissions_state,
+        this->_transfer_core_state,
         reactor::Waitables{&this->_accepted},
         false,
         [&] () -> bool
@@ -81,36 +69,18 @@ namespace surface
         }
         );
 
-      this->_machine.transition_add(
-        this->_set_permissions_state, this->_transfer_core_state);
-
       // Cancel.
-      this->_machine.transition_add(this->_request_network_state,
-                                    this->_remote_clean_state,
-                                    reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(this->_create_transaction_state,
-                                    this->_cancel_state,
-                                    reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(this->_copy_files_state,
                                     this->_cancel_state,
                                     reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(this->_wait_for_accept_state,
                                     this->_cancel_state,
                                     reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(this->_set_permissions_state,
-                                    this->_cancel_state,
-                                    reactor::Waitables{&this->_canceled}, true);
       // Exception.
-      this->_machine.transition_add_catch(
-        this->_request_network_state, this->_remote_clean_state);
       this->_machine.transition_add_catch(
         this->_create_transaction_state, this->_fail_state);
       this->_machine.transition_add_catch(
-        this->_copy_files_state, this->_fail_state);
-      this->_machine.transition_add_catch(
         this->_wait_for_accept_state, this->_fail_state);
-      this->_machine.transition_add_catch(
-        this->_set_permissions_state, this->_fail_state);
     }
 
     SendMachine::~SendMachine()
@@ -139,9 +109,6 @@ namespace surface
           this->_run(this->_wait_for_accept_state);
           break;
         case plasma::TransactionStatus::accepted:
-          this->_run(this->_set_permissions_state);
-          break;
-        case plasma::TransactionStatus::ready:
           this->_run(this->_transfer_core_state);
           break;
         case plasma::TransactionStatus::finished:
@@ -196,7 +163,7 @@ namespace surface
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
 
       this->peer_id(recipient);
-      this->_run(this->_request_network_state);
+      this->_run(this->_create_transaction_state);
     }
 
     SendMachine::SendMachine(surface::gap::State const& state,
@@ -231,14 +198,8 @@ namespace surface
       {
         case TransferMachine::State::NewTransaction:
           elle::unreachable();
-        case TransferMachine::State::SenderCreateNetwork:
-          this->_run(this->_request_network_state);
-          break;
         case TransferMachine::State::SenderCreateTransaction:
           this->_run(this->_create_transaction_state);
-          break;
-        case TransferMachine::State::SenderCopyFiles:
-          this->_run(this->_copy_files_state);
           break;
         case TransferMachine::State::SenderWaitForDecision:
           this->_run(this->_wait_for_accept_state);
@@ -246,21 +207,12 @@ namespace surface
         case TransferMachine::State::RecipientWaitForDecision:
         case TransferMachine::State::RecipientAccepted:
           elle::unreachable();
-        case TransferMachine::State::GrantPermissions:
-          this->_run(this->_set_permissions_state);
-          break;
         case TransferMachine::State::PublishInterfaces:
         case TransferMachine::State::Connect:
         case TransferMachine::State::PeerDisconnected:
         case TransferMachine::State::PeerConnectionLost:
         case TransferMachine::State::Transfer:
           this->_run(this->_transfer_core_state);
-          break;
-        case TransferMachine::State::CleanLocal:
-          this->_run(this->_local_clean_state);
-          break;
-        case TransferMachine::State::CleanRemote:
-          this->_run(this->_remote_clean_state);
           break;
         case TransferMachine::State::Finished:
           this->_run(this->_finish_state);
@@ -311,7 +263,6 @@ namespace surface
             this->_rejected.open();
           break;
         case plasma::TransactionStatus::initialized:
-        case plasma::TransactionStatus::ready:
           ELLE_DEBUG("%s: ignore status %s", *this, status);
           break;
         case plasma::TransactionStatus::created:
@@ -323,35 +274,9 @@ namespace surface
     }
 
     void
-    SendMachine::_request_network()
-    {
-      ELLE_TRACE_SCOPE("%s: request network", *this);
-      this->current_state(TransferMachine::State::SenderCreateNetwork);
-
-      elle::utility::Time time; time.Current();
-      std::string network_name =
-        elle::sprintf("%s-%s", this->peer_id(), time.nanoseconds);
-
-      auto network_id =
-        this->state().meta().create_network(network_name).created_network_id;
-      this->network_id(network_id);
-
-      this->state().reporter()[this->network_id()].store(
-        "network.create.succeed",
-        {{MKey::value, this->network_id()}});
-
-      this->state().google_reporter()[this->state().me().id].store(
-        "network.create.succeed");
-
-      this->state().meta().network_add_device(
-        this->network().name(), this->state().device().id);
-    }
-
-    void
     SendMachine::_create_transaction()
     {
-      ELLE_TRACE_SCOPE("%s: create transaction with netowrk %s",
-                       *this, this->network_id());
+      ELLE_TRACE_SCOPE("%s: create transaction", *this);
       this->current_state(TransferMachine::State::SenderCreateTransaction);
 
       auto total_size =
@@ -394,7 +319,6 @@ namespace surface
           this->data()->files.size(),
           size,
           boost::filesystem::is_directory(first_file),
-          this->network().name(),
           this->state().device().id,
           this->_message
           ).created_transaction_id
@@ -408,65 +332,8 @@ namespace surface
       this->peer_id(this->state().user(this->peer_id(), true).id);
       ELLE_TRACE("peer id: %s", this->peer_id());
 
-      this->state().meta().network_add_user(
-        this->network().name(), this->peer_id());
-
-      auto nb = operation_detail::blocks::create(this->network().name(),
-                                                 this->state().identity());
-
-      this->state().meta().update_network(this->network().name(),
-                                          nullptr,
-                                          &nb.root_block,
-                                          &nb.root_address,
-                                          &nb.group_block,
-                                          &nb.group_address);
-
-      auto network = this->state().meta().network(this->network().name());
-
-      this->descriptor().store(this->state().identity());
-
-      using namespace elle::serialize;
-      {
-        nucleus::neutron::Object directory{
-          from_string<InputBase64Archive>(network.root_block)
-            };
-
-        this->storage().store(this->descriptor().meta().root(), directory);
-      }
-
-      {
-        nucleus::neutron::Group group{
-          from_string<InputBase64Archive>(network.group_block)
-            };
-
-        nucleus::proton::Address group_address{
-          from_string<InputBase64Archive>(network.group_address)
-            };
-
-        this->storage().store(group_address, group);
-      }
-
       this->state().meta().update_transaction(this->transaction_id(),
                                               plasma::TransactionStatus::initialized);
-    }
-
-    void
-    SendMachine::_copy_files()
-    {
-      ELLE_TRACE_SCOPE("%s: copy the files", *this);
-      this->current_state(TransferMachine::State::SenderCopyFiles);
-
-      nucleus::neutron::Subject subject;
-      subject.Create(this->descriptor().meta().administrator_K());
-
-      this->state().reporter()[this->transaction_id()].store(
-        "transaction.preparing", this->transaction_metric());
-
-      operation_detail::to::send(
-        this->etoile(), this->descriptor(), subject, this->_files);
-
-      this->state().reporter()[this->transaction_id()].store(
-        "transaction.prepared", this->transaction_metric());
     }
 
     void
@@ -479,44 +346,6 @@ namespace surface
       // - Checking local state, meaning that during the copy, we recieved an
       //   accepted, so we can directly go the next step.
       // - Waiting for the accepted notification.
-    }
-
-    void
-    SendMachine::_set_permissions()
-    {
-      ELLE_TRACE_SCOPE("%s: set permissions %s", *this, this->transaction_id());
-      this->current_state(TransferMachine::State::GrantPermissions);
-
-      ELLE_DEBUG("%s: peer object id %s", *this, this->peer_id());
-      auto id = this->state().user_indexes().at(this->peer_id());
-      ELLE_DEBUG("%s: peer id %s", *this, id);
-      auto peer = this->state().users().at(id);
-      ELLE_DEBUG("%s: peer is %s", *this, peer);
-
-      auto peer_public_key = peer.public_key;
-
-      ELLE_ASSERT_NEQ(peer_public_key.length(), 0u);
-
-      nucleus::neutron::User::Identity public_key;
-      public_key.Restore(peer_public_key);
-
-      nucleus::neutron::Subject subject;
-      subject.Create(public_key);
-
-      ELLE_DEBUG("%s: network id %s", *this, this->network_id());
-      auto network = this->state().meta().network(this->network_id());
-      ELLE_DEBUG("%s: network %s", *this, network);
-      auto group_address = network.group_address;
-
-      nucleus::neutron::Group::Identity group;
-      group.Restore(group_address);
-
-      operation_detail::user::add(this->etoile(), group, subject);
-      operation_detail::user::set_permissions(
-        this->etoile(), subject, nucleus::neutron::permissions::write);
-
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              plasma::TransactionStatus::ready);
     }
 
     void
@@ -572,6 +401,7 @@ namespace surface
           {
             this->_rpcs->run();
           }));
+
     }
 
     /*----------.

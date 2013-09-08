@@ -8,14 +8,8 @@
 //# include <plasma/fwd.hh>
 # include <plasma/plasma.hh>
 
-# include <etoile/fwd.hh>
 # include <metrics/fwd.hh>
 # include <papier/fwd.hh>
-
-# include <hole/implementations/slug/Slug.hh>
-# include <hole/storage/Directory.hh>
-
-# include <nucleus/proton/Network.hh>
 
 # include <station/fwd.hh>
 
@@ -53,21 +47,15 @@ namespace surface
       enum class State
       {
         NewTransaction = 0,
-        SenderCreateNetwork = 1,
         SenderCreateTransaction = 2,
-        SenderCopyFiles = 3,
         SenderWaitForDecision = 4,
         RecipientWaitForDecision = 5,
         RecipientAccepted = 6,
-        RecipientWaitForReady = 7,
-        GrantPermissions = 8,
         PublishInterfaces = 9,
         Connect = 10,
         PeerDisconnected = 11,
         PeerConnectionLost = 12,
         Transfer = 13,
-        CleanLocal = 14,
-        CleanRemote = 15,
         Finished = 16,
         Rejected = 17,
         Canceled = 18,
@@ -145,10 +133,6 @@ namespace surface
       join();
 
     public:
-      /// Returns if the machine is releated to the given network object id.
-      bool
-      concerns_network(std::string const& network_id);
-
       /// Returns if the machine is releated to the given transaction object id.
       bool
       concerns_transaction(std::string const& transaction_id);
@@ -208,12 +192,6 @@ namespace surface
 
     private:
       void
-      _local_clean();
-
-      void
-      _remote_clean();
-
-      void
       _clean();
 
       void
@@ -232,8 +210,6 @@ namespace surface
       reactor::fsm::State& _reject_state;
       reactor::fsm::State& _cancel_state;
       reactor::fsm::State& _fail_state;
-      reactor::fsm::State& _remote_clean_state;
-      reactor::fsm::State& _local_clean_state;
       reactor::fsm::State& _end_state;
 
     protected:
@@ -251,6 +227,9 @@ namespace surface
 
       void
       _publish_interfaces();
+
+      std::unique_ptr<station::Host>
+      _connect();
 
       void
       _connection();
@@ -285,13 +264,6 @@ namespace surface
       reactor::Signal _peer_connected;
       reactor::Signal _peer_disconnected;
 
-      ELLE_ATTRIBUTE_r(float, progress);
-      ELLE_ATTRIBUTE_P(reactor::Mutex, progress_mutex, mutable);
-      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, pull_progress_thread);
-
-      void
-      _retrieve_progress();
-
       ELLE_ATTRIBUTE_R(surface::gap::State const&, state);
 
       /*------------.
@@ -320,47 +292,12 @@ namespace surface
       bool
       is_sender() const = 0;
 
-    protected:
-      std::string const&
-      network_id() const;
-
-      void
-      network_id(std::string const& id);
-
-      ELLE_ATTRIBUTE(std::unique_ptr<nucleus::proton::Network>, network);
-    protected:
-      nucleus::proton::Network&
-      network();
-
-      ELLE_ATTRIBUTE(std::unique_ptr<papier::Descriptor>, descriptor);
-    protected:
-      papier::Descriptor const&
-      descriptor();
-
-      /*-------.
-      | Etoile |
-      `-------*/
-      ELLE_ATTRIBUTE(std::unique_ptr<hole::storage::Directory>, storage);
-    protected:
-      hole::storage::Directory&
-      storage();
-
-      ELLE_ATTRIBUTE(std::unique_ptr<hole::implementations::slug::Slug>, hole);
-    protected:
-      hole::implementations::slug::Slug&
-      hole();
-
       ELLE_ATTRIBUTE(std::unique_ptr<station::Station>, station);
     protected:
       station::Station&
       station();
 
       std::unique_ptr<station::Host> _host;
-
-      ELLE_ATTRIBUTE(std::unique_ptr<etoile::Etoile>, etoile);
-    protected:
-      etoile::Etoile&
-      etoile();
 
     public:
       virtual

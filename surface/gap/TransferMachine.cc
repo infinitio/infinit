@@ -9,8 +9,6 @@
 #include <papier/Descriptor.hh>
 #include <papier/Authority.hh>
 
-#include <etoile/Etoile.hh>
-
 # include <station/Station.hh>
 # include <station/AlreadyConnected.hh>
 
@@ -70,12 +68,6 @@ namespace surface
       _fail_state(
         this->_machine.state_make(
           "fail", std::bind(&TransferMachine::_fail, this))),
-      _remote_clean_state(
-        this->_machine.state_make(
-          "remote clean", std::bind(&TransferMachine::_remote_clean, this))),
-      _local_clean_state(
-        this->_machine.state_make(
-          "local clean", std::bind(&TransferMachine::_local_clean, this))),
       _end_state(
         this->_machine.state_make(
           "end", std::bind(&TransferMachine::_end, this))),
@@ -103,9 +95,6 @@ namespace surface
       _peer_offline(),
       _peer_connected(),
       _peer_disconnected(),
-      _progress(0.0f),
-      _progress_mutex(),
-      _pull_progress_thread(),
       _state(state),
       _data(std::move(data))
     {
@@ -118,14 +107,14 @@ namespace surface
                                     true);
 
       this->_machine.transition_add(this->_finish_state,
-                                    this->_remote_clean_state);
+                                    this->_end_state);
 
       // Cancel way.
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_cancel_state,
                                     reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(this->_cancel_state,
-                                    this->_remote_clean_state);
+                                    this->_end_state);
 
       // Fail way.
       this->_machine.transition_add_catch(this->_transfer_core_state,
@@ -136,14 +125,10 @@ namespace surface
                                     reactor::Waitables{&this->_failed}, true);
 
       this->_machine.transition_add(this->_fail_state,
-                                    this->_remote_clean_state);
+                                    this->_end_state);
       // Reject.
       this->_machine.transition_add(this->_reject_state,
-                                    this->_remote_clean_state);
-
-      // Clean.
-      this->_machine.transition_add(this->_remote_clean_state,
-                                    this->_local_clean_state);
+                                    this->_end_state);
 
       // The catch transitions just open the barrier to logging purpose.
       // The snapshot will be kept.
@@ -161,21 +146,6 @@ namespace surface
                   ELLE_ERR("%s: Termination failed", *this);
                   this->_failed.open();
                 });
-      this->_machine.transition_add_catch(this->_remote_clean_state,
-                                          this->_end_state)
-        .action([this]
-                {
-                  ELLE_ERR("%s: Remote clean failed", *this);
-                  this->_failed.open();
-                });
-      this->_machine.transition_add_catch(this->_local_clean_state,
-                                          this->_end_state)
-        .action([this]
-                {
-                  ELLE_ERR("%s: Local clean failed", *this);
-                  this->_failed.open();
-                });
-      this->_machine.transition_add(this->_local_clean_state, this->_end_state);
 
       /*-------------.
       | Core Machine |
@@ -284,7 +254,7 @@ namespace surface
     void
     TransferMachine::current_state(TransferMachine::State const& state)
     {
-      ELLE_TRACE_SCOPE("%s: set new progress to %s", *this, state);
+      ELLE_TRACE_SCOPE("%s: set new state to %s", *this, state);
       this->_current_state = state;
       this->_save_snapshot();
       this->_state_changed.signal();
@@ -326,61 +296,6 @@ namespace surface
         throw Exception(gap_error, "an error occured");
 
       ELLE_DEBUG("%s: transfer core finished", *this);
-    }
-
-    void
-    TransferMachine::_local_clean()
-    {
-      ELLE_TRACE_SCOPE("%s: clean local %s", *this, this->data()->network_id);
-      this->current_state(State::CleanLocal);
-
-      if (!this->data()->network_id.empty())
-      {
-        auto path = common::infinit::network_directory(
-          this->state().me().id, this->network_id());
-
-        if (boost::filesystem::exists(path))
-        {
-          ELLE_DEBUG("%s: remove network at %s", *this, path);
-
-          boost::filesystem::remove_all(path);
-        }
-      }
-
-      ELLE_DEBUG("finalize etoile")
-        this->_etoile.reset();
-      ELLE_DEBUG("finalize hole")
-        this->_hole.reset();
-      ELLE_DEBUG("%s: local state successfully cleaned", *this);
-    }
-
-    void
-    TransferMachine::_remote_clean()
-    {
-      ELLE_TRACE_SCOPE("%s: clean remote network %s",
-                       *this, this->data()->network_id);
-      this->current_state(State::CleanRemote);
-
-      if (!this->data()->network_id.empty())
-      {
-        try
-        {
-          this->state().meta().delete_network(this->network_id());
-        }
-        catch (reactor::Terminate const&)
-        {
-          ELLE_TRACE("%s: machine terminated before deleting network: %s",
-                     *this, elle::exception_string());
-          throw;
-        }
-        catch (std::exception const&)
-        {
-          ELLE_ERR("%s: clean failed: network %s wasn't deleted: %s",
-                   *this, this->network_id(), elle::exception_string());
-        }
-      }
-
-      ELLE_DEBUG("%s: cleaned", *this);
     }
 
     void
@@ -480,30 +395,6 @@ namespace surface
       {
         ELLE_DEBUG("%s: transaction id is still empty", *this);
       }
-
-      if (!this->network_id().empty())
-      {
-        try
-        {
-          this->state().meta().delete_network(this->network_id());
-        }
-        catch (reactor::Terminate const&)
-        {
-          ELLE_TRACE("%s: machine terminated while deleting netork: %s",
-                     *this, elle::exception_string());
-          throw;
-        }
-        catch (std::exception const&)
-        {
-          ELLE_ERR("%s: deleting network %s failed: %s",
-                   *this, this->network_id(), elle::exception_string());
-        }
-      }
-      else
-      {
-        ELLE_DEBUG("%s: network id is still empty", *this);
-      }
-      ELLE_DEBUG("%s: finalized", *this);
     }
 
     void
@@ -551,12 +442,6 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
       this->_canceled.open();
-    }
-
-    bool
-    TransferMachine::concerns_network(std::string const& network_id)
-    {
-      return this->_data->network_id == network_id;
     }
 
     bool
@@ -610,15 +495,9 @@ namespace surface
     void
     TransferMachine::_stop()
     {
-      ELLE_TRACE_SCOPE("%s: stop machine for transaction %s",
-                       *this, this->network_id());
+      ELLE_TRACE_SCOPE("%s: stop machine for transaction", *this);
 
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-      ELLE_DEBUG("%s: finalize etoile", *this)
-        this->_etoile.reset();
-      ELLE_DEBUG("%s: finalize hole", *this)
-        this->_hole.reset();
 
       if (this->_core_machine_thread != nullptr)
       {
@@ -684,21 +563,23 @@ namespace surface
 
       AddressContainer public_addresses;
 
-      this->state().meta().network_connect_device(
-        this->network_id(), this->state().passport().id(), addresses, public_addresses);
+      // XXX.
+
+      this->state().meta().connect_device(
+        this->data()->id,
+        this->state().passport().id(),
+        addresses,
+        public_addresses);
       ELLE_DEBUG("%s: interfaces published", *this);
     }
 
-    void
-    TransferMachine::_connection()
+    std::unique_ptr<station::Host>
+    TransferMachine::_connect()
     {
-      ELLE_TRACE_SCOPE("%s: connecting peers", *this);
-      this->current_state(State::Connect);
-
       auto const& transaction = *this->data();
 
       auto endpoints = this->state().meta().device_endpoints(
-        this->network_id(),
+        this->data()->id,
         is_sender() ? transaction.sender_device_id : transaction.recipient_device_id,
         is_sender() ? transaction.recipient_device_id : transaction.sender_device_id);
 
@@ -730,7 +611,10 @@ namespace surface
 
         std::string host = splited[0];
         int port = std::stoi(splited[1]);
-        addresses.emplace_back(new FallbackRound("fallback", host, port, this->network_id()));
+        addresses.emplace_back(new FallbackRound("fallback",
+                                                 host,
+                                                 port,
+                                                 this->data()->id));
       }
 
       size_t tries = 0;
@@ -738,15 +622,17 @@ namespace surface
       {
         ELLE_DEBUG("%s: round(%s): %s", *this, tries, r->name());
         ++tries;
-        bool succeed = false;
 
+        std::unique_ptr<station::Host> host;
+        reactor::Barrier host_found;
         reactor::Scope scope;
+
         for (std::string const& endpoint: r->endpoints())
         {
           ELLE_DEBUG("%s: endpoint %s", *this, endpoint);
-          auto fn = [this, endpoint]
+          auto fn = [this, endpoint, &host, &host_found]
           {
-            auto _connect = [&] (std::string const& endpoint)
+            try
             {
               std::vector<std::string> result;
               boost::split(result, endpoint, boost::is_any_of(":"));
@@ -755,13 +641,8 @@ namespace surface
               auto const &port = result[1];
               ELLE_DEBUG("connect(%s, %s)", ip, port)
               // XXX: This statement is ok while we are connecting to one peer.
-              this->_host = this->station().connect(ip, std::stoi(port));
-            };
-
-            namespace slug = hole::implementations::slug;
-            try
-            {
-              _connect(endpoint);
+              host = this->station().connect(ip, std::stoi(port));
+              host_found.open();
               ELLE_LOG("%s: connection to %s succeed", *this, endpoint);
             }
             catch (station::AlreadyConnected const&)
@@ -783,48 +664,35 @@ namespace surface
           scope.run_background(elle::sprintf("connect_try(%s)", endpoint), fn);
         }
 
-        scope.wait();
-        ELLE_ASSERT(reactor::Scheduler::scheduler()->current() != nullptr);
+        scope.run_background("wait_accepted",
+                             [&] ()
+                             {
+                               this->station().host_available().wait();
+                               host = this->station().accept();
+                               host_found.open();
+                             });
 
-        auto& this_thread = *reactor::Scheduler::scheduler()->current();
-        if (!this->_host)
+        if (host_found.wait(10_sec))
         {
-          ELLE_DEBUG("%s: waiting for available host", *this);
-          succeed = this_thread.wait(this->station().host_available(), 10_sec);
+          return host;
         }
-        else
-        {
-          ELLE_DEBUG("%s: we successfuly connect", *this);
-
-          this->_enable_rpcs();
-          this->_peer_connected.signal();
-          return;
-        }
-
-        if (succeed)
-        {
-          // Connection successful
-          ELLE_TRACE("%s: connection round(%s) successful",
-                     *this, r->endpoints());
-          ELLE_ASSERT(this->station().host_available());
-          ELLE_ASSERT(this->_host == nullptr);
-          this->_host = this->station().accept();
-
-          this->_enable_rpcs();
-
-          this->_peer_connected.signal();
-          return;
-        }
-        else if (not succeed)
-        {
-          // Connection failed
-          ELLE_TRACE("%s connection round(%s) failed/timeout",
-                     *this, r->endpoints());
-          continue;
-        }
+        ELLE_TRACE("%s: round %s failed", *this, tries);
       }
 
-      throw Exception(gap_peer_to_peer_error, "connection rounds failed");
+      throw Exception(gap_api_error, "no round succeed");
+    }
+
+    void
+    TransferMachine::_connection()
+    {
+      ELLE_TRACE_SCOPE("%s: connecting peers", *this);
+      this->current_state(State::Connect);
+
+      this->_host = this->_connect();
+      this->_enable_rpcs();
+      this->_peer_connected.signal();
+
+      std::cerr << "..............................;" << std::endl;
     }
 
     void
@@ -839,11 +707,6 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
       this->current_state(State::Transfer);
-      // this->_pull_progress_thread.reset(
-      //   sched.every(
-      //     [&] () { this->_retrieve_progress(); },
-      //     "pull progress",
-      //     100_ms));
 
       this->_transfer_operation();
 
@@ -853,12 +716,6 @@ namespace surface
     void
     TransferMachine::_core_stoped()
     {
-      if (this->_pull_progress_thread)
-      {
-        this->_pull_progress_thread->terminate_now();
-        this->_pull_progress_thread.reset();
-      }
-
       ELLE_TRACE_SCOPE("%s: core machine stoped", *this);
     }
 
@@ -888,25 +745,6 @@ namespace surface
       }
 
       this->_data->id = id;
-    }
-
-    std::string const&
-    TransferMachine::network_id() const
-    {
-      ELLE_ASSERT(!this->_data->network_id.empty());
-      return this->_data->network_id;
-    }
-
-    void
-    TransferMachine::network_id(std::string const& id)
-    {
-      if (!this->_data->network_id.empty())
-      {
-        ELLE_ASSERT_EQ(this->_data->network_id, id);
-        return;
-      }
-
-      this->_data->network_id = id;
     }
 
     std::string const&
@@ -943,74 +781,6 @@ namespace surface
       }
     }
 
-    nucleus::proton::Network&
-    TransferMachine::network()
-    {
-      if (!this->_network)
-      {
-        ELLE_ASSERT(!this->_data->network_id.empty());
-        this->_network.reset(
-          new nucleus::proton::Network(this->_data->network_id));
-      }
-
-      ELLE_ASSERT(this->_network != nullptr);
-      ELLE_ASSERT_EQ(this->_network->name(), this->_data->network_id);
-      return *this->_network;
-    }
-
-    papier::Descriptor const&
-    TransferMachine::descriptor()
-    {
-      ELLE_TRACE_SCOPE("%s: get descriptor", *this);
-      if (!this->_descriptor)
-      {
-        ELLE_DEBUG_SCOPE("building descriptor");
-        using namespace elle::serialize;
-        std::string descriptor =
-          this->state().meta().network(this->network_id()).descriptor; //network_manager().one(this->network_id()).descriptor;
-
-        ELLE_ASSERT_NEQ(descriptor.length(), 0u);
-
-        this->_descriptor.reset(
-          new papier::Descriptor(from_string<InputBase64Archive>(descriptor)));
-      }
-      ELLE_ASSERT(this->_descriptor != nullptr);
-      return *this->_descriptor;
-    }
-
-    hole::storage::Directory&
-    TransferMachine::storage()
-    {
-      ELLE_TRACE_SCOPE("%s: get storage", *this);
-      if (!this->_storage)
-      {
-        ELLE_DEBUG_SCOPE("building storage");
-        this->_storage.reset(
-          new hole::storage::Directory(
-            this->network().name(),
-            common::infinit::network_shelter(this->state().me().id,
-                                             this->network().name())));
-      }
-      ELLE_ASSERT(this->_storage != nullptr);
-      return *this->_storage;
-    }
-
-    hole::implementations::slug::Slug&
-    TransferMachine::hole()
-    {
-      ELLE_TRACE_SCOPE("%s: get hole", *this);
-      if (!this->_hole)
-      {
-        ELLE_DEBUG_SCOPE("building hole");
-        this->_hole.reset(
-          new hole::implementations::slug::Slug(
-          this->storage(), this->state().passport(), papier::authority(),
-            reactor::network::Protocol::tcp));
-      }
-      ELLE_ASSERT(this->_hole != nullptr);
-      return *this->_hole;
-    }
-
     station::Station&
     TransferMachine::station()
     {
@@ -1023,51 +793,6 @@ namespace surface
       }
       ELLE_ASSERT(this->_station != nullptr);
       return *this->_station;
-    }
-
-    etoile::Etoile&
-    TransferMachine::etoile()
-    {
-      ELLE_TRACE_SCOPE("%s: get etoile", *this);
-      if (!this->_etoile)
-      {
-        ELLE_DEBUG_SCOPE("building descriptor");
-        this->_etoile.reset(
-          new etoile::Etoile(this->state().identity().pair(),
-                             &(this->hole()),
-                             this->descriptor().meta().root()));
-      }
-      ELLE_ASSERT(this->_etoile != nullptr);
-      return *this->_etoile;
-    }
-
-    void
-    TransferMachine::_retrieve_progress()
-    {
-      ELLE_TRACE_SCOPE("%s: retrive progress", *this);
-
-      float progress =
-        surface::gap::operation_detail::progress::progress(this->etoile());
-
-      ELLE_DEBUG("%s: progress is %s", *this, progress);
-
-      reactor::Lock l(this->_progress_mutex);
-      this->_progress = progress;
-    }
-
-    float
-    TransferMachine::progress() const
-    {
-      reactor::Lock l(this->_progress_mutex);
-      return this->_progress;
-    };
-
-    metrics::Metric
-    TransferMachine::network_metric() const
-    {
-      return metrics::Metric{
-        {MKey::value, this->network_id()},
-      };
     }
 
     metrics::Metric
@@ -1100,7 +825,6 @@ namespace surface
         {MKey::duration, std::to_string(duration)},
         {MKey::count, std::to_string(transaction.files_count)},
         {MKey::size, std::to_string(transaction.total_size)},
-        {MKey::network, transaction.network_id},
         {MKey::value, transaction.id},
         {MKey::sender_online, sender_status},
         {MKey::recipient_online, recipient_status},
@@ -1125,8 +849,6 @@ namespace surface
 
       stream << this->type() << "(id=" << this->id()
              << ", (u=" << me.id;
-      if (!data.network_id.empty())
-        stream << ", n=" << data.network_id;
       if (!data.id.empty())
         stream << ", t=" << data.id;
       stream << ")";
@@ -1140,22 +862,14 @@ namespace surface
       {
         case TransferMachine::State::NewTransaction:
           return out << "NewTransaction";
-        case TransferMachine::State::SenderCreateNetwork:
-          return out << "SenderCreateNetwork";
         case TransferMachine::State::SenderCreateTransaction:
           return out << "SenderCreateTransaction";
-        case TransferMachine::State::SenderCopyFiles:
-          return out << "SenderCopyFiles";
         case TransferMachine::State::SenderWaitForDecision:
           return out << "SenderWaitForDecision";
         case TransferMachine::State::RecipientWaitForDecision:
           return out << "RecipientWaitForDecision";
         case TransferMachine::State::RecipientAccepted:
           return out << "RecipientAccepted";
-        case TransferMachine::State::GrantPermissions:
-          return out << "GrantPermissions";
-        case TransferMachine::State::RecipientWaitForReady:
-          return out << "RecipientWaitForReady";
         case TransferMachine::State::PublishInterfaces:
           return out << "PublishInterfaces";
         case TransferMachine::State::Connect:
@@ -1166,10 +880,6 @@ namespace surface
           return out << "PeerConnectionLost";
         case TransferMachine::State::Transfer:
           return out << "Transfer";
-        case TransferMachine::State::CleanLocal:
-          return out << "CleanLocal";
-        case TransferMachine::State::CleanRemote:
-          return out << "CleanRemote";
         case TransferMachine::State::Finished:
           return out << "Finished";
         case TransferMachine::State::Rejected:

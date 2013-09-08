@@ -53,19 +53,10 @@ namespace surface
 
     private:
       void
-      _request_network();
-
-      void
       _create_transaction();
 
       void
-      _copy_files();
-
-      void
       _wait_for_accept();
-
-      void
-      _set_permissions();
 
       void
       _transfer_operation() override;
@@ -73,11 +64,8 @@ namespace surface
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/
-      ELLE_ATTRIBUTE(reactor::fsm::State&, request_network_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, create_transaction_state);
-      ELLE_ATTRIBUTE(reactor::fsm::State&, copy_files_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_accept_state);
-      ELLE_ATTRIBUTE(reactor::fsm::State&, set_permissions_state);
 
       // Transaction status signals.
       ELLE_ATTRIBUTE(reactor::Barrier, accepted);

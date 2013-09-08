@@ -229,20 +229,20 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: peer connection notification", *this);
 
-      ELLE_ASSERT(!notif.network_id.empty());
+      ELLE_ASSERT(!notif.transaction_id.empty());
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
-          return (!pair.second.data()->network_id.empty()) &&
-                 (pair.second.data()->network_id == notif.network_id);
+          return (!pair.second.data()->id.empty()) &&
+                 (pair.second.data()->id == notif.transaction_id);
         });
 
       if (it == std::end(this->_transactions))
       {
         ELLE_ERR("%s: no transaction found for network %s",
-                 *this, notif.network_id);
+                 *this, notif.transaction_id);
         ELLE_DEBUG("%s: transactions", *this)
           for (auto const& tr: this->transactions())
           {

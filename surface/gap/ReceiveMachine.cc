@@ -27,23 +27,17 @@ namespace surface
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
       _accept_state(
         this->_machine.state_make(
-          "accept", std::bind(&ReceiveMachine::_accept, this))),
-      _wait_for_ready_state(
-        this->_machine.state_make(
-          "wait for ready", std::bind(&ReceiveMachine::_wait_for_ready, this)))
-
+          "accept", std::bind(&ReceiveMachine::_accept, this)))
     {
       // Normal way.
       this->_machine.transition_add(this->_wait_for_decision_state,
                                     this->_accept_state,
                                     reactor::Waitables{&this->_accepted});
       this->_machine.transition_add(this->_accept_state,
-                                    this->_wait_for_ready_state);
-      this->_machine.transition_add(this->_wait_for_ready_state,
-                                    this->_transfer_core_state,
-                                    reactor::Waitables{&this->_ready});
-      this->_machine.transition_add(this->_transfer_core_state,
-                                    this->_finish_state);
+                                      this->_transfer_core_state);
+
+    this->_machine.transition_add(this->_transfer_core_state,
+                                  this->_finish_state);
 
       // Reject way.
       this->_machine.transition_add(this->_wait_for_decision_state,
@@ -52,14 +46,12 @@ namespace surface
 
       // Cancel.
       this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(_wait_for_ready_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(_accept_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(_reject_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(_transfer_core_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
 
       // Exception.
       this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
-      this->_machine.transition_add_catch(_wait_for_ready_state, _fail_state);
       this->_machine.transition_add_catch(_accept_state, _fail_state);
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
@@ -79,9 +71,7 @@ namespace surface
         case TransferMachine::State::NewTransaction:
           //
           break;
-        case TransferMachine::State::SenderCreateNetwork:
         case TransferMachine::State::SenderCreateTransaction:
-        case TransferMachine::State::SenderCopyFiles:
         case TransferMachine::State::SenderWaitForDecision:
           elle::unreachable();
         case TransferMachine::State::RecipientWaitForDecision:
@@ -90,23 +80,12 @@ namespace surface
         case TransferMachine::State::RecipientAccepted:
           this->_run(this->_accept_state);
           break;
-        case TransferMachine::State::RecipientWaitForReady:
-          this->_run(this->_wait_for_ready_state);
-          break;
-        case TransferMachine::State::GrantPermissions:
-          elle::unreachable();
         case TransferMachine::State::PublishInterfaces:
         case TransferMachine::State::Connect:
         case TransferMachine::State::PeerDisconnected:
         case TransferMachine::State::PeerConnectionLost:
         case TransferMachine::State::Transfer:
           this->_run(this->_transfer_core_state);
-          break;
-        case TransferMachine::State::CleanLocal:
-          this->_run(this->_local_clean_state);
-          break;
-        case TransferMachine::State::CleanRemote:
-          this->_run(this->_remote_clean_state);
           break;
         case TransferMachine::State::Finished:
           this->_run(this->_finish_state);
@@ -139,9 +118,6 @@ namespace surface
           this->_run(this->_wait_for_decision_state);
           break;
         case plasma::TransactionStatus::accepted:
-          this->_run(this->_wait_for_ready_state);
-          break;
-        case plasma::TransactionStatus::ready:
           this->_run(this->_transfer_core_state);
           break;
         case plasma::TransactionStatus::finished:
@@ -190,10 +166,6 @@ namespace surface
           ELLE_DEBUG("%s: open finished barrier", *this)
             this->_finished.open();
           break;
-        case plasma::TransactionStatus::ready:
-          ELLE_DEBUG("%s: open ready barrier", *this)
-            this->_ready.open();
-          break;
         case plasma::TransactionStatus::accepted:
         case plasma::TransactionStatus::rejected:
         case plasma::TransactionStatus::initialized:
@@ -238,11 +210,6 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
       this->current_state(TransferMachine::State::RecipientAccepted);
 
-      ELLE_TRACE("%s: add device %s to network %s",
-                 *this, this->state().device().id, this->network_id());
-      this->state().meta().network_add_device(
-        this->network_id(), this->state().device().id);
-
       try
       {
         this->state().meta().update_transaction(this->transaction_id(),
@@ -259,13 +226,6 @@ namespace surface
         else
           throw;
       }
-    }
-
-    void
-    ReceiveMachine::_wait_for_ready()
-    {
-      ELLE_TRACE_SCOPE("%s: wait for ready %s", *this, this->transaction_id());
-      this->current_state(TransferMachine::State::RecipientWaitForReady);
     }
 
     void
@@ -310,9 +270,18 @@ namespace surface
       this->_serializer.reset(
         new infinit::protocol::Serializer(sched,
                                           this->_host->socket()));
+
       ELLE_DEBUG("create channels");
+      try
+      {
         this->_channels.reset(
           new infinit::protocol::ChanneledStream(sched, *this->_serializer));
+      }
+      catch (...)
+      {
+        ELLE_ERR("%s: %s", *this, elle::exception_string());
+        throw;
+      }
 
       ELLE_DEBUG("create rpcs");
       this->_rpcs.reset(new surface::gap::_detail::RPC{*this->_channels});

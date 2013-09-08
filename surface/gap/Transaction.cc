@@ -37,23 +37,15 @@ namespace surface
           switch (state)
           {
             case TransferMachine::State::NewTransaction:
-            case TransferMachine::State::SenderCreateNetwork:
             case TransferMachine::State::SenderCreateTransaction:
               // The sender is pending creating the transaction.
               return gap_transaction_pending;
-            case TransferMachine::State::SenderCopyFiles:
-              return gap_transaction_copying;
             case TransferMachine::State::SenderWaitForDecision:
               return gap_transaction_waiting_for_accept;
             case TransferMachine::State::RecipientWaitForDecision:
               // The recipient is pending creating waiting for decision.
               return gap_transaction_waiting_for_accept;
             case TransferMachine::State::RecipientAccepted:
-            case TransferMachine::State::RecipientWaitForReady:
-              // The recipient has accepted.
-              return gap_transaction_accepted;
-            case TransferMachine::State::GrantPermissions:
-              // The sender recieved the 'accepted'.
               return gap_transaction_accepted;
             case TransferMachine::State::PublishInterfaces:
             case TransferMachine::State::Connect:
@@ -61,8 +53,6 @@ namespace surface
             case TransferMachine::State::PeerConnectionLost:
             case TransferMachine::State::Transfer:
               return gap_transaction_running;
-            case TransferMachine::State::CleanLocal:
-            case TransferMachine::State::CleanRemote:
             case TransferMachine::State::Over:
               return gap_transaction_cleaning;
             case TransferMachine::State::Finished:
@@ -314,7 +304,7 @@ namespace surface
         throw BadOperation(BadOperation::Type::progress);
       }
 
-      return this->_machine->progress();
+      return 0.0f;
     }
 
     static
@@ -379,7 +369,7 @@ namespace surface
         return;
       }
 
-      ELLE_ASSERT_EQ(this->_data->network_id, update.network_id);
+      ELLE_ASSERT_EQ(this->_data->id, update.transaction_id);
 
       // XXX.
       // ELLE_ASSERT(
@@ -411,12 +401,6 @@ namespace surface
     Transaction::has_transaction_id(std::string const& id) const
     {
       return this->_data->id == id;
-    }
-
-    bool
-    Transaction::concerns_network(std::string const& network_id) const
-    {
-      return this->_data->network_id == network_id;
     }
 
     void
