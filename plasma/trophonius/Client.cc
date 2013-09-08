@@ -17,6 +17,7 @@
 #include <elle/serialize/extract.hh>
 
 #include <reactor/Barrier.hh>
+#include <reactor/exception.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/tcp-socket.hh>
 #include <reactor/scheduler.hh>
@@ -176,6 +177,7 @@ namespace plasma
       int _reconnected;
       std::shared_ptr<reactor::network::TCPSocket> _socket;
       reactor::Barrier _connected;
+      reactor::Barrier _synchronized;
       std::string server;
       uint16_t port;
       boost::asio::streambuf request;
@@ -185,6 +187,7 @@ namespace plasma
       std::string user_token;
       std::string user_device_id;
       Client::ConnectCallback connect_callback;
+      std::unique_ptr<reactor::Thread> _connect_callback_thread;
 
       Impl(std::string const& server,
            uint16_t port,
@@ -219,6 +222,8 @@ namespace plasma
         this->_ping_thread.terminate_now();
         this->_pong_thread.terminate_now();
         this->_read_thread.terminate_now();
+        if (this->_connect_callback_thread)
+          this->_connect_callback_thread->terminate_now();
       }
 
       void
@@ -261,16 +266,24 @@ namespace plasma
             elle::sprintf("error writing on socket: %s",
                           elle::exception_string()));
         }
-        _connected.open();
+        this->_connected.open();
       }
 
       void
       _disconnect()
       {
         this->_connected.close();
+        this->_synchronized.close();
+        while (!this->_notifications.empty())
+          this->_notifications.pop();
+        if (this->_connect_callback_thread)
+        {
+          this->_connect_callback_thread->terminate_now();
+          this->_connect_callback_thread.reset();
+        }
         if (this->_socket != nullptr)
         {
-          this->_socket->socket()->close();
+          this->_socket->close();
           this->_socket.reset();
         }
       }
@@ -278,6 +291,8 @@ namespace plasma
       void
       _reconnect()
       {
+        // If several threads try to reconnect, just wait for the first one to
+        // be done.
         if (!this->_connected.opened())
         {
           this->_connected.wait();
@@ -290,7 +305,29 @@ namespace plasma
           try
           {
             this->_connect();
-            this->connect_callback(true);
+            auto& sched = *reactor::Scheduler::scheduler();
+            this->_connect_callback_thread.reset(
+              new reactor::Thread(
+                sched,
+                "reconnection callback",
+                [&]
+                {
+                  try
+                  {
+                    this->connect_callback(true);
+                  }
+                  catch (reactor::Terminate const&)
+                  {
+                    throw;
+                  }
+                  catch (...)
+                  {
+                    ELLE_ERR("%s: connection callback failed: %s",
+                             *this, elle::exception_string());
+                    throw;
+                  }
+                  this->_synchronized.open();
+                }));
             break;
           }
           catch (elle::Exception const&)
@@ -372,7 +409,8 @@ namespace plasma
             size_t idx = 0;
             while (true)
             {
-              socket->getline(((char*)buffer.mutable_contents()) + idx, buffer.capacity() - idx, '\n');
+              socket->getline(((char*)buffer.mutable_contents()) + idx,
+                              buffer.capacity() - idx, '\n');
               if (!socket->fail())
               {
                 buffer.size(idx + socket->gcount());
@@ -438,6 +476,7 @@ namespace plasma
       std::unique_ptr<Notification>
       poll()
       {
+        this->_synchronized.wait();
         if (this->_notifications.empty())
           this->_notifications_available.wait();
         ELLE_TRACE("%s new notification", *this);
@@ -500,12 +539,12 @@ namespace plasma
                     std::string const& token,
                     std::string const& device_id)
     {
-      _impl->user_id = _id;
-      _impl->user_token = token;
-      _impl->user_device_id = device_id;
+      this->_impl->user_id = _id;
+      this->_impl->user_token = token;
+      this->_impl->user_device_id = device_id;
       this->_impl->_connect();
+      this->_impl->_synchronized.open();
       ELLE_LOG("%s: connected to trophonius", *this);
-
       return true;
     }
 
