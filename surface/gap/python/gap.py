@@ -56,7 +56,6 @@ class _State:
             'transaction_recipient_id',
             'transaction_recipient_fullname',
             'transaction_recipient_device_id',
-            'transaction_network_id',
             'transaction_files',
             'transaction_files_count',
             'transaction_total_size',

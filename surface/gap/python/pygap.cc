@@ -509,7 +509,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transaction_recipient_id", &gap_transaction_recipient_id);
   py::def("transaction_recipient_fullname", &gap_transaction_recipient_fullname);
   py::def("transaction_recipient_device_id", &gap_transaction_recipient_device_id);
-  py::def("transaction_network_id", &gap_transaction_network_id);
   py::def("transaction_files", &_transaction_files);
   py::def("transaction_files_count", &gap_transaction_files_count);
   py::def("transaction_total_size", &gap_transaction_total_size);
