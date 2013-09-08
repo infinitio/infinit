@@ -1,5 +1,5 @@
-#ifndef RPC_HH
-# define RPC_HH
+#ifndef SURFACE_GAP_DETAIL_RPC_HH
+# define SURFACE_GAP_DETAIL_RPC_HH
 
 #include <protocol/ChanneledStream.hh>
 #include <protocol/Serializer.hh>
@@ -18,8 +18,8 @@ namespace surface
     {
       elle::Buffer
       read(std::ifstream& file,
-           std::streamsize const pos,
-           std::streamsize const size);
+           uint64_t offset,
+           uint64_t const size);
 
       struct RPC:
         public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
