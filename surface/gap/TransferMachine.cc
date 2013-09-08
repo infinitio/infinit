@@ -11,8 +11,12 @@
 
 #include <etoile/Etoile.hh>
 
+# include <station/Station.hh>
+# include <station/AlreadyConnected.hh>
+
 #include <reactor/fsm/Machine.hh>
 #include <reactor/exception.hh>
+#include <reactor/Scope.hh>
 
 #include <cryptography/oneway.hh>
 
@@ -630,6 +634,13 @@ namespace surface
         this->_machine_thread.reset();
       }
 
+      if (this->_rpcs_thread != nullptr)
+      {
+        ELLE_DEBUG("%s: terminate rpcs thread", *this)
+          this->_rpcs_thread->terminate_now();
+        this->_rpcs_thread.reset();
+      }
+
       this->_current_state = State::Over;
     }
 
@@ -641,6 +652,9 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: publish interfaces", *this);
       this->current_state(State::PublishInterfaces);
+
+      auto& station = this->station();
+
       typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
       AddressContainer addresses;
 
@@ -649,7 +663,7 @@ namespace surface
       if (elle::os::getenv("INFINIT_LOCAL_ADDRESS", "").length() > 0)
       {
         addresses.emplace_back(elle::os::getenv("INFINIT_LOCAL_ADDRESS"),
-                               this->hole().port());
+                               station.port());
       }
       else
       {
@@ -663,7 +677,7 @@ namespace surface
               pair.second.mac_address.size() > 0)
           {
             auto const &ipv4 = pair.second.ipv4_address;
-            addresses.emplace_back(ipv4, this->hole().port());
+            addresses.emplace_back(ipv4, station.port());
           }
       }
       ELLE_DEBUG("addresses: %s", addresses);
@@ -725,40 +739,32 @@ namespace surface
         ELLE_DEBUG("%s: round(%s): %s", *this, tries, r->name());
         ++tries;
         bool succeed = false;
-        std::vector<std::unique_ptr<reactor::Thread>> connection_threads;
-        elle::Finally _cleanup{
-          [&]
-          {
-            ELLE_DEBUG_SCOPE("%s: termintating connection threads", *this);
-            for (auto& thread: connection_threads)
-              thread->terminate_now();
-            ELLE_DEBUG("all connection threads are over");
-          }
-        };
 
+        reactor::Scope scope;
         for (std::string const& endpoint: r->endpoints())
         {
           ELLE_DEBUG("%s: endpoint %s", *this, endpoint);
           auto fn = [this, endpoint]
           {
-            auto slug_connect = [&] (std::string const& endpoint)
+            auto _connect = [&] (std::string const& endpoint)
             {
               std::vector<std::string> result;
               boost::split(result, endpoint, boost::is_any_of(":"));
 
               auto const &ip = result[0];
               auto const &port = result[1];
-              ELLE_DEBUG("slug_connect(%s, %s)", ip, port)
-              this->hole().portal_connect(ip, std::stoi(port), false);
+              ELLE_DEBUG("connect(%s, %s)", ip, port)
+              // XXX: This statement is ok while we are connecting to one peer.
+              this->_host = this->station().connect(ip, std::stoi(port));
             };
 
             namespace slug = hole::implementations::slug;
             try
             {
-              slug_connect(endpoint);
+              _connect(endpoint);
               ELLE_LOG("%s: connection to %s succeed", *this, endpoint);
             }
-            catch (slug::AlreadyConnected const&)
+            catch (station::AlreadyConnected const&)
             {
               ELLE_LOG("%s: connection to %s succeed (we're already connected)",
                        *this, endpoint);
@@ -774,33 +780,25 @@ namespace surface
             }
           };
 
-          ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-          auto& scheduler = *reactor::Scheduler::scheduler();
-
-          std::unique_ptr<reactor::Thread> thread_ptr{
-            new reactor::Thread (scheduler,
-                                 elle::sprintf("connect_try(%s)", endpoint),
-                                 fn)};
-          connection_threads.push_back(std::move(thread_ptr));
+          scope.run_background(elle::sprintf("connect_try(%s)", endpoint), fn);
         }
 
-        if (this->hole().hosts().empty())
+        scope.wait();
+        ELLE_ASSERT(reactor::Scheduler::scheduler()->current() != nullptr);
+
+        auto& this_thread = *reactor::Scheduler::scheduler()->current();
+        if (!this->_host)
         {
-          ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-          auto& scheduler = *reactor::Scheduler::scheduler();
-
-          ELLE_ASSERT(scheduler.current() != nullptr);
-          auto& this_thread = *scheduler.current();
-
-          ELLE_DEBUG("waiting for new host");
-          succeed = this_thread.wait(this->hole().new_connected_host(), 10_sec);
-          ELLE_DEBUG("finished waiting for new host");
+          ELLE_DEBUG("%s: waiting for available host", *this);
+          succeed = this_thread.wait(this->station().host_available(), 10_sec);
         }
         else
         {
-          succeed = true;
+          ELLE_DEBUG("%s: we successfuly connect", *this);
+
+          this->_enable_rpcs();
+          this->_peer_connected.signal();
+          return;
         }
 
         if (succeed)
@@ -808,6 +806,12 @@ namespace surface
           // Connection successful
           ELLE_TRACE("%s: connection round(%s) successful",
                      *this, r->endpoints());
+          ELLE_ASSERT(this->station().host_available());
+          ELLE_ASSERT(this->_host == nullptr);
+          this->_host = this->station().accept();
+
+          this->_enable_rpcs();
+
           this->_peer_connected.signal();
           return;
         }
@@ -819,6 +823,7 @@ namespace surface
           continue;
         }
       }
+
       throw Exception(gap_peer_to_peer_error, "connection rounds failed");
     }
 
@@ -833,14 +838,12 @@ namespace surface
     TransferMachine::_transfer()
     {
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
       this->current_state(State::Transfer);
-      this->_pull_progress_thread.reset(
-        sched.every(
-          [&] () { this->_retrieve_progress(); },
-          "pull progress",
-          100_ms));
+      // this->_pull_progress_thread.reset(
+      //   sched.every(
+      //     [&] () { this->_retrieve_progress(); },
+      //     "pull progress",
+      //     100_ms));
 
       this->_transfer_operation();
 
@@ -1006,6 +1009,20 @@ namespace surface
       }
       ELLE_ASSERT(this->_hole != nullptr);
       return *this->_hole;
+    }
+
+    station::Station&
+    TransferMachine::station()
+    {
+      ELLE_TRACE_SCOPE("%s: get station", *this);
+      if (!this->_station)
+      {
+        ELLE_DEBUG_SCOPE("building station");
+        this->_station.reset(
+          new station::Station(papier::authority(), this->state().passport()));
+      }
+      ELLE_ASSERT(this->_station != nullptr);
+      return *this->_station;
     }
 
     etoile::Etoile&

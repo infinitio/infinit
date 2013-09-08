@@ -608,6 +608,7 @@ def configure(cxx_toolkit = None,
     'station/src/station/Station.hh',
   )
   cxx_config.add_local_include_path('station/src')
+  cxx_config_libs.add_local_include_path('station/src')
   station_cxx_config = drake.cxx.Config(cxx_config)
   station_cxx_config.lib_path_runtime('.')
   station_lib = drake.cxx.DynLib('lib/station',
@@ -1055,7 +1056,7 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost.config_filesystem(
     static = (cxx_toolkit.os is drake.os.macos))
   gap_lib = drake.cxx.DynLib('lib/gap',
-                             gap_sources + infinit_libs,
+                             gap_sources + infinit_libs + [station_lib,],
                              cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib

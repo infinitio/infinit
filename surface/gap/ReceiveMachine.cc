@@ -2,6 +2,8 @@
 #include <surface/gap/Rounds.hh>
 #include <surface/gap/_detail/TransferOperations.hh>
 
+#include <station/Station.hh>
+
 #include <nucleus/neutron/Subject.hh>
 
 #include <reactor/thread.hh>
@@ -271,15 +273,59 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: transfer operation %s", *this, this->transaction_id());
 
-      nucleus::neutron::Subject subject;
-      subject.Create(this->state().identity().pair().K());
+      size_t index = 0;
+      static std::streamsize N = 2 * 1024 * 1024;
+      for (auto const& filename: this->data()->files)
+      {
+        std::streamsize pos = 0;
+        auto const& output_path = boost::filesystem::path{this->state().output_dir()};
+        std::ofstream output{(output_path / filename).string()};
 
-      operation_detail::from::receive(this->etoile(),
-                                      this->descriptor(),
-                                      subject,
-                                      this->state().output_dir());
+        while (true)
+        {
+          elle::Buffer buffer{std::move(this->_rpcs->_read(index, pos, N))};
+          if (buffer.size() < N)
+          {
+            output.write((char const*) buffer.mutable_contents(),  buffer.size());
+            output.close();
+            break;
+          }
+
+          output.write((char const*) buffer.mutable_contents(),  buffer.size());
+          pos += buffer.size();
+        }
+      }
 
       this->_finished.open();
+    }
+
+    void
+    ReceiveMachine::_enable_rpcs()
+    {
+      ELLE_TRACE_SCOPE("%s: enable rpcs", *this);
+
+      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
+      ELLE_ASSERT(this->_rpcs_thread == nullptr);
+      ELLE_DEBUG("create serializer");
+      this->_serializer.reset(
+        new infinit::protocol::Serializer(sched,
+                                          this->_host->socket()));
+      ELLE_DEBUG("create channels");
+        this->_channels.reset(
+          new infinit::protocol::ChanneledStream(sched, *this->_serializer));
+
+      ELLE_DEBUG("create rpcs");
+      this->_rpcs.reset(new surface::gap::_detail::RPC{*this->_channels});
+
+      this->_rpcs_thread.reset(
+        new reactor::Thread(
+          sched,
+          "rpc thread",
+          [this] ()
+          {
+            this->_rpcs->run();
+          }));
+
     }
 
     std::string

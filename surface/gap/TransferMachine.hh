@@ -3,6 +3,8 @@
 
 # include <surface/gap/enums.hh>
 # include <surface/gap/Notification.hh>
+# include <surface/gap/_detail/RPC.hh>
+
 //# include <plasma/fwd.hh>
 # include <plasma/plasma.hh>
 
@@ -14,6 +16,8 @@
 # include <hole/storage/Directory.hh>
 
 # include <nucleus/proton/Network.hh>
+
+# include <station/fwd.hh>
 
 # include <reactor/Barrier.hh>
 # include <reactor/fsm.hh>
@@ -346,20 +350,37 @@ namespace surface
       hole::implementations::slug::Slug&
       hole();
 
+      ELLE_ATTRIBUTE(std::unique_ptr<station::Station>, station);
+    protected:
+      station::Station&
+      station();
+
+      std::unique_ptr<station::Host> _host;
+
       ELLE_ATTRIBUTE(std::unique_ptr<etoile::Etoile>, etoile);
     protected:
       etoile::Etoile&
       etoile();
 
     public:
-
       virtual
       std::string
       type() const;
 
+    protected:
+      std::unique_ptr<infinit::protocol::Serializer> _serializer;
+      std::unique_ptr<infinit::protocol::ChanneledStream> _channels;
+      std::unique_ptr<surface::gap::_detail::RPC> _rpcs;
+      std::unique_ptr<reactor::Thread> _rpcs_thread;
+
+      virtual
+      void
+      _enable_rpcs() = 0;
+
       /*--------.
       | Metrics |
       `--------*/
+    public:
       metrics::Metric
       network_metric() const;
 

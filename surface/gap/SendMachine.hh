@@ -86,7 +86,8 @@ namespace surface
       /*-----------------.
       | Transaction data |
       `-----------------*/
-      ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
+      typedef std::unordered_set<std::string> Files;
+      ELLE_ATTRIBUTE(Files, files);
       ELLE_ATTRIBUTE(std::string, message);
 
     public:
@@ -96,6 +97,13 @@ namespace surface
       {
         return true;
       }
+
+    private:
+      virtual
+      void
+      _enable_rpcs() override;
+
+      std::pair<uint32_t, std::ifstream> _current_file;
 
     public:
       /*----------.

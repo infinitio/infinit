@@ -2,6 +2,8 @@
 #include <surface/gap/Rounds.hh>
 #include <surface/gap/_detail/TransferOperations.hh>
 
+#include <station/Station.hh>
+
 #include <papier/Descriptor.hh>
 
 #include <nucleus/neutron/Object.hh>
@@ -41,7 +43,8 @@ namespace surface
           "wait for accept", std::bind(&SendMachine::_wait_for_accept, this))),
       _set_permissions_state(
         this->_machine.state_make(
-          "set permissions", std::bind(&SendMachine::_set_permissions, this)))
+          "set permissions", std::bind(&SendMachine::_set_permissions, this))),
+      _current_file()
     {
       this->_machine.transition_add(
         this->_request_network_state, this->_create_transaction_state);
@@ -520,6 +523,55 @@ namespace surface
     SendMachine::_transfer_operation()
     {
       // Nothing to do.
+    }
+
+    void
+    SendMachine::_enable_rpcs()
+    {
+      ELLE_TRACE_SCOPE("%s: enable rpcs", *this);
+
+      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
+      ELLE_ASSERT(this->_rpcs_thread == nullptr);
+
+      ELLE_DEBUG("create serializer");
+      this->_serializer.reset(
+        new infinit::protocol::Serializer(sched,
+                                          this->_host->socket()));
+      ELLE_DEBUG("create channels");
+        this->_channels.reset(
+          new infinit::protocol::ChanneledStream(sched, *this->_serializer));
+
+      ELLE_DEBUG("create rpcs");
+      this->_rpcs.reset(new surface::gap::_detail::RPC{*this->_channels});
+
+      this->_rpcs->_read =
+        [&] (uint32_t index, uint64_t pos, uint64_t size)
+        {
+          if (index >= this->_files.size())
+            throw Exception(gap_api_error, "bad index");
+
+          if (index != this->_current_file.first || !this->_current_file.second.is_open())
+          {
+            this->_current_file.second.close();
+
+            this->_current_file.first = index;
+            // XXX: There is probably a better way.
+            Files::iterator it = this->_files.begin();
+            std::advance(it, index);
+            this->_current_file.second.open(*it);
+          }
+
+          return surface::gap::_detail::read(this->_current_file.second, pos, size);
+        };
+
+      this->_rpcs_thread.reset(
+        new reactor::Thread(
+          sched,
+          "rpc thread",
+          [this] ()
+          {
+            this->_rpcs->run();
+          }));
     }
 
     /*----------.
