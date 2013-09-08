@@ -489,8 +489,11 @@ def configure(cxx_toolkit = None,
     'protocol/RPC.cc',
     'protocol/fwd.hh',
     )
-  protocol_lib = drake.cxx.DynLib('lib/protocol', protocol_sources,
-                                  cxx_toolkit, cxx_config)
+  protocol_lib = drake.cxx.DynLib('lib/protocol',
+                                  protocol_sources + [
+                                    cryptography_lib,
+                                  ],
+                                  cxx_toolkit, cxx_config_libs)
 
   # RCP caller
   rpc_sources = drake.nodes(
@@ -639,6 +642,43 @@ def configure(cxx_toolkit = None,
     station_tests << test
     runner = drake.Runner(exe = test)
     station_check << runner.status
+
+  # Frete
+  frete_build = drake.Rule('frete/build')
+  frete_sources = drake.nodes(
+    'frete/src/frete/Frete.hh',
+    'frete/src/frete/Frete.cc',
+  )
+  cxx_config.add_local_include_path('frete/src')
+  cxx_config_libs.add_local_include_path('frete/src')
+  frete_cxx_config = drake.cxx.Config(cxx_config)
+  frete_cxx_config.lib_path_runtime('.')
+  frete_lib = drake.cxx.DynLib('lib/frete',
+                                 frete_sources + [protocol_lib,
+                                                  reactor_lib,
+                                                  elle_lib],
+                                 cxx_toolkit, frete_cxx_config)
+  frete_build << frete_lib
+  frete_tests = drake.Rule('frete/tests')
+  frete_check = drake.Rule('frete/check')
+  frete_cxx_config_tests = drake.cxx.Config(frete_cxx_config)
+  frete_cxx_config_tests += boost.config_test()
+  frete_cxx_config_tests += boost.config_system()
+  frete_cxx_config_tests.lib_path_runtime('../../lib')
+  for name in ['frete']:
+    test = drake.cxx.Executable(
+      'frete/tests/%s' % name,
+      [
+        drake.node('frete/tests/%s.cc' % name),
+        frete_lib,
+        protocol_lib,
+        reactor_lib,
+        elle_lib,
+      ],
+      cxx_toolkit, frete_cxx_config_tests)
+    frete_tests << test
+    runner = drake.Runner(exe = test)
+    frete_check << runner.status
 
   # Hole
   hole_sources = drake.nodes(
