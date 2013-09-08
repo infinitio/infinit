@@ -182,10 +182,10 @@ namespace infinit
               client.token(token.empty() ? agent::Agent::meta_token : token);
 
               ELLE_DEBUG("public_addresses: %s", public_addresses);
-              client.network_connect_device(descriptor.meta().id(),
-                                            passport.id(),
-                                            addresses,
-                                            public_addresses);
+              // client.connect_device(descriptor.meta().id(),
+              //                       passport.id(),
+              //                       addresses,
+              //                       public_addresses);
             }
             catch (std::exception const& err)
             {
