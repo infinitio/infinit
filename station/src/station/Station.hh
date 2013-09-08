@@ -85,7 +85,7 @@ namespace station
     /// The thread running this->_serve().
     ELLE_ATTRIBUTE  (reactor::Thread, server_thread);
     /// A barrier open iff a new host is available.
-    ELLE_ATTRIBUTE_R(reactor::Barrier, host_available);
+    ELLE_ATTRIBUTE_RX(reactor::Barrier, host_available);
     /// The new hosts.
     ELLE_ATTRIBUTE  (std::queue<std::unique_ptr<Host>>, host_new);
     /// Signals when a negotiation ended.
