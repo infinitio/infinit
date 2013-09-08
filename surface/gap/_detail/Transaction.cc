@@ -133,6 +133,16 @@ namespace surface
 
         for (auto const& id: transactions_ids)
         {
+          if (std::find_if(
+                std::begin(this->_transactions),
+                std::end(this->_transactions),
+                [&] (TransactionConstPair const& pair)
+                {
+                  return (!pair.second.data()->id.empty()) &&
+                         (pair.second.data()->id == id);
+                }) != std::end(this->_transactions))
+            continue;
+
           plasma::Transaction transaction{this->meta().transaction(id)};
 
           this->user(transaction.sender_id);
@@ -190,12 +200,16 @@ namespace surface
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
-          return !pair.second.data()->id.empty() &&
-                 pair.second.data()->id == notif.id;
+          return (!pair.second.data()->id.empty()) &&
+                 (pair.second.data()->id == notif.id);
         });
 
       if (it == std::end(this->_transactions))
       {
+        for (auto const& tr: this->transactions())
+        {
+          ELLE_DEBUG("-- %s: %s", tr.first, tr.second);
+        }
         plasma::Transaction data = notif;
         auto id = generate_id();
         this->_transactions.emplace(
@@ -221,8 +235,8 @@ namespace surface
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
-          return !pair.second.data()->network_id.empty() &&
-                 pair.second.data()->network_id == notif.network_id;
+          return (!pair.second.data()->network_id.empty()) &&
+                 (pair.second.data()->network_id == notif.network_id);
         });
 
       if (it == std::end(this->_transactions))
