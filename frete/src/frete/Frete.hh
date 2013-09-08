@@ -49,6 +49,9 @@ namespace frete
     /// The number of file in the remote filesystem.
     uint64_t
     size();
+    /// The size of a remote file.
+    uint64_t
+    file_size(FileID f);
     /// The path of the \a f file.
     std::string
     path(FileID f);
@@ -60,8 +63,12 @@ namespace frete
   | RPCs |
   `-----*/
   private:
+    boost::filesystem::path
+    _local_path(FileID file_id);
     uint64_t
     _size();
+    uint64_t
+    _file_size(FileID f);
     std::string
     _path(FileID f);
     elle::Buffer
@@ -74,6 +81,7 @@ namespace frete
       elle::serialize::OutputBinaryArchive> RPC;
     RPC _rpc;
     RPC::RemoteProcedure<uint64_t> _rpc_size;
+    RPC::RemoteProcedure<uint64_t, FileID> _rpc_size_file;
     RPC::RemoteProcedure<std::string,
                          FileID> _rpc_path;
     RPC::RemoteProcedure<elle::Buffer,

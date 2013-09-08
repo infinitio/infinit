@@ -16,6 +16,7 @@ namespace frete
   Frete::Frete(infinit::protocol::ChanneledStream& channels):
     _rpc(channels),
     _rpc_size("size", this->_rpc),
+    _rpc_size_file("size", this->_rpc),
     _rpc_path("path", this->_rpc),
     _rpc_read("read", this->_rpc),
     _rpc_thread(*reactor::Scheduler::scheduler(),
@@ -24,6 +25,9 @@ namespace frete
   {
     this->_rpc_size = std::bind(&Self::_size,
                                 this);
+    this->_rpc_size_file = std::bind(&Self::_file_size,
+                                     this,
+                                     std::placeholders::_1);
     this->_rpc_path = std::bind(&Self::_path,
                                 this,
                                 std::placeholders::_1);
@@ -80,6 +84,12 @@ namespace frete
     return this->_rpc_size();
   }
 
+  uint64_t
+  Frete::file_size(FileID f)
+  {
+    return this->_rpc_size_file(f);
+  }
+
   std::string
   Frete::path(FileID f)
   {
@@ -96,10 +106,23 @@ namespace frete
   | RPCs |
   `-----*/
 
+  boost::filesystem::path
+  Frete::_local_path(FileID file_id)
+  {
+    return this->_paths[file_id].first / this->_paths[file_id].second;
+  }
+
   uint64_t
   Frete::_size()
   {
     return this->_paths.size();
+  }
+
+  uint64_t
+  Frete::_file_size(FileID file_id)
+  {
+    ELLE_ASSERT_LT(file_id, this->_size());
+    return boost::filesystem::file_size(this->_local_path(file_id));
   }
 
   std::string
@@ -116,7 +139,7 @@ namespace frete
   {
     ELLE_TRACE_FUNCTION(file_id, offset, size);
     ELLE_ASSERT_LT(file_id, this->_size());
-    auto path = this->_paths[file_id].first / this->_paths[file_id].second;
+    auto path = this->_local_path(file_id);
     std::ifstream file(path.native());
     static const std::streamsize MAX_offset{
       std::numeric_limits<std::streamsize>::max()};

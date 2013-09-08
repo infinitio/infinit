@@ -77,6 +77,7 @@ BOOST_AUTO_TEST_CASE(connection)
       BOOST_CHECK_EQUAL(frete.size(), 4);
       {
         BOOST_CHECK_EQUAL(frete.path(0), "empty");
+        BOOST_CHECK_EQUAL(frete.file_size(0), 0);
         for (int i = 0; i < 3; ++i)
         {
           auto buffer = frete.read(0, 0, 1024);
@@ -89,6 +90,7 @@ BOOST_AUTO_TEST_CASE(connection)
       }
       {
         BOOST_CHECK_EQUAL(frete.path(1), "content");
+        BOOST_CHECK_EQUAL(frete.file_size(1), 8);
         {
           auto buffer = frete.read(1, 0, 1024);
           BOOST_CHECK_EQUAL(buffer.size(), 8);
@@ -107,8 +109,10 @@ BOOST_AUTO_TEST_CASE(connection)
       }
       {
         BOOST_CHECK_EQUAL(frete.path(2), "dir/2");
+        BOOST_CHECK_EQUAL(frete.file_size(2), 1);
         BOOST_CHECK_EQUAL(frete.read(2, 0, 2), elle::ConstWeakBuffer("2"));
         BOOST_CHECK_EQUAL(frete.path(3), "dir/1");
+        BOOST_CHECK_EQUAL(frete.file_size(3), 1);
         BOOST_CHECK_EQUAL(frete.read(3, 0, 2), elle::ConstWeakBuffer("1"));
       }
       BOOST_CHECK_THROW(frete.path(4), std::runtime_error);
