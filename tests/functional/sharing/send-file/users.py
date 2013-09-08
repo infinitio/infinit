@@ -145,7 +145,7 @@ class User:
 
         cprint("+" * 40, color = Color.Blue)
         for transaction in self.state.transactions():
-            cprint(self.state.transaction_status(transaction.id), color = Color.Blue)
+            cprint(self.state.transaction_status(transaction), color = Color.Blue)
 
         return self
 
