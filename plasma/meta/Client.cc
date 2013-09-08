@@ -209,6 +209,12 @@ SERIALIZE_RESPONSE(plasma::meta::EndpointNodeResponse, ar, res)
   ar & named("fallback", res.fallback);
 }
 
+SERIALIZE_RESPONSE(plasma::meta::ConnectDeviceResponse, ar, res)
+{
+  (void) ar;
+  (void) res;
+}
+
 SERIALIZE_RESPONSE(plasma::meta::CreateNetworkResponse, ar, res)
 {
   ar & named("created_network_id", res.created_network_id);
@@ -513,7 +519,6 @@ namespace plasma
                                size_t count,
                                size_t size,
                                bool is_dir,
-                               std::string const& network_id,
                                std::string const& device_id,
                                std::string const& message) const
     {
@@ -522,7 +527,6 @@ namespace plasma
       request["recipient_id_or_email"] = recipient_id_or_email;
       request["files"] = files;
       request["device_id"] = device_id;
-      request["network_id"] = network_id;
       request["total_size"] = size;
       request["is_directory"] = is_dir;
       request["files_count"] = count;
@@ -746,35 +750,15 @@ namespace plasma
       return this->_post<NetworkAddDeviceResponse>("/network/add_device", request);
     }
 
-    NetworkConnectDeviceResponse
-    Client::network_connect_device(std::string const& network_id,
-                                   std::string const& device_id,
-                                   std::string const* local_ip,
-                                   uint16_t local_port,
-                                   std::string const* external_ip,
-                                   uint16_t external_port) const
+    ConnectDeviceResponse
+    Client::connect_device(std::string const& transaction_id,
+                           std::string const& device_id,
+                           adapter_type const& local_endpoints,
+                           adapter_type const& public_endpoints) const
     {
-        adapter_type local_adapter;
-        adapter_type public_adapter;
-
-        local_adapter.emplace_back(*local_ip, local_port);
-        public_adapter.emplace_back(*external_ip, external_port);
-
-        return this->_network_connect_device(network_id,
-                                             device_id,
-                                             local_adapter,
-                                             public_adapter);
-    }
-
-    NetworkConnectDeviceResponse
-    Client::_network_connect_device(std::string const& network_id,
-                                    std::string const& device_id,
-                                    adapter_type const& local_endpoints,
-                                    adapter_type const& public_endpoints) const
-      {
         json::Dictionary request{
           std::map<std::string, std::string>{
-                {"_id", network_id},
+                {"_id", transaction_id},
                 {"device_id", device_id},
           }
         };
@@ -803,8 +787,8 @@ namespace plasma
 
         request["externals"] = public_addrs;
 
-        return this->_post<NetworkConnectDeviceResponse>(
-            "/network/connect_device",
+        return this->_post<ConnectDeviceResponse>(
+            "/transaction/connect_device",
             request
         );
       }
@@ -822,7 +806,7 @@ namespace plasma
         };
 
         return this->_post<EndpointNodeResponse>(
-            "/network/" + network_id + "/endpoints",
+            "/transaction/" + network_id + "/endpoints",
             request
         );
       }

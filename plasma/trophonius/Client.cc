@@ -82,7 +82,7 @@ ELLE_SERIALIZE_SIMPLE(plasma::trophonius::PeerConnectionUpdateNotification,
 {
   (void)version;
   ar & base_class<plasma::trophonius::Notification>(value);
-  ar & named("network_id", value.network_id);
+  ar & named("transaction_id", value.transaction_id);
   ar & named("status", value.status);
   ar & named("devices", value. devices);
 }

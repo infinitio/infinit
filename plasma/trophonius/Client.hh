@@ -106,7 +106,7 @@ namespace plasma
     struct PeerConnectionUpdateNotification:
       public Notification
     {
-      std::string network_id;
+      std::string transaction_id;
       bool status;
       std::vector<std::string> devices;
 

@@ -205,6 +205,10 @@ namespace plasma
       std::list<std::string>       nodes;
     };
 
+    struct ConnectDeviceResponse:
+      public Response
+    {};
+
     struct EndpointNodeResponse : Response
     {
       std::vector<std::string>      externals;
@@ -375,7 +379,6 @@ namespace plasma
                          size_t count,
                          size_t size,
                          bool is_dir,
-                         std::string const& network_id,
                          std::string const& device_id,
                          std::string const& message = "") const;
 
@@ -434,56 +437,23 @@ namespace plasma
       network_add_device(std::string const& network_id,
                          std::string const& device_id) const;
 
-      //
-      // Frontend on _network_connect_device
-      //
-      NetworkConnectDeviceResponse
-      network_connect_device(std::string const& network_id,
-                             std::string const& device_id,
-                             std::string const* local_ip,
-                             uint16_t local_port,
-                             std::string const* external_ip = nullptr,
-                             uint16_t external_port = 0) const;
-
-      //
-      // Frontend on _network_connect_device
-      //
-      template <class Container1, class Container2>
-      NetworkConnectDeviceResponse
-      network_connect_device(std::string const& network_id,
-                             std::string const& device_id,
-                             Container1 const& local_endpoints,
-                             Container2 const& public_endpoints) const;
-      //
-      // Frontend on _network_connect_device
-      //
-      template <class Container>
-      NetworkConnectDeviceResponse
-      network_connect_device(std::string const& network_id,
-                             std::string const& device_id,
-                             Container const& local_endpoints) const;
-
     private:
 
       typedef std::vector<std::pair<std::string, uint16_t>> adapter_type;
 
-      //
-      // This member function is a adapter used to convert from any type of
-      // container to `adapter_type´. This allow an interface handling all types
-      // of iterable, but working with only one specific type.
-      //
-      NetworkConnectDeviceResponse
-      _network_connect_device(std::string const& network_id,
-                              std::string const& device_id,
-                              adapter_type const& local_endpoints,
-                              adapter_type const& public_endpoints) const;
 
+    public:
+      ConnectDeviceResponse
+      connect_device(std::string const& transaction_id,
+                             std::string const& device_id,
+                             adapter_type const& local_endpoints,
+                             adapter_type const& public_endpoints) const;
 
     public:
       EndpointNodeResponse
-      device_endpoints(std::string const& network_id,
+      device_endpoints(std::string const& transaction_id,
                        std::string const& self_device_id,
-                       std::string const& device_id) const;
+                       std::string const& peer_device_id) const;
 
     /*----------.
     | Printable |

@@ -692,19 +692,25 @@ class _DeviceAccess(_Page):
         # This should not be in user.py, but it's the only place
         # we know the device has been disconnected.
         if value is False:
-            networks = database.networks().find(
+            transactions = database.transactions().find(
                 {
                     "nodes.%s" % str(device['_id']): {"$exists": True}
                 }
             )
 
-            for network in networks:
-                network['nodes'][str(device['_id'])] = {"locals": None, "externals": None, "fallback": None}
-                database.networks().save(network)
+            for transaction in transactions:
+                database.transactions().update({"_id": transaction},
+                                               {"$set": {"nodes.%s" % (str(device_id),): None}},
+                                                multi = False);
                 self.notifier.notify_some(
                     notifier.PEER_CONNECTION_UPDATE,
-                    device_ids = list(network['nodes']),
-                    message = { "network_id": str(network['_id']), "devices": list(network['nodes'].keys()), "status": False },
+                    device_ids = list(transaction['nodes'].keys()),
+                    message =
+                    {
+                        "transaction_id": str(transaction['_id']),
+                        "devices": list(transaction['nodes'].keys()),
+                        "status": False
+                    },
                     store = False,
                 )
 

@@ -15,7 +15,6 @@ namespace plasma
     recipient_fullname(),
     recipient_device_id(),
     recipient_device_name(),
-    network_id(),
     message(),
     files(),
     files_count(),
@@ -61,7 +60,6 @@ namespace plasma
   {
     out
       << "<Transaction(" << t.id
-      << ", net=" << t.network_id
       << ", ctime=" << t.ctime
       << ", mtime=" << t.mtime
       << ", files=" << elle::sprint(t.files)

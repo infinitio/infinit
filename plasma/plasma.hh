@@ -46,7 +46,6 @@ namespace plasma
     std::string recipient_fullname;
     std::string recipient_device_id;
     std::string recipient_device_name;
-    std::string network_id;
     std::string message;
     std::list<std::string> files;
     uint32_t files_count;

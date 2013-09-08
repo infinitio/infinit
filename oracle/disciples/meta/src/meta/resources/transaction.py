@@ -42,29 +42,6 @@ configfile = open(filepath, 'r')
 for line in configfile:
     eval(_macro_matcher.sub(replacer, line))
 
-class _UpdateTransaction(Page):
-
-    def network_endpoints(self, transaction):
-        network = database.networks().find_one(
-            database.ObjectId(transaction["network_id"]),
-        )
-        if not network:
-            self.raise_error(error.NETWORK_NOT_FOUND)
-
-        if network['owner'] != self.user['_id'] and \
-           self.user['_id'] not in network['users']:
-            self.raise_error(error.OPERATION_NOT_PERMITTED)
-
-        nodes = network.get("nodes")
-        if nodes:
-          devices = tuple(
-              transaction[v + "_device_id"] for v  in ["sender", "recipient"]
-          )
-          # sender and receiver have set their devices
-          if all(str(d) in nodes for d in devices):
-              return tuple(nodes[str(d)] for d in devices)
-        return None
-
 class Create(Page):
     """
     Send a file to a specific user.
@@ -78,7 +55,6 @@ class Create(Page):
         'total_size': 42 (ko)
         'is_directory': bool
         'device_id': The device from where the file is get
-        'network_id': "The network name", #required
         'message': 'a message to the recipient'
      }
      -> {
@@ -93,7 +69,6 @@ class Create(Page):
 
     _validators = [
         ('recipient_id_or_email', regexp.NonEmptyValidator),
-        ('network_id', regexp.NetworkValidator),
         ('device_id', regexp.DeviceIDValidator),
     ]
 
@@ -116,11 +91,7 @@ class Create(Page):
 
         id_or_email = self.data['recipient_id_or_email'].strip().lower()
         files = self.data['files']
-        network_id = self.data['network_id'].strip()
         device_id = self.data['device_id'].strip()
-
-        if not database.networks().find_one(database.ObjectId(network_id)):
-            return self.error(error.NETWORK_NOT_FOUND)
 
         if not database.devices().find_one(database.ObjectId(device_id)):
             return self.error(error.DEVICE_NOT_FOUND)
@@ -178,8 +149,6 @@ class Create(Page):
             # Empty until accepted.
             'recipient_device_id': '',
             'recipient_device_name': '',
-
-            'network_id': database.ObjectId(network_id),
 
             'message': message,
 
@@ -265,10 +234,9 @@ class Update(Page):
                 "Cannont change status from %s to %s." % (transaction['status'], status))
 
         transitions = {
-            CREATED: {True: [INITIALIZED, CANCELED, FAILED], False: [ACCEPTED, REJECTED]},
+            CREATED: {True: [INITIALIZED, CANCELED, FAILED], False: [ACCEPTED, REJECTED, FAILED]},
             INITIALIZED: {True: [CANCELED, FAILED], False: [ACCEPTED, REJECTED, CANCELED, FAILED]},
-            ACCEPTED: {True: [READY, CANCELED, FAILED], False: [CANCELED]},
-            READY: {True: [CANCELED, FAILED], False: [FINISHED, CANCELED, FAILED]},
+            ACCEPTED: {True: [CANCELED, FAILED], False: [FINISHED, CANCELED, FAILED]},
             # FINISHED: {True: [], False: []},
             # CANCELED: {True: [], False: []},
             # FAILED: {True: [], False: []},
@@ -397,8 +365,6 @@ class One(Page):
             'recipient_device_id' :
             'recipient_device_name' :
 
-            'network_id' :
-
             'files' :
             'files_count' :
             'total_size' :
@@ -418,3 +384,153 @@ class One(Page):
         if not self.user['_id'] in (transaction['sender_id'], transaction['recipient_id']):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
         return self.success(transaction)
+
+class ConnectDevice(Page):
+    """
+    Connect the device to a transaction (setting ip and port)
+    POST {
+        "_id": "the transaction id",
+        "device_id": "the device id",
+
+        # Optional local ip, port
+        "locals": [{"ip" : 192.168.x.x, "port" : 62014}, ...],
+
+        # optional external address and port
+        "externals": [{"ip" : "212.27.23.67", "port" : 62015}, ...],
+    }
+    ->
+    {
+        "updated_transaction_id": "the same transaction id",
+    }
+    """
+    __pattern__ = '/transaction/connect_device'
+
+    _validators = [
+        ('_id', regexp.Validator(regexp.ID, error.TRANSACTION_ID_NOT_VALID)),
+        ('device_id', regexp.Validator(regexp.DeviceID, error.DEVICE_ID_NOT_VALID)),
+    ]
+
+    def POST(self):
+        self.requireLoggedIn()
+
+        status = self.validate()
+        if status:
+            return self.error(status)
+
+        transaction_id = database.ObjectId(self.data["_id"])
+        device_id = database.ObjectId(self.data["device_id"])
+
+        device = database.devices().find_one(device_id)
+        if not device:
+            return self.error(error.DEVICE_NOT_FOUND)
+
+        transaction = database.transactions().find_one(transaction_id)
+
+        if device_id not in [transaction['sender_device_id'],
+                             transaction['recipient_device_id']]:
+            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+
+        local_addresses = self.data.get('locals') # notice the 's'
+
+        node = dict()
+
+        if local_addresses is not None:
+            # Generate a list of dictionary ip:port.
+            # We can not take the local_addresses content directly:
+            # it's not checked before this point. Therefor, it's insecure.
+            node['locals'] = [
+                {"ip" : v["ip"], "port" : v["port"]}
+                for v in local_addresses if v["ip"] != "0.0.0.0"
+            ]
+        else:
+            node['locals'] = []
+
+        external_addresses = self.data.get('externals')
+
+        if external_addresses is not None:
+            node['externals'] = [
+                {"ip" : v["ip"], "port" : v["port"]}
+                for v in external_addresses if v["ip"] != "0.0.0.0"
+            ]
+        else:
+            node['externals'] = []
+
+        node['fallback'] = []
+
+        database.transactions().update({"_id": transaction_id},
+                                       {"$set": {"nodes.%s" % (str(device_id),): node}},
+                                       multi = False)
+
+        transaction = database.transactions().find_one(transaction_id)
+
+        print("device %s connected to transaction %s as %s" % (device_id, transaction_id, node))
+
+        if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
+            self.notifier.notify_some(
+                notifier.PEER_CONNECTION_UPDATE,
+                device_ids = list(transaction['nodes'].keys()),
+                message = {
+                    "transaction_id": str(transaction_id),
+                    "devices": list(transaction['nodes'].keys()),
+                    "status": True
+                },
+                store = False,
+            )
+
+        return self.success({})
+
+
+class Endpoints(Page):
+    """
+    Return ip port for a selected node.
+        POST
+               {
+                'device_id':
+                'self_device_id':
+               }
+            -> {
+                'success': True,
+                'externals': ['69.69.69.69:38293', '69.69.69.69:38323']
+                'locals': ['69.69.69.69:33293', '69.69.69.69:9323']
+            }
+    """
+    __pattern__ = "/transaction/(.+)/endpoints"
+
+    def POST(self, transaction_id):
+        self.requireLoggedIn()
+
+        transaction = database.transactions().find_one(database.ObjectId(transaction_id))
+        if not transaction:
+            return self.error(error.TRANSACTION_DOESNT_EXIST)
+
+        device_id = self.data['device_id']
+        self_device_id = self.data['self_device_id']
+
+        if self.user['_id'] not in [transaction['sender_id'], transaction['recipient_id']]:
+            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+
+        if (not self_device_id in transaction['nodes'].keys()) or (not transaction['nodes'][self_device_id]):
+            return self.error(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
+
+        if (not device_id in transaction['nodes'].keys()) or (not transaction['nodes'][device_id]):
+            return self.error(error.DEVICE_NOT_FOUND, "This user is not connected to this transaction")
+
+        res = dict();
+
+        addrs = {'locals': list(), 'externals': list(), 'fallback' : list()}
+        user_node = transaction['nodes'][device_id];
+
+        for addr_kind in ['locals', 'externals', 'fallback']:
+            for a in user_node[addr_kind]:
+                if a and a["ip"] and a["port"]:
+                    addrs[addr_kind].append(
+                        (a["ip"], str(a["port"])))
+
+        print("addrs is: ", addrs)
+
+        res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
+        res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
+        res['fallback'] = ["{}:{}".format(*a)
+                           for a in self.__application__.fallback]
+
+        return self.success(res)

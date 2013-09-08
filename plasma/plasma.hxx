@@ -33,7 +33,6 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & named("recipient_fullname", res.recipient_fullname);
   ar & named("recipient_device_id", res.recipient_device_id);
   ar & named("recipient_device_name", res.recipient_device_name);
-  ar & named("network_id", res.network_id);
   ar & named("message", res.message);
   ar & named("files", res.files);
   ar & named("files_count", res.files_count);
