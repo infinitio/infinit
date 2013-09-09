@@ -109,7 +109,7 @@ namespace frete
   boost::filesystem::path
   Frete::_local_path(FileID file_id)
   {
-    return this->_paths.at(file_id).first / this->_paths.at(file_id).second;
+    return this->_paths[file_id].first / this->_paths[file_id].second;
   }
 
   uint64_t
@@ -129,7 +129,7 @@ namespace frete
   Frete::_path(FileID file_id)
   {
     ELLE_ASSERT_LT(file_id, this->_size());
-    return this->_paths.at(file_id).second.native();
+    return this->_paths[file_id].second.native();
   }
 
   elle::Buffer
