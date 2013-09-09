@@ -6,6 +6,7 @@
 
 #include <station/AlreadyConnected.hh>
 #include <station/InvalidPassport.hh>
+#include <station/NetworkError.hh>
 #include <station/Station.hh>
 
 ELLE_LOG_COMPONENT("station.Station");
@@ -115,101 +116,109 @@ namespace station
   std::unique_ptr<Host>
   Station::_negotiate(std::unique_ptr<reactor::network::TCPSocket> socket)
   {
-    ELLE_TRACE_SCOPE("%s: negotiate connection with %s", *this, socket->peer());
-    elle::serialize::OutputBinaryArchive output(*socket);
-    elle::serialize::InputBinaryArchive input(*socket);
-
-    // Exchange passports.
-    ELLE_DEBUG("%s: send pasport", *this)
+    try
     {
-      output << this->passport();
-      socket->flush();
-    }
-    papier::Passport remote;
-    ELLE_DEBUG("%s: read remote passport", *this)
-    {
-      input >> remote;
-    }
-    ELLE_DEBUG("%s: peer authenticates with %s", *this, remote);
-    ELLE_ASSERT_NEQ(remote, this->passport());
+      ELLE_TRACE_SCOPE("%s: negotiate connection with %s",
+                       *this, socket->peer());
+      elle::serialize::OutputBinaryArchive output(*socket);
+      elle::serialize::InputBinaryArchive input(*socket);
 
-    // Check we are not already connected.
-    auto hash = std::hash<papier::Passport>()(this->passport());
-    auto remote_hash = std::hash<papier::Passport>()(remote);
-    auto check_already = [&] ()
+      // Exchange passports.
+      ELLE_DEBUG("%s: send pasport", *this)
       {
-        if (this->_hosts.find(remote) != this->_hosts.end())
+        output << this->passport();
+        socket->flush();
+      }
+      papier::Passport remote;
+      ELLE_DEBUG("%s: read remote passport", *this)
+      {
+        input >> remote;
+      }
+      ELLE_DEBUG("%s: peer authenticates with %s", *this, remote);
+      ELLE_ASSERT_NEQ(remote, this->passport());
+
+      // Check we are not already connected.
+      auto hash = std::hash<papier::Passport>()(this->passport());
+      auto remote_hash = std::hash<papier::Passport>()(remote);
+      auto check_already = [&] ()
         {
-          ELLE_TRACE("%s: peer is already connected, reject", *this);
-          output << NegotiationStatus::already_connected;
-          socket->flush();
-          throw AlreadyConnected();
+          if (this->_hosts.find(remote) != this->_hosts.end())
+          {
+            ELLE_TRACE("%s: peer is already connected, reject", *this);
+            output << NegotiationStatus::already_connected;
+            socket->flush();
+            throw AlreadyConnected();
+          }
+        };
+      check_already();
+
+      bool master = hash < remote_hash;
+
+      elle::Finally pop_negotiation;
+      if (master)
+      {
+        // If we're already negotiating, wait.
+        while (this->_host_negotiating.find(remote) != this->_host_negotiating.end())
+        {
+          reactor::Scheduler::scheduler()->current()->wait(
+            this->_negotiation_ended);
+          check_already();
         }
-      };
-    check_already();
-
-    bool master = hash < remote_hash;
-
-    elle::Finally pop_negotiation;
-    if (master)
-    {
-      // If we're already negotiating, wait.
-      while (this->_host_negotiating.find(remote) != this->_host_negotiating.end())
-      {
-        reactor::Scheduler::scheduler()->current()->wait(
-          this->_negotiation_ended);
-        check_already();
+        this->_host_negotiating.insert(remote);
+        pop_negotiation.action([&]
+                               {
+                                 this->_host_negotiating.erase(remote);
+                                 this->_negotiation_ended.signal();
+                               });
       }
-      this->_host_negotiating.insert(remote);
-      pop_negotiation.action([&]
-                             {
-                               this->_host_negotiating.erase(remote);
-                               this->_negotiation_ended.signal();
-                             });
-    }
 
-    // Check peer passport.
-    if (!remote.validate(this->authority()))
-    {
-      ELLE_TRACE("%s: peer has an invalid passport, reject", *this);
-      output << NegotiationStatus::invalid;
-      socket->flush();
-      throw InvalidPassport();
-    }
-
-    // Accept peer.
-    {
-      ELLE_DEBUG("%s: accept peer", *this);
-      output << NegotiationStatus::succeeded;
-      socket->flush();
-    }
-
-    // Wait for peer response.
-    NegotiationStatus status;
-    input >> status;
-    switch (status)
-    {
-      case NegotiationStatus::succeeded:
+      // Check peer passport.
+      if (!remote.validate(this->authority()))
       {
-        std::unique_ptr<Host> res(new Host(*this, remote, std::move(socket)));
-        ELLE_LOG("%s: validate peer %s", *this, *res);
-        ELLE_ASSERT_NCONTAINS(this->_hosts, remote);
-        this->_hosts[remote] = res.get();
-        return res;
-      }
-      case NegotiationStatus::already_connected:
-      {
-        ELLE_TRACE("%s: peer says we're already connected", *this);
-        throw AlreadyConnected();
-      }
-      case NegotiationStatus::invalid:
-      {
-        ELLE_TRACE("%s: peer says our passport is invalid", *this);
+        ELLE_TRACE("%s: peer has an invalid passport, reject", *this);
+        output << NegotiationStatus::invalid;
+        socket->flush();
         throw InvalidPassport();
       }
-      default:
-        throw ConnectionFailure(
-          elle::sprintf("%s: peer yields invalid status: %s", *this, status));
+
+      // Accept peer.
+      {
+        ELLE_DEBUG("%s: accept peer", *this);
+        output << NegotiationStatus::succeeded;
+        socket->flush();
+      }
+
+      // Wait for peer response.
+      NegotiationStatus status;
+      input >> status;
+      switch (status)
+      {
+        case NegotiationStatus::succeeded:
+        {
+          std::unique_ptr<Host> res(new Host(*this, remote, std::move(socket)));
+          ELLE_LOG("%s: validate peer %s", *this, *res);
+          ELLE_ASSERT_NCONTAINS(this->_hosts, remote);
+          this->_hosts[remote] = res.get();
+          return res;
+        }
+        case NegotiationStatus::already_connected:
+        {
+          ELLE_TRACE("%s: peer says we're already connected", *this);
+          throw AlreadyConnected();
+        }
+        case NegotiationStatus::invalid:
+        {
+          ELLE_TRACE("%s: peer says our passport is invalid", *this);
+          throw InvalidPassport();
+        }
+        default:
+          throw ConnectionFailure(
+            elle::sprintf("%s: peer yields invalid status: %s", *this, status));
+      }
+    }
+    catch (reactor::network::Exception const& e)
+    {
+      throw NetworkError(e);
     }
   }
 

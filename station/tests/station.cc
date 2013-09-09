@@ -226,3 +226,20 @@ BOOST_AUTO_TEST_CASE(double_connection)
     });
   sched.run();
 }
+
+BOOST_AUTO_TEST_CASE(connection_close)
+{
+  reactor::Scheduler sched;
+
+  reactor::Thread t(
+    sched, "main", [&]
+    {
+      Credentials c1("host1");
+      station::Station station1(authority, c1.passport);
+      {
+        reactor::network::TCPSocket socket(sched, "127.0.0.1", station1.port());
+      }
+      reactor::sleep(1_sec);
+    });
+  sched.run();
+}
