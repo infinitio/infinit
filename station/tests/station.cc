@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE(double_connection)
       BOOST_CHECK(!station1.host_available());
       BOOST_CHECK(!station2.host_available());
       char buf[4];
-      buf[4] = 0;
+      buf[3] = 0;
       host1->socket().write("one");
       host2->socket().read(reactor::network::Buffer(buf, 3));
       BOOST_CHECK_EQUAL(buf, "one");
