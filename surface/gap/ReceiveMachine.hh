@@ -87,11 +87,6 @@ namespace surface
         return false;
       }
 
-    private:
-      virtual
-      void
-      _enable_rpcs() override;
-
     public:
       /*----------.
       | Printable |

@@ -11,6 +11,7 @@
 # include <metrics/fwd.hh>
 # include <papier/fwd.hh>
 
+# include <frete/Frete.hh>
 # include <station/fwd.hh>
 
 # include <reactor/Barrier.hh>
@@ -307,12 +308,14 @@ namespace surface
     protected:
       std::unique_ptr<infinit::protocol::Serializer> _serializer;
       std::unique_ptr<infinit::protocol::ChanneledStream> _channels;
-      std::unique_ptr<surface::gap::_detail::RPC> _rpcs;
-      std::unique_ptr<reactor::Thread> _rpcs_thread;
+      std::unique_ptr<frete::Frete> _frete;
+
+      void
+      _enable_rpcs();
 
       virtual
       void
-      _enable_rpcs() = 0;
+      _init_frete() {};
 
       /*--------.
       | Metrics |

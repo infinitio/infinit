@@ -1096,7 +1096,7 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost.config_filesystem(
     static = (cxx_toolkit.os is drake.os.macos))
   gap_lib = drake.cxx.DynLib('lib/gap',
-                             gap_sources + infinit_libs + [station_lib,],
+                             gap_sources + infinit_libs + [station_lib, frete_lib],
                              cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib

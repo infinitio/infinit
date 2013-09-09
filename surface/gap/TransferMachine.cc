@@ -9,6 +9,8 @@
 #include <papier/Descriptor.hh>
 #include <papier/Authority.hh>
 
+# include <frete/Frete.hh>
+
 # include <station/Station.hh>
 # include <station/AlreadyConnected.hh>
 
@@ -513,13 +515,6 @@ namespace surface
         this->_machine_thread.reset();
       }
 
-      if (this->_rpcs_thread != nullptr)
-      {
-        ELLE_DEBUG("%s: terminate rpcs thread", *this)
-          this->_rpcs_thread->terminate_now();
-        this->_rpcs_thread.reset();
-      }
-
       this->_current_state = State::Over;
     }
 
@@ -683,6 +678,27 @@ namespace surface
     }
 
     void
+    TransferMachine::_enable_rpcs()
+    {
+      ELLE_TRACE_SCOPE("%s: enable rpcs", *this);
+
+      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
+      ELLE_ASSERT(this->_frete == nullptr);
+
+      ELLE_DEBUG("create serializer");
+      this->_serializer.reset(
+        new infinit::protocol::Serializer(sched,
+                                          this->_host->socket()));
+      ELLE_DEBUG("create channels");
+      this->_channels.reset(
+        new infinit::protocol::ChanneledStream(sched, *this->_serializer));
+
+      this->_frete.reset(new frete::Frete(*this->_channels));
+
+      this->_init_frete();
+    }
+
+    void
     TransferMachine::_connection()
     {
       ELLE_TRACE_SCOPE("%s: connecting peers", *this);
@@ -691,8 +707,6 @@ namespace surface
       this->_host = this->_connect();
       this->_enable_rpcs();
       this->_peer_connected.signal();
-
-      std::cerr << "..............................;" << std::endl;
     }
 
     void

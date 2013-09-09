@@ -355,53 +355,12 @@ namespace surface
     }
 
     void
-    SendMachine::_enable_rpcs()
+    SendMachine::_init_frete()
     {
-      ELLE_TRACE_SCOPE("%s: enable rpcs", *this);
-
-      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
-      ELLE_ASSERT(this->_rpcs_thread == nullptr);
-
-      ELLE_DEBUG("create serializer");
-      this->_serializer.reset(
-        new infinit::protocol::Serializer(sched,
-                                          this->_host->socket()));
-      ELLE_DEBUG("create channels");
-        this->_channels.reset(
-          new infinit::protocol::ChanneledStream(sched, *this->_serializer));
-
-      ELLE_DEBUG("create rpcs");
-      this->_rpcs.reset(new surface::gap::_detail::RPC{*this->_channels});
-
-      this->_rpcs->_read =
-        [&] (uint32_t index, uint64_t pos, uint64_t size)
-        {
-          if (index >= this->_files.size())
-            throw Exception(gap_api_error, "bad index");
-
-          if (index != this->_current_file.first || !this->_current_file.second.is_open())
-          {
-            this->_current_file.second.close();
-
-            this->_current_file.first = index;
-            // XXX: There is probably a better way.
-            Files::iterator it = this->_files.begin();
-            std::advance(it, index);
-            this->_current_file.second.open(*it);
-          }
-
-          return surface::gap::_detail::read(this->_current_file.second, pos, size);
-        };
-
-      this->_rpcs_thread.reset(
-        new reactor::Thread(
-          sched,
-          "rpc thread",
-          [this] ()
-          {
-            this->_rpcs->run();
-          }));
-
+      ELLE_TRACE_SCOPE("%s: init frete", *this);
+      for (std::string const& file: this->_files)
+        this->_frete->add(file);
+      ELLE_DEBUG("frete successfully initialized");
     }
 
     /*----------.

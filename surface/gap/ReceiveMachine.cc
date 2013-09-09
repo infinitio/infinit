@@ -233,17 +233,19 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: transfer operation %s", *this, this->transaction_id());
 
-      size_t index = 0;
+      uint64_t count = this->_frete->size();
+
       static std::streamsize N = 2 * 1024 * 1024;
-      for (auto const& filename: this->data()->files)
+      for (uint64_t index = 0; index < count; ++index)
       {
         std::streamsize pos = 0;
-        auto const& output_path = boost::filesystem::path{this->state().output_dir()};
-        std::ofstream output{(output_path / filename).string()};
+        auto relativ_path = boost::filesystem::path{this->_frete->path(index)};
+        auto output_dir = boost::filesystem::path{this->state().output_dir()};
+        std::ofstream output{(output_dir / relativ_path).string()};
 
         while (true)
         {
-          elle::Buffer buffer{std::move(this->_rpcs->_read(index, pos, N))};
+          elle::Buffer buffer{std::move(this->_frete->read(index, pos, N))};
           if (buffer.size() < N)
           {
             output.write((char const*) buffer.mutable_contents(),  buffer.size());
@@ -257,44 +259,6 @@ namespace surface
       }
 
       this->_finished.open();
-    }
-
-    void
-    ReceiveMachine::_enable_rpcs()
-    {
-      ELLE_TRACE_SCOPE("%s: enable rpcs", *this);
-
-      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
-      ELLE_ASSERT(this->_rpcs_thread == nullptr);
-      ELLE_DEBUG("create serializer");
-      this->_serializer.reset(
-        new infinit::protocol::Serializer(sched,
-                                          this->_host->socket()));
-
-      ELLE_DEBUG("create channels");
-      try
-      {
-        this->_channels.reset(
-          new infinit::protocol::ChanneledStream(sched, *this->_serializer));
-      }
-      catch (...)
-      {
-        ELLE_ERR("%s: %s", *this, elle::exception_string());
-        throw;
-      }
-
-      ELLE_DEBUG("create rpcs");
-      this->_rpcs.reset(new surface::gap::_detail::RPC{*this->_channels});
-
-      this->_rpcs_thread.reset(
-        new reactor::Thread(
-          sched,
-          "rpc thread",
-          [this] ()
-          {
-            this->_rpcs->run();
-          }));
-
     }
 
     std::string

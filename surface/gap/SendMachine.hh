@@ -89,7 +89,7 @@ namespace surface
     private:
       virtual
       void
-      _enable_rpcs() override;
+      _init_frete() override;
 
       std::pair<uint32_t, std::ifstream> _current_file;
 
