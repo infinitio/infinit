@@ -103,6 +103,11 @@ namespace station
       {
         ELLE_TRACE("%s: host was rejected: %s", *this, e.what());
       }
+      catch (std::runtime_error const& e)
+      {
+        ELLE_ERR("%s: host was rejected because of unexpected exception: %s",
+                 *this, e.what());
+      }
     }
   }
 
