@@ -324,6 +324,10 @@ namespace surface
           ).created_transaction_id
         );
 
+      // This is fake, we don't create peer to peer network.
+      this->state().google_reporter()[this->state().me().id].store(
+        "network.create.succeed");
+
       ELLE_TRACE("created transaction: %s", this->transaction_id());
 
       // XXX: Ensure recipient is an id.
