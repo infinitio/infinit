@@ -56,7 +56,7 @@ namespace station
   std::unique_ptr<Host>
   Station::connect(std::string const& host, int port)
   {
-    ELLE_TRACE("%s: connect to %s:%s", *this, host, port);
+    ELLE_TRACE_SCOPE("%s: connect to %s:%s", *this, host, port);
     auto socket = elle::make_unique<reactor::network::TCPSocket>(
       *reactor::Scheduler::scheduler(), host, port);
     return this->_negotiate(std::move(socket));
@@ -91,7 +91,7 @@ namespace station
     {
       std::unique_ptr<reactor::network::TCPSocket> socket (
         this->_server.accept());
-      ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
+      ELLE_TRACE_SCOPE("%s: accept connection from %s", *this, socket->peer());
       try
       {
         auto host = _negotiate(std::move(socket));
