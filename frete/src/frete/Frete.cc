@@ -21,7 +21,18 @@ namespace frete
     _rpc_read("read", this->_rpc),
     _rpc_thread(*reactor::Scheduler::scheduler(),
                 elle::sprintf("%s RPCS", *this),
-                [this] { this->_rpc.run(); })
+                [this]
+                {
+                  try
+                  {
+                    this->_rpc.run();
+                  }
+                  catch (reactor::network::Exception const& e)
+                  {
+                    ELLE_TRACE("%s: end of RPCs: %s",
+                               *this, e.what());
+                  }
+                })
   {
     this->_rpc_size = std::bind(&Self::_size,
                                 this);
