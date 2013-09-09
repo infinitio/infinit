@@ -17,7 +17,8 @@ def configure(cxx_toolkit = None,
               python2 = None,
               python3 = None,
               build_type = "Development",
-              enable_debug = True):
+              enable_debug = True,
+              valgrind = None):
 
   prefix = drake.Path(prefix)
 
@@ -228,7 +229,8 @@ def configure(cxx_toolkit = None,
                        boost = boost,
                        stuntman = stun_core,
                        openssl = openssl.config(),
-                       curl = curl.config())
+                       curl = curl.config(),
+                       valgrind = valgrind)
 
   def copy_lib(lib, where = 'lib'):
     return drake.copy(lib, where, lib.path().dirname())
