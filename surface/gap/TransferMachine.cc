@@ -1,5 +1,4 @@
 #include <surface/gap/TransferMachine.hh>
-#include <surface/gap/_detail/TransferOperations.hh>
 #include <surface/gap/Rounds.hh>
 #include <surface/gap/State.hh>
 #include <metrics/Metric.hh>

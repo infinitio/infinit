@@ -1,6 +1,5 @@
 #include <surface/gap/SendMachine.hh>
 #include <surface/gap/Rounds.hh>
-#include <surface/gap/_detail/TransferOperations.hh>
 
 #include <station/Station.hh>
 
