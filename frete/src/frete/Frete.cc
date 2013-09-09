@@ -152,7 +152,7 @@ namespace frete
     ELLE_ASSERT_LT(file_id, this->_size());
     auto path = this->_local_path(file_id);
     std::ifstream file(path.native());
-    static const std::streamsize MAX_offset{
+    static const std::size_t MAX_offset{
       std::numeric_limits<std::streamsize>::max()};
     static const size_t MAX_buffer{elle::Buffer::max_size};
 
