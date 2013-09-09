@@ -304,7 +304,7 @@ namespace surface
         throw BadOperation(BadOperation::Type::progress);
       }
 
-      return 0.0f;
+      return this->_machine->progress();
     }
 
     static

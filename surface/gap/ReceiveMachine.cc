@@ -240,20 +240,24 @@ namespace surface
         std::streamsize pos = 0;
         auto relativ_path = boost::filesystem::path{this->_frete->path(index)};
         auto output_dir = boost::filesystem::path{this->state().output_dir()};
-        std::ofstream output{(output_dir / relativ_path).string()};
+        auto fullpath = output_dir / relativ_path;
+        boost::filesystem::create_directories(fullpath.parent_path());
+        std::ofstream output{fullpath.string()};
 
         while (true)
         {
           elle::Buffer buffer{std::move(this->_frete->read(index, pos, N))};
+
+          output.write((char const*) buffer.mutable_contents(),  buffer.size());
+          pos += buffer.size();
+
           if (buffer.size() < N)
           {
-            output.write((char const*) buffer.mutable_contents(),  buffer.size());
             output.close();
             break;
           }
 
-          output.write((char const*) buffer.mutable_contents(),  buffer.size());
-          pos += buffer.size();
+          this->progress(((float) pos) / ((float) this->data()->total_size));
         }
       }
 

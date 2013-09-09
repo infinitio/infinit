@@ -271,6 +271,8 @@ namespace surface
       | Transaction |
       `------------*/
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
+      ELLE_ATTRIBUTE_rw(float, progress);
+      ELLE_ATTRIBUTE_P(reactor::Mutex, progress_mutex, mutable);
 
     public:
       std::string const&

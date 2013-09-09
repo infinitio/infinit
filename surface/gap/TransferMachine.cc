@@ -97,7 +97,9 @@ namespace surface
       _peer_connected(),
       _peer_disconnected(),
       _state(state),
-      _data(std::move(data))
+      _data(std::move(data)),
+      _progress(0.0f),
+      _progress_mutex()
     {
       ELLE_TRACE_SCOPE("%s: creating transfer machine: %s", *this, this->_data);
 
@@ -842,6 +844,20 @@ namespace surface
         {MKey::sender_online, sender_status},
         {MKey::recipient_online, recipient_status},
       };
+    }
+
+    void
+    TransferMachine::progress(float f)
+    {
+      reactor::Lock l(this->_progress_mutex);
+      this->_progress = f;
+    }
+
+    float
+    TransferMachine::progress() const
+    {
+      reactor::Lock l(this->_progress_mutex);
+      return this->_progress;
     }
 
     /*----------.
