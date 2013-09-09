@@ -828,6 +828,12 @@ extern "C"
     return gap_ok;
   }
 
+  gap_Status
+  gap_critical_callback(gap_State* state,
+                        gap_critical_callback_t cb)
+  {
+    return state->gap_critical_callback(state, cb);
+  }
   /// Transaction getters.
 #define DEFINE_TRANSACTION_GETTER(_type_, _field_, _transform_)                \
   _type_                                                                       \
