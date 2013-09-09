@@ -288,6 +288,11 @@ namespace surface
               this->_core_machine.run();
               ELLE_TRACE("%s: core machine finished properly", *this);
             }
+            catch (reactor::Terminate const&)
+            {
+              ELLE_TRACE("%s: terminted", *this);
+              throw;
+            }
             catch (std::exception const&)
             {
               ELLE_ERR("%s: something went wrong while transfering", *this);
