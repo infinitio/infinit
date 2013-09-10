@@ -148,7 +148,7 @@ class DeclareLostPassword(Page):
           email,
           LOST_PASSWORD_TEMPLATE_ID,
           reply_to = 'support@infinit.io',
-          reset_password_hash = user['user_password_hash'],
+          reset_password_hash = user['reset_password_hash'],
         )
         database.users().save(user)
         return self.success()
