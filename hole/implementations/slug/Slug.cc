@@ -1280,68 +1280,70 @@ namespace hole
       void
       Slug::_accept()
       {
-        reactor::Scope scope;
 
-        while (true)
+        elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
-          std::unique_ptr<reactor::network::Socket> socket(_server->accept());
+          while (true)
+          {
+            std::unique_ptr<reactor::network::Socket> socket(_server->accept());
 
-          ELLE_TRACE_SCOPE("accept connection from %s",
-                           socket->remote_locus());
+            ELLE_TRACE_SCOPE("accept connection from %s",
+                             socket->remote_locus());
 
 #ifdef CACHE
-          {
-            // We need to clear cached blocks whenever a node joins the
-            // network.
-            //
-            // Indeed, assuming the block B is in cache at revision 4
-            // and considering the new node actually as a newer revision
-            // of the block, say 5.
-            //
-            // By clearing the cache, the system will make sure to ask
-            // the peers for the latest revision of the block. Without it,
-            // the block revision 5 would still be used.
-            //
-            // @see hole::backends::fs::MutableBlock::derives()
-            // XXX this should be done once the host is authenticated.
-            ELLE_LOG_COMPONENT("infinit.hole.slug.cache");
-            ELLE_TRACE("cleaning the cache");
-            cache.clear();
-          }
+            {
+              // We need to clear cached blocks whenever a node joins the
+              // network.
+              //
+              // Indeed, assuming the block B is in cache at revision 4
+              // and considering the new node actually as a newer revision
+              // of the block, say 5.
+              //
+              // By clearing the cache, the system will make sure to ask
+              // the peers for the latest revision of the block. Without it,
+              // the block revision 5 would still be used.
+              //
+              // @see hole::backends::fs::MutableBlock::derives()
+              // XXX this should be done once the host is authenticated.
+              ELLE_LOG_COMPONENT("infinit.hole.slug.cache");
+              ELLE_TRACE("cleaning the cache");
+              cache.clear();
+            }
 #endif
 
-          // Depending on the machine's state.
-          switch (this->_state)
-          {
-            case State::attached:
+            // Depending on the machine's state.
+            switch (this->_state)
+            {
+              case State::attached:
               {
                 using elle::utility::move_on_copy;
                 auto locus = socket->remote_locus();
                 move_on_copy<std::unique_ptr<reactor::network::Socket>>
                   msocket(std::move(socket));
                 auto auth_fn = [&, msocket, locus]
-                {
-                  try
                   {
-                    this->_connect(std::move(msocket.value), locus, false);
-                  }
-                  catch (...)
-                  {
-                    // _connect takes care of cleaning up if authentication goes
-                    // wrong.
-                  }
-                };
+                    try
+                    {
+                      this->_connect(std::move(msocket.value), locus, false);
+                    }
+                    catch (...)
+                    {
+                      // _connect takes care of cleaning up if authentication goes
+                      // wrong.
+                    }
+                  };
                 scope.run_background(elle::sprintf("auth %s", locus), auth_fn);
                 break;
               }
-            default:
+              default:
               {
                 // FIXME: Why not listening only when we're attached ?
                 ELLE_TRACE("not attached, ignore %s", socket->remote_locus());
                 break;
               }
+            }
           }
-        }
+        };
       }
 
       /*-------.
