@@ -58,6 +58,9 @@ namespace frete
     /// The number of file in the remote filesystem.
     uint64_t
     count();
+    /// The total size of a remote files.
+    uint64_t
+    full_size();
     /// The size of a remote file.
     uint64_t
     file_size(FileID f);
@@ -67,8 +70,9 @@ namespace frete
     /// A chunk of a remote file.
     elle::Buffer
     read(FileID f, Offset start, Size size);
-    /// Tell the peer the current progress.
-
+    /// Notify the sender of the progress of the transaction.
+    void
+    set_progress(uint64_t progress);
   /*-----.
   | RPCs |
   `-----*/
@@ -78,11 +82,16 @@ namespace frete
     uint64_t
     _count();
     uint64_t
+    _full_size();
+    uint64_t
     _file_size(FileID f);
     std::string
     _path(FileID f);
     elle::Buffer
     _read(FileID f, Offset start, Size size);
+    void
+    _set_progress(uint64_t progress);
+
     typedef std::pair<boost::filesystem::path, boost::filesystem::path> Path;
     typedef std::vector<Path> Paths;
     ELLE_ATTRIBUTE(Paths, paths);
@@ -91,6 +100,7 @@ namespace frete
       elle::serialize::OutputBinaryArchive> RPC;
     RPC _rpc;
     RPC::RemoteProcedure<uint64_t> _rpc_count;
+    RPC::RemoteProcedure<uint64_t> _rpc_full_size;
     RPC::RemoteProcedure<uint64_t, FileID> _rpc_size_file;
     RPC::RemoteProcedure<std::string,
                          FileID> _rpc_path;
@@ -98,9 +108,15 @@ namespace frete
                          FileID,
                          Offset,
                          Size> _rpc_read;
+    RPC::RemoteProcedure<void,
+                         uint64_t> _rpc_set_progress;
 
     ELLE_ATTRIBUTE_R(uint64_t, total_size);
     ELLE_ATTRIBUTE(uint64_t, progress);
+    ELLE_ATTRIBUTE_RX(reactor::Signal, progress_changed);
+  private:
+    void
+    _increment_progress(uint64_t increment);
 
   public:
     float

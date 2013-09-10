@@ -16,13 +16,17 @@ namespace frete
   Frete::Frete(infinit::protocol::ChanneledStream& channels):
     _rpc(channels),
     _rpc_count("count", this->_rpc),
+    _rpc_full_size("full_size", this->_rpc),
     _rpc_size_file("size", this->_rpc),
     _rpc_path("path", this->_rpc),
     _rpc_read("read", this->_rpc),
+    _rpc_set_progress("progress", this->_rpc),
     _total_size(0),
     _progress(0.0f)
   {
     this->_rpc_count = std::bind(&Self::_count,
+                                this);
+    this->_rpc_full_size = std::bind(&Self::_full_size,
                                 this);
     this->_rpc_size_file = std::bind(&Self::_file_size,
                                      this,
@@ -35,6 +39,9 @@ namespace frete
                                 std::placeholders::_1,
                                 std::placeholders::_2,
                                 std::placeholders::_3);
+    this->_rpc_set_progress = std::bind(&Self::_set_progress,
+                                        this,
+                                        std::placeholders::_1);
   }
 
   Frete::~Frete()
@@ -77,6 +84,9 @@ namespace frete
   Frete::get(boost::filesystem::path const& output_path)
   {
     uint64_t count = this->_rpc_count();
+    this->_total_size = this->_rpc_full_size();
+
+    ELLE_ASSERT_NEQ(this->_total_size, 0u);
 
     static std::streamsize N = 512 * 1024;
     for (uint64_t index = 0; index < count; ++index)
@@ -107,7 +117,8 @@ namespace frete
           elle::Exception("writting let the stream not in a good state");
 
         current_pos += buffer.size();
-        this->_progress += buffer.size();
+
+        this->_increment_progress(buffer.size());
 
         if (buffer.size() < N)
         {
@@ -118,9 +129,18 @@ namespace frete
     }
   }
 
+  void
+  Frete::_increment_progress(uint64_t increment)
+  {
+    this->_progress += increment;
+    this->_progress_changed.signal();
+    this->_rpc_set_progress(this->_progress);
+  }
+
   float
   Frete::progress() const
   {
+    ELLE_ASSERT_NEQ(this->_total_size, 0u);
     return this->_progress / (float) this->_total_size;
   }
 
@@ -132,6 +152,12 @@ namespace frete
   Frete::count()
   {
     return this->_rpc_count();
+  }
+
+  uint64_t
+  Frete::full_size()
+  {
+    return this->_rpc_full_size();
   }
 
   uint64_t
@@ -166,6 +192,12 @@ namespace frete
   Frete::_count()
   {
     return this->_paths.size();
+  }
+
+  uint64_t
+  Frete::_full_size()
+  {
+    return this->_total_size;
   }
 
   uint64_t
@@ -231,6 +263,13 @@ namespace frete
       throw elle::Exception("unable to read");
 
     return buffer;
+  }
+
+  void
+  Frete::_set_progress(uint64_t progress)
+  {
+    this->_progress = progress;
+    this->_progress_changed.signal();
   }
 
   void
