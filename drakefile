@@ -1351,7 +1351,7 @@ def configure(cxx_toolkit = None,
   # Prod
   prod_scripts = drake.nodes('prod/prod.sh',
                              'prod/nginx.conf')
-  prod = drake.copy(prod_scripts, './prod')
+  prod = drake.copy(prod_scripts, './prod', 'prod')
   oracles << prod
 
   # Tests
