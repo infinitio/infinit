@@ -50,6 +50,7 @@ namespace nucleus
             elle::String const& value);
       Trait(Trait const& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Trait);
+      virtual
       ~Trait();
     private:
       Trait(Type const type);

@@ -54,6 +54,7 @@ namespace nucleus
       source._block = nullptr;
     }
 
+    virtual
     ~Derivable()
     {
       if (this->_dynamic_construct)

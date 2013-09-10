@@ -27,6 +27,9 @@ namespace nucleus
       /// granted access to an object (i.e is explicitely listed in the Access
       /// block).
       Author(Index const& idx);
+      /// Destroy the author.
+      virtual
+      ~Author() = default;
 
     /*----------.
     | Operators |

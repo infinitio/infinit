@@ -57,6 +57,7 @@ namespace nucleus
       OwnerKeyBlock(Network const& network,
                     neutron::Component component,
                     cryptography::PublicKey const& creator_K);
+      virtual
       ~OwnerKeyBlock();
     private:
       /// Initializes the instance based on the key pair generated for

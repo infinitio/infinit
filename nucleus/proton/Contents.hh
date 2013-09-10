@@ -61,6 +61,7 @@ namespace nucleus
                cryptography::PublicKey const& creator_K,
                T* node);
       /// Destructor.
+      virtual
       ~Contents();
 
       /*--------.

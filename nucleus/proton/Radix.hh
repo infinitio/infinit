@@ -48,6 +48,7 @@ namespace nucleus
       /// Copy constructor.
       Radix(Radix const& other);
       /// Destructor.
+      virtual
       ~Radix();
 
       /*--------.

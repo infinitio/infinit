@@ -47,6 +47,8 @@ namespace nucleus
     public:
       Base();
       Base(MutableBlock const& block);
+      virtual
+      ~Base() = default;
 
       /*--------.
       | Methods |

@@ -35,6 +35,8 @@ namespace nucleus
       Entry();
       Entry(const elle::String&,
             const proton::Address&);
+      virtual
+      ~Entry() = default;
 
       //
       // operators

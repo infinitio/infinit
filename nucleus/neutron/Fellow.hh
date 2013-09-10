@@ -49,6 +49,7 @@ namespace nucleus
              Token const& token);
       Fellow(Fellow const& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Fellow);
+      virtual
       ~Fellow();
     private:
       Fellow(Type const type);
@@ -107,6 +108,7 @@ namespace nucleus
         Valid(); // XXX
         Valid(Subject const& subject,
               Token const& token);
+        virtual
         ~Valid();
 
         // methods

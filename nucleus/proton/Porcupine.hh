@@ -45,6 +45,7 @@ namespace nucleus
       Porcupine(Radix const& radix,
                 cryptography::SecretKey const& secret,
                 Nest& nest);
+      virtual
       ~Porcupine();
 
       /*--------.

@@ -63,6 +63,7 @@ namespace nucleus
             Mode const mode = Mode::automatic);
       /// Destruct the ambit, making sure to unload the referenced block if
       /// necessary.
+      virtual
       ~Ambit();
 
       /*--------.

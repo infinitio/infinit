@@ -56,6 +56,7 @@ namespace nucleus
       Door(Door&& other);
       /// Destruct the door, making sure to unload the value block, should it
       /// be necessary and nest-based.
+      virtual
       ~Door();
 
       /*--------.
@@ -112,6 +113,7 @@ namespace nucleus
       public:
         Block(Handle const& handle,
               Nest& nest);
+        virtual
         ~Block();
 
         // methods

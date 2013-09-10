@@ -63,6 +63,7 @@ namespace nucleus
              Token const* token);
       Record(Record const& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Record);
+      virtual
       ~Record();
     private:
       Record(Type const type);
@@ -130,6 +131,7 @@ namespace nucleus
         Valid(Subject const& subject,
               Permissions const permissions,
               Token const& token);
+        virtual
         ~Valid();
 
         // methods

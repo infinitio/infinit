@@ -48,6 +48,7 @@ namespace nucleus
       /// Copy constructor.
       Handle(Handle const& other);
       /// Destructor.
+      virtual
       ~Handle();
 
       /*--------.

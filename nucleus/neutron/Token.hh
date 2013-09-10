@@ -51,6 +51,7 @@ namespace nucleus
       Token(T const& secret,
             cryptography::PublicKey const& K);
       Token(Token const& other);
+      virtual
       ~Token();
     private:
       Token(Type const type);

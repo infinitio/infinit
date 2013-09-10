@@ -27,6 +27,8 @@ namespace nucleus
       Clef(Address const& address,
            cryptography::SecretKey const& secret);
       Clef(Clef const& other);
+      virtual
+      ~Clef() = default;
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Clef);
 
       /*----------.

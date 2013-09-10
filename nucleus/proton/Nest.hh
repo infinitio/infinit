@@ -71,6 +71,7 @@ namespace nucleus
              cryptography::PublicKey const& agent_K):
           Nest(limits, network, agent_K)
         {}
+        virtual
         ~None()
         {}
 

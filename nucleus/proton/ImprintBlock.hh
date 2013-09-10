@@ -44,6 +44,7 @@ namespace nucleus
                    neutron::Component const component,
                    cryptography::PublicKey const& creator_K);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(ImprintBlock);
+      virtual
       ~ImprintBlock();
 
       /*--------.

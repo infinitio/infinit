@@ -45,6 +45,7 @@ namespace nucleus
       `-------------*/
     public:
       Stamp();
+      virtual
       ~Stamp();
 
       //

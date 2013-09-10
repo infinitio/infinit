@@ -74,6 +74,7 @@ namespace nucleus
     public:
       /// XXX
       Seam();
+      virtual
       ~Seam();
 
       //

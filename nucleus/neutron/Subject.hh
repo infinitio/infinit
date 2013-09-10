@@ -77,6 +77,7 @@ namespace nucleus
       Subject(User::Identity const& identity);
       Subject(Group::Identity const& identity);
       Subject(Subject const& other);
+      virtual
       ~Subject();
 
       //

@@ -85,6 +85,7 @@ namespace nucleus
              cryptography::PublicKey const& owner_K,
              Genre const genre);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Object);
+      virtual
       ~Object();
 
       //

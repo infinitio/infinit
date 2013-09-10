@@ -82,6 +82,7 @@ namespace nucleus
               const T&...);
       Address(Address const& other);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Address);
+      virtual
       ~Address();
     private:
       Address(Type const type);

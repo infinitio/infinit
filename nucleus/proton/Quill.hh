@@ -75,6 +75,7 @@ namespace nucleus
     public:
       /// XXX
       Quill();
+      virtual
       ~Quill();
 
       //

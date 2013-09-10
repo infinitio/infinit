@@ -150,6 +150,7 @@ namespace nucleus
       /// Note that the representation is destructed, not its constituent
       /// blocks. For these blocks to be destroyed, one must manually call
       /// the destroy() method.
+      virtual
       ~Tree();
 
       /*--------.

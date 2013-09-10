@@ -121,6 +121,7 @@ namespace nucleus
             cryptography::PublicKey const& manager_K,
             elle::String const& description);
       ELLE_SERIALIZE_CONSTRUCT_DECLARE(Group);
+      virtual
       ~Group();
 
       //

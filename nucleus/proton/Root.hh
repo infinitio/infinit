@@ -29,6 +29,8 @@ namespace nucleus
            Capacity const& capacity);
       Root(Root const& root);
       Root(Root&& other);
+      virtual
+      ~Root() = default;
 
       /*-----------.
       | Interfaces |
