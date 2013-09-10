@@ -32,17 +32,18 @@ def login(state, email = None):
     import socket
     state.set_device_name(socket.gethostname().strip())
 
-def on_transaction(state, transaction, status, new):
-    print("{}Transaction ({})".format(new and "New " or "", transaction), status)
-    state.current_transaction_id = transaction
+def on_transaction(state, transaction, status):
+    print("{}Transaction".format(transaction), status)
+    # state.current_transaction_id = transaction
     if status in (
-       state.TransactionStatus.canceled,
        state.TransactionStatus.finished,
+       state.TransactionStatus.rejected,
+       state.TransactionStatus.canceled,
        state.TransactionStatus.failed,
     ):
         state.running = False
-    elif state.transaction_accepted(transaction)\
-        and status == state.TransactionStatus.started:
+    elif state.TransactionStatus.running:
+        state.current_transaction_id = transaction
         state.started = True
 
 def on_error(state, status, message, tid):
@@ -54,7 +55,7 @@ def on_error(state, status, message, tid):
 
 def main(state, user, files):
 
-    id = state.send_files(user, files)
+    id = state.send_files_by_email(user, files)
 
     state.transaction_callback(partial(on_transaction, state))
     state.on_error_callback(partial(on_error, state))
@@ -66,15 +67,11 @@ def main(state, user, files):
         if state.current_transaction_id is not None and state.started:
             tid = state.current_transaction_id
             progress = state.transaction_progress(tid)
-            filename = state.transaction_first_filename(tid)
-            print(
-               "\rProgress {2}: [{0:50s}] {1:.1f}% of {3}".format(
-                   '#' * int(progress * 50), progress * 100,
-                   tid, filename
-               ),
-               end=""
-            )
-        time.sleep(1)
+            filename = state.transaction_files(tid)[0]
+            print("\rProgress {2}: [{0:50s}] {1:.1f}% of {3}".format(
+                  '#' * int(progress * 50), progress * 100, tid, filename),
+                  end="")
+        time.sleep(0.1)
         state.poll()
 
 def go(state, user, files):

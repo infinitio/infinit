@@ -1,4 +1,9 @@
 #include "State.hh"
+#include <metrics/Kind.hh>
+
+#include <surface/gap/TransferMachine.hh>
+#include <surface/gap/SendMachine.hh>
+#include <surface/gap/ReceiveMachine.hh>
 
 #include <common/common.hh>
 
@@ -54,14 +59,7 @@ namespace surface
 
     namespace
     {
-      enum class MetricKind
-      {
-        user,
-        network,
-        transaction
-      };
-
-      template <common::metrics::Kind kind, typename Service>
+      template <metrics::Kind kind, typename Service>
       struct MetricKindService:
           public Service
       {
@@ -75,13 +73,13 @@ namespace surface
         {
           switch (kind)
           {
-          case common::metrics::Kind::all:
+          case metrics::Kind::all:
             return "";
-          case common::metrics::Kind::user:
+          case metrics::Kind::user:
             return "user";
-          case common::metrics::Kind::network:
+          case metrics::Kind::network:
             return "network";
-          case common::metrics::Kind::transaction:
+          case metrics::Kind::transaction:
             return "transaction";
           }
           elle::unreachable();
@@ -97,7 +95,16 @@ namespace surface
         }
       };
     }
-    // - State ----------------------------------------------------------------
+
+    State::ConnectionStatus::ConnectionStatus(bool status):
+      status(status)
+    {}
+
+    Notification::Type State::ConnectionStatus::type = NotificationType_ConnectionStatus;
+
+    /*-------------------------.
+    | Construction/Destruction |
+    `-------------------------*/
     State::State(std::string const& meta_host,
                  uint16_t meta_port,
                  std::string const& trophonius_host,
@@ -106,35 +113,15 @@ namespace surface
                  uint16_t apertus_port):
       _logger_intializer{},
       _meta{meta_host, meta_port, true},
-      _reporter(),
-      _google_reporter(),
-      _scheduler{},
-      _keep_alive(this->_scheduler, "State keep alive", [] () {
-                  while (true)
-                  {
-                    auto* current = reactor::Scheduler::scheduler()->current();
-                    current->sleep(boost::posix_time::seconds(60));
-                  }
-      }),
-      _thread([&] {
-              try
-              {
-                this->_scheduler.run();
-              }
-              catch (...)
-              {
-                ELLE_ERR("exception escaped from State scheduler: %s",
-                         elle::exception_string());
-                this->_exception = std::current_exception();
-              }
-      }),
+      _trophonius{trophonius_host, trophonius_port, [this] (bool status)
+        {
+          this->on_connection_changed(status);
+      }},
+      _reporter{common::metrics::fallback_path()},
+      _google_reporter{common::metrics::google_fallback_path()},
       _me{nullptr},
-      _device{nullptr},
-      _files_infos{},
-      _trophonius_host{trophonius_host},
-      _trophonius_port{trophonius_port},
-      _apertus_host{apertus_host},
-      _apertus_port{apertus_port}
+      _output_dir{common::system::download_directory()},
+      _device{nullptr}
     {
       ELLE_TRACE_SCOPE("%s: create state", *this);
 
@@ -158,7 +145,7 @@ namespace surface
 
         ELLE_TRACE_SCOPE("loading token generating key: %s", token_genkey);
         this->_meta.generate_token(token_genkey);
-        this->_me.reset(new Self{this->_meta.self()});
+        this->_me.reset(new Self{this->meta().self()});
 
         std::ofstream identity_infos{
           common::infinit::identity_path(this->me().id)};
@@ -168,7 +155,7 @@ namespace surface
           ELLE_ERR("Cannot open identity file");
         }
 
-        identity_infos << this->_meta.token() << "\n"
+        identity_infos << this->meta().token() << "\n"
                        << this->me().identity << "\n"
                        << this->me().email << "\n"
                        << this->me().id << "\n"
@@ -183,58 +170,28 @@ namespace surface
       {
         using metrics::services::Google;
         using metrics::services::KISSmetrics;
-        using namespace common::metrics;
 
-        this->_google_reporter.add_service_class<Google>(google_info_investors());
+        this->_google_reporter.add_service_class<Google>(common::metrics::google_info_investors());
 
-        this->_reporter.add_service_class<Google>(google_info());
-        this->_reporter.add_service_class<KISSmetrics>(kissmetrics_info());
+        this->_reporter.add_service_class<Google>(common::metrics::google_info());
+        this->_reporter.add_service_class<KISSmetrics>(common::metrics::kissmetrics_info());
 
-        typedef MetricKindService<Kind::user, KISSmetrics> KMUser;
+        typedef MetricKindService<metrics::Kind::user, KISSmetrics> KMUser;
         this->_reporter.add_service_class<KMUser>(
-          kissmetrics_info(Kind::user));
-
-        typedef MetricKindService<Kind::network, KISSmetrics> KMNetwork;
+          common::metrics::kissmetrics_info(metrics::Kind::user));
+        typedef MetricKindService<metrics::Kind::network, KISSmetrics> KMNetwork;
         this->_reporter.add_service_class<KMNetwork>(
-          kissmetrics_info(Kind::network));
+          common::metrics::kissmetrics_info(metrics::Kind::network));
 
-        typedef MetricKindService<Kind::transaction, KISSmetrics> KMTransaction;
+        typedef MetricKindService<metrics::Kind::transaction, KISSmetrics> KMTransaction;
         this->_reporter.add_service_class<KMTransaction>(
-          kissmetrics_info(Kind::transaction));
+          common::metrics::kissmetrics_info(metrics::Kind::transaction));
       }
-    }
-
-    std::string const&
-    State::token_generation_key() const
-    {
-      ELLE_TRACE_SCOPE("%s: generate token", *this);
-
-      return this->me().token_generation_key;
-    }
-
-    std::string
-    State::user_directory()
-    {
-      ELLE_TRACE_METHOD("");
-
-      return common::infinit::user_directory(this->me().id);
     }
 
     State::~State()
     {
       ELLE_TRACE_SCOPE("%s: destroying state", *this);
-
-      this->_scheduler.mt_run<void>(
-        "stop state",
-        [this]
-        {
-          this->_keep_alive.terminate_now();
-
-          auto* scheduler = reactor::Scheduler::scheduler();
-          scheduler->terminate_now();
-        });
-
-      this->_thread.join();
 
       try
       {
@@ -246,32 +203,27 @@ namespace surface
       }
     }
 
-    std::string const&
-    State::token()
+    plasma::meta::Client const&
+    State::meta(bool authentication_required) const
     {
-      return this->_meta.token();
-    }
-
-    Self const&
-    State::me() const
-    {
-      if (!this->logged_in())
+      if (authentication_required && this->_meta.token().empty())
         throw Exception{gap_internal_error, "you must be logged in"};
 
-      if (this->_me == nullptr)
-      {
-        ELLE_TRACE("loading self info")
-          this->_me.reset(new Self{this->_meta.self()});
-      }
-      ELLE_ASSERT_NEQ(this->_me, nullptr);
-      return *this->_me;
+      return this->_meta;
     }
 
+    /*----------------------.
+    | Login/Logout/Register |
+    `----------------------*/
     void
     State::login(std::string const& email,
                  std::string const& password)
     {
       ELLE_TRACE_SCOPE("%s: login to meta as %s", *this, email);
+
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
 
       this->_meta.token("");
       this->_cleanup();
@@ -340,20 +292,26 @@ namespace surface
                        ;
         identity_infos.close();
       }
-    }
 
-    void
-    State::_cleanup()
-    {
-      ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
-
-      this->_transaction_manager->reset();
-      this->_network_manager->reset();
-      this->_user_manager->reset();
-      this->_notification_manager->reset();
-
-      this->_device.reset();
-      this->_me.reset();
+      this->_trophonius.connect(
+        this->me().id, this->_meta.token(), this->device().id);
+      this->_polling_thread.reset(
+        new reactor::Thread{
+          scheduler,
+          "poll",
+          [&]
+          {
+            while (true)
+            {
+              reactor::Scheduler::scheduler()->current()->wait(
+                this->_polling_barrier);
+              this->handle_notification(this->_trophonius.poll());
+              ELLE_TRACE("%s: notification pulled", *this);
+            }
+          }});
+      this->user(this->me().id);
+      this->_transactions_init();
+      this->on_connection_changed(true);
     }
 
     void
@@ -361,10 +319,24 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
 
-      if (this->_meta.token().empty())
+      /// First step must be to disconnect from trophonius.
+      /// If not, you can pull notification that
+      if (this->_polling_thread != nullptr)
+      {
+        this->_polling_thread->terminate_now();
+        this->_polling_thread.reset();
+      }
+      this->_trophonius.disconnect();
+
+      this->_users.clear();
+      this->_transactions_clear();
+
+      if (this->meta(false).token().empty())
         return;
 
-      elle::Finally logout([&] {
+      elle::Finally logout(
+        [&]
+        {
           try
           {
             auto id = this->me().id;
@@ -383,6 +355,17 @@ namespace surface
             this->_meta.token("");
           }
         });
+
+      elle::Finally clean([&] { this->_cleanup(); });
+    }
+
+    void
+    State::_cleanup()
+    {
+      ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
+
+      this->_device.reset();
+      this->_me.reset();
     }
 
     std::string
@@ -440,13 +423,12 @@ namespace surface
         this->_reporter[lower_email].store("user.register.failed");
       }};
 
-      auto res = this->_meta.register_(
+      auto res = this->meta(false).register_(
         lower_email, fullname, password, activation_code);
 
       register_failed.abort();
 
-
-      ELLE_DEBUG("Registered new user %s <%s>", fullname, lower_email);
+      ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
 
       elle::Finally registered_metric{[this, res] {
         this->_reporter[res.registered_user_id].store(
@@ -456,102 +438,147 @@ namespace surface
       this->login(lower_email, password);
     }
 
-    NotificationManager&
-    State::notification_manager()
+    std::string const&
+    State::token_generation_key() const
     {
-      return this->_notification_manager(
-        [this] (NotificationManagerPtr& manager) -> NotificationManager& {
-          if (manager == nullptr)
-          {
-            ELLE_TRACE_SCOPE("%s: allocating a new notification manager", *this);
+      ELLE_TRACE_SCOPE("%s: generate token", *this);
 
-            manager.reset(
-              new NotificationManager{
-                this->_trophonius_host,
-                this->_trophonius_port,
-                this->_meta,
-                std::bind(&State::me, this),
-                std::bind(&State::device, this),
-              });
-          }
-          return *manager;
-        });
+      return this->me().token_generation_key;
     }
 
-    NetworkManager&
-    State::network_manager()
+    Self const&
+    State::me() const
     {
-      return this->_network_manager(
-        [this] (NetworkManagerPtr& manager) -> NetworkManager& {
-          if (manager == nullptr)
-          {
-            ELLE_TRACE_SCOPE("%s: allocating a new network manager", *this);
+      static reactor::Mutex me_mutex;
 
-            manager.reset(
-              new NetworkManager{
-                this->_meta,
-                this->_reporter,
-                this->_google_reporter,
-                std::bind(&State::me, this),
-                std::bind(&State::device, this),
-                this->_apertus_host,
-                this->_apertus_port
-              });
-          }
-          return *manager;
-        });
+      reactor::Lock m(me_mutex);
+      if (this->_me == nullptr)
+      {
+        ELLE_TRACE("loading self info")
+          this->_me.reset(new Self{this->meta().self()});
+      }
+      ELLE_ASSERT_NEQ(this->_me, nullptr);
+      return *this->_me;
     }
 
-    UserManager&
-    State::user_manager()
+    std::string
+    State::user_directory()
     {
-      return this->_user_manager(
-        [this] (UserManagerPtr& manager) -> UserManager& {
-          if (manager == nullptr)
-          {
-            ELLE_TRACE_SCOPE("%s: allocating a new user manager", *this);
+      ELLE_TRACE_METHOD("");
 
-            manager.reset(
-              new UserManager{
-                this->notification_manager(),
-                this->_meta,
-                std::bind(&State::me, this)
-              });
-          }
-          return *manager;
-        });
+      return common::infinit::user_directory(this->me().id);
     }
 
-    TransactionManager&
-    State::transaction_manager()
+    void
+    State::output_dir(std::string const& dir)
     {
-      return this->_transaction_manager(
-        [this] (TransactionManagerPtr& manager) -> TransactionManager& {
-          if (manager == nullptr)
-          {
-            ELLE_TRACE_SCOPE("%s: allocating a new transaction manager", *this);
-            auto update_remaining_invitations =
-              [this] (unsigned int remaining_invitations)
-              {
-                if (this->_me != nullptr)
-                  this->_me->remaining_invitations = remaining_invitations;
-              };
-            manager.reset(
-              new TransactionManager{
-                this->_scheduler,
-                this->notification_manager(),
-                this->network_manager(),
-                this->user_manager(),
-                this->_meta,
-                this->_reporter,
-                std::bind(&State::me, this),
-                std::bind(&State::device, this),
-                update_remaining_invitations
-              });
-            this->network_manager().transaction_manager(manager.get());
-          }
-          return *manager;
-        });
+      if (!fs::exists(dir))
+        throw Exception{gap_error,
+                        "directory doesn't exist."};
+
+      if (!fs::is_directory(dir))
+        throw Exception{gap_error,
+                        "not a directroy."};
+
+      this->_output_dir = dir;
+    }
+
+    void
+    State::on_connection_changed(bool connection_status)
+    {
+      ELLE_TRACE_SCOPE(
+        "%s: connection %s", *this, connection_status ? "established" : "lost");
+
+      // Lock polling.
+      if (!connection_status)
+        this->_polling_barrier.close();
+
+      if (connection_status)
+      {
+        this->_user_resync();
+        this->_transaction_resync();
+      }
+
+      this->enqueue<ConnectionStatus>(ConnectionStatus(connection_status));
+
+      // Unlock polling.
+      if (connection_status)
+        this->_polling_barrier.open();
+    }
+
+    void
+    State::handle_notification(
+      std::unique_ptr<plasma::trophonius::Notification>&& notif)
+    {
+      ELLE_TRACE_SCOPE("%s: new notification %s", *this, *notif);
+      switch(notif->notification_type)
+      {
+        case plasma::trophonius::NotificationType::user_status:
+          ELLE_ASSERT(
+            dynamic_cast<plasma::trophonius::UserStatusNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_swagger_status_update(
+            *static_cast<plasma::trophonius::UserStatusNotification const*>(
+              notif.release()));
+          break;
+        case plasma::trophonius::NotificationType::transaction:
+          ELLE_ASSERT(
+            dynamic_cast<plasma::Transaction const*>(notif.get()) != nullptr);
+          this->_on_transaction_update(
+            *static_cast<plasma::trophonius::TransactionNotification const*>(notif.release()));
+          break;
+        case plasma::trophonius::NotificationType::new_swagger:
+          ELLE_ASSERT(
+            dynamic_cast<plasma::trophonius::NewSwaggerNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_new_swagger(
+            *static_cast<plasma::trophonius::NewSwaggerNotification const*>(
+              notif.release()));
+          break;
+        case plasma::trophonius::NotificationType::peer_connection_update:
+          ELLE_ASSERT(
+            dynamic_cast<plasma::trophonius::PeerConnectionUpdateNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_peer_connection_update(
+            *static_cast<plasma::trophonius::PeerConnectionUpdateNotification const*>(
+              notif.release()));
+          break;
+        case plasma::trophonius::NotificationType::none:
+        case plasma::trophonius::NotificationType::network_update:
+        case plasma::trophonius::NotificationType::message:
+        case plasma::trophonius::NotificationType::ping:
+        case plasma::trophonius::NotificationType::connection_enabled:
+        case plasma::trophonius::NotificationType::suicide:
+          break;
+      }
+    };
+
+    /*-------------------.
+    | External Callbacks |
+    `-------------------*/
+
+    void
+    State::poll() const
+    {
+      ELLE_DEBUG("poll");
+
+      if (this->_runners.empty())
+        return;
+
+      // I'm the only consumer.
+      while (!this->_runners.empty())
+      {
+        ELLE_ASSERT(!this->_runners.empty());
+        std::unique_ptr<_Runner> runner = nullptr;
+
+        {
+          std::lock_guard<std::mutex> lock{this->_poll_lock};
+          std::swap(runner, this->_runners.front());
+          this->_runners.pop();
+        }
+
+        (*runner)();
+      }
     }
 
     /*----------.
@@ -560,11 +587,31 @@ namespace surface
     void
     State::print(std::ostream& stream) const
     {
-      stream << "state(" << this->_meta.host() << ":" << this->_meta.port();
-      if (!this->_meta.email().empty())
-        stream << " as " << this->_meta.email();
+      stream << "state(" << this->meta(false).host()
+             << ":" << this->meta(false).port();
+      if (!this->meta(false).email().empty())
+        stream << " as " << this->meta(false).email();
       stream << ")";
     }
 
+    std::ostream&
+    operator <<(std::ostream& out,
+                NotificationType const& t)
+    {
+      switch (t)
+      {
+        case NotificationType_NewTransaction:
+          return out << "NewTransaction";
+        case NotificationType_TransactionUpdate:
+          return out << "TransactionUpdate";
+        case NotificationType_UserStatusUpdate:
+          return out << "UserStatusUpdate";
+        case NotificationType_NewSwagger:
+          return out << "NewSwagger";
+        case NotificationType_ConnectionStatus:
+          return out << "ConnectionStatus";
+      }
+      return out;
+    }
   }
 }

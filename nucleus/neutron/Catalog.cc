@@ -113,7 +113,7 @@ namespace nucleus
       // Go through the right catalog's entries until the future size is
       // reached after which all the remaining entries will be moved to
       // the left catalog.
-      for (; i != rend; ++i)
+      for (; !(i == rend); ++i)
         {
           auto& entry = i->second;
 
@@ -134,7 +134,7 @@ namespace nucleus
 
       // Go through the remaining entries in order to move them to
       // the left catalog.
-      for (auto j = i; j != rend; ++j)
+      for (auto j = i; !(j == rend); ++j)
         {
           auto& entry = j->second;
 

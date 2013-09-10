@@ -1,11 +1,11 @@
 #include "Reporter.hh"
 
 #include <version.hh>
-#include <common/common.hh>
 
 #include <reactor/scheduler.hh>
 
 #include <elle/log.hh>
+#include <elle/os/getenv.hh>
 #include <elle/threading/Monitor.hh>
 
 #include <fstream>
@@ -15,18 +15,18 @@ ELLE_LOG_COMPONENT("metrics.Reporter");
 
 namespace metrics
 {
-  std::string Reporter::version =
-    elle::sprintf("%s.%s", INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
-  std::string Reporter::user_agent = elle::sprintf("Infinit/%s (%s)",
-                                                   Reporter::version,
+  std::string Reporter::version = INFINIT_VERSION;
+  std::string Reporter::user_agent = elle::sprintf(
+    "Infinit/%s (%s)",
+    Reporter::version,
 #ifdef INFINIT_LINUX
-                                                "Linux x86_64");
+    "Linux"
 #elif INFINIT_MACOSX
-             // XXX[10.7: should adapt to any MacOS X version]
-                                                "Mac OS X 10.7");
+    "OS X"
 #else
 # warning "machine not supported"
 #endif
+  );
 
   struct Reporter::Impl
   {
@@ -43,11 +43,11 @@ namespace metrics
     elle::threading::Monitor<ServiceMap> services;
     elle::threading::Monitor<ProxyMap> proxies;
 
-    Impl():
+    Impl(std::string const& fallback_path):
       scheduler{},
       keep_alive{},
       thread{nullptr},
-      fallback_stream{common::metrics::fallback_path()},
+      fallback_stream{fallback_path},
       service_factories{},
       services{},
       proxies{}
@@ -59,8 +59,7 @@ namespace metrics
       return this->services(
         [&] (ServiceMap& map) -> ServiceArray& {
           ServiceArray& services = map[pkey];
-          // Fill services if some are missing.
-          while (services.size() < this->service_factories.size())
+          while (services.size() < service_factories.size())
             services.emplace_back(
               this->service_factories[services.size()](pkey));
           return services;
@@ -68,8 +67,8 @@ namespace metrics
     }
   };
 
-  Reporter::Reporter():
-    _this{new Impl{}}
+  Reporter::Reporter(std::string const& fallback_path):
+    _this{new Impl{fallback_path}}
   {
     _this->keep_alive.reset(
       new boost::asio::io_service::work(_this->scheduler.io_service()));
@@ -115,6 +114,9 @@ namespace metrics
                    std::string const& event_name,
                    Metric metric)
   {
+    if (elle::os::in_env("INFINIT_NO_METRICS"))
+      return;
+
     TimeMetricPair timed_metric{
       elle::utility::Time::current(),
       std::move(metric),

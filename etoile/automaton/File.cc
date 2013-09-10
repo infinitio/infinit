@@ -8,8 +8,8 @@
 #include <etoile/Exception.hh>
 
 #include <elle/Buffer.hh>
-
 #include <elle/log.hh>
+#include <elle/Measure.hh>
 
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.File");
 
@@ -158,7 +158,8 @@ namespace etoile
 
           data.close();
 
-          context.contents_porcupine->update(absolute_offset);
+          ELLE_MEASURE("Updating porcupine")
+            context.contents_porcupine->update(absolute_offset);
 
           // Update the current offset so as to move on to the
           // next block until the requested content has been written.

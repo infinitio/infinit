@@ -17,7 +17,8 @@ def configure(cxx_toolkit = None,
               python2 = None,
               python3 = None,
               build_type = "Development",
-              enable_debug = True):
+              enable_debug = True,
+              valgrind = None):
 
   prefix = drake.Path(prefix)
 
@@ -228,7 +229,8 @@ def configure(cxx_toolkit = None,
                        boost = boost,
                        stuntman = stun_core,
                        openssl = openssl.config(),
-                       curl = curl.config())
+                       curl = curl.config(),
+                       valgrind = valgrind)
 
   def copy_lib(lib, where = 'lib'):
     return drake.copy(lib, where, lib.path().dirname())
@@ -236,6 +238,8 @@ def configure(cxx_toolkit = None,
   elle_lib = copy_lib(elle.elle_dynamic)
   cryptography_lib = copy_lib(elle.cryptography_dynamic)
   reactor_lib = copy_lib(elle.reactor_dynamic)
+  asio_fs_lib = copy_lib(elle.asio_fs)
+  # asio_udt_lib = copy_lib(elle.asio_udt)
   curly_lib = copy_lib(elle.curly_dynamic)
   curly_sched_lib = copy_lib(elle.curly_sched_dynamic)
   curly_asio_lib = copy_lib(elle.curly_asio_dynamic)
@@ -254,6 +258,8 @@ def configure(cxx_toolkit = None,
 
   curly_libs = [
     curly_lib,
+    curly_asio_lib,
+    curly_sched_lib,
   ]
 
   # Fuse
@@ -485,41 +491,71 @@ def configure(cxx_toolkit = None,
     'protocol/RPC.cc',
     'protocol/fwd.hh',
     )
-  protocol_lib = drake.cxx.DynLib('lib/protocol', protocol_sources,
-                                  cxx_toolkit, cxx_config)
+  protocol_lib = drake.cxx.DynLib('lib/protocol',
+                                  protocol_sources + [
+                                    cryptography_lib,
+                                  ],
+                                  cxx_toolkit, cxx_config_libs)
 
   # RCP caller
   rpc_sources = drake.nodes(
     'protocol/8rpc.cc'
     )
 
+  ## ------- ##
+  ## Metrics ##
+  ## ------- ##
 
-  # Plasma
+  metrics_sources = drake.nodes(
+    'metrics/Key.cc',
+    'metrics/Key.hh',
+    'metrics/Key.hxx',
+    'metrics/Kind.cc',
+    'metrics/Kind.hh',
+    'metrics/Metric.hh',
+    'metrics/Reporter.cc',
+    'metrics/Reporter.hh',
+    'metrics/Reporter.hxx',
+    'metrics/Service.cc',
+    'metrics/Service.hh',
+    'metrics/services/Google.cc',
+    'metrics/services/Google.hh',
+    'metrics/services/KISSmetrics.cc',
+    'metrics/services/KISSmetrics.hh',)
+
+  metrics_lib = drake.cxx.DynLib('lib/metrics',
+                                 metrics_sources + curly_libs + [cryptography_lib],
+                                 cxx_toolkit, cxx_config_libs)
+
+  ## ------ ##
+  ## Plasma ##
+  ## ------ ##
   plasma_sources = drake.nodes(
     'plasma/meta/Client.cc',
     'plasma/meta/Client.hh',
     'plasma/meta/Client.hxx',
     'plasma/trophonius/Client.cc',
     'plasma/trophonius/Client.hh',
+    'plasma/plasma.hh',
+    'plasma/plasma.hxx',
     'plasma/plasma.cc',
-    ) + [
-      curly_lib,
-      elle_lib,
-    ]
-  plasma_lib = drake.cxx.DynLib('lib/plasma', plasma_sources,
-                                cxx_toolkit, cxx_config_libs)
-  plasma_python_sources = plasma_sources + [
-    drake.node('plasma/python.cc'),
-    drake.node('plasma/trophonius/python.cc'),
-    drake.node('plasma/meta/python.cc'),
-  ]
+    )
+  plasma_lib = drake.cxx.DynLib(
+    'lib/plasma',
+    plasma_sources + curly_libs + [metrics_lib, elle_lib],
+    cxx_toolkit, cxx_config_libs)
+
+  plasma_python_sources = drake.nodes(
+    'plasma/python.cc',
+    'plasma/trophonius/python.cc',
+    'plasma/meta/python.cc')
   plasma_python_cxx_config = drake.cxx.Config(cxx_config)
   plasma_python_cxx_config += python3
   plasma_python_cxx_config += boost.config_python()
   plasma_python_cxx_config.lib_path_runtime('..')
   plasma_python_lib = drake.cxx.Module(
     'lib/python/plasma',
-    plasma_python_sources,
+    plasma_python_sources + [plasma_lib],
     cxx_toolkit, plasma_python_cxx_config)
   rule_plasma = drake.Rule('plasma')
   rule_plasma << plasma_python_lib
@@ -533,23 +569,6 @@ def configure(cxx_toolkit = None,
   agent_lib = drake.cxx.DynLib('lib/agent', agent_sources,
                                cxx_toolkit, cxx_config)
 
-  # Infinit
-  infinit_sources = drake.nodes(
-    'CrashReporter.cc',
-    'CrashReporter.hh',
-    'HoleFactory.cc',
-    #'heartbeat.cc',
-    #'heartbeat.hh',
-    'Infinit.cc',
-    'Program.cc',
-    'Program.hh',
-    'common/common.cc',
-    ) + [version]
-  infinit_cxx_config = drake.cxx.Config(cxx_config)
-  infinit_cxx_config.lib_path_runtime('.')
-  infinit_lib = drake.cxx.DynLib('lib/infinit',
-                                 infinit_sources + [reactor_lib, curly_lib],
-                                 cxx_toolkit, infinit_cxx_config)
 
   # Papier
   papier_sources = drake.nodes(
@@ -572,12 +591,98 @@ def configure(cxx_toolkit = None,
     'hole/Model.hxx',
     'horizon/Policy.cc',
     'horizon/Policy.hh',
+    'common/common.cc', # FIXME: papier must not use common.
   )
   papier_cxx_config = drake.cxx.Config(cxx_config)
   papier_cxx_config.lib_path_runtime('.')
   papier_lib = drake.cxx.DynLib('lib/papier',
-                                papier_sources + [],
+                                papier_sources + [nucleus_lib],
                                 cxx_toolkit, papier_cxx_config)
+
+  # Station
+  station_build = drake.Rule('station/build')
+  station_sources = drake.nodes(
+    'station/src/station/AlreadyConnected.cc',
+    'station/src/station/AlreadyConnected.hh',
+    'station/src/station/ConnectionFailure.hh',
+    'station/src/station/InvalidPassport.cc',
+    'station/src/station/InvalidPassport.hh',
+    'station/src/station/NetworkError.cc',
+    'station/src/station/NetworkError.hh',
+    'station/src/station/Host.cc',
+    'station/src/station/Host.hh',
+    'station/src/station/Station.cc',
+    'station/src/station/Station.hh',
+  )
+  cxx_config.add_local_include_path('station/src')
+  cxx_config_libs.add_local_include_path('station/src')
+  station_cxx_config = drake.cxx.Config(cxx_config)
+  station_cxx_config.lib_path_runtime('.')
+  station_lib = drake.cxx.DynLib('lib/station',
+                                 station_sources + [papier_lib,
+                                                    cryptography_lib,
+                                                    reactor_lib,
+                                                    elle_lib],
+                                 cxx_toolkit, station_cxx_config)
+  station_build << station_lib
+  station_tests = drake.Rule('station/tests')
+  station_check = drake.Rule('station/check')
+  station_cxx_config_tests = drake.cxx.Config(station_cxx_config)
+  station_cxx_config_tests += boost.config_test()
+  station_cxx_config_tests += boost.config_system()
+  station_cxx_config_tests.lib_path_runtime('../../lib')
+  for name in ['station']:
+    test = drake.cxx.Executable(
+      'station/tests/%s' % name,
+      [
+        drake.node('station/tests/%s.cc' % name),
+        station_lib,
+        papier_lib,
+        cryptography_lib,
+        reactor_lib,
+        elle_lib,
+      ],
+      cxx_toolkit, station_cxx_config_tests)
+    station_tests << test
+    runner = drake.Runner(exe = test)
+    station_check << runner.status
+
+  # Frete
+  frete_build = drake.Rule('frete/build')
+  frete_sources = drake.nodes(
+    'frete/src/frete/Frete.hh',
+    'frete/src/frete/Frete.cc',
+  )
+  cxx_config.add_local_include_path('frete/src')
+  cxx_config_libs.add_local_include_path('frete/src')
+  frete_cxx_config = drake.cxx.Config(cxx_config)
+  frete_cxx_config.lib_path_runtime('.')
+  frete_lib = drake.cxx.DynLib('lib/frete',
+                                 frete_sources + [protocol_lib,
+                                                  reactor_lib,
+                                                  elle_lib],
+                                 cxx_toolkit, frete_cxx_config)
+  frete_build << frete_lib
+  frete_tests = drake.Rule('frete/tests')
+  frete_check = drake.Rule('frete/check')
+  frete_cxx_config_tests = drake.cxx.Config(frete_cxx_config)
+  frete_cxx_config_tests += boost.config_test()
+  frete_cxx_config_tests += boost.config_system()
+  frete_cxx_config_tests.lib_path_runtime('../../lib')
+  for name in ['frete']:
+    test = drake.cxx.Executable(
+      'frete/tests/%s' % name,
+      [
+        drake.node('frete/tests/%s.cc' % name),
+        frete_lib,
+        protocol_lib,
+        reactor_lib,
+        elle_lib,
+      ],
+      cxx_toolkit, frete_cxx_config_tests)
+    frete_tests << test
+    runner = drake.Runner(exe = test)
+    frete_check << runner.status
 
   # Hole
   hole_sources = drake.nodes(
@@ -645,9 +750,26 @@ def configure(cxx_toolkit = None,
     'hole/storage/Memory.cc',
     'hole/storage/Memory.hh',
     )
-  hole_lib = drake.cxx.DynLib('lib/hole', hole_sources,
+  hole_lib = drake.cxx.DynLib('lib/hole', hole_sources + [papier_lib],
                               cxx_toolkit, cxx_config)
 
+  # Infinit
+  infinit_sources = drake.nodes(
+    'CrashReporter.cc',
+    'CrashReporter.hh',
+    'HoleFactory.cc',
+    #'heartbeat.cc',
+    #'heartbeat.hh',
+    'Infinit.cc',
+    'Program.cc',
+    'Program.hh',
+    'common/common.cc',
+    ) + [version]
+  infinit_cxx_config = drake.cxx.Config(cxx_config)
+  infinit_cxx_config.lib_path_runtime('.')
+  infinit_lib = drake.cxx.DynLib('lib/infinit',
+                                 infinit_sources + [reactor_lib, curly_lib, agent_lib, hole_lib],
+                                 cxx_toolkit, infinit_cxx_config)
 # XXX
 #  hole_tests_root = drake.Path('hole/tests')
 #  for test in ['slug']:
@@ -822,26 +944,6 @@ def configure(cxx_toolkit = None,
     horizon_slib = drake.cxx.StaticLib('lib/horizon', horizon_sources,
                                        cxx_toolkit, cxx_config)
 
-  # Agent
-  metrics_sources = drake.nodes(
-    'metrics/Key.cc',
-    'metrics/Key.hh',
-    'metrics/Key.hxx',
-    'metrics/Metric.hh',
-    'metrics/Reporter.cc',
-    'metrics/Reporter.hh',
-    'metrics/Reporter.hxx',
-    'metrics/Service.cc',
-    'metrics/Service.hh',
-    'metrics/services/Google.cc',
-    'metrics/services/Google.hh',
-    'metrics/services/KISSmetrics.cc',
-    'metrics/services/KISSmetrics.hh',)
-
-  metrics_lib = drake.cxx.DynLib('lib/metrics', metrics_sources,
-                                 cxx_toolkit, cxx_config)
-
-
   ## ----- ##
   ## Tests ##
   ## ----- ##
@@ -872,6 +974,7 @@ def configure(cxx_toolkit = None,
   ## -------- ##
 
   infinit_libs = [
+    asio_fs_lib,
     agent_lib,
     etoile_lib,
     hole_lib,
@@ -894,6 +997,8 @@ def configure(cxx_toolkit = None,
   infinit_bin_config = drake.cxx.Config(cxx_config)
   infinit_bin_config += boost.config_thread()
   infinit_bin_config += boost.config_program()
+  infinit_bin_config += boost.config_system()
+  infinit_bin_config += boost.config_filesystem()
   infinit_bin_config.lib_path_runtime('../lib')
   if enable_horizon:
     infinit_bin_config.lib('fuse')
@@ -938,35 +1043,36 @@ def configure(cxx_toolkit = None,
 
   ## GAP:
   gap_sources = drake.nodes(
-    'surface/gap/binary_config.hh',
-    'surface/gap/binary_config.cc',
-    'surface/gap/device.cc',
     'surface/gap/Exception.hh',
+    'surface/gap/Transaction.hh',
+    'surface/gap/Transaction.cc',
+    'surface/gap/Transaction.hxx',
     'surface/gap/gap.cc',
     'surface/gap/gap.h',
-    'surface/gap/InfinitInstanceManager.cc',
-    'surface/gap/InfinitInstanceManager.hh',
+    'surface/gap/gap_bridge.hh',
+    'surface/gap/enums.hh',
+    'surface/gap/TransferMachine.cc',
+    'surface/gap/TransferMachine.hh',
+    'surface/gap/TransferMachine.hxx',
+    'surface/gap/SendMachine.cc',
+    'surface/gap/SendMachine.hh',
+    'surface/gap/ReceiveMachine.cc',
+    'surface/gap/ReceiveMachine.hh',
     'surface/gap/metrics.hh',
-    'surface/gap/NetworkManager.cc',
-    'surface/gap/NetworkManager.hh',
-    'surface/gap/NotificationManager.cc',
-    'surface/gap/NotificationManager.hh',
     'surface/gap/State.cc',
     'surface/gap/State.hh',
     'surface/gap/status.hh',
     'surface/gap/Transaction.hh',
     'surface/gap/Device.hh',
     'surface/gap/Self.hh',
-    'surface/gap/TransactionManager.cc',
-    'surface/gap/TransactionManager.hh',
-    'surface/gap/TransactionStateMachine.cc',
-    'surface/gap/TransactionStateMachine.hh',
     'surface/gap/Rounds.cc',
     'surface/gap/Rounds.hh',
-    'surface/gap/UserManager.cc',
-    'surface/gap/UserManager.hh',
-    'surface/gap/_detail/TransferOperations.hh',
-    'surface/gap/_detail/TransferOperations.cc',
+    'surface/gap/_detail/Papiers.cc',
+    'surface/gap/_detail/Network.cc',
+    'surface/gap/_detail/Transaction.cc',
+    'surface/gap/_detail/User.cc',
+    'surface/gap/_detail/RPC.hh',
+    'surface/gap/_detail/RPC.cc',
   )
 
   # GAP
@@ -992,7 +1098,7 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost.config_filesystem(
     static = (cxx_toolkit.os is drake.os.macos))
   gap_lib = drake.cxx.DynLib('lib/gap',
-                             gap_sources + infinit_libs,
+                             gap_sources + infinit_libs + [station_lib, frete_lib],
                              cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib
@@ -1061,6 +1167,8 @@ def configure(cxx_toolkit = None,
     'transfer',
     'user',
     'dump',
+    'recv',
+    'send',
     ]:
     satellite(name)
 
@@ -1231,6 +1339,8 @@ def configure(cxx_toolkit = None,
       oracles << metalib_lib
 
     oracles << stun_server
+    oracles << curl_lib
+    oracles << openssl_lib
     build << oracles
 
   # Install
@@ -1262,12 +1372,11 @@ def configure(cxx_toolkit = None,
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
     #('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
-    (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, reactor_lib]),
-    #(('tests/unit/plasma/meta/MetaClient.cc', 'common/common.cc'),  [elle_lib, plasma_lib, curly_lib]),
+    (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
+    (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
     ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib]),
     (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib, curly_lib]),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib]),
-    ('tests/unit/surface/gap/transaction_state_machine.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib]),
     ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib]),
     #('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
@@ -1299,7 +1408,6 @@ def configure(cxx_toolkit = None,
                'servers/online-offline',
                'servers/swaggers.py',
                'sharing/send-file/send-file.py',
-               'sharing/send-file/early-accept.py',
                'sharing/send-file/forwarder.py',
                'sharing/send-file/invitation.py',
                'sharing/send-file/sender-cancel.py',

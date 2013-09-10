@@ -234,9 +234,9 @@ void export_meta()
     .def_readonly("swaggers", &SwaggersResponse::swaggers)
   ;
 
-  py::class_<TransactionsResponse, py::bases<Response>>("TransactionsResponse")
-    .def_readonly("transactions", &TransactionsResponse::transactions)
-  ;
+  // py::class_<TransactionsResponse, py::bases<Response>>("TransactionsResponse")
+  //   .def_readonly("transactions", &TransactionsResponse::transactions)
+  // ;
   py::class_<TransactionResponse, py::bases<Response, Transaction>>("TransactionResponse");
   py::class_<CreateTransactionResponse, py::bases<Response>>("CreateTransactionResponse")
     .def_readonly("created_transaction_id", &CreateTransactionResponse::created_transaction_id)
@@ -320,7 +320,7 @@ void export_meta()
     .def("invite_user", &MetaClient::invite_user)
     .def("ghostify", &MetaClient::ghostify)
     .def("transaction", &MetaClient::transaction)
-    .def("transactions", &MetaClient::transactions)
+    // .def("transactions", &MetaClient::transactions)
     .def("create_transaction", &MetaClient::create_transaction)
     .def("update_transaction", &MetaClient::update_transaction)
     .def("accept_transaction", &MetaClient::accept_transaction)

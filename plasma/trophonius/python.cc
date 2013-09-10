@@ -9,7 +9,7 @@ class Client: public plasma::trophonius::Client
 public:
   Client(std::string const& host, uint16_t port, object on_connection):
     plasma::trophonius::Client(host, port,
-                               [=]() {on_connection();})
+                               [=](bool value) { on_connection(value); })
   {}
 
   int
@@ -60,7 +60,6 @@ void export_trophonius()
   class_<Client, boost::noncopyable>(
     "Trophonius", init<std::string const&, uint16_t, object>())
     .def("connect", &Client::connect)
-    .def("has_notification", &Client::has_notification)
     .def("poll", &Client::poll)
     .add_property("retries", &Client::reconnected)
     .add_property("ping_period",

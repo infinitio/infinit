@@ -1,4 +1,3 @@
-#include <elle/io/File.hh>
 #include <elle/io/Piece.hh>
 #include <elle/os/path.hh>
 #include <elle/log.hh>

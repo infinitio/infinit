@@ -1,9 +1,6 @@
 #include "Key.hh"
 
-#include <elle/assert.hh>
-
 #include <ostream>
-#include <unordered_map>
 
 namespace metrics
 {

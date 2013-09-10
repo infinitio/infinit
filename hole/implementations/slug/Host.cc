@@ -67,9 +67,21 @@ namespace hole
           if (this->_rpcs_handler &&
               !_rpcs_handler->done() &&
               current != _rpcs_handler)
-          {
-            _rpcs_handler->terminate_now();
-          }
+            ELLE_DEBUG("%s: terminate RPC thread: %s",
+                       *this, *this->_rpcs_handler)
+              while (this->_rpcs_handler)
+              {
+                // FIXME: we're forced to swallow the exception because of
+                // std::shared_ptr, but is is a bug: we might ignore a
+                // terminate.
+                try
+                {
+                  this->_rpcs_handler->terminate_now();
+                  break;
+                }
+                catch (reactor::Terminate const&)
+                {}
+              }
         }
         try
         {
@@ -82,6 +94,9 @@ namespace hole
           // removed anyway.
           ELLE_WARN("%s: socket cleanup error ignored: %s", *this, e.what());
         }
+        // FIXME: like the previous Terminate catch.
+        catch (reactor::Terminate const&)
+        {}
       }
 
       /*-----.
@@ -102,9 +117,18 @@ namespace hole
         {
           this->_rpcs.run();
         }
-        catch (reactor::network::Exception& e)
+        catch (elle::Exception& e)
         {
           ELLE_WARN("%s: discarded: %s", *this, e.what());
+        }
+        catch (reactor::Terminate const&)
+        {
+          throw;
+        }
+        catch (...)
+        {
+          ELLE_ERR("exception escaped from rpcs: %s", elle::exception_string());
+          throw;
         }
       }
 

@@ -4,11 +4,38 @@
 
 namespace plasma
 {
-  Transaction::Transaction()
+  Transaction::Transaction(std::string const& sender_id,
+                           std::string const& sender_fullname,
+                           std::string const& sender_device_id):
+    id(),
+    sender_id(sender_id),
+    sender_fullname(sender_fullname),
+    sender_device_id(sender_device_id),
+    recipient_id(),
+    recipient_fullname(),
+    recipient_device_id(),
+    recipient_device_name(),
+    message(),
+    files(),
+    files_count(),
+    total_size(),
+    is_directory(),
+    status(TransactionStatus::created),
+    ctime(),
+    mtime()
   {}
 
-  Transaction::~Transaction()
-  {}
+  bool
+  Transaction::empty() const
+  {
+    return this->id.empty();
+  }
+
+  void
+  Transaction::print(std::ostream& stream) const
+  {
+    stream << *this;
+  }
 
   std::ostream&
   operator <<(std::ostream& out,
@@ -33,11 +60,10 @@ namespace plasma
   {
     out
       << "<Transaction(" << t.id
-      << ", net=" << t.network_id
-      << ", t=" << t.timestamp
-      << ", file=" << t.first_filename
-      << ", status=" << (plasma::TransactionStatus) t.status
-      << ", accepted=" <<  t.accepted
+      << ", ctime=" << t.ctime
+      << ", mtime=" << t.mtime
+      << ", files=" << elle::sprint(t.files)
+      << ", status=" << t.status
       << ") "
       << "from " << t.sender_fullname << " (" << t.sender_id << ") "
       << "on device " << t.sender_device_id << ", "

@@ -5,7 +5,7 @@
 # include <plasma/meta/Client.hh>
 
 # include <elle/serialize/JSONArchive.hh>
-
+# include <elle/serialize/SetSerializer.hxx>
 # include <boost/algorithm/string/split.hpp>
 # include <boost/algorithm/string/classification.hpp>
 
@@ -13,53 +13,6 @@ namespace plasma
 {
   namespace meta
   {
-
-    template <class Container>
-    NetworkConnectDeviceResponse
-    Client::network_connect_device(std::string const& network_id,
-                                   std::string const& device_id,
-                                   Container const& local_ips) const
-    {
-      adapter_type local_adapter;
-      adapter_type public_adapter;
-
-      for (auto &a: local_ips)
-      {
-        local_adapter.emplace_back(a.first, a.second);
-      }
-
-      return this->_network_connect_device(network_id,
-                                           device_id,
-                                           local_adapter,
-                                           public_adapter);
-    }
-
-    template <class Container1, class Container2>
-    NetworkConnectDeviceResponse
-    Client::network_connect_device(std::string const& network_id,
-                                   std::string const& device_id,
-                                   Container1 const& local_ips,
-                                   Container2 const& public_endpoints) const
-    {
-      adapter_type local_adapter;
-      adapter_type public_adapter;
-
-      for (auto &a: local_ips)
-      {
-        local_adapter.emplace_back(a.first, a.second);
-      }
-
-      for (auto &a: public_endpoints)
-      {
-        public_adapter.emplace_back(a.first, a.second);
-      }
-
-      return this->_network_connect_device(network_id,
-                                           device_id,
-                                           local_adapter,
-                                           public_adapter);
-    }
-
     static inline
     int
     curl_debug_callback(CURL* handle,
@@ -81,8 +34,14 @@ namespace plasma
         {CURLINFO_DATA_IN, "<<"},
         {CURLINFO_DATA_OUT, ">>"},
       };
+
       // get rid of \n
-      ELLE_ASSERT_GT(what_size, 0u);
+      if (what_size == 0)
+      {
+        ELLE_DEBUG("debug callback is empty");
+        return 0;
+      }
+
       if (what[what_size - 1] == '\n')
       {
         what_size--;
@@ -140,53 +99,17 @@ namespace plasma
     Client::_post(std::string const& url,
                   elle::format::json::Object const& req) const
     {
-      // XXX Curl is supposed to be thread-safe.
-      std::unique_lock<std::mutex> lock(this->_mutex);
-      std::stringstream in;
-      std::stringstream out;
-      curly::request_configuration c = curly::make_post();
-
-      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
-      c.option(CURLOPT_DEBUGDATA, this);
-      c.option(CURLOPT_TIMEOUT, 15);
-
-      req.repr(in);
-      c.option(CURLOPT_POSTFIELDSIZE, in.str().size());
-      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-      c.url(elle::sprintf("%s%s", this->_root_url, url));
-      c.user_agent(this->_user_agent);
-      c.input(in);
-      c.output(out);
-      c.headers({
-        {"Authorization", this->_token},
-        {"Connection", "close"},
-      });
-      curly::request request(std::move(c));
-      return this->_deserialize_answer<T>(out);
+      std::stringstream resp;
+      this->_post(url, req, resp);
+      return this->_deserialize_answer<T>(resp);
     }
 
     template <typename T>
     T
     Client::_get(std::string const& url) const
     {
-      // XXX Curl is supposed to be thread-safe.
-      std::unique_lock<std::mutex> lock(this->_mutex);
       std::stringstream resp;
-      curly::request_configuration c = curly::make_get();
-
-      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
-      c.option(CURLOPT_DEBUGDATA, this);
-      c.option(CURLOPT_TIMEOUT, 15);
-
-      c.url(elle::sprintf("%s%s", this->_root_url, url));
-      c.output(resp);
-      c.user_agent(this->_user_agent);
-      c.headers({
-        {"Authorization", this->_token},
-        {"Connection", "close"},
-      });
-      curly::request request(std::move(c));
+      this->_get(url, resp);
       return this->_deserialize_answer<T>(resp);
     }
 
@@ -216,6 +139,31 @@ namespace plasma
       return ret;
     }
   }
+}
+
+namespace std
+{
+  template<>
+  struct hash<plasma::meta::Network>
+  {
+  public:
+    std::size_t
+    operator()(plasma::meta::Network const& network) const
+    {
+      return std::hash<std::string>()(network._id);
+    }
+  };
+
+  template<>
+  struct hash<plasma::meta::User>
+  {
+  public:
+    std::size_t
+    operator()(plasma::meta::User const& user) const
+    {
+      return std::hash<std::string>()(user.id);
+    }
+  };
 }
 
 #endif

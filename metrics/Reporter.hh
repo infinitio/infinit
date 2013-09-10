@@ -17,7 +17,7 @@ namespace metrics
     static std::string tag_placeholder;
 
   public:
-    Reporter();
+    Reporter(std::string const& fallback_path);
     ~Reporter();
 
   private:

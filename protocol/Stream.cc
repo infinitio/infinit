@@ -48,6 +48,9 @@ namespace infinit
     Stream::_uint32_put(std::ostream& s, uint32_t  i)
     {
       elle::IOStreamClear clearer(s);
+      // FIXME: should rethrow the underlying streambuf error.
+      if (!s.good())
+        throw elle::Exception("stream is not good");
       i = htonl(i);
       s.write(reinterpret_cast<char*>(&i), sizeof(i));
     }
@@ -57,6 +60,9 @@ namespace infinit
     {
       uint32_t res;
       elle::IOStreamClear clearer(s);
+      // FIXME: should rethrow the underlying streambuf error.
+      if (!s.good())
+        throw elle::Exception("stream is not good");
       s.read(reinterpret_cast<char*>(&res), sizeof(res));
       ELLE_ASSERT_EQ(unsigned(s.gcount()), sizeof(res));
       return ntohl(res);

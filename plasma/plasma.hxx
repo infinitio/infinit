@@ -3,6 +3,7 @@
 
 # include <elle/serialize/Serializer.hh>
 # include <elle/serialize/NamedValue.hh>
+# include <elle/serialize/ListSerializer.hxx>
 
 ELLE_SERIALIZE_NO_FORMAT(plasma::Transaction);
 
@@ -32,15 +33,27 @@ ELLE_SERIALIZE_SIMPLE(plasma::Transaction, ar, res, version)
   ar & named("recipient_fullname", res.recipient_fullname);
   ar & named("recipient_device_id", res.recipient_device_id);
   ar & named("recipient_device_name", res.recipient_device_name);
-  ar & named("network_id", res.network_id);
   ar & named("message", res.message);
-  ar & named("first_filename", res.first_filename);
+  ar & named("files", res.files);
   ar & named("files_count", res.files_count);
   ar & named("total_size", res.total_size);
-  ar & named("timestamp", res.timestamp);
+  ar & named("ctime", res.ctime);
+  ar & named("mtime", res.mtime);
   ar & named("is_directory", res.is_directory);
   ar & named("status", res.status);
-  ar & named("accepted", res.accepted);
+}
+
+namespace std
+{
+  template<>
+  struct hash<plasma::Transaction>
+  {
+  public:
+    std::size_t operator()(plasma::Transaction const& tr) const
+    {
+      return std::hash<std::string>()(tr.id);
+    }
+  };
 }
 
 #endif

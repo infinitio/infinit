@@ -1,11 +1,12 @@
 #include <sys/stat.h>
 
-#include <elle/log.hh>
-#include <elle/finally.hh>
+#include <elle/Measure.hh>
 #include <elle/concept/Fileable.hh>
+#include <elle/finally.hh>
+#include <elle/log.hh>
 #include <elle/serialize/Serializable.hh>
-#include <elle/serialize/insert.hh>
 #include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
 
 #include <hole/storage/Directory.hh>
 #include <hole/Exception.hh>
@@ -76,8 +77,8 @@ namespace hole
         throw Exception(
           elle::sprintf("Unable to dig the path '%s'.", path));
 
-      // Serialize the block.
-      elle::serialize::to_file(path.string()) << block;
+      ELLE_MEASURE("Serializing the block")
+        elle::serialize::to_file(path.string()) << block;
     }
 
     void

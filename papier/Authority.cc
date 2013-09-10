@@ -1,6 +1,5 @@
 #include <elle/log.hh>
 #include <elle/serialize/TupleSerializer.hxx>
-#include <elle/io/File.hh>
 
 #include <cryptography/PublicKey.hh>
 #include <cryptography/PrivateKey.hh>

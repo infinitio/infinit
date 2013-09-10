@@ -4,6 +4,9 @@
 # include <stdint.h>
 # include <string>
 
+# include <metrics/Kind.hh>
+# include <metrics/Service.hh>
+
 namespace common
 {
 
@@ -64,6 +67,14 @@ namespace common
     /// Returns user directory path.
     std::string
     user_directory(std::string const& user_id);
+
+    /// Returns user directory path.
+    std::string
+    transactions_directory(std::string const& user_id);
+
+    /// Returns user diaries directory path.
+    std::string
+    transaction_snapshots_directory(std::string const& user_id);
 
     /// The path to the identity file.
     std::string
@@ -179,34 +190,19 @@ namespace common
 
   namespace metrics
   {
-    struct Info
-    {
-      std::string const pretty_name;
-      std::string const host;
-      uint16_t const port;
-      std::string const id_path;
-      std::string const tracking_id;
-    };
-
-    /// Kind of metrics to be reported.
-    enum class Kind
-    {
-      all,
-      user,
-      network,
-      transaction
-    };
-
-    Info const&
+    ::metrics::Service::Info const&
     google_info_investors();
 
-    Info const&
-    google_info(Kind const kind = Kind::all);
+    ::metrics::Service::Info const&
+    google_info(::metrics::Kind const kind = ::metrics::Kind::all);
 
-    Info const&
-    kissmetrics_info(Kind const kind = Kind::all);
+    ::metrics::Service::Info const&
+    kissmetrics_info(::metrics::Kind const kind = ::metrics::Kind::all);
 
     /// Path to the file storing fallbacked metrics.
+    std::string const&
+    google_fallback_path();
+
     std::string const&
     fallback_path();
   }

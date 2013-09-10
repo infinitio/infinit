@@ -113,7 +113,7 @@ namespace nucleus
       // Go through the right attributes's traits until the future size is
       // reached after which all the remaining traits will be moved to
       // the left attributes.
-      for (; i != rend; ++i)
+      for (; !(i == rend); ++i)
         {
           auto& trait = i->second;
 
@@ -134,7 +134,7 @@ namespace nucleus
 
       // Go through the remaining traits in order to move them to
       // the left attributes.
-      for (auto j = i; j != rend; ++j)
+      for (auto j = i; !(j == rend); ++j)
         {
           auto& trait = j->second;
 

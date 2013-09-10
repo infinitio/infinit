@@ -42,29 +42,6 @@ configfile = open(filepath, 'r')
 for line in configfile:
     eval(_macro_matcher.sub(replacer, line))
 
-class _UpdateTransaction(Page):
-
-    def network_endpoints(self, transaction):
-        network = database.networks().find_one(
-            database.ObjectId(transaction["network_id"]),
-        )
-        if not network:
-            self.raise_error(error.NETWORK_NOT_FOUND)
-
-        if network['owner'] != self.user['_id'] and \
-           self.user['_id'] not in network['users']:
-            self.raise_error(error.OPERATION_NOT_PERMITTED)
-
-        nodes = network.get("nodes")
-        if nodes:
-          devices = tuple(
-              transaction[v + "_device_id"] for v  in ["sender", "recipient"]
-          )
-          # sender and receiver have set their devices
-          if all(str(d) in nodes for d in devices):
-              return tuple(nodes[str(d)] for d in devices)
-        return None
-
 class Create(Page):
     """
     Send a file to a specific user.
@@ -73,12 +50,11 @@ class Create(Page):
 
     POST {
         'recipient_id_or_email': "email@pif.net", #required
-        'first_filename': "The first file name",
+        'files': ["The first file name", "file2"],
         'files_count': 32
         'total_size': 42 (ko)
         'is_directory': bool
         'device_id': The device from where the file is get
-        'network_id': "The network name", #required
         'message': 'a message to the recipient'
      }
      -> {
@@ -93,12 +69,11 @@ class Create(Page):
 
     _validators = [
         ('recipient_id_or_email', regexp.NonEmptyValidator),
-        ('network_id', regexp.NetworkValidator),
         ('device_id', regexp.DeviceIDValidator),
     ]
 
     _mendatory_fields = [
-        ('first_filename', basestring),
+        ('files', list),
         ('files_count', int),
         ('total_size', int),
         ('is_directory', int),
@@ -115,12 +90,8 @@ class Create(Page):
         message = 'message' in self.data and self.data['message'] or ""
 
         id_or_email = self.data['recipient_id_or_email'].strip().lower()
-        first_filename = self.data['first_filename'].strip()
-        network_id = self.data['network_id'].strip()
+        files = self.data['files']
         device_id = self.data['device_id'].strip()
-
-        if not database.networks().find_one(database.ObjectId(network_id)):
-            return self.error(error.NETWORK_NOT_FOUND)
 
         if not database.devices().find_one(database.ObjectId(device_id)):
             return self.error(error.DEVICE_NOT_FOUND)
@@ -179,18 +150,16 @@ class Create(Page):
             'recipient_device_id': '',
             'recipient_device_name': '',
 
-            'network_id': database.ObjectId(network_id),
-
             'message': message,
 
-            'first_filename': first_filename,
+            'files': files,
             'files_count': self.data['files_count'],
             'total_size': self.data['total_size'],
             'is_directory': self.data['is_directory'],
 
-            'timestamp': time.time(),
+            'ctime': time.time(),
+            'mtime': time.time(),
             'status': CREATED,
-            'accepted': False,
         }
 
         transaction_id = database.transactions().insert(transaction)
@@ -209,136 +178,111 @@ class Create(Page):
                     source = self.user['_id'],
                     mail_template = 'send-file',
                     reply_to = self.user['email'],
-                    filename = first_filename,
+                    filename = files[0],
                     sendername = self.user['fullname'],
                     user_id = str(self.user['_id']),
                 )
 
-        device_ids = [transaction['sender_device_id']]
-        recipient = database.users().find_one(database.ObjectId(recipient_id))
-        self.notifier.notify_some(
-            notifier.TRANSACTION,
-            device_ids = device_ids,
-            recipient_ids = [recipient['_id']],
-            message = transaction,
-            store = True,
-        )
-
         from user import increase_swag
-        increase_swag(self.user['_id'], recipient['_id'], self.notifier)
+        increase_swag(self.user['_id'], recipient_id, self.notifier)
 
         return self.success({
             'created_transaction_id': transaction_id,
             'remaining_invitations': self.user.get('remaining_invitations', 0),
         })
 
-class Accept(_UpdateTransaction):
+class Update(Page):
     """
-    Use to accept a file transfer.
-    Maybe more in the future but be careful, for the moment, user MUST be the recipient.
-    POST {
-        'transaction_id' : the id of the transaction.
-        'device_id': the device id on which the user accepted the transaction.
-        'device_name': the device name on which the user accepted the transaction.
-    }
-    -> {
-        'updated_transaction_id': the network id or empty string if refused.
-    }
-    *-> TransactionNotification
-
-    Errors:
-        The transaction doesn't exists.
-        The use is not the recipient.
-        Recipient and sender devices are the same.
     """
-    __pattern__ = "/transaction/accept"
+    __pattern__ = "/transaction/update"
 
-    _validators = [
-        ('transaction_id', regexp.TransactionValidator),
-        ('device_id', regexp.DeviceIDValidator),
-        ('device_name', regexp.NonEmptyValidator),
-    ]
+    def validate_ownership(self, transaction):
+        # Check that user has rights on the transaction
+        is_sender = self.user['_id'] == transaction['sender_id']
+        is_receiver = self.user['_id'] == transaction['recipient_id']
+        if not (is_sender or is_receiver):
+            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+        return is_sender
 
-    def POST(self):
-        self.requireLoggedIn()
-
-        status = self.validate()
-        if status:
-            return self.error(status)
-
-        tr_id = database.ObjectId(self.data['transaction_id'])
-
-        transaction =  database.transactions().find_one(tr_id)
-
-        if not transaction:
-            return self.error(error.TRANSACTION_DOESNT_EXIST)
+    def on_accept(self, transaction):
+        if 'device_id' not in self.data or 'device_name' not in self.data:
+            return self.error(
+                error.TRANSACTION_OPERATION_NOT_PERMITTED,
+                "'device_id' or 'device_name' key is missing")
 
         device_id = database.ObjectId(self.data["device_id"])
         if device_id not in self.user['devices']:
             return self.error(error.DEVICE_NOT_VALID)
 
-        if self.user['_id'] != transaction['recipient_id']:
-            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
-        if device_id == transaction['sender_device_id']:
-            return self.error(
-              error.TRANSACTION_CANT_BE_ACCEPTED,
-              "Sender and recipient devices are the same."
-            )
-
         transaction.update({
-            'recipient_fullname': self.user['fullname'],
-            'recipient_device_name' : self.data['device_name'],
-            'recipient_device_id': device_id,
-            'accepted': True,
-        })
+                'recipient_fullname': self.user['fullname'],
+                'recipient_device_name' : self.data['device_name'],
+                'recipient_device_id': device_id,
+                })
 
-        updated_transaction_id = database.transactions().save(transaction);
+    def update_status(self, transaction, status, is_sender):
+        final_status = [REJECTED, CANCELED, FAILED, FINISHED]
+        if transaction['status'] in final_status:
+            return self.error(
+                error.TRANSACTION_ALREADY_FINALIZED,
+                "Cannot change status from %s to %s." % (transaction['status'], status)
+                )
 
-        sender = database.users().find_one(
-          database.ObjectId(transaction['sender_id'])
-        )
+        if transaction['status'] == status:
+            return self.error(
+                error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
+                "Cannont change status from %s to %s." % (transaction['status'], status))
 
-        # XXX: If the sender delete his account while transaction is pending.
-        # We should turn all his transaction to canceled.
-        assert sender is not None
+        transitions = {
+            CREATED: {True: [INITIALIZED, CANCELED, FAILED], False: [ACCEPTED, REJECTED, FAILED]},
+            INITIALIZED: {True: [CANCELED, FAILED], False: [ACCEPTED, REJECTED, CANCELED, FAILED]},
+            ACCEPTED: {True: [CANCELED, FAILED], False: [FINISHED, CANCELED, FAILED]},
+            # FINISHED: {True: [], False: []},
+            # CANCELED: {True: [], False: []},
+            # FAILED: {True: [], False: []},
+            # REJECTED: {True: [], False: []}
+        }
 
-        device_ids = [transaction['sender_device_id'], transaction['recipient_device_id']]
+        if status not in transitions[transaction['status']][is_sender]:
+            return self.error(
+                error.TRANSACTION_OPERATION_NOT_PERMITTED,
+                "Cannot change status from %s to %s." % (transaction['status'], self.data['status'])
+                )
+
+        from functools import partial
+
+        callbacks = {
+            INITIALIZED: None,
+            ACCEPTED: partial(self.on_accept, transaction),
+            READY: None,
+            FINISHED: None,
+            CANCELED: None,
+            FAILED: None,
+            REJECTED: None
+        }
+
+        cb = callbacks[status]
+        if cb is not None:
+            cb()
+
+        transaction['status'] = status
+        transaction['mtime'] = time.time()
+        database.transactions().save(transaction)
+
+        device_ids = [transaction['sender_device_id']]
+        recipient_ids = None
+        if isinstance(transaction['recipient_device_id'], database.ObjectId):
+            device_ids.append(transaction['recipient_device_id'])
+        else:
+            recipient_ids = [transaction['recipient_id']]
+
         self.notifier.notify_some(
             notifier.TRANSACTION,
             device_ids = device_ids,
+            recipient_ids = recipient_ids,
             message = transaction,
-            store = True,
-        )
-
-        return self.success({
-            'updated_transaction_id': str(updated_transaction_id),
-        })
-
-
-class Update(_UpdateTransaction):
-    """
-    Update the transaction status. Accepted values:
-        * from sender: [started, canceled, failed]
-        * from receiver: [canceled, finished]
-
-        If the sender send the status STARTED while the transaction is already
-        started, a notification will be sent again, as to restart the
-        connection.
-
-        POST {
-            'transaction_id': <string>,
-            'status': <TransactionStatus>,
-        }
-        -> {
-            'updated_transaction_id' : the (new) id
-        }
-
-    Errors:
-        The transaction is not valid.
-        You are not involved in this transaction.
-    """
-    __pattern__ = "/transaction/update"
+            store = False,
+       )
 
     def POST(self):
         self.requireLoggedIn()
@@ -349,51 +293,16 @@ class Update(_UpdateTransaction):
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
 
-        # Check if status is mutable
-        if transaction['status'] not in [CREATED, STARTED]:
-            return self.error(
-                error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                "Cannot change status of an ended transaction."
-            )
-
-        # Check that user has rights on the transaction
-        is_sender = self.user['_id'] == transaction['sender_id']
-        is_receiver = self.user['_id'] == transaction['recipient_id']
-        if not (is_sender or is_receiver):
-            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+        is_sender = self.validate_ownership(transaction)
 
         # Check input fied
         if 'status' not in self.data:
             return self.error(
                 error.TRANSACTION_OPERATION_NOT_PERMITTED,
-                "'status' key is missing"
-            )
+                "'status' key is missing")
 
-        # Validate status value
-        status = int(self.data['status'])
-        if is_sender and status not in [STARTED, CANCELED, FAILED]:
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
-        elif is_receiver and status not in [STARTED, CANCELED, FINISHED, FAILED]:
-            return self.error(error.TRANSACTION_OPERATION_NOT_PERMITTED)
+        self.update_status(transaction, self.data['status'], is_sender)
 
-        new_status = transaction['status'] != status
-
-        if new_status:
-            transaction["status"] = status
-            database.transactions().save(transaction)
-        if new_status or status == STARTED:
-            device_ids = [transaction['sender_device_id']]
-            if transaction['accepted']:
-                device_ids.append(transaction['recipient_device_id'])
-            else:
-                recipient = database.users().find_one(database.ObjectId(transaction['recipient_id']))
-                device_ids.extend(recipient.get('devices', []))
-            self.notifier.notify_some(
-                notifier.TRANSACTION,
-                device_ids = device_ids,
-                message = transaction,
-                store = True,
-            )
         return self.success({
             'updated_transaction_id': transaction['_id'],
         })
@@ -408,21 +317,37 @@ class All(Page):
     """
     __pattern__ = "/transactions"
 
-    def GET(self):
+    def POST(self):
         self.requireLoggedIn()
-        transaction_ids = (
+
+        filter_ = self.data.get('filter', [CANCELED, FINISHED, FAILED, CREATED, REJECTED])
+        inclusive = self.data.get('type', False)
+        limit = min(int(self.data.get('count', 100)), 100)
+
+
+
+        transaction_ids = list(
             t['_id'] for t in database.transactions().find({
-                '$or':[
-                    {'recipient_id': self.user['_id']},
-                    {'sender_id': self.user['_id']}
+                    '$query': {
+                        '$or':[
+                            {'recipient_id': self.user['_id']},
+                            {'sender_id': self.user['_id']}
+                        ],
+                        'status': {
+                            '$%s' % (inclusive and 'in' or 'nin'): filter_,
+                        },
+                    },
+                },
+                fields = ['_id'],
+                limit = limit,
+                sort = [
+                    ('mtime', -1),
                 ],
-                'status': {
-                    '$nin': [CANCELED, FINISHED, FAILED]
-                }
-            }, fields = ['_id'])
+            )
         )
+
         return self.success({
-            'transactions': list(transaction_ids)
+            'transactions': transaction_ids,
         })
 
 class One(Page):
@@ -440,15 +365,12 @@ class One(Page):
             'recipient_device_id' :
             'recipient_device_name' :
 
-            'network_id' :
-
-            'first_filename' :
+            'files' :
             'files_count' :
             'total_size' :
             'is_directory' :
 
             'status' : <TransactionStatus>,
-            'accepted': <bool>
         }
     """
 
@@ -462,3 +384,153 @@ class One(Page):
         if not self.user['_id'] in (transaction['sender_id'], transaction['recipient_id']):
             return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
         return self.success(transaction)
+
+class ConnectDevice(Page):
+    """
+    Connect the device to a transaction (setting ip and port)
+    POST {
+        "_id": "the transaction id",
+        "device_id": "the device id",
+
+        # Optional local ip, port
+        "locals": [{"ip" : 192.168.x.x, "port" : 62014}, ...],
+
+        # optional external address and port
+        "externals": [{"ip" : "212.27.23.67", "port" : 62015}, ...],
+    }
+    ->
+    {
+        "updated_transaction_id": "the same transaction id",
+    }
+    """
+    __pattern__ = '/transaction/connect_device'
+
+    _validators = [
+        ('_id', regexp.Validator(regexp.ID, error.TRANSACTION_ID_NOT_VALID)),
+        ('device_id', regexp.Validator(regexp.DeviceID, error.DEVICE_ID_NOT_VALID)),
+    ]
+
+    def POST(self):
+        self.requireLoggedIn()
+
+        status = self.validate()
+        if status:
+            return self.error(status)
+
+        transaction_id = database.ObjectId(self.data["_id"])
+        device_id = database.ObjectId(self.data["device_id"])
+
+        device = database.devices().find_one(device_id)
+        if not device:
+            return self.error(error.DEVICE_NOT_FOUND)
+
+        transaction = database.transactions().find_one(transaction_id)
+
+        if device_id not in [transaction['sender_device_id'],
+                             transaction['recipient_device_id']]:
+            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+
+        local_addresses = self.data.get('locals') # notice the 's'
+
+        node = dict()
+
+        if local_addresses is not None:
+            # Generate a list of dictionary ip:port.
+            # We can not take the local_addresses content directly:
+            # it's not checked before this point. Therefor, it's insecure.
+            node['locals'] = [
+                {"ip" : v["ip"], "port" : v["port"]}
+                for v in local_addresses if v["ip"] != "0.0.0.0"
+            ]
+        else:
+            node['locals'] = []
+
+        external_addresses = self.data.get('externals')
+
+        if external_addresses is not None:
+            node['externals'] = [
+                {"ip" : v["ip"], "port" : v["port"]}
+                for v in external_addresses if v["ip"] != "0.0.0.0"
+            ]
+        else:
+            node['externals'] = []
+
+        node['fallback'] = []
+
+        database.transactions().update({"_id": transaction_id},
+                                       {"$set": {"nodes.%s" % (str(device_id),): node}},
+                                       multi = False)
+
+        transaction = database.transactions().find_one(transaction_id)
+
+        print("device %s connected to transaction %s as %s" % (device_id, transaction_id, node))
+
+        if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
+            self.notifier.notify_some(
+                notifier.PEER_CONNECTION_UPDATE,
+                device_ids = list(transaction['nodes'].keys()),
+                message = {
+                    "transaction_id": str(transaction_id),
+                    "devices": list(transaction['nodes'].keys()),
+                    "status": True
+                },
+                store = False,
+            )
+
+        return self.success({})
+
+
+class Endpoints(Page):
+    """
+    Return ip port for a selected node.
+        POST
+               {
+                'device_id':
+                'self_device_id':
+               }
+            -> {
+                'success': True,
+                'externals': ['69.69.69.69:38293', '69.69.69.69:38323']
+                'locals': ['69.69.69.69:33293', '69.69.69.69:9323']
+            }
+    """
+    __pattern__ = "/transaction/(.+)/endpoints"
+
+    def POST(self, transaction_id):
+        self.requireLoggedIn()
+
+        transaction = database.transactions().find_one(database.ObjectId(transaction_id))
+        if not transaction:
+            return self.error(error.TRANSACTION_DOESNT_EXIST)
+
+        device_id = self.data['device_id']
+        self_device_id = self.data['self_device_id']
+
+        if self.user['_id'] not in [transaction['sender_id'], transaction['recipient_id']]:
+            return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+
+        if (not self_device_id in transaction['nodes'].keys()) or (not transaction['nodes'][self_device_id]):
+            return self.error(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
+
+        if (not device_id in transaction['nodes'].keys()) or (not transaction['nodes'][device_id]):
+            return self.error(error.DEVICE_NOT_FOUND, "This user is not connected to this transaction")
+
+        res = dict();
+
+        addrs = {'locals': list(), 'externals': list(), 'fallback' : list()}
+        user_node = transaction['nodes'][device_id];
+
+        for addr_kind in ['locals', 'externals', 'fallback']:
+            for a in user_node[addr_kind]:
+                if a and a["ip"] and a["port"]:
+                    addrs[addr_kind].append(
+                        (a["ip"], str(a["port"])))
+
+        print("addrs is: ", addrs)
+
+        res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
+        res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
+        res['fallback'] = ["{}:{}".format(*a)
+                           for a in self.__application__.fallback]
+
+        return self.success(res)

@@ -411,11 +411,20 @@ class AddDevice(_Page):
         device_id = database.ObjectId(self.data["device_id"])
 
         network = self.network(network_id)
+        if self.user['_id'] not in network["users"]:
+            return self.error(error.NETWORK_DOESNT_BELONG_TO_YOU)
         device = database.devices().find_one(device_id)
         if not device:
             return self.error(error.DEVICE_NOT_FOUND)
 
+        if not device["owner"] == self.user["_id"]:
+            return self.error(error.DEVICE_NOT_FOUND)
+
         if str(device_id) not in network['nodes']:
+            # XXX: for the moment, only 1 device per user can be added.
+            if len(network["nodes"]) >= 2:
+                return self.error(error.MAXIMUM_DEVICE_NUMBER_REACHED)
+
             network['nodes'][str(device_id)] = {
                     "locals": None,
                     "externals": None,
@@ -510,6 +519,26 @@ class ConnectDevice(_Page):
         print("Connected device", device['name'], "(%s)" % device_id,
               "to network", network['name'], "(%s)" % network_id,
               "with", node)
+
+        # Here we assert that, at the step of the process, all nodes have been
+        # added to the network, regardless of their connection status.
+        # If all the nodes are connected, we fire an notification.
+        assert len(network['nodes']) > 1
+        all_nodes_ready = True
+        for node in network['nodes'].values():
+            if all_nodes_ready == False:
+                break
+            all_nodes_ready &= (node['locals'] != None and \
+                                node['externals'] != None and \
+                                node['fallback'] != None)
+
+        if all_nodes_ready:
+            self.notifier.notify_some(
+                notifier.PEER_CONNECTION_UPDATE,
+                device_ids = list(network['nodes']),
+                message = { "network_id": str(network['_id']), "devices": list(network['nodes'].keys()), "status": True },
+                store = False,
+            )
 
         return self.success({
             "updated_network_id": str(network_id)
@@ -615,12 +644,7 @@ class Delete(_Page):
         if network is None:
             return self.error(error.NETWORK_NOT_FOUND)
         if len(network) == 1:
-            if self.data['force']:
-                return self.success({
-                    'deleted_network_id': network_id
-                });
-            else:
-                return self.error(error.NETWORK_NOT_FOUND)
+            return self.success({'deleted_network_id': network_id})
 
         # copy users to notify them.
         users = network['users'][::]
@@ -644,6 +668,4 @@ class Delete(_Page):
             {}
         )
 
-        return  self.success({
-            'deleted_network_id': network_id,
-        })
+        return  self.success({'deleted_network_id': network_id,})

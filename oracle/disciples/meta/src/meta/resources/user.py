@@ -265,6 +265,39 @@ class Invite(Page):
         return self.success()
 
 
+class Favorite(Page):
+    """Add a user to favorites
+    POST {"user_id": other_user_id} -> {}
+    """
+
+    __pattern__ = "/user/favorite"
+
+    def POST(self):
+        self.requireLoggedIn()
+        fav = database.ObjectId(self.data['user_id'])
+        lst = self.user.setdefault('favorites', [])
+        if fav not in lst:
+            lst.append(fav)
+            database.users().save(self.user)
+        return self.success()
+
+class Unfavorite(Page):
+    """Remove a user from favorites
+    POST {"user_id": other_user_id} -> {}
+    """
+
+    __pattern__ = "/user/unfavorite"
+
+    def POST(self):
+        self.requireLoggedIn()
+        fav = database.ObjectId(self.data['user_id'])
+        lst = self.user.setdefault('favorites', [])
+        if fav in lst:
+            lst.remove(fav)
+            database.users().save(self.user)
+        return self.success()
+
+
 class Self(Page):
     """
     Get self infos
@@ -279,8 +312,9 @@ class Self(Page):
                 'public_key': 'public_key string',
                 'accounts': [
                     {'type':'account type', 'id':'unique account identifier'}
-                ]
-                'token_generation_key' : ...
+                ],
+                'token_generation_key' : ...,
+                'favorites': [user_id1, user_id2, ...],
             }
     """
 
@@ -299,8 +333,10 @@ class Self(Page):
             'public_key': self.user['public_key'],
             'accounts': self.user['accounts'],
             'remaining_invitations': self.user.get('remaining_invitations', 0),
+            'connected_devices': self.user.get('connected_devices', []),
             'status': is_connected(database.ObjectId(self.user['_id'])),
             'token_generation_key': self.user.get('token_generation_key', ''),
+            'favorites': self.user.get('favorites', []),
         })
 
 class Invitations(Page):
@@ -418,7 +454,7 @@ class Avatar(Page):
         database.users().save(self.user)
         return self.success()
 
-class Register(Page):
+class Register(_Page):
     """
     Register a new user
         POST {
@@ -514,6 +550,15 @@ class Register(Page):
         if user['activation_code'] != 'bitebite': #XXX
             invitation['status'] = 'activated'
             database.invitations().save(invitation)
+
+        self.notify_swaggers(
+            notifier.NEW_SWAGGER,
+            {
+                'user_id' : str(user_id),
+            },
+            user_id = user_id,
+        )
+
         return self.success({
             'registered_user_id': user['_id'],
             'invitation_source': source or '',
@@ -625,7 +670,7 @@ class _DeviceAccess(_Page):
 
         # Add / remove device from db
         req = {'_id': user_id}
-        update_action = value and '$push' or '$pull'
+        update_action = value and '$addToSet' or '$pull'
         database.users().update(
             req,
             {
@@ -633,16 +678,41 @@ class _DeviceAccess(_Page):
             },
             multi = False,
         )
+        user = database.users().find_one(user_id)
 
         # Disconnect only user with an empty list of connected device.
-        if value is False:
-            req['connected_devices'] = []
         req = {'_id': user_id}
         database.users().update(
             req,
-            {"$set": {"connected": value}},
+            {"$set": {"connected": bool(user["connected_devices"])}},
             multi = False,
         )
+
+        # XXX:
+        # This should not be in user.py, but it's the only place
+        # we know the device has been disconnected.
+        if value is False:
+            transactions = database.transactions().find(
+                {
+                    "nodes.%s" % str(device['_id']): {"$exists": True}
+                }
+            )
+
+            for transaction in transactions:
+                database.transactions().update({"_id": transaction},
+                                               {"$set": {"nodes.%s" % (str(device_id),): None}},
+                                                multi = False);
+                self.notifier.notify_some(
+                    notifier.PEER_CONNECTION_UPDATE,
+                    device_ids = list(transaction['nodes'].keys()),
+                    message =
+                    {
+                        "transaction_id": str(transaction['_id']),
+                        "devices": list(transaction['nodes'].keys()),
+                        "status": False
+                    },
+                    store = False,
+                )
 
         self.notify_swaggers(
             notifier.USER_STATUS,

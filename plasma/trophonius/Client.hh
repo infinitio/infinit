@@ -60,7 +60,6 @@ namespace plasma
       ELLE_SERIALIZE_CONSTRUCT(NewSwaggerNotification,
                                Notification)
       {}
-
     };
 
     struct UserStatusNotification:
@@ -88,14 +87,30 @@ namespace plasma
                                Notification,
                                Transaction)
       {}
+
+      virtual
+      void
+      print(std::ostream& stream) const override;
     };
 
     struct NetworkUpdateNotification:
       public Notification
     {
       std::string network_id;
-      /* NetworkUpdate */ int what;
+      NetworkUpdate what;
       ELLE_SERIALIZE_CONSTRUCT(NetworkUpdateNotification,
+                               Notification)
+      {}
+    };
+
+    struct PeerConnectionUpdateNotification:
+      public Notification
+    {
+      std::string transaction_id;
+      bool status;
+      std::vector<std::string> devices;
+
+      ELLE_SERIALIZE_CONSTRUCT(PeerConnectionUpdateNotification,
                                Notification)
       {}
     };
@@ -116,8 +131,11 @@ namespace plasma
     std::unique_ptr<Notification>
     notification_from_dict(json::Dictionary const& dict);
 
-    class Client: public elle::Printable
+    class Client:
+      public elle::Printable
     {
+    public:
+      typedef std::function<void (bool)> ConnectCallback;
     private:
       struct Impl;
       std::unique_ptr<Impl> _impl;
@@ -125,7 +143,7 @@ namespace plasma
     public:
       Client(std::string const& server,
              uint16_t port,
-             std::function<void()> connect_callback);
+             ConnectCallback connect_callback);
 
       ~Client();
 
@@ -135,44 +153,16 @@ namespace plasma
               std::string const& token,
               std::string const& device_id);
 
+      void
+      disconnect();
+
       //GenericNotification
       std::unique_ptr<Notification>
       poll();
 
-      bool
-      has_notification(void);
-
-      ELLE_ATTRIBUTE_R(int, reconnected);
-      ELLE_ATTRIBUTE_Rw(boost::posix_time::time_duration, ping_period);
-      ELLE_ATTRIBUTE(boost::posix_time::time_duration, ping_timeout);
-
-    private:
-      std::queue<std::unique_ptr<Notification>> _notifications;
-
-      void
-      _reconnect();
-
-      void
-      _connect();
-
-      void
-      _disconnect();
-
-      void
-      _disconnect(boost::system::error_code& err);
-
-      void
-      _read_socket();
-
-      void
-      _restart_ping_timer();
-
-      void
-      _restart_connection_check_timer();
-
-      void
-      _on_read_socket(boost::system::error_code const& err,
-                      size_t bytes_transferred);
+      int
+      reconnected() const;
+      ELLE_ATTRIBUTE_rw(boost::posix_time::time_duration, ping_period);
 
     /*----------.
     | Printable |
@@ -181,18 +171,6 @@ namespace plasma
       virtual
       void
       print(std::ostream& stream) const override;
-
-    /*-----.
-    | Ping |
-    `-----*/
-    private:
-      void
-      _check_connection();
-      void
-      _send_ping();
-      void
-      _on_ping_sent(boost::system::error_code const& err,
-                    size_t const bytes_transferred);
     };
 
     std::ostream&

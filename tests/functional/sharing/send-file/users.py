@@ -8,42 +8,73 @@ import sys
 import tempfile
 import time
 
-from utils import generator, email_generator
+from utils import generator, email_generator, cprint, Color
 
 class Transaction:
-    def __init__(self, state, id):
-        assert isinstance(id, str)
+    def __init__(self, state, id, status):
         self.id = id
         self.state = state
         self.localy_accepted = False
         self.finished = False
+        self.canceled = False
+        self.failed = False
+        self.rejected = False
+        self.status = status
+
+    def status_dict(self, reverse = False):
+        if reverse:
+            return {
+                "none": self.state.TransactionStatus.none,
+                "pending": self.state.TransactionStatus.pending,
+                "copying": self.state.TransactionStatus.copying,
+                "waiting_for_accept": self.state.TransactionStatus.waiting_for_accept,
+                "accepted": self.state.TransactionStatus.accepted,
+                "preparing": self.state.TransactionStatus.preparing,
+                "running": self.state.TransactionStatus.running,
+                "cleaning": self.state.TransactionStatus.cleaning,
+                "finished": self.state.TransactionStatus.finished,
+                "failed": self.state.TransactionStatus.failed,
+                "canceled": self.state.TransactionStatus.canceled,
+                "rejected": self.state.TransactionStatus.rejected,
+                }
+        else:
+            return {
+                self.state.TransactionStatus.none: "none",
+                self.state.TransactionStatus.pending: "pending",
+                self.state.TransactionStatus.copying: "copying",
+                self.state.TransactionStatus.waiting_for_accept: "waiting_for_accept",
+                self.state.TransactionStatus.accepted: "accepted",
+                self.state.TransactionStatus.preparing: "preparing",
+                self.state.TransactionStatus.running: "running",
+                self.state.TransactionStatus.cleaning: "cleaning",
+                self.state.TransactionStatus.finished: "finished",
+                self.state.TransactionStatus.failed: "failed",
+                self.state.TransactionStatus.canceled: "canceled",
+                self.state.TransactionStatus.rejected: "rejected",
+        }
+    @property
+    def finished_status(self):
+        return {
+            "finished": self.finished,
+            "canceled": self.canceled,
+            "rejected":  self.rejected,
+            "failed" : self.failed,
+            }
 
     @property
-    def status(self):
-        return {
-            self.state.TransactionStatus.created: "created",
-            self.state.TransactionStatus.started: "started",
-            self.state.TransactionStatus.canceled: "canceled",
-            self.state.TransactionStatus.failed: "failed",
-            self.state.TransactionStatus.finished: "finished",
-        }[self.state.transaction_status(self.id)]
+    def final(self):
+        return sum(status for status in list(self.finished_status.values())) > 0
 
     @property
     def progress(self):
         return self.state.transaction_progress(self.id)
 
-    # @property
-    # def status(self):
-    #     return self.state.transaction_status(self.id)
-
     def __str__(self):
-        return "Transaction(%s, %s, localy_accepted: %s)" % (self.id, self.status, self.localy_accepted)
+        return "Transaction(%s, %s, %s)" % (self.id, self.status, self.finished_status)
 
     def __repr__(self):
-        return "Transaction(%s, %s, localy_accepted: %s)" % (self.id, self.status, self.localy_accepted)
-
-# Default user. Accept transaction when 'started' status is triggered except if
-# early_accept is specified. In this case, he accepts on 'created'.
+        return "Transaction(%s, %s, %s)" % (self.id, self.status, self.finished_status)
+# Default user. Accept transaction when 'initialized' status is triggered.
 # On __init__, register the first time and just login afterward.
 class User:
     def __init__(self,
@@ -52,7 +83,6 @@ class User:
                  apertus_server = None,
                  fullname = None,
                  register = False,
-                 early_accept = False,
                  output_dir = None):
         assert meta_server is not None
         assert trophonius_server is not None
@@ -64,10 +94,11 @@ class User:
         self.fullname = fullname is None and generator(6) or fullname
         self.email = self.fullname + "@infinit.io"
         self.register = register
-        self.early_accept = early_accept
         self.output_dir = output_dir
         self.use_temporary = self.output_dir is None
         self.temporary_output_dir = None
+        self.machine_id = 0
+        self.transactions = dict()
 
     def _init_state(self):
         # state setup
@@ -78,6 +109,16 @@ class User:
             "0.0.0.0", int(self.apertus_server.port)
         )
         self.state.__enter__()
+
+        if self.use_temporary:
+            assert self.temporary_output_dir is None
+            self.temporary_output_dir = tempfile.TemporaryDirectory()
+            self.temporary_output_dir.__enter__()
+            self.output_dir = self.temporary_output_dir.name
+        if not os.path.exists(self.output_dir):
+            os.path.makedirs(self.output_dir)
+        assert os.path.isdir(self.output_dir)
+        self.state.set_output_dir(self.output_dir)
 
     def _register_or_login(self):
         if self.register:
@@ -93,18 +134,6 @@ class User:
             self.register = False
         else:
             self.state.login(self.email, "password")
-
-        # Setting output dir requiere the TransactionManager, which requiere
-        # to be logged in...
-        if self.use_temporary:
-            assert self.temporary_output_dir is None
-            self.temporary_output_dir = tempfile.TemporaryDirectory()
-            self.temporary_output_dir.__enter__()
-            self.output_dir = self.temporary_output_dir.name
-        if not os.path.exists(self.output_dir):
-            os.path.makedirs(self.output_dir)
-        assert os.path.isdir(self.output_dir)
-        self.state.set_output_dir(self.output_dir)
         self.state.transaction_callback(self._on_transaction)
 
         self.id = self.state._id
@@ -113,6 +142,11 @@ class User:
     def __enter__(self):
         self._init_state()
         self._register_or_login()
+
+        cprint("+" * 40, color = Color.Blue)
+        for transaction in self.state.transactions():
+            cprint(self.state.transaction_status(transaction), color = Color.Blue)
+
         return self
 
     def __exit__(self, type, value, tb):
@@ -131,10 +165,8 @@ class User:
                 self.temporary_output_dir.__exit__(type, value, tb)
         except Exception as e:
             import sys
-            print(
-                "Couldn't remove", self.output_dir, "output directory: ", e,
-                file = sys.stderr
-            )
+            print("Couldn't remove %s output directory: %s" % (self.output_dir, e),
+                  file = sys.stderr)
         finally:
             self.temporary_output_dir = None
 
@@ -150,39 +182,47 @@ class User:
         # import lepl.apps.rfc3696
         # validator = lepl.apps.rfc3696.Email()
         # assert validator(email)
-        self.state.send_files(email, files)
+        self.machine_id = self.state.send_files_by_email(email, files)
 
     def _send_to_user(self, files, recipient):
         assert isinstance(recipient, User)
-        self.state.send_files(recipient.id, files)
+        self.machine_id = self.state.send_files_by_email(recipient.email, files)
 
-    def _on_transaction(self, transaction_id, status, is_new):
+    def _on_transaction(self, transaction_id, status):
         if transaction_id not in self.transactions:
             self.transactions[transaction_id] = Transaction(
-                self.state,
-                transaction_id
-            )
-        self.on_transaction(transaction_id, status, is_new)
+                self.state, transaction_id, status)
+        else:
+            self.transactions[transaction_id].status = status
 
-    def on_transaction(self, transaction_id, status, is_new):
-        assert is_new
+        self.on_transaction(transaction_id, status)
+
+    def on_transaction(self, transaction_id, status):
         state = self.state
+        cprint("Transaction %s %s" % (transaction_id, status), color=Color.Green)
         assert self.id == state.transaction_recipient_id(transaction_id) or \
                self.id == state.transaction_sender_id(transaction_id)
+        transaction = self.transactions[transaction_id]
         is_sender = (self.id == self.state.transaction_sender_id(transaction_id))
         if status == state.TransactionStatus.canceled:
-            print("Transaction canceled")
-            sys.exit(1)
+            print("%s Transaction canceled" % status)
+            transaction.canceled = True
+            state.join_transaction(transaction_id)
         elif status == state.TransactionStatus.failed:
-            print("Transaction canceled")
-            sys.exit(1)
-        elif not is_sender and not self.transactions[transaction_id].localy_accepted:
-            if self.early_accept and status == state.TransactionStatus.created or \
-               not self.early_accept and status == state.TransactionStatus.started:
-                self.transactions[transaction_id].localy_accepted = True
-                state.accept_transaction(transaction_id)
+            print("%s Transaction failed" % status)
+            transaction.failed = True
+            state.join_transaction(transaction_id)
+        elif status == state.TransactionStatus.rejected:
+            print("%s Transaction rejected" % status)
+            transaction.rejected = True
+            state.join_transaction(transaction_id)
+        elif not is_sender and status == state.TransactionStatus.waiting_for_accept:
+            self.machine_id = state.accept_transaction(transaction_id)
         elif status == state.TransactionStatus.finished:
-            self.transactions[transaction_id].finished = True
+            transaction.finished = True
+            print("{} join {}".format(state._id, status))
+            self.state.join_transaction(transaction_id)
+            print("{} joined {}".format(state._id, status))
 
 # This user recreate a new email and reregister on __enter__.
 class GhostUser(User):
@@ -198,7 +238,6 @@ class GhostUser(User):
                          apertus_server = apertus_server,
                          fullname = fullname,
                          output_dir = output_dir,
-                         early_accept = False,
                          register = True)
 
     def __enter__(self):
@@ -225,24 +264,28 @@ class DoNothingUser(User):
 class CancelUser(User):
     def __init__(self, when = None, delay = 0, *args, **kwargs):
         assert when is not None
-        assert when in ["created", "started"]
+        super().__init__(*args, **kwargs)
         self.when = when
         self.delay = delay
-        super().__init__(*args, **kwargs)
 
-    def on_transaction(self, transaction_id, status, is_new):
-        assert is_new
+    def on_transaction(self, transaction_id, status):
         state = self.state
-        assert self.id == state.transaction_recipient_id(transaction_id) or \
-               self.id == state.transaction_sender_id(transaction_id)
+        transaction = self.transactions[transaction_id]
+        cprint("Transaction %s %s: when %s" % (transaction_id, status, self.when), color=Color.Green)
         is_sender = (self.id == self.state.transaction_sender_id(transaction_id))
         if status == state.TransactionStatus.canceled:
-            pass
+            transaction.canceled = True
+            state.join_transaction(transaction_id)
+        elif status == state.TransactionStatus.rejected:
+            transaction.rejected = True
+            state.join_transaction(transaction_id)
         elif status == state.TransactionStatus.failed:
-            print("Transaction failed")
-        elif status == state.TransactionStatus.created and self.when == "created":
+            transaction.failed = True
+            state.join_transaction(transaction_id)
+        elif not is_sender and status == state.TransactionStatus.waiting_for_accept:
+            self.machine_id = state.accept_transaction(transaction_id)
+        if (status == transaction.status_dict(reverse = True)[self.when]):
             time.sleep(self.delay / 1000)
             state.cancel_transaction(transaction_id)
-        elif status == state.TransactionStatus.started and self.when == "started":
-            time.sleep(self.delay / 1000)
-            state.cancel_transaction(transaction_id)
+            transaction.canceled = True
+            state.join_transaction(transaction_id)

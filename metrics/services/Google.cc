@@ -2,8 +2,6 @@
 
 #include <metrics/Reporter.hh>
 
-#include <common/common.hh>
-
 #include <cryptography/Digest.hh>
 #include <cryptography/Plain.hh>
 #include <cryptography/oneway.hh>
@@ -72,7 +70,7 @@ namespace metrics
     }
 
     Google::Google(std::string const& pkey,
-                   common::metrics::Info const& info):
+                   Service::Info const& info):
       Service{pkey, info},
       _hashed_pkey{_create_pkey_hash(pkey)}
     {}

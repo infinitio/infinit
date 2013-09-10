@@ -1,7 +1,7 @@
 #ifndef SURFACE_GAP_EXCEPTION_HH
 # define SURFACE_GAP_EXCEPTION_HH
 
-# include <surface/gap/status.hh>
+# include <surface/gap/enums.hh>
 
 # include <elle/Exception.hh>
 # include <elle/log.hh>

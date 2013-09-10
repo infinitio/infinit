@@ -32,7 +32,9 @@ namespace hole
   }
 
   Hole::~Hole()
-  {}
+  {
+    ELLE_TRACE_SCOPE("%s: destroying hole", *this);
+  }
 
   /*------.
   | Ready |

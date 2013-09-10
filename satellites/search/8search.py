@@ -34,7 +34,7 @@ def search_transactions(state):
         s["recipient_fullname"] = state.transaction_recipient_fullname(T)
         s["recipient_device_id"] = state.transaction_recipient_device_id(T)
         s["network_id"] = state.transaction_network_id(T)
-        s["first_filename"] = state.transaction_first_filename(T)
+        s["files"] = state.transaction_files(T)
         s["files_count"] = state.transaction_files_count(T)
         s["total_size"] = state.transaction_total_size(T)
         s["is_directory"] = state.transaction_is_directory(T)

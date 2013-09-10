@@ -123,7 +123,7 @@ namespace nucleus
       // Go through the right ensemble's fellows until the future size is
       // reached after which all the remaining fellows will be moved to
       // the left ensemble.
-      for (; i != rend; ++i)
+      for (; !(i == rend); ++i)
         {
           auto& fellow = i->second;
 
@@ -144,7 +144,7 @@ namespace nucleus
 
       // Go through the remaining fellows in order to move them to
       // the left ensemble.
-      for (auto j = i; j != rend; ++j)
+      for (auto j = i; !(j == rend); ++j)
         {
           auto& fellow = j->second;
 

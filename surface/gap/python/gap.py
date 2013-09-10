@@ -29,8 +29,6 @@ class _State:
             'set_device_name',
 
             'logout',
-            'invite_user',
-            'send_message',
             'token',
             'generation_key',
 
@@ -43,34 +41,27 @@ class _State:
             'remaining_invitations',
             'user_directory',
 
-            # Networks.
-            'create_network',
-            'networks',
-            'network_add_user',
-            'network_name',
-
             # Transaction
             'send_files',
+            'send_files_by_email',
             'set_output_dir',
             'get_output_dir',
             'cancel_transaction',
             'accept_transaction',
             'transactions',
             'transaction_progress',
-            'transaction_is_accepted',
             'transaction_sender_id',
             'transaction_sender_fullname',
             'transaction_sender_device_id',
             'transaction_recipient_id',
             'transaction_recipient_fullname',
             'transaction_recipient_device_id',
-            'transaction_network_id',
-            'transaction_first_filename',
+            'transaction_files',
             'transaction_files_count',
             'transaction_total_size',
             'transaction_is_directory',
-            'transaction_accepted',
             'transaction_status',
+            'join_transaction',
 
             # Notifications
             'poll',

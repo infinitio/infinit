@@ -4,9 +4,14 @@
 #include <elle/format/json/Dictionary.hh>
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/MapSerializer.hxx>
+#include <elle/serialize/SetSerializer.hxx>
 
-#include "Client.hh"
+#include <reactor/scheduler.hh>
+
 #include <curly/curly.hh>
+#include <curly/curly_sched.hh>
+
+#include <plasma/meta/Client.hh>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -74,27 +79,29 @@ SERIALIZE_RESPONSE(plasma::meta::RegisterResponse, ar, res)
   ar & named("invitation_source", res.invitation_source);
 }
 
-SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
+ELLE_SERIALIZE_SIMPLE(plasma::meta::User, ar, res, version)
 {
+  enforce(version == 0);
   ar & named("_id", res.id);
   ar & named("fullname", res.fullname);
   ar & named("handle", res.handle);
   ar & named("public_key", res.public_key);
-  ar & named("status", res.status);
   ar & named("connected_devices", res.connected_devices);
+}
+SERIALIZE_RESPONSE(plasma::meta::UserResponse, ar, res)
+{
+  ar & static_cast<plasma::meta::User&>(res);
 }
 
 SERIALIZE_RESPONSE(plasma::meta::SelfResponse, ar, res)
 {
-  ar & named("_id", res.id);
-  ar & named("fullname", res.fullname);
-  ar & named("handle", res.handle);
+  ar & static_cast<plasma::meta::User&>(res);
+
   ar & named("email", res.email);
-  ar & named("public_key", res.public_key);
   ar & named("identity", res.identity);
   ar & named("remaining_invitations",  res.remaining_invitations);
-  ar & named("status", res.status);
   ar & named("devices", res.devices);
+  ar & named("favorites", res.favorites);
   try
   {
     ar & named("token_generation_key", res.token_generation_key);
@@ -202,6 +209,12 @@ SERIALIZE_RESPONSE(plasma::meta::EndpointNodeResponse, ar, res)
   ar & named("fallback", res.fallback);
 }
 
+SERIALIZE_RESPONSE(plasma::meta::ConnectDeviceResponse, ar, res)
+{
+  (void) ar;
+  (void) res;
+}
+
 SERIALIZE_RESPONSE(plasma::meta::CreateNetworkResponse, ar, res)
 {
   ar & named("created_network_id", res.created_network_id);
@@ -250,7 +263,7 @@ namespace plasma
   {
 
     Exception::Exception(Error const& error, std::string const& message)
-      : std::runtime_error(message)
+      : elle::Exception(message)
       , err{error}
     {}
 
@@ -442,6 +455,22 @@ namespace plasma
     }
 
     Response
+    Client::favorite(std::string const& user) const
+    {
+      json::Dictionary request;
+      request["user_id"] = user;
+      return this->_post<DebugResponse>("/user/favorite", request);
+    }
+
+    Response
+    Client::unfavorite(std::string const& user) const
+    {
+      json::Dictionary request;
+      request["user_id"] = user;
+      return this->_post<DebugResponse>("/user/unfavorite", request);
+    }
+
+    Response
     Client::genocide() const
     {
       json::Dictionary request;
@@ -495,31 +524,32 @@ namespace plasma
 
     CreateTransactionResponse
     Client::create_transaction(std::string const& recipient_id_or_email,
-                               std::string const& first_filename,
+                               std::list<std::string> const& files,
                                size_t count,
                                size_t size,
                                bool is_dir,
-                               std::string const& network_id,
-                               std::string const& device_id) const
+                               std::string const& device_id,
+                               std::string const& message) const
     {
-      json::Dictionary request{std::map<std::string, std::string>{
-          {"recipient_id_or_email", recipient_id_or_email},
-          {"first_filename", first_filename},
-          {"device_id", device_id},
-          {"network_id", network_id},
-      }};
+      json::Dictionary request;
+
+      request["recipient_id_or_email"] = recipient_id_or_email;
+      request["files"] = files;
+      request["device_id"] = device_id;
       request["total_size"] = size;
       request["is_directory"] = is_dir;
       request["files_count"] = count;
+      request["message"] = message;
 
-      auto res = this->_post<CreateTransactionResponse>("/transaction/create", request);
-
-      return res;
+      return this->_post<CreateTransactionResponse>("/transaction/create",
+                                                    request);
     }
 
     UpdateTransactionResponse
     Client::update_transaction(std::string const& transaction_id,
-                               plasma::TransactionStatus status) const
+                               plasma::TransactionStatus status,
+                               std::string const& device_id,
+                               std::string const& device_name) const
     {
       ELLE_TRACE("%s: update %s transaction with new status %s",
                  *this,
@@ -528,6 +558,14 @@ namespace plasma
       json::Dictionary request{};
       request["transaction_id"] = transaction_id;
       request["status"] = (int) status;
+
+      if (status == plasma::TransactionStatus::accepted)
+      {
+        ELLE_ASSERT_GT(device_id.length(), 0u);
+        ELLE_ASSERT_GT(device_name.length(), 0u);
+        request["device_id"] = device_id;
+        request["device_name"] = device_name;
+      }
 
       return this->_post<UpdateTransactionResponse>("/transaction/update",
                                                     request);
@@ -539,17 +577,12 @@ namespace plasma
                                std::string const& device_name) const
     {
       ELLE_TRACE("%s: accept %s transaction on device %s (%s)",
-                 *this,
-                 transaction_id,
-                 device_name,
-                 device_id);
-      json::Dictionary request{};
-      request["transaction_id"] = transaction_id;
-      request["device_id"] = device_id;
-      request["device_name"] = device_name;
+                 *this, transaction_id, device_name, device_id);
 
-      return this->_post<UpdateTransactionResponse>("/transaction/accept",
-                                                    request);
+      return this->update_transaction(transaction_id,
+                                      plasma::TransactionStatus::accepted,
+                                      device_id,
+                                      device_name);
     }
 
     TransactionResponse
@@ -559,9 +592,25 @@ namespace plasma
     }
 
     TransactionsResponse
-    Client::transactions() const
+    Client::transactions(std::vector<TransactionStatus> const& status,
+                         bool inclusive,
+                         int count) const
     {
-      return this->_get<TransactionsResponse>("/transactions");
+      json::Dictionary request{};
+      if (status.size() > 0)
+      {
+        json::Array status_array;
+        for (TransactionStatus statu: status)
+        {
+          status_array.push_back((int) statu);
+        }
+
+        request["filter"] = std::move(status_array);
+        request["type"] = inclusive;
+        request["count"] = count;
+      }
+
+      return this->_post<TransactionsResponse>("/transactions", request);
     }
 
     MessageResponse
@@ -710,35 +759,15 @@ namespace plasma
       return this->_post<NetworkAddDeviceResponse>("/network/add_device", request);
     }
 
-    NetworkConnectDeviceResponse
-    Client::network_connect_device(std::string const& network_id,
-                                   std::string const& device_id,
-                                   std::string const* local_ip,
-                                   uint16_t local_port,
-                                   std::string const* external_ip,
-                                   uint16_t external_port) const
+    ConnectDeviceResponse
+    Client::connect_device(std::string const& transaction_id,
+                           std::string const& device_id,
+                           adapter_type const& local_endpoints,
+                           adapter_type const& public_endpoints) const
     {
-        adapter_type local_adapter;
-        adapter_type public_adapter;
-
-        local_adapter.emplace_back(*local_ip, local_port);
-        public_adapter.emplace_back(*external_ip, external_port);
-
-        return this->_network_connect_device(network_id,
-                                             device_id,
-                                             local_adapter,
-                                             public_adapter);
-    }
-
-    NetworkConnectDeviceResponse
-    Client::_network_connect_device(std::string const& network_id,
-                                    std::string const& device_id,
-                                    adapter_type const& local_endpoints,
-                                    adapter_type const& public_endpoints) const
-      {
         json::Dictionary request{
           std::map<std::string, std::string>{
-                {"_id", network_id},
+                {"_id", transaction_id},
                 {"device_id", device_id},
           }
         };
@@ -767,8 +796,8 @@ namespace plasma
 
         request["externals"] = public_addrs;
 
-        return this->_post<NetworkConnectDeviceResponse>(
-            "/network/connect_device",
+        return this->_post<ConnectDeviceResponse>(
+            "/transaction/connect_device",
             request
         );
       }
@@ -786,48 +815,12 @@ namespace plasma
         };
 
         return this->_post<EndpointNodeResponse>(
-            "/network/" + network_id + "/endpoints",
+            "/transaction/" + network_id + "/endpoints",
             request
         );
       }
 
     //- Properties ------------------------------------------------------------
-
-    void
-    Client::token(std::string const& tok)
-    {
-      this->_token = tok;
-    }
-
-    std::string const&
-    Client::token() const
-    {
-      return this->_token;
-    }
-
-    std::string const&
-    Client::identity() const
-    {
-      return _identity;
-    }
-
-    void
-    Client::identity(std::string const& str)
-    {
-      _identity = str;
-    }
-
-    std::string const&
-    Client::email() const
-    {
-      return _email;
-    }
-
-    void
-    Client::email(std::string const& str)
-    {
-      _email = str;
-    }
 
     std::ostream&
     operator <<(std::ostream& out,
@@ -844,6 +837,64 @@ namespace plasma
       }
 
       return out;
+    }
+
+    /*---------.
+    | Requests |
+    `---------*/
+
+    static
+    void
+    _query(std::string const& url,
+           curly::request_configuration& c,
+           std::ostream& resp,
+           Client const* client)
+    {
+      c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+      c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+      c.option(CURLOPT_DEBUGDATA, client);
+      c.option(CURLOPT_TIMEOUT, 15);
+      c.url(elle::sprintf("%s%s", client->root_url(), url));
+      c.user_agent(client->user_agent());
+      c.headers({
+        {"Authorization", client->token()},
+        {"Connection", "close"},
+      });
+
+      c.output(resp);
+
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      curly::sched_request{
+        *reactor::Scheduler::scheduler(),
+        std::move(c)
+      }.run();
+    }
+
+    void
+    Client::_post(std::string const& url,
+                  elle::format::json::Object const& req,
+                  std::ostream& resp) const
+    {
+      ELLE_TRACE_SCOPE("%s: post on %s", *this, url);
+      curly::request_configuration c = curly::make_post();
+
+      std::stringstream input;
+      req.repr(input);
+      c.option(CURLOPT_POSTFIELDSIZE, input.str().size());
+      c.input(input);
+
+      _query(url, c, resp, this);
+    }
+
+    void
+    Client::_get(std::string const& url,
+                 std::ostream& resp) const
+    {
+      ELLE_TRACE_SCOPE("%s: get on %s", *this, url);
+      curly::request_configuration c = curly::make_get();
+
+      _query(url, c, resp, this);
     }
 
     /*----------.

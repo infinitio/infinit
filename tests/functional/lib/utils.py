@@ -73,6 +73,7 @@ class Servers:
             control_port = port
             )
         self.tropho.__enter__()
+        self.meta.trophonius_control_port = self.tropho.control_port
         return self.meta, self.tropho, self.apertus
 
     def __exit__(self, exception_type, exception, *args):
@@ -216,7 +217,7 @@ class RandomDirectory(tempfile.TemporaryDirectory):
 #------------------------------------------------------------------------------
 def cases():
     return [
-        RandomTempFile(100), # Mono file.
+        RandomTempFile(1024), # Mono file.
         [RandomTempFile(40)] * 2, # Multi files.
         RandomDirectory(file_count = 50, min_file_size = 10, max_file_size = 50), # Mono Folder.
         [RandomDirectory(file_count = 3, min_file_size = 10, max_file_size = 50)] * 2, # Many Folders.
@@ -268,3 +269,13 @@ def create_client(meta):
     session['token'] = res['token']
     print("Got token:", res['token'])
     return client
+
+class Color:
+    Blue = '\033[94m'
+    Green = '\033[92m'
+    White = '\033[0m'
+    Yellow = '\033[93m'
+    Red = '\033[91m'
+
+def cprint(value, *args, sep=' ', end='\n', file=sys.stdout, color=Color.White):
+    print("{}{}{}".format(color, value, Color.White), args, sep=sep, end=end, file=file)

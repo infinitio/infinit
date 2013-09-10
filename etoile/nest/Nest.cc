@@ -8,6 +8,7 @@
 
 #include <elle/finally.hh>
 #include <elle/log.hh>
+#include <elle/Measure.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -461,40 +462,55 @@ namespace etoile
           }
           case nucleus::proton::State::dirty:
           {
+            ELLE_MEASURE_SCOPE("Prepublication");
             // In this case, the block must be prepared for publishing. First
             // a temporary secret is generated with which the block will be
             // encrypted. Then, the block's address is computed.
 
-            // Since the block is about to get completely wiped off
-            // from the queue, decrease the nest's size.
-            ELLE_ASSERT_GTE(this->_size,
-                            pod->egg()->block()->footprint());
-            this->_size -= pod->egg()->block()->footprint();
+            ELLE_MEASURE("Compute block footprint")
+            {
+              // Since the block is about to get completely wiped off
+              // from the queue, decrease the nest's size.
+              ELLE_ASSERT_GTE(this->_size,
+                              pod->egg()->block()->footprint());
+              this->_size -= pod->egg()->block()->footprint();
+            }
 
-            // Generate a random secret.
+            auto measure_gen = ELLE_MEASURE_INSTANCE("Generate secret key");
             cryptography::SecretKey secret =
               cryptography::SecretKey::generate(
                 cryptography::cipher::Algorithm::aes256,
                 this->_secret_length);
+            measure_gen.end();
 
-            // Encrypt and bind the block.
-            pod->egg()->block()->encrypt(secret);
+            ELLE_MEASURE("Encrypt the block")
+              pod->egg()->block()->encrypt(secret);
+
+            auto measure_create_address = ELLE_MEASURE_INSTANCE(
+              "Create block address");
             nucleus::proton::Address address{pod->egg()->block()->bind()};
+            measure_create_address.end();
 
-            // Update the node and block.
-            pod->egg()->block()->node().state(
-              nucleus::proton::State::consistent);
-            pod->egg()->block()->state(
-              nucleus::proton::State::consistent);
+            ELLE_MEASURE("Update the node and block")
+            {
+              pod->egg()->block()->node().state(
+                nucleus::proton::State::consistent);
+              pod->egg()->block()->state(
+                nucleus::proton::State::consistent);
+            }
 
-            // Reset the egg's address/secret tuple now that we know
-            // the block's new address.
-            pod->egg()->reset(address, secret);
+            ELLE_MEASURE("Reset the egg's address")
+            {
+              // Reset the egg's address/secret tuple now that we know
+              // the block's new address.
+              pod->egg()->reset(address, secret);
+            }
 
             // Then, record the previous version of the block for it to
             // be removed from the storage layer.
             if (pod->egg()->has_history() == true)
             {
+              ELLE_MEASURE_SCOPE("Record the previous version of the block");
               ELLE_DEBUG("unmap the historical address '%s' from the nest",
                          pod->egg()->historical().address());
 
@@ -510,25 +526,34 @@ namespace etoile
                 new gear::action::Wipe(pod->egg()->historical().address()));
             }
 
-            ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
-                           pod->egg()->address());
+            ELLE_MEASURE("Doing some log")
+            {
+              ELLE_ASSERT_EQ(pod->egg()->block()->bind(),
+                             pod->egg()->address());
 
-            ELLE_DEBUG("the instance of the block '%s' is recorded for "
-                       "publication",
-                       pod->egg()->address());
+              ELLE_DEBUG("the instance of the block '%s' is recorded for "
+                         "publication",
+                         pod->egg()->address());
+            }
 
-            // Finally, record the current version so as to be published onto
-            // the storage layer.
-            transcript->record(
-              new gear::action::Push(pod->egg()->address(),
-                                     std::move(pod->egg()->block())));
+            ELLE_MEASURE("Record the current version of the block")
+            {
+              // Finally, record the current version so as to be published onto
+              // the storage layer.
+              transcript->record(
+                new gear::action::Push(pod->egg()->address(),
+                                       std::move(pod->egg()->block())));
+            }
 
-            // Map the new address for other handles to find the pod given
-            // the new address.
-            ELLE_DEBUG("map the new address '%s' from the pod '%s'",
-                       pod->egg()->address(),
-                       *pod);
-            this->_map(pod->egg()->address(), pod);
+            ELLE_MEASURE("Map the new address")
+            {
+              // Map the new address for other handles to find the pod given
+              // the new address.
+              ELLE_DEBUG("map the new address '%s' from the pod '%s'",
+                         pod->egg()->address(),
+                         *pod);
+              this->_map(pod->egg()->address(), pod);
+            }
 
             break;
           }
@@ -591,7 +616,8 @@ namespace etoile
       //
       // Note that this operation is performed at the end so as to be sure not
       // to block in the process of traversing the queue.
-      journal::Journal::record(this->_etoile.depot(), std::move(transcript));
+      ELLE_MEASURE("Recording the transcript in the journal")
+        journal::Journal::record(this->_etoile.depot(), std::move(transcript));
 
 #if defined(DEBUG) || !defined(NDEBUG)
       this->_check();

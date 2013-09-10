@@ -1,22 +1,20 @@
 #ifndef  PLASMA_META_CLIENT_HH
 # define PLASMA_META_CLIENT_HH
 
+# include <plasma/plasma.hh>
+
+# include <elle/Exception.hh>
+# include <elle/HttpClient.hh>
+# include <elle/format/json/fwd.hh>
+# include <elle/log.hh>
+
 # include <functional>
 # include <list>
-# include <vector>
 # include <map>
 # include <memory>
 # include <stdexcept>
 # include <string>
-# include <mutex>
-
-# include <elle/format/json/fwd.hh>
-# include <elle/log.hh>
-
-# include <plasma/plasma.hh>
-
-# include <elle/HttpClient.hh>
-
+# include <vector>
 
 namespace plasma
 {
@@ -46,7 +44,7 @@ namespace plasma
     };
 
     struct Exception
-      : public std::runtime_error
+      : public elle::Exception
     {
       Error const err;
       Exception(Error const& error, std::string const& message = "");
@@ -99,8 +97,13 @@ namespace plasma
       std::string fullname;
       std::string handle;
       std::string public_key;
-      bool status;
-      std::list<std::string> connected_devices;
+      std::vector<std::string> connected_devices;
+
+      bool
+      status() const
+      {
+        return !this->connected_devices.empty();
+      }
     };
 
     struct UserResponse : User, Response
@@ -113,6 +116,7 @@ namespace plasma
       int remaining_invitations;
       std::string token_generation_key;
       std::list<std::string> devices;
+      std::list<std::string> favorites;
     };
 
     struct InviteUserResponse : Response
@@ -162,18 +166,22 @@ namespace plasma
       std::list<std::string> networks;
     };
 
-    struct NetworkResponse : Response
+    struct Network
     {
-      std::string              _id;
-      std::string              owner;
-      std::string              name;
-      std::string              model;
-      std::string              root_block;
-      std::string              root_address;
-      std::string              group_block;
-      std::string              group_address;
-      std::string              descriptor;
-      std::list<std::string>        users;
+      std::string _id;
+      std::string owner;
+      std::string name;
+      std::string model;
+      std::string root_block;
+      std::string root_address;
+      std::string group_block;
+      std::string group_address;
+      std::string descriptor;
+      std::list<std::string> users;
+    };
+
+    struct NetworkResponse : Network, Response
+    {
     };
 
     struct CreateNetworkResponse : Response
@@ -196,6 +204,10 @@ namespace plasma
       std::string             network_id;
       std::list<std::string>       nodes;
     };
+
+    struct ConnectDeviceResponse:
+      public Response
+    {};
 
     struct EndpointNodeResponse : Response
     {
@@ -240,14 +252,12 @@ namespace plasma
       ELLE_ATTRIBUTE_R(uint16_t, port);
 
     private:
-      std::string _root_url;
+      ELLE_ATTRIBUTE_R(std::string, root_url);
       //bool _check_errors;
-      std::string _identity;
-      std::string _email;
-      std::string _token;
-      std::string _user_agent;
-      // XXX Curl is supposed to be thread-safe.
-      std::mutex mutable _mutex;
+      ELLE_ATTRIBUTE_RW(std::string, identity);
+      ELLE_ATTRIBUTE_RW(std::string, email);
+      ELLE_ATTRIBUTE_RW(std::string, token);
+      ELLE_ATTRIBUTE_R(std::string, user_agent);
 
     public:
       Client(std::string const& server,
@@ -255,14 +265,27 @@ namespace plasma
              bool check_errors = true);
       ~Client();
 
+
+    /*---------.
+    | Requests |
+    `---------*/
+    public:
       template <typename T>
       T
       _post(std::string const& url,
             elle::format::json::Object const& req) const;
+      void
+      _post(std::string const& url,
+            elle::format::json::Object const& req,
+            std::ostream& resp) const;
 
       template <typename T>
       T
       _get(std::string const& url) const;
+
+      void
+      _get(std::string const& url,
+           std::ostream& resp) const;
 
       template <typename T>
       T
@@ -316,6 +339,12 @@ namespace plasma
       ghostify(std::string const& email) const;
 
       Response
+      favorite(std::string const& user) const;
+
+      Response
+      unfavorite(std::string const& user) const;
+
+      Response
       genocide() const;
 
       // SwaggerResponse
@@ -334,21 +363,33 @@ namespace plasma
       TransactionResponse
       transaction(std::string const& _id) const;
 
+      /// Get the list of transactions that have a spectific status.
+      /// The status can be pass threw 'status' list argument, allowing to
+      /// search for many status matching.
+      /// 'inclusive' is used to inverse the research result, by searching
+      /// inclusivly or exclusivly in the status list.
+      /// NB: If you let the default argument, it returns the 'non finished'
+      /// transactions.
+      /// 'count' is use to set a limit of transactions id to be pulled.
       TransactionsResponse
-      transactions() const;
+      transactions(std::vector<TransactionStatus> const& status = {},
+                   bool inclusive = true,
+                   int count = 0) const;
 
       CreateTransactionResponse
       create_transaction(std::string const& recipient_id_or_email,
-                         std::string const& first_filename,
+                         std::list<std::string> const& files,
                          size_t count,
                          size_t size,
                          bool is_dir,
-                         std::string const& network_id,
-                         std::string const& device_id) const;
+                         std::string const& device_id,
+                         std::string const& message = "") const;
 
       UpdateTransactionResponse
       update_transaction(std::string const& transaction_id,
-                         plasma::TransactionStatus status) const;
+                         plasma::TransactionStatus status,
+                         std::string const& device_id = "",
+                         std::string const& device_name = "") const;
 
       UpdateTransactionResponse
       accept_transaction(std::string const& transaction_id,
@@ -399,64 +440,23 @@ namespace plasma
       network_add_device(std::string const& network_id,
                          std::string const& device_id) const;
 
-      //
-      // Frontend on _network_connect_device
-      //
-      NetworkConnectDeviceResponse
-      network_connect_device(std::string const& network_id,
-                             std::string const& device_id,
-                             std::string const* local_ip,
-                             uint16_t local_port,
-                             std::string const* external_ip = nullptr,
-                             uint16_t external_port = 0) const;
-
-      //
-      // Frontend on _network_connect_device
-      //
-      template <class Container1, class Container2>
-      NetworkConnectDeviceResponse
-      network_connect_device(std::string const& network_id,
-                             std::string const& device_id,
-                             Container1 const& local_endpoints,
-                             Container2 const& public_endpoints) const;
-      //
-      // Frontend on _network_connect_device
-      //
-      template <class Container>
-      NetworkConnectDeviceResponse
-      network_connect_device(std::string const& network_id,
-                             std::string const& device_id,
-                             Container const& local_endpoints) const;
-
     private:
 
       typedef std::vector<std::pair<std::string, uint16_t>> adapter_type;
 
-      //
-      // This member function is a adapter used to convert from any type of
-      // container to `adapter_type´. This allow an interface handling all types
-      // of iterable, but working with only one specific type.
-      //
-      NetworkConnectDeviceResponse
-      _network_connect_device(std::string const& network_id,
-                              std::string const& device_id,
-                              adapter_type const& local_endpoints,
-                              adapter_type const& public_endpoints) const;
 
+    public:
+      ConnectDeviceResponse
+      connect_device(std::string const& transaction_id,
+                             std::string const& device_id,
+                             adapter_type const& local_endpoints,
+                             adapter_type const& public_endpoints) const;
 
     public:
       EndpointNodeResponse
-      device_endpoints(std::string const& network_id,
+      device_endpoints(std::string const& transaction_id,
                        std::string const& self_device_id,
-                       std::string const& device_id) const;
-
-    public:
-      void token(std::string const& tok);
-      std::string const& token() const;
-      std::string const& identity() const;
-      void identity(std::string const& str);
-      std::string const& email() const;
-      void email(std::string const& str);
+                       std::string const& peer_device_id) const;
 
     /*----------.
     | Printable |

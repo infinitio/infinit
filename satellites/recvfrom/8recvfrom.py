@@ -20,26 +20,24 @@ You have to specify your user name in the INFINIT_USER env variable.
 
 """
 
-def on_transaction(state, transaction, status, new):
+def on_transaction(state, transaction, status):
     print("Transaction ({})".format(transaction), status)
-    if status == state.TransactionStatus.started:
+    if status == state.TransactionStatus.accepted:
         state.started_transactions.append(transaction)
-    elif status == state.TransactionStatus.canceled:
-        state.number_of_transactions -= 1
-        if state.number_of_transactions == 0:
-            state.running = False
+    if status == state.TransactionStatus.running:
+        state.started_transactions.append(transaction)
+    elif (status == state.TransactionStatus.canceled or \
+              status == state.TransactionStatus.failed):
+        if (transaction in state.to_handle):
+            state.to_handle.remove(transaction)
+        state.running = any(state.to_handle)
     elif status == state.TransactionStatus.finished:
-        cnt = state.transaction_files_count(transaction)
-        if cnt == 1:
-            filename = state.transaction_first_filename(transaction)
-            print("File received at '{}'".format(
-                os.path.join(state.get_output_dir(), filename)))
-        else:
-            print("{} files received in '{}'".format(
-                cnt, state.get_output_dir()))
-        state.number_of_transactions -= 1
-        if state.number_of_transactions == 0:
-            state.running = False
+        if (transaction in state.to_handle):
+            state.to_handle.remove(transaction)
+            for f in state.transaction_files(transaction):
+                print("File received at '{}'".format(
+                        os.path.join(state.get_output_dir(), f)))
+            state.running = any(state.to_handle)
 
 def on_error(state, status, message, tid):
     if tid:
@@ -70,24 +68,22 @@ def select_transactions(state, l_transactions, sender):
 
     # select pending transactions matching the sender id (if not None)
     enumeration = list(enumerate(
-            l for l in l_transactions
-            if state.transaction_status(l) in [state.TransactionStatus.started, state.TransactionStatus.created, ]
-            and (sender is None or state.transaction_sender_id(l) == sender_id)
-    ))
-
+            (l, state.transaction_status(l)) for l in l_transactions
+            if ((sender is None or state.transaction_sender_id(l) == sender_id) and
+                (state.transaction_status(l) not in [state.TransactionStatus.finished,
+                                                     state.TransactionStatus.canceled,
+                                                     state.TransactionStatus.rejected,
+                                                     state.TransactionStatus.failed]))))
     if len(enumeration) == 1:
         # if there is only one match, then return the id now
         return (enumeration[0][1],)
 
     # ask for user input
-    for index, t in enumeration:
-        first_filename  = state.transaction_first_filename(t)
-        fullname        = state.transaction_sender_fullname(t)
-        file_number     = state.transaction_files_count(t)
-        if file_number > 1:
-            print("[{}] {} files from {} ({})".format(index, file_number, fullname, t))
-        else:
-            print("[{}] {} from {} ({})".format(index, first_filename, fullname, t))
+    for index, (t, status) in enumeration:
+        files = state.transaction_files(t)
+        fullname = state.transaction_sender_fullname(t)
+        file_number = state.transaction_files_count(t)
+        print("[{}] {} files from {} ({}: status: {})".format(index, file_number, fullname, t, status))
 
     selected = input("transaction numbers [all]> ")
     if selected:
@@ -112,6 +108,9 @@ def select_transactions(state, l_transactions, sender):
 
 
 def main(state, sender):
+    state.on_error_callback(partial(on_error, state))
+    state.transaction_callback(partial(on_transaction, state))
+
     id = login(state)
 
     # Pull only new notifications to ensure the transaction has been fetched.
@@ -121,30 +120,23 @@ def main(state, sender):
     state.started_transactions = []
     transactions = state.transactions()
 
-    state.on_error_callback(partial(on_error, state))
-    state.transaction_callback(partial(on_transaction, state))
+    state.to_handle = [i for (i, status) in list(select_transactions(state, transactions, sender))]
 
-    if len(transactions) > 1:
-        to_handle = list(select_transactions(state, transactions, sender))
-    else:
-        to_handle = list(transactions)
-
-    if not to_handle:
+    if not state.to_handle:
         raise Exception("you must select a transaction to accept")
-    state.number_of_transactions = len(to_handle)
 
     num = 0
-    print(to_handle)
-    for transaction_id in to_handle:
+    print(state.to_handle)
+    for transaction_id in state.to_handle:
         print("accept transaction {}".format(transaction_id))
         state.current_transaction_id = transaction_id
         state.accept_transaction(transaction_id)
 
         while state.running:
             if state.started_transactions:
-                for t in (T for T in state.started_transactions if T in to_handle):
+                for t in (T for T in state.started_transactions if T in state.to_handle):
                     progress = state.transaction_progress(t)
-                    print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, t, state.transaction_first_filename(t)), end=" "),
+                    print("Progress {2}: [{0:50s}] {1:.1f}% of {3}".format('#' * int(progress * 50), progress * 100, t, state.transaction_files(t)), end=" "),
                     print("\r", end="")
             time.sleep(0.5)
             state.poll()
@@ -164,7 +156,7 @@ if __name__ == "__main__":
 
     import gap
     with gap.State() as state:
-        state.number_of_transactions = 0
+        state.to_handle = []
         try:
             main(state, args.sender)
         except KeyboardInterrupt as e:
