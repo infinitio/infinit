@@ -68,41 +68,42 @@ namespace infinit
   void
   Portal<RPC>::_accept()
   {
-    ELLE_LOG_COMPONENT("Portal");
-
     int i = 0;
-    reactor::Scope scope;
-
-    while (true)
+    elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
     {
-      std::shared_ptr<reactor::network::TCPSocket> socket(
-        this->_server->accept());
+      ELLE_LOG_COMPONENT("Portal");
 
-      ELLE_DEBUG("accepted new rpc control from %s", socket->remote_locus());
+      while (true)
+      {
+        std::shared_ptr<reactor::network::TCPSocket> socket(
+          this->_server->accept());
 
-      i++;
-      auto run = [&, socket]
-        {
-          ELLE_LOG_COMPONENT("infinit.hole.slug.Slug");
-          try
+        ELLE_DEBUG("accepted new rpc control from %s", socket->remote_locus());
+
+        i++;
+        auto run = [&, socket]
           {
-            infinit::protocol::Serializer serializer(
-              *reactor::Scheduler::scheduler(), *socket);
-            infinit::protocol::ChanneledStream channels(
-              *reactor::Scheduler::scheduler(), serializer);
-            RPC rpcs(channels);
-            this->_initializer(rpcs);
-            rpcs.parallel_run();
-          }
-          catch (elle::Exception const& e)
-          {
-            ELLE_WARN("slug control: %s", e.what());
-          }
-        };
-      auto name = reactor::Scheduler::scheduler()->current()->name();
-      scope.run_background(elle::sprintf("%s: pool %s", name, i), run);
-      ELLE_TRACE("new connection accepted");
-    }
+            ELLE_LOG_COMPONENT("infinit.hole.slug.Slug");
+            try
+            {
+              infinit::protocol::Serializer serializer(
+                *reactor::Scheduler::scheduler(), *socket);
+              infinit::protocol::ChanneledStream channels(
+                *reactor::Scheduler::scheduler(), serializer);
+              RPC rpcs(channels);
+              this->_initializer(rpcs);
+              rpcs.parallel_run();
+            }
+            catch (elle::Exception const& e)
+            {
+              ELLE_WARN("slug control: %s", e.what());
+            }
+          };
+        auto name = reactor::Scheduler::scheduler()->current()->name();
+        scope.run_background(elle::sprintf("%s: pool %s", name, i), run);
+        ELLE_TRACE("new connection accepted");
+      }
+    };
   }
 }
 
