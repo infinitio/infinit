@@ -7,7 +7,6 @@ import sys, os
 import argparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python/meta/mongobox"))
 
 import apertus.conf
 
