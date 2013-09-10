@@ -354,7 +354,30 @@ namespace surface
     void
     SendMachine::_transfer_operation()
     {
-      this->_frete->run();
+      ELLE_TRACE_SCOPE("%s: transfer operation", *this);
+
+      reactor::Scope scope;
+      scope.run_background(
+        elle::sprintf("frete get %s", this->id()),
+        [this] ()
+        {
+          this->_frete->run();
+        });
+      scope.run_background(
+        elle::sprintf("progress %s", this->id()),
+        [this] ()
+        {
+          while (true)
+          {
+            ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+            reactor::Scheduler::scheduler()->current()->wait(
+              this->_frete->progress_changed());
+
+            this->progress(this->_frete->progress());
+          }
+        });
+      this->_finished.wait();
     }
 
     void

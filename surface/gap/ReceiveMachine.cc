@@ -234,40 +234,39 @@ namespace surface
     void
     ReceiveMachine::_transfer_operation()
     {
-      ELLE_TRACE_SCOPE("%s: transfer operation %s", *this, this->transaction_id());
+      ELLE_TRACE_SCOPE("%s: transfer operation", *this);
 
-      this->_frete->run();
-
-      uint64_t count = this->_frete->size();
-
-      static std::streamsize N = 2 * 1024 * 1024;
-      for (uint64_t index = 0; index < count; ++index)
       {
-        std::streamsize pos = 0;
-        auto relativ_path = boost::filesystem::path{this->_frete->path(index)};
-        auto output_dir = boost::filesystem::path{this->state().output_dir()};
-        auto fullpath = output_dir / relativ_path;
-        boost::filesystem::create_directories(fullpath.parent_path());
-        std::ofstream output{fullpath.string()};
-
-        while (true)
-        {
-          elle::Buffer buffer{std::move(this->_frete->read(index, pos, N))};
-
-          output.write((char const*) buffer.mutable_contents(),  buffer.size());
-          pos += buffer.size();
-
-          if (buffer.size() < N)
+        reactor::Scope scope;
+        scope.run_background(
+          elle::sprintf("download %s", this->id()),
+          [this] ()
           {
-            output.close();
-            break;
-          }
+            this->_frete->get(boost::filesystem::path{this->state().output_dir()});
+            this->_finished.open();
+          });
+        scope.run_background(
+          elle::sprintf("frete get %s", this->id()),
+          [this] ()
+          {
+            this->_frete->run();
+          });
+        scope.run_background(
+          elle::sprintf("progress %s", this->id()),
+          [this] ()
+          {
+            while (true)
+            {
+              ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
-          this->progress(((float) pos) / ((float) this->data()->total_size));
-        }
+              reactor::Scheduler::scheduler()->current()->wait(
+                this->_frete->progress_changed());
+
+              this->progress(this->_frete->progress());
+            }
+          });
+        this->_finished.wait();
       }
-
-      this->_finished.open();
     }
 
     std::string
