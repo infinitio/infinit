@@ -59,8 +59,9 @@ class Trophonius(basic.LineReceiver):
     def _deinit(self):
         # It's actually important to remove references of this instance
         # in the clients dictionary, else the memory won't be free
-        if self.device_id in self.factory.clients:
-            self.factory.clients.pop(self.device_id)
+        if self.device_id and self.factory is not None:
+            if self.device_id in self.factory.clients:
+                self.factory.clients.pop(self.device_id)
         if self._alive_service is not None and self._alive_service.active():
             self._alive_service.cancel()
         if self._ping_service is not None:
