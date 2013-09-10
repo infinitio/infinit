@@ -75,8 +75,9 @@ def is_connected(user_id):
     user = database.users().find_one(user_id)
     if not user:
         raise Exception("This user doesn't exist")
-    assert isinstance(user['connected'], bool)
-    return user['connected']
+    connected = user.get('connected', False)
+    assert isinstance(connected, bool)
+    return connected
 
 def increase_swag(lhs, rhs, notifier_ = None):
     assert isinstance(lhs, database.ObjectId)
