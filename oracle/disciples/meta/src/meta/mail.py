@@ -36,6 +36,9 @@ def send_via_mailchimp(mail,
     try:
         smtp_server.login(conf.MANDRILL_USERNAME, conf.MANDRILL_PASSWORD)
         smtp_server.sendmail(msg['From'], [msg['To']], msg.as_string())
+    except:
+      from traceback import print_exc
+      print_exc()
     finally:
         smtp_server.quit()
 
