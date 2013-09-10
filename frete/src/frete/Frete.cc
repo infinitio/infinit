@@ -15,12 +15,14 @@ namespace frete
 
   Frete::Frete(infinit::protocol::ChanneledStream& channels):
     _rpc(channels),
-    _rpc_size("size", this->_rpc),
+    _rpc_count("count", this->_rpc),
     _rpc_size_file("size", this->_rpc),
     _rpc_path("path", this->_rpc),
-    _rpc_read("read", this->_rpc)
+    _rpc_read("read", this->_rpc),
+    _total_size(0),
+    _progress(0.0f)
   {
-    this->_rpc_size = std::bind(&Self::_size,
+    this->_rpc_count = std::bind(&Self::_count,
                                 this);
     this->_rpc_size_file = std::bind(&Self::_file_size,
                                      this,
@@ -55,7 +57,8 @@ namespace frete
           ++rel;
         for (; rel != it->path().end(); ++rel)
           relative /= *rel;
-        this->add(parent, relative);
+        if (!boost::filesystem::is_directory(*it))
+          this->add(parent, relative);
       }
     }
     else
@@ -66,17 +69,69 @@ namespace frete
   Frete::add(boost::filesystem::path const& root,
              boost::filesystem::path const& path)
   {
+    this->_total_size += boost::filesystem::file_size(root / path);
     this->_paths.push_back(Path(root, path));
   }
 
-  /*-------------.
+  void
+  Frete::get(boost::filesystem::path const& output_path)
+  {
+    uint64_t count = this->_rpc_count();
+
+    static std::streamsize N = 512 * 1024;
+    for (uint64_t index = 0; index < count; ++index)
+    {
+      std::streamsize current_pos = 0;
+
+      auto relativ_path = boost::filesystem::path{this->_rpc_path(index)};
+
+      auto fullpath = output_path / relativ_path;
+
+      // Create subdir.
+      boost::filesystem::create_directories(fullpath.parent_path());
+
+      std::ofstream output{fullpath.string()};
+
+      while (true)
+      {
+        if (!output.good())
+          throw elle::Exception("output is invalid");
+
+        // Get the buffer from the rpc.
+        elle::Buffer buffer{std::move(this->_rpc_read(index, current_pos, N))};
+
+        // Write the file.
+        output.write((char const*) buffer.mutable_contents(), buffer.size());
+
+        if (!output.good())
+          elle::Exception("writting let the stream not in a good state");
+
+        current_pos += buffer.size();
+        this->_progress += buffer.size();
+
+        if (buffer.size() < N)
+        {
+          output.close();
+          break;
+        }
+      }
+    }
+  }
+
+  float
+  Frete::progress() const
+  {
+    return this->_progress / (float) this->_total_size;
+  }
+
+ /*-------------.
   | Remote calls |
   `-------------*/
 
   uint64_t
-  Frete::size()
+  Frete::count()
   {
-    return this->_rpc_size();
+    return this->_rpc_count();
   }
 
   uint64_t
@@ -108,7 +163,7 @@ namespace frete
   }
 
   uint64_t
-  Frete::_size()
+  Frete::_count()
   {
     return this->_paths.size();
   }
@@ -116,14 +171,14 @@ namespace frete
   uint64_t
   Frete::_file_size(FileID file_id)
   {
-    ELLE_ASSERT_LT(file_id, this->_size());
+    ELLE_ASSERT_LT(file_id, this->_count());
     return boost::filesystem::file_size(this->_local_path(file_id));
   }
 
   std::string
   Frete::_path(FileID file_id)
   {
-    ELLE_ASSERT_LT(file_id, this->_size());
+    ELLE_ASSERT_LT(file_id, this->_count());
     return this->_paths[file_id].second.native();
   }
 
@@ -133,7 +188,7 @@ namespace frete
                Size const size)
   {
     ELLE_TRACE_FUNCTION(file_id, offset, size);
-    ELLE_ASSERT_LT(file_id, this->_size());
+    ELLE_ASSERT_LT(file_id, this->_count());
     auto path = this->_local_path(file_id);
     std::ifstream file(path.native());
     static const std::size_t MAX_offset{

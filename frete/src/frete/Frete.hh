@@ -48,14 +48,16 @@ namespace frete
     void
     add(boost::filesystem::path const& root,
         boost::filesystem::path const& path);
+    void
+    get(boost::filesystem::path const& output);
 
-  /*-------------.
-  | Remote calls |
-  `-------------*/
+    /*-------------.
+    | Remote calls |
+    `-------------*/
   public:
     /// The number of file in the remote filesystem.
     uint64_t
-    size();
+    count();
     /// The size of a remote file.
     uint64_t
     file_size(FileID f);
@@ -65,6 +67,7 @@ namespace frete
     /// A chunk of a remote file.
     elle::Buffer
     read(FileID f, Offset start, Size size);
+    /// Tell the peer the current progress.
 
   /*-----.
   | RPCs |
@@ -73,7 +76,7 @@ namespace frete
     boost::filesystem::path
     _local_path(FileID file_id);
     uint64_t
-    _size();
+    _count();
     uint64_t
     _file_size(FileID f);
     std::string
@@ -87,7 +90,7 @@ namespace frete
       elle::serialize::InputBinaryArchive,
       elle::serialize::OutputBinaryArchive> RPC;
     RPC _rpc;
-    RPC::RemoteProcedure<uint64_t> _rpc_size;
+    RPC::RemoteProcedure<uint64_t> _rpc_count;
     RPC::RemoteProcedure<uint64_t, FileID> _rpc_size_file;
     RPC::RemoteProcedure<std::string,
                          FileID> _rpc_path;
@@ -95,6 +98,13 @@ namespace frete
                          FileID,
                          Offset,
                          Size> _rpc_read;
+
+    ELLE_ATTRIBUTE_R(uint64_t, total_size);
+    ELLE_ATTRIBUTE(uint64_t, progress);
+
+  public:
+    float
+    progress() const;
   };
 }
 
