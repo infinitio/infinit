@@ -62,6 +62,9 @@ namespace surface
       _transfer_operation() override;
 
       void
+      _init_frete() override;
+
+      void
       _fail();
 
       /*-----------------------.

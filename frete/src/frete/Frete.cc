@@ -18,21 +18,7 @@ namespace frete
     _rpc_size("size", this->_rpc),
     _rpc_size_file("size", this->_rpc),
     _rpc_path("path", this->_rpc),
-    _rpc_read("read", this->_rpc),
-    _rpc_thread(*reactor::Scheduler::scheduler(),
-                elle::sprintf("%s RPCS", *this),
-                [this]
-                {
-                  try
-                  {
-                    this->_rpc.run();
-                  }
-                  catch (reactor::network::Exception const& e)
-                  {
-                    ELLE_TRACE("%s: end of RPCs: %s",
-                               *this, e.what());
-                  }
-                })
+    _rpc_read("read", this->_rpc)
   {
     this->_rpc_size = std::bind(&Self::_size,
                                 this);
@@ -50,9 +36,7 @@ namespace frete
   }
 
   Frete::~Frete()
-  {
-    this->_rpc_thread.terminate_now();
-  }
+  {}
 
   void
   Frete::add(boost::filesystem::path const& path)
@@ -192,5 +176,11 @@ namespace frete
       throw elle::Exception("unable to read");
 
     return buffer;
+  }
+
+  void
+  Frete::run()
+  {
+    this->_rpc.run();
   }
 }

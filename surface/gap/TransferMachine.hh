@@ -317,7 +317,7 @@ namespace surface
 
       virtual
       void
-      _init_frete() {};
+      _init_frete() = 0;
 
       /*--------.
       | Metrics |

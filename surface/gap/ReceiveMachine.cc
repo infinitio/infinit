@@ -179,6 +179,10 @@ namespace surface
     }
 
     void
+    ReceiveMachine::_init_frete()
+    {}
+
+    void
     ReceiveMachine::accept()
     {
       ELLE_TRACE_SCOPE("%s: open accept barrier %s", *this, this->transaction_id());
@@ -231,6 +235,8 @@ namespace surface
     ReceiveMachine::_transfer_operation()
     {
       ELLE_TRACE_SCOPE("%s: transfer operation %s", *this, this->transaction_id());
+
+      this->_frete->run();
 
       uint64_t count = this->_frete->size();
 

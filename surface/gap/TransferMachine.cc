@@ -197,9 +197,15 @@ namespace surface
         reactor::Waitables{&this->_finished},
         true);
 
-      this->_core_machine.transition_add(
-        this->_transfer_state, this->_connection_state,
-        reactor::Waitables{&this->_peer_disconnected});
+      this->_core_machine.transition_add_catch_specific<
+        reactor::network::Exception>(
+        this->_transfer_state,
+        this->_connection_state)
+        .action([this]
+                {
+                  ELLE_ERR("%s: peer disconnected", *this);
+                  this->_host.reset();
+                });
 
       this->_core_machine.transition_add_catch(
         this->_publish_interfaces_state,

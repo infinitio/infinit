@@ -354,7 +354,7 @@ namespace surface
     void
     SendMachine::_transfer_operation()
     {
-      // Nothing to do.
+      this->_frete->run();
     }
 
     void

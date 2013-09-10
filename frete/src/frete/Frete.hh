@@ -32,6 +32,13 @@ namespace frete
     Frete(infinit::protocol::ChanneledStream& channels);
     ~Frete();
 
+  /*-------------.
+  | Run           |
+  `-------------*/
+  public:
+    void
+    run();
+
   /*--------------------.
   | Local configuration |
   `--------------------*/
@@ -88,7 +95,6 @@ namespace frete
                          FileID,
                          Offset,
                          Size> _rpc_read;
-    reactor::Thread _rpc_thread;
   };
 }
 
