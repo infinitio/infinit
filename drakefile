@@ -1071,8 +1071,6 @@ def configure(cxx_toolkit = None,
     'surface/gap/_detail/Network.cc',
     'surface/gap/_detail/Transaction.cc',
     'surface/gap/_detail/User.cc',
-    'surface/gap/_detail/RPC.hh',
-    'surface/gap/_detail/RPC.cc',
   )
 
   # GAP

@@ -3,7 +3,6 @@
 
 # include <surface/gap/enums.hh>
 # include <surface/gap/Notification.hh>
-# include <surface/gap/_detail/RPC.hh>
 
 //# include <plasma/fwd.hh>
 # include <plasma/plasma.hh>
