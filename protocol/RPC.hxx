@@ -443,75 +443,77 @@ namespace infinit
       using elle::Exception;
       try
       {
-        reactor::Scope scope;
-        int i = 0;
-        while (true)
+        elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
-          auto chan = std::make_shared<Channel>(_channels.accept());
-          ++i;
+          int i = 0;
+          while (true)
+          {
+            auto chan = std::make_shared<Channel>(_channels.accept());
+            ++i;
 
-          auto call_procedure = [&, chan] {
-            ELLE_LOG_COMPONENT("infinit.protocol.RPC");
+            auto call_procedure = [&, chan] {
+              ELLE_LOG_COMPONENT("infinit.protocol.RPC");
 
-            Packet question(chan->read());
-            IS input(question);
-            uint32_t id;
-            input >> id;
-            auto procedure = _procedures.find(id);
+              Packet question(chan->read());
+              IS input(question);
+              uint32_t id;
+              input >> id;
+              auto procedure = _procedures.find(id);
 
-            Packet answer;
-            OS output(answer);
-            try
-            {
-              if (procedure == _procedures.end())
-                throw Exception(sprintf("call to unknown procedure: %s", id));
-              else if (procedure->second.second == nullptr)
+              Packet answer;
+              OS output(answer);
+              try
               {
-                throw Exception(sprintf("remote call to non-local procedure: %s",
-                                        procedure->second.first));
-              }
-              else
-              {
-                auto const &name = procedure->second.first;
+                if (procedure == _procedures.end())
+                  throw Exception(sprintf("call to unknown procedure: %s", id));
+                else if (procedure->second.second == nullptr)
+                {
+                  throw Exception(sprintf("remote call to non-local procedure: %s",
+                                          procedure->second.first));
+                }
+                else
+                {
+                  auto const &name = procedure->second.first;
 
-                ELLE_TRACE("%s: remote procedure called: %s", *this, name)
-                  procedure->second.second->_call(input, output);
-                ELLE_TRACE("%s: procedure %s succeeded", *this, name);
+                  ELLE_TRACE("%s: remote procedure called: %s", *this, name)
+                    procedure->second.second->_call(input, output);
+                  ELLE_TRACE("%s: procedure %s succeeded", *this, name);
+                }
               }
-            }
-            catch (elle::Exception& e)
-            {
-              ELLE_TRACE("%s: procedure failed: %s", *this, e.what());
-              output << false;
-              output << std::string(e.what());
-              output << uint16_t(e.backtrace().size());
-              for (auto const& frame: e.backtrace())
+              catch (elle::Exception& e)
               {
-                output << frame.symbol;
-                output << frame.symbol_mangled;
-                output << frame.symbol_demangled;
-                output << frame.address;
-                output << frame.offset;
+                ELLE_TRACE("%s: procedure failed: %s", *this, e.what());
+                output << false;
+                output << std::string(e.what());
+                output << uint16_t(e.backtrace().size());
+                for (auto const& frame: e.backtrace())
+                {
+                  output << frame.symbol;
+                  output << frame.symbol_mangled;
+                  output << frame.symbol_demangled;
+                  output << frame.address;
+                  output << frame.offset;
+                }
               }
-            }
-            catch (std::exception& e)
-            {
-              ELLE_TRACE("%s: procedure failed: %s", *this, e.what());
-              output << false;
-              output << std::string(e.what());
-              output << uint16_t(0);
-            }
-            catch (...)
-            {
-              ELLE_TRACE("%s: procedure failed: unknown error", *this);
-              output << false;
-              output << std::string("unknown error");
-              output << uint16_t(0);
-            }
-            chan->write(answer);
-          };
-          scope.run_background(elle::sprintf("RPC %s", i), call_procedure);
-        }
+              catch (std::exception& e)
+              {
+                ELLE_TRACE("%s: procedure failed: %s", *this, e.what());
+                output << false;
+                output << std::string(e.what());
+                output << uint16_t(0);
+              }
+              catch (...)
+              {
+                ELLE_TRACE("%s: procedure failed: unknown error", *this);
+                output << false;
+                output << std::string("unknown error");
+                output << uint16_t(0);
+              }
+              chan->write(answer);
+            };
+            scope.run_background(elle::sprintf("RPC %s", i), call_procedure);
+          }
+        };
       }
       catch (reactor::network::ConnectionClosed const& e)
       {
