@@ -184,6 +184,18 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         ]
     )
 
+    _ghostify_argument_parser = make_simple_argument_parser(
+        prog = "ghostify",
+        description = "Reset password",
+        args = [
+            {
+                'flags': 'emails',
+                'help': "User to be ghostified",
+                'nargs': '+',
+            },
+        ],
+    )
+
     def __init__(self, args):
         self._connect(args.db_host, args.db_port)
         super(AdminShell, self).__init__()
@@ -234,8 +246,6 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         print("\t- recipient: %s (%s) on device %s" % (
             tr['recipient_fullname'], tr['recipient_id'], tr['recipient_device_id'])
         )
-
-
 
     def _devices_printer(self, device):
         print('%s (%s)' % (device['name'], device['_id']))
@@ -312,6 +322,19 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         for t in transactions:
             print(t)
 
+
+    def do_ghostify(self, line):
+        args = self._get_args(self._ghostify_argument_parser, line)
+        if not args: return
+        from pythia.constants import ADMIN_TOKEN
+        import plasma
+        admin = plasma.Meta(host, port)
+        admin.token = ADMIN_TOKEN
+        for email in args.emails:
+            admin.ghostify(email)
+
+    def help_ghostify(self):
+        self._ghostify_argument_parser.print_help()
 
     def help_cancel_transactions(self):
         self._cancel_transactions_argument_parser.print_help()
