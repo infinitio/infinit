@@ -147,6 +147,7 @@ class DeclareLostPassword(Page):
         send_via_mailchimp(
           email,
           LOST_PASSWORD_TEMPLATE_ID,
+          '[Infinit] Reset your password',
           reply_to = 'support@infinit.io',
           reset_password_hash = user['reset_password_hash'],
         )
