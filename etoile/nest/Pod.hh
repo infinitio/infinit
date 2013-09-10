@@ -66,6 +66,8 @@ namespace etoile
       /// Likewise but through a rvalue.
       Pod(std::shared_ptr<nucleus::proton::Egg>&& egg,
           std::list<Pod*>::iterator const& position);
+      virtual
+      ~Pod() = default;
 
       /*----------.
       | Operators |
