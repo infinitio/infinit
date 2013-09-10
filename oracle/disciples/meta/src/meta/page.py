@@ -34,7 +34,9 @@ class Page(object):
     def __init__(self):
         self._input = None
         self._user = None
-        if not web.ctx.host.startswith('v2.meta.api.') and not web.ctx.host.startswith('localhost'):
+        if not web.ctx.host.startswith('v2.meta.api.') and \
+           not web.ctx.host.startswith('localhost') and \
+           not 'development' in web.ctx.host:
             raise Exception("XXX Wrong version asked")
 
     #
