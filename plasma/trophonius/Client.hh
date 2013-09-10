@@ -32,7 +32,8 @@ namespace plasma
     };
 
     /// Base class for all notifications.
-    struct Notification: public elle::Printable
+    struct Notification:
+      public elle::Printable
     {
       NotificationType notification_type;
 
@@ -43,7 +44,7 @@ namespace plasma
         notification_type{type}
       {}
 
-      virtual ~Notification();
+      virtual ~Notification() = default;
 
       virtual
       void

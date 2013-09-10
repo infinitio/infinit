@@ -119,9 +119,6 @@ namespace plasma
     boost::posix_time::time_duration const default_ping_period(
       boost::posix_time::seconds(30));
 
-    Notification::~Notification()
-    {}
-
     void
     Notification::print(std::ostream& stream) const
     {
