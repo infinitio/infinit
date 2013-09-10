@@ -6,37 +6,51 @@ import time
 import subprocess
 import argparse
 
-def reset_user_status():
-    """XXX We reset all user's status to be "disconnected". We know it's
-    true because there is only on trophonius instance at the moment.
-    The right way to do it is to disconnect all users (in the database)
-    when the trophonius instance goes down.
-    """
-    import meta.database
-    meta.database.users().update(spec={}, document={"$set": {"connected":False, "connected_devices": []}}, multi=True)
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 import meta.conf
 import apertus.conf
 
+SSD="/sbin/start-stop-daemon"
+PWD=os.getenv("PWD")
+RUNTIME_DIR=os.path.join(PWD, 'runtime')
+INSTALL_DIR=PWD
+APERTUS_PORT=apertus.conf.PORT
+TROPHO_PORT=meta.conf.TROPHONIUS_PORT
+TROPHO_CPORT=meta.conf.TROPHONIUS_CONTROL_PORT
+META_FCGI_PORT=9003
+META_PORT=meta.conf.META_PORT
+
+
 parser = argparse.ArgumentParser(description="Services launcher")
+
+parser.add_argument(
+   '--stop-prod',
+   default = False,
+   action = "store_true",
+)
+
+parser.add_argument(
+   '--start-prod',
+   default = False,
+   action = "store_true",
+)
 
 parser.add_argument(
     '--meta-port',
     type = int,
-    default = meta.conf.META_PORT,
+    default = META_PORT,
 )
 
 parser.add_argument(
     '--trophonius-port',
     type = int,
-    default = meta.conf.TROPHONIUS_PORT,
+    default = TROPHO_PORT,
 )
 
 parser.add_argument(
     '--trophonius-control-port',
     type = int,
-    default = meta.conf.TROPHONIUS_CONTROL_PORT,
+    default = TROPHO_CPORT,
 )
 
 parser.add_argument(
@@ -48,10 +62,35 @@ parser.add_argument(
 parser.add_argument(
     '--apertus-port',
     type = int,
-    default = apertus.conf.PORT,
+    default = APERTUS_PORT,
 )
 
+import shlex
+
 DIR = os.path.abspath(os.path.dirname(__file__))
+LIB_DIR = os.path.join(DIR, "..", "lib")
+
+def ssd(command):
+	run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
+
+def run(command):
+    env = {
+      'LD_LIBRARY_PATH': LIB_DIR
+    }
+    try:
+        print(' '.join(command.split()))
+        subprocess.check_call(shlex.split(command), env=env)
+    except Exception as e:
+        print(e)
+
+def reset_user_status():
+    """XXX We reset all user's status to be "disconnected". We know it's
+    true because there is only on trophonius instance at the moment.
+    The right way to do it is to disconnect all users (in the database)
+    when the trophonius instance goes down.
+    """
+    import meta.database
+    meta.database.users().update(spec={}, document={"$set": {"connected":False, "connected_devices": []}}, multi=True)
 
 META_BIN = os.path.join(DIR, 'meta-server')
 APERTUS_BIN = os.path.join(DIR, 'apertus-server')
@@ -60,8 +99,82 @@ TROPHONIUS_BIN = os.path.join(DIR, 'trophonius-server')
 def main(argv):
     args = parser.parse_args(argv)
 
-    processes = []
+    if args.start_prod:
+      start_prod(args)
+    elif args.stop_prod:
+      stop_prod(args)
+    else:
+      make_dev(args)
 
+def get_local_ip():
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("gmail.com", 80))
+    addr = s.getsockname()[0]
+    s.close()
+    return addr
+
+keys = {
+    'meta_bin': META_BIN,
+    'meta_port': META_PORT,
+    'meta_fport': META_FCGI_PORT,
+    'meta_pidfile': os.path.join(RUNTIME_DIR, 'meta.pid'),
+
+    'tropho_bin': TROPHONIUS_BIN,
+    'tropho_port': TROPHO_PORT,
+    'tropho_cport': TROPHO_CPORT,
+    'tropho_pidfile': os.path.join(RUNTIME_DIR, 'tropho.pid'),
+
+    'apertus_bin': APERTUS_BIN,
+    'apertus_proxy_port': APERTUS_PORT,
+    'apertus_host': get_local_ip(),
+    'apertus_pidfile0': os.path.join(RUNTIME_DIR, 'apertus0.pid'),
+    'apertus_pidfile1': os.path.join(RUNTIME_DIR, 'apertus1.pid'),
+    'apertus_pidfile2': os.path.join(RUNTIME_DIR, 'apertus2.pid'),
+    'apertus_pidfile_proxy': os.path.join(RUNTIME_DIR, 'apertus-proxy.pid'),
+}
+
+def start_prod(args):
+    try:
+      os.mkdir(RUNTIME_DIR)
+    except:
+      pass
+    import os
+
+    ssd("-b -p {apertus_pidfile0} -m -S -x {apertus_bin} --\
+          --port 0".format(**keys))
+
+    ssd("-b -p {apertus_pidfile1} -m -S -x {apertus_bin} --\
+          --port 0".format(**keys))
+
+    ssd("-b -p {apertus_pidfile2} -m -S -x {apertus_bin} --\
+          --port 0".format(**keys))
+
+    ssd("-b -p {apertus_pidfile_proxy} -m -S -x {apertus_bin} --\
+          --proxy --port {apertus_proxy_port}".format(**keys))
+
+    ssd("-b -p {tropho_pidfile} -m -S -x {tropho_bin} --\
+          --port {tropho_port} --control-port {tropho_cport}".format(**keys))
+
+    run("spawn-fcgi -P {meta_pidfile} -d ./ -a 127.0.0.1 -p {meta_fport} --\
+          {meta_bin} --fcgi\
+          --port {meta_port}\
+          --apertus-port {apertus_proxy_port}\
+          --apertus-host {apertus_host}".format(**keys))
+
+    run("sudo nginx -p ./www -c ../prod/nginx.conf")
+
+def stop_prod(args):
+    ssd("-p {apertus_pidfile0} -K".format(**keys))
+    ssd("-p {apertus_pidfile1} -K".format(**keys))
+    ssd("-p {apertus_pidfile2} -K".format(**keys))
+    ssd("-p {apertus_pidfile_proxy} -K".format(**keys))
+    ssd("-p {tropho_pidfile} -K".format(**keys))
+    ssd("-p {meta_pidfile} -K".format(**keys))
+    run("sudo nginx -p ./www -c ../prod/nginx.conf -s stop")
+
+def make_dev(args):
+    processes = []
     try:
         reset_user_status()
         processes.append(
