@@ -87,9 +87,8 @@ namespace surface
       }
 
     private:
-      virtual
-      void
-      _init_frete() override;
+      frete::Frete&
+      frete() override;
 
       std::pair<uint32_t, std::ifstream> _current_file;
 

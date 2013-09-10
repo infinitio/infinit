@@ -312,12 +312,10 @@ namespace surface
       std::unique_ptr<infinit::protocol::ChanneledStream> _channels;
       std::unique_ptr<frete::Frete> _frete;
 
-      void
-      _enable_rpcs();
-
+    protected:
       virtual
-      void
-      _init_frete() = 0;
+      frete::Frete&
+      frete() = 0;
 
       /*--------.
       | Metrics |

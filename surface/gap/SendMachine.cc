@@ -1,6 +1,8 @@
 #include <surface/gap/SendMachine.hh>
 #include <surface/gap/Rounds.hh>
 
+#include <frete/Frete.hh>
+
 #include <station/Station.hh>
 
 #include <papier/Descriptor.hh>
@@ -187,6 +189,7 @@ namespace surface
         this->data()->files.begin(),
         [] (std::string const& el)
         {
+
           return boost::filesystem::path(el).filename().string();
         });
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
@@ -356,37 +359,70 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
 
-      reactor::Scope scope;
-      scope.run_background(
-        elle::sprintf("frete get %s", this->id()),
-        [this] ()
-        {
-          this->_frete->run();
-        });
-      scope.run_background(
-        elle::sprintf("progress %s", this->id()),
-        [this] ()
-        {
-          while (true)
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      {
+        scope.run_background(
+          elle::sprintf("frete get %s", this->id()),
+          [this] ()
           {
-            ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+            this->frete().run();
+          });
+        scope.run_background(
+          elle::sprintf("progress %s", this->id()),
+          [this] ()
+          {
+            while (true)
+            {
+              ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
-            reactor::Scheduler::scheduler()->current()->wait(
-              this->_frete->progress_changed());
+              ELLE_DEBUG("start waiting")
+                try
+                {
+                  reactor::Scheduler::scheduler()->current()->wait(
+                    this->frete().progress_changed());
+                }
+                catch (...)
+                {
+                  ELLE_DEBUG("exception finish waiting");
+                  throw;
+                }
+              ELLE_DEBUG("finish waiting");
 
-            this->progress(this->_frete->progress());
-          }
-        });
-      this->_finished.wait();
+              this->progress(this->frete().progress());
+            }
+          });
+        this->_finished.wait();
+      };
     }
 
-    void
-    SendMachine::_init_frete()
+    frete::Frete&
+    SendMachine::frete()
     {
-      ELLE_TRACE_SCOPE("%s: init frete", *this);
-      for (std::string const& file: this->_files)
-        this->_frete->add(file);
-      ELLE_DEBUG("frete successfully initialized");
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      if (this->_frete == nullptr)
+      {
+        reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
+        ELLE_ASSERT(this->_frete == nullptr);
+
+        ELLE_DEBUG("create serializer");
+        this->_serializer.reset(
+          new infinit::protocol::Serializer(sched,
+                                            this->_host->socket()));
+        ELLE_DEBUG("create channels");
+        this->_channels.reset(
+          new infinit::protocol::ChanneledStream(sched, *this->_serializer));
+
+        this->_frete.reset(new frete::Frete(*this->_channels));
+
+        ELLE_TRACE_SCOPE("%s: init frete", *this);
+        for (std::string const& file: this->_files)
+          this->_frete->add(file);
+        ELLE_DEBUG("frete successfully initialized");
+      }
+
+      ELLE_ASSERT(this->_frete != nullptr);
+      return *this->_frete;
     }
 
     /*----------.

@@ -304,6 +304,12 @@ namespace surface
               ELLE_ERR("%s: something went wrong while transfering", *this);
             }
           }});
+      elle::Finally delete_core_machine(
+        [this]
+        {
+          this->_core_machine_thread->terminate_now();
+          this->_core_machine_thread.reset();
+        });
       scheduler.current()->wait(*this->_core_machine_thread);
 
       if (this->_failed.opened())
@@ -632,82 +638,64 @@ namespace surface
 
         std::unique_ptr<station::Host> host;
         reactor::Barrier host_found;
-        reactor::Scope scope;
 
-        for (std::string const& endpoint: r->endpoints())
+        elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
-          ELLE_DEBUG("%s: endpoint %s", *this, endpoint);
-          auto fn = [this, endpoint, &host, &host_found]
+          for (std::string const& endpoint: r->endpoints())
           {
-            try
-            {
-              std::vector<std::string> result;
-              boost::split(result, endpoint, boost::is_any_of(":"));
+            ELLE_DEBUG("%s: endpoint %s", *this, endpoint);
+            auto fn = [this, endpoint, &host, &host_found]
+              {
+                try
+                {
+                  std::vector<std::string> result;
+                  boost::split(result, endpoint, boost::is_any_of(":"));
 
-              auto const &ip = result[0];
-              auto const &port = result[1];
-              ELLE_DEBUG("connect(%s, %s)", ip, port)
-              // XXX: This statement is ok while we are connecting to one peer.
-              host = this->station().connect(ip, std::stoi(port));
-              host_found.open();
-              ELLE_LOG("%s: connection to %s succeed", *this, endpoint);
-            }
-            catch (station::AlreadyConnected const&)
-            {
-              ELLE_LOG("%s: connection to %s succeed (we're already connected)",
-                       *this, endpoint);
-            }
-            catch (reactor::Terminate const&)
-            {
-              throw ;
-            }
-            catch (std::exception const& e)
-            {
-              ELLE_WARN("%s: connection to %s failed: %s", *this,
-                        endpoint, elle::exception_string());
-            }
-          };
+                  auto const &ip = result[0];
+                  auto const &port = result[1];
+                  ELLE_DEBUG("connect(%s, %s)", ip, port)
+                  // XXX: This statement is ok while we are connecting to one peer.
+                  host = this->station().connect(ip, std::stoi(port));
+                  host_found.open();
+                  ELLE_LOG("%s: connection to %s succeed", *this, endpoint);
+                }
+                catch (station::AlreadyConnected const&)
+                {
+                  ELLE_LOG("%s: connection to %s succeed (we're already connected)",
+                           *this, endpoint);
+                }
+                catch (reactor::Terminate const&)
+                {
+                  throw ;
+                }
+                catch (std::exception const& e)
+                {
+                  ELLE_WARN("%s: connection to %s failed: %s", *this,
+                            endpoint, elle::exception_string());
+                }
+              };
 
-          scope.run_background(elle::sprintf("connect_try(%s)", endpoint), fn);
-        }
+            scope.run_background(elle::sprintf("connect_try(%s)", endpoint), fn);
+          }
 
-        scope.run_background("wait_accepted",
-                             [&] ()
-                             {
-                               this->station().host_available().wait();
-                               host = this->station().accept();
-                               host_found.open();
-                             });
+          scope.run_background("wait_accepted",
+                               [&] ()
+                               {
+                                 this->station().host_available().wait();
+                                 host = this->station().accept();
+                                 host_found.open();
+                               });
 
-        if (host_found.wait(10_sec))
-        {
+          host_found.wait(10_sec);
+        };
+
+        if (host)
           return host;
-        }
+
         ELLE_TRACE("%s: round %s failed", *this, tries);
       }
 
       throw Exception(gap_api_error, "no round succeed");
-    }
-
-    void
-    TransferMachine::_enable_rpcs()
-    {
-      ELLE_TRACE_SCOPE("%s: enable rpcs", *this);
-
-      reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
-      ELLE_ASSERT(this->_frete == nullptr);
-
-      ELLE_DEBUG("create serializer");
-      this->_serializer.reset(
-        new infinit::protocol::Serializer(sched,
-                                          this->_host->socket()));
-      ELLE_DEBUG("create channels");
-      this->_channels.reset(
-        new infinit::protocol::ChanneledStream(sched, *this->_serializer));
-
-      this->_frete.reset(new frete::Frete(*this->_channels));
-
-      this->_init_frete();
     }
 
     void
@@ -717,7 +705,7 @@ namespace surface
       this->current_state(State::Connect);
 
       this->_host = this->_connect();
-      this->_enable_rpcs();
+      this->frete(); // Force lazy evaluation.
       this->_peer_connected.signal();
     }
 
@@ -733,6 +721,11 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
       this->current_state(State::Transfer);
+
+      elle::Finally _2{[this] { this->_host.reset(); }};
+      elle::Finally _3{[this] { this->_serializer.reset(); }};
+      elle::Finally _4{[this] { this->_channels.reset(); }};
+      elle::Finally _5{[this] { this->_frete.reset(); }};
 
       this->_transfer_operation();
 

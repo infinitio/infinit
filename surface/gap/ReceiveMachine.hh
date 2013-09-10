@@ -62,9 +62,6 @@ namespace surface
       _transfer_operation() override;
 
       void
-      _init_frete() override;
-
-      void
       _fail();
 
       /*-----------------------.
@@ -81,6 +78,10 @@ namespace surface
       `-----------------*/
       ELLE_ATTRIBUTE(std::string, recipient);
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
+
+    private:
+      frete::Frete&
+      frete() override;
 
     public:
       virtual

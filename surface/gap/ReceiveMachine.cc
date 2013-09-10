@@ -1,6 +1,8 @@
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
 
+#include <frete/Frete.hh>
+
 #include <station/Station.hh>
 
 #include <nucleus/neutron/Subject.hh>
@@ -179,10 +181,6 @@ namespace surface
     }
 
     void
-    ReceiveMachine::_init_frete()
-    {}
-
-    void
     ReceiveMachine::accept()
     {
       ELLE_TRACE_SCOPE("%s: open accept barrier %s", *this, this->transaction_id());
@@ -235,21 +233,22 @@ namespace surface
     ReceiveMachine::_transfer_operation()
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
+      elle::Finally dbg{[] { ELLE_ERR("leaving transfer operation"); }};
 
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
-        reactor::Scope scope;
         scope.run_background(
           elle::sprintf("download %s", this->id()),
           [this] ()
           {
-            this->_frete->get(boost::filesystem::path{this->state().output_dir()});
+            this->frete().get(boost::filesystem::path{this->state().output_dir()});
             this->_finished.open();
           });
         scope.run_background(
           elle::sprintf("frete get %s", this->id()),
           [this] ()
           {
-            this->_frete->run();
+            this->frete().run();
           });
         scope.run_background(
           elle::sprintf("progress %s", this->id()),
@@ -257,16 +256,50 @@ namespace surface
           {
             while (true)
             {
-              ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+              ELLE_DEBUG("start waiting")
+                try
+                {
+                  reactor::Scheduler::scheduler()->current()->wait(
+                    this->frete().progress_changed());
+                }
+                catch (...)
+                {
+                  ELLE_DEBUG("exception");
+                  //ELLE_DEBUG("exception %s finish waiting", elle::exception_string());
+                  throw;
+                }
+              ELLE_DEBUG("finish waiting");
 
-              reactor::Scheduler::scheduler()->current()->wait(
-                this->_frete->progress_changed());
-
-              this->progress(this->_frete->progress());
+              this->progress(this->frete().progress());
             }
           });
+
         this->_finished.wait();
+      };
+    }
+
+    frete::Frete&
+    ReceiveMachine::frete()
+    {
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      if (this->_frete == nullptr)
+      {
+        reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
+
+        ELLE_DEBUG("create serializer");
+        this->_serializer.reset(
+          new infinit::protocol::Serializer(sched,
+                                            this->_host->socket()));
+        ELLE_DEBUG("create channels");
+        this->_channels.reset(
+          new infinit::protocol::ChanneledStream(sched, *this->_serializer));
+
+        this->_frete.reset(new frete::Frete(*this->_channels));
       }
+
+      ELLE_ASSERT(this->_frete != nullptr);
+      return *this->_frete;
     }
 
     std::string
