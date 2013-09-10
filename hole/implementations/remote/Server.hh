@@ -43,6 +43,7 @@ namespace hole
       `-------------*/
       public:
         Server(Hole& hole, int port);
+        virtual
         ~Server();
       private:
         ELLE_ATTRIBUTE_R(Hole&, hole);
