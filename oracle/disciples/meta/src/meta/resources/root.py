@@ -78,13 +78,13 @@ class Ghostify(Page):
 
 class ResetAccount(Page):
     """Reset account using the hash generated from the /lost-password page.
-        GET -> {
-
+        POST -> {
+            'password': password,
         }
     """
     __pattern__ = '/reset-account/(.+)'
 
-    def GET(self, hash):
+    def __user_from_hash(self, hash):
         user = database.users().find_one({"reset_password_hash": hash})
         if user is None:
             return self.error(
@@ -96,8 +96,15 @@ class ResetAccount(Page):
                 error.OPERATION_NOT_PERMITTED,
                 msg = "The reset url is not valid anymore",
             )
-        del user['reset_password_hash']
-        del user['reset_password_hash_validity']
+        return user
+
+    def GET(self, hash):
+        return self.success({
+            'email': self.__user_from_hash(hash)['email']
+        })
+
+    def POST(self, hash):
+        user = self.__user_from_hash(hash)
         database.transactions().update(
             {
                 "$or": [
@@ -111,21 +118,35 @@ class ResetAccount(Page):
             multi = True
         )
 
-        # Ghostify user.
-        ghost = self.registerUser(
-            _id = user['_id'],
+        import metalib
+        identity, public_key = metalib.generate_identity(
+            str(user["_id"]),
+            user['email'], user['password'],
+            conf.INFINIT_AUTHORITY_PATH,
+            conf.INFINIT_AUTHORITY_PASSWORD
+        )
+        user_id = self.registerUser(
+            _id = user["_id"],
+            register_status = 'ok',
             email = user['email'],
-            register_status = 'ghost',
-            notifications = [],
-            networks = [],
+            fullname = user['fullname'],
+            password = self.hashPassword(self.data['password']),
+            identity = identity,
+            public_key = public_key,
+            handle = user['handle'],
+            lw_handle = user['lw_handle'],
             swaggers = user['swaggers'],
-            accounts = [{'type':'email', 'id': user['email']}],
+            networks = [],
+            devices = [],
+            connected_devices = [],
+            connected = False,
+            notifications = [],
+            old_notifications = [],
+            accounts = [
+                {'type':'email', 'id': user['email']}
+            ],
             remaining_invitations = user['remaining_invitations'],
         )
-
-        from meta.invitation import invite_user
-        invite_user(user['email'])
-
         return self.success({'user_id': str(user['_id'])})
 
 class DeclareLostPassword(Page):
