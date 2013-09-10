@@ -1238,6 +1238,12 @@ def configure(cxx_toolkit = None,
   install << drake.copy(infinit_bin, prefix)
   install << drake.copy(infinit_libs, prefix)
 
+  # Prod
+  prod_scripts = drake.nodes('prod/prod.sh',
+                             'prod/nginx.conf')
+  prod = drake.copy(prod_scripts, './prod')
+  oracles << prod
+
   # Tests
   tests_cxx_config = drake.cxx.Config(cxx_config)
   tests_cxx_config.lib_path_runtime('../../../../lib')
@@ -1303,6 +1309,14 @@ def configure(cxx_toolkit = None,
              ]:
     test = drake.node('tests/functional/%s' % test)
     tests << test
+    pythonpath = [
+      drake.path_src('tests/functional/lib'),
+      drake.path_build('lib/python'),
+    ]
+    env = {
+      'PYTHONPATH': ':'.join(map(str, pythonpath)),
+      'PATH': os.environ['PATH']
+    }
     runner = drake.Runner(test, env = env)
     runner.reporting = drake.Runner.Reporting.on_failure
     check_functional << runner.status

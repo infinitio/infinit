@@ -7,6 +7,7 @@ from twisted.protocols.basic import LineReceiver
 from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from pprint import pprint
+from twisted.python import log
 
 try:
     from pymongo.objectid import ObjectId

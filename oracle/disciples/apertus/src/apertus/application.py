@@ -12,6 +12,7 @@ from OpenSSL import SSL, crypto
 from twisted.internet.protocol import Protocol
 from twisted.internet import reactor, ssl
 from twisted.python import log
+from twisted.python.logfile import DailyLogFile
 
 try:
     from setproctitle import setproctitle
@@ -66,7 +67,7 @@ class Application(object):
         instances.save(record)
 
     def run(self):
-        log.startLogging(sys.stderr)
+        log.startLogging(DailyLogFile.fromFullPath("./apertus.log"))
         print("Mongo activated")
         import pymongo
         database = self.mongo.apertus

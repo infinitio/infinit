@@ -13,6 +13,7 @@ if "Linux" in platform.uname():
 
 from twisted.internet import reactor
 from twisted.python import log
+from twisted.python.logfile import DailyLogFile
 
 from OpenSSL import crypto
 
@@ -96,9 +97,9 @@ class Application(object):
             f.write(str(port))
 
     def run(self):
+        log.startLogging(DailyLogFile.fromFullPath("./trophonius.log"))
         if not all(os.path.exists(file) for file in (conf.SSL_KEY, conf.SSL_CERT)):
             self.create_self_signed_cert(".")
-        log.startLogging(self.logfile)
 
         factory = trophonius.TrophoFactory(self)
         meta_factory = trophonius.MetaTrophoFactory(self)
