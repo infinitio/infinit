@@ -132,10 +132,12 @@ keys = {
     'apertus_pidfile1': os.path.join(RUNTIME_DIR, 'apertus1.pid'),
     'apertus_pidfile2': os.path.join(RUNTIME_DIR, 'apertus2.pid'),
     'apertus_pidfile_proxy': os.path.join(RUNTIME_DIR, 'apertus-proxy.pid'),
+    'www_dir': os.path.join('.', os.path.relpath(RUNTIME_DIR)),
 }
 
 def start_prod(args):
     try:
+      print("mkdir", RUNTIME_DIR)
       os.mkdir(RUNTIME_DIR)
     except:
       pass
@@ -162,7 +164,7 @@ def start_prod(args):
           --apertus-port {apertus_proxy_port}\
           --apertus-host {apertus_host}".format(**keys))
 
-    run("sudo nginx -p ./www -c ../prod/nginx.conf")
+    run("sudo nginx -p {www_dir} -c ../prod/nginx.conf".format(**keys))
 
 def stop_prod(args):
     ssd("-p {apertus_pidfile0} -K".format(**keys))
@@ -171,7 +173,7 @@ def stop_prod(args):
     ssd("-p {apertus_pidfile_proxy} -K".format(**keys))
     ssd("-p {tropho_pidfile} -K".format(**keys))
     ssd("-p {meta_pidfile} -K".format(**keys))
-    run("sudo nginx -p ./www -c ../prod/nginx.conf -s stop")
+    run("sudo nginx -p {www_dir} -c ../prod/nginx.conf -s stop".format(**keys))
 
 def make_dev(args):
     processes = []
