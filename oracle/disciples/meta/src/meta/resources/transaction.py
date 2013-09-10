@@ -164,7 +164,6 @@ class Create(Page):
 
         transaction_id = database.transactions().insert(transaction)
 
-        # XXX: MAIL DESACTIVATED
         from meta.resources import user
         if not user.is_connected(database.ObjectId(recipient_id)):
             if not invitee_email:

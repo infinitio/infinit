@@ -76,6 +76,83 @@ class Ghostify(Page):
 
         return self.success({'ghost': str(user['_id'])})
 
+class ResetAccount(Page):
+    """Reset account using the hash generated from the /lost-password page.
+        GET -> {
+
+        }
+    """
+    __pattern__ = '/reset-account/(.+)'
+
+    def GET(self, hash):
+        user = database.users().find_one({"reset_password_hash": hash})
+        if user is None:
+            return self.error(
+                error.OPERATION_NOT_PERMITTED,
+                msg = "You didn't loose your password"
+            )
+        if user['reset_password_hash_validity'] > time.time():
+            return self.error(
+                error.OPERATION_NOT_PERMITTED,
+                msg = "The reset url is not valid anymore",
+            )
+        del user['reset_password_hash']
+        del user['reset_password_hash_validity']
+        database.transactions().update(
+            {
+                "$or": [
+                    {"sender_id": user['_id']},
+                    {"recipient_id": user['_id']}
+                ]
+            },
+            {
+                "$set": {"status": transaction.CANCELED}
+            },
+            multi = True
+        )
+
+        # Ghostify user.
+        ghost = self.registerUser(
+            _id = user['_id'],
+            email = user['email'],
+            register_status = 'ghost',
+            notifications = [],
+            networks = [],
+            swaggers = user['swaggers'],
+            accounts = [{'type':'email', 'id': user['email']}],
+            remaining_invitations = user['remaining_invitations'],
+        )
+
+        from meta.invitation import invite_user
+        invite_user(user['email'])
+
+        return self.success({'user_id': str(user['_id'])})
+
+class DeclareLostPassword(Page):
+    """Generate a reset password url.
+    POST { 'email': "The mail of the infortunate user" } -> {}
+    """
+
+    __pattern__ = '/lost-password'
+
+    def POST(self):
+        email = self.data['email'].lower()
+        user = database.users().find_one({"email": email})
+        if not user:
+            return self.error(error_code = error.UNKNOWN_USER)
+        import time, hashlib
+        user['reset_password_hash'] = hashlib.md5(str(time.time()) + email).hexdigest()
+        user['reset_password_hash_validity'] = time.time() + RESET_PASSWORD_VALIDITY
+        from meta.mail import send_via_mailchimp
+        send_via_mailchimp(
+          email,
+          LOST_PASSWORD_TEMPLATE_ID,
+          reply_to = 'support@infinit.io',
+          reset_password_hash = user['user_password_hash'],
+        )
+        database.users().save(user)
+        return self.success()
+
 class GetBacktrace(Page):
     """
     Store the crash into database and send a mail if set.
