@@ -4,7 +4,9 @@ import json
 
 from meta.page import Page
 from meta import error, database
-from pythia.constants import ADMIN_TOKEN
+from pythia.constants import ADMIN_TOKEN, RESET_PASSWORD_VALIDITY
+
+LOST_PASSWORD_TEMPLATE_ID = 'lost-password'
 
 class Root(Page):
     """
@@ -32,17 +34,6 @@ class Status(Page):
     def GET(self):
         return self.success({"status" : "ok"})
 
-
-# XXX : Remove that cheat
-class ScratchDB(Page):
-    """
-    Debug function to scratch db and start back to 0.
-    """
-
-    __pattern__ = "/scratchit"
-
-    def GET(self):
-        return self.success({})
 
 class Ghostify(Page):
     """

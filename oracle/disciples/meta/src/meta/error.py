@@ -11,7 +11,9 @@ def replacer(match):
 def ERR_CODE(name, value, comment):
     globals()[name.upper()] = (value, comment)
 
-filepath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'error_code.hh.inc'))
+filepath = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), 'error_code.hh.inc')
+)
 
 configfile = open(filepath, 'r')
 for line in configfile:
