@@ -88,12 +88,12 @@ class ResetAccount(Page):
     def __user_from_hash(self, hash):
         user = database.users().find_one({"reset_password_hash": hash})
         if user is None:
-            return self.error(
+            self.raise_error(
                 error.OPERATION_NOT_PERMITTED,
                 msg = "You didn't loose your password"
             )
-        if user['reset_password_hash_validity'] > time.time():
-            return self.error(
+        if user['reset_password_hash_validity'] < time.time():
+            self.raise_error(
                 error.OPERATION_NOT_PERMITTED,
                 msg = "The reset url is not valid anymore",
             )
