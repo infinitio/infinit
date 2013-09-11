@@ -55,8 +55,13 @@ class Trophonius(basic.LineReceiver):
         self._alive_service = None
         self._ping_service = None
         self.reason = None
+        self.__cleaned = False
 
     def _deinit(self):
+        if self.__cleaned:
+            return
+        self.__cleaned = True
+
         # Stopping timers first.
         if self._alive_service is not None and self._alive_service.active():
             self._alive_service.cancel()
