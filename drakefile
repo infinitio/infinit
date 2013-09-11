@@ -641,6 +641,29 @@ def configure(cxx_toolkit = None,
     infinit_cxx_config
   )
 
+  # Sources
+  hermes_sources = drake.nodes(
+    'plasma/hermes/src/hermes/Chunk.cc',
+    'plasma/hermes/src/hermes/Chunk.hh',
+    'plasma/hermes/src/hermes/Clerk.cc',
+    'plasma/hermes/src/hermes/Clerk.hh',
+    'plasma/hermes/src/hermes/Hermes.cc',
+    'plasma/hermes/src/hermes/Hermes.hh',
+    # TODO
+  )
+  hermes_cxx_config = drake.cxx.Config(cxx_config)
+  hermes_cxx_config.lib_path_runtime('.')
+  hermes_cxx_config.lib('cryptography')
+  hermes_cxx_config.lib('protocol')
+  hermes_cxx_config.lib('reactor')
+  hermes_cxx_config.lib('elle')
+  hermes_cxx_config += boost.config()
+  hermes_cxx_config += boost.config_system()
+  hermes_cxx_config += boost.config_filesystem()
+  hermes_lib = drake.cxx.Executable('bin/hermes-server',
+                                    hermes_sources + [reactor_lib],
+                                    cxx_toolkit, hermes_cxx_config)
+
   # Hole
   hole_sources = drake.nodes(
     'hole/Exception.cc',
