@@ -36,7 +36,8 @@ namespace surface
       _wait_for_accept_state(
         this->_machine.state_make(
           "wait for accept", std::bind(&SendMachine::_wait_for_accept, this))),
-      _current_file()
+      _accepted("accepted barrier"),
+      _rejected("rejected barrier")
     {
       this->_machine.transition_add(
         this->_create_transaction_state,

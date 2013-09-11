@@ -22,7 +22,8 @@ namespace frete
     _rpc_read("read", this->_rpc),
     _rpc_set_progress("progress", this->_rpc),
     _total_size(0),
-    _progress(0.0f)
+    _progress(0.0f),
+    _progress_changed("progress changed signal")
   {
     this->_rpc_count = std::bind(&Self::_count,
                                 this);

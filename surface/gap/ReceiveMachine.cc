@@ -28,7 +28,8 @@ namespace surface
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
       _accept_state(
         this->_machine.state_make(
-          "accept", std::bind(&ReceiveMachine::_accept, this)))
+          "accept", std::bind(&ReceiveMachine::_accept, this))),
+      _accepted("accepted barrier")
     {
       // Normal way.
       this->_machine.transition_add(this->_wait_for_decision_state,

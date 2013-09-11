@@ -90,8 +90,6 @@ namespace surface
       frete::Frete&
       frete() override;
 
-      std::pair<uint32_t, std::ifstream> _current_file;
-
     public:
       /*----------.
       | Printable |

@@ -54,6 +54,8 @@ namespace surface
       _id(id),
       _machine(),
       _machine_thread(),
+      _current_state(State::None),
+      _state_changed("state changed"),
       _transfer_core_state(
         this->_machine.state_make(
           "transfer core", std::bind(&TransferMachine::_transfer_core, this))),
@@ -72,6 +74,10 @@ namespace surface
       _end_state(
         this->_machine.state_make(
           "end", std::bind(&TransferMachine::_end, this))),
+      _finished("finished barrier"),
+      _rejected("rejected barrier"),
+      _canceled("canceled barrier"),
+      _failed("failed barrier"),
       _core_machine(),
       _core_machine_thread(),
       _publish_interfaces_state(
@@ -92,10 +98,10 @@ namespace surface
       _core_paused_state(
         this->_core_machine.state_make(
           "core paused", std::bind(&TransferMachine::_core_paused, this))),
-      _peer_online(),
-      _peer_offline(),
-      _peer_connected(),
-      _peer_disconnected(),
+      _peer_online("peer online"),
+      _peer_offline("peer offline"),
+      _peer_connected("peer connected"),
+      _peer_disconnected("peer connected"),
       _state(state),
       _data(std::move(data)),
       _progress(0.0f),
