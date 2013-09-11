@@ -71,6 +71,7 @@ class Trophonius(basic.LineReceiver):
                     'user_id': self.id,
                     'device_id': self.device_id,
                 })
+                break
             except:
                 traceback.print_exc()
                 log.msg("Waiting 1 sec before trying to disconnect again")
