@@ -75,7 +75,7 @@ def ssd(command):
 
 def run(command):
     env = {
-      'LD_LIBRARY_PATH': LIB_DIR
+        'LD_LIBRARY_PATH': ':'.join(['/usr/local/lib', LIB_DIR]),
     }
     try:
         print(' '.join(command.split()))
