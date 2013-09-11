@@ -151,10 +151,6 @@ class ResetAccount(Page):
             ],
             remaining_invitations = user['remaining_invitations'],
         )
-        user = database.users().find_one(database.ObjectId(user_id))
-        del user['reset_password_hash']
-        del user['reset_password_hash_validity']
-        database.users().save(user)
         return self.success({'user_id': str(user_id)})
 
 class DeclareLostPassword(Page):
