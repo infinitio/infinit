@@ -97,18 +97,17 @@ class ResetAccount(Page):
                 error.OPERATION_NOT_PERMITTED,
                 msg = "The reset url is not valid anymore",
             )
-        print("User from hash %s" % user)
         return user
 
     def GET(self, hash):
         usr = self.__user_from_hash(hash)
-        print("USER: %s" % usr)
         return self.success({
             'email': usr['email'],
         })
 
     def POST(self, hash):
         user = self.__user_from_hash(hash)
+        from meta.resources import transaction
         database.transactions().update(
             {
                 "$or": [
