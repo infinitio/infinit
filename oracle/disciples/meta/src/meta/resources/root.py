@@ -90,7 +90,7 @@ class ResetAccount(Page):
         if user is None:
             self.raise_error(
                 error.OPERATION_NOT_PERMITTED,
-                msg = "You didn't loose your password"
+                msg = "Your password has already been reset",
             )
         if user['reset_password_hash_validity'] < time.time():
             self.raise_error(
@@ -125,7 +125,7 @@ class ResetAccount(Page):
         from meta import conf
         identity, public_key = metalib.generate_identity(
             str(user["_id"]),
-            user['email'], user['password'],
+            user['email'], self.data['password'],
             conf.INFINIT_AUTHORITY_PATH,
             conf.INFINIT_AUTHORITY_PASSWORD
         )
