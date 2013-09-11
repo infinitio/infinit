@@ -117,7 +117,7 @@ class Create(Page):
                 self.registerUser(
                     _id = recipient_id,
                     email = invitee_email,
-                    fullname = invitee_email[0:invitee_email.index('@')]
+                    fullname = invitee_email[0:invitee_email.index('@')],
                     register_status = 'ghost',
                     notifications = [],
                     networks = [],
