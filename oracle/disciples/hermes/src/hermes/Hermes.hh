@@ -1,12 +1,12 @@
-#ifndef INFINIT_PLASMA_HERMES_HH
-# define INFINIT_PLASMA_HERMES_HH
+#ifndef ORACLE_DISCIPLES_HERMES_HH
+# define ORACLE_DISCIPLES_HERMES_HH
 
 # include <reactor/scheduler.hh>
 
-# include <plasma/hermes/src/hermes/Clerk.hh>
-# include <plasma/hermes/src/hermes/Dispatcher.hh>
+# include <oracle/disciples/hermes/src/hermes/Clerk.hh>
+# include <oracle/disciples/hermes/src/hermes/Dispatcher.hh>
 
-namespace plasma
+namespace oracle
 {
   namespace hermes
   {
@@ -24,4 +24,4 @@ namespace plasma
   }
 }
 
-#endif // !INFINIT_PLASMA_HERMES_HH
+#endif // !ORACLE_DISCIPLES_HERMES_HH

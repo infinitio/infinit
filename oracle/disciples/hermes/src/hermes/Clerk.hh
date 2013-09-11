@@ -1,5 +1,5 @@
-#ifndef PLASMA_HERMES_CLERK_HH
-# define PLASMA_HERMES_CLERK_HH
+#ifndef ORACLE_DISCIPLES_HERMES_CLERK_HH
+# define ORACLE_DISCIPLES_HERMES_CLERK_HH
 
 # include <boost/algorithm/string.hpp>
 # include <boost/filesystem.hpp>
@@ -12,7 +12,7 @@
 # include <elle/Buffer.hh>
 # include <frete/Frete.hh>
 
-namespace plasma
+namespace oracle
 {
   namespace hermes
   {
@@ -57,4 +57,4 @@ namespace plasma
   }
 }
 
-#endif // !PLASMA_HERMES_CLERK_HH
+#endif // !ORACLE_DISCIPLES_HERMES_CLERK_HH

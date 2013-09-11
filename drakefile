@@ -643,12 +643,12 @@ def configure(cxx_toolkit = None,
 
   # Sources
   hermes_sources = drake.nodes(
-    'plasma/hermes/src/hermes/Chunk.cc',
-    'plasma/hermes/src/hermes/Chunk.hh',
-    'plasma/hermes/src/hermes/Clerk.cc',
-    'plasma/hermes/src/hermes/Clerk.hh',
-    'plasma/hermes/src/hermes/Hermes.cc',
-    'plasma/hermes/src/hermes/Hermes.hh',
+    'oracle/disciples/hermes/src/hermes/Clerk.cc',
+    'oracle/disciples/hermes/src/hermes/Clerk.hh',
+    'oracle/disciples/hermes/src/hermes/Dispatcher.cc',
+    'oracle/disciples/hermes/src/hermes/Dispatcher.hh',
+    'oracle/disciples/hermes/src/hermes/Hermes.cc',
+    'oracle/disciples/hermes/src/hermes/Hermes.hh',
     # TODO
   )
   hermes_cxx_config = drake.cxx.Config(cxx_config)
@@ -1397,7 +1397,7 @@ def configure(cxx_toolkit = None,
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib]
 
   tests_src_n_lib = [
-    ('plasma/hermes/tests/hermes.cc', [elle_lib, reactor_lib, protocol_lib, hermes_lib]),
+    ('oracle/disciples/hermes/tests/hermes.cc', [elle_lib, reactor_lib, protocol_lib, hermes_lib]),
     ('tests/testing_tests.cc', []),
     ('tests/unit/etoile/Etoile.cc', infinit_libs),
     ('tests/unit/etoile/Shrub.cc', infinit_libs),

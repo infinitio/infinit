@@ -1,7 +1,7 @@
-#include <plasma/hermes/src/hermes/Dispatcher.hh>
+#include <oracle/disciples/hermes/src/hermes/Dispatcher.hh>
 // TODO: Correct include path.
 
-namespace plasma
+namespace oracle
 {
   namespace hermes
   {

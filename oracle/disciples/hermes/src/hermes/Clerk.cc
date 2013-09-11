@@ -1,8 +1,8 @@
-#include <plasma/hermes/src/hermes/Clerk.hh>
+#include <oracle/disciples/hermes/src/hermes/Clerk.hh>
 // TODO: Correct include path.
 // TODO: learn to pass exact exceptions through network
 
-namespace plasma
+namespace oracle
 {
   namespace hermes
   {

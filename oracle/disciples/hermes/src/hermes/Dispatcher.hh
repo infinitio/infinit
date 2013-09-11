@@ -1,5 +1,5 @@
-#ifndef PLASMA_HERMES_DISPATCHER_HH
-# define PLASMA_HERMES_DISPATCHER_HH
+#ifndef ORACLE_DISCIPLES_HERMES_DISPATCHER_HH
+# define ORACLE_DISCIPLES_HERMES_DISPATCHER_HH
 
 # include <reactor/network/tcp-server.hh>
 # include <reactor/network/tcp-socket.hh>
@@ -12,9 +12,9 @@
 # include <elle/serialize/BinaryArchive.hh>
 # include <elle/Buffer.hh>
 
-# include <plasma/hermes/src/hermes/Clerk.hh>
+# include <oracle/disciples/hermes/src/hermes/Clerk.hh>
 
-namespace plasma
+namespace oracle
 {
   namespace hermes
   {
@@ -48,4 +48,4 @@ namespace plasma
   }
 }
 
-#endif // !PLASMA_HERMES_DISPATCHER_HH
+#endif // !ORACLE_DISCIPLES_HERMES_DISPATCHER_HH

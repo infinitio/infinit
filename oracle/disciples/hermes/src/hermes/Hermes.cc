@@ -1,9 +1,9 @@
-#include <plasma/hermes/src/hermes/Hermes.hh>
+#include <oracle/disciples/hermes/src/hermes/Hermes.hh>
 // TODO: Correct include path.
 
 using namespace std;
 
-namespace plasma
+namespace oracle
 {
   namespace hermes
   {

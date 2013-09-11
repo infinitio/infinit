@@ -7,7 +7,7 @@
 #include <reactor/scheduler.hh>
 #include <elle/Exception.hh>
 
-#include <plasma/hermes/src/hermes/Hermes.hh>
+#include <oracle/disciples/hermes/src/hermes/Hermes.hh>
 
 // TODO: Try to do a better job at comparing both buffers.
 
@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_CASE(test_basic)
   auto server = [=] ()
   {
     auto& sched = *reactor::Scheduler::scheduler();
-    plasma::hermes::Hermes herm(sched, port, "/tmp/clerk");
+    oracle::hermes::Hermes herm(sched, port, "/tmp/clerk");
 
     herm.run();
   };
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(test_basic)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    plasma::hermes::Handler handler(channels);
+    oracle::hermes::Handler handler(channels);
 
     std::string msg("This is basic content");
     elle::Buffer input(msg.c_str(), msg.size());
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(test_multiple)
   auto server = [=] ()
   {
     auto& sched = *reactor::Scheduler::scheduler();
-    plasma::hermes::Hermes herm(sched, port, "/tmp/clerk");
+    oracle::hermes::Hermes herm(sched, port, "/tmp/clerk");
 
     herm.run();
   };
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(test_multiple)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    plasma::hermes::Handler handler(channels);
+    oracle::hermes::Handler handler(channels);
 
     // Store first.
     std::string msg1("This is basic content for first msg");
@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE(test_filenotfound)
   auto server = [=] ()
   {
     auto& sched = *reactor::Scheduler::scheduler();
-    plasma::hermes::Hermes herm(sched, port, "/tmp/clerk");
+    oracle::hermes::Hermes herm(sched, port, "/tmp/clerk");
 
     herm.run();
   };
@@ -140,9 +140,9 @@ BOOST_AUTO_TEST_CASE(test_filenotfound)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    plasma::hermes::Handler handler(channels);
+    oracle::hermes::Handler handler(channels);
 
-    BOOST_CHECK_THROW(handler.serve(3, 1, 4), elle::Exception);
+    BOOST_CHECK_THROW(handler.serve(3, 1), elle::Exception);
 
     // Store first file.
     std::string msg1("This is a common file content. ab cd-ef_gh");
@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_CASE(test_filenotfound)
     // Store second file.
     std::string msg2("This is another common file chunk or whatever");
     elle::Buffer input2(msg2.c_str(), msg2.size());
-    BOOST_CHECK_EQUAL(handler.store(3, 1, input2), input2.size());
+    BOOST_CHECK_EQUAL(handler.store(3, 2, input2), input2.size());
 
     // Fetch existing files.
     BOOST_CHECK_NO_THROW(handler.serve(3, 1));
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(test_file_already_present)
   auto server = [=] ()
   {
     auto& sched = *reactor::Scheduler::scheduler();
-    plasma::hermes::Hermes herm(sched, port, "/tmp/clerk");
+    oracle::hermes::Hermes herm(sched, port, "/tmp/clerk");
 
     herm.run();
   };
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(test_file_already_present)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    plasma::hermes::Handler handler(channels);
+    oracle::hermes::Handler handler(channels);
 
     // Store and fetch first file.
     std::string msg1("This is a random file as well");
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE(test_file_already_present)
 
     // Try and store a file with the same FileID/Offset pair.
     std::string msg2("This file cannot be created");
-    elle::Buffer input2(msg2, msg2.size());
+    elle::Buffer input2(msg2.c_str(), msg2.size());
     BOOST_CHECK_THROW(handler.store(4, 1, input2), elle::Exception);
 
     // Fetch first file and check it's actually the first file.
@@ -228,7 +228,7 @@ BOOST_AUTO_TEST_CASE(test_bad_basepath)
   auto server = [=] ()
   {
     auto& sched = *reactor::Scheduler::scheduler();
-    BOOST_CHECK_THROW(plasma::hermes::Hermes herm(sched, port, "/dev/null"),
+    BOOST_CHECK_THROW(oracle::hermes::Hermes herm(sched, port, "/dev/null"),
                       elle::Exception);
   };
 
@@ -238,7 +238,7 @@ BOOST_AUTO_TEST_CASE(test_bad_basepath)
   clean("/tmp/clerk");
 }
 
-BOOST_AUTO_TEST_CASE(test_reboot)
+BOOST_AUTO_TEST_CASE(test_restart)
 {
   reactor::Scheduler sched;
   int port(4242);
@@ -246,7 +246,7 @@ BOOST_AUTO_TEST_CASE(test_reboot)
   auto first_server = [=] ()
   {
     auto& sched = *reactor::Scheduler::scheduler();
-    plasma::hermes::Hermes herm(sched, port, "/tmp/clerk");
+    oracle::hermes::Hermes herm(sched, port, "/tmp/clerk");
 
     herm.run();
   };
@@ -256,7 +256,7 @@ BOOST_AUTO_TEST_CASE(test_reboot)
     auto& sched = *reactor::Scheduler::scheduler();
     sched.current()->wait(*to_wait);
 
-    plasma::hermes::Hermes herm(sched, port, "/tmp/clerk");
+    oracle::hermes::Hermes herm(sched, port, "/tmp/clerk");
 
     herm.run();
   };
@@ -268,10 +268,10 @@ BOOST_AUTO_TEST_CASE(test_reboot)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    plasma::hermes::Handler handler(channels);
+    oracle::hermes::Handler handler(channels);
 
     std::string msg("Hello there, I am a bit of file.");
-    elle::Buffer input(msg, msg.size());
+    elle::Buffer input(msg.c_str(), msg.size());
     BOOST_CHECK_EQUAL(handler.store(5, 1, input), input.size());
     BOOST_CHECK_EQUAL(handler.serve(5, 1).size(), input.size());
 
@@ -287,11 +287,11 @@ BOOST_AUTO_TEST_CASE(test_reboot)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    plasma::hermes::Handler handler(channels);
+    oracle::hermes::Handler handler(channels);
 
     BOOST_CHECK_NO_THROW(handler.serve(5, 1));
     // 28 is the size of the previously stored file.
-    BOOST_CHECK_EQUAL(handler.serve(5, 1).size(), 28);
+    BOOST_CHECK_EQUAL(handler.serve(5, 1).size(), 32);
 
     serv->terminate_now();
   };
@@ -306,7 +306,7 @@ BOOST_AUTO_TEST_CASE(test_reboot)
   clean("/tmp/clerk");
 }
 
-BOOST_AUTO_TEST_CASE(test_reboot)
+BOOST_AUTO_TEST_CASE(test_restart_fail)
 {
   reactor::Scheduler sched;
   int port(4242);
@@ -314,7 +314,7 @@ BOOST_AUTO_TEST_CASE(test_reboot)
   auto first_server = [=] ()
   {
     auto& sched = *reactor::Scheduler::scheduler();
-    plasma::hermes::Hermes herm(sched, port, "/tmp/clerk");
+    oracle::hermes::Hermes herm(sched, port, "/tmp/clerk");
 
     herm.run();
   };
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(test_reboot)
     auto& sched = *reactor::Scheduler::scheduler();
     sched.current()->wait(*to_wait);
 
-    plasma::hermes::Hermes herm(sched, port, "/tmp/clerk");
+    oracle::hermes::Hermes herm(sched, port, "/tmp/clerk");
 
     herm.run();
   };
@@ -336,12 +336,12 @@ BOOST_AUTO_TEST_CASE(test_reboot)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    plasma::hermes::Handler handler(channels);
+    oracle::hermes::Handler handler(channels);
 
     std::string msg("Hello there, I am a bit of file.");
-    elle::Buffer input(msg, msg.size());
-    BOOST_CHECK_EQUAL(handler.store(5, 1, input), input.size());
-    BOOST_CHECK_EQUAL(handler.serve(5, 1).size(), input.size());
+    elle::Buffer input(msg.c_str(), msg.size());
+    BOOST_CHECK_EQUAL(handler.store(6, 1, input), input.size());
+    BOOST_CHECK_EQUAL(handler.serve(6, 1).size(), input.size());
 
     serv->terminate_now();
   };
@@ -355,9 +355,9 @@ BOOST_AUTO_TEST_CASE(test_reboot)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    plasma::hermes::Handler handler(channels);
+    oracle::hermes::Handler handler(channels);
 
-    BOOST_CHECK_THROW(handler.serve(5, 1), elle::Exception);
+    BOOST_CHECK_THROW(handler.serve(99, 1), elle::Exception);
 
     serv->terminate_now();
   };
