@@ -122,6 +122,7 @@ class ResetAccount(Page):
         )
 
         import metalib
+        from meta import conf
         identity, public_key = metalib.generate_identity(
             str(user["_id"]),
             user['email'], user['password'],
