@@ -18,7 +18,7 @@ import time
 
 root_dir = os.path.realpath(os.path.dirname(__file__))
 
-class Meta:
+class Meta(object):
     def __init__(self,
                  meta_host = '0.0.0.0',
                  meta_port = 0,
