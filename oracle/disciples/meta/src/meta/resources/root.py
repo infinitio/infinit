@@ -97,6 +97,7 @@ class ResetAccount(Page):
                 error.OPERATION_NOT_PERMITTED,
                 msg = "The reset url is not valid anymore",
             )
+        print("User from hash %s" % user)
         return user
 
     def GET(self, hash):
@@ -144,11 +145,11 @@ class ResetAccount(Page):
             notifications = [],
             old_notifications = [],
             accounts = [
-                {'type':'email', 'id': user['email']}
+                {'type': 'email', 'id': user['email']}
             ],
             remaining_invitations = user['remaining_invitations'],
         )
-        return self.success({'user_id': str(user['_id'])})
+        return self.success({'user_id': str(user_id)})
 
 class DeclareLostPassword(Page):
     """Generate a reset password url.
