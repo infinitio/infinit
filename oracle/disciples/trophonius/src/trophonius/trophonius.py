@@ -1,4 +1,3 @@
-#!/usr/bin/env python2.7
 # -*- encoding: utf-8 -*-
 
 from __future__ import print_function
@@ -7,12 +6,13 @@ from twisted.internet import protocol, reactor, task
 from twisted.protocols import basic
 from twisted.python import log
 
-import os
-import json
-import time
-import pythia
-import pprint
 import clients
+import json
+import os
+import pprint
+import pythia
+import time
+import traceback
 
 response_matrix = {
     # Success code
@@ -57,15 +57,32 @@ class Trophonius(basic.LineReceiver):
         self.reason = None
 
     def _deinit(self):
+        # Stopping timers first.
+        if self._alive_service is not None and self._alive_service.active():
+            self._alive_service.cancel()
+        if self._ping_service is not None:
+            self._ping_service.stop()
+
+        # Try infinitly to disconnect the user.
+        while self.id and self.device_id and self.meta_client is not None:
+            log.msg("Disconnect user %s" % self.id)
+            try:
+                self.meta_client.post('/user/disconnect', {
+                    'user_id': self.id,
+                    'device_id': self.device_id,
+                })
+            except:
+                traceback.print_exc()
+                log.msg("Waiting 1 sec before trying to disconnect again")
+                time.sleep(1)
+
         # It's actually important to remove references of this instance
         # in the clients dictionary, else the memory won't be free
         if self.device_id and self.factory is not None:
             if self.device_id in self.factory.clients:
                 self.factory.clients.pop(self.device_id)
-        if self._alive_service is not None and self._alive_service.active():
-            self._alive_service.cancel()
-        if self._ping_service is not None:
-            self._ping_service.stop()
+
+        # Let's just cleanup stuffs.
         self.factory = None
         self.id = None
         self.token = None
@@ -97,21 +114,9 @@ class Trophonius(basic.LineReceiver):
     def connectionLost(self, reason):
         self.reason = self.reason or reason.getErrorMessage()
 
-        print(self.connectionLost, self.transport.getPeer(), self.reason)
+        log.msg(self.connectionLost, self.transport.getPeer(), self.reason)
 
-        try:
-            if self.id is None:
-                return # self._deinit() still called !
-
-            log.msg("Disconnect user %s" % self.id)
-
-            if self.meta_client is not None:
-                self.meta_client.post('/user/disconnect', {
-                    'user_id': self.id,
-                    'device_id': self.device_id,
-                })
-        finally:
-            self._deinit()
+        self._deinit()
 
     def _send_res(self, res, msg=""):
         if isinstance(res, dict):
@@ -159,6 +164,19 @@ class Trophonius(basic.LineReceiver):
             self.id = res["_id"]
             self.token = req["token"]
 
+            # If the user was previously connected with the same device id,
+            # force disconnection of this device.
+            if self.device_id in self.factory.clients:
+                log.msg("user %s on device %s was already connected" % (
+                    self.id, self.device_id)
+                )
+                try:
+                    self.factory.clients[self.device_id]._deinit()
+                except:
+                    from traceback import format_exc
+                    log.msg("unable to delete previous device: %s" % format_exc())
+
+            # Inform meta that the user is now connected.
             self.meta_client = pythia.Admin(server=self.factory.application.meta_url)
             res = self.meta_client.post('/user/connect', {
                 'user_id': self.id,
@@ -166,18 +184,7 @@ class Trophonius(basic.LineReceiver):
             })
             log.msg("User", self.id, "is now connected with device", self.device_id)
 
-            # Add the current client to the client list
-            assert isinstance(self.factory.clients, dict)
-            if self.device_id in self.factory.clients:
-                log.msg("user %s on device %s was already connected" % (
-                    self.id, self.device_id)
-                )
-                try:
-                    self.factory.clients[self.device_id]._deinit()
-                    del self.factory.clients[self.device_id]
-                except:
-                    from traceback import format_exc
-                    log.msg("unable to delete previous device: %s" % format_exc())
+            # Add the current client to the client list.
             self.factory.clients[self.device_id] = self
 
             # Enable the notifications for the current client
