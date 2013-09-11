@@ -10,7 +10,7 @@ if __name__ == '__main__':
     import utils
     files = [utils.RandomTempFile(100)]
     with utils.Servers() as (meta, trophonius, apertus):
-        for status in ["SenderCreateNetwork", "SenderCreateTransaction", "SenderCopyFiles", "SenderWaitForDecision", "GrantPermissions", "PublishInterfaces", "Connect", "Transfer"]:
+        for status in ["waiting_for_accept", "accepted", "running"]:
             for delay in [0, 10, 1000]:
                 sender, recipient = (CancelUser(meta_server = meta,
                                                 trophonius_server = trophonius,
