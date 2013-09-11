@@ -660,7 +660,7 @@ def configure(cxx_toolkit = None,
   hermes_cxx_config += boost.config()
   hermes_cxx_config += boost.config_system()
   hermes_cxx_config += boost.config_filesystem()
-  hermes_lib = drake.cxx.Executable('bin/hermes-server',
+  hermes_lib = drake.cxx.DynLib('lib/hermes-server',
                                     hermes_sources + [reactor_lib],
                                     cxx_toolkit, hermes_cxx_config)
 
@@ -1391,9 +1391,13 @@ def configure(cxx_toolkit = None,
   tests_cxx_config.lib_path_runtime('../../lib')
   tests_cxx_config.lib_path_runtime('../lib')
   tests_cxx_config += boost.config_test()
+  tests_cxx_config += boost.config_system()
+  tests_cxx_config += boost.config_filesystem()
+  tests_cxx_config.define("BOOST_TEST_DYN_LINK")
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib]
 
   tests_src_n_lib = [
+    ('plasma/hermes/tests/hermes.cc', [elle_lib, reactor_lib, protocol_lib, hermes_lib]),
     ('tests/testing_tests.cc', []),
     ('tests/unit/etoile/Etoile.cc', infinit_libs),
     ('tests/unit/etoile/Shrub.cc', infinit_libs),
