@@ -101,8 +101,10 @@ class ResetAccount(Page):
         return user
 
     def GET(self, hash):
+        usr = self.__user_from_hash(hash)
+        print("USER: %s" % usr)
         return self.success({
-            'email': self.__user_from_hash(hash)['email']
+            'email': usr['email'],
         })
 
     def POST(self, hash):
