@@ -6,7 +6,16 @@ import time
 import subprocess
 import argparse
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
+DIR = os.path.abspath(os.path.dirname(__file__))
+LIB_DIR = os.path.join(DIR, "..", "lib")
+
+# Export library path to prevent ssl libraries mismatch.
+ld_library_path = os.environ.get('LD_LIBRARY_PATH', '').split(':')
+ld_library_path.extend([LIB_DIR, '/usr/local/lib'])
+os.environ['LD_LIBRARY_PATH'] = ':'.join(ld_library_path)
+
+sys.path.insert(0, os.path.join(LIB_DIR, "python"))
+
 import meta.conf
 import apertus.conf
 
@@ -66,9 +75,6 @@ parser.add_argument(
 )
 
 import shlex
-
-DIR = os.path.abspath(os.path.dirname(__file__))
-LIB_DIR = os.path.join(DIR, "..", "lib")
 
 def ssd(command):
 	run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
