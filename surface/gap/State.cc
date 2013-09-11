@@ -495,8 +495,22 @@ namespace surface
 
       if (connection_status)
       {
-        this->_user_resync();
-        this->_transaction_resync();
+        bool resynched{false};
+        do
+        {
+          try
+          {
+            this->_user_resync();
+            this->_transaction_resync();
+            resynched = true;
+          }
+          catch (std::exception const&)
+          {
+            ELLE_WARN("%s: failed at resynching (%s)... retrying...",
+                      *this, elle::exception_string());
+          }
+        }
+        while (!resynched);
       }
 
       this->enqueue<ConnectionStatus>(ConnectionStatus(connection_status));
