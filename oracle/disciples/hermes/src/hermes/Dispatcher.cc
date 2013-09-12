@@ -5,16 +5,12 @@ namespace oracle
 {
   namespace hermes
   {
-    // TODO: Implement this in a cleaner way, without a global variable.
-    static Clerk* global_clerk = nullptr;
-
     Dispatcher::Dispatcher(reactor::Scheduler& sched, Clerk& clerk, int port):
       _sched(sched),
       _serv(sched),
+      _clerk(clerk),
       _port(port)
-    {
-      global_clerk = &clerk;
-    }
+    {}
 
     void
     Dispatcher::run()
@@ -24,9 +20,21 @@ namespace oracle
       // Run an RPC at each connection.
       while (true)
       {
+        // TODO: Handle both Alice and Bob.
         infinit::protocol::Serializer s(_sched, *_serv.accept());
         infinit::protocol::ChanneledStream channels(_sched, s);
-        Handler(channels).run();
+
+        Handler rpc(channels);
+        rpc.store = std::bind(&Clerk::store,
+                              &_clerk,
+                              std::placeholders::_1,
+                              std::placeholders::_2,
+                              std::placeholders::_3);
+        rpc.serve = std::bind(&Clerk::serve,
+                              &_clerk,
+                              std::placeholders::_1,
+                              std::placeholders::_2);
+        rpc.run();
       }
     }
 
@@ -35,22 +43,7 @@ namespace oracle
                              elle::serialize::OutputBinaryArchive>(channels),
       store("store", *this),
       serve("serve", *this)
-    {
-      this->store = &store_wrapper;
-      this->serve = &serve_wrapper;
-    }
-
-    Size
-    Handler::store_wrapper(FileID id, Offset off, elle::Buffer& buff)
-    {
-      return global_clerk->store(ChunkMeta(id, off), buff);
-    }
-
-    elle::Buffer
-    Handler::serve_wrapper(FileID id, Offset off)
-    {
-      return global_clerk->serve(ChunkMeta(id, off));
-    }
+    {}
   }
 }
 

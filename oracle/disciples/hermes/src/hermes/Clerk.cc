@@ -30,8 +30,10 @@ namespace oracle
     }
 
     Size
-    Clerk::store(ChunkMeta const& current, elle::Buffer& buff)
+    Clerk::store(FileID id, Offset off, elle::Buffer& buff)
     {
+      ChunkMeta current(id, off);
+
       if (find(_chunks.begin(), _chunks.end(), current) == _chunks.end())
       {
         _chunks.push_back(current);
@@ -42,9 +44,10 @@ namespace oracle
     }
 
     elle::Buffer
-    Clerk::serve(ChunkMeta const& current)
+    Clerk::serve(FileID id, Offset off)
     {
-      // Return empty buffer if file is not found.
+      ChunkMeta current(id, off);
+
       if (find(_chunks.begin(), _chunks.end(), current) == _chunks.end())
         throw elle::Exception("Chunk not found");
 

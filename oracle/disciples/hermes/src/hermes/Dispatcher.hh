@@ -29,6 +29,7 @@ namespace oracle
       reactor::network::TCPServer _serv;
 
     private:
+      Clerk& _clerk;
       int _port;
     };
 
@@ -40,10 +41,6 @@ namespace oracle
       Handler(infinit::protocol::ChanneledStream& channels);
       RemoteProcedure<Size, FileID, Offset, elle::Buffer&> store;
       RemoteProcedure<elle::Buffer, FileID, Offset> serve;
-
-    private:
-      static Size store_wrapper(FileID id, Offset off, elle::Buffer& buff);
-      static elle::Buffer serve_wrapper(FileID id, Offset off);
     };
   }
 }
