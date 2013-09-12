@@ -105,18 +105,14 @@ namespace hole
       elle::io::Path path(this->path(address));
 
       // Create an empty block.
-      nucleus::proton::ImmutableBlock* block{
+      std::unique_ptr<nucleus::proton::ImmutableBlock> block{
         nucleus::factory::block().allocate<nucleus::proton::ImmutableBlock>(
           address.component())};
-
-      ELLE_FINALLY_ACTION_DELETE(block);
 
       // Deserialize the block.
       elle::serialize::from_file(path.string()) >> *block;
 
-      ELLE_FINALLY_ABORT(block);
-
-      return std::unique_ptr<nucleus::proton::Block>(block);
+      return std::move(block);
     }
 
     std::unique_ptr<nucleus::proton::Block>
@@ -127,18 +123,14 @@ namespace hole
       elle::io::Path path(this->path(address, revision));
 
       // Create an empty block.
-      nucleus::proton::MutableBlock* block{
+      std::unique_ptr<nucleus::proton::MutableBlock> block{
         nucleus::factory::block().allocate<nucleus::proton::MutableBlock>(
           address.component())};
-
-      ELLE_FINALLY_ACTION_DELETE(block);
 
       // Deserialize the block.
       elle::serialize::from_file(path.string()) >> *block;
 
-      ELLE_FINALLY_ABORT(block);
-
-      return std::unique_ptr<nucleus::proton::Block>(block);
+      return std::move(block);
     }
 
     void
