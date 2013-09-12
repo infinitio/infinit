@@ -161,7 +161,7 @@ def start(args):
     nginx_conf = os.path.join(RUNTIME_DIR, 'nginx.conf')
     with open(NGINX_CONF_TEMPLATE) as template:
         with open(nginx_conf, 'w') as conf:
-            conf.write(template.read().format(**nginx_conf_params))
+            conf.write(template.read() % nginx_conf_params)
 
     ssd("-b -p {apertus_pidfile0} -m -S -x {apertus_bin} --\
           --port 0".format(**keys))
