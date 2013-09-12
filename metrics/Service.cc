@@ -24,11 +24,11 @@ namespace metrics
   void
   Service::send(TimeMetricPair metric)
   {
-    elle::Finally save_metric{
-      [this, metric] {
+    elle::SafeFinally save_metric(
+      [this, metric]
+      {
         this->_queue.emplace_back(std::move(metric));
-      }
-    };
+      });
     this->_flush();
     this->_send(std::move(metric));
     // Everything went fine, no need to enqueue the metric.

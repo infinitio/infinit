@@ -618,12 +618,12 @@ namespace nucleus
                          this->_nest.agent_K(),
                          new Seam<T>};
 
-          ELLE_FINALLY_ACTION_DELETE(contents);
+          elle::SafeFinally free([&] { delete contents; });
 
           // Attach the block to the nest.
           Handle handle_newroot{this->_nest.attach(contents)};
 
-          ELLE_FINALLY_ABORT(contents);
+          free.abort();
 
           // Let us now proceed to the insertion of the two child
           // nodules in the new root.

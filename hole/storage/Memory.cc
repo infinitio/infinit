@@ -135,19 +135,15 @@ namespace hole
       ELLE_ASSERT(this->_exist(unique_address) == true);
 
       // Create an empty block.
-      nucleus::proton::ImmutableBlock* block{
+      std::unique_ptr<nucleus::proton::ImmutableBlock> block(
         nucleus::factory::block().allocate<nucleus::proton::ImmutableBlock>(
-          address.component())};
-
-      ELLE_FINALLY_ACTION_DELETE(block);
+          address.component()));
 
       // Deserialize the block.
       elle::serialize::from_string(
         this->_container.find(unique_address)->second) >> *block;
 
-      ELLE_FINALLY_ABORT(block);
-
-      return std::unique_ptr<nucleus::proton::Block>(block);
+      return block;
     }
 
     std::unique_ptr<nucleus::proton::Block>
