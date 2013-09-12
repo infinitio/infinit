@@ -29,7 +29,7 @@ META_FCGI_PORT = 9003
 META_PORT = meta.conf.META_PORT
 META_HOSTNAME = 'localhost'
 NGINX_USER = os.getenv("USER")
-NGINX_CONF_TEMPLATE = os.path.join(ROOT_DIR, 'prod', 'nginx.conf'),
+NGINX_CONF_TEMPLATE = os.path.join(ROOT_DIR, 'prod', 'nginx.conf')
 
 
 parser = argparse.ArgumentParser(description="Services launcher")
