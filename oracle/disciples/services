@@ -142,12 +142,8 @@ keys = {
 }
 
 def start_prod(args):
-    try:
-      print("mkdir", RUNTIME_DIR)
-      os.mkdir(RUNTIME_DIR)
-    except:
-      pass
-    import os
+    if not os.path.isdir(RUNTIME_DIR):
+        os.mkdir(RUNTIME_DIR)
 
     ssd("-b -p {apertus_pidfile0} -m -S -x {apertus_bin} --\
           --port 0".format(**keys))
