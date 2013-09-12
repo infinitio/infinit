@@ -90,12 +90,10 @@ namespace etoile
 
         Chemin chemin(route, venue, venue.elements().size());
 
-
+        gear::Identifier identifier(wall::Directory::load(etoile, chemin));
+        elle::With<elle::Finally>(
+          [&]{ wall::Directory::discard(etoile, identifier);}) << [&]
         {
-          gear::Identifier identifier(wall::Directory::load(etoile, chemin));
-          elle::Finally discard([&]{
-              wall::Directory::discard(etoile, identifier);
-            });
           nucleus::neutron::Entry const* entry =
             wall::Directory::lookup(etoile, identifier, slice);
 
@@ -111,7 +109,7 @@ namespace etoile
           if (entry == nullptr)
             throw wall::NoSuchFileOrDirectory(*reactor::Scheduler::scheduler(),
                                               slice);
-        }
+        };
         venue.append(address, revision);
       }
 
