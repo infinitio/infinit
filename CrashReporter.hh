@@ -86,6 +86,16 @@ namespace elle
       bool _quit;
     };
 
+    /// Function for sending existing crash reports
+    bool
+    existing_report(std::string const& host,
+                    uint16_t port,
+                    std::string const& user_name = "",
+                    std::string const& os_description = "",
+                    std::string const& info = "",
+                    std::string const& file = "");
+
+    /// Function for sending current crash
     bool
     report(std::string const& host,
            uint16_t port,

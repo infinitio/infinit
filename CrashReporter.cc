@@ -215,10 +215,10 @@ namespace elle
                      int port,
                      std::string const& name,
                      bool quit):
-      _host(host),
-      _port(port),
-      _name{name},
-      _quit{quit}
+                     _host(host),
+                     _port(port),
+                     _name{name},
+                     _quit{quit}
     {}
 
     Handler::Handler(std::string const& host,
@@ -250,6 +250,65 @@ namespace elle
 
       if (this->_quit)
         ::exit(sig);
+    }
+
+    bool
+    existing_report(std::string const& host,
+                    uint16_t port,
+                    std::string const& user_name,
+                    std::string const& os_description,
+                    std::string const& info,
+                    std::string const& file)
+    {
+      ELLE_TRACE("Report old crash");
+
+      elle::format::json::Array env_arr{};
+
+      for (auto const& pair: elle::os::environ())
+        if (boost::starts_with(pair.first, "ELLE_") or
+            boost::starts_with(pair.first, "INFINIT_"))
+          env_arr.push_back(pair.first + " = " + pair.second);
+
+      elle::format::json::Dictionary request;
+
+      request["user_name"] = user_name;
+      request["client_os"] = os_description;
+      request["more"] = info;
+      request["env"] = env_arr;
+      request["version"] = INFINIT_VERSION;
+      request["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
+      request["file"] = file;
+#ifdef INFINIT_PRODUCTION_BUILD
+      request["send"] = true;
+#else
+      request["send"] = !request["email"].as<std::string>().empty();
+#endif
+
+      std::stringstream json_stream;
+      request.repr(json_stream);
+      std::string url = elle::sprintf("http://%s:%d/debug/existing-report",
+                                      host,
+                                      port);
+      try
+        {
+          // We have to tricks because web.py doesn't handle chunked POST.
+          auto post_config = curly::make_post();
+          post_config.url(url);
+          post_config.option(CURLOPT_POSTFIELDSIZE, json_stream.str().size());
+          post_config.input(json_stream);
+          post_config.user_agent("InfinitDesktop");
+          post_config.headers({
+            {"Content-type", "application/json"},
+            {"Expect", ""}
+          });
+          curly::request r(std::move(post_config));
+          return true;
+        }
+      catch (...)
+        {
+          ELLE_WARN("Unable to put on %s: '%s'", url, json_stream.str());
+          return false;
+        }
     }
 
     bool
