@@ -85,7 +85,7 @@ parser.add_argument(
 import shlex
 
 def ssd(command):
-	run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
+	return run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
 
 def run(command):
     env = {
@@ -93,7 +93,10 @@ def run(command):
     }
     try:
         print(' '.join(command.split()))
-        subprocess.check_call(shlex.split(command), env=env)
+        return subprocess.check_call(shlex.split(command), env=env)
+    except subprocess.CalledProcessError as e:
+        print(e)
+        return e.returncode
     except Exception as e:
         print(e)
 
@@ -147,7 +150,20 @@ keys = {
     'apertus_pidfile2': os.path.join(RUNTIME_DIR, 'apertus2.pid'),
     'apertus_pidfile_proxy': os.path.join(RUNTIME_DIR, 'apertus-proxy.pid'),
     'www_dir': os.path.join('.', os.path.relpath(RUNTIME_DIR)),
+    'nginx_pidfile': os.path.join('.', os.path.relpath(RUNTIME_DIR), 'nginx.pid'),
 }
+
+ldb_init_script_status = """
+0	program is running or service is OK
+1	program is dead and /var/run pid file exists
+2	program is dead and /var/lock lock file exists
+3	program is not running
+4	program or service status is unknown
+5-99	reserved for future LSB use
+100-149	reserved for distribution use
+150-199	reserved for application use
+200-254	reserved
+"""
 
 def start(args):
     if not os.path.isdir(RUNTIME_DIR):
@@ -163,31 +179,38 @@ def start(args):
         with open(nginx_conf, 'w') as conf:
             conf.write(template.read() % nginx_conf_params)
 
-    ssd("-b -p {apertus_pidfile0} -m -S -x {apertus_bin} --\
-          --port 0".format(**keys))
+    if ssd("-p {apertus_pidfile0} -T".format(**keys)) != 0:
+      ssd("-b -p {apertus_pidfile0} -m -S -x {apertus_bin} --\
+            --port 0".format(**keys))
 
-    ssd("-b -p {apertus_pidfile1} -m -S -x {apertus_bin} --\
-          --port 0".format(**keys))
+    if ssd("-p {apertus_pidfile1} -T".format(**keys)) != 0:
+      ssd("-b -p {apertus_pidfile1} -m -S -x {apertus_bin} --\
+            --port 0".format(**keys))
 
-    ssd("-b -p {apertus_pidfile2} -m -S -x {apertus_bin} --\
-          --port 0".format(**keys))
+    if ssd("-p {apertus_pidfile2} -T".format(**keys)) != 0:
+      ssd("-b -p {apertus_pidfile2} -m -S -x {apertus_bin} --\
+            --port 0".format(**keys))
 
-    ssd("-b -p {apertus_pidfile_proxy} -m -S -x {apertus_bin} --\
-          --proxy --port {apertus_proxy_port}".format(**keys))
+    if ssd("-p {apertus_pidfile_proxy} -T".format(**keys)) != 0:
+      ssd("-b -p {apertus_pidfile_proxy} -m -S -x {apertus_bin} --\
+            --proxy --port {apertus_proxy_port}".format(**keys))
 
-    ssd("-b -p {tropho_pidfile} -m -S -x {tropho_bin} --\
-          --port {tropho_port} --control-port {tropho_cport}".format(**keys))
+    if ssd("-p {tropho_pidfile} -T".format(**keys)) != 0:
+      ssd("-b -p {tropho_pidfile} -m -S -x {tropho_bin} --\
+            --port {tropho_port} --control-port {tropho_cport}".format(**keys))
 
-    run(' '.join([
-        "spawn-fcgi -P {meta_pidfile} -d ./ -a 127.0.0.1 -p {meta_fport}",
-        "--",
-        "{meta_bin} --fcgi",
-        "--port {meta_port}",
-        "--apertus-port {apertus_proxy_port}",
-        "--apertus-host {apertus_host}",
-    ]).format(**keys))
+    if ssd("-p {nginx_pidfile} -T".format(**keys)) != 0:
+      run(' '.join([
+          "spawn-fcgi -P {meta_pidfile} -d ./ -a 127.0.0.1 -p {meta_fport}",
+          "--",
+          "{meta_bin} --fcgi",
+          "--port {meta_port}",
+          "--apertus-port {apertus_proxy_port}",
+          "--apertus-host {apertus_host}",
+      ]).format(**keys))
 
-    run("sudo nginx -p {www_dir} -c nginx.conf".format(**keys))
+    if ssd("-p {nginx_pidfile} -T".format(**keys)) != 0:
+      run("sudo nginx -p {www_dir} -c ../prod/nginx.conf".format(**keys))
 
 def stop(args):
     ssd("-p {apertus_pidfile0} -K".format(**keys))
