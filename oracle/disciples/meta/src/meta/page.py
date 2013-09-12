@@ -36,6 +36,7 @@ class Page(object):
         self._user = None
         if not web.ctx.host.startswith('v2.meta.api.') and \
            not web.ctx.host.startswith('localhost') and \
+           not web.ctx.host.startswith('127.0.0.1') and \
            not 'development' in web.ctx.host:
             raise Exception("XXX Wrong version asked")
 

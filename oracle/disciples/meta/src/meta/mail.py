@@ -72,6 +72,29 @@ def send(email,
     finally:
         smtp_server.quit()
 
+EXISTING_BACKTRACE_SUBJECT = u"""Crash Report (%(client_os)s)""".strip()
+EXISTING_BACKTRACE_CONTENT = u"""
+
+Backtrace and state log attached.
+
+OS: %(client_os)s
+
+Infinit Version: %(version)s
+
+User Name: %(user_name)s
+
+-----------
+Environment
+-----------
+%(env)s
+
+----------------------
+Additional Information
+----------------------
+%(more)s
+""".strip()
+
+
 BACKTRACE_SUBJECT = u"""Crash report: %(signal)s in %(module)s - %(user)s""".strip()
 BACKTRACE_CONTENT = u"""
 %(user)s
