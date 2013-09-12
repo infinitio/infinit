@@ -252,17 +252,7 @@ namespace plasma
         // Add '\n' to request.
         request << std::endl;
 
-        try
-        {
-          socket->write(reactor::network::Buffer(request.str()));
-        }
-        catch (elle::Exception const&)
-        {
-          throw elle::HTTPException(
-            elle::ResponseCode::error,
-            elle::sprintf("error writing on socket: %s",
-                          elle::exception_string()));
-        }
+        socket->write(reactor::network::Buffer(request.str()));
         this->_connected.open();
       }
 
