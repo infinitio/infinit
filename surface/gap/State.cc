@@ -27,6 +27,8 @@
 
 #include <openssl/sha.h>
 
+#include <version.hh>
+
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
 namespace surface
@@ -55,6 +57,7 @@ namespace surface
         elle::log::logger(
           std::unique_ptr<elle::log::Logger>{new elle::log::TextLogger(out)});
       }
+      ELLE_LOG("Infinit Version: %s", INFINIT_VERSION);
     }
 
     namespace
