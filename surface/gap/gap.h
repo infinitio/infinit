@@ -442,9 +442,13 @@ extern "C" {
   gap_send_file_crash_report(char const* module,
                              char const* filename);
 
+  /// Send existing crash log to the server
   gap_Status
-  gap_send_last_crash_logs(char const* _crash_report,
-                           char const* _state_log);
+  gap_send_last_crash_logs(char const* _user_name,
+                           char const* _crash_report,
+                           char const* _state_log,
+                           char const* _os_description,
+                           char const* _additional_info);
 
   gap_Status
   gap_gather_crash_reports(char const* user_id,

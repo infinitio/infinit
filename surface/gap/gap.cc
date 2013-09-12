@@ -1204,7 +1204,11 @@ extern "C"
   }
 
   gap_Status
-  gap_send_last_crash_logs(char const* _crash_report, char const* _state_log)
+  gap_send_last_crash_logs(char const* _user_name,
+                           char const* _crash_report,
+                           char const* _state_log,
+                           char const* _os_description,
+                           char const* _additional_info)
   {
     try
     {
@@ -1212,6 +1216,9 @@ extern "C"
       boost::filesystem::path state_log_path(_state_log);
 
       std::string const crash_archive = "/tmp/infinit-crash-archive";
+      std::string const user_name{_user_name};
+      std::string const os_description{_os_description};
+      std::string const additional_info{_additional_info};
 
       std::list<std::string> args{"cjf", crash_archive};
       if (boost::filesystem::exists(crash_report_path))
@@ -1238,13 +1245,12 @@ extern "C"
 #else
         std::string b64 = elle::system::check_output("base64", crash_archive);
 #endif
-        auto title = elle::sprintf("Application Crash Report");
-        elle::crash::report(common::meta::host(),
-                            common::meta::port(),
-                            "Logs", title,
-                            elle::Backtrace::current(),
-                            "Logs attached",
-                            b64);
+        elle::crash::existing_report(common::meta::host(), // meta host
+                                     common::meta::port(), // meta port
+                                     user_name,            // user name
+                                     os_description,       // OS description
+                                     additional_info,      // additional info
+                                     b64);                 // file
       }
       else
       {
