@@ -305,7 +305,7 @@ namespace etoile
             //
 
             // XXX[why isn't there such an assert in store and destroy also? there should be!]
-            assert(!scope->actors.empty());
+            ELLE_ASSERT(!scope->actors.empty());
             break;
           }
         }
