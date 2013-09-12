@@ -907,7 +907,7 @@ def configure(cxx_toolkit = None,
     horizon_sources = drake.nodes(
       'horizon/Crib.cc',
       'horizon/Crib.hh',
-      'horizon/Crux.cc',
+      # 'horizon/Crux.cc',
       'horizon/Handle.cc',
       'horizon/Handle.hh',
       'horizon/Horizon.cc',
