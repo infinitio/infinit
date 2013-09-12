@@ -2,6 +2,8 @@
 
 #include <elle/serialize/VectorSerializer.hxx>
 #include <elle/utility/Time.hh>
+#include <elle/finally.hh>
+#include <elle/With.hh>
 
 #include <reactor/network/exception.hh>
 
@@ -111,25 +113,26 @@ namespace hole
           this->_rpcs_handler = nullptr;
           this->_slug._remove(this);
         };
-        elle::Finally on_exit(std::move(fn_on_exit));
-
-        try
+        elle::With<elle::Finally>([&] { fn_on_exit(); }) << [&]
         {
-          this->_rpcs.run();
-        }
-        catch (elle::Exception& e)
-        {
-          ELLE_WARN("%s: discarded: %s", *this, e.what());
-        }
-        catch (reactor::Terminate const&)
-        {
-          throw;
-        }
-        catch (...)
-        {
-          ELLE_ERR("exception escaped from rpcs: %s", elle::exception_string());
-          throw;
-        }
+          try
+          {
+            this->_rpcs.run();
+          }
+          catch (elle::Exception& e)
+          {
+            ELLE_WARN("%s: discarded: %s", *this, e.what());
+          }
+          catch (reactor::Terminate const&)
+          {
+            throw;
+          }
+          catch (...)
+          {
+            ELLE_ERR("exception escaped from rpcs: %s", elle::exception_string());
+            throw;
+          }
+        };
       }
 
       /*----.
