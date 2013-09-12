@@ -144,11 +144,11 @@ BOOST_AUTO_TEST_CASE(ping)
           ELLE_LOG("send ping");
           socket->write(network::Buffer(msg));
         }, "ping", period));
-    elle::Finally end_ping([&] { ping->terminate_now(); });
+    elle::SafeFinally end_ping([&] { ping->terminate_now(); });
 
     auto previous = boost::posix_time::microsec_clock::local_time();
     int received = 0;
-    elle::Finally check([&] {
+    elle::SafeFinally check([&] {
         BOOST_CHECK_LE(std::abs(received - periods), 1);
       });
     while (true)
@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE(ping)
   auto client_thread = [&]
   {
     plasma::trophonius::Client client("127.0.0.1", port, [] (bool) {});
-    elle::Finally check([&] { BOOST_CHECK_EQUAL(client.reconnected(), 0); });
+    elle::SafeFinally check([&] {BOOST_CHECK_EQUAL(client.reconnected(), 0);});
     client.ping_period(period);
     wait(sync_client); // Listening
     client.connect("", "", "");
@@ -262,7 +262,7 @@ BOOST_AUTO_TEST_CASE(noping)
   auto client_thread = [&]
   {
     plasma::trophonius::Client client("127.0.0.1", port, [] (bool) {});
-    elle::Finally check([&] {
+    elle::SafeFinally check([&] {
         BOOST_CHECK_LE(std::abs(client.reconnected() - (periods / 2)), 1);
       });
     client.ping_period(period);
