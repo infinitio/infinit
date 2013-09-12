@@ -6,8 +6,9 @@ import time
 import subprocess
 import argparse
 
-DIR = os.path.abspath(os.path.dirname(__file__))
-LIB_DIR = os.path.join(DIR, "..", "lib")
+BIN_DIR = os.path.abspath(os.path.dirname(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(BIN_DIR, '..'))
+LIB_DIR = os.path.join(BIN_DIR, "..", "lib")
 
 # Export library path to prevent ssl libraries mismatch.
 ld_library_path = os.environ.get('LD_LIBRARY_PATH', '').split(':')
@@ -20,26 +21,27 @@ import meta.conf
 import apertus.conf
 
 SSD="/sbin/start-stop-daemon"
-PWD=os.getenv("PWD")
-RUNTIME_DIR=os.path.join(PWD, 'runtime')
-INSTALL_DIR=PWD
-APERTUS_PORT=apertus.conf.PORT
-TROPHO_PORT=meta.conf.TROPHONIUS_PORT
-TROPHO_CPORT=meta.conf.TROPHONIUS_CONTROL_PORT
-META_FCGI_PORT=9003
-META_PORT=meta.conf.META_PORT
+RUNTIME_DIR = os.path.join(ROOT_DIR, 'runtime')
+APERTUS_PORT = apertus.conf.PORT
+TROPHO_PORT = meta.conf.TROPHONIUS_PORT
+TROPHO_CPORT = meta.conf.TROPHONIUS_CONTROL_PORT
+META_FCGI_PORT = 9003
+META_PORT = meta.conf.META_PORT
+META_HOSTNAME = 'localhost'
+NGINX_USER = os.getenv("USER")
+NGINX_CONF_TEMPLATE = os.path.join(ROOT_DIR, 'prod', 'nginx.conf'),
 
 
 parser = argparse.ArgumentParser(description="Services launcher")
 
 parser.add_argument(
-   '--stop-prod',
+   '--stop',
    default = False,
    action = "store_true",
 )
 
 parser.add_argument(
-   '--start-prod',
+   '--start',
    default = False,
    action = "store_true",
 )
@@ -48,6 +50,12 @@ parser.add_argument(
     '--meta-port',
     type = int,
     default = META_PORT,
+)
+
+parser.add_argument(
+    '--meta-host',
+    default = META_HOSTNAME,
+    help = "Set the correct host for the gateway",
 )
 
 parser.add_argument(
@@ -98,17 +106,17 @@ def reset_user_status():
     import meta.database
     meta.database.users().update(spec={}, document={"$set": {"connected":False, "connected_devices": []}}, multi=True)
 
-META_BIN = os.path.join(DIR, 'meta-server')
-APERTUS_BIN = os.path.join(DIR, 'apertus-server')
-TROPHONIUS_BIN = os.path.join(DIR, 'trophonius-server')
+META_BIN = os.path.join(BIN_DIR, 'meta-server')
+APERTUS_BIN = os.path.join(BIN_DIR, 'apertus-server')
+TROPHONIUS_BIN = os.path.join(BIN_DIR, 'trophonius-server')
 
 def main(argv):
     args = parser.parse_args(argv)
 
-    if args.start_prod:
-      start_prod(args)
-    elif args.stop_prod:
-      stop_prod(args)
+    if args.start:
+      start(args)
+    elif args.stop:
+      stop(args)
     else:
       make_dev(args)
 
@@ -141,9 +149,19 @@ keys = {
     'www_dir': os.path.join('.', os.path.relpath(RUNTIME_DIR)),
 }
 
-def start_prod(args):
+def start(args):
     if not os.path.isdir(RUNTIME_DIR):
         os.mkdir(RUNTIME_DIR)
+    nginx_conf_params = {
+        'NGINX_USER': 'infinit',
+        'META_PORT': META_PORT,
+        'META_HOSTNAME': META_HOSTNAME,
+        'META_FCGI_PORT': META_FCGI_PORT,
+    }
+    nginx_conf = os.path.join(RUNTIME_DIR, 'nginx.conf')
+    with open(NGINX_CONF_TEMPLATE) as template:
+        with open(nginx_conf, 'w') as conf:
+            conf.write(template.read().format(**nginx_conf_params))
 
     ssd("-b -p {apertus_pidfile0} -m -S -x {apertus_bin} --\
           --port 0".format(**keys))
@@ -160,22 +178,24 @@ def start_prod(args):
     ssd("-b -p {tropho_pidfile} -m -S -x {tropho_bin} --\
           --port {tropho_port} --control-port {tropho_cport}".format(**keys))
 
-    run("spawn-fcgi -P {meta_pidfile} -d ./ -a 127.0.0.1 -p {meta_fport} --\
-          {meta_bin} --fcgi\
-          --port {meta_port}\
-          --apertus-port {apertus_proxy_port}\
-          --apertus-host {apertus_host}".format(**keys))
+    run(' '.join(
+        "spawn-fcgi -P {meta_pidfile} -d ./ -a 127.0.0.1 -p {meta_fport} --",
+        "  {meta_bin} --fcgi",
+        " --port {meta_port}",
+        "  --apertus-port {apertus_proxy_port}",
+        "  --apertus-host {apertus_host}"
+    ).format(**keys))
 
-    run("sudo nginx -p {www_dir} -c ../prod/nginx.conf".format(**keys))
+    run("sudo nginx -p {www_dir} -c nginx.conf".format(**keys))
 
-def stop_prod(args):
+def stop(args):
     ssd("-p {apertus_pidfile0} -K".format(**keys))
     ssd("-p {apertus_pidfile1} -K".format(**keys))
     ssd("-p {apertus_pidfile2} -K".format(**keys))
     ssd("-p {apertus_pidfile_proxy} -K".format(**keys))
     ssd("-p {tropho_pidfile} -K".format(**keys))
     ssd("-p {meta_pidfile} -K".format(**keys))
-    run("sudo nginx -p {www_dir} -c ../prod/nginx.conf -s stop".format(**keys))
+    run("sudo nginx -p {www_dir} -c nginx.conf -s stop".format(**keys))
 
 def make_dev(args):
     processes = []
