@@ -22,11 +22,13 @@ namespace oracle
     {
     public:
       Dispatcher(reactor::Scheduler& sched, Clerk& clerk, int port);
+      ~Dispatcher();
       void run();
 
     private:
       reactor::Scheduler& _sched;
       reactor::network::TCPServer _serv;
+      std::vector<reactor::Thread*> _clients;
 
     private:
       Clerk& _clerk;

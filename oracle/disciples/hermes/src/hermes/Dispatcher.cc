@@ -12,6 +12,16 @@ namespace oracle
       _port(port)
     {}
 
+    Dispatcher::~Dispatcher()
+    {
+      for (auto client : _clients)
+        if (client != nullptr)
+        {
+          client->terminate_now();
+          delete client;
+        }
+    }
+
     void
     Dispatcher::run()
     {
@@ -20,21 +30,29 @@ namespace oracle
       // Run an RPC at each connection.
       while (true)
       {
-        // TODO: Handle both Alice and Bob.
-        infinit::protocol::Serializer s(_sched, *_serv.accept());
-        infinit::protocol::ChanneledStream channels(_sched, s);
+        reactor::network::TCPSocket* sock = _serv.accept();
 
-        Handler rpc(channels);
-        rpc.store = std::bind(&Clerk::store,
-                              &_clerk,
-                              std::placeholders::_1,
-                              std::placeholders::_2,
-                              std::placeholders::_3);
-        rpc.serve = std::bind(&Clerk::serve,
-                              &_clerk,
-                              std::placeholders::_1,
-                              std::placeholders::_2);
-        rpc.run();
+        auto client = [=] ()
+        {
+          infinit::protocol::Serializer s(_sched, *sock);
+          infinit::protocol::ChanneledStream channels(_sched, s);
+
+          Handler rpc(channels);
+
+          rpc.store = std::bind(&Clerk::store,
+                                &_clerk,
+                                std::placeholders::_1,
+                                std::placeholders::_2,
+                                std::placeholders::_3);
+          rpc.serve = std::bind(&Clerk::serve,
+                                &_clerk,
+                                std::placeholders::_1,
+                                std::placeholders::_2);
+
+          rpc.run();
+        };
+
+        _clients.emplace_back(new reactor::Thread(_sched, "hihi", client));
       }
     }
 
