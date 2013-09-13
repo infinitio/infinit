@@ -66,7 +66,7 @@ class Application(object):
             cls.__session__ = session
             cls.__application__ = self
 
-    def reset_user_status():
+    def reset_user_status(self):
         """XXX We reset all user's status to be "disconnected". We know it's
         true because there is only on trophonius instance at the moment.
         The right way to do it is to disconnect all users (in the database)
@@ -77,6 +77,7 @@ class Application(object):
             document = {"$set": {"connected":False, "connected_devices": []}},
             multi = True,
         )
+
     def run(self):
         """
         Run the web server
