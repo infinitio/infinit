@@ -51,7 +51,6 @@ class _Page(Page):
             notification_id,
             recipient_ids = swaggers,
             message = d,
-            store = False,
         )
     def __ensure_user_exists(self, user):
         assert user is not None
@@ -114,7 +113,6 @@ class _Page(Page):
                         notifier.NEW_SWAGGER,
                         message = {'user_id': user['_id']},
                         recipient_ids = [peer,],
-                        store = False,
                     )
 
 
@@ -716,8 +714,7 @@ class _DeviceAccess(_Page):
                         "transaction_id": str(transaction['_id']),
                         "devices": list(transaction['nodes'].keys()),
                         "status": False
-                    },
-                    store = False,
+                    }
                 )
 
         self.notify_swaggers(
