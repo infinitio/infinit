@@ -821,7 +821,8 @@ namespace etoile
 
       ELLE_ASSERT_NEQ(block, nullptr);
 
-      ELLE_FINALLY_ACTION_DELETE(block);
+      // It's not safe.
+      elle::SafeFinally delete_block{ [&] { delete block; }};
 
       ELLE_ASSERT_EQ(block->network(), this->_some.network());
       ELLE_ASSERT_EQ(block->family(), this->_some.family());
@@ -835,12 +836,13 @@ namespace etoile
 
       ELLE_ASSERT_NEQ(egg->block(), nullptr);
 
-      ELLE_FINALLY_ABORT(block);
+      delete_block.abort();
 
       // Allocate a pod for holding the egg.
       Pod* pod = new Pod{std::move(egg), this->_history.end()};
 
-      ELLE_FINALLY_ACTION_DELETE(pod);
+      // XXX: It's not safe.
+      elle::SafeFinally delete_pod{ [&] { delete pod; }};
 
       ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
       ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
@@ -854,7 +856,7 @@ namespace etoile
       // Insert the pod.
       this->_insert(pod);
 
-      ELLE_FINALLY_ABORT(pod);
+      delete_pod.abort();
 
       // Construct a handle referencing the created egg.
       nucleus::proton::Handle handle{nucleus::proton::Handle{pod->egg()}};
@@ -900,7 +902,8 @@ namespace etoile
           // Create a new pod.
           Pod* pod = new Pod{handle.egg(), this->_history.end()};
 
-          ELLE_FINALLY_ACTION_DELETE(pod);
+          // XXX: It's not safe.
+          elle::SafeFinally delete_pod{ [&] { delete pod; }};
 
           ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
           ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
@@ -914,7 +917,7 @@ namespace etoile
           // Insert the pod in the nest.
           this->_insert(pod);
 
-          ELLE_FINALLY_ABORT(pod);
+          delete_pod.abort();
 
           // No need to map the pod since it is no longer
           // referenced i.e detached.
@@ -1092,7 +1095,8 @@ namespace etoile
             // Create a new pod.
             Pod* pod = new Pod{handle.egg(), this->_history.end()};
 
-            ELLE_FINALLY_ACTION_DELETE(pod);
+            // XXX: It's not safe.
+            elle::SafeFinally delete_pod{ [&] { delete pod; }};
 
             ELLE_ASSERT_EQ(pod->attachment(), Pod::Attachment::attached);
             ELLE_ASSERT_EQ(pod->state(), Pod::State::dangling);
@@ -1110,7 +1114,7 @@ namespace etoile
             // to reference the same pod's egg.
             this->_map(handle.address(), pod);
 
-            ELLE_FINALLY_ABORT(pod);
+            delete_pod.abort();
 
             // Actually pull the block from the storage layer.
             this->_pull(pod);

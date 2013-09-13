@@ -248,7 +248,8 @@ namespace etoile
             {
               nucleus::neutron::Record* record = nullptr;
 
-              ELLE_FINALLY_ACTION_DELETE(record);
+              // XXX: It not safe.
+              elle::SafeFinally delete_record{ [&] { delete record; } };
 
               ELLE_TRACE("the target subject is _not_ present in the "
                          "Access block");
@@ -311,7 +312,7 @@ namespace etoile
               ELLE_TRACE("add the record to the Access block");
               door().insert(record);
 
-              ELLE_FINALLY_ABORT(record);
+              delete_record.abort();
             }
 
           door.close();

@@ -34,11 +34,12 @@ namespace etoile
     void
     Transcript::record(Action const* action)
     {
-      ELLE_FINALLY_ACTION_DELETE(action);
+      // XXX: It's not safe.
+      elle::SafeFinally delete_action{[&] { delete action; }};
 
       this->_container.push_back(action);
 
-      ELLE_FINALLY_ABORT(action);
+      delete_action.abort();
     }
 
     elle::Size

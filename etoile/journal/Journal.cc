@@ -261,7 +261,8 @@ namespace etoile
         nucleus::factory::block().allocate<
           nucleus::proton::ImmutableBlock>(component)};
 
-      ELLE_FINALLY_ACTION_DELETE(_block);
+      // XXX: It's not safe.
+      elle::SafeFinally delete_block{ [&] { delete _block; }};
 
       // Deserialize the archive into a new block.
       // XXX[to improve: contact Raphael or cf. hole/storage/]
@@ -270,7 +271,7 @@ namespace etoile
           elle::serialize::BinaryArchive>
         *>(_block)->deserialize(stream);
 
-      ELLE_FINALLY_ABORT(_block);
+      delete_block.abort();
 
       return (std::unique_ptr<nucleus::proton::Block>(_block));
     }

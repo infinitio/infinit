@@ -210,7 +210,8 @@ namespace etoile
           // XXX[use finally, from cryptography]
           cryptography::KeyPair* pass(nullptr);
 
-          ELLE_FINALLY_ACTION_DELETE(pass);
+          // XXX: it's not safe.
+          elle::SafeFinally delete_pass{ [&] { delete pass; }};
 
           // XXX: restore history handling
           // does the network support the history?
@@ -276,7 +277,7 @@ namespace etoile
                                  pass->K(),
                                  manager_token);
 
-          ELLE_FINALLY_ABORT(pass);
+          delete_pass.abort();
 
           delete pass;
 

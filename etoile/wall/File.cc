@@ -163,7 +163,8 @@ namespace etoile
 
       elle::Buffer* buffer = nullptr;
 
-      ELLE_FINALLY_ACTION_DELETE(buffer);
+      // XXX: It's not safe.
+      elle::SafeFinally delete_buffer{ [&] { delete buffer; }};
 
       // declare a critical section.
       {
