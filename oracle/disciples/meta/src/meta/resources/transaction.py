@@ -188,7 +188,12 @@ class Create(Page):
                 )
 
         from user import increase_swag
-        increase_swag(self.user['_id'], recipient_id, self.notifier)
+        increase_swag(
+            self.database,
+            self.user['_id'],
+            recipient_id,
+            self.notifier,
+        )
 
         return self.success({
             'created_transaction_id': transaction_id,

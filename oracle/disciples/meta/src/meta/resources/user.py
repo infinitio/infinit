@@ -35,6 +35,13 @@ import pythia
 # Users
 #
 
+def user_by_id(database, _id, ensure_user_exists = True):
+    assert isinstance(_id, database.ObjectId)
+    user = database.users.find_one(_id)
+    if ensure_user_exists:
+        assert user is not None
+    return user
+
 class _Page(Page):
     def notify_swaggers(self, notification_id, data, user_id = None):
         if user_id is None:
@@ -42,7 +49,7 @@ class _Page(Page):
             user_id = user['_id']
         else:
             assert isinstance(user_id, database.ObjectId)
-            user = self.user_by_id(user_id)
+            user = self._user_by_id(user_id)
 
         swaggers = map(database.ObjectId, user['swaggers'].keys())
         d = {"user_id" : user_id}
@@ -55,13 +62,8 @@ class _Page(Page):
     def __ensure_user_exists(self, user):
         assert user is not None
 
-    def user_by_id(self, _id, ensure_user_exists = True):
-        assert isinstance(_id, database.ObjectId)
-        user = self.database.users.find_one(_id)
-        if ensure_user_exists:
-            self.__ensure_user_exists(user)
-
-        return user
+    def _user_by_id(self, _id, ensure_user_exists = True):
+        return user_by_id(self.database, _id, ensure_user_exists)
 
     def user_by_public_key(self, key, ensure_user_exists = True):
         user = self.database.users.find_one({'public_key': key})
@@ -93,27 +95,30 @@ class _Page(Page):
         assert isinstance(connected, bool)
         return connected
 
-    def increase_swag(self, lhs, rhs, notifier_ = None):
-        assert isinstance(lhs, database.ObjectId)
-        assert isinstance(rhs, database.ObjectId)
+    def _increase_swag(self, lhs, rhs, notifier_ = None):
+        increase_swag(self.database, lhs, rhs, notifier)
 
-        lh_user = self.user_by_id(lhs)
-        rh_user = self.user_by_id(rhs)
+def increase_swag(database, lhs, rhs, notifier_ = None):
+    assert isinstance(lhs, database.ObjectId)
+    assert isinstance(rhs, database.ObjectId)
 
-        if lh_user is None or rh_user is None:
-            raise Exception("unknown user")
+    lh_user = user_by_id(database, lhs)
+    rh_user = user_by_id(database, rhs)
 
-        for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
-            user['swaggers'][str(peer)] = \
-                user['swaggers'].setdefault(str(peer), 0) + 1;
-            self.database.users.save(user)
-            if user['swaggers'][str(peer)] == 1: # New swagger.
-                if notifier_ is not None:
-                    notifier_.notify_some(
-                        notifier.NEW_SWAGGER,
-                        message = {'user_id': user['_id']},
-                        recipient_ids = [peer,],
-                    )
+    if lh_user is None or rh_user is None:
+        raise Exception("unknown user")
+
+    for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
+        user['swaggers'][str(peer)] = \
+            user['swaggers'].setdefault(str(peer), 0) + 1;
+        self.database.users.save(user)
+        if user['swaggers'][str(peer)] == 1: # New swagger.
+            if notifier_ is not None:
+                notifier_.notify_some(
+                    notifier.NEW_SWAGGER,
+                    message = {'user_id': user['_id']},
+                    recipient_ids = [peer,],
+                )
 
 
     def extract_user_fields(self, user):
@@ -232,7 +237,7 @@ class AddSwagger(_Page):
             return self.error(error.UNKNOWN, "You're not admin")
 
         print(self.data['user1'], self.data['user2'])
-        self.increase_swag(
+        self._increase_swag(
             database.ObjectId(self.data['user1']),
             database.ObjectId(self.data['user2']),
             notifier_ = self.notifier
@@ -403,7 +408,7 @@ class One(_Page):
         if '@' in id_or_email:
             user = self.user_by_email(id_or_email, ensure_user_exists = False)
         else:
-            user = self.user_by_id(database.ObjectId(id_or_email),
+            user = self._user_by_id(database.ObjectId(id_or_email),
                               ensure_user_exists = False)
         if user is None:
             return self.error(error.UNKNOWN_USER)
@@ -432,7 +437,7 @@ class Avatar(_Page):
 
     def GET(self, _id):
         # Why?
-        user = self.user_by_id(database.ObjectId(_id), ensure_user_exists = False)
+        user = self._user_by_id(database.ObjectId(_id), ensure_user_exists = False)
         image = user and user.get('avatar')
         if image:
             yield str(image)
@@ -664,7 +669,7 @@ class _DeviceAccess(_Page):
         return device
 
     def __set_connected(self, value, user_id, device_id):
-        assert self.user_by_id(user_id)
+        assert self._user_by_id(user_id)
         assert self.database.devices.find_one(device_id)
 
         device = self.__get_device(user_id, device_id)
