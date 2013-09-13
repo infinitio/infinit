@@ -51,6 +51,7 @@ namespace surface
             case TransferMachine::State::Connect:
             case TransferMachine::State::PeerDisconnected:
             case TransferMachine::State::PeerConnectionLost:
+              return gap_transaction_preparing;
             case TransferMachine::State::Transfer:
               return gap_transaction_running;
             case TransferMachine::State::Over:
