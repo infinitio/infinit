@@ -371,3 +371,51 @@ BOOST_AUTO_TEST_CASE(test_restart_fail)
   sched.run();
   clean("/tmp/clerk");
 }
+
+BOOST_AUTO_TEST_CASE(test_parallel)
+{
+  reactor::Scheduler sched;
+  int port(4242);
+
+  auto server = [&] ()
+  {
+    oracle::hermes::Hermes(sched, port, "/tmp/clerk").run();
+  };
+
+  auto client1 = [&] (reactor::Thread* serv)
+  {
+    reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
+    infinit::protocol::Serializer s(sched, socket);
+    infinit::protocol::ChanneledStream channels(sched, s);
+
+    oracle::hermes::Handler handler(channels);
+
+    std::string msg("Hello there, I am a bit of another file.");
+    elle::Buffer input(msg.c_str(), msg.size());
+    BOOST_CHECK_EQUAL(handler.store(7, 1, input), input.size());
+
+    sched.current()->wait(*serv);
+  };
+
+  auto client2 = [&] (reactor::Thread* serv)
+  {
+    reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
+    infinit::protocol::Serializer s(sched, socket);
+    infinit::protocol::ChanneledStream channels(sched, s);
+
+    oracle::hermes::Handler handler(channels);
+
+    std::string msg("Hello there, I am a bit of yet another file.");
+    elle::Buffer input(msg.c_str(), msg.size());
+    BOOST_CHECK_EQUAL(handler.store(7, 2, input), input.size());
+
+    serv->terminate_now();
+  };
+
+  reactor::Thread serv(sched, "serv", server);
+  reactor::Thread cli1(sched, "client1", std::bind(client1, &serv));
+  reactor::Thread cli2(sched, "client2", std::bind(client2, &serv));
+
+  sched.run();
+  clean("/tmp/clerk");
+}
