@@ -53,6 +53,7 @@ namespace oracle
     private:
       Size _save(ChunkMeta const& chunk, elle::Buffer& buff) const;
       elle::Buffer _retrieve(ChunkMeta const& chunk) const;
+      void _explore(boost::filesystem::path& path);
 
     private:
       std::vector<ChunkMeta> _chunks;
