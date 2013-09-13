@@ -223,7 +223,6 @@ def stop(args):
 def make_dev(args):
     processes = []
     try:
-        reset_user_status()
         processes.append(
             (
                 META_BIN,
