@@ -72,7 +72,7 @@ class Application(object):
         The right way to do it is to disconnect all users (in the database)
         when the trophonius instance goes down.
         """
-        pymongo.Connection(mongo_host, mongo_port).meta['users'].update(
+        pymongo.Connection(self.mongo_host, self.mongo_port).meta['users'].update(
             spec = {},
             document = {"$set": {"connected":False, "connected_devices": []}},
             multi = True,
