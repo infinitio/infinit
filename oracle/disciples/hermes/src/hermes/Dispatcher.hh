@@ -21,8 +21,10 @@ namespace oracle
     class Dispatcher
     {
     public:
-      Dispatcher(reactor::Scheduler& sched, Clerk& clerk, int port);
+      Dispatcher(reactor::Scheduler& sched, int port, std::string p);
       ~Dispatcher();
+
+    public:
       void run();
 
     private:
@@ -31,16 +33,17 @@ namespace oracle
       std::vector<reactor::Thread*> _clients;
 
     private:
-      Clerk& _clerk;
+      boost::filesystem::path _path;
       int _port;
     };
 
-    class Handler:
+    class HermesRPC:
       public infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
                                     elle::serialize::OutputBinaryArchive>
     {
     public:
-      Handler(infinit::protocol::ChanneledStream& channels);
+      HermesRPC(infinit::protocol::ChanneledStream& channels);
+      RemoteProcedure<void, TID> ident;
       RemoteProcedure<Size, FileID, Offset, elle::Buffer&> store;
       RemoteProcedure<elle::Buffer, FileID, Offset> fetch;
     };

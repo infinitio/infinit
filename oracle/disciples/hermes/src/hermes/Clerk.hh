@@ -19,6 +19,7 @@ namespace oracle
     typedef frete::Frete::FileID FileID;
     typedef frete::Frete::Offset Offset;
     typedef frete::Frete::Size Size;
+    typedef std::string TID;
 
     class ChunkMeta
     {
@@ -41,8 +42,10 @@ namespace oracle
     class Clerk
     {
     public:
-      Clerk(std::string base_path);
+      Clerk(boost::filesystem::path& base_path);
 
+    public:
+      void ident(TID id);
       Size store(FileID id, Offset off, elle::Buffer& buff);
       elle::Buffer fetch(FileID id, Offset off);
 
@@ -53,6 +56,7 @@ namespace oracle
     private:
       std::vector<ChunkMeta> _chunks;
       boost::filesystem::path _base_path;
+      bool _identified;
     };
   }
 }

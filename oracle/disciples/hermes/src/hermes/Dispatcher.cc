@@ -5,10 +5,10 @@ namespace oracle
 {
   namespace hermes
   {
-    Dispatcher::Dispatcher(reactor::Scheduler& sched, Clerk& clerk, int port):
+    Dispatcher::Dispatcher(reactor::Scheduler& sched, int port, std::string p):
       _sched(sched),
       _serv(sched),
-      _clerk(clerk),
+      _path(p),
       _port(port)
     {}
 
@@ -37,15 +37,21 @@ namespace oracle
           infinit::protocol::Serializer s(_sched, *sock);
           infinit::protocol::ChanneledStream channels(_sched, s);
 
-          Handler rpc(channels);
+          HermesRPC rpc(channels);
+          Clerk clerk(_path);
+
+          rpc.ident = std::bind(&Clerk::ident,
+                                &clerk,
+                                std::placeholders::_1);
 
           rpc.store = std::bind(&Clerk::store,
-                                &_clerk,
+                                &clerk,
                                 std::placeholders::_1,
                                 std::placeholders::_2,
                                 std::placeholders::_3);
+
           rpc.fetch = std::bind(&Clerk::fetch,
-                                &_clerk,
+                                &clerk,
                                 std::placeholders::_1,
                                 std::placeholders::_2);
 
@@ -57,9 +63,10 @@ namespace oracle
       }
     }
 
-    Handler::Handler(infinit::protocol::ChanneledStream& channels):
+    HermesRPC::HermesRPC(infinit::protocol::ChanneledStream& channels):
       infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
                              elle::serialize::OutputBinaryArchive>(channels),
+      ident("ident", *this),
       store("store", *this),
       fetch("fetch", *this)
     {}

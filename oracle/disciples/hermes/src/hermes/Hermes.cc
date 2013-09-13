@@ -9,8 +9,7 @@ namespace oracle
   {
     Hermes::Hermes(reactor::Scheduler& sched, int port, std::string base_path):
       _sched(sched),
-      _clerk(base_path),
-      _dis(sched, _clerk, port)
+      _dis(sched, port, base_path)
     {}
 
     void

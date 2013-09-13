@@ -6,8 +6,9 @@ namespace oracle
 {
   namespace hermes
   {
-    Clerk::Clerk(std::string base_path):
-      _base_path(base_path)
+    Clerk::Clerk(boost::filesystem::path& base_path):
+      _base_path(base_path),
+      _identified(false)
     {
       if (not boost::filesystem::exists(base_path))
         boost::filesystem::create_directory(base_path);
@@ -29,9 +30,20 @@ namespace oracle
       }
     }
 
+    void
+    Clerk::ident(TID id)
+    {
+      // TODO: Check stuff with Transaction ID.
+      _base_path /= boost::filesystem::path(id);
+      _identified = true;
+    }
+
     Size
     Clerk::store(FileID id, Offset off, elle::Buffer& buff)
     {
+      if (not _identified)
+        throw elle::Exception("Trying to store without identifying first.");
+
       ChunkMeta current(id, off);
 
       if (find(_chunks.begin(), _chunks.end(), current) == _chunks.end())
@@ -46,6 +58,9 @@ namespace oracle
     elle::Buffer
     Clerk::fetch(FileID id, Offset off)
     {
+      if (not _identified)
+        throw elle::Exception("Trying to fetch without identifying first.");
+
       ChunkMeta current(id, off);
 
       if (find(_chunks.begin(), _chunks.end(), current) == _chunks.end())

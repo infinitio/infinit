@@ -18,7 +18,6 @@ namespace oracle
 
     private:
       reactor::Scheduler& _sched;
-      Clerk _clerk;
       Dispatcher _dis;
     };
   }
