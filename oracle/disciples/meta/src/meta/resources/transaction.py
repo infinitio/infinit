@@ -290,7 +290,6 @@ class Update(Page):
             device_ids = device_ids,
             recipient_ids = recipient_ids,
             message = transaction,
-            store = False,
        )
 
     def POST(self):
@@ -485,7 +484,6 @@ class ConnectDevice(Page):
                     "devices": list(transaction['nodes'].keys()),
                     "status": True
                 },
-                store = False,
             )
 
         return self.success({})
