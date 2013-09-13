@@ -47,31 +47,33 @@ _debug_queries(int count)
     ELLE_LOG("listen on port %s", port);
     listening.open();
 
-    reactor::Scope scope;
-    int answered = 0;
-    reactor::Barrier done;
-    for (int i = 0; i < count; ++i)
+    elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
     {
-      auto handler = [s = server.accept(), count, &answered, &done]
+      int answered = 0;
+      reactor::Barrier done;
+      for (int i = 0; i < count; ++i)
       {
-        std::unique_ptr<reactor::network::TCPSocket> socket(s);
-        ELLE_LOG("connection accepted");
+        auto handler = [s = server.accept(), count, &answered, &done]
+          {
+            std::unique_ptr<reactor::network::TCPSocket> socket(s);
+            ELLE_LOG("connection accepted");
 
-        char buf[512];
-        size_t bytes = socket->read_some(
-          reactor::network::Buffer(buf, sizeof(buf)), 1_sec);
-        std::string data(buf, bytes);
-        ELLE_LOG("read: %s", data);
+            char buf[512];
+            size_t bytes = socket->read_some(
+              reactor::network::Buffer(buf, sizeof(buf)), 1_sec);
+            std::string data(buf, bytes);
+            ELLE_LOG("read: %s", data);
 
-        std::string resp("HTTP/1.0 200 OK\n\n{\"success\": true}\n");
-        ELLE_LOG("write: %s", resp);
-        socket->write(reactor::network::Buffer(resp));
-        if (++answered == count)
-          done.open();
-      };
-      scope.run_background(elle::sprintf("handler %s", i), handler);
-    }
-    wait(done);
+            std::string resp("HTTP/1.0 200 OK\n\n{\"success\": true}\n");
+            ELLE_LOG("write: %s", resp);
+            socket->write(reactor::network::Buffer(resp));
+            if (++answered == count)
+              done.open();
+          };
+        scope.run_background(elle::sprintf("handler %s", i), handler);
+      }
+      wait(done);
+    };
   };
   reactor::Thread s(sched, "server", serv);
 
