@@ -63,7 +63,7 @@ namespace surface
         // else, quick talk with apertus to get the new endpoints.
         ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
         auto& sched = *reactor::Scheduler::scheduler();
-        ELLE_LOG("%s: %s %s", *this, this->_host, this->_port);
+        ELLE_LOG("%s: contact Apertus: %s:%s", *this, this->_host, this->_port);
         reactor::network::TCPSocket sock{sched, this->_host, this->_port};
         elle::format::json::Dictionary dict;
 
@@ -78,7 +78,7 @@ namespace surface
         ss << data;
         dict = elle::format::json::parse(ss)->as_dictionary();
         std::string address = dict["endpoint"].as_string();
-        ELLE_TRACE("Have %s", address);
+        ELLE_TRACE("%s: got %s from Apertus", address);
         this->_endpoints = {address};
         return this->_endpoints;
       }

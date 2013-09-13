@@ -639,15 +639,18 @@ namespace surface
       size_t tries = 0;
       for (auto const& r: addresses)
       {
-        ELLE_DEBUG("%s: round(%s): %s", *this, tries, r->name());
         ++tries;
+        ELLE_DEBUG("%s: round(%s): %s", *this, tries, r->name());
 
         std::unique_ptr<station::Host> host;
         reactor::Barrier host_found;
 
         elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
-          for (std::string const& endpoint: r->endpoints())
+          std::vector<std::string> endpoints;
+          ELLE_DEBUG("%s: get endpoints for %s", *this, *r)
+            r->endpoints();
+          for (std::string const& endpoint: endpoints)
           {
             ELLE_DEBUG("%s: endpoint %s", *this, endpoint);
             auto fn = [this, endpoint, &host, &host_found]
