@@ -351,6 +351,10 @@ namespace surface
               "user.logout",
               {{MKey::session, "end"}});
           }
+          catch (reactor::Terminate const&)
+          {
+            throw;
+          }
           catch (std::exception const&)
           {
             ELLE_WARN("logout failed, ignore exception: %s",
@@ -507,10 +511,15 @@ namespace surface
             this->_transaction_resync();
             resynched = true;
           }
+          catch (reactor::Terminate const&)
+          {
+            throw;
+          }
           catch (std::exception const&)
           {
             ELLE_WARN("%s: failed at resynching (%s)... retrying...",
                       *this, elle::exception_string());
+            reactor::sleep(1_sec);
           }
         }
         while (!resynched);
