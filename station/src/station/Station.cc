@@ -1,6 +1,7 @@
 #include <elle/Exception.hh>
 #include <elle/log.hh>
 #include <elle/memory.hh>
+#include <elle/finally.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -159,7 +160,7 @@ namespace station
 
       bool master = hash < remote_hash;
 
-      elle::Finally pop_negotiation;
+      elle::SafeFinally pop_negotiation;
       if (master)
       {
         // If we're already negotiating, wait.
