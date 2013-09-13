@@ -35,12 +35,34 @@ import pythia
 # Users
 #
 
-def user_by_id(database, _id, ensure_user_exists = True):
+def user_by_id(db, _id, ensure_user_exists = True):
     assert isinstance(_id, database.ObjectId)
-    user = database.users.find_one(_id)
+    user = db.users.find_one(_id)
     if ensure_user_exists:
         assert user is not None
     return user
+
+def increase_swag(db, lhs, rhs, notifier_ = None):
+    assert isinstance(lhs, database.ObjectId)
+    assert isinstance(rhs, database.ObjectId)
+
+    lh_user = user_by_id(db, lhs)
+    rh_user = user_by_id(db, rhs)
+
+    if lh_user is None or rh_user is None:
+        raise Exception("unknown user")
+
+    for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
+        user['swaggers'][str(peer)] = \
+            user['swaggers'].setdefault(str(peer), 0) + 1;
+        self.database.users.save(user)
+        if user['swaggers'][str(peer)] == 1: # New swagger.
+            if notifier_ is not None:
+                notifier_.notify_some(
+                    notifier.NEW_SWAGGER,
+                    message = {'user_id': user['_id']},
+                    recipient_ids = [peer,],
+                )
 
 class _Page(Page):
     def notify_swaggers(self, notification_id, data, user_id = None):
@@ -98,29 +120,6 @@ class _Page(Page):
     def _increase_swag(self, lhs, rhs, notifier_ = None):
         increase_swag(self.database, lhs, rhs, notifier)
 
-def increase_swag(database, lhs, rhs, notifier_ = None):
-    assert isinstance(lhs, database.ObjectId)
-    assert isinstance(rhs, database.ObjectId)
-
-    lh_user = user_by_id(database, lhs)
-    rh_user = user_by_id(database, rhs)
-
-    if lh_user is None or rh_user is None:
-        raise Exception("unknown user")
-
-    for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
-        user['swaggers'][str(peer)] = \
-            user['swaggers'].setdefault(str(peer), 0) + 1;
-        self.database.users.save(user)
-        if user['swaggers'][str(peer)] == 1: # New swagger.
-            if notifier_ is not None:
-                notifier_.notify_some(
-                    notifier.NEW_SWAGGER,
-                    message = {'user_id': user['_id']},
-                    recipient_ids = [peer,],
-                )
-
-
     def extract_user_fields(self, user):
         return {
             '_id': user['_id'],
@@ -130,6 +129,7 @@ def increase_swag(database, lhs, rhs, notifier_ = None):
             'connected_devices': user.get('connected_devices', []),
             'status': self.is_connected(user['_id']),
          }
+
 
 class Search(Page):
     __pattern__ = "/user/search"
