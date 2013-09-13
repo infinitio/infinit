@@ -313,8 +313,11 @@ namespace surface
 
       elle::With<elle::Finally>( [&]
         {
-          this->_core_machine_thread->terminate_now();
-          this->_core_machine_thread.reset();
+          if (this->_core_machine_thread)
+          {
+            this->_core_machine_thread->terminate_now();
+            this->_core_machine_thread.reset();
+          }
         }) << [&]
       {
         scheduler.current()->wait(*this->_core_machine_thread);
