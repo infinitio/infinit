@@ -185,8 +185,8 @@ two_slugs_nasty_connect_parallel()
   Slug slug2("slug2", n);
 
   int errors = 0;
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
   {
-    reactor::Scope scope;
     scope.run_background("connect1", [&errors, &slug1, &slug2] {
         try
         {
@@ -210,7 +210,7 @@ two_slugs_nasty_connect_parallel()
       });
     // XXX: join scope
     reactor::Scheduler::scheduler()->current()->sleep(1_sec);
-  }
+  };
 
   BOOST_CHECK_EQUAL(slug1.slug.hosts().size(), 1);
   BOOST_CHECK_EQUAL(slug2.slug.hosts().size(), 1);
