@@ -166,7 +166,10 @@ class Create(Page):
         transaction_id = self.database.transactions.insert(transaction)
 
         from meta.resources import user
-        if not user.is_connected(database.ObjectId(recipient_id)):
+        recipient_connected = self.database.users.find_one(
+            database.ObjectId(recipient_id)
+        ).get('connected')
+        if not recipient_connected:
             if not invitee_email:
                 invitee_email = self.database.users.find_one(
                     {'_id': database.ObjectId(id_or_email)}
@@ -458,9 +461,11 @@ class ConnectDevice(Page):
 
         node['fallback'] = []
 
-        self.database.transactions.update({"_id": transaction_id},
-                                       {"$set": {"nodes.%s" % (str(device_id),): node}},
-                                       multi = False)
+        self.database.transactions.update(
+            {"_id": transaction_id},
+            {"$set": {"nodes.%s" % (str(device_id),): node}},
+            multi = False
+        )
 
         transaction = self.database.transactions.find_one(transaction_id)
 
