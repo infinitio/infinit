@@ -55,7 +55,7 @@ def increase_swag(db, lhs, rhs, notifier_ = None):
     for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
         user['swaggers'][str(peer)] = \
             user['swaggers'].setdefault(str(peer), 0) + 1;
-        self.database.users.save(user)
+        db.users.save(user)
         if user['swaggers'][str(peer)] == 1: # New swagger.
             if notifier_ is not None:
                 notifier_.notify_some(
