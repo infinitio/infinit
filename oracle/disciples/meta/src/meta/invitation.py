@@ -3,7 +3,6 @@
 import hashlib
 import time
 
-import meta.database
 import meta.conf
 
 def _generate_code(mail):
@@ -46,18 +45,22 @@ def invite_user(mail,
                 send_mail = True,
                 source = 'infinit',
                 mail_template = 'invitation-beta',
+                database = None,
                 **kw):
-        code = _generate_code(mail)
-        meta.database.invitations().insert({
-            'email': mail,
-            'status': 'pending',
-            'code': code,
-            'source': source,
-        })
-        subject = XXX_MAILCHIMP_SUCKS_TEMPLATE_SUBJECTS[mail_template] % kw
-        if send_mail:
-            meta.mail.send_via_mailchimp(mail,
-                                         mail_template,
-                                         subject,
-                                         accesscode=code,
-                                         **kw)
+    assert database is not None
+    code = _generate_code(mail)
+    database.invitations.insert({
+        'email': mail,
+        'status': 'pending',
+        'code': code,
+        'source': source,
+    })
+    subject = XXX_MAILCHIMP_SUCKS_TEMPLATE_SUBJECTS[mail_template] % kw
+    if send_mail:
+        meta.mail.send_via_mailchimp(
+            mail,
+            mail_template,
+            subject,
+            accesscode=code,
+            **kw
+        )

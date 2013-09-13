@@ -40,7 +40,7 @@ class _Page(Page):
 
     def network(self, _id):
         self.requireLoggedIn()
-        network = database.networks().find_one({
+        network = self.database.networks.find_one({
             '_id': database.ObjectId(_id),
         })
         if not network:
@@ -62,9 +62,9 @@ class _Page(Page):
             'name': name,
         }
         if id_ is None:
-            n = database.networks().find_one(req)
+            n = self.database.networks.find_one(req)
         else:
-            n = database.networks().find_one(req, {'_id': id_})
+            n = self.database.networks.find_one(req, {'_id': id_})
         if n is not None:
             raise Exception("Cannot have two network with the same name!")
 
@@ -80,7 +80,7 @@ class _Page(Page):
             return False
         if str(user_id) == str(self.user['_id']):
             return False
-        return database.users().find_one({
+        return self.database.users.find_one({
             '_id': database.ObjectId(user_id),
         }) is not None
 
@@ -124,11 +124,11 @@ class AddUser(_Page):
         #XXX users should invited instead of added
         if to_add_user_id in network['users']:
             return self.error(error.USER_ALREADY_IN_NETWORK)
-        to_add_user = database.byId(database.users(), to_add_user_id)
+        to_add_user = database.byId(self.database.users, to_add_user_id)
         network['users'].append(to_add_user_id)
-        database.networks().save(network)
+        self.database.networks.save(network)
         to_add_user['networks'].append(network['_id'])
-        database.users().save(to_add_user)
+        self.database.users.save(to_add_user)
 
         self.notifier.notify_some(
             notifier.NETWORK_UPDATE,
@@ -364,7 +364,7 @@ class Update(_Page):
                 traceback.print_exc()
                 return self.error(error.UNKNOWN, "Unexpected error: " + str(err))
 
-        _id = database.networks().save(to_save)
+        _id = self.database.networks.save(to_save)
 
         try:
             self.notifier.notify_some(
@@ -413,7 +413,7 @@ class AddDevice(_Page):
         network = self.network(network_id)
         if self.user['_id'] not in network["users"]:
             return self.error(error.NETWORK_DOESNT_BELONG_TO_YOU)
-        device = database.devices().find_one(device_id)
+        device = self.database.devices.find_one(device_id)
         if not device:
             return self.error(error.DEVICE_NOT_FOUND)
 
@@ -430,7 +430,7 @@ class AddDevice(_Page):
                     "externals": None,
                     "fallback": None,
             }
-            database.networks().save(network)
+            self.database.networks.save(network)
 
             self.notifier.notify_some(
                 notifier.NETWORK_UPDATE,
@@ -479,7 +479,7 @@ class ConnectDevice(_Page):
 
         network = self.network(network_id)
 
-        device = database.devices().find_one(device_id)
+        device = self.database.devices.find_one(device_id)
         if not device:
             return self.error(error.DEVICE_NOT_FOUND)
 
@@ -514,7 +514,7 @@ class ConnectDevice(_Page):
         # connect the 2 devices.
         node['fallback'] = []
 
-        database.networks().save(network)
+        self.database.networks.save(network)
 
         print("Connected device", device['name'], "(%s)" % device_id,
               "to network", network['name'], "(%s)" % network_id,
@@ -598,10 +598,10 @@ class Create(_Page):
             'group_block': None,
             'group_address': None,
         }
-        _id = database.networks().insert(network)
+        _id = self.database.networks.insert(network)
         assert _id is not None
         self.user.setdefault('networks', []).append(_id)
-        database.users().save(self.user)
+        self.database.users.save(self.user)
         return self.success({
             'created_network_id': _id
         })
@@ -639,7 +639,7 @@ class Delete(_Page):
         network_id = self.data['network_id']
         _id = database.ObjectId(network_id)
 
-        network = database.networks().find_one(_id)
+        network = self.database.networks.find_one(_id)
 
         if network is None:
             return self.error(error.NETWORK_NOT_FOUND)
@@ -652,7 +652,7 @@ class Delete(_Page):
         # for each user in network, remove this network from his network list.
         for user_id in network['users']:
             #XXX: with many devices connected, should we notify the owner ?
-            database.users().find_and_modify({'_id': user_id}, {'$pull': {'networks': _id}})
+            self.database.users.find_and_modify({'_id': user_id}, {'$pull': {'networks': _id}})
 
         self.notifier.notify_some(
             notifier.NETWORK_UPDATE,
@@ -661,7 +661,7 @@ class Delete(_Page):
             store = False,
         )
 
-        database.networks().update(
+        self.database.networks.update(
             {
                 '_id': _id,
             },

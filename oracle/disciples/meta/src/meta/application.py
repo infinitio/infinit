@@ -3,6 +3,7 @@
 import os
 import sys
 import web
+import pymongo
 
 from meta import conf
 from meta import resources
@@ -40,6 +41,8 @@ class Application(object):
             urls.extend([resource.__pattern__, id_])
             print("%s: %s" % (resource.__name__, resource.__pattern__))
             views[id_] = resource
+            resource.mongo_host = mongo_host
+            resource.mongo_port = mongo_port
 
         self.app = web.application(urls, views)
 
@@ -52,7 +55,13 @@ class Application(object):
         self.ip = meta_host
         self.port = meta_port
 
-        session = Session(self.app, SessionStore(database.sessions()))
+        # XXX Should be done in Page.
+        session = Session(
+            self.app,
+            SessionStore(
+                pymongo.Connection(mongo_host, mongo_port).meta['sessions']
+            )
+        )
         for cls in views.itervalues():
             cls.__session__ = session
             cls.__application__ = self

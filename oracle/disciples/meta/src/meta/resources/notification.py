@@ -84,7 +84,7 @@ class Read(Page):
         id = database.ObjectId(id)
         tr = self._transactions.get(id)
         if tr is None:
-            tr = database.transactions().find_one(id)
+            tr = self.database.transactions.find_one(id)
             self._transactions[id] = tr
         return tr
 
@@ -105,6 +105,6 @@ class Read(Page):
         self.user['old_notifications'] = old[:10]
         self.user['notifications'] = new
 
-        database.users().save(self.user)
+        self.database.users.save(self.user)
 
         return self.success()

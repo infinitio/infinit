@@ -4,8 +4,7 @@ import socket
 import json
 
 import meta.page
-import database
-from meta import conf
+from meta import conf, database
 
 from twisted.python import log
 import time
@@ -36,8 +35,9 @@ class Notifier(object):
         raise Exception('Not implemented')
 
 class TrophoniusNotify(Notifier):
-    def __init__(self):
+    def __init__(self, database):
         self.conn = socket.socket()
+        self.database = database
 
     def open(self, addr):
         print("connect to trophonius at", addr)
@@ -55,16 +55,13 @@ class TrophoniusNotify(Notifier):
                     notification_type,
                     recipient_ids = None,
                     device_ids = None,
-                    message = None,
-                    store = True):
+                    message = None):
         """Send notification to clients.
 
         notification_type -- Notification id to send.
         recipient_ids     -- User to send the notification to.
         device_ids        -- Devices to send the notification to.
         message           -- The payload.
-        store             -- Whether to store the notification in the
-                             database.
         """
         # Check that we either have a list of recipients or devices
         assert (recipient_ids is not None) or (device_ids is not None)
@@ -83,21 +80,9 @@ class TrophoniusNotify(Notifier):
 
         if recipient_ids:
             for recipient_id in recipient_ids:
-                user = database.users().find_one(recipient_id)
+                user = self.database.users.find_one(recipient_id)
                 device_ids.update(user.get('devices', []))
-
         message['to_devices'] = list(device_ids)
-
-        if store:
-            for device_id in device_ids:
-                device = database.devices().find_one(device_id)
-                recipient_ids.add(device['owner'])
-            for _id in recipient_ids:
-                user = database.users().find_one(_id)
-                self._remove_duplicate(user, message)
-                user['notifications'].append(message)
-                database.users().save(user)
-
         self.__send_notification(message)
 
     def _remove_duplicate(self, user, msg):

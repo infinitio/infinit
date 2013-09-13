@@ -93,7 +93,7 @@ class Create(Page):
         files = self.data['files']
         device_id = self.data['device_id'].strip()
 
-        if not database.devices().find_one(database.ObjectId(device_id)):
+        if not self.database.devices.find_one(database.ObjectId(device_id)):
             return self.error(error.DEVICE_NOT_FOUND)
 
         new_user = False
@@ -105,15 +105,15 @@ class Create(Page):
         if re.match(regexp.Email, id_or_email): # email case.
             invitee_email = id_or_email
             # Check is user is in database.
-            recipient = database.users().find_one({'email': id_or_email})
+            recipient = self.database.users.find_one({'email': id_or_email})
             # if the user doesn't exist, create a ghost and invite.
             if not recipient:
                 if self.user.get('remaining_invitations', 0) <= 0:
                     return self.error(error.NO_MORE_INVITATION)
                 self.user['remaining_invitations'] -= 1
-                database.users().save(self.user)
+                self.database.users.save(self.user)
                 new_user = True
-                recipient_id = database.users().save({})
+                recipient_id = self.database.users.save({})
                 self.registerUser(
                     _id = recipient_id,
                     email = invitee_email,
@@ -130,7 +130,7 @@ class Create(Page):
                 recipient_fullname = recipient['register_status'] == 'ghost' and recipient['email'] or recipient['fullname']
         elif re.match(regexp.ID, id_or_email): # id case.
              recipient_id = database.ObjectId(id_or_email)
-             recipient = database.users().find_one(recipient_id)
+             recipient = self.database.users.find_one(recipient_id)
              if recipient is None:
                  return self.error(error.USER_ID_NOT_VALID)
              recipient_fullname = recipient['register_status'] == 'ghost' and recipient['email'] or recipient['fullname']
@@ -163,12 +163,12 @@ class Create(Page):
             'status': CREATED,
         }
 
-        transaction_id = database.transactions().insert(transaction)
+        transaction_id = self.database.transactions.insert(transaction)
 
         from meta.resources import user
         if not user.is_connected(database.ObjectId(recipient_id)):
             if not invitee_email:
-                invitee_email = database.users().find_one(
+                invitee_email = self.database.users.find_one(
                     {'_id': database.ObjectId(id_or_email)}
                 )['email']
 
@@ -181,6 +181,7 @@ class Create(Page):
                     filename = files[0],
                     sendername = self.user['fullname'],
                     user_id = str(self.user['_id']),
+                    database = self.database
                 )
 
         from user import increase_swag
@@ -267,7 +268,7 @@ class Update(Page):
 
         transaction['status'] = status
         transaction['mtime'] = time.time()
-        database.transactions().save(transaction)
+        self.database.transactions.save(transaction)
 
         device_ids = [transaction['sender_device_id']]
         recipient_ids = None
@@ -289,7 +290,7 @@ class Update(Page):
 
         # Find the transaction
         tr_id = database.ObjectId(self.data['transaction_id'])
-        transaction = database.transactions().find_one(tr_id)
+        transaction = self.database.transactions.find_one(tr_id)
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
 
@@ -327,7 +328,7 @@ class All(Page):
 
 
         transaction_ids = list(
-            t['_id'] for t in database.transactions().find({
+            t['_id'] for t in self.database.transactions.find({
                     '$query': {
                         '$or':[
                             {'recipient_id': self.user['_id']},
@@ -378,7 +379,7 @@ class One(Page):
 
     def GET(self, _id):
         self.requireLoggedIn()
-        transaction = database.transactions().find_one(database.ObjectId(_id))
+        transaction = self.database.transactions.find_one(database.ObjectId(_id))
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
         if not self.user['_id'] in (transaction['sender_id'], transaction['recipient_id']):
@@ -420,11 +421,11 @@ class ConnectDevice(Page):
         transaction_id = database.ObjectId(self.data["_id"])
         device_id = database.ObjectId(self.data["device_id"])
 
-        device = database.devices().find_one(device_id)
+        device = self.database.devices.find_one(device_id)
         if not device:
             return self.error(error.DEVICE_NOT_FOUND)
 
-        transaction = database.transactions().find_one(transaction_id)
+        transaction = self.database.transactions.find_one(transaction_id)
 
         if device_id not in [transaction['sender_device_id'],
                              transaction['recipient_device_id']]:
@@ -457,11 +458,11 @@ class ConnectDevice(Page):
 
         node['fallback'] = []
 
-        database.transactions().update({"_id": transaction_id},
+        self.database.transactions.update({"_id": transaction_id},
                                        {"$set": {"nodes.%s" % (str(device_id),): node}},
                                        multi = False)
 
-        transaction = database.transactions().find_one(transaction_id)
+        transaction = self.database.transactions.find_one(transaction_id)
 
         print("device %s connected to transaction %s as %s" % (device_id, transaction_id, node))
 
@@ -499,7 +500,7 @@ class Endpoints(Page):
     def POST(self, transaction_id):
         self.requireLoggedIn()
 
-        transaction = database.transactions().find_one(database.ObjectId(transaction_id))
+        transaction = self.database.transactions.find_one(database.ObjectId(transaction_id))
         if not transaction:
             return self.error(error.TRANSACTION_DOESNT_EXIST)
 

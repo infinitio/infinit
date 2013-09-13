@@ -8,6 +8,7 @@ import urllib
 import time
 import re
 import os
+import pymongo
 
 import error
 from meta import conf
@@ -31,6 +32,34 @@ class Page(object):
 
     _mendatory_fields = []
 
+    # These are set by the application when ran.
+    mongo_host = None
+    mongo_port = None
+
+    # Lazy database attributes initialized on first access.
+    _database_connection = None
+    _database = None
+
+    @property
+    def database_connection(self):
+        if self._database_connection is None:
+            self._database_connection = pymongo.Connection(
+                self.mongo_host,
+                self.mongo_port,
+            )
+        return self._database_connection
+
+    @property
+    def database(self):
+        if self._database is None:
+            class AttrWrapper(object):
+                def __init__(self, db):
+                    self.db = db
+                def __getattr__(self, collection):
+                    return self.db[collection]
+            self._database = AttrWrapper(self.database_connection.meta)
+        return self._database
+
     def __init__(self):
         self._input = None
         self._user = None
@@ -40,15 +69,12 @@ class Page(object):
            not 'development' in web.ctx.host:
             raise Exception("XXX Wrong version asked")
 
-    #
-    # Members
-    #
     @property
     def notifier(self):
         if self.__notifier is None:
             try:
                 port = self.__application__.tropho_control_port
-                self.__notifier = notifier.TrophoniusNotify()
+                self.__notifier = notifier.TrophoniusNotify(self.database)
                 self.__notifier.open(("127.0.0.1", port))
             except Exception as e:
                 print(e)
@@ -88,7 +114,7 @@ class Page(object):
     def user(self):
         if self._user is None:
             try:
-                self._user = database.users().find_one({
+                self._user = self.database.users.find_one({
                     '_id': database.ObjectId(self.session._user_id)
                 })
             except AttributeError:
@@ -99,19 +125,19 @@ class Page(object):
         self.session.kill()
 
     def authenticate_with_token(self, token_genkey):
-        user = database.users().find_one({
+        user = self.database.users.find_one({
             'token_generation_key': token_genkey,
         })
         if not user:
             return False
         user.setdefault('connected', False)
-        database.users().save(user)
+        self.database.users.save(user)
         self.session._user_id = user['_id']
         self._user = user
         return True
 
     def authenticate(self, email, password):
-        user = database.users().find_one({
+        user = self.database.users.find_one({
             'email': email,
             'password': self.hashPassword(password)
         })
@@ -121,14 +147,14 @@ class Page(object):
         if 'token_generation_key' not in user:
             tmp_gen_key = email + conf.SALT + str(time.time()) + conf.SALT
             user['token_generation_key'] = self.hashPassword(tmp_gen_key)
-        database.users().save(user)
+        self.database.users.save(user)
         self.session._user_id = user['_id']
         self._user = user
         return True
 
     def registerUser(self, **kwargs):
         kwargs['connected'] = False
-        user = database.users().save(kwargs)
+        user = self.database.users.save(kwargs)
         return user
 
     def hashPassword(self, password):

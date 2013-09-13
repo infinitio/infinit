@@ -39,7 +39,7 @@ def __ensure_user_exists(user):
 
 def user_by_id(_id, ensure_user_exists = True):
     assert isinstance(_id, database.ObjectId)
-    user = database.users().find_one(_id)
+    user = self.database.users.find_one(_id)
 
     if ensure_user_exists:
         __ensure_user_exists(user)
@@ -47,7 +47,7 @@ def user_by_id(_id, ensure_user_exists = True):
     return user
 
 def user_by_public_key(key, ensure_user_exists = True):
-    user = database.users().find_one({'public_key': key})
+    user = self.database.users.find_one({'public_key': key})
 
     if ensure_user_exists:
         __ensure_user_exists(user)
@@ -55,7 +55,7 @@ def user_by_public_key(key, ensure_user_exists = True):
     return user
 
 def user_by_email(email, ensure_user_exists = True):
-    user = database.users().find_one({'email': email})
+    user = self.database.users.find_one({'email': email})
 
     if ensure_user_exists:
         __ensure_user_exists(user)
@@ -63,7 +63,7 @@ def user_by_email(email, ensure_user_exists = True):
     return user
 
 def user_by_handle(handle, ensure_user_exists = True):
-    user = database.users().find_one({'lw_handle': handle.lower()})
+    user = self.database.users.find_one({'lw_handle': handle.lower()})
 
     if ensure_user_exists:
         __ensure_user_exists(user)
@@ -72,7 +72,7 @@ def user_by_handle(handle, ensure_user_exists = True):
 
 def is_connected(user_id):
     assert isinstance(user_id, database.ObjectId)
-    user = database.users().find_one(user_id)
+    user = self.database.users.find_one(user_id)
     if not user:
         raise Exception("This user doesn't exist")
     connected = user.get('connected', False)
@@ -92,7 +92,7 @@ def increase_swag(lhs, rhs, notifier_ = None):
     for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
         user['swaggers'][str(peer)] = \
             user['swaggers'].setdefault(str(peer), 0) + 1;
-        database.users().save(user)
+        self.database.users.save(user)
         if user['swaggers'][str(peer)] == 1: # New swagger.
             if notifier_ is not None:
                 notifier_.notify_some(
@@ -135,7 +135,7 @@ class Search(Page):
         # While not sure it's an email or a fullname, search in both.
         users = []
         if not '@' in text:
-            users = database.users().find(
+            users = self.database.users.find(
                 {
                     '$or' : [
                         {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
@@ -147,7 +147,7 @@ class Search(Page):
                 limit=count + offset
             )
         # else:
-        #     users = database.users().find(
+        #     users = self.database.users.find(
         #         {'email' : {'$regex' : '^%s' %text, '$options': 'i'}},
         #         fields=["_id"],
         #         limit=count + offset
@@ -239,7 +239,7 @@ class RemoveSwagger(Page):
 
     def POST(self):
         self.requireLoggedIn()
-        swagez = database.users().find_and_modify(
+        swagez = self.database.users.find_and_modify(
             {"_id": database.ObjectId(self.user["_id"])},
             {"$pull": {"swaggers": self.data["_id"]}},
             True #upsert
@@ -257,12 +257,17 @@ class Invite(Page):
         email = self.data['email'].strip()
         force = self.data.get('force', False)
         send_mail = not self.data.get('dont_send_email', False)
-        if database.invitations().find_one({'email': email}):
+        if self.database.invitations.find_one({'email': email}):
             if not force:
                 return self.error(error.UNKNOWN, "Already invited!")
             else:
-                database.invitations().remove({'email': email})
-        meta.invitation.invite_user(email, send_mail = send_mail, source = 'infinit')
+                self.database.invitations.remove({'email': email})
+        meta.invitation.invite_user(
+            email,
+            send_mail = send_mail,
+            source = 'infinit',
+            database = self.database
+        )
         return self.success()
 
 
@@ -279,7 +284,7 @@ class Favorite(Page):
         lst = self.user.setdefault('favorites', [])
         if fav not in lst:
             lst.append(fav)
-            database.users().save(self.user)
+            self.database.users.save(self.user)
         return self.success()
 
 class Unfavorite(Page):
@@ -295,7 +300,7 @@ class Unfavorite(Page):
         lst = self.user.setdefault('favorites', [])
         if fav in lst:
             lst.remove(fav)
-            database.users().save(self.user)
+            self.database.users.save(self.user)
         return self.success()
 
 
@@ -452,7 +457,7 @@ class Avatar(Page):
         image.resize((256, 256)).save(out, 'PNG')
         out.seek(0)
         self.user['avatar'] = database.Binary(out.read())
-        database.users().save(self.user)
+        self.database.users.save(self.user)
         return self.success()
 
 class Register(_Page):
@@ -487,14 +492,14 @@ class Register(_Page):
         user['email'] = user['email'].lower()
 
         source = None
-        if database.users().find_one({
+        if self.database.users.find_one({
             'accounts': [{ 'type': 'email', 'id':user['email']}],
             'register_status': 'ok',
         }):
             return self.error(error.EMAIL_ALREADY_REGISTRED)
 
         elif user['activation_code'] != 'bitebite': # XXX
-            invitation = database.invitations().find_one({
+            invitation = self.database.invitations.find_one({
                 'code': user['activation_code'],
                 'status': 'pending',
             })
@@ -506,7 +511,7 @@ class Register(_Page):
         else:
             ghost_email = user['email']
 
-        ghost = database.users().find_one({
+        ghost = self.database.users.find_one({
             'accounts': [{ 'type': 'email', 'id':ghost_email}],
             'register_status': 'ghost',
         })
@@ -514,7 +519,7 @@ class Register(_Page):
         if ghost:
             user["_id"] = ghost['_id']
         else:
-            user["_id"] = database.users().save({})
+            user["_id"] = self.database.users.save({})
 
         identity, public_key = metalib.generate_identity(
             str(user["_id"]),
@@ -550,7 +555,7 @@ class Register(_Page):
         )
         if user['activation_code'] != 'bitebite': #XXX
             invitation['status'] = 'activated'
-            database.invitations().save(invitation)
+            self.database.invitations.save(invitation)
 
         self.notify_swaggers(
             notifier.NEW_SWAGGER,
@@ -647,7 +652,7 @@ class _DeviceAccess(_Page):
     Base class to update device connection status.
     """
     def __get_device(self, user_id, device_id):
-        device = database.devices().find_one({
+        device = self.database.devices.find_one({
             '_id': device_id,
             'owner': user_id,
         })
@@ -664,7 +669,7 @@ class _DeviceAccess(_Page):
 
     def __set_connected(self, value, user_id, device_id):
         assert user_by_id(user_id)
-        assert database.devices().find_one(device_id)
+        assert self.database.devices.find_one(device_id)
 
         device = self.__get_device(user_id, device_id)
         connected_before = is_connected(user_id)
@@ -672,18 +677,18 @@ class _DeviceAccess(_Page):
         # Add / remove device from db
         req = {'_id': user_id}
         update_action = value and '$addToSet' or '$pull'
-        database.users().update(
+        self.database.users.update(
             req,
             {
                 update_action: {'connected_devices': device['_id']},
             },
             multi = False,
         )
-        user = database.users().find_one(user_id)
+        user = self.database.users.find_one(user_id)
 
         # Disconnect only user with an empty list of connected device.
         req = {'_id': user_id}
-        database.users().update(
+        self.database.users.update(
             req,
             {"$set": {"connected": bool(user["connected_devices"])}},
             multi = False,
@@ -693,16 +698,18 @@ class _DeviceAccess(_Page):
         # This should not be in user.py, but it's the only place
         # we know the device has been disconnected.
         if value is False:
-            transactions = database.transactions().find(
+            transactions = self.database.transactions.find(
                 {
                     "nodes.%s" % str(device['_id']): {"$exists": True}
                 }
             )
 
             for transaction in transactions:
-                database.transactions().update({"_id": transaction},
-                                               {"$set": {"nodes.%s" % (str(device_id),): None}},
-                                                multi = False);
+                self.database.transactions.update(
+                    {"_id": transaction},
+                    {"$set": {"nodes.%s" % str(device_id): None}},
+                    multi = False
+                )
                 self.notifier.notify_some(
                     notifier.PEER_CONNECTION_UPDATE,
                     device_ids = list(transaction['nodes'].keys()),

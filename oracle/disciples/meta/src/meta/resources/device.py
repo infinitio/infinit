@@ -43,7 +43,7 @@ class One(Page):
 
     def GET(self, id):
         self.requireLoggedIn()
-        device = database.devices().find_one({
+        device = self.database.devices.find_one({
             '_id': database.ObjectId(id),
             'owner': self.user['_id'],
         })
@@ -83,7 +83,7 @@ class Create(Page):
             'owner': self.user['_id'],
         }
 
-        id_ = database.devices().insert(to_save)
+        id_ = self.database.devices.insert(to_save)
         assert id_ is not None
 
         # print(str(id_),
@@ -99,11 +99,11 @@ class Create(Page):
             conf.INFINIT_AUTHORITY_PATH,
             conf.INFINIT_AUTHORITY_PASSWORD
         )
-        database.devices().save(to_save)
+        self.database.devices.save(to_save)
 
         # XXX check unique device ?
         self.user.setdefault('devices', []).append(id_)
-        database.users().save(self.user)
+        self.database.users.save(self.user)
         return self.success({
             'created_device_id': id_,
             'passport': to_save['passport'],
@@ -143,12 +143,12 @@ class Update(Page):
         if not id_ in self.user['devices']:
             self.forbidden("This network does not belong to you.")
 
-        to_save = database.devices().find_one({
+        to_save = self.database.devices.find_one({
             '_id': database.ObjectId(id_)
         })
         to_save['name'] = device['name']
 
-        id_ = database.devices().save(to_save)
+        id_ = self.database.devices.save(to_save)
         return self.success({
             'updated_device_id': id_,
             'passport': to_save['passport'],
@@ -187,7 +187,7 @@ class Delete(Page):
         except:
             return self.error(error.DEVICE_NOT_FOUND, "The device '%s' was not found" % (_id))
 
-        database.users().save(self.user)
+        self.database.users.save(self.user)
         for network_id in self.user['networks']:
             network = database.networks.find_one(network_id)
             assert network is not None
@@ -198,7 +198,7 @@ class Delete(Page):
                 continue
             database.networks.save(network)
 
-        database.devices().find_and_modify({
+        self.database.devices.find_and_modify({
             '_id': _id,
             'owner': self.user['_id'], #not required
         }, remove=True)

@@ -29,7 +29,7 @@ class All(Page):
         # XXX: add broadcast capability to trophonius.
         users = list(user['_id']
                      for user
-                     in database.users().find({'connected': True}))
+                     in self.database.users.find({'connected': True}))
         self.notifier.notify_some(meta.notifier.SUICIDE,
                                   message = {},
                                   recipient_ids = users,

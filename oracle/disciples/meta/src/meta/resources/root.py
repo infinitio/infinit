@@ -48,7 +48,7 @@ class Ghostify(Page):
             return self.error(error.UNKNOWN, "You're not admin")
 
         email = self.data['email']
-        user = database.users().find_one({"email": email})
+        user = self.database.users.find_one({"email": email})
 
         if user is None:
             return self.error(error.UNKNOWN_USER)
@@ -56,7 +56,7 @@ class Ghostify(Page):
         # Invalidate all transactions.
         # XXX: Peers should be notified.
         from meta.resources import transaction
-        database.transactions().update(
+        self.database.transactions.update(
             {"$or": [{"sender_id": user['_id']}, {"recipient_id": user['_id']}]},
             {"$set": {"status": transaction.CANCELED}}, multi=True)
 
@@ -73,7 +73,7 @@ class Ghostify(Page):
         )
 
         from meta.invitation import invite_user
-        invite_user(user['email'])
+        invite_user(user['email'], database = self.database)
 
         return self.success({'ghost': str(user['_id'])})
 
@@ -86,7 +86,7 @@ class ResetAccount(Page):
     __pattern__ = '/reset-account/(.+)'
 
     def __user_from_hash(self, hash):
-        user = database.users().find_one({"reset_password_hash": hash})
+        user = self.database.users.find_one({"reset_password_hash": hash})
         if user is None:
             self.raise_error(
                 error.OPERATION_NOT_PERMITTED,
@@ -108,7 +108,7 @@ class ResetAccount(Page):
     def POST(self, hash):
         user = self.__user_from_hash(hash)
         from meta.resources import transaction
-        database.transactions().update(
+        self.database.transactions.update(
             {
                 "$or": [
                     {"sender_id": user['_id']},
@@ -162,7 +162,7 @@ class DeclareLostPassword(Page):
 
     def POST(self):
         email = self.data['email'].lower()
-        user = database.users().find_one({"email": email})
+        user = self.database.users.find_one({"email": email})
         if not user:
             return self.error(error_code = error.UNKNOWN_USER)
         import time, hashlib
@@ -176,7 +176,7 @@ class DeclareLostPassword(Page):
           reply_to = 'support@infinit.io',
           reset_password_hash = user['reset_password_hash'],
         )
-        database.users().save(user)
+        self.database.users.save(user)
         return self.success()
 
 class GetExistingBacktrace(Page):
@@ -197,8 +197,7 @@ class GetExistingBacktrace(Page):
         if not isinstance(more, list):
             more = [more]
 
-        import meta.database
-        meta.database.crashes().insert(
+        self.database.crashes.insert(
              {
                  "client_os": client_os,
                  "version": version,
@@ -252,8 +251,7 @@ class GetBacktrace(Page):
 
         backtrace.reverse()
 
-        import meta.database
-        meta.database.crashes().insert(
+        self.database.crashes.insert(
              {
                  "version": version,
                  "user": _id,
