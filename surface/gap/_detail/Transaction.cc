@@ -69,7 +69,7 @@ namespace surface
           auto snapshot_path = iterator->path().string().c_str();
           ELLE_TRACE("path %s", snapshot_path);
 
-          elle::Finally delete_snapshot([&snapshot_path]
+          elle::SafeFinally delete_snapshot([&snapshot_path]
             {
               boost::filesystem::remove(snapshot_path);
             });

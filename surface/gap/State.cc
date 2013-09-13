@@ -238,7 +238,7 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
 
-      elle::Finally login_failed{[this, lower_email] {
+      elle::SafeFinally login_failed{[this, lower_email] {
         this->_reporter[lower_email].store("user.login.failed");
         this->_google_reporter[lower_email].store("user.login.failed");
       }};
@@ -337,7 +337,7 @@ namespace surface
       if (this->meta(false).token().empty())
         return;
 
-      elle::Finally logout(
+      elle::SafeFinally logout(
         [&]
         {
           try
@@ -359,7 +359,7 @@ namespace surface
           }
         });
 
-      elle::Finally clean([&] { this->_cleanup(); });
+      elle::With<elle::Finally> clean([&] { this->_cleanup(); });
     }
 
     void
@@ -422,7 +422,7 @@ namespace surface
       // Logout first, and ignore errors.
       try { this->logout(); } catch (std::exception const&) {}
 
-      elle::Finally register_failed{[this, lower_email] {
+      elle::SafeFinally register_failed{[this, lower_email] {
         this->_reporter[lower_email].store("user.register.failed");
       }};
 
@@ -433,7 +433,7 @@ namespace surface
 
       ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
 
-      elle::Finally registered_metric{[this, res] {
+      elle::SafeFinally registered_metric{[this, res] {
         this->_reporter[res.registered_user_id].store(
           "user.register",
           {{MKey::source, res.invitation_source}});

@@ -310,13 +310,15 @@ namespace surface
               ELLE_ERR("%s: something went wrong while transfering", *this);
             }
           }});
-      elle::Finally delete_core_machine(
-        [this]
+
+      elle::With<elle::Finally>( [&]
         {
           this->_core_machine_thread->terminate_now();
           this->_core_machine_thread.reset();
-        });
-      scheduler.current()->wait(*this->_core_machine_thread);
+        }) << [&]
+      {
+        scheduler.current()->wait(*this->_core_machine_thread);
+      };
 
       if (this->_failed.opened())
         throw Exception(gap_error, "an error occured");
@@ -731,10 +733,14 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
       this->current_state(State::Transfer);
 
-      elle::Finally _2{[this] { this->_host.reset(); }};
-      elle::Finally _3{[this] { this->_serializer.reset(); }};
-      elle::Finally _4{[this] { this->_channels.reset(); }};
-      elle::Finally _5{[this] { this->_frete.reset(); }};
+      elle::SafeFinally clear_freete{
+        [this]
+        {
+          this->_frete.reset();
+          this->_channels.reset();
+          this->_serializer.reset();
+          this->_host.reset();
+        }};
 
       this->_transfer_operation();
 

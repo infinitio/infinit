@@ -136,7 +136,7 @@ extern "C"
 
     ~gap_State()
     {
-      elle::Finally sched_destruction{
+      elle::With<elle::Finally> sched_destruction{
         [&] ()
         {
           this->_scheduler.mt_run<void>(
@@ -151,7 +151,7 @@ extern "C"
         }
       };
 
-      elle::Finally state_destruction{
+      elle::With<elle::Finally> state_destruction{
         [&] ()
         {
           this->_scheduler.mt_run<void>(

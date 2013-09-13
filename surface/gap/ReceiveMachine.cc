@@ -234,7 +234,7 @@ namespace surface
     ReceiveMachine::_transfer_operation()
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
-      elle::Finally dbg{[] { ELLE_ERR("leaving transfer operation"); }};
+      elle::SafeFinally dbg{[] { ELLE_ERR("leaving transfer operation"); }};
 
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
