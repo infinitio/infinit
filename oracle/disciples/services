@@ -135,6 +135,7 @@ keys = {
     'meta_bin': META_BIN,
     'meta_port': META_PORT,
     'meta_fport': META_FCGI_PORT,
+    'meta_hostname': META_HOSTNAME,
     'meta_pidfile': os.path.join(RUNTIME_DIR, 'meta.pid'),
 
     'tropho_bin': TROPHONIUS_BIN,
@@ -168,11 +169,17 @@ ldb_init_script_status = """
 def start(args):
     if not os.path.isdir(RUNTIME_DIR):
         os.mkdir(RUNTIME_DIR)
+        error_log_path = os.path.join(RUNTIME_DIR, 'error_log')
+        local_error_log_path = os.path.join(RUNTIME_DIR, 'localhost.access_log')
+        local_access_log_path  = os.path.join(RUNTIME_DIR, 'localhost.error_log')
+        for file in (error_log_path, local_error_log_path, local_access_log_path):
+          f = open(file, "w+")
+          f.close()
     nginx_conf_params = {
         'NGINX_USER': 'infinit',
-        'META_PORT': META_PORT,
-        'META_HOSTNAME': META_HOSTNAME,
-        'META_FCGI_PORT': META_FCGI_PORT,
+        'META_PORT': keys['meta_port'],
+        'META_HOSTNAME': keys['meta_hostname'],
+        'META_FCGI_PORT': keys['meta_fport'],
     }
     nginx_conf = os.path.join(RUNTIME_DIR, 'nginx.conf')
     with open(NGINX_CONF_TEMPLATE) as template:
@@ -210,7 +217,7 @@ def start(args):
       ]).format(**keys))
 
     if ssd("-p {nginx_pidfile} -T".format(**keys)) != 0:
-      run("sudo nginx -p {www_dir} -c ../prod/nginx.conf".format(**keys))
+      run("sudo nginx -p {www_dir} -c nginx.conf".format(**keys))
 
 def stop(args):
     ssd("-p {apertus_pidfile0} -K".format(**keys))
