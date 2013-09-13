@@ -25,6 +25,7 @@ class Root(Page):
         return self.success({
             'server': 'Meta 0.1',
             'logged_in': self.user is not None,
+            'fallbacks': str(self.__application__.fallback),
         })
 
 class Status(Page):
