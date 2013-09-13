@@ -616,98 +616,60 @@ namespace surface
       ELLE_DEBUG("fallback")
         std::for_each(begin(endpoints.fallback), end(endpoints.fallback), print);
 
-      std::vector<std::unique_ptr<Round>> addresses;
-
-      addresses.emplace_back(new AddressRound("local", std::move(endpoints.locals)));
-
-      // XXX: This MUST be done before inserting fallback, cause endpoints() is
-      // lazy. If you try to display endpoints for fallback, it will enable the
-      // connection.
-      ELLE_TRACE("%s: selected addresses (%s):", *this, addresses.size())
-        for (auto& r: addresses)
-          ELLE_TRACE("-- %s", r->endpoints());
+      std::vector<std::unique_ptr<Round>> rounds;
+      rounds.emplace_back(new AddressRound("local",
+                                           std::move(endpoints.locals)));
 
       if (!endpoints.fallback.empty())
       {
         std::vector<std::string> splited;
-        boost::split(splited, *std::begin(endpoints.fallback), boost::is_any_of(":"));
-        ELLE_ASSERT_EQ(splited.size(), 2u);
+        boost::split(
+          splited, *std::begin(endpoints.fallback), boost::is_any_of(":"));
 
         std::string host = splited[0];
         int port = std::stoi(splited[1]);
-        addresses.emplace_back(new FallbackRound("fallback",
-                                                 host,
-                                                 port,
-                                                 this->data()->id));
+        rounds.emplace_back(new FallbackRound("fallback",
+                                              host,
+                                              port,
+                                              this->data()->id));
       }
 
-      size_t tries = 0;
-      for (auto const& r: addresses)
+      ELLE_TRACE("%s: selected rounds (%s):", *this, rounds.size())
+        for (auto& r: rounds)
+          ELLE_TRACE("-- %s", *r);
+
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
-        ++tries;
-        ELLE_DEBUG("%s: round(%s): %s", *this, tries, r->name());
-
+        reactor::Barrier found;
         std::unique_ptr<station::Host> host;
-        reactor::Barrier host_found;
+        scope.run_background("wait_accepted",
+                             [&] ()
+                             {
+                               this->station().host_available().wait();
+                               host = this->station().accept();
+                               found.open();
+                             });
 
-        elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-        {
-          std::vector<std::string> endpoints;
-          ELLE_DEBUG("%s: get endpoints for %s", *this, *r)
-            r->endpoints();
-          for (std::string const& endpoint: endpoints)
+        scope.run_background(
+          "rounds",
+          [&]
           {
-            ELLE_DEBUG("%s: endpoint %s", *this, endpoint);
-            auto fn = [this, endpoint, &host, &host_found]
-              {
-                try
-                {
-                  std::vector<std::string> result;
-                  boost::split(result, endpoint, boost::is_any_of(":"));
+            for (auto& round: rounds)
+            {
+              host = round->connect(this->station());
 
-                  auto const &ip = result[0];
-                  auto const &port = result[1];
-                  ELLE_DEBUG("connect(%s, %s)", ip, port)
-                  // XXX: This statement is ok while we are connecting to one peer.
-                  host = this->station().connect(ip, std::stoi(port));
-                  host_found.open();
-                  ELLE_LOG("%s: connection to %s succeed", *this, endpoint);
-                }
-                catch (station::AlreadyConnected const&)
-                {
-                  ELLE_LOG("%s: connection to %s succeed (we're already connected)",
-                           *this, endpoint);
-                }
-                catch (reactor::Terminate const&)
-                {
-                  throw ;
-                }
-                catch (std::exception const& e)
-                {
-                  ELLE_WARN("%s: connection to %s failed: %s", *this,
-                            endpoint, elle::exception_string());
-                }
-              };
+              if (host)
+                found.open();
+              else
+                ELLE_WARN("%s: connection round %s failed, no host has been found",
+                          *this, *round);
+            }
+          });
 
-            scope.run_background(elle::sprintf("connect_try(%s)", endpoint), fn);
-          }
+        found.wait();
 
-          scope.run_background("wait_accepted",
-                               [&] ()
-                               {
-                                 this->station().host_available().wait();
-                                 host = this->station().accept();
-                                 host_found.open();
-                               });
-
-          host_found.wait(10_sec);
-        };
-
-        if (host)
-          return host;
-
-        ELLE_TRACE("%s: round %s failed", *this, tries);
-      }
+        return host;
+      };
 
       throw Exception(gap_api_error, "no round succeed");
     }

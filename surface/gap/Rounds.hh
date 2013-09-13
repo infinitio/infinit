@@ -4,13 +4,21 @@
 # include <vector>
 # include <string>
 
+# include <station/fwd.hh>
+
+# include <reactor/fwd.hh>
+
+# include <elle/Printable.hh>
 # include <elle/attribute.hh>
+
+# include <memory>
 
 namespace surface
 {
     namespace gap
     {
-      class Round
+      class Round:
+        public elle::Printable
       {
       public:
         Round(std::string const& name);
@@ -19,11 +27,27 @@ namespace surface
         ~Round();
 
         virtual
-        std::vector<std::string>
-        endpoints() = 0;
+        std::unique_ptr<station::Host>
+        connect(station::Station& station) = 0;
+
+        /*----------.
+        | Printable |
+        `----------*/
+        void
+        print(std::ostream& stream) const override;
+
+        virtual
+        std::string const&
+        type() const
+        {
+          static std::string const type{"Round"};
+          return type;
+        }
 
       private:
         ELLE_ATTRIBUTE_R(std::string, name);
+      protected:
+        std::vector<std::string> _endpoints;
       };
 
       class AddressRound:
@@ -33,10 +57,19 @@ namespace surface
         AddressRound(std::string const& name,
                      std::vector<std::string>&& enpoints);
 
-        std::vector<std::string>
-        endpoints() override;
+        std::unique_ptr<station::Host>
+        connect(station::Station& station) override;
 
-        ELLE_ATTRIBUTE(std::vector<std::string>, endpoints);
+        /*----------.
+        | Printable |
+        `----------*/
+      public:
+        std::string const&
+        type() const override
+        {
+          static std::string const type{"AddressRound"};
+          return type;
+        }
       };
 
       class FallbackRound:
@@ -48,14 +81,24 @@ namespace surface
                       int port,
                       std::string const& uid);
 
-        std::vector<std::string>
-        endpoints() override;
+        std::unique_ptr<station::Host>
+        connect(station::Station& station) override;
 
       private:
-        ELLE_ATTRIBUTE(std::vector<std::string>, endpoints);
         ELLE_ATTRIBUTE(std::string, host);
         ELLE_ATTRIBUTE(int, port);
         ELLE_ATTRIBUTE(std::string , uid);
+
+        /*----------.
+        | Printable |
+        `----------*/
+      public:
+        std::string const&
+        type() const override
+        {
+          static std::string const type{"FallbackRound"};
+          return type;
+        }
       };
     }
 }
