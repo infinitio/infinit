@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(test_basic)
     std::string msg("This is basic content");
     elle::Buffer input(msg.c_str(), msg.size());
     BOOST_CHECK_EQUAL(handler.store(1, 1, input), input.size());
-    BOOST_CHECK_EQUAL(handler.serve(1, 1).size(), input.size());
+    BOOST_CHECK_EQUAL(handler.fetch(1, 1).size(), input.size());
 
     serv->terminate_now();
   };
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(test_multiple)
     BOOST_CHECK_EQUAL(handler.store(2, 2, input2), input2.size());
 
     // Fetch second.
-    BOOST_CHECK_EQUAL(handler.serve(2, 2).size(), input2.size());
+    BOOST_CHECK_EQUAL(handler.fetch(2, 2).size(), input2.size());
 
     // Store third.
     std::string msg3("This message is designed to be longer that others.");
@@ -102,13 +102,13 @@ BOOST_AUTO_TEST_CASE(test_multiple)
     BOOST_CHECK_EQUAL(handler.store(2, 3, input3), input3.size());
 
     // Fetch first.
-    BOOST_CHECK_EQUAL(handler.serve(2, 1).size(), input1.size());
+    BOOST_CHECK_EQUAL(handler.fetch(2, 1).size(), input1.size());
 
     // Fetch second.
-    BOOST_CHECK_EQUAL(handler.serve(2, 2).size(), input2.size());
+    BOOST_CHECK_EQUAL(handler.fetch(2, 2).size(), input2.size());
 
     // Fetch third.
-    BOOST_CHECK_EQUAL(handler.serve(2, 3).size(), input3.size());
+    BOOST_CHECK_EQUAL(handler.fetch(2, 3).size(), input3.size());
 
     serv->terminate_now();
   };
@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(test_filenotfound)
 
     oracle::hermes::Handler handler(channels);
 
-    BOOST_CHECK_THROW(handler.serve(3, 1), elle::Exception);
+    BOOST_CHECK_THROW(handler.fetch(3, 1), elle::Exception);
 
     // Store first file.
     std::string msg1("This is a common file content. ab cd-ef_gh");
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(test_filenotfound)
     BOOST_CHECK_EQUAL(handler.store(3, 1, input1), input1.size());
 
     // Try to fetch inexisting file.
-    BOOST_CHECK_THROW(handler.serve(3, 2), elle::Exception);
+    BOOST_CHECK_THROW(handler.fetch(3, 2), elle::Exception);
 
     // Store second file.
     std::string msg2("This is another common file chunk or whatever");
@@ -158,10 +158,10 @@ BOOST_AUTO_TEST_CASE(test_filenotfound)
     BOOST_CHECK_EQUAL(handler.store(3, 2, input2), input2.size());
 
     // Fetch existing files.
-    BOOST_CHECK_NO_THROW(handler.serve(3, 1));
-    BOOST_CHECK_NO_THROW(handler.serve(3, 2));
-    BOOST_CHECK_EQUAL(handler.serve(3, 1).size(), input1.size());
-    BOOST_CHECK_EQUAL(handler.serve(3, 2).size(), input2.size());
+    BOOST_CHECK_NO_THROW(handler.fetch(3, 1));
+    BOOST_CHECK_NO_THROW(handler.fetch(3, 2));
+    BOOST_CHECK_EQUAL(handler.fetch(3, 1).size(), input1.size());
+    BOOST_CHECK_EQUAL(handler.fetch(3, 2).size(), input2.size());
 
     serv->terminate_now();
   };
@@ -199,7 +199,7 @@ BOOST_AUTO_TEST_CASE(test_file_already_present)
     std::string msg1("This is a random file as well");
     elle::Buffer input1(msg1.c_str(), msg1.size());
     BOOST_CHECK_EQUAL(handler.store(4, 1, input1), input1.size());
-    BOOST_CHECK_EQUAL(handler.serve(4, 1).size(), input1.size());
+    BOOST_CHECK_EQUAL(handler.fetch(4, 1).size(), input1.size());
 
     // Try and store a file with the same FileID/Offset pair.
     std::string msg2("This file cannot be created");
@@ -207,8 +207,8 @@ BOOST_AUTO_TEST_CASE(test_file_already_present)
     BOOST_CHECK_THROW(handler.store(4, 1, input2), elle::Exception);
 
     // Fetch first file and check it's actually the first file.
-    BOOST_CHECK_NO_THROW(handler.serve(4, 1));
-    BOOST_CHECK_EQUAL(handler.serve(4, 1).size(), input1.size());
+    BOOST_CHECK_NO_THROW(handler.fetch(4, 1));
+    BOOST_CHECK_EQUAL(handler.fetch(4, 1).size(), input1.size());
 
     serv->terminate_now();
   };
@@ -273,7 +273,7 @@ BOOST_AUTO_TEST_CASE(test_restart)
     std::string msg("Hello there, I am a bit of file.");
     elle::Buffer input(msg.c_str(), msg.size());
     BOOST_CHECK_EQUAL(handler.store(5, 1, input), input.size());
-    BOOST_CHECK_EQUAL(handler.serve(5, 1).size(), input.size());
+    BOOST_CHECK_EQUAL(handler.fetch(5, 1).size(), input.size());
 
     serv->terminate_now();
   };
@@ -289,9 +289,9 @@ BOOST_AUTO_TEST_CASE(test_restart)
 
     oracle::hermes::Handler handler(channels);
 
-    BOOST_CHECK_NO_THROW(handler.serve(5, 1));
+    BOOST_CHECK_NO_THROW(handler.fetch(5, 1));
     // 28 is the size of the previously stored file.
-    BOOST_CHECK_EQUAL(handler.serve(5, 1).size(), 32);
+    BOOST_CHECK_EQUAL(handler.fetch(5, 1).size(), 32);
 
     serv->terminate_now();
   };
@@ -341,7 +341,7 @@ BOOST_AUTO_TEST_CASE(test_restart_fail)
     std::string msg("Hello there, I am a bit of file.");
     elle::Buffer input(msg.c_str(), msg.size());
     BOOST_CHECK_EQUAL(handler.store(6, 1, input), input.size());
-    BOOST_CHECK_EQUAL(handler.serve(6, 1).size(), input.size());
+    BOOST_CHECK_EQUAL(handler.fetch(6, 1).size(), input.size());
 
     serv->terminate_now();
   };
@@ -357,7 +357,7 @@ BOOST_AUTO_TEST_CASE(test_restart_fail)
 
     oracle::hermes::Handler handler(channels);
 
-    BOOST_CHECK_THROW(handler.serve(99, 1), elle::Exception);
+    BOOST_CHECK_THROW(handler.fetch(99, 1), elle::Exception);
 
     serv->terminate_now();
   };

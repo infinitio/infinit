@@ -42,7 +42,7 @@ namespace oracle
     public:
       Handler(infinit::protocol::ChanneledStream& channels);
       RemoteProcedure<Size, FileID, Offset, elle::Buffer&> store;
-      RemoteProcedure<elle::Buffer, FileID, Offset> serve;
+      RemoteProcedure<elle::Buffer, FileID, Offset> fetch;
     };
   }
 }

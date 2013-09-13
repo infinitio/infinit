@@ -44,7 +44,7 @@ namespace oracle
                                 std::placeholders::_1,
                                 std::placeholders::_2,
                                 std::placeholders::_3);
-          rpc.serve = std::bind(&Clerk::serve,
+          rpc.fetch = std::bind(&Clerk::fetch,
                                 &_clerk,
                                 std::placeholders::_1,
                                 std::placeholders::_2);
@@ -52,7 +52,8 @@ namespace oracle
           rpc.run();
         };
 
-        _clients.emplace_back(new reactor::Thread(_sched, "hihi", client));
+        // TODO: Change name of clients.
+        _clients.emplace_back(new reactor::Thread(_sched, "random", client));
       }
     }
 
@@ -60,7 +61,7 @@ namespace oracle
       infinit::protocol::RPC<elle::serialize::InputBinaryArchive,
                              elle::serialize::OutputBinaryArchive>(channels),
       store("store", *this),
-      serve("serve", *this)
+      fetch("fetch", *this)
     {}
   }
 }

@@ -44,7 +44,7 @@ namespace oracle
     }
 
     elle::Buffer
-    Clerk::serve(FileID id, Offset off)
+    Clerk::fetch(FileID id, Offset off)
     {
       ChunkMeta current(id, off);
 

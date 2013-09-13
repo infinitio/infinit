@@ -44,7 +44,7 @@ namespace oracle
       Clerk(std::string base_path);
 
       Size store(FileID id, Offset off, elle::Buffer& buff);
-      elle::Buffer serve(FileID id, Offset off);
+      elle::Buffer fetch(FileID id, Offset off);
 
     private:
       Size _save(ChunkMeta const& chunk, elle::Buffer& buff) const;
