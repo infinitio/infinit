@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(test_basic)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     std::string msg("This is basic content");
     elle::Buffer input(msg.c_str(), msg.size());
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(test_multiple)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     // Store first.
     std::string msg1("This is basic content for first msg");
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(test_filenotfound)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     BOOST_CHECK_THROW(handler.fetch(3, 1), elle::Exception);
 
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(test_file_already_present)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     // Store and fetch first file.
     std::string msg1("This is a random file as well");
@@ -268,7 +268,7 @@ BOOST_AUTO_TEST_CASE(test_restart)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     std::string msg("Hello there, I am a bit of file.");
     elle::Buffer input(msg.c_str(), msg.size());
@@ -287,7 +287,7 @@ BOOST_AUTO_TEST_CASE(test_restart)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     BOOST_CHECK_NO_THROW(handler.fetch(5, 1));
     // 28 is the size of the previously stored file.
@@ -336,7 +336,7 @@ BOOST_AUTO_TEST_CASE(test_restart_fail)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     std::string msg("Hello there, I am a bit of file.");
     elle::Buffer input(msg.c_str(), msg.size());
@@ -355,7 +355,7 @@ BOOST_AUTO_TEST_CASE(test_restart_fail)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     BOOST_CHECK_THROW(handler.fetch(99, 1), elle::Exception);
 
@@ -388,7 +388,7 @@ BOOST_AUTO_TEST_CASE(test_parallel)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     std::string msg("Hello there, I am a bit of another file.");
     elle::Buffer input(msg.c_str(), msg.size());
@@ -403,7 +403,7 @@ BOOST_AUTO_TEST_CASE(test_parallel)
     infinit::protocol::Serializer s(sched, socket);
     infinit::protocol::ChanneledStream channels(sched, s);
 
-    oracle::hermes::Handler handler(channels);
+    oracle::hermes::HermesRPC handler(channels);
 
     std::string msg("Hello there, I am a bit of yet another file.");
     elle::Buffer input(msg.c_str(), msg.size());

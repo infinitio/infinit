@@ -43,6 +43,7 @@ namespace oracle
     {
     public:
       Clerk(boost::filesystem::path& base_path);
+      static void check_directory(boost::filesystem::path& path);
 
     public:
       void ident(TID id);

@@ -8,13 +8,9 @@ namespace oracle
   {
     Clerk::Clerk(boost::filesystem::path& base_path):
       _base_path(base_path),
-      _identified(false)
+      _identified(true)
     {
-      if (not boost::filesystem::exists(base_path))
-        boost::filesystem::create_directory(base_path);
-      else if (not boost::filesystem::is_directory(base_path))
-        throw elle::Exception("Clerk base path is not valid");
-
+      // At this point base_path has already been checked by Hermes.
       // Build chunks list from files present in base_path at startup.
       boost::filesystem::directory_iterator end_iter;
       for (boost::filesystem::directory_iterator dir_iter(_base_path);
@@ -31,10 +27,19 @@ namespace oracle
     }
 
     void
+    Clerk::check_directory(boost::filesystem::path& path)
+    {
+      if (not boost::filesystem::exists(path))
+        boost::filesystem::create_directory(path);
+      else if (not boost::filesystem::is_directory(path))
+        throw elle::Exception("Directory path is not valid");
+    }
+
+    void
     Clerk::ident(TID id)
     {
       // TODO: Check stuff with Transaction ID.
-      _base_path /= boost::filesystem::path(id);
+      check_directory(_base_path /= boost::filesystem::path(id));
       _identified = true;
     }
 

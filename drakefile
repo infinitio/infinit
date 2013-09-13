@@ -645,8 +645,6 @@ def configure(cxx_toolkit = None,
   hermes_sources = drake.nodes(
     'oracle/disciples/hermes/src/hermes/Clerk.cc',
     'oracle/disciples/hermes/src/hermes/Clerk.hh',
-    'oracle/disciples/hermes/src/hermes/Dispatcher.cc',
-    'oracle/disciples/hermes/src/hermes/Dispatcher.hh',
     'oracle/disciples/hermes/src/hermes/Hermes.cc',
     'oracle/disciples/hermes/src/hermes/Hermes.hh',
     # TODO
