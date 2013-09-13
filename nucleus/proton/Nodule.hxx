@@ -270,12 +270,13 @@ namespace nucleus
           // create an inlet.
           auto il = new typename X::I(mayor.newright, orphan);
 
-          ELLE_FINALLY_ACTION_DELETE(il);
+          // XXX: It's not safe.
+          elle::SafeFinally delete_il{ [&] { delete il; } };
 
           // insert the inlet to the left nodule.
           nodule.insert(il);
 
-          ELLE_FINALLY_ABORT(il);
+          delete_il.abort();
 
           // update the inlet with the proper capacity and state.
           il->capacity(capacity.newright);
@@ -354,8 +355,9 @@ namespace nucleus
               Ambit<typename X::V>* left = nullptr;
               Ambit<typename X::V>* right = nullptr;
 
-              ELLE_FINALLY_ACTION_DELETE(left);
-              ELLE_FINALLY_ACTION_DELETE(right);
+              // XXX: It's not safe.
+              elle::SafeFinally delete_left{ [&] { delete left; } };
+              elle::SafeFinally delete_right{ [&] { delete right; } };
 
               if ((iterator != nodule._container.begin()) &&
                   (previous != nodule._container.end()))
@@ -545,10 +547,11 @@ namespace nucleus
               if (right != nullptr)
                 (*right).unload();
 
+              delete_left.abort();
+              delete_right.abort();
+
               delete left;
               delete right;
-              ELLE_FINALLY_ABORT(left);
-              ELLE_FINALLY_ABORT(right);
             }
         }
       else

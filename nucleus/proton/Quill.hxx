@@ -343,7 +343,8 @@ namespace nucleus
       // create an inlet.
       auto inlet = new typename Quill<T>::I(k, v);
 
-      ELLE_FINALLY_ACTION_DELETE(inlet);
+      // XXX: It's not safe.
+      elle::SafeFinally delete_inlet{ [&] { delete inlet; } };
 
       ELLE_TRACE_SCOPE("add(%s, %s)", k, v);
 
@@ -362,7 +363,7 @@ namespace nucleus
 
       value.unload();
 
-      ELLE_FINALLY_ABORT(inlet);
+      delete_inlet.abort();
 
       // now, let us try to optimise the tree given the fact that its
       // content has been altered.

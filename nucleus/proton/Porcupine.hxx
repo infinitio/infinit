@@ -1484,7 +1484,8 @@ namespace nucleus
                 // Create the tree and add the initial value block.
                 Tree<T>* tree = new Tree<T>(this->_nest);
 
-                ELLE_FINALLY_ACTION_DELETE(tree);
+                // XXX: It's not safe.
+                elle::SafeFinally delete_tree{ [&] { delete tree; }};
 
                 tree->add(mayor, value.handle());
 
@@ -1501,7 +1502,7 @@ namespace nucleus
                 this->_strategy = Strategy::tree;
                 this->_tree = tree;
 
-                ELLE_FINALLY_ABORT(tree);
+                delete_tree.abort();
               }
             else if ((value().empty() == true) ||
                      (value().footprint() <=
@@ -1526,7 +1527,8 @@ namespace nucleus
                     ELLE_ASSERT_NEQ(dynamic_cast<T*>(node), nullptr);
                     T* _value = static_cast<T*>(node);
 
-                    ELLE_FINALLY_ACTION_DELETE(_value);
+                    // XXX: It's not safe.
+                    elle::SafeFinally delete_value{ [&] { delete _value; } };
 
                     value.unload();
 
@@ -1541,7 +1543,7 @@ namespace nucleus
                     delete this->_handle;
                     this->_value = _value;
 
-                    ELLE_FINALLY_ABORT(_value);
+                    delete_value.abort();
                   }
                 else
                   {

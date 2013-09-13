@@ -640,25 +640,27 @@ namespace nucleus
           typename Seam<T>::I* inlet_left =
             new typename Seam<T>::I{mayor_root, handle_root};
 
-          ELLE_FINALLY_ACTION_DELETE(inlet_left);
+          // XXX: It's not safe.
+          elle::SafeFinally delete_ileft{ [&] { delete inlet_left; } };
 
           inlet_left->capacity(capacity_root);
 
           newroot().insert(inlet_left);
 
-          ELLE_FINALLY_ABORT(inlet_left);
+          delete_ileft.abort();
 
           // Do the same for the right inlet i.e the split _newright_ nodule.
           typename Seam<T>::I* inlet_right =
             new typename Seam<T>::I{mayor_newright, handle_newright};
 
-          ELLE_FINALLY_ACTION_DELETE(inlet_right);
+          // XXX: It's not safe.
+          elle::SafeFinally delete_iright{ [&] { delete inlet_right; } };
 
           inlet_right->capacity(capacity_newright);
 
           newroot().insert(inlet_right);
 
-          ELLE_FINALLY_ABORT(inlet_right);
+          delete_iright.abort();
 
           // Compute the capacity of the new root seam. Note that
           // the state does not need to be set explicitely because
