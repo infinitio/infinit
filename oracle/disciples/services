@@ -100,14 +100,6 @@ def run(command):
     except Exception as e:
         print(e)
 
-def reset_user_status():
-    """XXX We reset all user's status to be "disconnected". We know it's
-    true because there is only on trophonius instance at the moment.
-    The right way to do it is to disconnect all users (in the database)
-    when the trophonius instance goes down.
-    """
-    import meta.database
-    meta.database.users().update(spec={}, document={"$set": {"connected":False, "connected_devices": []}}, multi=True)
 
 META_BIN = os.path.join(BIN_DIR, 'meta-server')
 APERTUS_BIN = os.path.join(BIN_DIR, 'apertus-server')

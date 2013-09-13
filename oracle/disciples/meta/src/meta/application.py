@@ -66,10 +66,23 @@ class Application(object):
             cls.__session__ = session
             cls.__application__ = self
 
+    def reset_user_status():
+        """XXX We reset all user's status to be "disconnected". We know it's
+        true because there is only on trophonius instance at the moment.
+        The right way to do it is to disconnect all users (in the database)
+        when the trophonius instance goes down.
+        """
+        pymongo.Connection(mongo_host, mongo_port).meta['users'].update(
+            spec = {},
+            document = {"$set": {"connected":False, "connected_devices": []}},
+            multi = True,
+        )
     def run(self):
         """
         Run the web server
         """
+        self.reset_user_status()
+
         print(self.fcgi)
         if self.fcgi:
             print("start fcgi server")
