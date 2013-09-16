@@ -586,10 +586,12 @@ namespace surface
     void
     State::poll() const
     {
-      ELLE_DEBUG("poll");
+      ELLE_DUMP("poll");
 
       if (this->_runners.empty())
         return;
+
+      ELLE_DEBUG("poll %s notification(s)", this->_runners.size());
 
       // I'm the only consumer.
       while (!this->_runners.empty())
