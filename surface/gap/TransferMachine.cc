@@ -163,30 +163,33 @@ namespace surface
         this->_publish_interfaces_state,
         this->_connection_state,
         reactor::Waitables{&this->_peer_online});
+
       this->_core_machine.transition_add(
         this->_connection_state,
         this->_wait_for_peer_state,
-        reactor::Waitables{&this->_peer_offline});
+        reactor::Waitables{&this->_peer_offline},
+        true);
+
       this->_core_machine.transition_add(
         this->_wait_for_peer_state,
         this->_connection_state,
         reactor::Waitables{&this->_peer_online});
-      this->_core_machine.transition_add(
-        this->_connection_state,
-        this->_connection_state,
-        reactor::Waitables{&this->_peer_online});
+
       this->_core_machine.transition_add(
         this->_publish_interfaces_state,
         this->_core_stoped_state,
         reactor::Waitables{&this->_canceled}, true);
+
       this->_core_machine.transition_add(
         this->_connection_state,
         this->_core_stoped_state,
         reactor::Waitables{&this->_canceled}, true);
+
       this->_core_machine.transition_add(
         this->_wait_for_peer_state,
         this->_core_stoped_state,
         reactor::Waitables{&this->_canceled}, true);
+
       this->_core_machine.transition_add(
         this->_transfer_state,
         this->_core_stoped_state,
@@ -221,6 +224,7 @@ namespace surface
                   ELLE_ERR("%s: interface publication failed", *this);
                   this->_failed.open();
                 });
+
       this->_core_machine.transition_add_catch(
         this->_wait_for_peer_state,
         this->_core_stoped_state)
@@ -458,13 +462,20 @@ namespace surface
 
       if (user_status)
       {
+        if (this->_peer_online.opened())
+        {
+          ELLE_WARN("%s: peer was already signal online", *this);
+          this->_peer_offline.signal();
+        }
+
         ELLE_DEBUG("%s: signal peer online", *this)
-          this->_peer_online.signal();
+          this->_peer_online.open();
       }
       else
       {
-        ELLE_DEBUG("%s: signal peer offline", *this)
-          this->_peer_offline.signal();
+        ELLE_DEBUG("%s: signal peer offline", *this);
+        this->_peer_online.close();
+        this->_peer_offline.signal();
       }
     }
 
@@ -604,8 +615,10 @@ namespace surface
 
       auto endpoints = this->state().meta().device_endpoints(
         this->data()->id,
-        is_sender() ? transaction.sender_device_id : transaction.recipient_device_id,
-        is_sender() ? transaction.recipient_device_id : transaction.sender_device_id);
+        is_sender() ? transaction.sender_device_id :
+                      transaction.recipient_device_id,
+        is_sender() ? transaction.recipient_device_id :
+                      transaction.sender_device_id);
 
       static auto print = [] (std::string const &s) { ELLE_DEBUG("-- %s", s); };
 
@@ -638,7 +651,7 @@ namespace surface
         for (auto& r: rounds)
           ELLE_TRACE("-- %s", *r);
 
-      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         reactor::Barrier found;
         std::unique_ptr<station::Host> host;
@@ -659,7 +672,10 @@ namespace surface
               host = round->connect(this->station());
 
               if (host)
+              {
                 found.open();
+                break;
+              }
               else
                 ELLE_WARN("%s: connection round %s failed, no host has been found",
                           *this, *round);
@@ -667,6 +683,8 @@ namespace surface
           });
 
         found.wait();
+
+        ELLE_ASSERT(host != nullptr);
 
         return host;
       };

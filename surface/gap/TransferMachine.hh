@@ -257,7 +257,7 @@ namespace surface
 
     protected:
       // User status signal.
-      reactor::Signal _peer_online;
+      reactor::Barrier _peer_online;
       reactor::Signal _peer_offline;
 
       // Slug?
