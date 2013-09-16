@@ -10,34 +10,14 @@
 # include <vector>
 
 # include <elle/Buffer.hh>
-# include <frete/Frete.hh>
+
+# include <oracle/disciples/hermes/src/hermes/Chunk.hh>
 
 namespace oracle
 {
   namespace hermes
   {
-    typedef frete::Frete::FileID FileID;
-    typedef frete::Frete::Offset Offset;
-    typedef frete::Frete::Size Size;
     typedef std::string TID;
-
-    class ChunkMeta
-    {
-    public:
-      ChunkMeta(FileID id, Offset off);
-      ChunkMeta(boost::filesystem::path const& path);
-
-    public:
-      boost::filesystem::path path(boost::filesystem::path root) const;
-      bool operator ==(ChunkMeta const& other);
-
-    private:
-      const std::string string() const;
-
-    private:
-      FileID _id;
-      Offset _off;
-    };
 
     class Clerk
     {
@@ -48,15 +28,13 @@ namespace oracle
     public:
       void ident(TID id);
       Size store(FileID id, Offset off, elle::Buffer& buff);
-      elle::Buffer fetch(FileID id, Offset off);
+      elle::Buffer fetch(FileID id, Offset off, Size size);
 
     private:
-      Size _save(ChunkMeta const& chunk, elle::Buffer& buff) const;
-      elle::Buffer _retrieve(ChunkMeta const& chunk) const;
       void _explore(boost::filesystem::path& path);
 
     private:
-      std::vector<ChunkMeta> _chunks;
+      std::vector<Chunk> _chunks;
       boost::filesystem::path _base_path;
       bool _identified;
     };

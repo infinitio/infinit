@@ -25,19 +25,70 @@ namespace oracle
     {
       check_directory(_base_path /= path);
 
-      // Build chunks list from files present in base_path at startup.
-      boost::filesystem::directory_iterator end_iter;
-      for (boost::filesystem::directory_iterator dir_iter(_base_path);
-           dir_iter != end_iter; ++dir_iter)
+    }
+
+    Size
+    Clerk::store(FileID id, Offset off, elle::Buffer& buff)
+    {
+      if (not _identified)
+        throw elle::Exception("Trying to store something without identifying");
+
+      Chunk chunk(_base_path, id, off, buff.size());
+
+      // TODO: Modify names of this stuff.
+      std::vector<Chunk>::iterator result;
+      auto follows = std::bind(&Chunk::follows, &chunk, std::placeholders::_1);
+      auto overlaps = std::bind(&Chunk::overlaps,
+                                &chunk,
+                                std::placeholders::_1);
+
+      auto leads = std::bind(&Chunk::leads, &chunk, std::placeholders::_1);
+
+      std::cout << "list state " << _chunks.size() << std::endl;
+
+      if ((result = std::find_if(_chunks.begin(), _chunks.end(), follows)) !=
+          _chunks.end())
       {
-        if (boost::filesystem::is_regular_file(dir_iter->path()))
-          try
-          {
-            _chunks.push_back(dir_iter->path());
-          }
-          catch (boost::bad_lexical_cast const&)
-          {}
+        std::cout << "follows" << std::endl;
+        result->append(buff);
       }
+      else if ((result = std::find_if(_chunks.begin(),
+                                      _chunks.end(),
+                                      overlaps)) != _chunks.end())
+      {
+        std::cout << "overlaps" << std::endl;
+        result->merge(chunk, buff);
+      }
+      else if ((result = std::find_if(_chunks.begin(),
+                                      _chunks.end(),
+                                      leads)) != _chunks.end())
+      {
+        // TODO: coded too fast, memory problems.
+        std::cout << "leads" << std::endl;
+        result->prepend(chunk, buff);
+
+        result->remove();
+        _chunks.erase(result);
+
+        _chunks.push_back(chunk);
+      }
+      else
+      {
+        std::cout << "save" << std::endl;
+        chunk.save(buff);
+        _chunks.push_back(chunk);
+      }
+
+      return buff.size();
+    }
+
+    elle::Buffer
+    Clerk::fetch(FileID id, Offset off, Size size)
+    {
+      if (not _identified)
+        throw elle::Exception("Trying to fetch something without identifying");
+
+      return elle::Buffer(0);
     }
 
     void
@@ -49,105 +100,6 @@ namespace oracle
       _explore(relative_path);
 
       _identified = true;
-    }
-
-    Size
-    Clerk::store(FileID id, Offset off, elle::Buffer& buff)
-    {
-      if (not _identified)
-        throw elle::Exception("Trying to store without identifying first.");
-
-      ChunkMeta current(id, off);
-
-      if (find(_chunks.begin(), _chunks.end(), current) == _chunks.end())
-      {
-        _chunks.push_back(current);
-        return _save(current, buff);
-      }
-
-      throw elle::Exception("Chunk already present");
-    }
-
-    elle::Buffer
-    Clerk::fetch(FileID id, Offset off)
-    {
-      if (not _identified)
-        throw elle::Exception("Trying to fetch without identifying first.");
-
-      ChunkMeta current(id, off);
-
-      if (find(_chunks.begin(), _chunks.end(), current) == _chunks.end())
-        throw elle::Exception("Chunk not found");
-
-      return _retrieve(current);
-    }
-
-    Size
-    Clerk::_save(ChunkMeta const& chunk, elle::Buffer& buff) const
-    {
-      std::ofstream out(chunk.path(_base_path).c_str());
-
-      if (not out.is_open())
-        throw elle::Exception("Error while trying to save chunk");
-
-      out.write(reinterpret_cast<char*>(buff.mutable_contents()), buff.size());
-      out.close();
-
-      if (out.fail())
-        throw elle::Exception("Error while trying to save chunk");
-
-      return buff.size();
-    }
-
-    elle::Buffer
-    Clerk::_retrieve(ChunkMeta const& chunk) const
-    {
-      Size size(boost::filesystem::file_size(chunk.path(_base_path)));
-
-      elle::Buffer buff(size);
-      std::ifstream in(chunk.path(_base_path).c_str());
-
-      if (not in.is_open())
-        throw elle::Exception("Could not retrieve chunk");
-
-      in.readsome(reinterpret_cast<char*>(buff.mutable_contents()), size);
-
-      in.close();
-      return buff;
-    }
-
-    ChunkMeta::ChunkMeta(FileID id, Offset off):
-      _id(id),
-      _off(off)
-    {}
-
-    ChunkMeta::ChunkMeta(boost::filesystem::path const& path)
-    {
-      std::string const name(path.filename().replace_extension().string());
-      std::vector<std::string> values;
-      boost::split(values, name, boost::is_any_of("_"));
-
-      _id = boost::lexical_cast<FileID>(values[0]);
-      _off = boost::lexical_cast<Offset>(values[1]);
-    }
-
-    boost::filesystem::path
-    ChunkMeta::path(boost::filesystem::path root) const
-    {
-      return root / boost::filesystem::path(string() + ".blk");
-    }
-
-    bool
-    ChunkMeta::operator ==(ChunkMeta const& other)
-    {
-      return other._id == _id and other._off == _off;
-    }
-
-    const std::string
-    ChunkMeta::string() const
-    {
-      std::string out(std::to_string(_id) + "_" + std::to_string(_off));
-      return out;
     }
   }
 }

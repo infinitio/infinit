@@ -18,6 +18,7 @@ namespace oracle
 
     Hermes::~Hermes()
     {
+      // TODO: Replace with unique_ptr.
       for (auto client : _clients)
         if (client != nullptr)
         {
@@ -36,7 +37,7 @@ namespace oracle
       {
         reactor::network::TCPSocket* sock = _serv.accept();
 
-        auto client = [=] ()
+        auto client = [this, sock]
         {
           infinit::protocol::Serializer s(_sched, *sock);
           infinit::protocol::ChanneledStream channels(_sched, s);
@@ -57,7 +58,8 @@ namespace oracle
           rpc.fetch = std::bind(&Clerk::fetch,
                                 &clerk,
                                 std::placeholders::_1,
-                                std::placeholders::_2);
+                                std::placeholders::_2,
+                                std::placeholders::_3);
 
           rpc.run();
         };

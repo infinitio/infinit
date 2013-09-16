@@ -45,7 +45,7 @@ namespace oracle
       HermesRPC(infinit::protocol::ChanneledStream& channels);
       RemoteProcedure<void, TID> ident;
       RemoteProcedure<Size, FileID, Offset, elle::Buffer&> store;
-      RemoteProcedure<elle::Buffer, FileID, Offset> fetch;
+      RemoteProcedure<elle::Buffer, FileID, Offset, Size> fetch;
     };
   }
 }
