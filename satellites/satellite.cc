@@ -12,7 +12,12 @@
 #include <CrashReporter.hh>
 
 #include <unistd.h>
+
+#if !defined(INFINIT_WINDOWS)
+
 #include <sys/wait.h>
+
+#endif
 
 #include <fstream>
 #include <sstream>
@@ -35,6 +40,7 @@ log_destination()
 
 namespace infinit
 {
+#if !defined(INFINIT_WINDOWS)
   static int st_pid = -1;
 
   static
@@ -121,6 +127,7 @@ namespace infinit
     }
     return retval;
   }
+#endif
 
   static
   int
@@ -171,6 +178,7 @@ namespace infinit
 
     ELLE_TRACE_FUNCTION(name, action);
 
+#if !defined(INFINIT_WINDOWS)
     int pid = 0;
     std::string shallfork = elle::os::getenv("INFINIT_NO_FORK", "");
     if (shallfork.empty() && (pid = fork()))
@@ -180,6 +188,7 @@ namespace infinit
     }
     else
     {
+#endif
       // Child.
       ELLE_LOG_COMPONENT("infinit.satellite.child");
       reactor::Scheduler sched;
@@ -210,6 +219,8 @@ namespace infinit
                             name, e.what());
         exit(EXIT_FAILURE);
       }
+#if !defined(INFINIT_WINDOWS)
     }
+#endif
   }
 }

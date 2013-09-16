@@ -160,7 +160,7 @@ namespace plasma
         return Ptr(new Notification{extractor});
       // XXX: Handle at upper levels (?)
       case NotificationType::suicide:
-        kill(getpid(), SIGKILL);
+        exit(1);
       default:
         throw elle::Exception{elle::sprint("Unknown notification type", type)};
       }

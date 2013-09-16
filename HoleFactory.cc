@@ -117,6 +117,7 @@ namespace infinit
           boost::asio::ip::udp::endpoint pub;
           try
           {
+#if defined(REACTOR_HAVE_STUN)
             reactor::nat::NAT nat(sched);
             std::string stun_host = common::stun::host(),
               stun_port = std::to_string(common::stun::port());
@@ -136,6 +137,7 @@ namespace infinit
             }
             else
               throw elle::Exception{"invalid mapping behavior"};
+#endif
           }
           catch (elle::Exception const& e)
           {

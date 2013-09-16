@@ -13,6 +13,8 @@ def configure(cxx_toolkit = None,
               optimization = True,
               prefix = '/usr',
               boost = None,
+              curl = None,
+              openssl = None,
               qt = None,
               python2 = None,
               python3 = None,
@@ -96,7 +98,6 @@ def configure(cxx_toolkit = None,
   VersionGenerator(git, version)
 
   # OpenSSL
-  openssl = None
 
   architecture = platform.architecture()[0]
   if architecture == "32bit":
@@ -131,31 +132,17 @@ def configure(cxx_toolkit = None,
     raise Exception(
       'operating system %s not supported' % cxx_toolkit.os)
 
-  openssl = drake.cxx.LibraryConfiguration(
-    'openssl/opensslconf.h',
-    prefix = dependencies_prefix,
-  )
+  if openssl is None:
+    openssl = drake.cxx.LibraryConfiguration(
+      'openssl/opensslconf.h',
+      prefix = dependencies_prefix,
+    )
 
-  curl = drake.cxx.LibraryConfiguration(
-    'curl/curl.h',
-    prefix = dependencies_prefix,
-  )
-
-  stun_common = drake.cxx.LibraryConfiguration(
-    'commonincludes.hpp',
-    prefix = dependencies_prefix,
-    include_dir = "include/stun/common/",
-  )
-
-  stun_core = drake.cxx.LibraryConfiguration(
-    'stuncore.h',
-    prefix = dependencies_prefix,
-    include_dir = "include/stun/stuncore/",
-  )
-
-  stun_server_path = os.path.join(dependencies_prefix, 'bin', 'stun-server')
-  stun_server = drake.copy(drake.nodes(stun_server_path), 'bin',
-          os.path.dirname(stun_server_path))
+  if curl is None:
+    curl = drake.cxx.LibraryConfiguration(
+      'curl/curl.h',
+      prefix = dependencies_prefix,
+    )
 
   if cxx_toolkit.os == drake.os.macos:
     ssl_suffix = '.1.0.0.dylib'
@@ -184,40 +171,24 @@ def configure(cxx_toolkit = None,
     curl.libraries_path
   )
 
-  stun_core_lib = drake.copy(
-    drake.nodes(
-      stun_core.libraries_path / ('libstuncore.a'),
-    ),
-    'lib',
-    stun_core.libraries_path
-  )
-
-  stun_common_lib = drake.copy(
-    drake.nodes(
-      stun_common.libraries_path / ('libstuncommon.a'),
-    ),
-    'lib',
-    stun_common.libraries_path
-  )
-
   cxx_config += openssl.config()
 
   cxx_config += curl.config()
-  cxx_config += stun_core.config()
-  cxx_config += stun_common.config()
 
   # Boost
   boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
   cxx_config += boost.config()
 
   # Python
-  python_enabled = cxx_toolkit.os != drake.os.windows
+  python_enabled = True
   if python_enabled:
     python2 = drake.cxx.find_library('pyconfig.h', prefix = python2,
-                                     include_dir = ['include/python2.7',
+                                     include_dir = ['include',
+                                                    'include/python2.7',
                                                     'include/python2.7m'])
     python3 = drake.cxx.find_library('pyconfig.h', prefix = python3,
-                                     include_dir = ['include/python3.2',
+                                     include_dir = ['include',
+                                                    'include/python3.2',
                                                     'include/python3.2m',
                                                     'include/python3.3m'])
 
@@ -227,22 +198,28 @@ def configure(cxx_toolkit = None,
                        drake.cxx.Config(cxx_config),
                        prefix = prefix,
                        boost = boost,
-                       stuntman = stun_core,
                        openssl = openssl.config(),
                        curl = curl.config(),
-                       valgrind = valgrind)
+                       #valgrind = valgrind,
+                       )
 
   def copy_lib(lib, where = 'lib'):
     return drake.copy(lib, where, lib.path().dirname())
 
   elle_lib = copy_lib(elle.elle_dynamic)
+  elle_slib = copy_lib(elle.elle_static)
   cryptography_lib = copy_lib(elle.cryptography_dynamic)
+  cryptography_slib = copy_lib(elle.cryptography_static)
   reactor_lib = copy_lib(elle.reactor_dynamic)
+  reactor_slib = copy_lib(elle.reactor_static)
   asio_fs_lib = copy_lib(elle.asio_fs)
   # asio_udt_lib = copy_lib(elle.asio_udt)
   curly_lib = copy_lib(elle.curly_dynamic)
-  curly_sched_lib = copy_lib(elle.curly_sched_dynamic)
+  curly_slib = copy_lib(elle.curly_static)
   curly_asio_lib = copy_lib(elle.curly_asio_dynamic)
+  curly_asio_slib = copy_lib(elle.curly_asio_static)
+  curly_sched_lib = copy_lib(elle.curly_sched_dynamic)
+  curly_sched_slib = copy_lib(elle.curly_sched_static)
   cxx_config += elle.config
   cxx_config.add_local_include_path('.')
 
@@ -294,6 +271,9 @@ def configure(cxx_toolkit = None,
     )
   lune_lib = drake.cxx.DynLib('lib/lune', lune_sources,
                               cxx_toolkit, cxx_config)
+
+  lune_slib = drake.cxx.StaticLib('lib/lune', lune_sources,
+                                  cxx_toolkit, cxx_config)
 
   # Nucleus
   nucleus_sources = drake.nodes(
@@ -475,6 +455,8 @@ def configure(cxx_toolkit = None,
     )
   nucleus_lib = drake.cxx.DynLib('lib/nucleus', nucleus_sources,
                                  cxx_toolkit, cxx_config)
+  nucleus_slib = drake.cxx.StaticLib('lib/nucleus', nucleus_sources,
+                                     cxx_toolkit, cxx_config)
 
   # Protocol
   protocol_sources = drake.nodes(
@@ -492,12 +474,14 @@ def configure(cxx_toolkit = None,
     'protocol/Serializer.cc',
     'protocol/RPC.cc',
     'protocol/fwd.hh',
-    )
-  protocol_lib = drake.cxx.DynLib('lib/protocol',
-                                  protocol_sources + [
-                                    cryptography_lib,
-                                  ],
+    ) + [
+    cryptography_lib,
+  ]
+
+  protocol_lib = drake.cxx.DynLib('lib/protocol', protocol_sources,
                                   cxx_toolkit, cxx_config_libs)
+  protocol_slib = drake.cxx.StaticLib('lib/protocol', protocol_sources,
+                                      cxx_toolkit, cxx_config_libs)
 
   # RCP caller
   rpc_sources = drake.nodes(
@@ -529,6 +513,9 @@ def configure(cxx_toolkit = None,
                                  metrics_sources + curly_libs + [cryptography_lib],
                                  cxx_toolkit, cxx_config_libs)
 
+  metrics_slib = drake.cxx.StaticLib('lib/metrics', metrics_sources,
+                                     cxx_toolkit, cxx_config)
+
   ## ------ ##
   ## Plasma ##
   ## ------ ##
@@ -542,15 +529,28 @@ def configure(cxx_toolkit = None,
     'plasma/plasma.hxx',
     'plasma/plasma.cc',
     )
-  plasma_lib = drake.cxx.DynLib(
-    'lib/plasma',
-    plasma_sources + curly_libs + [metrics_lib, elle_lib],
-    cxx_toolkit, cxx_config_libs)
 
-  plasma_python_sources = drake.nodes(
-    'plasma/python.cc',
-    'plasma/trophonius/python.cc',
-    'plasma/meta/python.cc')
+  plasma_sources += [
+      curly_lib,
+      elle_lib,
+    ]
+
+  plasma_static_sources = plasma_sources + [
+      curly_slib,
+      elle_slib
+    ]
+
+  plasma_lib = drake.cxx.DynLib('lib/plasma', plasma_sources,
+                                cxx_toolkit, cxx_config_libs)
+
+  plasma_slib = drake.cxx.StaticLib('lib/plasma', plasma_static_sources,
+                                    cxx_toolkit, cxx_config_libs)
+
+  plasma_python_sources = plasma_sources + [
+    drake.node('plasma/python.cc'),
+    drake.node('plasma/trophonius/python.cc'),
+    drake.node('plasma/meta/python.cc'),
+  ]
   plasma_python_cxx_config = drake.cxx.Config(cxx_config)
   plasma_python_cxx_config += python3
   plasma_python_cxx_config += boost.config_python()
@@ -571,6 +571,8 @@ def configure(cxx_toolkit = None,
   agent_lib = drake.cxx.DynLib('lib/agent', agent_sources,
                                cxx_toolkit, cxx_config)
 
+  agent_slib = drake.cxx.StaticLib('lib/agent', agent_sources,
+                                      cxx_toolkit, cxx_config)
 
   # Papier
   papier_sources = drake.nodes(
@@ -600,6 +602,9 @@ def configure(cxx_toolkit = None,
   papier_lib = drake.cxx.DynLib('lib/papier',
                                 papier_sources + [nucleus_lib],
                                 cxx_toolkit, papier_cxx_config)
+  papier_slib = drake.cxx.StaticLib('lib/papier',
+                                    papier_sources + [],
+                                    cxx_toolkit, papier_cxx_config)
 
   # Station
   station_build = drake.Rule('station/build')
@@ -620,13 +625,17 @@ def configure(cxx_toolkit = None,
   cxx_config_libs.add_local_include_path('station/src')
   station_cxx_config = drake.cxx.Config(cxx_config)
   station_cxx_config.lib_path_runtime('.')
+
+  station_sources += [papier_lib, cryptography_lib, reactor_lib, elle_lib]
   station_lib = drake.cxx.DynLib('lib/station',
-                                 station_sources + [papier_lib,
-                                                    cryptography_lib,
-                                                    reactor_lib,
-                                                    elle_lib],
+                                 station_sources,
                                  cxx_toolkit, station_cxx_config)
+  station_slib = drake.cxx.StaticLib('lib/station',
+                                     station_sources,
+                                     cxx_toolkit, station_cxx_config)
+
   station_build << station_lib
+  station_build << station_slib
   station_tests = drake.Rule('station/tests')
   station_check = drake.Rule('station/check')
   station_cxx_config_tests = drake.cxx.Config(station_cxx_config)
@@ -659,11 +668,15 @@ def configure(cxx_toolkit = None,
   cxx_config_libs.add_local_include_path('frete/src')
   frete_cxx_config = drake.cxx.Config(cxx_config)
   frete_cxx_config.lib_path_runtime('.')
+
+  frete_sources += [protocol_lib, reactor_lib, elle_lib]
   frete_lib = drake.cxx.DynLib('lib/frete',
-                                 frete_sources + [protocol_lib,
-                                                  reactor_lib,
-                                                  elle_lib],
+                                 frete_sources,
                                  cxx_toolkit, frete_cxx_config)
+  frete_lib = drake.cxx.StaticLib('lib/frete',
+                                 frete_sources,
+                                 cxx_toolkit, frete_cxx_config)
+
   frete_build << frete_lib
   frete_tests = drake.Rule('frete/tests')
   frete_check = drake.Rule('frete/check')
@@ -754,6 +767,8 @@ def configure(cxx_toolkit = None,
     )
   hole_lib = drake.cxx.DynLib('lib/hole', hole_sources + [papier_lib],
                               cxx_toolkit, cxx_config)
+  hole_slib = drake.cxx.StaticLib('lib/hole', hole_sources,
+                                 cxx_toolkit, cxx_config)
 
   # Infinit
   infinit_sources = drake.nodes(
@@ -772,6 +787,12 @@ def configure(cxx_toolkit = None,
   infinit_lib = drake.cxx.DynLib('lib/infinit',
                                  infinit_sources + [reactor_lib, curly_lib, agent_lib, hole_lib],
                                  cxx_toolkit, infinit_cxx_config)
+
+  infinit_cxx_sconfig = drake.cxx.Config(infinit_cxx_config)
+  infinit_slib = drake.cxx.StaticLib('lib/infinit',
+                                     infinit_sources,
+                                     cxx_toolkit, infinit_cxx_sconfig)
+
 # XXX
 #  hole_tests_root = drake.Path('hole/tests')
 #  for test in ['slug']:
@@ -901,6 +922,8 @@ def configure(cxx_toolkit = None,
     )
   etoile_lib = drake.cxx.DynLib('lib/etoile', etoile_sources,
                                 cxx_toolkit, cxx_config)
+  etoile_slib = drake.cxx.StaticLib('lib/etoile', etoile_sources,
+                                    cxx_toolkit, cxx_config)
 
   # Horizon
   if enable_horizon:
@@ -967,8 +990,6 @@ def configure(cxx_toolkit = None,
   build = drake.Rule('build')
   build << openssl_lib
   build << curl_lib
-  build << stun_core_lib
-  build << stun_common_lib
   build << plasma_python_lib
 
   ## -------- ##
@@ -1084,8 +1105,15 @@ def configure(cxx_toolkit = None,
       self.__targets = drake.nodes('%s.hh' % path, '%s.h' % path)
       drake.Builder.__init__(self, [self.__script], self.__targets)
 
+    def get_pythonpath(self):
+      if cxx_toolkit.os == drake.os.windows:
+        return "C:\\Python32\\python.exe"
+      else:
+        return "python3"
+
     def execute(self):
-      return self.cmd('Generate %s' % ', '.join(map(str, self.__targets)), [self.__script.path(), self.__path])
+      return self.cmd('Generate %s' % ', '.join(map(str, self.__targets)),
+          [get_pythonpath(), self.__script.path(), self.__path])
 
     @property
     def generated(self):
@@ -1102,6 +1130,49 @@ def configure(cxx_toolkit = None,
                              cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib
+
+  if cxx_toolkit.os == drake.os.windows:
+    # Windows gap dll
+    infinit_slibs = [
+      agent_slib,
+      etoile_slib,
+      hole_slib,
+      papier_slib,
+      infinit_slib,
+      lune_slib,
+      nucleus_slib,
+      plasma_slib,
+      protocol_slib,
+      curly_sched_slib,
+      reactor_slib,
+      metrics_slib,
+      cryptography_slib,
+      curly_slib,
+      curly_asio_slib,
+      elle_slib,
+      elle.reactor.coro_static,
+    ]
+
+    gap_windows = drake.Rule('windows')
+    gap_cxx_config_slibs = drake.cxx.Config()
+    gap_cxx_config_slibs += boost.config()
+    gap_cxx_config_slibs += openssl.config()
+    gap_cxx_config_slibs += boost.config_signals(static = True)
+    gap_cxx_config_slibs += boost.config_filesystem(static = True)
+    gap_cxx_config_slibs += boost.config_system(static = True)
+    gap_cxx_config_slibs += boost.config_thread(static = True)
+    gap_cxx_config_slibs += curl.config()
+    gap_cxx_config_slibs.lib_path_runtime('../../lib/_gap')
+    gap_cxx_config_slibs.lib('ws2_32')
+    gap_cxx_config_slibs.lib('userenv')
+    gap_cxx_config_slibs.lib('Shlwapi')
+    gap_cxx_config_slibs.lib('eay32')
+    gap_cxx_config_slibs.lib('ssl32')
+    gap_cxx_config_slibs.lib('curldll', static = True)
+    gap_cxx_config_slibs.define('USE_FIBERS')
+    gap_windows << drake.cxx.DynLib('lib/gap_w32',
+                                    gap_sources + infinit_slibs,
+                                    cxx_toolkit, gap_cxx_config_slibs)
 
   # GAP python
   if python_enabled:
@@ -1338,7 +1409,6 @@ def configure(cxx_toolkit = None,
 
       oracles << metalib_lib
 
-    oracles << stun_server
     oracles << curl_lib
     oracles << openssl_lib
     build << oracles
@@ -1360,10 +1430,24 @@ def configure(cxx_toolkit = None,
   tests_cxx_config.lib_path_runtime('../../../lib')
   tests_cxx_config.lib_path_runtime('../../lib')
   tests_cxx_config.lib_path_runtime('../lib')
-  tests_cxx_config += boost.config_test()
+  tests_cxx_config.lib('elle')
+  tests_cxx_config += boost.config()
+  if cxx_toolkit.os == drake.os.windows:
+    do_static_link = True
+    tests_cxx_config.lib('shlwapi')
+    tests_cxx_config.lib('userenv')
+  else:
+    do_static_link = False
+
+  if not do_static_link:
+    tests_cxx_config.define("BOOST_TEST_DYN_LINK")
+  tests_cxx_config += boost.config_test(do_static_link)
+  tests_cxx_config += boost.config_system(do_static_link)
+
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib]
 
   tests_src_n_lib = [
+    (('tests/common.cc', 'common/common.cc'), []),
     ('tests/testing_tests.cc', []),
     ('tests/unit/etoile/Etoile.cc', infinit_libs),
     ('tests/unit/etoile/Shrub.cc', infinit_libs),
