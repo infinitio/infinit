@@ -67,7 +67,7 @@ class Page(object):
            not web.ctx.host.startswith('localhost') and \
            not web.ctx.host.startswith('127.0.0.1') and \
            not 'development' in web.ctx.host:
-            raise Exception("XXX Wrong version asked")
+            self.raise_error(error.DEPRECATED, msg = "Version not supported")
 
     @property
     def notifier(self):
