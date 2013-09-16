@@ -1,5 +1,5 @@
 #define BOOST_TEST_MODULE trophonius
-#define BOOST_TEST_DYN_LINK
+
 #include <boost/date_time/posix_time/date_duration_operators.hpp>
 #include <boost/test/unit_test.hpp>
 
