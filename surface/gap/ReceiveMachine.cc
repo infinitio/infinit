@@ -234,7 +234,6 @@ namespace surface
     ReceiveMachine::_transfer_operation()
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
-      elle::SafeFinally dbg{[] { ELLE_ERR("leaving transfer operation"); }};
 
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
@@ -257,7 +256,6 @@ namespace surface
           {
             while (true)
             {
-              ELLE_DEBUG("start waiting")
                 try
                 {
                   reactor::Scheduler::scheduler()->current()->wait(
@@ -265,12 +263,10 @@ namespace surface
                 }
                 catch (...)
                 {
-                  ELLE_DEBUG("exception");
-                  //ELLE_DEBUG("exception %s finish waiting", elle::exception_string());
+                  ELLE_DEBUG("exception %s while waiting progress",
+                             elle::exception_string());
                   throw;
                 }
-              ELLE_DEBUG("finish waiting");
-
               this->progress(this->frete().progress());
             }
           });

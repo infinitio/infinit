@@ -387,7 +387,6 @@ namespace surface
                   ELLE_DEBUG("exception finish waiting");
                   throw;
                 }
-              ELLE_DEBUG("finish waiting");
 
               this->progress(this->frete().progress());
             }
