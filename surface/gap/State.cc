@@ -228,6 +228,13 @@ namespace surface
 
       reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
 
+      reactor::Lock l(this->_login_mutex);
+
+      if (this->logged_in())
+        throw Exception(
+          gap_already_logged_in,
+          elle::sprintf("already logged in as %s", this->meta().email()));
+
       this->_meta.token("");
       this->_cleanup();
 

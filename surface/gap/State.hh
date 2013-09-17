@@ -64,7 +64,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(plasma::trophonius::Client, trophonius);
 
       plasma::meta::Client const&
-      meta(bool authentication_required  = true) const;
+      meta(bool authentication_required = true) const;
 
       /*----------.
       | Reporters |
@@ -119,6 +119,8 @@ namespace surface
 
       Self const&
       me() const;
+
+      ELLE_ATTRIBUTE(reactor::Mutex, login_mutex);
     public:
       /// Login to meta.
       void
