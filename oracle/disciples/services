@@ -87,18 +87,30 @@ parser.add_argument(
 
 import shlex
 
+lsb_init_script_status = """0	program is running or service is OK
+1	program is dead and pid file exists
+2	program is dead and lock file exists
+3	program is not running
+4	program or service status is unknown
+5-99	reserved for future LSB use
+100-149	reserved for distribution use
+150-199	reserved for application use
+200-254	reserved
+"""
+
 def ssd(command):
-    return run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
+    e = run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
+    if e >= 1 and e <= 4:
+      print(lsb_init_script_status.split('\n')[e])
+    return e
 
 def run(command):
     env = {
         'LD_LIBRARY_PATH': ':'.join(['/usr/local/lib', LIB_DIR]),
     }
     try:
-        print(' '.join(command.split()))
         return subprocess.check_call(shlex.split(command), env=env)
     except subprocess.CalledProcessError as e:
-        print(e)
         return e.returncode
     except Exception as e:
         print(e)
@@ -149,18 +161,6 @@ keys = {
     'nginx_pidfile': os.path.join('.', os.path.relpath(RUNTIME_DIR), 'nginx.pid'),
     'nginx_binary': NGINX_BINARY,
 }
-
-ldb_init_script_status = """
-0	program is running or service is OK
-1	program is dead and /var/run pid file exists
-2	program is dead and /var/lock lock file exists
-3	program is not running
-4	program or service status is unknown
-5-99	reserved for future LSB use
-100-149	reserved for distribution use
-150-199	reserved for application use
-200-254	reserved
-"""
 
 def start(args):
     if not os.path.isdir(RUNTIME_DIR):
