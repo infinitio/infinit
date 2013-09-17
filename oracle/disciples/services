@@ -140,18 +140,18 @@ def get_local_ip():
 
 keys = {
     'meta_bin': META_BIN,
-    'meta_port': META_PORT,
-    'meta_fport': META_FCGI_PORT,
+    'meta_port': META_PORT + 12,
+    'meta_fport': META_FCGI_PORT + 13,
     'meta_hostname': META_HOSTNAME,
     'meta_pidfile': os.path.join(RUNTIME_DIR, 'meta.pid'),
 
     'tropho_bin': TROPHONIUS_BIN,
-    'tropho_port': TROPHO_PORT,
-    'tropho_cport': TROPHO_CPORT,
+    'tropho_port': TROPHO_PORT + 14,
+    'tropho_cport': TROPHO_CPORT + 10,
     'tropho_pidfile': os.path.join(RUNTIME_DIR, 'tropho.pid'),
 
     'apertus_bin': APERTUS_BIN,
-    'apertus_proxy_port': APERTUS_PORT,
+    'apertus_proxy_port': APERTUS_PORT + 23,
     'apertus_host': get_local_ip(),
     'apertus_pidfile0': os.path.join(RUNTIME_DIR, 'apertus0.pid'),
     'apertus_pidfile1': os.path.join(RUNTIME_DIR, 'apertus1.pid'),
@@ -227,6 +227,19 @@ def stop(args):
     ssd("-p {tropho_pidfile} -K".format(**keys))
     ssd("-p {meta_pidfile} -K".format(**keys))
     run("sudo {nginx_binary} -p {www_dir} -c nginx.conf -s stop".format(**keys))
+    import time
+    time.sleep(2)
+    for pidfile in [v for k, v in keys.items() if 'pidfile' in k]:
+      if os.path.isfile(pidfile):
+        try:
+          pid = int(open(pidfile, "r").read())
+          os.kill(pid, 9)
+          print("Kill none exited process in", pidfile)
+        except OSError as e:
+          pass
+        except Exception as e:
+          print(e)
+          raise e
 
 def make_dev(args):
     processes = []
