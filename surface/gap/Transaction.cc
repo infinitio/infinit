@@ -68,7 +68,8 @@ namespace surface
               return gap_transaction_none;
           }
       }
-      throw Exception(gap_api_error, "no transaction status can be deduced");
+      throw Exception(gap_internal_error,
+                      "no transaction status can be deduced");
     }
 
     // - Exception -------------------------------------------------------------
