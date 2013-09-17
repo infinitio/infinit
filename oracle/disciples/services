@@ -25,6 +25,7 @@ NGINX_BINARY = "/usr/sbin/nginx"
 NGINX_USER = os.getenv("USER", "infinit")
 SSD = "/sbin/start-stop-daemon"
 RUNTIME_DIR = os.path.join(ROOT_DIR, 'runtime')
+CACHE_DIR = os.path.join(RUNTIME_DIR, 'cache')
 APERTUS_PORT = apertus.conf.PORT
 TROPHO_PORT = meta.conf.TROPHONIUS_PORT
 TROPHO_CPORT = meta.conf.TROPHONIUS_CONTROL_PORT
@@ -170,11 +171,15 @@ def start(args):
         for file in (error_log_path, local_error_log_path, local_access_log_path):
           f = open(file, "w+")
           f.close()
+    if not os.path.isdir(CACHE_DIR):
+        os.mkdir(CACHE_DIR)
+
     nginx_conf_params = {
         'NGINX_USER': NGINX_USER,
         'META_PORT': keys['meta_port'],
         'META_HOSTNAME': keys['meta_hostname'],
         'META_FCGI_PORT': keys['meta_fport'],
+        'CACHE_DIR': os.path.relpath(CACHE_DIR, start = RUNTIME_DIR),
     }
     nginx_conf = os.path.join(RUNTIME_DIR, 'nginx.conf')
     with open(NGINX_CONF_TEMPLATE) as template:
