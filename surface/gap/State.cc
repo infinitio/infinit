@@ -384,6 +384,9 @@ namespace surface
       }
       this->_trophonius.disconnect();
 
+      this->_user_indexes.clear();
+      this->_swagger_indexes.clear();
+
       this->_users.clear();
       this->_transactions_clear();
 
