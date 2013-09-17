@@ -206,7 +206,7 @@ def start(args):
       ssd("-b -p {tropho_pidfile} -m -S -x {tropho_bin} --\
             --port {tropho_port} --control-port {tropho_cport}".format(**keys))
 
-    if ssd("-p {nginx_pidfile} -T".format(**keys)) != 0:
+    if ssd("-p {meta_pidfile} -T".format(**keys)) != 0:
       run(' '.join([
           "spawn-fcgi -P {meta_pidfile} -d ./ -a 127.0.0.1 -p {meta_fport}",
           "--",
