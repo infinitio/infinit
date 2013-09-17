@@ -436,19 +436,20 @@ class Avatar(_Page):
     __pattern__ = "/user/(.+)/avatar"
 
     def GET(self, _id):
-        # Why?
+        # Check if the user has any avatar
         user = self._user_by_id(database.ObjectId(_id), ensure_user_exists = False)
         image = user and user.get('avatar')
         if image:
             yield str(image)
-
-        with open(os.path.join(os.path.dirname(__file__), "place_holder_avatar.png"), 'rb') as f:
-            while 1:
-                data = f.read(4096)
-                if data:
-                    yield data
-                else:
-                    break
+        else:
+            # Otherwise return the default avatar
+            with open(os.path.join(os.path.dirname(__file__), "place_holder_avatar.png"), 'rb') as f:
+                while 1:
+                    data = f.read(4096)
+                    if data:
+                        yield data
+                    else:
+                        break
 
     def POST(self, _id):
         self.requireLoggedIn()
