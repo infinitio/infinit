@@ -1,7 +1,6 @@
 #!/usr/bin/env python2.7
 from __future__ import print_function
 
-
 """Meta server provide a JSON-RPC API to infinit
 users, networks and devices managment.
 
@@ -10,6 +9,7 @@ users, networks and devices managment.
 import os
 import sys
 import argparse
+from twisted.python import log
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../lib/python"))
 
@@ -64,6 +64,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
+   '--log-file',
+   type = argparse.FileType('w'),
+   default = sys.stderr,
+)
+
+parser.add_argument(
     '--fcgi',
     default = False,
     action = 'store_true',
@@ -74,6 +80,7 @@ from meta.application import Application
 if __name__ == '__main__':
     args = parser.parse_args()
     try:
+        log.startLogging(args.log_file)
         app = Application(meta_host=args.meta_host,
                           meta_port=args.meta_port,
                           mongo_host=args.mongo_host,
@@ -83,7 +90,7 @@ if __name__ == '__main__':
                           tropho_control_port=args.trophonius_control_port,
                           port_file=args.port_file,
                           fcgi = args.fcgi,
-                      )
+                         )
         app.run()
     except KeyboardInterrupt:
         print("Interrupted cleanly")

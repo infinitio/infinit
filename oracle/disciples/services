@@ -144,6 +144,7 @@ keys = {
     'meta_fport': META_FCGI_PORT,
     'meta_hostname': META_HOSTNAME,
     'meta_pidfile': os.path.join(RUNTIME_DIR, 'meta.pid'),
+    'meta_log_file': os.path.join(RUNTIME_DIR, 'meta.log'),
 
     'tropho_bin': TROPHONIUS_BIN,
     'tropho_port': TROPHO_PORT,
@@ -212,6 +213,7 @@ def start(args):
           "--",
           "{meta_bin} --fcgi",
           "--port {meta_port}",
+          "--log-file {meta_log_file}",
           "--apertus-port {apertus_proxy_port}",
           "--apertus-host {apertus_host}",
       ]).format(**keys))
