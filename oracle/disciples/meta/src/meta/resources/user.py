@@ -440,16 +440,11 @@ class Avatar(_Page):
         user = self._user_by_id(database.ObjectId(_id), ensure_user_exists = False)
         image = user and user.get('avatar')
         if image:
-            yield str(image)
+            return str(image)
         else:
             # Otherwise return the default avatar
             with open(os.path.join(os.path.dirname(__file__), "place_holder_avatar.png"), 'rb') as f:
-                while 1:
-                    data = f.read(4096)
-                    if data:
-                        yield data
-                    else:
-                        break
+                return f.read(4096)
 
     def POST(self, _id):
         self.requireLoggedIn()
