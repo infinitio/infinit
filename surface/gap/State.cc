@@ -210,7 +210,7 @@ namespace surface
     State::meta(bool authentication_required) const
     {
       if (authentication_required && this->_meta.token().empty())
-        throw Exception{gap_internal_error, "you must be logged in"};
+        throw Exception{gap_not_logged_in, "you must be logged in"};
 
       return this->_meta;
     }
@@ -253,75 +253,86 @@ namespace surface
       auto res = this->_meta.login(lower_email, password);
       login_failed.abort();
 
-      ELLE_LOG("Logged in as %s token = %s", email, res.token);
-      this->_reporter[res.id].store(
+      elle::With<elle::Finally>([&] { this->_meta.logout(); })
+        << [&] (elle::Finally& finally_logout)
+      {
+
+        ELLE_LOG("Logged in as %s token = %s", email, res.token);
+        this->_reporter[res.id].store(
           "user.login",
           {{MKey::session, "start"}, {MKey::status, "succeed"}});
-      this->_google_reporter[res.id].store(
-        "user.login",
-        {{MKey::session, "start"}, {MKey::status, "succeed"}});
-      ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
+
+        this->_google_reporter[res.id].store(
+          "user.login",
+          {{MKey::session, "start"}, {MKey::status, "succeed"}});
+
+        ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
                  this->me().id,
                  this->me().fullname,
                  this->me().email);
 
-      std::string identity_clear;
+        std::string identity_clear;
 
-      papier::Identity identity;
+        papier::Identity identity;
 
-      // Decrypt the identity
-      if (identity.Restore(res.identity)    == elle::Status::Error ||
-          identity.Decrypt(password)        == elle::Status::Error ||
-          identity.Clear()                  == elle::Status::Error ||
-          identity.Save(identity_clear)     == elle::Status::Error)
-        throw Exception(gap_internal_error,
-                        "Couldn't decrypt the identity file !");
-
-      // Store the identity
-      {
-        if (identity.Restore(identity_clear)  == elle::Status::Error)
+        // Decrypt the identity.
+        if (identity.Restore(res.identity)    == elle::Status::Error ||
+            identity.Decrypt(password)        == elle::Status::Error ||
+            identity.Clear()                  == elle::Status::Error ||
+            identity.Save(identity_clear)     == elle::Status::Error)
           throw Exception(gap_internal_error,
-                          "Cannot save the identity file.");
+                          "Couldn't decrypt the identity file !");
 
-        identity.store();
+        // Store the identity
+        {
+          if (identity.Restore(identity_clear)  == elle::Status::Error)
+            throw Exception(gap_internal_error,
+                            "Cannot save the identity file.");
 
-        // user.dic
-        lune::Dictionary dictionary;
+          identity.store();
 
-        dictionary.store(this->me().id);
-      }
+          // user.dic
+          lune::Dictionary dictionary;
 
-      std::ofstream identity_infos{common::infinit::identity_path(res.id)};
+          dictionary.store(this->me().id);
+        }
 
-      if (identity_infos.good())
-      {
-        identity_infos << res.token << "\n"
-                       << res.identity << "\n"
-                       << res.email << "\n"
-                       << res.id << "\n"
-                       ;
-        identity_infos.close();
-      }
+        std::ofstream identity_infos{common::infinit::identity_path(res.id)};
 
-      this->_trophonius.connect(
-        this->me().id, this->_meta.token(), this->device().id);
-      this->_polling_thread.reset(
-        new reactor::Thread{
-          scheduler,
-          "poll",
-          [&]
-          {
-            while (true)
-            {
-              reactor::Scheduler::scheduler()->current()->wait(
-                this->_polling_barrier);
-              this->handle_notification(this->_trophonius.poll());
-              ELLE_TRACE("%s: notification pulled", *this);
-            }
-          }});
-      this->user(this->me().id);
-      this->_transactions_init();
-      this->on_connection_changed(true);
+        if (identity_infos.good())
+        {
+          identity_infos << res.token << "\n"
+                         << res.identity << "\n"
+                         << res.email << "\n"
+                         << res.id << "\n"
+            ;
+          identity_infos.close();
+        }
+
+        this->_trophonius.connect(
+          this->me().id, this->_meta.token(), this->device().id);
+
+        this->_polling_thread.reset(
+          new reactor::Thread{
+            scheduler,
+              "poll",
+              [&]
+              {
+                while (true)
+                {
+                  reactor::Scheduler::scheduler()->current()->wait(
+                    this->_polling_barrier);
+                  this->handle_notification(this->_trophonius.poll());
+                  ELLE_TRACE("%s: notification pulled", *this);
+                }
+              }});
+
+        this->user(this->me().id);
+        this->_transactions_init();
+        this->on_connection_changed(true);
+
+        finally_logout.abort();
+      };
     }
 
     void
@@ -329,19 +340,9 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
 
-      /// First step must be to disconnect from trophonius.
-      /// If not, you can pull notification that
-      if (this->_polling_thread != nullptr)
-      {
-        this->_polling_thread->terminate_now();
-        this->_polling_thread.reset();
-      }
-      this->_trophonius.disconnect();
+      this->_cleanup();
 
-      this->_users.clear();
-      this->_transactions_clear();
-
-      if (this->meta(false).token().empty())
+      if (!this->logged_in())
         return;
 
       elle::SafeFinally logout(
@@ -369,17 +370,28 @@ namespace surface
             this->_meta.token("");
           }
         });
-
-      elle::With<elle::Finally> clean([&] { this->_cleanup(); });
     }
 
     void
     State::_cleanup()
     {
-      ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
+      /// First step must be to disconnect from trophonius.
+      /// If not, you can pull notification that
+      if (this->_polling_thread != nullptr)
+      {
+        this->_polling_thread->terminate_now();
+        this->_polling_thread.reset();
+      }
+      this->_trophonius.disconnect();
+
+      this->_users.clear();
+      this->_transactions_clear();
 
       this->_device.reset();
       this->_me.reset();
+
+      this->_passport.reset();
+      this->_identity.reset();
     }
 
     std::string
