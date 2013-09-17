@@ -145,7 +145,7 @@ namespace surface
       this->_message = message;
 
       if (files.empty())
-        throw elle::Exception("no files to send");
+        throw Exception(gap_no_file, "no files to send");
 
       std::swap(this->_files, files);
 
