@@ -164,24 +164,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: clear transactions", *this);
 
-      // XXX: Could be improved a lot.
-      // XXX: Not thread safe.
-      // auto it = this->_transactions.begin();
-      // auto end = this->_transactions.end();
-
-      // while (this->_transactions.size())
-      // {
-      //   try
-      //   {
-      //     this->_transactions.remove();
-      //   }
-      //   catch (std::exception const& e)
-      //   {
-      //     ELLE_ERR("%s: error while deleting machine: %s",
-      //              *this, elle::exception_string());
-      //     throw;
-      //   }
-      //}
+      // We consider that Transaction destructor doesn't throw.
       this->_transactions.clear();
     }
 
