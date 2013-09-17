@@ -21,7 +21,9 @@ sys.path.insert(0, os.path.join(LIB_DIR, "python"))
 import meta.conf
 import apertus.conf
 
-SSD="/sbin/start-stop-daemon"
+NGINX_BINARY = "/usr/sbin/nginx"
+NGINX_USER = os.getenv("USER", "infinit")
+SSD = "/sbin/start-stop-daemon"
 RUNTIME_DIR = os.path.join(ROOT_DIR, 'runtime')
 APERTUS_PORT = apertus.conf.PORT
 TROPHO_PORT = meta.conf.TROPHONIUS_PORT
@@ -29,7 +31,6 @@ TROPHO_CPORT = meta.conf.TROPHONIUS_CONTROL_PORT
 META_FCGI_PORT = 9003
 META_PORT = meta.conf.META_PORT
 META_HOSTNAME = 'localhost'
-NGINX_USER = os.getenv("USER")
 NGINX_CONF_TEMPLATE = os.path.join(ROOT_DIR, 'prod', 'nginx.conf')
 
 
@@ -86,7 +87,7 @@ parser.add_argument(
 import shlex
 
 def ssd(command):
-	return run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
+    return run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
 
 def run(command):
     env = {
@@ -145,6 +146,7 @@ keys = {
     'apertus_pidfile_proxy': os.path.join(RUNTIME_DIR, 'apertus-proxy.pid'),
     'www_dir': os.path.join('.', os.path.relpath(RUNTIME_DIR)),
     'nginx_pidfile': os.path.join('.', os.path.relpath(RUNTIME_DIR), 'nginx.pid'),
+    'nginx_binary': NGINX_BINARY,
 }
 
 ldb_init_script_status = """
@@ -169,7 +171,7 @@ def start(args):
           f = open(file, "w+")
           f.close()
     nginx_conf_params = {
-        'NGINX_USER': 'infinit',
+        'NGINX_USER': NGINX_USER,
         'META_PORT': keys['meta_port'],
         'META_HOSTNAME': keys['meta_hostname'],
         'META_FCGI_PORT': keys['meta_fport'],
@@ -210,7 +212,7 @@ def start(args):
       ]).format(**keys))
 
     if ssd("-p {nginx_pidfile} -T".format(**keys)) != 0:
-      run("sudo nginx -p {www_dir} -c nginx.conf".format(**keys))
+      run("sudo {nginx_binary} -p {www_dir} -c nginx.conf".format(**keys))
 
 def stop(args):
     ssd("-p {apertus_pidfile0} -K".format(**keys))
@@ -219,7 +221,7 @@ def stop(args):
     ssd("-p {apertus_pidfile_proxy} -K".format(**keys))
     ssd("-p {tropho_pidfile} -K".format(**keys))
     ssd("-p {meta_pidfile} -K".format(**keys))
-    run("sudo nginx -p {www_dir} -c nginx.conf -s stop".format(**keys))
+    run("sudo {nginx_binary} -p {www_dir} -c nginx.conf -s stop".format(**keys))
 
 def make_dev(args):
     processes = []
