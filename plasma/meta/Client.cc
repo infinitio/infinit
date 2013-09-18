@@ -13,6 +13,8 @@
 
 #include <plasma/meta/Client.hh>
 
+#include <version.hh>
+
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
 // - API responses serializers ------------------------------------------------
@@ -298,7 +300,7 @@ namespace plasma
       _identity{},
       _email{},
       _token{},
-      _user_agent{"MetaClient"}
+      _user_agent{"MetaClient/" INFINIT_VERSION}
     {}
 
     Client::~Client()
