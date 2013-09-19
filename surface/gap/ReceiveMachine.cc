@@ -185,8 +185,14 @@ namespace surface
     ReceiveMachine::accept()
     {
       ELLE_TRACE_SCOPE("%s: open accept barrier %s", *this, this->transaction_id());
-
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      if (!this->_accepted.opened())
+      {
+        this->state().mixpanel_reporter()[this->transaction_id()].store(
+          "transaction.accepted");
+      }
+
       this->_accepted.open();
     }
 
@@ -195,6 +201,16 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: open rejected barrier %s", *this, this->transaction_id());
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+      if (!this->_rejected.opened())
+      {
+        this->state().mixpanel_reporter()[this->transaction_id()].store(
+        "transaction.ended",
+        {
+          {MKey::who_ended, "recipient"},
+          {MKey::how_ended, "rejected"}
+        });
+      }
 
       this->_rejected.open();
     }
