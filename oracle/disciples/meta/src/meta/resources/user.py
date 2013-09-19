@@ -494,22 +494,39 @@ class Register(_Page):
             'register_status': 'ok',
         }):
             return self.error(error.EMAIL_ALREADY_REGISTRED)
-
-        elif user['activation_code'] != 'bitebite': # XXX
+        elif user['activation_code'].startswith('@'):
+            activation = self.database.activations.find_one({
+                'code': user['activation_code']
+            })
+            if not activation or activation['number'] <= 0:
+                return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
+            self.database.activations.update(
+                activation["_id"],
+                {
+                    '$inc': {'number', -1},
+                    '$push': {'registered', user['email']},
+                }
+            )
+            ghost_email = user['email']
+            source = user['activation_code']
+        elif user['activation_code'] != 'bitebite':
             invitation = self.database.invitations.find_one({
                 'code': user['activation_code'],
                 'status': 'pending',
             })
-            if not invitation:
+            if invitation:
                 return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
             ghost_email = invitation['email']
             source = invitation['source']
-            meta.invitation.move_from_invited_to_userbase(ghost_email, user['email'])
+            meta.invitation.move_from_invited_to_userbase(
+                ghost_email,
+                user['email']
+            )
         else:
             ghost_email = user['email']
 
         ghost = self.database.users.find_one({
-            'accounts': [{ 'type': 'email', 'id':ghost_email}],
+            'accounts': [{ 'type': 'email', 'id': ghost_email}],
             'register_status': 'ghost',
         })
 

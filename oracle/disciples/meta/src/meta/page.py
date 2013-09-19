@@ -43,7 +43,7 @@ class Page(object):
     @property
     def database_connection(self):
         if self._database_connection is None:
-            self._database_connection = pymongo.Connection(
+            self._database_connection = database.Connection(
                 self.mongo_host,
                 self.mongo_port,
             )
@@ -52,12 +52,7 @@ class Page(object):
     @property
     def database(self):
         if self._database is None:
-            class AttrWrapper(object):
-                def __init__(self, db):
-                    self.db = db
-                def __getattr__(self, collection):
-                    return self.db[collection]
-            self._database = AttrWrapper(self.database_connection.meta)
+            self._database = database.Database(self.database_connection.meta)
         return self._database
 
     def __init__(self):
