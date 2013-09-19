@@ -523,7 +523,9 @@ def configure(cxx_toolkit = None,
     'metrics/services/Google.cc',
     'metrics/services/Google.hh',
     'metrics/services/KISSmetrics.cc',
-    'metrics/services/KISSmetrics.hh',)
+    'metrics/services/KISSmetrics.hh',
+    'metrics/services/Mixpanel.cc',
+    'metrics/services/Mixpanel.hh',)
 
   metrics_lib = drake.cxx.DynLib('lib/metrics',
                                  metrics_sources + curly_libs + [cryptography_lib],
