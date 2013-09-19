@@ -196,6 +196,23 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         ],
     )
 
+    _activation_code_parser = make_simple_argument_parser(
+        prog = "activation-code",
+        description = "Manage activation codes",
+        args = [
+            {
+                'flags': ('--create', '-c'),
+                'action': 'store_true',
+            },
+            {
+                'flags': ('--number', '-n'),
+                'action': 'store',
+                'default': 10,
+                'type': int,
+            },
+        ]
+    )
+
     def __init__(self, args):
         self._connect(args.db_host, args.db_port)
         super(AdminShell, self).__init__()
@@ -209,7 +226,8 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         self._db_port = port
         self._db_connection = None
         try:
-            self._db_connection = meta.database.connection(host, port)
+            self._db_connection = meta.database.Connection(host, port)
+            self.database = meta.database.Database(self._db_connection.meta)
         except:
             print("Cannot connect to %s:%d" % (host, port))
         self._update_prompt()
@@ -332,6 +350,25 @@ class AdminShell(cmd.Cmd, metaclass=DatabaseCommands):
         admin.token = ADMIN_TOKEN
         for email in args.emails:
             admin.ghostify(email)
+
+    def _gen_activation_code(self, size = 8):
+        import random
+        import string
+        return '@' + ''.join(
+            random.choice(string.ascii_lowercase) for x in range(size)
+        ).upper()
+
+    def do_activation_code(self, line):
+        args = self._get_args(self._activation_code_parser, line)
+        if not args: return
+        if args.create:
+            code = self._gen_activation_code()
+            self.database.activations.insert({
+                'code': code,
+                'number': args.number,
+                'registered': [],
+            })
+            print("code", code)
 
     def help_ghostify(self):
         self._ghostify_argument_parser.print_help()
