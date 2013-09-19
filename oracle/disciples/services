@@ -21,15 +21,17 @@ sys.path.insert(0, os.path.join(LIB_DIR, "python"))
 import meta.conf
 import apertus.conf
 
-SSD="/sbin/start-stop-daemon"
+NGINX_BINARY = "/usr/sbin/nginx"
+NGINX_USER = os.getenv("USER", "infinit")
+SSD = "/sbin/start-stop-daemon"
 RUNTIME_DIR = os.path.join(ROOT_DIR, 'runtime')
+CACHE_DIR = os.path.join(RUNTIME_DIR, 'cache')
 APERTUS_PORT = apertus.conf.PORT
 TROPHO_PORT = meta.conf.TROPHONIUS_PORT
 TROPHO_CPORT = meta.conf.TROPHONIUS_CONTROL_PORT
 META_FCGI_PORT = 9003
 META_PORT = meta.conf.META_PORT
 META_HOSTNAME = 'localhost'
-NGINX_USER = os.getenv("USER")
 NGINX_CONF_TEMPLATE = os.path.join(ROOT_DIR, 'prod', 'nginx.conf')
 
 def get_local_ip():
@@ -93,18 +95,30 @@ parser.add_argument(
 
 import shlex
 
+lsb_init_script_status = """0	program is running or service is OK
+1	program is dead and pid file exists
+2	program is dead and lock file exists
+3	program is not running
+4	program or service status is unknown
+5-99	reserved for future LSB use
+100-149	reserved for distribution use
+150-199	reserved for application use
+200-254	reserved
+"""
+
 def ssd(command):
-	return run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
+    e = run(" ".join([SSD, "-v", "-d", RUNTIME_DIR] + shlex.split(command)))
+    if e >= 1 and e <= 4:
+      print(lsb_init_script_status.split('\n')[e])
+    return e
 
 def run(command):
     env = {
         'LD_LIBRARY_PATH': ':'.join(['/usr/local/lib', LIB_DIR]),
     }
     try:
-        print(' '.join(command.split()))
         return subprocess.check_call(shlex.split(command), env=env)
     except subprocess.CalledProcessError as e:
-        print(e)
         return e.returncode
     except Exception as e:
         print(e)
@@ -130,6 +144,7 @@ keys = {
     'meta_fport': META_FCGI_PORT,
     'meta_hostname': META_HOSTNAME,
     'meta_pidfile': os.path.join(RUNTIME_DIR, 'meta.pid'),
+    'meta_log_file': os.path.join(RUNTIME_DIR, 'meta.log'),
 
     'tropho_bin': TROPHONIUS_BIN,
     'tropho_port': TROPHO_PORT,
@@ -145,19 +160,8 @@ keys = {
     'apertus_pidfile_proxy': os.path.join(RUNTIME_DIR, 'apertus-proxy.pid'),
     'www_dir': os.path.join('.', os.path.relpath(RUNTIME_DIR)),
     'nginx_pidfile': os.path.join('.', os.path.relpath(RUNTIME_DIR), 'nginx.pid'),
+    'nginx_binary': NGINX_BINARY,
 }
-
-ldb_init_script_status = """
-0	program is running or service is OK
-1	program is dead and /var/run pid file exists
-2	program is dead and /var/lock lock file exists
-3	program is not running
-4	program or service status is unknown
-5-99	reserved for future LSB use
-100-149	reserved for distribution use
-150-199	reserved for application use
-200-254	reserved
-"""
 
 def start(args):
     if not os.path.isdir(RUNTIME_DIR):
@@ -168,11 +172,15 @@ def start(args):
         for file in (error_log_path, local_error_log_path, local_access_log_path):
           f = open(file, "w+")
           f.close()
+    if not os.path.isdir(CACHE_DIR):
+        os.mkdir(CACHE_DIR)
+
     nginx_conf_params = {
-        'NGINX_USER': 'infinit',
+        'NGINX_USER': NGINX_USER,
         'META_PORT': keys['meta_port'],
         'META_HOSTNAME': keys['meta_hostname'],
         'META_FCGI_PORT': keys['meta_fport'],
+        'CACHE_DIR': os.path.relpath(CACHE_DIR, start = RUNTIME_DIR),
     }
     nginx_conf = os.path.join(RUNTIME_DIR, 'nginx.conf')
     with open(NGINX_CONF_TEMPLATE) as template:
@@ -199,18 +207,19 @@ def start(args):
       ssd("-b -p {tropho_pidfile} -m -S -x {tropho_bin} --\
             --port {tropho_port} --control-port {tropho_cport}".format(**keys))
 
-    if ssd("-p {nginx_pidfile} -T".format(**keys)) != 0:
+    if ssd("-p {meta_pidfile} -T".format(**keys)) != 0:
       run(' '.join([
           "spawn-fcgi -P {meta_pidfile} -d ./ -a 127.0.0.1 -p {meta_fport}",
           "--",
           "{meta_bin} --fcgi",
           "--port {meta_port}",
+          "--log-file {meta_log_file}",
           "--apertus-port {apertus_proxy_port}",
           "--apertus-host {apertus_host}",
       ]).format(**keys))
 
     if ssd("-p {nginx_pidfile} -T".format(**keys)) != 0:
-      run("sudo nginx -p {www_dir} -c nginx.conf".format(**keys))
+      run("sudo {nginx_binary} -p {www_dir} -c nginx.conf".format(**keys))
 
 def stop(args):
     ssd("-p {apertus_pidfile0} -K".format(**keys))
@@ -219,7 +228,20 @@ def stop(args):
     ssd("-p {apertus_pidfile_proxy} -K".format(**keys))
     ssd("-p {tropho_pidfile} -K".format(**keys))
     ssd("-p {meta_pidfile} -K".format(**keys))
-    run("sudo nginx -p {www_dir} -c nginx.conf -s stop".format(**keys))
+    run("sudo {nginx_binary} -p {www_dir} -c nginx.conf -s stop".format(**keys))
+    import time
+    time.sleep(2)
+    for pidfile in [v for k, v in keys.items() if 'pidfile' in k]:
+      if os.path.isfile(pidfile):
+        try:
+          pid = int(open(pidfile, "r").read())
+          os.kill(pid, 9)
+          print("Kill none exited process in", pidfile)
+        except OSError as e:
+          pass
+        except Exception as e:
+          print(e)
+          raise e
 
 def make_dev(args):
     processes = []

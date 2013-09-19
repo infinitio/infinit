@@ -64,7 +64,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(plasma::trophonius::Client, trophonius);
 
       plasma::meta::Client const&
-      meta(bool authentication_required  = true) const;
+      meta(bool authentication_required = true) const;
 
       /*----------.
       | Reporters |
@@ -119,6 +119,8 @@ namespace surface
 
       Self const&
       me() const;
+
+      ELLE_ATTRIBUTE(reactor::Mutex, login_mutex);
     public:
       /// Login to meta.
       void
@@ -219,14 +221,16 @@ namespace surface
       `--------*/
     private:
       ELLE_ATTRIBUTE_P(std::unique_ptr<Device>, device, mutable);
-
+      ELLE_ATTRIBUTE_P(reactor::Mutex, device_mutex, mutable);
     public:
       /// Get the remote device informations.
       Device const&
       device() const;
 
-      ELLE_ATTRIBUTE_P(papier::Passport, passport, mutable);
-      ELLE_ATTRIBUTE_P(papier::Identity, identity, mutable);
+      ELLE_ATTRIBUTE_P(std::unique_ptr<papier::Passport>, passport, mutable);
+      ELLE_ATTRIBUTE_P(reactor::Mutex, passport_mutex, mutable);
+      ELLE_ATTRIBUTE_P(std::unique_ptr<papier::Identity>, identity, mutable);
+      ELLE_ATTRIBUTE_P(reactor::Mutex, identity_mutex, mutable);
     public:
       /// Get the local passport of the logged user.
       papier::Passport const&

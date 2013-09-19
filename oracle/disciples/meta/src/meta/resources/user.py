@@ -436,19 +436,15 @@ class Avatar(_Page):
     __pattern__ = "/user/(.+)/avatar"
 
     def GET(self, _id):
-        # Why?
+        # Check if the user has any avatar
         user = self._user_by_id(database.ObjectId(_id), ensure_user_exists = False)
         image = user and user.get('avatar')
         if image:
-            yield str(image)
-
-        with open(os.path.join(os.path.dirname(__file__), "place_holder_avatar.png"), 'rb') as f:
-            while 1:
-                data = f.read(4096)
-                if data:
-                    yield data
-                else:
-                    break
+            return str(image)
+        else:
+            # Otherwise return the default avatar
+            with open(os.path.join(os.path.dirname(__file__), "place_holder_avatar.png"), 'rb') as f:
+                return f.read(4096)
 
     def POST(self, _id):
         self.requireLoggedIn()
@@ -498,8 +494,15 @@ class Register(_Page):
             'register_status': 'ok',
         }):
             return self.error(error.EMAIL_ALREADY_REGISTRED)
-
-        elif user['activation_code'] != 'bitebite': # XXX
+        elif user['activation_code'].startswith('@'):
+            activation = self.database.activations.find_one({
+                'code': user['activation_code']
+            })
+            if not activation or activation['number'] <= 0:
+                return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
+            ghost_email = user['email']
+            source = user['activation_code']
+        elif user['activation_code'] != 'bitebite':
             invitation = self.database.invitations.find_one({
                 'code': user['activation_code'],
                 'status': 'pending',
@@ -508,12 +511,15 @@ class Register(_Page):
                 return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
             ghost_email = invitation['email']
             source = invitation['source']
-            meta.invitation.move_from_invited_to_userbase(ghost_email, user['email'])
+            meta.invitation.move_from_invited_to_userbase(
+                ghost_email,
+                user['email']
+            )
         else:
             ghost_email = user['email']
 
         ghost = self.database.users.find_one({
-            'accounts': [{ 'type': 'email', 'id':ghost_email}],
+            'accounts': [{ 'type': 'email', 'id': ghost_email}],
             'register_status': 'ghost',
         })
 
@@ -554,7 +560,15 @@ class Register(_Page):
             remaining_invitations = 3, #XXX
             status = False,
         )
-        if user['activation_code'] != 'bitebite': #XXX
+        if user['activation_code'].startswith('@'):
+            self.database.activations.update(
+                {"_id": activation["_id"]},
+                {
+                    '$inc': {'number': -1},
+                    '$push': {'registered': user['email']},
+                }
+            )
+        elif user['activation_code'] != 'bitebite':
             invitation['status'] = 'activated'
             self.database.invitations.save(invitation)
 

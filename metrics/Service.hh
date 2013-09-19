@@ -51,6 +51,8 @@ namespace metrics
 
   protected: // XXX use ELLE_ATTRIBUTE when protected is available
     /// Own http client.
+    /// XXX: elle::HTTPClient is deprecated but it's also a factory of
+    /// HTTPRequest that are pretty easy to use.
     std::unique_ptr<elle::HTTPClient> _server;
     /// Timestamp of the last metric sent.
     elle::utility::Time _last_sent;

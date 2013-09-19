@@ -555,6 +555,7 @@ namespace surface
         this->_machine_thread.reset();
       }
 
+      // Assign directly, don't use setter.
       this->_current_state = State::Over;
     }
 

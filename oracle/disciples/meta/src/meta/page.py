@@ -43,7 +43,7 @@ class Page(object):
     @property
     def database_connection(self):
         if self._database_connection is None:
-            self._database_connection = pymongo.Connection(
+            self._database_connection = database.Connection(
                 self.mongo_host,
                 self.mongo_port,
             )
@@ -52,12 +52,7 @@ class Page(object):
     @property
     def database(self):
         if self._database is None:
-            class AttrWrapper(object):
-                def __init__(self, db):
-                    self.db = db
-                def __getattr__(self, collection):
-                    return self.db[collection]
-            self._database = AttrWrapper(self.database_connection.meta)
+            self._database = database.Database(self.database_connection.meta)
         return self._database
 
     def __init__(self):
@@ -67,7 +62,7 @@ class Page(object):
            not web.ctx.host.startswith('localhost') and \
            not web.ctx.host.startswith('127.0.0.1') and \
            not 'development' in web.ctx.host:
-            raise Exception("XXX Wrong version asked")
+            self.raise_error(error.DEPRECATED, msg = "Version not supported")
 
     @property
     def notifier(self):

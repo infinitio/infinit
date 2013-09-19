@@ -80,36 +80,37 @@ namespace metrics
     {
       ELLE_TRACE("sending metric %s", metric);
 
-      elle::Request request = this->_server->request("POST", "/collect");
+      elle::Request request = this->_server->request("GET", "/collect");
       request
         .content_type("application/x-www-form-urlencoded")
         .user_agent(metrics::Reporter::user_agent)
-        .post_field("dh", "infinit.io")
-        .post_field("av", metrics::Reporter::version)
-        .post_field("an", "Infinit")         // Application name.
-        .post_field("t", "appview")          // Type of interaction.
-        .post_field("cid", this->_hashed_pkey)
-        .post_field("tid", this->info().tracking_id)
-        .post_field("v", "1");               // Api version.
+        .parameter("", "payload_data")
+        .parameter("dh", "infinit.io")
+        .parameter("av", metrics::Reporter::version)
+        .parameter("an", "Infinit")         // Application name.
+        .parameter("t", "appview")          // Type of interaction.
+        .parameter("cid", this->_hashed_pkey)
+        .parameter("tid", this->info().tracking_id)
+        .parameter("v", "1");               // Api version.
 
       typedef Metric::value_type Field;
 
-      request.post_field(key_string(Key::tag), metric.second.at(Key::tag));
+      request.parameter(key_string(Key::tag), metric.second.at(Key::tag));
 
       for (Field f: metric.second)
       {
         if (f.first != Key::tag)
-          request.post_field(key_string(f.first), f.second);
+          request.parameter(key_string(f.first), f.second);
       };
 
       this->_last_sent.Current();
       auto delta = (this->_last_sent - metric.first).nanoseconds / 1000000UL;
-      request.post_field("qt", std::to_string(delta));
+      request.parameter("qt", std::to_string(delta));
 
       std::stringstream body;
       static std::ofstream null{"/dev/null"};
       body << request.body_string();
-      auto rc = curly::make_post();
+      auto rc = curly::make_get();
 
       rc.option(CURLOPT_DEBUGFUNCTION, &Service::_curl_debug_callback);
       rc.option(CURLOPT_DEBUGDATA, this);

@@ -6,6 +6,8 @@
 
 #include <papier/Passport.hh>
 
+#include <reactor/lockable.hh>
+
 ELLE_LOG_COMPONENT("infinit.surface.gap.Device");
 
 namespace surface
@@ -42,14 +44,23 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
 
+      reactor::Lock l{this->_device_mutex};
+
       if (!this->has_device())
         this->update_device("XXX");
       else if (this->_device == nullptr)
       {
-        this->_passport.load(
+        if (this->_passport != nullptr)
+          ELLE_WARN("%s: a passport was already present: %s",
+                    *this, *this->_passport);
+        this->_passport.reset(new papier::Passport());
+
+        this->_passport->load(
           elle::io::Path{common::infinit::passport_path(this->me().id)});
+
         this->_device.reset(
-          new Device{this->_passport.id(), this->_passport.name()});
+          new Device{this->_passport->id(), this->_passport->name()});
+
       }
       ELLE_ASSERT(this->_device != nullptr);
       return *this->_device;
@@ -83,31 +94,46 @@ namespace surface
         passport_string = res.passport;
       }
 
-      if (this->_passport.Restore(passport_string) == elle::Status::Error)
+      if (this->_passport != nullptr)
+        ELLE_WARN("%s: a passport was already present: %s",
+                  *this, *this->_passport);
+
+      this->_passport.reset(new papier::Passport());
+
+      if (this->_passport->Restore(passport_string) == elle::Status::Error)
         throw Exception(gap_wrong_passport, "Cannot load the passport");
 
-      this->_passport.store(elle::io::Path(passport_path));
+      this->_passport->store(elle::io::Path(passport_path));
     }
 
     papier::Passport const&
     State::passport() const
     {
-      if (!this->has_device())
-        this->update_device("XXX");
+      reactor::Lock l{this->_passport_mutex};
+      if (this->_passport == nullptr)
+      {
+        if (!this->has_device())
+          this->device();
+      }
 
-      return this->_passport;
+      return *this->_passport;
     }
 
     papier::Identity const&
     State::identity() const
     {
-      if (!this->logged_in())
-        throw Exception{gap_internal_error, "you must be logged in"};
+      //XXX: Not required case meta().identity() doesn't yield.
+      reactor::Lock l{this->_identity_mutex};
+      if (this->_identity == nullptr)
+      {
+        this->_identity.reset(new papier::Identity());
 
-      if (this->_identity.Restore(this->meta().identity()) == elle::Status::Error)
-        throw elle::Exception("Couldn't restore the identity.");
+        if (this->_identity->Restore(this->meta().identity())
+            == elle::Status::Error)
+          throw elle::Exception("Couldn't restore the identity.");
+      }
 
-      return this->_identity;
+      return *this->_identity;
     }
   }
 }

@@ -74,9 +74,8 @@ namespace surface
     void
     Round::print(std::ostream& stream) const
     {
-      stream << this->type() << "(" << this->_name << ") "
-             << "enpoints (" << this->_endpoints.size() << ")";
-      stream << ": " << this->_endpoints;
+      stream << this->type() << " " << this->_name << " with "
+             << this->_endpoints.size() << " endpoint(s): " << this->_endpoints;
     };
 
     AddressRound::AddressRound(std::string const& name,
