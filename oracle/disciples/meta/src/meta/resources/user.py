@@ -500,13 +500,6 @@ class Register(_Page):
             })
             if not activation or activation['number'] <= 0:
                 return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
-            self.database.activations.update(
-                {"_id": activation["_id"]},
-                {
-                    '$inc': {'number': -1},
-                    '$push': {'registered': user['email']},
-                }
-            )
             ghost_email = user['email']
             source = user['activation_code']
         elif user['activation_code'] != 'bitebite':
@@ -567,7 +560,15 @@ class Register(_Page):
             remaining_invitations = 3, #XXX
             status = False,
         )
-        if user['activation_code'] != 'bitebite': #XXX
+        if user['activation_code'].startswith('@'):
+            self.database.activations.update(
+                {"_id": activation["_id"]},
+                {
+                    '$inc': {'number': -1},
+                    '$push': {'registered': user['email']},
+                }
+            )
+        elif user['activation_code'] != 'bitebite':
             invitation['status'] = 'activated'
             self.database.invitations.save(invitation)
 
