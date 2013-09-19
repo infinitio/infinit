@@ -507,7 +507,7 @@ class Register(_Page):
                 'code': user['activation_code'],
                 'status': 'pending',
             })
-            if invitation:
+            if not invitation:
                 return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
             ghost_email = invitation['email']
             source = invitation['source']
