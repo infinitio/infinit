@@ -488,6 +488,9 @@ class Register(_Page):
 
         user['email'] = user['email'].lower()
 
+        if len(user['activation_code']) == 8:
+            user['activation_code'] = '@' + user['activation_code']
+
         source = None
         if self.database.users.find_one({
             'accounts': [{ 'type': 'email', 'id':user['email']}],
@@ -495,6 +498,7 @@ class Register(_Page):
         }):
             return self.error(error.EMAIL_ALREADY_REGISTRED)
         elif user['activation_code'].startswith('@'):
+            user['activation_code'] = user['activation_code'].upper()
             activation = self.database.activations.find_one({
                 'code': user['activation_code']
             })
