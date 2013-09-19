@@ -503,8 +503,8 @@ class Register(_Page):
             self.database.activations.update(
                 {"_id": activation["_id"]},
                 {
-                    '$inc': {'number', -1},
-                    '$push': {'registered', user['email']},
+                    '$inc': {'number': -1},
+                    '$push': {'registered': user['email']},
                 }
             )
             ghost_email = user['email']
