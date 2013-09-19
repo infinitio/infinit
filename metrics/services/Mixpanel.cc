@@ -89,6 +89,8 @@ namespace metrics
     void
     Mixpanel::_send(TimeMetricPair metric)
     {
+      if (this->info().tracking_id.empty())
+        return;
       ELLE_TRACE("sending metric %s", metric);
 
       std::map<std::string, std::string> properties;
@@ -142,10 +144,7 @@ namespace metrics
                            this->info().port,
                            request.url()));
       rc.output(null);
-/// Only send metrics to Mixpanel when the token has been set
-#ifdef INFINIT_METRICS_MIXPANEL_TRANSACTION_TID
       curly::request r(std::move(rc));
-#endif
     }
 
     std::string
