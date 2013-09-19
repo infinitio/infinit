@@ -97,8 +97,6 @@ def configure(cxx_toolkit = None,
 
   VersionGenerator(git, version)
 
-  # OpenSSL
-
   architecture = platform.architecture()[0]
   if architecture == "32bit":
     architecture_wordsize = 32
@@ -132,49 +130,6 @@ def configure(cxx_toolkit = None,
     raise Exception(
       'operating system %s not supported' % cxx_toolkit.os)
 
-  if openssl is None:
-    openssl = drake.cxx.LibraryConfiguration(
-      'openssl/opensslconf.h',
-      prefix = dependencies_prefix,
-    )
-
-  if curl is None:
-    curl = drake.cxx.LibraryConfiguration(
-      'curl/curl.h',
-      prefix = dependencies_prefix,
-    )
-
-  if cxx_toolkit.os == drake.os.macos:
-    ssl_suffix = '.1.0.0.dylib'
-    curl_suffix = '.4.dylib'
-  elif cxx_toolkit.os == drake.os.windows:
-    ssl_suffix = '.dll'
-    curl_suffix = '.dll'
-  else:
-    ssl_suffix = '.so.1.0.0'
-    curl_suffix = '.so.4'
-
-  openssl_lib = drake.copy(
-    drake.nodes(
-      openssl.libraries_path / ('libssl%s' % ssl_suffix),
-      openssl.libraries_path / ('libcrypto%s' % ssl_suffix),
-    ),
-    'lib',
-    openssl.libraries_path
-  )
-
-  curl_lib = drake.copy(
-    drake.nodes(
-      curl.libraries_path / ('libcurl%s' % curl_suffix)
-    ),
-    'lib',
-    curl.libraries_path
-  )
-
-  cxx_config += openssl.config()
-
-  cxx_config += curl.config()
-
   # Boost
   boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
   cxx_config += boost.config()
@@ -198,10 +153,7 @@ def configure(cxx_toolkit = None,
                        drake.cxx.Config(cxx_config),
                        prefix = prefix,
                        boost = boost,
-                       openssl = openssl.config(),
-                       curl = curl.config(),
-                       #valgrind = valgrind,
-                       )
+                       valgrind = valgrind)
 
   def copy_lib(lib, where = 'lib'):
     return drake.copy(lib, where, lib.path().dirname())
@@ -211,8 +163,7 @@ def configure(cxx_toolkit = None,
   cryptography_lib = copy_lib(elle.cryptography_dynamic)
   cryptography_slib = copy_lib(elle.cryptography_static)
   reactor_lib = copy_lib(elle.reactor_dynamic)
-  reactor_slib = copy_lib(elle.reactor_static)
-  asio_fs_lib = copy_lib(elle.asio_fs)
+  # asio_fs_lib = copy_lib(elle.asio_fs)
   # asio_udt_lib = copy_lib(elle.asio_udt)
   curly_lib = copy_lib(elle.curly_dynamic)
   curly_slib = copy_lib(elle.curly_static)
@@ -988,8 +939,6 @@ def configure(cxx_toolkit = None,
   ## ----- ##
 
   build = drake.Rule('build')
-  build << openssl_lib
-  build << curl_lib
   build << plasma_python_lib
 
   ## -------- ##
@@ -997,7 +946,6 @@ def configure(cxx_toolkit = None,
   ## -------- ##
 
   infinit_libs = [
-    asio_fs_lib,
     agent_lib,
     etoile_lib,
     hole_lib,
@@ -1035,7 +983,7 @@ def configure(cxx_toolkit = None,
   infinit_bin = drake.cxx.Executable('bin/8infinit',
                                      infinit_sources + infinit_libs,
                                      cxx_toolkit, infinit_bin_config)
-  build << infinit_bin
+  # build << infinit_bin
 
   # GdbMacro
   gdbmacro_files = drake.nodes(
@@ -1126,7 +1074,7 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost.config_filesystem(
     static = (cxx_toolkit.os is drake.os.macos))
   gap_lib = drake.cxx.DynLib('lib/gap',
-                             gap_sources + infinit_libs + [station_lib, frete_lib],
+                             gap_sources + [station_lib, frete_lib],
                              cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib
@@ -1184,7 +1132,7 @@ def configure(cxx_toolkit = None,
       )
     gap_python_lib = drake.cxx.Module('lib/python/_gap',
                                       # FIXME: sooooo many libs ...
-                                      gap_python_sources + [gap_lib, tropho_lib] + infinit_libs,
+                                      gap_python_sources + [gap_lib, tropho_lib],
                                       cxx_toolkit, gap_python_cxx_config)
 
     gap_python_pyfiles = drake.nodes(
@@ -1225,7 +1173,7 @@ def configure(cxx_toolkit = None,
       # XXX: not every satellite needs GAP.
       list(sources) + infinit_libs + [gap_lib],
       cxx_toolkit, infinit_bin_config)
-    build << bin
+    # build << bin
 
   for name in [
     # 'access',
@@ -1409,8 +1357,6 @@ def configure(cxx_toolkit = None,
 
       oracles << metalib_lib
 
-    oracles << curl_lib
-    oracles << openssl_lib
     build << oracles
 
   # Install
