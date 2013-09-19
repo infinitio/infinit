@@ -25,6 +25,11 @@ namespace oracle
     {
       check_directory(_base_path /= path);
 
+      boost::filesystem::directory_iterator end;
+      for (boost::filesystem::directory_iterator it(_base_path);
+           it != end; it++)
+        if (boost::filesystem::is_regular_file(it->status()))
+          _chunks.push_back(it->path());
     }
 
     Size
@@ -37,39 +42,29 @@ namespace oracle
 
       // TODO: Modify names of this stuff.
       std::vector<Chunk>::iterator result;
-      auto follows = std::bind(&Chunk::follows, &chunk, std::placeholders::_1);
-      auto overlaps = std::bind(&Chunk::overlaps,
-                                &chunk,
-                                std::placeholders::_1);
+      auto cmpf = std::bind(&Chunk::follows, &chunk, std::placeholders::_1);
+      auto cmpo = std::bind(&Chunk::overlaps, &chunk, std::placeholders::_1);
+      auto cmpl = std::bind(&Chunk::leads, &chunk, std::placeholders::_1);
 
-      auto leads = std::bind(&Chunk::leads, &chunk, std::placeholders::_1);
-
-      std::cout << "list state " << _chunks.size() << std::endl;
-
-      if ((result = std::find_if(_chunks.begin(), _chunks.end(), follows)) !=
+      if ((result = std::find_if(_chunks.begin(), _chunks.end(), cmpf)) !=
           _chunks.end())
       {
         std::cout << "follows" << std::endl;
         result->append(buff);
       }
-      else if ((result = std::find_if(_chunks.begin(),
-                                      _chunks.end(),
-                                      overlaps)) != _chunks.end())
+      else if ((result = std::find_if(_chunks.begin(), _chunks.end(), cmpo)) !=
+          _chunks.end())
       {
         std::cout << "overlaps" << std::endl;
         result->merge(chunk, buff);
       }
-      else if ((result = std::find_if(_chunks.begin(),
-                                      _chunks.end(),
-                                      leads)) != _chunks.end())
+      else if ((result = std::find_if(_chunks.begin(), _chunks.end(), cmpl)) !=
+          _chunks.end())
       {
-        // TODO: coded too fast, memory problems.
         std::cout << "leads" << std::endl;
         result->prepend(chunk, buff);
-
         result->remove();
         _chunks.erase(result);
-
         _chunks.push_back(chunk);
       }
       else
@@ -88,7 +83,17 @@ namespace oracle
       if (not _identified)
         throw elle::Exception("Trying to fetch something without identifying");
 
-      return elle::Buffer(0);
+      elle::Buffer ret;
+
+      Chunk chunk(_base_path, id, off, size);
+      std::vector<Chunk>::iterator result;
+      auto cmpb = std::bind(&Chunk::belongs_to, &chunk, std::placeholders::_1);
+
+      if ((result = std::find_if(_chunks.begin(), _chunks.end(), cmpb)) !=
+          _chunks.end())
+        return result->extract(chunk);
+
+      throw elle::Exception("Chunk not found");
     }
 
     void

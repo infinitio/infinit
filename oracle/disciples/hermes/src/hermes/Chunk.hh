@@ -1,6 +1,9 @@
 #ifndef ORACLE_DISCIPLES_HERMES_CHUNK_HH
 # define ORACLE_DISCIPLES_HERMES_CHUNK_HH
 
+# include <boost/lexical_cast.hpp>
+# include <boost/algorithm/string.hpp>
+
 # include <fstream>
 # include <elle/Buffer.hh>
 # include <frete/Frete.hh>
@@ -18,22 +21,23 @@ namespace oracle
     {
     public:
       Chunk(boost::filesystem::path& path, FileID id, Offset off, Size s);
-      Chunk(std::string const& config_line);
+      Chunk(boost::filesystem::path const& path);
 
     public:
       bool follows(Chunk const& other) const;
       bool overlaps(Chunk const& other) const;
       bool leads(Chunk const& other) const;
+      bool belongs_to(Chunk const& other) const;
 
     public:
       void append(elle::Buffer& buff);
       void save(elle::Buffer& buff);
       void merge(Chunk const& other, elle::Buffer& buff);
       void prepend(Chunk& other, elle::Buffer& buff);
+      elle::Buffer extract(Chunk const& piece) const;
       void remove();
 
-      //TODO: change to private
-    public:
+    private:
       std::string _name();
 
     private:
