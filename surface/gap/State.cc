@@ -19,6 +19,7 @@
 #include <surface/gap/metrics.hh>
 #include <metrics/services/Google.hh>
 #include <metrics/services/KISSmetrics.hh>
+#include <metrics/services/Mixpanel.hh>
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -122,6 +123,7 @@ namespace surface
       }},
       _reporter{common::metrics::fallback_path()},
       _google_reporter{common::metrics::google_fallback_path()},
+      _mixpanel_reporter{common::metrics::mixpanel_fallback_path()},
       _me{nullptr},
       _output_dir{common::system::download_directory()},
       _device{nullptr}
@@ -131,6 +133,7 @@ namespace surface
       // Start metrics after setting up the logger.
       this->_reporter.start();
       this->_google_reporter.start();
+      this->_mixpanel_reporter.start();
 
       std::string token_path = elle::os::getenv("INFINIT_TOKEN_FILE", "");
 
@@ -173,6 +176,7 @@ namespace surface
       {
         using metrics::services::Google;
         using metrics::services::KISSmetrics;
+        using metrics::services::Mixpanel;
 
         this->_google_reporter.add_service_class<Google>(common::metrics::google_info_investors());
 
@@ -189,6 +193,10 @@ namespace surface
         typedef MetricKindService<metrics::Kind::transaction, KISSmetrics> KMTransaction;
         this->_reporter.add_service_class<KMTransaction>(
           common::metrics::kissmetrics_info(metrics::Kind::transaction));
+
+        typedef MetricKindService<metrics::Kind::transaction, Mixpanel> MPTransaction;
+        this->_mixpanel_reporter.add_service_class<MPTransaction>(
+          common::metrics::mixpanel_info(metrics::Kind::transaction));
       }
     }
 
