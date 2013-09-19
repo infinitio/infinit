@@ -501,7 +501,7 @@ class Register(_Page):
             if not activation or activation['number'] <= 0:
                 return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
             self.database.activations.update(
-                activation["_id"],
+                {"_id": activation["_id"]},
                 {
                     '$inc': {'number', -1},
                     '$push': {'registered', user['email']},
