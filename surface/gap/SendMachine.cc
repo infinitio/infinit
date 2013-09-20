@@ -345,7 +345,7 @@ namespace surface
           {MKey::sender, this->state().me().id},
           {MKey::recipient, this->peer_id()},
           {MKey::file_count, std::to_string(this->data()->files.size())},
-          {MKey::file_size, std::to_string(size / 1024)}
+          {MKey::file_size, std::to_string(size / (1024 * 1024))}
         });
 
       this->state().meta().update_transaction(this->transaction_id(),
