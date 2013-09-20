@@ -192,6 +192,12 @@ def configure(cxx_toolkit = None,
     curly_sched_lib,
   ]
 
+  curly_slibs = [
+    curly_slib,
+    curly_asio_slib,
+    curly_sched_slib,
+  ]
+
   # Fuse
   if enable_horizon:
     cxx_config.define('_FILE_OFFSET_BITS', 64) # FIXME: only needed for horizon
@@ -483,15 +489,15 @@ def configure(cxx_toolkit = None,
     'plasma/plasma.cc',
     )
 
-  plasma_sources += [
-      curly_lib,
-      elle_lib,
-    ]
+  plasma_static_sources = plasma_sources + curly_slibs + [
+    reactor_lib,
+    elle_slib
+  ]
 
-  plasma_static_sources = plasma_sources + [
-      curly_slib,
-      elle_slib
-    ]
+  plasma_sources += curly_libs + [
+    reactor_lib,
+    elle_lib,
+  ]
 
   plasma_lib = drake.cxx.DynLib('lib/plasma', plasma_sources,
                                 cxx_toolkit, cxx_config_libs)
