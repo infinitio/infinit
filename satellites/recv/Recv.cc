@@ -95,6 +95,12 @@ int main(int argc, char** argv)
           {
             std::cerr << "TransactionNotification(" << notif.id
                       << ", status: " << notif.status << std::endl;
+
+            auto& tr = state.transactions().at(notif.id);
+
+            if (tr.data()->recipient_id != state.me().id)
+              return;
+
             if (notif.status == gap_transaction_waiting_for_accept)
             {
               state.transactions().at(notif.id).accept();
@@ -113,8 +119,7 @@ int main(int argc, char** argv)
         do
         {
           state.poll();
-          reactor::Sleep s{sched, boost::posix_time::seconds{1}};
-          s.run();
+          reactor::sleep(1_sec);
         }
         while (stop != true);
 
