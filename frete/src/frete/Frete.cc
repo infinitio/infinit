@@ -141,7 +141,9 @@ namespace frete
   float
   Frete::progress() const
   {
-    ELLE_ASSERT_NEQ(this->_total_size, 0u);
+    if (this->_total_size == 0)
+      return 0.0f;
+
     return this->_progress / (float) this->_total_size;
   }
 
