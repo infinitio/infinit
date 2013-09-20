@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(connection)
       station::Station station1(authority, c1.passport);
       Credentials c2("host2");
       station::Station station2(authority, c2.passport);
-      // FIXME: ipv4
+      // FIXME: ipv4.
       auto host1 = station1.connect("127.0.0.1", station2.port());
       BOOST_CHECK(!station1.host_available());
       auto host2 = station2.accept();
@@ -93,17 +93,19 @@ BOOST_AUTO_TEST_CASE(connection_closed)
       s.listen();
       Credentials c1("host1");
       station::Station station1(authority, c1.passport);
-      reactor::Scope scope;
-      scope.run_background("connect", [&]
-                           {
-                             BOOST_CHECK_THROW(station1.connect("127.0.0.1", s.port()),
-                                               std::runtime_error);
-                           });
-      scope.run_background("ignore", [&]
-                           {
-                             delete s.accept();
-                           });
-      scope.wait();
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      {
+        scope.run_background("connect", [&]
+                             {
+                               BOOST_CHECK_THROW(station1.connect("127.0.0.1", s.port()),
+                                                 std::runtime_error);
+                             });
+        scope.run_background("ignore", [&]
+                             {
+                               delete s.accept();
+                             });
+        scope.wait();
+      };
     });
   sched.run();
 }
@@ -177,37 +179,40 @@ BOOST_AUTO_TEST_CASE(double_connection)
       Credentials c2("host2");
       station::Station station2(authority, c2.passport);
       // FIXME: ipv4
-      reactor::Scope scope;
       std::unique_ptr<station::Host> host1;
       std::unique_ptr<station::Host> host2;
       int already = 0;
-      scope.run_background(
-        "1 -> 2",
-        [&]
-        {
-          try
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      {
+        scope.run_background(
+          "1 -> 2",
+          [&]
           {
-            host1 = station1.connect("127.0.0.1", station2.port());
-          }
-          catch (station::AlreadyConnected const&)
+            try
+            {
+              host1 = station1.connect("127.0.0.1", station2.port());
+            }
+            catch (station::AlreadyConnected const&)
+            {
+              ++already;
+            }
+          });
+        scope.run_background(
+          "2 -> 1",
+          [&]
           {
-            ++already;
-          }
-        });
-      scope.run_background(
-        "2 -> 1",
-        [&]
-        {
-          try
-          {
-            host2 = station2.connect("127.0.0.1", station1.port());
-          }
-          catch (station::AlreadyConnected const&)
-          {
-            ++already;
-          }
-        });
-      scope.wait();
+            try
+            {
+              host2 = station2.connect("127.0.0.1", station1.port());
+            }
+            catch (station::AlreadyConnected const&)
+            {
+              ++already;
+            }
+          });
+        scope.wait();
+      };
+
       BOOST_CHECK_EQUAL(already, 1);
       if (host1)
         host2 = station2.accept();
