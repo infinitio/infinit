@@ -53,8 +53,6 @@ namespace oracle
     bool
     Chunk::leads(Chunk const& other) const
     {
-      std::cout << _off << " " << _size << " " << other._off << " " << other._size  << " " << std::endl;
-
       if (_id != other._id)
         return false;
       return other._off == (_off + _size);
@@ -65,7 +63,7 @@ namespace oracle
     {
       if (_id != oth._id)
         return false;
-      return _off >= oth._off and (_off + _size) <= (oth._off + oth._size);
+      return _off >= oth._off and _off <= (oth._off + oth._size);
     }
 
     void
@@ -133,8 +131,12 @@ namespace oracle
       Size file_size = boost::filesystem::file_size(_path);
       std::ifstream in(_path.string());
 
-      char* buffer = new char[512];
-      out.write(buffer, in.readsome(buffer, 512));
+      char* buffer = new char[2048];
+      while (not in.eof())
+      {
+        in.read(buffer, 2048);
+        out.write(buffer, in.gcount());
+      }
       delete[] buffer;
 
       in.close();
@@ -147,11 +149,10 @@ namespace oracle
     Chunk::extract(Chunk const& piece) const
     {
       std::ifstream file(_path.string());
-      elle::Buffer ret(piece._size);
+      elle::Buffer ret(_off + _size - piece._off);
 
       file.seekg(piece._off - _off);
-      file.readsome(reinterpret_cast<char*>(ret.mutable_contents()),
-                    piece._size);
+      file.read(reinterpret_cast<char*>(ret.mutable_contents()), piece._size);
 
       return ret;
     }

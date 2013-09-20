@@ -1,6 +1,5 @@
 #include <oracle/disciples/hermes/src/hermes/Clerk.hh>
 // TODO: Correct include path.
-// TODO: learn to pass exact exceptions through network
 
 namespace oracle
 {
@@ -30,8 +29,21 @@ namespace oracle
            it != end; it++)
         if (boost::filesystem::is_regular_file(it->status()))
           _chunks.push_back(it->path());
+        else
+          throw elle::Exception("Invalid file in transaction folder");
     }
 
+    void
+    Clerk::ident(TID id)
+    {
+      // TODO: Check stuff with Transaction ID?
+      boost::filesystem::path relative_path(id);
+      _explore(relative_path);
+
+      _identified = true;
+    }
+
+    // TODO: Opti, fileID offset in vector table?
     Size
     Clerk::store(FileID id, Offset off, elle::Buffer& buff)
     {
@@ -40,7 +52,6 @@ namespace oracle
 
       Chunk chunk(_base_path, id, off, buff.size());
 
-      // TODO: Modify names of this stuff.
       std::vector<Chunk>::iterator result;
       auto cmpf = std::bind(&Chunk::follows, &chunk, std::placeholders::_1);
       auto cmpo = std::bind(&Chunk::overlaps, &chunk, std::placeholders::_1);
@@ -48,20 +59,13 @@ namespace oracle
 
       if ((result = std::find_if(_chunks.begin(), _chunks.end(), cmpf)) !=
           _chunks.end())
-      {
-        std::cout << "follows" << std::endl;
         result->append(buff);
-      }
       else if ((result = std::find_if(_chunks.begin(), _chunks.end(), cmpo)) !=
           _chunks.end())
-      {
-        std::cout << "overlaps" << std::endl;
         result->merge(chunk, buff);
-      }
       else if ((result = std::find_if(_chunks.begin(), _chunks.end(), cmpl)) !=
           _chunks.end())
       {
-        std::cout << "leads" << std::endl;
         result->prepend(chunk, buff);
         result->remove();
         _chunks.erase(result);
@@ -69,7 +73,6 @@ namespace oracle
       }
       else
       {
-        std::cout << "save" << std::endl;
         chunk.save(buff);
         _chunks.push_back(chunk);
       }
@@ -86,7 +89,7 @@ namespace oracle
       elle::Buffer ret;
 
       Chunk chunk(_base_path, id, off, size);
-      std::vector<Chunk>::iterator result;
+      std::vector<Chunk>::const_iterator result;
       auto cmpb = std::bind(&Chunk::belongs_to, &chunk, std::placeholders::_1);
 
       if ((result = std::find_if(_chunks.begin(), _chunks.end(), cmpb)) !=
@@ -94,17 +97,6 @@ namespace oracle
         return result->extract(chunk);
 
       throw elle::Exception("Chunk not found");
-    }
-
-    void
-    Clerk::ident(TID id)
-    {
-      // TODO: Check stuff with Transaction ID.
-
-      boost::filesystem::path relative_path(id);
-      _explore(relative_path);
-
-      _identified = true;
     }
   }
 }
