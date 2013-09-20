@@ -69,14 +69,18 @@ def select_transactions(state, l_transactions, sender):
     # select pending transactions matching the sender id (if not None)
     enumeration = list(enumerate(
             (l, state.transaction_status(l)) for l in l_transactions
-            if ((sender is None or state.transaction_sender_id(l) == sender_id) and
-                (state.transaction_status(l) not in [state.TransactionStatus.finished,
-                                                     state.TransactionStatus.canceled,
-                                                     state.TransactionStatus.rejected,
-                                                     state.TransactionStatus.failed]))))
+            if (state.transaction_recipient_id(l) == state.id) and
+               (state.transaction_status(l) not in [state.TransactionStatus.finished,
+                                                    state.TransactionStatus.canceled,
+                                                    state.TransactionStatus.rejected,
+                                                    state.TransactionStatus.failed])))
     if len(enumeration) == 1:
         # if there is only one match, then return the id now
         return (enumeration[0][1],)
+
+    if len(enumeration) == 0:
+        # if there is only one match, then return the id now
+        return []
 
     # ask for user input
     for index, (t, status) in enumeration:
@@ -112,6 +116,7 @@ def main(state, sender):
     state.transaction_callback(partial(on_transaction, state))
 
     id = login(state)
+    state.id = id
 
     # Pull only new notifications to ensure the transaction has been fetched.
     state.pull_notifications(0, 0)
