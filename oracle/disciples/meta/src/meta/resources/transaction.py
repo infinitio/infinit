@@ -263,7 +263,6 @@ class Update(Page):
         callbacks = {
             INITIALIZED: None,
             ACCEPTED: partial(self.on_accept, transaction),
-            READY: None,
             FINISHED: None,
             CANCELED: None,
             FAILED: None,
