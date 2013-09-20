@@ -339,13 +339,15 @@ namespace surface
       this->peer_id(this->state().user(this->peer_id(), true).id);
       ELLE_TRACE("peer id: %s", this->peer_id());
 
+      double size_mb = double(size) / (1024 * 1024);
+
       this->state().mixpanel_reporter()[this->transaction_id()].store(
         "transaction.created",
         {
           {MKey::sender, this->state().me().id},
           {MKey::recipient, this->peer_id()},
           {MKey::file_count, std::to_string(this->data()->files.size())},
-          {MKey::file_size, std::to_string(size / (1024 * 1024))}
+          {MKey::file_size, std::to_string(size_mb)}
         });
 
       this->state().meta().update_transaction(this->transaction_id(),
