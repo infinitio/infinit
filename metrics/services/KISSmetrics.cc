@@ -60,6 +60,23 @@ namespace metrics
         return "source";
       case Key::method:
         return "method";
+      // Not added to KISSmetrics. Used for Mixpanel.
+      case Key::connection_method:
+        return "unknown_key";
+      case Key::file_count:
+        return "unknown_key";
+      case Key::file_size:
+        return "unknown_key";
+      case Key::how_ended:
+        return "unknown_key";
+      case Key::recipient:
+        return "unknown_key";
+      case Key::sender:
+        return "unknown_key";
+      case Key::who_connected:
+        return "unknown_key";
+      case Key::who_ended:
+        return "unknown_key";
       }
       return "unknown_key";
     }

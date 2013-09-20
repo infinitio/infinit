@@ -65,6 +65,23 @@ namespace metrics
         return "cm14";
       case Key::method:
         return "cm19";
+      // Not added to Google Analytics. Used for Mixpanel.
+      case Key::connection_method:
+        return "cm2000";
+      case Key::file_count:
+        return "cm2000";
+      case Key::file_size:
+        return "cm2000";
+      case Key::how_ended:
+        return "cm2000";
+      case Key::recipient:
+        return "cm2000";
+      case Key::sender:
+        return "cm2000";
+      case Key::who_connected:
+        return "cm2000";
+      case Key::who_ended:
+        return "cm2000";
       }
       return "cm2000";
     }

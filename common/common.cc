@@ -36,6 +36,11 @@
 #define COMMON_METRICS_KISSMETRICS_TRANSACTION_TID \
     "d953090a46a854e355d69335ae30c375498a05b6"
 
+/// By default the token is empty to ensure that no metrics are sent.
+/// See metrics/services/Mixpanel.cc
+#define COMMON_METRICS_MIXPANEL_TRANSACTION_TID \
+    ""
+
 #define COMMON_DEFAULT_INFINIT_HOME ".infinit"
 #define COMMON_DEFAULT_META_PROTOCOL "http"
 #define COMMON_DEFAULT_META_HOST "meta.api.development.infinit.io"
@@ -516,6 +521,14 @@ namespace common
     }
 
     std::string const&
+    mixpanel_fallback_path()
+    {
+      static std::string const fb_path = path::join(
+        common::infinit::home(), "mixpanel_analytics.fallback");
+      return fb_path;
+    }
+
+    std::string const&
     fallback_path()
     {
       static std::string const fb_path = path::join(
@@ -591,6 +604,24 @@ namespace common
         case ::metrics::Kind::all: return all;
         case ::metrics::Kind::user: return user;
         case ::metrics::Kind::network: return network;
+        case ::metrics::Kind::transaction: return transaction;
+      }
+      elle::unreachable();
+    }
+
+    ::metrics::Service::Info const&
+    mixpanel_info(::metrics::Kind const kind)
+    {
+      static ::metrics::Service::Info const transaction = {
+        "mixpanel",
+        "api.mixpanel.com",
+        80,
+        path::join(common::infinit::home(), "mp.id"),
+        elle::os::getenv("INFINIT_METRICS_MIXPANEL_TRANSACTION_TID",
+                         COMMON_METRICS_MIXPANEL_TRANSACTION_TID),
+      };
+      switch (kind)
+      {
         case ::metrics::Kind::transaction: return transaction;
       }
       elle::unreachable();

@@ -71,12 +71,19 @@ namespace surface
       `----------*/
       ELLE_ATTRIBUTE_P(metrics::Reporter, reporter, mutable);
       ELLE_ATTRIBUTE_P(metrics::Reporter, google_reporter, mutable);
+      ELLE_ATTRIBUTE_P(metrics::Reporter, mixpanel_reporter, mutable);
 
     public:
       metrics::Reporter&
       reporter() const
       {
         return this->_reporter;
+      }
+
+      metrics::Reporter&
+      mixpanel_reporter() const
+      {
+        return this->_mixpanel_reporter;
       }
 
       metrics::Reporter&

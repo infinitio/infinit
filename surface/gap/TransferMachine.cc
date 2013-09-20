@@ -347,6 +347,15 @@ namespace surface
     TransferMachine::_finish()
     {
       ELLE_TRACE_SCOPE("%s: machine finished", *this);
+      if (!this->is_sender())
+      {
+        this->state().mixpanel_reporter()[this->transaction_id()].store(
+        "transaction.ended",
+        {
+          {MKey::who_ended, "recipient"},
+          {MKey::how_ended, "finished"}
+        });
+      }
       this->current_state(State::Finished);
       this->_finalize(plasma::TransactionStatus::finished);
       ELLE_DEBUG("%s: finished", *this);
@@ -374,6 +383,19 @@ namespace surface
     TransferMachine::_fail()
     {
       ELLE_TRACE_SCOPE("%s: machine failed", *this);
+
+      std::string transaction_id;
+      if (!this->data()->id.empty())
+        transaction_id = this->transaction_id();
+      else
+        transaction_id = "unknown";
+
+      this->state().mixpanel_reporter()[transaction_id].store(
+      "transaction.ended",
+      {
+        {MKey::who_ended, this->is_sender() ? "sender" : "recipient"},
+        {MKey::how_ended, "failed"}
+      });
       this->current_state(State::Failed);
       this->_finalize(plasma::TransactionStatus::failed);
       ELLE_DEBUG("%s: failed", *this);
@@ -483,6 +505,17 @@ namespace surface
     TransferMachine::cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
+
+      if (!this->_canceled.opened())
+      {
+        this->state().mixpanel_reporter()[this->transaction_id()].store(
+        "transaction.ended",
+        {
+          {MKey::who_ended, this->is_sender() ? "sender" : "recipient"},
+          {MKey::how_ended, "cancelled"}
+        });
+      }
+
       this->_canceled.open();
     }
 
@@ -675,6 +708,12 @@ namespace surface
               if (host)
               {
                 found.open();
+                this->state().mixpanel_reporter()[this->transaction_id()].store(
+                "transaction.connected",
+                {
+                  {MKey::who_connected, this->is_sender() ? "sender" : "recipient"},
+                  {MKey::connection_method, round->name()}
+                });
                 break;
               }
               else
@@ -811,42 +850,6 @@ namespace surface
       }
       ELLE_ASSERT(this->_station != nullptr);
       return *this->_station;
-    }
-
-    metrics::Metric
-    TransferMachine::transaction_metric() const
-    {
-      auto const& transaction = *this->data();
-
-      auto timestamp_now = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::system_clock::now().time_since_epoch());
-      auto timestamp_tr = std::chrono::duration<double>(transaction.mtime);
-      double duration = timestamp_now.count() - timestamp_tr.count();
-
-      bool peer_online = this->is_sender() ?
-        this->_state.device_status(
-          transaction.recipient_id, transaction.recipient_device_id):
-        this->_state.device_status(
-          transaction.sender_id, transaction.sender_device_id);
-
-      std::string author{this->is_sender() ? "sender" : "recipient"};
-      std::string sender_status{this->is_sender() ? "true"
-                                                  : (peer_online ? "true"
-                                                                 : "false")};
-
-      std::string recipient_status{this->is_sender() ? "true"
-                                                     : (peer_online ? "true"
-                                                                    : "false")};
-
-      return metrics::Metric{
-        {MKey::author, author},
-        {MKey::duration, std::to_string(duration)},
-        {MKey::count, std::to_string(transaction.files_count)},
-        {MKey::size, std::to_string(transaction.total_size)},
-        {MKey::value, transaction.id},
-        {MKey::sender_online, sender_status},
-        {MKey::recipient_online, recipient_status},
-      };
     }
 
     void
