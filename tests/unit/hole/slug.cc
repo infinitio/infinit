@@ -206,8 +206,7 @@ two_slugs_nasty_connect_parallel()
           ++errors;
         }
       });
-    // XXX: join scope
-    reactor::Scheduler::scheduler()->current()->sleep(1_sec);
+    scope.wait();
   };
 
   BOOST_CHECK_EQUAL(slug1.slug.hosts().size(), 1);
