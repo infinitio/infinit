@@ -115,11 +115,13 @@ int main(int argc, char** argv)
 
         id = state.send_files(to, {file.c_str()}, "");
 
+        if (id == surface::gap::null_id)
+          throw elle::Exception("transaction id is null");
+
         do
         {
           state.poll();
-          reactor::Sleep s{sched, boost::posix_time::seconds{1}};
-          s.run();
+          reactor::sleep(1_sec);
         }
         while (stop != true);
 
