@@ -611,6 +611,7 @@ def configure(cxx_toolkit = None,
         cryptography_lib,
         reactor_lib,
         elle_lib,
+        nucleus_lib,
       ],
       cxx_toolkit, station_cxx_config_tests)
     station_tests << test
@@ -1063,6 +1064,9 @@ def configure(cxx_toolkit = None,
     'surface/gap/_detail/Network.cc',
     'surface/gap/_detail/Transaction.cc',
     'surface/gap/_detail/User.cc',
+    # Get rid of common asap.
+    'common/common.hh',
+    'common/common.cc',
   )
 
   # GAP
@@ -1095,7 +1099,7 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost.config_filesystem(
     static = (cxx_toolkit.os is drake.os.macos))
   gap_lib = drake.cxx.DynLib('lib/gap',
-                             gap_sources + [station_lib, frete_lib],
+                             gap_sources + [elle_lib, plasma_lib, reactor_lib, lune_lib, papier_lib, station_lib, frete_lib, metrics_lib],
                              cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib
@@ -1153,7 +1157,7 @@ def configure(cxx_toolkit = None,
       )
     gap_python_lib = drake.cxx.Module('lib/python/_gap',
                                       # FIXME: sooooo many libs ...
-                                      gap_python_sources + [gap_lib, tropho_lib],
+                                      gap_python_sources + [gap_lib, tropho_lib, plasma_lib, protocol_lib] + infinit_libs,
                                       cxx_toolkit, gap_python_cxx_config)
 
     gap_python_pyfiles = drake.nodes(
@@ -1178,7 +1182,7 @@ def configure(cxx_toolkit = None,
 
   # Satellites
 
-  def satellite(name):
+  def satellite(name, dependencies):
     fmt = (name, name.capitalize())
     sources = [
       'satellites/%s/%s.cc' % fmt,
@@ -1186,31 +1190,31 @@ def configure(cxx_toolkit = None,
       'satellites/%s/%s.hxx' % fmt,
       'satellites/satellite.cc',
       'satellites/satellite.hh',
-      ]
+    ]
     sources = filter(lambda p: drake.path_src(p).exists(), sources)
     sources = map(drake.node, sources)
     bin = drake.cxx.Executable(
       'bin/8%s' % name,
       # XXX: not every satellite needs GAP.
-      list(sources) + infinit_libs + [gap_lib],
+      list(sources) + list(dependencies) + [crash_lib],
       cxx_toolkit, infinit_bin_config)
-    # build << bin
+    build << bin
 
-  for name in [
+  for name, dependencies in [
     # 'access',
     # 'authority',
     # 'group',
-    #'network',
-#    'passport',
-#    'progress',
-#    'send',
-#    'transfer',
-#    'user',
-#    'dump',
-    'recv',
-    'send',
+    # 'network',
+    # 'passport',
+    # 'progress',
+    # 'send',
+    # 'transfer',
+    # 'user',
+    # 'dump',
+    ('recv', (gap_lib, elle_lib, reactor_lib, lune_lib)),
+    ('send', (gap_lib, elle_lib, reactor_lib, lune_lib)),
     ]:
-    satellite(name)
+    satellite(name, dependencies)
 
   # infinit-agent
   agent_sources = drake.nodes(
@@ -1439,9 +1443,9 @@ def configure(cxx_toolkit = None,
     (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
     ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib]),
     (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib, curly_lib]),
-    ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib]),
-    ('tests/unit/surface/gap/gap_metrics.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
-    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib]),
+    ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib, frete_lib, station_lib]),
+    ('tests/unit/surface/gap/gap_metrics.cc', infinit_libs + [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, frete_lib, station_lib, metrics_lib]),
+    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), infinit_libs + [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib]),
     #('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     #('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + infinit_libs),
     ('tests/unit/hole/slug.cc', infinit_libs),
