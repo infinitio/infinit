@@ -729,10 +729,23 @@ def configure(cxx_toolkit = None,
   hole_slib = drake.cxx.StaticLib('lib/hole', hole_sources,
                                  cxx_toolkit, cxx_config)
 
+  # Crash
+  crash_sources = drake.nodes(
+    'CrashReporter.cc',
+    'CrashReporter.hh')
+  crash_cxx_config = drake.cxx.Config(cxx_config)
+  crash_cxx_config.lib_path_runtime('.')
+  crash_lib = drake.cxx.DynLib('lib/crash',
+                                 crash_sources + [curly_lib],
+                                 cxx_toolkit, crash_cxx_config)
+
+  crash_cxx_sconfig = drake.cxx.Config(crash_cxx_config)
+  crash_slib = drake.cxx.StaticLib('lib/crash',
+                                   crash_sources,
+                                   cxx_toolkit, crash_cxx_sconfig)
+
   # Infinit
   infinit_sources = drake.nodes(
-    'CrashReporter.cc',
-    'CrashReporter.hh',
     'HoleFactory.cc',
     #'heartbeat.cc',
     #'heartbeat.hh',
