@@ -390,7 +390,13 @@ namespace surface
         this->_polling_thread->terminate_now();
         this->_polling_thread.reset();
       }
+
       this->_trophonius.disconnect();
+
+      while (!this->_runners.empty())
+        this->_runners.pop();
+
+      this->_callbacks.clear();
 
       this->_user_indexes.clear();
       this->_swagger_indexes.clear();
