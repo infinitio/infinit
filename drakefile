@@ -632,9 +632,9 @@ def configure(cxx_toolkit = None,
   frete_lib = drake.cxx.DynLib('lib/frete',
                                  frete_sources,
                                  cxx_toolkit, frete_cxx_config)
-  frete_lib = drake.cxx.StaticLib('lib/frete',
-                                 frete_sources,
-                                 cxx_toolkit, frete_cxx_config)
+  frete_slib = drake.cxx.StaticLib('lib/frete',
+                                   frete_sources,
+                                   cxx_toolkit, frete_cxx_config)
 
   frete_build << frete_lib
   frete_tests = drake.Rule('frete/tests')
