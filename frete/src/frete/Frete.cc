@@ -98,7 +98,7 @@ namespace frete
     // total_size can be 0 if all files are empty.
     this->_total_size = this->_rpc_full_size();
 
-    static std::streamsize N = 512 * 1024;
+    static std::streamsize const n = 512 * 1024;
     for (uint64_t index = 0; index < count; ++index)
     {
       std::streamsize current_pos = 0;
@@ -118,7 +118,7 @@ namespace frete
           throw elle::Exception("output is invalid");
 
         // Get the buffer from the rpc.
-        elle::Buffer buffer{std::move(this->_rpc_read(index, current_pos, N))};
+        elle::Buffer buffer{std::move(this->_rpc_read(index, current_pos, n))};
 
         // Write the file.
         output.write((char const*) buffer.mutable_contents(), buffer.size());
@@ -130,7 +130,7 @@ namespace frete
 
         this->_increment_progress(buffer.size());
 
-        if (buffer.size() < N)
+        if (buffer.size() < unsigned(n))
         {
           output.close();
           break;
