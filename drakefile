@@ -105,31 +105,6 @@ def configure(cxx_toolkit = None,
   else:
     raise Exception("architecture %s not supported" % architecture)
 
-  if cxx_toolkit.os == drake.os.linux:
-    if architecture_wordsize == 32:
-      dependencies_prefix = 'dependencies/platforms/linux32/work/'
-    elif architecture_wordsize == 64:
-      dependencies_prefix = 'dependencies/platforms/linux64/work/'
-    else:
-      raise Exception("architecture %s not supported" % architecture)
-  elif cxx_toolkit.os == drake.os.macos:
-    if architecture_wordsize == 32:
-      dependencies_prefix = 'dependencies/platforms/macosx32/work/'
-    elif architecture_wordsize == 64:
-      dependencies_prefix = 'dependencies/platforms/macosx64/work/'
-    else:
-      raise Exception("architecture %s not supported" % architecture)
-  elif cxx_toolkit.os == drake.os.windows:
-    if architecture_wordsize == 32:
-      dependencies_prefix = 'dependencies/platforms/win32/work/'
-    elif architecture_wordsize == 64:
-      dependencies_prefix = 'dependencies/platforms/win64/work/'
-    else:
-      raise Exception("architecture %s not supported" % architecture)
-  else:
-    raise Exception(
-      'operating system %s not supported' % cxx_toolkit.os)
-
   # Boost
   boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
   cxx_config += boost.config()
