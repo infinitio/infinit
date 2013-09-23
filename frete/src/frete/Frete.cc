@@ -51,6 +51,9 @@ namespace frete
   void
   Frete::add(boost::filesystem::path const& path)
   {
+    if (!boost::filesystem::exists(path))
+      throw elle::Exception(elle::sprintf("given path %s doesn't exist", path));
+
     if (is_directory(path))
     {
       boost::filesystem::recursive_directory_iterator end;
@@ -77,6 +80,12 @@ namespace frete
   Frete::add(boost::filesystem::path const& root,
              boost::filesystem::path const& path)
   {
+    auto full_path = root / path;
+
+    if (!boost::filesystem::exists(full_path))
+      throw elle::Exception(
+        elle::sprintf("given path %s doesn't exist", full_path));
+
     this->_total_size += boost::filesystem::file_size(root / path);
     this->_paths.push_back(Path(root, path));
   }
@@ -85,9 +94,9 @@ namespace frete
   Frete::get(boost::filesystem::path const& output_path)
   {
     uint64_t count = this->_rpc_count();
-    this->_total_size = this->_rpc_full_size();
 
-    ELLE_ASSERT_NEQ(this->_total_size, 0u);
+    // total_size can be 0 if all files are empty.
+    this->_total_size = this->_rpc_full_size();
 
     static std::streamsize N = 512 * 1024;
     for (uint64_t index = 0; index < count; ++index)
