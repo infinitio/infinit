@@ -9,7 +9,6 @@
 #include <elle/assert.hh>
 
 #include <lune/Lune.hh>
-#include <surface/gap/gap.h>
 #include <surface/gap/State.hh>
 #include <version.hh>
 
