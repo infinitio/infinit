@@ -273,7 +273,7 @@ namespace elle
 
       elle::format::json::Array env_arr{};
 
-      for (auto const& pair: elle::os::environment())
+      for (auto const& pair: elle::os::environ())
         if (boost::starts_with(pair.first, "ELLE_") or
             boost::starts_with(pair.first, "INFINIT_"))
           env_arr.push_back(pair.first + " = " + pair.second);
@@ -335,7 +335,7 @@ namespace elle
       for (auto const& t: bt)
         bt_arr.push_back(static_cast<std::string>(t));
 
-      for (auto const& pair: elle::os::environment())
+      for (auto const& pair: elle::os::environ())
         if (boost::starts_with(pair.first, "ELLE_") or
             boost::starts_with(pair.first, "INFINIT_"))
           env_arr.push_back(pair.first + " = " + pair.second);
