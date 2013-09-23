@@ -11,7 +11,7 @@
 
 # include <reactor/fwd.hh>
 
-# if defined(__APPLE__) ||  defined(INFINIT_WINDOWS)
+# ifdef __APPLE__
   typedef void(*sighandler_t)(int);
 # endif
 

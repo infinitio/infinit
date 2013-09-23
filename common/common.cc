@@ -11,13 +11,9 @@
 #include <stdexcept>
 #include <unordered_map>
 
-#if !defined(INFINIT_WINDOWS)
-# include <pwd.h>
-# include <sys/types.h>
-# include <unistd.h>
-#else
-# include <shlobj.h>
-#endif
+#include <pwd.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 // XXX Metrics are always targetting the sandboxes.
 #define COMMON_METRICS_INVESTORS_GOOGLE_TID "UA-31957100-3"
@@ -138,26 +134,11 @@ namespace
   std::string
   _home_directory()
   {
-#if !defined(INFINIT_WINDOWS)
     struct passwd* pw = ::getpwuid(getuid());
     if (pw != nullptr && pw->pw_dir != nullptr)
       return std::string{pw->pw_dir};
     else
       return elle::os::getenv("HOME", "/tmp");
-#else
-    char user_dir[MAX_PATH];
-
-    if (!SUCCEEDED(SHGetFolderPath(NULL,
-                                   CSIDL_PROFILE,
-                                   NULL,
-                                   0,
-                                   user_dir)))
-    {
-      int error = GetLastError();
-      throw elle::Exception{elle::sprintf("SHGetFolderPath(): %d", error)};
-    }
-    return std::string{user_dir} + "\\";
-#endif
   }
 
   std::string

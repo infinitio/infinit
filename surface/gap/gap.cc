@@ -2,9 +2,6 @@
 #include <surface/gap/gap_bridge.hh>
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
-#if !defined(INFINIT_WINDOWS)
-# include <elle/system/Process.hh>
-#endif
 
 #include <common/common.hh>
 
@@ -14,6 +11,7 @@
 #include <elle/elle.hh>
 #include <elle/finally.hh>
 #include <elle/HttpClient.hh>
+#include <elle/system/Process.hh>
 #include <elle/container/list.hh>
 #include <CrashReporter.hh>
 
@@ -1212,9 +1210,6 @@ extern "C"
                            char const* _os_description,
                            char const* _additional_info)
   {
-#if defined(INFINIT_WINDOWS)
-    return gap_ok;
-#else
     try
     {
       boost::filesystem::path crash_report_path(_crash_report);
@@ -1243,7 +1238,7 @@ extern "C"
       {
         elle::system::Process tar{"tar", args};
         tar.wait();
-#if defined(INFINIT_MACOSX)
+#if defined(INFINIT_LINUX)
         std::string b64 = elle::system::check_output("base64",
                                                      "-w0",
                                                      crash_archive);
@@ -1268,16 +1263,12 @@ extern "C"
       return gap_api_error;
     }
     return gap_ok;
-#endif
   }
 
   gap_Status
   gap_gather_crash_reports(char const* _user_id,
                            char const* _network_id)
   {
-#if defined(INFINIT_WINDOWS)
-    return gap_ok;
-#else
     try
     {
       namespace fs = boost::filesystem;
@@ -1324,11 +1315,11 @@ extern "C"
 
       elle::system::Process tar{"tar", args};
       tar.wait();
-# if defined(INFINIT_LINUX)
+#if defined(INFINIT_LINUX)
       std::string b64 = elle::system::check_output("base64", "-w0", filename);
-# else
+#else
       std::string b64 = elle::system::check_output("base64", filename);
-# endif
+#endif
 
       auto title = elle::sprintf("Crash: Logs file for user: %s, network: %s",
                                  user_id, network_id);
@@ -1345,7 +1336,6 @@ extern "C"
       return gap_error;
     }
     return gap_ok;
-#endif
   }
 
   // Generated file.

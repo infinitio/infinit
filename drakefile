@@ -13,8 +13,6 @@ def configure(cxx_toolkit = None,
               optimization = True,
               prefix = '/usr',
               boost = None,
-              curl = None,
-              openssl = None,
               qt = None,
               python2 = None,
               python3 = None,
@@ -110,7 +108,7 @@ def configure(cxx_toolkit = None,
   cxx_config += boost.config()
 
   # Python
-  python_enabled = True
+  python_enabled = cxx_toolkit.os != drake.os.windows
   if python_enabled:
     python2 = drake.cxx.find_library('pyconfig.h', prefix = python2,
                                      include_dir = ['include',
@@ -603,10 +601,10 @@ def configure(cxx_toolkit = None,
   cxx_config_libs.add_local_include_path('frete/src')
   frete_cxx_config = drake.cxx.Config(cxx_config)
   frete_cxx_config.lib_path_runtime('.')
-
-  frete_sources += [protocol_lib, reactor_lib, elle_lib]
   frete_lib = drake.cxx.DynLib('lib/frete',
-                                 frete_sources,
+                                 frete_sources + [protocol_lib,
+                                                  reactor_lib,
+                                                  elle_lib],
                                  cxx_toolkit, frete_cxx_config)
   frete_slib = drake.cxx.StaticLib('lib/frete',
                                    frete_sources,
@@ -735,12 +733,6 @@ def configure(cxx_toolkit = None,
   infinit_lib = drake.cxx.DynLib('lib/infinit',
                                  infinit_sources + [reactor_lib, curly_lib, agent_lib, hole_lib],
                                  cxx_toolkit, infinit_cxx_config)
-
-  infinit_cxx_sconfig = drake.cxx.Config(infinit_cxx_config)
-  infinit_slib = drake.cxx.StaticLib('lib/infinit',
-                                     infinit_sources,
-                                     cxx_toolkit, infinit_cxx_sconfig)
-
 # XXX
 #  hole_tests_root = drake.Path('hole/tests')
 #  for test in ['slug']:
@@ -1053,15 +1045,8 @@ def configure(cxx_toolkit = None,
       self.__targets = drake.nodes('%s.hh' % path, '%s.h' % path)
       drake.Builder.__init__(self, [self.__script], self.__targets)
 
-    def get_pythonpath(self):
-      if cxx_toolkit.os == drake.os.windows:
-        return "C:\\Python32\\python.exe"
-      else:
-        return "python3"
-
     def execute(self):
-      return self.cmd('Generate %s' % ', '.join(map(str, self.__targets)),
-          [get_pythonpath(), self.__script.path(), self.__path])
+      return self.cmd('Generate %s' % ', '.join(map(str, self.__targets)), [self.__script.path(), self.__path])
 
     @property
     def generated(self):
@@ -1078,49 +1063,6 @@ def configure(cxx_toolkit = None,
                              cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib
-
-  if cxx_toolkit.os == drake.os.windows:
-    # Windows gap dll
-    infinit_slibs = [
-      agent_slib,
-      etoile_slib,
-      hole_slib,
-      papier_slib,
-      infinit_slib,
-      lune_slib,
-      nucleus_slib,
-      plasma_slib,
-      protocol_slib,
-      curly_sched_slib,
-      reactor_slib,
-      metrics_slib,
-      cryptography_slib,
-      curly_slib,
-      curly_asio_slib,
-      elle_slib,
-      elle.reactor.coro_static,
-    ]
-
-    gap_windows = drake.Rule('windows')
-    gap_cxx_config_slibs = drake.cxx.Config()
-    gap_cxx_config_slibs += boost.config()
-    gap_cxx_config_slibs += openssl.config()
-    gap_cxx_config_slibs += boost.config_signals(static = True)
-    gap_cxx_config_slibs += boost.config_filesystem(static = True)
-    gap_cxx_config_slibs += boost.config_system(static = True)
-    gap_cxx_config_slibs += boost.config_thread(static = True)
-    gap_cxx_config_slibs += curl.config()
-    gap_cxx_config_slibs.lib_path_runtime('../../lib/_gap')
-    gap_cxx_config_slibs.lib('ws2_32')
-    gap_cxx_config_slibs.lib('userenv')
-    gap_cxx_config_slibs.lib('Shlwapi')
-    gap_cxx_config_slibs.lib('eay32')
-    gap_cxx_config_slibs.lib('ssl32')
-    gap_cxx_config_slibs.lib('curldll', static = True)
-    gap_cxx_config_slibs.define('USE_FIBERS')
-    gap_windows << drake.cxx.DynLib('lib/gap_w32',
-                                    gap_sources + infinit_slibs,
-                                    cxx_toolkit, gap_cxx_config_slibs)
 
   # GAP python
   if python_enabled:
@@ -1388,24 +1330,10 @@ def configure(cxx_toolkit = None,
   tests_cxx_config.lib_path_runtime('../../../lib')
   tests_cxx_config.lib_path_runtime('../../lib')
   tests_cxx_config.lib_path_runtime('../lib')
-  tests_cxx_config.lib('elle')
-  tests_cxx_config += boost.config()
-  if cxx_toolkit.os == drake.os.windows:
-    do_static_link = True
-    tests_cxx_config.lib('shlwapi')
-    tests_cxx_config.lib('userenv')
-  else:
-    do_static_link = False
-
-  if not do_static_link:
-    tests_cxx_config.define("BOOST_TEST_DYN_LINK")
-  tests_cxx_config += boost.config_test(do_static_link)
-  tests_cxx_config += boost.config_system(do_static_link)
-
+  tests_cxx_config += boost.config_test()
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib]
 
   tests_src_n_lib = [
-    (('tests/common.cc', 'common/common.cc'), []),
     ('tests/testing_tests.cc', []),
     ('tests/unit/etoile/Etoile.cc', infinit_libs),
     ('tests/unit/etoile/Shrub.cc', infinit_libs),

@@ -33,7 +33,6 @@ namespace elle
       {
         static const std::unordered_map<int, std::string> bind{
           {
-#if !defined(INFINIT_WINDOWS)
             {SIGHUP,  "SIGHUP"},  // Hangup detected on controlling terminal or death of controlling process
             {SIGINT,  "SIGINT"},  // Interrupt from keyboard
             {SIGQUIT, "SIGQUIT"}, // Quit from keyboard
@@ -51,14 +50,6 @@ namespace elle
             {SIGTSTP, "SIGTSTP"}, // Stop typed at tty
             {SIGTTIN, "SIGTTIN"}, // tty input for background process
             {SIGTTOU, "SIGTTOU"}, // tty output for background process
-#else
-            {SIGABRT,  "Abnormal termination"},
-            {SIGFPE, "Floating-point error"},
-            {SIGILL, "Illegal instruction"},
-            {SIGINT , "CTRL+C signal"},
-            {SIGSEGV,  "Illegal storage access"},
-            {SIGTERM,  "Termination request"},
-#endif
           }
         };
 

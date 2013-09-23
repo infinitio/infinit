@@ -20,14 +20,11 @@ namespace metrics
     "Infinit/%s (%s)",
     Reporter::version,
 #ifdef INFINIT_LINUX
-    "Linux x86_64"
+    "Linux"
 #elif INFINIT_MACOSX
-    // XXX[10.7: should adapt to any MacOS X version]
-    "Mac OS X 10.7"
-#elif INFINIT_WINDOWS
-    "Windows"
+    "OS X"
 #else
-    "Unknow Machine"
+# warning "machine not supported"
 #endif
   );
 
