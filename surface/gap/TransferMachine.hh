@@ -258,7 +258,7 @@ namespace surface
     protected:
       // User status signal.
       reactor::Barrier _peer_online;
-      reactor::Signal _peer_offline;
+      reactor::Barrier _peer_offline;
 
       // Slug?
       reactor::Signal _peer_connected;
@@ -270,8 +270,7 @@ namespace surface
       | Transaction |
       `------------*/
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
-      ELLE_ATTRIBUTE_rw(float, progress);
-      ELLE_ATTRIBUTE_P(reactor::Mutex, progress_mutex, mutable);
+      ELLE_ATTRIBUTE_r(float, progress);
 
     public:
       std::string const&

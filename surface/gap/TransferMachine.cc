@@ -8,10 +8,10 @@
 #include <papier/Descriptor.hh>
 #include <papier/Authority.hh>
 
-# include <frete/Frete.hh>
+#include <frete/Frete.hh>
 
-# include <station/Station.hh>
-# include <station/AlreadyConnected.hh>
+#include <station/Station.hh>
+#include <station/AlreadyConnected.hh>
 
 #include <reactor/fsm/Machine.hh>
 #include <reactor/exception.hh>
@@ -103,9 +103,7 @@ namespace surface
       _peer_connected("peer connected"),
       _peer_disconnected("peer connected"),
       _state(state),
-      _data(std::move(data)),
-      _progress(0.0f),
-      _progress_mutex()
+      _data(std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: creating transfer machine: %s", *this, this->_data);
 
@@ -142,17 +140,17 @@ namespace surface
       // The catch transitions just open the barrier to logging purpose.
       // The snapshot will be kept.
       this->_machine.transition_add_catch(this->_fail_state, this->_end_state)
-        .action([this] { ELLE_ERR("%s: Failure failed", *this); });
+        .action([this] { ELLE_ERR("%s: failure failed", *this); });
       this->_machine.transition_add_catch(this->_cancel_state, this->_end_state)
         .action([this]
                 {
-                  ELLE_ERR("%s: Cancellation failed", *this);
+                  ELLE_ERR("%s: cancellation failed", *this);
                   this->_failed.open();
                 });
       this->_machine.transition_add_catch(this->_finish_state, this->_end_state)
         .action([this]
                 {
-                  ELLE_ERR("%s: Termination failed", *this);
+                  ELLE_ERR("%s: termination failed", *this);
                   this->_failed.open();
                 });
 
@@ -168,12 +166,20 @@ namespace surface
         this->_connection_state,
         this->_wait_for_peer_state,
         reactor::Waitables{&this->_peer_offline},
-        true);
+        true)
+        .action([&]
+                {
+                  ELLE_TRACE("%s: peer offline: wait for peer", *this);
+                });
 
       this->_core_machine.transition_add(
         this->_wait_for_peer_state,
         this->_connection_state,
-        reactor::Waitables{&this->_peer_online});
+        reactor::Waitables{&this->_peer_online})
+        .action([&]
+                {
+                  ELLE_TRACE("%s: peer online: connection", *this);
+                });
 
       this->_core_machine.transition_add(
         this->_publish_interfaces_state,
@@ -204,7 +210,11 @@ namespace surface
         this->_transfer_state,
         this->_core_stoped_state,
         reactor::Waitables{&this->_finished},
-        true);
+        true)
+        .action([this]
+                {
+                  ELLE_LOG("%s: transfer finished", *this);
+                });
 
       this->_core_machine.transition_add_catch_specific<
         reactor::network::Exception>(
@@ -212,8 +222,15 @@ namespace surface
         this->_connection_state)
         .action([this]
                 {
-                  ELLE_ERR("%s: peer disconnected", *this);
-                  this->_host.reset();
+                  ELLE_TRACE("%s: peer disconnected from the frete", *this);
+                });
+
+      this->_core_machine.transition_add(
+        this->_transfer_state,
+        this->_connection_state)
+        .action([this]
+                {
+                  ELLE_TRACE("%s: peer disconnected from the frete", *this);
                 });
 
       this->_core_machine.transition_add_catch(
@@ -487,17 +504,20 @@ namespace surface
         if (this->_peer_online.opened())
         {
           ELLE_WARN("%s: peer was already signal online", *this);
-          this->_peer_offline.signal();
+          this->_peer_offline.close();
         }
 
         ELLE_DEBUG("%s: signal peer online", *this)
+        {
+          this->_peer_offline.close();
           this->_peer_online.open();
+        }
       }
       else
       {
         ELLE_DEBUG("%s: signal peer offline", *this);
         this->_peer_online.close();
-        this->_peer_offline.signal();
+        this->_peer_offline.open();
       }
     }
 
@@ -695,6 +715,7 @@ namespace surface
                                this->station().host_available().wait();
                                host = this->station().accept();
                                found.open();
+                               ELLE_WARN("%s: host found via 'accept'", *this);
                              });
 
         scope.run_background(
@@ -714,6 +735,7 @@ namespace surface
                   {MKey::who_connected, this->is_sender() ? "sender" : "recipient"},
                   {MKey::connection_method, round->name()}
                 });
+                ELLE_WARN("%s: host found via 'rounds'", *this);
                 break;
               }
               else
@@ -852,18 +874,13 @@ namespace surface
       return *this->_station;
     }
 
-    void
-    TransferMachine::progress(float f)
-    {
-      reactor::Lock l(this->_progress_mutex);
-      this->_progress = f;
-    }
-
     float
     TransferMachine::progress() const
     {
-      reactor::Lock l(this->_progress_mutex);
-      return this->_progress;
+      if (this->_frete == nullptr)
+        return 0.0f;
+
+      return this->_frete->progress();
     }
 
     /*----------.

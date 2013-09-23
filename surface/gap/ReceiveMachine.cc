@@ -266,28 +266,8 @@ namespace surface
           {
             this->frete().run();
           });
-        scope.run_background(
-          elle::sprintf("progress %s", this->id()),
-          [this] ()
-          {
-            while (true)
-            {
-                try
-                {
-                  reactor::Scheduler::scheduler()->current()->wait(
-                    this->frete().progress_changed());
-                }
-                catch (...)
-                {
-                  ELLE_DEBUG("exception %s while waiting progress",
-                             elle::exception_string());
-                  throw;
-                }
-              this->progress(this->frete().progress());
-            }
-          });
 
-        this->_finished.wait();
+        scope.wait();
       };
     }
 
