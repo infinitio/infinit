@@ -396,8 +396,6 @@ namespace surface
       while (!this->_runners.empty())
         this->_runners.pop();
 
-      this->_callbacks.clear();
-
       this->_user_indexes.clear();
       this->_swagger_indexes.clear();
 
