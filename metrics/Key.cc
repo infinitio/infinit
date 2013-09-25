@@ -30,6 +30,8 @@ namespace metrics
       return out << "how_ended";
     case Key::input:
       return out << "input";
+    case Key::method:
+      return out << "method";
     case Key::network:
       return out << "network";
     case Key::panel:
