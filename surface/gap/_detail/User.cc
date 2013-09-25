@@ -86,7 +86,7 @@ namespace surface
     State::User const&
     State::user_sync(std::string const& id) const
     {
-      ELLE_TRACE_SCOPE("%s: sync user from object id %s", *this, id);
+      ELLE_TRACE_SCOPE("%s: sync user from object id or email: %s", *this, id);
 
       return this->user_sync(this->meta().user(id));
     }
