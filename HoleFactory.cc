@@ -115,6 +115,8 @@ namespace infinit
           auto& sched = *reactor::Scheduler::scheduler();
           std::unique_ptr<reactor::network::UDPSocket> socket;
           boost::asio::ip::udp::endpoint pub;
+
+#if defined(REACTOR_HAVE_STUN)
           try
           {
             reactor::nat::NAT nat(sched);
@@ -142,6 +144,7 @@ namespace infinit
             // Nat punching failed
             ELLE_TRACE("punch failed: %s", e.what());
           }
+#endif
 
           auto* slug = new PortaledSlug(storage, passport, authority,
                                         protocol, members, port, timeout,
