@@ -2,6 +2,12 @@
 #include <functional>
 #include <ios>
 #include <limits>
+#include <algorithm>
+
+#include <elle/finally.hh>
+#include <elle/serialize/construct.hh>
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
 
 #include <frete/Frete.hh>
 
@@ -13,23 +19,24 @@ namespace frete
   | Construction |
   `-------------*/
 
-  Frete::Frete(infinit::protocol::ChanneledStream& channels):
+  Frete::Frete(infinit::protocol::ChanneledStream& channels,
+               boost::filesystem::path const& snapshot_destination):
     _rpc(channels),
     _rpc_count("count", this->_rpc),
     _rpc_full_size("full_size", this->_rpc),
-    _rpc_size_file("size", this->_rpc),
+    _rpc_file_size("size", this->_rpc),
     _rpc_path("path", this->_rpc),
     _rpc_read("read", this->_rpc),
     _rpc_set_progress("progress", this->_rpc),
-    _total_size(0),
-    _progress(0.0f),
-    _progress_changed("progress changed signal")
+    _progress_changed("progress changed signal"),
+    _snapshot_destination(snapshot_destination),
+    _transfer_snapshot{}
   {
     this->_rpc_count = std::bind(&Self::_count,
                                 this);
     this->_rpc_full_size = std::bind(&Self::_full_size,
                                 this);
-    this->_rpc_size_file = std::bind(&Self::_file_size,
+    this->_rpc_file_size = std::bind(&Self::_file_size,
                                      this,
                                      std::placeholders::_1);
     this->_rpc_path = std::bind(&Self::_path,
@@ -43,6 +50,34 @@ namespace frete
     this->_rpc_set_progress = std::bind(&Self::_set_progress,
                                         this,
                                         std::placeholders::_1);
+
+    if (boost::filesystem::exists(this->_snapshot_destination))
+    {
+      try
+      {
+        elle::SafeFinally delete_snapshot{
+          [&]
+          {
+            try
+            {
+              boost::filesystem::remove(this->_snapshot_destination);
+            }
+            catch (std::exception const&)
+            {
+              ELLE_ERR("%s: couldn't delete snapshot at %s: %s", *this,
+                       this->_snapshot_destination, elle::exception_string());
+            }
+          }};
+
+        this->_transfer_snapshot.reset(
+          new TransferSnapshot(
+            elle::serialize::from_file(this->_snapshot_destination.string())));
+      }
+      catch (std::exception const&) //XXX: Choose the right exception here.
+      {
+        ELLE_ERR("%s: snap shot was invalid: %s", *this, elle::exception_string());
+      }
+    }
   }
 
   Frete::~Frete()
@@ -51,6 +86,8 @@ namespace frete
   void
   Frete::add(boost::filesystem::path const& path)
   {
+    ELLE_TRACE("%s: add %s", *this, path);
+
     if (!boost::filesystem::exists(path))
       throw elle::Exception(elle::sprintf("given path %s doesn't exist", path));
 
@@ -73,7 +110,10 @@ namespace frete
       }
     }
     else
+    {
+      ELLE_TRACE("%s: add %s / %s", *this, path.parent_path(), path.filename());
       this->add(path.parent_path(), path.filename());
+    }
   }
 
   void
@@ -86,8 +126,18 @@ namespace frete
       throw elle::Exception(
         elle::sprintf("given path %s doesn't exist", full_path));
 
-    this->_total_size += boost::filesystem::file_size(root / path);
-    this->_paths.push_back(Path(root, path));
+    // XXX: Frete is used as sender or recipient...
+    // Add is dedicated to sender.
+    if (this->_transfer_snapshot == nullptr)
+      this->_transfer_snapshot.reset(new TransferSnapshot());
+
+    auto& snapshot = *this->_transfer_snapshot;
+
+    ELLE_ASSERT(snapshot.sender());
+
+    snapshot.add(root, path);
+
+    ELLE_DEBUG("%s: updated snapshot: %s", *this, snapshot);
   }
 
   void
@@ -96,21 +146,76 @@ namespace frete
     uint64_t count = this->_rpc_count();
 
     // total_size can be 0 if all files are empty.
-    this->_total_size = this->_rpc_full_size();
+    auto total_size = this->_rpc_full_size();
+
+    if (this->_transfer_snapshot != nullptr)
+    {
+      if ((this->_transfer_snapshot->total_size() != total_size) ||
+          (this->_transfer_snapshot->count() != count))
+      {
+        ELLE_ERR("%s: snapshot data (%s) are invalid",
+                 this, *this->_transfer_snapshot);
+        throw elle::Exception("invalid transfer data");
+      }
+    }
+    else
+    {
+      this->_transfer_snapshot.reset(new TransferSnapshot(count, total_size));
+    }
 
     static std::streamsize const n = 512 * 1024;
-    for (uint64_t index = 0; index < count; ++index)
+
+    auto& snapshot = *this->_transfer_snapshot;
+
+    ELLE_DEBUG("%s: transfer snapshot: %s", *this, snapshot);
+
+    #undef max
+    auto bite = snapshot.transfers().size();
+    if (bite > 0)
+      --bite;
+
+    for (size_t index = 0; // std::max(0lu, snapshot.transfers().size() - 1);
+         index < count;
+         ++index)
     {
-      std::streamsize current_pos = 0;
-
+      ELLE_DEBUG("%s: index %s", *this, index);
+      // XXX: Merge file_size & rpc_path.
       auto relativ_path = boost::filesystem::path{this->_rpc_path(index)};
-
       auto fullpath = output_path / relativ_path;
+      auto file_size = this->_rpc_file_size(index);
+
+      ELLE_DEBUG("%s: index (%s) - path %s - size %s",
+                 *this, index, fullpath, file_size);
+
+      if (snapshot.transfers().find(index) ==
+          snapshot.transfers().end())
+        snapshot.transfers().emplace(
+          std::piecewise_construct,
+          std::make_tuple(index),
+          std::forward_as_tuple(index, output_path, relativ_path, file_size));
+
+      auto& tr = snapshot.transfers().at(index);
+
+      if ((fullpath != tr.full_path()) ||
+          (file_size != tr.file_size()) ||
+          (index != tr.file_id()))
+      {
+        ELLE_ERR("%s: transfer data (%s) at index %s are invalid",
+                 *this, tr, index);
+
+        throw elle::Exception("invalid transfer data");
+      }
 
       // Create subdir.
       boost::filesystem::create_directories(fullpath.parent_path());
 
-      std::ofstream output{fullpath.string()};
+      std::ofstream output{fullpath.string(), std::ios_base::app};
+
+      if (tr.complete())
+      {
+        ELLE_DEBUG("%s: transfer was marked as complete", *this);
+        continue;
+      }
 
       while (true)
       {
@@ -118,7 +223,7 @@ namespace frete
           throw elle::Exception("output is invalid");
 
         // Get the buffer from the rpc.
-        elle::Buffer buffer{std::move(this->_rpc_read(index, current_pos, n))};
+        elle::Buffer buffer{std::move(this->_rpc_read(index, tr.progress(), n))};
 
         // Write the file.
         output.write((char const*) buffer.mutable_contents(), buffer.size());
@@ -126,37 +231,51 @@ namespace frete
         if (!output.good())
           elle::Exception("writting let the stream not in a good state");
 
-        current_pos += buffer.size();
+        {
+          snapshot.increment_progress(index, buffer.size());
+          elle::serialize::to_file(this->_snapshot_destination.native()) << *this->_transfer_snapshot;
 
-        this->_increment_progress(buffer.size());
+          this->_progress_changed.signal();
+          this->_rpc_set_progress(this->_transfer_snapshot->progress());
+        }
 
         if (buffer.size() < unsigned(n))
         {
           output.close();
+          ELLE_TRACE("finished %s: %s", index, snapshot);
           break;
         }
       }
     }
-  }
 
-  void
-  Frete::_increment_progress(uint64_t increment)
-  {
-    this->_progress += increment;
-    this->_progress_changed.signal();
-    this->_rpc_set_progress(this->_progress);
+    ELLE_LOG("open finished barrier");
+    this->_finished.open();
+
+    try
+    {
+      boost::filesystem::remove(this->_snapshot_destination);
+    }
+    catch (std::exception const&)
+    {
+      ELLE_ERR("%s: couldn't delete snapshot at %s: %s", *this,
+               this->_snapshot_destination, elle::exception_string());
+    }
   }
 
   float
   Frete::progress() const
   {
-    if (this->_total_size == 0)
+    if (this->_transfer_snapshot == nullptr)
       return 0.0f;
 
-    return this->_progress / (float) this->_total_size;
+    if (this->_transfer_snapshot->total_size())
+      return 0.0f;
+
+    return this->_transfer_snapshot->progress() /
+           (float) this->_transfer_snapshot->total_size();
   }
 
- /*-------------.
+  /*-------------.
   | Remote calls |
   `-------------*/
 
@@ -175,7 +294,7 @@ namespace frete
   uint64_t
   Frete::file_size(FileID f)
   {
-    return this->_rpc_size_file(f);
+    return this->_rpc_file_size(f);
   }
 
   std::string
@@ -197,33 +316,53 @@ namespace frete
   boost::filesystem::path
   Frete::_local_path(FileID file_id)
   {
-    return this->_paths[file_id].first / this->_paths[file_id].second;
+    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
+
+    ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
+                this->_transfer_snapshot->transfers().end());
+
+    return this->_transfer_snapshot->transfers().at(file_id).full_path();
   }
 
   uint64_t
   Frete::_count()
   {
-    return this->_paths.size();
+    ELLE_DEBUG("%s: get file count", *this);
+    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
+
+    ELLE_DEBUG("%s: %s file(s)",
+               *this, this->_transfer_snapshot->transfers().size());
+    return this->_transfer_snapshot->transfers().size();
   }
 
   uint64_t
   Frete::_full_size()
   {
-    return this->_total_size;
+    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
+
+    return this->_transfer_snapshot->total_size();
   }
 
   uint64_t
   Frete::_file_size(FileID file_id)
   {
     ELLE_ASSERT_LT(file_id, this->_count());
-    return boost::filesystem::file_size(this->_local_path(file_id));
+
+    ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
+                this->_transfer_snapshot->transfers().end());
+
+    return this->_transfer_snapshot->transfers().at(file_id).file_size();
   }
 
   std::string
   Frete::_path(FileID file_id)
   {
     ELLE_ASSERT_LT(file_id, this->_count());
-    return this->_paths[file_id].second.native();
+
+    ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
+                this->_transfer_snapshot->transfers().end());
+
+    return this->_transfer_snapshot->transfers().at(file_id).path();
   }
 
   elle::Buffer
@@ -280,7 +419,10 @@ namespace frete
   void
   Frete::_set_progress(uint64_t progress)
   {
-    this->_progress = progress;
+    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
+    ELLE_ASSERT(this->_transfer_snapshot->sender());
+
+    this->_transfer_snapshot->progress(progress);
     this->_progress_changed.signal();
   }
 
@@ -289,4 +431,169 @@ namespace frete
   {
     this->_rpc.run();
   }
+
+  /*---------.
+  | Snapshot |
+  `---------*/
+  Frete::TransferSnapshot::TransferInfo::TransferInfo(
+    FileID file_id,
+    boost::filesystem::path const& root,
+    boost::filesystem::path const& path,
+    Size file_size):
+    _file_id(file_id),
+    _root(root.string()),
+    _path(path.string()),
+    _full_path(root / path),
+    _file_size(file_size)
+  {}
+
+  bool
+  Frete::TransferSnapshot::TransferInfo::file_exists() const
+  {
+    return boost::filesystem::exists(this->_full_path);
+  }
+
+  bool
+  Frete::TransferSnapshot::TransferInfo::operator ==(TransferInfo const& rh) const
+  {
+    return ((this->_file_id == rh._file_id) &&
+            (this->_full_path == rh._full_path) &&
+            (this->_file_size == rh._file_size));
+  }
+
+  void
+  Frete::TransferSnapshot::TransferInfo::print(std::ostream& stream) const
+  {
+    stream << "TransferInfo "
+           << this->_file_id << " : " << this->_full_path
+           << "(" << this->_file_size << ")";
+  }
+
+  Frete::TransferSnapshot::TransferProgressInfo::TransferProgressInfo(
+    FileID file_id,
+    boost::filesystem::path const& root,
+    boost::filesystem::path const& path,
+    Size file_size):
+    TransferInfo(file_id, root, path, file_size),
+    _progress(0)
+  {}
+
+  void
+  Frete::TransferSnapshot::TransferProgressInfo::_increment_progress(
+    Size increment)
+  {
+    this->_progress += increment;
+  }
+
+  bool
+  Frete::TransferSnapshot::TransferProgressInfo::complete() const
+  {
+    return (this->file_size() == this->_progress);
+  }
+
+  void
+  Frete::TransferSnapshot::TransferProgressInfo::print(
+    std::ostream& stream) const
+  {
+    stream << "ProgressInfo "
+           << this->file_id() << " : " << this->full_path()
+           << "(" << this->_progress << " / " << this->file_size() << ")";
+  }
+
+  bool
+  Frete::TransferSnapshot::TransferProgressInfo::operator ==(
+    TransferProgressInfo const& rh) const
+  {
+    return ((this->TransferInfo::operator ==(rh) &&
+             this->_progress == rh._progress));
+  }
+
+
+  // Recipient.
+  Frete::TransferSnapshot::TransferSnapshot(uint64_t count,
+                                            Size total_size):
+    _sender(false),
+    _count(count),
+    _total_size(total_size),
+    _progress(0)
+  {
+    ELLE_LOG_COMPONENT("frete");
+    ELLE_LOG("%s: contruction", *this);
+  }
+
+  // Sender.
+  Frete::TransferSnapshot::TransferSnapshot():
+    _sender(true),
+    _count(0),
+    _total_size(0),
+    _progress(0)
+  {
+    ELLE_LOG_COMPONENT("frete");
+    ELLE_LOG("%s: contruction", *this);
+  }
+
+  void
+  Frete::TransferSnapshot::increment_progress(FileID index,
+                                              Size increment)
+  {
+    ELLE_ASSERT_LT(index, this->_transfers.size());
+
+    this->_transfers.at(index)._increment_progress(increment);
+    this->_progress += increment;
+  }
+
+  void
+  Frete::TransferSnapshot::add(boost::filesystem::path const& root,
+                               boost::filesystem::path const& path)
+  {
+    ELLE_ASSERT(this->_sender);
+
+    auto file = root / path;
+    if (!boost::filesystem::exists(file))
+      throw elle::Exception(elle::sprintf("file %s doesn't exist", file));
+
+    auto index = this->_transfers.size();
+    auto size = boost::filesystem::file_size(file);
+    this->_transfers.emplace(
+      std::piecewise_construct,
+      std::make_tuple(index),
+      std::forward_as_tuple(index, root, path, size));
+    this->_total_size += size;
+    this->_count = this->_transfers.size();
+  }
+
+  bool
+  Frete::TransferSnapshot::operator ==(TransferSnapshot const& rh) const
+  {
+    return ((this->_count == rh._count) &&
+            (this->_total_size == rh._total_size) &&
+            (this->_progress == rh._progress) &&
+            std::equal(this->_transfers.begin(),
+                       this->_transfers.end(),
+                       rh._transfers.begin()));
+  }
+
+  void
+  Frete::TransferSnapshot::progress(Size const& progress)
+  {
+    ELLE_LOG_COMPONENT("frete");
+
+    ELLE_ASSERT(this->sender());
+
+    if (progress < this->_progress)
+      ELLE_WARN("%s: reducing progress", *this);
+
+    this->_progress = progress;
+  }
+
+  void
+  Frete::TransferSnapshot::print(std::ostream& stream) const
+  {
+    stream << "Snapshot " << (this->_sender ? "sender" : "recipient")
+           << " " << this->_count
+           << " files for a total size of " << this->_total_size
+           << ". Already 'copied': " << this->_progress
+           << this->_transfers;
+  }
+
 }
