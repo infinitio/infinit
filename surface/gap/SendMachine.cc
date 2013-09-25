@@ -399,10 +399,7 @@ namespace surface
         this->_channels.reset(
           new infinit::protocol::ChanneledStream(sched, *this->_serializer));
 
-        // XXX.
-        this->_frete.reset(
-          new frete::Frete(*this->_channels,
-                           boost::filesystem::path{this->snapshot_path()} += "transfer"));
+        this->_frete.reset(new frete::Frete(*this->_channels));
 
         ELLE_TRACE_SCOPE("%s: init frete", *this);
         for (std::string const& file: this->_files)

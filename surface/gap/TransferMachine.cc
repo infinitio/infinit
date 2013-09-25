@@ -284,7 +284,7 @@ namespace surface
     void
     TransferMachine::_save_snapshot() const
     {
-      elle::serialize::to_file(this->_snapshot_path.native()) << this->_make_snapshot();
+      elle::serialize::to_file(this->_snapshot_path.string()) << this->_make_snapshot();
     }
 
     void

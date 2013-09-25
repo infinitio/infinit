@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(connection)
       std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
       infinit::protocol::Serializer serializer(sched, *socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, std::string{"/tmp/"} + __PRETTY_FUNCTION__ + "server");
+      frete::Frete frete(channels);
       frete.add(empty);
       frete.add(content);
       frete.add(dir);
@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE(connection)
       reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
       infinit::protocol::Serializer serializer(sched, socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, std::string{"/tmp/"} + __PRETTY_FUNCTION__ + "client");
+      frete::Frete frete(channels);
       BOOST_CHECK_EQUAL(frete.count(), 4);
       {
         BOOST_CHECK_EQUAL(frete.path(0), "empty");
@@ -237,7 +237,7 @@ BOOST_AUTO_TEST_CASE(one_function_get)
       std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
       infinit::protocol::Serializer serializer(sched, *socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, std::string{"/tmp/"} + __PRETTY_FUNCTION__ + "server");
+      frete::Frete frete(channels);
       frete.add(empty);
       frete.add(content);
       frete.add(dir); // Will add subdir.
@@ -252,7 +252,7 @@ BOOST_AUTO_TEST_CASE(one_function_get)
       reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
       infinit::protocol::Serializer serializer(sched, socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, std::string{"/tmp/"} + __PRETTY_FUNCTION__ + "client");
+      frete::Frete frete(channels);
       BOOST_CHECK_EQUAL(frete.count(), 5);
       {
         frete.get(dest);
@@ -284,109 +284,6 @@ BOOST_AUTO_TEST_CASE(one_function_get)
       BOOST_CHECK(compare_files(dest / "dir" / "subdir" / "1",
                                 root / "dir" / "subdir" / "1"));
 
-      server.terminate();
-    });
-
-  sched.run();
-}
-
-BOOST_AUTO_TEST_CASE(connection)
-{
-  reactor::Scheduler sched;
-
-  int port = 0;
-
-  reactor::Barrier listening;
-
-  // Create dummy test fs.
-  boost::filesystem::path root("frete/tests/fs-disconnection");
-  auto clear_root =
-    [&] {try { boost::filesystem::remove_all(root); } catch (...) {}};
-
-  if (boost::filesystem::exists(root))
-    clear_root();
-
-  boost::filesystem::create_directory(root);
-  elle::Finally rm_root( [&] () { clear_root(); } );
-
-  size_t block_size = 512;
-  size_t block_count = 100;
-
-  boost::filesystem::path file(root / "file");
-  {
-    std::ofstream ofile(file.native());
-    ofile << std::string(block_count * block_size, 'b');
-  }
-
-  reactor::Thread server(
-    sched, "server",
-    [&]
-    {
-      reactor::network::TCPServer server(sched);
-      server.listen();
-      port = server.port();
-      listening.open();
-      std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
-      infinit::protocol::Serializer serializer(sched, *socket);
-      infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, std::string{"/tmp/"} + __PRETTY_FUNCTION__ + "server");
-      frete.add(file);
-
-      frete.run();
-    });
-
-  reactor::Thread client(
-    sched, "client",
-    [&]
-    {
-      listening.wait();
-      reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
-      infinit::protocol::Serializer serializer(sched, socket);
-      infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, std::string{"/tmp/"} + __PRETTY_FUNCTION__ + "client");
-      BOOST_CHECK_EQUAL(frete.count(), 1);
-      {
-        BOOST_CHECK_EQUAL(frete.path(0), "empty");
-        BOOST_CHECK_EQUAL(frete.file_size(0), 0);
-        for (int i = 0; i < 3; ++i)
-        {
-          auto buffer = frete.read(0, 0, 1024);
-          BOOST_CHECK_EQUAL(buffer.size(), 0);
-        }
-        {
-          auto buffer = frete.read(0, 1, 1024);
-          BOOST_CHECK_EQUAL(buffer.size(), 0);
-        }
-      }
-      {
-        BOOST_CHECK_EQUAL(frete.path(1), "content");
-        BOOST_CHECK_EQUAL(frete.file_size(1), 8);
-        {
-          auto buffer = frete.read(1, 0, 1024);
-          BOOST_CHECK_EQUAL(buffer.size(), 8);
-          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("content\n"));
-        }
-        {
-          auto buffer = frete.read(1, 2, 2);
-          BOOST_CHECK_EQUAL(buffer.size(), 2);
-          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("nt"));
-        }
-        {
-          auto buffer = frete.read(1, 7, 2);
-          BOOST_CHECK_EQUAL(buffer.size(), 1);
-          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\n"));
-        }
-      }
-      {
-        BOOST_CHECK_EQUAL(frete.path(2), "dir/2");
-        BOOST_CHECK_EQUAL(frete.file_size(2), 1);
-        BOOST_CHECK_EQUAL(frete.read(2, 0, 2), elle::ConstWeakBuffer("2"));
-        BOOST_CHECK_EQUAL(frete.path(3), "dir/1");
-        BOOST_CHECK_EQUAL(frete.file_size(3), 1);
-        BOOST_CHECK_EQUAL(frete.read(3, 0, 2), elle::ConstWeakBuffer("1"));
-      }
-      BOOST_CHECK_THROW(frete.path(4), std::runtime_error);
-      BOOST_CHECK_THROW(frete.read(4, 0, 1), std::runtime_error);
       server.terminate();
     });
 

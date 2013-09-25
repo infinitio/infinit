@@ -135,7 +135,6 @@ class User:
         else:
             self.state.login(self.email, "password")
         self.state.transaction_callback(self._on_transaction)
-        self.state.transaction_callback(self._on_transaction)
 
         self.id = self.state._id
         self.transactions = dict()
