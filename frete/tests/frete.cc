@@ -52,8 +52,8 @@ compare_files(boost::filesystem::path const& p1,
     return false;
   }
 
-  std::ifstream file1{p1.string()};
-  std::ifstream file2{p2.string()};
+  std::ifstream file1{p1.native()};
+  std::ifstream file2{p2.native()};
 
   elle::Buffer file1content(boost::filesystem::file_size(p1));
   elle::Buffer file2content(boost::filesystem::file_size(p2));

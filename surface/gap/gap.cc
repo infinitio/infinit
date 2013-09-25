@@ -1224,14 +1224,14 @@ extern "C"
       if (boost::filesystem::exists(crash_report_path))
       {
         args.push_back("-C");
-        args.push_back(crash_report_path.parent_path().string());
-        args.push_back(crash_report_path.filename().string());
+        args.push_back(crash_report_path.parent_path().native());
+        args.push_back(crash_report_path.filename().native());
       }
       if (boost::filesystem::exists(state_log_path))
       {
         args.push_back("-C");
-        args.push_back(state_log_path.parent_path().string());
-        args.push_back(state_log_path.filename().string());
+        args.push_back(state_log_path.parent_path().native());
+        args.push_back(state_log_path.filename().native());
       }
 
       if (args.size() > 3)

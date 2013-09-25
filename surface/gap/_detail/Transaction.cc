@@ -66,7 +66,7 @@ namespace surface
 
         for (; iterator != end; ++iterator)
         {
-          auto snapshot_path = iterator->path().string().c_str();
+          auto snapshot_path = iterator->path().native().c_str();
           ELLE_TRACE("path %s", snapshot_path);
 
           elle::SafeFinally delete_snapshot([&snapshot_path]

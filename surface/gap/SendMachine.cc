@@ -190,7 +190,6 @@ namespace surface
         this->data()->files.begin(),
         [] (std::string const& el)
         {
-
           return boost::filesystem::path(el).filename().string();
         });
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
