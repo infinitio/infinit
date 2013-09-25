@@ -488,7 +488,7 @@ class Register(_Page):
 
         user['email'] = user['email'].lower()
 
-        if len(user['activation_code']) == 8:
+        if len(user['activation_code']) == 8 and user['activation_code'] != "bitebite":
             user['activation_code'] = '@' + user['activation_code']
 
         source = None

@@ -710,7 +710,7 @@ def configure(cxx_toolkit = None,
   crash_cxx_config = drake.cxx.Config(cxx_config)
   crash_cxx_config.lib_path_runtime('.')
   crash_lib = drake.cxx.DynLib('lib/crash',
-                                 crash_sources + [curly_lib],
+                                 crash_sources + curly_libs,
                                  cxx_toolkit, crash_cxx_config)
 
   crash_cxx_sconfig = drake.cxx.Config(crash_cxx_config)
@@ -949,9 +949,10 @@ def configure(cxx_toolkit = None,
     elle_lib,
     metrics_lib,
   ]
+  infinit_libs += curly_libs
+
   if enable_horizon:
     infinit_libs.append(horizon_slib)
-  infinit_libs += curly_libs
 
   # 8infinit
   infinit_bin_config = drake.cxx.Config(cxx_config)
@@ -1059,7 +1060,7 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost.config_filesystem(
     static = (cxx_toolkit.os is drake.os.macos))
   gap_lib = drake.cxx.DynLib('lib/gap',
-                             gap_sources + [elle_lib, plasma_lib, reactor_lib, lune_lib, papier_lib, station_lib, frete_lib, metrics_lib],
+                             gap_sources + [elle_lib, plasma_lib, reactor_lib, lune_lib, papier_lib, station_lib, frete_lib, metrics_lib, crash_lib],
                              cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib

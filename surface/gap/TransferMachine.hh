@@ -91,8 +91,8 @@ namespace surface
       virtual
       ~TransferMachine();
 
-    private:
-      ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
+    public:
+      ELLE_ATTRIBUTE_R(boost::filesystem::path, snapshot_path);
 
     protected:
       virtual

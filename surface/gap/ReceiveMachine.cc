@@ -288,7 +288,10 @@ namespace surface
         this->_channels.reset(
           new infinit::protocol::ChanneledStream(sched, *this->_serializer));
 
-        this->_frete.reset(new frete::Frete(*this->_channels));
+        // XXX.
+        this->_frete.reset(
+          new frete::Frete(*this->_channels,
+                           boost::filesystem::path{this->snapshot_path()} += "transfer"));
       }
 
       ELLE_ASSERT(this->_frete != nullptr);
