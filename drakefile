@@ -438,6 +438,8 @@ def configure(cxx_toolkit = None,
     'metrics/services/Google.hh',
     'metrics/services/KISSmetrics.cc',
     'metrics/services/KISSmetrics.hh',
+    'metrics/services/Infinit.cc',
+    'metrics/services/Infinit.hh',
     'metrics/services/Mixpanel.cc',
     'metrics/services/Mixpanel.hh',)
 
