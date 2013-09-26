@@ -41,6 +41,8 @@ namespace metrics
         return "how_ended";
       case Key::input:
         return "input";
+      case Key::metric_from:
+        return "metric_from";
       case Key::network:
         return "network";
       case Key::panel:
