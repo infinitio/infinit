@@ -14,6 +14,7 @@ if "Linux" in platform.uname():
 from twisted.internet import reactor
 from twisted.python import log
 from twisted.python.logfile import DailyLogFile
+from twisted.manhole import telnet as manhole_telnet
 
 from OpenSSL import crypto
 
@@ -107,4 +108,14 @@ class Application(object):
         self.control_port = reactor.listenTCP(self.ssl_port, meta_factory)
         if self.runtime_dir is not None:
             self.make_portfiles()
+
+        shell_factory = manhole_telnet.ShellFactory()
+        shell_factory.username = conf.TELNET_USERNAME
+        shell_factory.password = conf.TELNET_PASSWORD
+        shell_factory.namespace['app'] = self
+        shell_factory.namespace['reactor'] = reactor
+        shell_factory.namespace['factory'] = factory
+        shell_factory.namespace['meta_factory'] = meta_factory
+        reactor.listenTCP(32313, shell_factory, interface='localhost')
+
         reactor.run()

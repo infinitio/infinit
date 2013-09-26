@@ -10,3 +10,7 @@ LISTEN_SSL_PORT = meta.conf.TROPHONIUS_CONTROL_PORT
 
 SSL_KEY = "pkey"
 SSL_CERT = "cert"
+
+# Change that.
+TELNET_USERNAME = "infinit"
+TELNET_PASSWORD = "bitebite"
