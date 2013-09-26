@@ -32,6 +32,9 @@
 #define COMMON_METRICS_KISSMETRICS_TRANSACTION_TID \
     "d953090a46a854e355d69335ae30c375498a05b6"
 
+#define COMMON_METRICS_INFINIT_TID \
+    ""
+
 /// By default the token is empty to ensure that no metrics are sent.
 /// See metrics/services/Mixpanel.cc
 #define COMMON_METRICS_MIXPANEL_TRANSACTION_TID \
@@ -53,6 +56,8 @@
 #define COMMON_DEFAULT_STUN_PORT 3478
 #define COMMON_DEFAULT_APERTUS_HOST "apertus.api.development.infinit.io"
 #define COMMON_DEFAULT_APERTUS_PORT 9899
+#define COMMON_DEFAULT_METRICS_HOST "metrics.development.infinit.io"
+#define COMMON_DEFAULT_METRICS_PORT 80
 
 #define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
 #define COMMON_PRODUCTION_META_PROTOCOL "http"
@@ -70,6 +75,8 @@
 #define COMMON_PRODUCTION_STUN_PORT 3478
 #define COMMON_PRODUCTION_APERTUS_HOST "apertus.api.production.infinit.io"
 #define COMMON_PRODUCTION_APERTUS_PORT 9899
+#define COMMON_PRODUCTION_METRICS_HOST "metrics.production.infinit.io"
+#define COMMON_PRODUCTION_METRICS_PORT 80
 
 #ifdef INFINIT_PRODUCTION_BUILD
 # define VAR_PREFIX COMMON_PRODUCTION
@@ -124,6 +131,12 @@
 /**/
 # define COMMON_APERTUS_PORT \
   BOOST_PP_CAT(VAR_PREFIX, _APERTUS_PORT) \
+/**/
+# define COMMON_METRICS_HOST \
+  BOOST_PP_CAT(VAR_PREFIX, _METRICS_HOST) \
+/**/
+# define COMMON_METRICS_PORT \
+  BOOST_PP_CAT(VAR_PREFIX, _METRICS_PORT) \
 /**/
 
 namespace path = elle::os::path;
@@ -510,6 +523,14 @@ namespace common
     }
 
     std::string const&
+    infinit_metrics_fallback_path()
+    {
+      static std::string const fb_path = path::join(
+        common::infinit::home(), "infinit_analytics.fallback");
+      return fb_path;
+    }
+
+    std::string const&
     fallback_path()
     {
       static std::string const fb_path = path::join(
@@ -607,6 +628,27 @@ namespace common
       }
       elle::unreachable();
     }
+
+    ::metrics::Service::Info const&
+    infinit_metrics_info(::metrics::Kind const kind)
+    {
+      static ::metrics::Service::Info const transaction = {
+        "infinit",
+        elle::os::getenv("INFINIT_METRICS_HOST",
+                         COMMON_METRICS_HOST),
+        std::stoi(elle::os::getenv("INFINIT_METRICS_PORT",
+                                   std::to_string(COMMON_METRICS_PORT))),
+        path::join(common::infinit::home(), "im.id"),
+        elle::os::getenv("INFINIT_METRICS_INFINIT_TID",
+                         COMMON_METRICS_INFINIT_TID),
+      };
+      switch (kind)
+      {
+        case ::metrics::Kind::transaction: return transaction;
+      }
+      elle::unreachable();
+    }
+
   }
 
   namespace longinus

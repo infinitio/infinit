@@ -200,11 +200,17 @@ namespace common
     kissmetrics_info(::metrics::Kind const kind = ::metrics::Kind::all);
 
     ::metrics::Service::Info const&
+    infinit_metrics_info(::metrics::Kind const kind = ::metrics::Kind::all);
+
+    ::metrics::Service::Info const&
     mixpanel_info(::metrics::Kind const kind = ::metrics::Kind::all);
 
     /// Path to the file storing fallbacked metrics.
     std::string const&
     google_fallback_path();
+
+    std::string const&
+    infinit_metrics_fallback_path();
 
     std::string const&
     mixpanel_fallback_path();
