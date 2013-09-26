@@ -372,6 +372,13 @@ namespace surface
           {MKey::who_ended, "recipient"},
           {MKey::how_ended, "finished"}
         });
+
+        this->state().infinit_transaction_reporter()[this->transaction_id()].store(
+        "transaction.ended",
+        {
+          {MKey::metric_from, this->state().me().id},
+          {MKey::how_ended, "finished"}
+        });
       }
       this->current_state(State::Finished);
       this->_finalize(plasma::TransactionStatus::finished);
@@ -408,11 +415,19 @@ namespace surface
         transaction_id = "unknown";
 
       this->state().mixpanel_reporter()[transaction_id].store(
-      "transaction.ended",
-      {
-        {MKey::who_ended, this->is_sender() ? "sender" : "recipient"},
-        {MKey::how_ended, "failed"}
-      });
+        "transaction.ended",
+        {
+          {MKey::who_ended, this->is_sender() ? "sender" : "recipient"},
+          {MKey::how_ended, "failed"}
+        });
+
+      this->state().infinit_transaction_reporter()[transaction_id].store(
+        "transaction.ended",
+        {
+          {MKey::metric_from, this->state().me().id},
+          {MKey::how_ended, "failed"}
+        });
+
       this->current_state(State::Failed);
       this->_finalize(plasma::TransactionStatus::failed);
       ELLE_DEBUG("%s: failed", *this);
@@ -529,11 +544,18 @@ namespace surface
       if (!this->_canceled.opened())
       {
         this->state().mixpanel_reporter()[this->transaction_id()].store(
-        "transaction.ended",
-        {
-          {MKey::who_ended, this->is_sender() ? "sender" : "recipient"},
-          {MKey::how_ended, "cancelled"}
-        });
+          "transaction.ended",
+          {
+            {MKey::who_ended, this->is_sender() ? "sender" : "recipient"},
+            {MKey::how_ended, "cancelled"}
+          });
+
+        this->state().infinit_transaction_reporter()[this->transaction_id()].store(
+          "transaction.ended",
+          {
+            {MKey::metric_from, this->state().me().id},
+            {MKey::how_ended, "cancelled"}
+          });
       }
 
       this->_canceled.open();
@@ -730,11 +752,19 @@ namespace surface
               {
                 found.open();
                 this->state().mixpanel_reporter()[this->transaction_id()].store(
-                "transaction.connected",
-                {
-                  {MKey::who_connected, this->is_sender() ? "sender" : "recipient"},
-                  {MKey::connection_method, round->name()}
-                });
+                  "transaction.connected",
+                  {
+                    {MKey::who_connected, this->is_sender() ? "sender" : "recipient"},
+                    {MKey::connection_method, round->name()}
+                  });
+
+                this->state().infinit_transaction_reporter()[this->transaction_id()].store(
+                  "transaction.connected",
+                  {
+                    {MKey::metric_from, this->state().me().id},
+                    {MKey::connection_method, round->name()}
+                  });
+
                 ELLE_WARN("%s: host found via 'rounds'", *this);
                 break;
               }

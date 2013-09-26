@@ -191,6 +191,12 @@ namespace surface
       {
         this->state().mixpanel_reporter()[this->transaction_id()].store(
           "transaction.accepted");
+
+        this->state().infinit_transaction_reporter()[this->transaction_id()].store(
+          "transaction.accepted",
+          {
+            {MKey::metric_from, this->state().me().id}
+          });
       }
 
       this->_accepted.open();
@@ -205,11 +211,18 @@ namespace surface
       if (!this->_rejected.opened())
       {
         this->state().mixpanel_reporter()[this->transaction_id()].store(
-        "transaction.ended",
-        {
-          {MKey::who_ended, "recipient"},
-          {MKey::how_ended, "rejected"}
-        });
+          "transaction.ended",
+          {
+            {MKey::who_ended, "recipient"},
+            {MKey::how_ended, "rejected"}
+          });
+
+        this->state().infinit_transaction_reporter()[this->transaction_id()].store(
+          "transaction.ended",
+          {
+            {MKey::metric_from, this->state().me().id},
+            {MKey::how_ended, "rejected"}
+          });
       }
 
       this->_rejected.open();

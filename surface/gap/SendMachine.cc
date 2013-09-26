@@ -347,6 +347,16 @@ namespace surface
           {MKey::file_size, std::to_string(size)}
         });
 
+      this->state().infinit_transaction_reporter()[this->transaction_id()].store(
+        "transaction.created",
+        {
+          {MKey::metric_from, this->state().me().id},
+          {MKey::sender, this->state().me().id},
+          {MKey::recipient, this->peer_id()},
+          {MKey::file_count, std::to_string(this->data()->files.size())},
+          {MKey::file_size, std::to_string(size)}
+        });
+
       this->state().meta().update_transaction(this->transaction_id(),
                                               plasma::TransactionStatus::initialized);
     }
