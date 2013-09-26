@@ -107,15 +107,6 @@ class Trophonius(basic.LineReceiver):
 
     def connectionMade(self):
         log.msg(self.connectionMade, self.transport.getPeer())
-        self._ping_service = task.LoopingCall(
-            lambda: (
-                log.msg("pinging %s on device %s" % (self.id, self.device_id)),
-                self.sendLine(json.dumps({"notification_type": 208}))
-            )
-        )
-        self._ping_service.start(self.factory.application.timeout / 2, now=True)
-        timeout = self.factory.application.timeout
-        self._alive_service = reactor.callLater(timeout, self._loseConnection)
 
     def _loseConnection(self):
         log.msg("server didn't receive ping from %s" % self.id)
@@ -124,9 +115,7 @@ class Trophonius(basic.LineReceiver):
 
     def connectionLost(self, reason):
         self.reason = self.reason or reason.getErrorMessage()
-
         log.msg(self.connectionLost, self.transport.getPeer(), self.reason)
-
         self._deinit()
 
     def _send_res(self, res, msg=""):
@@ -204,6 +193,24 @@ class Trophonius(basic.LineReceiver):
 
             # Add the current client to the client list.
             self.factory.clients[self.device_id] = self
+
+            # Initialize ping / pong check.
+            if self._ping_service is not None:
+                log.msg("client %s on device %s: "
+                        "ping service already started" % (self.id, self.device_id))
+            self._ping_service = task.LoopingCall(
+                lambda: (
+                    log.msg("pinging %s on device %s" % (self.id, self.device_id)),
+                    self.sendLine(json.dumps({"notification_type": 208}))
+                )
+            )
+            self._ping_service.start(self.factory.application.timeout / 2, now=True)
+
+            if self._alive_service is not None:
+                log.msg("client %s on device %s: "
+                        "alive service already started" % (self.id, self.device_id))
+            timeout = self.factory.application.timeout
+            self._alive_service = reactor.callLater(timeout, self._loseConnection)
 
             # Enable the notifications for the current client
             self.state = "PING"
