@@ -32,6 +32,8 @@ namespace metrics
       return out << "input";
     case Key::method:
       return out << "method";
+    case Key::metric_from:
+      return out << "metric_from";
     case Key::network:
       return out << "network";
     case Key::panel:
@@ -52,6 +54,8 @@ namespace metrics
       return out << "tag";
     case Key::timestamp:
       return out << "timestamp";
+    case Key::transaction_id:
+      return out << "transaction_id";
     case Key::value:
       return out << "value";
     case Key::width:
