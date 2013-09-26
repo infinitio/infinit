@@ -164,15 +164,22 @@ class Trophonius(basic.LineReceiver):
         """
         try:
             req = json.loads(line)
-            self.device_id = req["device_id"]
 
             # Authentication
-            client = pythia.Client(session={'token': req['token']},
-                    server=self.factory.application.meta_url)
-            res = client.get('/self')
+            client = pythia.Client(
+                session = {'token': req['token']},
+                server = self.factory.application.meta_url
+            )
+            try:
+                res = client.get('/self')
+            except:
+                raise Exception("client %s not logged in anymore: %s" % (self, req))
+
             if not res['success']:
-                raise Exception("Meta error: %s" % res.get('error', ''))
+                raise Exception("client %s: meta error: %s" % (self, res))
+
             self.id = res["_id"]
+            self.device_id = req["device_id"]
             self.token = req["token"]
 
             # If the user was previously connected with the same device id,
@@ -203,7 +210,7 @@ class Trophonius(basic.LineReceiver):
 
             # Send the success to the client
             self._send_res(res = 200)
-        except (ValueError, KeyError) as ve:
+        except Exception, ve:
             log.err("Handled exception {} in state {}: {}".format(
                                         ve.__class__.__name__,
                                         self.state,
