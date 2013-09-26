@@ -102,18 +102,23 @@ class Trophonius(basic.LineReceiver):
     def __str__(self):
         if hasattr(self, "id"):
             return "<{}({})>".format(self.__class__.__name__,
-                                                 "id={}".format(self.id))
+                                     "id={}".format(self.id))
         return "<{}()>".format(self.__class__.__name__)
 
     def connectionMade(self):
-        print(self.connectionMade, self.transport.getPeer())
-        self._ping_service = task.LoopingCall(self.sendLine,
-                json.dumps({"notification_type": 208}))
-        self._ping_service.start(self.factory.application.timeout / 2)
+        log.msg(self.connectionMade, self.transport.getPeer())
+        self._ping_service = task.LoopingCall(
+            lambda: (
+                log.msg("pinging %s on device %s" % (self.id, self.device_id)),
+                self.sendLine(json.dumps({"notification_type": 208}))
+            )
+        )
+        self._ping_service.start(self.factory.application.timeout / 2, now=True)
         timeout = self.factory.application.timeout
         self._alive_service = reactor.callLater(timeout, self._loseConnection)
 
     def _loseConnection(self):
+        log.msg("server didn't receive ping from %s" % self.id)
         self.reason = "noPing"
         self.transport.loseConnection()
 
