@@ -71,6 +71,7 @@ namespace surface
       `----------*/
       ELLE_ATTRIBUTE_P(metrics::Reporter, reporter, mutable);
       ELLE_ATTRIBUTE_P(metrics::Reporter, google_reporter, mutable);
+      ELLE_ATTRIBUTE_P(metrics::Reporter, infinit_transaction_reporter, mutable);
       ELLE_ATTRIBUTE_P(metrics::Reporter, mixpanel_reporter, mutable);
 
     public:
@@ -90,6 +91,12 @@ namespace surface
       google_reporter() const
       {
         return this->_google_reporter;
+      }
+
+      metrics::Reporter&
+      infinit_transaction_reporter() const
+      {
+        return this->_infinit_transaction_reporter;
       }
 
       /*-------------.

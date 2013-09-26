@@ -10,6 +10,7 @@
 #include <papier/Identity.hh>
 #include <lune/Dictionary.hh>
 
+#include <elle/format/gzip.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
 #include <elle/os/path.hh>
@@ -18,7 +19,7 @@
 
 #include <surface/gap/metrics.hh>
 #include <metrics/services/Google.hh>
-#include <metrics/services/KISSmetrics.hh>
+#include <metrics/services/Infinit.hh>
 #include <metrics/services/Mixpanel.hh>
 
 #include <boost/filesystem.hpp>
@@ -55,8 +56,11 @@ namespace surface
           log_file + ".log",
           std::fstream::trunc | std::fstream::out};
 
+        static elle::format::gzip::Stream compressed(out, false, 1024);
+
         elle::log::logger(
-          std::unique_ptr<elle::log::Logger>{new elle::log::TextLogger(out)});
+          std::unique_ptr<elle::log::Logger>{new elle::log::TextLogger(
+            compressed)});
       }
       ELLE_LOG("Infinit Version: %s", INFINIT_VERSION);
     }
@@ -124,6 +128,7 @@ namespace surface
       _reporter{common::metrics::fallback_path()},
       _google_reporter{common::metrics::google_fallback_path()},
       _mixpanel_reporter{common::metrics::mixpanel_fallback_path()},
+      _infinit_transaction_reporter{common::metrics::infinit_metrics_fallback_path()},
       _me{nullptr},
       _output_dir{common::system::download_directory()},
       _device{nullptr}
@@ -133,6 +138,7 @@ namespace surface
       // Start metrics after setting up the logger.
       this->_reporter.start();
       this->_google_reporter.start();
+      this->_infinit_transaction_reporter.start();
       this->_mixpanel_reporter.start();
 
       std::string token_path = elle::os::getenv("INFINIT_TOKEN_FILE", "");
@@ -175,24 +181,17 @@ namespace surface
 
       {
         using metrics::services::Google;
-        using metrics::services::KISSmetrics;
+        using metrics::services::Infinit;
         using metrics::services::Mixpanel;
 
         this->_google_reporter.add_service_class<Google>(common::metrics::google_info_investors());
 
         this->_reporter.add_service_class<Google>(common::metrics::google_info());
-        this->_reporter.add_service_class<KISSmetrics>(common::metrics::kissmetrics_info());
 
-        typedef MetricKindService<metrics::Kind::user, KISSmetrics> KMUser;
-        this->_reporter.add_service_class<KMUser>(
-          common::metrics::kissmetrics_info(metrics::Kind::user));
-        typedef MetricKindService<metrics::Kind::network, KISSmetrics> KMNetwork;
-        this->_reporter.add_service_class<KMNetwork>(
-          common::metrics::kissmetrics_info(metrics::Kind::network));
-
-        typedef MetricKindService<metrics::Kind::transaction, KISSmetrics> KMTransaction;
-        this->_reporter.add_service_class<KMTransaction>(
-          common::metrics::kissmetrics_info(metrics::Kind::transaction));
+        typedef MetricKindService<metrics::Kind::transaction, Infinit> IMTransaction;
+        this->_infinit_transaction_reporter.add_service_class<IMTransaction>(
+          common::metrics::infinit_metrics_info(metrics::Kind::transaction),
+          metrics::Kind::transaction);
 
         typedef MetricKindService<metrics::Kind::transaction, Mixpanel> MPTransaction;
         this->_mixpanel_reporter.add_service_class<MPTransaction>(
