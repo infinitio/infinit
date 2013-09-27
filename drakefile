@@ -937,6 +937,7 @@ def configure(cxx_toolkit = None,
   ## -------- ##
 
   infinit_libs = [
+    # asio_fs_lib,
     agent_lib,
     etoile_lib,
     hole_lib,
