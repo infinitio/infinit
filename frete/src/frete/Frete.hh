@@ -248,7 +248,7 @@ namespace frete
       };
 
       ELLE_ATTRIBUTE_R(bool, sender);
-      typedef std::map<FileID, TransferProgressInfo> TransferProgress;
+      typedef std::unordered_map<FileID, TransferProgressInfo> TransferProgress;
       ELLE_ATTRIBUTE_X(TransferProgress, transfers);
       ELLE_ATTRIBUTE_R(uint64_t, count);
       ELLE_ATTRIBUTE_R(Size, total_size);
