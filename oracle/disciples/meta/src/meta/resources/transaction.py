@@ -130,16 +130,18 @@ class Create(Page):
                     accounts=[{'type':'email', 'id':invitee_email}]
                 )
                 recipient_fullname = id_or_email
+                recipient_handle = ""
             else:
                 recipient_id = recipient['_id']
                 recipient_fullname = recipient['register_status'] == 'ghost' and recipient['email'] or recipient['fullname']
+                recipient_handle = recipient['register_status'] != 'ghost' and recipient['handle'] or ""
         elif re.match(regexp.ID, id_or_email): # id case.
              recipient_id = database.ObjectId(id_or_email)
              recipient = self.database.users.find_one(recipient_id)
              if recipient is None:
                  return self.error(error.USER_ID_NOT_VALID)
              recipient_fullname = recipient['register_status'] == 'ghost' and recipient['email'] or recipient['fullname']
-             recipient_handle = recipient['register_status'] == 'ghost' and recipient['email'] or recipient['handle']
+             recipient_handle = recipient['register_status'] != 'ghost' and recipient['handle'] or ""
         else:
             return self.error(error.USER_ID_NOT_VALID)
 
