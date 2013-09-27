@@ -590,6 +590,7 @@ class Register(_Page):
             ],
             remaining_invitations = 3, #XXX
             status = False,
+            created_at = time.time(),
         )
         if user['activation_code'].startswith('@'):
             self.database.activations.update(
