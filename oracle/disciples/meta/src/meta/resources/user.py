@@ -262,23 +262,36 @@ class Invite(Page):
     __pattern__ = "/user/invite"
 
     def POST(self):
-        if self.data['admin_token'] != pythia.constants.ADMIN_TOKEN:
-            return self.error(error.UNKNOWN, "You're not admin")
-        email = self.data['email'].strip()
-        force = self.data.get('force', False)
-        send_mail = not self.data.get('dont_send_email', False)
-        if self.database.invitations.find_one({'email': email}):
-            if not force:
-                return self.error(error.UNKNOWN, "Already invited!")
-            else:
-                self.database.invitations.remove({'email': email})
-        meta.invitation.invite_user(
-            email,
-            send_mail = send_mail,
-            source = 'infinit',
-            database = self.database
-        )
-        return self.success()
+        if self.data['admin_token'] == pythia.constants.ADMIN_TOKEN:
+            email = self.data['email'].strip()
+            force = self.data.get('force', False)
+            send_mail = not self.data.get('dont_send_email', False)
+            if self.database.invitations.find_one({'email': email}):
+                if not force:
+                    return self.error(error.UNKNOWN, "Already invited!")
+                else:
+                    self.database.invitations.remove({'email': email})
+            meta.invitation.invite_user(
+                email,
+                send_mail = send_mail,
+                source = 'infinit',
+                database = self.database
+            )
+            return self.success()
+        else:
+            self.requireLoggedIn()
+            email = self.data['email'].strip()
+            if self.user['remaining_invitations'] <= 0:
+                return self.error(error.NO_MORE_INVITATION)
+            self.user['remaining_invitations'] -= 1
+            self.database.users.save(self.user)
+            meta.invitation.invite_user(
+                email,
+                send_mail = True,
+                source = self.user['email'],
+                database = self.database
+            )
+            return self.success()
 
 
 class Favorite(Page):
