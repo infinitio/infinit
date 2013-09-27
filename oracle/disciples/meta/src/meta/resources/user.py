@@ -377,6 +377,7 @@ class Self(_Page):
             'status': self.is_connected(database.ObjectId(self.user['_id'])),
             'token_generation_key': self.user.get('token_generation_key', ''),
             'favorites': self.user.get('favorites', []),
+            'created_at': self.user.get('created_at', 0),
         })
 
 class Invitations(Page):
