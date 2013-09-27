@@ -21,8 +21,6 @@ sys.path.insert(0, os.path.join(LIB_DIR, "python"))
 import meta.conf
 import apertus.conf
 
-NGINX_BINARY = "/usr/sbin/nginx"
-NGINX_USER = os.getenv("USER", "infinit")
 SSD = "/sbin/start-stop-daemon"
 RUNTIME_DIR = os.path.join(ROOT_DIR, 'runtime')
 CACHE_DIR = os.path.join(RUNTIME_DIR, 'cache')
@@ -32,7 +30,6 @@ TROPHO_CPORT = meta.conf.TROPHONIUS_CONTROL_PORT
 META_FCGI_PORT = 9003
 META_PORT = meta.conf.META_PORT
 META_HOSTNAME = 'localhost'
-NGINX_CONF_TEMPLATE = os.path.join(ROOT_DIR, 'prod', 'nginx.conf')
 
 
 parser = argparse.ArgumentParser(description="Services launcher")
@@ -159,8 +156,6 @@ keys = {
     'apertus_pidfile2': os.path.join(RUNTIME_DIR, 'apertus2.pid'),
     'apertus_pidfile_proxy': os.path.join(RUNTIME_DIR, 'apertus-proxy.pid'),
     'www_dir': os.path.join('.', os.path.relpath(RUNTIME_DIR)),
-    'nginx_pidfile': os.path.join('.', os.path.relpath(RUNTIME_DIR), 'nginx.pid'),
-    'nginx_binary': NGINX_BINARY,
 }
 
 def start(args):
@@ -174,18 +169,6 @@ def start(args):
           f.close()
     if not os.path.isdir(CACHE_DIR):
         os.mkdir(CACHE_DIR)
-
-    nginx_conf_params = {
-        'NGINX_USER': NGINX_USER,
-        'META_PORT': keys['meta_port'],
-        'META_HOSTNAME': keys['meta_hostname'],
-        'META_FCGI_PORT': keys['meta_fport'],
-        'CACHE_DIR': os.path.relpath(CACHE_DIR, start = RUNTIME_DIR),
-    }
-    nginx_conf = os.path.join(RUNTIME_DIR, 'nginx.conf')
-    with open(NGINX_CONF_TEMPLATE) as template:
-        with open(nginx_conf, 'w') as conf:
-            conf.write(template.read() % nginx_conf_params)
 
     if ssd("-p {apertus_pidfile0} -T".format(**keys)) != 0:
       ssd("-b -p {apertus_pidfile0} -m -S -x {apertus_bin} --\
@@ -218,9 +201,6 @@ def start(args):
           "--apertus-host {apertus_host}",
       ]).format(**keys))
 
-    if ssd("-p {nginx_pidfile} -T".format(**keys)) != 0:
-      run("sudo {nginx_binary} -p {www_dir} -c nginx.conf".format(**keys))
-
 def stop(args):
     ssd("-p {apertus_pidfile0} -K".format(**keys))
     ssd("-p {apertus_pidfile1} -K".format(**keys))
@@ -228,7 +208,6 @@ def stop(args):
     ssd("-p {apertus_pidfile_proxy} -K".format(**keys))
     ssd("-p {tropho_pidfile} -K".format(**keys))
     ssd("-p {meta_pidfile} -K".format(**keys))
-    run("sudo {nginx_binary} -p {www_dir} -c nginx.conf -s stop".format(**keys))
     import time
     time.sleep(2)
     for pidfile in [v for k, v in keys.items() if 'pidfile' in k]:
