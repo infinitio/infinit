@@ -472,11 +472,14 @@ class Avatar(_Page):
 
     def POST(self, _id):
         self.requireLoggedIn()
-        raw_data = StringIO.StringIO(web.data())
-        image = Image.open(raw_data)
-        out = StringIO.StringIO()
-        image.resize((256, 256)).save(out, 'PNG')
-        out.seek(0)
+        try:
+            raw_data = StringIO.StringIO(web.data())
+            image = Image.open(raw_data)
+            out = StringIO.StringIO()
+            image.resize((256, 256)).save(out, 'PNG')
+            out.seek(0)
+        except:
+            return self.error(msg = "Couldn't decode the image")
         self.user['avatar'] = database.Binary(out.read())
         self.database.users.save(self.user)
         return self.success()
