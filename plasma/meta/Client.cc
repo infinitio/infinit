@@ -426,7 +426,7 @@ namespace plasma
     {
       json::Dictionary request;
       request["text"] = text;
-      request["count"] = count;
+      request["limit"] = count;
       request["offset"] = offset;
       return this->_post<UsersResponse>("/user/search", request);
     }
