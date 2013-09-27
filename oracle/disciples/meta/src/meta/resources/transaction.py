@@ -334,7 +334,10 @@ class All(Page):
     Get all transaction involving user (as sender or recipient).
     GET
     -> {
-        [id0, id1, ...]
+        filter: [...]
+        type: Bool
+        limit: number,
+        with: user_id
     }
     """
     __pattern__ = "/transactions"
@@ -345,26 +348,46 @@ class All(Page):
         filter_ = self.data.get('filter', [CANCELED, FINISHED, FAILED, CREATED, REJECTED])
         inclusive = self.data.get('type', False)
         limit = min(int(self.data.get('count', 100)), 100)
+        offset = int(self.data.get('offset', 0))
 
-
-
-        transaction_ids = list(
-            t['_id'] for t in self.database.transactions.find({
-                    '$query': {
-                        '$or':[
+        if self.data.get('with'):
+            other_id = database.ObjectId(self.data.get('with'))
+            query = {
+                '$and': [
+                    {'$or': [
                             {'recipient_id': self.user['_id']},
-                            {'sender_id': self.user['_id']}
-                        ],
-                        'status': {
-                            '$%s' % (inclusive and 'in' or 'nin'): filter_,
-                        },
-                    },
-                },
-                fields = ['_id'],
-                limit = limit,
-                sort = [
-                    ('mtime', -1),
+                            {'sender_id': self.user['_id']},
+                    ]},
+                    {'$or': [
+                            {'recipient_id': other_id},
+                            {'sender_id': other_id},
+                    ]},
+                ]
+            }
+        else:
+            query = {
+                '$or': [
+                    {'recipient_id': self.user['_id']},
+                    {'sender_id': self.user['_id']}
                 ],
+            }
+
+        query['status'] = {
+            '$%s' % (inclusive and 'in' or 'nin'): filter_,
+        }
+
+        find_params = {
+            'limit': limit,
+            'skip': offset,
+            'fields': ['_id'],
+            'sort': [
+                ('mtime', -1),
+            ],
+        }
+        transaction_ids = list(
+            t['_id'] for t in self.database.transactions.find(
+                {'$query': query},
+                **find_params
             )
         )
 
