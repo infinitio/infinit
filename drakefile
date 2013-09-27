@@ -733,7 +733,7 @@ def configure(cxx_toolkit = None,
   infinit_cxx_config = drake.cxx.Config(cxx_config)
   infinit_cxx_config.lib_path_runtime('.')
   infinit_lib = drake.cxx.DynLib('lib/infinit',
-                                 infinit_sources + [reactor_lib, curly_lib, agent_lib, hole_lib],
+                                 infinit_sources + [reactor_lib, curly_lib, agent_lib], #, hole_lib
                                  cxx_toolkit, infinit_cxx_config)
 # XXX
 #  hole_tests_root = drake.Path('hole/tests')
@@ -940,7 +940,7 @@ def configure(cxx_toolkit = None,
     # asio_fs_lib,
     agent_lib,
     etoile_lib,
-    hole_lib,
+    # hole_lib,
     papier_lib,
     infinit_lib,
     lune_lib,
