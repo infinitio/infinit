@@ -318,6 +318,7 @@ namespace surface
           plasma::TransactionStatus::finished,
         plasma::TransactionStatus::canceled,
         plasma::TransactionStatus::failed};
+
       return final;
     }
 
@@ -403,6 +404,20 @@ namespace surface
     Transaction::has_transaction_id(std::string const& id) const
     {
       return this->_data->id == id;
+    }
+
+    bool
+    Transaction::final() const
+    {
+      if (this->_machine == nullptr)
+        return true;
+
+      if (this->_data == nullptr)
+        return true;
+
+      return std::find(final_status().begin(),
+                       final_status().end(),
+                       this->_data->status) != final_status().end();
     }
 
     void

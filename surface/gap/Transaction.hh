@@ -133,6 +133,9 @@ namespace surface
       bool
       concerns_network(std::string const& network_id) const;
 
+      bool
+      final() const;
+
       /*----------.
       | Printable |
       `----------*/

@@ -107,6 +107,13 @@ namespace surface
         }
       }
 
+      for (auto& transaction: this->_transactions)
+      {
+        ELLE_ASSERT(transaction.second.data() != nullptr);
+        this->_on_transaction_update(
+          std::move(this->meta().transaction(transaction.second.data()->id)));
+      }
+
       this->_transaction_resync();
     }
 
@@ -133,15 +140,23 @@ namespace surface
 
         for (auto const& id: transactions_ids)
         {
-          if (std::find_if(
-                std::begin(this->_transactions),
-                std::end(this->_transactions),
-                [&] (TransactionConstPair const& pair)
-                {
-                  return (!pair.second.data()->id.empty()) &&
-                         (pair.second.data()->id == id);
-                }) != std::end(this->_transactions))
+          auto it = std::find_if(
+            std::begin(this->_transactions),
+            std::end(this->_transactions),
+            [&] (TransactionConstPair const& pair)
+            {
+              return (!pair.second.data()->id.empty()) &&
+                     ( pair.second.data()->id == id);
+            });
+
+          if (it != std::end(this->_transactions))
+          {
+            if (!it->second.final())
+            {
+              it->second.on_transaction_update(this->meta().transaction(id));
+            }
             continue;
+          }
 
           plasma::Transaction transaction{this->meta().transaction(id)};
 
@@ -164,7 +179,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: clear transactions", *this);
 
-      // We consider that Transaction destructor doesn't throw.
+      // We assume that Transaction destructor doesn't throw.
       this->_transactions.clear();
     }
 
