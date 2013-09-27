@@ -10,14 +10,15 @@ except ImportError:
         import sys
         sys.exit(1)
 
+import StringIO
 import json
 import os
 import random
 import re
-import StringIO
+import sys
+import time
 import unicodedata
 import web
-import sys
 
 from meta.page import Page
 from meta import notifier
@@ -132,40 +133,38 @@ class _Page(Page):
 
 
 class Search(Page):
+    """ POST {
+        text: 'query',
+        offset: 0,
+        limit: 5,
+    }
+    """
     __pattern__ = "/user/search"
 
     def POST(self):
         self.requireLoggedIn()
 
         text = self.data["text"]
-        count = 'count' in self.data and self.data['count'] or 5
-        offset = 'offset' in self.data and self.data['offset'] or 0
+        limit = int(self.data('limit', 5))
+        offset = int(self.data.get('offset', 0))
 
         # While not sure it's an email or a fullname, search in both.
         users = []
         if not '@' in text:
-            users = self.database.users.find(
-                {
+            users = list(u['_id'] for u in self.database.users.find({
                     '$or' : [
                         {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
                         {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
                     ],
                     'register_status':'ok',
                 },
-                fields=["_id"],
-                limit=count + offset
-            )
-        # else:
-        #     users = self.database.users.find(
-        #         {'email' : {'$regex' : '^%s' %text, '$options': 'i'}},
-        #         fields=["_id"],
-        #         limit=count + offset
-        #     )
-
-        result = list(user['_id'] for user in users[offset:count])
+                fields = ["_id"],
+                limit = limit,
+                skip = skip,
+            ))
 
         return self.success({
-            'users': result,
+            'users': users,
         })
 
 class GenerateHandle(_Page):
