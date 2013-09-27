@@ -45,6 +45,8 @@ for line in configfile:
 
 def ascii_string(s):
     """Convert to a lower cased ascii string."""
+    if not isinstance(s, unicode):
+        s = s.decode('utf8')
     return unicodedata.normalize('NFKD', s.lower()).encode('ascii', 'ignore')
 
 class Create(Page):
@@ -131,6 +133,7 @@ class Create(Page):
                 )
                 recipient_fullname = id_or_email
                 recipient_handle = ""
+                recipient = self.database.users.find_one(recipient_id)
             else:
                 recipient_id = recipient['_id']
                 recipient_fullname = recipient['register_status'] == 'ghost' and recipient['email'] or recipient['fullname']
@@ -169,7 +172,7 @@ class Create(Page):
             'ctime': time.time(),
             'mtime': time.time(),
             'status': CREATED,
-            'strings': ' '.join(map(ascii_string, [
+            'strings': u' '.join(map(ascii_string, [
                 self.user['fullname'],
                 self.user['handle'],
                 self.user['email'],
