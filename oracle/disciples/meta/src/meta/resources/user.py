@@ -145,7 +145,7 @@ class Search(Page):
         self.requireLoggedIn()
 
         text = self.data["text"]
-        limit = int(self.data('limit', 5))
+        limit = int(self.data.get('limit', 5))
         offset = int(self.data.get('offset', 0))
 
         # While not sure it's an email or a fullname, search in both.
