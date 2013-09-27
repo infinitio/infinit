@@ -18,7 +18,9 @@
 
 namespace frete
 {
-  class Frete
+  class Frete:
+    public elle::Printable
+
   {
   /*------.
   | Types |
@@ -54,7 +56,8 @@ namespace frete
     add(boost::filesystem::path const& root,
         boost::filesystem::path const& path);
     void
-    get(boost::filesystem::path const& output);
+    get(boost::filesystem::path const& output,
+        std::string const& name_policy = " (%s)");
 
     /*-------------.
     | Remote calls |
@@ -100,9 +103,11 @@ namespace frete
     void
     _set_progress(uint64_t progress);
 
+    // Sender.
     typedef std::pair<boost::filesystem::path, boost::filesystem::path> Path;
     typedef std::vector<Path> Paths;
     ELLE_ATTRIBUTE(Paths, paths);
+
     typedef infinit::protocol::RPC<
       elle::serialize::InputBinaryArchive,
       elle::serialize::OutputBinaryArchive> RPC;
@@ -273,6 +278,28 @@ namespace frete
   private:
     ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_destination);
     ELLE_ATTRIBUTE(std::unique_ptr<TransferSnapshot>, transfer_snapshot);
+
+    /*----------.
+    | Printable |
+    `----------*/
+  public:
+    virtual
+    void
+    print(std::ostream& stream) const;
+
+    /*--------------.
+    | Static Method |
+    `--------------*/
+    // Exposed for debugging purposes.
+    static
+    boost::filesystem::path
+    eligible_name(boost::filesystem::path const path,
+                  std::string const& name_policy);
+
+    static
+    boost::filesystem::path
+    trim(boost::filesystem::path const& item,
+         boost::filesystem::path const& root);
 
   };
 }

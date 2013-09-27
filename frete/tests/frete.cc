@@ -46,8 +46,8 @@ compare_files(boost::filesystem::path const& p1,
   {
     ELLE_ERR("%s (%sO) and %s (%sO) don't have the same size",
              p1,
-             p2,
              boost::filesystem::file_size(p1),
+             p2,
              boost::filesystem::file_size(p2));
     return false;
   }
@@ -71,6 +71,86 @@ compare_files(boost::filesystem::path const& p1,
     throw std::runtime_error("file too big to be compared");
 
   return file1content == file2content;
+}
+
+BOOST_AUTO_TEST_CASE(eligible_names)
+{
+  boost::filesystem::path root("frete/tests/eligible_name");
+  auto clear_root =
+    [&] {try { boost::filesystem::remove_all(root); } catch (...) {}};
+
+  if (boost::filesystem::exists(root))
+    clear_root();
+
+  boost::filesystem::create_directory(root);
+  elle::SafeFinally rm_root( [&] () { clear_root(); } );
+
+  auto filename = root / "dest.tar.bz";
+
+  static const size_t count = 32;
+
+  bool first_pass = true;
+  for (std::string  pattern: {" (%s)", "_%s", " - %s"})
+  {
+    for (size_t i = 0; i < count; ++i)
+    {
+      // Touch the file.
+      std::ofstream{frete::Frete::eligible_name(filename, pattern).native()};
+    }
+
+    BOOST_CHECK(boost::filesystem::exists(filename));
+
+    auto max = first_pass ? (count + 1) : (count + 2);
+    for (size_t i = 2; i < max; ++i)
+    {
+      auto name = "frete/tests/eligible_name/dest" + pattern + ".tar.bz";
+      BOOST_CHECK(
+        boost::filesystem::exists(
+          elle::sprintf(name, i)));
+    }
+
+    boost::filesystem::directory_iterator end;
+    for (auto it = boost::filesystem::directory_iterator(root);
+         it != end;
+         ++it)
+    {
+      ELLE_DEBUG("- %s", *it);
+    }
+
+    ELLE_DEBUG("%s", std::string(32, '-'));
+
+    first_pass = false;
+  }
+}
+
+BOOST_AUTO_TEST_CASE(trim)
+{
+  boost::filesystem::path tmp{"/tmp"};
+  boost::filesystem::path folder{"/tmp/folder"};
+  boost::filesystem::path folder2{"/tmp/folder/folder"};
+  boost::filesystem::path file{"/tmp/file.ext"};
+  boost::filesystem::path file_into_folder {"/tmp/folder/file.ext"};
+  boost::filesystem::path dotfolder {"/tmp/folder.com"};
+  boost::filesystem::path file_into_dotfolder {"/tmp/folder.com/file.ext"};
+
+  BOOST_CHECK_EQUAL(frete::Frete::trim(tmp, tmp), "");
+  BOOST_CHECK_EQUAL(frete::Frete::trim(folder, tmp), "folder");
+  BOOST_CHECK_EQUAL(frete::Frete::trim(folder2, tmp), "folder/folder");
+  BOOST_CHECK_EQUAL(frete::Frete::trim(folder2, folder), "folder");
+  BOOST_CHECK_EQUAL(frete::Frete::trim(file, tmp), "file.ext");
+  BOOST_CHECK_EQUAL(frete::Frete::trim(file_into_folder, tmp),
+                    "folder/file.ext");
+  BOOST_CHECK_EQUAL(frete::Frete::trim(file_into_folder, folder), "file.ext");
+  BOOST_CHECK_EQUAL(frete::Frete::trim(dotfolder, tmp), "folder.com");
+  BOOST_CHECK_EQUAL(frete::Frete::trim(file_into_dotfolder, tmp),
+                    "folder.com/file.ext");
+  BOOST_CHECK_EQUAL(frete::Frete::trim(file_into_dotfolder, dotfolder),
+                    "file.ext");
+
+  BOOST_CHECK_THROW(
+    frete::Frete::trim(file_into_folder, "folder_that_doesn_t_exist"),
+    elle::Exception);
+
 }
 
 BOOST_AUTO_TEST_CASE(connection)
@@ -233,25 +313,25 @@ BOOST_AUTO_TEST_CASE(one_function_get)
   boost::filesystem::path content(root / "content");
   {
     std::ofstream f(content.native());
-    f << "content\n";
+    f << "content\n" << std::flush;
   }
 
   boost::filesystem::path dir(root / "dir");
   boost::filesystem::create_directory(dir);
   {
     std::ofstream f((dir / "1").native());
-    f << "1";
+    f << "1" << std::flush;
   }
   boost::filesystem::create_directory(dir);
   {
     std::ofstream f((dir / "2").native());
-    f << "2";
+    f << "2" << std::flush;
   }
   boost::filesystem::path subdir(dir / "subdir");
   boost::filesystem::create_directory(subdir);
   {
     std::ofstream f((subdir / "1").native());
-    f << "1";
+    f << "1" << std::flush;
   }
 
   reactor::Thread server(
@@ -373,7 +453,7 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
     std::ofstream ofile(empty2.native());
   }
 
-  boost::filesystem::path file2(folder / "file2");
+  boost::filesystem::path file2(folder / "file");
   {
     std::ofstream ofile(file2.native());
     ofile << std::string(block_count * block_size, 'b');
@@ -386,7 +466,7 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
       reactor::network::TCPServer server(sched);
 
       auto snap = root;
-      snap += "transfer";
+      snap /= ".transfer";
 
       while (true)
       {
@@ -394,101 +474,145 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
         {
           server.listen();
           port = server.port();
+
           listening.open();
           std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
           infinit::protocol::Serializer serializer(sched, *socket);
           infinit::protocol::ChanneledStream channels(sched, serializer);
           frete::Frete frete(channels, snap);
 
+          elle::SafeFinally progress([&]
+                                     {
+                                       ELLE_DEBUG("progress %s", frete.progress());
+                                     });
+
           frete.add(file);
-          frete.add(empty);
-          frete.add(folder);
+          // frete.add(empty);
+          // frete.add(folder);
+          frete.add(file2);
 
-           frete.run();
-         }
-         catch (reactor::Terminate const&)
-         {
-           throw;
-         }
-         catch (std::exception const&)
-         {
-           listening.close();
-         }
-       }
-     });
-
-   reactor::Thread client(
-     sched, "clients",
-     [&]
-     {
-       auto snap = dest;
-       snap += "transfer";
-
-       elle::SafeFinally compare{
-         [&]
-         {
-           BOOST_CHECK(compare_files(dest / "file",
-                                     root / "file"));
-           BOOST_CHECK(compare_files(dest / "empty",
-                                     root / "empty"));
-           BOOST_CHECK(compare_files(dest / "folder" / "empty",
-                                     root / "folder" / "empty"));
-           BOOST_CHECK(compare_files(dest / "folder" / "file2",
-                                     root / "folder" / "file2"));
-         }
-       };
-
-       elle::SafeFinally kill_server{ [&] { server.terminate(); } };
-
-       while (true)
-       {
-         listening.wait();
-
-         bool finished{false};
-         try
-         {
-           reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
-           infinit::protocol::Serializer serializer(sched, socket);
-           infinit::protocol::ChanneledStream channels(sched, serializer);
-           frete::Frete frete(channels, snap);
-
-           try
-           {
-             elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-             {
-               scope.run_background(
-                 "get",
-                 [&]
-                 {
-                   frete.get(dest);
-                   finished = true;
-                   ELLE_DEBUG("%s", "transfer finished");
-                   frete.progress_changed().signal();
-                 });
-
-               scope.run_background(
-                 "client run",
-                 [&]
-                 {
-                   frete.run();
-                 });
-
-               frete.progress_changed().wait();
-             };
-           }
-           catch (reactor::Terminate const&)
-          {
-            throw;
-          }
-          catch (std::exception const&)
-          {
-          }
+          frete.run();
+        }
+        catch (reactor::Terminate const&)
+        {
+          throw;
+        }
+        catch (elle::AssertError const&)
+        {
+          ELLE_ERR("assert");
+          throw;
+        }
+        catch (std::exception const&)
+        {
           listening.close();
         }
         catch (...)
         {
-          ELLE_WARN("%s", elle::exception_string());
+          ELLE_ERR("%s", elle::exception_string());
           throw;
+        }
+
+      }
+    });
+
+  reactor::Thread client(
+    sched, "clients",
+    [&]
+    {
+      auto snap = dest;
+      snap /= ".transfer";
+
+      elle::SafeFinally compare{
+        [&]
+        {
+          BOOST_CHECK(compare_files(dest / "file",
+                                    root / "file"));
+          BOOST_CHECK(compare_files(dest / "file (2)",
+                                    root / "folder" / "file",
+                                    false));
+          // BOOST_CHECK(compare_files(dest / "empty",
+          //                           root / "empty"));
+          // BOOST_CHECK(compare_files(dest / "folder" / "empty",
+          //                           root / "folder" / "empty"));
+          // BOOST_CHECK(compare_files(dest / "folder" / "file2",
+          //                           root / "folder" / "file2"));
+          // BOOST_CHECK(compare_files(dest / "folder" / "file2 (2)",
+          //                           root / "folder" / "file2"));
+
+        }
+      };
+
+      elle::SafeFinally kill_server{ [&] { server.terminate(); } };
+
+      while (true)
+      {
+        listening.wait();
+
+        bool finished{false};
+        try
+        {
+          reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
+          infinit::protocol::Serializer serializer(sched, socket);
+          infinit::protocol::ChanneledStream channels(sched, serializer);
+          frete::Frete frete(channels, snap);
+
+          elle::SafeFinally progress([&]
+                                     {
+                                       ELLE_WARN("progress %s", frete.progress());
+                                     });
+
+          elle::SafeFinally close_listening([&] { listening.close(); });
+
+          elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+          {
+            scope.run_background(
+              "get",
+              [&]
+              {
+                try
+                {
+                  frete.get(dest);
+                  finished = true;
+                  ELLE_DEBUG("%s", "transfer finished");
+                  frete.progress_changed().signal();
+                }
+                catch (reactor::Terminate const&)
+                {
+                  throw;
+                }
+                catch (elle::AssertError const&)
+                {
+                  ELLE_ERR("Assert");
+                  throw;
+                }
+                catch (...)
+                {
+                  ELLE_ERR("%s", elle::exception_string());
+                  throw;
+                }
+              });
+
+            scope.run_background(
+              "client run",
+              [&]
+              {
+                frete.run();
+              });
+
+            frete.progress_changed().wait();
+          };
+        }
+        catch (reactor::Terminate const&)
+        {
+          throw;
+        }
+        catch (elle::AssertError const&)
+        {
+          ELLE_ERR("Assert");
+          throw;
+        }
+        catch (std::exception const&)
+        {
         }
 
         if (finished)
@@ -579,6 +703,11 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
           frete.add(empty);
           frete.add(folder);
 
+          elle::SafeFinally progress([&]
+                                     {
+                                       ELLE_WARN("sen: %s", frete.progress());
+                                     });
+
           elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
           {
             scope.run_background("server run", [&] { frete.run(); frete.progress_changed().signal(); });
@@ -586,65 +715,76 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
             frete.progress_changed().wait();
             listening.close();
           };
-         }
-         catch (reactor::Terminate const&)
-         {
-           throw;
-         }
-         catch (std::exception const&)
-         {
-           ELLE_DEBUG("client disconnected");
-           listening.close();
-         }
-       }
-     });
+        }
+        catch (reactor::Terminate const&)
+        {
+          throw;
+        }
+        catch (elle::AssertError const&)
+        {
+          ELLE_ERR("Assert");
+          throw;
+        }
+        catch (std::exception const&)
+        {
+          ELLE_DEBUG("client disconnected");
+          listening.close();
+        }
+      }
+    });
 
-   reactor::Thread client(
-     sched, "clients",
-     [&]
-     {
-       auto snap = dest;
-       snap += "transfer";
+  reactor::Thread client(
+    sched, "clients",
+    [&]
+    {
+      auto snap = dest;
+      snap += "transfer";
 
-       elle::SafeFinally compare{
-         [&]
-         {
-           BOOST_CHECK(compare_files(dest / "file",
-                                     root / "file"));
-           BOOST_CHECK(compare_files(dest / "empty",
-                                     root / "empty"));
-           BOOST_CHECK(compare_files(dest / "folder" / "empty",
-                                     root / "folder" / "empty"));
-           BOOST_CHECK(compare_files(dest / "folder" / "file2",
-                                     root / "folder" / "file2"));
-         }
-       };
+      elle::SafeFinally compare{
+        [&]
+        {
+          BOOST_CHECK(compare_files(dest / "file",
+                                    root / "file"));
+          BOOST_CHECK(compare_files(dest / "empty",
+                                    root / "empty"));
+          BOOST_CHECK(compare_files(dest / "folder" / "empty",
+                                    root / "folder" / "empty"));
+          BOOST_CHECK(compare_files(dest / "folder" / "file2",
+                                    root / "folder" / "file2"));
+        }
+      };
 
-       elle::SafeFinally kill_server{ [&] { server.terminate(); } };
+      elle::SafeFinally kill_server{ [&] { server.terminate(); } };
 
-       while (true)
-       {
-         listening.wait();
+      while (true)
+      {
+        listening.wait();
 
-         bool finished{false};
-         try
-         {
-           reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
-           infinit::protocol::Serializer serializer(sched, socket);
-           infinit::protocol::ChanneledStream channels(sched, serializer);
-           frete::Frete frete(channels, snap);
+        bool finished{false};
+        try
+        {
+          reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
+          infinit::protocol::Serializer serializer(sched, socket);
+          infinit::protocol::ChanneledStream channels(sched, serializer);
+          frete::Frete frete(channels, snap);
 
-           try
-           {
-             elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-             {
-               scope.run_background(
-                 "get",
-                 [&]
-                 {
-                   frete.get(dest);
-                   if (frete.finished().opened())
-                     throw elle::Exception("finished");
+          elle::SafeFinally progress([&]
+                                     {
+                                       ELLE_WARN("rec: %s", frete.progress());
+                                     });
+
+          try
+          {
+            elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+            {
+              scope.run_background(
+                "get",
+                [&]
+                {
+                  ELLE_ERR("start getting");
+                  frete.get(dest);
+                  if (frete.finished().opened())
+                    throw elle::Exception("finished");
                 });
 
               scope.run_background(
@@ -655,28 +795,35 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
                 });
 
               scope.wait();
-             };
-           }
-           catch (reactor::Terminate const&)
-           {
-             throw;
-           }
-           catch (std::exception const&)
-           {
-           }
+            };
+          }
+          catch (reactor::Terminate const&)
+          {
+            throw;
+          }
+          catch (std::exception const&)
+          {
+          }
 
-           finished = frete.finished().opened();
-         }
-         catch (...)
-         {
-           ELLE_WARN("%s", elle::exception_string());
-           throw;
-         }
+          finished = frete.finished().opened();
+        }
+        catch (reactor::Terminate const&)
+        {
+          throw;
+        }
+        catch (elle::AssertError const&)
+        {
+          ELLE_ERR("Assert");
+          throw;
+        }
+        catch (std::exception const&)
+        {
+        }
 
-         if (finished)
-           break;
-       }
-     });
+        if (finished)
+          break;
+      }
+    });
 
   sched.run();
 }
