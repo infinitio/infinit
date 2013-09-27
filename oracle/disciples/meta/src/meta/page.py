@@ -61,6 +61,7 @@ class Page(object):
         if not web.ctx.host.startswith('v2.meta.api.') and \
            not web.ctx.host.startswith('localhost') and \
            not web.ctx.host.startswith('127.0.0.1') and \
+           not web.ctx.host.startswith('192.168.') and \
            not 'development' in web.ctx.host:
             self.raise_error(error.DEPRECATED, msg = "Version not supported")
 
