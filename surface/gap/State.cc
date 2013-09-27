@@ -127,8 +127,8 @@ namespace surface
       }},
       _reporter{common::metrics::fallback_path()},
       _google_reporter{common::metrics::google_fallback_path()},
-      _mixpanel_reporter{common::metrics::mixpanel_fallback_path()},
       _infinit_transaction_reporter{common::metrics::infinit_metrics_fallback_path()},
+      _mixpanel_reporter{common::metrics::mixpanel_fallback_path()},
       _me{nullptr},
       _output_dir{common::system::download_directory()},
       _device{nullptr}
