@@ -293,6 +293,17 @@ class Invite(Page):
             )
             return self.success()
 
+class Invited(Page):
+    __pattern__ = "/user/invited"
+    def GET(self):
+        return self.success({
+            'users': list(
+                u['email'] for u in self.database.invitations.find(
+                    {'source': self.user['email']},
+                    fields = ['email'],
+                )
+            )
+        })
 
 class Favorite(Page):
     """Add a user to favorites
