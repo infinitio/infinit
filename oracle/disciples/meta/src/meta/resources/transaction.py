@@ -395,6 +395,46 @@ class All(Page):
             'transactions': transaction_ids,
         })
 
+class Search(Page):
+    """
+    POST /transaction/search {
+        'text': "query",
+    }
+    """
+
+    __pattern__ = "/transaction/search"
+
+    def POST(self):
+        self.requireLoggedIn()
+        text = ascii_string(self.data['text'])
+        query = {
+            '$and': [
+                {'strings': {'$regex': text,}},
+                {
+                    '$or': [
+                        {'recipient_id': self.user['_id']},
+                        {'sender_id': self.user['_id']}
+                    ]
+                }
+            ]
+        }
+        find_params = {
+            'limit': limit,
+            'skip': offset,
+            'fields': ['_id'],
+            'sort': [
+                ('mtime', -1),
+            ],
+        }
+        return self.success({
+            'transactions': list(
+                t['_id'] for t in self.database.transactions.find(
+                    {'$query': query},
+                    **find_params
+                )
+            )
+        })
+
 class One(Page):
     """
     Fetch one transaction.
