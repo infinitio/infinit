@@ -160,7 +160,7 @@ class Search(Page):
                 },
                 fields = ["_id"],
                 limit = limit,
-                skip = skip,
+                skip = offset,
             ))
 
         return self.success({
