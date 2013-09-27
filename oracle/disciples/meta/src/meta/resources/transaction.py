@@ -5,6 +5,7 @@ import web
 import os.path
 import sys
 import time
+import unicodedata
 
 from meta.page import Page
 from meta import notifier
@@ -41,6 +42,10 @@ filepath = os.path.abspath(
 configfile = open(filepath, 'r')
 for line in configfile:
     eval(_macro_matcher.sub(replacer, line))
+
+def ascii_string(s):
+    """Convert to a lower cased ascii string."""
+    return unicodedata.normalize('NFKD', s.lower()).encode('ascii', 'ignore')
 
 class Create(Page):
     """
@@ -134,6 +139,7 @@ class Create(Page):
              if recipient is None:
                  return self.error(error.USER_ID_NOT_VALID)
              recipient_fullname = recipient['register_status'] == 'ghost' and recipient['email'] or recipient['fullname']
+             recipient_handle = recipient['register_status'] == 'ghost' and recipient['email'] or recipient['handle']
         else:
             return self.error(error.USER_ID_NOT_VALID)
 
@@ -161,6 +167,15 @@ class Create(Page):
             'ctime': time.time(),
             'mtime': time.time(),
             'status': CREATED,
+            'strings': ' '.join(map(ascii_string, [
+                self.user['fullname'],
+                self.user['handle'],
+                self.user['email'],
+                recipient_fullname,
+                recipient_handle,
+                recipient['email'],
+                message,
+            ] + files))
         }
 
         transaction_id = self.database.transactions.insert(transaction)
@@ -224,10 +239,10 @@ class Update(Page):
             return self.error(error.DEVICE_NOT_VALID)
 
         transaction.update({
-                'recipient_fullname': self.user['fullname'],
-                'recipient_device_name' : self.data['device_name'],
-                'recipient_device_id': device_id,
-                })
+            'recipient_fullname': self.user['fullname'],
+            'recipient_device_name' : self.data['device_name'],
+            'recipient_device_id': device_id,
+        })
 
     def update_status(self, transaction, status, is_sender):
         final_status = [REJECTED, CANCELED, FAILED, FINISHED]
@@ -289,7 +304,7 @@ class Update(Page):
             device_ids = device_ids,
             recipient_ids = recipient_ids,
             message = transaction,
-       )
+        )
 
     def POST(self):
         self.requireLoggedIn()
