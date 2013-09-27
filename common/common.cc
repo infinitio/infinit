@@ -56,7 +56,7 @@
 #define COMMON_DEFAULT_STUN_PORT 3478
 #define COMMON_DEFAULT_APERTUS_HOST "apertus.api.development.infinit.io"
 #define COMMON_DEFAULT_APERTUS_PORT 9899
-#define COMMON_DEFAULT_METRICS_HOST "metrics.development.infinit.io"
+#define COMMON_DEFAULT_METRICS_HOST "metrics.api.development.infinit.io"
 #define COMMON_DEFAULT_METRICS_PORT 80
 
 #define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
@@ -75,7 +75,7 @@
 #define COMMON_PRODUCTION_STUN_PORT 3478
 #define COMMON_PRODUCTION_APERTUS_HOST "apertus.api.production.infinit.io"
 #define COMMON_PRODUCTION_APERTUS_PORT 9899
-#define COMMON_PRODUCTION_METRICS_HOST "metrics.production.infinit.io"
+#define COMMON_PRODUCTION_METRICS_HOST "v2.metrics.api.production.infinit.io"
 #define COMMON_PRODUCTION_METRICS_PORT 80
 
 #ifdef INFINIT_PRODUCTION_BUILD
