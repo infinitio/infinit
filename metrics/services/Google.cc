@@ -1,17 +1,17 @@
-#include "Google.hh"
+#include <fstream>
 
-#include <metrics/Reporter.hh>
+#include <boost/algorithm/string/replace.hpp>
+
+#include <elle/format/hexadecimal.hh>
 
 #include <cryptography/Digest.hh>
 #include <cryptography/Plain.hh>
 #include <cryptography/oneway.hh>
 
-#include <elle/format/hexadecimal.hh>
 #include <curly/curly.hh>
 
-#include <boost/algorithm/string/replace.hpp>
-
-#include <fstream>
+#include <metrics/Reporter.hh>
+#include <metrics/services/Google.hh>
 
 ELLE_LOG_COMPONENT("metrics.google.Service");
 
@@ -82,8 +82,9 @@ namespace metrics
         return "cm2000";
       case Key::who_ended:
         return "cm2000";
+      default:
+        return "cm2000";
       }
-      return "cm2000";
     }
 
     Google::Google(std::string const& pkey,
