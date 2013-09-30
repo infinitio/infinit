@@ -290,7 +290,7 @@ class Invite(Page):
     __pattern__ = "/user/invite"
 
     def POST(self):
-        if self.data['admin_token'] == pythia.constants.ADMIN_TOKEN:
+        if self.data.get('admin_token') == pythia.constants.ADMIN_TOKEN:
             email = self.data['email'].strip()
             force = self.data.get('force', False)
             send_mail = not self.data.get('dont_send_email', False)
