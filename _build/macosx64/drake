@@ -8,7 +8,6 @@ sys.path.insert(
     )
 )
 import resource
-
 resource.setrlimit(resource.RLIMIT_NOFILE, (500, -1))
 
 import drake
