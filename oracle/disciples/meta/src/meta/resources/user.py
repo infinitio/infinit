@@ -175,13 +175,16 @@ class GenerateHandle(_Page):
     __pattern__ = "/user/handle-for/(.+)"
 
     # No database check occurs there.
-    def GET(self, fullname):
+    def GET(self, fullname, enlarge = True):
         handle = ''
         for c in unicodedata.normalize('NFKD', fullname).encode('ascii', 'ignore'):
             if (c >= 'a'and c <= 'z') or (c >= 'A' and c <= 'Z') or c in '-_.':
                 handle += c
             elif c in ' \t\r\n':
                 handle += '.'
+
+        if not enlarge:
+            return handle
 
         if len(handle) < 5:
             handle += self._generate_dummy()
@@ -254,7 +257,10 @@ class Edit(Page):
 
     def POST(self):
         self.requireLoggedIn()
-        handle = GenerateHandle().gen_unique(self.data['handle'].strip())
+        handle = GenerateHandle().GET(
+            self.data['handle'].strip(),
+            enlarge = False
+        )
         lw_handle = handle.lower()
         fullname = self.data['fullname'].strip()
         if not len(fullname) > 4:
