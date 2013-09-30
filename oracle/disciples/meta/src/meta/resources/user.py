@@ -263,10 +263,17 @@ class Edit(Page):
         )
         lw_handle = handle.lower()
         fullname = self.data['fullname'].strip()
-        if not len(fullname) > 4:
+        if not len(fullname) > 2:
             return self.error(
                 error.OPERATION_NOT_PERMITTED,
-                "Fullname is too short"
+                "Fullname is too short",
+                field = 'fullname',
+            )
+        if not len(lw_handle) > 2:
+            return self.error(
+                error.OPERATION_NOT_PERMITTED,
+                "Handle is too short",
+                field = 'handle',
             )
         other = self.database.users.find_one({'lw_handle': lw_handle})
         if other and other['_id'] != self.user['_id']:
@@ -601,7 +608,6 @@ class Register(_Page):
         )
 
         handle = GenerateHandle().gen_unique(user['fullname'])
-        assert len(handle) >= 5
 
         user_id = self.registerUser(
             _id = user["_id"],
