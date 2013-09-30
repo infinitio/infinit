@@ -241,8 +241,36 @@ class AddSwagger(_Page):
             database.ObjectId(self.data['user2']),
             notifier_ = self.notifier
         )
-
         return self.success({"swag":"up"})
+
+class Edit(Page):
+    """ Edit fullname and handle.
+    POST {
+        'fullname': "New fullname",
+        'handle': "New handle",
+    }
+    """
+    __pattern__ = '/user/edit'
+
+    def POST(self):
+        self.requireLoggedIn()
+        handle = GenerateHandle().gen_unique(self.data['handle'].strip())
+        lw_handle = handle.lower()
+        fullname = self.data['fullname'].strip()
+        if not len(fullname) > 4:
+            return self.error(
+                error.OPERATION_NOT_PERMITTED,
+                "Fullname is too short"
+            )
+        other = self.database.users.find_one({'lw_handle': lw_handle})
+        if other and other['_id'] != self.user['_id']:
+            return self.error(error.HANDLE_ALREADY_REGISTRED)
+        self.user['handle'] = handle
+        self.user['lw_handle'] = lw_handle
+        self.user['fullname'] = fullname
+        self.database.users.save(self.user)
+        return self.success()
+
 
 class RemoveSwagger(Page):
     __pattern__ = "/user/remove_swagger"
