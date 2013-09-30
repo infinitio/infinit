@@ -181,17 +181,19 @@ class Page(object):
     def forbidden(self, msg):
         raise web.HTTPError("403 {}".format(msg))
 
-    def error(self, error_code = error.UNKNOWN, msg = None):
+    def error(self, error_code = error.UNKNOWN, msg = None, **kw):
         assert isinstance(error_code, tuple)
         assert len(error_code) == 2
         if msg is None:
             msg = error_code[1]
         assert isinstance(msg, str)
-        return json.dumps({
+        res = {
             'success': False,
             'error_code': error_code[0],
             'error_details': msg,
-        })
+        }
+        res.update(kw)
+        return json.dumps(res)
 
     def raise_error(self, error_code, msg = None):
         raise web.ok(data = self.error(error_code, msg))
