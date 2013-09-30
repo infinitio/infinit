@@ -325,6 +325,8 @@ class Invite(Page):
         else:
             self.requireLoggedIn()
             email = self.data['email'].strip()
+            if regexp.EmailValidator(email) != 0:
+                return self.error(error.EMAIL_NOT_VALID)
             if self.user['remaining_invitations'] <= 0:
                 return self.error(error.NO_MORE_INVITATION)
             self.user['remaining_invitations'] -= 1
