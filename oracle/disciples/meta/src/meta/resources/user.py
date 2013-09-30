@@ -277,7 +277,10 @@ class Edit(Page):
             )
         other = self.database.users.find_one({'lw_handle': lw_handle})
         if other and other['_id'] != self.user['_id']:
-            return self.error(error.HANDLE_ALREADY_REGISTRED)
+            return self.error(
+                error.HANDLE_ALREADY_REGISTRED,
+                field = 'handle',
+            )
         self.user['handle'] = handle
         self.user['lw_handle'] = lw_handle
         self.user['fullname'] = fullname
