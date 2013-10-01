@@ -11,6 +11,10 @@ namespace surface
     {
     public:
       typedef uint32_t Type;
+
+    public:
+      virtual
+      ~Notification() = default;
     };
   }
 }

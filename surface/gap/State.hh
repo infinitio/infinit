@@ -112,6 +112,14 @@ namespace surface
         bool status;
       };
 
+      class KickedOut:
+        public Notification
+      {
+      public:
+        static Notification::Type type;
+        KickedOut() = default;
+      };
+
     public:
       State(std::string const& meta_host = common::meta::host(),
             uint16_t meta_port = common::meta::port(),
@@ -152,6 +160,7 @@ namespace surface
                 std::string const& activation_code);
 
       ///
+      static
       std::string
       hash_password(std::string const& email,
                     std::string const& password);
