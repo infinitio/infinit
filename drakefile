@@ -144,6 +144,8 @@ def configure(cxx_toolkit = None,
   curly_asio_slib = copy_lib(elle.curly_asio_static)
   curly_sched_lib = copy_lib(elle.curly_sched_dynamic)
   curly_sched_slib = copy_lib(elle.curly_sched_static)
+  protocol_lib = copy_lib(elle.protocol_dynamic)
+  protocol_slib = copy_lib(elle.protocol_static)
   cxx_config += elle.config
   cxx_config.add_local_include_path('.')
 
@@ -387,36 +389,6 @@ def configure(cxx_toolkit = None,
                                  cxx_toolkit, cxx_config)
   nucleus_slib = drake.cxx.StaticLib('lib/nucleus', nucleus_sources,
                                      cxx_toolkit, cxx_config)
-
-  # Protocol
-  protocol_sources = drake.nodes(
-    'protocol/ChanneledStream.hh',
-    'protocol/Packet.hh',
-    'protocol/RPC.hxx',
-    'protocol/Packet.cc',
-    'protocol/Stream.hh',
-    'protocol/Serializer.hh',
-    'protocol/Channel.cc',
-    'protocol/RPC.hh',
-    'protocol/ChanneledStream.cc',
-    'protocol/Stream.cc',
-    'protocol/Channel.hh',
-    'protocol/Serializer.cc',
-    'protocol/RPC.cc',
-    'protocol/fwd.hh',
-    ) + [
-    cryptography_lib,
-  ]
-
-  protocol_lib = drake.cxx.DynLib('lib/protocol', protocol_sources,
-                                  cxx_toolkit, cxx_config_libs)
-  protocol_slib = drake.cxx.StaticLib('lib/protocol', protocol_sources,
-                                      cxx_toolkit, cxx_config_libs)
-
-  # RCP caller
-  rpc_sources = drake.nodes(
-    'protocol/8rpc.cc'
-    )
 
   ## ------- ##
   ## Metrics ##
@@ -1348,7 +1320,6 @@ def configure(cxx_toolkit = None,
     #('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
     (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
     (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
-    ('tests/unit/protocol/rpc.cc', [elle_lib, reactor_lib, protocol_lib, cryptography_lib]),
     (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib, curly_lib]),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib, frete_lib, station_lib, crash_lib]),
     ('tests/unit/surface/gap/gap_metrics.cc', infinit_libs + [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, frete_lib, station_lib, metrics_lib, crash_lib]),
