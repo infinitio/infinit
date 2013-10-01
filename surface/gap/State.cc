@@ -104,11 +104,16 @@ namespace surface
       };
     }
 
+    /*--------------.
+    | Notifications |
+    `--------------*/
     State::ConnectionStatus::ConnectionStatus(bool status):
       status(status)
     {}
+    Notification::Type State::ConnectionStatus::type =
+      NotificationType_ConnectionStatus;
 
-    Notification::Type State::ConnectionStatus::type = NotificationType_ConnectionStatus;
+    Notification::Type State::KickedOut::type = NotificationType_KickedOut;
 
     /*-------------------------.
     | Construction/Destruction |
@@ -329,7 +334,21 @@ namespace surface
                 {
                   reactor::Scheduler::scheduler()->current()->wait(
                     this->_polling_barrier);
-                  this->handle_notification(this->_trophonius.poll());
+
+                  try
+                  {
+                    this->handle_notification(this->_trophonius.poll());
+                  }
+                  catch (elle::Exception const&)
+                  {
+                    ELLE_ERR("%s: an error occured in trophonius, login is " \
+                             "requiered: %s", *this, elle::exception_string());
+                    // Loging out flush the message queue, which means that
+                    // KickedOut will be the next event polled.
+                    this->logout();
+                    this->enqueue(KickedOut());
+                  }
+
                   ELLE_TRACE("%s: notification pulled", *this);
                 }
               }});
@@ -413,7 +432,7 @@ namespace surface
                          std::string const& password)
     {
       // !WARNING! Do not log the password.
-      ELLE_TRACE_METHOD(email);
+      ELLE_TRACE_FUNCTION(email);
 
       std::string lower_email = email;
 
@@ -671,7 +690,10 @@ namespace surface
           return out << "NewSwagger";
         case NotificationType_ConnectionStatus:
           return out << "ConnectionStatus";
+        case NotificationType_KickedOut:
+          return out << "Kicked Out";
       }
+
       return out;
     }
   }

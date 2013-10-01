@@ -160,6 +160,15 @@ extern "C" {
   gap_connection_callback(gap_State* state,
                           gap_connection_callback_t cb);
 
+
+  // Kicked out callback.
+  // Triggered when your
+  typedef void (*gap_kicked_out_callback_t)();
+
+  gap_Status
+  gap_kicked_out_callback(gap_State* state,
+                          gap_kicked_out_callback_t cb);
+
   /// New transaction callback.
   typedef void (*gap_transaction_callback_t)(uint32_t id,
                                              gap_TransactionStatus status);
