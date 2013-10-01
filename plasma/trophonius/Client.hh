@@ -15,6 +15,23 @@ namespace plasma
 {
   namespace trophonius
   {
+    /*----------.
+    | Exception |
+    `----------*/
+    class Exception:
+      public elle::Exception
+    {
+    public:
+      Exception(std::string const& message);
+    };
+
+    class ReadException:
+      public Exception
+    {
+    public:
+      using Exception::Exception;
+    };
+
     enum class NotificationType: int
     {
 # define NOTIFICATION_TYPE(name, value)         \
@@ -52,6 +69,17 @@ namespace plasma
     };
 
     namespace json = elle::format::json;
+
+    struct ConnectionEnabledNotification:
+      public Notification
+    {
+      uint32_t response_code;
+      std::string response_details;
+
+      ELLE_SERIALIZE_CONSTRUCT(ConnectionEnabledNotification,
+                               Notification)
+      {}
+    };
 
     struct NewSwaggerNotification:
       public Notification
@@ -121,6 +149,7 @@ namespace plasma
     {
       std::string sender_id;
       std::string message;
+
       ELLE_SERIALIZE_CONSTRUCT(MessageNotification,
                                Notification)
       {}
