@@ -1,3 +1,4 @@
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE trophonius
 
 #include <boost/date_time/posix_time/date_duration_operators.hpp>
@@ -14,6 +15,7 @@
 #include <reactor/network/tcp-socket.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/semaphore.hh>
+#include <reactor/signal.hh>
 #include <reactor/sleep.hh>
 #include <reactor/thread.hh>
 
@@ -39,6 +41,35 @@ void
 wait(reactor::Waitable& w)
 {
   reactor::Scheduler::scheduler()->current()->wait(w);
+}
+
+static
+void
+send_notification(reactor::network::TCPSocket& socket,
+                  std::string const& message)
+{
+
+  std::string data =
+    elle::sprintf("{\"notification_type\": 217,"
+                  "\"sender_id\": \"id\", "
+                  "\"message\": \"%s\"}\n", message);
+  ELLE_LOG("write: %s", data);
+  socket.write(reactor::network::Buffer(data));
+}
+
+static
+void
+answer_to_connection(reactor::network::TCPSocket& socket,
+                     bool fail = false)
+{
+  std::string data =
+    elle::sprintf("{\"notification_type\": -666,"
+                  "\"response_code\": %s,"
+                  "\"response_details\": \"nothing\"}\n",
+                  (fail ? "500" : "200"));
+
+  ELLE_LOG("answer: %s", data);
+  socket.write(reactor::network::Buffer(data));
 }
 
 BOOST_AUTO_TEST_CASE(notification)
@@ -74,13 +105,9 @@ BOOST_AUTO_TEST_CASE(notification)
       buf.resize(bytes);
       ELLE_LOG("read: %s", buf);
 
-      std::string data =
-        "{\"notification_type\": 217,"
-        "\"sender_id\": \"id\", "
-        "\"message\": \"hello\"}\n";
+      answer_to_connection(*socket);
+      send_notification(*socket, "hello");
 
-      ELLE_LOG("write: %s", data);
-      socket->write(network::Buffer(data));
       sync_client.release(); // Answered
       wait(sync_server); // Polled
       sync_client.release(); // Disconnected
@@ -93,8 +120,10 @@ BOOST_AUTO_TEST_CASE(notification)
     using namespace plasma::trophonius;
     plasma::trophonius::Client c("127.0.0.1", port, [] (bool) {});
     wait(sync_client); // Listening
-    ELLE_LOG("connect");
-    c.connect("", "", "");
+    ELLE_LOG("fail connection");
+    BOOST_CHECK_THROW(c.connect("", "", ""), std::runtime_error);
+    ELLE_LOG("successful connection");
+    c.connect("0", "0", "0");
     for (int i = 0; i < reconnections; ++i)
     {
       wait(sync_client); // Answered
@@ -139,6 +168,8 @@ BOOST_AUTO_TEST_CASE(ping)
     std::unique_ptr<network::TCPSocket> socket{server.accept()};
     ELLE_LOG("connection accepted");
 
+    answer_to_connection(*socket);
+
     std::unique_ptr<Thread> ping(sched.every([&] {
           std::string msg = "{\"notification_type\": 208}\n";
           ELLE_LOG("send ping");
@@ -173,7 +204,8 @@ BOOST_AUTO_TEST_CASE(ping)
     elle::SafeFinally check([&] {BOOST_CHECK_EQUAL(client.reconnected(), 0);});
     client.ping_period(period);
     wait(sync_client); // Listening
-    client.connect("", "", "");
+    client.connect("0", "0", "0");
+
     while (true)
     {
       ELLE_LOG("poll notifications");
@@ -217,6 +249,8 @@ BOOST_AUTO_TEST_CASE(noping)
     {
       std::unique_ptr<network::TCPSocket> socket{server.accept()};
       ELLE_LOG("connection accepted");
+
+      answer_to_connection(*socket);
 
       auto start = boost::posix_time::microsec_clock::local_time();
       while (true)
@@ -267,7 +301,7 @@ BOOST_AUTO_TEST_CASE(noping)
       });
     client.ping_period(period);
     wait(sync_client); // Listening
-    client.connect("", "", "");
+    client.connect("0", "0", "0");
     while (true)
     {
       ELLE_LOG("poll notifications")
@@ -284,26 +318,13 @@ BOOST_AUTO_TEST_CASE(noping)
   sched.run();
 }
 
-static
-void
-send_notification(reactor::network::TCPSocket& socket,
-                  std::string const& message)
-{
-
-  std::string data =
-    elle::sprintf("{\"notification_type\": 217,"
-                  "\"sender_id\": \"id\", "
-                  "\"message\": \"%s\"}\n", message);
-  ELLE_LOG("write: %s", data);
-  socket.write(reactor::network::Buffer(data));
-}
-
 BOOST_AUTO_TEST_CASE(reconnection)
 {
   reactor::Scheduler sched;
 
   reactor::Barrier listening;
   reactor::Barrier reconnecting;
+  reactor::Signal disconnected;
 
   int port = 0;
   bool synchronized = false;
@@ -318,10 +339,14 @@ BOOST_AUTO_TEST_CASE(reconnection)
       ELLE_LOG("listen on port %s", port);
       listening.open();
       std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
+      answer_to_connection(*socket);
       send_notification(*socket, "0");
       send_notification(*socket, "1");
-      reconnecting.wait();
+      ELLE_LOG("wait for reconnecting");
+      disconnected.wait();
+      ELLE_LOG("reseting socket");
       socket.reset(server.accept());
+      answer_to_connection(*socket);
       send_notification(*socket, "2");
       reactor::sleep(10_sec);
     });
@@ -338,28 +363,36 @@ BOOST_AUTO_TEST_CASE(reconnection)
           if (connected)
           {
             reconnecting.open();
-            reactor::sleep(500_ms);
+            reactor::sleep(100_ms);
             synchronized = true;
+          }
+          else
+          {
+            disconnected.signal();
           }
         });
       c.ping_period(1_sec);
       ELLE_LOG("connect");
-      c.connect("", "", "");
+      c.connect("0", "0", "0");
       using plasma::trophonius::MessageNotification;
-      auto notif0 = elle::cast<MessageNotification>::runtime(c.poll());
-      BOOST_CHECK_EQUAL(notif0->message, "0");
+      {
+        auto notif = elle::cast<MessageNotification>::runtime(c.poll());
+        BOOST_CHECK_EQUAL(notif->message, "0");
+      }
       reconnecting.wait();
       // Check notification 1 was discarded and notification 2 is held until
       // reconnection callback is complete.
-      auto notif2 = elle::cast<MessageNotification>::runtime(c.poll());
-      BOOST_CHECK(synchronized);
-      BOOST_CHECK_EQUAL(notif2->message, "2");
+      ELLE_LOG("wait for notif");
+      {
+        auto notif = elle::cast<MessageNotification>::runtime(c.poll());
+        BOOST_CHECK(synchronized);
+        BOOST_CHECK_EQUAL(notif->message, "2");
+      }
       server.terminate();
     });
 
   sched.run();
 }
-
 
 BOOST_AUTO_TEST_CASE(connection_callback_throws)
 {
@@ -379,6 +412,10 @@ BOOST_AUTO_TEST_CASE(connection_callback_throws)
       port = server.port();
       ELLE_LOG("listen on port %s", port);
       listening.open();
+      std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
+
+      answer_to_connection(*socket);
+
       reactor::sleep(5_sec);
     });
 
@@ -396,11 +433,79 @@ BOOST_AUTO_TEST_CASE(connection_callback_throws)
         });
       c.ping_period(100_ms);
       ELLE_LOG("connect");
-      c.connect("", "", "");
+      c.connect("0", "0", "0");
       reactor::sleep(5_sec);
       server.terminate();
     });
 
   BOOST_CHECK_THROW(sched.run(), std::runtime_error);
   BOOST_CHECK(beacon);
+}
+
+BOOST_AUTO_TEST_CASE(reconnection_denied)
+{
+  reactor::Scheduler sched;
+
+  reactor::Barrier listening;
+  reactor::Signal disconnected;
+
+  uint32_t connected_beacon = 0;
+  uint32_t disconnected_beacon = 0;
+  int port = 0;
+
+  reactor::Thread server(
+    sched, "server",
+    [&]
+    {
+      reactor::network::TCPServer server(sched);
+      server.listen(0);
+      port = server.port();
+      ELLE_LOG("listen on port %s", port);
+      listening.open();
+      std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
+      // Accept connection.
+      answer_to_connection(*socket);
+      disconnected.wait();
+      socket.reset(server.accept());
+
+      // Reject connection.
+      answer_to_connection(*socket, true);
+
+      reactor::sleep(5_sec);
+    });
+
+  reactor::Thread client(
+    sched, "client",
+    [&]
+    {
+      listening.wait();
+      plasma::trophonius::Client c(
+        "127.0.0.1", port,
+        [&] (bool connected)
+        {
+          if (connected)
+            ++connected_beacon;
+          else
+          {
+            disconnected.signal();
+            ++disconnected_beacon;
+          }
+        });
+      c.ping_period(50_ms);
+      ELLE_LOG("connect");
+      c.connect("0", "0", "0");
+      reactor::sleep(200_ms);
+
+      // Server should have reject the connection because login information are
+      // now incorrect.
+      // Next poll will throw.
+      BOOST_CHECK_THROW(c.poll(), elle::Exception);
+
+      server.terminate();
+    });
+
+  sched.run();
+
+  BOOST_CHECK_EQUAL(connected_beacon, 1);
+  BOOST_CHECK_EQUAL(disconnected_beacon, 1);
 }
