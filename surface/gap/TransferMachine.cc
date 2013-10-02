@@ -19,6 +19,8 @@
 
 #include <cryptography/oneway.hh>
 
+#include <protocol/exceptions.hh>
+
 #include <elle/container/list.hh>
 #include <elle/os/getenv.hh>
 #include <elle/network/Interface.hh>
@@ -223,6 +225,25 @@ namespace surface
         .action([this]
                 {
                   ELLE_TRACE("%s: peer disconnected from the frete", *this);
+                });
+
+      this->_core_machine.transition_add_catch_specific<
+        infinit::protocol::Error>(
+        this->_transfer_state,
+        this->_connection_state)
+        .action([this]
+                {
+                  ELLE_TRACE("%s: protocol error in frete", *this);
+                });
+
+      // I
+      this->_core_machine.transition_add_catch_specific<
+        infinit::protocol::ChecksumError>(
+        this->_transfer_state,
+        this->_connection_state)
+        .action([this]
+                {
+                  ELLE_TRACE("%s: checksum error in frete", *this);
                 });
 
       this->_core_machine.transition_add(
