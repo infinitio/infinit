@@ -341,6 +341,13 @@ namespace common
     }
 
     std::string
+    frete_snapshot_path(std::string const& user_id,
+                        std::string const& transaction_id)
+    {
+      return path::join(transactions_directory(user_id), transaction_id + ".frete");
+    }
+
+    std::string
     identity_path(std::string const& user_id)
     {
       return path::join(

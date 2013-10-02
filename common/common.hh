@@ -76,6 +76,11 @@ namespace common
     std::string
     transaction_snapshots_directory(std::string const& user_id);
 
+    /// Returns frete diary for a specific transaction.
+    std::string
+    frete_snapshot_path(std::string const& user_id,
+                        std::string const& transaction_id);
+
     /// The path to the identity file.
     std::string
     identity_path(std::string const& user_id);
