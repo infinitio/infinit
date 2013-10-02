@@ -3,6 +3,8 @@
 
 #include <boost/program_options.hpp>
 
+#include <CrashReporter.hh>
+
 #include <reactor/scheduler.hh>
 #include <reactor/sleep.hh>
 #include <elle/Exception.hh>
@@ -11,6 +13,15 @@
 #include <lune/Lune.hh>
 #include <surface/gap/State.hh>
 #include <version.hh>
+
+bool stop = false;
+
+static
+void
+interrupt(int)
+{
+  stop = true;
+}
 
 static
 void
@@ -63,6 +74,8 @@ parse_options(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
+  elle::signal::ScopedGuard p({SIGINT}, interrupt);
+
   try
   {
     auto options = parse_options(argc, argv);
@@ -79,7 +92,6 @@ int main(int argc, char** argv)
       [&] () -> int
       {
         surface::gap::State state;
-        bool stop = false;
 
         state.attach_callback<surface::gap::State::UserStatusNotification>(
           [&] (surface::gap::State::UserStatusNotification const& notif)

@@ -1117,8 +1117,8 @@ def configure(cxx_toolkit = None,
     # 'transfer',
     # 'user',
     # 'dump',
-    ('recv', (gap_lib, elle_lib, reactor_lib, lune_lib)),
-    ('send', (gap_lib, elle_lib, reactor_lib, lune_lib)),
+    ('recv', (gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib)),
+    ('send', (gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib)),
     ]:
     satellite(name, dependencies)
 

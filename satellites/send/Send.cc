@@ -7,10 +7,21 @@
 #include <reactor/sleep.hh>
 #include <elle/Exception.hh>
 
+#include <CrashReporter.hh>
+
 #include <lune/Lune.hh>
 #include <surface/gap/gap.h>
 #include <surface/gap/State.hh>
 #include <version.hh>
+
+bool stop = false;
+
+static
+void
+interrupt(int)
+{
+  stop = true;
+}
 
 static
 void
@@ -67,6 +78,9 @@ parse_options(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
+  /// Initialize with signal list and handler (sync).
+  elle::signal::ScopedGuard p({SIGINT}, interrupt);
+
   try
   {
     auto options = parse_options(argc, argv);
@@ -86,7 +100,6 @@ int main(int argc, char** argv)
       [&] () -> int
       {
         surface::gap::State state;
-        bool stop = false;
         uint32_t id = surface::gap::null_id;
 
         state.attach_callback<surface::gap::State::UserStatusNotification>(
