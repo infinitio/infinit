@@ -51,8 +51,11 @@ namespace frete
                                         this,
                                         std::placeholders::_1);
 
+    ELLE_DEBUG("%s: looking for snapshot at %s",
+               *this, this->_snapshot_destination);
     if (boost::filesystem::exists(this->_snapshot_destination))
     {
+      ELLE_LOG("%s: snapshot exist at %s", *this, this->_snapshot_destination);
       try
       {
         elle::SafeFinally delete_snapshot{
@@ -676,7 +679,7 @@ namespace frete
     stream << "Snapshot " << (this->_sender ? "sender" : "recipient")
            << " " << this->_count
            << " files for a total size of " << this->_total_size
-           << ". Already 'copied': " << this->_progress
+           << ". Already 'copied': " << this->_progress << ": "
            << this->_transfers;
   }
 }
