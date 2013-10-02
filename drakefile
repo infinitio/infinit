@@ -203,8 +203,9 @@ def configure(cxx_toolkit = None,
     'common/common.cc',
     'common/common.hh',
     )
+  lune_cxx_config = drake.cxx.Config(cxx_config_libs)
   lune_lib = drake.cxx.DynLib('lib/lune', lune_sources + [elle_lib, cryptography_lib],
-                              cxx_toolkit, cxx_config_libs)
+                              cxx_toolkit, lune_cxx_config)
 
   lune_slib = drake.cxx.StaticLib('lib/lune', lune_sources + [elle_slib, cryptography_slib],
                                   cxx_toolkit, cxx_config)
@@ -387,8 +388,9 @@ def configure(cxx_toolkit = None,
     'nucleus/proton/all.hh',
     'nucleus/proton/fwd.hh',
     )
+  nucleus_cxx_config = drake.cxx.Config(cxx_config_libs)
   nucleus_lib = drake.cxx.DynLib('lib/nucleus', nucleus_sources + [elle_lib, cryptography_lib],
-                                 cxx_toolkit, cxx_config_libs)
+                                 cxx_toolkit, nucleus_cxx_config)
   nucleus_slib = drake.cxx.StaticLib('lib/nucleus', nucleus_sources,
                                      cxx_toolkit, cxx_config)
 
@@ -417,9 +419,10 @@ def configure(cxx_toolkit = None,
     'metrics/services/Mixpanel.cc',
     'metrics/services/Mixpanel.hh',)
 
+  metrics_cxx_config = drake.cxx.Config(cxx_config_libs)
   metrics_lib = drake.cxx.DynLib('lib/metrics',
                                  metrics_sources + curly_libs + [elle_lib, cryptography_lib],
-                                 cxx_toolkit, cxx_config_libs)
+                                 cxx_toolkit, metrics_cxx_config)
 
   metrics_slib = drake.cxx.StaticLib('lib/metrics',
                                      metrics_sources,
@@ -444,9 +447,10 @@ def configure(cxx_toolkit = None,
     elle_slib
   ]
 
+  plasma_cxx_config = drake.cxx.Config(cxx_config_libs)
   plasma_lib = drake.cxx.DynLib('lib/plasma',
                                 plasma_sources + curly_libs + [reactor_lib, elle_lib],
-                                cxx_toolkit, cxx_config_libs)
+                                cxx_toolkit, plasma_cxx_config)
 
   plasma_slib = drake.cxx.StaticLib('lib/plasma', plasma_static_sources,
                                     cxx_toolkit, cxx_config_libs)
@@ -473,9 +477,9 @@ def configure(cxx_toolkit = None,
     'papier/Authority.cc',
     'papier/Authority.hh',
     'papier/Authority.hxx',
-    # 'papier/Descriptor.cc',
-    # 'papier/Descriptor.hh',
-    # 'papier/Descriptor.hxx',
+    'papier/Descriptor.cc',
+    'papier/Descriptor.hh',
+    'papier/Descriptor.hxx',
     'papier/Identity.cc',
     'papier/Identity.hh',
     'papier/Identity.hxx',
@@ -494,7 +498,7 @@ def configure(cxx_toolkit = None,
 
   papier_cxx_config = drake.cxx.Config(cxx_config_libs)
   papier_lib = drake.cxx.DynLib('lib/papier',
-                                papier_sources + [nucleus_lib],
+                                papier_sources + [nucleus_lib, elle_lib, cryptography_lib],
                                 cxx_toolkit, papier_cxx_config)
   papier_slib = drake.cxx.StaticLib('lib/papier',
                                     papier_sources + [],
@@ -507,9 +511,10 @@ def configure(cxx_toolkit = None,
     'common/common.cc',
     'common/common.hh',
     )
+  agent_cxx_config = drake.cxx.Config(cxx_config_libs)
   agent_lib = drake.cxx.DynLib('lib/agent',
                                agent_sources + [elle_lib, papier_lib, nucleus_lib, lune_lib],
-                               cxx_toolkit, cxx_config_libs)
+                               cxx_toolkit, agent_cxx_config)
 
   agent_slib = drake.cxx.StaticLib('lib/agent', agent_sources,
                                       cxx_toolkit, cxx_config)
@@ -573,8 +578,7 @@ def configure(cxx_toolkit = None,
   )
   cxx_config.add_local_include_path('frete/src')
   cxx_config_libs.add_local_include_path('frete/src')
-  frete_cxx_config = drake.cxx.Config(cxx_config)
-  frete_cxx_config.lib_path_runtime('.')
+  frete_cxx_config = drake.cxx.Config(cxx_config_libs)
   frete_lib = drake.cxx.DynLib('lib/frete',
                                  frete_sources + [protocol_lib,
                                                   reactor_lib,
@@ -704,13 +708,14 @@ def configure(cxx_toolkit = None,
     'common/common.hh',
     'common/common.cc',
     )
+  hole_cxx_config = drake.cxx.Config(cxx_config_libs)
   hole_lib = drake.cxx.DynLib('lib/hole', hole_sources + [elle_lib,
                                                           nucleus_lib,
                                                           cryptography_lib,
                                                           papier_lib,
                                                           lune_lib,
                                                           reactor_lib],
-                              cxx_toolkit, cxx_config_libs)
+                              cxx_toolkit, hole_cxx_config)
   hole_slib = drake.cxx.StaticLib('lib/hole', hole_sources,
                                  cxx_toolkit, cxx_config)
 
@@ -841,8 +846,9 @@ def configure(cxx_toolkit = None,
     'etoile/wall/Path.hh',
     'etoile/wall/Wall.hh',
     )
+  etoile_cxx_config = drake.cxx.Config(cxx_config_libs)
   etoile_lib = drake.cxx.DynLib('lib/etoile', etoile_sources + [hole_lib],
-                                cxx_toolkit, cxx_config_libs)
+                                cxx_toolkit, etoile_cxx_config)
   etoile_slib = drake.cxx.StaticLib('lib/etoile', etoile_sources,
                                     cxx_toolkit, cxx_config)
 
@@ -1187,7 +1193,7 @@ def configure(cxx_toolkit = None,
 
     # Oracle/metalib
     if python_enabled:
-      metalib_config = cxx_config + python2
+      metalib_config = cxx_config_libs + python2
       metalib_config.lib_path_runtime('..')
       metalib_sources = drake.nodes(
         'oracle/disciples/metalib/identity.cc',

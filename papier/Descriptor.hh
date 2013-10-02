@@ -2,6 +2,7 @@
 # define PAPIER_DESCRIPTOR_HH
 
 # include <elle/Version.hh>
+# include <elle/types.hh>
 # include <elle/serialize/fwd.hh>
 # include <elle/serialize/Format.hh>
 # include <elle/serialize/construct.hh>
