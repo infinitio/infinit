@@ -1204,6 +1204,70 @@ extern "C"
   }
 
   gap_Status
+  gap_send_user_report(char const* _user_name,
+                       char const* _message,
+                       char const* _file,
+                       char const* _os_description)
+  {
+    try
+    {
+      boost::filesystem::path user_file_path(_file);
+      boost::filesystem::path infinit_home_path(common::infinit::home());
+
+      std::string const report_archive = "/tmp/infinit-report-archive";
+      std::string const user_name{_user_name};
+      std::string const os_description{_os_description};
+      std::string const user_message{_message};
+
+      std::list<std::string> args{"cjf", report_archive};
+      if (boost::filesystem::exists(user_file_path))
+      {
+        args.push_back("-C");
+        args.push_back(user_file_path.parent_path().native());
+        args.push_back(user_file_path.filename().native());
+      }
+      if (boost::filesystem::exists(infinit_home_path))
+      {
+        args.push_back("-C");
+        args.push_back(infinit_home_path.parent_path().native());
+        args.push_back(infinit_home_path.filename().native());
+      }
+
+      std::string b64 = "";
+
+      if (args.size() > 3)
+      {
+        elle::system::Process tar{"tar", args};
+        tar.wait();
+#if defined(INFINIT_LINUX)
+        b64 = elle::system::check_output("base64",
+                                         "-w0",
+                                         report_archive);
+#else
+        b64 = elle::system::check_output("base64", report_archive);
+#endif
+      }
+      else
+      {
+        ELLE_WARN("no file to send");
+      }
+      elle::crash::user_report(common::meta::host(),   // meta host
+                               common::meta::port(), // meta port
+                               user_name,            // user name
+                               os_description,       // OS description
+                               user_message,         // user message
+                               b64);                 // file
+    }
+    catch (...)
+    {
+      ELLE_WARN("cannot send user report: %s", elle::exception_string());
+      return gap_api_error;
+    }
+    return gap_ok;
+  }
+
+
+  gap_Status
   gap_send_last_crash_logs(char const* _user_name,
                            char const* _crash_report,
                            char const* _state_log,

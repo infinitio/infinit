@@ -72,6 +72,29 @@ def send(email,
     finally:
         smtp_server.quit()
 
+USER_REPORT_SUBJECT = u"""User Report (%(client_os)s)""".strip()
+USER_REPORT_CONTENT = u"""
+
+User file and .infinit directory in attached file.
+
+OS: %(client_os)s
+
+Infinit Version: %(version)s
+
+User Name: %(user_name)s
+
+-------
+Message
+-------
+%(message)s
+
+-----------
+Environment
+-----------
+%(env)s
+
+""".strip()
+
 EXISTING_BACKTRACE_SUBJECT = u"""Crash Report (%(client_os)s)""".strip()
 EXISTING_BACKTRACE_CONTENT = u"""
 

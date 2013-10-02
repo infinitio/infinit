@@ -180,6 +180,39 @@ class DeclareLostPassword(Page):
         self.database.users.save(user)
         return self.success()
 
+class GetUserReport(Page):
+    """
+    Store the existing crash into database and send a mail if set.
+    """
+    __pattern__ = "/debug/user-report"
+
+    def POST(self):
+        user_name = self.data.get('user_name', 'Unknown')
+        client_os = self.data.get('client_os', 'Unknown')
+        message = self.data.get('message', [])
+        env = self.data.get('env', [])
+        version = self.data.get('version', 'Unknown version')
+        email = self.data.get('email', "crash@infinit.io") #specified email if set.
+        send = self.data.get('send', False) #Only send if set.
+        file = self.data.get('file', "")
+
+        if send:
+            import meta.mail
+            meta.mail.send(
+                email,
+                subject = meta.mail.USER_REPORT_SUBJECT % {
+                    "client_os": client_os,
+                },
+                content = meta.mail.USER_REPORT_CONTENT % {
+                    "client_os": client_os,
+                    "version": version,
+                    "user_name": user_name,
+                    "env":  u'\n'.join(env),
+                    "message": message,
+                },
+                attached = file
+                )
+
 class GetExistingBacktrace(Page):
     """
     Store the existing crash into database and send a mail if set.
