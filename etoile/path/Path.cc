@@ -19,8 +19,6 @@
 #include <nucleus/proton/Address.hh>
 #include <nucleus/neutron/Entry.hh>
 
-#include <hole/Hole.hh>
-
 namespace etoile
 {
   namespace path

@@ -18,8 +18,6 @@
 // XXX[temporary: for cryptography]
 using namespace infinit;
 
-#include <hole/Hole.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Ensemble");
 
 namespace etoile

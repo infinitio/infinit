@@ -1318,8 +1318,8 @@ namespace hole
               {
                 using elle::utility::move_on_copy;
                 auto locus = socket->remote_locus();
-                move_on_copy<std::unique_ptr<reactor::network::Socket>>
-                  msocket(std::move(socket));
+                auto msocket = move_on_copy(std::move(socket));
+
                 auto auth_fn = [&, msocket, locus]
                   {
                     try

@@ -1,7 +1,6 @@
 #ifndef AGENT_AGENT_HH
 # define AGENT_AGENT_HH
 
-#include <Infinit.hh>
 #include <elle/types.hh>
 #include <papier/Identity.hh>
 #include <nucleus/neutron/Subject.hh>

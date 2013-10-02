@@ -22,8 +22,6 @@
 #include <nucleus/neutron/Token.hh>
 #include <nucleus/neutron/Object.hh>
 
-#include <hole/Hole.hh>
-
 ELLE_LOG_COMPONENT("infinit.etoile.automaton.Access");
 
 namespace etoile

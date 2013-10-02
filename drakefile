@@ -200,11 +200,13 @@ def configure(cxx_toolkit = None,
     'lune/Set.hh',
     'lune/Set.hxx',
     'lune/fwd.hh',
+    'common/common.cc',
+    'common/common.hh',
     )
-  lune_lib = drake.cxx.DynLib('lib/lune', lune_sources,
-                              cxx_toolkit, cxx_config)
+  lune_lib = drake.cxx.DynLib('lib/lune', lune_sources + [elle_lib, cryptography_lib],
+                              cxx_toolkit, cxx_config_libs)
 
-  lune_slib = drake.cxx.StaticLib('lib/lune', lune_sources,
+  lune_slib = drake.cxx.StaticLib('lib/lune', lune_sources + [elle_slib, cryptography_slib],
                                   cxx_toolkit, cxx_config)
 
   # Nucleus
@@ -385,8 +387,8 @@ def configure(cxx_toolkit = None,
     'nucleus/proton/all.hh',
     'nucleus/proton/fwd.hh',
     )
-  nucleus_lib = drake.cxx.DynLib('lib/nucleus', nucleus_sources,
-                                 cxx_toolkit, cxx_config)
+  nucleus_lib = drake.cxx.DynLib('lib/nucleus', nucleus_sources + [elle_lib, cryptography_lib],
+                                 cxx_toolkit, cxx_config_libs)
   nucleus_slib = drake.cxx.StaticLib('lib/nucleus', nucleus_sources,
                                      cxx_toolkit, cxx_config)
 
@@ -416,10 +418,11 @@ def configure(cxx_toolkit = None,
     'metrics/services/Mixpanel.hh',)
 
   metrics_lib = drake.cxx.DynLib('lib/metrics',
-                                 metrics_sources + curly_libs + [cryptography_lib],
+                                 metrics_sources + curly_libs + [elle_lib, cryptography_lib],
                                  cxx_toolkit, cxx_config_libs)
 
-  metrics_slib = drake.cxx.StaticLib('lib/metrics', metrics_sources,
+  metrics_slib = drake.cxx.StaticLib('lib/metrics',
+                                     metrics_sources,
                                      cxx_toolkit, cxx_config)
 
   ## ------ ##
@@ -441,12 +444,8 @@ def configure(cxx_toolkit = None,
     elle_slib
   ]
 
-  plasma_sources += curly_libs + [
-    reactor_lib,
-    elle_lib,
-  ]
-
-  plasma_lib = drake.cxx.DynLib('lib/plasma', plasma_sources,
+  plasma_lib = drake.cxx.DynLib('lib/plasma',
+                                plasma_sources + curly_libs + [reactor_lib, elle_lib],
                                 cxx_toolkit, cxx_config_libs)
 
   plasma_slib = drake.cxx.StaticLib('lib/plasma', plasma_static_sources,
@@ -469,25 +468,14 @@ def configure(cxx_toolkit = None,
   rule_plasma << plasma_python_lib
   rule_plasma << plasma_lib
 
-  # Agent
-  agent_sources = drake.nodes(
-    'agent/Agent.hh',
-    'agent/Agent.cc',
-    )
-  agent_lib = drake.cxx.DynLib('lib/agent', agent_sources,
-                               cxx_toolkit, cxx_config)
-
-  agent_slib = drake.cxx.StaticLib('lib/agent', agent_sources,
-                                      cxx_toolkit, cxx_config)
-
   # Papier
   papier_sources = drake.nodes(
     'papier/Authority.cc',
     'papier/Authority.hh',
     'papier/Authority.hxx',
-    'papier/Descriptor.cc',
-    'papier/Descriptor.hh',
-    'papier/Descriptor.hxx',
+    # 'papier/Descriptor.cc',
+    # 'papier/Descriptor.hh',
+    # 'papier/Descriptor.hxx',
     'papier/Identity.cc',
     'papier/Identity.hh',
     'papier/Identity.hxx',
@@ -503,14 +491,28 @@ def configure(cxx_toolkit = None,
     'horizon/Policy.hh',
     'common/common.cc', # FIXME: papier must not use common.
   )
-  papier_cxx_config = drake.cxx.Config(cxx_config)
-  papier_cxx_config.lib_path_runtime('.')
+
+  papier_cxx_config = drake.cxx.Config(cxx_config_libs)
   papier_lib = drake.cxx.DynLib('lib/papier',
                                 papier_sources + [nucleus_lib],
                                 cxx_toolkit, papier_cxx_config)
   papier_slib = drake.cxx.StaticLib('lib/papier',
                                     papier_sources + [],
                                     cxx_toolkit, papier_cxx_config)
+
+  # Agent
+  agent_sources = drake.nodes(
+    'agent/Agent.hh',
+    'agent/Agent.cc',
+    'common/common.cc',
+    'common/common.hh',
+    )
+  agent_lib = drake.cxx.DynLib('lib/agent',
+                               agent_sources + [elle_lib, papier_lib, nucleus_lib, lune_lib],
+                               cxx_toolkit, cxx_config_libs)
+
+  agent_slib = drake.cxx.StaticLib('lib/agent', agent_sources,
+                                      cxx_toolkit, cxx_config)
 
   # Station
   station_build = drake.Rule('station/build')
@@ -529,12 +531,10 @@ def configure(cxx_toolkit = None,
   )
   cxx_config.add_local_include_path('station/src')
   cxx_config_libs.add_local_include_path('station/src')
-  station_cxx_config = drake.cxx.Config(cxx_config)
-  station_cxx_config.lib_path_runtime('.')
+  station_cxx_config = drake.cxx.Config(cxx_config_libs)
 
-  station_sources += [papier_lib, cryptography_lib, reactor_lib, elle_lib]
   station_lib = drake.cxx.DynLib('lib/station',
-                                 station_sources,
+                                 station_sources + [papier_lib, cryptography_lib, reactor_lib, elle_lib],
                                  cxx_toolkit, station_cxx_config)
   station_slib = drake.cxx.StaticLib('lib/station',
                                      station_sources,
@@ -606,6 +606,36 @@ def configure(cxx_toolkit = None,
     runner = drake.Runner(exe = test)
     frete_check << runner.status
 
+  # Crash
+  crash_sources = drake.nodes(
+    'CrashReporter.cc',
+    'CrashReporter.hh')
+  crash_cxx_config = drake.cxx.Config(cxx_config_libs)
+  crash_lib = drake.cxx.DynLib('lib/crash',
+                               crash_sources + curly_libs + [elle_lib, reactor_lib],
+                               cxx_toolkit, crash_cxx_config)
+
+  crash_cxx_sconfig = drake.cxx.Config(crash_cxx_config)
+  crash_slib = drake.cxx.StaticLib('lib/crash',
+                                   crash_sources,
+                                   cxx_toolkit, crash_cxx_sconfig)
+
+  # Infinit
+  infinit_sources = drake.nodes(
+    # 'HoleFactory.cc',
+    #'heartbeat.cc',
+    #'heartbeat.hh',
+    'Infinit.cc',
+    'Program.cc',
+    'Program.hh',
+    'common/common.hh',
+    'common/common.cc',
+    ) + [version]
+  infinit_cxx_config = drake.cxx.Config(cxx_config_libs)
+  infinit_lib = drake.cxx.DynLib('lib/infinit',
+                                 infinit_sources + [lune_lib, cryptography_lib, elle_lib, crash_lib, metrics_lib, reactor_lib],
+                                 cxx_toolkit, infinit_cxx_config)
+
   # Hole
   hole_sources = drake.nodes(
     'hole/Exception.cc',
@@ -671,42 +701,19 @@ def configure(cxx_toolkit = None,
     'hole/storage/Directory.hh',
     'hole/storage/Memory.cc',
     'hole/storage/Memory.hh',
+    'common/common.hh',
+    'common/common.cc',
     )
-  hole_lib = drake.cxx.DynLib('lib/hole', hole_sources + [papier_lib],
-                              cxx_toolkit, cxx_config)
+  hole_lib = drake.cxx.DynLib('lib/hole', hole_sources + [elle_lib,
+                                                          nucleus_lib,
+                                                          cryptography_lib,
+                                                          papier_lib,
+                                                          lune_lib,
+                                                          reactor_lib],
+                              cxx_toolkit, cxx_config_libs)
   hole_slib = drake.cxx.StaticLib('lib/hole', hole_sources,
                                  cxx_toolkit, cxx_config)
 
-  # Crash
-  crash_sources = drake.nodes(
-    'CrashReporter.cc',
-    'CrashReporter.hh')
-  crash_cxx_config = drake.cxx.Config(cxx_config)
-  crash_cxx_config.lib_path_runtime('.')
-  crash_lib = drake.cxx.DynLib('lib/crash',
-                                 crash_sources + curly_libs,
-                                 cxx_toolkit, crash_cxx_config)
-
-  crash_cxx_sconfig = drake.cxx.Config(crash_cxx_config)
-  crash_slib = drake.cxx.StaticLib('lib/crash',
-                                   crash_sources,
-                                   cxx_toolkit, crash_cxx_sconfig)
-
-  # Infinit
-  infinit_sources = drake.nodes(
-    'HoleFactory.cc',
-    #'heartbeat.cc',
-    #'heartbeat.hh',
-    'Infinit.cc',
-    'Program.cc',
-    'Program.hh',
-    'common/common.cc',
-    ) + [version]
-  infinit_cxx_config = drake.cxx.Config(cxx_config)
-  infinit_cxx_config.lib_path_runtime('.')
-  infinit_lib = drake.cxx.DynLib('lib/infinit',
-                                 infinit_sources + [reactor_lib, curly_lib, agent_lib], #, hole_lib
-                                 cxx_toolkit, infinit_cxx_config)
 # XXX
 #  hole_tests_root = drake.Path('hole/tests')
 #  for test in ['slug']:
@@ -834,8 +841,8 @@ def configure(cxx_toolkit = None,
     'etoile/wall/Path.hh',
     'etoile/wall/Wall.hh',
     )
-  etoile_lib = drake.cxx.DynLib('lib/etoile', etoile_sources,
-                                cxx_toolkit, cxx_config)
+  etoile_lib = drake.cxx.DynLib('lib/etoile', etoile_sources + [hole_lib],
+                                cxx_toolkit, cxx_config_libs)
   etoile_slib = drake.cxx.StaticLib('lib/etoile', etoile_sources,
                                     cxx_toolkit, cxx_config)
 
@@ -912,7 +919,7 @@ def configure(cxx_toolkit = None,
     # asio_fs_lib,
     agent_lib,
     etoile_lib,
-    # hole_lib,
+    hole_lib,
     papier_lib,
     infinit_lib,
     lune_lib,
@@ -1035,7 +1042,7 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost.config_filesystem(
     static = (cxx_toolkit.os is drake.os.macos))
   gap_lib = drake.cxx.DynLib('lib/gap',
-                             gap_sources + [elle_lib, plasma_lib, reactor_lib, lune_lib, papier_lib, station_lib, frete_lib, metrics_lib, crash_lib],
+                             gap_sources + [elle_lib, plasma_lib, reactor_lib, lune_lib, papier_lib, station_lib, frete_lib, metrics_lib, crash_lib, hole_lib],
                              cxx_toolkit, gap_cxx_config_libs)
 
   build << gap_lib

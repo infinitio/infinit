@@ -24,8 +24,6 @@ using namespace infinit;
 # include <etoile/depot/Depot.hh>
 # include <etoile/Exception.hh>
 
-# include <hole/Hole.hh>
-
 // XXX
 #define CONTENTS_SECRET_KEY_LENGTH 256
 

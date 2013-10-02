@@ -5,8 +5,6 @@
 #include <etoile/path/Route.hh>
 #include <etoile/Exception.hh>
 
-#include <hole/Hole.hh>
-
 namespace etoile
 {
   namespace path

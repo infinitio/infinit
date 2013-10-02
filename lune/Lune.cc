@@ -4,14 +4,9 @@
 
 #include <common/common.hh>
 
-#include <papier/Authority.hh>
-#include <papier/Passport.hh>
-
 #include <lune/Lune.hh>
 #include <lune/Configuration.hh>
-#include <papier/Identity.hh>
 #include <lune/Dictionary.hh>
-#include <papier/Descriptor.hh>
 #include <lune/Set.hh>
 #include <lune/Phrase.hh>
 

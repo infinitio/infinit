@@ -4,11 +4,12 @@
 # include <elle/types.hh>
 
 # include <nucleus/proton/fwd.hh>
+# include <nucleus/proton/Revision.hh>
 # include <nucleus/neutron/fwd.hh>
 
 # include <etoile/gear/Transcript.hh>
 
-# include <hole/Hole.hh>
+# include <hole/fwd.hh>
 
 # include <memory>
 # include <set>

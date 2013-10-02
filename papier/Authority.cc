@@ -8,7 +8,6 @@
 #include <cryptography/SecretKey.hh>
 
 #include <papier/Authority.hh>
-#include <hole/Exception.hh>
 
 ELLE_LOG_COMPONENT("infinit.papier.Authority")
 

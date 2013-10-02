@@ -6,7 +6,7 @@
 
 #include <common/common.hh>
 
-#include <etoile/depot/Depot.hh>
+// #include <etoile/depot/Depot.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -102,7 +102,9 @@ namespace hole
 
     std::unique_ptr<hole::Hole> hole(
       infinit::hole_factory(storage, passport, Infinit::authority()));
-    etoile::depot::hole(hole.get());
+
+    // XXX: Next line has been remove cause it doesn't exist.
+    // etoile::depot::hole(hole.get());
     hole->join();
 
     // launch the program.

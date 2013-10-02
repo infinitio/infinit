@@ -20,8 +20,6 @@
 
 #include <lune/Lune.hh>
 
-#include <Infinit.hh>
-
 ELLE_LOG_COMPONENT("infinit.hole.remote.Server");
 
 namespace hole

@@ -12,7 +12,7 @@
 
 # include <nucleus/neutron/Subject.hh>
 
-# include <hole/Hole.hh>
+# include <hole/fwd.hh>
 
 namespace etoile
 {
