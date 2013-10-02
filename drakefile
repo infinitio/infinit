@@ -1097,7 +1097,7 @@ def configure(cxx_toolkit = None,
       'satellites/satellite.cc',
       'satellites/satellite.hh',
     ]
-    sources = filter(lambda p: drake.path_src(p).exists(), sources)
+    sources = filter(lambda p: drake.path_source(p).exists(), sources)
     sources = map(drake.node, sources)
     bin = drake.cxx.Executable(
       'bin/8%s' % name,
@@ -1183,7 +1183,7 @@ def configure(cxx_toolkit = None,
 
     # PYTHONPATH for oracle and functional tests.
     pythonpath = [
-      drake.path_src('tests/functional/lib'),
+      drake.path_source('tests/functional/lib'),
       drake.path_build('lib/python'),
     ]
     env = {
@@ -1376,7 +1376,7 @@ def configure(cxx_toolkit = None,
     test = drake.node('tests/functional/%s' % test)
     tests << test
     pythonpath = [
-      drake.path_src('tests/functional/lib'),
+      drake.path_source('tests/functional/lib'),
       drake.path_build('lib/python'),
     ]
     env = {
