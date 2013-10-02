@@ -410,7 +410,9 @@ namespace surface
 
         this->_frete.reset(
           new frete::Frete(*this->_channels,
-                           boost::filesystem::path{this->snapshot_path()} += "transfer"));
+                           common::infinit::frete_snapshot_path(
+                             this->data()->sender_id,
+                             this->data()->id)));
 
         ELLE_TRACE_SCOPE("%s: init frete", *this);
         for (std::string const& file: this->_files)
