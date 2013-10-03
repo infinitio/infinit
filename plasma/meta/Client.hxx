@@ -100,7 +100,13 @@ namespace plasma
                   elle::format::json::Object const& req) const
     {
       std::stringstream resp;
-      this->_post(url, req, resp);
+      auto code = this->_post(url, req, resp);
+
+      if (code != static_cast<long>(elle::http::ResponseCode::ok))
+        throw elle::http::Exception(
+          static_cast<elle::http::ResponseCode>(code),
+          elle::sprintf("error %s while posting on %s", code, url));
+
       return this->_deserialize_answer<T>(resp);
     }
 
@@ -109,7 +115,13 @@ namespace plasma
     Client::_get(std::string const& url) const
     {
       std::stringstream resp;
-      this->_get(url, resp);
+      auto code = this->_get(url, resp);
+
+      if (code != static_cast<long>(elle::http::ResponseCode::ok))
+        throw elle::http::Exception(
+          static_cast<elle::http::ResponseCode>(code),
+          elle::sprintf("error %s while getting on %s", code, url));
+
       return this->_deserialize_answer<T>(resp);
     }
 

@@ -249,12 +249,12 @@ run(gap_State* state,
         )
       );
   }
-  catch (elle::HTTPException const& err)
+  catch (elle::http::Exception const& err)
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
-    if (err.code == elle::ResponseCode::error)
+    if (err.code == elle::http::ResponseCode::error)
       ret = gap_network_error;
-    else if (err.code == elle::ResponseCode::internal_server_error)
+    else if (err.code == elle::http::ResponseCode::internal_server_error)
       ret = gap_api_error;
     else
       ret = gap_internal_error;

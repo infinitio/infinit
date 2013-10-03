@@ -274,7 +274,7 @@ namespace plasma
       T
       _post(std::string const& url,
             elle::format::json::Object const& req) const;
-      void
+      long
       _post(std::string const& url,
             elle::format::json::Object const& req,
             std::ostream& resp) const;
@@ -283,7 +283,7 @@ namespace plasma
       T
       _get(std::string const& url) const;
 
-      void
+      long
       _get(std::string const& url,
            std::ostream& resp) const;
 
