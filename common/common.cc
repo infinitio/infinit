@@ -631,7 +631,10 @@ namespace common
       };
       switch (kind)
       {
+        case ::metrics::Kind::all: break;
+        case ::metrics::Kind::network: break;
         case ::metrics::Kind::transaction: return transaction;
+        case ::metrics::Kind::user: break;
       }
       elle::unreachable();
     }
@@ -651,7 +654,10 @@ namespace common
       };
       switch (kind)
       {
+        case ::metrics::Kind::all: break;
+        case ::metrics::Kind::network: break;
         case ::metrics::Kind::transaction: return transaction;
+        case ::metrics::Kind::user: break;
       }
       elle::unreachable();
     }
