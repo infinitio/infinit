@@ -71,11 +71,8 @@ namespace hole
     Directory::_store(const nucleus::proton::Address& address,
                       const nucleus::proton::ImmutableBlock& block)
     {
-      elle::io::Path path(this->path(address));
-
-      if (elle::io::File::Dig(path) == elle::Status::Error)
-        throw Exception(
-          elle::sprintf("Unable to dig the path '%s'.", path));
+      boost::filesystem::path path(this->path(address));
+      boost::filesystem::create_directories(path.parent_path());
 
       ELLE_MEASURE("Serializing the block")
         elle::serialize::to_file(path.string()) << block;
@@ -86,13 +83,8 @@ namespace hole
                       const nucleus::proton::MutableBlock& block)
 
     {
-      // Generate path.
-      elle::io::Path path(this->path(address));
-
-      // Check path status.
-      if (elle::io::File::Dig(path) == elle::Status::Error)
-        throw Exception(
-          elle::sprintf("Unable to dig the path '%s'.", path));
+      boost::filesystem::path path(this->path(address));
+      boost::filesystem::create_directories(path.parent_path());
 
       // Serialize the block.
       elle::serialize::to_file(path.string()) << block;
@@ -136,13 +128,7 @@ namespace hole
     void
     Directory::_erase(nucleus::proton::Address const& address)
     {
-      // Get block path.
-      elle::io::Path path(this->path(address));
-
-      // Delete block.
-      if (elle::io::File::Erase(path) == elle::Status::Error)
-        throw Exception(
-          elle::sprintf("Unable to erase the file '%s'.", path));
+      boost::filesystem::remove(boost::filesystem::path{this->path(address)});
     }
 
     /*----------.

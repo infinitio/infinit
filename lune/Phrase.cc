@@ -1,9 +1,10 @@
 #include <lune/Phrase.hh>
 #include <lune/Lune.hh>
 
-#include <elle/io/File.hh>
 #include <elle/io/Piece.hh>
 #include <elle/io/Pattern.hh>
+
+#include <boost/filesystem.hpp>
 
 namespace lune
 {
@@ -108,7 +109,7 @@ namespace lune
                 elle::String const& network,
                 elle::String const& name)
   {
-    elle::concept::Fileable<>::erase(Phrase::_path(user, network, name));
+    boost::filesystem::remove(Phrase::_path(user, network, name).string());
   }
 
   elle::Boolean
@@ -116,8 +117,8 @@ namespace lune
                  elle::String const& network,
                  elle::String const& name)
   {
-    return (elle::concept::Fileable<>::exists(
-      Phrase::_path(user, network, name)));
+    return boost::filesystem::exists(
+      Phrase::_path(user, network, name).string());
   }
 
 }

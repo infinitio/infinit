@@ -2,9 +2,6 @@
 #include <nucleus/proton/Address.hh>
 #include <nucleus/proton/Network.hh>
 
-#include <elle/io/File.hh>
-#include <elle/io/Piece.hh>
-
 #include <elle/Buffer.hh>
 
 namespace nucleus
