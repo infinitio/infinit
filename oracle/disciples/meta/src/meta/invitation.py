@@ -61,6 +61,6 @@ def invite_user(mail,
             mail,
             mail_template,
             subject,
-            accesscode=code,
+#            accesscode=code,
             **kw
         )
