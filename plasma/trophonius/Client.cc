@@ -272,6 +272,7 @@ namespace plasma
             // requiere a new data (user_id, token, ...).
             this->_disconnect();
 
+            ELLE_ERR("%s: failure to connect: %s", *this, message);
             this->_poll_exception = std::make_exception_ptr(
               elle::Exception{
                 elle::sprintf("unable to connect: %s", message)});
