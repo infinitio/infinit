@@ -1,5 +1,4 @@
 #include <elle/io/Piece.hh>
-#include <elle/io/File.hh>
 #include <elle/Buffer.hh>
 #include <elle/os/path.hh>
 
@@ -90,22 +89,12 @@ namespace lune
   Set::load(elle::String const& user,
             elle::String const& network)
   {
-    std::istringstream stream;
     elle::String element;
 
-    // read the file's content.
-    elle::Buffer buffer;
-
-    if (elle::io::File::Read(elle::io::Path{Set::_path(user, network)},
-                             buffer) == elle::Status::Error)
-      throw std::runtime_error("unable to read the file's content");
-
-    // set up the stream.
-    stream.str(elle::String(reinterpret_cast<char*>(buffer.mutable_contents()),
-                            buffer.size()));
+    std::ifstream file(_path(user, network));
 
     // for every string-based locus in the string.
-    while (std::getline(stream, element, ' '))
+    while (std::getline(file, element, ' '))
       {
         // Skip comments.
         if (!element.empty() && element[0] == '#')

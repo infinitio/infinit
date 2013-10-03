@@ -2,7 +2,6 @@
 #include <lune/Lune.hh>
 
 #include <elle/os/path.hh>
-#include <elle/io/File.hh>
 #include <elle/io/Piece.hh>
 
 namespace lune
