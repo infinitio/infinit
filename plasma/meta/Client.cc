@@ -846,7 +846,7 @@ namespace plasma
     `---------*/
 
     static
-    void
+    long
     _query(std::string const& url,
            curly::request_configuration& c,
            std::ostream& resp,
@@ -867,13 +867,13 @@ namespace plasma
 
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
-      curly::sched_request{
-        *reactor::Scheduler::scheduler(),
-        std::move(c)
-      }.run();
+      curly::sched_request r{*reactor::Scheduler::scheduler(), std::move(c)};
+      r.run();
+
+      return r.code();
     }
 
-    void
+    long
     Client::_post(std::string const& url,
                   elle::format::json::Object const& req,
                   std::ostream& resp) const
@@ -886,17 +886,17 @@ namespace plasma
       c.option(CURLOPT_POSTFIELDSIZE, input.str().size());
       c.input(input);
 
-      _query(url, c, resp, this);
+      return _query(url, c, resp, this);
     }
 
-    void
+    long
     Client::_get(std::string const& url,
                  std::ostream& resp) const
     {
       ELLE_TRACE_SCOPE("%s: get on %s", *this, url);
       curly::request_configuration c = curly::make_get();
 
-      _query(url, c, resp, this);
+      return _query(url, c, resp, this);
     }
 
     /*----------.
