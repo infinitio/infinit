@@ -153,6 +153,9 @@ class Trophonius(basic.LineReceiver):
         try:
             req = json.loads(line)
 
+            if len(req['token']) == 0:
+                raise Exception("client %s provided no token: %s" % (self, req))
+
             # Authentication
             client = pythia.Client(
                 session = {'token': req['token']},
@@ -203,6 +206,7 @@ class Trophonius(basic.LineReceiver):
                     self.sendLine(json.dumps({"notification_type": 208}))
                 )
             )
+
             print("time before next ping:", self.factory.application.timeout / 2)
             self._ping_service.start(self.factory.application.timeout / 2, now = False)
 
