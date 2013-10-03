@@ -13,3 +13,6 @@
 [submodule "surface/osx"]
 	path = surface/osx
 	url = git@git.infinit.io:osx-app
+[submodule "oracles/bottle"]
+	path = oracles/bottle
+	url = https://github.com/mefyl/bottle.git
