@@ -69,9 +69,13 @@ namespace metrics
         return "unknown_key";
       case Key::how_ended:
         return "unknown_key";
+      case Key::metric_from:
+        return "unknown_key";
       case Key::recipient:
         return "unknown_key";
       case Key::sender:
+        return "unknown_key";
+      case Key::transaction_id:
         return "unknown_key";
       case Key::who_connected:
         return "unknown_key";
