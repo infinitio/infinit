@@ -1,0 +1,30 @@
+import drake
+import sys
+
+def configure(prefix = drake.Path('/usr/local'),
+              python_version = None):
+
+  if python_version is None:
+    python_version = drake.Version(*sys.version_info[0:2])
+
+  prefix = drake.Path(prefix)
+
+  sources = drake.nodes(
+    'src/infinit/__init__.py',
+    'src/infinit/oracles/__init__.py',
+    'src/infinit/oracles/meta/__init__.py',
+    'src/infinit/oracles/meta/wsgi.py',
+  )
+
+  install = drake.Rule('install')
+  lib_path = prefix / ('lib/python%s/site-packages' % python_version)
+  install << drake.copy(sources, lib_path, 'src')
+  bottle = drake.nodes('../../bottle/bottle.py')
+  install << drake.copy(bottle, lib_path, '../../bottle')
+
+  rule_check = drake.Rule('check')
+
+  for name in ('status',):
+    test = drake.node('tests/%s' % name)
+    runner = drake.Runner(test)
+    rule_check << runner.status
