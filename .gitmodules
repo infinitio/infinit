@@ -16,3 +16,6 @@
 [submodule "oracles/bottle"]
 	path = oracles/bottle
 	url = https://github.com/mefyl/bottle.git
+[submodule "oracles/mongobox"]
+	path = oracles/mongobox
+	url = https://github.com/infinitdotio/mongobox.git
