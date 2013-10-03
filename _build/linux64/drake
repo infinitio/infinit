@@ -1,33 +1,25 @@
 #!/usr/bin/env python3
 
-import os, sys
-sys.path.insert(
-    0,
-    os.path.abspath(
-        os.path.join(os.path.dirname(__file__), '../../elle/drake/src')
-    )
-)
+import os
+import sys
+root = os.path.dirname(__file__)
+drake = os.path.abspath(os.path.join(root, '../../elle/drake/src'))
+sys.path.insert(0, drake)
 
 import drake
 import drake.cxx
 import drake.cxx.boost
 
-cxx_compiler = os.getenv('CXX', 'g++')
-cxx_toolkit = drake.cxx.GccToolkit(compiler = cxx_compiler)
-cxx_config = drake.cxx.Config()
-cxx_config.flag('-fPIC')
-cxx_config.flag('-Wall')
-cxx_config.enable_debug_symbols()
-cxx_config.enable_optimization(False)
-
-boost = drake.cxx.boost.Boost(
-    prefix = os.getenv('BOOST_PREFIX', '/usr')
-)
-
-drake.run(
-    '../..',
-    cxx_toolkit,
-    cxx_config,
-    build_type = "Development",
-    boost = boost
-)
+with drake.Drake('../..') as d:
+  cxx_compiler = os.getenv('CXX', 'g++')
+  cxx_toolkit = drake.cxx.GccToolkit(compiler = cxx_compiler)
+  cxx_config = drake.cxx.Config()
+  cxx_config.enable_debug_symbols()
+  cxx_config.enable_optimization(False)
+  boost = drake.cxx.boost.Boost(
+      prefix = os.getenv('BOOST_PREFIX', '/usr')
+  )
+  d.run(cxx_toolkit,
+        cxx_config,
+        build_type = "Development",
+        boost = boost)
