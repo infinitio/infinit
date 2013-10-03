@@ -554,9 +554,19 @@ namespace surface
 
       if (connection_status)
       {
+        reactor::Duration reconnection_cooldown = 1_sec;
+        reactor::Duration max_reconnection_cooldown = 8_sec;
         bool resynched{false};
         do
         {
+          // Check if trophonius has an pending exception.
+          // If it's the case, let the application poll and explode.
+          if (this->_trophonius.broken())
+          {
+            this->_polling_barrier.open();
+            return;
+          }
+
           try
           {
             this->_user_resync();
@@ -571,7 +581,9 @@ namespace surface
           {
             ELLE_WARN("%s: failed at resynching (%s)... retrying...",
                       *this, elle::exception_string());
-            reactor::sleep(1_sec);
+            reactor::sleep(reconnection_cooldown);
+            if (reconnection_cooldown < max_reconnection_cooldown)
+              reconnection_cooldown *= 2;
           }
         }
         while (!resynched);
