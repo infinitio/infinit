@@ -63,6 +63,8 @@ namespace metrics
         return "event";
       case Key::timestamp:
         return "timestamp";
+      case Key::transaction_id:
+        return "transaction_id";
       case Key::value:
         return "value";
       case Key::width:
