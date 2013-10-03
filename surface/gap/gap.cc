@@ -768,6 +768,25 @@ extern "C"
   }
 
   gap_Status
+  gap_kicked_out_callback(gap_State* state,
+                          gap_kicked_out_callback_t cb)
+  {
+    auto cpp_cb = [cb] (surface::gap::State::KickedOut const&)
+      {
+        cb();
+      };
+
+    return run<gap_Status>(
+      state,
+      "connection status callback",
+      [&] (surface::gap::State& state) -> gap_Status
+      {
+        state.attach_callback<surface::gap::State::KickedOut>(cpp_cb);
+        return gap_ok;
+      });
+  }
+
+  gap_Status
   gap_transaction_callback(gap_State* state,
                            gap_transaction_callback_t cb)
   {

@@ -119,16 +119,15 @@ class Trophonius(basic.LineReceiver):
         self._deinit()
 
     def _send_res(self, res, msg=""):
-        if isinstance(res, dict):
-            self.sendLine(json.dumps(res))
-        elif isinstance(res, int):
-            s = {}
-            s["notification_type"] = -666
-            s["response_code"] = res
-            if msg:
-                s["response_details"] = "{}: {}".format(response_matrix[res], msg)
-            else:
-                s["response_details"] = "{}".format(response_matrix[res])
+        assert isinstance(res, int)
+        assert res in response_matrix.keys()
+        s = {}
+        s["notification_type"] = -666
+        s["response_code"] = res
+        if msg:
+            s["response_details"] = "{}: {}".format(response_matrix[res], msg)
+        else:
+            s["response_details"] = "{}".format(response_matrix[res])
             message = json.dumps(s)
             log.msg("sending message from", self, "to", self.transport.getPeer(), ":", message)
             self.sendLine("{}".format(message))
@@ -153,6 +152,9 @@ class Trophonius(basic.LineReceiver):
         """
         try:
             req = json.loads(line)
+
+            if len(req['token']) == 0:
+                raise Exception("client %s provided no token: %s" % (self, req))
 
             # Authentication
             client = pythia.Client(
@@ -204,7 +206,9 @@ class Trophonius(basic.LineReceiver):
                     self.sendLine(json.dumps({"notification_type": 208}))
                 )
             )
-            self._ping_service.start(self.factory.application.timeout / 2, now=True)
+
+            print("time before next ping:", self.factory.application.timeout / 2)
+            self._ping_service.start(self.factory.application.timeout / 2, now = False)
 
             if self._alive_service is not None:
                 log.msg("client %s on device %s: "

@@ -379,7 +379,7 @@ namespace plasma
     Client::user(std::string const& id) const
     {
       if (id.size() == 0)
-        throw std::runtime_error("Wrong id");
+        throw elle::Exception("Wrong id");
       return this->_get<UserResponse>("/user/" + id + "/view");
     }
 
@@ -415,7 +415,7 @@ namespace plasma
     Client::user_from_public_key(std::string const& public_key) const
     {
       if (public_key.size() == 0)
-        throw std::runtime_error("empty public key!");
+        throw elle::Exception("empty public key!");
       json::Dictionary request;
       request["public_key"] = public_key;
       return this->_post<UserResponse>("/user/from_public_key", request);

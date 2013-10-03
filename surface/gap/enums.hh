@@ -29,6 +29,7 @@ extern "C"
     NotificationType_UserStatusUpdate,
     NotificationType_NewSwagger,
     NotificationType_ConnectionStatus,
+    NotificationType_KickedOut,
   } NotificationType;
 
   typedef enum
