@@ -115,9 +115,6 @@ class Create(Page):
             recipient = self.database.users.find_one({'email': id_or_email})
             # if the user doesn't exist, create a ghost and invite.
             if not recipient:
-                if self.user.get('remaining_invitations', 0) <= 0:
-                    return self.error(error.NO_MORE_INVITATION)
-                self.user['remaining_invitations'] -= 1
                 self.database.users.save(self.user)
                 new_user = True
                 recipient_id = self.database.users.save({})
