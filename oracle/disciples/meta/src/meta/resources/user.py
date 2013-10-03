@@ -558,9 +558,6 @@ class Register(_Page):
 
         user['email'] = user['email'].lower()
 
-        if len(user['activation_code']) == 8 and user['activation_code'] != "no_activation_code":
-            user['activation_code'] = '@' + user['activation_code']
-
         source = None
         if self.database.users.find_one({
             'accounts': [{ 'type': 'email', 'id':user['email']}],
@@ -576,7 +573,7 @@ class Register(_Page):
                 return self.error(error.ACTIVATION_CODE_DOESNT_EXIST)
             ghost_email = user['email']
             source = user['activation_code']
-        elif user['activation_code'] != 'bitebite':
+        elif user['activation_code'] != 'no_activation_code':
             invitation = self.database.invitations.find_one({
                 'code': user['activation_code'],
                 'status': 'pending',
@@ -642,7 +639,7 @@ class Register(_Page):
                     '$push': {'registered': user['email']},
                 }
             )
-        elif user['activation_code'] != 'bitebite':
+        elif user['activation_code'] != 'no_activation_code':
             invitation['status'] = 'activated'
             self.database.invitations.save(invitation)
 
