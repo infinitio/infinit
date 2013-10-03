@@ -26,7 +26,7 @@ with drake.Drake('../..') as d:
   cxx_config.enable_optimization(False)
 
   boost = drake.cxx.boost.Boost(prefix = '/opt/local')
-  python = '/opt/local/python/Library/Frameworks/Python.framework/Versions/3.2'
+  python = '/opt/local/Library/Frameworks/Python.framework/Versions/3.2'
   d.run(cxx_toolkit,
         cxx_config,
         boost = boost,
