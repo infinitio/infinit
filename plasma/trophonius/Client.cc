@@ -132,16 +132,6 @@ namespace plasma
 {
   namespace trophonius
   {
-    /*-----------.
-    | Exceptions |
-    `-----------*/
-    Exception::Exception(std::string const& message):
-      elle::Exception(message)
-    {
-      ELLE_ERR("%s: %s", *this, message);
-    }
-
-
     boost::posix_time::time_duration const default_ping_period(
       boost::posix_time::seconds(30));
 
@@ -498,38 +488,29 @@ namespace plasma
       {
         auto socket = this->_socket;
 
-        try
+        this->_buffer.size(0);
+        ELLE_DEBUG("%s: reading message", *this);
+        size_t idx = 0;
+        while (true)
         {
-          this->_buffer.size(0);
-          ELLE_DEBUG("%s: reading message", *this);
-          size_t idx = 0;
-          while (true)
+          socket->getline(((char*)this->_buffer.mutable_contents()) + idx,
+                          this->_buffer.capacity() - idx, '\n');
+          if (!socket->fail())
           {
-            socket->getline(((char*)this->_buffer.mutable_contents()) + idx,
-                            this->_buffer.capacity() - idx, '\n');
-            if (!socket->fail())
-            {
-              this->_buffer.size(idx + socket->gcount());
-              break;
-            }
-            idx = this->_buffer.capacity() - 1;
-            this->_buffer.capacity(this->_buffer.capacity() * 2);
-            socket->clear();
+            this->_buffer.size(idx + socket->gcount());
+            break;
           }
-          if (this->_buffer.size() == 0)
-          {
-            ELLE_ERR("Empty line read from tropho: bad:%s fail:%s eof:%s gcount:%s",
-                     socket->bad(), socket->fail(), socket->eof(), socket->gcount());
-            // XXX getline should not return an empty buffer, but throw a
-            // massive exception.
-            throw ReadException{"read an empty buffer"};
-          }
+          idx = this->_buffer.capacity() - 1;
+          this->_buffer.capacity(this->_buffer.capacity() * 2);
+          socket->clear();
         }
-        catch (elle::Exception const&)
+        if (this->_buffer.size() == 0)
         {
-          throw ReadException(
-            elle::sprintf("error while reading socket: %s",
-                          elle::exception_string()));
+          ELLE_ERR("Empty line read from tropho: bad:%s fail:%s eof:%s gcount:%s",
+                   socket->bad(), socket->fail(), socket->eof(), socket->gcount());
+          // XXX getline should not return an empty buffer, but throw a
+          // massive exception.
+          throw elle::Exception{"read an empty buffer"};
         }
 
         ELLE_TRACE_SCOPE("%s: got message", *this);
