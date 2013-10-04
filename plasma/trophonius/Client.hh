@@ -25,6 +25,13 @@ namespace plasma
       Exception(std::string const& message);
     };
 
+    class ReadException:
+      public Exception
+    {
+    public:
+      using Exception::Exception;
+    };
+
     enum class NotificationType: int
     {
 # define NOTIFICATION_TYPE(name, value)         \
@@ -186,9 +193,6 @@ namespace plasma
       int
       reconnected() const;
       ELLE_ATTRIBUTE_rw(boost::posix_time::time_duration, ping_period);
-
-      bool
-      broken() const;
 
     /*----------.
     | Printable |
