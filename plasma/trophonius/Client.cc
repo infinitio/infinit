@@ -258,11 +258,11 @@ namespace plasma
         this->_poll_exception = nullptr;
         this->_pollable.close();
 
+        reactor::Duration reconnection_cooldown = 1_sec;
+        reactor::Duration max_reconnection_cooldown = 32_sec;
+
         while (!this->_connected.opened())
         {
-          reactor::Duration reconnection_cooldown = 1_sec;
-          reactor::Duration max_reconnection_cooldown = 32_sec;
-
           try
           {
             if (this->user_id.empty() ||
