@@ -5,13 +5,13 @@
 #include <elle/os/path.hh>
 #include <elle/print.hh>
 #include <elle/system/platform.hh>
+#include <elle/system/home_directory.hh>
 
 #include <boost/preprocessor/cat.hpp>
 
 #include <stdexcept>
 #include <unordered_map>
 
-#include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -147,11 +147,7 @@ namespace
   std::string
   _home_directory()
   {
-    struct passwd* pw = ::getpwuid(getuid());
-    if (pw != nullptr && pw->pw_dir != nullptr)
-      return std::string{pw->pw_dir};
-    else
-      return elle::os::getenv("HOME", "/tmp");
+    return elle::system::home_directory().string();
   }
 
   std::string
