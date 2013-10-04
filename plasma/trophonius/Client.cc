@@ -522,12 +522,12 @@ namespace plasma
                      socket->bad(), socket->fail(), socket->eof(), socket->gcount());
             // XXX getline should not return an empty buffer, but throw a
             // massive exception.
-            throw Exception{"read an empty buffer"};
+            throw ReadException{"read an empty buffer"};
           }
         }
         catch (elle::Exception const&)
         {
-          throw Exception(
+          throw ReadException(
             elle::sprintf("error while reading socket: %s",
                           elle::exception_string()));
         }
@@ -677,12 +677,6 @@ namespace plasma
     Client::poll()
     {
       return this->_impl->poll();
-    }
-
-    bool
-    Client::broken() const
-    {
-      return (this->_impl->_poll_exception != nullptr);
     }
 
     std::ostream&
