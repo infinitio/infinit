@@ -358,6 +358,7 @@ namespace plasma
             // the exception.
             if (user_action)
               throw;
+            return;
           }
         }
       }
