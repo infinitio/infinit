@@ -384,11 +384,11 @@ namespace plasma
       }
 
       void
-      _reconnect(bool require_connected = true)
+      _reconnect()
       {
         // If several threads try to reconnect, just wait for the first one to
         // be done.
-        if (require_connected && !this->_connected.opened())
+        if (!this->_connected.opened())
         {
           this->_connected.wait();
           return;
