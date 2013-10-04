@@ -1,5 +1,4 @@
 #define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE trophonius
 
 #include <boost/date_time/posix_time/date_duration_operators.hpp>
 #include <boost/test/unit_test.hpp>
@@ -145,7 +144,9 @@ protected:
   }
 };
 
-BOOST_AUTO_TEST_CASE(notification)
+static
+void
+notification()
 {
   static int const reconnections = 5;
   auto client = [&]
@@ -230,7 +231,9 @@ private:
   ELLE_ATTRIBUTE_R(int, ping_received);
 };
 
-BOOST_AUTO_TEST_CASE(ping)
+static
+void
+ping()
 {
   boost::posix_time::time_duration const period = 100_ms;
   boost::posix_time::time_duration const run_time = 3_sec;
@@ -321,7 +324,9 @@ private:
   ELLE_ATTRIBUTE_R(int, ping_received);
 };
 
-BOOST_AUTO_TEST_CASE(noping)
+static
+void
+noping()
 {
   boost::posix_time::time_duration const period = 100_ms;
   boost::posix_time::time_duration const run_time = 3_sec;
@@ -399,7 +404,9 @@ private:
   bool _first;
 };
 
-BOOST_AUTO_TEST_CASE(reconnection)
+static
+void
+reconnection()
 {
   using plasma::trophonius::MessageNotification;
   reactor::Barrier reconnecting;
@@ -463,7 +470,9 @@ protected:
   }
 };
 
-BOOST_AUTO_TEST_CASE(connection_callback_throws)
+static
+void
+connection_callback_throws()
 {
   bool beacon = false;
   auto client =
@@ -536,7 +545,9 @@ private:
   bool _first;
 };
 
-BOOST_AUTO_TEST_CASE(reconnection_denied)
+static
+void
+reconnection_denied()
 {
   int connected_count = 0;
   int disconnected_count = 0;
@@ -565,4 +576,24 @@ BOOST_AUTO_TEST_CASE(reconnection_denied)
   sched.run();
   BOOST_CHECK_EQUAL(connected_count, 1);
   BOOST_CHECK_EQUAL(disconnected_count, 1);
+}
+
+static
+bool
+test_suite()
+{
+  auto& ts = boost::unit_test::framework::master_test_suite();
+  ts.add(BOOST_TEST_CASE(notification), 0, 3);
+  ts.add(BOOST_TEST_CASE(ping), 0, 10);
+  ts.add(BOOST_TEST_CASE(noping), 0, 10);
+  ts.add(BOOST_TEST_CASE(reconnection), 0, 10);
+  ts.add(BOOST_TEST_CASE(connection_callback_throws), 0, 3);
+  ts.add(BOOST_TEST_CASE(reconnection_denied), 0, 3);
+  return true;
+}
+
+int
+main(int argc, char** argv)
+{
+  return ::boost::unit_test::unit_test_main(test_suite, argc, argv);
 }
