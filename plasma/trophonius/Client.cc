@@ -258,34 +258,13 @@ namespace plasma
         this->_poll_exception = nullptr;
         this->_pollable.close();
 
-        auto failure = [&] (std::string const& message)
-          {
-            // If an error occured, the connection to trophonius is broken and
-            // requiere a new data (user_id, token, ...).
-            this->_disconnect();
-
-            ELLE_ERR("%s: failure to connect: %s", *this, message);
-            this->_poll_exception = std::make_exception_ptr(
-              elle::Exception{
-                elle::sprintf("unable to connect: %s", message)});
-            // Wake up the poll thread to throw this exception.
-            this->_pollable.open();
-            // If the action has been initiated by the user, we can throw him
-            // the exception.
-            if (user_action)
-            {
-              throw elle::Exception{
-                elle::sprintf("unable to connect: %s", message)};
-            }
-          };
-
         try
         {
           if (this->user_id.empty() ||
               this->user_token.empty() ||
               this->user_device_id.empty())
           {
-            return failure("some of the attributes are empty");
+            throw elle::Exception("some of the attributes are empty");
           }
 
           ELLE_DEBUG("%s: establishing connection", *this);
@@ -326,7 +305,7 @@ namespace plasma
 
           if (notif->notification_type != NotificationType::connection_enabled)
           {
-            return failure("wrong first notification");
+            throw elle::Exception("wrong first notification");
           }
 
           ELLE_ASSERT(dynamic_cast<ConnectionEnabledNotification*>(notif.get()));
@@ -336,24 +315,35 @@ namespace plasma
 
           if (notification->response_code != 200)
           {
-            return failure(notification->response_details);
+            throw elle::Exception(notification->response_details);
           }
 
           ELLE_LOG("%s: connected", *this);
           this->_connected.open();
         }
-        catch (reactor::network::Exception const&)
+        catch (reactor::network::Exception const& e)
         {
           // In that case, we encoutered connection problem, nothing is lost!
           // Let's try again!
+          ELLE_WARN("%s: connection failed, wait before retrying: %s",
+                    *this, e.what());
           reactor::sleep(1_sec);
           this->_connect();
         }
-        catch (elle::Exception const&)
+        catch (elle::Exception const& e)
         {
-          ELLE_WARN("%s: error while reading: %s",
-                    *this, elle::exception_string());
-          return failure(elle::exception_string());
+          // If an error occured, the connection to trophonius is broken and
+          // requiere a new data (user_id, token, ...).
+          this->_disconnect();
+
+          ELLE_ERR("%s: failure to connect: %s", *this, e.what());
+          this->_poll_exception = std::make_exception_ptr(e);
+          // Wake up the poll thread to throw this exception.
+          this->_pollable.open();
+          // If the action has been initiated by the user, we can throw him
+          // the exception.
+          if (user_action)
+            throw;
         }
       }
 
