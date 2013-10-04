@@ -260,6 +260,8 @@ namespace plasma
 
         while (!this->_connected.opened())
         {
+          reactor::Duration reconnection_cooldown = 1_sec;
+          reactor::Duration max_reconnection_cooldown = 32_sec;
 
           try
           {
@@ -331,7 +333,16 @@ namespace plasma
             ELLE_WARN("%s: connection failed, wait before retrying: %s",
                       *this, e.what());
 
-            reactor::sleep(1_sec);
+            reactor::sleep(reconnection_cooldown);
+            if (reconnection_cooldown < max_reconnection_cooldown)
+            {
+              // Can be greater than max_reconnection_cooldown, if not a power
+              // of 2.
+              reconnection_cooldown *= 2;
+
+              if (reconnection_cooldown > max_reconnection_cooldown)
+                reconnection_cooldown = max_reconnection_cooldown;
+            }
           }
           catch (elle::Exception const& e)
           {
