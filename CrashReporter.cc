@@ -33,23 +33,26 @@ namespace elle
       {
         static const std::unordered_map<int, std::string> bind{
           {
-            {SIGHUP,  "SIGHUP"},  // Hangup detected on controlling terminal or death of controlling process
             {SIGINT,  "SIGINT"},  // Interrupt from keyboard
-            {SIGQUIT, "SIGQUIT"}, // Quit from keyboard
             {SIGILL,  "SIGILL"},  // Illegal Instruction
             {SIGABRT, "SIGABRT"}, // Abort signal from abort(3)
             {SIGFPE,  "SIGFPE"},  // Floating point exception
-            {SIGKILL, "SIGKILL"}, // Kill signal
             {SIGSEGV, "SIGSEGV"}, // Invalid memory reference
+            {SIGTERM, "SIGTERM"}, // Termination signal
+#ifndef INFINIT_WINDOWS
+            {SIGKILL, "SIGKILL"}, // Kill signal
+            {SIGHUP,  "SIGHUP"},  // Hangup detected on controlling terminal or death of controlling process
+            {SIGQUIT, "SIGQUIT"}, // Quit from keyboard
+            {SIGILL,  "SIGILL"},  // Illegal Instruction
             {SIGPIPE, "SIGPIPE"}, // Broken pipe: write to pipe with no readers
             {SIGALRM, "SIGALRM"}, // Timer signal from alarm(2)
-            {SIGTERM, "SIGTERM"}, // Termination signal
             {SIGCHLD, "SIGCHLD"}, // Child stopped or terminated
             {SIGCONT, "SIGCONT"}, // Continue if stopped
             {SIGSTOP, "SIGSTOP"}, // Stop process
             {SIGTSTP, "SIGTSTP"}, // Stop typed at tty
             {SIGTTIN, "SIGTTIN"}, // tty input for background process
             {SIGTTOU, "SIGTTOU"}, // tty output for background process
+#endif
           }
         };
 
