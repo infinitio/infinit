@@ -128,9 +128,9 @@ class Trophonius(basic.LineReceiver):
             s["response_details"] = "{}: {}".format(response_matrix[res], msg)
         else:
             s["response_details"] = "{}".format(response_matrix[res])
-            message = json.dumps(s)
-            log.msg("sending message from", self, "to", self.transport.getPeer(), ":", message)
-            self.sendLine("{}".format(message))
+        message = json.dumps(s)
+        log.msg("sending message from", self, "to", self.transport.getPeer(), ":", message)
+        self.sendLine("{}".format(message))
 
     def handle_PING(self, line):
         data = json.loads(line)
