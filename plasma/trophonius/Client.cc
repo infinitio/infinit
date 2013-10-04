@@ -32,6 +32,12 @@
 
 ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 
+#ifdef INFINIT_WINDOWS
+# define SUICIDE() ::exit(0);
+#else
+# define SUICIDE() ::kill(::getpid(), SIGKILL)
+#endif
+
 /*-------------------------.
 | Notification serializers |
 `-------------------------*/
@@ -179,7 +185,7 @@ namespace plasma
         return Ptr(new ConnectionEnabledNotification{extractor});
       // XXX: Handle at upper levels (?)
       case NotificationType::suicide:
-        kill(getpid(), SIGKILL);
+        SUICIDE();
       default:
         throw elle::Exception{elle::sprint("Unknown notification type", type)};
       }
