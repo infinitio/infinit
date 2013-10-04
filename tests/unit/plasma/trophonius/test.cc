@@ -154,8 +154,6 @@ notification()
     NotificationTrophonius tropho;
     using namespace plasma::trophonius;
     plasma::trophonius::Client c("127.0.0.1", tropho.port(), [] (bool) {});
-    ELLE_LOG("fail connection");
-    BOOST_CHECK_THROW(c.connect("", "", ""), std::runtime_error);
     ELLE_LOG("successful connection");
     c.connect("0", "0", "0");
     for (int i = 0; i < reconnections; ++i)
@@ -505,8 +503,8 @@ class RejectTrophonius:
   public Trophonius
 {
 public:
-  RejectTrophonius():
-    _first(true)
+  RejectTrophonius(bool first = true):
+    _first(first)
   {}
 
 protected:
@@ -578,6 +576,29 @@ reconnection_denied()
   BOOST_CHECK_EQUAL(disconnected_count, 1);
 }
 
+/*--------------------.
+| Connection rejected |
+`--------------------*/
+
+// Check connect throws if the authentication is rejected.
+
+static
+void
+connection_rejected()
+{
+  auto client =
+    [&]
+    {
+      RejectTrophonius tropho(false);
+      plasma::trophonius::Client c("127.0.0.1", tropho.port(), [&] (bool) {});
+      BOOST_CHECK_THROW(c.connect("0", "0", "0"), elle::Exception);
+      BOOST_CHECK_THROW(c.poll(), elle::Exception);
+    };
+  reactor::Scheduler sched;
+  reactor::Thread c(sched, "client", client);
+  sched.run();
+}
+
 static
 bool
 test_suite()
@@ -589,6 +610,7 @@ test_suite()
   ts.add(BOOST_TEST_CASE(reconnection), 0, 10);
   ts.add(BOOST_TEST_CASE(connection_callback_throws), 0, 3);
   ts.add(BOOST_TEST_CASE(reconnection_denied), 0, 3);
+  ts.add(BOOST_TEST_CASE(connection_rejected), 0, 3);
   return true;
 }
 
