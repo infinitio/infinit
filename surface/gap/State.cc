@@ -332,9 +332,6 @@ namespace surface
               {
                 while (true)
                 {
-                  reactor::Scheduler::scheduler()->current()->wait(
-                    this->_polling_barrier);
-
                   try
                   {
                     this->handle_notification(this->_trophonius.poll());
@@ -347,6 +344,7 @@ namespace surface
                     // KickedOut will be the next event polled.
                     this->logout();
                     this->enqueue(KickedOut());
+                    return;
                   }
 
                   ELLE_TRACE("%s: notification pulled", *this);
@@ -401,30 +399,35 @@ namespace surface
     void
     State::_cleanup()
     {
+      elle::SafeFinally clean_containers(
+        [&]
+        {
+          this->_trophonius.disconnect();
+
+          while (!this->_runners.empty())
+            this->_runners.pop();
+
+          this->_user_indexes.clear();
+          this->_swagger_indexes.clear();
+
+          this->_users.clear();
+          this->_transactions_clear();
+
+          this->_device.reset();
+          this->_me.reset();
+
+          this->_passport.reset();
+          this->_identity.reset();
+        });
+
       /// First step must be to disconnect from trophonius.
       /// If not, you can pull notification that
-      if (this->_polling_thread != nullptr)
+      if (this->_polling_thread != nullptr &&
+          reactor::Scheduler::scheduler()->current() != this->_polling_thread.get())
       {
         this->_polling_thread->terminate_now();
         this->_polling_thread.reset();
       }
-
-      this->_trophonius.disconnect();
-
-      while (!this->_runners.empty())
-        this->_runners.pop();
-
-      this->_user_indexes.clear();
-      this->_swagger_indexes.clear();
-
-      this->_users.clear();
-      this->_transactions_clear();
-
-      this->_device.reset();
-      this->_me.reset();
-
-      this->_passport.reset();
-      this->_identity.reset();
     }
 
     std::string
@@ -548,15 +551,14 @@ namespace surface
       ELLE_TRACE_SCOPE(
         "%s: connection %s", *this, connection_status ? "established" : "lost");
 
-      // Lock polling.
-      if (!connection_status)
-        this->_polling_barrier.close();
-
       if (connection_status)
       {
         bool resynched{false};
         do
         {
+          if (!this->logged_in())
+            return;
+
           try
           {
             this->_user_resync();
@@ -578,10 +580,6 @@ namespace surface
       }
 
       this->enqueue<ConnectionStatus>(ConnectionStatus(connection_status));
-
-      // Unlock polling.
-      if (connection_status)
-        this->_polling_barrier.open();
     }
 
     void
