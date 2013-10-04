@@ -176,7 +176,7 @@ namespace frete
     // Remove the extensions, add the name_policy and set the extension.
     std::string extensions;
     for (; !_path.extension().empty(); _path = _path.stem())
-      extensions = _path.extension().native() + extensions;
+      extensions = _path.extension().string() + extensions;
     _path = path.parent_path() / _path;
     _path += name_policy;
     _path += extensions;
@@ -184,9 +184,9 @@ namespace frete
     // Ugly.
     for (size_t i = 2; i < std::numeric_limits<size_t>::max(); ++i)
     {
-      if (!boost::filesystem::exists(elle::sprintf(_path.native().c_str(), i)))
+      if (!boost::filesystem::exists(elle::sprintf(_path.string().c_str(), i)))
       {
-        return elle::sprintf(_path.native().c_str(), i);
+        return elle::sprintf(_path.string().c_str(), i);
       }
     }
 
@@ -272,7 +272,7 @@ namespace frete
 
       // Create subdir.
       boost::filesystem::create_directories(fullpath.parent_path());
-      std::ofstream output{fullpath.native(), std::ios_base::app};
+      std::ofstream output{fullpath.string(), std::ios_base::app};
 
       if (tr.complete())
       {
@@ -304,7 +304,7 @@ namespace frete
 
         {
           snapshot.increment_progress(index, buffer.size());
-          elle::serialize::to_file(this->_snapshot_destination.native()) << *this->_transfer_snapshot;
+          elle::serialize::to_file(this->_snapshot_destination.string()) << *this->_transfer_snapshot;
 
           this->_rpc_set_progress(this->_transfer_snapshot->progress());
           this->_progress_changed.signal();
@@ -449,7 +449,7 @@ namespace frete
     ELLE_TRACE_FUNCTION(file_id, offset, size);
     ELLE_ASSERT_LT(file_id, this->_count());
     auto path = this->_local_path(file_id);
-    std::ifstream file(path.native());
+    std::ifstream file(path.string());
     static const std::size_t MAX_offset{
       std::numeric_limits<std::streamsize>::max()};
     static const size_t MAX_buffer{elle::Buffer::max_size};
