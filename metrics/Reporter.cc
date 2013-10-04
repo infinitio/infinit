@@ -21,10 +21,12 @@ namespace metrics
     Reporter::version,
 #ifdef INFINIT_LINUX
     "Linux"
-#elif INFINIT_MACOSX
+#elif defined(INFINIT_MACOSX)
     "OS X"
+#elif defined(INFINIT_WINDOWS)
+    "Windows"
 #else
-# warning "machine not supported"
+# error "machine not supported"
 #endif
   );
 
