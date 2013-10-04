@@ -454,22 +454,24 @@ def configure(cxx_toolkit = None,
   plasma_slib = drake.cxx.StaticLib('lib/plasma', plasma_static_sources,
                                     cxx_toolkit, cxx_config_libs)
 
-  plasma_python_sources = plasma_sources + [
-    drake.node('plasma/python.cc'),
-    drake.node('plasma/trophonius/python.cc'),
-    drake.node('plasma/meta/python.cc'),
-  ]
-  plasma_python_cxx_config = drake.cxx.Config(cxx_config)
-  plasma_python_cxx_config += python3
-  plasma_python_cxx_config += boost.config_python()
-  plasma_python_cxx_config.lib_path_runtime('..')
-  plasma_python_lib = drake.cxx.Module(
-    'lib/python/plasma',
-    plasma_python_sources + [plasma_lib],
-    cxx_toolkit, plasma_python_cxx_config)
   rule_plasma = drake.Rule('plasma')
-  rule_plasma << plasma_python_lib
   rule_plasma << plasma_lib
+
+  if python_enabled:
+    plasma_python_cxx_config = drake.cxx.Config(cxx_config)
+    plasma_python_sources = plasma_sources + [
+      drake.node('plasma/python.cc'),
+      drake.node('plasma/trophonius/python.cc'),
+      drake.node('plasma/meta/python.cc'),
+    ]
+    plasma_python_cxx_config += python3
+    plasma_python_cxx_config += boost.config_python()
+    plasma_python_cxx_config.lib_path_runtime('..')
+    plasma_python_lib = drake.cxx.Module(
+      'lib/python/plasma',
+      plasma_python_sources + [plasma_lib],
+      cxx_toolkit, plasma_python_cxx_config)
+    rule_plasma << plasma_python_lib
 
   # Papier
   papier_sources = drake.nodes(
@@ -914,7 +916,8 @@ def configure(cxx_toolkit = None,
   ## ----- ##
 
   build = drake.Rule('build')
-  build << plasma_python_lib
+  if python_enabled:
+    build << plasma_python_lib
 
   ## -------- ##
   ## Programs ##
