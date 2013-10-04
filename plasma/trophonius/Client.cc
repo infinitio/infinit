@@ -258,92 +258,96 @@ namespace plasma
         this->_poll_exception = nullptr;
         this->_pollable.close();
 
-        try
+        while (!this->_connected.opened())
         {
-          if (this->user_id.empty() ||
-              this->user_token.empty() ||
-              this->user_device_id.empty())
+
+          try
           {
-            throw elle::Exception("some of the attributes are empty");
+            if (this->user_id.empty() ||
+                this->user_token.empty() ||
+                this->user_device_id.empty())
+            {
+              throw elle::Exception("some of the attributes are empty");
+            }
+
+            ELLE_DEBUG("%s: establishing connection", *this);
+            auto socket = std::make_shared<reactor::network::TCPSocket>(
+              *reactor::Scheduler::scheduler(), this->server, this->port);
+
+            this->_socket = socket;
+            ELLE_DEBUG("%s: socket connected", *this);
+            // XXX: restore this by exposing the API in reactor's TCP socket.
+            // _impl->socket.set_option(boost::asio::socket_base::keep_alive{true});
+
+            // Do not inherit file descriptor when forking.
+            // XXX: What for ? Needed ?
+            // ::fcntl(this->_socket.native_handle(), F_SETFD, 1);
+
+            json::Dictionary connection_request{
+              std::map<std::string, std::string>{
+                {"user_id", this->user_id},
+                {"token", this->user_token},
+                {"device_id", this->user_device_id},
+                  }};
+
+            // May raise an exception.
+            std::stringstream request;
+            elle::serialize::OutputJSONArchive(request, connection_request);
+
+            // Add '\n' to request.
+            request << std::endl;
+
+            ELLE_DEBUG("%s: identification", *this);
+            socket->write(reactor::network::Buffer(request.str()));
+
+            ELLE_DEBUG("%s: wait for confirmation", *this);
+            auto notif = read();
+
+            ELLE_ASSERT(notif != nullptr);
+            ELLE_DEBUG("%s: read: %s", *this, *notif);
+
+            if (notif->notification_type != NotificationType::connection_enabled)
+            {
+              throw elle::Exception("wrong first notification");
+            }
+
+            ELLE_ASSERT(dynamic_cast<ConnectionEnabledNotification*>(notif.get()));
+
+            auto notification = std::unique_ptr<ConnectionEnabledNotification>(
+              static_cast<ConnectionEnabledNotification*>(notif.release()));
+
+            if (notification->response_code != 200)
+            {
+              throw elle::Exception(notification->response_details);
+            }
+
+            ELLE_LOG("%s: connected", *this);
+            this->_connected.open();
           }
-
-          ELLE_DEBUG("%s: establishing connection", *this);
-          auto socket = std::make_shared<reactor::network::TCPSocket>(
-            *reactor::Scheduler::scheduler(), this->server, this->port);
-
-          this->_socket = socket;
-          ELLE_DEBUG("%s: socket connected", *this);
-          // XXX: restore this by exposing the API in reactor's TCP socket.
-          // _impl->socket.set_option(boost::asio::socket_base::keep_alive{true});
-
-          // Do not inherit file descriptor when forking.
-          // XXX: What for ? Needed ?
-          // ::fcntl(this->_socket.native_handle(), F_SETFD, 1);
-
-          json::Dictionary connection_request{
-            std::map<std::string, std::string>{
-              {"user_id", this->user_id},
-              {"token", this->user_token},
-              {"device_id", this->user_device_id},
-                }};
-
-          // May raise an exception.
-          std::stringstream request;
-          elle::serialize::OutputJSONArchive(request, connection_request);
-
-          // Add '\n' to request.
-          request << std::endl;
-
-          ELLE_DEBUG("%s: identification", *this);
-          socket->write(reactor::network::Buffer(request.str()));
-
-          ELLE_DEBUG("%s: wait for confirmation", *this);
-          auto notif = read();
-
-          ELLE_ASSERT(notif != nullptr);
-          ELLE_DEBUG("%s: read: %s", *this, *notif);
-
-          if (notif->notification_type != NotificationType::connection_enabled)
+          catch (reactor::network::Exception const& e)
           {
-            throw elle::Exception("wrong first notification");
+            // In that case, we encoutered connection problem, nothing is lost!
+            // Let's try again!
+            ELLE_WARN("%s: connection failed, wait before retrying: %s",
+                      *this, e.what());
+
+            reactor::sleep(1_sec);
           }
-
-          ELLE_ASSERT(dynamic_cast<ConnectionEnabledNotification*>(notif.get()));
-
-          auto notification = std::unique_ptr<ConnectionEnabledNotification>(
-            static_cast<ConnectionEnabledNotification*>(notif.release()));
-
-          if (notification->response_code != 200)
+          catch (elle::Exception const& e)
           {
-            throw elle::Exception(notification->response_details);
+            // If an error occured, the connection to trophonius is broken and
+            // requiere a new data (user_id, token, ...).
+            this->_disconnect();
+
+            ELLE_ERR("%s: failure to connect: %s", *this, e.what());
+            this->_poll_exception = std::make_exception_ptr(e);
+            // Wake up the poll thread to throw this exception.
+            this->_pollable.open();
+            // If the action has been initiated by the user, we can throw him
+            // the exception.
+            if (user_action)
+              throw;
           }
-
-          ELLE_LOG("%s: connected", *this);
-          this->_connected.open();
-        }
-        catch (reactor::network::Exception const& e)
-        {
-          // In that case, we encoutered connection problem, nothing is lost!
-          // Let's try again!
-          ELLE_WARN("%s: connection failed, wait before retrying: %s",
-                    *this, e.what());
-          reactor::sleep(1_sec);
-          this->_connect();
-        }
-        catch (elle::Exception const& e)
-        {
-          // If an error occured, the connection to trophonius is broken and
-          // requiere a new data (user_id, token, ...).
-          this->_disconnect();
-
-          ELLE_ERR("%s: failure to connect: %s", *this, e.what());
-          this->_poll_exception = std::make_exception_ptr(e);
-          // Wake up the poll thread to throw this exception.
-          this->_pollable.open();
-          // If the action has been initiated by the user, we can throw him
-          // the exception.
-          if (user_action)
-            throw;
         }
       }
 
