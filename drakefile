@@ -1309,12 +1309,6 @@ def configure(cxx_toolkit = None,
   install << drake.copy(infinit_bin, prefix)
   install << drake.copy(infinit_libs, prefix)
 
-  # Prod
-  prod_scripts = drake.nodes('prod/prod.sh',
-                             'prod/nginx.conf')
-  prod = drake.copy(prod_scripts, './prod', 'prod')
-  oracles << prod
-
   # Tests
   tests_cxx_config = drake.cxx.Config(cxx_config)
   tests_cxx_config.lib_path_runtime('../../../../lib')
