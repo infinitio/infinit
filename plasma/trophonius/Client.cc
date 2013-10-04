@@ -193,6 +193,7 @@ namespace plasma
       int _reconnected;
       std::shared_ptr<reactor::network::TCPSocket> _socket;
       reactor::Barrier _connected;
+      bool _synchronized;
       reactor::Barrier _pollable;
       std::string server;
       uint16_t port;
@@ -213,12 +214,14 @@ namespace plasma
         _reconnected{0},
         _socket(),
         _connected(),
+        _synchronized(false),
+        _pollable(),
         server(server),
         port(port),
         request{},
         response{},
         connect_callback{connect_callback},
-        _poll_exception{nullptr},
+        _poll_exception(),
         _buffer{},
         _ping_period(default_ping_period),
         _ping_timeout(this->_ping_period * 2),
@@ -234,8 +237,6 @@ namespace plasma
                      elle::sprintf("%s read thread", *this),
                      [&] () { this->read_thread(); })
       {
-        ELLE_TRACE_SCOPE("%s: Trophonius impl created", *this);
-
         this->_buffer.capacity(1024);
       }
 
@@ -255,6 +256,7 @@ namespace plasma
                          *this, this->server, this->port);
 
         this->_poll_exception = nullptr;
+        this->_pollable.close();
 
         auto failure = [&] (std::string const& message)
           {
@@ -266,7 +268,7 @@ namespace plasma
             this->_poll_exception = std::make_exception_ptr(
               elle::Exception{
                 elle::sprintf("unable to connect: %s", message)});
-
+            // Wake up the poll thread to throw this exception.
             this->_pollable.open();
             // If the action has been initiated by the user, we can throw him
             // the exception.
@@ -359,6 +361,7 @@ namespace plasma
       _disconnect()
       {
         this->_connected.close();
+        this->_synchronized = false;
         this->_pollable.close();
         while (!this->_notifications.empty())
           this->_notifications.pop();
@@ -368,7 +371,7 @@ namespace plasma
           this->_connect_callback_thread.reset();
         }
         this->_buffer.reset();
-        if (this->_socket != nullptr)
+        if (this->_socket)
         {
           this->_socket->close();
           this->_socket.reset();
@@ -400,6 +403,7 @@ namespace plasma
                 "reconnection callback",
                 [&]
                 {
+                  ELLE_LOG("%s: running reconnection callback", *this);
                   try
                   {
                     this->connect_callback(true);
@@ -414,7 +418,13 @@ namespace plasma
                              *this, elle::exception_string());
                     throw;
                   }
-                  this->_pollable.open();
+                  this->_synchronized = true;
+                  if (!this->_notifications.empty())
+                  {
+                    ELLE_DEBUG("%s: resynchronized, "
+                               "resume handling notifications", *this);
+                    this->_pollable.open();
+                  }
                 }));
             break;
           }
@@ -526,7 +536,6 @@ namespace plasma
       }
 
       std::queue<std::unique_ptr<Notification>> _notifications;
-      reactor::Signal _notifications_available;
       reactor::Thread _read_thread;
       void
       read_thread()
@@ -544,10 +553,9 @@ namespace plasma
           {
             notif = this->read();
           }
-          catch (elle::Exception const&)
+          catch (elle::Exception const& e)
           {
-            ELLE_WARN("%s: error while reading: %s",
-                      *this, elle::exception_string());
+            ELLE_WARN("%s: error while reading: %s", *this, e.what());
             this->_reconnect();
             continue;
           }
@@ -563,7 +571,8 @@ namespace plasma
           else
           {
             this->_notifications.push(std::move(notif));
-            this->_notifications_available.signal();
+            if (this->_synchronized)
+              this->_pollable.open();
           }
         }
       }
@@ -573,17 +582,16 @@ namespace plasma
       {
         this->_pollable.wait();
 
-        if (this->_poll_exception != nullptr)
+        if (this->_poll_exception)
           std::rethrow_exception(this->_poll_exception);
-
-        if (this->_notifications.empty())
-          this->_notifications_available.wait();
 
         ELLE_TRACE("%s new notification", *this);
         ELLE_ASSERT(!this->_notifications.empty());
         std::unique_ptr<Notification> res(
           this->_notifications.front().release());
         this->_notifications.pop();
+        if (this->_notifications.empty())
+          this->_pollable.close();
         return std::move(res);
       }
 
@@ -607,7 +615,6 @@ namespace plasma
       _ping_period(default_ping_period)
     {
       ELLE_ASSERT(connect_callback != nullptr);
-      ELLE_TRACE_SCOPE("%s: created", *this);
     }
 
     void
@@ -643,8 +650,8 @@ namespace plasma
       this->_impl->user_token = token;
       this->_impl->user_device_id = device_id;
       this->_impl->_connect(true);
-      this->_impl->_pollable.open();
       ELLE_LOG("%s: connected to trophonius", *this);
+      this->_impl->_synchronized = true;
       return true;
     }
 
