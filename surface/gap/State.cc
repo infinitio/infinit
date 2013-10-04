@@ -569,7 +569,7 @@ namespace surface
           {
             throw;
           }
-          catch (std::exception const&)
+          catch (elle::Exception const&)
           {
             ELLE_WARN("%s: failed at resynching (%s)... retrying...",
                       *this, elle::exception_string());
