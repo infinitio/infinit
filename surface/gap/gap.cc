@@ -557,6 +557,35 @@ extern "C"
     free(data);
   }
 
+  char const*
+  gap_user_avatar_url(gap_State* state,
+                      uint32_t user_id)
+  {
+    assert(user_id != surface::gap::null_id);
+
+    std::string res = run<std::string>(
+      state,
+      "user avatar url",
+      [&] (surface::gap::State& state) -> std::string
+      {
+        return elle::sprintf(
+          "%s:%s/user/%s/avatar",
+          state.meta().host(),
+          state.meta().port(),
+          state.user(user_id).id);
+      });
+
+    char const* cstr = (char const*) ::malloc(sizeof(char) * res.size() + 1);
+    ::strncpy((char *) cstr, res.c_str(), res.size() + 1);
+    return cstr;
+  }
+
+  void
+  gap_free_user_avatar_url(char const* str)
+  {
+    free((void*) str);
+  }
+
   uint32_t
   gap_user_by_email(gap_State* state,
                     char const* email)

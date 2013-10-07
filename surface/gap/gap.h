@@ -317,6 +317,15 @@ extern "C" {
   void
   gap_user_icon_free(void* data);
 
+  /// Return the uri to the avatar.
+  char const*
+  gap_user_avatar_url(gap_State* state,
+                      uint32_t user_id);
+
+  /// Free the avatar url.
+  void
+  gap_free_user_avatar_url(char const* str);
+
   /// Retrieve user with its email.
   uint32_t
   gap_user_by_email(gap_State* state,
