@@ -390,11 +390,7 @@ namespace surface
               "user.logout",
               {{MKey::session, "end"}});
           }
-          catch (reactor::Terminate const&)
-          {
-            throw;
-          }
-          catch (std::exception const&)
+          catch (elle::Exception const&)
           {
             ELLE_WARN("logout failed, ignore exception: %s",
                       elle::exception_string());
