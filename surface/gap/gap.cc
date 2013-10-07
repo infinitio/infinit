@@ -575,8 +575,9 @@ extern "C"
           state.user(user_id).id);
       });
 
-    char const* cstr = (char const*) ::malloc(sizeof(char) * res.size() + 1);
-    ::strncpy((char *) cstr, res.c_str(), res.size() + 1);
+    auto size = res.size() + 1;
+    char const* cstr = static_cast<char const*>(::malloc(sizeof(char) * size));
+    ::strncpy((char *) cstr, res.c_str(), size);
     return cstr;
   }
 
