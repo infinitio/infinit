@@ -330,8 +330,8 @@ namespace plasma
           {
             // In that case, we encoutered connection problem, nothing is lost!
             // Let's try again!
-            ELLE_WARN("%s: connection failed, wait before retrying: %s",
-                      *this, e.what());
+            ELLE_WARN("%s: connection failed, wait %s before retrying: %s",
+                      *this, reconnection_cooldown, e.what());
 
             reactor::sleep(reconnection_cooldown);
             if (reconnection_cooldown < max_reconnection_cooldown)
