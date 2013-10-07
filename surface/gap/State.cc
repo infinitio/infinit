@@ -216,6 +216,8 @@ namespace surface
       {
         ELLE_WARN("Couldn't logout: %s", elle::exception_string());
       }
+
+      ELLE_TRACE("%s: destroying members", *this);
     }
 
     plasma::meta::Client const&
@@ -362,12 +364,17 @@ namespace surface
     void
     State::logout()
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_TRACE_SCOPE("%s: logout", *this);
 
       this->_cleanup();
 
+      ELLE_DEBUG("%s: cleaned up", *this);
+
       if (!this->logged_in())
+      {
+        ELLE_DEBUG("%s: state was not logged in", *this);
         return;
+      }
 
       elle::SafeFinally logout(
         [&]
@@ -393,31 +400,48 @@ namespace surface
                       elle::exception_string());
             this->_meta.token("");
           }
+          ELLE_TRACE("%s: logged out", *this);
         });
     }
 
     void
     State::_cleanup()
     {
+      ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
+
       elle::SafeFinally clean_containers(
         [&]
         {
-          this->_trophonius.disconnect();
+          ELLE_DEBUG("disconnect trophonius")
+            this->_trophonius.disconnect();
 
-          while (!this->_runners.empty())
-            this->_runners.pop();
+          ELLE_DEBUG("remove pending callbacks")
+            while (!this->_runners.empty())
+              this->_runners.pop();
 
-          this->_user_indexes.clear();
-          this->_swagger_indexes.clear();
+          ELLE_DEBUG("clear users")
+          {
+            this->_user_indexes.clear();
+            this->_swagger_indexes.clear();
+            this->_users.clear();
+          }
 
-          this->_users.clear();
-          this->_transactions_clear();
+          ELLE_DEBUG("clear transactions")
+            this->_transactions_clear();
 
-          this->_device.reset();
-          this->_me.reset();
+          ELLE_DEBUG("clear device (%s)", this->_device.get())
+            this->_device.reset();
 
-          this->_passport.reset();
-          this->_identity.reset();
+          ELLE_DEBUG("clear me (%s)", this->_me.get())
+            this->_me.reset();
+
+          ELLE_DEBUG("clear passport (%s)", this->_passport.get())
+            this->_passport.reset();
+
+          ELLE_DEBUG("clear identity (%s)", this->_identity.get())
+            this->_identity.reset();
+
+          ELLE_TRACE("everything has been cleaned");
         });
 
       /// First step must be to disconnect from trophonius.
@@ -425,6 +449,7 @@ namespace surface
       if (this->_polling_thread != nullptr &&
           reactor::Scheduler::scheduler()->current() != this->_polling_thread.get())
       {
+        ELLE_DEBUG("stop polling");
         this->_polling_thread->terminate_now();
         this->_polling_thread.reset();
       }
