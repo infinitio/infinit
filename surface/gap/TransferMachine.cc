@@ -52,7 +52,7 @@ namespace surface
       _snapshot_path(
         boost::filesystem::path(
           common::infinit::transaction_snapshots_directory(state.me().id) /
-          boost::filesystem::unique_path()).native()),
+          boost::filesystem::unique_path()).string()),
       _id(id),
       _machine(),
       _machine_thread(),
@@ -305,7 +305,7 @@ namespace surface
     void
     TransferMachine::_save_snapshot() const
     {
-      elle::serialize::to_file(this->_snapshot_path.native()) << this->_make_snapshot();
+      elle::serialize::to_file(this->_snapshot_path.string()) << this->_make_snapshot();
     }
 
     void
