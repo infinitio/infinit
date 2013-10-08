@@ -28,6 +28,7 @@ class Meta:
       try:
         app = infinit.oracles.meta.Meta(
           mongo_port = self.__mongo.port)
+        app.catchall = False
         bottle.run(app = app,
                    quiet = True,
                    server = self.__server)
