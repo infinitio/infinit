@@ -1,13 +1,18 @@
-from .utils import expect_json
-
 import bottle
 import pymongo
+import sys
+
+from .plugins.failure import Plugin as FailurePlugin
+from .utils import expect_json
 
 class Meta(bottle.Bottle):
 
+  def fail(self, *args, **kwargs):
+    FailurePlugin.fail(*args, **kwargs)
 
   def __init__(self, mongo_host = None, mongo_port = None):
     super().__init__()
+    self.install(plugins.failure.Plugin())
     self.ignore_trailing_slash = True
     db_args = {}
     if mongo_host is not None:
@@ -29,27 +34,16 @@ class Meta(bottle.Bottle):
   def status(self):
     return {}
 
-  def error(self, error_code, msg = None, **kw):
-    assert isinstance(error_code, tuple)
-    assert len(error_code) == 2
-    if msg is None:
-      msg = error_code[1]
-    res = {
-      'success': False,
-      'error_code': error_code[0],
-      'error_details': msg,
-      }
-    res.update(kw)
-
   ## -------- ##
   ## Sessions ##
   ## -------- ##
 
   @expect_json(explode_keys = ['email', 'password'])
   def authenticate(self, email, password, optionals):
+    print('LOL')
     user = self.__database.users.find_one({"email": email, "password": password})
     if user is None:
-      return self.error(error_code = (30, ""), msg = "lol")
+      self.fail(error_code = (30, ""), message = "lol")
     # Store session.
     return user
 

@@ -24,7 +24,10 @@ def configure(prefix = drake.Path('/usr/local'),
 
   rule_check = drake.Rule('check')
 
-  for name in ('status',):
+  for name in (
+      'login-failure',
+      'status',
+  ):
     test = drake.node('tests/%s' % name)
     runner = drake.Runner(test)
     rule_check << runner.status
