@@ -32,5 +32,7 @@ def configure(prefix = drake.Path('/usr/local'),
       'status',
   ):
     test = drake.node('tests/%s' % name)
+    for source in sources:
+      test.dependency_add(source)
     runner = drake.Runner(test)
     rule_check << runner.status
