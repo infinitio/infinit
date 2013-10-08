@@ -57,6 +57,10 @@ class Meta:
     status = resp['status']
     if status != '200':
       raise Exception('status %s on /%s with body %s' % (status, url, body))
+    if resp['content-type'] == 'application/json':
+      return json.loads(content.decode())
+    else:
+      return content
 
   def get(self, url):
     h = httplib2.Http()
