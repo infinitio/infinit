@@ -1,12 +1,3 @@
-#include <elle/attribute.hh>
-#include <elle/cast.hh>
-#include <elle/container/map.hh>
-#include <elle/container/vector.hh>
-#include <elle/memory.hh>
-#include <elle/Measure.hh>
-#include <elle/utility/Move.hh>
-
-#include <cryptography/random.hh>
 
 #include <reactor/network/tcp-server.hh>
 #include <reactor/network/udp-socket.hh>
@@ -17,6 +8,16 @@
 #include <hole/implementations/slug/Slug.hh>
 
 #include <nucleus/proton/Block.hh>
+
+#include <cryptography/random.hh>
+
+#include <elle/attribute.hh>
+#include <elle/cast.hh>
+#include <elle/container/map.hh>
+#include <elle/container/vector.hh>
+#include <elle/memory.hh>
+#include <elle/Measure.hh>
+#include <elle/utility/Move.hh>
 
 ELLE_LOG_COMPONENT("infinit.hole.slug.Slug");
 
