@@ -1272,14 +1272,14 @@ extern "C"
       if (boost::filesystem::exists(user_file_path))
       {
         args.push_back("-C");
-        args.push_back(user_file_path.parent_path().native());
-        args.push_back(user_file_path.filename().native());
+        args.push_back(user_file_path.parent_path().string());
+        args.push_back(user_file_path.filename().string());
       }
       if (boost::filesystem::exists(infinit_home_path))
       {
         args.push_back("-C");
-        args.push_back(infinit_home_path.parent_path().native());
-        args.push_back(infinit_home_path.filename().native());
+        args.push_back(infinit_home_path.parent_path().string());
+        args.push_back(infinit_home_path.filename().string());
       }
 
       std::string b64 = "";
@@ -1337,14 +1337,14 @@ extern "C"
       if (boost::filesystem::exists(crash_report_path))
       {
         args.push_back("-C");
-        args.push_back(crash_report_path.parent_path().native());
-        args.push_back(crash_report_path.filename().native());
+        args.push_back(crash_report_path.parent_path().string());
+        args.push_back(crash_report_path.filename().string());
       }
       if (boost::filesystem::exists(state_log_path))
       {
         args.push_back("-C");
-        args.push_back(state_log_path.parent_path().native());
-        args.push_back(state_log_path.filename().native());
+        args.push_back(state_log_path.parent_path().string());
+        args.push_back(state_log_path.filename().string());
       }
 
       if (args.size() > 3)
