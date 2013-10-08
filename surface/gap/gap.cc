@@ -11,7 +11,9 @@
 #include <elle/elle.hh>
 #include <elle/finally.hh>
 #include <elle/HttpClient.hh>
-#include <elle/system/Process.hh>
+#ifndef INFINIT_WINDOWS
+# include <elle/system/Process.hh>
+#endif
 #include <elle/container/list.hh>
 #include <CrashReporter.hh>
 
@@ -1258,6 +1260,7 @@ extern "C"
                        char const* _file,
                        char const* _os_description)
   {
+#ifndef INFINIT_WINDOWS
     try
     {
       boost::filesystem::path user_file_path(_file);
@@ -1312,6 +1315,7 @@ extern "C"
       ELLE_WARN("cannot send user report: %s", elle::exception_string());
       return gap_api_error;
     }
+#endif
     return gap_ok;
   }
 
@@ -1323,6 +1327,7 @@ extern "C"
                            char const* _os_description,
                            char const* _additional_info)
   {
+#ifndef INFINIT_WINDOWS
     try
     {
       boost::filesystem::path crash_report_path(_crash_report);
@@ -1375,6 +1380,7 @@ extern "C"
       ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
       return gap_api_error;
     }
+#endif
     return gap_ok;
   }
 
@@ -1382,6 +1388,7 @@ extern "C"
   gap_gather_crash_reports(char const* _user_id,
                            char const* _network_id)
   {
+#ifndef INFINIT_WINDOWS
     try
     {
       namespace fs = boost::filesystem;
@@ -1448,6 +1455,7 @@ extern "C"
       ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
       return gap_error;
     }
+#endif
     return gap_ok;
   }
 
