@@ -136,6 +136,7 @@ namespace metrics
       rc.option(CURLOPT_DEBUGFUNCTION, &Service::_curl_debug_callback);
       rc.option(CURLOPT_DEBUGDATA, this);
       rc.option(CURLOPT_TIMEOUT, 15);
+      rc.user_agent(metrics::Reporter::user_agent);
       rc.headers({
         {"Content-Type", "application/json"}
       });
