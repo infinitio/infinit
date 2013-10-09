@@ -46,6 +46,7 @@ def configure(prefix = drake.Path('/usr/local'),
       'status',
       'register',
       'register_ghost',
+      'routes',
   ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
