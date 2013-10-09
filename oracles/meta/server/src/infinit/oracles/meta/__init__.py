@@ -9,7 +9,7 @@ from .plugins.session import Plugin as SessionPlugin
 
 from . import error
 
-from .utils import expect_json
+from .utils import expect_json, hash_pasword, stringify_object_ids
 
 from . import user
 from . import notifier
@@ -68,8 +68,9 @@ class Meta(bottle.Bottle, user.Mixin):
     FailurePlugin.fail(*args, **kwargs)
 
   def success(self, res = {}):
+    assert isinstance(res, dict)
     res['success'] = True
-    return res
+    return stringify_object_ids(res)
 
   @property
   def database(self):
