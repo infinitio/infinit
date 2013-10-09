@@ -2,7 +2,7 @@
 
 from bson import ObjectId
 
-from .utils import expect_json
+from .utils import expect_json, require_logged_in
 from . import error, notifier, regexp, invitation, conf
 
 
@@ -396,8 +396,8 @@ class Mixin:
           recipient_ids = [peer,],
         )
 
+  @require_logged_in
   def swaggers(self):
-    self.requireLoggedIn()
     return self.success({"swaggers" : self.user["swaggers"].keys()})
 
   @expect_json(explode_keys = ['admin_token', 'user1', 'user2'])
@@ -421,13 +421,13 @@ class Mixin:
     )
     return {"swag": "up"}
 
+  @require_logged_in
   @expect_json(explode_keys = ['_id'])
   def remove_swagger(self, _id):
     """Remove a user from swaggers.
 
     _id -- the id of the user to remove.
     """
-    self.requireLoggedIn()
     swagez = self.database.users.find_and_modify(
       {"_id": ObjectId(self.user["_id"])},
       {"$pull": {"swaggers": self.data["_id"]}},
@@ -444,7 +444,6 @@ class Mixin:
                if logged in source is the user)
     """
     if user_id is None:
-      self.requireLoggedIn()
       user_id = self.user['_id']
     else:
       assert isinstance(user_id, ObjectId)
@@ -463,13 +462,13 @@ class Mixin:
   ## Favortites ##
   ## ---------- ##
 
+  @require_logged_in
   @expect_json(explode_keys = ['user_id'])
   def favorite(self):
     """Add a user to favorites
 
     user_id -- the id of the user to add.
     """
-    self.requireLoggedIn()
     favorite = ObjectId(user_id)
     lst = self.user.setdefault('favorites', [])
     if not favorite in lst:
@@ -477,13 +476,13 @@ class Mixin:
       self.database.users.save(self.user)
     return self.success()
 
+  @require_logged_in
   @expect_json(explode_keys = ['user_id'])
   def unfavorite(self):
     """remove a user to favorites
 
     user_id -- the id of the user to add.
     """
-    self.requireLoggedIn()
     favorite = ObjectId(user_id)
     lst = self.user.setdefault('favorites', [])
     if favorite in lst:
@@ -495,6 +494,7 @@ class Mixin:
   ## Edit ##
   ## ---- ##
 
+  @require_logged_in
   @expect_json(explode_keys = ['fullname', 'handle'])
   def edit(self, fullname, handle):
     """ Edit fullname and handle.
@@ -502,7 +502,6 @@ class Mixin:
     fullname -- the new user fullname.
     hadnle -- the new user handle.
     """
-    self.requireLoggedIn()
     handle = handle.strip()
     # Clean the forbiden char from asked handle.
     handle = self.__generate_handle(handle, enlarge = False)
@@ -558,7 +557,8 @@ class Mixin:
         database = self.database
       )
     else:
-      self.requireLoggedIn()
+      if self.user is None:
+        self.fail(error.NOT_LOGGED_IN)
       email = self.data['email'].strip()
       if regexp.EmailValidator(email) != 0:
         return self.fail(error.EMAIL_NOT_VALID)
@@ -571,10 +571,10 @@ class Mixin:
       )
     return self.success()
 
+  @require_logged_in
   def invited(self):
     """Return the list of users invited.
     """
-    self.requireLoggedIn()
     return {'user': self.database.invitations.find(
         {
           'source': self.user['email'],
@@ -582,10 +582,10 @@ class Mixin:
         fields = ['email']
     )}
 
+  @require_logged_in
   def self(self):
     """Return self data.
     """
-    self.requireLoggedIn()
     return self.success({
       '_id': self.user['_id'],
       'fullname': self.user['fullname'],
@@ -604,20 +604,20 @@ class Mixin:
       'created_at': self.user.get('created_at', 0),
     })
 
+  @require_logged_in
   def minimum_self(self):
     """Return minimum self data.
     """
-    self.requireLoggedIn() # scary
     return self.success(
       {
         'email': self.user['email'],
         'identity': self.user['identity'],
       })
 
+  @require_logged_in
   def invitations(self):
     """Return the number of invitations remainings.
     """
-    self.requireLoggedIn()
     return self.success(
       {
         'remaining_invitations': self.user.get('remaining_invitations', 0),
@@ -633,8 +633,8 @@ class Mixin:
       with open(os.path.join(os.path.dirname(__file__), "place_holder_avatar.png"), 'rb') as f:
         return f.read(4096)
 
+  @require_logged_in
   def set_avatar(self, id):
-    self.requireLoggedIn()
     from bottle import request
     try:
       print(request.files)
@@ -782,6 +782,7 @@ class Mixin:
   ## ----- ##
   ## Debug ##
   ## ----- ##
+  @require_logged_in
   @expect_json(explode_keys = ['sender_id', 'recipient_id', 'message'])
   def message(self, sender_id, recipient_id, message):
     """Send a message to recipient as sender.
@@ -790,8 +791,6 @@ class Mixin:
     recipient_id -- the id of the recipient.
     message -- the message to be sent.
     """
-
-    self.requireLoggedIn()
     self.notifier.notify_some(
       notifier.MESSAGE,
       recipient_ids = [ObjectId(self.data["recipient_id"]),],

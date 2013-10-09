@@ -1,4 +1,5 @@
 import bottle
+from . import error
 
 class expect_json:
 
@@ -30,3 +31,10 @@ class expect_json:
       else:
         return method(_self, *args, **exploded)
     return decorator_wrapper
+
+def require_logged_in(method):
+  def wrapper(self, *a, **ka):
+    if self.user is None:
+      self.fail(error.NOT_LOGGED_IN)
+    return method(self, *a, **ka)
+  return wrapper
