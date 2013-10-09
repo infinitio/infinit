@@ -92,7 +92,7 @@ class Meta(bottle.Bottle, user.Mixin):
     email = email.lower()
     user = self.__database.users.find_one({
       'email': email,
-      'password': password
+      'password': hash_pasword(password),
     })
     if user is None:
       self.fail(error.EMAIL_PASSWORD_DONT_MATCH)

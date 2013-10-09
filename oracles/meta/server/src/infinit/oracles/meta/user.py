@@ -2,7 +2,7 @@
 
 from bson import ObjectId
 
-from .utils import expect_json, require_logged_in
+from .utils import expect_json, require_logged_in, hash_pasword
 from . import error, notifier, regexp, invitation, conf
 
 
@@ -115,12 +115,6 @@ class Mixin:
     user = self.database.users.save(kwargs)
     return user
 
-  def __hash_pasword(self, password):
-    import hashlib
-    seasoned = password + conf.SALT
-    seasoned = seasoned.encode('utf-8')
-    return hashlib.md5(seasoned).hexdigest()
-
   @expect_json(explode_keys = ['email', 'password', 'fullname', 'activation_code'])
   def register(self, email, password, fullname, activation_code):
     """Register a new user.
@@ -201,7 +195,7 @@ class Mixin:
       register_status = 'ok',
       email = email,
       fullname = fullname,
-      password = self.__hash_pasword(password),
+      password = hash_pasword(password),
       identity = identity,
       public_key = public_key,
       handle = handle,

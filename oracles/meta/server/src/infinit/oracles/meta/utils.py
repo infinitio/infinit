@@ -42,6 +42,12 @@ def require_logged_in(method):
     return method(self, *a, **ka)
   return wrapper
 
+def hash_pasword(password):
+  import hashlib
+  seasoned = password + conf.SALT
+  seasoned = seasoned.encode('utf-8')
+  return hashlib.md5(seasoned).hexdigest()
+
 # There is probably a better way.
 def stringify_object_ids(obj):
   if isinstance(obj, ObjectId):
