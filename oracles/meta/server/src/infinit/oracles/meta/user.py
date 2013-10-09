@@ -624,7 +624,7 @@ class Mixin:
       })
 
   def get_avatar(self, id):
-    user = self._user_by_id(ObjectId(_id), ensure_existence = False)
+    user = self._user_by_id(ObjectId(id), ensure_existence = False)
     image = user and user.get('avatar')
     if image:
       return str(image)

@@ -46,7 +46,7 @@ class Meta(bottle.Bottle, user.Mixin):
     self.get('/user/<id_or_email>/view')(self.view)
     self.post('/user/from_public_key')(self.view_from_publick_key)
     self.get('/user/swaggers')(self.swaggers)
-    self.post('/user/remove_swagger')(self.add_swagger)
+    self.post('/user/remove_swagger')(self.remove_swagger)
     self.post('/user/favorite')(self.favorite)
     self.post('/user/unfavorite')(self.unfavorite)
     self.post('/user/edit')(self.edit)
@@ -55,8 +55,8 @@ class Meta(bottle.Bottle, user.Mixin):
     self.get('/self')(self.self)
     self.get('/minimumself')(self.minimum_self)
     self.get('/user/remaining_invitations')(self.invitations)
-    self.get('/user/<_id>/avatar')(self.get_avatar)
-    self.post('/user/<_id>/avatar')(self.set_avatar)
+    self.get('/user/<id>/avatar')(self.get_avatar)
+    self.post('/user/<id>/avatar')(self.set_avatar)
     self.post('/debug')(self.message)
     self.post('/user/add_swagger')(self.add_swagger)
     self.post('/user/connect')(self.connect)
@@ -94,7 +94,7 @@ class Meta(bottle.Bottle, user.Mixin):
       'password': password
     })
     if user is None:
-      self.fail(error_code = (30, ''), message = 'lol')
+      self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
     # Remove potential leaked previous session.
     self.__sessions.remove({'email': email, 'device': device})
     bottle.request.session['device'] = device
