@@ -587,8 +587,8 @@ class Mixin:
       'email': self.user['email'],
       'devices': self.user.get('devices', []),
       'networks': self.user.get('networks', []),
-      'identity': self.user['identity'],
-      'public_key': self.user['public_key'],
+      'identity': self.user['identity'] or 'PLS FIXXXXXXXX ME',
+      'public_key': self.user['public_key'] or 'PLS FIXXXXXXXX ME',
       'accounts': self.user['accounts'],
       'remaining_invitations': self.user.get('remaining_invitations', 0),
       'connected_devices': self.user.get('connected_devices', []),
@@ -605,7 +605,7 @@ class Mixin:
     return self.success(
       {
         'email': self.user['email'],
-        'identity': self.user['identity'],
+        'identity': self.user['identity'] or 'PLS FIXXXXXXXX ME',
       })
 
   @require_logged_in
