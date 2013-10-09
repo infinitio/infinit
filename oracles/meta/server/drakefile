@@ -25,6 +25,7 @@ def configure(prefix = drake.Path('/usr/local'),
     'src/infinit/oracles/meta/notification_type.hh.inc',
     'src/infinit/oracles/meta/notifier.py',
     'src/infinit/oracles/meta/regexp.py',
+    'src/infinit/oracles/meta/user.py',
     'src/infinit/oracles/meta/utils.py',
     'src/infinit/oracles/meta/wsgi.py',
   )
