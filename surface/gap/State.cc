@@ -133,6 +133,7 @@ namespace surface
       _reporter{common::metrics::fallback_path()},
       _google_reporter{common::metrics::google_fallback_path()},
       _infinit_transaction_reporter{common::metrics::infinit_metrics_fallback_path()},
+      _infinit_user_reporter{common::metrics::infinit_metrics_fallback_path()},
       _mixpanel_reporter{common::metrics::mixpanel_fallback_path()},
       _me{nullptr},
       _output_dir{common::system::download_directory()},
@@ -144,6 +145,7 @@ namespace surface
       this->_reporter.start();
       this->_google_reporter.start();
       this->_infinit_transaction_reporter.start();
+      this->_infinit_user_reporter.start();
       this->_mixpanel_reporter.start();
 
       std::string token_path = elle::os::getenv("INFINIT_TOKEN_FILE", "");
@@ -197,6 +199,11 @@ namespace surface
         this->_infinit_transaction_reporter.add_service_class<IMTransaction>(
           common::metrics::infinit_metrics_info(metrics::Kind::transaction),
           metrics::Kind::transaction);
+
+        typedef MetricKindService<metrics::Kind::user, Infinit> IMUser;
+        this->_infinit_user_reporter.add_service_class<IMUser>(
+          common::metrics::infinit_metrics_info(metrics::Kind::user),
+          metrics::Kind::user);
 
         typedef MetricKindService<metrics::Kind::transaction, Mixpanel> MPTransaction;
         this->_mixpanel_reporter.add_service_class<MPTransaction>(
