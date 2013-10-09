@@ -9,7 +9,7 @@ from .plugins.session import Plugin as SessionPlugin
 
 from . import error
 
-from .utils import expect_json, hash_pasword, stringify_object_ids
+from .utils import expect_json, hash_pasword, stringify_object_ids, require_logged_in
 
 from . import user
 from . import notifier
@@ -37,11 +37,8 @@ class Meta(bottle.Bottle, user.Mixin):
     # Routing
     self.get('/status')(self.status)
     self.get('/self')(self.self)
-    self.get('/user/self')(self.self)
-    self.post('/login')(self.login)
     self.post('/user/login')(self.login)
-    self.post('/logout')(self.logout)
-    self.get('/user/logout')(self.logout)
+    self.post('/user/logout')(self.logout)
     self.post('/user/register')(self.register)
     self.post('/user/search')(self.search)
     self.get('/user/<id_or_email>/view')(self.view)
@@ -109,6 +106,7 @@ class Meta(bottle.Bottle, user.Mixin):
         'identity': self.user['identity'],
       })
 
+  @require_logged_in
   def logout(self):
     if 'user' in bottle.request.session:
       del bottle.request.session['device']
