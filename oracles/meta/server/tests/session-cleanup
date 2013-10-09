@@ -13,7 +13,7 @@ with Meta() as meta:
   # Login a client.
   client = Client(meta)
   assert meta.database.sessions.count() == 0
-  res = client.post('login', user)
+  res = client.post('user/login', user)
   assert res['success']
   res = client.get('self')
   assert res['success']
@@ -21,20 +21,20 @@ with Meta() as meta:
 
   # Login another client and check the previosu session is dropped.
   client = Client(meta)
-  res = client.post('login', user)
+  res = client.post('user/login', user)
   assert res['success']
   res = client.get('self')
   assert res['success']
   assert meta.database.sessions.count() == 1
 
   # Login again and check the session wasn't dropped.
-  res = client.post('login', user)
+  res = client.post('user/login', user)
   assert res['success']
   res = client.get('self')
   assert res['success']
   assert meta.database.sessions.count() == 1
 
   # Logout and check the session is dropped.
-  res = client.post('logout')
+  res = client.post('user/logout')
   assert res['success']
   assert meta.database.sessions.count() == 0

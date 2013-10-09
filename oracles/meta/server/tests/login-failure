@@ -3,9 +3,8 @@
 from utils import Meta
 from infinit.oracles.meta import error
 
-
 with Meta() as meta:
-  res = meta.post('login',
+  res = meta.post('user/login',
                   {
                     'email': 'foo@bar.baz',
                     'device': 'android',
