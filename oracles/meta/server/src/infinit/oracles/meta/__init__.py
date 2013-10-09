@@ -37,6 +37,7 @@ class Meta(bottle.Bottle, user.Mixin):
     # Routing
     self.get('/status')(self.status)
     self.get('/self')(self.self)
+    self.get('/user/self')(self.self)
     self.post('/login')(self.login)
     self.post('/user/login')(self.login)
     self.post('/logout')(self.logout)
@@ -52,8 +53,7 @@ class Meta(bottle.Bottle, user.Mixin):
     self.post('/user/edit')(self.edit)
     self.post('/user/invite')(self.invite)
     self.get('/user/invited')(self.invited)
-    self.get('/self')(self.self)
-    self.get('/minimumself')(self.minimum_self)
+    self.get('/user/minimumself')(self.minimum_self)
     self.get('/user/remaining_invitations')(self.invitations)
     self.get('/user/<id>/avatar')(self.get_avatar)
     self.post('/user/<id>/avatar')(self.set_avatar)
@@ -117,13 +117,6 @@ class Meta(bottle.Bottle, user.Mixin):
       return self.success()
     else:
       return self.fail(error.NOT_LOGGED_IN)
-
-  def self(self):
-    user = self.user
-    if user is not None:
-      return self.succes({'user': user})
-    else:
-      self.fail(error.NOT_LOGGED_IN)
 
   @property
   def user(self):
