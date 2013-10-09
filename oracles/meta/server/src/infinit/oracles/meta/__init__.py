@@ -1,10 +1,14 @@
+#!/usr/bin/python3
+
 import bottle
 import pymongo
-import sys
 
 from .plugins.jsongo import Plugin as JsongoPlugin
 from .plugins.failure import Plugin as FailurePlugin
 from .plugins.session import Plugin as SessionPlugin
+
+from . import error
+
 from .utils import expect_json
 
 class Meta(bottle.Bottle):
@@ -34,6 +38,10 @@ class Meta(bottle.Bottle):
   def fail(self, *args, **kwargs):
     FailurePlugin.fail(*args, **kwargs)
 
+  def success(self, res = {}):
+    res['success'] = True
+    return res
+
   @property
   def database(self):
     assert self.__database is not None
@@ -43,14 +51,15 @@ class Meta(bottle.Bottle):
     bottle.abort(500, message)
 
   def status(self):
-    return {}
+    return self.success()
 
   ## -------- ##
   ## Sessions ##
   ## -------- ##
 
   @expect_json(explode_keys = ['email', 'device', 'password'])
-  def login(self, email, device, password, optionals):
+  def login(self, email, device, password):
+    email = email.lower()
     user = self.__database.users.find_one({
       'email': email,
       'password': password
@@ -62,23 +71,29 @@ class Meta(bottle.Bottle):
     bottle.request.session['device'] = device
     bottle.request.session['email'] = email
     bottle.request.session['user'] = user
-    return {'success': True, 'user': user}
+    return self.success({
+        '_id' : self.user['_id'],
+        'fullname': self.user['fullname'],
+        'email': self.user['email'],
+        'handle': self.user['handle'],
+        'identity': self.user['identity'],
+      })
 
   def logout(self):
     if 'user' in bottle.request.session:
       del bottle.request.session['device']
       del bottle.request.session['email']
       del bottle.request.session['user']
-      return {'success': True}
+      return self.success()
     else:
-      return {'success': False}
+      return self.fail(error.NOT_LOGGED_IN)
 
   def self(self):
     user = self.user
     if user is not None:
-      return {'success': True, 'user': user}
+      return self.succes({'user': user})
     else:
-      self.fail((30, ''), message = 'not logged in')
+      self.fail(error.NOT_LOGGED_IN)
 
   @property
   def user(self):
