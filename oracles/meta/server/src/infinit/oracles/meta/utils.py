@@ -29,7 +29,6 @@ class expect_json:
       if self.has_optionals:
         # Probably optimisable.
         optionals = {key: json[key] for key in json.keys() - self.explode_keys}
-        print(args, optionals, exploded)
         return method(_self, *args, optionals = optionals, **exploded)
       else:
         return method(_self, *args, **exploded)
@@ -38,7 +37,7 @@ class expect_json:
 def require_logged_in(method):
   def wrapper(self, *a, **ka):
     if self.user is None:
-      self.fail(error.NOT_LOGGED_IN)
+      bottle.abort(403)
     return method(self, *a, **ka)
   return wrapper
 
