@@ -4,7 +4,7 @@ from utils import Meta
 
 
 with Meta() as meta:
-  res = meta.post('authenticate',
+  res = meta.post('login',
                   {
                     'email': 'foo@bar.baz',
                     'password': 'thereisnospoon',
