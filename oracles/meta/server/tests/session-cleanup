@@ -3,10 +3,10 @@
 from utils import Meta, Client
 
 with Meta() as meta:
-  meta.create_user('foo@bar.baz', 'thereisnospoon')
+  password = meta.create_user('foo@bar.baz')
   user = {
     'email': 'foo@bar.baz',
-    'password': 'thereisnospoon',
+    'password': password,
     'device': 'android',
   }
 

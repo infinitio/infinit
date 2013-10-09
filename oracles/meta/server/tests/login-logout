@@ -12,10 +12,7 @@ with Meta() as meta:
                   })
   assert res['success']
   assert res['email'] == 'foo@bar.baz'
-  print('=' * 10)
   res = meta.get('self')
-  print(res)
-  print('=' * 10)
   assert res['success']
   assert res['email'] == 'foo@bar.baz'
   res = meta.post('logout')

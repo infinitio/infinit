@@ -46,8 +46,8 @@ class Client:
   def __convert_result(self, url, body, headers, content):
     status = headers['status']
     if status != '200':
-      raise Meta.Exception(status, 'status %s on /%s with body %s' %
-                           (status, url, body))
+      raise Client.Exception(status, 'status %s on /%s with body %s' %
+                             (status, url, body))
     if headers['content-type'] == 'application/json':
       return json.loads(content.decode())
     else:
