@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from utils import Meta, Client
+from utils import Meta, HTTPException
 
 def throws(f, status):
   assert isinstance(status, int)
   try:
     f()
     assert status == 200
-  except Client.Exception as e:
+  except HTTPException as e:
     if status != 200:
       assert isinstance(e.status, int)
       assert e.status == status

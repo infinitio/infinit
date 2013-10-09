@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from utils import Meta
+from utils import Meta, HTTPException
 
 with Meta() as meta:
   password = meta.create_user('foo@bar.baz')
-  res = meta.post('login',
+  res = meta.post('user/login',
                   {
                     'device': 'android',
                     'email': 'foo@bar.baz',
@@ -15,7 +15,9 @@ with Meta() as meta:
   res = meta.get('self')
   assert res['success']
   assert res['email'] == 'foo@bar.baz'
-  res = meta.post('logout')
+  res = meta.post('user/logout')
   assert res['success']
-  res = meta.get('self')
-  assert not res['success']
+  try:
+    res = meta.get('self')
+  except HTTPException as e:
+    assert e.status == 403

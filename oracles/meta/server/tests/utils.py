@@ -16,13 +16,13 @@ import mongobox
 import bottle
 import infinit.oracles.meta
 
+class HTTPException(Exception):
+
+  def __init__(self, status, url, body):
+    self.status = int(status)
+    super().__init__('status %s on /%s with body %s' % (status, url, body))
+
 class Client:
-
-  class Exception(Exception):
-
-    def __init__(self, status, message):
-      self.status = int(status)
-      super().__init__(message)
 
   def __init__(self, meta):
     self.__mongo = mongobox.MongoBox()
@@ -46,8 +46,7 @@ class Client:
   def __convert_result(self, url, body, headers, content):
     status = headers['status']
     if status != '200':
-      raise Client.Exception(status, 'status %s on /%s with body %s' %
-                             (status, url, body))
+      raise HTTPException(status, url, body)
     if headers['content-type'] == 'application/json':
       return json.loads(content.decode())
     else:
@@ -121,8 +120,9 @@ class Meta:
   def get(self, url):
     return self.client.get(url)
 
-  def create_user(self, email):
-    password = '0' * 64
+  def create_user(self, email, password = None):
+    if password is None:
+      password = '0' * 64
     res = self.post('user/register',
                     {
                       'email': email,
