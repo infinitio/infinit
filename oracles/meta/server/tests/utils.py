@@ -18,7 +18,16 @@ import infinit.oracles.meta
 
 class Client:
 
+  class Exception(Exception):
+
+    def __init__(self, status, message):
+      self.status = int(status)
+      super().__init__(message)
+
   def __init__(self, meta):
+    self.__mongo = mongobox.MongoBox()
+    self.__server = bottle.WSGIRefServer(port = 0)
+    self.__database = None
     self.__cookies = None
     self.__meta = meta
 
@@ -34,8 +43,8 @@ class Client:
   def __convert_result(self, url, body, headers, content):
     status = headers['status']
     if status != '200':
-      raise Exception('status %s on /%s with body %s' %
-                      (status, url, body))
+      raise Meta.Exception(status, 'status %s on /%s with body %s' %
+                           (status, url, body))
     if headers['content-type'] == 'application/json':
       return json.loads(content.decode())
     else:
