@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+
+from utils import Meta
+
+
+with Meta() as meta:
+  meta.create_user('foo@bar.baz', 'thereisnospoon')
+  res = meta.post('login',
+                  {
+                    'email': 'foo@bar.baz',
+                    'password': 'thereisnospoon',
+                  })
+  assert res['success']
+  assert res['user']['email'] == 'foo@bar.baz'
