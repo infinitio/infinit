@@ -28,22 +28,3 @@ class expect_json:
       optionals = {key: json[key] for key in json.keys() - self.explode_keys}
       return method(*args, optionals = optionals, **exploded)
     return decorator_wrapper
-
-# There is probably a better way.
-def stringify_object_ids(obj):
-  if isinstance(obj, ObjectId):
-    return str(obj)
-  if hasattr(obj, '__iter__'):
-    if isinstance(obj, list):
-      return [stringify_object_ids(sub) for sub in obj]
-    elif isinstance(obj, pymongo.cursor.Cursor):
-      return [stringify_object_ids(sub) for sub in obj]
-    elif isinstance(obj, dict):
-      return {key: stringify_object_ids(obj[key]) for key in obj.keys()}
-    elif isinstance(obj, set):
-      return (stringify_object_ids(sub) for sub in obj)
-    elif isinstance(obj, str):
-      return obj
-    else:
-      raise TypeError("unsported type %s" % type(obj))
-  return obj

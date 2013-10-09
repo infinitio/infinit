@@ -2,6 +2,7 @@ import bottle
 import pymongo
 import sys
 
+from .plugins.jsongo import Plugin as JsongoPlugin
 from .plugins.failure import Plugin as FailurePlugin
 from .utils import expect_json
 
@@ -12,7 +13,9 @@ class Meta(bottle.Bottle):
 
   def __init__(self, mongo_host = None, mongo_port = None):
     super().__init__()
-    self.install(plugins.failure.Plugin())
+    # Plugins
+    self.install(FailurePlugin())
+    self.install(JsongoPlugin())
     self.ignore_trailing_slash = True
     db_args = {}
     if mongo_host is not None:
