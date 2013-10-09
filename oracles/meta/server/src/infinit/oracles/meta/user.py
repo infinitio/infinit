@@ -407,7 +407,6 @@ class Mixin:
     if admin_token != pythia.constants.ADMIN_TOKEN:
       return self.fail(error.UNKNOWN, "You're not admin")
 
-    print(user1, user2)
     self._increase_swag(
       ObjectId(user1),
       ObjectId(user2),
