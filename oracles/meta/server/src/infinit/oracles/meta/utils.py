@@ -1,10 +1,5 @@
 import bottle
 
-def load_shared_header(path, matcher, repacer, func):
-  file = open(filepath, 'r')
-  for line in file:
-    eval(matcher.sub(replacer, line))
-
 class expect_json:
   def __init__(self, expect_keys = [], explode_keys = []):
     assert isinstance(expect_keys, (list, set))
