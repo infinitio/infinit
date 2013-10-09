@@ -20,7 +20,8 @@ class Meta(bottle.Bottle):
     self.__database = pymongo.MongoClient(**db_args).meta
     # Plugins
     self.install(FailurePlugin())
-    self.install(SessionPlugin(self.__database, 'sessions'))
+    self.__sessions = SessionPlugin(self.__database, 'sessions')
+    self.install(self.__sessions)
     self.install(JsongoPlugin())
     # Configuration
     self.ignore_trailing_slash = True
@@ -48,19 +49,25 @@ class Meta(bottle.Bottle):
   ## Sessions ##
   ## -------- ##
 
-  @expect_json(explode_keys = ['email', 'password'])
-  def login(self, email, password, optionals):
+  @expect_json(explode_keys = ['email', 'device', 'password'])
+  def login(self, email, device, password, optionals):
     user = self.__database.users.find_one({
       'email': email,
       'password': password
     })
     if user is None:
       self.fail(error_code = (30, ''), message = 'lol')
+    # Remove potential leaked previous session.
+    self.__sessions.remove({'email': email, 'device': device})
+    bottle.request.session['device'] = device
+    bottle.request.session['email'] = email
     bottle.request.session['user'] = user
     return {'success': True, 'user': user}
 
   def logout(self):
     if 'user' in bottle.request.session:
+      del bottle.request.session['device']
+      del bottle.request.session['email']
       del bottle.request.session['user']
       return {'success': True}
     else:

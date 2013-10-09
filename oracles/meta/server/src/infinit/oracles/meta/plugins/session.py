@@ -14,11 +14,19 @@ class Plugin(object):
     self.__database = database
     self.__collection = collection
 
+  def remove(self, query):
+    assert len(query)
+    sid = bottle.request.session_id
+    if sid is not None:
+      query.update({'_id': {'$ne': sid}})
+    self.__database.sessions.remove(query)
+
   def apply(self, callback, route):
     def wrapper(*args, **kwargs):
       collection = self.__database[self.__collection]
       sid = bottle.request.get_cookie(Plugin.key,
                                       secret = Plugin.secret)
+      bottle.request.session_id = sid
       if sid is not None:
         bottle.request.session = collection.find_one({'_id': sid})
         del bottle.request.session['_id']

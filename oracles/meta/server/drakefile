@@ -15,6 +15,8 @@ def configure(prefix = drake.Path('/usr/local'),
     'src/infinit/oracles/meta/__init__.py',
     'src/infinit/oracles/meta/plugins/__init__.py',
     'src/infinit/oracles/meta/plugins/failure.py',
+    'src/infinit/oracles/meta/plugins/jsongo.py',
+    'src/infinit/oracles/meta/plugins/session.py',
     'src/infinit/oracles/meta/utils.py',
     'src/infinit/oracles/meta/wsgi.py',
   )

@@ -7,6 +7,7 @@ with Meta() as meta:
   meta.create_user('foo@bar.baz', 'thereisnospoon')
   res = meta.post('login',
                   {
+                    'device': 'android',
                     'email': 'foo@bar.baz',
                     'password': 'thereisnospoon',
                   })
