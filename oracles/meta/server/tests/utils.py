@@ -31,6 +31,9 @@ class Client:
     self.__cookies = None
     self.__meta = meta
 
+  def __exit__(self, *args, **kwargs):
+    self.__mongo.__exit__(*args, **kwargs)
+
   def __get_cookies(self, headers):
     cookies = headers.get('set-cookie', None)
     if cookies is not None:
