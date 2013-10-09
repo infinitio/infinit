@@ -81,7 +81,6 @@ class Client:
     self.__get_cookies(resp)
     return self.__convert_result(url, None, resp, content)
 
-
 class Meta:
 
   def __init__(self):
@@ -122,12 +121,17 @@ class Meta:
   def get(self, url):
     return self.client.get(url)
 
-  def create_user(self, email, password):
-    self.__database.users.insert(
-      {
-        'email': email,
-        'password': password,
-      })
+  def create_user(self, email):
+    password = '0' * 64
+    res = self.post('user/register',
+                    {
+                      'email': email,
+                      'password': password,
+                      'fullname': 'a user',
+                      'activation_code': 'no_activation_code',
+                    })
+    assert res['success']
+    return password
 
   @property
   def database(self):

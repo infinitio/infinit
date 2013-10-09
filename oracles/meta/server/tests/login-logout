@@ -2,20 +2,22 @@
 
 from utils import Meta
 
-
 with Meta() as meta:
-  meta.create_user('foo@bar.baz', 'thereisnospoon')
+  password = meta.create_user('foo@bar.baz')
   res = meta.post('login',
                   {
                     'device': 'android',
                     'email': 'foo@bar.baz',
-                    'password': 'thereisnospoon',
+                    'password': password,
                   })
   assert res['success']
-  assert res['user']['email'] == 'foo@bar.baz'
+  assert res['email'] == 'foo@bar.baz'
+  print('=' * 10)
   res = meta.get('self')
+  print(res)
+  print('=' * 10)
   assert res['success']
-  assert res['user']['email'] == 'foo@bar.baz'
+  assert res['email'] == 'foo@bar.baz'
   res = meta.post('logout')
   assert res['success']
   res = meta.get('self')

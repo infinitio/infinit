@@ -4,12 +4,13 @@ from utils import Meta
 
 
 with Meta() as meta:
-  meta.create_user('foo@bar.baz', 'thereisnospoon')
+  password = meta.create_user('foo@bar.baz')
   res = meta.post('login',
                   {
                     'device': 'android',
                     'email': 'foo@bar.baz',
-                    'password': 'thereisnospoon',
+                    'password': password,
                   })
+
   assert res['success']
-  assert res['user']['email'] == 'foo@bar.baz'
+  assert res['email'] == 'foo@bar.baz'
