@@ -102,6 +102,10 @@ class Meta:
         'password': password,
       })
 
+  @property
+  def database(self):
+    return self.__database
+
 def throws(f):
   try:
     f()

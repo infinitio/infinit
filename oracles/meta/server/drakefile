@@ -31,6 +31,7 @@ def configure(prefix = drake.Path('/usr/local'),
       'login-failure',
       'login-logout',
       'login-success',
+      'session-cleanup',
       'status',
   ):
     test = drake.node('tests/%s' % name)

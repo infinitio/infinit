@@ -11,20 +11,6 @@ class Meta(bottle.Bottle):
 
   def __init__(self, mongo_host = None, mongo_port = None):
     super().__init__()
-    # Plugins
-    self.install(FailurePlugin())
-    self.install(SessionPlugin())
-    self.install(JsongoPlugin())
-    # Configuration
-    self.ignore_trailing_slash = True
-    # Sessions
-    from beaker.middleware import SessionMiddleware
-    session_opts = {
-      'session.data_dir': '/tmp/sessions',
-      'session.type': 'file',
-      'session.auto': True,
-    }
-    self.__sessions = SessionMiddleware(self, session_opts)
     # Database
     db_args = {}
     if mongo_host is not None:
@@ -32,17 +18,17 @@ class Meta(bottle.Bottle):
     if mongo_port is not None:
       db_args['port'] = mongo_port
     self.__database = pymongo.MongoClient(**db_args).meta
+    # Plugins
+    self.install(FailurePlugin())
+    self.install(SessionPlugin(self.__database, 'sessions'))
+    self.install(JsongoPlugin())
+    # Configuration
+    self.ignore_trailing_slash = True
     # Routing
     self.get('/status')(self.status)
     self.get('/self')(self.self)
     self.post('/login')(self.login)
     self.post('/logout')(self.logout)
-
-  def __call__(self, environ, start_response):
-    if 'beaker.session' not in environ:
-      return self.__sessions.__call__(environ, start_response)
-    else:
-      return super().__call__(environ, start_response)
 
   def fail(self, *args, **kwargs):
     FailurePlugin.fail(*args, **kwargs)
@@ -89,5 +75,4 @@ class Meta(bottle.Bottle):
 
   @property
   def user(self):
-    print(bottle.request.session)
     return bottle.request.session.get('user', None)
