@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import pymongo
 import sys
 
 root = os.path.realpath(os.path.dirname(__file__))
@@ -20,10 +21,13 @@ class Meta:
   def __init__(self):
     self.__mongo = mongobox.MongoBox()
     self.__server = bottle.WSGIRefServer(port = 0)
-
+    self.__database = None
+    self.__cookies = None
 
   def __enter__(self):
     self.__mongo.__enter__()
+    client = pymongo.MongoClient(port = self.__mongo.port)
+    self.__database = client.meta
     def run():
       try:
         app = infinit.oracles.meta.Meta(
@@ -46,33 +50,57 @@ class Meta:
   def __exit__(self, *args, **kwargs):
     self.__mongo.__exit__(*args, **kwargs)
 
-  def post(self, url, body):
-    h = httplib2.Http()
-    uri = "http://localhost:%s/%s" % (self.__server.port, url)
-    headers = {'Content-Type': 'application/json'}
-    resp, content = h.request(uri,
-                              'POST',
-                              body = json.dumps(body),
-                              headers=headers)
-    status = resp['status']
+  def __get_cookies(self, headers):
+    cookies = headers.get('set-cookie', None)
+    if cookies is not None:
+      self.__cookies = cookies
+
+  def __set_cookies(self, headers):
+    if self.__cookies is not None:
+      headers['Cookie'] = self.__cookies
+
+  def __convert_result(self, url, body, headers, content):
+    status = headers['status']
     if status != '200':
-      raise Exception('status %s on /%s with body %s' % (status, url, body))
-    if resp['content-type'] == 'application/json':
+      raise Exception('status %s on /%s with body %s' %
+                      (status, url, body))
+    if headers['content-type'] == 'application/json':
       return json.loads(content.decode())
     else:
-      return content
+      return content.decode()
+
+  def post(self, url, body = None):
+    h = httplib2.Http()
+    uri = "http://localhost:%s/%s" % (self.__server.port, url)
+    headers = {}
+    if body is not None:
+      headers['Content-Type'] = 'application/json'
+      body = json.dumps(body)
+    self.__set_cookies(headers)
+    resp, content = h.request(uri,
+                              'POST',
+                              body = body,
+                              headers = headers)
+    self.__get_cookies(resp)
+    return self.__convert_result(url, body, resp, content)
 
   def get(self, url):
     h = httplib2.Http()
+    headers = {}
+    self.__set_cookies(headers)
     uri = "http://localhost:%s/%s" % (self.__server.port, url)
-    resp, content = h.request(uri, 'GET')
-    status = resp['status']
-    if status != '200':
-      raise Exception('status %s on /%s with body %s' % (status, url, body))
-    return content
+    resp, content = h.request(uri,
+                              'GET',
+                              headers = headers)
+    self.__get_cookies(resp)
+    return self.__convert_result(url, None, resp, content)
 
-  def get_json(self, url):
-    return json.loads(self.get(url).decode())
+  def create_user(self, email, password):
+    self.__database.users.insert(
+      {
+        'email': email,
+        'password': password,
+      })
 
 def throws(f):
   try:
