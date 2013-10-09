@@ -642,7 +642,7 @@ namespace common
     ::metrics::Service::Info const&
     infinit_metrics_info(::metrics::Kind const kind)
     {
-      static ::metrics::Service::Info const transaction = {
+      static ::metrics::Service::Info const all = {
         "infinit",
         elle::os::getenv("INFINIT_METRICS_HOST",
                          COMMON_METRICS_HOST),
@@ -654,10 +654,10 @@ namespace common
       };
       switch (kind)
       {
-        case ::metrics::Kind::all: break;
+        case ::metrics::Kind::all: return all;
         case ::metrics::Kind::network: break;
-        case ::metrics::Kind::transaction: return transaction;
-        case ::metrics::Kind::user: break;
+        case ::metrics::Kind::transaction: return all;
+        case ::metrics::Kind::user: return all;
       }
       elle::unreachable();
     }
