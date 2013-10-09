@@ -269,6 +269,11 @@ namespace surface
       elle::SafeFinally login_failed{[this, lower_email] {
         this->_reporter[lower_email].store("user.login.failed");
         this->_google_reporter[lower_email].store("user.login.failed");
+        this->_infinit_user_reporter[lower_email].store(
+          "user.login",
+          {
+            {MKey::status, "failed"},
+          });
       }};
 
       auto res = this->_meta.login(lower_email, password);
@@ -286,6 +291,12 @@ namespace surface
         this->_google_reporter[res.id].store(
           "user.login",
           {{MKey::session, "start"}, {MKey::status, "succeed"}});
+
+        this->_infinit_user_reporter[res.id].store(
+          "user.login",
+          {
+            {MKey::status, "succeed"},
+          });
 
         ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
                  this->me().id,
@@ -396,6 +407,11 @@ namespace surface
             this->_google_reporter[id].store(
               "user.logout",
               {{MKey::session, "end"}});
+            this->_infinit_user_reporter[id].store(
+              "user.logout",
+              {
+                {MKey::status, "succeed"},
+              });
           }
           catch (elle::Exception const&)
           {
@@ -511,6 +527,11 @@ namespace surface
 
       elle::SafeFinally register_failed{[this, lower_email] {
         this->_reporter[lower_email].store("user.register.failed");
+        this->_infinit_user_reporter[lower_email].store(
+          "user.register",
+          {
+            {MKey::status, "failed"},
+          });
       }};
 
       auto res = this->meta(false).register_(
@@ -524,6 +545,12 @@ namespace surface
         this->_reporter[res.registered_user_id].store(
           "user.register",
           {{MKey::source, res.invitation_source}});
+        this->_infinit_user_reporter[res.registered_user_id].store(
+          "user.register",
+          {
+            {MKey::source, res.invitation_source},
+            {MKey::status, "succeed"},
+          });
       }};
       this->login(lower_email, password);
     }
