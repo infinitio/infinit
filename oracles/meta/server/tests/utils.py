@@ -126,7 +126,7 @@ class Meta:
 
   def create_user(self,
                   email,
-                  fullname = 'a user',
+                  fullname = None,
                   password = '0' * 64,
                   activation_code = 'no_activation_code',
                   ):
@@ -134,7 +134,7 @@ class Meta:
                     {
                       'email': email,
                       'password': password,
-                      'fullname': fullname,
+                      'fullname': fullname or email,
                       'activation_code': activation_code,
                     })
     assert res['success']
