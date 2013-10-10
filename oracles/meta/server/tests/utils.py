@@ -49,8 +49,10 @@ class Client:
       raise HTTPException(status, url, body)
     if headers['content-type'] == 'application/json':
       return json.loads(content.decode())
-    else:
+    elif headers['content-type'] == 'text/plain':
       return content.decode()
+    else:
+      return content
 
   def post(self, url, body = None):
     h = httplib2.Http()
