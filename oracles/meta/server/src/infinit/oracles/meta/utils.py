@@ -1,38 +1,49 @@
 import bottle
+import inspect
 from . import error
 from . import conf
 from bson import ObjectId
 import pymongo
 
-class expect_json:
+class api:
 
-  def __init__(self, expect_keys = [], explode_keys = [], has_optionals = False):
-    assert isinstance(expect_keys, (list, set))
-    assert isinstance(explode_keys, (list, set))
-    self.mandatory_fields = set(expect_keys + explode_keys)
-    self.explode_keys = explode_keys
-    self.has_optionals = has_optionals
+  def __init__(self, route = None, method = 'GET'):
+    self.__route = route
+    self.__method = method
 
-  def __call__(self, method, *args, **kwargs):
-    def decorator_wrapper(_self, *args, **kwargs):
-      try:
-        input = bottle.request.json
-        if input is None:
-          bottle.abort(400, "body is not JSON")
-      except ValueError:
-        bottle.abort(400, "body can't be decoded as JSON")
-      json = dict(input)
-      for key in self.mandatory_fields:
-        if key not in json.keys():
-          bottle.abort(400, "missing key: %r" % key)
-      exploded = {key: json[key] for key in self.explode_keys}
-      if self.has_optionals:
-        # Probably optimisable.
-        optionals = {key: json[key] for key in json.keys() - self.explode_keys}
-        return method(_self, *args, optionals = optionals, **exploded)
-      else:
-        return method(_self, *args, **exploded)
-    return decorator_wrapper
+  def __call__(self, method):
+    method.__route__ = self.__route
+    method.__method__ = self.__method
+    return method
+
+# class api:
+
+#   def __init__(self, **keys):
+#     self.__keys = keys
+
+#   def __call__(self, method):
+#     def decorator(_self, *args, **kwargs):
+#       try:
+#         input = bottle.request.json
+#         if input is None:
+#           bottle.abort(400, 'body is not JSON')
+#       except ValueError:
+#         bottle.abort(400, 'body can\'t be decoded as JSON')
+#       # Check missing keys that have no default value.
+#       specs = inspect.getfullargspec(method)
+#       for key in self.__keys:
+#         if key not in input:
+#           import sys
+#           print(specs, file = sys.stderr)
+#           if specs.default is None or key not in specs.default:
+#             bottle.abort(400, 'missing JSON field: %r' % key)
+#       for key, value in input.items():
+#         if key not in self.__keys:
+#           import sys
+#           bottle.abort(400, 'unexpected JSON field: %r' % key)
+#         kwargs[key] = value
+#       return method(_self, *args, **kwargs)
+#     return decorator
 
 def require_logged_in(method):
   def wrapper(self, *a, **ka):
@@ -63,5 +74,5 @@ def stringify_object_ids(obj):
     elif isinstance(obj, str):
       return obj
     else:
-      raise TypeError("unsported type %s" % type(obj))
+      raise TypeError('unsported type %s' % type(obj))
   return obj

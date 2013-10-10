@@ -2,7 +2,7 @@
 
 from bson import ObjectId
 
-from .utils import expect_json, require_logged_in, hash_pasword
+from .utils import api, require_logged_in, hash_pasword
 from . import error, notifier, regexp, invitation, conf
 
 
@@ -73,7 +73,6 @@ class Mixin:
       handle += generate_dummy()
     return handle
 
-  @expect_json(explode_keys = ['fullname'])
   def generate_handle(self, fullname):
     """ Generate handle from a given fullname.
 
@@ -91,6 +90,7 @@ class Mixin:
   ## ------------------------- ##
   ## Login / Logout / Register ##
   ## ------------------------- ##
+
   def generate_token(self, token_generation_key):
     """Generate a token for further communication
 
@@ -115,7 +115,7 @@ class Mixin:
     user = self.database.users.save(kwargs)
     return user
 
-  @expect_json(explode_keys = ['email', 'password', 'fullname', 'activation_code'])
+  @api('/user/register', method = 'POST')
   def register(self, email, password, fullname, activation_code):
     """Register a new user.
 
@@ -312,17 +312,15 @@ class Mixin:
   ## ------ ##
   ## Search ##
   ## ------ ##
-  @expect_json(explode_keys = ['text'], has_optionals = True)
-  def search(self, text, optionals):
+
+  @api('/user/search')
+  def search(self, text, limit = 5, offset = 0):
     """Search the ids of the users with handle or fullname matching text.
 
     text -- the query.
     offset -- the number of user to skip in the result (optional).
     limit -- the maximum number of match to return (optional).
     """
-    limit = int(optionals.get('limit', 5))
-    offset = int(optionals.get('offset', 0))
-
 
     # While not sure it's an email or a fullname, search in both.
     users = []
@@ -342,6 +340,7 @@ class Mixin:
           )]
     return {'users': users}
 
+  @api('/user/<id_or_email>/view')
   def view(self, id_or_email):
     """Get public informations of an user by id or email.
     """
@@ -356,7 +355,7 @@ class Mixin:
     else:
       return self.success(self.extract_user_fields(user))
 
-  @expect_json(explode_keys = ['public_key'])
+  @api('/user/from_public_key')
   def view_from_publick_key(self, public_key):
     user = self.user_by_public_key(public_key)
     return self.success(self.extract_user_fields(user))
@@ -390,11 +389,12 @@ class Mixin:
           recipient_ids = [peer,],
         )
 
+  @api('/user/swaggers')
   @require_logged_in
   def swaggers(self):
     return self.success({"swaggers" : self.user["swaggers"].keys()})
 
-  @expect_json(explode_keys = ['admin_token', 'user1', 'user2'])
+  @api('/user/add_swagger', method = 'POST')
   def add_swagger(self, admin_token, user1, user2):
     """Make user1 and user2 swaggers.
     This function is reserved for admins.
@@ -414,8 +414,8 @@ class Mixin:
     )
     return {"swag": "up"}
 
+  @api('/user/remove_swagger', method = 'POST')
   @require_logged_in
-  @expect_json(explode_keys = ['_id'])
   def remove_swagger(self, _id):
     """Remove a user from swaggers.
 
@@ -455,9 +455,9 @@ class Mixin:
   ## Favortites ##
   ## ---------- ##
 
+  @api('/user/favorite', method = 'POST')
   @require_logged_in
-  @expect_json(explode_keys = ['user_id'])
-  def favorite(self):
+  def favorite(self, user_id):
     """Add a user to favorites
 
     user_id -- the id of the user to add.
@@ -469,9 +469,9 @@ class Mixin:
       self.database.users.save(self.user)
     return self.success()
 
+  @api('/user/unfavorite', method = 'POST')
   @require_logged_in
-  @expect_json(explode_keys = ['user_id'])
-  def unfavorite(self):
+  def unfavorite(self, user_id):
     """remove a user to favorites
 
     user_id -- the id of the user to add.
@@ -487,8 +487,8 @@ class Mixin:
   ## Edit ##
   ## ---- ##
 
+  @api('/user/edit', method = 'POST')
   @require_logged_in
-  @expect_json(explode_keys = ['fullname', 'handle'])
   def edit(self, fullname, handle):
     """ Edit fullname and handle.
 
@@ -525,8 +525,12 @@ class Mixin:
     self.database.users.save(self.user)
     return self.success()
 
-  @expect_json(explode_keys = ['email'], has_optionals = True)
-  def invite(self, email, optionals):
+  @api('/user/invite', method = 'POST')
+  def invite(self,
+             email,
+             force = False,
+             dont_send_email = False,
+             admin_token = None):
     """Invite a user to infinit.
     This function is reserved for admins.
 
@@ -534,10 +538,9 @@ class Mixin:
     admin_token -- the admin token.
     """
 
-    if optionals.get('admin_token') == pythia.constants.ADMIN_TOKEN:
+    if admin_token == pythia.constants.ADMIN_TOKEN:
       email = email.strip()
-      force = optionals.get('force', False)
-      send_mail = not optionals.get('dont_send_email', False)
+      send_mail = not dont_send_email
       if self.database.invitations.find_one({'email': email}):
         if not force:
           return self.fail(error.UNKNOWN, "Already invited!")
@@ -564,6 +567,7 @@ class Mixin:
       )
     return self.success()
 
+  @api('/user/invited')
   @require_logged_in
   def invited(self):
     """Return the list of users invited.
@@ -575,10 +579,10 @@ class Mixin:
         fields = ['email']
     )}
 
+  @api('/self')
   @require_logged_in
-  def self(self):
-    """Return self data.
-    """
+  def user_self(self):
+    """Return self data."""
     return self.success({
       '_id': self.user['_id'],
       'fullname': self.user['fullname'],
@@ -597,6 +601,7 @@ class Mixin:
       'created_at': self.user.get('created_at', 0),
     })
 
+  @api('/user/minimum_self')
   @require_logged_in
   def minimum_self(self):
     """Return minimum self data.
@@ -607,6 +612,7 @@ class Mixin:
         'identity': self.user['identity'] or 'PLS FIXXXXXXXX ME',
       })
 
+  @api('/user/remaining_invitations')
   @require_logged_in
   def invitations(self):
     """Return the number of invitations remainings.
@@ -616,6 +622,7 @@ class Mixin:
         'remaining_invitations': self.user.get('remaining_invitations', 0),
       })
 
+  @api('/user/<id>/avatar')
   def get_avatar(self, id):
     user = self._user_by_id(ObjectId(id), ensure_existence = False)
     image = user and user.get('avatar')
@@ -626,6 +633,7 @@ class Mixin:
       with open(os.path.join(os.path.dirname(__file__), "place_holder_avatar.png"), 'rb') as f:
         return f.read(4096)
 
+  @api('/user/<id>/avatar', method = 'POST')
   @require_logged_in
   def set_avatar(self, id):
     from bottle import request
@@ -739,7 +747,7 @@ class Mixin:
       user_id = user_id,
     )
 
-  @expect_json(explode_keys = ['admin_token', 'user_id', 'device_id'])
+  @api('/user/connect', method = 'POST')
   def connect(self, admin_token, user_id, device_id):
       """
       Add the given device from the list of connected devices of the user.
@@ -756,7 +764,7 @@ class Mixin:
                                           ObjectId(device_id),
                                           status = True)
 
-  @expect_json(explode_keys = ['user_id', 'device_id'])
+  @api('/user/disconnect', method = 'POST')
   def disconnect(self, admin_token, user_id, device_id):
       """Remove the given device from the list of connected devices of the user.
       Should only be called by Trophonius.
@@ -775,8 +783,9 @@ class Mixin:
   ## ----- ##
   ## Debug ##
   ## ----- ##
+
+  @api('/debug', method = 'POST')
   @require_logged_in
-  @expect_json(explode_keys = ['sender_id', 'recipient_id', 'message'])
   def message(self, sender_id, recipient_id, message):
     """Send a message to recipient as sender.
 

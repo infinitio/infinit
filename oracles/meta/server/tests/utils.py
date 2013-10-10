@@ -68,15 +68,19 @@ class Client:
     self.__get_cookies(resp)
     return self.__convert_result(url, body, resp, content)
 
-  def get(self, url):
+  def get(self, url, body = None):
     h = httplib2.Http()
     headers = {}
     self.__set_cookies(headers)
     uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
                                       url)
+    if body is not None:
+      headers['Content-Type'] = 'application/json'
+      body = json.dumps(body)
     resp, content = h.request(uri,
                               'GET',
-                              headers = headers)
+                              headers = headers,
+                              body = body)
     self.__get_cookies(resp)
     return self.__convert_result(url, None, resp, content)
 
@@ -117,8 +121,8 @@ class Meta:
   def post(self, url, body = None):
     return self.client.post(url, body)
 
-  def get(self, url):
-    return self.client.get(url)
+  def get(self, url, body = None):
+    return self.client.get(url, body)
 
   def create_user(self, email, password = None):
     if password is None:

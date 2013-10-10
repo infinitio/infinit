@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
 import bottle
+import inspect
 import pymongo
+import re
 
 from .plugins.jsongo import Plugin as JsongoPlugin
 from .plugins.failure import Plugin as FailurePlugin
@@ -9,7 +11,7 @@ from .plugins.session import Plugin as SessionPlugin
 
 from . import error
 
-from .utils import expect_json, hash_pasword, stringify_object_ids, require_logged_in
+from .utils import api, hash_pasword, stringify_object_ids, require_logged_in
 
 from . import user
 from . import notifier
@@ -27,39 +29,66 @@ class Meta(bottle.Bottle, user.Mixin):
       db_args['port'] = mongo_port
     self.__database = pymongo.MongoClient(**db_args).meta
     self.catchall = False
-    # Plugins
+    # Plugins.
     self.install(FailurePlugin())
     self.__sessions = SessionPlugin(self.__database, 'sessions')
     self.install(self.__sessions)
     self.install(JsongoPlugin())
-    # Configuration
+    # Configuration.
     self.ignore_trailing_slash = True
-    # Routing
-    self.get('/status')(self.status)
-    self.get('/self')(self.self)
-    self.post('/user/login')(self.login)
-    self.post('/user/logout')(self.logout)
-    self.post('/user/register')(self.register)
-    self.post('/user/search')(self.search)
-    self.get('/user/<id_or_email>/view')(self.view)
-    self.post('/user/from_public_key')(self.view_from_publick_key)
-    self.get('/user/swaggers')(self.swaggers)
-    self.post('/user/remove_swagger')(self.remove_swagger)
-    self.post('/user/favorite')(self.favorite)
-    self.post('/user/unfavorite')(self.unfavorite)
-    self.post('/user/edit')(self.edit)
-    self.post('/user/invite')(self.invite)
-    self.get('/user/invited')(self.invited)
-    self.get('/user/minimumself')(self.minimum_self)
-    self.get('/user/remaining_invitations')(self.invitations)
-    self.get('/user/<id>/avatar')(self.get_avatar)
-    self.post('/user/<id>/avatar')(self.set_avatar)
-    self.post('/debug')(self.message)
-    self.post('/user/add_swagger')(self.add_swagger)
-    self.post('/user/connect')(self.connect)
-    self.post('/user/disconnect')(self.disconnect)
+    # Routing.
+    for name, method in inspect.getmembers(
+        Meta,
+        lambda m: callable(m) and hasattr(m, '__route__')):
+      self.__register(method)
     # Notifier.
     self.notifier = notifier.Notifier(self.__database.users)
+
+  def __register(self, method):
+    rule = method.__route__
+    # Introspect method.
+    spec = inspect.getargspec(method)
+    del spec.args[0] # remove self
+    import itertools
+    defaults = spec.defaults or []
+    spec_args = dict((name, default)
+                     for name, default
+                     in itertools.zip_longest(
+                       reversed(spec.args),
+                       reversed([True] * len(defaults))))
+    for arg in re.findall('<(\\w*)>', rule):
+      if arg in spec_args:
+        del spec_args[arg]
+      elif spec.keywords is None:
+        raise AssertionError(
+          'Rule %r yields %r but %r does not accept it' % (rule, arg, method))
+    # Callback.
+    def callback(*args, **kwargs):
+      try:
+        input = bottle.request.json
+      except ValueError:
+        pass
+      if input is not None:
+        for key in spec_args:
+          if key in input:
+            kwargs[key] = input[key]
+            del input[key]
+          elif not spec_args[key]:
+            bottle.abort(400, 'missing JSON key: %r' % key)
+        if len(input) > 0:
+          if spec.keywords is not None:
+            kwargs.update(input)
+          else:
+            key = input.keys()[0]
+            bottle.abort(400, 'unexpected JSON keys: %r' % key)
+      return method(self, *args, **kwargs)
+    # Add route.
+    route = bottle.Route(app = self,
+                         rule = rule,
+                         method = method.__method__,
+                         callback = callback)
+    self.add_route(route)
+
 
   def fail(self, *args, **kwargs):
     FailurePlugin.fail(*args, **kwargs)
@@ -77,6 +106,7 @@ class Meta(bottle.Bottle, user.Mixin):
   def abort(self, message):
     bottle.abort(500, message)
 
+  @api('/status')
   def status(self):
     return self.success()
 
@@ -84,7 +114,7 @@ class Meta(bottle.Bottle, user.Mixin):
   ## Sessions ##
   ## -------- ##
 
-  @expect_json(explode_keys = ['email', 'device', 'password'])
+  @api('/user/login', method = 'POST')
   def login(self, email, device, password):
     email = email.lower()
     user = self.__database.users.find_one({
@@ -106,6 +136,7 @@ class Meta(bottle.Bottle, user.Mixin):
         'identity': self.user['identity'],
       })
 
+  @api('/user/logout', method = 'POST')
   @require_logged_in
   def logout(self):
     if 'user' in bottle.request.session:
