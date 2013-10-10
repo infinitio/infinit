@@ -77,6 +77,8 @@ namespace metrics
         return "source";
       case Key::method:
         return "method";
+      case Key::who:
+        return "who";
       case Key::who_connected:
         return "who_connected";
       case Key::who_ended:

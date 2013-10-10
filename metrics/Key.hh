@@ -34,6 +34,7 @@ namespace metrics
     transaction_id,
     timestamp,
     value,
+    who,
     who_connected,
     who_ended,
     width,

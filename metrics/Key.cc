@@ -66,6 +66,8 @@ namespace metrics
       return out << "recipient_online";
     case Key::source:
       return out << "source";
+    case Key::who:
+      return out << "who";
     case Key::who_connected:
       return out << "who_connected";
     case Key::who_ended:

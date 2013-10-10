@@ -78,6 +78,8 @@ namespace metrics
         return "cm2000";
       case Key::sender:
         return "cm2000";
+      case Key::who:
+        return "cm2000";
       case Key::who_connected:
         return "cm2000";
       case Key::who_ended:
