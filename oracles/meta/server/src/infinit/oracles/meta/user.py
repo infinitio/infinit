@@ -31,7 +31,7 @@ class metalib:
 
 class pythia:
   class constants:
-    ADMIN_TOKEN = ""
+    ADMIN_TOKEN = "admintoken"
 
 #import pythia # used for admin token.
 
@@ -340,6 +340,16 @@ class Mixin:
           )]
     return {'users': users}
 
+  def extract_user_fields(self, user):
+    return {
+      '_id': user['_id'],
+      'public_key': user.get('public_key', ''),
+      'fullname': user.get('fullname', ''),
+      'handle': user.get('handle', ''),
+      'connected_devices': user.get('connected_devices', []),
+      'status': self.is_connected(user['_id']),
+    }
+
   @api('/user/<id_or_email>/view')
   def view(self, id_or_email):
     """Get public informations of an user by id or email.
@@ -372,8 +382,8 @@ class Mixin:
     assert isinstance(lhs, ObjectId)
     assert isinstance(rhs, ObjectId)
 
-    lh_user = user_by_id(db, lhs)
-    rh_user = user_by_id(db, rhs)
+    lh_user = self._user_by_id(lhs)
+    rh_user = self._user_by_id(rhs)
 
     if lh_user is None or rh_user is None:
       raise Exception("unknown user")
@@ -381,7 +391,7 @@ class Mixin:
     for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
       user['swaggers'][str(peer)] =\
           user['swaggers'].setdefault(str(peer), 0) + 1
-      db.users.save(user)
+      self.database.users.save(user)
       if user['swaggers'][str(peer)] == 1: # New swagger.
         self.notifier.notify_some(
           notifier.NEW_SWAGGER,
@@ -392,7 +402,7 @@ class Mixin:
   @api('/user/swaggers')
   @require_logged_in
   def swaggers(self):
-    return self.success({"swaggers" : self.user["swaggers"].keys()})
+    return self.success({"swaggers" : list(self.user["swaggers"].keys())})
 
   @api('/user/add_swagger', method = 'POST')
   def add_swagger(self, admin_token, user1, user2):
@@ -410,9 +420,8 @@ class Mixin:
     self._increase_swag(
       ObjectId(user1),
       ObjectId(user2),
-      notifier_ = self.notifier
     )
-    return {"swag": "up"}
+    return self.success({"swag": "up"})
 
   @api('/user/remove_swagger', method = 'POST')
   @require_logged_in
@@ -572,12 +581,12 @@ class Mixin:
   def invited(self):
     """Return the list of users invited.
     """
-    return {'user': self.database.invitations.find(
+    return self.success({'user': self.database.invitations.find(
         {
           'source': self.user['email'],
         },
         fields = ['email']
-    )}
+    )})
 
   @api('/self')
   @require_logged_in
