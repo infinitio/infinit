@@ -154,3 +154,39 @@ def throws(f):
     pass
   else:
     raise Exception('exception expected')
+
+class User:
+
+  def __init__(self, meta, email, device = None):
+    self.email = email
+    self.password = meta.create_user(email)
+    self.client = Client(meta)
+    self.id = meta.get('user/%s/view' % self.email)['_id']
+    self.device = device or 'device'
+
+  def login(self):
+    res = self.client.post('user/login',
+                           {
+                             'email': self.email,
+                             'password': self.password,
+                             'device': self.device,
+                           })
+    assert res['success']
+    self.id = res['_id']
+
+  def logout(self):
+    res = self.client.post('user/logout', {})
+    assert res['success']
+    self.id = res['_id']
+
+  @property
+  def swaggers(self):
+    return self.client.get('user/swaggers')['swaggers']
+
+  @property
+  def favorites(self):
+    return self.client.get('self')['favorites']
+
+  @property
+  def avatar(self):
+    return self.client.get('user/%s/avatar' % self.id)
