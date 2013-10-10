@@ -106,6 +106,9 @@ class Meta(bottle.Bottle, user.Mixin):
   def abort(self, message):
     bottle.abort(500, message)
 
+  def forbiden(self):
+    bottle.abort(403)
+
   @api('/status')
   def status(self):
     return self.success()

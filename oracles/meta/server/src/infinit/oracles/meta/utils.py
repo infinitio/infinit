@@ -48,7 +48,7 @@ class api:
 def require_logged_in(method):
   def wrapper(self, *a, **ka):
     if self.user is None:
-      bottle.abort(403)
+      self.forbiden()
     return method(self, *a, **ka)
   return wrapper
 
