@@ -689,6 +689,12 @@ extern "C"
                       favorites.end(),
                       id) == favorites.end())
           favorites.push_back(id);
+        state.infinit_user_reporter()[state.me().id].store(
+          "user favorite",
+          {
+            {MKey::who, id}
+          }
+        );
         return gap_ok;
       });
   }
@@ -711,6 +717,12 @@ extern "C"
                             id);
         if (it != favorites.end())
           favorites.erase(it);
+        state.infinit_user_reporter()[state.me().id].store(
+          "user unfavorite",
+          {
+            {MKey::who, id}
+          }
+        );
         return gap_ok;
       });
   }
