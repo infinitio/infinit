@@ -64,23 +64,29 @@ class Meta(bottle.Bottle, user.Mixin):
           'Rule %r yields %r but %r does not accept it' % (rule, arg, method))
     # Callback.
     def callback(*args, **kwargs):
-      try:
-        input = bottle.request.json
-      except ValueError:
-        pass
-      if input is not None:
-        for key in spec_args:
-          if key in input:
-            kwargs[key] = input[key]
-            del input[key]
-          elif not spec_args[key]:
-            bottle.abort(400, 'missing JSON key: %r' % key)
-        if len(input) > 0:
+      arguments = dict(spec_args)
+      def explode(d):
+        if d is None:
+          return
+        for key in dict(arguments):
+          if key in d:
+            kwargs[key] = d[key]
+            del d[key]
+            del arguments[key]
+        if len(d) > 0:
           if spec.keywords is not None:
-            kwargs.update(input)
+            kwargs.update(d)
           else:
-            key = input.keys()[0]
+            key = iter(d.keys()).__next__()
             bottle.abort(400, 'unexpected JSON keys: %r' % key)
+      try:
+        explode(bottle.request.json)
+      except ValueError:
+        bottle.abort(400, 'invalid JSON')
+      explode(bottle.request.query)
+      for argument, default in arguments.items():
+        if not default:
+          bottle.abort(400, 'missing argument: %r' % argument)
       return method(self, *args, **kwargs)
     # Add route.
     route = bottle.Route(app = self,
