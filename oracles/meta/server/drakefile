@@ -40,6 +40,8 @@ def configure(prefix = drake.Path('/usr/local'),
 
   for name in (
       'favorite-unfavorite',
+      'invite_as_user',
+      'invite_as_admin',
       'login-failure',
       'login-logout',
       'login-success',
