@@ -5,19 +5,15 @@ from bson import ObjectId
 from .utils import api, require_logged_in, hash_pasword
 from . import error, notifier, regexp, invitation, conf
 
-
-class Image:
-  def resize(self, width, height):
-    pass
-# try:
-#   from PIL import Image
-# except ImportError:
-#   try:
-#     import Image
-#   except ImportError:
-#     print("Cannot import Image module, please install PIL")
-#     import sys
-#     sys.exit(1)
+try:
+  from PIL import Image
+except ImportError:
+  try:
+    import Image
+  except ImportError:
+    print("Cannot import Image module, please install PIL")
+    import sys
+    sys.exit(1)
 
 import os
 import time
@@ -546,9 +542,8 @@ class Mixin:
     email -- the email of the user to invite.
     admin_token -- the admin token.
     """
-
+    email = email.strip()
     if admin_token == pythia.constants.ADMIN_TOKEN:
-      email = email.strip()
       send_mail = not dont_send_email
       if self.database.invitations.find_one({'email': email}):
         if not force:
@@ -636,27 +631,31 @@ class Mixin:
     user = self._user_by_id(ObjectId(id), ensure_existence = False)
     image = user and user.get('avatar')
     if image:
-      return str(image)
+      from bottle import response
+      response.content_type = 'image/png'
+      return bytes(image)
     else:
       # Otherwise return the default avatar
-      with open(os.path.join(os.path.dirname(__file__), "place_holder_avatar.png"), 'rb') as f:
-        return f.read(4096)
+      from bottle import static_file
+      return static_file('place_holder_avatar.png', root = os.path.dirname(__file__), mimetype = 'image/png')
 
   @api('/user/<id>/avatar', method = 'POST')
   @require_logged_in
   def set_avatar(self, id):
     from bottle import request
+    from io import StringIO, BytesIO
+    out = BytesIO()
     try:
-      print(request.files)
-      assert len(request.files) == 1
-      out = request.files.keys()[0]
-      raw_data = request.files[name]
-      image = Image.open(name)
-      image.resize((256, 256)).save(out, 'PNG')
-      out.seek(0)
+      # raw_data = StringIO(str(request.body))
+      # image = Image.open(raw_data)
+      # out = StringIO()
+      # image.resize((256, 256)).save(out, 'PNG')
+      # out.seek(0)
+      pass
     except:
       return self.fail(msg = "Couldn't decode the image")
-    self.user['avatar'] = database.Binary(out.read())
+    from bson.binary import Binary
+    self.user['avatar'] = Binary(out.read())
     self.database.users.save(self.user)
     return self.success()
 
