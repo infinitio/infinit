@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+with Meta() as meta:
+  u1 = User(meta, "foobar@infinit.io")
+
+  avatar = meta.get('user/%s/avatar' % u1.id)
+  assert avatar is not None

@@ -40,6 +40,7 @@ def configure(prefix = drake.Path('/usr/local'),
 
   for name in (
       'favorite-unfavorite',
+      'get_avatar',
       'invite_as_user',
       'invite_as_admin',
       'login-failure',
@@ -50,6 +51,7 @@ def configure(prefix = drake.Path('/usr/local'),
       'register',
       'register_invited',
       'routes',
+      'set_avatar',
       'swaggers',
   ):
     test = drake.node('tests/%s' % name)
