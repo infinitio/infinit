@@ -633,25 +633,16 @@ class Mixin:
     from bottle import request
     from io import StringIO, BytesIO
     out = BytesIO()
-    try:
-      try:
-        from PIL import Image
-      except ImportError as e:
-        try:
-          import Image
-        except ImportError:
-          raise e
-      # raw_data = StringIO(str(request.body))
-      # image = Image.open(raw_data)
-      # out = StringIO()
-      # image.resize((256, 256)).save(out, 'PNG')
-      # out.seek(0)
-      pass
-    except:
-      return self.fail(msg = "Couldn't decode the image")
+    from PIL import Image
+    image = Image.open(request.body)
+    image.resize((256, 256))
+    out = BytesIO()
+    image.save(out, 'PNG')
+    out.seek(0)
     from bson.binary import Binary
-    self.user['avatar'] = Binary(out.read())
-    self.database.users.save(self.user)
+    self.database.users.find_and_modify(
+      self.user['_id'],
+      {'$set': {'avatar': Binary(out.read())}})
     return self.success()
 
   ## ------- ##

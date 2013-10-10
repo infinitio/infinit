@@ -4,9 +4,11 @@ from utils import Meta, User
 import os
 
 with Meta() as meta:
-  u1 = User(meta, "foobar@infinit.io",)
+  alice = User(meta, 'alice@infinit.io')
+  bob = User(meta, 'bob@infinit.io')
 
-  u1.login()
-  u1.client.post('user/%s/avatar' % u1.id, body = {}) #, file = "%s/%s" % (os.path.dirname(__file__), "avatar.jpg"))
-
-  assert u1.avatar != meta.get("user/516d21e59d01da5f5600021a/avatar") # Random avatar.
+  alice.login()
+  assert alice.avatar == bob.avatar
+  with open('%s/avatar.jpg' % os.path.dirname(__file__), 'rb') as f:
+    alice.client.post('user/%s/avatar' % alice.id, body = f.read())
+  assert alice.avatar != bob.avatar
