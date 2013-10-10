@@ -36,7 +36,7 @@ def configure(prefix = drake.Path('/usr/local'),
   bottle = drake.nodes('../../bottle/bottle.py')
   install << drake.copy(bottle, lib_path, '../../bottle')
 
-  rule_check = drake.Rule('check')
+  rule_check = drake.TestSuite('check')
 
   for name in (
       'favorite-unfavorite',
