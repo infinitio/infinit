@@ -124,15 +124,18 @@ class Meta:
   def get(self, url, body = None):
     return self.client.get(url, body)
 
-  def create_user(self, email, password = None):
-    if password is None:
-      password = '0' * 64
+  def create_user(self,
+                  email,
+                  fullname = 'a user',
+                  password = '0' * 64,
+                  activation_code = 'no_activation_code',
+                  ):
     res = self.post('user/register',
                     {
                       'email': email,
                       'password': password,
-                      'fullname': 'a user',
-                      'activation_code': 'no_activation_code',
+                      'fullname': fullname,
+                      'activation_code': activation_code,
                     })
     assert res['success']
     return password
@@ -157,9 +160,14 @@ def throws(f):
 
 class User:
 
-  def __init__(self, meta, email, device = None):
+  def __init__(self,
+               meta,
+               email,
+               device = None,
+               **kwargs):
     self.email = email
-    self.password = meta.create_user(email)
+    self.password = meta.create_user(email,
+                                     **kwargs)
     self.client = Client(meta)
     self.id = meta.get('user/%s/view' % self.email)['_id']
     self.device = device or 'device'
