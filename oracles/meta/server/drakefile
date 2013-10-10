@@ -39,6 +39,7 @@ def configure(prefix = drake.Path('/usr/local'),
   rule_check = drake.Rule('check')
 
   for name in (
+      'favorite-unfavorite',
       'login-failure',
       'login-logout',
       'login-success',
