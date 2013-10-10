@@ -41,8 +41,6 @@ class Application(object):
             urls.extend([resource.__pattern__, id_])
             print("%s: %s" % (resource.__name__, resource.__pattern__))
             views[id_] = resource
-            resource.mongo_host = mongo_host
-            resource.mongo_port = mongo_port
 
         self.app = web.application(urls, views)
 
@@ -55,16 +53,16 @@ class Application(object):
         self.ip = meta_host
         self.port = meta_port
 
+        self.db_client = pymongo.MongoClient(mongo_host, mongo_port)
         # XXX Should be done in Page.
         session = Session(
             self.app,
-            SessionStore(
-                pymongo.Connection(mongo_host, mongo_port).meta['sessions']
-            )
+            SessionStore(self.db_client.meta['sessions'])
         )
         for cls in views.itervalues():
             cls.__session__ = session
             cls.__application__ = self
+            cls.__db_client__ = self.db_client
 
     def reset_user_status(self):
         """XXX We reset all user's status to be "disconnected". We know it's
