@@ -6,7 +6,7 @@ with Meta() as meta:
   email = 'foobar@infinit.io'
   fullname = 'jean louis'
 
-  res = meta.post('user/invite', {"email": email, "admin_token": ""})
+  res = meta.post('user/invite', {"email": email, "admin_token": "admintoken"})
   assert res['success']
   assert meta.database.invitations.count() == 1
   invitation = meta.database.invitations.find_one()
@@ -30,3 +30,14 @@ with Meta() as meta:
 
   assert meta.database.invitations.count() == 1
   invitation = meta.database.invitations.find_one()
+
+  assert invitation['status'] == 'activated'
+
+  res = meta.post('user/register',
+                  {
+                    'email': "not_the_right_email@infinit.io",
+                    'password': 'o' * 64,
+                    'activation_code': invitation['code'],
+                    'fullname': fullname,
+                    })
+  assert not res['success']
