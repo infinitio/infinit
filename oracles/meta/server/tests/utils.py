@@ -59,7 +59,7 @@ class Client:
     uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
                                       url)
     headers = {}
-    if body is not None:
+    if body is not None and isinstance(body, dict):
       headers['Content-Type'] = 'application/json'
       body = json.dumps(body)
     self.__set_cookies(headers)
