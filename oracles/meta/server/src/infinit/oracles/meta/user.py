@@ -5,16 +5,6 @@ from bson import ObjectId
 from .utils import api, require_logged_in, hash_pasword
 from . import error, notifier, regexp, invitation, conf
 
-try:
-  from PIL import Image
-except ImportError:
-  try:
-    import Image
-  except ImportError:
-    print("Cannot import Image module, please install PIL")
-    import sys
-    sys.exit(1)
-
 import os
 import time
 import unicodedata
@@ -644,6 +634,13 @@ class Mixin:
     from io import StringIO, BytesIO
     out = BytesIO()
     try:
+      try:
+        from PIL import Image
+      except ImportError as e:
+        try:
+          import Image
+        except ImportError:
+          raise e
       # raw_data = StringIO(str(request.body))
       # image = Image.open(raw_data)
       # out = StringIO()
