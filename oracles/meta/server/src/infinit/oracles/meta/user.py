@@ -95,7 +95,7 @@ class Mixin:
     if self.user is not None:
       return self.fail(error.ALREADY_LOGGED_IN)
 
-    if self.authenticate_with_token(self.data['token_generation_key']):
+    if self.authenticate_with_token(token_generation_key):
       return self.success({
         "_id" : self.user["_id"],
         'token': self.session.session_id,
@@ -428,7 +428,7 @@ class Mixin:
     """
     swagez = self.database.users.find_and_modify(
       {"_id": ObjectId(self.user["_id"])},
-      {"$pull": {"swaggers": self.data["_id"]}},
+      {"$pull": {"swaggers": _id}},
       True #upsert
     )
     return self.success({"swaggers" : swagez["swaggers"]})
@@ -558,11 +558,9 @@ class Mixin:
       )
     else:
       if self.user is None:
-        self.fail(error.NOT_LOGGED_IN)
-      email = self.data['email'].strip()
+        self.forbiden()
       if regexp.EmailValidator(email) != 0:
         return self.fail(error.EMAIL_NOT_VALID)
-      self.database.users.save(self.user)
       invitation.invite_user(
         email,
         send_mail = True,
@@ -803,7 +801,7 @@ class Mixin:
     """
     self.notifier.notify_some(
       notifier.MESSAGE,
-      recipient_ids = [ObjectId(self.data["recipient_id"]),],
+      recipient_ids = [ObjectId(recipient_id),],
       message = {
         'sender_id' : self.data['sender_id'],
         'message': self.data['message'],
