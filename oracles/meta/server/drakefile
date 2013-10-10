@@ -45,7 +45,7 @@ def configure(prefix = drake.Path('/usr/local'),
       'session-cleanup',
       'status',
       'register',
-      'register_ghost',
+      'register_invited',
       'routes',
       'swaggers',
   ):
