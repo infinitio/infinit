@@ -396,9 +396,10 @@ class Mixin:
     user = self.user_by_public_key(public_key)
     return self.success(self.extract_user_fields(user))
 
-  ## ------ ##
-  ## Swager ##
-  ## ------ ##
+  ## ------- ##
+  ## Swagger ##
+  ## ------- ##
+
   def _increase_swag(self, lhs, rhs):
     """Increase users reciprocal swag amount.
 
@@ -457,8 +458,8 @@ class Mixin:
     _id -- the id of the user to remove.
     """
     swagez = self.database.users.find_and_modify(
-      {"_id": ObjectId(self.user["_id"])},
-      {"$pull": {"swaggers": _id}},
+      {'_id': self.user['_id']},
+      {'$pull': {'swaggers': _id}},
       True #upsert
     )
     return self.success({"swaggers" : swagez["swaggers"]})
@@ -627,7 +628,7 @@ class Mixin:
       'accounts': self.user['accounts'],
       'remaining_invitations': self.user.get('remaining_invitations', 0),
       'connected_devices': self.user.get('connected_devices', []),
-      'status': self.is_connected(ObjectId(self.user['_id'])),
+      'status': self.is_connected(self.user['_id']),
       'token_generation_key': self.user.get('token_generation_key', ''),
       'favorites': self.user.get('favorites', []),
       'created_at': self.user.get('created_at', 0),
@@ -655,8 +656,8 @@ class Mixin:
       })
 
   @api('/user/<id>/avatar')
-  def get_avatar(self, id):
-    user = self._user_by_id(ObjectId(id), ensure_existence = False)
+  def get_avatar(self, id: ObjectId):
+    user = self._user_by_id(id, ensure_existence = False)
     image = user and user.get('avatar')
     if image:
       from bottle import response
@@ -712,6 +713,7 @@ class Mixin:
   ## ----------------- ##
   ## Connection status ##
   ## ----------------- ##
+
   def set_connection_status(self, user_id, device_id, status):
     """Add or remove the device from user connected devices.
 
@@ -782,7 +784,10 @@ class Mixin:
     )
 
   @api('/user/connect', method = 'POST')
-  def connect(self, admin_token, user_id, device_id):
+  def connect(self,
+              admin_token,
+              user_id: ObjectId,
+              device_id: ObjectId):
       """
       Add the given device from the list of connected devices of the user.
       Should only be called by Trophonius.
@@ -794,12 +799,15 @@ class Mixin:
       if admin_token != pythia.constants.ADMIN_TOKEN:
         return self.fail(error.UNKNOWN, "You're not admin")
       return self.__set_connection_status(self,
-                                          ObjectId(user_id),
-                                          ObjectId(device_id),
+                                          user_id,
+                                          device_id,
                                           status = True)
 
   @api('/user/disconnect', method = 'POST')
-  def disconnect(self, admin_token, user_id, device_id):
+  def disconnect(self,
+                 admin_token,
+                 user_id: ObjectId,
+                 device_id: ObjectId):
       """Remove the given device from the list of connected devices of the user.
       Should only be called by Trophonius.
 
@@ -810,8 +818,8 @@ class Mixin:
       if admin_token != pythia.constants.ADMIN_TOKEN:
         return self.fail(error.UNKNOWN, "You're not admin")
       return self.__set_connection_status(self,
-                                          ObjectId(user_id),
-                                          ObjectId(device_id),
+                                          user_id,
+                                          device_id,
                                           status = False)
 
   ## ----- ##
@@ -820,7 +828,10 @@ class Mixin:
 
   @api('/debug', method = 'POST')
   @require_logged_in
-  def message(self, sender_id, recipient_id, message):
+  def message(self,
+              sender_id: ObjectId,
+              recipient_id: ObjectId,
+              message):
     """Send a message to recipient as sender.
 
     sender_id -- the id of the sender.
@@ -829,10 +840,10 @@ class Mixin:
     """
     self.notifier.notify_some(
       notifier.MESSAGE,
-      recipient_ids = [ObjectId(recipient_id),],
+      recipient_ids = [recipient_id],
       message = {
-        'sender_id' : self.data['sender_id'],
-        'message': self.data['message'],
+        'sender_id' : sender_id,
+        'message': message,
       }
     )
     return self.success()
