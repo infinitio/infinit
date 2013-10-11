@@ -408,21 +408,22 @@ class Mixin:
     assert isinstance(lhs, ObjectId)
     assert isinstance(rhs, ObjectId)
 
-    lh_user = self._user_by_id(lhs)
-    rh_user = self._user_by_id(rhs)
+    # lh_user = self._user_by_id(lhs)
+    # rh_user = self._user_by_id(rhs)
 
-    if lh_user is None or rh_user is None:
-      raise Exception("unknown user")
+    # if lh_user is None or rh_user is None:
+    #   raise Exception("unknown user")
 
-    for user, peer in [(lh_user, rhs), (rh_user, lhs)]:
-      user['swaggers'][str(peer)] =\
-          user['swaggers'].setdefault(str(peer), 0) + 1
-      self.database.users.save(user)
-      if user['swaggers'][str(peer)] == 1: # New swagger.
+    for user, peer in [(lhs, rhs), (rhs, lhs)]:
+      res = self.database.users.find_and_modify(
+        {'_id': user},
+        {'$inc': {'swaggers.%s' % peer: 1}},
+        new = True)
+      if res['swaggers'][str(peer)] == 1: # New swagger.
         self.notifier.notify_some(
           notifier.NEW_SWAGGER,
-          message = {'user_id': user['_id']},
-          recipient_ids = [peer,],
+          message = {'user_id': res['_id']},
+          recipient_ids = [peer],
         )
 
   @api('/user/swaggers')

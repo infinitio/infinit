@@ -3,10 +3,13 @@
 from utils import Meta, Client, User
 
 with Meta() as meta:
-  u1 = User(meta, "jeanlouis@infinit.io")
-  u2 = User(meta, "pascal@infinit.io")
+  u1 = User(meta, 'jeanlouis@infinit.io')
+  u2 = User(meta, 'pascal@infinit.io')
 
-  res = meta.post('user/add_swagger', {"user1": u1.id, "user2": u2.id, "admin_token": "admintoken"})
+  res = meta.post('user/add_swagger',
+                  {'user1': u1.id,
+                   'user2': u2.id,
+                   'admin_token': 'admintoken'})
   assert res['success']
 
   u1.login()
