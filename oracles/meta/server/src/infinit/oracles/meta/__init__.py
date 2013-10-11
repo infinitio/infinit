@@ -15,12 +15,16 @@ from .utils import api, hash_pasword, stringify_object_ids, require_logged_in
 
 from . import user
 from . import notifier
+from . import mail
 
 from bson import ObjectId
 
 class Meta(bottle.Bottle, user.Mixin):
 
-  def __init__(self, mongo_host = None, mongo_port = None):
+  def __init__(self,
+               mongo_host = None,
+               mongo_port = None,
+               enable_emails = True):
     super().__init__()
     db_args = {}
     if mongo_host is not None:
@@ -43,6 +47,8 @@ class Meta(bottle.Bottle, user.Mixin):
       self.__register(method)
     # Notifier.
     self.notifier = notifier.Notifier(self.__database.users)
+    # Could be cleaner.
+    self.mailer = mail.Mailer(active = enable_emails)
 
   def __register(self, method):
     rule = method.__route__

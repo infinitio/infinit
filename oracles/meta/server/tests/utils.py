@@ -88,11 +88,12 @@ class Client:
 
 class Meta:
 
-  def __init__(self):
+  def __init__(self, enable_emails = False):
     self.__mongo = mongobox.MongoBox()
     self.__server = bottle.WSGIRefServer(port = 0)
     self.__database = None
     self.__client = None
+    self.__enalbe_emails = enable_emails
 
   def __enter__(self):
     self.__mongo.__enter__()
@@ -101,7 +102,8 @@ class Meta:
     def run():
       try:
         app = infinit.oracles.meta.Meta(
-          mongo_port = self.__mongo.port)
+          mongo_port = self.__mongo.port,
+          enable_emails = self.__enalbe_emails)
         app.catchall = False
         bottle.run(app = app,
                    quiet = True,

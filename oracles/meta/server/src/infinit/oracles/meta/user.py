@@ -539,8 +539,9 @@ class Mixin:
         else:
           self.database.invitations.remove({'email': email})
       invitation.invite_user(
-        email,
+        email = email,
         send_mail = send_mail,
+        mailer = self.mailer,
         source = 'infinit',
         database = self.database
       )
@@ -550,8 +551,9 @@ class Mixin:
       if regexp.EmailValidator(email) != 0:
         return self.fail(error.EMAIL_NOT_VALID)
       invitation.invite_user(
-        email,
+        email = email,
         send_mail = True,
+        mailer = self.mailer,
         source = self.user['email'],
         database = self.database
       )

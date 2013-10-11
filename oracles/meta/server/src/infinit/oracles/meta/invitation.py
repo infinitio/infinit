@@ -34,13 +34,14 @@ def move_from_invited_to_userbase(ghost_mail, new_mail):
 
   try:
     ms.listSubscribe(id = USERBASE_LIST,
-             email_address = new_mail,
-             double_optin = False)
+                     email_address = new_mail,
+                     double_optin = False)
   except:
     print("Couldn't subscribe", new_mail, "to USERBASE")
 
 def invite_user(email,
-                send_mail = True,
+                mailer,
+                send_email = True,
                 source = 'infinit',
                 mail_template = 'invitation-beta',
                 database = None,
@@ -54,11 +55,11 @@ def invite_user(email,
     'source': source,
   })
   subject = XXX_MAILCHIMP_SUCKS_TEMPLATE_SUBJECTS[mail_template] % kw
-  if send_mail:
-    mail.send_via_mailchimp(
+  if send_email:
+    mailer.send_via_mailchimp(
       email,
       mail_template,
       subject,
       #  accesscode=code,
       **kw
-    )
+      )
