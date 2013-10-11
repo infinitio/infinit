@@ -54,7 +54,7 @@ class Meta(bottle.Bottle, user.Mixin, transaction.Mixin):
   def __register(self, method):
     rule = method.__route__
     # Introspect method.
-    spec = inspect.getfullargspec(method)
+    spec = inspect.getfullargspec(method.__original__)
     del spec.args[0] # remove self
     import itertools
     defaults = spec.defaults or []

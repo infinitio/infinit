@@ -12,9 +12,22 @@ class api:
     self.__method = method
 
   def __call__(self, method):
-    method.__route__ = self.__route
-    method.__method__ = self.__method
-    return method
+    import inspect
+    spec = inspect.getfullargspec(method)
+    def annotation_mapper(self, *args, **kwargs):
+      for arg, annotation in spec.annotations.items():
+        value = kwargs.get(arg, None)
+        if arg is not None:
+          try:
+            kwargs[arg] = annotation(value)
+          except:
+            m = '%r is not a valid %s' % (value, annotation.__name__)
+            bottle.abort(400, m)
+      return method(self, *args, **kwargs)
+    annotation_mapper.__route__ = self.__route
+    annotation_mapper.__method__ = self.__method
+    annotation_mapper.__original__ = method
+    return annotation_mapper
 
 def require_logged_in(method):
   def wrapper(self, *a, **ka):
