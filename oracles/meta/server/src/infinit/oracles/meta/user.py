@@ -432,7 +432,9 @@ class Mixin:
     return self.success({"swaggers" : list(self.user["swaggers"].keys())})
 
   @api('/user/add_swagger', method = 'POST')
-  def add_swagger(self, admin_token, user1, user2):
+  def add_swagger(self, admin_token,
+                  user1: ObjectId,
+                  user2: ObjectId):
     """Make user1 and user2 swaggers.
     This function is reserved for admins.
 
@@ -444,15 +446,12 @@ class Mixin:
     if admin_token != pythia.constants.ADMIN_TOKEN:
       return self.fail(error.UNKNOWN, "You're not admin")
 
-    self._increase_swag(
-      ObjectId(user1),
-      ObjectId(user2),
-    )
+    self._increase_swag(user1, user2,)
     return self.success({"swag": "up"})
 
   @api('/user/remove_swagger', method = 'POST')
   @require_logged_in
-  def remove_swagger(self, _id):
+  def remove_swagger(self, _id: ObjectId):
     """Remove a user from swaggers.
 
     _id -- the id of the user to remove.
@@ -493,27 +492,25 @@ class Mixin:
 
   @api('/user/favorite', method = 'POST')
   @require_logged_in
-  def favorite(self, user_id):
+  def favorite(self, user_id: ObjectId):
     """Add a user to favorites
 
     user_id -- the id of the user to add.
     """
-    favorite = ObjectId(user_id)
     query = {'_id': self.user['_id']}
-    update = { '$addToSet': { 'favorites': favorite } }
+    update = { '$addToSet': { 'favorites': user_id } }
     self.database.users.update(query, update)
     return self.success()
 
   @api('/user/unfavorite', method = 'POST')
   @require_logged_in
-  def unfavorite(self, user_id):
+  def unfavorite(self, user_id: ObjectId):
     """remove a user to favorites
 
     user_id -- the id of the user to add.
     """
-    favorite = ObjectId(user_id)
     query = {'_id': self.user['_id']}
-    update = { '$pull': { 'favorites': favorite } }
+    update = { '$pull': { 'favorites': user_id } }
     self.database.users.update(query, update)
     return self.success()
 
