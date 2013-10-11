@@ -529,6 +529,7 @@ class Mixin:
     fullname -- the new user fullname.
     hadnle -- the new user handle.
     """
+    user = self.user
     handle = handle.strip()
     # Clean the forbiden char from asked handle.
     handle = self.__generate_handle(handle, enlarge = False)
@@ -547,16 +548,17 @@ class Mixin:
         field = 'handle',
         )
     other = self.database.users.find_one({'lw_handle': lw_handle})
-    if other and other['_id'] != self.user['_id']:
+    if other and other['_id'] != user['_id']:
       return self.fail(
         error.HANDLE_ALREADY_REGISTRED,
         field = 'handle',
         )
-    # XXX/ Do that in an atomic way.
-    self.user['handle'] = handle
-    self.user['lw_handle'] = lw_handle
-    self.user['fullname'] = fullname
-    self.database.users.save(self.user)
+    update = {
+      'handle': handle,
+      'lw_handle': lw_handle,
+      'fullname': fullname,
+    }
+    self.database.users.update({'_id': user['_id']}, update)
     return self.success()
 
   @api('/user/invite', method = 'POST')
