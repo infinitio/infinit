@@ -458,10 +458,9 @@ class Mixin:
     user_id -- the id of the user to add.
     """
     favorite = ObjectId(user_id)
-    lst = self.user.setdefault('favorites', [])
-    if not favorite in lst:
-      lst.append(favorite)
-      self.database.users.save(self.user)
+    query = {'_id': self.user['_id']}
+    update = { '$addToSet': { 'favorites': favorite } }
+    self.database.users.update(query, update)
     return self.success()
 
   @api('/user/unfavorite', method = 'POST')
@@ -472,10 +471,9 @@ class Mixin:
     user_id -- the id of the user to add.
     """
     favorite = ObjectId(user_id)
-    lst = self.user.setdefault('favorites', [])
-    if favorite in lst:
-      lst.remove(favorite)
-      self.database.users.save(self.user)
+    query = {'_id': self.user['_id']}
+    update = { '$pull': { 'favorites': favorite } }
+    self.database.users.update(query, update)
     return self.success()
 
   ## ---- ##
