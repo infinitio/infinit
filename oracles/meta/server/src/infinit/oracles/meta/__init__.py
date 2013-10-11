@@ -115,6 +115,12 @@ class Meta(bottle.Bottle, user.Mixin):
     assert self.__database is not None
     return self.__database
 
+  # Make it accessible from user.
+  @property
+  def sessions(self):
+    assert self.__sessions is not None
+    return self.__sessions
+
   def abort(self, message):
     bottle.abort(500, message)
 
@@ -124,44 +130,3 @@ class Meta(bottle.Bottle, user.Mixin):
   @api('/status')
   def status(self):
     return self.success()
-
-  ## -------- ##
-  ## Sessions ##
-  ## -------- ##
-
-  @api('/user/login', method = 'POST')
-  def login(self, email, device, password):
-    email = email.lower()
-    user = self.__database.users.find_one({
-      'email': email,
-      'password': hash_pasword(password),
-    })
-    if user is None:
-      self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
-    # Remove potential leaked previous session.
-    self.__sessions.remove({'email': email, 'device': device})
-    bottle.request.session['device'] = device
-    bottle.request.session['email'] = email
-    return self.success({
-        '_id' : self.user['_id'],
-        'fullname': self.user['fullname'],
-        'email': self.user['email'],
-        'handle': self.user['handle'],
-        'identity': self.user['identity'],
-      })
-
-  @api('/user/logout', method = 'POST')
-  @require_logged_in
-  def logout(self):
-    if 'email' in bottle.request.session:
-      del bottle.request.session['device']
-      del bottle.request.session['email']
-      return self.success()
-    else:
-      return self.fail(error.NOT_LOGGED_IN)
-
-  @property
-  def user(self):
-    email = bottle.request.session.get('email', None)
-    if email is not None:
-      return self.user_by_email(email)

@@ -1,5 +1,7 @@
 # -*- encoding: utf-8 -*-
 
+import bottle
+
 from bson import ObjectId
 
 from .utils import api, require_logged_in, hash_pasword
@@ -73,9 +75,50 @@ class Mixin:
       h += str(int(random.random() * 10))
     return h
 
-  ## ------------------------- ##
-  ## Login / Logout / Register ##
-  ## ------------------------- ##
+  ## -------- ##
+  ## Sessions ##
+  ## -------- ##
+
+  @api('/user/login', method = 'POST')
+  def login(self, email, device, password):
+    email = email.lower()
+    user = self.database.users.find_one({
+      'email': email,
+      'password': hash_pasword(password),
+    })
+    if user is None:
+      self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
+    # Remove potential leaked previous session.
+    self.sessions.remove({'email': email, 'device': device})
+    bottle.request.session['device'] = device
+    bottle.request.session['email'] = email
+    return self.success({
+        '_id' : self.user['_id'],
+        'fullname': self.user['fullname'],
+        'email': self.user['email'],
+        'handle': self.user['handle'],
+        'identity': self.user['identity'],
+      })
+
+  @api('/user/logout', method = 'POST')
+  @require_logged_in
+  def logout(self):
+    if 'email' in bottle.request.session:
+      del bottle.request.session['device']
+      del bottle.request.session['email']
+      return self.success()
+    else:
+      return self.fail(error.NOT_LOGGED_IN)
+
+  @property
+  def user(self):
+    email = bottle.request.session.get('email', None)
+    if email is not None:
+      return self.user_by_email(email)
+
+  ## -------- ##
+  ## Register ##
+  ## -------- ##
 
   def generate_token(self, token_generation_key):
     """Generate a token for further communication
