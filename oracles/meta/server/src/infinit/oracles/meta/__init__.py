@@ -54,7 +54,7 @@ class Meta(bottle.Bottle, user.Mixin, transaction.Mixin):
   def __register(self, method):
     rule = method.__route__
     # Introspect method.
-    spec = inspect.getargspec(method)
+    spec = inspect.getfullargspec(method)
     del spec.args[0] # remove self
     import itertools
     defaults = spec.defaults or []
@@ -66,7 +66,7 @@ class Meta(bottle.Bottle, user.Mixin, transaction.Mixin):
     for arg in re.findall('<(\\w*)>', rule):
       if arg in spec_args:
         del spec_args[arg]
-      elif spec.keywords is None:
+      elif spec.varkw is None:
         raise AssertionError(
           'Rule %r yields %r but %r does not accept it' % (rule, arg, method))
     # Callback.
@@ -81,7 +81,7 @@ class Meta(bottle.Bottle, user.Mixin, transaction.Mixin):
             del d[key]
             del arguments[key]
         if len(d) > 0:
-          if spec.keywords is not None:
+          if spec.varkw is not None:
             kwargs.update(d)
           else:
             key = iter(d.keys()).__next__()
