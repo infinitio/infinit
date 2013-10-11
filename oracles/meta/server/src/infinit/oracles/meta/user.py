@@ -139,7 +139,7 @@ class Mixin:
       })
     return self.fail(error.ALREADY_LOGGED_IN)
 
-  def __register(self, **kwargs):
+  def _register(self, **kwargs):
     kwargs['connected'] = False
     user = self.database.users.save(kwargs)
     return user
@@ -216,7 +216,7 @@ class Mixin:
 
     handle = self.unique_handle(fullname)
 
-    user_id = self.__register(
+    user_id = self._register(
       _id = id,
       register_status = 'ok',
       email = email,
