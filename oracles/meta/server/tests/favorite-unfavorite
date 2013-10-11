@@ -7,12 +7,12 @@ with Meta() as meta:
   u2 = User(meta, "barfoo@infinit.io")
 
   u1.login()
-  res = u1.client.post('user/favorite', {'user_id': u2.id})
+  res = u1.post('user/favorite', {'user_id': u2.id})
 
   assert res['success']
-  assert u2.id in u1.favorites
+  assert u1.favorites == [u2.id]
 
-  res = u1.client.post('user/unfavorite', {'user_id': u2.id})
+  res = u1.post('user/unfavorite', {'user_id': u2.id})
 
   assert res['success']
-  assert u2.id not in u1.favorites
+  assert u1.favorites == []

@@ -7,7 +7,7 @@ with Meta() as meta:
   u.login()
 
   peer_email = "jeanjean@infinit.io"
-  res = u.client.post("user/invite", {"email": peer_email})
+  res = u.post("user/invite", {"email": peer_email})
 
   assert res['success']
   assert meta.database.invitations.count() == 1

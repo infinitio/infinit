@@ -162,43 +162,67 @@ def throws(f):
   else:
     raise Exception('exception expected')
 
-class User:
+class User(Client):
 
   def __init__(self,
                meta,
                email,
-               device = None,
+               device = 'device',
                **kwargs):
+    super().__init__(meta)
     self.email = email
     self.password = meta.create_user(email,
                                      **kwargs)
-    self.client = Client(meta)
     self.id = meta.get('user/%s/view' % self.email)['_id']
-    self.device = device or 'device'
+    self.device = device
 
   def login(self):
-    res = self.client.post('user/login',
-                           {
-                             'email': self.email,
-                             'password': self.password,
-                             'device': self.device,
-                           })
+    res = self.post('user/login',
+                    {
+                      'email': self.email,
+                      'password': self.password,
+                      'device': self.device,
+                    })
     assert res['success']
-    self.id = res['_id']
 
-  def logout(self):
-    res = self.client.post('user/logout', {})
+  def logout(self, device):
+    res = self.post('user/logout', {})
     assert res['success']
     self.id = res['_id']
 
   @property
   def swaggers(self):
-    return self.client.get('user/swaggers')['swaggers']
+    return self.get('user/swaggers')['swaggers']
 
   @property
   def favorites(self):
-    return self.client.get('self')['favorites']
+    return self.get('self')['favorites']
 
   @property
   def avatar(self):
-    return self.client.get('user/%s/avatar' % self.id)
+    return self.get('user/%s/avatar' % self.id)
+
+  def sendfile(self,
+               recipient_id,
+               files = ['a file with strange encoding: é.file', 'another file with no extension'],
+               total_size = 2164062,
+               message = 'no message',
+               is_directory = False,
+               device_id = None,
+               ):
+    if device_id is None:
+      device_id = self.device
+
+    transaction = {
+      'id_or_email': recipient_id,
+      'files': files,
+      'files_count': len(files),
+      'total_size': total_size,
+      'message': message,
+      'is_directory': is_directory,
+      'device_id': device_id,
+    }
+
+    res = self.post('transaction/create', transaction)
+
+    return transaction, res
