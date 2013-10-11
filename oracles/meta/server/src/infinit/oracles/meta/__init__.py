@@ -136,7 +136,6 @@ class Meta(bottle.Bottle, user.Mixin):
     self.__sessions.remove({'email': email, 'device': device})
     bottle.request.session['device'] = device
     bottle.request.session['email'] = email
-    bottle.request.session['user'] = user
     return self.success({
         '_id' : self.user['_id'],
         'fullname': self.user['fullname'],
@@ -148,14 +147,15 @@ class Meta(bottle.Bottle, user.Mixin):
   @api('/user/logout', method = 'POST')
   @require_logged_in
   def logout(self):
-    if 'user' in bottle.request.session:
+    if 'email' in bottle.request.session:
       del bottle.request.session['device']
       del bottle.request.session['email']
-      del bottle.request.session['user']
       return self.success()
     else:
       return self.fail(error.NOT_LOGGED_IN)
 
   @property
   def user(self):
-    return bottle.request.session.get('user', None)
+    email = bottle.request.session.get('email', None)
+    if email is not None:
+      return self.user_by_email(email)
