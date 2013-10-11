@@ -162,9 +162,6 @@ class Mixin:
     if self.user is not None:
       return self.fail(error.ALREADY_LOGGED_IN)
 
-    # Factor.
-    # validators
-
     email = email.lower()
 
     source = None
