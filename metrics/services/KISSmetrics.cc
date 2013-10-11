@@ -81,6 +81,8 @@ namespace metrics
         return "unknown_key";
       case Key::who_ended:
         return "unknown_key";
+      case Key::who:
+        return "unknown_key";
       }
       return "unknown_key";
     }
