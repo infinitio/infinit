@@ -185,10 +185,9 @@ class User(Client):
                     })
     assert res['success']
 
-  def logout(self, device):
+  def logout(self):
     res = self.post('user/logout', {})
     assert res['success']
-    self.id = res['_id']
 
   @property
   def swaggers(self):
@@ -197,6 +196,10 @@ class User(Client):
   @property
   def favorites(self):
     return self.get('self')['favorites']
+
+  @property
+  def devices(self):
+    return self.get('devices')['devices']
 
   @property
   def avatar(self):
