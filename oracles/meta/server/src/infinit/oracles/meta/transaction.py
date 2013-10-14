@@ -207,12 +207,12 @@ class Mixin:
 
   @api('/transactions')
   @require_logged_in
-  def all(self,
-          filter = transaction_status.final + [transaction_status.CREATED],
-          type = False,
-          peer_id = None,
-          count = 100,
-          offset = 0):
+  def transcations_get(self,
+              filter = transaction_status.final + [transaction_status.CREATED],
+              type = False,
+              peer_id = None,
+              count = 100,
+              offset = 0):
     return self._transactions(filter = filter,
                               type = type,
                               peer_id = peer_id,
@@ -221,12 +221,12 @@ class Mixin:
 
   @api('/transactions', method = 'POST')
   @require_logged_in
-  def all(self,
-          filter = transaction_status.final + [transaction_status.CREATED],
-          type = False,
-          peer_id = None,
-          count = 100,
-          offset = 0):
+  def transaction_post(self,
+                       filter = transaction_status.final + [transaction_status.CREATED],
+                       type = False,
+                       peer_id = None,
+                       count = 100,
+                       offset = 0):
     return self._transactions(filter = filter,
                               peer_id = peer_id,
                               type = type,
@@ -331,7 +331,7 @@ class Mixin:
 
   @api('/transaction/search')
   @require_logged_in
-  def search(self, text, limit, offset):
+  def transaction_search(self, text, limit, offset):
     text = ascii_string(text)
     query = {
       '$and':

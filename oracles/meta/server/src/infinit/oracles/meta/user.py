@@ -333,7 +333,7 @@ class Mixin:
   ## ------ ##
 
   @api('/user/search')
-  def search(self, text, limit = 5, offset = 0):
+  def user_search(self, text, limit = 5, offset = 0):
     """Search the ids of the users with handle or fullname matching text.
 
     text -- the query.
