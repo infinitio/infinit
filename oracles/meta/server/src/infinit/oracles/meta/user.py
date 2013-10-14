@@ -714,67 +714,70 @@ class Mixin:
     user_id -- the device owner id
     status -- the new device status
     """
+    user = self.user
     assert isinstance(user_id, ObjectId)
     assert isinstance(device_id, ObjectId)
-    assert self.user(user_id)
-    assert self.device(device_id)
+    user = self.database.users.find_one({"_id": user_id})
+    assert user is not None
+    device = self.database.devices.find_one({"_id": device_id})
+    assert device is not None
+    assert device_id in user['devices']
 
     connected_before = self.is_connected(user_id)
     # Add / remove device from db
     update_action = status and '$addToSet' or '$pull'
 
     self.database.users.update(
-        query = user_id,
-        request = {
-          update_action: {'connected_devices': 'device_id'},
-        },
-        multi = False,
+      {'_id': user_id},
+      {update_action: {'connected_devices': device_id}},
+      multi = False,
     )
-    user = self.user(user_id, fields = ['connected_devices'])
+    user = self.database.users.find_one({"_id": user_id}, fields = ['connected_devices'])
 
     # Disconnect only user with an empty list of connected device.
     self.database.users.update(
-        query = user_id,
-        request = {"$set": {"connected": bool(user["connected_devices"])}},
+        {'_id': user_id},
+        {"$set": {"connected": bool(user["connected_devices"])}},
         multi = False,
     )
 
     # XXX:
     # This should not be in user.py, but it's the only place
     # we know the device has been disconnected.
-    if status is False:
+    if status is False and connected_before is True:
       transactions = self.database.transactions.find(
         {
-          "nodes.%s" % str(device['_id']): {"$exists": True}
+          "nodes.%s" % str(device_id): {"$exists": True}
         }
       )
 
-    for transaction in transactions:
-      self.database.transactions.update(
-        {"_id": transaction},
-        {"$set": {"nodes.%s" % str(device_id): None}},
-        multi = False
-      )
+      for transaction in transactions:
+        self.database.transactions.update(
+          {"_id": transaction},
+          {"$set": {"nodes.%s" % str(device_id): None}},
+          multi = False
+          )
 
-      self.notifier.notify_some(
-        notifier.PEER_CONNECTION_UPDATE,
-        device_ids = list(transaction['nodes'].keys()),
-        message = {
-          "transaction_id": str(transaction['_id']),
-          "devices": list(transaction['nodes'].keys()),
-          "status": False
-        }
-      )
+        self.notifier.notify_some(
+          notifier.PEER_CONNECTION_UPDATE,
+          device_ids = list(transaction['nodes'].keys()),
+          message = {
+            "transaction_id": str(transaction['_id']),
+            "devices": list(transaction['nodes'].keys()),
+            "status": False
+          }
+        )
 
     self._notify_swaggers(
       notifier.USER_STATUS,
       {
         'status': self.is_connected(user_id),
         'device_id': device_id,
-        'device_status': value,
+        'device_status': status,
       },
       user_id = user_id,
     )
+    return self.success()
 
   @api('/user/connect', method = 'POST')
   def connect(self,
@@ -791,10 +794,9 @@ class Mixin:
       """
       if admin_token != pythia.constants.ADMIN_TOKEN:
         return self.fail(error.UNKNOWN, "You're not admin")
-      return self.__set_connection_status(self,
-                                          user_id,
-                                          device_id,
-                                          status = True)
+      return self.set_connection_status(user_id = ObjectId(user_id),
+                                        device_id = ObjectId(device_id),
+                                        status = True)
 
   @api('/user/disconnect', method = 'POST')
   def disconnect(self,
@@ -810,10 +812,9 @@ class Mixin:
       """
       if admin_token != pythia.constants.ADMIN_TOKEN:
         return self.fail(error.UNKNOWN, "You're not admin")
-      return self.__set_connection_status(self,
-                                          user_id,
-                                          device_id,
-                                          status = False)
+      return self.set_connection_status(user_id = ObjectId(user_id),
+                                        device_id = ObjectId(device_id),
+                                        status = False)
 
   ## ----- ##
   ## Debug ##
