@@ -794,8 +794,8 @@ class Mixin:
       """
       if admin_token != pythia.constants.ADMIN_TOKEN:
         return self.fail(error.UNKNOWN, "You're not admin")
-      return self.set_connection_status(user_id = ObjectId(user_id),
-                                        device_id = ObjectId(device_id),
+      return self.set_connection_status(user_id = user_id,
+                                        device_id = device_id,
                                         status = True)
 
   @api('/user/disconnect', method = 'POST')
@@ -812,8 +812,8 @@ class Mixin:
       """
       if admin_token != pythia.constants.ADMIN_TOKEN:
         return self.fail(error.UNKNOWN, "You're not admin")
-      return self.set_connection_status(user_id = ObjectId(user_id),
-                                        device_id = ObjectId(device_id),
+      return self.set_connection_status(user_id = user_id,
+                                        device_id = device_id,
                                         status = False)
 
   ## ----- ##
