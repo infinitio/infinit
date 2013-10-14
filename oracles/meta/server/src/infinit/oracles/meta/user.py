@@ -5,17 +5,11 @@ import bottle
 from bson import ObjectId
 
 from .utils import api, require_logged_in, hash_pasword
-from . import error, notifier, regexp, invitation, conf
+from . import error, notifier, regexp, invitation, conf, metalib
 
 import os
 import time
 import unicodedata
-
-class metalib:
-  @staticmethod
-  def generate_identity(*a, **ka):
-    return None, None
-#import metalib # used to generate identity.
 
 class pythia:
   class constants:
