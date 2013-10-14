@@ -43,26 +43,39 @@ def configure(prefix = drake.Path('/usr/local'),
   rule_check = drake.TestSuite('check')
 
   for name in (
-      'favorite-unfavorite',
-      'get_avatar',
-      'invite_as_user',
-      'invite_as_admin',
-      'login-failure',
-      'login-logout',
-      'login-success',
-      'session-cleanup',
-      'status',
-      'register',
-      'register_invited',
       'routes',
-      'set_avatar',
-      'swaggers',
-      'user-search',
-      'transaction',
+      'status',
+      'transactions/transaction',
+      'transactions/transaction_search',
+      'transactions/transaction_update',
+      'users/favorite-unfavorite',
+      'users/get_avatar',
+      'users/invite_as_admin',
+      'users/invite_as_user',
+      'users/login-failure',
+      'users/login-logout',
+      'users/login-success',
+      'users/register',
+      'users/register_invited',
+      'users/session-cleanup',
+      'users/set_avatar',
+      'users/swaggers',
+      'users/user-search',
   ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
     for source in sources:
       test.dependency_add(source)
-    runner = drake.Runner(test)
+
+    import os
+    pythonpath = [
+      drake.path_source('tests'),
+      drake.path_build('lib/python'),
+    ]
+    env = {
+      'PYTHONPATH': ':'.join(map(str, pythonpath)),
+      'PATH': os.environ['PATH']
+    }
+
+    runner = drake.Runner(test, env = env)
     rule_check << runner.status
