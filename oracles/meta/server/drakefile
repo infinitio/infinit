@@ -18,6 +18,7 @@ def configure(prefix = drake.Path('/usr/local'),
     'src/infinit/oracles/meta/plugins/jsongo.py',
     'src/infinit/oracles/meta/plugins/session.py',
     'src/infinit/oracles/meta/conf.py',
+    'src/infinit/oracles/meta/device.py',
     'src/infinit/oracles/meta/error_code.hh.inc',
     'src/infinit/oracles/meta/error.py',
     'src/infinit/oracles/meta/invitation.py',
@@ -61,6 +62,10 @@ def configure(prefix = drake.Path('/usr/local'),
       'users/set_avatar',
       'users/swaggers',
       'users/user-search',
+      'devices/creation',
+      'devices/deletion',
+      'devices/search',
+      'devices/update',
   ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))

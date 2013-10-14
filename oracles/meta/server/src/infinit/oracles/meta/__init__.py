@@ -13,14 +13,13 @@ from . import error
 
 from .utils import api, hash_pasword, stringify_object_ids, require_logged_in
 
-from . import user
-from . import transaction
+from . import user, transaction, device
 from . import notifier
 from . import mail
 
 from bson import ObjectId
 
-class Meta(bottle.Bottle, user.Mixin, transaction.Mixin):
+class Meta(bottle.Bottle, user.Mixin, transaction.Mixin, device.Mixin):
 
   def __init__(self,
                mongo_host = None,

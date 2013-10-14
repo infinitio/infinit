@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+
+with Meta() as meta:
+  email = 'bob@infinit.io'
+  fullname = 'bob'
+
+  bob = User(meta, email = email, fullname = fullname)
+
+  bob.login()
+
+  foobar = bob.post('device/create', {"name": "foobar"})
+
+  assert foobar['success']
+  devices = bob.get('devices')['devices']
+
+  assert len(devices) == 1
+  assert devices[0] == foobar['created_device_id']
+
+  device_id = devices[0]
+
+  foobar = bob.get('device/%s/view' % device_id)
+  assert foobar['success']
+
+  res = bob.post('device/delete', {'id': foobar['_id']})
+  assert res['success']
+  assert res['deleted_device_id'] == device_id
+
+  devices = bob.get('devices')['devices']
+  assert len(devices) == 0
+
+  try:
+    bob.get('device/%s/view' % device_id)
+    raise Exception('device shouldn\'t be gettable')
+  except Exception as e:
+    pass

@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+
+with Meta() as meta:
+  email = 'bob@infinit.io'
+  fullname = 'bob'
+
+  bob = User(meta, email = email, fullname = fullname)
+
+  bob.login()
+
+  foobar = bob.post('device/create', {"name": "foobar"})
+
+  assert foobar['success']
+  assert foobar['name'] == "foobar"
+
+  barfoo = bob.post('device/create', {"name": "barfoo"})
+
+  assert barfoo['success']
+  assert barfoo['name'] == "barfoo"
+
+  res = bob.get('devices')
+
+  assert res['success']
+  assert len(res['devices']) == 2
+
+  assert set(res['devices']) == set([foobar['created_device_id'],
+                                     barfoo['created_device_id']])
