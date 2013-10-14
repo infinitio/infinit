@@ -10,7 +10,7 @@
 #include <curly/exceptions.hh>
 
 #include <elle/attribute.hh>
-#include <elle/HTTPClient.hh>
+#include <elle/HttpClient.hh>
 #include <elle/log.hh>
 
 #include <exception>
