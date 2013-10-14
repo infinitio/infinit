@@ -26,8 +26,7 @@ class Mixin:
   ## ------ ##
   ## Handle ##
   ## ------ ##
-  @staticmethod
-  def generate_dummy():
+  def generate_dummy(self):
     import random
     t1 = ['lo', 'ca', 'ki', 'po', 'pe', 'bi', 'mer']
     t2 = ['ri', 'ze', 'te', 'sal', 'ju', 'il']
@@ -52,7 +51,7 @@ class Mixin:
       return handle
 
     if len(handle) < 5:
-      handle += generate_dummy()
+      handle += self.generate_dummy()
     return handle
 
   def generate_handle(self, fullname):
@@ -617,8 +616,8 @@ class Mixin:
       'email': self.user['email'],
       'devices': self.user.get('devices', []),
       'networks': self.user.get('networks', []),
-      'identity': self.user['identity'] or 'PLS FIXXXXXXXX ME',
-      'public_key': self.user['public_key'] or 'PLS FIXXXXXXXX ME',
+      'identity': self.user['identity'],
+      'public_key': self.user['public_key'],
       'accounts': self.user['accounts'],
       'remaining_invitations': self.user.get('remaining_invitations', 0),
       'connected_devices': self.user.get('connected_devices', []),
@@ -636,7 +635,7 @@ class Mixin:
     return self.success(
       {
         'email': self.user['email'],
-        'identity': self.user['identity'] or 'PLS FIXXXXXXXX ME',
+        'identity': self.user['identity'],
       })
 
   @api('/user/remaining_invitations')
