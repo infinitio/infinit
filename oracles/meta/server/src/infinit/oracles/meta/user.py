@@ -5,15 +5,11 @@ import bottle
 from bson import ObjectId
 
 from .utils import api, require_logged_in, hash_pasword
-from . import error, notifier, regexp, invitation, conf, metalib
+from . import error, notifier, regexp, invitation, conf, metalib, pythia
 
 import os
 import time
 import unicodedata
-
-class pythia:
-  class constants:
-    ADMIN_TOKEN = "admintoken"
 
 #import pythia # used for admin token.
 
@@ -71,7 +67,6 @@ class Mixin:
   ## -------- ##
   ## Sessions ##
   ## -------- ##
-
   @api('/user/login', method = 'POST')
   def login(self,
             email,
@@ -108,14 +103,16 @@ class Mixin:
     self.sessions.remove({'email': email, 'device': device['_id']})
     bottle.request.session['device'] = device['_id']
     bottle.request.session['email'] = email
-    return self.success({
+    return self.success(
+      {
         '_id' : self.user['_id'],
         'fullname': self.user['fullname'],
         'email': self.user['email'],
         'handle': self.user['handle'],
         'identity': self.user['identity'],
         'device_id': device['_id'],
-      })
+      }
+    )
 
   @api('/user/logout', method = 'POST')
   @require_logged_in
@@ -136,7 +133,6 @@ class Mixin:
   ## -------- ##
   ## Register ##
   ## -------- ##
-
   def generate_token(self, token_generation_key):
     """Generate a token for further communication
 
@@ -355,7 +351,6 @@ class Mixin:
   ## ------ ##
   ## Search ##
   ## ------ ##
-
   @api('/user/search')
   def user_search(self, text, limit = 5, offset = 0):
     """Search the ids of the users with handle or fullname matching text.
@@ -416,7 +411,6 @@ class Mixin:
   ## ------- ##
   ## Swagger ##
   ## ------- ##
-
   def _increase_swag(self, lhs, rhs):
     """Increase users reciprocal swag amount.
 
@@ -465,7 +459,7 @@ class Mixin:
       return self.fail(error.UNKNOWN, "You're not admin")
 
     self._increase_swag(user1, user2,)
-    return self.success({"swag": "up"})
+    return self.success()
 
   @api('/user/remove_swagger', method = 'POST')
   @require_logged_in
@@ -479,7 +473,7 @@ class Mixin:
       {'$pull': {'swaggers': _id}},
       True #upsert
     )
-    return self.success({"swaggers" : swagez["swaggers"]})
+    return self.success()
 
   def _notify_swaggers(self, notification_id, data, user_id = None):
     """Send a notification to each user swaggers.
@@ -507,7 +501,6 @@ class Mixin:
   ## ---------- ##
   ## Favortites ##
   ## ---------- ##
-
   @api('/user/favorite', method = 'POST')
   @require_logged_in
   def favorite(self, user_id: ObjectId):
@@ -535,7 +528,6 @@ class Mixin:
   ## ---- ##
   ## Edit ##
   ## ---- ##
-
   @api('/user/edit', method = 'POST')
   @require_logged_in
   def edit(self, fullname, handle):
@@ -608,6 +600,9 @@ class Mixin:
         self.forbiden()
       if regexp.EmailValidator(email) != 0:
         return self.fail(error.EMAIL_NOT_VALID)
+      user = self.database.users.find_one({"email": email})
+      if user is not None:
+        self.fail(error.USER_ALREADY_INVITED)
       invitation.invite_user(
         email = email,
         send_mail = True,
@@ -644,10 +639,10 @@ class Mixin:
       'public_key': self.user['public_key'],
       'accounts': self.user['accounts'],
       'remaining_invitations': self.user.get('remaining_invitations', 0),
-      'connected_devices': self.user.get('connected_devices', []),
-      'status': self.is_connected(self.user['_id']),
       'token_generation_key': self.user.get('token_generation_key', ''),
       'favorites': self.user.get('favorites', []),
+      'connected_devices': self.user.get('connected_devices', []),
+      'status': self.is_connected(self.user['_id']),
       'created_at': self.user.get('created_at', 0),
     })
 
@@ -706,7 +701,6 @@ class Mixin:
   ## ------- ##
   ## Devices ##
   ## ------- ##
-
   def device(self, user_id, device_id, enforce_existence = True):
     """Get the device, ensuring the owner is the right one.
 
@@ -717,20 +711,19 @@ class Mixin:
     device = self.database.devices.find_one({
         '_id': device_id,
         'owner': user_id,
-        })
+    })
 
     if device is None and enforce_existence:
       self.raise_error(
         error.DEVICE_ID_NOT_VALID,
         "The device %s does not belong to the user %s" % (device_id, user_id)
-        )
+      )
 
     return device
 
   ## ----------------- ##
   ## Connection status ##
   ## ----------------- ##
-
   def set_connection_status(self, user_id, device_id, status):
     """Add or remove the device from user connected devices.
 
@@ -843,7 +836,6 @@ class Mixin:
   ## ----- ##
   ## Debug ##
   ## ----- ##
-
   @api('/debug', method = 'POST')
   @require_logged_in
   def message(self,
