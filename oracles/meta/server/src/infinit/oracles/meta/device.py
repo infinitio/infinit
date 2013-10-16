@@ -31,14 +31,13 @@ class Mixin:
       self.fail(error.DEVICE_NOT_VALID)
     return self.success(device)
 
-  @api('/device/create', method="POST")
-  @require_logged_in
-  def create_device(self, name):
+  def _create_device(self, name, user = None):
     """Create a device.
     """
     if regexp.Validator(regexp.Device, error.DEVICE_NOT_VALID)(name) != 0:
       self.fail(error.DEVICE_NOT_VALID)
-    user = self.user
+    user = self.user or user
+    assert user is not None
     to_save = {'name': name.strip(), 'owner': user['_id'],}
     id = self.database.devices.insert(to_save)
     assert id is not None
@@ -50,13 +49,20 @@ class Mixin:
       conf.INFINIT_AUTHORITY_PASSWORD
     )
     self.database.devices.update({"_id": id}, to_save)
+    device = self.database.devices.find_one({"_id": id})
     # XXX check unique device ?
     user = self.database.users.find_and_modify({'_id': user['_id']}, {'$addToSet': {'devices': id}})
-    return self.success({
-        'created_device_id': id,
-        'passport': to_save['passport'],
-        'name': name,
-    })
+    return device
+
+  @api('/device/create', method="POST")
+  @require_logged_in
+  def create_device(self, name):
+    device = self._create_device(name)
+    assert device is not None
+    return self.success({"created_device_id": device['_id'],
+                         "passport": device['passport'],
+                         "name": device['name']})
+
 
   @api('/device/update', method = "POST")
   @require_logged_in
