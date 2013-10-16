@@ -7,7 +7,7 @@ with Meta() as meta:
   res = meta.post('user/login',
                   {
                     'email': 'foo@bar.baz',
-                    'device': 'android',
+                    'device_name': 'android',
                     'password': 'thereisnospoon',
                   })
   assert not res['success']

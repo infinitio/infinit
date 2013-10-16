@@ -167,27 +167,42 @@ class User(Client):
   def __init__(self,
                meta,
                email,
-               device = 'device',
+               device_name = 'device',
                **kwargs):
     super().__init__(meta)
     self.email = email
     self.password = meta.create_user(email,
                                      **kwargs)
     self.id = meta.get('user/%s/view' % self.email)['_id']
-    self.device = device
+    self.device_name = device_name
+    self.device_id = None
 
-  def login(self):
-    res = self.post('user/login',
-                    {
-                      'email': self.email,
-                      'password': self.password,
-                      'device': self.device,
-                    })
+  def login(self, device_id = None, device_name = None):
+    if device_name is not None:
+      self.device_name = device_name
+    if device_id is not None:
+      self.device_id = device_id
+    req = {
+      'email': self.email,
+      'password': self.password,
+      'device_name': self.device_name,
+      'device_id': self.device_id,
+    }
+    res = self.post('user/login', req)
     assert res['success']
+    if self.device_id is not None:
+      assert self.device_id == res['device_id']
+    self.device_id = res['device_id']
 
   def logout(self):
     res = self.post('user/logout', {})
     assert res['success']
+    self.device_id = None
+
+  @property
+  def device(self):
+    assert self.device_id is not None
+    return self.get('device/%s/view' % self.device_id)
 
   @property
   def swaggers(self):

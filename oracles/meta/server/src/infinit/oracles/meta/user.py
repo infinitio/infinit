@@ -73,7 +73,11 @@ class Mixin:
   ## -------- ##
 
   @api('/user/login', method = 'POST')
-  def login(self, email, device, password):
+  def login(self,
+            email,
+            password,
+            device_id = None,
+            device_name = ""):
     email = email.lower()
     user = self.database.users.find_one({
       'email': email,
@@ -81,9 +85,28 @@ class Mixin:
     })
     if user is None:
       self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
+    if device_id is not None:
+      device_id = ObjectId(device_id)
+      device = self.database.devices.find_one({"_id": device_id})
+      if device is None:
+        self.fail(error.DEVICE_NOT_FOUND)
+      if device_id not in user['devices']:
+        self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
+    elif device_name != "":
+      device = self.database.devices.find_one({"owner": user['_id'],
+                                               "name": device_name})
+      if device is None:
+        device = self._create_device(device_name, user)
+        if device is None:
+          self.fail(error.DEVICE_NOT_FOUND)
+    else:
+      # XXX: Web ?
+      self.fail(error.DEVICE_NOT_FOUND)
+
     # Remove potential leaked previous session.
-    self.sessions.remove({'email': email, 'device': device})
-    bottle.request.session['device'] = device
+    # Web ?
+    self.sessions.remove({'email': email, 'device': device['_id']})
+    bottle.request.session['device'] = device['_id']
     bottle.request.session['email'] = email
     return self.success({
         '_id' : self.user['_id'],
@@ -91,6 +114,7 @@ class Mixin:
         'email': self.user['email'],
         'handle': self.user['handle'],
         'identity': self.user['identity'],
+        'device_id': device['_id'],
       })
 
   @api('/user/logout', method = 'POST')

@@ -7,7 +7,7 @@ with Meta() as meta:
   user = {
     'email': 'foo@bar.baz',
     'password': password,
-    'device': 'android',
+    'device_name': 'android',
   }
 
   # Login a client.

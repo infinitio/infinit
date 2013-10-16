@@ -16,10 +16,10 @@ with Meta() as meta:
   assert foobar['success']
   devices = bob.get('devices')['devices']
 
-  assert len(devices) == 1
-  assert devices[0] == foobar['created_device_id']
+  assert len(devices) == 2
+  assert devices[1] == foobar['created_device_id']
 
-  device_id = devices[0]
+  device_id = devices[1]
 
   foobar = bob.get('device/%s/view' % device_id)
   assert foobar['success']
@@ -29,7 +29,7 @@ with Meta() as meta:
   assert res['deleted_device_id'] == device_id
 
   devices = bob.get('devices')['devices']
-  assert len(devices) == 0
+  assert len(devices) == 1
 
   try:
     bob.get('device/%s/view' % device_id)
