@@ -1211,7 +1211,18 @@ def configure(cxx_toolkit = None,
   recvfrom_copy = drake.copy(recvfrom_sources, 'bin', 'satellites/recvfrom')
   build << recvfrom_copy
 
-  # Oracles
+  ## ------- ##
+  ## Oracles ##
+  ## ------- ##
+
+  trophonius = drake.include('oracles/trophonius/server',
+                             elle = elle.elle,
+                             reactor = elle.reactor,
+                             boost = boost,
+                             prefix = prefix,
+                             cxx_toolkit = cxx_toolkit,
+                             cxx_config = cxx_config)
+
 
   oracles_enabled = cxx_toolkit.os != drake.os.windows
   if oracles_enabled:
