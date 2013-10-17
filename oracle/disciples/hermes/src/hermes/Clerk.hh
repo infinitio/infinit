@@ -23,15 +23,24 @@ namespace oracle
     {
     public:
       Clerk(boost::filesystem::path& base_path);
-      static void check_directory(boost::filesystem::path& path);
+
+      static
+      void
+      check_directory(boost::filesystem::path& path);
 
     public:
-      void ident(TID id);
-      Size store(FileID id, Offset off, elle::Buffer& buff);
-      elle::Buffer fetch(FileID id, Offset off, Size size);
+      void
+      ident(TID id);
+
+      Size
+      store(FileID id, Offset off, elle::Buffer& buff);
+
+      elle::Buffer
+      fetch(FileID id, Offset off, Size size);
 
     private:
-      void _explore(boost::filesystem::path& path);
+      void
+      _explore(boost::filesystem::path& path);
 
     private:
       std::vector<Chunk> _chunks;

@@ -25,7 +25,8 @@ namespace oracle
       ~Hermes();
 
     public:
-      void run();
+      void
+      run();
 
     private:
       reactor::Scheduler& _sched;

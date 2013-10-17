@@ -24,18 +24,36 @@ namespace oracle
       Chunk(boost::filesystem::path const& path);
 
     public:
-      bool follows(Chunk const& other) const;
-      bool overlaps(Chunk const& other) const;
-      bool leads(Chunk const& other) const;
-      bool belongs_to(Chunk const& other) const;
+      bool
+      follows(Chunk const& other) const;
+
+      bool
+      overlaps(Chunk const& other) const;
+
+      bool
+      leads(Chunk const& other) const;
+
+      bool
+      belongs_to(Chunk const& other) const;
 
     public:
-      void append(elle::Buffer& buff);
-      void save(elle::Buffer& buff);
-      void merge(Chunk const& other, elle::Buffer& buff);
-      void prepend(Chunk& other, elle::Buffer& buff);
-      elle::Buffer extract(Chunk const& piece) const;
-      void remove();
+      void
+      append(elle::Buffer& buff);
+
+      void
+      save(elle::Buffer& buff);
+
+      void
+      merge(Chunk const& other, elle::Buffer& buff);
+
+      void
+      prepend(Chunk& other, elle::Buffer& buff);
+
+      elle::Buffer
+      extract(Chunk const& piece) const;
+
+      void
+      remove();
 
     private:
       std::string _name();
