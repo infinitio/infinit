@@ -11,7 +11,9 @@
 #include <elle/elle.hh>
 #include <elle/finally.hh>
 #include <elle/HttpClient.hh>
-#include <elle/system/Process.hh>
+#ifndef INFINIT_WINDOWS
+# include <elle/system/Process.hh>
+#endif
 #include <elle/container/list.hh>
 #include <CrashReporter.hh>
 
@@ -557,6 +559,36 @@ extern "C"
     free(data);
   }
 
+  char const*
+  gap_user_avatar_url(gap_State* state,
+                      uint32_t user_id)
+  {
+    assert(user_id != surface::gap::null_id);
+
+    std::string res = run<std::string>(
+      state,
+      "user avatar url",
+      [&] (surface::gap::State& state) -> std::string
+      {
+        return elle::sprintf(
+          "%s:%s/user/%s/avatar",
+          state.meta().host(),
+          state.meta().port(),
+          state.user(user_id).id);
+      });
+
+    auto size = res.size() + 1;
+    char const* cstr = static_cast<char const*>(::malloc(sizeof(char) * size));
+    ::strncpy((char *) cstr, res.c_str(), size);
+    return cstr;
+  }
+
+  void
+  gap_free_user_avatar_url(char const* str)
+  {
+    free((void*) str);
+  }
+
   uint32_t
   gap_user_by_email(gap_State* state,
                     char const* email)
@@ -657,6 +689,12 @@ extern "C"
                       favorites.end(),
                       id) == favorites.end())
           favorites.push_back(id);
+        state.infinit_user_reporter()[state.me().id].store(
+          "user favorite",
+          {
+            {MKey::who, id}
+          }
+        );
         return gap_ok;
       });
   }
@@ -679,6 +717,12 @@ extern "C"
                             id);
         if (it != favorites.end())
           favorites.erase(it);
+        state.infinit_user_reporter()[state.me().id].store(
+          "user unfavorite",
+          {
+            {MKey::who, id}
+          }
+        );
         return gap_ok;
       });
   }
@@ -1228,6 +1272,7 @@ extern "C"
                        char const* _file,
                        char const* _os_description)
   {
+#ifndef INFINIT_WINDOWS
     try
     {
       boost::filesystem::path user_file_path(_file);
@@ -1242,14 +1287,14 @@ extern "C"
       if (boost::filesystem::exists(user_file_path))
       {
         args.push_back("-C");
-        args.push_back(user_file_path.parent_path().native());
-        args.push_back(user_file_path.filename().native());
+        args.push_back(user_file_path.parent_path().string());
+        args.push_back(user_file_path.filename().string());
       }
       if (boost::filesystem::exists(infinit_home_path))
       {
         args.push_back("-C");
-        args.push_back(infinit_home_path.parent_path().native());
-        args.push_back(infinit_home_path.filename().native());
+        args.push_back(infinit_home_path.parent_path().string());
+        args.push_back(infinit_home_path.filename().string());
       }
 
       std::string b64 = "";
@@ -1282,6 +1327,7 @@ extern "C"
       ELLE_WARN("cannot send user report: %s", elle::exception_string());
       return gap_api_error;
     }
+#endif
     return gap_ok;
   }
 
@@ -1293,6 +1339,7 @@ extern "C"
                            char const* _os_description,
                            char const* _additional_info)
   {
+#ifndef INFINIT_WINDOWS
     try
     {
       boost::filesystem::path crash_report_path(_crash_report);
@@ -1307,14 +1354,14 @@ extern "C"
       if (boost::filesystem::exists(crash_report_path))
       {
         args.push_back("-C");
-        args.push_back(crash_report_path.parent_path().native());
-        args.push_back(crash_report_path.filename().native());
+        args.push_back(crash_report_path.parent_path().string());
+        args.push_back(crash_report_path.filename().string());
       }
       if (boost::filesystem::exists(state_log_path))
       {
         args.push_back("-C");
-        args.push_back(state_log_path.parent_path().native());
-        args.push_back(state_log_path.filename().native());
+        args.push_back(state_log_path.parent_path().string());
+        args.push_back(state_log_path.filename().string());
       }
 
       if (args.size() > 3)
@@ -1345,6 +1392,7 @@ extern "C"
       ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
       return gap_api_error;
     }
+#endif
     return gap_ok;
   }
 
@@ -1352,6 +1400,7 @@ extern "C"
   gap_gather_crash_reports(char const* _user_id,
                            char const* _network_id)
   {
+#ifndef INFINIT_WINDOWS
     try
     {
       namespace fs = boost::filesystem;
@@ -1418,6 +1467,7 @@ extern "C"
       ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
       return gap_error;
     }
+#endif
     return gap_ok;
   }
 

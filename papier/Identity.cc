@@ -1,6 +1,4 @@
 #include <elle/os/path.hh>
-#include <elle/io/File.hh>
-#include <elle/io/Piece.hh>
 #include <elle/serialize/TupleSerializer.hxx>
 
 #include <cryptography/KeyPair.hh>
@@ -252,7 +250,7 @@ namespace papier
   void
   Identity::erase(elle::String const& user_id)
   {
-    elle::concept::Fileable<>::erase(elle::io::Path{Identity::_path(user_id)});
+    boost::filesystem::remove(Identity::_path(user_id));
   }
 
   elle::Boolean

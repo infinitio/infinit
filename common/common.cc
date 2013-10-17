@@ -5,13 +5,13 @@
 #include <elle/os/path.hh>
 #include <elle/print.hh>
 #include <elle/system/platform.hh>
+#include <elle/system/home_directory.hh>
 
 #include <boost/preprocessor/cat.hpp>
 
 #include <stdexcept>
 #include <unordered_map>
 
-#include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -43,7 +43,7 @@
 #define COMMON_DEFAULT_INFINIT_HOME ".infinit"
 #define COMMON_DEFAULT_META_PROTOCOL "http"
 #define COMMON_DEFAULT_META_HOST "meta.api.development.infinit.io"
-#define COMMON_DEFAULT_META_PORT 12345
+#define COMMON_DEFAULT_META_PORT 80
 #define COMMON_DEFAULT_TROPHONIUS_PROTOCOL "http"
 #define COMMON_DEFAULT_TROPHONIUS_HOST "trophonius.api.development.infinit.io"
 #define COMMON_DEFAULT_TROPHONIUS_PORT 23456
@@ -62,7 +62,7 @@
 #define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
 #define COMMON_PRODUCTION_META_PROTOCOL "http"
 #define COMMON_PRODUCTION_META_HOST "v2.meta.api.production.infinit.io"
-#define COMMON_PRODUCTION_META_PORT 12345
+#define COMMON_PRODUCTION_META_PORT 80
 #define COMMON_PRODUCTION_TROPHONIUS_PROTOCOL "http"
 #define COMMON_PRODUCTION_TROPHONIUS_HOST "v2.trophonius.api.production.infinit.io"
 #define COMMON_PRODUCTION_TROPHONIUS_PORT 23456
@@ -147,11 +147,7 @@ namespace
   std::string
   _home_directory()
   {
-    struct passwd* pw = ::getpwuid(getuid());
-    if (pw != nullptr && pw->pw_dir != nullptr)
-      return std::string{pw->pw_dir};
-    else
-      return elle::os::getenv("HOME", "/tmp");
+    return elle::system::home_directory().string();
   }
 
   std::string
@@ -642,7 +638,7 @@ namespace common
     ::metrics::Service::Info const&
     infinit_metrics_info(::metrics::Kind const kind)
     {
-      static ::metrics::Service::Info const transaction = {
+      static ::metrics::Service::Info const all = {
         "infinit",
         elle::os::getenv("INFINIT_METRICS_HOST",
                          COMMON_METRICS_HOST),
@@ -654,10 +650,10 @@ namespace common
       };
       switch (kind)
       {
-        case ::metrics::Kind::all: break;
+        case ::metrics::Kind::all: return all;
         case ::metrics::Kind::network: break;
-        case ::metrics::Kind::transaction: return transaction;
-        case ::metrics::Kind::user: break;
+        case ::metrics::Kind::transaction: return all;
+        case ::metrics::Kind::user: return all;
       }
       elle::unreachable();
     }

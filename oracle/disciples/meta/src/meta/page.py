@@ -26,28 +26,21 @@ class Page(object):
 
     __application__ = None # Set by the application.
 
+    __db_client__ = None # Set by the application.
+
     __notifier = None
 
     _validators = []
 
     _mendatory_fields = []
 
-    # These are set by the application when ran.
-    mongo_host = None
-    mongo_port = None
 
-    # Lazy database attributes initialized on first access.
-    _database_connection = None
+    # Lazy database attribute initialized on first access.
     _database = None
 
     @property
     def database_connection(self):
-        if self._database_connection is None:
-            self._database_connection = database.Connection(
-                self.mongo_host,
-                self.mongo_port,
-            )
-        return self._database_connection
+        return self.__db_client__
 
     @property
     def database(self):

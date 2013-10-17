@@ -31,4 +31,5 @@ with drake.Drake('../..') as d:
         cxx_config,
         boost = boost,
         python3 = python,
-        build_type = os.environ.get('BUILD_TYPE', 'Development'))
+        build_type = os.environ.get('BUILD_TYPE', 'Development'),
+        enable_horizon = False)

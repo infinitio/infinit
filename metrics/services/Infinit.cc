@@ -81,6 +81,8 @@ namespace metrics
         return "source";
       case Key::method:
         return "method";
+      case Key::who:
+        return "who";
       case Key::who_connected:
         return "who_connected";
       case Key::who_ended:
@@ -136,6 +138,7 @@ namespace metrics
       rc.option(CURLOPT_DEBUGFUNCTION, &Service::_curl_debug_callback);
       rc.option(CURLOPT_DEBUGDATA, this);
       rc.option(CURLOPT_TIMEOUT, 15);
+      rc.user_agent(metrics::Reporter::user_agent);
       rc.headers({
         {"Content-Type", "application/json"}
       });

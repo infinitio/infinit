@@ -32,6 +32,12 @@
 
 ELLE_LOG_COMPONENT("infinit.plasma.trophonius.Client");
 
+#ifdef INFINIT_WINDOWS
+# define SUICIDE() ::exit(0);
+#else
+# define SUICIDE() ::kill(::getpid(), SIGKILL)
+#endif
+
 /*-------------------------.
 | Notification serializers |
 `-------------------------*/
@@ -132,16 +138,6 @@ namespace plasma
 {
   namespace trophonius
   {
-    /*-----------.
-    | Exceptions |
-    `-----------*/
-    Exception::Exception(std::string const& message):
-      elle::Exception(message)
-    {
-      ELLE_ERR("%s: %s", *this, message);
-    }
-
-
     boost::posix_time::time_duration const default_ping_period(
       boost::posix_time::seconds(30));
 
@@ -189,7 +185,7 @@ namespace plasma
         return Ptr(new ConnectionEnabledNotification{extractor});
       // XXX: Handle at upper levels (?)
       case NotificationType::suicide:
-        kill(getpid(), SIGKILL);
+        SUICIDE();
       default:
         throw elle::Exception{elle::sprint("Unknown notification type", type)};
       }
@@ -203,6 +199,7 @@ namespace plasma
       int _reconnected;
       std::shared_ptr<reactor::network::TCPSocket> _socket;
       reactor::Barrier _connected;
+      bool _synchronized;
       reactor::Barrier _pollable;
       std::string server;
       uint16_t port;
@@ -223,12 +220,14 @@ namespace plasma
         _reconnected{0},
         _socket(),
         _connected(),
+        _synchronized(false),
+        _pollable(),
         server(server),
         port(port),
         request{},
         response{},
         connect_callback{connect_callback},
-        _poll_exception{nullptr},
+        _poll_exception(),
         _buffer{},
         _ping_period(default_ping_period),
         _ping_timeout(this->_ping_period * 2),
@@ -244,8 +243,6 @@ namespace plasma
                      elle::sprintf("%s read thread", *this),
                      [&] () { this->read_thread(); })
       {
-        ELLE_TRACE_SCOPE("%s: Trophonius impl created", *this);
-
         this->_buffer.capacity(1024);
       }
 
@@ -265,103 +262,110 @@ namespace plasma
                          *this, this->server, this->port);
 
         this->_poll_exception = nullptr;
+        this->_pollable.close();
 
-        auto failure = [&] (std::string const& message)
+        reactor::Duration reconnection_cooldown = 1_sec;
+        reactor::Duration max_reconnection_cooldown = 32_sec;
+
+        while (!this->_connected.opened())
+        {
+          try
+          {
+            if (this->user_id.empty() ||
+                this->user_token.empty() ||
+                this->user_device_id.empty())
+            {
+              throw elle::Exception("some of the attributes are empty");
+            }
+
+            ELLE_DEBUG("%s: establishing connection", *this);
+            auto socket = std::make_shared<reactor::network::TCPSocket>(
+              *reactor::Scheduler::scheduler(), this->server, this->port);
+
+            this->_socket = socket;
+            ELLE_DEBUG("%s: socket connected", *this);
+            // XXX: restore this by exposing the API in reactor's TCP socket.
+            // _impl->socket.set_option(boost::asio::socket_base::keep_alive{true});
+
+            // Do not inherit file descriptor when forking.
+            // XXX: What for ? Needed ?
+            // ::fcntl(this->_socket.native_handle(), F_SETFD, 1);
+
+            json::Dictionary connection_request{
+              std::map<std::string, std::string>{
+                {"user_id", this->user_id},
+                {"token", this->user_token},
+                {"device_id", this->user_device_id},
+                  }};
+
+            // May raise an exception.
+            std::stringstream request;
+            elle::serialize::OutputJSONArchive(request, connection_request);
+
+            // Add '\n' to request.
+            request << std::endl;
+
+            ELLE_DEBUG("%s: identification", *this);
+            socket->write(reactor::network::Buffer(request.str()));
+
+            ELLE_DEBUG("%s: wait for confirmation", *this);
+            auto notif = read();
+
+            ELLE_ASSERT(notif != nullptr);
+            ELLE_DEBUG("%s: read: %s", *this, *notif);
+
+            if (notif->notification_type != NotificationType::connection_enabled)
+            {
+              throw elle::Exception("wrong first notification");
+            }
+
+            ELLE_ASSERT(dynamic_cast<ConnectionEnabledNotification*>(notif.get()));
+
+            auto notification = std::unique_ptr<ConnectionEnabledNotification>(
+              static_cast<ConnectionEnabledNotification*>(notif.release()));
+
+            if (notification->response_code != 200)
+            {
+              throw elle::Exception(notification->response_details);
+            }
+
+            ELLE_LOG("%s: connected", *this);
+            this->_connected.open();
+          }
+          catch (reactor::network::Exception const& e)
+          {
+            // In that case, we encoutered connection problem, nothing is lost!
+            // Let's try again!
+            ELLE_WARN("%s: connection failed, wait %s before retrying: %s",
+                      *this, reconnection_cooldown, e.what());
+
+            reactor::sleep(reconnection_cooldown);
+            if (reconnection_cooldown < max_reconnection_cooldown)
+            {
+              // Can be greater than max_reconnection_cooldown, if not a power
+              // of 2.
+              reconnection_cooldown *= 2;
+
+              if (reconnection_cooldown > max_reconnection_cooldown)
+                reconnection_cooldown = max_reconnection_cooldown;
+            }
+          }
+          catch (elle::Exception const& e)
           {
             // If an error occured, the connection to trophonius is broken and
             // requiere a new data (user_id, token, ...).
             this->_disconnect();
 
-            ELLE_ERR("%s: failure to connect: %s", *this, message);
-            this->_poll_exception = std::make_exception_ptr(
-              elle::Exception{
-                elle::sprintf("unable to connect: %s", message)});
-
+            ELLE_ERR("%s: failure to connect: %s", *this, e.what());
+            this->_poll_exception = std::make_exception_ptr(e);
+            // Wake up the poll thread to throw this exception.
             this->_pollable.open();
             // If the action has been initiated by the user, we can throw him
             // the exception.
             if (user_action)
-            {
-              throw elle::Exception{
-                elle::sprintf("unable to connect: %s", message)};
-            }
-          };
-
-        try
-        {
-          if (this->user_id.empty() ||
-              this->user_token.empty() ||
-              this->user_device_id.empty())
-          {
-            return failure("some of the attributes are empty");
+              throw;
+            return;
           }
-
-          ELLE_DEBUG("%s: establishing connection", *this);
-          auto socket = std::make_shared<reactor::network::TCPSocket>(
-            *reactor::Scheduler::scheduler(), this->server, this->port);
-
-          this->_socket = socket;
-          ELLE_DEBUG("%s: socket connected", *this);
-          // XXX: restore this by exposing the API in reactor's TCP socket.
-          // _impl->socket.set_option(boost::asio::socket_base::keep_alive{true});
-
-          // Do not inherit file descriptor when forking.
-          // XXX: What for ? Needed ?
-          // ::fcntl(this->_socket.native_handle(), F_SETFD, 1);
-
-          json::Dictionary connection_request{
-            std::map<std::string, std::string>{
-              {"user_id", this->user_id},
-              {"token", this->user_token},
-              {"device_id", this->user_device_id},
-                }};
-
-          // May raise an exception.
-          std::stringstream request;
-          elle::serialize::OutputJSONArchive(request, connection_request);
-
-          // Add '\n' to request.
-          request << std::endl;
-
-          ELLE_DEBUG("%s: identification", *this);
-          socket->write(reactor::network::Buffer(request.str()));
-
-          ELLE_DEBUG("%s: wait for confirmation", *this);
-          auto notif = read();
-
-          ELLE_ASSERT(notif != nullptr);
-          ELLE_DEBUG("%s: read: %s", *this, *notif);
-
-          if (notif->notification_type != NotificationType::connection_enabled)
-          {
-            return failure("wrong first notification");
-          }
-
-          ELLE_ASSERT(dynamic_cast<ConnectionEnabledNotification*>(notif.get()));
-
-          auto notification = std::unique_ptr<ConnectionEnabledNotification>(
-            static_cast<ConnectionEnabledNotification*>(notif.release()));
-
-          if (notification->response_code != 200)
-          {
-            return failure(notification->response_details);
-          }
-
-          ELLE_LOG("%s: connected", *this);
-          this->_connected.open();
-        }
-        catch (reactor::network::Exception const&)
-        {
-          // In that case, we encoutered connection problem, nothing is lost!
-          // Let's try again!
-          reactor::sleep(1_sec);
-          this->_connect();
-        }
-        catch (elle::Exception const&)
-        {
-          ELLE_WARN("%s: error while reading: %s",
-                    *this, elle::exception_string());
-          return failure(elle::exception_string());
         }
       }
 
@@ -369,6 +373,7 @@ namespace plasma
       _disconnect()
       {
         this->_connected.close();
+        this->_synchronized = false;
         this->_pollable.close();
         while (!this->_notifications.empty())
           this->_notifications.pop();
@@ -378,7 +383,7 @@ namespace plasma
           this->_connect_callback_thread.reset();
         }
         this->_buffer.reset();
-        if (this->_socket != nullptr)
+        if (this->_socket)
         {
           this->_socket->close();
           this->_socket.reset();
@@ -386,11 +391,11 @@ namespace plasma
       }
 
       void
-      _reconnect(bool require_connected = true)
+      _reconnect()
       {
         // If several threads try to reconnect, just wait for the first one to
         // be done.
-        if (require_connected && !this->_connected.opened())
+        if (!this->_connected.opened())
         {
           this->_connected.wait();
           return;
@@ -410,6 +415,7 @@ namespace plasma
                 "reconnection callback",
                 [&]
                 {
+                  ELLE_LOG("%s: running reconnection callback", *this);
                   try
                   {
                     this->connect_callback(true);
@@ -424,7 +430,13 @@ namespace plasma
                              *this, elle::exception_string());
                     throw;
                   }
-                  this->_pollable.open();
+                  this->_synchronized = true;
+                  if (!this->_notifications.empty())
+                  {
+                    ELLE_DEBUG("%s: resynchronized, "
+                               "resume handling notifications", *this);
+                    this->_pollable.open();
+                  }
                 }));
             break;
           }
@@ -498,38 +510,29 @@ namespace plasma
       {
         auto socket = this->_socket;
 
-        try
+        this->_buffer.size(0);
+        ELLE_DEBUG("%s: reading message", *this);
+        size_t idx = 0;
+        while (true)
         {
-          this->_buffer.size(0);
-          ELLE_DEBUG("%s: reading message", *this);
-          size_t idx = 0;
-          while (true)
+          socket->getline(((char*)this->_buffer.mutable_contents()) + idx,
+                          this->_buffer.capacity() - idx, '\n');
+          if (!socket->fail())
           {
-            socket->getline(((char*)this->_buffer.mutable_contents()) + idx,
-                            this->_buffer.capacity() - idx, '\n');
-            if (!socket->fail())
-            {
-              this->_buffer.size(idx + socket->gcount());
-              break;
-            }
-            idx = this->_buffer.capacity() - 1;
-            this->_buffer.capacity(this->_buffer.capacity() * 2);
-            socket->clear();
+            this->_buffer.size(idx + socket->gcount());
+            break;
           }
-          if (this->_buffer.size() == 0)
-          {
-            ELLE_ERR("Empty line read from tropho: bad:%s fail:%s eof:%s gcount:%s",
-                     socket->bad(), socket->fail(), socket->eof(), socket->gcount());
-            // XXX getline should not return an empty buffer, but throw a
-            // massive exception.
-            throw ReadException{"read an empty buffer"};
-          }
+          idx = this->_buffer.capacity() - 1;
+          this->_buffer.capacity(this->_buffer.capacity() * 2);
+          socket->clear();
         }
-        catch (elle::Exception const&)
+        if (this->_buffer.size() == 0)
         {
-          throw ReadException(
-            elle::sprintf("error while reading socket: %s",
-                          elle::exception_string()));
+          ELLE_ERR("Empty line read from tropho: bad:%s fail:%s eof:%s gcount:%s",
+                   socket->bad(), socket->fail(), socket->eof(), socket->gcount());
+          // XXX getline should not return an empty buffer, but throw a
+          // massive exception.
+          throw elle::Exception{"read an empty buffer"};
         }
 
         ELLE_TRACE_SCOPE("%s: got message", *this);
@@ -545,7 +548,6 @@ namespace plasma
       }
 
       std::queue<std::unique_ptr<Notification>> _notifications;
-      reactor::Signal _notifications_available;
       reactor::Thread _read_thread;
       void
       read_thread()
@@ -563,10 +565,9 @@ namespace plasma
           {
             notif = this->read();
           }
-          catch (elle::Exception const&)
+          catch (elle::Exception const& e)
           {
-            ELLE_WARN("%s: error while reading: %s",
-                      *this, elle::exception_string());
+            ELLE_WARN("%s: error while reading: %s", *this, e.what());
             this->_reconnect();
             continue;
           }
@@ -582,7 +583,8 @@ namespace plasma
           else
           {
             this->_notifications.push(std::move(notif));
-            this->_notifications_available.signal();
+            if (this->_synchronized)
+              this->_pollable.open();
           }
         }
       }
@@ -592,17 +594,16 @@ namespace plasma
       {
         this->_pollable.wait();
 
-        if (this->_poll_exception != nullptr)
+        if (this->_poll_exception)
           std::rethrow_exception(this->_poll_exception);
-
-        if (this->_notifications.empty())
-          this->_notifications_available.wait();
 
         ELLE_TRACE("%s new notification", *this);
         ELLE_ASSERT(!this->_notifications.empty());
         std::unique_ptr<Notification> res(
           this->_notifications.front().release());
         this->_notifications.pop();
+        if (this->_notifications.empty())
+          this->_pollable.close();
         return std::move(res);
       }
 
@@ -626,7 +627,6 @@ namespace plasma
       _ping_period(default_ping_period)
     {
       ELLE_ASSERT(connect_callback != nullptr);
-      ELLE_TRACE_SCOPE("%s: created", *this);
     }
 
     void
@@ -662,8 +662,8 @@ namespace plasma
       this->_impl->user_token = token;
       this->_impl->user_device_id = device_id;
       this->_impl->_connect(true);
-      this->_impl->_pollable.open();
       ELLE_LOG("%s: connected to trophonius", *this);
+      this->_impl->_synchronized = true;
       return true;
     }
 

@@ -15,23 +15,6 @@ namespace plasma
 {
   namespace trophonius
   {
-    /*----------.
-    | Exception |
-    `----------*/
-    class Exception:
-      public elle::Exception
-    {
-    public:
-      Exception(std::string const& message);
-    };
-
-    class ReadException:
-      public Exception
-    {
-    public:
-      using Exception::Exception;
-    };
-
     enum class NotificationType: int
     {
 # define NOTIFICATION_TYPE(name, value)         \

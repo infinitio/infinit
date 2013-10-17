@@ -3,9 +3,14 @@
 
 #include <surface/gap/State.hh>
 
+#include <reactor/network/exception.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/thread.hh>
+
+#include <curly/exceptions.hh>
+
 #include <elle/attribute.hh>
+#include <elle/HttpClient.hh>
 #include <elle/log.hh>
 
 #include <exception>
@@ -257,7 +262,7 @@ run(gap_State* state,
     else if (err.code == elle::http::ResponseCode::internal_server_error)
       ret = gap_api_error;
     else
-      ret = gap_internal_error;
+      ret = gap_network_error;
   }
   catch (plasma::meta::Exception const& err)
   {
@@ -268,6 +273,16 @@ run(gap_State* state,
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = err.code;
+  }
+  catch (reactor::network::Exception const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_network_error;
+  }
+  catch (curly::RequestError const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_network_error;
   }
   catch (elle::Exception const&)
   {

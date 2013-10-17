@@ -133,6 +133,7 @@ namespace surface
       _reporter{common::metrics::fallback_path()},
       _google_reporter{common::metrics::google_fallback_path()},
       _infinit_transaction_reporter{common::metrics::infinit_metrics_fallback_path()},
+      _infinit_user_reporter{common::metrics::infinit_metrics_fallback_path()},
       _mixpanel_reporter{common::metrics::mixpanel_fallback_path()},
       _me{nullptr},
       _output_dir{common::system::download_directory()},
@@ -144,6 +145,7 @@ namespace surface
       this->_reporter.start();
       this->_google_reporter.start();
       this->_infinit_transaction_reporter.start();
+      this->_infinit_user_reporter.start();
       this->_mixpanel_reporter.start();
 
       std::string token_path = elle::os::getenv("INFINIT_TOKEN_FILE", "");
@@ -198,6 +200,11 @@ namespace surface
           common::metrics::infinit_metrics_info(metrics::Kind::transaction),
           metrics::Kind::transaction);
 
+        typedef MetricKindService<metrics::Kind::user, Infinit> IMUser;
+        this->_infinit_user_reporter.add_service_class<IMUser>(
+          common::metrics::infinit_metrics_info(metrics::Kind::user),
+          metrics::Kind::user);
+
         typedef MetricKindService<metrics::Kind::transaction, Mixpanel> MPTransaction;
         this->_mixpanel_reporter.add_service_class<MPTransaction>(
           common::metrics::mixpanel_info(metrics::Kind::transaction));
@@ -216,6 +223,8 @@ namespace surface
       {
         ELLE_WARN("Couldn't logout: %s", elle::exception_string());
       }
+
+      ELLE_TRACE("%s: destroying members", *this);
     }
 
     plasma::meta::Client const&
@@ -260,6 +269,11 @@ namespace surface
       elle::SafeFinally login_failed{[this, lower_email] {
         this->_reporter[lower_email].store("user.login.failed");
         this->_google_reporter[lower_email].store("user.login.failed");
+        this->_infinit_user_reporter[lower_email].store(
+          "user.login",
+          {
+            {MKey::status, "failed"},
+          });
       }};
 
       auto res = this->_meta.login(lower_email, password);
@@ -277,6 +291,12 @@ namespace surface
         this->_google_reporter[res.id].store(
           "user.login",
           {{MKey::session, "start"}, {MKey::status, "succeed"}});
+
+        this->_infinit_user_reporter[res.id].store(
+          "user.login",
+          {
+            {MKey::status, "succeed"},
+          });
 
         ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
                  this->me().id,
@@ -332,9 +352,6 @@ namespace surface
               {
                 while (true)
                 {
-                  reactor::Scheduler::scheduler()->current()->wait(
-                    this->_polling_barrier);
-
                   try
                   {
                     this->handle_notification(this->_trophonius.poll());
@@ -347,6 +364,7 @@ namespace surface
                     // KickedOut will be the next event polled.
                     this->logout();
                     this->enqueue(KickedOut());
+                    return;
                   }
 
                   ELLE_TRACE("%s: notification pulled", *this);
@@ -364,12 +382,17 @@ namespace surface
     void
     State::logout()
     {
-      ELLE_TRACE_METHOD("");
+      ELLE_TRACE_SCOPE("%s: logout", *this);
 
       this->_cleanup();
 
+      ELLE_DEBUG("%s: cleaned up", *this);
+
       if (!this->logged_in())
+      {
+        ELLE_DEBUG("%s: state was not logged in", *this);
         return;
+      }
 
       elle::SafeFinally logout(
         [&]
@@ -384,47 +407,71 @@ namespace surface
             this->_google_reporter[id].store(
               "user.logout",
               {{MKey::session, "end"}});
+            this->_infinit_user_reporter[id].store(
+              "user.logout",
+              {
+                {MKey::status, "succeed"},
+              });
           }
-          catch (reactor::Terminate const&)
-          {
-            throw;
-          }
-          catch (std::exception const&)
+          catch (elle::Exception const&)
           {
             ELLE_WARN("logout failed, ignore exception: %s",
                       elle::exception_string());
             this->_meta.token("");
           }
+          ELLE_TRACE("%s: logged out", *this);
         });
     }
 
     void
     State::_cleanup()
     {
+      ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
+
+      elle::SafeFinally clean_containers(
+        [&]
+        {
+          ELLE_DEBUG("disconnect trophonius")
+            this->_trophonius.disconnect();
+
+          ELLE_DEBUG("remove pending callbacks")
+            while (!this->_runners.empty())
+              this->_runners.pop();
+
+          ELLE_DEBUG("clear users")
+          {
+            this->_user_indexes.clear();
+            this->_swagger_indexes.clear();
+            this->_users.clear();
+          }
+
+          ELLE_DEBUG("clear transactions")
+            this->_transactions_clear();
+
+          ELLE_DEBUG("clear device (%s)", this->_device.get())
+            this->_device.reset();
+
+          ELLE_DEBUG("clear me (%s)", this->_me.get())
+            this->_me.reset();
+
+          ELLE_DEBUG("clear passport (%s)", this->_passport.get())
+            this->_passport.reset();
+
+          ELLE_DEBUG("clear identity (%s)", this->_identity.get())
+            this->_identity.reset();
+
+          ELLE_TRACE("everything has been cleaned");
+        });
+
       /// First step must be to disconnect from trophonius.
       /// If not, you can pull notification that
-      if (this->_polling_thread != nullptr)
+      if (this->_polling_thread != nullptr &&
+          reactor::Scheduler::scheduler()->current() != this->_polling_thread.get())
       {
+        ELLE_DEBUG("stop polling");
         this->_polling_thread->terminate_now();
         this->_polling_thread.reset();
       }
-
-      this->_trophonius.disconnect();
-
-      while (!this->_runners.empty())
-        this->_runners.pop();
-
-      this->_user_indexes.clear();
-      this->_swagger_indexes.clear();
-
-      this->_users.clear();
-      this->_transactions_clear();
-
-      this->_device.reset();
-      this->_me.reset();
-
-      this->_passport.reset();
-      this->_identity.reset();
     }
 
     std::string
@@ -480,6 +527,11 @@ namespace surface
 
       elle::SafeFinally register_failed{[this, lower_email] {
         this->_reporter[lower_email].store("user.register.failed");
+        this->_infinit_user_reporter[lower_email].store(
+          "user.register",
+          {
+            {MKey::status, "failed"},
+          });
       }};
 
       auto res = this->meta(false).register_(
@@ -493,6 +545,12 @@ namespace surface
         this->_reporter[res.registered_user_id].store(
           "user.register",
           {{MKey::source, res.invitation_source}});
+        this->_infinit_user_reporter[res.registered_user_id].store(
+          "user.register",
+          {
+            {MKey::source, res.invitation_source},
+            {MKey::status, "succeed"},
+          });
       }};
       this->login(lower_email, password);
     }
@@ -548,15 +606,14 @@ namespace surface
       ELLE_TRACE_SCOPE(
         "%s: connection %s", *this, connection_status ? "established" : "lost");
 
-      // Lock polling.
-      if (!connection_status)
-        this->_polling_barrier.close();
-
       if (connection_status)
       {
         bool resynched{false};
         do
         {
+          if (!this->logged_in())
+            return;
+
           try
           {
             this->_user_resync();
@@ -567,7 +624,7 @@ namespace surface
           {
             throw;
           }
-          catch (std::exception const&)
+          catch (elle::Exception const&)
           {
             ELLE_WARN("%s: failed at resynching (%s)... retrying...",
                       *this, elle::exception_string());
@@ -578,10 +635,6 @@ namespace surface
       }
 
       this->enqueue<ConnectionStatus>(ConnectionStatus(connection_status));
-
-      // Unlock polling.
-      if (connection_status)
-        this->_polling_barrier.open();
     }
 
     void

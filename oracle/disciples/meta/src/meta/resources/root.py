@@ -28,6 +28,17 @@ class Root(Page):
             'fallbacks': str(self.__application__.fallback),
         })
 
+class Stats(Page):
+    __pattern__ = "/stats"
+    def GET(self):
+        total_size = sum(
+            long(tr['total_size'])
+            for tr in self.database.transactions.find({'status': 4})
+        )
+        return self.success({
+            'total_size': total_size,
+        })
+
 class Status(Page):
     """
     Page to check server status.
