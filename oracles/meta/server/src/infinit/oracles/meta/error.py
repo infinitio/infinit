@@ -18,3 +18,9 @@ filepath = os.path.abspath(
 configfile = open(filepath, 'r')
 for line in configfile:
     eval(_macro_matcher.sub(replacer, line))
+
+class Error(Exception):
+
+  def __init__(self, error_code, error_message = ""):
+    super().__init__(error_code,
+                     len(error_message) == 0 and error_code[1] or error_message)

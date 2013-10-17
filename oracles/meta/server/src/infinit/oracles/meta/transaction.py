@@ -196,8 +196,6 @@ class Mixin:
         ],
       }
 
-    print(find_params)
-
     return self.success(
       {
         "transactions": [ t['_id'] for t in self.database.transactions.find(**find_params)
@@ -241,24 +239,27 @@ class Mixin:
       return self.fail(error.TRANSACTION_DOESNT_EXIST)
     return transaction
 
-  def validate_ownership(self, transaction):
+  def validate_ownership(self, transaction, user = None):
+    if user is None:
+      user = self.user
     # Check that user has rights on the transaction
-    is_sender = self.user['_id'] == transaction['sender_id']
-    is_receiver = self.user['_id'] == transaction['recipient_id']
+    is_sender = user['_id'] == transaction['sender_id']
+    is_receiver = user['_id'] == transaction['recipient_id']
     if not (is_sender or is_receiver):
-      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+      raise error.Error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
     return is_sender
 
   def on_accept(self, transaction, device_id, device_name):
     device_id = ObjectId(device_id)
     if device_id not in self.user['devices']:
-      return self.fail(error.DEVICE_NOT_VALID)
+      raise error.Error(error.DEVICE_NOT_VALID)
 
     transaction.update({
       'recipient_fullname': self.user['fullname'],
       'recipient_device_name' : device_name,
       'recipient_device_id': device_id,
     })
+
 
   @api('/transaction/update', method = 'POST')
   @require_logged_in
@@ -267,22 +268,46 @@ class Mixin:
                          status,
                          device_id = None,
                          device_name = None):
+
+    try:
+      transaction_id = self._transaction_update(transaction_id,
+                                                status,
+                                                device_id,
+                                                device_name,
+                                                self.user)
+    except error.Error as e:
+      self.fail(*e.args)
+
+    return self.success({
+      'updated_transaction_id': transaction_id,
+    })
+
+  def _transaction_update(self,
+                          transaction_id,
+                          status,
+                          device_id = None,
+                          device_name = None,
+                          user = None):
+    if user is None:
+      user = self.user
+    if user is None:
+      self.fail(error.UNKNOWN_USER)
     transaction = self._transaction_by_id(ObjectId(transaction_id))
-    is_sender = self.validate_ownership(transaction)
+    is_sender = self.validate_ownership(transaction, user)
 
     if status not in transaction_status.transitions[transaction['status']][is_sender]:
-      return self.fail(
+      raise error.Error(
         error.TRANSACTION_OPERATION_NOT_PERMITTED,
         "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
-        )
+      )
 
     if transaction['status'] == status:
-      return self.fail(
+      raise error.Error(
         error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
         "Cannont change status from %s to %s (same status)." % (transaction['status'], status))
 
     if transaction['status'] in transaction_status.final:
-      return self.fail(
+      raise error.Error(
         error.TRANSACTION_ALREADY_FINALIZED,
         "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
         )
@@ -319,10 +344,7 @@ class Mixin:
       recipient_ids = recipient_ids,
       message = transaction,
     )
-
-    return self.success({
-      'updated_transaction_id': transaction_id,
-    })
+    return transaction_id
 
   @api('/transaction/search')
   @require_logged_in
