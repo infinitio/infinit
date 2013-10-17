@@ -5,7 +5,7 @@ from utils import Meta, User
 with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
 
-  bob.login()
+  bob.  login()
   device_id = bob.device['_id']
   device_name = bob.device['name']
   bob.logout()

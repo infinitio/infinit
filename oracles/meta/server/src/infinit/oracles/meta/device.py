@@ -59,7 +59,7 @@ class Mixin:
   def create_device(self, name):
     device = self._create_device(name)
     assert device is not None
-    return self.success({"created_device_id": device['_id'],
+    return self.success({"_id": device['_id'],
                          "passport": device['passport'],
                          "name": device['name']})
 
@@ -80,7 +80,7 @@ class Mixin:
         self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
       self.database.device.update({'_id': id}, {"$set": {"name": name}})
       return self.success({
-          'updated_device_id': str(id),
+          '_id': str(id),
           'passport': device['passport'],
           'name' : name,
           })
@@ -100,4 +100,4 @@ class Mixin:
       self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
     self.database.devices.remove(id)
     self.database.users.update({'_id': user['_id']}, {'$pull': {'devices': id}})
-    return self.success({'deleted_device_id': str(id),})
+    return self.success({'_id': str(id),})

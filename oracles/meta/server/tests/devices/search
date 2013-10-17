@@ -29,7 +29,7 @@ with Meta() as meta:
   assert len(res['devices']) == 3
 
   assert set(res['devices']) == set([
-      foobar['created_device_id'],
-      barfoo['created_device_id'],
+      foobar['_id'],
+      barfoo['_id'],
       bob.device_id,
     ])
