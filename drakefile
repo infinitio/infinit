@@ -654,14 +654,13 @@ def configure(cxx_toolkit = None,
   hermes_cxx_config = drake.cxx.Config(cxx_config)
   hermes_cxx_config.lib_path_runtime('.')
   hermes_cxx_config.lib('cryptography')
-  hermes_cxx_config.lib('protocol')
   hermes_cxx_config.lib('reactor')
   hermes_cxx_config.lib('elle')
   hermes_cxx_config += boost.config()
   hermes_cxx_config += boost.config_system()
   hermes_cxx_config += boost.config_filesystem()
   hermes_lib = drake.cxx.DynLib('lib/hermes-server',
-                                    hermes_sources + [reactor_lib],
+                                    hermes_sources + [reactor_lib, protocol_lib],
                                     cxx_toolkit, hermes_cxx_config)
 
   # Hole
