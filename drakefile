@@ -59,6 +59,11 @@ def configure(cxx_toolkit = None,
     platform_defines = ("INFINIT_LINUX",)
   elif sys.platform == 'win32' or sys.platform == 'cygwin':
     platform_defines = ("INFINIT_WINDOWS",)
+    cxx_config.define('INFINIT_WINDOWS')
+    cxx_config.lib('Shlwapi')
+    cxx_config.lib('ws2_32')
+    cxx_config.lib('Gdi32')
+    cxx_config.lib('mswsock')
   elif sys.platform == 'darwin':
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   else:
