@@ -34,8 +34,6 @@ with Meta() as meta:
   # throws(lambda: meta.post('user/5241b9d226b9f10fff8be391/avatar', {}), 200)
   throws(lambda: meta.post('debug', {}), 403)
   throws(lambda: meta.post('user/add_swagger', {}), 400)
-  throws(lambda: meta.post('user/connect', {}), 400)
-  throws(lambda: meta.post('user/disconnect', {}), 400)
 
   throws(lambda: meta.post('transaction/create', {}), 403)
   throws(lambda: meta.get('transaction/5241b9d226b9f10fff8be391/view'), 403)

@@ -46,7 +46,7 @@ def configure(prefix = drake.Path('/usr/local'),
   for name in (
       'routes',
       'status',
-      'connection',
+      'trophonius/connection',
       'transactions/transaction',
       'transactions/transaction_search',
       'transactions/transaction_update',
