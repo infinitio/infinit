@@ -44,7 +44,7 @@ def configure(protocol,
   # Tests.
   test_cxx_config = drake.cxx.Config(local_cxx_config)
   test_cxx_config += boost.config_test()
-  test_cxx_config.lib_path_runtime('../../../../lib/')
+  test_cxx_config.lib_path_runtime('../../../lib/')
 
   test_sources = drake.nodes('tests/hermes.cc')
 

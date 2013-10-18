@@ -1213,7 +1213,7 @@ def configure(cxx_toolkit = None,
 
   # Oracles
 
-  hermes = drake.include('oracle/disciples/hermes/',
+  hermes = drake.include('oracles/hermes/',
                           protocol = elle.protocol,
                           reactor = elle.reactor,
                           boost = boost,
