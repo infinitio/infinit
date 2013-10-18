@@ -63,6 +63,36 @@ class Mixin:
                          "passport": device['passport'],
                          "name": device['name']})
 
+  @api('/device/<id>/<device_id>/connected')
+  def is_device_connected(self, id: ObjectId, device_id: ObjectId):
+    try:
+      return self.success({"connected": self._is_connected(id, device_id)})
+    except error.Error as e:
+      self.fail(*e.args)
+
+  def _is_connected(self, user_id, device_id = None):
+    """Get the connection status of a given user.
+
+    user_id -- the id of the user.
+    """
+    assert isinstance(user_id, ObjectId)
+    if device_id is not None:
+      assert isinstance(device_id, ObjectId)
+      user = self._user_by_id(user_id)
+      if device_id not in user['devices']:
+        raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
+      return self.database.devices.find_one(
+        {
+          "_id": device_id,
+          "owner": user_id
+        },
+        fields = ['trophonius']).get('trophonius') is not None
+    else:
+      return self.database.devices.find(
+        {
+          "owner": user_id,
+          "trophonius": {"$ne": None},
+        }).count() > 0
 
   @api('/device/update', method = "POST")
   @require_logged_in

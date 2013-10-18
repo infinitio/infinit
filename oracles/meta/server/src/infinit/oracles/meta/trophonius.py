@@ -31,24 +31,26 @@ class Mixin:
     return self.success()
 
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'PUT')
-  def trophonius_register_user(self, uid, id, device):
+  def trophonius_register_user(self, uid, id: ObjectId, device: ObjectId):
     self.database.devices.update(
       {
-        '_id': ObjectId(device),
-        'owner': ObjectId(id),
+        '_id': device,
+        'owner': id,
       },
       {'$set': {'trophonius': uid}}
     )
+    self.set_connection_status(id, device, True)
     return self.success()
 
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'DELETE')
-  def trophonius_unregister_user(self, uid, id, device):
+  def trophonius_unregister_user(self, uid, id: ObjectId, device: ObjectId):
     self.database.devices.update(
       {
-        '_id': ObjectId(device),
-        'owner': ObjectId(id),
+        '_id': device,
+        'owner': id,
         'trophonius': uid,
       },
       {'$set': {'trophonius': None}}
     )
+    self.set_connection_status(id, device, False)
     return self.success()

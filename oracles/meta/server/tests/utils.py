@@ -258,6 +258,16 @@ class User(Client):
   def avatar(self):
     return self.get('user/%s/avatar' % self.id)
 
+  @property
+  def connected(self):
+    return self.get('user/%s/connected' % self.id)['connected']
+
+  @property
+  def connected_on_device(self, device_id = None):
+    if device_id is None:
+      device_id = self.device_id
+    return self.get('device/%s/%s/connected' % (self.id, device_id))['connected']
+
   def sendfile(self,
                recipient_id,
                files = ['a file with strange encoding: é.file', 'another file with no extension'],

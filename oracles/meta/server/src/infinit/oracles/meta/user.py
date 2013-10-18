@@ -280,6 +280,13 @@ class Mixin:
       'invitation_source': source or '',
       })
 
+  @api('/user/<id>/connected')
+  def is_connected(self, id: ObjectId):
+    try:
+      return self.success({"connected": self._is_connected(id)})
+    except error.Error as e:
+      self.fail(*e.args)
+
   ## -------------- ##
   ## Search helpers ##
   ## -------------- ##
@@ -336,18 +343,6 @@ class Mixin:
       self.__ensure_user_existence(user)
     return user
 
-  def is_connected(self, user_id):
-    """Get the connection status of a given user.
-
-    user_id -- the id of the user.
-    """
-    assert isinstance(user_id, ObjectId)
-    user = self.database.users.find_one(user_id)
-    self.__ensure_user_existence(user)
-    connected = user.get('connected', False)
-    assert isinstance(connected, bool)
-    return connected
-
   ## ------ ##
   ## Search ##
   ## ------ ##
@@ -385,7 +380,7 @@ class Mixin:
       'fullname': user.get('fullname', ''),
       'handle': user.get('handle', ''),
       'connected_devices': user.get('connected_devices', []),
-      'status': self.is_connected(user['_id']),
+      'status': self._is_connected(user['_id']),
     }
 
   @api('/user/<id_or_email>/view')
@@ -642,7 +637,7 @@ class Mixin:
       'token_generation_key': self.user.get('token_generation_key', ''),
       'favorites': self.user.get('favorites', []),
       'connected_devices': self.user.get('connected_devices', []),
-      'status': self.is_connected(self.user['_id']),
+      'status': self._is_connected(self.user['_id']),
       'created_at': self.user.get('created_at', 0),
     })
 
@@ -731,7 +726,6 @@ class Mixin:
     user_id -- the device owner id
     status -- the new device status
     """
-    user = self.user
     assert isinstance(user_id, ObjectId)
     assert isinstance(device_id, ObjectId)
     user = self.database.users.find_one({"_id": user_id})
@@ -740,7 +734,7 @@ class Mixin:
     assert device is not None
     assert device_id in user['devices']
 
-    connected_before = self.is_connected(user_id)
+    connected_before = self._is_connected(user_id)
     # Add / remove device from db
     update_action = status and '$addToSet' or '$pull'
 
@@ -788,50 +782,13 @@ class Mixin:
     self._notify_swaggers(
       notifier.USER_STATUS,
       {
-        'status': self.is_connected(user_id),
+        'status': self._is_connected(user_id),
         'device_id': device_id,
         'device_status': status,
       },
       user_id = user_id,
     )
     return self.success()
-
-  @api('/user/connect', method = 'POST')
-  def connect(self,
-              admin_token,
-              user_id: ObjectId,
-              device_id: ObjectId):
-      """
-      Add the given device from the list of connected devices of the user.
-      Should only be called by Trophonius.
-
-      device_id -- the device id to disconnect
-      user_id -- the user id to disconnect
-
-      """
-      if admin_token != pythia.constants.ADMIN_TOKEN:
-        return self.fail(error.UNKNOWN, "You're not admin")
-      return self.set_connection_status(user_id = user_id,
-                                        device_id = device_id,
-                                        status = True)
-
-  @api('/user/disconnect', method = 'POST')
-  def disconnect(self,
-                 admin_token,
-                 user_id: ObjectId,
-                 device_id: ObjectId):
-      """Remove the given device from the list of connected devices of the user.
-      Should only be called by Trophonius.
-
-      device_id -- the device id to disconnect
-      user_id -- the user id to disconnect
-      }
-      """
-      if admin_token != pythia.constants.ADMIN_TOKEN:
-        return self.fail(error.UNKNOWN, "You're not admin")
-      return self.set_connection_status(user_id = user_id,
-                                        device_id = device_id,
-                                        status = False)
 
   ## ----- ##
   ## Debug ##

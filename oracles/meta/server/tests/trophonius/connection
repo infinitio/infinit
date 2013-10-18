@@ -11,10 +11,15 @@ with Meta() as meta:
 
   tropho = uuid1()
 
+  assert not bob.connected
+
   meta.put('trophonius/%s' % tropho, {"ip": "127.0.0.1",
                                       "port": 23456})
 
   meta.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
+
+  assert bob.connected
+  assert bob.connected_on_device
 
   device = bob.device
   assert device['success']
@@ -22,13 +27,22 @@ with Meta() as meta:
 
   meta.delete('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
 
+  assert not bob.connected
+  assert not bob.connected_on_device
+
   device = bob.device
   assert device['success']
   assert device['trophonius'] == None
 
   meta.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
 
+  assert bob.connected
+  assert bob.connected_on_device
+
   meta.delete('trophonius/%s' % tropho)
+
+  assert not bob.connected
+  assert not bob.connected_on_device
 
   device = bob.device
   assert device['success']
