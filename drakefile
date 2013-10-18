@@ -641,28 +641,6 @@ def configure(cxx_toolkit = None,
     infinit_cxx_config
   )
 
-  # Sources
-  hermes_sources = drake.nodes(
-    'oracle/disciples/hermes/src/hermes/Chunk.cc',
-    'oracle/disciples/hermes/src/hermes/Chunk.hh',
-    'oracle/disciples/hermes/src/hermes/Clerk.cc',
-    'oracle/disciples/hermes/src/hermes/Clerk.hh',
-    'oracle/disciples/hermes/src/hermes/Hermes.cc',
-    'oracle/disciples/hermes/src/hermes/Hermes.hh',
-    # TODO
-  )
-  hermes_cxx_config = drake.cxx.Config(cxx_config)
-  hermes_cxx_config.lib_path_runtime('.')
-  hermes_cxx_config.lib('cryptography')
-  hermes_cxx_config.lib('reactor')
-  hermes_cxx_config.lib('elle')
-  hermes_cxx_config += boost.config()
-  hermes_cxx_config += boost.config_system()
-  hermes_cxx_config += boost.config_filesystem()
-  hermes_lib = drake.cxx.DynLib('lib/hermes-server',
-                                    hermes_sources + [reactor_lib, protocol_lib],
-                                    cxx_toolkit, hermes_cxx_config)
-
   # Hole
   hole_sources = drake.nodes(
     'hole/Exception.cc',
@@ -1235,6 +1213,14 @@ def configure(cxx_toolkit = None,
 
   # Oracles
 
+  hermes = drake.include('oracle/disciples/hermes/',
+                          protocol = elle.protocol,
+                          reactor = elle.reactor,
+                          boost = boost,
+                          prefix = prefix,
+                          cxx_toolkit = cxx_toolkit,
+                          cxx_config = cxx_config)
+
   oracles_enabled = cxx_toolkit.os != drake.os.windows
   if oracles_enabled:
     oracles = drake.Rule('oracle')
@@ -1396,7 +1382,6 @@ def configure(cxx_toolkit = None,
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib]
 
   tests_src_n_lib = [
-    ('oracle/disciples/hermes/tests/hermes.cc', [elle_lib, reactor_lib, protocol_lib, hermes_lib]),
     ('tests/testing_tests.cc', []),
     ('tests/unit/etoile/Etoile.cc', infinit_libs),
     ('tests/unit/etoile/Shrub.cc', infinit_libs),

@@ -1,5 +1,4 @@
-#include <oracle/disciples/hermes/src/hermes/Clerk.hh>
-// TODO: Correct include path.
+#include <hermes/Clerk.hh>
 
 namespace oracle
 {

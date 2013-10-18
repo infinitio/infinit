@@ -1,0 +1,55 @@
+import drake
+import drake.cxx
+import sys
+
+def configure(protocol,
+              reactor,
+              boost = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
+
+  protocol_lib = drake.copy(protocol.lib_dynamic, 'lib',
+                            protocol.lib_dynamic.name().dirname())
+
+  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+                           reactor.lib_dynamic.name().dirname())
+
+  hermes_sources = drake.nodes(
+    'src/hermes/Chunk.cc',
+    'src/hermes/Chunk.hh',
+    'src/hermes/Clerk.cc',
+    'src/hermes/Clerk.hh',
+    'src/hermes/Hermes.cc',
+    'src/hermes/Hermes.hh',
+  )
+
+  local_cxx_config = drake.cxx.Config(cxx_config)
+  local_cxx_config.lib_path_runtime('.')
+  local_cxx_config.lib('cryptography')
+  local_cxx_config.lib('reactor')
+  local_cxx_config.lib('elle')
+  local_cxx_config += boost.config()
+  local_cxx_config += boost.config_system()
+  local_cxx_config += boost.config_filesystem()
+  local_cxx_config.add_local_include_path('src/')
+
+  hermes_lib = drake.cxx.DynLib('lib/hermes-server',
+                                hermes_sources + [reactor_lib, protocol_lib],
+                                cxx_toolkit, local_cxx_config)
+
+  # Tests.
+  test_cxx_config = drake.cxx.Config(local_cxx_config)
+  test_cxx_config += boost.config_test()
+  test_cxx_config.lib_path_runtime('../../../../lib/')
+
+  test_sources = drake.nodes('tests/hermes.cc')
+
+  hermes_test = drake.cxx.Executable('tests/hermes',
+                                     test_sources + [hermes_lib, protocol_lib],
+                                     cxx_toolkit,
+                                     test_cxx_config)
+  runner = drake.Runner(hermes_test)

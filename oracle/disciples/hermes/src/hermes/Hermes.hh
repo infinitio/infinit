@@ -12,7 +12,7 @@
 # include <elle/serialize/BinaryArchive.hh>
 # include <elle/Buffer.hh>
 
-# include <oracle/disciples/hermes/src/hermes/Clerk.hh>
+# include <hermes/Clerk.hh>
 
 namespace oracle
 {

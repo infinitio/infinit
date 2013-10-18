@@ -7,7 +7,7 @@
 #include <reactor/scheduler.hh>
 #include <elle/Exception.hh>
 
-#include <oracle/disciples/hermes/src/hermes/Hermes.hh>
+#include <hermes/Hermes.hh>
 
 static const std::string base_path = std::string("/tmp/hermes");
 static const char* host = "127.0.0.1";
