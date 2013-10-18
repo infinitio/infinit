@@ -86,6 +86,38 @@ class Client:
     self.__get_cookies(resp)
     return self.__convert_result(url, None, resp, content)
 
+  def put(self, url, body = None):
+    h = httplib2.Http()
+    headers = {}
+    self.__set_cookies(headers)
+    uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
+                                      url)
+    if body is not None:
+      headers['Content-Type'] = 'application/json'
+      body = json.dumps(body)
+    resp, content = h.request(uri,
+                              'PUT',
+                              headers = headers,
+                              body = body)
+    self.__get_cookies(resp)
+    return self.__convert_result(url, None, resp, content)
+
+  def delete(self, url, body = None):
+    h = httplib2.Http()
+    headers = {}
+    self.__set_cookies(headers)
+    uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
+                                      url)
+    if body is not None:
+      headers['Content-Type'] = 'application/json'
+      body = json.dumps(body)
+    resp, content = h.request(uri,
+                              'DELETE',
+                              headers = headers,
+                              body = body)
+    self.__get_cookies(resp)
+    return self.__convert_result(url, None, resp, content)
+
 class Meta:
 
   def __init__(self, enable_emails = False):
@@ -127,6 +159,12 @@ class Meta:
 
   def get(self, url, body = None):
     return self.client.get(url, body)
+
+  def put(self, url, body = None):
+    return self.client.put(url, body)
+
+  def delete(self, url, body = None):
+    return self.client.delete(url, body)
 
   def create_user(self,
                   email,
