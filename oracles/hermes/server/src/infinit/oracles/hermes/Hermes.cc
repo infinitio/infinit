@@ -1,4 +1,4 @@
-#include <hermes/Hermes.hh>
+#include <infinit/oracles/hermes/Hermes.hh>
 
 using namespace std;
 

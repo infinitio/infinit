@@ -1,4 +1,4 @@
-#include <hermes/Chunk.hh>
+#include <infinit/oracles/hermes/Chunk.hh>
 
 namespace oracle
 {
