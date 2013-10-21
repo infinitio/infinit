@@ -1,7 +1,8 @@
 import drake
 import sys
 
-def configure(prefix = drake.Path('/usr/local'),
+def configure(pypapier,
+              prefix = drake.Path('/usr/local'),
               python_version = None):
 
   if python_version is None:
@@ -34,6 +35,8 @@ def configure(prefix = drake.Path('/usr/local'),
     'src/infinit/oracles/meta/utils.py',
     'src/infinit/oracles/meta/wsgi.py',
   )
+
+
 
   install = drake.Rule('install')
   lib_path = prefix / ('lib/python%s/site-packages' % python_version)
