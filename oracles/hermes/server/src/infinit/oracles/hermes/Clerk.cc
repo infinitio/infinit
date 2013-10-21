@@ -1,6 +1,6 @@
 #include <infinit/oracles/hermes/Clerk.hh>
 
-namespace oracle
+namespace oracles
 {
   namespace hermes
   {

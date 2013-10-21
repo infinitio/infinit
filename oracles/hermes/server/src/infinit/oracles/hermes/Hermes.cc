@@ -2,7 +2,7 @@
 
 using namespace std;
 
-namespace oracle
+namespace oracles
 {
   namespace hermes
   {

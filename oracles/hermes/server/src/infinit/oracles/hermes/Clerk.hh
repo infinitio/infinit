@@ -1,5 +1,5 @@
-#ifndef ORACLE_DISCIPLES_HERMES_CLERK_HH
-# define ORACLE_DISCIPLES_HERMES_CLERK_HH
+#ifndef ORACLES_HERMES_CLERK_HH
+# define ORACLES_HERMES_CLERK_HH
 
 # include <boost/algorithm/string.hpp>
 # include <boost/filesystem.hpp>
@@ -13,7 +13,7 @@
 
 # include <infinit/oracles/hermes/Chunk.hh>
 
-namespace oracle
+namespace oracles
 {
   namespace hermes
   {
@@ -50,4 +50,4 @@ namespace oracle
   }
 }
 
-#endif // !ORACLE_DISCIPLES_HERMES_CLERK_HH
+#endif // !ORACLES_HERMES_CLERK_HH

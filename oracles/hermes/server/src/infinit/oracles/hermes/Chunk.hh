@@ -1,5 +1,5 @@
-#ifndef ORACLE_DISCIPLES_HERMES_CHUNK_HH
-# define ORACLE_DISCIPLES_HERMES_CHUNK_HH
+#ifndef ORACLES_HERMES_CHUNK_HH
+# define ORACLES_HERMES_CHUNK_HH
 
 # include <boost/lexical_cast.hpp>
 # include <boost/algorithm/string.hpp>
@@ -8,7 +8,7 @@
 # include <elle/Buffer.hh>
 # include <frete/Frete.hh>
 
-namespace oracle
+namespace oracles
 {
   namespace hermes
   {
@@ -68,4 +68,4 @@ namespace oracle
   }
 }
 
-#endif // !ORACLE_DISCIPLES_HERMES_CHUNK_HH
+#endif // !ORACLES_HERMES_CHUNK_HH

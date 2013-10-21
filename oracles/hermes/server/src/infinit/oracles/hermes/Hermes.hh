@@ -1,5 +1,5 @@
-#ifndef ORACLE_DISCIPLES_HERMES_HH
-# define ORACLE_DISCIPLES_HERMES_HH
+#ifndef ORACLES_HERMES_HERMES_HH
+# define ORACLES_HERMES_HERMES_HH
 
 # include <reactor/network/tcp-server.hh>
 # include <reactor/network/tcp-socket.hh>
@@ -14,7 +14,7 @@
 
 # include <infinit/oracles/hermes/Clerk.hh>
 
-namespace oracle
+namespace oracles
 {
   namespace hermes
   {
@@ -51,4 +51,4 @@ namespace oracle
   }
 }
 
-#endif // !ORACLE_DISCIPLES_HERMES_HH
+#endif // !ORACLES_HERMES_HERMES_HH
