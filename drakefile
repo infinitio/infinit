@@ -1213,13 +1213,17 @@ def configure(cxx_toolkit = None,
 
   # Oracles
 
-  hermes = drake.include('oracles/hermes',
+  hermes = drake.include('oracles/hermes/',
                           protocol = elle.protocol,
                           reactor = elle.reactor,
                           boost = boost,
                           prefix = prefix,
                           cxx_toolkit = cxx_toolkit,
                           cxx_config = cxx_config)
+
+  rule_hermes = drake.Rule('hermes')
+  rule_hermes << hermes.hermes_server
+  rule_hermes << hermes.hermes_client
 
   oracles_enabled = cxx_toolkit.os != drake.os.windows
   if oracles_enabled:

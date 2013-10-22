@@ -1,0 +1,45 @@
+import drake
+import drake.cxx
+import sys
+
+library = None
+
+def configure(protocol,
+              reactor,
+              hermes_server_lib,
+              boost = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  global library
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
+
+  protocol_lib = drake.copy(protocol.lib_dynamic, 'lib',
+                            protocol.lib_dynamic.name().dirname())
+
+  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+                           reactor.lib_dynamic.name().dirname())
+
+  hermes_sources = drake.nodes(
+    'src/infinit/oracles/hermes/HermesClient.cc',
+    'src/infinit/oracles/hermes/HermesClient.hh',
+  )
+
+  local_cxx_config = drake.cxx.Config(cxx_config)
+  local_cxx_config.lib_path_runtime('.')
+  local_cxx_config.lib('cryptography')
+  local_cxx_config.lib('reactor')
+  local_cxx_config.lib('elle')
+  local_cxx_config += boost.config()
+  local_cxx_config += boost.config_system()
+  local_cxx_config += boost.config_filesystem()
+  local_cxx_config.add_local_include_path('src/')
+  local_cxx_config.add_local_include_path('../server/src/')
+
+  library = drake.cxx.DynLib('lib/hermes-client',
+                             hermes_sources +
+                             [reactor_lib, protocol_lib, hermes_server_lib],
+                             cxx_toolkit, local_cxx_config)
