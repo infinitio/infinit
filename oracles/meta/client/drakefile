@@ -2,6 +2,9 @@ import drake
 import drake.cxx
 import drake.cxx.boost
 
+lib = None
+check = None
+
 def configure(elle,
               reactor,
               curly,
@@ -10,7 +13,7 @@ def configure(elle,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None):
-
+  global lib, check
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
@@ -44,15 +47,16 @@ def configure(elle,
                            curly.library_asio.name().dirname()),
                 drake.copy(curly.library_sched, 'lib',
                            curly.library_sched.name().dirname())]
-  meta_client_lib = drake.cxx.DynLib('lib/metaclient',
-                                     sources + curly_libs + [reactor_lib, elle_lib],
-                                     cxx_toolkit,
-                                     local_cxx_config)
+
+  lib = drake.cxx.DynLib('lib/metaclient',
+                         sources + curly_libs + [reactor_lib, elle_lib],
+                         cxx_toolkit,
+                         local_cxx_config)
 
   if python3 is not None:
     python_sources = drake.nodes(
       'src/infinit/oracles/meta/python.cc',
-      )
+    )
 
     meta_python_cxx_config = drake.cxx.Config(local_cxx_config)
     meta_python_cxx_config += python3
@@ -60,10 +64,11 @@ def configure(elle,
     meta_python_cxx_config.lib_path_runtime('..')
 
     meta_py_client = drake.cxx.Module(
-      'lib/python/meta_client',
-      python_sources + [meta_client_lib],
+      'lib/python/MetaClient',
+      python_sources + [lib],
       cxx_toolkit, meta_python_cxx_config)
 
+  check = drake.TestSuite('check')
 
   test_sources = drake.nodes(
     'tests/meta_client.cc',
@@ -73,21 +78,9 @@ def configure(elle,
   tests_cxx_config += boost.config_test()
 
   test_bin = drake.cxx.Executable('tests/meta_client',
-                                  test_sources + curly_libs + [meta_client_lib],
+                                  test_sources + curly_libs + [lib],
                                   cxx_toolkit,
                                   tests_cxx_config)
 
   runner = drake.Runner(test_bin)
-
-  # meta_client_python_sources = meta_client_sources + [
-  #   drake.node('src/oracles/meta/python.cc'),
-  # ]
-
-  # meta_client_python_cxx_config = drake.cxx.Config(cxx_config)
-  # meta_client_python_cxx_config += python3
-  # meta_client_python_cxx_config += boost.config_python()
-  # meta_client_python_cxx_config.lib_path_runtime('..')
-  # meta_client_python_lib = drake.cxx.Module(
-  #   'lib/python/meta_client',
-  #   meta_client_python_sources + [meta_client_lib],
-  #   cxx_toolkit, meta_client_python_cxx_config)
+  check << runner.status

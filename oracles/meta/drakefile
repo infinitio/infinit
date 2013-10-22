@@ -1,0 +1,43 @@
+import drake
+import drake.cxx
+import drake.cxx.boost
+
+client = None
+server = None
+check = None
+
+def configure(elle,
+              reactor,
+              curly,
+              papier,
+              boost = None,
+              python3 = None,
+              prefix = drake.Path('/usr/local'),
+              destination = None,
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
+
+  global client, server, check
+
+  client = drake.include('client',
+                         elle = elle,
+                         reactor = reactor,
+                         curly = curly,
+                         python3 = python3,
+                         boost = boost,
+                         prefix = prefix,
+                         cxx_toolkit = cxx_toolkit,
+                         cxx_config = cxx_config)
+
+  server = drake.include('server',
+                         pypapier = papier,
+                         destination = destination,
+                         prefix = prefix,
+                         python_version = 3)
+
+  check = drake.Rule('check')
+  check << client.check
+  check << server.check

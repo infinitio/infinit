@@ -464,7 +464,8 @@ def configure(cxx_toolkit = None,
     plasma_python_lib = drake.cxx.Module(
       'lib/python/plasma',
       plasma_python_sources + [plasma_lib],
-      cxx_toolkit, plasma_python_cxx_config)
+      cxx_toolkit,
+      plasma_python_cxx_config)
     rule_plasma << plasma_python_lib
 
   # Papier
@@ -1314,6 +1315,38 @@ def configure(cxx_toolkit = None,
       check << rule_check
       return rule, rule_check
 
+    ## ------- ##
+    ## Oracles ##
+    ## ------- ##
+
+    from os import path
+    destination = drake.Path(path.expandvars(path.curdir) + '/lib/python')
+
+    meta = drake.include('oracles/meta',
+                         elle = elle.elle,
+                         reactor = elle.reactor,
+                         curly = elle.curly,
+                         papier = papier_python_lib,
+                         python3 = python_enabled and python3 or None,
+                         boost = boost,
+                         prefix = prefix,
+                         destination = destination,
+                         cxx_toolkit = cxx_toolkit,
+                         cxx_config = cxx_config,)
+
+    assert meta.server.lib is not None
+    assert meta.client.lib is not None
+    assert meta.check is not None
+
+    rule_meta = drake.Rule('meta')
+    rule_meta_client = drake.Rule('meta/client')
+    rule_meta_client << meta.client.lib
+    rule_meta << rule_meta_client
+    rule_meta_server = drake.Rule('meta/server')
+    rule_meta_server << meta.server.lib
+    rule_meta << rule_meta_server
+    rule_meta_check = drake.Rule('meta/check')
+    rule_meta_check << meta.check
 
     rule_trophonius, rule_trophonius_check = oracle('trophonius')
     rule_apertus, rule_apertus_check = oracle('apertus')
@@ -1336,7 +1369,6 @@ def configure(cxx_toolkit = None,
                          'lib/python',
                          'oracle/disciples')
     oracle_lib_copy.append(pythia)
-
 
     # heartbeat_config = drake.cxx.Config(cxx_config)
     # heartbeat_config += boost.config_program()

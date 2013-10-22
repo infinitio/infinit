@@ -1,15 +1,21 @@
 import drake
 import sys
 
-lib = None
+server = None
+install = None
+check = None
 
 def configure(pypapier = None,
+              destination = None,
               prefix = drake.Path('/usr/local'),
               python_version = None):
-  global lib
+  global lib, check
 
   if python_version is None:
     python_version = drake.Version(*sys.version_info[0:2])
+
+  if destination is None:
+    destination = 'lib/python'
 
   prefix = drake.Path(prefix)
 
@@ -30,6 +36,7 @@ def configure(pypapier = None,
     'src/infinit/oracles/meta/metalib.py',
     'src/infinit/oracles/meta/notification_type.hh.inc',
     'src/infinit/oracles/meta/notifier.py',
+    'src/infinit/oracles/meta/pythia.py',
     'src/infinit/oracles/meta/regexp.py',
     'src/infinit/oracles/meta/user.py',
     'src/infinit/oracles/meta/transaction.py',
@@ -40,18 +47,17 @@ def configure(pypapier = None,
     'src/infinit/oracles/meta/wsgi.py',
   )
 
-#  papier_lib = drake.copy(pypapier, 'lib/python', pypapier.name().dirname())
+  lib = drake.copy(sources, destination, 'src')
+  assert pypapier is not None
+  lib += [drake.copy(pypapier, destination)]
+  bottle = drake.nodes('../../bottle/bottle.py')
+  lib += [drake.copy(bottle, destination, '../../bottle')]
+
+  # lib_path = prefix / ('lib/python%s/site-packages' % python_version)
   install = drake.Rule('install')
-  lib_path = prefix / ('lib/python%s/site-packages' % python_version)
-  lib = drake.copy(sources, 'lib/python', 'src')
-  # lib = drake.copy(sources, lib_path, 'src')
-  # install << lib
-  # bottle = drake.nodes('../../bottle/bottle.py')
-  # install << drake.copy(bottle, lib_path, '../../bottle')
+  install << lib
 
-
-
-  rule_check = drake.TestSuite('check')
+  check = drake.TestSuite('check')
 
   for name in (
     'routes',
@@ -95,4 +101,4 @@ def configure(pypapier = None,
     }
 
     runner = drake.Runner(test, env = env)
-    rule_check << runner.status
+    check << runner.status
