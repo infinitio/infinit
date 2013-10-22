@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import Meta, User
-from uuid import uuid1
+from uuid import uuid4
 
 with Meta() as meta:
   bob = User(meta, 'bob@infinit.io')
@@ -9,12 +9,11 @@ with Meta() as meta:
   bob.login()
   alice.login()
 
-  tropho = uuid1()
+  tropho = uuid4()
 
   assert not bob.connected
 
-  meta.put('trophonius/%s' % tropho, {"ip": "127.0.0.1",
-                                      "port": 23456})
+  meta.put('trophonius/%s' % tropho, {"ip": "127.0.0.1", "port": 23456})
 
   meta.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
 

@@ -1,8 +1,13 @@
-#include <boost/python.hpp>
 
 #include <elle/print.hh>
 #include <infinit/oracles/meta/Client.hh>
 #include <infinit/oracles/meta/Admin.hh>
+
+#include <boost/uuid/string_generator.hpp>
+#include <boost/python.hpp>
+#include <string>
+
+namespace py = boost::python;
 
 template <class T>
 struct container_wrap
@@ -83,7 +88,6 @@ struct container_wrap
   }
 };
 
-
 template <typename container>
 void export_container(const char* typeName)
 {
@@ -100,8 +104,6 @@ void export_container(const char* typeName)
     .def("__iter__", iterator<container>())
     .def("index", &container_wrap<container>::index);
 }
-
-namespace py = boost::python;
 
 using infinit::oracles::meta::Client;
 using infinit::oracles::meta::Admin;
@@ -139,13 +141,14 @@ public:
   {
   }
 
-  RegisterResponse
-  register_(std::string const& email,
-            std::string const& fullname,
-            std::string const& password,
-            std::string const& activation_code)
+  LoginResponse
+  login(std::string const& email,
+        std::string const& password,
+        std::string const& device_uuid)
   {
-    return Client::register_(email, fullname, password, activation_code);
+    static auto string_generator = boost::uuids::string_generator();
+
+    return Client::login(email, password, string_generator(device_uuid));
   }
 };
 
@@ -290,7 +293,7 @@ void export_meta_client()
     .add_property("email",
                   make_function(get_email, by_value()),
                   set_email)
-    ;
+  ;
 
   py::class_<AdminClient, boost::noncopyable>(
     "Admin", py::init<std::string const&, std::string const&, int>())

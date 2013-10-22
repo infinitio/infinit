@@ -31,5 +31,5 @@ with Meta() as meta:
   assert set(res['devices']) == set([
       foobar['_id'],
       barfoo['_id'],
-      bob.device_id,
+      str(bob.device_id),
     ])

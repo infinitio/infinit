@@ -15,6 +15,7 @@ import mongobox
 
 import bottle
 import infinit.oracles.meta
+from uuid import uuid4, UUID
 
 class HTTPException(Exception):
 
@@ -212,25 +213,20 @@ class User(Client):
     self.password = meta.create_user(email,
                                      **kwargs)
     self.id = meta.get('user/%s/view' % self.email)['_id']
-    self.device_name = device_name
     self.device_id = None
 
-  def login(self, device_id = None, device_name = None):
-    if device_name is not None:
-      self.device_name = device_name
-    if device_id is not None:
-      self.device_id = device_id
+  def login(self, device_id = None):
+    if device_id is None:
+      device_id = uuid4()
+
     req = {
       'email': self.email,
       'password': self.password,
-      'device_name': self.device_name,
-      'device_id': self.device_id,
+      'device_id': str(device_id),
     }
     res = self.post('user/login', req)
     assert res['success']
-    if self.device_id is not None:
-      assert self.device_id == res['device_id']
-    self.device_id = res['device_id']
+    self.device_id = UUID(res['device_id'])
 
   def logout(self):
     res = self.post('user/logout', {})
@@ -240,7 +236,11 @@ class User(Client):
   @property
   def device(self):
     assert self.device_id is not None
-    return self.get('device/%s/view' % self.device_id)
+    return self.get('device/%s/view' % str(self.device_id))
+
+  @property
+  def device_name(self):
+    return self.device['name']
 
   @property
   def swaggers(self):
@@ -266,7 +266,7 @@ class User(Client):
   def connected_on_device(self, device_id = None):
     if device_id is None:
       device_id = self.device_id
-    return self.get('device/%s/%s/connected' % (self.id, device_id))['connected']
+    return self.get('device/%s/%s/connected' % (self.id, str(device_id)))['connected']
 
   def sendfile(self,
                recipient_id,
@@ -277,7 +277,7 @@ class User(Client):
                device_id = None,
                ):
     if device_id is None:
-      device_id = self.device
+      device_id = self.device_id
 
     transaction = {
       'id_or_email': recipient_id,
@@ -286,7 +286,7 @@ class User(Client):
       'total_size': total_size,
       'message': message,
       'is_directory': is_directory,
-      'device_id': device_id,
+      'device_id': str(device_id),
     }
 
     res = self.post('transaction/create', transaction)

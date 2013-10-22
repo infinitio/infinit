@@ -8,7 +8,7 @@ Email = re.compile(
 
 Handle = re.compile(r'^.{3,50}$')
 Password = re.compile(r'^.{64}$')
-Device = re.compile(r'^.{1,50}$')
+DeviceName = re.compile(r'^.{1,64}$')
 ID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
 DeviceID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
 NetworkID = re.compile(r'^[a-zA-Z0-9]{24,40}$')

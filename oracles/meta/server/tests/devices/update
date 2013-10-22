@@ -16,9 +16,9 @@ with Meta() as meta:
   assert foobar['success']
   assert foobar['name'] == "foobar"
 
-  res = bob.post('device/update', {'id': foobar['_id'],
+  res = bob.post('device/update', {'id': str(foobar['_id']),
                                    'name': "barfoo"})
-
+  print(res)
   assert res['success']
   assert res['name'] == "barfoo"
   assert res['_id'] == foobar['_id']

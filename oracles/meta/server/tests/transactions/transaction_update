@@ -20,7 +20,7 @@ from infinit.oracles.meta import error
 def S(source, transaction, state):
   res = source.post('transaction/update', {"transaction_id": transaction,
                                            "status": state,
-                                           "device_id": source.device_id,
+                                           "device_id": str(source.device_id),
                                            "device_name": source.device_name})
   assert not res['success']
   assert res['error_code'] in [error.TRANSACTION_ALREADY_HAS_THIS_STATUS[0]]
@@ -29,7 +29,7 @@ def S(source, transaction, state):
 def E(source, transaction, state):
   res = source.post('transaction/update', {"transaction_id": transaction,
                                            "status": state,
-                                           "device_id": source.device_id,
+                                           "device_id": str(source.device_id),
                                            "device_name": source.device_name})
   assert not res['success']
   assert res['error_code'] in [error.TRANSACTION_ALREADY_FINALIZED[0], error.TRANSACTION_OPERATION_NOT_PERMITTED[0]]
@@ -37,7 +37,7 @@ def E(source, transaction, state):
 def O(source, transaction, state):
   res = source.post('transaction/update', {"transaction_id": transaction,
                                            "status": state,
-                                           "device_id": source.device_id,
+                                           "device_id": str(source.device_id),
                                            "device_name": source.device_name})
   assert res['success']
 
@@ -106,7 +106,7 @@ def transaction(sender, recipient, state):
     source = path[0] and sender or recipient
     res = source.post('transaction/update', {"transaction_id": transaction_id,
                                              "status": path[2],
-                                             "device_id": source.device_id,
+                                             "device_id": str(source.device_id),
                                              "device_name": source.device_name})
     assert res['success']
   return tr['created_transaction_id']

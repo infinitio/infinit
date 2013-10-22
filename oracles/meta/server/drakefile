@@ -1,9 +1,12 @@
 import drake
 import sys
 
-def configure(pypapier,
+lib = None
+
+def configure(pypapier = None,
               prefix = drake.Path('/usr/local'),
               python_version = None):
+  global lib
 
   if python_version is None:
     python_version = drake.Version(*sys.version_info[0:2])
@@ -32,46 +35,50 @@ def configure(pypapier,
     'src/infinit/oracles/meta/transaction.py',
     'src/infinit/oracles/meta/transaction_status.hh.inc',
     'src/infinit/oracles/meta/transaction_status.py',
+    'src/infinit/oracles/meta/trophonius.py',
     'src/infinit/oracles/meta/utils.py',
     'src/infinit/oracles/meta/wsgi.py',
   )
 
-
-
+#  papier_lib = drake.copy(pypapier, 'lib/python', pypapier.name().dirname())
   install = drake.Rule('install')
   lib_path = prefix / ('lib/python%s/site-packages' % python_version)
-  install << drake.copy(sources, lib_path, 'src')
-  bottle = drake.nodes('../../bottle/bottle.py')
-  install << drake.copy(bottle, lib_path, '../../bottle')
+  lib = drake.copy(sources, 'lib/python', 'src')
+  # lib = drake.copy(sources, lib_path, 'src')
+  # install << lib
+  # bottle = drake.nodes('../../bottle/bottle.py')
+  # install << drake.copy(bottle, lib_path, '../../bottle')
+
+
 
   rule_check = drake.TestSuite('check')
 
   for name in (
-      'routes',
-      'status',
-      'trophonius/connection',
-      'transactions/transaction',
-      'transactions/transaction_search',
-      'transactions/transaction_update',
-      'users/favorite-unfavorite',
-      'users/get_avatar',
-      'users/invite_as_admin',
-      'users/invite_as_user',
-      'users/login-failure',
-      'users/login-logout',
-      'users/login-success',
-      'users/login-with-existing-device',
-      'users/register',
-      'users/register_invited',
-      'users/session-cleanup',
-      'users/set_avatar',
-      'users/swaggers',
-      'users/user-search',
-      'devices/creation',
-      'devices/deletion',
-      'devices/search',
-      'devices/update',
-  ):
+    'routes',
+    'status',
+    'trophonius/connection',
+    'transactions/transaction',
+    'transactions/transaction_search',
+    'transactions/transaction_update',
+    'users/favorite-unfavorite',
+    'users/get_avatar',
+    'users/invite_as_admin',
+    'users/invite_as_user',
+    'users/login-failure',
+    'users/login-logout',
+    'users/login-success',
+    'users/login-with-existing-device',
+    'users/register',
+    'users/register_invited',
+    'users/session-cleanup',
+    'users/set_avatar',
+    'users/swaggers',
+    'users/user-search',
+    'devices/creation',
+    'devices/deletion',
+    'devices/search',
+    'devices/update',
+    ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
     for source in sources:

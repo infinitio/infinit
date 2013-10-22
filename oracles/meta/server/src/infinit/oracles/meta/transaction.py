@@ -7,7 +7,7 @@ from bson import ObjectId
 
 from .utils import api, require_logged_in
 from . import regexp, error, transaction_status, notifier
-
+from uuid import UUID
 import re
 
 class Mixin:
@@ -250,9 +250,9 @@ class Mixin:
     return is_sender
 
   def on_accept(self, transaction, device_id, device_name):
-    device_id = ObjectId(device_id)
+    device_id = UUID(device_id)
     if device_id not in self.user['devices']:
-      raise error.Error(error.DEVICE_NOT_VALID)
+      raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
 
     transaction.update({
       'recipient_fullname': self.user['fullname'],

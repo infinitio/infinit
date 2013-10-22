@@ -8,6 +8,8 @@
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>
 
+#include <boost/uuid/uuid.hpp>
+
 # include <functional>
 # include <list>
 # include <map>
@@ -239,8 +241,7 @@ namespace infinit
         LoginResponse
         login(std::string const& email,
               std::string const& password,
-              std::string const& device_id = "",
-              std::string const& device_name = "");
+              boost::uuids::uuid const& device_uuid);
 
         LogoutResponse
         logout();

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 from utils import Meta, HTTPException
+from uuid import uuid4
 
 with Meta() as meta:
   password = meta.create_user('foo@bar.baz')
   res = meta.post('user/login',
                   {
-                    'device_name': 'android',
+                    'device_id': str(uuid4()),
                     'email': 'foo@bar.baz',
                     'password': password,
                   })

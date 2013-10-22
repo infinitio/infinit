@@ -6,15 +6,18 @@
 #include <elle/serialize/MapSerializer.hxx>
 #include <elle/serialize/SetSerializer.hxx>
 
+#include <infinit/oracles/meta/Client.hh>
+#include <infinit/oracles/meta/macro.hh>
+
 #include <reactor/scheduler.hh>
 
 #include <curly/curly.hh>
 #include <curly/curly_sched.hh>
 
-#include <infinit/oracles/meta/Client.hh>
-#include <infinit/oracles/meta/macro.hh>
-
 #include <version.hh>
+
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/lexical_cast.hpp>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -227,19 +230,16 @@ namespace infinit
       LoginResponse
       Client::login(std::string const& email,
                     std::string const& password,
-                    std::string const& device_id,
-                    std::string const& device_name)
+                    boost::uuids::uuid const& device_uuid)
       {
-        json::Dictionary request{std::map<std::string, std::string>{
+        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+
+        json::Dictionary request{
+          std::map<std::string, std::string>{
             {"email", email},
             {"password", password},
-              }};
-
-        if (!device_id.empty())
-          request["device_id"] = device_id;
-
-        if (!device_name.empty())
-          request["device_name"] = device_name;
+            {"device_uid", struuid},
+         }};
 
         auto res = this->_post<LoginResponse>("/user/login", request);
         if (res.success())

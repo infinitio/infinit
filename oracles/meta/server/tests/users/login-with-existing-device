@@ -1,29 +1,22 @@
 #!/usr/bin/env python3
 
 from utils import Meta, User
+from uuid import uuid4
 
 with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
 
-  bob.  login()
+  bob.login()
   device_id = bob.device['_id']
   device_name = bob.device['name']
   bob.logout()
 
-  bob.login(device_id = device_id)
-  assert device_id == bob.device['_id']
+  new_device_id = uuid4()
+  bob.login(device_id = str(new_device_id))
+  assert str(new_device_id) == bob.device['_id']
   bob.logout()
 
   # Device name is the same.
-  bob.login()
+  bob.login(device_id = device_id)
   assert device_name == bob.device['name']
-  bob.logout()
-
-  res = bob.login(device_name = "foobarbaz")
-  assert device_id != bob.device["_id"]
-  foobarbaz = bob.device
-  bob.logout()
-
-  bob.login(device_name = device_name)
-  assert device_id == bob.device["_id"]
   bob.logout()
