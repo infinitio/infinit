@@ -12,9 +12,9 @@ namespace oracles
 {
   namespace hermes
   {
-    typedef frete::Frete::FileID FileID;
-    typedef frete::Frete::Offset Offset;
-    typedef frete::Frete::Size Size;
+    typedef frete::FileID FileID;
+    typedef frete::Offset Offset;
+    typedef frete::Size Size;
     class Clerk;
 
     class Chunk

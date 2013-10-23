@@ -4,7 +4,9 @@
 # include <reactor/scheduler.hh>
 # include <elle/serialize/BinaryArchive.hh>
 
-# include <frete/Frete.hh>
+# include <frete/Types.hh>
+# include <frete/TransferSnapshot.hh>
+
 # include <reactor/network/exception.hh>
 
 # include <infinit/oracles/hermes/Hermes.hh>

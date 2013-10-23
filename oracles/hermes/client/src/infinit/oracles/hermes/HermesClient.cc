@@ -26,7 +26,7 @@ namespace oracles
     HermesClient::upload(boost::filesystem::path const& snaploc)
     {
       std::string strsl = snaploc.string();
-      frete::Frete::TransferSnapshot snap(elle::serialize::from_file(strsl));
+      frete::TransferSnapshot snap(elle::serialize::from_file(strsl));
 
       oracles::hermes::HermesRPC handler(*_channels);
       handler.ident(_tid);
