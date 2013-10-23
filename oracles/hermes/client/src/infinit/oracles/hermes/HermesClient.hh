@@ -1,9 +1,15 @@
 #ifndef ORACLES_HERMES_HERMESCLIENT_HH
 # define ORACLES_HERMES_HERMESCLIENT_HH
 
+# include <reactor/scheduler.hh>
+# include <elle/serialize/BinaryArchive.hh>
+
+# include <frete/Frete.hh>
+# include <reactor/network/exception.hh>
+
 # include <infinit/oracles/hermes/Hermes.hh>
 
-namespace oracle
+namespace oracles
 {
   namespace hermes
   {
@@ -11,9 +17,14 @@ namespace oracle
     {
     public:
       HermesClient(TID transaction_id,
-                   reactor::Scheduler::Scheduler& sched,
+                   reactor::Scheduler& sched,
                    const char* host = "127.0.0.1",
-                   const int port = "4242");
+                   const int port = 4242);
+      ~HermesClient();
+
+    public:
+      void
+      upload(boost::filesystem::path const& snaploc);
 
     private:
       TID _tid;
@@ -23,7 +34,6 @@ namespace oracle
       reactor::network::TCPSocket* _socket;
       infinit::protocol::Serializer* _seria;
       infinit::protocol::ChanneledStream* _channels;
-      oracles::hermes::HermesRPC* _handler;
     };
   }
 }
