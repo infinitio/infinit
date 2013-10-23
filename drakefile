@@ -567,6 +567,9 @@ def configure(cxx_toolkit = None,
   # Frete
   frete_build = drake.Rule('frete/build')
   frete_sources = drake.nodes(
+    'frete/src/frete/Types.hh',
+    'frete/src/frete/TransferSnapshot.hh',
+    'frete/src/frete/TransferSnapshot.cc',
     'frete/src/frete/Frete.hh',
     'frete/src/frete/Frete.cc',
   )
