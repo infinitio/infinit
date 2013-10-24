@@ -15,6 +15,7 @@ import mongobox
 
 import bottle
 import infinit.oracles.meta
+from uuid import uuid4, UUID
 
 class HTTPException(Exception):
 
@@ -86,6 +87,38 @@ class Client:
     self.__get_cookies(resp)
     return self.__convert_result(url, None, resp, content)
 
+  def put(self, url, body = None):
+    h = httplib2.Http()
+    headers = {}
+    self.__set_cookies(headers)
+    uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
+                                      url)
+    if body is not None:
+      headers['Content-Type'] = 'application/json'
+      body = json.dumps(body)
+    resp, content = h.request(uri,
+                              'PUT',
+                              headers = headers,
+                              body = body)
+    self.__get_cookies(resp)
+    return self.__convert_result(url, None, resp, content)
+
+  def delete(self, url, body = None):
+    h = httplib2.Http()
+    headers = {}
+    self.__set_cookies(headers)
+    uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
+                                      url)
+    if body is not None:
+      headers['Content-Type'] = 'application/json'
+      body = json.dumps(body)
+    resp, content = h.request(uri,
+                              'DELETE',
+                              headers = headers,
+                              body = body)
+    self.__get_cookies(resp)
+    return self.__convert_result(url, None, resp, content)
+
 class Meta:
 
   def __init__(self, enable_emails = False):
@@ -128,6 +161,12 @@ class Meta:
   def get(self, url, body = None):
     return self.client.get(url, body)
 
+  def put(self, url, body = None):
+    return self.client.put(url, body)
+
+  def delete(self, url, body = None):
+    return self.client.delete(url, body)
+
   def create_user(self,
                   email,
                   fullname = None,
@@ -167,27 +206,41 @@ class User(Client):
   def __init__(self,
                meta,
                email,
-               device = 'device',
+               device_name = 'device',
                **kwargs):
     super().__init__(meta)
     self.email = email
     self.password = meta.create_user(email,
                                      **kwargs)
     self.id = meta.get('user/%s/view' % self.email)['_id']
-    self.device = device
+    self.device_id = None
 
-  def login(self):
-    res = self.post('user/login',
-                    {
-                      'email': self.email,
-                      'password': self.password,
-                      'device': self.device,
-                    })
+  def login(self, device_id = None):
+    if device_id is None:
+      device_id = uuid4()
+
+    req = {
+      'email': self.email,
+      'password': self.password,
+      'device_id': str(device_id),
+    }
+    res = self.post('user/login', req)
     assert res['success']
+    self.device_id = UUID(res['device_id'])
 
   def logout(self):
     res = self.post('user/logout', {})
     assert res['success']
+    self.device_id = None
+
+  @property
+  def device(self):
+    assert self.device_id is not None
+    return self.get('device/%s/view' % str(self.device_id))
+
+  @property
+  def device_name(self):
+    return self.device['name']
 
   @property
   def swaggers(self):
@@ -205,6 +258,16 @@ class User(Client):
   def avatar(self):
     return self.get('user/%s/avatar' % self.id)
 
+  @property
+  def connected(self):
+    return self.get('user/%s/connected' % self.id)['connected']
+
+  @property
+  def connected_on_device(self, device_id = None):
+    if device_id is None:
+      device_id = self.device_id
+    return self.get('device/%s/%s/connected' % (self.id, str(device_id)))['connected']
+
   def sendfile(self,
                recipient_id,
                files = ['a file with strange encoding: é.file', 'another file with no extension'],
@@ -214,7 +277,7 @@ class User(Client):
                device_id = None,
                ):
     if device_id is None:
-      device_id = self.device
+      device_id = self.device_id
 
     transaction = {
       'id_or_email': recipient_id,
@@ -223,7 +286,7 @@ class User(Client):
       'total_size': total_size,
       'message': message,
       'is_directory': is_directory,
-      'device_id': device_id,
+      'device_id': str(device_id),
     }
 
     res = self.post('transaction/create', transaction)

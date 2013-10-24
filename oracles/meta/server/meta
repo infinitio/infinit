@@ -4,9 +4,6 @@
 import os
 import sys
 
-wd = os.path.realpath(os.path.dirname(__file__))
-sys.path = [wd + '/../../bottle', wd + '/src'] + sys.path
-
 import bottle
 import infinit.oracles.meta
 bottle.run(app = infinit.oracles.meta.Meta(),

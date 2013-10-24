@@ -464,7 +464,8 @@ def configure(cxx_toolkit = None,
     plasma_python_lib = drake.cxx.Module(
       'lib/python/plasma',
       plasma_python_sources + [plasma_lib],
-      cxx_toolkit, plasma_python_cxx_config)
+      cxx_toolkit,
+      plasma_python_cxx_config)
     rule_plasma << plasma_python_lib
 
   # Papier
@@ -498,6 +499,18 @@ def configure(cxx_toolkit = None,
     cxx_toolkit,
     papier_cxx_config
   )
+
+  if python_enabled:
+    papier_python_cxx_config = drake.cxx.Config(cxx_config)
+    papier_python_sources = drake.nodes('papier/python.cc')
+    papier_python_cxx_config += python3
+    papier_python_cxx_config += boost.config_python()
+    papier_python_cxx_config.lib_path_runtime('..')
+    papier_python_lib = drake.cxx.Module(
+      'lib/python/papier',
+      papier_python_sources + [papier_lib],
+      cxx_toolkit,
+      papier_python_cxx_config)
 
   # Agent
   agent_sources = drake.nodes(
@@ -1313,6 +1326,20 @@ def configure(cxx_toolkit = None,
       check << rule_check
       return rule, rule_check
 
+    ## ------- ##
+    ## Oracles ##
+    ## ------- ##
+
+    # Meta
+    meta = drake.include('oracles/meta',
+                         elle = elle.elle,
+                         reactor = elle.reactor,
+                         papier_python = papier_python_lib,
+                         python3 = python_enabled and python3 or None,
+                         boost = boost,
+                         prefix = prefix,
+                         cxx_toolkit = cxx_toolkit,
+                         cxx_config = cxx_config,)
 
     rule_trophonius, rule_trophonius_check = oracle('trophonius')
     rule_apertus, rule_apertus_check = oracle('apertus')
@@ -1335,7 +1362,6 @@ def configure(cxx_toolkit = None,
                          'lib/python',
                          'oracle/disciples')
     oracle_lib_copy.append(pythia)
-
 
     # heartbeat_config = drake.cxx.Config(cxx_config)
     # heartbeat_config += boost.config_program()

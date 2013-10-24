@@ -11,6 +11,8 @@ with Meta() as meta:
 
   bob.login()
 
+  assert len(bob.devices) == 1
+
   foobar = bob.post('device/create', {"name": "foobar"})
 
   assert foobar['success']
@@ -24,7 +26,10 @@ with Meta() as meta:
   res = bob.get('devices')
 
   assert res['success']
-  assert len(res['devices']) == 2
+  assert len(res['devices']) == 3
 
-  assert set(res['devices']) == set([foobar['created_device_id'],
-                                     barfoo['created_device_id']])
+  assert set(res['devices']) == set([
+      foobar['_id'],
+      barfoo['_id'],
+      str(bob.device_id),
+    ])

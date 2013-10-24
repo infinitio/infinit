@@ -32,11 +32,7 @@ transitions = {
       CANCELED,
       FAILED
       ],
-    False: [
-      ACCEPTED,
-      REJECTED,
-      FAILED
-      ]
+    False: [],
     },
   INITIALIZED:
     {
@@ -58,13 +54,14 @@ transitions = {
       FAILED
       ],
     False: [
+      ACCEPTED,
       FINISHED,
       CANCELED,
       FAILED
       ]
     },
-  # FINISHED: {True: [], False: []},
-  # CANCELED: {True: [], False: []},
-  # FAILED: {True: [], False: []},
-  # REJECTED: {True: [], False: []}
+  FINISHED: {True: [CANCELED, FAILED], False: [FINISHED, CANCELED, FAILED]},
+  CANCELED: {True: [CANCELED, FAILED], False: [CANCELED, FAILED]},
+  FAILED: {True: [CANCELED, FAILED], False: [CANCELED, FAILED]},
+  REJECTED: {True: [CANCELED, FAILED], False: [REJECTED, CANCELED, FAILED]}
   }

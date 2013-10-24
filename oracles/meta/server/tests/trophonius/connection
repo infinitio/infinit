@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from uuid import uuid4
+
+with Meta() as meta:
+  bob = User(meta, 'bob@infinit.io')
+  alice = User(meta, 'alice@infinit.io')
+  bob.login()
+  alice.login()
+
+  tropho = uuid4()
+
+  assert not bob.connected
+
+  meta.put('trophonius/%s' % tropho, {"ip": "127.0.0.1", "port": 23456})
+
+  meta.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
+
+  assert bob.connected
+  assert bob.connected_on_device
+
+  device = bob.device
+  assert device['success']
+  assert device['trophonius'] == str(tropho)
+
+  meta.delete('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
+
+  assert not bob.connected
+  assert not bob.connected_on_device
+
+  device = bob.device
+  assert device['success']
+  assert device['trophonius'] == None
+
+  meta.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
+
+  assert bob.connected
+  assert bob.connected_on_device
+
+  meta.delete('trophonius/%s' % tropho)
+
+  assert not bob.connected
+  assert not bob.connected_on_device
+
+  device = bob.device
+  assert device['success']
+  assert device['trophonius'] == None

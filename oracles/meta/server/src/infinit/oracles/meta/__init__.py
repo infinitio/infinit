@@ -13,13 +13,13 @@ from . import error
 
 from .utils import api, hash_pasword, stringify_object_ids, require_logged_in
 
-from . import user, transaction, device
+from . import user, transaction, device, root, trophonius
 from . import notifier
 from . import mail
 
 from bson import ObjectId
 
-class Meta(bottle.Bottle, user.Mixin, transaction.Mixin, device.Mixin):
+class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixin, trophonius.Mixin):
 
   def __init__(self,
                mongo_host = None,
@@ -126,7 +126,3 @@ class Meta(bottle.Bottle, user.Mixin, transaction.Mixin, device.Mixin):
 
   def forbiden(self):
     bottle.abort(403)
-
-  @api('/status')
-  def status(self):
-    return self.success()

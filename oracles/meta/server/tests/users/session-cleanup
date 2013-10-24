@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 from utils import Meta, Client
+from uuid import uuid4
 
 with Meta() as meta:
   password = meta.create_user('foo@bar.baz')
   user = {
     'email': 'foo@bar.baz',
     'password': password,
-    'device': 'android',
+    'device_id': str(uuid4()),
   }
 
   # Login a client.

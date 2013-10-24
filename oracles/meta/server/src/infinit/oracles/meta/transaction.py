@@ -7,7 +7,7 @@ from bson import ObjectId
 
 from .utils import api, require_logged_in
 from . import regexp, error, transaction_status, notifier
-
+from uuid import UUID
 import re
 
 class Mixin:
@@ -17,9 +17,9 @@ class Mixin:
   def transaction_view(self, id):
     transaction = self.database.transactions.find_one(ObjectId(id))
     if not transaction:
-      return self.error(error.TRANSACTION_DOESNT_EXIST)
+      return self.fail(error.TRANSACTION_DOESNT_EXIST)
     if not self.user['_id'] in (transaction['sender_id'], transaction['recipient_id']):
-      return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
     return self.success(transaction)
 
   @api('/transaction/create', method = 'POST')
@@ -51,7 +51,7 @@ class Mixin:
     id_or_email = id_or_email.strip()
 
     # if self.database.devices.find_one(ObjectId(device_id)) is None:
-    #   return self.error(error.DEVICE_NOT_FOUND)
+    #   return self.fail(error.DEVICE_NOT_FOUND)
 
     new_user = False
     is_ghost = False
@@ -79,10 +79,10 @@ class Mixin:
       try:
         recipient_id = ObjectId(id_or_email)
       except Exception as e:
-        return self.error(error.USER_ID_NOT_VALID)
+        return self.fail(error.USER_ID_NOT_VALID)
       recipient = self.database.users.find_one(recipient_id)
       if recipient is None:
-        return self.error(error.USER_ID_NOT_VALID)
+        return self.fail(error.USER_ID_NOT_VALID)
 
     _id = self.user['_id']
 
@@ -196,8 +196,6 @@ class Mixin:
         ],
       }
 
-    print(find_params)
-
     return self.success(
       {
         "transactions": [ t['_id'] for t in self.database.transactions.find(**find_params)
@@ -238,57 +236,87 @@ class Mixin:
     assert isinstance(id, ObjectId)
     transaction = self.database.transactions.find_one(id)
     if transaction is None and ensure_existence:
-      return self.error(error.TRANSACTION_DOESNT_EXIST)
+      return self.fail(error.TRANSACTION_DOESNT_EXIST)
     return transaction
 
-  def validate_ownership(self, transaction):
+  def validate_ownership(self, transaction, user = None):
+    if user is None:
+      user = self.user
     # Check that user has rights on the transaction
-    is_sender = self.user['_id'] == transaction['sender_id']
-    is_receiver = self.user['_id'] == transaction['recipient_id']
+    is_sender = user['_id'] == transaction['sender_id']
+    is_receiver = user['_id'] == transaction['recipient_id']
     if not (is_sender or is_receiver):
-      return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+      raise error.Error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
     return is_sender
 
-  def on_accept(self, transaction):
-    if 'device_id' not in self.data or 'device_name' not in self.data:
-      return self.error(
-        error.TRANSACTION_OPERATION_NOT_PERMITTED,
-        "'device_id' or 'device_name' key is missing")
-
-    device_id = database.ObjectId(self.data["device_id"])
+  def on_accept(self, transaction, device_id, device_name):
+    device_id = UUID(device_id)
     if device_id not in self.user['devices']:
-      return self.error(error.DEVICE_NOT_VALID)
+      raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
 
     transaction.update({
       'recipient_fullname': self.user['fullname'],
-      'recipient_device_name' : self.data['device_name'],
+      'recipient_device_name' : device_name,
       'recipient_device_id': device_id,
     })
 
-  def _update_status(self, transaction, status, is_sender):
-    if transaction['status'] in transaction_status.final:
-      return self.error(
-        error.TRANSACTION_ALREADY_FINALIZED,
-        "Cannot change status from %s to %s." % (transaction['status'], status)
-        )
 
-    if transaction['status'] == status:
-      return self.error(
-        error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
-        "Cannont change status from %s to %s." % (transaction['status'], status))
+  @api('/transaction/update', method = 'POST')
+  @require_logged_in
+  def transaction_update(self,
+                         transaction_id,
+                         status,
+                         device_id = None,
+                         device_name = None):
 
+    try:
+      transaction_id = self._transaction_update(transaction_id,
+                                                status,
+                                                device_id,
+                                                device_name,
+                                                self.user)
+    except error.Error as e:
+      self.fail(*e.args)
+
+    return self.success({
+      'updated_transaction_id': transaction_id,
+    })
+
+  def _transaction_update(self,
+                          transaction_id,
+                          status,
+                          device_id = None,
+                          device_name = None,
+                          user = None):
+    if user is None:
+      user = self.user
+    if user is None:
+      self.fail(error.UNKNOWN_USER)
+    transaction = self._transaction_by_id(ObjectId(transaction_id))
+    is_sender = self.validate_ownership(transaction, user)
 
     if status not in transaction_status.transitions[transaction['status']][is_sender]:
-      return self.error(
+      raise error.Error(
         error.TRANSACTION_OPERATION_NOT_PERMITTED,
-        "Cannot change status from %s to %s." % (transaction['status'], self.data['status'])
+        "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
+      )
+
+    if transaction['status'] == status:
+      raise error.Error(
+        error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
+        "Cannont change status from %s to %s (same status)." % (transaction['status'], status))
+
+    if transaction['status'] in transaction_status.final:
+      raise error.Error(
+        error.TRANSACTION_ALREADY_FINALIZED,
+        "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
         )
 
     from functools import partial
 
     callbacks = {
       transaction_status.INITIALIZED: None,
-      transaction_status.ACCEPTED: partial(self.on_accept, transaction),
+      transaction_status.ACCEPTED: partial(self.on_accept, transaction, device_id, device_name),
       transaction_status.FINISHED: None,
       transaction_status.CANCELED: None,
       transaction_status.FAILED: None,
@@ -316,18 +344,7 @@ class Mixin:
       recipient_ids = recipient_ids,
       message = transaction,
     )
-
-  @api('/transaction/update', method = 'POST')
-  @require_logged_in
-  def transaction_update(self, transaction_id, status):
-    transaction = self._transaction_by_id(ObjectId(transaction_id))
-    is_sender = self.validate_ownership(transaction)
-
-    self._update_status(transaction, status, is_sender)
-
-    return self.success({
-      'updated_transaction_id': transaction_id,
-    })
+    return transaction_id
 
   @api('/transaction/search')
   @require_logged_in
@@ -384,11 +401,11 @@ class Mixin:
     device_id = ObjectId(device_id)
     device = self.database.devices.find_one(device_id)
     if not device:
-      return self.error(error.DEVICE_NOT_FOUND)
+      return self.fail(error.DEVICE_NOT_FOUND)
 
     if device_id not in [transaction['sender_device_id'],
                          transaction['recipient_device_id']]:
-      return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
     node = dict()
 
@@ -445,16 +462,16 @@ class Mixin:
 
     transaction = self.database.transactions.find_one(ObjectId(transaction_id))
     if not transaction:
-      return self.error(error.TRANSACTION_DOESNT_EXIST)
+      return self.fail(error.TRANSACTION_DOESNT_EXIST)
 
     if self.user['_id'] not in [transaction['sender_id'], transaction['recipient_id']]:
-      return self.error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
     if (not self_device_id in transaction['nodes'].keys()) or (not transaction['nodes'][self_device_id]):
-      return self.error(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
+      return self.fail(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
 
     if (not device_id in transaction['nodes'].keys()) or (not transaction['nodes'][device_id]):
-      return self.error(error.DEVICE_NOT_FOUND, "This user is not connected to this transaction")
+      return self.fail(error.DEVICE_NOT_FOUND, "This user is not connected to this transaction")
 
     res = dict();
 

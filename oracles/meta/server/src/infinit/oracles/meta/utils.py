@@ -4,6 +4,7 @@ from . import error
 from . import conf
 from bson import ObjectId
 import pymongo
+from uuid import UUID
 
 class api:
 
@@ -44,7 +45,7 @@ def hash_pasword(password):
 
 # There is probably a better way.
 def stringify_object_ids(obj):
-  if isinstance(obj, ObjectId):
+  if isinstance(obj, (ObjectId, UUID)):
     return str(obj)
   if hasattr(obj, '__iter__'):
     if isinstance(obj, list):

@@ -6,8 +6,8 @@ with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
 
   bob.login()
-  barfoo = bob.post('device/create', {"name": "barfoo"})['created_device_id']
-  foobar = bob.post('device/create', {"name": "foobar"})['created_device_id']
+  barfoo = bob.post('device/create', {"name": "barfoo"})['_id']
+  foobar = bob.post('device/create', {"name": "foobar"})['_id']
   # bob.logout()
 
   bob.post('user/connect', {"admin_token": "admintoken", "user_id": bob.id, "device_id": barfoo})

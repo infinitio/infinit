@@ -1,8 +1,15 @@
 import drake
 import sys
 
-def configure(prefix = drake.Path('/usr/local'),
+build = None
+check = None
+install = None
+
+def configure(papier_python = None,
+              prefix = drake.Path('/usr/local'),
               python_version = None):
+
+  global build, check, install
 
   if python_version is None:
     python_version = drake.Version(*sys.version_info[0:2])
@@ -26,48 +33,78 @@ def configure(prefix = drake.Path('/usr/local'),
     'src/infinit/oracles/meta/metalib.py',
     'src/infinit/oracles/meta/notification_type.hh.inc',
     'src/infinit/oracles/meta/notifier.py',
+    'src/infinit/oracles/meta/pythia.py',
     'src/infinit/oracles/meta/regexp.py',
+    'src/infinit/oracles/meta/root.py',
     'src/infinit/oracles/meta/user.py',
     'src/infinit/oracles/meta/transaction.py',
     'src/infinit/oracles/meta/transaction_status.hh.inc',
     'src/infinit/oracles/meta/transaction_status.py',
+    'src/infinit/oracles/meta/trophonius.py',
     'src/infinit/oracles/meta/utils.py',
     'src/infinit/oracles/meta/wsgi.py',
   )
 
-  install = drake.Rule('install')
-  lib_path = prefix / ('lib/python%s/site-packages' % python_version)
-  install << drake.copy(sources, lib_path, 'src')
-  bottle = drake.nodes('../../bottle/bottle.py')
-  install << drake.copy(bottle, lib_path, '../../bottle')
+  ## ----- ##
+  ## Build ##
+  ## ----- ##
 
-  rule_check = drake.TestSuite('check')
+  build = drake.Rule('build')
+  build_python_path = drake.Path('lib/python')
+  python_nodes = []
+  python_nodes += drake.copy(sources, build_python_path, 'src')
+  bottle = drake.nodes('../../bottle/bottle.py')
+  python_nodes += drake.copy(bottle, build_python_path
+                            , '../../bottle')
+  python_nodes.append(drake.copy(papier_python, build_python_path,
+                                 papier_python.name().dirname()))
+  build << python_nodes
+  build_binary = drake.copy(drake.node('meta'), 'bin')
+  build << build_binary
+
+  ## ------- ##
+  ## Install ##
+  ## ------- ##
+
+  install_python_path = \
+    prefix / ('lib/python%s/site-packages' % python_version)
+  install = drake.Rule('install')
+  install << drake.copy(python_nodes,
+                        install_python_path, build_python_path)
+  install << drake.copy(build_binary, prefix)
+
+  ## ----- ##
+  ## Check ##
+  ## ----- ##
+
+  check = drake.TestSuite('check')
 
   for name in (
-      'routes',
-      'status',
-      'connection',
-      'transactions/transaction',
-      'transactions/transaction_search',
-      'transactions/transaction_update',
-      'users/favorite-unfavorite',
-      'users/get_avatar',
-      'users/invite_as_admin',
-      'users/invite_as_user',
-      'users/login-failure',
-      'users/login-logout',
-      'users/login-success',
-      'users/register',
-      'users/register_invited',
-      'users/session-cleanup',
-      'users/set_avatar',
-      'users/swaggers',
-      'users/user-search',
-      'devices/creation',
-      'devices/deletion',
-      'devices/search',
-      'devices/update',
-  ):
+    'routes',
+    'status',
+    'trophonius/connection',
+    'transactions/transaction',
+    'transactions/transaction_search',
+    'transactions/transaction_update',
+    'users/favorite-unfavorite',
+    'users/get_avatar',
+    'users/invite_as_admin',
+    'users/invite_as_user',
+    'users/login-failure',
+    'users/login-logout',
+    'users/login-success',
+    'users/login-with-existing-device',
+    'users/register',
+    'users/register_invited',
+    'users/session-cleanup',
+    'users/set_avatar',
+    'users/swaggers',
+    'users/user-search',
+    'devices/creation',
+    'devices/deletion',
+    'devices/search',
+    'devices/update',
+    ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
     for source in sources:
@@ -84,4 +121,4 @@ def configure(prefix = drake.Path('/usr/local'),
     }
 
     runner = drake.Runner(test, env = env)
-    rule_check << runner.status
+    check << runner.status
