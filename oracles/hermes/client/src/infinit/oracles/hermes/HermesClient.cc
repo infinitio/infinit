@@ -68,6 +68,7 @@ namespace oracles
       oracles::hermes::HermesRPC handler(*_channels);
       handler.ident(_tid);
 
+      // Download missing blocks up to this point.
       while (not _holes.empty())
       {
         auto hole = _holes.begin();
@@ -77,7 +78,8 @@ namespace oracles
 
         elle::Buffer inc(handler.fetch(id, off, size));
 
-        std::ofstream out(get_path(snap, id));
+        std::fstream out(get_path(snap, id),
+                         std::ios::in | std::ios::out | std::ios::binary);
         out.seekp(off);
 
         out.write(reinterpret_cast<char*>(inc.mutable_contents()),

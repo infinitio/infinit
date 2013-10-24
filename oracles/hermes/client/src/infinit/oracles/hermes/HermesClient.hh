@@ -31,10 +31,10 @@ namespace oracles
       void
       download(boost::filesystem::path const& snaploc, Size off);
 
-    private:
       void
       find_holes(frete::TransferSnapshot& snap, Size off);
 
+    private:
       std::string
       get_path(frete::TransferSnapshot& snap, FileID id) const;
 
