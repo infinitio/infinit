@@ -223,32 +223,12 @@ namespace infinit
         template <typename T>
         T
         _request(std::string const& url,
+                 reactor::http::Method method) const;
+        template <typename T>
+        T
+        _request(std::string const& url,
                  reactor::http::Method method,
-                 elle::format::json::Object const& req = {}) const;
-
-        template <typename T>
-        T
-        _post(std::string const& url,
-                      elle::format::json::Object const& req = {}) const;
-
-        template <typename T>
-        T
-        _get(std::string const& url,
-             elle::format::json::Object const& req = {}) const;
-
-        template <typename T>
-        T
-        _put(std::string const& url,
-             elle::format::json::Object const& req = {}) const;
-
-        template <typename T>
-        T
-        _delete(std::string const& url,
-                elle::format::json::Object const& req = {}) const;
-
-        template <typename T>
-        T
-        _deserialize_answer(elle::Buffer& res) const;
+                 elle::format::json::Object const& body) const;
 
       public:
         DebugResponse

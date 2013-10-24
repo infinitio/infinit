@@ -8,8 +8,7 @@ check = None
 
 def configure(elle,
               reactor,
-              curly,
-              papier,
+              papier_python,
               boost = None,
               python3 = None,
               prefix = drake.Path('/usr/local'),
@@ -17,15 +16,11 @@ def configure(elle,
               cxx_toolkit = None,
               cxx_config = None):
 
-  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
-  cxx_config = cxx_config or drake.cxx.Config()
-
   global client, server, check
 
   client = drake.include('client',
                          elle = elle,
                          reactor = reactor,
-                         curly = curly,
                          python3 = python3,
                          boost = boost,
                          prefix = prefix,
@@ -33,11 +28,11 @@ def configure(elle,
                          cxx_config = cxx_config)
 
   server = drake.include('server',
-                         pypapier = papier,
-                         destination = destination,
+                         papier_python = papier_python,
                          prefix = prefix,
                          python_version = 3)
 
-  check = drake.Rule('check')
-  check << client.check
-  check << server.check
+  for name in ('build', 'check', 'install'):
+    rule = drake.Rule(name)
+    rule << getattr(client, name)
+    rule << getattr(server, name)

@@ -1,21 +1,18 @@
 import drake
 import sys
 
-server = None
-install = None
+build = None
 check = None
+install = None
 
-def configure(pypapier = None,
-              destination = None,
+def configure(papier_python = None,
               prefix = drake.Path('/usr/local'),
               python_version = None):
-  global lib, check
+
+  global build, check, install
 
   if python_version is None:
     python_version = drake.Version(*sys.version_info[0:2])
-
-  if destination is None:
-    destination = 'lib/python'
 
   prefix = drake.Path(prefix)
 
@@ -38,6 +35,7 @@ def configure(pypapier = None,
     'src/infinit/oracles/meta/notifier.py',
     'src/infinit/oracles/meta/pythia.py',
     'src/infinit/oracles/meta/regexp.py',
+    'src/infinit/oracles/meta/root.py',
     'src/infinit/oracles/meta/user.py',
     'src/infinit/oracles/meta/transaction.py',
     'src/infinit/oracles/meta/transaction_status.hh.inc',
@@ -47,15 +45,37 @@ def configure(pypapier = None,
     'src/infinit/oracles/meta/wsgi.py',
   )
 
-  lib = drake.copy(sources, destination, 'src')
-  assert pypapier is not None
-  lib += [drake.copy(pypapier, destination)]
-  bottle = drake.nodes('../../bottle/bottle.py')
-  lib += [drake.copy(bottle, destination, '../../bottle')]
+  ## ----- ##
+  ## Build ##
+  ## ----- ##
 
-  # lib_path = prefix / ('lib/python%s/site-packages' % python_version)
+  build = drake.Rule('build')
+  build_python_path = drake.Path('lib/python')
+  python_nodes = []
+  python_nodes += drake.copy(sources, build_python_path, 'src')
+  bottle = drake.nodes('../../bottle/bottle.py')
+  python_nodes += drake.copy(bottle, build_python_path
+                            , '../../bottle')
+  python_nodes.append(drake.copy(papier_python, build_python_path,
+                                 papier_python.name().dirname()))
+  build << python_nodes
+  build_binary = drake.copy(drake.node('meta'), 'bin')
+  build << build_binary
+
+  ## ------- ##
+  ## Install ##
+  ## ------- ##
+
+  install_python_path = \
+    prefix / ('lib/python%s/site-packages' % python_version)
   install = drake.Rule('install')
-  install << lib
+  install << drake.copy(python_nodes,
+                        install_python_path, build_python_path)
+  install << drake.copy(build_binary, prefix)
+
+  ## ----- ##
+  ## Check ##
+  ## ----- ##
 
   check = drake.TestSuite('check')
 

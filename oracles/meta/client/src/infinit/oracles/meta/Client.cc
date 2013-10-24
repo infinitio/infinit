@@ -30,6 +30,7 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::DebugResponse, ar, res)
 /*------.
 | Users |
 `------*/
+
 SERIALIZE_RESPONSE(infinit::oracles::meta::LoginResponse, ar, res)
 {
   ar & named("_id", res.id);
@@ -107,6 +108,7 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::InviteUserResponse, ar, res)
 /*--------.
 | Devices |
 `--------*/
+
 SERIALIZE_RESPONSE(infinit::oracles::meta::CreateDeviceResponse, ar, res)
 {
   ar & named("_id", res.id);
@@ -136,6 +138,7 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::DeleteDeviceResponse, ar, res)
 /*-------------.
 | Transactions |
 `-------------*/
+
 SERIALIZE_RESPONSE(infinit::oracles::meta::TransactionResponse, ar, res)
 {
   ar & static_cast<infinit::oracles::Transaction&>(res);
@@ -182,6 +185,8 @@ namespace infinit
   {
     namespace meta
     {
+      using elle::sprintf;
+      using reactor::http::Method;
 
       Exception::Exception(Error const& error, std::string const& message)
         : elle::Exception(message)
@@ -232,7 +237,7 @@ namespace infinit
       DebugResponse
       Client::status() const
       {
-        return this->_get<DebugResponse>("status");
+        return this->_request<DebugResponse>("/status", Method::GET);
       }
 
       /*------.
@@ -252,7 +257,8 @@ namespace infinit
             {"device_uid", struuid},
          }};
 
-        auto res = this->_post<LoginResponse>("/user/login", request);
+        auto res = this->_request<LoginResponse>(
+          "/user/login", Method::POST, request);
         if (res.success())
         {
           // Debugging purpose.
@@ -264,7 +270,7 @@ namespace infinit
       LogoutResponse
       Client::logout()
       {
-        auto res = this->_get<LogoutResponse>("/user/logout");
+        auto res = this->_request<LogoutResponse>("/user/logout", Method::GET);
         if (res.success())
         {
           // Debugging purpose.
@@ -285,7 +291,8 @@ namespace infinit
             {"password", password},
             {"activation_code", activation_code},
               }};
-        return this->_post<RegisterResponse>("/user/register", request);
+        return this->_request<RegisterResponse>(
+          "/user/register", Method::POST, request);
       }
 
       UsersResponse
@@ -295,7 +302,8 @@ namespace infinit
         request["text"] = text;
         request["limit"] = count;
         request["offset"] = offset;
-        return this->_post<UsersResponse>("/user/search", request);
+        return this->_request<UsersResponse>(
+          "/user/search", Method::POST, request);
       }
 
       UserResponse
@@ -303,13 +311,14 @@ namespace infinit
       {
         if (id.size() == 0)
           throw elle::Exception("Wrong id");
-        return this->_get<UserResponse>("/user/" + id + "/view");
+        return this->_request<UserResponse>(
+          sprintf("/user/%s/view", id), Method::GET);
       }
 
       SelfResponse
       Client::self() const
       {
-        return this->_get<SelfResponse>("/self");
+        return this->_request<SelfResponse>("/self", Method::GET);
       }
 
       UserResponse
@@ -319,13 +328,14 @@ namespace infinit
           throw elle::Exception("empty public key!");
         json::Dictionary request;
         request["public_key"] = public_key;
-        return this->_post<UserResponse>("/user/from_public_key", request);
+        return this->_request<UserResponse>(
+          "/user/from_public_key", Method::POST, request);
       }
 
       SwaggersResponse
       Client::get_swaggers() const
       {
-        return this->_get<SwaggersResponse>("/user/swaggers");
+        return this->_request<SwaggersResponse>("/user/swaggers", Method::GET);
       }
 
       RemoveSwaggerResponse
@@ -335,7 +345,8 @@ namespace infinit
             {"_id", _id},
               }};
 
-        return this->_post<RemoveSwaggerResponse>("/user/remove_swagger", request);
+        return this->_request<RemoveSwaggerResponse>(
+          "/user/remove_swagger", Method::POST, request);
       }
 
       Response
@@ -343,7 +354,8 @@ namespace infinit
       {
         json::Dictionary request;
         request["user_id"] = user;
-        return this->_post<DebugResponse>("/user/favorite", request);
+        return this->_request<DebugResponse>(
+          "/user/favorite", Method::POST, request);
       }
 
       Response
@@ -351,7 +363,8 @@ namespace infinit
       {
         json::Dictionary request;
         request["user_id"] = user;
-        return this->_post<DebugResponse>("/user/unfavorite", request);
+        return this->_request<DebugResponse>(
+          "/user/unfavorite", Method::POST, request);
       }
 
       // InvitedResponse
@@ -369,7 +382,8 @@ namespace infinit
         json::Dictionary request{std::map<std::string, std::string>{
             {"name", name},
               }};
-        return this->_post<CreateDeviceResponse>("/device/create", request);
+        return this->_request<CreateDeviceResponse>(
+          "/device/create", Method::POST, request);
       }
 
       UpdateDeviceResponse
@@ -381,7 +395,8 @@ namespace infinit
             {"name", name},
               }};
 
-        return this->_post<UpdateDeviceResponse>("/device/update", request);
+        return this->_request<UpdateDeviceResponse>(
+          "/device/update", Method::POST, request);
       }
 
       DeviceResponse
@@ -391,7 +406,8 @@ namespace infinit
             {"_id", _id},
               }};
 
-        return this->_get<DeviceResponse>("/device/" + _id + "/update");
+        return this->_request<DeviceResponse>(
+          sprintf("/device/%s/update", _id), Method::GET);
       }
 
       DeleteDeviceResponse
@@ -401,7 +417,8 @@ namespace infinit
             {"_id", _id},
               }};
 
-        return this->_post<DeleteDeviceResponse>("/device/delete", request);
+        return this->_request<DeleteDeviceResponse>(
+          "/device/delete", Method::POST, request);
       }
 
       /*------.
@@ -415,7 +432,8 @@ namespace infinit
             {"email", email}
           }};
 
-        auto res = this->_post<InviteUserResponse>("/user/invite", request);
+        auto res = this->_request<InviteUserResponse>(
+          "/user/invite", Method::POST, request);
 
         return res;
       }
@@ -439,8 +457,8 @@ namespace infinit
         request["files_count"] = count;
         request["message"] = message;
 
-        return this->_post<CreateTransactionResponse>("/transaction/create",
-                                                      request);
+        return this->_request<CreateTransactionResponse>(
+          "/transaction/create", Method::POST, request);
       }
 
       UpdateTransactionResponse
@@ -465,8 +483,8 @@ namespace infinit
           request["device_name"] = device_name;
         }
 
-        return this->_post<UpdateTransactionResponse>("/transaction/update",
-                                                      request);
+        return this->_request<UpdateTransactionResponse>(
+          "/transaction/update", Method::POST, request);
       }
 
       UpdateTransactionResponse
@@ -486,7 +504,8 @@ namespace infinit
       TransactionResponse
       Client::transaction(std::string const& _id) const
       {
-        return this->_get<TransactionResponse>("/transaction/" + _id + "/view");
+        return this->_request<TransactionResponse>(
+          sprintf("/transaction/%s/view", _id), Method::GET);
       }
 
       TransactionsResponse
@@ -508,7 +527,8 @@ namespace infinit
           request["count"] = count;
         }
 
-        return this->_post<TransactionsResponse>("/transactions", request);
+        return this->_request<TransactionsResponse>(
+          "/transactions", Method::POST, request);
       }
 
       MessageResponse
@@ -528,7 +548,8 @@ namespace infinit
         request["notification_id"] = 217;
 
         // FIXME: /user/message
-        auto res = this->_post<MessageResponse>("/debug", request);
+        auto res = this->_request<MessageResponse>(
+          "/debug", Method::POST, request);
 
         return res;
       }
@@ -536,7 +557,7 @@ namespace infinit
       DebugResponse
       Client::debug() const
       {
-        return this->_get<DebugResponse>("/scratchit");
+        return this->_request<DebugResponse>("/scratchit", Method::GET);
       }
 
       ConnectDeviceResponse
@@ -576,10 +597,8 @@ namespace infinit
 
         request["externals"] = public_addrs;
 
-        return this->_post<ConnectDeviceResponse>(
-          "/transaction/connect_device",
-          request
-          );
+        return this->_request<ConnectDeviceResponse>(
+          "/transaction/connect_device", Method::POST, request);
       }
 
       EndpointNodeResponse
@@ -594,10 +613,9 @@ namespace infinit
               }
         };
 
-        return this->_post<EndpointNodeResponse>(
-          "/transaction/" + network_id + "/endpoints",
-          request
-          );
+        return this->_request<EndpointNodeResponse>(
+          sprintf("/transaction/%s/endpoints", network_id),
+          Method::POST, request);
       }
 
       //- Properties ------------------------------------------------------------

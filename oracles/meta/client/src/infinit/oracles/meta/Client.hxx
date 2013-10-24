@@ -100,72 +100,40 @@ namespace infinit
       template <typename T>
       T
       Client::_request(std::string const& url,
+                       reactor::http::Method method) const
+      {
+        return this->_request<T>(url, method,
+                                 *(elle::format::json::Object*)(nullptr));
+      }
+
+      template <typename T>
+      T
+      Client::_request(std::string const& url,
                        reactor::http::Method method,
-                       elle::format::json::Object const& req) const
+                       elle::format::json::Object const& body) const
       {
         ELLE_LOG_COMPONENT("oracles.meta.client");
         ELLE_TRACE_SCOPE("%s: %s on %s", *this, method, url);
 
-        reactor::http::Request r(url,
-                                 method,
-                                 "application/json",
-                                 this->_default_configuration);
-        if (req.has_repr())
-          r << req.repr();
-        elle::Buffer resp = r.response();
+        reactor::http::Request request(url,
+                                       method,
+                                       "application/json",
+                                       this->_default_configuration);
+        if (&body)
+          request << body.repr();
+        request.finalize();
 
-        if (r.status() != 200)
+        auto status = request.status();
+        if (status != reactor::http::StatusCode::OK)
           throw elle::http::Exception(
-            static_cast<elle::http::ResponseCode>(r.status()),
-            elle::sprintf("error %s while posting on %s", r.status(), url));
+            static_cast<elle::http::ResponseCode>(status),
+            elle::sprintf("error %s while posting on %s", status, url));
 
-        return this->_deserialize_answer<T>(resp);
-      }
-
-      template <typename T>
-      T
-      Client::_post(std::string const& url,
-                    elle::format::json::Object const& req) const
-      {
-        return this->_request<T>(url, reactor::http::Method::POST, req);
-      }
-
-      template <typename T>
-      T
-      Client::_get(std::string const& url,
-                   elle::format::json::Object const& req) const
-      {
-        return this->_request<T>(url, reactor::http::Method::GET, req);
-      }
-
-      template <typename T>
-      T
-      Client::_put(std::string const& url,
-                   elle::format::json::Object const& req) const
-      {
-        return this->_request<T>(url, reactor::http::Method::PUT, req);
-      }
-
-      template <typename T>
-      T
-      Client::_delete(std::string const& url,
-                   elle::format::json::Object const& req) const
-      {
-        return this->_request<T>(url, reactor::http::Method::DELETE, req);
-      }
-
-      template <typename T>
-      T
-      Client::_deserialize_answer(elle::Buffer& res) const
-      {
-        elle::IOStream stream{new elle::InputStreamBuffer<elle::Buffer>{res}};
-
-        T ret;
-        ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
         // deserialize response
+        T ret;
         try
         {
-          elle::serialize::InputJSONArchive(stream, ret);
+          elle::serialize::InputJSONArchive(request, ret);
         }
         catch (std::exception const& err)
         {

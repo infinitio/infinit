@@ -1319,34 +1319,16 @@ def configure(cxx_toolkit = None,
     ## Oracles ##
     ## ------- ##
 
-    from os import path
-    destination = drake.Path(path.expandvars(path.curdir) + '/lib/python')
-
+    # Meta
     meta = drake.include('oracles/meta',
                          elle = elle.elle,
                          reactor = elle.reactor,
-                         curly = elle.curly,
-                         papier = papier_python_lib,
+                         papier_python = papier_python_lib,
                          python3 = python_enabled and python3 or None,
                          boost = boost,
                          prefix = prefix,
-                         destination = destination,
                          cxx_toolkit = cxx_toolkit,
                          cxx_config = cxx_config,)
-
-    assert meta.server.lib is not None
-    assert meta.client.lib is not None
-    assert meta.check is not None
-
-    rule_meta = drake.Rule('meta')
-    rule_meta_client = drake.Rule('meta/client')
-    rule_meta_client << meta.client.lib
-    rule_meta << rule_meta_client
-    rule_meta_server = drake.Rule('meta/server')
-    rule_meta_server << meta.server.lib
-    rule_meta << rule_meta_server
-    rule_meta_check = drake.Rule('meta/check')
-    rule_meta_check << meta.check
 
     rule_trophonius, rule_trophonius_check = oracle('trophonius')
     rule_apertus, rule_apertus_check = oracle('apertus')

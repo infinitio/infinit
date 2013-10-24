@@ -2,30 +2,36 @@ import drake
 import drake.cxx
 import drake.cxx.boost
 
-lib = None
-pylib = None
+build = None
 check = None
+install = None
 
 def configure(elle,
               reactor,
-              curly,
               boost = None,
               python3 = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None):
-  global lib, check, pylib
+
+  global build, check, install
+
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
   local_cxx_config = drake.cxx.Config(cxx_config)
-  local_cxx_config += boost.config_program()
   local_cxx_config += elle.config
   local_cxx_config += reactor.config
   local_cxx_config.add_local_include_path('src')
   # XXX: This add the include path to get the shared .hh.inc files.
   local_cxx_config.add_local_include_path('../server/src')
-  local_cxx_config.lib_path_runtime('../lib')
+
+  build = drake.Rule('build')
+  install = drake.Rule('install')
+
+  ## ------- ##
+  ## Library ##
+  ## ------- ##
 
   sources = drake.nodes(
     'src/infinit/oracles/meta/Client.cc',
@@ -42,17 +48,19 @@ def configure(elle,
                         elle.lib_dynamic.name().dirname())
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
                            reactor.lib_dynamic.name().dirname())
-  curly_libs = [drake.copy(curly.library, 'lib',
-                           curly.library.name().dirname()),
-                drake.copy(curly.library_asio, 'lib',
-                           curly.library_asio.name().dirname()),
-                drake.copy(curly.library_sched, 'lib',
-                           curly.library_sched.name().dirname())]
 
+  lib_cxx_config = drake.cxx.Config(local_cxx_config)
+  lib_cxx_config.lib_path_runtime('../lib')
   lib = drake.cxx.DynLib('lib/metaclient',
-                         sources + curly_libs + [reactor_lib, elle_lib],
+                         sources + [reactor_lib, elle_lib],
                          cxx_toolkit,
-                         local_cxx_config)
+                         lib_cxx_config)
+
+  build << lib
+
+  ## ------ ##
+  ## Python ##
+  ## ------ ##
 
   if python3 is not None:
     python_sources = drake.nodes(
@@ -63,13 +71,16 @@ def configure(elle,
     meta_python_cxx_config += python3
     meta_python_cxx_config += boost.config_python()
     meta_python_cxx_config.lib_path_runtime('..')
-
-    pylib = drake.cxx.Module(
-      'lib/python/MetaClient.so',
+    meta_python = drake.cxx.Module(
+      'lib/python/infinit/oracles/meta/client',
       python_sources + [lib],
       cxx_toolkit,
-      meta_python_cxx_config,
-      preserve_filename = True)
+      meta_python_cxx_config)
+    build << meta_python
+
+  ## ----- ##
+  ## Check ##
+  ## ----- ##
 
   check = drake.TestSuite('check')
 
@@ -79,10 +90,10 @@ def configure(elle,
 
   tests_cxx_config = drake.cxx.Config(local_cxx_config)
   tests_cxx_config += boost.config_test()
-  local_cxx_config.lib_path_runtime('../lib')
+  tests_cxx_config.lib_path_runtime('../lib')
 
   test_bin = drake.cxx.Executable('tests/meta_client',
-                                  test_sources + curly_libs + [lib, reactor_lib, elle_lib],
+                                  test_sources + [lib, reactor_lib, elle_lib],
                                   cxx_toolkit,
                                   tests_cxx_config)
 
