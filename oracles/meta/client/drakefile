@@ -44,10 +44,8 @@ def configure(elle,
     'src/infinit/oracles/meta/Transaction.hxx',
   )
 
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
-                        elle.lib_dynamic.name().dirname())
-  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
-                           reactor.lib_dynamic.name().dirname())
+  elle_lib = drake.copy(elle.lib_dynamic, 'lib', True)
+  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib', True)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('../lib')
