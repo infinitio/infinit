@@ -213,8 +213,9 @@ namespace infinit
       public:
         Client(std::string const& server,
                uint16_t port);
-        ~Client();
 
+        virtual
+        ~Client();
 
         /*---------.
         | Requests |
