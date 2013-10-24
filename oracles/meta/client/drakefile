@@ -3,6 +3,7 @@ import drake.cxx
 import drake.cxx.boost
 
 lib = None
+pylib = None
 check = None
 
 def configure(elle,
@@ -13,7 +14,7 @@ def configure(elle,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None):
-  global lib, check
+  global lib, check, pylib
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
@@ -63,10 +64,12 @@ def configure(elle,
     meta_python_cxx_config += boost.config_python()
     meta_python_cxx_config.lib_path_runtime('..')
 
-    meta_py_client = drake.cxx.Module(
-      'lib/python/MetaClient',
+    pylib = drake.cxx.Module(
+      'lib/python/MetaClient.so',
       python_sources + [lib],
-      cxx_toolkit, meta_python_cxx_config)
+      cxx_toolkit,
+      meta_python_cxx_config,
+      preserve_filename = True)
 
   check = drake.TestSuite('check')
 
@@ -76,9 +79,10 @@ def configure(elle,
 
   tests_cxx_config = drake.cxx.Config(local_cxx_config)
   tests_cxx_config += boost.config_test()
+  local_cxx_config.lib_path_runtime('../lib')
 
   test_bin = drake.cxx.Executable('tests/meta_client',
-                                  test_sources + curly_libs + [lib],
+                                  test_sources + curly_libs + [lib, reactor_lib, elle_lib],
                                   cxx_toolkit,
                                   tests_cxx_config)
 
