@@ -4,9 +4,12 @@
 # include <infinit/oracles/meta/Transaction.hh>
 
 # include <elle/Exception.hh>
+# include <elle/Buffer.hh>
 # include <elle/HttpClient.hh>
 # include <elle/format/json/fwd.hh>
 # include <elle/log.hh>
+# include <reactor/http/Request.hh>
+# include <reactor/http/Client.hh>
 
 #include <boost/uuid/uuid.hpp>
 
@@ -201,6 +204,9 @@ namespace infinit
 
       private:
         ELLE_ATTRIBUTE_R(std::string, root_url);
+        ELLE_ATTRIBUTE_R(reactor::http::Client, client);
+        ELLE_ATTRIBUTE_R(reactor::http::Request::Configuration,
+                         default_configuration);
         ELLE_ATTRIBUTE_RW(std::string, email);
         ELLE_ATTRIBUTE_R(std::string, user_agent);
 
@@ -209,32 +215,45 @@ namespace infinit
                uint16_t port);
         ~Client();
 
+
         /*---------.
         | Requests |
         `---------*/
       protected:
         template <typename T>
         T
-        _post(std::string const& url,
-              elle::format::json::Object const& req) const;
-        long
-        _post(std::string const& url,
-              elle::format::json::Object const& req,
-              std::ostream& resp) const;
+        _request(std::string const& url,
+                 reactor::http::Method method,
+                 elle::format::json::Object const& req = {}) const;
 
         template <typename T>
         T
-        _get(std::string const& url) const;
+        _post(std::string const& url,
+                      elle::format::json::Object const& req = {}) const;
 
-        long
+        template <typename T>
+        T
         _get(std::string const& url,
-             std::ostream& resp) const;
+             elle::format::json::Object const& req = {}) const;
 
         template <typename T>
         T
-        _deserialize_answer(std::istream& res) const;
+        _put(std::string const& url,
+             elle::format::json::Object const& req = {}) const;
+
+        template <typename T>
+        T
+        _delete(std::string const& url,
+                elle::format::json::Object const& req = {}) const;
+
+        template <typename T>
+        T
+        _deserialize_answer(elle::Buffer& res) const;
 
       public:
+        DebugResponse
+        status() const;
+
         DebugResponse
         debug() const;
 

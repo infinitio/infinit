@@ -6,6 +6,7 @@
 
 # include <elle/serialize/JSONArchive.hh>
 # include <elle/serialize/SetSerializer.hxx>
+
 # include <boost/algorithm/string/split.hpp>
 # include <boost/algorithm/string/classification.hpp>
 
@@ -98,45 +99,73 @@ namespace infinit
 
       template <typename T>
       T
+      Client::_request(std::string const& url,
+                       reactor::http::Method method,
+                       elle::format::json::Object const& req) const
+      {
+        ELLE_LOG_COMPONENT("oracles.meta.client");
+        ELLE_TRACE_SCOPE("%s: %s on %s", *this, method, url);
+
+        reactor::http::Request r(url,
+                                 method,
+                                 "application/json",
+                                 this->_default_configuration);
+        if (req.has_repr())
+          r << req.repr();
+        elle::Buffer resp = r.response();
+
+        if (r.status() != 200)
+          throw elle::http::Exception(
+            static_cast<elle::http::ResponseCode>(r.status()),
+            elle::sprintf("error %s while posting on %s", r.status(), url));
+
+        return this->_deserialize_answer<T>(resp);
+      }
+
+      template <typename T>
+      T
       Client::_post(std::string const& url,
                     elle::format::json::Object const& req) const
       {
-        std::stringstream resp;
-        auto code = this->_post(url, req, resp);
-
-        if (code != static_cast<long>(elle::http::ResponseCode::ok))
-          throw elle::http::Exception(
-            static_cast<elle::http::ResponseCode>(code),
-            elle::sprintf("error %s while posting on %s", code, url));
-
-        return this->_deserialize_answer<T>(resp);
+        return this->_request<T>(url, reactor::http::Method::POST, req);
       }
 
       template <typename T>
       T
-      Client::_get(std::string const& url) const
+      Client::_get(std::string const& url,
+                   elle::format::json::Object const& req) const
       {
-        std::stringstream resp;
-        auto code = this->_get(url, resp);
-
-        if (code != static_cast<long>(elle::http::ResponseCode::ok))
-          throw elle::http::Exception(
-            static_cast<elle::http::ResponseCode>(code),
-            elle::sprintf("error %s while getting on %s", code, url));
-
-        return this->_deserialize_answer<T>(resp);
+        return this->_request<T>(url, reactor::http::Method::GET, req);
       }
 
       template <typename T>
       T
-      Client::_deserialize_answer(std::istream& res) const
+      Client::_put(std::string const& url,
+                   elle::format::json::Object const& req) const
       {
+        return this->_request<T>(url, reactor::http::Method::PUT, req);
+      }
+
+      template <typename T>
+      T
+      Client::_delete(std::string const& url,
+                   elle::format::json::Object const& req) const
+      {
+        return this->_request<T>(url, reactor::http::Method::DELETE, req);
+      }
+
+      template <typename T>
+      T
+      Client::_deserialize_answer(elle::Buffer& res) const
+      {
+        elle::IOStream stream{new elle::InputStreamBuffer<elle::Buffer>{res}};
+
         T ret;
         ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
         // deserialize response
         try
         {
-          elle::serialize::InputJSONArchive(res, ret);
+          elle::serialize::InputJSONArchive(stream, ret);
         }
         catch (std::exception const& err)
         {

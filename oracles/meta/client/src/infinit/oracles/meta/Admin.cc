@@ -41,10 +41,8 @@ namespace infinit
                      std::string const& user_id,
                      std::string const& device_id)
       {
-        // Change GET to PUT.
-        return this->_get<Response>(
-          elle::sprintf("/trophonius/%s/users/%s/%s",
-                        uid, user_id, device_id));
+        return this->_put<Response>(elle::sprintf("/trophonius/%s/users/%s/%s",
+                                                  uid, user_id, device_id));
       }
 
       Response
@@ -52,8 +50,7 @@ namespace infinit
                         std::string const& user_id,
                         std::string const& device_id)
       {
-        // Change GET to DELETE.
-        return this->_get<Response>(
+        return this->_delete<Response>(
           elle::sprintf("/trophonius/%s/users/%s/%s",
                         uid, user_id, device_id));
       }
@@ -67,16 +64,14 @@ namespace infinit
         request["ip"] = ip;
         request["port"] = port;
 
-        // Change POST to PUT.
-        return this->_post<Response>(elle::sprintf("/trophonius/%s", uid),
+        return this->_put<Response>(elle::sprintf("/trophonius/%s", uid),
                                      request);
       }
 
       Response
       Admin::unregister_trophonius(std::string const& uid)
       {
-        // Change GET to DELETE.
-        return this->_get<Response>(elle::sprintf("/trophonius/%s", uid));
+        return this->_delete<Response>(elle::sprintf("/trophonius/%s", uid));
       }
 
       Response

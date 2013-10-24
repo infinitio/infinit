@@ -214,15 +214,26 @@ namespace infinit
         _host(server),
         _port(port),
         _root_url{elle::sprintf("http://%s:%d", server, port)},
+        _client{},
+        _default_configuration{}, // Default v1.1, timeout 30sec.
         _email{},
         _user_agent{"MetaClient/" INFINIT_VERSION}
-      {}
+      {
+        ELLE_LOG("%s: creating a meta client", this);
+        //ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+      }
 
       Client::~Client()
       {
       }
 
       // - API calls ------------------------------------------------------------
+
+      DebugResponse
+      Client::status() const
+      {
+        return this->_get<DebugResponse>("status");
+      }
 
       /*------.
       | Users |
@@ -606,64 +617,6 @@ namespace infinit
         }
 
         return out;
-      }
-
-      /*---------.
-      | Requests |
-      `---------*/
-
-      static
-      long
-      _query(std::string const& url,
-             curly::request_configuration& c,
-             std::ostream& resp,
-             Client const* client)
-      {
-        c.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-        c.option(CURLOPT_DEBUGFUNCTION, curl_debug_callback);
-        c.option(CURLOPT_DEBUGDATA, client);
-        c.option(CURLOPT_TIMEOUT, 15);
-        c.url(elle::sprintf("%s%s", client->root_url(), url));
-        c.user_agent(client->user_agent());
-        c.headers({
-            //{"Authorization", client->token()},
-            {"Connection", "close"},
-              });
-
-        c.output(resp);
-
-        ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-        curly::sched_request r{*reactor::Scheduler::scheduler(), std::move(c)};
-        r.run();
-
-        return r.code();
-      }
-
-      long
-      Client::_post(std::string const& url,
-                    elle::format::json::Object const& req,
-                    std::ostream& resp) const
-      {
-        ELLE_TRACE_SCOPE("%s: post on %s", *this, url);
-        curly::request_configuration c = curly::make_post();
-
-        std::stringstream input;
-        req.repr(input);
-        c.option(CURLOPT_POSTFIELDSIZE, input.str().size());
-        c.input(input);
-
-        return _query(url, c, resp, this);
-      }
-
-      long
-      Client::_get(std::string const& url,
-                   std::ostream& resp) const
-      {
-        ELLE_TRACE_SCOPE("%s: get on %s", *this, url);
-        curly::request_configuration c = curly::make_get();
-
-        return _query(url, c, resp, this);
       }
 
       /*----------.
