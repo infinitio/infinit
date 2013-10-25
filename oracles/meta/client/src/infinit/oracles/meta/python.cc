@@ -156,8 +156,8 @@ class AdminClient:
   public Admin
 {
 public:
-  AdminClient(std::string const& token, std::string const& host, int port)
-    : Admin(token, host, port)
+  AdminClient(std::string const& host, int port)
+    : Admin(host, port)
   {}
 };
 
@@ -264,8 +264,6 @@ void export_meta_client()
   py::class_<UpdateDeviceResponse, py::bases<Response, Device>>("UpdateDeviceResponse")
   ;
 
-  void (AdminClient::*set_token)(std::string const &) = &Admin::token;
-  std::string const& (AdminClient::*get_token)() const = &Admin::token;
   void (MetaClient::*set_email)(std::string const &) = &MetaClient::email;
   std::string const& (MetaClient::*get_email)() const = &MetaClient::email;
 
@@ -296,7 +294,7 @@ void export_meta_client()
   ;
 
   py::class_<AdminClient, boost::noncopyable>(
-    "Admin", py::init<std::string const&, std::string const&, int>())
+    "Admin", py::init<std::string const&, int>())
     .def("add_swaggers", &AdminClient::add_swaggers)
     .def("genocide", &AdminClient::genocide)
     .def("ghostify", &AdminClient::ghostify)
@@ -304,9 +302,6 @@ void export_meta_client()
     .def("disconnect", &AdminClient::disconnect)
     .def("register_trophonius", &AdminClient::register_trophonius)
     .def("unregister_trophonius", &AdminClient::unregister_trophonius)
-    .add_property("token",
-                  make_function(get_token, by_value()),
-                  set_token)
   ;
 }
 
