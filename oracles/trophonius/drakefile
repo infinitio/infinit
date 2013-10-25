@@ -2,7 +2,6 @@ import drake
 import drake.cxx
 import drake.cxx.boost
 
-client = None
 server = None
 
 build = None
@@ -11,9 +10,8 @@ install = None
 
 def configure(elle,
               reactor,
-              papier_python,
+              meta_client,
               boost = None,
-              python3 = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None):
@@ -21,21 +19,16 @@ def configure(elle,
   global client, server
   global build, check, install
 
-  client = drake.include('client',
+
+  server = drake.include('server',
                          elle = elle,
                          reactor = reactor,
-                         python3 = python3,
+                         meta_client = meta_client,
                          boost = boost,
                          prefix = prefix,
                          cxx_toolkit = cxx_toolkit,
                          cxx_config = cxx_config)
 
-  server = drake.include('server',
-                         papier_python = papier_python,
-                         prefix = prefix,
-                         python_version = 3)
-
   for name in ('build', 'check', 'install'):
     globals()[name] = drake.Rule(name)
-    globals()[name] << getattr(client, name)
     globals()[name] << getattr(server, name)

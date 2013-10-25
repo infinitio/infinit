@@ -1,0 +1,44 @@
+import drake
+
+meta = None
+trophonius = None
+
+build = None
+check = None
+install = None
+
+def configure(elle,
+              reactor,
+              papier_python,
+              boost = None,
+              python3 = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  global meta, trophonius
+  global build, check, install
+
+  meta = drake.include('meta',
+                       elle = elle,
+                       reactor = reactor,
+                       papier_python = papier_python,
+                       python3 = python3,
+                       boost = boost,
+                       prefix = prefix,
+                       cxx_toolkit = cxx_toolkit,
+                       cxx_config = cxx_config)
+
+  trophonius = drake.include('trophonius',
+                             elle = elle,
+                             reactor = reactor,
+                             boost = boost,
+                             prefix = prefix,
+                             meta_client = meta.client,
+                             cxx_toolkit = cxx_toolkit,
+                             cxx_config = cxx_config)
+
+  for name in ('build', 'check', 'install'):
+    rule = drake.Rule(name)
+    for oracle in [meta, trophonius]:
+      rule << getattr(oracle, name)

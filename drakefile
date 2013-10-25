@@ -1228,28 +1228,15 @@ def configure(cxx_toolkit = None,
   ## Oracles ##
   ## ------- ##
 
-  from os import path
-  destination = drake.Path(path.expandvars(path.curdir) + '/lib/python')
-
-  meta = drake.include('oracles/meta',
-                       elle = elle.elle,
-                       reactor = elle.reactor,
-                       papier_python = papier_python_lib,
-                       python3 = python_enabled and python3 or None,
-                       boost = boost,
-                       prefix = prefix,
-                       destination = destination,
-                       cxx_toolkit = cxx_toolkit,
-                       cxx_config = cxx_config,)
-
-  trophonius = drake.include('oracles/trophonius/server',
-                             elle = elle.elle,
-                             reactor = elle.reactor,
-                             boost = boost,
-                             prefix = prefix,
-                             meta_client = meta.client,
-                             cxx_toolkit = cxx_toolkit,
-                             cxx_config = cxx_config)
+  oracles = drake.include('oracles',
+                          elle = elle.elle,
+                          reactor = elle.reactor,
+                          papier_python = papier_python_lib,
+                          boost = boost,
+                          python3 = python_enabled and python3 or None,
+                          prefix = prefix,
+                          cxx_toolkit = cxx_toolkit,
+                          cxx_config = cxx_config,)
 
   # oracles_enabled = cxx_toolkit.os != drake.os.windows
 

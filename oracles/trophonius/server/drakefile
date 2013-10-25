@@ -3,7 +3,7 @@ import drake.cxx
 import sys
 
 build = None
-intall = None
+install = None
 check = None
 
 def configure(elle,
@@ -13,7 +13,8 @@ def configure(elle,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None):
-  global build, intall, check
+
+  global build, install, check
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
