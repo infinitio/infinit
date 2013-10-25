@@ -28,6 +28,7 @@ namespace frete
     _rpc_path("path", this->_rpc),
     _rpc_read("read", this->_rpc),
     _rpc_set_progress("progress", this->_rpc),
+    _rpc_sender_offset("offset", this->_rpc),
     _progress_changed("progress changed signal"),
     _snapshot_destination(snapshot_destination),
     _transfer_snapshot{}
@@ -50,6 +51,9 @@ namespace frete
     this->_rpc_set_progress = std::bind(&Self::_set_progress,
                                         this,
                                         std::placeholders::_1);
+    this->_rpc_sender_offset = std::bind(&Self::_sender_offset,
+                                         this,
+                                         std::placeholders::_1);
 
     ELLE_DEBUG("%s: looking for snapshot at %s",
                *this, this->_snapshot_destination);
@@ -198,6 +202,9 @@ namespace frete
   Frete::get(boost::filesystem::path const& output_path,
              std::string const& name_policy)
   {
+    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
+    ELLE_ASSERT(not this->_transfer_snapshot->sender());
+
     uint64_t count = this->_rpc_count();
 
     // total_size can be 0 if all files are empty.
@@ -266,20 +273,34 @@ namespace frete
       ELLE_ASSERT(snapshot.transfers().find(index) != snapshot.transfers().end());
 
       auto& tr = snapshot.transfers().at(index);
+      auto local_offset = tr.progress();
+      tr.update_progress(_rpc_sender_offset(tr.file_id()));
 
       ELLE_DEBUG("%s: index (%s) - path %s - size %s",
                  *this, index, fullpath, file_size);
 
       // Create subdir.
       boost::filesystem::create_directories(fullpath.parent_path());
-      std::ofstream output{fullpath.string(), std::ios_base::app};
 
       if (tr.complete())
       {
         ELLE_DEBUG("%s: transfer was marked as complete", *this);
         continue;
       }
+      else if (local_offset < tr.progress())
+      {
+        // Padding zeroes appended.
+        int fd = open(fullpath.string().c_str(),
+                      O_WRONLY | O_CREAT,
+                      S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        lseek(fd, 0, SEEK_END);
+        write(fd, "\0", 1);
+        lseek(fd, tr.progress() - 1, SEEK_SET);
+        write(fd, "\0", 1);
+        close(fd);
+      }
 
+      std::ofstream output{fullpath.string(), std::ios_base::app};
       while (true)
       {
         if (!output.good())
@@ -500,6 +521,14 @@ namespace frete
 
     this->_transfer_snapshot->progress(progress);
     this->_progress_changed.signal();
+  }
+
+  Offset
+  Frete::_sender_offset(FileID id)
+  {
+    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
+    ELLE_ASSERT(not this->_transfer_snapshot->sender());
+    return this->_transfer_snapshot->progress();
   }
 
   void

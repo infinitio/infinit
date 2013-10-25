@@ -164,4 +164,10 @@ namespace frete
            << ". Already 'copied': " << this->_progress << ": "
            << this->_transfers;
   }
+
+  void
+  TransferSnapshot::TransferProgressInfo::update_progress(Size progress)
+  {
+    _progress = progress;
+  }
 }

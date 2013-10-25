@@ -77,11 +77,10 @@ namespace oracles
         Size size(hole->second);
 
         elle::Buffer inc(handler.fetch(id, off, size));
-
         std::fstream out(get_path(snap, id),
                          std::ios::in | std::ios::out | std::ios::binary);
-        out.seekp(off);
 
+        out.seekp(off);
         out.write(reinterpret_cast<char*>(inc.mutable_contents()),
                   inc.size());
         out.close();

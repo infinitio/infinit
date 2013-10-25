@@ -90,6 +90,9 @@ namespace frete
                             boost::filesystem::path const& path,
                             Size file_size);
 
+      void
+      update_progress(Size progress);
+
       ELLE_ATTRIBUTE_R(Size, progress);
 
     private:

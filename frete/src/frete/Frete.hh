@@ -5,6 +5,9 @@
 # include <tuple>
 # include <algorithm>
 
+# include <fcntl.h>
+# include <unistd.h>
+
 # include <boost/filesystem.hpp>
 
 # include <elle/serialize/BinaryArchive.hh>
@@ -101,6 +104,8 @@ namespace frete
     _read(FileID f, Offset start, Size size);
     void
     _set_progress(uint64_t progress);
+    Offset
+    _sender_offset(FileID id);
 
     // Sender.
     typedef std::pair<boost::filesystem::path, boost::filesystem::path> Path;
@@ -122,6 +127,8 @@ namespace frete
                          Size> _rpc_read;
     RPC::RemoteProcedure<void,
                          uint64_t> _rpc_set_progress;
+    RPC::RemoteProcedure<Offset,
+                         FileID> _rpc_sender_offset;
 
     ELLE_ATTRIBUTE_RX(reactor::Signal, progress_changed);
   public:
