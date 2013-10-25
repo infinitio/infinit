@@ -2,12 +2,18 @@ import drake
 import drake.cxx
 import sys
 
+build = None
+intall = None
+check = None
+
 def configure(elle,
               reactor,
+              meta_client,
               boost = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None):
+  global build, intall, check
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
@@ -16,6 +22,7 @@ def configure(elle,
   local_cxx_config += boost.config_program()
   local_cxx_config += elle.config
   local_cxx_config += reactor.config
+  local_cxx_config += meta_client.config
   local_cxx_config.add_local_include_path('src')
   local_cxx_config.lib_path_runtime('../lib')
   local_cxx_config.lib('jsoncpp')
@@ -24,6 +31,8 @@ def configure(elle,
                         elle.lib_dynamic.name().dirname())
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
                            reactor.lib_dynamic.name().dirname())
+  meta_client_lib = drake.copy(meta_client.lib, 'lib',
+                               meta_client.lib.name().dirname())
 
   sources = drake.nodes(
     'src/infinit/oracles/trophonius/server/Client.cc',
@@ -33,7 +42,14 @@ def configure(elle,
     'src/infinit/oracles/trophonius/server/fwd.hh',
     'src/main.cc',
   )
+
   trophonius = drake.cxx.Executable('bin/trophonius',
-                                    sources + [elle_lib, reactor_lib],
+                                    sources + [elle_lib, reactor_lib, meta_client_lib],
                                     cxx_toolkit,
                                     local_cxx_config)
+  build = drake.Rule('build')
+  install = drake.Rule('install')
+
+  build << trophonius
+
+  check = drake.Rule('check')

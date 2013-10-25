@@ -11,6 +11,9 @@
 # include <reactor/thread.hh>
 
 # include <infinit/oracles/trophonius/server/fwd.hh>
+# include <infinit/oracles/meta/Admin.hh>
+
+# include <boost/uuid/uuid.hpp>
 
 namespace infinit
 {
@@ -25,7 +28,9 @@ namespace infinit
         {
         public:
           Trophonius(int port,
-                     boost::posix_time::time_duration const& ping_period);
+                     std::string const& meta_host,
+                     int meta_port,
+                     boost::posix_time::time_duration const& ping_period );
           ~Trophonius();
 
         /*-------.
@@ -34,11 +39,16 @@ namespace infinit
         public:
           int
           port() const;
+          int
+          notification_port() const;
         private:
           void
           _serve();
           ELLE_ATTRIBUTE(reactor::network::TCPServer, server);
+          ELLE_ATTRIBUTE(reactor::network::TCPServer, notifications);
           ELLE_ATTRIBUTE(reactor::Thread, accepter);
+          ELLE_ATTRIBUTE_R(boost::uuids::uuid, uuid);
+          ELLE_ATTRIBUTE_R(meta::Admin, meta);
 
         /*--------.
         | Clients |

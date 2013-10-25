@@ -5,6 +5,7 @@ import drake.cxx.boost
 client = None
 server = None
 check = None
+config = None
 
 def configure(elle,
               reactor,

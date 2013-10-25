@@ -9,14 +9,14 @@ from uuid import UUID
 class Mixin:
 
   @api('/trophonius/<uid>', method = 'PUT')
-  def trophonius_put(self, uid, ip, port):
+  def trophonius_put(self, uid, port):
     """Register a trophonius.
     """
     uid = UUID(uid)
     self.database.trophonius.insert(
       {
         '_id': uid,
-        'ip': ip,
+        'ip': self.remote_ip,
         'port': port,
       }
     )

@@ -56,6 +56,7 @@ def configure(papier_python = None,
   bottle = drake.nodes('../../bottle/bottle.py')
   python_nodes += drake.copy(bottle, build_python_path
                             , '../../bottle')
+  assert papier_python is not None
   python_nodes.append(drake.copy(papier_python, build_python_path,
                                  papier_python.name().dirname()))
   build << python_nodes

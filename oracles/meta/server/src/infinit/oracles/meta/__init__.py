@@ -101,6 +101,9 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
                          callback = callback)
     self.add_route(route)
 
+  @property
+  def remote_ip(self):
+    return bottle.request.environ.get('REMOTE_ADDR')
 
   def fail(self, *args, **kwargs):
     FailurePlugin.fail(*args, **kwargs)

@@ -18,6 +18,7 @@
 
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -220,7 +221,8 @@ namespace infinit
         _port(port),
         _root_url{elle::sprintf("http://%s:%d", server, port)},
         _client{},
-        _default_configuration{}, // Default v1.1, timeout 30sec.
+        _default_configuration{boost::posix_time::seconds{30},
+                               reactor::http::Version::v10},
         _email{},
         _user_agent{"MetaClient/" INFINIT_VERSION}
       {
@@ -381,7 +383,7 @@ namespace infinit
       {
         json::Dictionary request{std::map<std::string, std::string>{
             {"name", name},
-              }};
+        }};
         return this->_request<CreateDeviceResponse>(
           "/device/create", Method::POST, request);
       }

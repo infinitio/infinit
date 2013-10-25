@@ -26,6 +26,8 @@ parse_options(int argc, char** argv)
     ("ping-period,i", value<int>(),
      "specify the ping period in seconds (default 30)")
     ("port,p", value<int>(), "specify the port to listen on")
+    ("meta_host,m", value<std::string>(), "specify the meta host to connect to")
+    ("meta_port,d", value<int>(), "specify the meta port to connect to")
     ("version,v", "display version information and exit")
     ;
   variables_map vm;
@@ -66,13 +68,24 @@ int main(int argc, char** argv)
       s, "main",
       [&]
       {
+        if (!options.count("meta_host"))
+          throw std::runtime_error("meta_host argument is mandatory");
+        if (!options.count("meta_port"))
+          throw std::runtime_error("meta_port argument is mandatory");
+
+        std::string meta_host = options["meta_host"].as<std::string>();
+        int meta_port = options["meta_port"].as<int>();
+
         int port = 0;
         int ping = 30;
+
         if (options.count("port"))
           port = options["port"].as<int>();
         if (options.count("ping-period"))
           ping = options["ping-period"].as<int>();
-        Trophonius t(port, boost::posix_time::seconds(ping));
+
+        Trophonius t(
+          port, meta_host, meta_port, boost::posix_time::seconds(ping));
         // Wait forever.
         main.wait(main);
       });

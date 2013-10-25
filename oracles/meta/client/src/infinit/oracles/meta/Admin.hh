@@ -2,6 +2,7 @@
 # define ADMIN_HH
 
 #include <infinit/oracles/meta/Client.hh>
+#include <boost/uuid/uuid.hpp>
 
 namespace infinit
 {
@@ -16,27 +17,25 @@ namespace infinit
       class Admin: public Client
       {
       public:
-        Admin(std::string const& admin_token,
-              std::string const& host,
+        Admin(std::string const& host,
               uint16_t port);
 
         Response
-        connect(std::string const& uid,
+        connect(boost::uuids::uuid const& uuid,
                 std::string const& user_id,
-                std::string const& device_id);
+                boost::uuids::uuid const& device_uuid);
 
         Response
-        disconnect(std::string const& uid,
+        disconnect(boost::uuids::uuid const& uuid,
                    std::string const& user_id,
-                   std::string const& device_id);
+                   boost::uuids::uuid const& device_uuid);
 
         Response
-        register_trophonius(std::string const& uid,
-                            std::string const& ip,
+        register_trophonius(boost::uuids::uuid const& uuid,
                             uint16_t port);
 
         Response
-        unregister_trophonius(std::string const& uid);
+        unregister_trophonius(boost::uuids::uuid const& uuid);
 
         AddSwaggerResponse
         add_swaggers(std::string const& user1, std::string const& user2) const;
@@ -46,8 +45,6 @@ namespace infinit
 
         Response
         genocide() const;
-
-        ELLE_ATTRIBUTE_RW(std::string, token);
       };
     }
   }

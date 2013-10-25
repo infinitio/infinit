@@ -5,6 +5,8 @@ import drake.cxx.boost
 build = None
 check = None
 install = None
+config = None
+lib = None
 
 def configure(elle,
               reactor,
@@ -14,7 +16,7 @@ def configure(elle,
               cxx_toolkit = None,
               cxx_config = None):
 
-  global build, check, install
+  global build, check, install, config, lib
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
@@ -55,6 +57,8 @@ def configure(elle,
                          sources + [reactor_lib, elle_lib],
                          cxx_toolkit,
                          lib_cxx_config)
+
+  config = lib_cxx_config
 
   build << lib
 
