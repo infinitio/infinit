@@ -109,7 +109,7 @@ def configure(papier_python = None,
     ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
-    for source in sources:
+    for source in python_nodes:
       test.dependency_add(source)
 
     import os
