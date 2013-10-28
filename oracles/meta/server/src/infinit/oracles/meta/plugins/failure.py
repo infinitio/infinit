@@ -14,7 +14,7 @@ class Plugin(object):
     def __init__(self, error_code, message = None, **kw):
       assert isinstance(error_code, tuple)
       assert len(error_code) == 2
-      if message is None:
+      if message is None or len(message) == 0:
         message = error_code[1]
       self.__json = {
         'success': False,
