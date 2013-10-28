@@ -3,12 +3,15 @@
 
 # include <memory>
 
+# include <boost/uuid/uuid.hpp>
+
 # include <elle/attribute.hh>
 
 # include <reactor/network/tcp-socket.hh>
 # include <reactor/thread.hh>
 
 # include <infinit/oracles/trophonius/server/fwd.hh>
+# include <infinit/oracles/meta/Admin.hh>
 
 namespace infinit
 {
@@ -29,11 +32,69 @@ namespace infinit
 
         private:
           void
-          _handle();
+          handle();
+
+          virtual
+          // This function is a automaticly warded.
+          void
+          _handle() = 0;
+
           ELLE_ATTRIBUTE_R(Trophonius&, trophonius);
-          ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::TCPSocket>, socket);
+        protected:
+          std::unique_ptr<reactor::network::TCPSocket> _socket;
+
           ELLE_ATTRIBUTE(reactor::Thread, handle_thread);
+
+        /*----------.
+        | Printable |
+        `----------*/
+        public:
+          void
+          print(std::ostream& stream) const override;
+        };
+
+        class Meta:
+          public Client
+        {
+        public:
+          Meta(Trophonius& trophonius,
+               std::unique_ptr<reactor::network::TCPSocket>&& socket);
+
+          void
+          _handle() override;
+
+        /*----------.
+        | Printable |
+        `----------*/
+        public:
+          void
+          print(std::ostream& stream) const override;
+        };
+
+        class User:
+          public Client
+        {
+          friend Meta;
+
+        public:
+          User(Trophonius& trophonius,
+               std::unique_ptr<reactor::network::TCPSocket>&& socket);
+
+          ~User();
+
+          virtual
+          void
+          _handle() override;
+
           ELLE_ATTRIBUTE_R(bool, authentified);
+          ELLE_ATTRIBUTE(meta::Admin, meta)
+          ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id);
+          ELLE_ATTRIBUTE(std::string, user_id);
+          ELLE_ATTRIBUTE(std::string, session_id);
+
+        private:
+          void
+          _connect();
 
         /*----------.
         | Ping pong |
@@ -51,9 +112,8 @@ namespace infinit
         | Printable |
         `----------*/
         public:
-          virtual
           void
-          print(std::ostream& stream) const;
+          print(std::ostream& stream) const override;
         };
       }
     }

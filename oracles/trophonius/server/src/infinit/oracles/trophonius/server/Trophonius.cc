@@ -6,6 +6,7 @@
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 
 #include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.Trophonius")
 
@@ -17,6 +18,10 @@ namespace infinit
     {
       namespace server
       {
+        UnknownClient::UnknownClient(boost::uuids::uuid const& device_id):
+          elle::Exception(elle::sprintf("Unknown client: %s", device_id))
+        {}
+
         Trophonius::Trophonius(
           int port,
           std::string const& meta_host,
@@ -27,6 +32,9 @@ namespace infinit
           _accepter(*reactor::Scheduler::scheduler(),
                     elle::sprintf("%s accepter", *this),
                     std::bind(&Trophonius::_serve, std::ref(*this))),
+          _meta_accepter(*reactor::Scheduler::scheduler(),
+                    elle::sprintf("%s meta accepter", *this),
+                    std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
           _uuid(boost::uuids::random_generator()()),
           _meta(meta_host, meta_port),
           _ping_period(ping_period)
@@ -105,20 +113,52 @@ namespace infinit
           {
             std::unique_ptr<reactor::network::TCPSocket> socket(
               this->_server.accept());
-            this->_clients.emplace(new Client(*this, std::move(socket)));
+            this->_clients.emplace(new User(*this, std::move(socket)));
+          }
+        }
+
+        User&
+        Trophonius::user(boost::uuids::uuid const& device)
+        {
+          auto client = std::find_if(
+            this->_clients.begin(),
+            this->_clients.end(),
+            [&device] (Client* client)
+            {
+              if (dynamic_cast<User*>(client) == nullptr)
+                return false;
+
+              User const* user = static_cast<User const*>(client);
+              return user->device_id() == device;
+            });
+
+          if (client == this->_clients.end())
+            throw UnknownClient(device);
+
+          ELLE_ASSERT(dynamic_cast<User*>(*client) != nullptr);
+          return *static_cast<User*>(*client);
+        }
+
+        void
+        Trophonius::_serve_notifier()
+        {
+          while (true)
+          {
+            std::unique_ptr<reactor::network::TCPSocket> socket(
+              this->_notifications.accept());
+            this->_clients.emplace(new Meta(*this, std::move(socket)));
           }
         }
 
         /*--------.
         | Clients |
         `--------*/
-
         void
         Trophonius::client_remove(Client& c)
         {
           if (this->_clients.erase(&c))
             reactor::run_later(
-              elle::sprintf("remove %s", c),
+              elle::sprintf("remove client %s", c),
               [&c]
               {
                 delete &c;
