@@ -42,7 +42,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
     for function in api.functions:
       self.__register(function)
     # Notifier.
-    self.notifier = notifier.Notifier(self.__database.users)
+    self.notifier = notifier.Notifier(self.__database)
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
 

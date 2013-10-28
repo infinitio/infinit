@@ -6,6 +6,7 @@ import json
 import re
 import os
 import sys
+import time
 
 _macro_matcher = re.compile(r'(.*\()(\S+)(,.*\))')
 
@@ -23,16 +24,13 @@ for line in configfile:
   eval(_macro_matcher.sub(replacer, line))
 
 class Notifier:
-  def __init__(self, users):
+  def __init__(self, database):
+    self.__database = database
     pass
 
-  def open(self, addr):
-    print("connect to trophonius at", addr)
-    pass
-
-  def close(self):
-    print("disconnect from trophonius")
-    pass
+  @property
+  def database(self):
+    return self.__database
 
   def notify_some(self,
                   notification_type,
@@ -46,4 +44,55 @@ class Notifier:
     device_ids        -- Devices to send the notification to.
     message           -- The payload.
     """
-    pass
+    # Check that we either have a list of recipients or devices
+    assert (recipient_ids is not None) or (device_ids is not None)
+    assert message is not None
+
+    message['notification_type'] = notification_type
+    message['timestamp'] = time.time() #timestamp in s.
+
+    devices = dict()
+    if recipient_ids is not None:
+      assert isinstance(recipient_ids, set)
+      critera = {'owner': {'$in': list(recipient_ids)}}
+    else:
+      assert isinstance(device_ids, set)
+      critera = {'_id': {'$in': [str(device_id) for device_id in device_ids]}}
+    # Only the connected ones.
+    critera['trophonius'] = {"$ne": None}
+
+    print(critera)
+
+    print("device to send notification to:")
+    for device in self.database.devices.find(
+      critera,
+      fields = ['_id', 'trophonius'],
+    ):
+      print(">> %s" % device)
+      devices[device['_id']] = device['trophonius'];
+
+    trophonius = dict((record['_id'], record) for  record in self.database.trophonius.find(
+      {
+        "_id":
+        {
+          "$in": list(set(devices.values()))
+        }
+      }
+    ))
+
+    # Freezing slow.
+    for device in devices.keys():
+      s = socket.socket(socket.AF_INET,
+                        socket.SOCK_STREAM)
+      tropho = trophonius[devices[device]]
+      message['device_id'] = str(device)
+      print("%s: %s" % (tropho, json.dumps(message)))
+      try:
+        print("destination: %s:%s" % (tropho['ip'], tropho['port']))
+        s = socket.create_connection(address = ('localhost', tropho['port']),
+                                     timeout = 4)
+        s.send(bytes(json.dumps(message) + '\n', 'utf-8'))
+      except Exception as e:
+        print("/!\\ unable to contact %s: %s /!\\" % (tropho['_id'], e))
+      finally:
+        s.close()

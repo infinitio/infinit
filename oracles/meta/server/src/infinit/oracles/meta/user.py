@@ -33,7 +33,9 @@ class Mixin:
       h += t[int(random.random() * len(t))]
     return h
 
-  def __generate_handle(self, fullname, enlarge = True):
+  def __generate_handle(self,
+                        fullname,
+                        enlarge = True):
     assert isinstance(fullname, str)
     # handle = ''
     # for c in unicodedata.normalize('NFKD', fullname).encode('ascii', 'ignore'):
@@ -50,14 +52,16 @@ class Mixin:
       handle += self.generate_dummy()
     return handle
 
-  def generate_handle(self, fullname):
+  def generate_handle(self,
+                      fullname):
     """ Generate handle from a given fullname.
 
     fullname -- plain text user fullname.
     """
     return self.__generate_handle(fullname)
 
-  def unique_handle(self, fullname):
+  def unique_handle(self,
+                    fullname):
     import random
     h = self.__generate_handle(fullname)
     while self.user_by_handle(h, ensure_existence = False):
@@ -81,10 +85,10 @@ class Mixin:
     if user is None:
       self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
 
-    device = self.database.devices.find_one({"_id": device_id})
+    device = self.database.devices.find_one({"_id": str(device_id)})
     if device is None:
       device = self._create_device(owner = user, id = device_id)
-      device = self.database.devices.find_one({"_id": device_id,
+      device = self.database.devices.find_one({"_id": str(device_id),
                                                "owner": user['_id']})
       if device is None:
         self.fail(error.DEVICE_NOT_FOUND)
@@ -461,7 +465,10 @@ class Mixin:
     )
     return self.success()
 
-  def _notify_swaggers(self, notification_id, data, user_id = None):
+  def _notify_swaggers(self,
+                       notification_id,
+                       data,
+                       user_id = None):
     """Send a notification to each user swaggers.
 
     notification_id -- the id of the notification to send.
@@ -475,7 +482,7 @@ class Mixin:
       assert isinstance(user_id, bson.ObjectId)
       user = self._user_by_id(user_id)
 
-    swaggers = map(bson.ObjectId, user['swaggers'].keys())
+    swaggers = set(map(bson.ObjectId, user['swaggers'].keys())
     d = {"user_id" : user_id}
     d.update(data)
     self.notifier.notify_some(
@@ -489,7 +496,8 @@ class Mixin:
   ## ---------- ##
   @api('/user/favorite', method = 'POST')
   @require_logged_in
-  def favorite(self, user_id: bson.ObjectId):
+  def favorite(self,
+               user_id: bson.ObjectId):
     """Add a user to favorites
 
     user_id -- the id of the user to add.
@@ -501,7 +509,8 @@ class Mixin:
 
   @api('/user/unfavorite', method = 'POST')
   @require_logged_in
-  def unfavorite(self, user_id: bson.ObjectId):
+  def unfavorite(self,
+                 user_id: bson.ObjectId):
     """remove a user to favorites
 
     user_id -- the id of the user to add.
@@ -516,7 +525,9 @@ class Mixin:
   ## ---- ##
   @api('/user/edit', method = 'POST')
   @require_logged_in
-  def edit(self, fullname, handle):
+  def edit(self,
+           fullname,
+           handle):
     """ Edit fullname and handle.
 
     fullname -- the new user fullname.
@@ -654,7 +665,8 @@ class Mixin:
       })
 
   @api('/user/<id>/avatar')
-  def get_avatar(self, id: bson.ObjectId):
+  def get_avatar(self,
+                 id: bson.ObjectId):
     user = self._user_by_id(id, ensure_existence = False)
     image = user and user.get('avatar')
     if image:
@@ -668,7 +680,8 @@ class Mixin:
 
   @api('/user/<id>/avatar', method = 'POST')
   @require_logged_in
-  def set_avatar(self, id):
+  def set_avatar(self,
+                 id):
     from bottle import request
     from io import StringIO, BytesIO
     out = BytesIO()
@@ -710,7 +723,10 @@ class Mixin:
   ## ----------------- ##
   ## Connection status ##
   ## ----------------- ##
-  def set_connection_status(self, user_id, device_id, status):
+  def set_connection_status(self,
+                            user_id,
+                            device_id,
+                            status):
     """Add or remove the device from user connected devices.
 
     device_id -- the id of the requested device
@@ -721,9 +737,9 @@ class Mixin:
     assert isinstance(device_id, uuid.UUID)
     user = self.database.users.find_one({"_id": user_id})
     assert user is not None
-    device = self.database.devices.find_one({"_id": device_id})
+    device = self.database.devices.find_one({"_id": str(device_id)})
     assert device is not None
-    assert device_id in user['devices']
+    assert str(device_id) in user['devices']
 
     connected_before = self._is_connected(user_id)
     # Add / remove device from db
@@ -731,7 +747,7 @@ class Mixin:
 
     self.database.users.update(
       {'_id': user_id},
-      {update_action: {'connected_devices': device_id}},
+      {update_action: {'connected_devices': str(device_id)}},
       multi = False,
     )
     user = self.database.users.find_one({"_id": user_id}, fields = ['connected_devices'])
@@ -774,7 +790,7 @@ class Mixin:
       notifier.USER_STATUS,
       {
         'status': self._is_connected(user_id),
-        'device_id': device_id,
+        'device_id': str(device_id),
         'device_status': status,
       },
       user_id = user_id,

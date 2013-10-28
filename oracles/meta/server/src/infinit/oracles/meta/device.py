@@ -6,6 +6,9 @@ import uuid
 from . import conf, error, regexp, metalib
 from .utils import api, require_logged_in
 
+# We use UUID for typechecking but they are all cast into str represnetation.
+# The reason is because the (py)mongo store them as BinData, making them
+# impossible to search from mongo shell.
 class Mixin:
 
   @api('/devices')
@@ -17,13 +20,14 @@ class Mixin:
 
   @api('/device/<id>/view')
   @require_logged_in
-  def device_view(self, id: uuid.UUID):
+  def device_view(self,
+                  id: uuid.UUID):
     """Return one user device.
     """
     id = uuid.UUID(id)
     device = self.database.devices.find_one(
       {
-        '_id': id,
+        '_id': str(id),
         'owner': self.user['_id'],
       },
       #fields = ['_id']
@@ -48,11 +52,10 @@ class Mixin:
     print("device name", name)
     if regexp.Validator(regexp.DeviceName, error.DEVICE_NOT_VALID)(name) != 0:
       self.fail(error.DEVICE_NOT_VALID)
-    if self.database.devices.find_one({'_id': id}) is not None:
+    if self.database.devices.find_one({'_id': str(id)}) is not None:
       self.fail(error.DEVICE_ALREADY_REGISTRED)
-    to_save = {'name': name.strip(), 'owner': owner['_id'], '_id': id}
+    to_save = {'name': name.strip(), 'owner': owner['_id'], '_id': str(id)}
     self.database.devices.insert(to_save, upsert = True)
-    assert id is not None
     to_save['passport'] = metalib.generate_passport(
       str(id),
       name,
@@ -60,15 +63,17 @@ class Mixin:
       conf.INFINIT_AUTHORITY_PATH,
       conf.INFINIT_AUTHORITY_PASSWORD
     )
-    self.database.devices.update({"_id": id}, to_save)
-    device = self.database.devices.find_one({"_id": id})
+    self.database.devices.update({"_id": str(id)}, to_save)
+    device = self.database.devices.find_one({"_id": str(id)})
     # XXX check unique device ?
-    self.database.users.find_and_modify({'_id': owner['_id']}, {'$addToSet': {'devices': id}})
+    self.database.users.find_and_modify({'_id': owner['_id']}, {'$addToSet': {'devices': str(id)}})
     return device
 
   @api('/device/create', method="POST")
   @require_logged_in
-  def create_device(self, id = None, name = None):
+  def create_device(self,
+                    id = None,
+                    name = None):
     if id is not None:
       id = uuid.UUID(id)
     device = self._create_device(owner = self.user, id = id, name = name)
@@ -78,9 +83,11 @@ class Mixin:
                          "name": device['name']})
 
   @api('/device/<id>/<device_id>/connected')
-  def is_device_connected(self, id: bson.ObjectId, device_id: uuid.UUID):
+  def is_device_connected(self,
+                          id: bson.ObjectId,
+                          device_id: uuid.UUID):
     try:
-      return self.success({"connected": self._is_connected(id, device_id)})
+      return self.success({"connected": self._is_connected(id, str(device_id))})
     except error.Error as e:
       self.fail(*e.args)
 
@@ -89,7 +96,8 @@ class Mixin:
 
     user_id -- the id of the user.
     """
-    assert isinstance(user_id, bson.ObjectId)
+    assert isinstance(user_id,
+                      bson.ObjectId)
     if device_id is not None:
       assert isinstance(device_id, uuid.UUID)
       user = self._user_by_id(user_id)
@@ -97,7 +105,7 @@ class Mixin:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
       return self.database.devices.find_one(
         {
-          "_id": device_id,
+          "_id": str(device_id),
           "owner": user_id
         },
         fields = ['trophonius']).get('trophonius') is not None
@@ -110,19 +118,21 @@ class Mixin:
 
   @api('/device/update', method = "POST")
   @require_logged_in
-  def update_device(self, id: uuid.UUID, name):
+  def update_device(self,
+                    id: uuid.UUID,
+                    name):
       """Rename an existing device.
       """
+      assert isinstance(id, uuid.UUID)
       #regexp.Validator(regexp.Device, error.DEVICE_NOT_VALID)
       #regexp.Validator(regexp.NetworkID, error.DEVICE_ID_NOT_VALID)
       user = self.user
-      id = uuid.UUID(id)
-      device = self.database.devices.find_one({'_id': id})
+      device = self.database.devices.find_one({'_id': str(id)})
       if device is None:
         self.fail(error.DEVICE_NOT_FOUND)
-      if not id in user['devices']:
+      if not str(id) in user['devices']:
         self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
-      self.database.device.update({'_id': id}, {"$set": {"name": name}})
+      self.database.device.update({'_id': str(id)}, {"$set": {"name": name}})
       return self.success({
           '_id': str(id),
           'passport': device['passport'],
@@ -131,17 +141,18 @@ class Mixin:
 
   @api('/device/delete', method = "POST")
   @require_logged_in
-  def delete_device(self, id: uuid.UUID):
+  def delete_device(self,
+                    id: uuid.UUID):
     """Delete a device.
     """
     #regexp.Validator(regexp.NotNull, error.DEVICE_ID_NOT_VALID)),
+    assert isinstance(id, uuid.UUID)
     user = self.user
-    id = uuid.UUID(id)
-    device = self.database.devices.find_one({'_id': id})
+    device = self.database.devices.find_one({'_id': str(id)})
     if device is None:
       self.fail(error.DEVICE_NOT_FOUND)
     if not id in user.get('devices', []):
       self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
-    self.database.devices.remove(id)
-    self.database.users.update({'_id': user['_id']}, {'$pull': {'devices': id}})
-    return self.success({'_id': str(id),})
+    self.database.devices.remove(str(id))
+    self.database.users.update({'_id': user['_id']}, {'$pull': {'devices': str(id)}})
+    return self.success({'_id': str(id)})
