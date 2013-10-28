@@ -64,6 +64,7 @@ namespace papier
     print(std::ostream& stream) const;
 
     bool operator == (Passport const&) const;
+    bool operator != (Passport const&) const;
 
   private:
     ELLE_SERIALIZE_FRIEND_FOR(Passport);
