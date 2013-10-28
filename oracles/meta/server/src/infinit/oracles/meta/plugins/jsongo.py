@@ -1,9 +1,10 @@
 import bottle
 import bson
+import uuid
 
 def jsonify(value):
   import collections
-  if isinstance(value, bson.ObjectId):
+  if isinstance(value, (bson.ObjectId, uuid.UUID)):
     return str(value)
   elif isinstance(value, dict):
     return dict((key, jsonify(value)) for key, value in value.items())
