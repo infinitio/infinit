@@ -425,7 +425,7 @@ class Mixin:
         self.notifier.notify_some(
           notifier.NEW_SWAGGER,
           message = {'user_id': res['_id']},
-          recipient_ids = [peer],
+          recipient_ids = {peer},
         )
 
   @api('/user/swaggers')
@@ -482,7 +482,7 @@ class Mixin:
       assert isinstance(user_id, bson.ObjectId)
       user = self._user_by_id(user_id)
 
-    swaggers = set(map(bson.ObjectId, user['swaggers'].keys())
+    swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
     d = {"user_id" : user_id}
     d.update(data)
     self.notifier.notify_some(
@@ -678,10 +678,9 @@ class Mixin:
       from bottle import static_file
       return static_file('place_holder_avatar.png', root = os.path.dirname(__file__), mimetype = 'image/png')
 
-  @api('/user/<id>/avatar', method = 'POST')
+  @api('/user/avatar', method = 'POST')
   @require_logged_in
-  def set_avatar(self,
-                 id):
+  def set_avatar(self):
     from bottle import request
     from io import StringIO, BytesIO
     out = BytesIO()
@@ -700,15 +699,21 @@ class Mixin:
   ## ------- ##
   ## Devices ##
   ## ------- ##
-  def device(self, user_id, device_id, enforce_existence = True):
+  def device(self,
+             user_id,
+             device_id,
+             enforce_existence = True):
     """Get the device, ensuring the owner is the right one.
 
     device_id -- the id of the requested device
     user_id -- the device owner id
     enforce_existence -- raise if device doesn't match id or owner.
     """
+    assert isinstance(user_id, bson.ObjectId)
+    assert isinstance(user_id, uuid.UUID)
+
     device = self.database.devices.find_one({
-        '_id': device_id,
+        '_id': str(device_id),
         'owner': user_id,
     })
 
@@ -737,7 +742,7 @@ class Mixin:
     assert isinstance(device_id, uuid.UUID)
     user = self.database.users.find_one({"_id": user_id})
     assert user is not None
-    device = self.database.devices.find_one({"_id": str(device_id)})
+    device = self.database.devices.find_one({"_id": str(device_id), "owner": user_id})
     assert device is not None
     assert str(device_id) in user['devices']
 
@@ -814,7 +819,7 @@ class Mixin:
     """
     self.notifier.notify_some(
       notifier.MESSAGE,
-      recipient_ids = [recipient_id],
+      recipient_ids = {recipient_id},
       message = {
         'sender_id' : sender_id,
         'message': message,

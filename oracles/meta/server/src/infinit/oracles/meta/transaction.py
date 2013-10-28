@@ -8,6 +8,8 @@ import unicodedata
 from .utils import api, require_logged_in
 from . import regexp, error, transaction_status, notifier
 import uuid
+import re
+from pymongo import ASCENDING, DESCENDING
 
 class Mixin:
 
@@ -230,7 +232,6 @@ class Mixin:
                               count = count,
                               offset = offset)
 
-
   def _transaction_by_id(self, id, ensure_existence = True):
     assert isinstance(id, bson.ObjectId)
     transaction = self.database.transactions.find_one(id)
@@ -249,8 +250,8 @@ class Mixin:
     return is_sender
 
   def on_accept(self, transaction, device_id, device_name):
-    device_id = uuid.UUID(device_id)
-    if device_id not in self.user['devices']:
+    assert isinstance(device_id, uuid.UUID)
+    if str(device_id) not in self.user['devices']:
       raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
 
     transaction.update({
@@ -258,7 +259,6 @@ class Mixin:
       'recipient_device_name' : device_name,
       'recipient_device_id': device_id,
     })
-
 
   @api('/transaction/update', method = 'POST')
   @require_logged_in
@@ -330,17 +330,9 @@ class Mixin:
     transaction['mtime'] = time.time()
     self.database.transactions.save(transaction)
 
-    device_ids = [transaction['sender_device_id']]
-    recipient_ids = None
-    if isinstance(transaction['recipient_device_id'], bson.ObjectId):
-      device_ids.append(transaction['recipient_device_id'])
-    else:
-      recipient_ids = [transaction['recipient_id']]
-
     self.notifier.notify_some(
       notifier.TRANSACTION,
-      device_ids = device_ids,
-      recipient_ids = recipient_ids,
+      recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
       message = transaction,
     )
     return transaction_id
@@ -366,7 +358,7 @@ class Mixin:
       'limit': limit,
       'skip': offset,
       'fields': ['_id'],
-      'sort': [('mtime', -1)],
+      'sort': [('mtime', DESCENDING)],
     }
     return self.success({
         'transactions': list(
