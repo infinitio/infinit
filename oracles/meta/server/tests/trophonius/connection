@@ -13,7 +13,7 @@ with Meta() as meta:
 
   assert not bob.connected
 
-  meta.put('trophonius/%s' % tropho, {"ip": "127.0.0.1", "port": 23456})
+  meta.put('trophonius/%s' % tropho, {"port": 23456})
 
   meta.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
 
