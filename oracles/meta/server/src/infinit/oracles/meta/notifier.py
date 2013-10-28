@@ -61,8 +61,6 @@ class Notifier:
     # Only the connected ones.
     critera['trophonius'] = {"$ne": None}
 
-    print(critera)
-
     print("device to send notification to:")
     for device in self.database.devices.find(
       critera,
@@ -88,7 +86,6 @@ class Notifier:
       message['device_id'] = str(device)
       print("%s: %s" % (tropho, json.dumps(message)))
       try:
-        print("destination: %s:%s" % (tropho['ip'], tropho['port']))
         s = socket.create_connection(address = ('localhost', tropho['port']),
                                      timeout = 4)
         s.send(bytes(json.dumps(message) + '\n', 'utf-8'))
