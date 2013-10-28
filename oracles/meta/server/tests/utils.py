@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import http.cookies
 import os
 import pymongo
 import sys
@@ -38,11 +39,15 @@ class Client:
   def __get_cookies(self, headers):
     cookies = headers.get('set-cookie', None)
     if cookies is not None:
-      self.__cookies = cookies
+      self.__cookies = http.cookies.SimpleCookie(cookies)
 
   def __set_cookies(self, headers):
     if self.__cookies is not None:
-      headers['Cookie'] = self.__cookies
+      headers['Cookie'] = self.__cookies.output()
+
+  @property
+  def cookie(self):
+    return self.__cookies
 
   def __convert_result(self, url, body, headers, content):
     status = headers['status']

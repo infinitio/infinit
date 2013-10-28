@@ -27,11 +27,12 @@ class Plugin(object):
       sid = bottle.request.get_cookie(Plugin.key,
                                       secret = Plugin.secret)
       bottle.request.session_id = sid
+      bottle.request.session = {}
       if sid is not None:
-        bottle.request.session = collection.find_one({'_id': sid})
-        del bottle.request.session['_id']
-      else:
-        bottle.request.session = {}
+        session = collection.find_one({'_id': sid})
+        if session is not None:
+          del session['_id']
+          bottle.request.session = session
       previous = copy.deepcopy(bottle.request.session)
       res = callback(*args, **kwargs)
       session = bottle.request.session

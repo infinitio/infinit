@@ -81,12 +81,17 @@ def configure(papier_python = None,
   check = drake.TestSuite('check')
 
   for name in (
+    'bad-session',
+    'devices/creation',
+    'devices/deletion',
+    'devices/search',
+    'devices/update',
     'routes',
     'status',
-    'trophonius/connection',
     'transactions/transaction',
     'transactions/transaction_search',
     'transactions/transaction_update',
+    'trophonius/connection',
     'users/favorite-unfavorite',
     'users/get_avatar',
     'users/invite_as_admin',
@@ -101,10 +106,6 @@ def configure(papier_python = None,
     'users/set_avatar',
     'users/swaggers',
     'users/user-search',
-    'devices/creation',
-    'devices/deletion',
-    'devices/search',
-    'devices/update',
     ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
