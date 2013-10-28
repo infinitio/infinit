@@ -306,7 +306,7 @@ namespace plasma
             request << std::endl;
 
             ELLE_DEBUG("%s: identification", *this);
-            socket->write(reactor::network::Buffer(request.str()));
+            socket->write(elle::ConstWeakBuffer(request.str()));
 
             ELLE_DEBUG("%s: wait for confirmation", *this);
             auto notif = read();
@@ -474,7 +474,7 @@ namespace plasma
           try
           {
             ELLE_DEBUG_SCOPE("send ping to %s", socket->remote_locus());
-            socket->write(reactor::network::Buffer(ping_msg));
+            socket->write(elle::ConstWeakBuffer(ping_msg));
           }
           catch (elle::Exception const&)
           {
