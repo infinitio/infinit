@@ -60,7 +60,7 @@ class Client:
     else:
       return content
 
-  def post(self, url, body = None):
+  def request(self, url, method, body):
     h = httplib2.Http()
     uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
                                       url)
@@ -70,60 +70,23 @@ class Client:
       body = json.dumps(body)
     self.__set_cookies(headers)
     resp, content = h.request(uri,
-                              'POST',
+                              method,
                               body = body,
                               headers = headers)
     self.__get_cookies(resp)
     return self.__convert_result(url, body, resp, content)
 
+  def post(self, url, body = None):
+    return self.request(url, 'POST', body)
+
   def get(self, url, body = None):
-    h = httplib2.Http()
-    headers = {}
-    self.__set_cookies(headers)
-    uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
-                                      url)
-    if body is not None:
-      headers['Content-Type'] = 'application/json'
-      body = json.dumps(body)
-    resp, content = h.request(uri,
-                              'GET',
-                              headers = headers,
-                              body = body)
-    self.__get_cookies(resp)
-    return self.__convert_result(url, None, resp, content)
+    return self.request(url, 'GET', body)
 
   def put(self, url, body = None):
-    h = httplib2.Http()
-    headers = {}
-    self.__set_cookies(headers)
-    uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
-                                      url)
-    if body is not None:
-      headers['Content-Type'] = 'application/json'
-      body = json.dumps(body)
-    resp, content = h.request(uri,
-                              'PUT',
-                              headers = headers,
-                              body = body)
-    self.__get_cookies(resp)
-    return self.__convert_result(url, None, resp, content)
+    return self.request(url, 'PUT', body)
 
   def delete(self, url, body = None):
-    h = httplib2.Http()
-    headers = {}
-    self.__set_cookies(headers)
-    uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
-                                      url)
-    if body is not None:
-      headers['Content-Type'] = 'application/json'
-      body = json.dumps(body)
-    resp, content = h.request(uri,
-                              'DELETE',
-                              headers = headers,
-                              body = body)
-    self.__get_cookies(resp)
-    return self.__convert_result(url, None, resp, content)
-
+    return self.request(url, 'DELETE', body)
 class Meta:
 
   def __init__(self, enable_emails = False):
