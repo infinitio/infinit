@@ -53,7 +53,13 @@ namespace infinit
         T ret;
         try
         {
-          elle::serialize::InputJSONArchive(request, ret);
+          // FIXME: this intermediate step is because the JSON parser performs
+          // crappy seekg, remove as soon as we use a real one.
+          std::stringstream input;
+          std::copy(std::istream_iterator<char>(request),
+                    std::istream_iterator<char>(),
+                    std::ostream_iterator<char>(input));
+          elle::serialize::InputJSONArchive(input, ret);
         }
         catch (std::exception const& err)
         {
