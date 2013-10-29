@@ -11,15 +11,15 @@ from .utils import api, require_logged_in
 # impossible to search from mongo shell.
 class Mixin:
 
-  @api('/devices')
   @require_logged_in
+  @api('/devices')
   def devices(self):
     """Return all user's device ids.
     """
     return self.success({'devices': self.user.get('devices', [])})
 
-  @api('/device/<id>/view')
   @require_logged_in
+  @api('/device/<id>/view')
   def device_view(self,
                   id: uuid.UUID):
     """Return one user device.
@@ -68,15 +68,16 @@ class Mixin:
     self.database.users.find_and_modify({'_id': owner['_id']}, {'$addToSet': {'devices': str(id)}})
     return device
 
-  @api('/device/create', method="POST")
   @require_logged_in
+  @api('/device/create', method="POST")
   def create_device(self,
                     id = None,
                     name = None):
     if id is not None:
-      id = uuid.UUID(id)
+      assert isinstance(id, uuid.UUID)
     else:
-      assert isinstance(id, UUID)
+      id = uuid.uuid4()
+
     device = self._create_device(owner = self.user, id = id, name = name)
     assert device is not None
     return self.success({"_id": device['_id'],
@@ -119,12 +120,12 @@ class Mixin:
           "trophonius": {"$ne": None},
         }).count() > 0
 
-  @api('/device/update', method = "POST")
   @require_logged_in
+  @api('/device/update', method = "POST")
   def update_device(self, id: uuid.UUID, name):
     """Rename an existing device.
     """
-    assert isinstance(id, UUID)
+    assert isinstance(id, uuid.UUID)
     user = self.user
     assert user is not None
     device = self.database.devices.find_one({'_id': str(id)})
@@ -139,8 +140,8 @@ class Mixin:
         'name' : name,
       })
 
-  @api('/device/delete', method = "POST")
   @require_logged_in
+  @api('/device/delete', method = "POST")
   def delete_device(self,
                     id: uuid.UUID):
     """Delete a device.
@@ -151,7 +152,7 @@ class Mixin:
     device = self.database.devices.find_one({'_id': str(id)})
     if device is None:
       self.fail(error.DEVICE_NOT_FOUND)
-    if not id in user.get('devices', []):
+    if not str(id) in user.get('devices', []):
       self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
     self.database.devices.remove(str(id))
     self.database.users.update({'_id': user['_id']}, {'$pull': {'devices': str(id)}})

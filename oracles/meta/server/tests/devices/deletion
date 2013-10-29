@@ -25,6 +25,7 @@ with Meta() as meta:
   assert foobar['success']
 
   res = bob.post('device/delete', {'id': foobar['_id']})
+  print(res)
   assert res['success']
   assert res['_id'] == device_id
 

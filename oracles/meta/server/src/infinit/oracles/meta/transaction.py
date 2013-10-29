@@ -13,8 +13,8 @@ from pymongo import ASCENDING, DESCENDING
 
 class Mixin:
 
-  @api('/transaction/<id>/view')
   @require_logged_in
+  @api('/transaction/<id>/view')
   def transaction_view(self, id):
     transaction = self.database.transactions.find_one(bson.ObjectId(id))
     if not transaction:
@@ -23,8 +23,8 @@ class Mixin:
       return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
     return self.success(transaction)
 
-  @api('/transaction/create', method = 'POST')
   @require_logged_in
+  @api('/transaction/create', method = 'POST')
   def transaction_create(self,
                          id_or_email,
                          files,
@@ -204,8 +204,8 @@ class Mixin:
       }
     )
 
-  @api('/transactions')
   @require_logged_in
+  @api('/transactions')
   def transcations_get(self,
               filter = transaction_status.final + [transaction_status.CREATED],
               type = False,
@@ -218,8 +218,8 @@ class Mixin:
                               count = count,
                               offset = offset)
 
-  @api('/transactions', method = 'POST')
   @require_logged_in
+  @api('/transactions', method = 'POST')
   def transaction_post(self,
                        filter = transaction_status.final + [transaction_status.CREATED],
                        type = False,
@@ -250,18 +250,20 @@ class Mixin:
     return is_sender
 
   def on_accept(self, transaction, device_id, device_name):
-    assert isinstance(device_id, uuid.UUID)
+    if device_id is None or device_name is None:
+      self.bad_request()
+    device_id = uuid.UUID(device_id)
     if str(device_id) not in self.user['devices']:
       raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
 
     transaction.update({
       'recipient_fullname': self.user['fullname'],
       'recipient_device_name' : device_name,
-      'recipient_device_id': device_id,
+      'recipient_device_id': str(device_id),
     })
 
-  @api('/transaction/update', method = 'POST')
   @require_logged_in
+  @api('/transaction/update', method = 'POST')
   def transaction_update(self,
                          transaction_id,
                          status,
@@ -315,7 +317,10 @@ class Mixin:
 
     callbacks = {
       transaction_status.INITIALIZED: None,
-      transaction_status.ACCEPTED: partial(self.on_accept, transaction, device_id, device_name),
+      transaction_status.ACCEPTED: partial(self.on_accept,
+                                           transaction = transaction,
+                                           device_id = device_id,
+                                           device_name = device_name),
       transaction_status.FINISHED: None,
       transaction_status.CANCELED: None,
       transaction_status.FAILED: None,
@@ -337,8 +342,8 @@ class Mixin:
     )
     return transaction_id
 
-  @api('/transaction/search')
   @require_logged_in
+  @api('/transaction/search')
   def transaction_search(self, text, limit, offset):
     text = ascii_string(text)
     query = {
@@ -369,8 +374,8 @@ class Mixin:
           )
         })
 
-  @api('/transaction/connect_device', method = "POST")
   @require_logged_in
+  @api('/transaction/connect_device', method = "POST")
   def connect_device(self, _id, device_id, locals = [], externals = []):
     """
     Connect the device to a transaction (setting ip and port).
@@ -442,8 +447,8 @@ class Mixin:
 
     return self.success({})
 
-  @api('/transaction/<transaction_id>/endpoints', method = "POST")
   @require_logged_in
+  @api('/transaction/<transaction_id>/endpoints', method = "POST")
   def endpoints(self, transaction_id, device_id, self_device_id):
     """
     Return ip port for a selected node.

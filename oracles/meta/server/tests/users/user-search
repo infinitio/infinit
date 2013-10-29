@@ -6,7 +6,9 @@ with Meta() as meta:
   alice = User(meta, 'alice@provider.com')
   bob = User(meta, 'bob@provider.com')
   charles = User(meta, 'charles@provider.com')
-  res = meta.get('user/search?text=al')
+  alice.login();
+  res = alice.post('user/search/al')
   assert res['users'] == [alice.id]
-  res = meta.get('user/search?text=dick')
+  res = alice.post('user/search/dick')
   assert res['users'] == []
+  alice.logout()

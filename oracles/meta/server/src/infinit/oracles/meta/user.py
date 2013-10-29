@@ -107,8 +107,8 @@ class Mixin:
       }
     )
 
-  @api('/user/logout', method = 'POST')
   @require_logged_in
+  @api('/user/logout', method = 'POST')
   def logout(self):
     if 'email' in bottle.request.session:
       del bottle.request.session['device']
@@ -339,7 +339,8 @@ class Mixin:
   ## ------ ##
   ## Search ##
   ## ------ ##
-  @api('/user/search')
+  @require_logged_in
+  @api('/user/search/<text>', method = 'POST')
   def user_search(self, text, limit = 5, offset = 0):
     """Search the ids of the users with handle or fullname matching text.
 
@@ -426,13 +427,13 @@ class Mixin:
           recipient_ids = {peer},
         )
 
-  @api('/user/swaggers')
   @require_logged_in
+  @api('/user/swaggers')
   def swaggers(self):
     return self.success({"swaggers" : list(self.user["swaggers"].keys())})
 
-  @api('/user/add_swagger', method = 'POST')
   @require_admin
+  @api('/user/add_swagger', method = 'POST')
   def add_swagger(self,
                   admin_token,
                   user1: bson.ObjectId,
@@ -449,7 +450,8 @@ class Mixin:
 
   @api('/user/remove_swagger', method = 'POST')
   @require_logged_in
-  def remove_swagger(self, _id: bson.ObjectId):
+  def remove_swagger(self,
+                     _id: bson.ObjectId):
     """Remove a user from swaggers.
 
     _id -- the id of the user to remove.
@@ -490,8 +492,8 @@ class Mixin:
   ## ---------- ##
   ## Favortites ##
   ## ---------- ##
-  @api('/user/favorite', method = 'POST')
   @require_logged_in
+  @api('/user/favorite', method = 'POST')
   def favorite(self,
                user_id: bson.ObjectId):
     """Add a user to favorites
@@ -503,8 +505,8 @@ class Mixin:
     self.database.users.update(query, update)
     return self.success()
 
-  @api('/user/unfavorite', method = 'POST')
   @require_logged_in
+  @api('/user/unfavorite', method = 'POST')
   def unfavorite(self,
                  user_id: bson.ObjectId):
     """remove a user to favorites
@@ -519,8 +521,8 @@ class Mixin:
   ## ---- ##
   ## Edit ##
   ## ---- ##
-  @api('/user/edit', method = 'POST')
   @require_logged_in
+  @api('/user/edit', method = 'POST')
   def edit(self,
            fullname,
            handle):
@@ -561,8 +563,8 @@ class Mixin:
     self.database.users.update({'_id': user['_id']}, update)
     return self.success()
 
-  @api('/user/admin_invite', method = 'POST')
   @require_admin
+  @api('/user/admin_invite', method = 'POST')
   def admin_invite(self,
                    email,
                    force = False,
@@ -588,9 +590,10 @@ class Mixin:
       source = 'infinit',
       database = self.database
     )
+    return self.success()
 
-  @api('/user/invite', method = 'POST')
   @require_logged_in
+  @api('/user/invite', method = 'POST')
   def invite(self, email):
     """Invite a user to infinit.
     This function is reserved for admins.
@@ -612,8 +615,8 @@ class Mixin:
     )
     return self.success()
 
-  @api('/user/invited')
   @require_logged_in
+  @api('/user/invited')
   def invited(self):
     """Return the list of users invited.
     """
@@ -624,8 +627,8 @@ class Mixin:
         fields = ['email']
     )})
 
-  @api('/self')
   @require_logged_in
+  @api('/self')
   def user_self(self):
     """Return self data."""
     return self.success({
@@ -646,8 +649,8 @@ class Mixin:
       'created_at': self.user.get('created_at', 0),
     })
 
-  @api('/user/minimum_self')
   @require_logged_in
+  @api('/user/minimum_self')
   def minimum_self(self):
     """Return minimum self data.
     """
@@ -657,8 +660,8 @@ class Mixin:
         'identity': self.user['identity'],
       })
 
-  @api('/user/remaining_invitations')
   @require_logged_in
+  @api('/user/remaining_invitations')
   def invitations(self):
     """Return the number of invitations remainings.
     """
@@ -681,8 +684,8 @@ class Mixin:
       from bottle import static_file
       return static_file('place_holder_avatar.png', root = os.path.dirname(__file__), mimetype = 'image/png')
 
-  @api('/user/avatar', method = 'POST')
   @require_logged_in
+  @api('/user/avatar', method = 'POST')
   def set_avatar(self):
     from bottle import request
     from io import StringIO, BytesIO
@@ -808,8 +811,8 @@ class Mixin:
   ## ----- ##
   ## Debug ##
   ## ----- ##
-  @api('/debug', method = 'POST')
   @require_logged_in
+  @api('/debug', method = 'POST')
   def message(self,
               sender_id: bson.ObjectId,
               recipient_id: bson.ObjectId,

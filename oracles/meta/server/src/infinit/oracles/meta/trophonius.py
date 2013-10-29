@@ -4,7 +4,7 @@ import bson
 import uuid
 
 from . import conf, error, regexp, metalib
-from .utils import api, require_logged_in
+from .utils import api, require_admin
 
 class Mixin:
 

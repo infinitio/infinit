@@ -43,11 +43,11 @@ def require_logged_in(method):
   return decorator.decorator(wrapper, method)
 
 def require_admin(method):
-  def wrapper(self, *a, **ka):
-    if 'admin_token' in ka and ka['admin_token'] == ADMIN_TOKEN:
-      return method(self, *a, **ka)
+  def wrapper(wrapped, self, *args, **kwargs):
+    if 'admin_token' in kwargs and kwargs['admin_token'] == ADMIN_TOKEN:
+      return wrapped(self, *args, **kwargs)
     self.not_found()
-  return wrapper
+  return decorator.decorator(wrapper, method)
 
 def hash_pasword(password):
   import hashlib

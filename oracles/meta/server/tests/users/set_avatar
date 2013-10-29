@@ -10,5 +10,5 @@ with Meta() as meta:
   alice.login()
   assert alice.avatar == bob.avatar
   with open('%s/avatar.jpg' % os.path.dirname(__file__), 'rb') as f:
-    alice.post('user/%s/avatar' % alice.id, body = f.read())
+    alice.post('user/avatar', body = f.read())
   assert alice.avatar != bob.avatar

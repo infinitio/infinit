@@ -128,3 +128,6 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
 
   def not_found(self):
     bottle.abort(404)
+
+  def bad_request(self, text = None):
+    bottle.abort(400, text)
