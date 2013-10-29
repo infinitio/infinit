@@ -42,21 +42,21 @@
 
 #define COMMON_DEFAULT_INFINIT_HOME ".infinit"
 #define COMMON_DEFAULT_META_PROTOCOL "http"
-#define COMMON_DEFAULT_META_HOST "meta.api.development.infinit.io"
+#define COMMON_DEFAULT_META_HOST "v2.meta.api.development.infinit.io"
 #define COMMON_DEFAULT_META_PORT 80
 #define COMMON_DEFAULT_TROPHONIUS_PROTOCOL "http"
-#define COMMON_DEFAULT_TROPHONIUS_HOST "trophonius.api.development.infinit.io"
+#define COMMON_DEFAULT_TROPHONIUS_HOST "v2.trophonius.api.development.infinit.io"
 #define COMMON_DEFAULT_TROPHONIUS_PORT 23456
 #define COMMON_DEFAULT_RESOURCES_ROOT_URL "http://download.development.infinit.io"
-#define COMMON_DEFAULT_LONGINUS_HOST "longinus.api.development.infinit.io"
+#define COMMON_DEFAULT_LONGINUS_HOST "v2.longinus.api.development.infinit.io"
 #define COMMON_DEFAULT_LONGINUS_PORT 9999
-#define COMMON_DEFAULT_HEARTBEAT_HOST "heartbeat.development.infinit.io"
+#define COMMON_DEFAULT_HEARTBEAT_HOST "v2.heartbeat.development.infinit.io"
 #define COMMON_DEFAULT_HEARTBEAT_PORT 9898
-#define COMMON_DEFAULT_STUN_HOST "punch.api.development.infinit.io"
+#define COMMON_DEFAULT_STUN_HOST "v2.punch.api.development.infinit.io"
 #define COMMON_DEFAULT_STUN_PORT 3478
-#define COMMON_DEFAULT_APERTUS_HOST "apertus.api.development.infinit.io"
+#define COMMON_DEFAULT_APERTUS_HOST "v2.apertus.api.development.infinit.io"
 #define COMMON_DEFAULT_APERTUS_PORT 9899
-#define COMMON_DEFAULT_METRICS_HOST "metrics.api.development.infinit.io"
+#define COMMON_DEFAULT_METRICS_HOST "v2.metrics.api.development.infinit.io"
 #define COMMON_DEFAULT_METRICS_PORT 80
 
 #define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
