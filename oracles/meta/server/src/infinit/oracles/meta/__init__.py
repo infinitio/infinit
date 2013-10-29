@@ -17,8 +17,6 @@ from . import user, transaction, device, root, trophonius
 from . import notifier
 from . import mail
 
-from bson import ObjectId
-
 class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixin, trophonius.Mixin):
 
   def __init__(self,
@@ -91,7 +89,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
       for argument, default in arguments.items():
         if not default:
           bottle.abort(400, 'missing argument: %r' % argument)
-      return method(self, *args, **kwargs)
+      return getattr(self, method.__name__)(*args, **kwargs)
     # Add route.
     route = bottle.Route(app = self,
                          rule = rule,

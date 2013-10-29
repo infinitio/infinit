@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
 
 import bottle
-
-from bson import ObjectId
+import bson
+import uuid
 
 from .utils import api, require_logged_in, hash_pasword
 from . import error, notifier, regexp, invitation, conf, metalib, pythia
@@ -10,7 +10,6 @@ from . import error, notifier, regexp, invitation, conf, metalib, pythia
 import os
 import time
 import unicodedata
-from uuid import UUID
 
 #import pythia # used for admin token.
 
@@ -72,8 +71,8 @@ class Mixin:
   def login(self,
             email,
             password,
-            device_id: UUID):
-    assert isinstance(device_id, UUID)
+            device_id: uuid.UUID):
+    assert isinstance(device_id, uuid.UUID)
     email = email.lower()
     user = self.database.users.find_one({
       'email': email,
@@ -273,7 +272,7 @@ class Mixin:
       })
 
   @api('/user/<id>/connected')
-  def is_connected(self, id: ObjectId):
+  def is_connected(self, id: bson.ObjectId):
     try:
       return self.success({"connected": self._is_connected(id)})
     except error.Error as e:
@@ -296,7 +295,7 @@ class Mixin:
     _id -- the _id of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    assert isinstance(_id, ObjectId)
+    assert isinstance(_id, bson.ObjectId)
     user = self.database.users.find_one(_id)
     if ensure_existence:
       self.__ensure_user_existence(user)
@@ -383,7 +382,7 @@ class Mixin:
     if '@' in id_or_email:
       user = self.user_by_email(id_or_email, ensure_existence = False)
     else:
-      user = self._user_by_id(ObjectId(id_or_email),
+      user = self._user_by_id(bson.ObjectId(id_or_email),
                               ensure_existence = False)
     if user is None:
       return self.fail(error.UNKNOWN_USER)
@@ -404,8 +403,8 @@ class Mixin:
     lhs -- the first user.
     rhs -- the second user.
     """
-    assert isinstance(lhs, ObjectId)
-    assert isinstance(rhs, ObjectId)
+    assert isinstance(lhs, bson.ObjectId)
+    assert isinstance(rhs, bson.ObjectId)
 
     # lh_user = self._user_by_id(lhs)
     # rh_user = self._user_by_id(rhs)
@@ -432,8 +431,8 @@ class Mixin:
 
   @api('/user/add_swagger', method = 'POST')
   def add_swagger(self, admin_token,
-                  user1: ObjectId,
-                  user2: ObjectId):
+                  user1: bson.ObjectId,
+                  user2: bson.ObjectId):
     """Make user1 and user2 swaggers.
     This function is reserved for admins.
 
@@ -450,7 +449,7 @@ class Mixin:
 
   @api('/user/remove_swagger', method = 'POST')
   @require_logged_in
-  def remove_swagger(self, _id: ObjectId):
+  def remove_swagger(self, _id: bson.ObjectId):
     """Remove a user from swaggers.
 
     _id -- the id of the user to remove.
@@ -473,10 +472,10 @@ class Mixin:
     if user_id is None:
       user_id = self.user['_id']
     else:
-      assert isinstance(user_id, ObjectId)
+      assert isinstance(user_id, bson.ObjectId)
       user = self._user_by_id(user_id)
 
-    swaggers = map(ObjectId, user['swaggers'].keys())
+    swaggers = map(bson.ObjectId, user['swaggers'].keys())
     d = {"user_id" : user_id}
     d.update(data)
     self.notifier.notify_some(
@@ -490,7 +489,7 @@ class Mixin:
   ## ---------- ##
   @api('/user/favorite', method = 'POST')
   @require_logged_in
-  def favorite(self, user_id: ObjectId):
+  def favorite(self, user_id: bson.ObjectId):
     """Add a user to favorites
 
     user_id -- the id of the user to add.
@@ -502,7 +501,7 @@ class Mixin:
 
   @api('/user/unfavorite', method = 'POST')
   @require_logged_in
-  def unfavorite(self, user_id: ObjectId):
+  def unfavorite(self, user_id: bson.ObjectId):
     """remove a user to favorites
 
     user_id -- the id of the user to add.
@@ -655,7 +654,7 @@ class Mixin:
       })
 
   @api('/user/<id>/avatar')
-  def get_avatar(self, id: ObjectId):
+  def get_avatar(self, id: bson.ObjectId):
     user = self._user_by_id(id, ensure_existence = False)
     image = user and user.get('avatar')
     if image:
@@ -679,10 +678,10 @@ class Mixin:
     out = BytesIO()
     image.save(out, 'PNG')
     out.seek(0)
-    from bson.binary import Binary
+    import bson.binary
     self.database.users.find_and_modify(
       self.user['_id'],
-      {'$set': {'avatar': Binary(out.read())}})
+      {'$set': {'avatar': bson.binary.Binary(out.read())}})
     return self.success()
 
   ## ------- ##
@@ -718,8 +717,8 @@ class Mixin:
     user_id -- the device owner id
     status -- the new device status
     """
-    assert isinstance(user_id, ObjectId)
-    assert isinstance(device_id, UUID)
+    assert isinstance(user_id, bson.ObjectId)
+    assert isinstance(device_id, uuid.UUID)
     user = self.database.users.find_one({"_id": user_id})
     assert user is not None
     device = self.database.devices.find_one({"_id": device_id})
@@ -788,8 +787,8 @@ class Mixin:
   @api('/debug', method = 'POST')
   @require_logged_in
   def message(self,
-              sender_id: ObjectId,
-              recipient_id: ObjectId,
+              sender_id: bson.ObjectId,
+              recipient_id: bson.ObjectId,
               message):
     """Send a message to recipient as sender.
 

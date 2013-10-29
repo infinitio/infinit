@@ -1,10 +1,11 @@
 import bottle
+import bson
+import decorator
 import inspect
+import uuid
 from . import error
 from . import conf
-from bson import ObjectId
 import pymongo
-from uuid import UUID
 
 class api:
 
@@ -33,11 +34,11 @@ class api:
     return annotation_mapper
 
 def require_logged_in(method):
-  def wrapper(self, *a, **ka):
+  def wrapper(wrapped, self, *args, **kwargs):
     if self.user is None:
       self.forbiden()
-    return method(self, *a, **ka)
-  return wrapper
+    return wrapped(self, *args, **kwargs)
+  return decorator.decorator(wrapper, method)
 
 def hash_pasword(password):
   import hashlib
@@ -47,7 +48,7 @@ def hash_pasword(password):
 
 # There is probably a better way.
 def stringify_object_ids(obj):
-  if isinstance(obj, (ObjectId, UUID)):
+  if isinstance(obj, (bson.ObjectId, uuid.UUID)):
     return str(obj)
   if hasattr(obj, '__iter__'):
     if isinstance(obj, list):

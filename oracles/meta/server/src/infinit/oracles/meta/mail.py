@@ -1,5 +1,7 @@
 # -*- encoding: utf-8 -*-
 
+import decorator
+
 from . import conf
 
 from email.mime.multipart import MIMEMultipart
@@ -22,12 +24,12 @@ class Mailer():
     self.__active = active
 
   def is_active(method):
-    def wrapper(self, *a, **ka):
+    def wrapper(wrapped, self, *a, **ka):
       if not self.__active:
         print("email was ignored because mailer is inactive")
         return # Return an empty func.
-      return method(self, *a, **ka)
-    return wrapper
+      return wrapped(self, *a, **ka)
+    return decorator.decorator(wrapper, method)
 
   @is_active
   def send_via_mailchimp(self,

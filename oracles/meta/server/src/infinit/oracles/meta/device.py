@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 
-from bson import ObjectId
+import bson
+import uuid
 
 from . import conf, error, regexp, metalib
 from .utils import api, require_logged_in
-from uuid import UUID, uuid4
 
 class Mixin:
 
@@ -17,10 +17,10 @@ class Mixin:
 
   @api('/device/<id>/view')
   @require_logged_in
-  def device_view(self, id: UUID):
+  def device_view(self, id: uuid.UUID):
     """Return one user device.
     """
-    id = UUID(id)
+    id = uuid.UUID(id)
     device = self.database.devices.find_one(
       {
         '_id': id,
@@ -40,9 +40,9 @@ class Mixin:
     """Create a device.
     """
     if id is not None:
-      assert isinstance(id, UUID)
+      assert isinstance(id, uuid.UUID)
     else:
-      id = uuid4()
+      id = uuid.uuid4()
     if name is None:
       name = str(id)
     print("device name", name)
@@ -70,7 +70,7 @@ class Mixin:
   @require_logged_in
   def create_device(self, id = None, name = None):
     if id is not None:
-      id = UUID(id)
+      id = uuid.UUID(id)
     device = self._create_device(owner = self.user, id = id, name = name)
     assert device is not None
     return self.success({"_id": device['_id'],
@@ -78,7 +78,7 @@ class Mixin:
                          "name": device['name']})
 
   @api('/device/<id>/<device_id>/connected')
-  def is_device_connected(self, id: ObjectId, device_id: UUID):
+  def is_device_connected(self, id: bson.ObjectId, device_id: uuid.UUID):
     try:
       return self.success({"connected": self._is_connected(id, device_id)})
     except error.Error as e:
@@ -89,9 +89,9 @@ class Mixin:
 
     user_id -- the id of the user.
     """
-    assert isinstance(user_id, ObjectId)
+    assert isinstance(user_id, bson.ObjectId)
     if device_id is not None:
-      assert isinstance(device_id, UUID)
+      assert isinstance(device_id, uuid.UUID)
       user = self._user_by_id(user_id)
       if device_id not in user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
@@ -110,13 +110,13 @@ class Mixin:
 
   @api('/device/update', method = "POST")
   @require_logged_in
-  def update_device(self, id: UUID, name):
+  def update_device(self, id: uuid.UUID, name):
       """Rename an existing device.
       """
       #regexp.Validator(regexp.Device, error.DEVICE_NOT_VALID)
       #regexp.Validator(regexp.NetworkID, error.DEVICE_ID_NOT_VALID)
       user = self.user
-      id = UUID(id)
+      id = uuid.UUID(id)
       device = self.database.devices.find_one({'_id': id})
       if device is None:
         self.fail(error.DEVICE_NOT_FOUND)
@@ -131,12 +131,12 @@ class Mixin:
 
   @api('/device/delete', method = "POST")
   @require_logged_in
-  def delete_device(self, id: UUID):
+  def delete_device(self, id: uuid.UUID):
     """Delete a device.
     """
     #regexp.Validator(regexp.NotNull, error.DEVICE_ID_NOT_VALID)),
     user = self.user
-    id = UUID(id)
+    id = uuid.UUID(id)
     device = self.database.devices.find_one({'_id': id})
     if device is None:
       self.fail(error.DEVICE_NOT_FOUND)

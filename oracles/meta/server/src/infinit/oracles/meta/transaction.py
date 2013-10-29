@@ -1,21 +1,20 @@
 # -*- encoding: utf-8 -*-
 
+import bson
+import re
 import time
 import unicodedata
 
-from bson import ObjectId
-
 from .utils import api, require_logged_in
 from . import regexp, error, transaction_status, notifier
-from uuid import UUID
-import re
+import uuid
 
 class Mixin:
 
   @api('/transaction/<id>/view')
   @require_logged_in
   def transaction_view(self, id):
-    transaction = self.database.transactions.find_one(ObjectId(id))
+    transaction = self.database.transactions.find_one(bson.ObjectId(id))
     if not transaction:
       return self.fail(error.TRANSACTION_DOESNT_EXIST)
     if not self.user['_id'] in (transaction['sender_id'], transaction['recipient_id']):
@@ -50,7 +49,7 @@ class Mixin:
     """
     id_or_email = id_or_email.strip()
 
-    # if self.database.devices.find_one(ObjectId(device_id)) is None:
+    # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
     #   return self.fail(error.DEVICE_NOT_FOUND)
 
     new_user = False
@@ -77,7 +76,7 @@ class Mixin:
           )
     else:
       try:
-        recipient_id = ObjectId(id_or_email)
+        recipient_id = bson.ObjectId(id_or_email)
       except Exception as e:
         return self.fail(error.USER_ID_NOT_VALID)
       recipient = self.database.users.find_one(recipient_id)
@@ -89,7 +88,7 @@ class Mixin:
     transaction = {
       'sender_id': _id,
       'sender_fullname': self.user['fullname'],
-      'sender_device_id': device_id, # ObjectId(device_id),
+      'sender_device_id': device_id, # bson.ObjectId(device_id),
 
       'recipient_id': recipient['_id'],
       'recipient_fullname': recipient['fullname'],
@@ -165,7 +164,7 @@ class Mixin:
     user_id = self.user['_id']
 
     if peer_id is not None:
-      peer_id = ObjectId(peer_id)
+      peer_id = bson.ObjectId(peer_id)
       query = {
         '$or':
         [
@@ -233,7 +232,7 @@ class Mixin:
 
 
   def _transaction_by_id(self, id, ensure_existence = True):
-    assert isinstance(id, ObjectId)
+    assert isinstance(id, bson.ObjectId)
     transaction = self.database.transactions.find_one(id)
     if transaction is None and ensure_existence:
       return self.fail(error.TRANSACTION_DOESNT_EXIST)
@@ -250,7 +249,7 @@ class Mixin:
     return is_sender
 
   def on_accept(self, transaction, device_id, device_name):
-    device_id = UUID(device_id)
+    device_id = uuid.UUID(device_id)
     if device_id not in self.user['devices']:
       raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
 
@@ -292,7 +291,7 @@ class Mixin:
       user = self.user
     if user is None:
       self.fail(error.UNKNOWN_USER)
-    transaction = self._transaction_by_id(ObjectId(transaction_id))
+    transaction = self._transaction_by_id(bson.ObjectId(transaction_id))
     is_sender = self.validate_ownership(transaction, user)
 
     if status not in transaction_status.transitions[transaction['status']][is_sender]:
@@ -333,7 +332,7 @@ class Mixin:
 
     device_ids = [transaction['sender_device_id']]
     recipient_ids = None
-    if isinstance(transaction['recipient_device_id'], ObjectId):
+    if isinstance(transaction['recipient_device_id'], bson.ObjectId):
       device_ids.append(transaction['recipient_device_id'])
     else:
       recipient_ids = [transaction['recipient_id']]
@@ -392,13 +391,13 @@ class Mixin:
     #regexp.Validator(regexp.ID, error.TRANSACTION_ID_NOT_VALID)
     #regexp.Validator(regexp.DeviceID, error.DEVICE_ID_NOT_VALID)
 
-    transaction_id = ObjectId(_id)
+    transaction_id = bson.ObjectId(_id)
 
     transaction = self.database.transactions.find_one(transaction_id)
     if transaction is None:
       self.fail(error.TRANSACTION_DOESNT_EXIST)
 
-    device_id = ObjectId(device_id)
+    device_id = bson.ObjectId(device_id)
     device = self.database.devices.find_one(device_id)
     if not device:
       return self.fail(error.DEVICE_NOT_FOUND)
@@ -460,7 +459,7 @@ class Mixin:
     self_device_id -- the id of your device.
     """
 
-    transaction = self.database.transactions.find_one(ObjectId(transaction_id))
+    transaction = self.database.transactions.find_one(bson.ObjectId(transaction_id))
     if not transaction:
       return self.fail(error.TRANSACTION_DOESNT_EXIST)
 

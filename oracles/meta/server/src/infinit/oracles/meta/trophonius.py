@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 
-from bson import ObjectId
+import bson
+import uuid
 
 from . import conf, error, regexp, metalib
 from .utils import api, require_logged_in
-from uuid import UUID
 
 class Mixin:
 
@@ -12,7 +12,7 @@ class Mixin:
   def trophonius_put(self, uid, port):
     """Register a trophonius.
     """
-    uid = UUID(uid)
+    uid = uuid.UUID(uid)
     self.database.trophonius.insert(
       {
         '_id': uid,
@@ -23,10 +23,10 @@ class Mixin:
     return self.success()
 
   @api('/trophonius/<uid>', method = 'DELETE')
-  def trophonius_delete(self, uid: UUID):
+  def trophonius_delete(self, uid: uuid.UUID):
     """Unregister a trophonius.
     """
-    assert isinstance(uid, UUID)
+    assert isinstance(uid, uuid.UUID)
     self.database.devices.update({'trophonius': uid},
                                  {'$set': {'trophonius': None}},
                                  multi = True)
@@ -34,9 +34,9 @@ class Mixin:
     return self.success()
 
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'PUT')
-  def trophonius_register_user(self, uid, id: ObjectId, device: UUID):
-    uid = UUID(uid)
-    assert isinstance(device, UUID)
+  def trophonius_register_user(self, uid, id: bson.ObjectId, device: uuid.UUID):
+    uid = uuid.UUID(uid)
+    assert isinstance(device, uuid.UUID)
 
     self.database.devices.update(
       {
@@ -49,9 +49,9 @@ class Mixin:
     return self.success()
 
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'DELETE')
-  def trophonius_unregister_user(self, uid, id: ObjectId, device: UUID):
-    uid = UUID(uid)
-    assert isinstance(device, UUID)
+  def trophonius_unregister_user(self, uid, id: bson.ObjectId, device: uuid.UUID):
+    uid = uuid.UUID(uid)
+    assert isinstance(device, uuid.UUID)
     self.database.devices.update(
       {
         '_id': device,
