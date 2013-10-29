@@ -4,14 +4,12 @@ import bottle
 import bson
 import uuid
 
-from .utils import api, require_logged_in, hash_pasword
-from . import error, notifier, regexp, invitation, conf, metalib, pythia
+from .utils import api, require_logged_in, require_admin, hash_pasword
+from . import error, notifier, regexp, invitation, conf, metalib
 
 import os
 import time
 import unicodedata
-
-#import pythia # used for admin token.
 
 #
 # Users
@@ -434,7 +432,9 @@ class Mixin:
     return self.success({"swaggers" : list(self.user["swaggers"].keys())})
 
   @api('/user/add_swagger', method = 'POST')
-  def add_swagger(self, admin_token,
+  @require_admin
+  def add_swagger(self,
+                  admin_token,
                   user1: bson.ObjectId,
                   user2: bson.ObjectId):
     """Make user1 and user2 swaggers.
@@ -444,10 +444,6 @@ class Mixin:
     user2 -- the other user.
     admin_token -- the admin token.
     """
-
-    if admin_token != pythia.constants.ADMIN_TOKEN:
-      return self.fail(error.UNKNOWN, "You're not admin")
-
     self._increase_swag(user1, user2,)
     return self.success()
 
@@ -565,12 +561,13 @@ class Mixin:
     self.database.users.update({'_id': user['_id']}, update)
     return self.success()
 
-  @api('/user/invite', method = 'POST')
-  def invite(self,
-             email,
-             force = False,
-             dont_send_email = False,
-             admin_token = None):
+  @api('/user/admin_invite', method = 'POST')
+  @require_admin
+  def admin_invite(self,
+                   email,
+                   force = False,
+                   dont_send_email = False,
+                   admin_token = None):
     """Invite a user to infinit.
     This function is reserved for admins.
 
@@ -578,35 +575,41 @@ class Mixin:
     admin_token -- the admin token.
     """
     email = email.strip()
-    if admin_token == pythia.constants.ADMIN_TOKEN:
-      send_mail = not dont_send_email
-      if self.database.invitations.find_one({'email': email}):
-        if not force:
-          return self.fail(error.UNKNOWN, "Already invited!")
-        else:
-          self.database.invitations.remove({'email': email})
-      invitation.invite_user(
-        email = email,
-        send_mail = send_mail,
-        mailer = self.mailer,
-        source = 'infinit',
-        database = self.database
-      )
-    else:
-      if self.user is None:
-        self.forbiden()
-      if regexp.EmailValidator(email) != 0:
-        return self.fail(error.EMAIL_NOT_VALID)
-      user = self.database.users.find_one({"email": email})
-      if user is not None:
-        self.fail(error.USER_ALREADY_INVITED)
-      invitation.invite_user(
-        email = email,
-        send_mail = True,
-        mailer = self.mailer,
-        source = self.user['email'],
-        database = self.database
-      )
+    send_mail = not dont_send_email
+    if self.database.invitations.find_one({'email': email}):
+      if not force:
+        return self.fail(error.UNKNOWN, "Already invited!")
+      else:
+        self.database.invitations.remove({'email': email})
+    invitation.invite_user(
+      email = email,
+      send_mail = send_mail,
+      mailer = self.mailer,
+      source = 'infinit',
+      database = self.database
+    )
+
+  @api('/user/invite', method = 'POST')
+  @require_logged_in
+  def invite(self, email):
+    """Invite a user to infinit.
+    This function is reserved for admins.
+
+    email -- the email of the user to invite.
+    admin_token -- the admin token.
+    """
+    if regexp.EmailValidator(email) != 0:
+      return self.fail(error.EMAIL_NOT_VALID)
+    user = self.database.users.find_one({"email": email})
+    if user is not None:
+      self.fail(error.USER_ALREADY_INVITED)
+    invitation.invite_user(
+      email = email,
+      send_mail = True,
+      mailer = self.mailer,
+      source = self.user['email'],
+      database = self.database
+    )
     return self.success()
 
   @api('/user/invited')

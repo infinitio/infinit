@@ -2,11 +2,12 @@
 
 import time
 
-from . import conf, mail, error, pythia
-from .utils import api
+from . import conf, mail, error
+from .utils import api, require_admin
 import infinit.oracles.meta.version
 
 LOST_PASSWORD_TEMPLATE_ID = 'lost-password'
+RESET_PASSWORD_VALIDITY = 2 * 3600 # 2 hours
 
 class Mixin:
 
@@ -23,10 +24,8 @@ class Mixin:
     return self.success({"status" : "ok"})
 
   @api('/ghostify', method = 'POST')
-  def ghostify(self, email, admin_token):
-    if admin_token != pythia.constants.ADMIN_TOKEN:
-      return self.error(error.UNKNOWN, "You're not admin")
-
+  @require_admin
+  def ghostify(self, email, admin_gtoken):
     email.strip()
 
     user = self.database.users.find_one({"email": email})
@@ -154,7 +153,7 @@ class Mixin:
       {'$set':
         {
           'reset_password_hash': hashlib.md5(str(time.time()) + email).hexdigest(),
-          'reset_password_hash_validity': time.time() + pythia.constants.RESET_PASSWORD_VALIDITY
+          'reset_password_hash_validity': time.time() + RESET_PASSWORD_VALIDITY,
         }
       })
 

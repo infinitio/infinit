@@ -7,6 +7,8 @@ from . import error
 from . import conf
 import pymongo
 
+ADMIN_TOKEN = "admintoken"
+
 class api:
 
   functions = []
@@ -39,6 +41,13 @@ def require_logged_in(method):
       self.forbiden()
     return wrapped(self, *args, **kwargs)
   return decorator.decorator(wrapper, method)
+
+def require_admin(method):
+  def wrapper(self, *a, **ka):
+    if 'admin_token' in ka and ka['admin_token'] == ADMIN_TOKEN:
+      return method(self, *a, **ka)
+    self.not_found()
+  return wrapper
 
 def hash_pasword(password):
   import hashlib

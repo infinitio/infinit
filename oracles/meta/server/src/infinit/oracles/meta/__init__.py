@@ -125,3 +125,6 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
 
   def forbiden(self):
     bottle.abort(403)
+
+  def not_found(self):
+    bottle.abort(404)

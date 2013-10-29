@@ -25,7 +25,8 @@ with Meta() as meta:
   throws(lambda: meta.post('user/favorite', {}), 403)
   throws(lambda: meta.post('user/unfavorite', {}), 403)
   throws(lambda: meta.post('user/edit', {}), 403)
-  throws(lambda: meta.post('user/invite', {}), 400)
+  throws(lambda: meta.post('user/invite', {}), 403)
+  throws(lambda: meta.post('user/admin_invite', {}), 404)
   throws(lambda: meta.get('user/invited'), 200)
   throws(lambda: meta.get('self'), 200)
   throws(lambda: meta.get('minimumself'), 200)
@@ -33,7 +34,7 @@ with Meta() as meta:
   # throws(lambda: meta.get('user/5241b9d226b9f10fff8be391/avatar'), 200)
   # throws(lambda: meta.post('user/5241b9d226b9f10fff8be391/avatar', {}), 200)
   throws(lambda: meta.post('debug', {}), 403)
-  throws(lambda: meta.post('user/add_swagger', {}), 400)
+  throws(lambda: meta.post('user/add_swagger', {}), 404)
 
   throws(lambda: meta.post('transaction/create', {}), 403)
   throws(lambda: meta.get('transaction/5241b9d226b9f10fff8be391/view'), 403)
