@@ -35,12 +35,26 @@ namespace infinit
         ELLE_LOG_COMPONENT("oracles.meta.client");
         ELLE_TRACE_SCOPE("%s: %s on %s", *this, method, url);
 
-        reactor::http::Request request(this->_root_url + url,
+        reactor::http::Request request =
+          [&]
+          {
+            if (&body)
+            {
+              reactor::http::Request request(this->_root_url + url,
+                                             method,
+                                             "application/json",
+                                             this->_default_configuration);
+
+              request << body.repr();
+              return std::move(request);
+            }
+            else
+              return std::move(
+                reactor::http::Request(this->_root_url + url,
                                        method,
-                                       "application/json",
-                                       this->_default_configuration);
-        if (&body)
-          request << body.repr();
+                                       this->_default_configuration));
+          }();
+
         request.finalize();
 
         auto status = request.status();
