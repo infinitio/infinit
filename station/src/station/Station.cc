@@ -224,6 +224,10 @@ namespace station
     }
     catch (reactor::network::Exception const& e)
     {
+      // XXX: If flush fails, bad and fail bits are set and any subsequent call
+      // to methods will silently fail and do nothing. Big up for std
+      // streams. Mofo.
+      socket->clear();
       throw NetworkError(e);
     }
   }
