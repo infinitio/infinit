@@ -24,7 +24,7 @@ class Mixin:
                   id: uuid.UUID):
     """Return one user device.
     """
-    id = uuid.UUID(id)
+    assert isinstance(id, uuid.UUID)
     device = self.database.devices.find_one(
       {
         '_id': str(id),
@@ -49,7 +49,6 @@ class Mixin:
       id = uuid.uuid4()
     if name is None:
       name = str(id)
-    print("device name", name)
     if regexp.Validator(regexp.DeviceName, error.DEVICE_NOT_VALID)(name) != 0:
       self.fail(error.DEVICE_NOT_VALID)
     if self.database.devices.find_one({'_id': str(id)}) is not None:
@@ -76,6 +75,8 @@ class Mixin:
                     name = None):
     if id is not None:
       id = uuid.UUID(id)
+    else:
+      assert isinstance(id, UUID)
     device = self._create_device(owner = self.user, id = id, name = name)
     assert device is not None
     return self.success({"_id": device['_id'],
@@ -86,8 +87,10 @@ class Mixin:
   def is_device_connected(self,
                           id: bson.ObjectId,
                           device_id: uuid.UUID):
+    assert isinstance(id, bson.ObjectId)
+    assert isinstance(device_id, uuid.UUID)
     try:
-      return self.success({"connected": self._is_connected(id, str(device_id))})
+      return self.success({"connected": self._is_connected(id, device_id)})
     except error.Error as e:
       self.fail(*e.args)
 
@@ -101,7 +104,7 @@ class Mixin:
     if device_id is not None:
       assert isinstance(device_id, uuid.UUID)
       user = self._user_by_id(user_id)
-      if device_id not in user['devices']:
+      if str(device_id) not in user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
       return self.database.devices.find_one(
         {
@@ -118,26 +121,23 @@ class Mixin:
 
   @api('/device/update', method = "POST")
   @require_logged_in
-  def update_device(self,
-                    id: uuid.UUID,
-                    name):
-      """Rename an existing device.
-      """
-      assert isinstance(id, uuid.UUID)
-      #regexp.Validator(regexp.Device, error.DEVICE_NOT_VALID)
-      #regexp.Validator(regexp.NetworkID, error.DEVICE_ID_NOT_VALID)
-      user = self.user
-      device = self.database.devices.find_one({'_id': str(id)})
-      if device is None:
-        self.fail(error.DEVICE_NOT_FOUND)
-      if not str(id) in user['devices']:
-        self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
-      self.database.device.update({'_id': str(id)}, {"$set": {"name": name}})
-      return self.success({
-          '_id': str(id),
-          'passport': device['passport'],
-          'name' : name,
-          })
+  def update_device(self, id: uuid.UUID, name):
+    """Rename an existing device.
+    """
+    assert isinstance(id, UUID)
+    user = self.user
+    assert user is not None
+    device = self.database.devices.find_one({'_id': str(id)})
+    if device is None:
+      self.fail(error.DEVICE_NOT_FOUND)
+    if not str(id) in user['devices']:
+      self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
+    self.database.device.update({'_id': str(id)}, {"$set": {"name": name}})
+    return self.success({
+        '_id': str(id),
+        'passport': device['passport'],
+        'name' : name,
+      })
 
   @api('/device/delete', method = "POST")
   @require_logged_in
@@ -145,9 +145,9 @@ class Mixin:
                     id: uuid.UUID):
     """Delete a device.
     """
-    #regexp.Validator(regexp.NotNull, error.DEVICE_ID_NOT_VALID)),
     assert isinstance(id, uuid.UUID)
     user = self.user
+    assert user is not None
     device = self.database.devices.find_one({'_id': str(id)})
     if device is None:
       self.fail(error.DEVICE_NOT_FOUND)
