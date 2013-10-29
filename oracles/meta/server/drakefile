@@ -27,7 +27,7 @@ def configure(papier_python = None,
   class PythonVersionGenerator(VersionGenerator):
     def _variable(self, name, value):
       return '%s = %s' % (name, repr(value))
-  version = drake.node('src/infinit/oracles/meta/version.py')
+  version = drake.node('lib/python/infinit/oracles/meta/version.py')
   PythonVersionGenerator(version, git = git)
 
   ## ------- ##
@@ -61,7 +61,7 @@ def configure(papier_python = None,
     'src/infinit/oracles/meta/trophonius.py',
     'src/infinit/oracles/meta/utils.py',
     'src/infinit/oracles/meta/wsgi.py',
-  ) + [version]
+  )
 
   ## ----- ##
   ## Build ##
@@ -69,7 +69,7 @@ def configure(papier_python = None,
 
   build = drake.Rule('build')
   build_python_path = drake.Path('lib/python')
-  python_nodes = []
+  python_nodes = [version]
   python_nodes += drake.copy(sources, build_python_path, 'src')
   bottle = drake.nodes('../../bottle/bottle.py')
   python_nodes += drake.copy(bottle, build_python_path
