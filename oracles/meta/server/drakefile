@@ -5,6 +5,9 @@ build = None
 check = None
 install = None
 
+with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
+  exec(f.read(), globals(), globals())
+
 def configure(papier_python = None,
               prefix = drake.Path('/usr/local'),
               python_version = None):
@@ -15,6 +18,21 @@ def configure(papier_python = None,
     python_version = drake.Version(*sys.version_info[0:2])
 
   prefix = drake.Path(prefix)
+
+  ## ------- ##
+  ## Version ##
+  ## ------- ##
+
+  git = drake.git.Git()
+  class PythonVersionGenerator(VersionGenerator):
+    def _variable(self, name, value):
+      return '%s = %s' % (name, repr(value))
+  version = drake.node('src/infinit/oracles/meta/version.py')
+  PythonVersionGenerator(version, git = git)
+
+  ## ------- ##
+  ## Sources ##
+  ## ------- ##
 
   sources = drake.nodes(
     'src/infinit/__init__.py',
@@ -43,7 +61,7 @@ def configure(papier_python = None,
     'src/infinit/oracles/meta/trophonius.py',
     'src/infinit/oracles/meta/utils.py',
     'src/infinit/oracles/meta/wsgi.py',
-  )
+  ) + [version]
 
   ## ----- ##
   ## Build ##

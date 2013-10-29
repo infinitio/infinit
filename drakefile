@@ -7,6 +7,9 @@ import os
 import sys
 import platform
 
+with open(str(drake.path_source('elle/drake-utils.py')), 'r') as f:
+  exec(f.read(), globals(), globals())
+
 def configure(cxx_toolkit = None,
               cxx_config = None,
               enable_horizon = True,
@@ -75,34 +78,21 @@ def configure(cxx_toolkit = None,
 
   # Version
   git = drake.git.Git()
+  class CxxVersionGenerator(VersionGenerator):
+    def _prologue(self):
+      yield '#ifndef INFINIT_VERSION_HH'
+      yield '# define INFINIT_VERSION_HH'
+    def _epilogue(self):
+      yield '#endif'
+    def _variable(self, name, value):
+      if name == 'version':
+        name = 'INFINIT_VERSION'
+      else:
+        name = 'INFINIT_VERSION_%s' % name.upper()
+      value = repr(value).replace("'", '"')
+      return '# define %s %s' % (name, value)
   version = drake.node('version.hh')
-
-  class VersionGenerator(drake.Builder):
-
-    def __init__(self, git, output):
-      drake.Builder.__init__(self, [git], [output])
-      self.__git = git
-      self.__output = output
-
-    def execute(self):
-      self.output('Generate %s' % self.__output.path())
-      version = git.version()
-      major, minor, subminor = map(int, version.split('-')[0].split('.'))
-      defines = {
-        'INFINIT_VERSION_MAJOR': major,
-        'INFINIT_VERSION_MINOR': minor,
-        'INFINIT_VERSION_SUBMINOR': subminor,
-        'INFINIT_VERSION': version,
-      }
-      with open(str(self.__output.path()), 'w') as f:
-        print('#ifndef INFINIT_VERSION_HH', file = f)
-        print('# define INFINIT_VERSION_HH', file = f)
-        for name, value in defines.items():
-          print('# define %s %s' % (name, repr(value).replace("'", '"')), file = f)
-        print('#endif', file = f)
-      return True
-
-  VersionGenerator(git, version)
+  CxxVersionGenerator(version, git = git)
 
   architecture = platform.architecture()[0]
   if architecture == "32bit":

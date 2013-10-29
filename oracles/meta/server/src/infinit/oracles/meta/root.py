@@ -4,6 +4,7 @@ import time
 
 from . import conf, mail, error, pythia
 from .utils import api
+import infinit.oracles.meta.version
 
 LOST_PASSWORD_TEMPLATE_ID = 'lost-password'
 
@@ -12,7 +13,7 @@ class Mixin:
   @api('/')
   def root(self):
     return self.success({
-        'server': 'Meta 0.1',
+        'server': 'Meta %s' % infinit.oracles.meta.version.version,
         'logged_in': self.user is not None,
         # 'fallbacks': str(self.__application__.fallback),
     })
