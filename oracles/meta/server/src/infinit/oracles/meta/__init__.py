@@ -41,10 +41,8 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
     # Configuration.
     self.ignore_trailing_slash = True
     # Routing.
-    for name, method in inspect.getmembers(
-        Meta,
-        lambda m: callable(m) and hasattr(m, '__route__')):
-      self.__register(method)
+    for function in api.functions:
+      self.__register(function)
     # Notifier.
     self.notifier = notifier.Notifier(self.__database.users)
     # Could be cleaner.
@@ -53,7 +51,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
   def __register(self, method):
     rule = method.__route__
     # Introspect method.
-    spec = inspect.getfullargspec(method.__original__)
+    spec = inspect.getfullargspec(method)
     del spec.args[0] # remove self
     import itertools
     defaults = spec.defaults or []

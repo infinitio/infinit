@@ -8,6 +8,8 @@ from uuid import UUID
 
 class api:
 
+  functions = []
+
   def __init__(self, route = None, method = 'GET'):
     self.__route = route
     self.__method = method
@@ -25,9 +27,9 @@ class api:
             m = '%r is not a valid %s' % (value, annotation.__name__)
             bottle.abort(400, m)
       return method(self, *args, **kwargs)
-    annotation_mapper.__route__ = self.__route
-    annotation_mapper.__method__ = self.__method
-    annotation_mapper.__original__ = method
+    method.__route__ = self.__route
+    method.__method__ = self.__method
+    api.functions.append(method)
     return annotation_mapper
 
 def require_logged_in(method):
