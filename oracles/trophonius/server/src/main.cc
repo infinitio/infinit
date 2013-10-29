@@ -63,11 +63,14 @@ int main(int argc, char** argv)
   try
   {
     reactor::Scheduler s;
-    auto options = parse_options(argc, argv);
+    std::unique_ptr<Trophonius> trophonius;
+
     reactor::Thread main(
       s, "main",
       [&]
       {
+        auto options = parse_options(argc, argv);
+
         if (!options.count("meta_host"))
           throw std::runtime_error("meta_host argument is mandatory");
         if (!options.count("meta_port"))
@@ -84,11 +87,24 @@ int main(int argc, char** argv)
         if (options.count("ping-period"))
           ping = options["ping-period"].as<int>();
 
-        Trophonius t(
-          port, meta_host, meta_port, boost::posix_time::seconds(ping));
-        // Wait forever.
-        main.wait(main);
+        trophonius.reset(
+          new Trophonius(
+            port, meta_host, meta_port, boost::posix_time::seconds(ping)));
+
+        // Wait for trophonius to be asked to finish.
+        main.wait(*trophonius);
+
+        trophonius.reset();
       });
+
+    s.signal_handle(
+      SIGINT,
+      [&s, &trophonius]
+      {
+        if (trophonius)
+          trophonius->stop();
+      });
+
     s.run();
   }
   catch (std::exception const& e)

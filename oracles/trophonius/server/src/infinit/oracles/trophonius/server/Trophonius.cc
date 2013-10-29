@@ -27,38 +27,47 @@ namespace infinit
           std::string const& meta_host,
           int meta_port,
           boost::posix_time::time_duration const& ping_period):
+          Waitable("trophonius"),
           _server(),
           _notifications(),
-          _accepter(*reactor::Scheduler::scheduler(),
-                    elle::sprintf("%s accepter", *this),
-                    std::bind(&Trophonius::_serve, std::ref(*this))),
-          _meta_accepter(*reactor::Scheduler::scheduler(),
-                    elle::sprintf("%s meta accepter", *this),
-                    std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
+          _accepter(
+            *reactor::Scheduler::scheduler(),
+            elle::sprintf("%s accepter", *this),
+            std::bind(&Trophonius::_serve, std::ref(*this))),
+          _meta_accepter(
+            *reactor::Scheduler::scheduler(),
+            elle::sprintf("%s meta accepter", *this),
+            std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
           _uuid(boost::uuids::random_generator()()),
           _meta(meta_host, meta_port),
           _ping_period(ping_period)
         {
-          elle::SafeFinally kill_accepter{
-            [&] { this->_accepter.terminate_now(); }
+          elle::SafeFinally kill_accepters{
+            [&]
+            {
+              this->_accepter.terminate_now();
+              this->_meta_accepter.terminate_now();
+              this->_signal();
+            }
           };
 
           try
           {
-            this->_server.listen(port);
+            this->_server.listen(this->_port);
             ELLE_LOG("%s: listen on port %s (users)", *this, this->port());
           }
           catch (...)
           {
             ELLE_ERR("%s: unable to listen on port %s (users): %s",
-                     *this, port, elle::exception_string());
+                     *this, this->_port, elle::exception_string());
             throw;
           }
 
           try
           {
             this->_notifications.listen();
-            ELLE_LOG("%s: listen notification: %s", *this, this->notification_port());
+            ELLE_LOG("%s: listen notification: %s",
+                     *this, this->notification_port());
           }
           catch (...)
           {
@@ -79,15 +88,31 @@ namespace infinit
             throw;
           }
 
-          kill_accepter.abort();
+          kill_accepters.abort();
+        }
+
+        void
+        Trophonius::stop()
+        {
+          this->_signal();
         }
 
         Trophonius::~Trophonius()
         {
           ELLE_LOG("%s: terminate", *this);
           this->_accepter.terminate_now();
+          this->_meta_accepter.terminate_now();
 
-          this->_meta.unregister_trophonius(this->_uuid);
+          try
+          {
+            this->_meta.unregister_trophonius(this->_uuid);
+          }
+          catch (...)
+          {
+            ELLE_ERR("%s: unable to unregister from meta: %s",
+                     *this, elle::exception_string());
+            throw;
+          }
         }
 
         /*-------.

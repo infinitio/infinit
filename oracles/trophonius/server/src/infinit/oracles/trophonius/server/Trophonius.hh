@@ -9,6 +9,7 @@
 
 # include <reactor/network/tcp-server.hh>
 # include <reactor/thread.hh>
+# include <reactor/waitable.hh>
 
 # include <infinit/oracles/trophonius/server/fwd.hh>
 # include <infinit/oracles/meta/Admin.hh>
@@ -31,23 +32,20 @@ namespace infinit
         };
 
         class Trophonius:
-          public elle::Printable
+          public reactor::Waitable
         {
         public:
           Trophonius(int port,
                      std::string const& meta_host,
                      int meta_port,
-                     boost::posix_time::time_duration const& ping_period );
+                     boost::posix_time::time_duration const& ping_period);
           ~Trophonius();
+          void
+          stop();
 
         /*-------.
         | Server |
         `-------*/
-        public:
-          int
-          port() const;
-          int
-          notification_port() const;
         private:
           void
           _serve();
@@ -56,7 +54,10 @@ namespace infinit
           _serve_notifier();
 
           ELLE_ATTRIBUTE(reactor::network::TCPServer, server);
+          ELLE_ATTRIBUTE_r(int, port);
           ELLE_ATTRIBUTE(reactor::network::TCPServer, notifications);
+          int
+          notification_port() const;
           ELLE_ATTRIBUTE(reactor::Thread, accepter);
           ELLE_ATTRIBUTE(reactor::Thread, meta_accepter);
           ELLE_ATTRIBUTE_R(boost::uuids::uuid, uuid);
