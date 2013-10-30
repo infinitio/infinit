@@ -586,6 +586,7 @@ def configure(cxx_toolkit = None,
   frete_cxx_config_tests = drake.cxx.Config(frete_cxx_config)
   frete_cxx_config_tests += boost.config_test()
   frete_cxx_config_tests += boost.config_system()
+  frete_cxx_config_tests += boost.config_filesystem()
   frete_cxx_config_tests.lib_path_runtime('../../lib')
   for name in ['frete']:
     test = drake.cxx.Executable(
