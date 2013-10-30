@@ -224,7 +224,8 @@ namespace infinit
         _default_configuration{boost::posix_time::seconds{30},
                                reactor::http::Version::v10},
         _email{},
-        _user_agent{"MetaClient/" INFINIT_VERSION}
+        _user_agent{"MetaClient/" INFINIT_VERSION},
+        _logged_in{false}
       {
         ELLE_LOG("%s: creating a meta client", this);
         //ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
@@ -265,6 +266,7 @@ namespace infinit
         {
           // Debugging purpose.
           this->_email = email;
+          this->_logged_in = true;
         }
         return res;
       }
@@ -277,6 +279,7 @@ namespace infinit
         {
           // Debugging purpose.
           this->_email = "";
+          this->_logged_in = false;
         }
         return res;
       }

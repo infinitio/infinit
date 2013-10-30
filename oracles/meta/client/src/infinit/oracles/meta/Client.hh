@@ -33,7 +33,7 @@ namespace infinit
       {
 # define ERR_CODE(name, value, comment)                                         \
         name = value,
-#  include <infinit/oracles/meta/error_code.hh.inc>
+#  include <infinit/oracles/error_code.hh.inc>
 # undef ERR_CODE
       };
 
@@ -209,6 +209,7 @@ namespace infinit
                          default_configuration);
         ELLE_ATTRIBUTE_RW(std::string, email);
         ELLE_ATTRIBUTE_R(std::string, user_agent);
+        ELLE_ATTRIBUTE_R(std::string, session_id);
 
       public:
         Client(std::string const& server,
@@ -245,6 +246,8 @@ namespace infinit
 
         LogoutResponse
         logout();
+
+        ELLE_ATTRIBUTE_RW(bool, logged_in);
 
         RegisterResponse
         register_(std::string const& email,

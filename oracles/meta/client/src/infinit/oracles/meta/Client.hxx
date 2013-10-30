@@ -1,7 +1,7 @@
 #ifndef PLASMA_META_CLIENT_HXX
 # define PLASMA_META_CLIENT_HXX
 
-# include <plasma/meta/Client.hh>
+# include <infinit/oracles/meta/Client.hh>
 
 # include <elle/serialize/JSONArchive.hh>
 # include <elle/serialize/SetSerializer.hxx>

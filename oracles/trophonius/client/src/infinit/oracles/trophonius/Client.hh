@@ -1,198 +1,179 @@
-#ifndef PLASMA_TROPHONIUS_CLIENT_HH
-# define PLASMA_TROPHONIUS_CLIENT_HH
+#ifndef INFINIT_ORACLES_TROPHONIUS_CLIENT_HH
+# define INFINIT_ORACLES_TROPHONIUS_CLIENT_HH
 
-# include <plasma/plasma.hh>
-
-# include <elle/HttpClient.hh>
+# include <infinit/oracles/Transaction.hh>
 
 # include <boost/date_time/posix_time/posix_time_types.hpp>
 # include <boost/system/error_code.hpp>
 
+# include <elle/format/json.hh>
+
 # include <functional>
 # include <queue>
 
-namespace plasma
+namespace infinit
 {
-  namespace trophonius
+  namespace oracles
   {
-    enum class NotificationType: int
+    namespace trophonius
     {
-# define NOTIFICATION_TYPE(name, value)         \
-      name = value,
-# include <oracle/disciples/meta/src/meta/notification_type.hh.inc>
+      enum class NotificationType: int
+      {
+# define NOTIFICATION_TYPE(name, value)                                         \
+        name = value,
+# include <infinit/oracles/notification_type.hh.inc>
 # undef NOTIFICATION_TYPE
-    };
+      };
 
-    enum class NetworkUpdate: int
-    {
-# define NETWORK_UPDATE(name, value)         \
-      name = value,
-# include <oracle/disciples/meta/src/meta/resources/network_update.hh.inc>
-# undef NETWORK_UPDATE
-    };
+      /// Base class for all notifications.
+      struct Notification:
+        public elle::Printable
+      {
+        NotificationType notification_type;
 
-    /// Base class for all notifications.
-    struct Notification:
-      public elle::Printable
-    {
-      NotificationType notification_type;
+        ELLE_SERIALIZE_CONSTRUCT(Notification)
+        {}
 
-      ELLE_SERIALIZE_CONSTRUCT(Notification)
-      {}
+        Notification(NotificationType const type):
+          notification_type{type}
+        {}
 
-      Notification(NotificationType const type):
-        notification_type{type}
-      {}
+        virtual ~Notification() = default;
 
-      virtual ~Notification() = default;
+        virtual
+        void
+        print(std::ostream& stream) const override;
+      };
 
-      virtual
-      void
-      print(std::ostream& stream) const override;
-    };
+      namespace json = elle::format::json;
 
-    namespace json = elle::format::json;
+      struct ConnectionEnabledNotification:
+        public Notification
+      {
+        uint32_t response_code;
+        std::string response_details;
 
-    struct ConnectionEnabledNotification:
-      public Notification
-    {
-      uint32_t response_code;
-      std::string response_details;
+        ELLE_SERIALIZE_CONSTRUCT(ConnectionEnabledNotification,
+                                 Notification)
+        {}
+      };
 
-      ELLE_SERIALIZE_CONSTRUCT(ConnectionEnabledNotification,
-                               Notification)
-      {}
-    };
+      struct NewSwaggerNotification:
+        public Notification
+      {
+        std::string user_id;
 
-    struct NewSwaggerNotification:
-      public Notification
-    {
-      std::string user_id;
+        ELLE_SERIALIZE_CONSTRUCT(NewSwaggerNotification,
+                                 Notification)
+        {}
+      };
 
-      ELLE_SERIALIZE_CONSTRUCT(NewSwaggerNotification,
-                               Notification)
-      {}
-    };
+      struct UserStatusNotification:
+        public Notification
+      {
+        std::string user_id;
+        bool status;
+        std::string device_id;
+        bool device_status;
 
-    struct UserStatusNotification:
-      public Notification
-    {
-      std::string user_id;
-      bool status;
-      std::string device_id;
-      bool device_status;
+        ELLE_SERIALIZE_CONSTRUCT(UserStatusNotification,
+                                 Notification)
+        {}
 
-      ELLE_SERIALIZE_CONSTRUCT(UserStatusNotification,
-                               Notification)
-      {}
+        UserStatusNotification():
+          Notification{NotificationType::user_status}
+        {}
+      };
 
-      UserStatusNotification():
-        Notification{NotificationType::user_status}
-      {}
-    };
+      struct TransactionNotification:
+        public Notification,
+        public Transaction
+      {
+        ELLE_SERIALIZE_CONSTRUCT(TransactionNotification,
+                                 Notification,
+                                 Transaction)
+        {}
 
-    struct TransactionNotification:
-      public Notification,
-      public Transaction
-    {
-      ELLE_SERIALIZE_CONSTRUCT(TransactionNotification,
-                               Notification,
-                               Transaction)
-      {}
+        virtual
+        void
+        print(std::ostream& stream) const override;
+      };
 
-      virtual
-      void
-      print(std::ostream& stream) const override;
-    };
+      struct PeerConnectionUpdateNotification:
+        public Notification
+      {
+        std::string transaction_id;
+        bool status;
+        std::vector<std::string> devices;
 
-    struct NetworkUpdateNotification:
-      public Notification
-    {
-      std::string network_id;
-      NetworkUpdate what;
-      ELLE_SERIALIZE_CONSTRUCT(NetworkUpdateNotification,
-                               Notification)
-      {}
-    };
+        ELLE_SERIALIZE_CONSTRUCT(PeerConnectionUpdateNotification,
+                                 Notification)
+        {}
+      };
 
-    struct PeerConnectionUpdateNotification:
-      public Notification
-    {
-      std::string transaction_id;
-      bool status;
-      std::vector<std::string> devices;
+      struct MessageNotification:
+        public Notification
+      {
+        std::string sender_id;
+        std::string message;
 
-      ELLE_SERIALIZE_CONSTRUCT(PeerConnectionUpdateNotification,
-                               Notification)
-      {}
-    };
+        ELLE_SERIALIZE_CONSTRUCT(MessageNotification,
+                                 Notification)
+        {}
+      };
 
-    struct MessageNotification:
-      public Notification
-    {
-      std::string sender_id;
-      std::string message;
-
-      ELLE_SERIALIZE_CONSTRUCT(MessageNotification,
-                               Notification)
-      {}
-    };
-
-    /// Build a notification with the 'good' type from a dictionnary.
-    /// The notification type is determined by the "notification_type" field
-    /// presents in the dictionary.
-    std::unique_ptr<Notification>
-    notification_from_dict(json::Dictionary const& dict);
-
-    class Client:
-      public elle::Printable
-    {
-    public:
-      typedef std::function<void (bool)> ConnectCallback;
-    private:
-      struct Impl;
-      std::unique_ptr<Impl> _impl;
-
-    public:
-      Client(std::string const& server,
-             uint16_t port,
-             ConnectCallback connect_callback);
-
-      ~Client();
-
-    public:
-      bool
-      connect(std::string const& _id,
-              std::string const& token,
-              std::string const& device_id);
-
-      void
-      disconnect();
-
-      //GenericNotification
+      /// Build a notification with the 'good' type from a dictionnary.
+      /// The notification type is determined by the "notification_type" field
+      /// presents in the dictionary.
       std::unique_ptr<Notification>
-      poll();
+      notification_from_dict(json::Dictionary const& dict);
 
-      int
-      reconnected() const;
-      ELLE_ATTRIBUTE_rw(boost::posix_time::time_duration, ping_period);
+      class Client:
+        public elle::Printable
+      {
+      public:
+        typedef std::function<void (bool)> ConnectCallback;
+      private:
+        struct Impl;
+        std::unique_ptr<Impl> _impl;
 
-    /*----------.
-    | Printable |
-    `----------*/
-    public:
-      virtual
-      void
-      print(std::ostream& stream) const override;
-    };
+      public:
+        Client(std::string const& server,
+               uint16_t port,
+               ConnectCallback connect_callback);
 
-    std::ostream&
-    operator <<(std::ostream& out,
-                NotificationType t);
+        ~Client();
 
-    std::ostream&
-    operator <<(std::ostream& out,
-                NetworkUpdate n);
+      public:
+        bool
+        connect(std::string const& _id,
+                std::string const& token,
+                std::string const& device_id);
+
+        void
+        disconnect();
+
+        //GenericNotification
+        std::unique_ptr<Notification>
+        poll();
+
+        int
+        reconnected() const;
+        ELLE_ATTRIBUTE_rw(boost::posix_time::time_duration, ping_period);
+
+        /*----------.
+          | Printable |
+          `----------*/
+      public:
+        virtual
+        void
+        print(std::ostream& stream) const override;
+      };
+
+      std::ostream&
+      operator <<(std::ostream& out,
+                  NotificationType t);
+    }
   }
 }
 
