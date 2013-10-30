@@ -1,14 +1,14 @@
 #include <boost/python.hpp>
 
-#include <plasma/trophonius/Client.hh>
+#include <infinit/oracles/trophonius/Client.hh>
 
 using namespace boost::python;
 
-class Client: public plasma::trophonius::Client
+class Client: public infinit::oracles::trophonius::Client
 {
 public:
   Client(std::string const& host, uint16_t port, object on_connection):
-    plasma::trophonius::Client(host, port,
+    infinit::oracles::trophoniusClient(host, port,
                                [=](bool value) { on_connection(value); })
   {}
 
@@ -29,32 +29,32 @@ struct NotificationConverter
 {
   static
   PyObject*
-  convert(std::unique_ptr<plasma::trophonius::Notification> const& notif);
+  convert(std::unique_ptr<infinit::oracles::trophoniusNotification> const& notif);
 };
 
 struct NotificationTypeConverter
 {
   static
   PyObject*
-  convert(plasma::trophonius::NotificationType type)
+  convert(infinit::oracles::trophoniusNotificationType type)
   {
     return incref(object(elle::sprintf("%s", type)).ptr());
   }
 };
 
-using plasma::trophonius::Notification;
-using plasma::trophonius::UserStatusNotification;
-using plasma::trophonius::TransactionNotification;
-using plasma::trophonius::NetworkUpdateNotification;
-using plasma::trophonius::MessageNotification;
+using infinit::oracles::trophoniusNotification;
+using infinit::oracles::trophoniusUserStatusNotification;
+using infinit::oracles::trophoniusTransactionNotification;
+using infinit::oracles::trophoniusNetworkUpdateNotification;
+using infinit::oracles::trophoniusMessageNotification;
 
 void export_trophonius();
 void export_trophonius()
 {
-  to_python_converter<plasma::trophonius::NotificationType,
+  to_python_converter<infinit::oracles::trophoniusNotificationType,
     NotificationTypeConverter> notificationtype_converter;
 
-  to_python_converter<std::unique_ptr<plasma::trophonius::Notification>,
+  to_python_converter<std::unique_ptr<infinit::oracles::trophoniusNotification>,
     NotificationConverter> notification_converter;
 
   class_<Client, boost::noncopyable>(
@@ -66,13 +66,13 @@ void export_trophonius()
                   &Client::ping_period_get, &Client::ping_period_set)
     ;
 
-  class_<plasma::trophonius::Notification>(
+  class_<infinit::oracles::trophoniusNotification>(
     "Notification", no_init)
-    .def_readonly("type", &plasma::trophonius::Notification::notification_type)
+    .def_readonly("type", &infinit::oracles::trophoniusNotification::notification_type)
     ;
 
   class_<UserStatusNotification,
-         bases<plasma::trophonius::Notification>>(
+         bases<infinit::oracles::trophoniusNotification>>(
     "UserStatusNotification", no_init)
     .def_readonly("user_id", &UserStatusNotification::user_id)
     .def_readonly("status", &UserStatusNotification::status)
@@ -81,19 +81,12 @@ void export_trophonius()
     ;
 
   class_<TransactionNotification,
-         bases<plasma::trophonius::Notification>>(
+         bases<infinit::oracles::trophoniusNotification>>(
     "TransactionNotification", no_init)
     ;
 
-  class_<NetworkUpdateNotification,
-         bases<plasma::trophonius::Notification>>(
-    "NetworkUpdateNotification", no_init)
-    .def_readonly("network_id", &NetworkUpdateNotification::network_id)
-    .def_readonly("what", &NetworkUpdateNotification::what)
-    ;
-
   class_<MessageNotification,
-         bases<plasma::trophonius::Notification>>(
+         bases<infinit::oracles::trophoniusNotification>>(
     "MessageNotification", no_init)
     .def_readonly("sender_id", &MessageNotification::sender_id)
     .def_readonly("message", &MessageNotification::message)
@@ -102,7 +95,7 @@ void export_trophonius()
 
 PyObject*
 NotificationConverter::convert(
-  std::unique_ptr<plasma::trophonius::Notification> const& notif_)
+  std::unique_ptr<infinit::oracles::trophoniusNotification> const& notif_)
 {
   auto& notif = const_cast<std::unique_ptr<Notification>&>(notif_);
 
@@ -119,7 +112,6 @@ NotificationConverter::convert(
   else                                                          \
 
   CASE(MessageNotification)
-  CASE(NetworkUpdateNotification)
   CASE(TransactionNotification)
   CASE(UserStatusNotification)
   CASE(Notification)
