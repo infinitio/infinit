@@ -26,8 +26,6 @@ def configure(elle,
   local_cxx_config += elle.config
   local_cxx_config += reactor.config
   local_cxx_config.add_local_include_path('src')
-  # XXX: This add the include path to get the shared .hh.inc files.
-  local_cxx_config.add_local_include_path('../server/src')
 
   build = drake.Rule('build')
   install = drake.Rule('install')
@@ -37,11 +35,9 @@ def configure(elle,
   ## ------- ##
 
   sources = drake.nodes(
-    'src/infinit/oracles/meta/Client.cc',
-    'src/infinit/oracles/meta/Client.hh',
-    'src/infinit/oracles/meta/Client.hxx',
-    'src/infinit/oracles/meta/Admin.cc',
-    'src/infinit/oracles/meta/Admin.hh',
+    'src/infinit/oracles/trophonius/Client.cc'
+    'src/infinit/oracles/trophonius/Client.hh',
+    'src/infinit/oracles/trophonius/Client.hxx',
   )
 
   elle_lib = drake.copy(elle.lib_dynamic, 'lib',
@@ -53,7 +49,7 @@ def configure(elle,
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('../lib')
-  lib = drake.cxx.DynLib('lib/metaclient',
+  lib = drake.cxx.DynLib('lib/trophoniusclient',
                          sources + [reactor_lib, elle_lib, transaction_lib],
                          cxx_toolkit,
                          lib_cxx_config)
@@ -68,7 +64,7 @@ def configure(elle,
 
   if python3 is not None:
     python_sources = drake.nodes(
-      'src/infinit/oracles/meta/python.cc',
+      'src/infinit/oracles/trophonius/python.cc',
     )
 
     meta_python_cxx_config = drake.cxx.Config(local_cxx_config)
@@ -76,7 +72,7 @@ def configure(elle,
     meta_python_cxx_config += boost.config_python()
     meta_python_cxx_config.lib_path_runtime('..')
     meta_python = drake.cxx.Module(
-      'lib/python/infinit/oracles/meta/client',
+      'lib/python/infinit/oracles/trophonius/client',
       python_sources + [lib],
       cxx_toolkit,
       meta_python_cxx_config)
@@ -87,19 +83,3 @@ def configure(elle,
   ## ----- ##
 
   check = drake.TestSuite('check')
-
-  test_sources = drake.nodes(
-    'tests/meta_client.cc',
-  )
-
-  tests_cxx_config = drake.cxx.Config(local_cxx_config)
-  tests_cxx_config += boost.config_test()
-  tests_cxx_config.lib_path_runtime('../lib')
-
-  test_bin = drake.cxx.Executable('tests/meta_client',
-                                  test_sources + [lib, reactor_lib, elle_lib],
-                                  cxx_toolkit,
-                                  tests_cxx_config)
-
-  runner = drake.Runner(test_bin)
-  check << runner.status

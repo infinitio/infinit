@@ -11,6 +11,7 @@ install = None
 def configure(elle,
               reactor,
               meta_client,
+              transaction_lib,
               boost = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
@@ -19,11 +20,19 @@ def configure(elle,
   global client, server
   global build, check, install
 
-
   server = drake.include('server',
                          elle = elle,
                          reactor = reactor,
                          meta_client = meta_client,
+                         boost = boost,
+                         prefix = prefix,
+                         cxx_toolkit = cxx_toolkit,
+                         cxx_config = cxx_config)
+
+  client = drake.include('client',
+                         elle = elle,
+                         reactor = reactor,
+                         transaction_lib = transaction_lib,
                          boost = boost,
                          prefix = prefix,
                          cxx_toolkit = cxx_toolkit,

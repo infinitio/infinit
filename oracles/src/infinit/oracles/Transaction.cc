@@ -1,5 +1,5 @@
-# include <infinit/oracles/meta/Transaction.hh>
-#include <iostream>
+# include <infinit/oracles/Transaction.hh>
+# include <iostream>
 
 namespace infinit
 {
@@ -48,7 +48,7 @@ namespace infinit
         case Transaction::Status::name:                                        \
           out << #name;                                                        \
           break;
-# include <infinit/oracles/meta/transaction_status.hh.inc>
+# include <infinit/oracles/transaction_status.hh.inc>
 # undef TRANSACTION_STATUS
       }
 

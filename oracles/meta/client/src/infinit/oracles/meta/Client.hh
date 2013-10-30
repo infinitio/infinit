@@ -1,7 +1,7 @@
 #ifndef  PLASMA_META_CLIENT_HH
 # define PLASMA_META_CLIENT_HH
 
-# include <infinit/oracles/meta/Transaction.hh>
+# include <infinit/oracles/Transaction.hh>
 
 # include <elle/Exception.hh>
 # include <elle/Buffer.hh>

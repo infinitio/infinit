@@ -20,7 +20,7 @@ namespace infinit
       {
 # define TRANSACTION_STATUS(name, value)                                        \
         name = value,
-# include <infinit/oracles/meta/transaction_status.hh.inc>
+# include <infinit/oracles/transaction_status.hh.inc>
 # undef TRANSACTION_STATUS
       };
 
@@ -75,6 +75,6 @@ namespace infinit
   }
 }
 
-# include <infinit/oracles/meta/Transaction.hxx>
+# include <infinit/oracles/Transaction.hxx>
 
 #endif
