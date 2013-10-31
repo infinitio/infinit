@@ -5,7 +5,8 @@ import bson
 import uuid
 
 from .utils import api, require_logged_in, require_admin, hash_pasword
-from . import error, notifier, regexp, invitation, conf, metalib
+from . import error, notifier, regexp, invitation, conf
+import papier
 
 import os
 import time
@@ -108,7 +109,7 @@ class Mixin:
     )
 
   @require_logged_in
-  @api('/user/logout', method = 'POST')
+  @api('/user/logout')
   def logout(self):
     if 'email' in bottle.request.session:
       del bottle.request.session['device']
@@ -212,7 +213,7 @@ class Mixin:
     else:
       id = self.database.users.save({})
 
-    identity, public_key = metalib.generate_identity(
+    identity, public_key = papier.generate_identity(
       str(id),
       email,
       password,

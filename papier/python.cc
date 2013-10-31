@@ -42,10 +42,10 @@ static
 //std::tuple<std::string, std::string>
 boost::python::tuple
 identity(std::string const& id,
-         std::string const& authority_file,
-         std::string const& authority_password,
          std::string const& login,
-         std::string const& password)
+         std::string const& password,
+         std::string const& authority_file,
+         std::string const& authority_password)
 {
   cryptography::KeyPair pair =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,

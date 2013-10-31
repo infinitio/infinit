@@ -22,13 +22,6 @@ INFINIT_AUTHORITY_PATH = os.path.join(
     "infinit.auth"
 )
 
-if not os.path.exists(INFINIT_AUTHORITY_PATH):
-    # When used in build dir
-    INFINIT_AUTHORITY_PATH = os.path.join(
-        os.path.abspath(os.path.dirname(__file__)),
-        "../../../oracle/meta/infinit.auth"
-    )
-
 INFINIT_AUTHORITY_PASSWORD = ""
 
 MANDRILL_USERNAME = 'infinitdotio'

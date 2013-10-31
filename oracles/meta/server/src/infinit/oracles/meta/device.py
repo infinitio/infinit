@@ -3,7 +3,8 @@
 import bson
 import uuid
 
-from . import conf, error, regexp, metalib
+from . import conf, error, regexp
+import papier
 from .utils import api, require_logged_in
 
 # We use UUID for typechecking but they are all cast into str represnetation.
@@ -55,7 +56,7 @@ class Mixin:
       self.fail(error.DEVICE_ALREADY_REGISTRED)
     to_save = {'name': name.strip(), 'owner': owner['_id'], '_id': str(id)}
     self.database.devices.insert(to_save, upsert = True)
-    to_save['passport'] = metalib.generate_passport(
+    to_save['passport'] = papier.generate_passport(
       str(id),
       name,
       owner['public_key'],
