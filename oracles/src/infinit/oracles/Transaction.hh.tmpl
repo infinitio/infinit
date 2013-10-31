@@ -8,6 +8,10 @@
 # include <list>
 # include <string>
 
+<%!
+from infinit.oracles.transaction import statuses
+%>
+
 namespace infinit
 {
   namespace oracles
@@ -18,10 +22,9 @@ namespace infinit
     public:
       enum class Status: int
       {
-# define TRANSACTION_STATUS(name, value)                                        \
-        name = value,
-# include <infinit/oracles/transaction_status.hh.inc>
-# undef TRANSACTION_STATUS
+        %for name, value in statuses.items():
+          ${name} = ${value},
+        %endfor
       };
 
     public:

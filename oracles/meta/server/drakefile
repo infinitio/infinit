@@ -8,7 +8,8 @@ install = None
 with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
 
-def configure(papier_python = None,
+def configure(transaction_python,
+              papier_python,
               prefix = drake.Path('/usr/local'),
               python_version = None):
 
@@ -55,7 +56,6 @@ def configure(papier_python = None,
     'src/infinit/oracles/meta/root.py',
     'src/infinit/oracles/meta/user.py',
     'src/infinit/oracles/meta/transaction.py',
-    'src/infinit/oracles/meta/transaction_status.hh.inc',
     'src/infinit/oracles/meta/transaction_status.py',
     'src/infinit/oracles/meta/trophonius.py',
     'src/infinit/oracles/meta/utils.py',
@@ -72,11 +72,12 @@ def configure(papier_python = None,
   python_nodes = [version]
   python_nodes += drake.copy(sources, build_python_path, 'src')
   bottle = drake.nodes('../../bottle/bottle.py')
-  python_nodes += drake.copy(bottle, build_python_path
-                            , '../../bottle')
-  assert papier_python is not None
+  python_nodes += drake.copy(bottle, build_python_path,
+                            '../../bottle')
   python_nodes.append(drake.copy(papier_python, build_python_path,
                                  papier_python.name().dirname()))
+  python_nodes += drake.copy(transaction_python, build_python_path,
+                            '../../src')
   build << python_nodes
   build_binary = drake.copy(drake.node('meta'), 'bin')
   build << build_binary

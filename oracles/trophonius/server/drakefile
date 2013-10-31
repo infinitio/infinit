@@ -29,11 +29,11 @@ def configure(elle,
   local_cxx_config.lib('jsoncpp')
 
   elle_lib = drake.copy(elle.lib_dynamic, 'lib',
-                        elle.lib_dynamic.name().dirname())
+                        strip_prefix = True)
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
-                           reactor.lib_dynamic.name().dirname())
+                           strip_prefix = True)
   meta_client_lib = drake.copy(meta_client.lib, 'lib',
-                               meta_client.lib.name().dirname())
+                               strip_prefix = True)
 
   sources = drake.nodes(
     'src/infinit/oracles/trophonius/server/Client.cc',

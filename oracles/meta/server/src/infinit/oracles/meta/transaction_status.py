@@ -2,25 +2,10 @@ import os.path
 import sys
 import re
 
-_macro_matcher = re.compile(r'(.*\()(\S+)(,.*\))')
+from infinit.oracles.transaction import statuses
 
-def replacer(match):
-    field = match.group(2)
-    return match.group(1) + "'" + field + "'" + match.group(3)
-
-_status_to_string = dict();
-
-def TRANSACTION_STATUS(name, value):
-    globals()[name.upper()] = value
-    _status_to_string[value] = str(name)
-
-filepath = os.path.abspath(
-  os.path.join(os.path.dirname(__file__), 'transaction_status.hh.inc')
-)
-
-configfile = open(filepath, 'r')
-for line in configfile:
-    eval(_macro_matcher.sub(replacer, line))
+for name, value in statuses.items():
+  globals()[name.upper()] = value
 
 final = [REJECTED, FAILED, FINISHED, CANCELED]
 

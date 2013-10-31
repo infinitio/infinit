@@ -1,6 +1,10 @@
 # include <infinit/oracles/Transaction.hh>
 # include <iostream>
 
+<%!
+from infinit.oracles.transaction import statuses
+%>
+
 namespace infinit
 {
   namespace oracles
@@ -44,12 +48,11 @@ namespace infinit
     {
       switch (t)
       {
-# define TRANSACTION_STATUS(name, value)                                       \
-        case Transaction::Status::name:                                        \
-          out << #name;                                                        \
-          break;
-# include <infinit/oracles/transaction_status.hh.inc>
-# undef TRANSACTION_STATUS
+        %for name, value in statuses.items():
+          case Transaction::Status::${name}:
+            out << "${name}";
+            break;
+        %endfor
       }
 
       return out;

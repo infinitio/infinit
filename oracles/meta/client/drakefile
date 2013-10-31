@@ -45,11 +45,11 @@ def configure(elle,
   )
 
   elle_lib = drake.copy(elle.lib_dynamic, 'lib',
-                        elle.lib_dynamic.name().dirname())
+                        strip_prefix = True)
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
-                           reactor.lib_dynamic.name().dirname())
+                           strip_prefix = True)
   transaction_lib = drake.copy(transaction_lib, 'lib',
-                               transaction_lib.name().dirname())
+                               strip_prefix = True)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('../lib')

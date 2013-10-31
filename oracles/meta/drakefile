@@ -12,6 +12,7 @@ install = None
 def configure(elle,
               reactor,
               papier_python,
+              transaction_python,
               transaction_lib,
               boost = None,
               python3 = None,
@@ -33,6 +34,7 @@ def configure(elle,
                          cxx_config = cxx_config)
 
   server = drake.include('server',
+                         transaction_python = transaction_python,
                          papier_python = papier_python,
                          prefix = prefix,
                          python_version = 3)
