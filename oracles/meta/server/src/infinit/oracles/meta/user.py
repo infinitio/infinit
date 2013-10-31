@@ -6,7 +6,6 @@ import uuid
 
 from .utils import api, require_logged_in, require_admin, hash_pasword
 from . import error, notifier, regexp, invitation, conf
-import papier
 
 import os
 import time
@@ -213,6 +212,7 @@ class Mixin:
     else:
       id = self.database.users.save({})
 
+    import papier
     identity, public_key = papier.generate_identity(
       str(id),
       email,

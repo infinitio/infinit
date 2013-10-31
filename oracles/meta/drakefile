@@ -12,7 +12,7 @@ install = None
 def configure(elle,
               reactor,
               papier_python,
-              transaction_python,
+              python_common,
               transaction_lib,
               boost = None,
               python3 = None,
@@ -23,21 +23,22 @@ def configure(elle,
   global client, server
   global build, check, install
 
+  server = drake.include('server',
+                         python_common = python_common,
+                         papier_python = papier_python,
+                         prefix = prefix,
+                         python_version = 3)
+
   client = drake.include('client',
                          elle = elle,
                          reactor = reactor,
                          python3 = python3,
                          transaction_lib = transaction_lib,
+                         server_python = server.python,
                          boost = boost,
                          prefix = prefix,
                          cxx_toolkit = cxx_toolkit,
                          cxx_config = cxx_config)
-
-  server = drake.include('server',
-                         transaction_python = transaction_python,
-                         papier_python = papier_python,
-                         prefix = prefix,
-                         python_version = 3)
 
   for name in ('build', 'check', 'install'):
     globals()[name] = drake.Rule(name)

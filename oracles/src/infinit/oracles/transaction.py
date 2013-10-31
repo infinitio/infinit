@@ -1,7 +1,3 @@
-import os.path
-import sys
-import re
-
 statuses = {
   'accepted': 2,
   'canceled': 6,

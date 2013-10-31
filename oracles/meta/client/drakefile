@@ -11,6 +11,7 @@ lib = None
 def configure(elle,
               reactor,
               transaction_lib,
+              server_python,
               boost = None,
               python3 = None,
               prefix = drake.Path('/usr/local'),
@@ -32,17 +33,22 @@ def configure(elle,
   build = drake.Rule('build')
   install = drake.Rule('install')
 
+  template_context = drake.templating.Context(
+    sources = server_python,
+    pythonpath = ('../server/lib/python',))
+
   ## ------- ##
   ## Library ##
   ## ------- ##
 
-  sources = drake.nodes(
-    'src/infinit/oracles/meta/Client.cc',
-    'src/infinit/oracles/meta/Client.hh',
-    'src/infinit/oracles/meta/Client.hxx',
-    'src/infinit/oracles/meta/Admin.cc',
-    'src/infinit/oracles/meta/Admin.hh',
-  )
+  with template_context:
+    sources = drake.nodes(
+      'src/infinit/oracles/meta/Client.cc.tmpl',
+      'src/infinit/oracles/meta/Client.hh.tmpl',
+      'src/infinit/oracles/meta/Client.hxx',
+      'src/infinit/oracles/meta/Admin.cc',
+      'src/infinit/oracles/meta/Admin.hh',
+    )
 
   elle_lib = drake.copy(elle.lib_dynamic, 'lib',
                         strip_prefix = True)
@@ -67,9 +73,10 @@ def configure(elle,
   ## ------ ##
 
   if python3 is not None:
-    python_sources = drake.nodes(
-      'src/infinit/oracles/meta/python.cc',
-    )
+    with template_context:
+      python_sources = drake.nodes(
+        'src/infinit/oracles/meta/python.cc.tmpl',
+      )
 
     meta_python_cxx_config = drake.cxx.Config(local_cxx_config)
     meta_python_cxx_config += python3

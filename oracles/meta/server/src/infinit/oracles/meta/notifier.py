@@ -8,20 +8,11 @@ import os
 import sys
 import time
 
-_macro_matcher = re.compile(r'(.*\()(\S+)(,.*\))')
 
-def replacer(match):
-  field = match.group(2)
-  return match.group(1) + "'" + field + "'" + match.group(3)
+from infinit.oracles.notification import notifications
 
-def NOTIFICATION_TYPE(name, value):
+for name, value in notifications.items():
   globals()[name.upper()] = value
-
-filepath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'notification_type.hh.inc'))
-
-configfile = open(filepath, 'r')
-for line in configfile:
-  eval(_macro_matcher.sub(replacer, line))
 
 class Notifier:
   def __init__(self, database):

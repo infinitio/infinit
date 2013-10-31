@@ -631,12 +631,12 @@ namespace infinit
       {
         switch (e)
         {
-#define ERR_CODE(name, value, comment)                                          \
-          case Error::name:                                                     \
-            out << #name << "(" << #comment << ")";                             \
-            break;
-#include <oracle/disciples/meta/src/meta/error_code.hh.inc>
-#undef ERROR_CODE
+          <%! from infinit.oracles.meta.error import errors %>
+          %for name, (code, comment) in errors.items():
+            case Error::${name}:
+              out << "${name} (${comment})";
+              break;
+          %endfor
         }
 
         return out;

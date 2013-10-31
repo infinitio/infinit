@@ -10,6 +10,7 @@ lib = None
 
 def configure(elle,
               reactor,
+              python_common,
               transaction_lib,
               boost = None,
               python3 = None,
@@ -30,15 +31,20 @@ def configure(elle,
   build = drake.Rule('build')
   install = drake.Rule('install')
 
+  template_context = drake.templating.Context(
+    sources = python_common,
+    pythonpath = ('../../lib/python',))
+
   ## ------- ##
   ## Library ##
   ## ------- ##
 
-  sources = drake.nodes(
-    'src/infinit/oracles/trophonius/Client.cc',
-    'src/infinit/oracles/trophonius/Client.hh',
-    'src/infinit/oracles/trophonius/fwd.hh',
-  )
+  with template_context:
+    sources = drake.nodes(
+      'src/infinit/oracles/trophonius/Client.cc.tmpl',
+      'src/infinit/oracles/trophonius/Client.hh.tmpl',
+      'src/infinit/oracles/trophonius/fwd.hh',
+    )
 
   elle_lib = drake.copy(elle.lib_dynamic, 'lib',
                         elle.lib_dynamic.name().dirname())

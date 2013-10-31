@@ -19,10 +19,10 @@ namespace infinit
     {
       enum class NotificationType: int
       {
-# define NOTIFICATION_TYPE(name, value)                                         \
-        name = value,
-# include <infinit/oracles/notification_type.hh.inc>
-# undef NOTIFICATION_TYPE
+        <%! from infinit.oracles.notification import notifications %>
+        %for name, value in notifications.items():
+          ${name} = ${value},
+        %endfor
       };
 
       /// Base class for all notifications.

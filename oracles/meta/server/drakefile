@@ -4,16 +4,18 @@ import sys
 build = None
 check = None
 install = None
+python = None
 
 with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
 
-def configure(transaction_python,
+def configure(python_common,
               papier_python,
               prefix = drake.Path('/usr/local'),
               python_version = None):
 
   global build, check, install
+  global python
 
   if python_version is None:
     python_version = drake.Version(*sys.version_info[0:2])
@@ -45,7 +47,6 @@ def configure(transaction_python,
     'src/infinit/oracles/meta/plugins/session.py',
     'src/infinit/oracles/meta/conf.py',
     'src/infinit/oracles/meta/device.py',
-    'src/infinit/oracles/meta/error_code.hh.inc',
     'src/infinit/oracles/meta/error.py',
     'src/infinit/oracles/meta/invitation.py',
     'src/infinit/oracles/meta/mail.py',
@@ -68,16 +69,16 @@ def configure(transaction_python,
 
   build = drake.Rule('build')
   build_python_path = drake.Path('lib/python')
-  python_nodes = [version]
-  python_nodes += drake.copy(sources, build_python_path, 'src')
+  python = [version]
+  python += drake.copy(sources, build_python_path, 'src')
   bottle = drake.nodes('../../bottle/bottle.py')
-  python_nodes += drake.copy(bottle, build_python_path,
+  python += drake.copy(bottle, build_python_path,
                             '../../bottle')
-  python_nodes.append(drake.copy(papier_python, build_python_path,
-                                 papier_python.name().dirname()))
-  python_nodes += drake.copy(transaction_python, build_python_path,
-                            '../../src')
-  build << python_nodes
+  python += drake.copy(python_common, '.', '../..')
+  build << python
+  papier_python = drake.copy(papier_python, build_python_path,
+                             papier_python.name().dirname())
+  build << papier_python
   build_binary = drake.copy(drake.node('meta'), 'bin')
   build << build_binary
 
@@ -88,7 +89,7 @@ def configure(transaction_python,
   install_python_path = \
     prefix / ('lib/python%s/site-packages' % python_version)
   install = drake.Rule('install')
-  install << drake.copy(python_nodes,
+  install << drake.copy(python + [papier_python],
                         install_python_path, build_python_path)
   install << drake.copy(build_binary, prefix)
 
@@ -127,7 +128,7 @@ def configure(transaction_python,
     ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
-    for source in python_nodes:
+    for source in python:
       test.dependency_add(source)
 
     import os

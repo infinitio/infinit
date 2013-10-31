@@ -31,10 +31,10 @@ namespace infinit
 
       enum class Error: int
       {
-# define ERR_CODE(name, value, comment)                                         \
-        name = value,
-#  include <infinit/oracles/error_code.hh.inc>
-# undef ERR_CODE
+        <%! from infinit.oracles.meta.error import errors %>
+        %for name, (code, comment) in errors.items():
+          ${name} = ${code},
+        %endfor
       };
 
       /// Base class for every response
@@ -373,6 +373,6 @@ namespace infinit
   }
 }
 
-#include "Client.hxx"
+#include <infinit/oracles/meta/Client.hxx>
 
 #endif

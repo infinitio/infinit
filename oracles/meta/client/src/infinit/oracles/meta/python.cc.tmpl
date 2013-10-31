@@ -180,10 +180,10 @@ void export_meta_client()
   typedef py::return_value_policy<py::return_by_value> by_value;
 
   py::enum_<Error>("Error")
-# define ERR_CODE(_name, _value, comment)                                      \
-      .value(#_name, Error::_name)
-# include <infinit/oracles/meta/error_code.hh.inc>
-# undef ERR_CODE
+    <%! from infinit.oracles.meta.error import errors %>
+    %for name, (code, comment) in errors.items():
+      .value("${name}", Error::${name})
+    %endfor
   ;
   export_container<std::vector<std::string>>("vector_string");
   export_container<std::list<std::string>>("list_string");
@@ -209,7 +209,6 @@ void export_meta_client()
   ;
   py::class_<DebugResponse, py::bases<Response>>("DebugResponse");
   py::class_<LoginResponse, py::bases<Response>>("LoginResponse")
-    .def_readonly("token", &LoginResponse::token)
     .def_readonly("fullname", &LoginResponse::fullname)
     .def_readonly("handle", &LoginResponse::handle)
     .def_readonly("email", &LoginResponse::email)

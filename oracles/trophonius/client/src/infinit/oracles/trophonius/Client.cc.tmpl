@@ -673,12 +673,12 @@ namespace infinit
       {
         switch (t)
         {
-#define NOTIFICATION_TYPE(name, value)                                          \
-          case NotificationType::name:                                          \
-            out << #name;                                                       \
+        <%! from infinit.oracles.notification import notifications %>
+        %for name, value in notifications.items():
+          case NotificationType::${name}:
+            out << "${name}";
             break;
-#include <infinit/oracles/notification_type.hh.inc>
-#undef NOTIFICATION_TYPE
+        %endfor
         }
 
         return out;
