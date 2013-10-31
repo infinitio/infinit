@@ -68,7 +68,6 @@ namespace infinit
 
       struct LoginResponse : Response
       {
-        std::string token;
         std::string fullname;
         std::string handle;
         std::string email;
@@ -204,9 +203,9 @@ namespace infinit
 
       private:
         ELLE_ATTRIBUTE_R(std::string, root_url);
-        ELLE_ATTRIBUTE_R(reactor::http::Client, client);
-        ELLE_ATTRIBUTE_R(reactor::http::Request::Configuration,
-                         default_configuration);
+        ELLE_ATTRIBUTE_P(reactor::http::Client, client, mutable);
+        ELLE_ATTRIBUTE(reactor::http::Request::Configuration,
+                       default_configuration);
         ELLE_ATTRIBUTE_RW(std::string, email);
         ELLE_ATTRIBUTE_R(std::string, user_agent);
         ELLE_ATTRIBUTE_R(std::string, session_id);

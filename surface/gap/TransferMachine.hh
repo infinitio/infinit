@@ -4,8 +4,7 @@
 # include <surface/gap/enums.hh>
 # include <surface/gap/Notification.hh>
 
-//# include <plasma/fwd.hh>
-# include <plasma/plasma.hh>
+# include <infinit/oracles/Transaction.hh>
 
 # include <metrics/fwd.hh>
 # include <papier/fwd.hh>
@@ -39,7 +38,7 @@ namespace surface
       public elle::Printable
     {
     public:
-      typedef plasma::Transaction Data;
+      typedef infinit::oracles::Transaction Data;
 
       // The values of the enums are used in the snapshot.
       // To add a state, add it a the end to avoid the invalidation of the locally
@@ -115,7 +114,7 @@ namespace surface
       /// Use to notify that the transaction has been updated on the remote.
       virtual
       void
-      transaction_status_update(plasma::TransactionStatus status) = 0;
+      transaction_status_update(infinit::oracles::Transaction::Status status) = 0;
 
       /// Use to notify that the peer status changed to connected or
       /// disconnected.
@@ -188,7 +187,7 @@ namespace surface
       _cancel();
 
       void
-      _finalize(plasma::TransactionStatus);
+      _finalize(infinit::oracles::Transaction::Status);
 
     private:
       void

@@ -12,8 +12,9 @@
 
 # include <common/common.hh>
 
-# include <plasma/meta/Client.hh>
-# include <plasma/trophonius/Client.hh>
+# include <infinit/oracles/Transaction.hh>
+# include <infinit/oracles/meta/Client.hh>
+# include <infinit/oracles/trophonius/Client.hh>
 
 # include <papier/Passport.hh>
 # include <papier/Identity.hh>
@@ -60,10 +61,10 @@ namespace surface
       /*--------.
       | Servers |
       `--------*/
-      ELLE_ATTRIBUTE(plasma::meta::Client, meta);
-      ELLE_ATTRIBUTE_R(plasma::trophonius::Client, trophonius);
+      ELLE_ATTRIBUTE(infinit::oracles::meta::Client, meta);
+      ELLE_ATTRIBUTE_R(infinit::oracles::trophonius::Client, trophonius);
 
-      plasma::meta::Client const&
+      infinit::oracles::meta::Client const&
       meta(bool authentication_required = true) const;
 
       /*----------.
@@ -140,7 +141,7 @@ namespace surface
       bool
       logged_in() const
       {
-        return !this->_meta.token().empty();
+        return this->_meta.logged_in();
       }
 
       //- Login & register -----------------------------------------------------
@@ -241,7 +242,7 @@ namespace surface
 
       void
       handle_notification(
-        std::unique_ptr<plasma::trophonius::Notification>&& notification);
+        std::unique_ptr<infinit::oracles::trophonius::Notification>&& notification);
 
       // For lisibility purpose, papiers, user, network and transaction methods
       // are located in specific files in _detail.
@@ -324,7 +325,7 @@ namespace surface
       };
 
     public:
-      typedef plasma::meta::User User;
+      typedef infinit::oracles::meta::User User;
       typedef std::pair<const uint32_t, User> UserPair;
       typedef std::unordered_map<uint32_t, User> UserMap;
       typedef std::unordered_set<User> Users;
@@ -369,9 +370,6 @@ namespace surface
       device_status(std::string const& user_id,
                     std::string const& device_id) const;
 
-      elle::Buffer
-      icon(uint32_t id);
-
       std::string
       invite(std::string const& email);
 
@@ -389,10 +387,10 @@ namespace surface
       swaggers_dirty();
 
       void
-      _on_new_swagger(plasma::trophonius::NewSwaggerNotification const& notif);
+      _on_new_swagger(infinit::oracles::trophonius::NewSwaggerNotification const& notif);
 
       void
-      _on_swagger_status_update(plasma::trophonius::UserStatusNotification const& notif);
+      _on_swagger_status_update(infinit::oracles::trophonius::UserStatusNotification const& notif);
 
       /*---------.
       | Networks |
@@ -453,7 +451,7 @@ namespace surface
 
     //   void
     //   on_network_update_notification(
-    //     plasma::trophonius::NetworkUpdateNotification const& notif);
+    //     infinit::oracles::trophonius::NetworkUpdateNotification const& notif);
 
       // /*-------------.
       // | Transactions |
@@ -492,11 +490,11 @@ namespace surface
       _transactions_clear();
 
       void
-      _on_transaction_update(plasma::Transaction const& notif);
+      _on_transaction_update(infinit::oracles::Transaction const& notif);
 
       void
       _on_peer_connection_update(
-        plasma::trophonius::PeerConnectionUpdateNotification const& notif);
+        infinit::oracles::trophonius::PeerConnectionUpdateNotification const& notif);
 
       /*----------.
       | Printable |

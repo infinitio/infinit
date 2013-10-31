@@ -46,7 +46,7 @@ extern "C"
     gap_peer_to_peer_error = -11,
 # define ERR_CODE(name, value, comment)                                         \
     gap_ ## name = value,
-# include <oracle/disciples/meta/src/meta/error_code.hh.inc>
+# include <infinit/oracles/error_code.hh.inc>
 # undef ERR_CODE
   } gap_Status;
 

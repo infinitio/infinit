@@ -24,7 +24,7 @@ namespace surface
 {
   namespace gap
   {
-    using TransactionStatus = plasma::TransactionStatus;
+    using TransactionStatus = infinit::oracles::Transaction::Status;
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::shared_ptr<TransferMachine::Data> data,
@@ -107,27 +107,27 @@ namespace surface
 
       switch (this->data()->status)
       {
-        case plasma::TransactionStatus::initialized:
+        case TransactionStatus::initialized:
           this->_run(this->_wait_for_accept_state);
           break;
-        case plasma::TransactionStatus::accepted:
+        case TransactionStatus::accepted:
           this->_run(this->_transfer_core_state);
           break;
-        case plasma::TransactionStatus::finished:
+        case TransactionStatus::finished:
           this->_run(this->_finish_state);
           break;
-        case plasma::TransactionStatus::canceled:
+        case TransactionStatus::canceled:
           this->_run(this->_cancel_state);
           break;
-        case plasma::TransactionStatus::failed:
+        case TransactionStatus::failed:
           this->_run(this->_fail_state);
           break;
-        case plasma::TransactionStatus::rejected:
-        case plasma::TransactionStatus::created:
+        case TransactionStatus::rejected:
+        case TransactionStatus::created:
           break;
-        case plasma::TransactionStatus::started:
-        case plasma::TransactionStatus::none:
-        case plasma::TransactionStatus::_count:
+        case TransactionStatus::started:
+        case TransactionStatus::none:
+        case TransactionStatus::_count:
           elle::unreachable();
       }
     }
@@ -235,7 +235,7 @@ namespace surface
     }
 
     void
-    SendMachine::transaction_status_update(plasma::TransactionStatus status)
+    SendMachine::transaction_status_update(TransactionStatus status)
     {
       ELLE_TRACE_SCOPE("%s: update with new transaction status %s",
                        *this, status);
@@ -244,33 +244,33 @@ namespace surface
 
       switch (status)
       {
-        case plasma::TransactionStatus::accepted:
+        case TransactionStatus::accepted:
           ELLE_DEBUG("%s: open accepted barrier", *this)
             this->_accepted.open();
           break;
-        case plasma::TransactionStatus::canceled:
+        case TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this)
             this->_canceled.open();
           break;
-        case plasma::TransactionStatus::failed:
+        case TransactionStatus::failed:
           ELLE_DEBUG("%s: open failed barrier", *this)
             this->_failed.open();
           break;
-        case plasma::TransactionStatus::finished:
+        case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)
             this->_finished.open();
           break;
-        case plasma::TransactionStatus::rejected:
+        case TransactionStatus::rejected:
           ELLE_DEBUG("%s: open rejected barrier", *this)
             this->_rejected.open();
           break;
-        case plasma::TransactionStatus::initialized:
+        case TransactionStatus::initialized:
           ELLE_DEBUG("%s: ignore status %s", *this, status);
           break;
-        case plasma::TransactionStatus::created:
-        case plasma::TransactionStatus::none:
-        case plasma::TransactionStatus::started:
-        case plasma::TransactionStatus::_count:
+        case TransactionStatus::created:
+        case TransactionStatus::none:
+        case TransactionStatus::started:
+        case TransactionStatus::_count:
           elle::unreachable();
       }
     }
@@ -358,7 +358,7 @@ namespace surface
         });
 
       this->state().meta().update_transaction(this->transaction_id(),
-                                              plasma::TransactionStatus::initialized);
+                                              TransactionStatus::initialized);
     }
 
     void

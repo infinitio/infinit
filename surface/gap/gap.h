@@ -113,10 +113,6 @@ extern "C" {
   /// Logout from meta.
   gap_Status gap_logout(gap_State* state);
 
-  /// Get the current token, if any.
-  gap_Status
-  gap_token(gap_State* state, char** token);
-
   gap_Status
   gap_generation_key(gap_State* state, char** token);
 
@@ -268,11 +264,6 @@ extern "C" {
                                  char const* name);
 
   /// - Self ------------------------------------------------------------------
-
-  /// Get current user token.
-  char const*
-  gap_user_token(gap_State* state);
-
   /// Get current user email.
   char const*
   gap_self_email(gap_State* state);
@@ -303,19 +294,6 @@ extern "C" {
   char const*
   gap_user_realid(gap_State* state,
                   uint32_t id);
-
-  /// @brief Retrieve user icon from a user_id
-  /// @note data with be freed with gap_user_icon_free when the call is
-  /// successfull.
-  gap_Status
-  gap_user_icon(gap_State* state,
-                uint32_t user_id,
-                void** data,
-                size_t* size);
-
-  /// Free a previously allocated user icon.
-  void
-  gap_user_icon_free(void* data);
 
   /// Return the uri to the avatar.
   char const*

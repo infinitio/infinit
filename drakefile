@@ -416,48 +416,6 @@ def configure(cxx_toolkit = None,
     metrics_cxx_config
   )
 
-  ## ------ ##
-  ## Plasma ##
-  ## ------ ##
-  plasma_sources = drake.nodes(
-    'plasma/meta/Client.cc',
-    'plasma/meta/Client.hh',
-    'plasma/meta/Client.hxx',
-    'plasma/trophonius/Client.cc',
-    'plasma/trophonius/Client.hh',
-    'plasma/plasma.hh',
-    'plasma/plasma.hxx',
-    'plasma/plasma.cc',
-    )
-
-  plasma_cxx_config = drake.cxx.Config(cxx_config_libs)
-  plasma_lib = Library(
-    'lib/plasma',
-    plasma_sources + curly_libs + [reactor_lib, elle_lib],
-    cxx_toolkit,
-    plasma_cxx_config
-  )
-
-  rule_plasma = drake.Rule('plasma')
-  rule_plasma << plasma_lib
-
-  if python_enabled:
-    plasma_python_cxx_config = drake.cxx.Config(cxx_config)
-    plasma_python_sources = plasma_sources + [
-      drake.node('plasma/python.cc'),
-      drake.node('plasma/trophonius/python.cc'),
-      drake.node('plasma/meta/python.cc'),
-    ]
-    plasma_python_cxx_config += python3
-    plasma_python_cxx_config += boost.config_python()
-    plasma_python_cxx_config.lib_path_runtime('..')
-    plasma_python_lib = drake.cxx.Module(
-      'lib/python/plasma',
-      plasma_python_sources + [plasma_lib],
-      cxx_toolkit,
-      plasma_python_cxx_config)
-    rule_plasma << plasma_python_lib
-
   # Papier
   papier_sources = drake.nodes(
     'papier/Authority.cc',
@@ -927,8 +885,6 @@ def configure(cxx_toolkit = None,
   ## ----- ##
 
   build = drake.Rule('build')
-  if python_enabled:
-    build << plasma_python_lib
 
   ## -------- ##
   ## Programs ##
@@ -943,7 +899,6 @@ def configure(cxx_toolkit = None,
     infinit_lib,
     lune_lib,
     nucleus_lib,
-    plasma_lib,
     cryptography_lib,
     protocol_lib,
     reactor_lib,
@@ -992,16 +947,26 @@ def configure(cxx_toolkit = None,
                                   cxx_toolkit, hole_cxx_config)
   # build << hole_bin
 
-  # Trophonius
+  ## ------- ##
+  ## Oracles ##
+  ## ------- ##
 
-  tropho_sources = drake.nodes(
-    'plasma/trophonius/Client.cc',
-    'plasma/trophonius/Client.hh',
-    )
-  tropho_lib = drake.cxx.DynLib(
-    'lib/trophonius',
-    tropho_sources,
-    cxx_toolkit, cxx_config)
+  oracles = drake.include('oracles',
+                          elle = elle.elle,
+                          reactor = elle.reactor,
+                          papier_python = papier_python_lib,
+                          boost = boost,
+                          python3 = python_enabled and python3 or None,
+                          prefix = prefix,
+                          cxx_toolkit = cxx_toolkit,
+                          cxx_config = cxx_config,)
+
+  trophonius_client_lib = drake.copy(oracles.trophonius.client.lib, 'lib',
+                                     oracles.trophonius.client.lib.name().dirname())
+  meta_client_lib = drake.copy(oracles.meta.client.lib, 'lib',
+                                     oracles.meta.client.lib.name().dirname())
+
+  # oracles_enabled = cxx_toolkit.os != drake.os.windows
 
   ## GAP:
   gap_sources = drake.nodes(
@@ -1064,8 +1029,12 @@ def configure(cxx_toolkit = None,
     python_exe = cxx_toolkit.os is drake.os.windows and 'python' or 'python3',
   ).generated
 
-  gap_cxx_config_libs = drake.cxx.Config(cxx_config_libs)
-  gap_cxx_config_libs.lib_path_runtime('../../lib/_gap')
+  gap_cxx_config = drake.cxx.Config(cxx_config_libs)
+  gap_cxx_config.add_local_include_path('oracles/src')
+  gap_cxx_config.add_local_include_path('oracles/meta/client/src')
+  gap_cxx_config.add_local_include_path('oracles/trophonius/client/src')
+
+  gap_cxx_config_libs = drake.cxx.Config(gap_cxx_config)
   gap_cxx_config_libs += boost.config_filesystem(
     static = (cxx_toolkit.os is drake.os.macos and True or None))
   gap_cxx_config_libs += boost.config_system()
@@ -1078,7 +1047,6 @@ def configure(cxx_toolkit = None,
     'lib/gap',
     gap_sources + [
       elle_lib,
-      plasma_lib,
       reactor_lib,
       lune_lib,
       papier_lib,
@@ -1088,14 +1056,16 @@ def configure(cxx_toolkit = None,
       crash_lib,
       hole_lib,
       curly_lib,
-      elle.curly.library_sched,
-      elle.curly.library_asio,
-      elle.curly.library_curl,
-      elle.reactor.library_coroutine,
+#      elle.curly.library_sched,
+#      elle.curly.library_asio,
+#      elle.curly.library_curl,
+#      elle.reactor.library_coroutine,
       nucleus_lib,
       protocol_lib,
-      cryptography_lib,
-      elle.elle.library_zlib,
+#      cryptography_lib,
+#      elle.elle.library_zlib,
+      trophonius_client_lib,
+      meta_client_lib,
     ] + elle.cryptography.openssl_libs,
     cxx_toolkit,
     gap_cxx_config_libs
@@ -1105,19 +1075,18 @@ def configure(cxx_toolkit = None,
 
   # GAP python
   if python_enabled:
-    gap_python_cxx_config = cxx_config + python3
+    gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
+    gap_python_cxx_config += python3
     gap_python_cxx_config += boost.config_python()
     gap_python_cxx_config.lib_path_runtime('..')
     gap_python_sources = drake.nodes(
       'surface/gap/python/pygap.cc',
-      )
+    )
+
     gap_python_lib = drake.cxx.Module(
       'lib/python/_gap',
       gap_python_sources + [
         gap_lib,
-        tropho_lib,
-        plasma_lib,
-        protocol_lib
       ] + infinit_libs,
       cxx_toolkit,
       gap_python_cxx_config
@@ -1214,22 +1183,6 @@ def configure(cxx_toolkit = None,
   recvfrom_copy = drake.copy(recvfrom_sources, 'bin', 'satellites/recvfrom')
   build << recvfrom_copy
 
-  ## ------- ##
-  ## Oracles ##
-  ## ------- ##
-
-  oracles = drake.include('oracles',
-                          elle = elle.elle,
-                          reactor = elle.reactor,
-                          papier_python = papier_python_lib,
-                          boost = boost,
-                          python3 = python_enabled and python3 or None,
-                          prefix = prefix,
-                          cxx_toolkit = cxx_toolkit,
-                          cxx_config = cxx_config,)
-
-  # oracles_enabled = cxx_toolkit.os != drake.os.windows
-
   # Install
   install = drake.Rule('install')
   install << drake.copy(infinit_bin, prefix)
@@ -1253,13 +1206,13 @@ def configure(cxx_toolkit = None,
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
     #('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
-    (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
-    (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
+    # (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
+    # (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
     (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib, curly_lib]),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib, frete_lib, station_lib, crash_lib]),
-    ('tests/unit/surface/gap/gap_metrics.cc', infinit_libs + [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, frete_lib, station_lib, metrics_lib, crash_lib]),
+#    ('tests/unit/surface/gap/gap_metrics.cc', infinit_libs + [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, frete_lib, station_lib, metrics_lib, crash_lib]),
     ('tests/unit/surface/gap/gap_state_destruction.cc', [gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib]),
-    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), infinit_libs + [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib, crash_lib]),
+#    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), infinit_libs + [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib, crash_lib]),
     #('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     #('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + infinit_libs),
     ('tests/unit/hole/slug.cc', infinit_libs),

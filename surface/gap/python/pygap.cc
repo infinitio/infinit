@@ -20,36 +20,6 @@ _gap_user_directory(gap_State* state)
   return ret;
 }
 
-static boost::python::str
-_gap_token(gap_State* state)
-{
-  assert(state != nullptr);
-  boost::python::str o;
-  char *tok;
-  if (gap_token(state, &tok) == gap_error)
-  {
-    return boost::python::str();
-  }
-  boost::python::str ret{std::string{tok}};
-  free(tok);
-  return ret;
-}
-
-static boost::python::str
-_gap_generation_key(gap_State* state)
-{
-  assert(state != nullptr);
-  boost::python::str o;
-  char *tok = nullptr;
-  if (gap_generation_key(state, &tok) == gap_error)
-  {
-    return boost::python::str();
-  }
-  boost::python::str ret{std::string{tok}};
-  free(tok);
-  return ret;
-}
-
 static boost::python::object
 _get_transactions(gap_State* state)
 {
@@ -354,7 +324,7 @@ namespace
   _gap_message_callback(gap_State* state,
                         boost::python::object cb)
   {
-    using namespace plasma::trophonius;
+    using namespace infinit::oracles::trophonius;
     auto cpp_cb = [cb] (MessageNotification const& notif) {
         wrap_call(cb)(notif.sender_id.c_str(), notif.message.c_str());
     };
@@ -403,7 +373,7 @@ BOOST_PYTHON_MODULE(_gap)
 # define _TS(c) #c
 # define ERR_CODE(name, value_, comment)         \
     .value(_TS(name), gap_ ## name)
-# include <oracle/disciples/meta/src/meta/error_code.hh.inc>
+# include <infinit/oracles/error_code.hh.inc>
 # undef _TS
 # undef ERR_CODE
   ;
@@ -441,8 +411,6 @@ BOOST_PYTHON_MODULE(_gap)
 
   py::def("hash_password", &_hash_password, by_value());
   py::def("login", &gap_login);
-  py::def("token", &_gap_token);
-  py::def("generation_key", &_gap_generation_key);
   py::def("is_logged", &gap_logged_in);
   py::def("logout", &gap_logout);
   py::def("register", &gap_register);

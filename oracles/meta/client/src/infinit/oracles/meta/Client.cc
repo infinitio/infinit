@@ -257,7 +257,7 @@ namespace infinit
           std::map<std::string, std::string>{
             {"email", email},
             {"password", password},
-            {"device_uid", struuid},
+            {"device_id", struuid},
          }};
 
         auto res = this->_request<LoginResponse>(

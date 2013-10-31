@@ -8,8 +8,7 @@
 # include <surface/gap/TransferMachine.hh>
 
 
-# include <plasma/fwd.hh>
-# include <plasma/plasma.hh>
+# include <infinit/oracles/trophonius/Client.hh>
 
 # include <unordered_set>
 
@@ -56,7 +55,7 @@ namespace surface
       };
 
     public:
-      typedef plasma::Transaction Data;
+      typedef infinit::oracles::Transaction Data;
 
     public:
       Transaction(State const& state,
@@ -107,7 +106,7 @@ namespace surface
 
       void
       on_peer_connection_update(
-        plasma::trophonius::PeerConnectionUpdateNotification const& update);
+        infinit::oracles::trophonius::PeerConnectionUpdateNotification const& update);
 
       /*------------.
       | Atttributes |

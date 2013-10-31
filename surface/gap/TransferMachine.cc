@@ -402,7 +402,7 @@ namespace surface
         });
       }
       this->current_state(State::Finished);
-      this->_finalize(plasma::TransactionStatus::finished);
+      this->_finalize(infinit::oracles::Transaction::Status::finished);
       ELLE_DEBUG("%s: finished", *this);
     }
 
@@ -411,7 +411,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: machine rejected", *this);
       this->current_state(State::Rejected);
-      this->_finalize(plasma::TransactionStatus::rejected);
+      this->_finalize(infinit::oracles::Transaction::Status::rejected);
       ELLE_DEBUG("%s: rejected", *this);
     }
 
@@ -420,7 +420,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: machine canceled", *this);
       this->current_state(State::Canceled);
-      this->_finalize(plasma::TransactionStatus::canceled);
+      this->_finalize(infinit::oracles::Transaction::Status::canceled);
       ELLE_DEBUG("%s: canceled", *this);
     }
 
@@ -450,12 +450,12 @@ namespace surface
         });
 
       this->current_state(State::Failed);
-      this->_finalize(plasma::TransactionStatus::failed);
+      this->_finalize(infinit::oracles::Transaction::Status::failed);
       ELLE_DEBUG("%s: failed", *this);
     }
 
     void
-    TransferMachine::_finalize(plasma::TransactionStatus status)
+    TransferMachine::_finalize(infinit::oracles::Transaction::Status status)
     {
       ELLE_TRACE_SCOPE("%s: finalize machine: %s", *this, status);
 
@@ -487,9 +487,9 @@ namespace surface
                      *this, elle::exception_string());
           throw;
         }
-        catch (plasma::meta::Exception const& e)
+        catch (infinit::oracles::meta::Exception const& e)
         {
-          if (e.err == plasma::meta::Error::transaction_already_finalized)
+          if (e.err == infinit::oracles::meta::Error::transaction_already_finalized)
             ELLE_TRACE("%s: transaction already finalized", *this);
           else
             ELLE_ERR("%s: unable to finalize the transaction %s: %s",

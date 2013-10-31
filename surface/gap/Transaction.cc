@@ -25,13 +25,13 @@ namespace surface
     {
       switch (data.status)
       {
-        case plasma::TransactionStatus::finished:
+        case infinit::oracles::Transaction::Status::finished:
           return gap_transaction_finished;
-        case plasma::TransactionStatus::rejected:
+        case infinit::oracles::Transaction::Status::rejected:
           return gap_transaction_rejected;
-        case plasma::TransactionStatus::failed:
+        case infinit::oracles::Transaction::Status::failed:
           return gap_transaction_failed;
-        case plasma::TransactionStatus::canceled:
+        case infinit::oracles::Transaction::Status::canceled:
           return gap_transaction_canceled;
         default:
           switch (state)
@@ -310,14 +310,14 @@ namespace surface
     }
 
     static
-    std::vector<plasma::TransactionStatus> const&
+    std::vector<infinit::oracles::Transaction::Status> const&
     final_status()
     {
-      static std::vector<plasma::TransactionStatus> final{
-        plasma::TransactionStatus::rejected,
-          plasma::TransactionStatus::finished,
-        plasma::TransactionStatus::canceled,
-        plasma::TransactionStatus::failed};
+      static std::vector<infinit::oracles::Transaction::Status> final{
+        infinit::oracles::Transaction::Status::rejected,
+          infinit::oracles::Transaction::Status::finished,
+        infinit::oracles::Transaction::Status::canceled,
+        infinit::oracles::Transaction::Status::failed};
 
       return final;
     }
@@ -362,7 +362,7 @@ namespace surface
 
     void
     Transaction::on_peer_connection_update(
-      plasma::trophonius::PeerConnectionUpdateNotification const& update)
+      infinit::oracles::trophonius::PeerConnectionUpdateNotification const& update)
     {
       ELLE_TRACE_SCOPE("%s: update peer status with %s", *this, update);
 

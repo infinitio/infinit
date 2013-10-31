@@ -49,7 +49,7 @@ def configure(elle,
   elle_lib = drake.copy(elle.lib_dynamic, 'lib', strip_prefix = True)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
-  lib_cxx_config.lib_path_runtime('../lib')
+  lib_cxx_config.lib_path_runtime('.')
   lib = drake.cxx.DynLib('lib/transaction',
                          sources + [elle_lib],
                          cxx_toolkit,
@@ -80,4 +80,5 @@ def configure(elle,
   for name in ('build', 'check', 'install'):
     for oracle in [meta, trophonius]:
       globals()[name] << getattr(oracle, name)
+  build << lib
   build << python_built

@@ -118,22 +118,5 @@ namespace surface
 
       return *this->_passport;
     }
-
-    papier::Identity const&
-    State::identity() const
-    {
-      //XXX: Not required case meta().identity() doesn't yield.
-      reactor::Lock l{this->_identity_mutex};
-      if (this->_identity == nullptr)
-      {
-        this->_identity.reset(new papier::Identity());
-
-        if (this->_identity->Restore(this->meta().identity())
-            == elle::Status::Error)
-          throw elle::Exception("Couldn't restore the identity.");
-      }
-
-      return *this->_identity;
-    }
   }
 }

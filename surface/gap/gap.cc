@@ -3,6 +3,8 @@
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
 
+#include <infinit/oracles/meta/Client.hh>
+
 #include <common/common.hh>
 
 #include <lune/Lune.hh>
@@ -18,8 +20,6 @@
 #include <CrashReporter.hh>
 
 #include <reactor/scheduler.hh>
-
-#include <plasma/meta/Client.hh>
 
 #include <boost/filesystem.hpp>
 #include <boost/range/join.hpp>
@@ -256,30 +256,6 @@ extern "C"
   }
 
   gap_Status
-  gap_token(gap_State* state,
-            char** usertoken)
-  {
-    auto ret = run<std::string>(
-      state,
-      "token",
-      [&] (surface::gap::State& state) -> std::string
-      {
-        return state.meta().token();
-      });
-
-    if (ret.status() != gap_ok)
-      return ret;
-
-    char* new_token = strdup(ret.value().c_str());
-    if (new_token != nullptr)
-    {
-      *usertoken = new_token;
-    }
-
-    return ret;
-  }
-
-  gap_Status
   gap_generation_key(gap_State* state,
                      char** usertoken)
   {
@@ -351,7 +327,7 @@ extern "C"
       else
         ret = gap_internal_error;
     }
-    catch (plasma::meta::Exception const& err)
+    catch (oracles::meta::Exception const& err)
     {
       ELLE_ERR("poll error: %s", err.what());
       ret = (gap_Status) err.err;
@@ -399,18 +375,6 @@ extern "C"
   }
 
   /// - Self ----------------------------------------------------------------
-  char const*
-  gap_user_token(gap_State* state)
-  {
-    return run<char const*>(state,
-                            "self token",
-                            [&] (surface::gap::State& state) -> char const*
-                            {
-                              auto token = state.meta().token();
-                              return token.c_str();
-                            });
-  }
-
   char const*
   gap_self_email(gap_State* state)
   {
@@ -529,34 +493,6 @@ extern "C"
                               auto const& user = state.user(id);
                               return user.id.c_str();
                             });
-  }
-
-
-  gap_Status
-  gap_user_icon(gap_State* state,
-                uint32_t id,
-                void** data,
-                size_t* size)
-  {
-    assert(id != surface::gap::null_id);
-    *data = nullptr;
-    *size = 0;
-    return run<gap_Status>(state,
-                           "user icon",
-                            [&] (surface::gap::State& state) -> gap_Status
-                            {
-                              auto pair = state.icon(id).release();
-                              *data = pair.first.release();
-                              *size = pair.second;
-                              return gap_ok;
-                            });
-   return gap_ok;
-  }
-
-  void
-  gap_user_icon_free(void* data)
-  {
-    free(data);
   }
 
   char const*

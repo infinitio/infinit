@@ -40,7 +40,7 @@ namespace surface
     public:
       virtual
       void
-      transaction_status_update(plasma::TransactionStatus status) override;
+      transaction_status_update(infinit::oracles::Transaction::Status status) override;
 
     private:
       SendMachine(surface::gap::State const& state,

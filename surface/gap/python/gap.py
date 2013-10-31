@@ -29,8 +29,6 @@ class _State:
             'set_device_name',
 
             'logout',
-            'token',
-            'generation_key',
 
             # Users.
             'search_users',

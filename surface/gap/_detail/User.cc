@@ -241,13 +241,13 @@ namespace surface
           for (auto const& device: res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr = new plasma::trophonius::UserStatusNotification{};
+            auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
             notif_ptr->status = user.status();
             notif_ptr->device_id = device;
             notif_ptr->device_status = true;
 
-            std::unique_ptr<plasma::trophonius::UserStatusNotification>
+            std::unique_ptr<infinit::oracles::trophonius::UserStatusNotification>
               notif(notif_ptr);
 
             this->handle_notification(std::move(notif));
@@ -257,13 +257,13 @@ namespace surface
           for (auto const& device: res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr = new plasma::trophonius::UserStatusNotification{};
+            auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
             notif_ptr->status = user.status();
             notif_ptr->device_id = device;
             notif_ptr->device_status = false;
 
-            std::unique_ptr<plasma::trophonius::UserStatusNotification>
+            std::unique_ptr<infinit::oracles::trophonius::UserStatusNotification>
               notif(notif_ptr);
 
             this->handle_notification(std::move(notif));
@@ -307,14 +307,6 @@ namespace surface
                  user_id, device_id, (status ? "up" : "down"));
 
       return status;
-    }
-
-    elle::Buffer
-    State::icon(uint32_t id)
-    {
-      ELLE_TRACE_METHOD(id);
-
-      return this->meta().user_icon(this->user(id).id);
     }
 
     std::string
@@ -368,7 +360,7 @@ namespace surface
 
     void
     State::_on_new_swagger(
-      plasma::trophonius::NewSwaggerNotification const& notif)
+      infinit::oracles::trophonius::NewSwaggerNotification const& notif)
     {
       ELLE_TRACE_SCOPE("%s: new swagger notification %s", *this, notif);
       uint32_t id = this->_user_indexes.at(this->user_sync(notif.user_id).id);
@@ -381,7 +373,7 @@ namespace surface
 
     void
     State::_on_swagger_status_update(
-      plasma::trophonius::UserStatusNotification const& notif)
+      infinit::oracles::trophonius::UserStatusNotification const& notif)
     {
       ELLE_TRACE_SCOPE("%s: user status notification %s", *this, notif);
 

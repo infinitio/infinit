@@ -264,7 +264,7 @@ run(gap_State* state,
     else
       ret = gap_network_error;
   }
-  catch (plasma::meta::Exception const& err)
+  catch (infinit::oracles::meta::Exception const& err)
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = (gap_Status) err.err;
