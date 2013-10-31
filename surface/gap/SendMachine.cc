@@ -127,7 +127,6 @@ namespace surface
           break;
         case TransactionStatus::started:
         case TransactionStatus::none:
-        case TransactionStatus::_count:
           elle::unreachable();
       }
     }
@@ -270,7 +269,6 @@ namespace surface
         case TransactionStatus::created:
         case TransactionStatus::none:
         case TransactionStatus::started:
-        case TransactionStatus::_count:
           elle::unreachable();
       }
     }

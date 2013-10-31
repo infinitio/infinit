@@ -49,9 +49,8 @@ namespace infinit
         if (&body)
         {
           request << body.repr();
+          request.finalize();
         }
-
-        // request.finalize();
 
         auto status = request.status();
         if (status != reactor::http::StatusCode::OK)
