@@ -12,19 +12,19 @@ typedef enum
   gap_no_file = -6,
   gap_file_not_found = -7,
   gap_api_error = -10,
-# define ERR_CODE(name, value, comment)                                         \
-  gap_ ## name = value,
-# include <oracle/disciples/meta/src/meta/error_code.hh.inc>
-# undef ERR_CODE
+  <%! from infinit.oracles.meta.error import errors %>
+  %for name, (code, comment) in errors.items():
+    gap_${name} = ${code},
+  %endfor
 } gap_Status;
 
   //- Transaction -------------------------------------------------------------
 typedef enum
 {
-# define TRANSACTION_STATUS(name, value)                                        \
-  gap_transaction_status_ ## name = value,
-# include <oracle/disciples/meta/src/meta/resources/transaction_status.hh.inc>
-# undef TRANSACTION_STATUS
+  <%! from infinit.oracles.transaction import statuses %>
+  %for name, value in statuses.items():
+    gap_transaction_status_${name} = ${value},
+  %endfor
 } gap_TransactionStatus;
 
 #endif

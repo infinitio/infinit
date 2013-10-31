@@ -2,6 +2,7 @@ import drake
 import drake.cxx
 import drake.cxx.boost
 import drake.git
+import drake.templating
 
 import os
 import sys
@@ -969,39 +970,44 @@ def configure(cxx_toolkit = None,
   # oracles_enabled = cxx_toolkit.os != drake.os.windows
 
   ## GAP:
-  gap_sources = drake.nodes(
-    'surface/gap/Exception.hh',
-    'surface/gap/Transaction.hh',
-    'surface/gap/Transaction.cc',
-    'surface/gap/Transaction.hxx',
-    'surface/gap/gap.cc',
-    'surface/gap/gap.h',
-    'surface/gap/gap_bridge.hh',
-    'surface/gap/enums.hh',
-    'surface/gap/TransferMachine.cc',
-    'surface/gap/TransferMachine.hh',
-    'surface/gap/TransferMachine.hxx',
-    'surface/gap/SendMachine.cc',
-    'surface/gap/SendMachine.hh',
-    'surface/gap/ReceiveMachine.cc',
-    'surface/gap/ReceiveMachine.hh',
-    'surface/gap/metrics.hh',
-    'surface/gap/State.cc',
-    'surface/gap/State.hh',
-    'surface/gap/status.hh',
-    'surface/gap/Transaction.hh',
-    'surface/gap/Device.hh',
-    'surface/gap/Self.hh',
-    'surface/gap/Rounds.cc',
-    'surface/gap/Rounds.hh',
-    'surface/gap/_detail/Papiers.cc',
-    'surface/gap/_detail/Network.cc',
-    'surface/gap/_detail/Transaction.cc',
-    'surface/gap/_detail/User.cc',
-    # Get rid of common asap.
-    'common/common.hh',
-    'common/common.cc',
+  templating_context = drake.templating.Context(
+    sources = oracles.meta.server.python,
+    pythonpath = ('oracles/meta/server/lib/python',), # XXX
   )
+  with templating_context:
+    gap_sources = drake.nodes(
+      'surface/gap/Exception.hh',
+      'surface/gap/Transaction.hh',
+      'surface/gap/Transaction.cc',
+      'surface/gap/Transaction.hxx',
+      'surface/gap/gap.cc',
+      'surface/gap/gap.h',
+      'surface/gap/gap_bridge.hh',
+      'surface/gap/enums.hh.tmpl',
+      'surface/gap/TransferMachine.cc',
+      'surface/gap/TransferMachine.hh',
+      'surface/gap/TransferMachine.hxx',
+      'surface/gap/SendMachine.cc',
+      'surface/gap/SendMachine.hh',
+      'surface/gap/ReceiveMachine.cc',
+      'surface/gap/ReceiveMachine.hh',
+      'surface/gap/metrics.hh',
+      'surface/gap/State.cc',
+      'surface/gap/State.hh',
+      'surface/gap/status.hh.tmpl',
+      'surface/gap/Transaction.hh',
+      'surface/gap/Device.hh',
+      'surface/gap/Self.hh',
+      'surface/gap/Rounds.cc',
+      'surface/gap/Rounds.hh',
+      'surface/gap/_detail/Papiers.cc',
+      'surface/gap/_detail/Network.cc',
+      'surface/gap/_detail/Transaction.cc',
+      'surface/gap/_detail/User.cc',
+      # Get rid of common asap.
+      'common/common.hh',
+      'common/common.cc',
+    )
 
   # GAP
   gap_generator = drake.node('surface/gap/metrics_generator.py')
@@ -1076,9 +1082,10 @@ def configure(cxx_toolkit = None,
     gap_python_cxx_config += python3
     gap_python_cxx_config += boost.config_python()
     gap_python_cxx_config.lib_path_runtime('..')
-    gap_python_sources = drake.nodes(
-      'surface/gap/python/pygap.cc',
-    )
+    with templating_context:
+      gap_python_sources = drake.nodes(
+        'surface/gap/python/pygap.cc.tmpl',
+      )
 
     gap_python_lib = drake.cxx.Module(
       'lib/python/_gap',

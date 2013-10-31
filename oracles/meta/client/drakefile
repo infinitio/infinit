@@ -27,8 +27,6 @@ def configure(elle,
   local_cxx_config += elle.config
   local_cxx_config += reactor.config
   local_cxx_config.add_local_include_path('src')
-  # XXX: This add the include path to get the shared .hh.inc files.
-  local_cxx_config.add_local_include_path('../server/src')
 
   build = drake.Rule('build')
   install = drake.Rule('install')

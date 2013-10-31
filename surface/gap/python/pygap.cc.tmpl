@@ -370,12 +370,10 @@ BOOST_PYTHON_MODULE(_gap)
     .value("no_file", gap_no_file)
     .value("file_not_found", gap_file_not_found)
     .value("api_error", gap_api_error)
-# define _TS(c) #c
-# define ERR_CODE(name, value_, comment)         \
-    .value(_TS(name), gap_ ## name)
-# include <infinit/oracles/error_code.hh.inc>
-# undef _TS
-# undef ERR_CODE
+    <%! from infinit.oracles.meta.error import errors %>
+    %for name, (code, comment) in errors.items():
+      .value("${name}", gap_${name})
+    %endfor
   ;
 
   py::enum_<gap_TransactionStatus>("TransactionStatus")

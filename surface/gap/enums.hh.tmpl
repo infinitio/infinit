@@ -44,10 +44,10 @@ extern "C"
     gap_file_not_found = -7,
     gap_api_error = -10,
     gap_peer_to_peer_error = -11,
-# define ERR_CODE(name, value, comment)                                         \
-    gap_ ## name = value,
-# include <infinit/oracles/error_code.hh.inc>
-# undef ERR_CODE
+    <%! from infinit.oracles.meta.error import errors %>
+    %for name, (code, comment) in errors.items():
+      gap_${name} = ${code},
+    %endfor
   } gap_Status;
 
 # ifdef __cplusplus
