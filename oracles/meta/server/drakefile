@@ -77,7 +77,7 @@ def configure(python_common,
   python += drake.copy(python_common, '.', '../..')
   build << python
   papier_python = drake.copy(papier_python, build_python_path,
-                             papier_python.name().dirname())
+                             strip_prefix = True)
   build << papier_python
   build_binary = drake.copy(drake.node('meta'), 'bin')
   build << build_binary
@@ -89,8 +89,7 @@ def configure(python_common,
   install_python_path = \
     prefix / ('lib/python%s/site-packages' % python_version)
   install = drake.Rule('install')
-  install << drake.copy(python + [papier_python],
-                        install_python_path, build_python_path)
+  install << drake.copy(python + [papier_python], prefix)
   install << drake.copy(build_binary, prefix)
 
   ## ----- ##
