@@ -135,7 +135,7 @@ namespace surface
       dict["request"] = "add_link";
       ELLE_DEBUG("%s: request to apertus: %s", *this, dict.repr());
 
-      sock.write(elle::ConstWeakBuffer(dict.repr() + "\n")) ;
+      sock.write(elle::ConstWeakBuffer(dict.repr() + "\n"));
 
       std::string data(512, '\0');
       size_t bytes = sock.read_some(reactor::network::Buffer(data));

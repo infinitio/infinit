@@ -548,6 +548,7 @@ def configure(cxx_toolkit = None,
   frete_cxx_config_tests = drake.cxx.Config(frete_cxx_config)
   frete_cxx_config_tests += boost.config_test()
   frete_cxx_config_tests += boost.config_system()
+  frete_cxx_config_tests += boost.config_filesystem()
   frete_cxx_config_tests.lib_path_runtime('../../lib')
   for name in ['frete']:
     test = drake.cxx.Executable(
@@ -1187,6 +1188,16 @@ def configure(cxx_toolkit = None,
   recvfrom_copy = drake.copy(recvfrom_sources, 'bin', 'satellites/recvfrom')
   build << recvfrom_copy
 
+  # Oracles
+
+  hermes = drake.include('oracles/hermes',
+                          protocol = elle.protocol,
+                          reactor = elle.reactor,
+                          boost = boost,
+                          prefix = prefix,
+                          cxx_toolkit = cxx_toolkit,
+                          cxx_config = cxx_config)
+
   # Install
   install = drake.Rule('install')
   install << drake.copy(infinit_bin, prefix)
@@ -1199,6 +1210,9 @@ def configure(cxx_toolkit = None,
   tests_cxx_config.lib_path_runtime('../../lib')
   tests_cxx_config.lib_path_runtime('../lib')
   tests_cxx_config += boost.config_test()
+  tests_cxx_config += boost.config_system()
+  tests_cxx_config += boost.config_filesystem()
+  tests_cxx_config.define("BOOST_TEST_DYN_LINK")
   nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib]
 
   tests_src_n_lib = [

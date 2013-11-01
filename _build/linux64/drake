@@ -10,17 +10,23 @@ import drake
 import drake.cxx
 import drake.cxx.boost
 
-with drake.Drake('../..') as d:
-  cxx_compiler = os.getenv('CXX', 'g++')
-  cxx_toolkit = drake.cxx.GccToolkit(compiler = cxx_compiler)
-  cxx_config = drake.cxx.Config()
-  cxx_config.enable_debug_symbols()
-  cxx_config.enable_optimization(False)
-  boost = drake.cxx.boost.Boost(
-      prefix = os.getenv('BOOST_PREFIX', '/usr')
-  )
-  d.run(cxx_toolkit,
-        cxx_config,
-        enable_horizon = False,
-        build_type = "Development",
-        boost = boost)
+cxx_compiler = os.getenv('CXX', 'g++')
+cxx_toolkit = drake.cxx.GccToolkit(compiler = cxx_compiler)
+cxx_config = drake.cxx.Config()
+cxx_config.flag('-fPIC')
+cxx_config.flag('-Wall')
+cxx_config.enable_debug_symbols()
+cxx_config.enable_optimization(False)
+
+boost = drake.cxx.boost.Boost(
+    prefix = os.getenv('BOOST_PREFIX', '/usr')
+)
+
+drake.run(
+    '../..',
+    cxx_toolkit,
+    cxx_config,
+    enable_horizon = False,
+    build_type = "Development",
+    boost = boost,
+)

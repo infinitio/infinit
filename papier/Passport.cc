@@ -92,4 +92,11 @@ namespace papier
     passport.Save(theirs);
     return ours == theirs;
   }
+
+  bool
+  Passport::operator !=(Passport const& passport) const
+  {
+    return !(*this == passport);
+  }
+
 }
