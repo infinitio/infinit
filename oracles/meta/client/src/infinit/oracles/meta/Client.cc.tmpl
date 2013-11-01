@@ -261,7 +261,7 @@ namespace infinit
          }};
 
         auto res = this->_request<LoginResponse>(
-          "/user/login", Method::POST, request);
+          "/login", Method::POST, request);
         if (res.success())
         {
           // Debugging purpose.
@@ -274,7 +274,7 @@ namespace infinit
       LogoutResponse
       Client::logout()
       {
-        auto res = this->_request<LogoutResponse>("/user/logout", Method::GET);
+        auto res = this->_request<LogoutResponse>("/logout", Method::POST);
         if (res.success())
         {
           // Debugging purpose.

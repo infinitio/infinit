@@ -69,7 +69,7 @@ class Mixin:
   ## -------- ##
   ## Sessions ##
   ## -------- ##
-  @api('/user/login', method = 'POST')
+  @api('/login', method = 'POST')
   def login(self,
             email,
             password,
@@ -108,7 +108,7 @@ class Mixin:
     )
 
   @require_logged_in
-  @api('/user/logout')
+  @api('/logout', method = 'POST')
   def logout(self):
     if 'email' in bottle.request.session:
       del bottle.request.session['device']
@@ -629,7 +629,7 @@ class Mixin:
     )})
 
   @require_logged_in
-  @api('/self')
+  @api('/user/self')
   def user_self(self):
     """Return self data."""
     return self.success({
