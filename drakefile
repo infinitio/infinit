@@ -468,6 +468,7 @@ def configure(cxx_toolkit = None,
     'common/common.cc',
     'common/common.hh',
     )
+
   agent_cxx_config = drake.cxx.Config(cxx_config_libs)
   agent_lib = Library(
     'lib/agent',
@@ -966,7 +967,7 @@ def configure(cxx_toolkit = None,
   trophonius_client_lib = drake.copy(oracles.trophonius.client.lib, 'lib',
                                      oracles.trophonius.client.lib.name().dirname())
   meta_client_lib = drake.copy(oracles.meta.client.lib, 'lib',
-                                     oracles.meta.client.lib.name().dirname())
+                               oracles.meta.client.lib.name().dirname())
 
   # oracles_enabled = cxx_toolkit.os != drake.os.windows
 
@@ -1119,6 +1120,11 @@ def configure(cxx_toolkit = None,
 
   # Satellites
 
+  gap_satellites_bin = drake.cxx.Config(infinit_bin_config)
+  gap_satellites_bin.add_local_include_path('oracles/src')
+  gap_satellites_bin.add_local_include_path('oracles/meta/client/src')
+  gap_satellites_bin.add_local_include_path('oracles/trophonius/client/src')
+
   def satellite(name, dependencies):
     fmt = (name, name.capitalize())
     sources = [
@@ -1134,7 +1140,7 @@ def configure(cxx_toolkit = None,
       'bin/8%s' % name,
       # XXX: not every satellite needs GAP.
       list(sources) + list(dependencies) + [crash_lib],
-      cxx_toolkit, infinit_bin_config)
+      cxx_toolkit, gap_satellites_bin)
     build << bin
 
   for name, dependencies in [
