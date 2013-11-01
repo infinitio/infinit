@@ -176,9 +176,6 @@ namespace surface
       std::string
       user_directory();
 
-      std::string const&
-      token_generation_key() const;
-
       ELLE_ATTRIBUTE_Rw(std::string, output_dir);
     private:
       void

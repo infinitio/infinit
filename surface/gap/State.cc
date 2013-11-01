@@ -241,13 +241,14 @@ namespace surface
       auto uuid = boost::uuids::random_generator()();
 
       auto res = this->_meta.login(lower_email, password, uuid);
+
       login_failed.abort();
 
       elle::With<elle::Finally>([&] { this->_meta.logout(); })
         << [&] (elle::Finally& finally_logout)
       {
-
         ELLE_LOG("Logged in as %s", email);
+
         this->_reporter[res.id].store(
           "user.login",
           {{MKey::session, "start"}, {MKey::status, "succeed"}});
@@ -511,14 +512,6 @@ namespace surface
           });
       }};
       this->login(lower_email, password);
-    }
-
-    std::string const&
-    State::token_generation_key() const
-    {
-      ELLE_TRACE_SCOPE("%s: generate token", *this);
-
-      return this->me().token_generation_key;
     }
 
     Self const&

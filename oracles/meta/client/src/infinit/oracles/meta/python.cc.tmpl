@@ -223,7 +223,6 @@ void export_meta_client()
     .def_readonly("identity", &SelfResponse::identity)
     .def_readonly("email", &SelfResponse::email)
     .def_readonly("remaining_invitations", &SelfResponse::remaining_invitations)
-    .def_readonly("token_generation_key", &SelfResponse::token_generation_key)
   ;
 
   py::class_<InviteUserResponse, py::bases<Response>>("InviteUserResponse")

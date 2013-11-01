@@ -256,30 +256,6 @@ extern "C"
   }
 
   gap_Status
-  gap_generation_key(gap_State* state,
-                     char** usertoken)
-  {
-    auto ret = run<std::string>(
-      state,
-      "token",
-      [&] (surface::gap::State& state) -> std::string
-      {
-        return state.token_generation_key();
-      });
-
-    if (ret.status() != gap_ok)
-      return ret;
-
-    char* new_token = strdup(ret.value().c_str());
-    if (new_token != nullptr)
-    {
-      *usertoken = new_token;
-    }
-
-    return ret;
-  }
-
-  gap_Status
   gap_register(gap_State* state,
                char const* fullname,
                char const* email,

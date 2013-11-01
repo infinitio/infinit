@@ -113,9 +113,6 @@ extern "C" {
   /// Logout from meta.
   gap_Status gap_logout(gap_State* state);
 
-  gap_Status
-  gap_generation_key(gap_State* state, char** token);
-
   /// @brief Register to meta.
   ///
   /// If the device name is not NULL, it will also create
