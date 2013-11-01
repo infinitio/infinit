@@ -387,20 +387,20 @@ class Mixin:
 
     #regexp.Validator(regexp.ID, error.TRANSACTION_ID_NOT_VALID)
     #regexp.Validator(regexp.DeviceID, error.DEVICE_ID_NOT_VALID)
-
+    user = self.user
     transaction_id = bson.ObjectId(_id)
 
     transaction = self.database.transactions.find_one(transaction_id)
     if transaction is None:
       self.fail(error.TRANSACTION_DOESNT_EXIST)
 
-    device_id = bson.ObjectId(device_id)
-    device = self.database.devices.find_one(device_id)
+    device_id = uuid.UUID(device_id)
+    device = self.database.devices.find_one({"_id": str(device_id), "owner": user['_id']})
     if not device:
       return self.fail(error.DEVICE_NOT_FOUND)
 
-    if device_id not in [transaction['sender_device_id'],
-                         transaction['recipient_device_id']]:
+    if str(device_id) not in [transaction['sender_device_id'],
+                              transaction['recipient_device_id']]:
       return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
     node = dict()
@@ -411,7 +411,7 @@ class Mixin:
       # it's not checked before this point. Therefor, it's insecure.
       node['locals'] = [
         {"ip" : v["ip"], "port" : v["port"]}
-        for v in local_addresses if v["ip"] != "0.0.0.0"
+        for v in locals if v["ip"] != "0.0.0.0"
         ]
     else:
       node['locals'] = []
@@ -419,7 +419,7 @@ class Mixin:
     if externals is not None:
       node['externals'] = [
         {"ip" : v["ip"], "port" : v["port"]}
-        for v in external_addresses if v["ip"] != "0.0.0.0"
+        for v in externals if v["ip"] != "0.0.0.0"
         ]
     else:
       node['externals'] = []
@@ -431,13 +431,13 @@ class Mixin:
       {"$set": {"nodes.%s" % (str(device_id),): node}},
       multi = False
     )
-
     print("device %s connected to transaction %s as %s" % (device_id, transaction_id, node))
 
+    transaction = self.database.transactions.find_one(transaction_id)
     if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
       self.notifier.notify_some(
         notifier.PEER_CONNECTION_UPDATE,
-        device_ids = list(transaction['nodes'].keys()),
+        device_ids = set(map(uuid.UUID, transaction['nodes'].keys())),
         message = {
           "transaction_id": str(transaction_id),
           "devices": list(transaction['nodes'].keys()),
@@ -484,6 +484,6 @@ class Mixin:
 
     res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
     res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
-    res['fallback'] = ["{}:{}".format(*a) for a in self.__application__.fallback]
+    res['fallback'] = ["{}:{}".format(*a) for a in ['127.0.0.1']] # self.__application__.fallback]
 
     return self.success(res)

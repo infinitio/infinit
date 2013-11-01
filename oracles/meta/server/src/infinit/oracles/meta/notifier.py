@@ -8,8 +8,9 @@ import os
 import sys
 import time
 
-
 from infinit.oracles.notification import notifications
+
+from .utils import stringify_object_ids
 
 for name, value in notifications.items():
   globals()[name.upper()] = value
@@ -68,6 +69,8 @@ class Notifier:
         }
       }
     ))
+
+    message = stringify_object_ids(message)
 
     # Freezing slow.
     for device in devices.keys():
