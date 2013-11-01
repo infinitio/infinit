@@ -642,8 +642,9 @@ namespace common
         "infinit",
         elle::os::getenv("INFINIT_METRICS_HOST",
                          COMMON_METRICS_HOST),
-        std::stoi(elle::os::getenv("INFINIT_METRICS_PORT",
-                                   std::to_string(COMMON_METRICS_PORT))),
+        uint16_t(
+          std::stoi(elle::os::getenv("INFINIT_METRICS_PORT",
+                                     std::to_string(COMMON_METRICS_PORT)))),
         path::join(common::infinit::home(), "im.id"),
         elle::os::getenv("INFINIT_METRICS_INFINIT_TID",
                          COMMON_METRICS_INFINIT_TID),
