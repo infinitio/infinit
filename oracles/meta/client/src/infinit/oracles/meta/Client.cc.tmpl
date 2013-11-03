@@ -17,6 +17,7 @@
 #include <version.hh>
 
 #include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/string_generator.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
@@ -233,6 +234,22 @@ namespace infinit
 
       Client::~Client()
       {
+      }
+
+      std::string
+      Client::session_id() const
+      {
+        if (this->_client.cookies().find("session-id") !=
+          this->_client.cookies().end())
+          return this->_client.cookies()["session-id"];
+        return "";
+      }
+
+      void
+      Client::session_id(std::string const& session_id)
+      {
+        ELLE_TRACE_SCOPE("%s: set the session id to %s", *this, session_id);
+        this->_default_configuration.cookies()["session-id"] = session_id;
       }
 
       // - API calls ------------------------------------------------------------

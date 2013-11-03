@@ -173,7 +173,7 @@ namespace infinit
         User::User(Trophonius& trophonius,
                    std::unique_ptr<reactor::network::TCPSocket>&& socket):
           Client(trophonius, std::move(socket)),
-          _authentified(false),
+          _authentified(),
           _meta(this->trophonius().meta().host(),
                 this->trophonius().meta().port()),
           _device_id(boost::uuids::nil_uuid()),
@@ -249,7 +249,7 @@ namespace infinit
                 this->_device_id =
                   boost::uuids::string_generator()(
                     json["device_id"].asString());
-
+                this->_meta.session_id(json["session_id"].asString());
                 this->_connect();
               }
             }
@@ -284,21 +284,30 @@ namespace infinit
                                          this->_device_id);
 
           if (!res.success())
-            throw AuthenticationError(
-              elle::sprintf("%s", res.error_details));
+            throw AuthenticationError(elle::sprintf("%s", res.error_details));
 
-          this->_authentified = true;
+          Json::Value response;
+          response["notification_type"] = -666;
+          response["response_code"] = 200;
+          response["response_details"] = res.error_details;
+
+          Json::FastWriter writer;
+          this->_socket->write(writer.write(response));
+
+          this->_authentified.open();
         }
 
         void
         User::_ping()
         {
           RemoveWard ward(*this);
+          elle::SafeFinally desauthenticate{[&] { this->_authentified.close(); }};
           static std::string const ping_msg("{\"notification_type\": 208}\n");
           try
           {
             while (true)
             {
+              this->_authentified.wait();
               ELLE_TRACE("%s: send ping", *this);
               this->_socket->write(ping_msg);
               reactor::sleep(this->trophonius().ping_period());
@@ -314,9 +323,11 @@ namespace infinit
         User::_pong()
         {
           RemoveWard ward(*this);
+          elle::SafeFinally desauthenticate{[&] { this->_authentified.close(); }};
           auto period = this->trophonius().ping_period() * 2;
           while (true)
           {
+            this->_authentified.wait();
             reactor::sleep(period);
             if (!this->_pinged)
             {
@@ -334,8 +345,9 @@ namespace infinit
         void
         User::print(std::ostream& stream) const
         {
-          stream << "User(" << this->_socket->peer() << " on device "
-                 << this->device_id() << ")";
+          stream << "User(" << this->_socket->peer();
+          if (this->device_id() != boost::uuids::nil_uuid())
+            stream << " on device " << this->device_id() << ")";
         }
       }
     }

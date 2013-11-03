@@ -9,6 +9,7 @@
 
 # include <reactor/network/tcp-socket.hh>
 # include <reactor/thread.hh>
+# include <reactor/Barrier.hh>
 
 # include <infinit/oracles/trophonius/server/fwd.hh>
 # include <infinit/oracles/meta/Admin.hh>
@@ -86,8 +87,8 @@ namespace infinit
           void
           _handle() override;
 
-          ELLE_ATTRIBUTE_R(bool, authentified);
-          ELLE_ATTRIBUTE(meta::Admin, meta)
+          ELLE_ATTRIBUTE_R(reactor::Barrier, authentified);
+          ELLE_ATTRIBUTE(meta::Admin, meta);
           ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id);
           ELLE_ATTRIBUTE(std::string, user_id);
           ELLE_ATTRIBUTE(std::string, session_id);

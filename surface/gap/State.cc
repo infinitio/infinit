@@ -301,7 +301,7 @@ namespace surface
         }
 
         this->_trophonius.connect(
-          this->me().id, this->_meta.session_id(), this->device().id);
+          this->me().id, this->device().id, this->_meta.session_id());
 
         this->_polling_thread.reset(
           new reactor::Thread{

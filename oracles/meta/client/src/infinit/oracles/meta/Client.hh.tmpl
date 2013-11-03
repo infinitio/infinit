@@ -208,7 +208,13 @@ namespace infinit
                        default_configuration);
         ELLE_ATTRIBUTE_RW(std::string, email);
         ELLE_ATTRIBUTE_R(std::string, user_agent);
-        ELLE_ATTRIBUTE_R(std::string, session_id);
+        ELLE_ATTRIBUTE(std::string, session_id);
+      public:
+        std::string
+        session_id() const;
+
+        void
+        session_id(std::string const&);
 
       public:
         Client(std::string const& server,
