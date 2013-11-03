@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import bottle
+import elle.log
 import inspect
 import pymongo
 import re
@@ -17,6 +18,8 @@ from . import user, transaction, device, root, trophonius
 from . import notifier
 from . import mail
 
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
+
 class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixin, trophonius.Mixin):
 
   def __init__(self,
@@ -29,8 +32,10 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
       db_args['host'] = mongo_host
     if mongo_port is not None:
       db_args['port'] = mongo_port
-    self.__database = pymongo.MongoClient(**db_args).meta
-    self.__set_constraints()
+    with elle.log.log('%s: connect to MongoDB on %s:%s' %
+                      (self, mongo_host, mongo_port)):
+      self.__database = pymongo.MongoClient(**db_args).meta
+      self.__set_constraints()
     self.catchall = False
     # Plugins.
     self.install(FailurePlugin())
@@ -52,6 +57,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
 
   def __register(self, method):
     rule = method.__route__
+    elle.log.debug('%s: register route %s' % (self, rule))
     # Introspect method.
     spec = inspect.getfullargspec(method)
     del spec.args[0] # remove self

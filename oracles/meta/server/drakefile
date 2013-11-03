@@ -9,7 +9,8 @@ python = None
 with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
 
-def configure(python_common,
+def configure(elle,
+              python_common,
               papier_python,
               prefix = drake.Path('/usr/local'),
               python_version = None):
@@ -67,10 +68,16 @@ def configure(python_common,
   ## Build ##
   ## ----- ##
 
+  elle_python = drake.copy(elle.python, '.', '../../../elle/elle')
+
   build = drake.Rule('build')
   build_python_path = drake.Path('lib/python')
   python = [version]
-  python += drake.copy(sources, build_python_path, 'src')
+  sources_built = drake.copy(sources, build_python_path, 'src')
+  for source in sources_built:
+    for elle_source in elle_python:
+      source.dependency_add(elle_source)
+  python += sources_built
   bottle = drake.nodes('../../bottle/bottle.py')
   python += drake.copy(bottle, build_python_path,
                             '../../bottle')

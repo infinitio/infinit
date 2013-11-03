@@ -24,6 +24,7 @@ def configure(elle,
   global build, check, install
 
   server = drake.include('server',
+                         elle = elle,
                          python_common = python_common,
                          papier_python = papier_python,
                          prefix = prefix,

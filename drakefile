@@ -129,6 +129,7 @@ def configure(cxx_toolkit = None,
                        drake.cxx.Config(cxx_config),
                        prefix = prefix,
                        boost = boost,
+                       python3 = python3,
                        valgrind = valgrind)
 
   def copy_lib(lib, where = 'lib'):
