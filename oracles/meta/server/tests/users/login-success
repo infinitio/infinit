@@ -5,7 +5,7 @@ from uuid import uuid4
 
 with Meta() as meta:
   password = meta.create_user('foo@bar.baz')
-  res = meta.post('user/login',
+  res = meta.post('login',
                   {
                     'device_id' : str(uuid4()),
                     'email': 'foo@bar.baz',

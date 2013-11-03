@@ -5,7 +5,7 @@ from infinit.oracles.meta import error
 from uuid import uuid4
 
 with Meta() as meta:
-  res = meta.post('user/login',
+  res = meta.post('login',
                   {
                     'email': 'foo@bar.baz',
                     'device_id': str(uuid4()),

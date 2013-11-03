@@ -17,17 +17,16 @@ with Meta() as meta:
   devices = bob.get('devices')['devices']
 
   assert len(devices) == 2
-  assert devices[1] == foobar['_id']
+  assert devices[1] == foobar['id']
 
   device_id = devices[1]
 
   foobar = bob.get('device/%s/view' % device_id)
   assert foobar['success']
 
-  res = bob.post('device/delete', {'id': foobar['_id']})
-  print(res)
+  res = bob.post('device/delete', {'id': foobar['id']})
   assert res['success']
-  assert res['_id'] == device_id
+  assert res['id'] == device_id
 
   devices = bob.get('devices')['devices']
   assert len(devices) == 1

@@ -16,8 +16,8 @@ with Meta() as meta:
   assert device['success']
   assert device['name'] == "foobar"
 
-  res = bob.get('device/%s/view' % device['_id'])
+  res = bob.get('device/%s/view' % device['id'])
 
   assert res['success']
   assert res['name'] == device['name']
-  assert res['_id'] == device['_id']
+  assert res['id'] == device['id']

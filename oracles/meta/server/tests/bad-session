@@ -16,7 +16,7 @@ with Meta() as meta:
   client.login()
   client.cookie['session-id'] = sid
   try:
-    client.get('self')
+    client.get('user/self')
   except HTTPException as e:
     assert e.status == 403
   else:

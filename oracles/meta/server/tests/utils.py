@@ -192,12 +192,12 @@ class User(Client):
       'password': self.password,
       'device_id': str(device_id),
     }
-    res = self.post('user/login', req)
+    res = self.post('login', req)
     assert res['success']
     self.device_id = UUID(res['device_id'])
 
   def logout(self):
-    res = self.post('user/logout', {})
+    res = self.post('logout', {})
     assert res['success']
     self.device_id = None
 
@@ -216,7 +216,7 @@ class User(Client):
 
   @property
   def favorites(self):
-    return self.get('self')['favorites']
+    return self.get('user/self')['favorites']
 
   @property
   def devices(self):

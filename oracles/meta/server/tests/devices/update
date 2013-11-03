@@ -16,10 +16,10 @@ with Meta() as meta:
   assert foobar['success']
   assert foobar['name'] == "foobar"
 
-  res = bob.post('device/update', {'id': str(foobar['_id']),
+  res = bob.post('device/update', {'id': str(foobar['id']),
                                    'name': "barfoo"})
   print(res)
   assert res['success']
   assert res['name'] == "barfoo"
-  assert res['_id'] == foobar['_id']
+  assert res['id'] == foobar['id']
   assert res['passport'] == foobar['passport']
