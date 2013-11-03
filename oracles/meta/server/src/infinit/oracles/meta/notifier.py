@@ -76,11 +76,14 @@ class Notifier:
     for device in devices.keys():
       s = socket.socket(socket.AF_INET,
                         socket.SOCK_STREAM)
-      tropho = trophonius[devices[device]]
+      tropho = trophonius.get(devices[device])
+      if tropho is None:
+        print("unknown trophonius %s" % (devices[device]))
+        continue
       message['device_id'] = str(device)
       print("%s: %s" % (tropho, json.dumps(message)))
       try:
-        s = socket.create_connection(address = ('localhost', tropho['port']),
+        s = socket.create_connection(address = (tropho['host'], tropho['port']),
                                      timeout = 4)
         s.send(bytes(json.dumps(message) + '\n', 'utf-8'))
       except Exception as e:
