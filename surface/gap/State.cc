@@ -25,7 +25,10 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/uuid/uuid.hpp>
+#include <boost/uuid/string_generator.hpp>
+#include <boost/uuid/nil_generator.hpp>
 #include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <fstream>
 
@@ -237,10 +240,26 @@ namespace surface
           });
       }};
 
-      // XXX: Use stored one.
-      auto uuid = boost::uuids::random_generator()();
+      boost::uuids::uuid device_uuid = boost::uuids::nil_generator()();
+      if (boost::filesystem::exists(common::infinit::device_id_path()))
+      {
+        ELLE_TRACE("%s: get device uuid from file", *this);
+        std::ifstream file(common::infinit::device_id_path());
+        std::string struuid;
+        file >> struuid;
+        device_uuid = boost::uuids::string_generator()(struuid);
+      }
+      else
+      {
+        ELLE_TRACE("%s: create device uuid", *this);
+        device_uuid = boost::uuids::random_generator()();
+        std::ofstream file(common::infinit::device_id_path());
+        file << device_uuid << std::endl;
+      }
 
-      auto res = this->_meta.login(lower_email, password, uuid);
+      ELLE_DEBUG("%s: device uuid %s", *this, device_uuid);
+
+      auto res = this->_meta.login(lower_email, password, device_uuid);
 
       login_failed.abort();
 
