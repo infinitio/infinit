@@ -4,7 +4,7 @@ import bson
 import uuid
 
 from . import conf, error, regexp
-from .utils import api, require_admin
+from .utils import api, require_admin, require_logged_in
 
 class Mixin:
 
@@ -41,6 +41,7 @@ class Mixin:
     res = self.database.trophonius.remove({"_id": str(uid)})
     return self.success()
 
+  @require_logged_in
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'PUT')
   def trophonius_register_user(self,
                                uid: uuid.UUID,
@@ -52,7 +53,7 @@ class Mixin:
     assert isinstance(device, uuid.UUID)
     self.database.devices.update(
       {
-        '_id': str(device),
+        'id': str(device),
         'owner': id,
       },
       {'$set': {'trophonius': str(uid)}}
@@ -60,6 +61,7 @@ class Mixin:
     self.set_connection_status(id, device, True)
     return self.success()
 
+  @require_logged_in
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'DELETE')
   def trophonius_unregister_user(self,
                                  uid: uuid.UUID,
@@ -71,7 +73,7 @@ class Mixin:
     assert isinstance(device, uuid.UUID)
     self.database.devices.update(
       {
-        '_id': str(device),
+        'id': str(device),
         'owner': id,
         'trophonius': str(uid),
       },

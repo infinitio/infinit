@@ -113,28 +113,28 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::InviteUserResponse, ar, res)
 
 SERIALIZE_RESPONSE(infinit::oracles::meta::CreateDeviceResponse, ar, res)
 {
-  ar & named("_id", res.id);
+  ar & named("id", res.id);
   ar & named("passport", res.passport);
   ar & named("name", res.name);
 }
 
 SERIALIZE_RESPONSE(infinit::oracles::meta::DeviceResponse, ar, res)
 {
-  ar & named("_id", res.id);
+  ar & named("id", res.id);
   ar & named("passport", res.passport);
   ar & named("name", res.name);
 }
 
 SERIALIZE_RESPONSE(infinit::oracles::meta::UpdateDeviceResponse, ar, res)
 {
-  ar & named("_id", res.id);
+  ar & named("id", res.id);
   ar & named("passport", res.passport);
   ar & named("name", res.name);
 }
 
 SERIALIZE_RESPONSE(infinit::oracles::meta::DeleteDeviceResponse, ar, res)
 {
-  ar & named("_id", res.id);
+  ar & named("id", res.id);
 }
 
 /*-------------.
@@ -321,11 +321,9 @@ namespace infinit
       Client::search_users(std::string const& text, int count, int offset) const
       {
         json::Dictionary request;
-        request["text"] = text;
         request["limit"] = count;
         request["offset"] = offset;
-        return this->_request<UsersResponse>(
-          "/user/search", Method::POST, request);
+        return this->_request<UsersResponse>(elle::sprintf("/user/search/%s", text), Method::POST, request);
       }
 
       UserResponse
@@ -340,7 +338,7 @@ namespace infinit
       SelfResponse
       Client::self() const
       {
-        return this->_request<SelfResponse>("/self", Method::GET);
+        return this->_request<SelfResponse>("/user/self", Method::GET);
       }
 
       UserResponse
@@ -413,9 +411,9 @@ namespace infinit
                             std::string const& name) const
       {
         json::Dictionary request{std::map<std::string, std::string>{
-            {"_id", _id},
+            {"id", _id},
             {"name", name},
-              }};
+        }};
 
         return this->_request<UpdateDeviceResponse>(
           "/device/update", Method::POST, request);
@@ -424,12 +422,8 @@ namespace infinit
       DeviceResponse
       Client::device(std::string const& _id) const
       {
-        json::Dictionary request{std::map<std::string, std::string>{
-            {"_id", _id},
-              }};
-
         return this->_request<DeviceResponse>(
-          sprintf("/device/%s/update", _id), Method::GET);
+          sprintf("/device/%s/view", _id), Method::GET);
       }
 
       DeleteDeviceResponse
@@ -466,17 +460,20 @@ namespace infinit
                                  size_t count,
                                  size_t size,
                                  bool is_dir,
-                                 std::string const& device_id,
+                                 // boost::uuids::uuid const& device_uuid,
+                                 std::string const& struuid,
                                  std::string const& message) const
       {
         json::Dictionary request;
 
-        request["recipient_id_or_email"] = recipient_id_or_email;
+        // std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+
+        request["id_or_email"] = recipient_id_or_email;
         request["files"] = files;
-        request["device_id"] = device_id;
+        request["files_count"] = count;
         request["total_size"] = size;
         request["is_directory"] = is_dir;
-        request["files_count"] = count;
+        request["device_id"] = struuid; // Can be determine by session.
         request["message"] = message;
 
         return this->_request<CreateTransactionResponse>(

@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 import bson
+import copy
 import uuid
 
 from . import conf, error, regexp
@@ -10,6 +11,22 @@ from .utils import api, require_logged_in
 # The reason is because the (py)mongo store them as BinData, making them
 # impossible to search from mongo shell.
 class Mixin:
+
+  def device(self,
+             id,
+             owner = None,
+             ensure_existence = True,
+             **kwargs):
+    if isinstance(id, uuid.UUID):
+      id = str(id)
+    query = {'id': id}
+    if owner is not None:
+      assert isinstance(owner, bson.ObjectId)
+      query['owner'] = owner
+    device = self.database.devices.find_one(query, **kwargs)
+    if ensure_existence and device is None:
+      raise error.Error(error.DEVICE_NOT_FOUND)
+    return device
 
   @require_logged_in
   @api('/devices')
@@ -25,17 +42,8 @@ class Mixin:
     """Return one user device.
     """
     assert isinstance(id, uuid.UUID)
-    device = self.database.devices.find_one(
-      {
-        '_id': str(id),
-        'owner': self.user['_id'],
-      },
-      #fields = ['_id']
-      )
-
-    if device is None:
-      self.fail(error.DEVICE_NOT_VALID)
-    return self.success(device)
+    return self.success(self.device(id = str(id),
+                                    owner = self.user['_id']))
 
   def _create_device(self,
                      owner,
@@ -51,9 +59,11 @@ class Mixin:
       name = str(id)
     if regexp.Validator(regexp.DeviceName, error.DEVICE_NOT_VALID)(name) != 0:
       self.fail(error.DEVICE_NOT_VALID)
-    if self.database.devices.find_one({'_id': str(id)}) is not None:
+    query = {'id': str(id), 'owner': owner['_id']}
+    if self.device(ensure_existence = False, **query) is not None:
       self.fail(error.DEVICE_ALREADY_REGISTRED)
-    to_save = {'name': name.strip(), 'owner': owner['_id'], '_id': str(id)}
+    to_save = copy.deepcopy(query)
+    to_save['name'] = name.strip()
     self.database.devices.insert(to_save, upsert = True)
     import papier
     to_save['passport'] = papier.generate_passport(
@@ -63,8 +73,9 @@ class Mixin:
       conf.INFINIT_AUTHORITY_PATH,
       conf.INFINIT_AUTHORITY_PASSWORD
     )
-    self.database.devices.update({"_id": str(id)}, to_save)
-    device = self.database.devices.find_one({"_id": str(id)})
+    self.database.devices.update(query, to_save)
+    device = self.database.devices.find_one(query)
+    assert device is not None
     # XXX check unique device ?
     self.database.users.find_and_modify({'_id': owner['_id']}, {'$addToSet': {'devices': str(id)}})
     return device
@@ -81,7 +92,7 @@ class Mixin:
 
     device = self._create_device(owner = self.user, id = id, name = name)
     assert device is not None
-    return self.success({"_id": device['_id'],
+    return self.success({"id": device['id'],
                          "passport": device['passport'],
                          "name": device['name']})
 
@@ -108,12 +119,9 @@ class Mixin:
       user = self._user_by_id(user_id)
       if str(device_id) not in user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
-      return self.database.devices.find_one(
-        {
-          "_id": str(device_id),
-          "owner": user_id
-        },
-        fields = ['trophonius']).get('trophonius') is not None
+      return self.device(id = str(device_id),
+                         owner =  user_id,
+                         fields = ['trophonius']).get('trophonius') is not None
     else:
       return self.database.devices.find(
         {
@@ -129,14 +137,13 @@ class Mixin:
     assert isinstance(id, uuid.UUID)
     user = self.user
     assert user is not None
-    device = self.database.devices.find_one({'_id': str(id)})
-    if device is None:
-      self.fail(error.DEVICE_NOT_FOUND)
+    query = {'id': str(id), 'owner': user['_id']}
+    device = self.device(**query)
     if not str(id) in user['devices']:
       self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
-    self.database.device.update({'_id': str(id)}, {"$set": {"name": name}})
+      self.database.device.update(query, {"$set": {"name": name}})
     return self.success({
-        '_id': str(id),
+        'id': str(id),
         'passport': device['passport'],
         'name' : name,
       })
@@ -150,11 +157,10 @@ class Mixin:
     assert isinstance(id, uuid.UUID)
     user = self.user
     assert user is not None
-    device = self.database.devices.find_one({'_id': str(id)})
-    if device is None:
-      self.fail(error.DEVICE_NOT_FOUND)
+    query = {'id': str(id), 'owner': user['_id']}
+    device = self.device(**query)
     if not str(id) in user.get('devices', []):
       self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
-    self.database.devices.remove(str(id))
+    self.database.devices.remove(query)
     self.database.users.update({'_id': user['_id']}, {'$pull': {'devices': str(id)}})
-    return self.success({'_id': str(id)})
+    return self.success({'id': str(id)})

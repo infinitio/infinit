@@ -82,17 +82,17 @@ class Mixin:
     })
     if user is None:
       self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
-
-    device = self.database.devices.find_one({"_id": str(device_id)})
+    query = {'id': str(device_id), 'owner': user['_id']}
+    print("query", query)
+    device = self.device(ensure_existence = False, **query)
     if device is None:
-      device = self._create_device(owner = user, id = device_id)
-      device = self.database.devices.find_one({"_id": str(device_id),
-                                               "owner": user['_id']})
-      if device is None:
-        self.fail(error.DEVICE_NOT_FOUND)
+      device = self._create_device(id = device_id,
+                                   owner = user)
+      print("created device: %s" % device)
+    else:
+      assert str(device_id) in user['devices']
 
     # Remove potential leaked previous session.
-    # Web ?
     self.sessions.remove({'email': email, 'device': device['_id']})
     bottle.request.session['device'] = device['_id']
     bottle.request.session['email'] = email
@@ -103,7 +103,7 @@ class Mixin:
         'email': self.user['email'],
         'handle': self.user['handle'],
         'identity': self.user['identity'],
-        'device_id': device['_id'],
+        'device_id': device['id'],
       }
     )
 
@@ -126,25 +126,6 @@ class Mixin:
   ## -------- ##
   ## Register ##
   ## -------- ##
-  def generate_token(self, token_generation_key):
-    """Generate a token for further communication
-
-    token_generation_key -- the root of the token generator.
-    """
-    if self.user is not None:
-      return self.fail(error.ALREADY_LOGGED_IN)
-
-    if self.authenticate_with_token(token_generation_key):
-      return self.success({
-        "_id" : self.user["_id"],
-        'token': self.session.session_id,
-        'fullname': self.user['fullname'],
-        'email': self.user['email'],
-        'handle': self.user['handle'],
-        'identity': self.user['identity'],
-      })
-    return self.fail(error.ALREADY_LOGGED_IN)
-
   def _register(self, **kwargs):
     kwargs['connected'] = False
     user = self.database.users.save(kwargs)
@@ -272,7 +253,7 @@ class Mixin:
     return self.success({
       'registered_user_id': user_id,
       'invitation_source': source or '',
-      })
+    })
 
   @api('/user/<id>/connected')
   def is_connected(self, id: bson.ObjectId):
@@ -366,7 +347,7 @@ class Mixin:
           limit = limit,
           skip = offset,
           )]
-    return {'users': users}
+    return self.success({'users': users})
 
   def extract_user_fields(self, user):
     return {
@@ -703,35 +684,6 @@ class Mixin:
       {'$set': {'avatar': bson.binary.Binary(out.read())}})
     return self.success()
 
-  ## ------- ##
-  ## Devices ##
-  ## ------- ##
-  def device(self,
-             user_id,
-             device_id,
-             enforce_existence = True):
-    """Get the device, ensuring the owner is the right one.
-
-    device_id -- the id of the requested device
-    user_id -- the device owner id
-    enforce_existence -- raise if device doesn't match id or owner.
-    """
-    assert isinstance(user_id, bson.ObjectId)
-    assert isinstance(user_id, uuid.UUID)
-
-    device = self.database.devices.find_one({
-        '_id': str(device_id),
-        'owner': user_id,
-    })
-
-    if device is None and enforce_existence:
-      self.raise_error(
-        error.DEVICE_ID_NOT_VALID,
-        "The device %s does not belong to the user %s" % (device_id, user_id)
-      )
-
-    return device
-
   ## ----------------- ##
   ## Connection status ##
   ## ----------------- ##
@@ -749,8 +701,7 @@ class Mixin:
     assert isinstance(device_id, uuid.UUID)
     user = self.database.users.find_one({"_id": user_id})
     assert user is not None
-    device = self.database.devices.find_one({"_id": str(device_id), "owner": user_id})
-    assert device is not None
+    device = self.device(id = str(device_id), owner = user_id)
     assert str(device_id) in user['devices']
 
     connected_before = self._is_connected(user_id)

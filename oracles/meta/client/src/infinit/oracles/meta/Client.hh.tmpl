@@ -73,6 +73,7 @@ namespace infinit
         std::string email;
         std::string identity;
         std::string id;
+        // boost::uuids::uuid device_id;
         std::string device_id;
       };
 
@@ -114,6 +115,7 @@ namespace infinit
         std::string email;
         int remaining_invitations;
         std::string token_generation_key;
+        // std::list<boost::uuids::uuid> devices;
         std::list<std::string> devices;
         std::list<std::string> favorites;
       };
@@ -175,6 +177,7 @@ namespace infinit
 
       struct Device
       {
+        // boost::uuids::uuid
         std::string id;
         std::string name;
         std::string passport;
@@ -328,7 +331,8 @@ namespace infinit
                            size_t count,
                            size_t size,
                            bool is_dir,
-                           std::string const& device_id,
+                           // boost::uuids::uuid const& device_uuid,
+                           std::string const& device_uuid,
                            std::string const& message = "") const;
 
         UpdateTransactionResponse

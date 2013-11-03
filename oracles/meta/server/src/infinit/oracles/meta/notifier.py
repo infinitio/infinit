@@ -49,7 +49,7 @@ class Notifier:
       critera = {'owner': {'$in': list(recipient_ids)}}
     else:
       assert isinstance(device_ids, set)
-      critera = {'_id': {'$in': [str(device_id) for device_id in device_ids]}}
+      critera = {'id': {'$in': [str(device_id) for device_id in device_ids]}}
     # Only the connected ones.
     critera['trophonius'] = {"$ne": None}
 
@@ -59,7 +59,7 @@ class Notifier:
       fields = ['_id', 'trophonius'],
     ):
       print(">> %s" % device)
-      devices[device['_id']] = device['trophonius'];
+      devices[device['id']] = device['trophonius'];
 
     trophonius = dict((record['_id'], record) for  record in self.database.trophonius.find(
       {

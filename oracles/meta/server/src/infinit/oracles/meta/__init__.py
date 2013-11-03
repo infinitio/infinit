@@ -30,6 +30,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
     if mongo_port is not None:
       db_args['port'] = mongo_port
     self.__database = pymongo.MongoClient(**db_args).meta
+    self.__set_constraints()
     self.catchall = False
     # Plugins.
     self.install(FailurePlugin())
@@ -45,6 +46,9 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
     self.notifier = notifier.Notifier(self.__database)
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
+
+  def __set_constraints(self):
+    self.__database.devices.ensure_index([("id", 1), ("owner", 1)], unique = True)
 
   def __register(self, method):
     rule = method.__route__
