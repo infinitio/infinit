@@ -10,6 +10,8 @@ namespace infinit
       namespace server
       {
         class Client;
+        class User;
+        class Meta;
         class Trophonius;
       }
     }
