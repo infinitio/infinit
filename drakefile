@@ -49,8 +49,9 @@ def configure(cxx_toolkit = None,
     cxx_config.enable_optimization(2)
 
   if not build_type in build_types.keys():
-    raise Exception("build type {} is unknown. Candidates are {}.".format(
-        build_type, ", ".join("{}".format(t) for t in build_types.keys())))
+    raise Exception(
+      'build type %s is unknown, candidates are: %s' %
+      (build_type, ', '.join(str(t) for t in build_types)))
 
   for define in build_types[build_type]:
     if isinstance(define, str):
@@ -110,15 +111,17 @@ def configure(cxx_toolkit = None,
   # Python
   python_enabled = cxx_toolkit.os != drake.os.windows
   if python_enabled:
-    python2 = drake.cxx.find_library('pyconfig.h', prefix = python2,
-                                     include_dir = ['include',
-                                                    'include/python2.7',
-                                                    'include/python2.7m'])
-    python3 = drake.cxx.find_library('pyconfig.h', prefix = python3,
-                                     include_dir = ['include',
-                                                    'include/python3.2',
-                                                    'include/python3.2m',
-                                                    'include/python3.3m'])
+    python2 = drake.cxx.find_library(
+      'pyconfig.h', prefix = python2,
+      include_dir = ['include',
+                     'include/python2.7',
+                     'include/python2.7m'])
+    python3 = drake.cxx.find_library(
+      'pyconfig.h', prefix = python3,
+      include_dir = ['include',
+                     'include/python3.2',
+                     'include/python3.2m',
+                     'include/python3.3m'])
 
   # Elle
   elle = drake.include('elle',
@@ -162,7 +165,8 @@ def configure(cxx_toolkit = None,
 
   # Fuse
   if enable_horizon:
-    cxx_config.define('_FILE_OFFSET_BITS', 64) # FIXME: only needed for horizon
+    # FIXME: only needed for horizon
+    cxx_config.define('_FILE_OFFSET_BITS', 64)
     cxx_config.define('INFINIT_HORIZON')
   cxx_config.define('BOOST_PP_VARIADICS')
 
@@ -498,7 +502,8 @@ def configure(cxx_toolkit = None,
 
   station_lib = Library(
     'lib/station',
-    station_sources + [papier_lib, cryptography_lib, reactor_lib, elle_lib],
+    station_sources + [papier_lib, cryptography_lib,
+                       reactor_lib, elle_lib],
     cxx_toolkit,
     station_cxx_config
   )
@@ -691,11 +696,12 @@ def configure(cxx_toolkit = None,
 # XXX
 #  hole_tests_root = drake.Path('hole/tests')
 #  for test in ['slug']:
-#    drake.cxx.Executable(hole_tests_root / test,
-#                         drake.nodes(hole_tests_root / ('%s.cc' % test)) +
-#                         [reactor.lib_dynamic, elle.lib_dynamic, cryptography_lib,
-#                          hole_lib, nucleus_lib, protocol_lib],
-#                         cxx_toolkit, cxx_config + boost.config_test())
+#    drake.cxx.Executable(
+#      hole_tests_root / test,
+#      drake.nodes(hole_tests_root / ('%s.cc' % test)) +
+#      [reactor.lib_dynamic, elle.lib_dynamic, cryptography_lib,
+#       hole_lib, nucleus_lib, protocol_lib],
+#      cxx_toolkit, cxx_config + boost.config_test())
 
   # Etoile
   etoile_sources = drake.nodes(
@@ -945,29 +951,33 @@ def configure(cxx_toolkit = None,
   # 8hole
   hole_cxx_config = drake.cxx.Config(cxx_config)
   hole_cxx_config.lib('fuse')
-  hole_bin = drake.cxx.Executable('bin/8hole',
-                                  drake.nodes('hole/_hole.cc') + infinit_libs,
-                                  cxx_toolkit, hole_cxx_config)
+  hole_bin = drake.cxx.Executable(
+    'bin/8hole',
+    drake.nodes('hole/_hole.cc') + infinit_libs,
+    cxx_toolkit, hole_cxx_config)
   # build << hole_bin
 
   ## ------- ##
   ## Oracles ##
   ## ------- ##
 
-  oracles = drake.include('oracles',
-                          elle = elle.elle,
-                          reactor = elle.reactor,
-                          papier_python = papier_python_lib,
-                          boost = boost,
-                          python3 = python_enabled and python3 or None,
-                          prefix = prefix,
-                          cxx_toolkit = cxx_toolkit,
-                          cxx_config = cxx_config,)
+  oracles = drake.include(
+    'oracles',
+    elle = elle.elle,
+    reactor = elle.reactor,
+    papier_python = papier_python_lib,
+    boost = boost,
+    python3 = python_enabled and python3 or None,
+    prefix = prefix,
+    cxx_toolkit = cxx_toolkit,
+    cxx_config = cxx_config,)
 
-  trophonius_client_lib = drake.copy(oracles.trophonius.client.lib, 'lib',
-                                     oracles.trophonius.client.lib.name().dirname())
-  meta_client_lib = drake.copy(oracles.meta.client.lib, 'lib',
-                               oracles.meta.client.lib.name().dirname())
+  trophonius_client_lib = drake.copy(
+    oracles.trophonius.client.lib, 'lib',
+    oracles.trophonius.client.lib.name().dirname())
+  meta_client_lib = drake.copy(
+    oracles.meta.client.lib, 'lib',
+    oracles.meta.client.lib.name().dirname())
 
   # oracles_enabled = cxx_toolkit.os != drake.os.windows
 
