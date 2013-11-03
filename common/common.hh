@@ -49,6 +49,10 @@ namespace common
     log_path(std::string const& user_id,
              std::string const& network_id);
 
+    /// Returns the path of the file containing the computer device uuid.
+    std::string
+    device_id_path();
+
     /// The path to the descriptor.
     std::string
     descriptor_path(std::string const& user_id,

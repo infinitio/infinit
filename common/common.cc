@@ -311,6 +311,13 @@ namespace common
         networks_directory(user_id), network_id + ".log");
     }
 
+    /// Returns the path of the file containing the computer device uuid.
+    std::string
+    device_id_path()
+    {
+      return path::join(home(), "device.uuid");
+    }
+
     std::string
     portal_path(std::string const& user_id,
                 std::string const& network_id)
