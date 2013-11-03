@@ -61,7 +61,6 @@ class Mixin:
     self.set_connection_status(id, device, True)
     return self.success()
 
-  @require_logged_in
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'DELETE')
   def trophonius_unregister_user(self,
                                  uid: uuid.UUID,
