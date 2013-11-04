@@ -39,6 +39,7 @@ errors = {
   'no_more_invitation': (-50005, "You don't have any invitations left."),
   'transaction_already_finalized': (-50006, "This operation has already been finalized"),
   'transaction_already_has_this_status': (-50007, "This operation has already been done."),
+  'no_apertus': (-50008, "No apertus available."),
   'unknown': (-666666, "Unknown error."),
 }
 
