@@ -12,7 +12,7 @@ from .plugins.session import Plugin as SessionPlugin
 
 from . import error
 
-from .utils import api, hash_pasword, stringify_object_ids, require_logged_in
+from .utils import api, hash_pasword, require_logged_in
 
 from . import user, transaction, device, root, trophonius
 from . import notifier
@@ -117,7 +117,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin, device.Mixi
   def success(self, res = {}):
     assert isinstance(res, dict)
     res['success'] = True
-    return stringify_object_ids(res)
+    return res
 
   @property
   def database(self):
