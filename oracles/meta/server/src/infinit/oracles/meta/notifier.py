@@ -55,9 +55,9 @@ class Notifier:
 
     for device in self.database.devices.find(
       critera,
-      fields = ['_id', 'trophonius'],
+      fields = ['id', 'trophonius'],
     ):
-      devices[device['id']] = device['trophonius'];
+      devices[device['id']] = device['trophonius']
 
     trophonius = dict((record['_id'], record) for  record in self.database.trophonius.find(
       {
