@@ -2,7 +2,7 @@
 
 import time
 
-from . import conf, mail, error
+from . import conf, mail, error, notifier
 from .utils import api, require_admin, hash_pasword
 import infinit.oracles.meta.version
 
@@ -25,7 +25,7 @@ class Mixin:
 
   @api('/ghostify', method = 'POST')
   @require_admin
-  def ghostify(self, email, admin_gtoken):
+  def ghostify(self, email, admin_token):
     email.strip()
 
     user = self.database.users.find_one({"email": email})
@@ -202,3 +202,17 @@ class Mixin:
         },
         attached = file
       )
+      return self.success()
+
+  @require_admin
+  @api('/genocide', method = 'POST')
+  def _genocide_(self, admin_token):
+    """
+    Make all client commit suicide.
+    """
+    # XXX: add broadcast capability to trophonius.
+    targets = { user['_id'] for user in self.database.users.find({'connected': True}) }
+    self.notifier.notify_some(notifier.SUICIDE,
+                              message = {},
+                              recipient_ids = targets)
+    return self.success({'victims': list(targets)})
