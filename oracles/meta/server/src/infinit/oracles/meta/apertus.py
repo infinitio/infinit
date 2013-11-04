@@ -37,6 +37,9 @@ class Mixin:
     """
     print("delete apertus %s" % uid)
     assert isinstance(uid, uuid.UUID)
+    self.database.transactions.update({'fallback': str(uid)},
+                                      {'$set': {'fallback': None}},
+                                      multi = True)
     res = self.database.apertus.remove({"_id": str(uid)})
     return self.success()
 
@@ -50,19 +53,52 @@ class Mixin:
     """Return the selected apertus ip/port for a given transaction_id.
     """
     user = self.user
-    transaction = self.transaction(id, owner_id = user['_id'])
-    if transaction.get('fallback') is not None:
-      return self.success({'fallback': transaction.get('fallback')})
-    else:
+
+    transaction = self.transaction(id, user['_id'])
+
+    if transaction.get('fallback') is None:
       apertus = self.database.apertus.find(fields = ['ip', 'port'])
       if apertus.count() == 0:
         return self.fail(error.NO_APERTUS)
       index = random.randint(0, apertus.count() - 1)
       fallback = apertus[index]
       fallback = '%s:%s' % (fallback['ip'], fallback['port'])
-      self.database.transactions.find_and_modify(
-        id, {'$set': {'fallback': fallback}})
-      return self.success({'fallback': fallback})
+
+      _transaction = self.database.transactions.find_and_modify(
+        {
+          '_id': id,
+          'fallback': None,
+        },
+        {
+          '$set': {'fallback': fallback},
+        },
+        new = True,
+      )
+      if _transaction is None: # Race condition.
+        _transaction = self.database.transactions.find_and_modify(
+          {
+            '_id': id,
+            'fallback': fallback,
+          },
+          {
+            '$set': {'fallback': None},
+          },
+          new = False,
+        )
+        fallback = _transaction['fallback']
+    else:
+      fallback = transaction['fallback']
+      _transaction = self.database.transactions.find_and_modify(
+        {
+          '_id': id,
+          'fallback': fallback,
+        },
+        {
+          '$set': {'fallback': None},
+        },
+        new = True,
+      )
+    return self.success({'fallback': fallback})
 
   @api('/apertus/fallbacks')
   def apertus_fallbacks(self):

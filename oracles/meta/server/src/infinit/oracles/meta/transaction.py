@@ -120,6 +120,7 @@ class Mixin:
       'ctime': time.time(),
       'mtime': time.time(),
       'status': transaction_status.CREATED,
+      'fallback': None,
       'strings': ' '.join([
             self.user['fullname'],
             self.user['handle'],
