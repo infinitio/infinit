@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+count = 1
+
+class MailService():
+
+  def __init__(self, response):
+    self.response = response
+
+  def send_via_mailchimp(self,
+                         mail,
+                         template_id,
+                         subject,
+                         from_="Infinit <no-reply@infinit.io>",
+                         reply_to=None,
+                         encoding='utf8',
+                         **kw):
+    pass
+
+  def send(self,
+           email,
+           subject,
+           content,
+           from_="Infinit <no-reply@infinit.io>",
+           reply_to=None,
+           encoding='utf8',
+           attached=None):
+    self.response['email'] = email
+    self.response['subject'] = subject
+    self.response['content'] = content
+
+with Meta() as meta:
+  res = dict()
+  mailer = MailService(res)
+  meta.mailer = mailer
+
+  meta.post(
+    'debug/user-report',
+    {
+      'send': True,
+    })
+
+  assert res['email'] == 'crash@infinit.io'
+  res.clear()
+
+  meta.post(
+    'debug/user-report',
+    {
+      'send': True,
+      'client_os': 'Kanard',
+    })
+
+  assert 'Kanard' in res['subject']
+  assert 'Kanard' in res['content']
+
+  res.clear()
+
+  meta.post(
+    'debug/user-report',
+    {
+      'send': True,
+      'client_os': 'Kanard',
+      'message': 'Duck are rapists',
+    })
+
+  assert 'Kanard' in res['subject']
+  assert 'Duck are rapists' in res['content']

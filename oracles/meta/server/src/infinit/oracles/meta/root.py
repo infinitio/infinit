@@ -3,7 +3,7 @@
 import time
 
 from . import conf, mail, error
-from .utils import api, require_admin
+from .utils import api, require_admin, hash_pasword
 import infinit.oracles.meta.version
 
 LOST_PASSWORD_TEMPLATE_ID = 'lost-password'
@@ -60,35 +60,39 @@ class Mixin:
   def __user_from_hash(self, hash):
     user = self.database.users.find_one({"reset_password_hash": hash})
     if user is None:
-      self.raise_error(
+      raise error.Error(
         error.OPERATION_NOT_PERMITTED,
-        msg = "Your password has already been reset",
-        )
+        "Your password has already been reset",
+      )
     if user['reset_password_hash_validity'] < time.time():
-      self.raise_error(
+      raise error.Error(
         error.OPERATION_NOT_PERMITTED,
-        msg = "The reset url is not valid anymore",
+        "The reset url is not valid anymore",
       )
     return user
 
-  @api('reset-accounts/<hash>')
+  @api('/reset-accounts/<hash>')
   def reseted_account(self, hash):
     """Reset account using the hash generated from the /lost-password page.
 
     hash -- the reset password token.
     """
-
-    usr = self.__user_from_hash(hash)
+    try:
+      usr = self.__user_from_hash(hash)
+    except error.Error as e:
+      self.fail(*e.args)
     return self.success(
       {
         'email': usr['email'],
       }
     )
 
-  @api('reset-accounts/<hash>')
-  def reset_account(self, hash):
-    user = self.__user_from_hash(hash)
-    from meta.resources import transaction
+  @api('/reset-accounts/<hash>', method = 'POST')
+  def reset_account(self, hash, password):
+    try:
+      user = self.__user_from_hash(hash)
+    except error.Error as e:
+      self.fail(*e.args)
 
     for transaction_id in self.database.transactions.find(
         {
@@ -101,23 +105,25 @@ class Mixin:
       try:
         self._transaction_update(transaction_id, transaction.CANCELED, user)
       except error.Error as e:
-        self.fail(error.UNKNOWN)
+        print(*e.args)
+        continue
+        # self.fail(error.UNKNOWN)
 
-    import metalib
-    from meta import conf
-    identity, public_key = metalib.generate_identity(
+    import papier
+    identity, public_key = papier.generate_identity(
       str(user["_id"]),
-      user['email'], self.data['password'],
+      user['email'],
+      password,
       conf.INFINIT_AUTHORITY_PATH,
       conf.INFINIT_AUTHORITY_PASSWORD
     )
 
-    user_id = self.registerUser(
+    user_id = self._register(
       _id = user["_id"],
       register_status = 'ok',
       email = user['email'],
       fullname = user['fullname'],
-      password = self.hashPassword(self.data['password']),
+      password = hash_pasword(password),
       identity = identity,
       public_key = public_key,
       handle = user['handle'],
@@ -136,7 +142,7 @@ class Mixin:
       )
     return self.success({'user_id': str(user_id)})
 
-  @api('/lost-password')
+  @api('/lost-password', method = 'POST')
   def declare_lost_password(self, email):
     """Generate a reset password url.
 
@@ -148,17 +154,18 @@ class Mixin:
     if not user:
       return self.error(error_code = error.UNKNOWN_USER)
     import time, hashlib
+    hash = str(time.time()) + email
+    hash = hash.encode('utf-8')
     self.database.users.update(
       {'email': email},
       {'$set':
         {
-          'reset_password_hash': hashlib.md5(str(time.time()) + email).hexdigest(),
+          'reset_password_hash': hashlib.md5(hash).hexdigest(),
           'reset_password_hash_validity': time.time() + RESET_PASSWORD_VALIDITY,
         }
       })
 
     user = self.database.users.find_one({'email': email}, fields = ['reset_password_hash'])
-    from meta.mail import send_via_mailchimp
     self.mailer.send_via_mailchimp(
       email,
       LOST_PASSWORD_TEMPLATE_ID,
