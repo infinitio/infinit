@@ -33,7 +33,9 @@ with Meta() as meta:
   assert device['success']
   assert device['trophonius'] == None
 
+  # XXX: This function requiere to be logged in.
   meta.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
+
 
   assert bob.connected
   assert bob.connected_on_device
