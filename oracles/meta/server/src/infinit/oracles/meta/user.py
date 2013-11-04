@@ -83,12 +83,10 @@ class Mixin:
     if user is None:
       self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
     query = {'id': str(device_id), 'owner': user['_id']}
-    print("query", query)
     device = self.device(ensure_existence = False, **query)
     if device is None:
       device = self._create_device(id = device_id,
                                    owner = user)
-      print("created device: %s" % device)
     else:
       assert str(device_id) in user['devices']
 
