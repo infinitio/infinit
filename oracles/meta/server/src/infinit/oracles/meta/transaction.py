@@ -427,11 +427,11 @@ class Mixin:
     transaction = self.database.transactions.find_and_modify(
       {"_id": _id},
       {"$set": {"nodes.%s" % self.user_key(user['_id'], device_id): node}},
-      multi = False
+      multi = False,
+      new = True,
     )
     print("device %s connected to transaction %s as %s" % (device_id, _id, node))
 
-    transaction = self.transaction(_id, owner_id = user['_id'])
     if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
       devices_ids = {uuid.UUID(transaction['sender_device_id']),
                      uuid.UUID(transaction['recipient_device_id'])}
@@ -481,7 +481,7 @@ class Mixin:
     res = dict();
 
     addrs = {'locals': list(), 'externals': list(), 'fallback' : list()}
-    peer_node = transaction['nodes'][peer_key];
+    peer_node = transaction['nodes'][peer_key]
 
     for addr_kind in ['locals', 'externals', 'fallback']:
         for a in peer_node[addr_kind]:
