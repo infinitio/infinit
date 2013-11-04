@@ -95,6 +95,7 @@ class Meta:
     self.__database = None
     self.__client = None
     self.__enalbe_emails = enable_emails
+    self.__meta = None
 
   def __enter__(self):
     self.__mongo.__enter__()
@@ -102,11 +103,11 @@ class Meta:
     self.__database = client.meta
     def run():
       try:
-        app = infinit.oracles.meta.Meta(
+        self.__meta = infinit.oracles.meta.Meta(
           mongo_port = self.__mongo.port,
           enable_emails = self.__enalbe_emails)
-        app.catchall = False
-        bottle.run(app = app,
+        self.__meta.catchall = False
+        bottle.run(app = self.__meta,
                    quiet = True,
                    server = self.__server)
       except KeyboardInterrupt:
@@ -119,6 +120,24 @@ class Meta:
       import time
       time.sleep(.1)
     return self
+
+  @property
+  def mailer(self):
+    return self.__meta.mailer
+
+  @mailer.setter
+  def mailer(self, mailer):
+    assert self.__meta is not None
+    self.__meta.mailer = mailer
+
+  @property
+  def notifier(self):
+    return self.__meta.notifier
+
+  @notifier.setter
+  def notifier(self, notifier):
+    assert self.__meta is not None
+    self.__meta.notifier = notifier
 
   def __exit__(self, *args, **kwargs):
     self.__mongo.__exit__(*args, **kwargs)
@@ -229,6 +248,10 @@ class User(Client):
   @property
   def connected(self):
     return self.get('user/%s/connected' % self.id)['connected']
+
+  @property
+  def identity(self):
+    return self.get('user/self')['identity']
 
   @property
   def connected_on_device(self, device_id = None):
