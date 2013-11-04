@@ -13,15 +13,26 @@ from pymongo import ASCENDING, DESCENDING
 
 class Mixin:
 
+  def is_sender(self, transaction, owner_id):
+    assert isinstance(owner_id, bson.ObjectId)
+    return transaction['sender_id'] == owner_id
+
+  def transaction(self, id, owner_id = None):
+    assert isinstance(id, bson.ObjectId)
+    transaction = self.database.transactions.find_one(id)
+    if transaction is None:
+      raise error.Error(error.TRANSACTION_DOESNT_EXIST)
+    if owner_id is not None:
+      assert isinstance(owner_id, bson.ObjectId)
+      if not owner_id in (transaction['sender_id'], transaction['recipient_id']):
+        raise error.Error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+    return transaction
+
   @require_logged_in
   @api('/transaction/<id>/view')
-  def transaction_view(self, id):
-    transaction = self.database.transactions.find_one(bson.ObjectId(id))
-    if not transaction:
-      return self.fail(error.TRANSACTION_DOESNT_EXIST)
-    if not self.user['_id'] in (transaction['sender_id'], transaction['recipient_id']):
-      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-    return self.success(transaction)
+  def transaction_view(self, id: bson.ObjectId):
+    assert isinstance(id, bson.ObjectId)
+    return self.success(self.transaction(id, self.user['_id']))
 
   @require_logged_in
   @api('/transaction/create', method = 'POST')
@@ -184,8 +195,6 @@ class Mixin:
 
     query['status'] = {'$%s' % (inclusive and 'in' or 'nin'): filter}
 
-    print(query)
-
     from pymongo import ASCENDING, DESCENDING
     find_params = {
       'spec': query,
@@ -232,23 +241,6 @@ class Mixin:
                               count = count,
                               offset = offset)
 
-  def _transaction_by_id(self, id, ensure_existence = True):
-    assert isinstance(id, bson.ObjectId)
-    transaction = self.database.transactions.find_one(id)
-    if transaction is None and ensure_existence:
-      return self.fail(error.TRANSACTION_DOESNT_EXIST)
-    return transaction
-
-  def validate_ownership(self, transaction, user = None):
-    if user is None:
-      user = self.user
-    # Check that user has rights on the transaction
-    is_sender = user['_id'] == transaction['sender_id']
-    is_receiver = user['_id'] == transaction['recipient_id']
-    if not (is_sender or is_receiver):
-      raise error.Error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-    return is_sender
-
   def on_accept(self, transaction, device_id, device_name):
     if device_id is None or device_name is None:
       self.bad_request()
@@ -293,8 +285,8 @@ class Mixin:
       user = self.user
     if user is None:
       self.fail(error.UNKNOWN_USER)
-    transaction = self._transaction_by_id(bson.ObjectId(transaction_id))
-    is_sender = self.validate_ownership(transaction, user)
+    transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
+    is_sender = self.is_sender(transaction, user['_id'])
 
     if status not in transaction_status.transitions[transaction['status']][is_sender]:
       raise error.Error(
@@ -374,9 +366,18 @@ class Mixin:
           )
         })
 
+  def user_key(self, user_id, device_id):
+    assert isinstance(user_id, bson.ObjectId)
+    assert isinstance(device_id, uuid.UUID)
+    return "%s-%s" % (str(user_id), str(device_id))
+
   @require_logged_in
   @api('/transaction/connect_device', method = "POST")
-  def connect_device(self, _id, device_id, locals = [], externals = []):
+  def connect_device(self,
+                     _id: bson.ObjectId,
+                     device_id: uuid.UUID, # Can be determined by session.
+                     locals = [],
+                     externals = []):
     """
     Connect the device to a transaction (setting ip and port).
     _id -- the id of the transaction.
@@ -384,21 +385,17 @@ class Mixin:
     locals -- a set of local ip address and port.
     externals -- a set of externals ip address and port.
     """
+    # XXX: We should check the state of the transaction.
 
     #regexp.Validator(regexp.ID, error.TRANSACTION_ID_NOT_VALID)
     #regexp.Validator(regexp.DeviceID, error.DEVICE_ID_NOT_VALID)
     user = self.user
-    transaction_id = bson.ObjectId(_id)
+    assert isinstance(_id, bson.ObjectId)
+    assert isinstance(device_id, uuid.UUID)
 
-    transaction = self.database.transactions.find_one(transaction_id)
-    if transaction is None:
-      self.fail(error.TRANSACTION_DOESNT_EXIST)
-
-    device_id = uuid.UUID(device_id)
-    device = self.database.devices.find_one({"_id": str(device_id), "owner": user['_id']})
-    if not device:
-      return self.fail(error.DEVICE_NOT_FOUND)
-
+    transaction = self.transaction(_id, owner_id = user['_id'])
+    device = self.device(id = str(device_id),
+                         owner =  user['_id'])
     if str(device_id) not in [transaction['sender_device_id'],
                               transaction['recipient_device_id']]:
       return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
@@ -427,63 +424,72 @@ class Mixin:
     node['fallback'] = []
 
     transaction = self.database.transactions.find_and_modify(
-      {"_id": transaction_id},
-      {"$set": {"nodes.%s" % (str(device_id),): node}},
+      {"_id": _id},
+      {"$set": {"nodes.%s" % self.user_key(user['_id'], device_id): node}},
       multi = False
     )
-    print("device %s connected to transaction %s as %s" % (device_id, transaction_id, node))
+    print("device %s connected to transaction %s as %s" % (device_id, _id, node))
 
-    transaction = self.database.transactions.find_one(transaction_id)
+    transaction = self.transaction(_id, owner_id = user['_id'])
     if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
+      devices_ids = {uuid.UUID(transaction['sender_device_id']),
+                     uuid.UUID(transaction['recipient_device_id'])}
       self.notifier.notify_some(
         notifier.PEER_CONNECTION_UPDATE,
-        device_ids = set(map(uuid.UUID, transaction['nodes'].keys())),
+        device_ids = devices_ids,
         message = {
-          "transaction_id": str(transaction_id),
-          "devices": list(transaction['nodes'].keys()),
+          "transaction_id": str(_id),
+          "devices": list(map(str, devices_ids)),
           "status": True
         },
       )
 
-    return self.success({})
+    return self.success()
 
   @require_logged_in
   @api('/transaction/<transaction_id>/endpoints', method = "POST")
-  def endpoints(self, transaction_id, device_id, self_device_id):
+  def endpoints(self,
+                transaction_id: bson.ObjectId,
+                device_id: uuid.UUID, # Can be determined by session.
+                self_device_id: uuid.UUID # Can be determined by session.
+                ):
     """
     Return ip port for a selected node.
     device_id -- the id of the device to get ips.
     self_device_id -- the id of your device.
     """
+    user = self.user
 
-    transaction = self.database.transactions.find_one(bson.ObjectId(transaction_id))
-    if not transaction:
-      return self.fail(error.TRANSACTION_DOESNT_EXIST)
+    transaction = self.transaction(transaction_id, owner_id = user['_id'])
+    is_sender = self.is_sender(transaction, user['_id'])
 
-    if self.user['_id'] not in [transaction['sender_id'], transaction['recipient_id']]:
-      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+    # XXX: Ugly.
+    if is_sender:
+      self_key = self.user_key(transaction['sender_id'], self_device_id)
+      peer_key = self.user_key(transaction['recipient_id'], device_id)
+    else:
+      self_key = self.user_key(transaction['recipient_id'], self_device_id)
+      peer_key = self.user_key(transaction['sender_id'], device_id)
 
-    if (not self_device_id in transaction['nodes'].keys()) or (not transaction['nodes'][self_device_id]):
+    if (not self_key in transaction['nodes'].keys()) or (not transaction['nodes'][self_key]):
       return self.fail(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
 
-    if (not device_id in transaction['nodes'].keys()) or (not transaction['nodes'][device_id]):
+    if (not peer_key in transaction['nodes'].keys()) or (not transaction['nodes'][peer_key]):
       return self.fail(error.DEVICE_NOT_FOUND, "This user is not connected to this transaction")
 
     res = dict();
 
     addrs = {'locals': list(), 'externals': list(), 'fallback' : list()}
-    user_node = transaction['nodes'][device_id];
+    peer_node = transaction['nodes'][peer_key];
 
     for addr_kind in ['locals', 'externals', 'fallback']:
-        for a in user_node[addr_kind]:
+        for a in peer_node[addr_kind]:
             if a and a["ip"] and a["port"]:
                 addrs[addr_kind].append(
                     (a["ip"], str(a["port"])))
 
-    print("addrs is: ", addrs)
-
     res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
     res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
-    res['fallback'] = ["{}:{}".format(*a) for a in ['127.0.0.1']] # self.__application__.fallback]
+    res['fallback'] = []
 
     return self.success(res)
