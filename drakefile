@@ -1215,6 +1215,14 @@ def configure(cxx_toolkit = None,
                           cxx_toolkit = cxx_toolkit,
                           cxx_config = cxx_config)
 
+  apertus = drake.include('oracles/apertus',
+                          protocol = elle.protocol,
+                          reactor = elle.reactor,
+                          boost = boost,
+                          prefix = prefix,
+                          cxx_toolkit = cxx_toolkit,
+                          cxx_config = cxx_config)
+
   # Install
   install = drake.Rule('install')
   install << drake.copy(infinit_bin, prefix)

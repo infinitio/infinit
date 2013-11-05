@@ -1,0 +1,25 @@
+import drake
+import drake.cxx
+import sys
+
+apertus_server = None
+
+def configure(protocol,
+              reactor,
+              boost = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  cxx_config = drake.cxx.Config(cxx_config)
+
+  server = drake.include('server/',
+                         protocol = protocol,
+                         reactor = reactor,
+                         boost = boost,
+                         prefix = prefix,
+                         cxx_toolkit = cxx_toolkit,
+                         cxx_config = cxx_config)
+
+  global apertus_server
+  apertus_server = server.library

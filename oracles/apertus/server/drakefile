@@ -1,0 +1,41 @@
+import drake
+import drake.cxx
+import sys
+
+library = None
+
+def configure(protocol,
+              reactor,
+              boost = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  global library
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
+
+  protocol_lib = drake.copy(protocol.lib_dynamic, 'lib',
+                            protocol.lib_dynamic.name().dirname())
+
+  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+                           reactor.lib_dynamic.name().dirname())
+
+  apertus_sources = drake.nodes(
+    'src/infinit/oracles/apertus/Apertus.cc',
+    'src/infinit/oracles/apertus/Apertus.hh',
+  )
+
+  local_cxx_config = drake.cxx.Config(cxx_config)
+  local_cxx_config.lib_path_runtime('.')
+  local_cxx_config += boost.config()
+  local_cxx_config.add_local_include_path('src/')
+
+  library = drake.cxx.DynLib('lib/apertus-server',
+                             apertus_sources +
+                             [reactor_lib, protocol_lib],
+                             cxx_toolkit, local_cxx_config)
+
+  rule_apertus_build = drake.Rule('build')
+  rule_apertus_build << library
