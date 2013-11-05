@@ -86,6 +86,27 @@ namespace infinit
           Method::DELETE);
       }
 
+      // Make it generic.
+      Response
+      Admin::register_apertus(boost::uuids::uuid const& uid,
+                              uint16_t port)
+      {
+        json::Dictionary request;
+        request["port"] = port;
+
+        return this->_request<Response>(
+          sprintf("/apertus/%s", boost::lexical_cast<std::string>(uid)),
+          Method::PUT, request);
+      }
+
+      Response
+      Admin::unregister_apertus(boost::uuids::uuid const& uid)
+      {
+        return this->_request<Response>(
+          sprintf("/apertus/%s", boost::lexical_cast<std::string>(uid)),
+          Method::DELETE);
+      }
+
       Response
       Admin::genocide() const
       {

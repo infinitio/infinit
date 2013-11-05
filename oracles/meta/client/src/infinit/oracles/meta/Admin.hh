@@ -37,6 +37,14 @@ namespace infinit
         Response
         unregister_trophonius(boost::uuids::uuid const& uuid);
 
+        // Make it generic.
+        Response
+        register_apertus(boost::uuids::uuid const& uid,
+                         uint16_t port);
+
+        Response
+        unregister_apertus(boost::uuids::uuid const& uid);
+
         AddSwaggerResponse
         add_swaggers(std::string const& user1, std::string const& user2) const;
 
