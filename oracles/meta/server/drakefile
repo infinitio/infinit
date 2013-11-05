@@ -39,8 +39,9 @@ def configure(elle,
   ## ------- ##
 
   sources = drake.nodes(
-    'src/infinit/__init__.py',
-    'src/infinit/oracles/__init__.py',
+    # Those ones comes from the common python package.
+    #'src/infinit/__init__.py',
+    #'src/infinit/oracles/__init__.py',
     'src/infinit/oracles/meta/__init__.py',
     'src/infinit/oracles/meta/plugins/__init__.py',
     'src/infinit/oracles/meta/plugins/failure.py',
@@ -70,14 +71,10 @@ def configure(elle,
   ## ----- ##
 
   elle_python = drake.copy(elle.python, '.', '../../../elle/elle')
-
   build = drake.Rule('build')
   build_python_path = drake.Path('lib/python')
   python = [version]
   sources_built = drake.copy(sources, build_python_path, 'src')
-  for source in sources_built:
-    for elle_source in elle_python:
-      source.dependency_add(elle_source)
   python += sources_built
   bottle = drake.nodes('../../bottle/bottle.py')
   python += drake.copy(bottle, build_python_path,
