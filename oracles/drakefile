@@ -10,6 +10,7 @@ install = None
 
 def configure(elle,
               reactor,
+              protocol,
               papier_python,
               boost = None,
               python3 = None,
@@ -78,6 +79,15 @@ def configure(elle,
                              meta_client = meta.client,
                              cxx_toolkit = cxx_toolkit,
                              cxx_config = local_cxx_config)
+
+  apertus = drake.include('apertus',
+                          reactor = reactor,
+                          protocol = protocol,
+                          meta_client = meta.client,
+                          boost = boost,
+                          prefix = prefix,
+                          cxx_toolkit = cxx_toolkit,
+                          cxx_config = cxx_config)
 
   for name in ('build', 'check', 'install'):
     for oracle in [meta, trophonius]:

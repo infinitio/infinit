@@ -4,8 +4,9 @@ import sys
 
 apertus_server = None
 
-def configure(protocol,
-              reactor,
+def configure(reactor,
+              protocol,
+              meta_client,
               boost = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
@@ -16,6 +17,7 @@ def configure(protocol,
   server = drake.include('server/',
                          protocol = protocol,
                          reactor = reactor,
+                         meta_client = meta_client,
                          boost = boost,
                          prefix = prefix,
                          cxx_toolkit = cxx_toolkit,

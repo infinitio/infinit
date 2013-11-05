@@ -6,6 +6,7 @@ library = None
 
 def configure(protocol,
               reactor,
+              meta_client,
               boost = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
@@ -22,6 +23,8 @@ def configure(protocol,
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
                            reactor.lib_dynamic.name().dirname())
 
+  meta_client_lib = drake.copy(meta_client.lib, 'lib', strip_prefix = True)
+
   apertus_sources = drake.nodes(
     'src/infinit/oracles/apertus/Apertus.cc',
     'src/infinit/oracles/apertus/Apertus.hh',
@@ -30,6 +33,7 @@ def configure(protocol,
   local_cxx_config = drake.cxx.Config(cxx_config)
   local_cxx_config.lib_path_runtime('.')
   local_cxx_config += boost.config()
+  local_cxx_config += meta_client.config
   local_cxx_config.add_local_include_path('src/')
 
   library = drake.cxx.DynLib('lib/apertus-server',

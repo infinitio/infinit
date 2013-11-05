@@ -966,6 +966,7 @@ def configure(cxx_toolkit = None,
     'oracles',
     elle = elle.elle,
     reactor = elle.reactor,
+    protocol = elle.protocol,
     papier_python = papier_python_lib,
     boost = boost,
     python3 = python_enabled and python3 or None,
@@ -1208,14 +1209,6 @@ def configure(cxx_toolkit = None,
   # Oracles
 
   hermes = drake.include('oracles/hermes',
-                          protocol = elle.protocol,
-                          reactor = elle.reactor,
-                          boost = boost,
-                          prefix = prefix,
-                          cxx_toolkit = cxx_toolkit,
-                          cxx_config = cxx_config)
-
-  apertus = drake.include('oracles/apertus',
                           protocol = elle.protocol,
                           reactor = elle.reactor,
                           boost = boost,
