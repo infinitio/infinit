@@ -35,6 +35,7 @@ def configure(protocol,
   local_cxx_config += boost.config()
   local_cxx_config += meta_client.config
   local_cxx_config.add_local_include_path('src/')
+  local_cxx_config.add_local_include_path('../../hermes/server/src/')
 
   library = drake.cxx.DynLib('lib/apertus-server',
                              apertus_sources +
