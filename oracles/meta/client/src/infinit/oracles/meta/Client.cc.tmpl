@@ -637,6 +637,76 @@ namespace infinit
           Method::POST, request);
       }
 
+      FallbackResponse
+      Client::fallback(std::string const& _id) const
+      {
+        return this->_request<FallbackResponse>(
+          elle::sprintf("/apertus/fallback/%s", _id), Method::GET);
+      }
+
+      elle::Buffer
+      Client::icon(std::string const& user_id) const
+      {
+        auto request = this->_build_request(
+          elle::sprintf("/user/%s/avatar", user_id),
+          Method::GET,
+          *(elle::format::json::Object*)(nullptr));
+
+        return request.response();
+      }
+
+      void
+      Client::icon(std::string const& user_id,
+                   elle::ConstWeakBuffer const& icon) const
+      {
+        reactor::http::Request request =
+          this->_client.request(
+            elle::sprintf("%s/user/%s/icon", this->_root_url, user_id),
+            reactor::http::Method::PUT,
+            this->_default_configuration);
+
+        request << icon;
+
+        auto status = request.status();
+        if (status != reactor::http::StatusCode::OK)
+          throw elle::http::Exception(
+            static_cast<elle::http::ResponseCode>(status),
+            elle::sprintf("error %s while PUTing avatar", status));
+      }
+
+      reactor::http::Request
+      Client::_build_request(std::string const& url,
+                             reactor::http::Method method,
+                             elle::format::json::Object const& body) const
+      {
+        ELLE_LOG_COMPONENT("oracles.meta.client");
+        ELLE_TRACE_SCOPE("%s: %s on %s", *this, method, url);
+
+        reactor::http::Request request = &body ?
+          this->_client.request(
+            this->_root_url + url,
+            method,
+            "application/json",
+            this->_default_configuration) :
+          this->_client.request(
+            this->_root_url + url,
+            method,
+            this->_default_configuration);
+
+        if (&body)
+        {
+          request << body.repr();
+          request.finalize();
+        }
+
+        auto status = request.status();
+        if (status != reactor::http::StatusCode::OK)
+          throw elle::http::Exception(
+            static_cast<elle::http::ResponseCode>(status),
+            elle::sprintf("error %s while posting on %s", status, url));
+        return request;
+      }
+
       //- Properties ------------------------------------------------------------
 
       std::ostream&

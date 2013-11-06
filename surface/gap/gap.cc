@@ -501,6 +501,28 @@ extern "C"
     free((void*) str);
   }
 
+  gap_Status
+  gap_avatar(gap_State* state,
+             uint32_t user_id,
+             void** data,
+             size_t* size)
+  {
+    assert(user_id != surface::gap::null_id);
+
+    return run<gap_Status>(
+      state,
+      "user avatar url",
+      [&] (surface::gap::State& state) -> gap_Status
+      {
+        auto res = state.user_icon(state.user(user_id).id);
+
+        *data = (void*) res.contents();
+        *size = res.size();
+
+        return gap_ok;
+      });
+  }
+
   uint32_t
   gap_user_by_email(gap_State* state,
                     char const* email)
@@ -700,6 +722,27 @@ extern "C"
       [&] (surface::gap::State& state) -> gap_Status
       {
         state.attach_callback<surface::gap::State::UserStatusNotification>(cpp_cb);
+        return gap_ok;
+      });
+  }
+
+  gap_Status
+  gap_avatar_available_callback(gap_State* state,
+                                gap_avatar_available_callback_t cb)
+  {
+    auto cpp_cb = [cb] (
+      surface::gap::State::AvatarAvailableNotification const& notif)
+    {
+      cb(notif.id);
+    };
+
+    return run<gap_Status>(
+      state,
+      "avatar available callback",
+      [&] (surface::gap::State& state) -> gap_Status
+      {
+        state.attach_callback<surface::gap::State::AvatarAvailableNotification>(
+          cpp_cb);
         return gap_ok;
       });
   }

@@ -1,5 +1,5 @@
 #include <surface/gap/State.hh>
-
+#include <surface/gap/Exception.hh>
 #include <reactor/scheduler.hh>
 
 #include <stdexcept>
@@ -26,6 +26,8 @@ namespace surface
       Exception{gap_unknown_user, elle::sprintf("unknown swagger %s", id)}
     {}
 
+    Notification::Type State::AvatarAvailableNotification::type =
+      NotificationType_AvatarAvailable;
     Notification::Type State::UserStatusNotification::type =
       NotificationType_UserStatusUpdate;
     Notification::Type State::NewSwaggerNotification::type =
@@ -38,6 +40,10 @@ namespace surface
     {}
 
     State::NewSwaggerNotification::NewSwaggerNotification(uint32_t id):
+      id(id)
+    {}
+
+    State::AvatarAvailableNotification::AvatarAvailableNotification(uint32_t id):
       id(id)
     {}
 
@@ -284,11 +290,39 @@ namespace surface
 
       State::UserIndexes result;
       auto res = this->meta().search_users(text);
-      for (auto const& user_id : res.users)
+      for (auto const& user_id: res.users)
       {
         result.emplace(this->_user_indexes.at(this->user(user_id).id));
       }
       return result;
+    }
+
+    elle::ConstWeakBuffer
+    State::user_icon(std::string const& user_id) const
+    {
+      auto id = this->_user_indexes.at(this->user(user_id).id);
+
+      if (this->_avatars.find(id) != this->_avatars.end())
+      {
+        if (this->_avatar_to_fetch.find(user_id) != this->_avatar_to_fetch.end())
+        {
+          ELLE_WARN("%s: remove %s avatar from fetching: already fetched",
+                    *this, user_id);
+          this->_avatar_to_fetch.erase(user_id);
+        }
+        return this->_avatars[id];
+      }
+
+      if (this->_avatar_to_fetch.find(user_id) != this->_avatar_to_fetch.end())
+      {
+        ELLE_DEBUG("avatar is being fetched");
+        throw Exception(gap_data_not_fetched_yet,
+                        "avatar is not available yet");
+      }
+
+      this->_avatar_to_fetch.insert(user_id);
+      this->_avatar_fetching_barrier.open();
+      throw Exception(gap_data_not_fetched_yet, "avatar is not available yet");
     }
 
     bool

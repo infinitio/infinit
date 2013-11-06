@@ -197,7 +197,12 @@ namespace infinit
         std::string id;
       };
 
-      typedef elle::Buffer UserIcon;
+      struct FallbackResponse: Response
+      {
+        std::string fallback;
+      };
+
+      typedef elle::ConstWeakBuffer UserIcon;
 
       class Client: public elle::Printable
       {
@@ -234,11 +239,21 @@ namespace infinit
         T
         _request(std::string const& url,
                  reactor::http::Method method) const;
+
         template <typename T>
         T
         _request(std::string const& url,
                  reactor::http::Method method,
                  elle::format::json::Object const& body) const;
+
+        reactor::http::Request
+        _build_request(std::string const& url,
+                       reactor::http::Method method,
+                       elle::format::json::Object const& body) const;
+
+        template <typename T>
+        T
+        _deserialize_answer(reactor::http::Request request) const;
 
       public:
         DebugResponse
@@ -366,6 +381,17 @@ namespace infinit
         device_endpoints(std::string const& transaction_id,
                          std::string const& self_device_id,
                          std::string const& peer_device_id) const;
+
+        FallbackResponse
+        fallback(std::string const& _id) const;
+
+      public:
+        elle::Buffer
+        icon(std::string const& user_id) const;
+
+        void
+        icon(std::string const& user_id,
+             elle::ConstWeakBuffer const& icon) const;
 
         /*----------.
           | Printable |

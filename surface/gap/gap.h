@@ -146,6 +146,11 @@ extern "C" {
   gap_user_status_callback(gap_State* state,
                            gap_user_status_callback_t cb);
 
+  typedef void (*gap_avatar_available_callback_t)(uint32_t id);
+  gap_Status
+  gap_avatar_available_callback(gap_State* state,
+                                gap_avatar_available_callback_t cb);
+
   // Own connection status changed.
   typedef void (*gap_connection_callback_t)(gap_UserStatus const);
 
@@ -300,6 +305,13 @@ extern "C" {
   /// Free the avatar url.
   void
   gap_free_user_avatar_url(char const* str);
+
+  /// Get user icon data.
+  gap_Status
+  gap_avatar(gap_State* state,
+             uint32_t user_id,
+             void** data,
+             size_t* size);
 
   /// Retrieve user with its email.
   uint32_t

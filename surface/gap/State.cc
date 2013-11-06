@@ -349,6 +349,37 @@ namespace surface
                 }
               }});
 
+        this->_avatar_fetcher_thread.reset(
+          new reactor::Thread{
+            scheduler,
+            "avatar fetched",
+            [&]
+            {
+              while (true)
+              {
+                this->_avatar_fetching_barrier.wait();
+
+                ELLE_ASSERT(!this->_avatar_to_fetch.empty());
+                auto user_id = *this->_avatar_to_fetch.begin();
+                auto id = this->_user_indexes.at(this->user(user_id).id);
+                try
+                {
+                  this->_avatars.insert(
+                    std::make_pair(id,
+                                   this->_meta.icon(user_id)));
+                  this->_avatar_to_fetch.erase(user_id);
+                  this->enqueue(AvatarAvailableNotification(id));
+                }
+                catch (elle::Exception const& e)
+                {
+                  ELLE_ERR("%s: unable to fetch %s avatar: %s", *this, user_id,
+                           e.what());
+                }
+                if (this->_avatar_to_fetch.empty())
+                  this->_avatar_fetching_barrier.close();
+              }
+            }});
+
         this->user(this->me().id);
         this->_transactions_init();
         this->on_connection_changed(true);
@@ -421,6 +452,17 @@ namespace surface
             this->_user_indexes.clear();
             this->_swagger_indexes.clear();
             this->_users.clear();
+
+            this->_avatar_fetching_barrier.close();
+            if (this->_avatar_fetcher_thread != nullptr)
+            {
+              ELLE_DEBUG("stop avatar_fetching");
+              this->_avatar_fetcher_thread->terminate_now();
+              this->_avatar_fetcher_thread.reset();
+            }
+            this->_avatar_to_fetch.clear();
+            this->_avatars.clear();
+
           }
 
           ELLE_DEBUG("clear transactions")
@@ -546,6 +588,23 @@ namespace surface
       }
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
+    }
+
+    void
+    State::set_avatar(boost::filesystem::path const& image_path)
+    {
+      if (!boost::filesystem::exists(image_path))
+        throw Exception(gap_error,
+                        elle::sprintf("file not found at %s", image_path));
+
+      std::ifstream stream{image_path.string()};
+      std::istream_iterator<char> eos;
+      std::istream_iterator<char> iit(stream);   // stdin iterator
+
+      elle::Buffer output;
+      std::copy(iit, eos, output.begin());
+
+      this->meta().icon(this->me().id, output);
     }
 
     std::string
@@ -715,6 +774,9 @@ namespace surface
           return out << "ConnectionStatus";
         case NotificationType_KickedOut:
           return out << "Kicked Out";
+        case NotificationType_AvatarAvailable:
+          return out << "Avatar Available";
+
       }
 
       return out;

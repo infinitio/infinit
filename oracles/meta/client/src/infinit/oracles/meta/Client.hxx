@@ -32,32 +32,15 @@ namespace infinit
                        reactor::http::Method method,
                        elle::format::json::Object const& body) const
       {
+        return this->_deserialize_answer<T>(
+          std::move(this->_build_request(url, method, body)));
+      }
+
+      template <typename T>
+      T
+      Client::_deserialize_answer(reactor::http::Request request) const
+      {
         ELLE_LOG_COMPONENT("oracles.meta.client");
-        ELLE_TRACE_SCOPE("%s: %s on %s", *this, method, url);
-
-        reactor::http::Request request = &body ?
-          this->_client.request(
-            this->_root_url + url,
-            method,
-            "application/json",
-            this->_default_configuration) :
-          this->_client.request(
-            this->_root_url + url,
-            method,
-            this->_default_configuration);
-
-        if (&body)
-        {
-          request << body.repr();
-          request.finalize();
-        }
-
-        auto status = request.status();
-        if (status != reactor::http::StatusCode::OK)
-          throw elle::http::Exception(
-            static_cast<elle::http::ResponseCode>(status),
-            elle::sprintf("error %s while posting on %s", status, url));
-
         // deserialize response
         T ret;
         try
