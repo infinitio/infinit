@@ -1217,8 +1217,8 @@ def configure(cxx_toolkit = None,
 
   # Install
   install = drake.Rule('install')
-  install << drake.copy(infinit_bin, prefix)
-  install << drake.copy(infinit_libs, prefix)
+  install << drake.install(infinit_bin, prefix)
+  install << drake.install(infinit_libs, prefix)
 
   # Tests
   tests_cxx_config = drake.cxx.Config(cxx_config)
