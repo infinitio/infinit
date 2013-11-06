@@ -181,6 +181,11 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::ConnectDeviceResponse, ar, res)
   (void) res;
 }
 
+SERIALIZE_RESPONSE(infinit::oracles::meta::FallbackResponse, ar, res)
+{
+  ar & named("fallback", res.fallback);
+}
+
 namespace infinit
 {
   namespace oracles
