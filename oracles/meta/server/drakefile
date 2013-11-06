@@ -75,6 +75,8 @@ def configure(elle,
   build_python_path = drake.Path('lib/python')
   python = [version]
   sources_built = drake.copy(sources, build_python_path, 'src')
+  for source in sources_built:
+    source.dependencies_add(elle_python)
   python += sources_built
   bottle = drake.nodes('../../bottle/bottle.py')
   python += drake.copy(bottle, build_python_path,
@@ -94,8 +96,8 @@ def configure(elle,
   install_python_path = \
     prefix / ('lib/python%s/site-packages' % python_version)
   install = drake.Rule('install')
-  install << drake.copy(python + [papier_python], prefix)
-  install << drake.copy(build_binary, prefix)
+  install << drake.install(python + [papier_python], prefix)
+  install << drake.install(build_binary, prefix)
 
   ## ----- ##
   ## Check ##
