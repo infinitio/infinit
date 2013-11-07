@@ -105,11 +105,35 @@ class Mixin:
       }
     )
 
+  @api('/web_login', method = 'POST')
+  def web_login(self,
+                email,
+                password):
+    email = email.lower()
+    user = self.database.users.find_one({
+      'email': email,
+      'password': hash_pasword(password),
+    })
+    if user is None:
+      self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
+
+    bottle.request.session['email'] = email
+    return self.success(
+      {
+        '_id' : self.user['_id'],
+        'fullname': self.user['fullname'],
+        'email': self.user['email'],
+        'handle': self.user['handle'],
+      }
+    )
+
   @require_logged_in
   @api('/logout', method = 'POST')
   def logout(self):
     if 'email' in bottle.request.session:
-      del bottle.request.session['device']
+      # Web sessions have no device.
+      if 'device' in bottle.request.session:
+        del bottle.request.session['device']
       del bottle.request.session['email']
       return self.success()
     else:
