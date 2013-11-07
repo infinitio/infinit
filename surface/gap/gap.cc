@@ -410,6 +410,26 @@ extern "C"
     return vector_to_pointer(ret.value());
   }
 
+  /// Publish avatar to meta.
+  gap_Status
+  gap_update_avatar(gap_State* state,
+                    void const* data,
+                    size_t size)
+  {
+    assert(data != nullptr);
+
+    elle::Buffer picture(data, size);
+
+    return run<gap_Status>(
+      state,
+      "update avatar",
+      [&] (surface::gap::State& state)
+      {
+        state.set_avatar(picture);
+        return gap_ok;
+      });
+  }
+
   /// - User ----------------------------------------------------------------
 
   char const*

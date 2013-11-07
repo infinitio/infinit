@@ -281,6 +281,12 @@ extern "C" {
   uint32_t*
   gap_self_favorites(gap_State* state);
 
+  /// Publish avatar to meta.
+  gap_Status
+  gap_update_avatar(gap_State* state,
+                    void const* data,
+                    size_t size);
+
   /// - User ------------------------------------------------------------------
 
   /// Retrieve user fullname.

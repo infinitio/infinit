@@ -153,6 +153,9 @@ namespace surface
       void
       set_avatar(boost::filesystem::path const& image_path);
 
+      void
+      set_avatar(elle::Buffer const& avatar);
+
       ELLE_ATTRIBUTE(reactor::Mutex, login_mutex);
     public:
       /// Login to meta.

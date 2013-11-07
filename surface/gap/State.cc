@@ -604,7 +604,13 @@ namespace surface
       elle::Buffer output;
       std::copy(iit, eos, output.begin());
 
-      this->meta().icon(this->me().id, output);
+      this->set_avatar(output);
+    }
+
+    void
+    State::set_avatar(elle::Buffer const& avatar)
+    {
+      this->meta().icon(this->me().id, avatar);
     }
 
     std::string
