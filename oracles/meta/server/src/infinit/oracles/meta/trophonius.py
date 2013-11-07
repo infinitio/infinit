@@ -99,3 +99,8 @@ class Mixin:
                               device_ids = {device},
                               message = {"message": message})
     return self.success()
+
+  @api('/trophonius')
+  def registered_trophonius(self):
+    trophonius = self.database.trophonius.find(fields = ['ip', 'port'])
+    return self.success({'trophonius': ["%s:%s" % (s['ip'], s['port']) for s in trophonius]})
