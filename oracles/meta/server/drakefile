@@ -70,22 +70,24 @@ def configure(elle,
   ## Build ##
   ## ----- ##
 
-  elle_python = drake.copy(elle.python, '.', '../../../elle/elle')
   build = drake.Rule('build')
   build_python_path = drake.Path('lib/python')
+
+  elle_python = drake.copy(elle.python, '.', '../../../elle/elle')
+  papier_python = drake.copy(papier_python, build_python_path,
+                             strip_prefix = True)
+  build << papier_python
   python = [version]
   sources_built = drake.copy(sources, build_python_path, 'src')
   for source in sources_built:
     source.dependencies_add(elle_python)
+    source.dependency_add(papier_python)
   python += sources_built
   bottle = drake.nodes('../../bottle/bottle.py')
   python += drake.copy(bottle, build_python_path,
                             '../../bottle')
   python += drake.copy(python_common, '.', '../..')
   build << python
-  papier_python = drake.copy(papier_python, build_python_path,
-                             strip_prefix = True)
-  build << papier_python
   build_binary = drake.copy(drake.node('meta'), 'bin')
   build << build_binary
 
