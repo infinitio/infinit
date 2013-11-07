@@ -80,6 +80,8 @@ namespace infinit
           {
             this->_meta.register_trophonius(
               this->_uuid, this->notification_port());
+            ELLE_LOG("%s: registered to meta as %s on port %s",
+                     *this, this->_uuid, this->notification_port());
           }
           catch (...)
           {
@@ -106,6 +108,7 @@ namespace infinit
           try
           {
             this->_meta.unregister_trophonius(this->_uuid);
+            ELLE_LOG("%s: unregistered from meta", *this);
           }
           catch (...)
           {
