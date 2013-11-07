@@ -29,6 +29,7 @@ namespace infinit
           boost::posix_time::time_duration const& ping_period):
           Waitable("trophonius"),
           _server(),
+          _port(port),
           _notifications(),
           _accepter(
             *reactor::Scheduler::scheduler(),
