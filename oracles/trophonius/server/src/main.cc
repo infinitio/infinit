@@ -1,6 +1,7 @@
 #include <infinit/oracles/trophonius/server/Client.hh>
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 
 #include <elle/Exception.hh>
@@ -26,8 +27,7 @@ parse_options(int argc, char** argv)
     ("ping-period,i", value<int>(),
      "specify the ping period in seconds (default 30)")
     ("port,p", value<int>(), "specify the port to listen on")
-    ("meta_host,m", value<std::string>(), "specify the meta host to connect to")
-    ("meta_port,d", value<int>(), "specify the meta port to connect to")
+    ("meta,m", value<std::string>(), "specify the meta host:port to connect to")
     ("version,v", "display version information and exit")
     ;
   variables_map vm;
@@ -71,13 +71,18 @@ int main(int argc, char** argv)
       {
         auto options = parse_options(argc, argv);
 
-        if (!options.count("meta_host"))
-          throw std::runtime_error("meta_host argument is mandatory");
-        if (!options.count("meta_port"))
-          throw std::runtime_error("meta_port argument is mandatory");
+        if (!options.count("meta"))
+          throw std::runtime_error("meta argument is mandatory");
 
-        std::string meta_host = options["meta_host"].as<std::string>();
-        int meta_port = options["meta_port"].as<int>();
+        std::string meta = options["meta"].as<std::string>();
+
+        std::vector<std::string> result;
+        boost::split(result, meta, boost::is_any_of(":"));
+        if (result.size() != 2)
+          throw std::runtime_error("meta must be <host>:<port>");
+
+        auto const &meta_host = result[0];
+        auto const &meta_port = std::stoi(result[1]);
 
         int port = 0;
         int ping = 30;
