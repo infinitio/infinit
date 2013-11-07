@@ -134,9 +134,11 @@ def configure(elle,
     'users/register',
     'users/register_invited',
     'users/session-cleanup',
+    'users/sessions',
     'users/set_avatar',
     'users/swaggers',
     'users/user-search',
+    'users/web-session',
     ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))

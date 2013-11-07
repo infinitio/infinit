@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+from utils import Meta, Client, HTTPException
+from uuid import uuid4
+import copy
+
+with Meta() as meta:
+  password = meta.create_user('foo@bar.baz')
+  user = {
+    'email': 'foo@bar.baz',
+    'password': password,
+  }
+
+  user_device_0 = copy.deepcopy(user)
+  user_device_0['device_id'] = str(uuid4())
+
+  user_device_1 = copy.deepcopy(user)
+  user_device_1['device_id'] = str(uuid4())
+
+  # Login a user on device 0.
+  client0 = Client(meta)
+  assert meta.database.sessions.count() == 0
+  res = client0.post('login', user_device_0)
+  assert res['success']
+  res = client0.get('user/self')
+  assert res['success']
+  assert meta.database.sessions.count() == 1
+
+  # Login the same user but on a different device (1).
+  client1 = Client(meta)
+  res = client1.post('login', user_device_1)
+  assert res['success']
+  res = client1.get('user/self')
+  assert res['success']
+  assert meta.database.sessions.count() == 2
+
+  # Logout user 0.
+  res = client0.post('logout')
+  assert res['success']
+  assert meta.database.sessions.count() == 1
+
+  # Relogout user 0.
+  try:
+    res = client0.post('logout')
+    raise Exception("shouldn't be logged in anymore")
+  except HTTPException as e:
+    pass
+  assert meta.database.sessions.count() == 1
+
+  # Relog user on device 0.
+  res = client0.post('login', user_device_0)
+  assert res['success']
+  res = client0.get('user/self')
+  assert res['success']
+  assert meta.database.sessions.count() == 2
+
+  # Logout user on device 1.
+  res = client1.post('logout')
+  assert res['success']
+  assert meta.database.sessions.count() == 1
+
+  # Logout user on device 0.
+  res = client0.post('logout')
+  assert res['success']
+  assert meta.database.sessions.count() == 0
