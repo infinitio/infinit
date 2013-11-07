@@ -1,8 +1,13 @@
 #!/usr/bin/python3
 
+# Load this FIRST to ensure we load our own openssl. Otherwise the
+# system one will be loaded through hashlib, by bottle for instance.
+import papier
+
 import bottle
 import elle.log
 import inspect
+import papier
 import pymongo
 import re
 
