@@ -2,8 +2,9 @@
 
 #include <reactor/scheduler.hh>
 
-#include <infinit/oracles/trophonius/server/Client.hh>
+#include <infinit/oracles/trophonius/server/Meta.hh>
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
+#include <infinit/oracles/trophonius/server/User.hh>
 
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>

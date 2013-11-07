@@ -39,9 +39,17 @@ def configure(elle,
   sources = drake.nodes(
     'src/infinit/oracles/trophonius/server/Client.cc',
     'src/infinit/oracles/trophonius/server/Client.hh',
+    'src/infinit/oracles/trophonius/server/Meta.cc',
+    'src/infinit/oracles/trophonius/server/Meta.hh',
+    'src/infinit/oracles/trophonius/server/User.cc',
+    'src/infinit/oracles/trophonius/server/User.hh',
     'src/infinit/oracles/trophonius/server/Trophonius.cc',
     'src/infinit/oracles/trophonius/server/Trophonius.hh',
     'src/infinit/oracles/trophonius/server/fwd.hh',
+    'src/infinit/oracles/trophonius/server/exceptions.cc',
+    'src/infinit/oracles/trophonius/server/exceptions.hh',
+    'src/infinit/oracles/trophonius/server/utils.cc',
+    'src/infinit/oracles/trophonius/server/utils.hh',
   )
 
   lib = drake.cxx.DynLib('lib/trophonius',
