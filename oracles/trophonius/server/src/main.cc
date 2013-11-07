@@ -74,15 +74,26 @@ int main(int argc, char** argv)
         if (!options.count("meta"))
           throw std::runtime_error("meta argument is mandatory");
 
-        std::string meta = options["meta"].as<std::string>();
+        std::string meta_host = "";
+        int meta_port = 80;
 
-        std::vector<std::string> result;
-        boost::split(result, meta, boost::is_any_of(":"));
-        if (result.size() != 2)
-          throw std::runtime_error("meta must be <host>:<port>");
+        {
+          std::string meta = options["meta"].as<std::string>();
+          std::vector<std::string> result;
+          boost::split(result, meta, boost::is_any_of(":"));
+          if (result.size() > 2)
+            throw std::runtime_error("meta must be <host>(:<port>)");
+          else if (result.size() == 2)
+          {
+            meta_port = std::stoi(result[1]);
+            meta_host = result[0];
+          }
+          else
+            meta_host = meta;
+        }
 
-        auto const &meta_host = result[0];
-        auto const &meta_port = std::stoi(result[1]);
+        if (meta_host.empty())
+          throw std::runtime_error("meta host is empty");
 
         int port = 0;
         int ping = 30;
