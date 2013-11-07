@@ -21,6 +21,7 @@ def configure(elle,
 
   local_cxx_config = drake.cxx.Config(cxx_config)
   local_cxx_config += boost.config_program()
+  local_cxx_config += boost.config_system()
   local_cxx_config += elle.config
   local_cxx_config += reactor.config
   local_cxx_config += meta_client.config
@@ -55,13 +56,16 @@ def configure(elle,
     'src/main.cc',
   )
 
-  trophonius = drake.cxx.Executable('bin/trophonius',
-                                    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib],
-                                    cxx_toolkit,
-                                    exe_cxx_config)
-  build = drake.Rule('build')
-  install = drake.Rule('install')
+  trophonius = drake.cxx.Executable(
+    'bin/trophonius',
+    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib],
+    cxx_toolkit,
+    exe_cxx_config)
 
+  build = drake.Rule('build')
   build << trophonius
+
+  install = drake.Rule('install')
+  install << drake.install(trophonius, prefix)
 
   check = drake.Rule('check')
