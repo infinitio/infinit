@@ -5,6 +5,7 @@
 
 # include <boost/uuid/uuid.hpp>
 
+# include <reactor/network/buffer.hh>
 # include <reactor/network/tcp-server.hh>
 # include <reactor/network/tcp-socket.hh>
 # include <infinit/oracles/meta/Admin.hh>
@@ -14,15 +15,6 @@ namespace oracles
 {
   namespace apertus
   {
-    class Connection
-    {
-    public:
-      Connection(reactor::network::TCPSocket* sock);
-
-    private:
-      reactor::network::TCPSocket* _sock;
-    };
-
     class Apertus
     {
     public:
@@ -33,6 +25,11 @@ namespace oracles
 
       void
       run();
+
+    private:
+      void
+      _connect(reactor::network::TCPSocket* client1,
+               reactor::network::TCPSocket* client2);
 
     private:
       reactor::Scheduler& _sched;
@@ -46,7 +43,7 @@ namespace oracles
       const int _port;
 
     private:
-      std::map<oracle::hermes::TID, Connection> _clients;
+      std::map<oracle::hermes::TID, reactor::network::TCPSocket*> _clients;
     };
   }
 }
