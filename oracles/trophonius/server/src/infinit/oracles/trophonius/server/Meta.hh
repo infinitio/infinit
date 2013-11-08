@@ -17,6 +17,7 @@ namespace infinit
         public:
           Meta(Trophonius& trophonius,
                std::unique_ptr<reactor::network::TCPSocket>&& socket);
+          ~Meta();
 
           void
           _handle() override;

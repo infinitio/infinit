@@ -24,7 +24,13 @@ namespace infinit
                    std::unique_ptr<reactor::network::TCPSocket>&& socket):
           Client(trophonius, std::move(socket))
         {
+          ELLE_DEBUG("%s: connected", *this);
           // XXX: Ensure uncity.
+        }
+
+        Meta::~Meta()
+        {
+          ELLE_DEBUG("%s: disconnected", *this);
         }
 
         void
@@ -43,9 +49,7 @@ namespace infinit
 
             User& user = this->trophonius().user(
               boost::uuids::string_generator()(json["device_id"].asString()));
-
-            Json::FastWriter writer;
-            user._socket->write(writer.write(json));
+            user.notify(json);
           }
           catch (ProtocolError const& e)
           {

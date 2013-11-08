@@ -4,17 +4,17 @@
 # include <unordered_set>
 
 # include <boost/date_time/posix_time/posix_time.hpp>
+# include <boost/uuid/uuid.hpp>
 
 # include <elle/attribute.hh>
 
+# include <reactor/Barrier.hh>
 # include <reactor/network/tcp-server.hh>
 # include <reactor/thread.hh>
 # include <reactor/waitable.hh>
 
 # include <infinit/oracles/trophonius/server/fwd.hh>
 # include <infinit/oracles/meta/Admin.hh>
-
-# include <boost/uuid/uuid.hpp>
 
 namespace infinit
 {

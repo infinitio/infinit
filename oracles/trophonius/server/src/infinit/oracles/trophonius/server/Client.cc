@@ -8,8 +8,6 @@
 #include <infinit/oracles/trophonius/server/Client.hh>
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 
-ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.Client")
-
 namespace infinit
 {
   namespace oracles
@@ -29,7 +27,6 @@ namespace infinit
 
         Client::~Client()
         {
-          ELLE_LOG("%s: remove", *this);
           this->_handle_thread.terminate_now();
         }
 

@@ -9,7 +9,6 @@
 
 # include <reactor/network/tcp-socket.hh>
 # include <reactor/thread.hh>
-# include <reactor/Barrier.hh>
 
 # include <infinit/oracles/trophonius/server/fwd.hh>
 # include <infinit/oracles/meta/Admin.hh>

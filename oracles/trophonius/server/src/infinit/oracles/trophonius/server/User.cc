@@ -2,6 +2,8 @@
 #include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
+#include <jsoncpp/json/writer.h>
+
 #include <elle/log.hh>
 
 #include <reactor/network/exception.hh>
@@ -39,25 +41,23 @@ namespace infinit
                        std::bind(&User::_pong, std::ref(*this))),
           _pinged(false)
         {
-          ELLE_LOG("%s: user connected", *this);
+          ELLE_TRACE("%s: connected", *this);
         }
 
         User::~User()
         {
-          ELLE_LOG("%s: remove user", *this);
+          ELLE_TRACE("%s: disconnected", *this);
           this->_ping_thread.terminate_now();
           this->_pong_thread.terminate_now();
-
           try
           {
             auto res = this->_meta.disconnect(
               this->trophonius().uuid(), this->_user_id, this->_device_id);
-
             if (!res.success())
             {
               // XXX.
               ELLE_WARN("%s: unable to disconnect user: %s",
-                          *this, res.error_details);
+                        *this, res.error_details);
             }
           }
           catch (reactor::network::Exception const& e) // XXX.
@@ -65,14 +65,19 @@ namespace infinit
             ELLE_WARN("%s: unable to disconnect user: network error: %s",
                       *this, e.what());
           }
-          catch (std::runtime_error const& e)
-          {
-            ELLE_WARN("%s: unable to disconnect user: %s", *this, e.what());
-          }
           catch (std::exception const& e)
           {
             ELLE_WARN("%s: unable to disconnect user: %s", *this, e.what());
           }
+        }
+
+        void
+        User::notify(Json::Value const& notification)
+        {
+          Json::FastWriter writer;
+          auto notif = writer.write(notification);
+          ELLE_TRACE("%s: send notification: %s", *this, notif);
+          this->_socket->write(notif);
         }
 
         void
@@ -85,6 +90,7 @@ namespace infinit
               auto json = read_json(*this->_socket);
               if (json.isMember("notification_type") )
               {
+                ELLE_DEBUG("%s: receive ping", *this);
                 this->_pinged = true;
               }
               else
@@ -145,6 +151,7 @@ namespace infinit
 
           Json::FastWriter writer;
           this->_socket->write(writer.write(response));
+          ELLE_TRACE("%s: authentified", *this);
 
           this->_authentified.open();
         }
@@ -153,14 +160,18 @@ namespace infinit
         User::_ping()
         {
           RemoveWard ward(*this);
-          elle::SafeFinally desauthenticate{[&] { this->_authentified.close(); }};
+          elle::SafeFinally desauthenticate(
+            [&]
+            {
+              this->_authentified.close();
+            });
           static std::string const ping_msg("{\"notification_type\": 208}\n");
           try
           {
             while (true)
             {
               this->_authentified.wait();
-              ELLE_TRACE("%s: send ping", *this);
+              ELLE_DEBUG("%s: send ping", *this);
               this->_socket->write(ping_msg);
               reactor::sleep(this->trophonius().ping_period());
             }
@@ -187,7 +198,6 @@ namespace infinit
               break;
             }
             this->_pinged = false;
-            ELLE_TRACE("%s: send ping", *this);
           }
         }
 

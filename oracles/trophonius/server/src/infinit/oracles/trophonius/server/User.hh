@@ -1,6 +1,8 @@
 #ifndef INFINIT_ORACLES_TROPHONIUS_SERVER_USER_HH
 # define INFINIT_ORACLES_TROPHONIUS_SERVER_USER_HH
 
+# include <jsoncpp/json/value.h>
+
 # include <infinit/oracles/trophonius/server/Client.hh>
 
 namespace infinit
@@ -14,14 +16,20 @@ namespace infinit
         class User:
           public Client
         {
-          friend Meta;
-
         public:
           User(Trophonius& trophonius,
                std::unique_ptr<reactor::network::TCPSocket>&& socket);
 
           ~User();
 
+        /*--------------.
+        | Notifications |
+        `--------------*/
+        public:
+          void
+          notify(Json::Value const& notification);
+
+        protected:
           virtual
           void
           _handle() override;
@@ -36,9 +44,9 @@ namespace infinit
           void
           _connect();
 
-          /*----------.
-          | Ping pong |
-          `----------*/
+        /*----------.
+        | Ping pong |
+        `----------*/
         public:
           void
           _ping();
@@ -48,9 +56,9 @@ namespace infinit
           ELLE_ATTRIBUTE(reactor::Thread, pong_thread);
           ELLE_ATTRIBUTE_R(bool, pinged);
 
-          /*----------.
-          | Printable |
-          `----------*/
+        /*----------.
+        | Printable |
+        `----------*/
         public:
           void
           print(std::ostream& stream) const override;
