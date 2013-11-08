@@ -70,6 +70,7 @@ namespace infinit
             {
               this->_accepter.terminate_now();
               this->_meta_accepter.terminate_now();
+              this->_meta_pinger->terminate_now();
               this->_signal();
             }
           };
