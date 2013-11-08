@@ -128,6 +128,7 @@ namespace infinit
             auto client = *it;
             this->_clients.erase(it);
             client->terminate();
+            delete client;
           }
 
           try
