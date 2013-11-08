@@ -78,7 +78,7 @@ namespace infinit
           try
           {
             this->_server.listen(this->_port);
-            ELLE_LOG("%s: listen on port %s (users)", *this, this->port());
+            ELLE_LOG("%s: listen for users on port %s", *this, this->port());
           }
           catch (...)
           {
@@ -90,7 +90,7 @@ namespace infinit
           try
           {
             this->_notifications.listen();
-            ELLE_LOG("%s: listen notification: %s",
+            ELLE_LOG("%s: listen for meta on port %s",
                      *this, this->notification_port());
           }
           catch (...)
