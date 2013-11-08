@@ -27,7 +27,8 @@ parse_options(int argc, char** argv)
     ("ping-period,i", value<int>(),
      "specify the ping period in seconds (default 30)")
     ("port,p", value<int>(), "specify the port to listen on")
-    ("meta,m", value<std::string>(), "specify the meta host:port to connect to")
+    ("meta,m", value<std::string>(),
+     "specify the meta host[:port] to connect to")
     ("version,v", "display version information and exit")
     ;
   variables_map vm;
