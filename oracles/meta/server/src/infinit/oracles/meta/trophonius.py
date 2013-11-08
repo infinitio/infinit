@@ -2,6 +2,7 @@
 
 import bson
 import uuid
+import time
 
 from . import conf, error, regexp
 from .utils import api, require_admin, require_logged_in
@@ -14,18 +15,26 @@ class Mixin:
                      port):
     """Register a trophonius.
     """
-    print("aggregate trophonius %s" % uid)
     assert isinstance(uid, uuid.UUID)
     # Upsert is important here  be cause if a trophonius crashed and didn't
     # unregister itself, it's important to update the old entry in the database.
-    res = self.database.trophonius.insert(
+    res = self.database.trophonius.update(
+      {
+        '_id': str(uid),
+      },
       {
         '_id': str(uid),
         'ip': self.remote_ip,
         'port': port,
+        'time': time.time(),
       },
       upsert = True,
     )
+
+    if res['updatedExisting']:
+      print("ping from trophonius %s" % uid)
+    else:
+      print("aggregate trophonius %s" % uid)
     return self.success()
 
   @api('/trophonius/<uid>', method = 'DELETE')
