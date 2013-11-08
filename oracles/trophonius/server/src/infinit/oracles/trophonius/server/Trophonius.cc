@@ -100,8 +100,9 @@ namespace infinit
             throw;
           }
 
-          this->_meta.register_trophonius(
-            this->_uuid, this->notification_port());
+          ELLE_LOG("%s: register to meta")
+            this->_meta.register_trophonius(
+              this->_uuid, this->notification_port());
           this->_ready.open();
 
           kill_accepters.abort();
