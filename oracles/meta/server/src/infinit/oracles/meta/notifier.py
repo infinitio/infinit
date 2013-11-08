@@ -80,10 +80,10 @@ class Notifier:
         continue
       message['device_id'] = str(device)
       try:
-        s = socket.create_connection(address = (tropho['host'], tropho['port']),
+        s = socket.create_connection(address = (tropho['ip'], tropho['port']),
                                      timeout = 4)
         s.send(bytes(json.dumps(message) + '\n', 'utf-8'))
       except Exception as e:
-        print("/!\\ unable to contact %s: %s /!\\" % (tropho['_id'], e))
+        print("unable to contact %s: %s" % (tropho['_id'], e))
       finally:
         s.close()
