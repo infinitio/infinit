@@ -6,6 +6,7 @@
 
 #include <elle/Exception.hh>
 #include <elle/log.hh>
+#include <elle/log/SysLogger.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -29,6 +30,7 @@ parse_options(int argc, char** argv)
     ("port,p", value<int>(), "specify the port to listen on")
     ("meta,m", value<std::string>(),
      "specify the meta host[:port] to connect to")
+    ("syslog,s", "send logs to the system logger")
     ("version,v", "display version information and exit")
     ;
   variables_map vm;
@@ -55,6 +57,11 @@ parse_options(int argc, char** argv)
   {
     std::cout << "Trophonius " INFINIT_VERSION << std::endl;
     exit(0); // FIXME
+  }
+  if (vm.count("syslog"))
+  {
+    elle::log::logger(std::unique_ptr<elle::log::Logger>(
+                        new elle::log::SysLogger("trophonius")));
   }
   return vm;
 }
