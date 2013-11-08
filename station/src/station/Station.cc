@@ -234,6 +234,7 @@ namespace station
     {
       // Likewise.
       socket->clear();
+      throw;
     }
   }
 
