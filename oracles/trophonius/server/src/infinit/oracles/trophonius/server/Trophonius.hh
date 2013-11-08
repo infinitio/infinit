@@ -68,9 +68,6 @@ namespace infinit
           ELLE_ATTRIBUTE_R(meta::Admin, meta);
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, meta_pinger);
 
-          void
-          _register(bool ctor = false);
-
         /*--------.
         | Clients |
         `--------*/

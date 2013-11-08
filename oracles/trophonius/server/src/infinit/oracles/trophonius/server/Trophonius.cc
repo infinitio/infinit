@@ -51,7 +51,8 @@ namespace infinit
                 this->_ready.wait();
                 try
                 {
-                  this->_register();
+                  this->_meta.register_trophonius(
+                    this->_uuid, this->notification_port());
                 }
                 catch (elle::Exception const& e)
                 {
@@ -98,40 +99,11 @@ namespace infinit
             throw;
           }
 
-          this->_register(true);
+          this->_meta.register_trophonius(
+            this->_uuid, this->notification_port());
           this->_ready.open();
 
           kill_accepters.abort();
-        }
-
-        void
-        Trophonius::_register(bool ctor)
-        {
-          try
-          {
-            this->_meta.register_trophonius(
-              this->_uuid, this->notification_port());
-            if (ctor)
-              ELLE_LOG("%s: registered to meta as %s on port %s",
-                       *this, this->_uuid, this->notification_port());
-            else
-              ELLE_DEBUG("%s: successfully 'pinged'", *this);
-          }
-          catch (reactor::Terminate const& t)
-          {
-            throw;
-          }
-          catch (...)
-          {
-            if (ctor)
-            {
-              ELLE_ERR("%s: unable to register to meta: %s",
-                       *this, elle::exception_string());
-              throw;
-            }
-            else
-              ELLE_DEBUG("%s: ping failed'", *this);
-          }
         }
 
         void
