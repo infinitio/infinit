@@ -482,11 +482,10 @@ namespace frete
 
     elle::Buffer buffer(size);
 
-    buffer.size(
-      file.readsome(reinterpret_cast<char*>(buffer.mutable_contents()),
-                    size));
+    file.read(reinterpret_cast<char*>(buffer.mutable_contents(), size));
+    buffer.size(file.gcount());
 
-    if (file.fail())
+    if (!file.eof() && file.fail() || file.bad())
       throw elle::Exception("unable to read");
 
     return buffer;
