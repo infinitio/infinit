@@ -17,10 +17,20 @@ namespace infinit
           public Client
         {
         public:
+          typedef Client Super;
+
+        public:
           User(Trophonius& trophonius,
                std::unique_ptr<reactor::network::TCPSocket>&& socket);
-
           ~User();
+
+        protected:
+          virtual
+          void
+          _unregister() override;
+          virtual
+          void
+          _terminate() override;
 
         /*--------------.
         | Notifications |

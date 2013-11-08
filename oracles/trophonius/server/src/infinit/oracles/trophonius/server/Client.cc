@@ -27,7 +27,7 @@ namespace infinit
 
         Client::~Client()
         {
-          this->_handle_thread.terminate_now();
+          this->_terminate();
         }
 
         void
@@ -36,6 +36,28 @@ namespace infinit
           RemoveWard ward(*this);
           this->_handle();
         }
+
+        void
+        Client::terminate()
+        {
+          this->_terminate();
+        }
+
+        void
+        Client::unregister()
+        {
+          this->_unregister();
+        }
+
+        void
+        Client::_terminate()
+        {
+          this->_handle_thread.terminate_now(false);
+        }
+
+        void
+        Client::_unregister()
+        {}
 
         /*-----.
         | Ward |

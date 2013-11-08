@@ -100,7 +100,7 @@ namespace infinit
             throw;
           }
 
-          ELLE_LOG("%s: register to meta")
+          ELLE_LOG("%s: register to meta", *this)
             this->_meta.register_trophonius(
               this->_uuid, this->notification_port());
           this->_ready.open();
@@ -116,10 +116,19 @@ namespace infinit
 
         Trophonius::~Trophonius()
         {
-          ELLE_LOG("%s: terminate", *this);
           this->_accepter.terminate_now();
           this->_meta_accepter.terminate_now();
           this->_meta_pinger->terminate_now();
+
+          while (!this->_clients.empty())
+          {
+            // Remove the client from the set first or it will try to clean
+            // itself up.
+            auto it = this->_clients.begin();
+            auto client = *it;
+            this->_clients.erase(it);
+            client->terminate();
+          }
 
           try
           {
@@ -197,16 +206,27 @@ namespace infinit
         /*--------.
         | Clients |
         `--------*/
+
         void
         Trophonius::client_remove(Client& c)
         {
+          // Remove the client from the set first to ensure other cleanup do
+          // not duplicate this.
           if (this->_clients.erase(&c))
+          {
+            // Terminate all handlers for the clients. We are most likely
+            // invoked by one of those handler, so they must take care of not
+            // commiting suicide.
+            c.terminate();
+            // Unregister the client from meta.
+            c.unregister();
+            // Delete the client later since we are probably since inside one of
+            // its handlers and it would cause premature destruction of this
+            // thread.
             reactor::run_later(
               elle::sprintf("remove client %s", c),
-              [&c]
-              {
-                delete &c;
-              });
+              [&c] {delete &c;});
+          }
         }
 
         /*----------.

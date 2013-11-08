@@ -47,8 +47,13 @@ namespace infinit
         User::~User()
         {
           ELLE_TRACE("%s: disconnected", *this);
-          this->_ping_thread.terminate_now();
-          this->_pong_thread.terminate_now();
+
+          this->_terminate();
+        }
+
+        void
+        User::_unregister()
+        {
           try
           {
             auto res = this->_meta.disconnect(
@@ -69,6 +74,14 @@ namespace infinit
           {
             ELLE_WARN("%s: unable to disconnect user: %s", *this, e.what());
           }
+        }
+
+        void
+        User::_terminate()
+        {
+          this->_ping_thread.terminate_now(false);
+          this->_pong_thread.terminate_now(false);
+          Super::_terminate();
         }
 
         void

@@ -30,14 +30,26 @@ namespace infinit
           virtual
           ~Client();
 
+        public:
+          void
+          terminate();
+          void
+          unregister();
+
         private:
           void
           handle();
 
+        protected:
           virtual
-          // This function is a automaticly warded.
           void
           _handle() = 0;
+          virtual
+          void
+          _terminate();
+          virtual
+          void
+          _unregister();
 
           ELLE_ATTRIBUTE_R(Trophonius&, trophonius);
         protected:

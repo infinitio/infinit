@@ -74,7 +74,8 @@ namespace infinit
         public:
           void
           client_remove(Client& c);
-          ELLE_ATTRIBUTE(std::unordered_set<Client*>, clients);
+          typedef std::unordered_set<Client*> Clients;
+          ELLE_ATTRIBUTE(Clients, clients);
           ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, ping_period);
 
           User&
