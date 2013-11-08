@@ -216,3 +216,17 @@ class Mixin:
                               message = {},
                               recipient_ids = targets)
     return self.success({'victims': list(targets)})
+
+  @require_admin
+  @api('/cron', method = 'POST')
+  def cron(self, admin_token):
+    """
+    Do cron jobs as:
+    - clean old trophonius instances.
+    """
+    # Trophonius.
+    res = self.database.trophonius.remove(
+      {"$or": [{"time": {"$lt": time.time() - self.trophonius_expiration_time}},
+               {"time": {"$exists": False}}]},
+      multi = True)
+    return self.success(res)
