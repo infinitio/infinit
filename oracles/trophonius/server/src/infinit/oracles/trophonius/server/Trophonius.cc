@@ -98,6 +98,7 @@ namespace infinit
             throw;
           }
 
+          this->_register(true);
           this->_ready.open();
 
           kill_accepters.abort();
