@@ -1,6 +1,7 @@
 #include <elle/log.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/exception.hh>
 
 #include <infinit/oracles/trophonius/server/Meta.hh>
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
@@ -27,6 +28,7 @@ namespace infinit
           int port,
           std::string const& meta_host,
           int meta_port,
+          boost::posix_time::time_duration const& user_ping_period,
           boost::posix_time::time_duration const& ping_period):
           Waitable("trophonius"),
           _server(),
@@ -42,7 +44,25 @@ namespace infinit
             std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
           _uuid(boost::uuids::random_generator()()),
           _meta(meta_host, meta_port),
-          _ping_period(ping_period)
+          _meta_pinger(
+            reactor::Scheduler::scheduler()->every(
+              [&]
+              {
+                this->_ready.wait();
+                try
+                {
+                  this->_register();
+                }
+                catch (elle::Exception const& e)
+                {
+                  ELLE_ERR("%s: unable to ping: %s", *this, e.what());
+                }
+              },
+              "pinger",
+              ping_period
+              )
+            ),
+          _ping_period(user_ping_period)
         {
           elle::SafeFinally kill_accepters{
             [&]
@@ -78,21 +98,39 @@ namespace infinit
             throw;
           }
 
+          this->_ready.open();
+
+          kill_accepters.abort();
+        }
+
+        void
+        Trophonius::_register(bool ctor)
+        {
           try
           {
             this->_meta.register_trophonius(
               this->_uuid, this->notification_port());
-            ELLE_LOG("%s: registered to meta as %s on port %s",
-                     *this, this->_uuid, this->notification_port());
+            if (ctor)
+              ELLE_LOG("%s: registered to meta as %s on port %s",
+                       *this, this->_uuid, this->notification_port());
+            else
+              ELLE_DEBUG("%s: successfully 'pinged'", *this);
+          }
+          catch (reactor::Terminate const& t)
+          {
+            throw;
           }
           catch (...)
           {
-            ELLE_ERR("%s: unable to register to meta: %s",
-                     *this, elle::exception_string());
-            throw;
+            if (ctor)
+            {
+              ELLE_ERR("%s: unable to register to meta: %s",
+                       *this, elle::exception_string());
+              throw;
+            }
+            else
+              ELLE_DEBUG("%s: ping failed'", *this);
           }
-
-          kill_accepters.abort();
         }
 
         void
@@ -106,6 +144,7 @@ namespace infinit
           ELLE_LOG("%s: terminate", *this);
           this->_accepter.terminate_now();
           this->_meta_accepter.terminate_now();
+          this->_meta_pinger->terminate_now();
 
           try
           {
