@@ -503,6 +503,7 @@ namespace infinit
           size_t idx = 0;
           while (true)
           {
+            elle::IOStreamClear clearer(*socket);
             socket->getline(((char*)this->_buffer.mutable_contents()) + idx,
                             this->_buffer.capacity() - idx, '\n');
             if (!socket->fail())
@@ -512,7 +513,6 @@ namespace infinit
             }
             idx = this->_buffer.capacity() - 1;
             this->_buffer.capacity(this->_buffer.capacity() * 2);
-            socket->clear();
           }
           if (this->_buffer.size() == 0)
           {
