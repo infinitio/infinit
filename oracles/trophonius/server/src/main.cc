@@ -70,6 +70,40 @@ int main(int argc, char** argv)
 {
   try
   {
+    auto options = parse_options(argc, argv);
+
+    if (!options.count("meta"))
+      throw std::runtime_error("meta argument is mandatory");
+
+    std::string meta_host = "";
+    int meta_port = 80;
+
+    {
+      std::string meta = options["meta"].as<std::string>();
+      std::vector<std::string> result;
+      boost::split(result, meta, boost::is_any_of(":"));
+      if (result.size() > 2)
+        throw std::runtime_error("meta must be <host>(:<port>)");
+      else if (result.size() == 2)
+      {
+        meta_port = std::stoi(result[1]);
+        meta_host = result[0];
+      }
+      else
+        meta_host = meta;
+    }
+
+    if (meta_host.empty())
+      throw std::runtime_error("meta host is empty");
+
+    int port = 0;
+    int ping = 30;
+
+    if (options.count("port"))
+      port = options["port"].as<int>();
+    if (options.count("ping-period"))
+      ping = options["ping-period"].as<int>();
+
     reactor::Scheduler s;
     std::unique_ptr<Trophonius> trophonius;
 
@@ -77,47 +111,12 @@ int main(int argc, char** argv)
       s, "main",
       [&]
       {
-        auto options = parse_options(argc, argv);
-
-        if (!options.count("meta"))
-          throw std::runtime_error("meta argument is mandatory");
-
-        std::string meta_host = "";
-        int meta_port = 80;
-
-        {
-          std::string meta = options["meta"].as<std::string>();
-          std::vector<std::string> result;
-          boost::split(result, meta, boost::is_any_of(":"));
-          if (result.size() > 2)
-            throw std::runtime_error("meta must be <host>(:<port>)");
-          else if (result.size() == 2)
-          {
-            meta_port = std::stoi(result[1]);
-            meta_host = result[0];
-          }
-          else
-            meta_host = meta;
-        }
-
-        if (meta_host.empty())
-          throw std::runtime_error("meta host is empty");
-
-        int port = 0;
-        int ping = 30;
-
-        if (options.count("port"))
-          port = options["port"].as<int>();
-        if (options.count("ping-period"))
-          ping = options["ping-period"].as<int>();
-
         trophonius.reset(
           new Trophonius(
             port, meta_host, meta_port, boost::posix_time::seconds(ping)));
 
         // Wait for trophonius to be asked to finish.
         main.wait(*trophonius);
-
         trophonius.reset();
       });
 
