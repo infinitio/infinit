@@ -692,18 +692,17 @@ class Mixin:
   @api('/user/avatar', method = 'POST')
   def set_avatar(self):
     from bottle import request
-    from io import StringIO, BytesIO
-    out = BytesIO()
+    from io import BytesIO
     from PIL import Image
     image = Image.open(request.body)
-    image.resize((256, 256))
+    image.resize((256, 256), Image.ANTIALIAS)
     out = BytesIO()
     image.save(out, 'PNG')
     out.seek(0)
     import bson.binary
     self.database.users.find_and_modify(
-      self.user['_id'],
-      {'$set': {'avatar': bson.binary.Binary(out.read())}})
+      query = {"_id": self.user['_id']},
+      update = {'$set': {'avatar': bson.binary.Binary(out.read())}})
     return self.success()
 
   ## ----------------- ##
