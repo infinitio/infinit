@@ -24,6 +24,7 @@
 #include <reactor/exception.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
+#include <reactor/network/resolve.hh>
 #include <reactor/network/tcp-socket.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/signal.hh>
@@ -267,8 +268,12 @@ namespace infinit
               }
 
               ELLE_DEBUG("%s: establishing connection", *this);
+              auto endpoint = reactor::network::resolve_tcp(
+                *reactor::Scheduler::scheduler(),
+                this->server,
+                boost::lexical_cast<std::string>(this->port));
               auto socket = std::make_shared<reactor::network::TCPSocket>(
-                *reactor::Scheduler::scheduler(), this->server, this->port);
+                *reactor::Scheduler::scheduler(), endpoint);
 
               this->_socket = socket;
               ELLE_DEBUG("%s: socket connected", *this);
