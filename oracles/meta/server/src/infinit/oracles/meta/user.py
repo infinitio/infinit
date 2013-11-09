@@ -635,22 +635,23 @@ class Mixin:
   @api('/user/self')
   def user_self(self):
     """Return self data."""
+    user = self.user
     return self.success({
-      '_id': self.user['_id'],
-      'fullname': self.user['fullname'],
-      'handle': self.user['handle'],
-      'email': self.user['email'],
-      'devices': self.user.get('devices', []),
-      'networks': self.user.get('networks', []),
-      'identity': self.user['identity'],
-      'public_key': self.user['public_key'],
-      'accounts': self.user['accounts'],
-      'remaining_invitations': self.user.get('remaining_invitations', 0),
-      'token_generation_key': self.user.get('token_generation_key', ''),
-      'favorites': self.user.get('favorites', []),
-      'connected_devices': self.user.get('connected_devices', []),
-      'status': self._is_connected(self.user['_id']),
-      'created_at': self.user.get('created_at', 0),
+      '_id': user['_id'],
+      'fullname': user['fullname'],
+      'handle': user['handle'],
+      'email': user['email'],
+      'devices': user.get('devices', []),
+      'networks': user.get('networks', []),
+      'identity': user['identity'],
+      'public_key': user['public_key'],
+      'accounts': user['accounts'],
+      'remaining_invitations': user.get('remaining_invitations', 0),
+      'token_generation_key': user.get('token_generation_key', ''),
+      'favorites': user.get('favorites', []),
+      'connected_devices': user.get('connected_devices', []),
+      'status': self._is_connected(user['_id']),
+      'created_at': user.get('created_at', 0),
     })
 
   @require_logged_in
@@ -658,10 +659,11 @@ class Mixin:
   def minimum_self(self):
     """Return minimum self data.
     """
+    user = self.user
     return self.success(
       {
-        'email': self.user['email'],
-        'identity': self.user['identity'],
+        'email': user['email'],
+        'identity': user['identity'],
       })
 
   @require_logged_in
