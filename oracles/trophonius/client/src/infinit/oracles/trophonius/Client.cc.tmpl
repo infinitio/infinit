@@ -246,7 +246,7 @@ namespace infinit
         void
         _connect(bool user_action = false)
         {
-          ELLE_DEBUG_SCOPE("%s: connecting trophonius client to %s:%s",
+          ELLE_DEBUG_SCOPE("%s: connect to %s:%s",
                            *this, this->server, this->port);
 
           this->_poll_exception = nullptr;
@@ -360,6 +360,7 @@ namespace infinit
         void
         _disconnect()
         {
+          ELLE_DEBUG_SCOPE("%s: disconnect", *this);
           this->_connected.close();
           this->_synchronized = false;
           this->_pollable.close();
@@ -385,9 +386,12 @@ namespace infinit
           // be done.
           if (!this->_connected.opened())
           {
+            ELLE_DEBUG_SCOPE("%s: already reconnected, wait", *this);
             this->_connected.wait();
             return;
           }
+
+          ELLE_DEBUG_SCOPE("%s: reconnect", *this);
 
           this->_disconnect();
           this->connect_callback(false);
