@@ -200,25 +200,24 @@ class User(Client):
     self.password = meta.create_user(email,
                                      **kwargs)
     self.id = meta.get('user/%s/view' % self.email)['_id']
-    self.device_id = None
+    self.device_id = uuid4()
 
   def login(self, device_id = None):
-    if device_id is None:
-      device_id = uuid4()
+    if device_id is not None:
+      self.device_id = device_id
 
     req = {
       'email': self.email,
       'password': self.password,
-      'device_id': str(device_id),
+      'device_id': str(self.device_id),
     }
     res = self.post('login', req)
     assert res['success']
-    self.device_id = UUID(res['device_id'])
+    assert res['device_id'] == str(self.device_id)
 
   def logout(self):
     res = self.post('logout', {})
     assert res['success']
-    self.device_id = None
 
   @property
   def device(self):
@@ -236,6 +235,17 @@ class User(Client):
   @property
   def favorites(self):
     return self.get('user/self')['favorites']
+
+  @property
+  def logged_in(self):
+    try:
+      res = self.get('user/self')
+      assert res['success']
+      assert str(self.device_id) in res['devices']
+      return True
+    except HTTPException as e:
+      assert e.status == 403
+      return False
 
   @property
   def devices(self):
