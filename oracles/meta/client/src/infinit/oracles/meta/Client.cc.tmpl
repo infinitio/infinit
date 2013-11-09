@@ -665,17 +665,19 @@ namespace infinit
       {
         reactor::http::Request request =
           this->_client.request(
-            elle::sprintf("%s/user/%s/icon", this->_root_url, user_id),
-            reactor::http::Method::PUT,
+            elle::sprintf("%s/user/avatar", this->_root_url),
+            reactor::http::Method::POST,
+            "application/octet-stream",
             this->_default_configuration);
 
-        request << icon;
+        request.write((char const*) icon.contents(), icon.size());
+        request.finalize();
 
         auto status = request.status();
         if (status != reactor::http::StatusCode::OK)
           throw elle::http::Exception(
             static_cast<elle::http::ResponseCode>(status),
-            elle::sprintf("error %s while PUTing avatar", status));
+            elle::sprintf("error %s while POSTing avatar", status));
       }
 
       reactor::http::Request
