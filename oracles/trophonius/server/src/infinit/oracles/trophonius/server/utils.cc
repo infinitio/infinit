@@ -15,6 +15,7 @@ namespace infinit
         std::map<std::string, json_spirit::Value>
         read_json(reactor::network::TCPSocket& socket)
         {
+          elle::IOStreamClear clearer(socket);
           json_spirit::Value value;
           if (!json_spirit::read(socket, value))
             throw ProtocolError(elle::sprintf("JSON error"));
@@ -27,6 +28,7 @@ namespace infinit
         write_json(reactor::network::TCPSocket& socket,
                    json_spirit::Value const& value)
         {
+          elle::IOStreamClear clearer(socket);
           json_spirit::write(value, socket);
           socket.flush();
         }
