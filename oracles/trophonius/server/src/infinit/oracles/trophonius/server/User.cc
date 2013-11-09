@@ -2,8 +2,9 @@
 #include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-#include <jsoncpp/json/writer.h>
+#include <json_spirit/value.h>
 
+#include <elle/Lazy.hh>
 #include <elle/log.hh>
 
 #include <reactor/network/exception.hh>
@@ -85,12 +86,14 @@ namespace infinit
         }
 
         void
-        User::notify(Json::Value const& notification)
+        User::notify(json_spirit::Value const& notification)
         {
-          Json::FastWriter writer;
-          auto notif = writer.write(notification);
-          ELLE_TRACE("%s: send notification: %s", *this, notif);
-          this->_socket->write(notif);
+          ELLE_TRACE(
+            "%s: send notification: %s",
+              *this,
+              elle::Lazy<std::string>(
+              std::bind(&pretty_print_json, std::ref(notification))));
+          write_json(*this->_socket, notification);
         }
 
         void
@@ -101,28 +104,36 @@ namespace infinit
             while (true)
             {
               auto json = read_json(*this->_socket);
-              if (json.isMember("notification_type") )
+              if (json.find("notification_type") != json.end())
               {
                 ELLE_DEBUG("%s: receive ping", *this);
                 this->_pinged = true;
+                continue;
               }
-              else
+              else if (json.find("user_id") != json.end() &&
+                       json.find("session_id") != json.end() &&
+                       json.find("device_id") != json.end())
               {
-                if (!json.isMember("user_id") ||
-                    !json.isMember("session_id") ||
-                    !json.isMember("device_id"))
+                try
+                {
+                  this->_user_id = json["user_id"].getString();
+                  this->_device_id =
+                    boost::uuids::string_generator()(
+                      json["device_id"].getString());
+                  this->_meta.session_id(json["session_id"].getString());
+                }
+                catch (std::runtime_error const& e)
                 {
                   throw ProtocolError(
-                    elle::sprintf("unrecognized json message: %s",
-                                  json.toStyledString()));
+                    elle::sprintf("ids must be strings: %s",
+                                  pretty_print_json(json)));
                 }
-                this->_user_id = json["user_id"].asString();
-                this->_device_id =
-                  boost::uuids::string_generator()(
-                    json["device_id"].asString());
-                this->_meta.session_id(json["session_id"].asString());
                 this->_connect();
+                continue;
               }
+              throw ProtocolError(
+                elle::sprintf("unrecognized json message: %s",
+                              pretty_print_json(json)));
             }
           }
           catch (ProtocolError const& e)
@@ -157,13 +168,12 @@ namespace infinit
           if (!res.success())
             throw AuthenticationError(elle::sprintf("%s", res.error_details));
 
-          Json::Value response;
-          response["notification_type"] = -666;
-          response["response_code"] = 200;
-          response["response_details"] = res.error_details;
+          std::map<std::string, json_spirit::Value> response;
+          response["notification_type"] = json_spirit::Value(-666);
+          response["response_code"] = json_spirit::Value(200);
+          response["response_details"] = json_spirit::Value(res.error_details);
 
-          Json::FastWriter writer;
-          this->_socket->write(writer.write(response));
+          write_json(*this->_socket, response);
           ELLE_TRACE("%s: authentified", *this);
 
           this->_authentified.open();

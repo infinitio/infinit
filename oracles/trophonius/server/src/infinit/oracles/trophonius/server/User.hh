@@ -1,7 +1,7 @@
 #ifndef INFINIT_ORACLES_TROPHONIUS_SERVER_USER_HH
 # define INFINIT_ORACLES_TROPHONIUS_SERVER_USER_HH
 
-# include <jsoncpp/json/value.h>
+# include <json_spirit/value.h>
 
 # include <infinit/oracles/trophonius/server/Client.hh>
 
@@ -37,7 +37,7 @@ namespace infinit
         `--------------*/
         public:
           void
-          notify(Json::Value const& notification);
+          notify(json_spirit::Value const& notification);
 
         protected:
           virtual

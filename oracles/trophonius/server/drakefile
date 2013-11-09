@@ -27,7 +27,7 @@ def configure(elle,
   local_cxx_config += meta_client.config
   local_cxx_config.add_local_include_path('src')
   local_cxx_config.lib_path_runtime('.')
-  local_cxx_config.lib('jsoncpp')
+  local_cxx_config.add_system_include_path('json-spirit/include')
 
   elle_lib = drake.copy(elle.lib_dynamic, 'lib',
                         strip_prefix = True)
@@ -50,6 +50,9 @@ def configure(elle,
     'src/infinit/oracles/trophonius/server/exceptions.hh',
     'src/infinit/oracles/trophonius/server/utils.cc',
     'src/infinit/oracles/trophonius/server/utils.hh',
+    'json-spirit/src/reader.cpp',
+    'json-spirit/src/value.cpp',
+    'json-spirit/src/writer.cpp',
   )
 
   lib = drake.cxx.DynLib('lib/trophonius',
