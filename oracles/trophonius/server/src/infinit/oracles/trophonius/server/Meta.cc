@@ -40,7 +40,7 @@ namespace infinit
           {
             auto const& json = read_json(*this->_socket);
 
-            static auto mandatory_fields = {"notification_type", "device_id"};
+            static auto mandatory_fields = {"notification", "device_id"};
 
             for (auto const& field: mandatory_fields)
               if (json.find(field) == json.end())
@@ -51,7 +51,7 @@ namespace infinit
               throw ProtocolError("device id is not a string");
             User& user = this->trophonius().user(
               boost::uuids::string_generator()(device.getString()));
-            user.notify(json_spirit::Value(json));
+            user.notify(json_spirit::Value(json.find("notification")->second));
           }
           catch (ProtocolError const& e)
           {
