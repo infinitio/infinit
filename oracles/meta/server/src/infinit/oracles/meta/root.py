@@ -108,6 +108,12 @@ class Mixin:
         print(*e.args)
         continue
         # self.fail(error.UNKNOWN)
+    # Remove all the devices from the user because they are based on his old
+    # public key.
+    # XXX: All the sessions must be cleaned too.
+    # XXX: Must be handle by the client.
+    self.database.devices.remove({"owner": user['_id']},
+                                 multi = True)
 
     import papier
     identity, public_key = papier.generate_identity(
