@@ -482,7 +482,7 @@ namespace frete
 
     elle::Buffer buffer(size);
 
-    file.read(reinterpret_cast<char*>(buffer.mutable_contents(), size));
+    file.read(reinterpret_cast<char*>(buffer.mutable_contents()), size);
     buffer.size(file.gcount());
 
     if (!file.eof() && file.fail() || file.bad())
