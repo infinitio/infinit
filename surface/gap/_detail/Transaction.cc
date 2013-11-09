@@ -204,6 +204,8 @@ namespace surface
 
       if (it == std::end(this->_transactions))
       {
+        ELLE_TRACE("%s: notification received for unknown transaction: %s",
+                   *this, notif.id);
         for (auto const& tr: this->transactions())
         {
           ELLE_DEBUG("-- %s: %s", tr.first, tr.second);
