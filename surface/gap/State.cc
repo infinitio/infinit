@@ -374,7 +374,9 @@ namespace surface
                 {
                   ELLE_ERR("%s: unable to fetch %s avatar: %s", *this, user_id,
                            e.what());
+                  reactor::sleep(1_sec);
                 }
+
                 if (this->_avatar_to_fetch.empty())
                   this->_avatar_fetching_barrier.close();
               }
@@ -661,7 +663,7 @@ namespace surface
           }
           catch (elle::Exception const&)
           {
-            ELLE_WARN("%s: failed at resynching (%s)... retrying...",
+            ELLE_WARN("%s: failed at resynching (%s). Retrying...",
                       *this, elle::exception_string());
             reactor::sleep(1_sec);
           }
