@@ -43,7 +43,7 @@ class Notifier:
     message['notification_type'] = notification_type
     message['timestamp'] = time.time() #timestamp in s.
 
-    devices = dict()
+    devices_trophonius = dict()
     if recipient_ids is not None:
       assert isinstance(recipient_ids, set)
       critera = {'owner': {'$in': list(recipient_ids)}}
@@ -57,32 +57,32 @@ class Notifier:
       critera,
       fields = ['id', 'trophonius'],
     ):
-      devices[device['id']] = device['trophonius']
+      devices_trophonius[device['id']] = device['trophonius']
 
-    trophonius = dict((record['_id'], record) for  record in self.database.trophonius.find(
+    trophonius = dict((record['_id'], record)
+                      for record in self.database.trophonius.find(
       {
         "_id":
         {
-          "$in": list(set(devices.values()))
+          "$in": list(set(devices_trophonius.values()))
         }
       }
     ))
 
-    message = jsonify(message)
-
+    notification = {'notification': jsonify(message)}
     # Freezing slow.
-    for device in devices.keys():
+    for device in devices_trophonius.keys():
       s = socket.socket(socket.AF_INET,
                         socket.SOCK_STREAM)
-      tropho = trophonius.get(devices[device])
+      tropho = trophonius.get(devices_trophonius[device])
       if tropho is None:
-        print("unknown trophonius %s" % (devices[device]))
+        print("unknown trophonius %s" % (devices_trophonius[device]))
         continue
-      message['device_id'] = str(device)
+      notification["device_id"] = str(device)
       try:
         s = socket.create_connection(address = (tropho['ip'], tropho['port']),
                                      timeout = 4)
-        s.send(bytes(json.dumps(message) + '\n', 'utf-8'))
+        s.send(bytes(json.dumps(notification) + '\n', 'utf-8'))
       except Exception as e:
         print("unable to contact %s: %s" % (tropho['_id'], e))
       finally:
