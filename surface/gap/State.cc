@@ -383,7 +383,9 @@ namespace surface
                 {
                   ELLE_ERR("%s: unable to fetch %s avatar: %s", *this, user_id,
                            e.what());
-                  reactor::sleep(1_sec);
+                  // The UI will ask for the avatar again if it needs it, so
+                  // remove the request from the queue if there's a problem.
+                  this->_avatar_to_fetch.erase(user_id);
                 }
 
                 if (this->_avatar_to_fetch.empty())
