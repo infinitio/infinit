@@ -372,10 +372,29 @@ class Mixin:
           )
         })
 
-  def user_key(self, user_id, device_id):
+  def __user_key(self, user_id, device_id):
     assert isinstance(user_id, bson.ObjectId)
     assert isinstance(device_id, uuid.UUID)
     return "%s-%s" % (str(user_id), str(device_id))
+
+  def find_nodes(self, user_id, device_id):
+      assert isinstance(user_id, bson.ObjectId)
+      assert isinstance(device_id, uuid.UUID)
+      return self.database.transactions.find(
+        {
+          "nodes.%s" % self.__user_key(user_id, device_id): {"$exists": True}
+        })
+
+  def update_node(self, transaction_id, user_id, device_id, node):
+    with elle.log.trace("transaction %s: update node for device %s: %s" %
+                         (transaction_id, device_id, node)):
+      assert isinstance(transaction_id, bson.ObjectId)
+      return self.database.transactions.find_and_modify(
+        {"_id": transaction_id},
+        {"$set": {"nodes.%s" % self.__user_key(user_id, device_id): node}},
+        multi = False,
+        new = True,
+        )
 
   @require_logged_in
   @api('/transaction/connect_device', method = "POST")
@@ -429,12 +448,11 @@ class Mixin:
 
     node['fallback'] = []
 
-    transaction = self.database.transactions.find_and_modify(
-      {"_id": _id},
-      {"$set": {"nodes.%s" % self.user_key(user['_id'], device_id): node}},
-      multi = False,
-      new = True,
-    )
+    transaction = self.update_node(transaction_id = transaction['_id'],
+                                   user_id = user['_id'],
+                                   device_id = device_id,
+                                   node = node)
+
     elle.log.trace("device %s connected to transaction %s as %s" % (device_id, _id, node))
 
     if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
@@ -471,11 +489,11 @@ class Mixin:
 
     # XXX: Ugly.
     if is_sender:
-      self_key = self.user_key(transaction['sender_id'], self_device_id)
-      peer_key = self.user_key(transaction['recipient_id'], device_id)
+      self_key = self.__user_key(transaction['sender_id'], self_device_id)
+      peer_key = self.__user_key(transaction['recipient_id'], device_id)
     else:
-      self_key = self.user_key(transaction['recipient_id'], self_device_id)
-      peer_key = self.user_key(transaction['sender_id'], device_id)
+      self_key = self.__user_key(transaction['recipient_id'], self_device_id)
+      peer_key = self.__user_key(transaction['sender_id'], device_id)
 
     if (not self_key in transaction['nodes'].keys()) or (not transaction['nodes'][self_key]):
       return self.fail(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")

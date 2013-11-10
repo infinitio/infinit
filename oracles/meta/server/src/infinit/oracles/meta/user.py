@@ -797,30 +797,24 @@ class Mixin:
       # XXX:
       # This should not be in user.py, but it's the only place
       # we know the device has been disconnected.
-      if status is False and connected_before is True:
+      if status is False:
         with elle.log.trace("%s: disconnect nodes" % user_id):
-          transactions = self.database.transactions.find(
-            {
-              "nodes.%s" % str(device_id): {"$exists": True}
-            },
-            fields = ['_id', 'sender_id', 'recipient_id'],
-          )
+          transactions = self.find_nodes(user_id = user['_id'],
+                                         device_id = device_id)
 
           with elle.log.debug("%s: concerned transactions:" % user_id):
             for transaction in transactions:
               elle.log.debug("%s" % transaction)
-              self.database.transactions.update(
-                {"_id": transaction},
-                {"$set": {"nodes.%s" % str(device_id): None}},
-                multi = False
-              )
-
+              self.update_node(transaction_id = transaction['_id'],
+                               user_id = user['_id'],
+                               device_id = device_id,
+                               node = None)
               self.notifier.notify_some(
                 notifier.PEER_CONNECTION_UPDATE,
                 recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
                 message = {
                   "transaction_id": str(transaction['_id']),
-                  "devices": list(transaction['nodes'].keys()),
+                  "devices": [transaction['sender_device_id'], transaction['recipient_device_id']],
                   "status": False
                 }
               )
