@@ -1,15 +1,19 @@
 # -*- encoding: utf-8 -*-
 
+
 import bson
 import re
 import time
 import unicodedata
 
+import elle.log
 from .utils import api, require_logged_in
 from . import regexp, error, transaction_status, notifier
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
 class Mixin:
 
@@ -60,6 +64,7 @@ class Mixin:
     Errors:
     Using an id that doesn't exist.
     """
+    user = self.user
     id_or_email = id_or_email.strip()
 
     # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
@@ -96,11 +101,11 @@ class Mixin:
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
 
-    _id = self.user['_id']
+    _id = user['_id']
 
     transaction = {
       'sender_id': _id,
-      'sender_fullname': self.user['fullname'],
+      'sender_fullname': user['fullname'],
       'sender_device_id': device_id, # bson.ObjectId(device_id),
 
       'recipient_id': recipient['_id'],
@@ -122,9 +127,9 @@ class Mixin:
       'status': transaction_status.CREATED,
       'fallback': None,
       'strings': ' '.join([
-            self.user['fullname'],
-            self.user['handle'],
-            self.user['email'],
+            user['fullname'],
+            user['handle'],
+            user['email'],
             recipient['fullname'],
             recipient.get('handle', ""),
             recipient['email'],
@@ -143,20 +148,20 @@ class Mixin:
         meta.invitation.invite_user(
           invitee_email,
           mailer = self.mailer,
-          source = self.user['_id'],
+          source = user['_id'],
           mail_template = 'send-file',
-          reply_to = self.user['email'],
+          reply_to = user['email'],
           filename = files[0],
-          sendername = self.user['fullname'],
-          user_id = str(self.user['_id']),
+          sendername = user['fullname'],
+          user_id = str(user['_id']),
           database = self.database
         )
 
-    self._increase_swag(self.user['_id'], recipient['_id'])
+    self._increase_swag(user['_id'], recipient['_id'])
 
     return self.success({
         'created_transaction_id': transaction_id,
-        'remaining_invitations': self.user.get('remaining_invitations', 0),
+        'remaining_invitations': user.get('remaining_invitations', 0),
         })
 
   def _transactions(self,
@@ -217,11 +222,11 @@ class Mixin:
   @require_logged_in
   @api('/transactions')
   def transcations_get(self,
-              filter = transaction_status.final + [transaction_status.CREATED],
-              type = False,
-              peer_id = None,
-              count = 100,
-              offset = 0):
+                       filter = transaction_status.final + [transaction_status.CREATED],
+                       type = False,
+                       peer_id = None,
+                       count = 100,
+                       offset = 0):
     return self._transactions(filter = filter,
                               type = type,
                               peer_id = peer_id,
@@ -430,14 +435,14 @@ class Mixin:
       multi = False,
       new = True,
     )
-    print("device %s connected to transaction %s as %s" % (device_id, _id, node))
+    elle.log.trace("device %s connected to transaction %s as %s" % (device_id, _id, node))
 
     if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
       devices_ids = {uuid.UUID(transaction['sender_device_id']),
                      uuid.UUID(transaction['recipient_device_id'])}
       self.notifier.notify_some(
         notifier.PEER_CONNECTION_UPDATE,
-        device_ids = devices_ids,
+        recipient_ids = {transaction[k] for k in ['sender_id', 'recipient_id']},
         message = {
           "transaction_id": str(_id),
           "devices": list(map(str, devices_ids)),

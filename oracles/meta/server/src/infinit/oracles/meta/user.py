@@ -3,6 +3,7 @@
 import bottle
 import bson
 import uuid
+import elle.log
 
 from .utils import api, require_logged_in, require_admin, hash_pasword
 from . import error, notifier, regexp, invitation, conf
@@ -14,6 +15,7 @@ import unicodedata
 #
 # Users
 #
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.User'
 
 class Mixin:
 
@@ -74,76 +76,98 @@ class Mixin:
             email,
             password,
             device_id: uuid.UUID):
-    assert isinstance(device_id, uuid.UUID)
-    email = email.lower()
-    user = self.database.users.find_one({
-      'email': email,
-      'password': hash_pasword(password),
-    })
-    if user is None:
-      self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
-    query = {'id': str(device_id), 'owner': user['_id']}
-    device = self.device(ensure_existence = False, **query)
-    if device is None:
-      device = self._create_device(id = device_id,
-                                   owner = user)
-    else:
-      assert str(device_id) in user['devices']
+    with elle.log.trace("%s: log on device %s" % (email, device_id)):
+      assert isinstance(device_id, uuid.UUID)
+      email = email.lower()
+      user = self.database.users.find_one({
+        'email': email,
+        'password': hash_pasword(password),
+      })
+      if user is None:
+        self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
+      query = {'id': str(device_id), 'owner': user['_id']}
+      elle.log.debug("%s: look for session" % email)
+      device = self.device(ensure_existence = False, **query)
+      if device is None:
+        elle.log.trace("user logged with an unknow device")
+        device = self._create_device(id = device_id,
+                                     owner = user)
+      else:
+        assert str(device_id) in user['devices']
 
-    # Remove potential leaked previous session.
-    self.sessions.remove({'email': email, 'device': device['_id']})
-    bottle.request.session['device'] = device['_id']
-    bottle.request.session['email'] = email
-    return self.success(
-      {
-        '_id' : self.user['_id'],
-        'fullname': self.user['fullname'],
-        'email': self.user['email'],
-        'handle': self.user['handle'],
-        'identity': self.user['identity'],
-        'device_id': device['id'],
-      }
+      # Remove potential leaked previous session.
+      self.sessions.remove({'email': email, 'device': device['_id']})
+      elle.log.debug("%s: store session" % email)
+      bottle.request.session['device'] = device['_id']
+      bottle.request.session['email'] = email
+
+      user = self.user
+      elle.log.trace("%s: successfully connected as %s on device %s" %
+                     (email, user['_id'], device['id']))
+
+      return self.success(
+        {
+          '_id': user['_id'],
+          'fullname': user['fullname'],
+          'email': user['email'],
+          'handle': user['handle'],
+          'identity': user['identity'],
+          'device_id': device['id'],
+        }
     )
 
   @api('/web_login', method = 'POST')
   def web_login(self,
                 email,
                 password):
-    email = email.lower()
-    user = self.database.users.find_one({
-      'email': email,
-      'password': hash_pasword(password),
-    })
-    if user is None:
-      self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
+    with elle.log.trace("%s: web login" % email):
+      email = email.lower()
+      user = self.database.users.find_one({
+        'email': email,
+        'password': hash_pasword(password),
+      })
+      if user is None:
+        self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
 
-    bottle.request.session['email'] = email
-    return self.success(
-      {
-        '_id' : self.user['_id'],
-        'fullname': self.user['fullname'],
-        'email': self.user['email'],
-        'handle': self.user['handle'],
-      }
-    )
+      elle.log.debug("%s: store session" % email)
+      bottle.request.session['email'] = email
+      user = self.user
+
+      elle.log.trace("%s: successfully connected as %s" %
+                     (email, user['_id']))
+
+      return self.success(
+        {
+          '_id' : user['_id'],
+          'fullname': user['fullname'],
+          'email': user['email'],
+          'handle': user['handle'],
+        }
+      )
 
   @require_logged_in
   @api('/logout', method = 'POST')
   def logout(self):
-    if 'email' in bottle.request.session:
-      # Web sessions have no device.
-      if 'device' in bottle.request.session:
-        del bottle.request.session['device']
-      del bottle.request.session['email']
-      return self.success()
-    else:
-      return self.fail(error.NOT_LOGGED_IN)
+    user = self.user
+    with elle.log.trace("%s: logout" % user['email']):
+      if 'email' in bottle.request.session:
+        elle.log.debug("%s: remove session" % user['email'])
+        # Web sessions have no device.
+        if 'device' in bottle.request.session:
+          elle.log.debug("%s: remove session device" % user['email'])
+          del bottle.request.session['device']
+        del bottle.request.session['email']
+        return self.success()
+      else:
+        return self.fail(error.NOT_LOGGED_IN)
 
   @property
   def user(self):
+    elle.log.trace("get user from session")
     email = bottle.request.session.get('email', None)
     if email is not None:
       return self.user_by_email(email)
+    elle.log.trace("session not found")
 
   ## -------- ##
   ## Register ##
@@ -154,7 +178,11 @@ class Mixin:
     return user
 
   @api('/user/register', method = 'POST')
-  def register(self, email, password, fullname, activation_code):
+  def register(self,
+               email,
+               password,
+               fullname,
+               activation_code):
     """Register a new user.
 
     email -- the account email.
@@ -168,114 +196,114 @@ class Mixin:
       ('password', regexp.PasswordValidator),
     ]
 
-    if self.user is not None:
-      return self.fail(error.ALREADY_LOGGED_IN)
+    with elle.log.trace("registeration: %s as %s" % (email, fullname)):
+      if self.user is not None:
+        return self.fail(error.ALREADY_LOGGED_IN)
+      email = email.lower()
 
-    email = email.lower()
-
-    source = None
-    if self.database.users.find_one(
-      {
-        'accounts': [{ 'type': 'email', 'id': email}],
-        'register_status': 'ok',
-      }):
-      return self.fail(error.EMAIL_ALREADY_REGISTRED)
-    elif activation_code.startswith('@'):
-      activation_code = activation_code.upper()
-      activation = self.database.activations.find_one(
+      source = None
+      if self.database.users.find_one(
         {
-          'code': activation_code,
-        })
-      if not activation or activation['number'] <= 0:
-        return self.fail(error.ACTIVATION_CODE_DOESNT_EXIST)
-      ghost_email = email
-      source = activation_code
-    elif activation_code != 'no_activation_code':
-      invit = self.database.invitations.find_one(
-        {
-          'code': activation_code,
-          'status': 'pending',
-        })
-      if not invit:
-        return self.fail(error.ACTIVATION_CODE_DOESNT_EXIST)
-      ghost_email = invit['email']
-      source = invit['source']
-      invitation.move_from_invited_to_userbase(ghost_email, email)
-    else:
-      ghost_email = email
+          'accounts': [{ 'type': 'email', 'id': email}],
+          'register_status': 'ok',
+        }):
+        return self.fail(error.EMAIL_ALREADY_REGISTRED)
+      elif activation_code.startswith('@'):
+        activation_code = activation_code.upper()
+        activation = self.database.activations.find_one(
+          {
+            'code': activation_code,
+          })
+        if not activation or activation['number'] <= 0:
+          return self.fail(error.ACTIVATION_CODE_DOESNT_EXIST)
+        ghost_email = email
+        source = activation_code
+      elif activation_code != 'no_activation_code':
+        invit = self.database.invitations.find_one(
+          {
+            'code': activation_code,
+            'status': 'pending',
+          })
+        if not invit:
+          return self.fail(error.ACTIVATION_CODE_DOESNT_EXIST)
+        ghost_email = invit['email']
+        source = invit['source']
+        invitation.move_from_invited_to_userbase(ghost_email, email)
+      else:
+        ghost_email = email
 
-    ghost = self.database.users.find_one(
-      {
-        'accounts': [{ 'type': 'email', 'id': ghost_email}],
-        'register_status': 'ghost',
+      ghost = self.database.users.find_one(
+        {
+          'accounts': [{ 'type': 'email', 'id': ghost_email}],
+          'register_status': 'ghost',
+        })
+
+      if ghost:
+        id = ghost['_id']
+      else:
+        id = self.database.users.save({})
+
+      import papier
+      identity, public_key = papier.generate_identity(
+        str(id),
+        email,
+        password,
+        conf.INFINIT_AUTHORITY_PATH,
+        conf.INFINIT_AUTHORITY_PASSWORD
+        )
+
+      handle = self.unique_handle(fullname)
+
+      user_id = self._register(
+        _id = id,
+        register_status = 'ok',
+        email = email,
+        fullname = fullname,
+        password = hash_pasword(password),
+        identity = identity,
+        public_key = public_key,
+        handle = handle,
+        lw_handle = handle.lower(),
+        swaggers = ghost and ghost['swaggers'] or {},
+        networks = ghost and ghost['networks'] or [],
+        devices = [],
+        connected_devices = [],
+        notifications = ghost and ghost['notifications'] or [],
+        old_notifications = [],
+        accounts = [
+          {'type':'email', 'id': email}
+        ],
+        remaining_invitations = 3, #XXX
+        status = False,
+        created_at = time.time(),
+      )
+
+      assert user_id == id
+
+      if activation_code.startswith('@'):
+        self.database.activations.update(
+          {"_id": activation["_id"]},
+          {
+            '$inc': {'number': -1},
+            '$push': {'registered': email},
+          }
+        )
+      elif activation_code != 'no_activation_code':
+        invit['status'] = 'activated'
+        self.database.invitations.save(invit)
+
+      self._notify_swaggers(
+        notifier.NEW_SWAGGER,
+        {
+          'user_id' : str(user_id),
+        },
+        user_id = user_id,
+      )
+
+      return self.success({
+        'registered_user_id': user_id,
+        'invitation_source': source or '',
       })
-
-    if ghost:
-      id = ghost['_id']
-    else:
-      id = self.database.users.save({})
-
-    import papier
-    identity, public_key = papier.generate_identity(
-      str(id),
-      email,
-      password,
-      conf.INFINIT_AUTHORITY_PATH,
-      conf.INFINIT_AUTHORITY_PASSWORD
-      )
-
-    handle = self.unique_handle(fullname)
-
-    user_id = self._register(
-      _id = id,
-      register_status = 'ok',
-      email = email,
-      fullname = fullname,
-      password = hash_pasword(password),
-      identity = identity,
-      public_key = public_key,
-      handle = handle,
-      lw_handle = handle.lower(),
-      swaggers = ghost and ghost['swaggers'] or {},
-      networks = ghost and ghost['networks'] or [],
-      devices = [],
-      connected_devices = [],
-      notifications = ghost and ghost['notifications'] or [],
-      old_notifications = [],
-      accounts = [
-        {'type':'email', 'id': email}
-      ],
-      remaining_invitations = 3, #XXX
-      status = False,
-      created_at = time.time(),
-    )
-
-    assert user_id == id
-
-    if activation_code.startswith('@'):
-      self.database.activations.update(
-        {"_id": activation["_id"]},
-        {
-          '$inc': {'number': -1},
-          '$push': {'registered': email},
-        }
-      )
-    elif activation_code != 'no_activation_code':
-      invit['status'] = 'activated'
-      self.database.invitations.save(invit)
-
-    self._notify_swaggers(
-      notifier.NEW_SWAGGER,
-      {
-        'user_id' : str(user_id),
-      },
-      user_id = user_id,
-    )
-
-    return self.success({
-      'registered_user_id': user_id,
-      'invitation_source': source or '',
-    })
 
   @api('/user/<id>/connected')
   def is_connected(self, id: bson.ObjectId):
@@ -352,24 +380,26 @@ class Mixin:
     offset -- the number of user to skip in the result (optional).
     limit -- the maximum number of match to return (optional).
     """
-
-    # While not sure it's an email or a fullname, search in both.
-    users = []
-    if not '@' in text:
-      users = [str(u['_id']) for u in self.database.users.find(
-          {
-            '$or' :
-            [
-              {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
-              {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
-            ],
-            'register_status':'ok',
-          },
-          fields = ["_id"],
-          limit = limit,
-          skip = offset,
-          )]
-    return self.success({'users': users})
+    # XXX: self.user in the log.
+    with elle.log.trace("%s: search %s (limit: %s, offset: %s)" %
+                        (self.user['_id'], text, limit, offset)):
+      # While not sure it's an email or a fullname, search in both.
+      users = []
+      if not '@' in text:
+        users = [str(u['_id']) for u in self.database.users.find(
+            {
+              '$or' :
+              [
+                {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
+                {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
+              ],
+              'register_status':'ok',
+            },
+            fields = ["_id"],
+            limit = limit,
+            skip = offset,
+            )]
+      return self.success({'users': users})
 
   def extract_user_fields(self, user):
     return {
@@ -396,10 +426,12 @@ class Mixin:
     else:
       return self.success(self.extract_user_fields(user))
 
+#  @require_logged_in
   @api('/user/from_public_key')
   def view_from_publick_key(self, public_key):
-    user = self.user_by_public_key(public_key)
-    return self.success(self.extract_user_fields(user))
+    with elle.log.trace("search user from pk: %s", public_key):
+      user = self.user_by_public_key(public_key)
+      return self.success(self.extract_user_fields(user))
 
   ## ------- ##
   ## Swagger ##
@@ -410,31 +442,34 @@ class Mixin:
     lhs -- the first user.
     rhs -- the second user.
     """
-    assert isinstance(lhs, bson.ObjectId)
-    assert isinstance(rhs, bson.ObjectId)
+    with elle.log.trace("increase %s and %s mutual swag" % (lhs, rhs)):
+      assert isinstance(lhs, bson.ObjectId)
+      assert isinstance(rhs, bson.ObjectId)
 
-    # lh_user = self._user_by_id(lhs)
-    # rh_user = self._user_by_id(rhs)
+      # lh_user = self._user_by_id(lhs)
+      # rh_user = self._user_by_id(rhs)
 
-    # if lh_user is None or rh_user is None:
-    #   raise Exception("unknown user")
+      # if lh_user is None or rh_user is None:
+      #   raise Exception("unknown user")
 
-    for user, peer in [(lhs, rhs), (rhs, lhs)]:
-      res = self.database.users.find_and_modify(
-        {'_id': user},
-        {'$inc': {'swaggers.%s' % peer: 1}},
-        new = True)
-      if res['swaggers'][str(peer)] == 1: # New swagger.
-        self.notifier.notify_some(
-          notifier.NEW_SWAGGER,
-          message = {'user_id': res['_id']},
-          recipient_ids = {peer},
-        )
+      for user, peer in [(lhs, rhs), (rhs, lhs)]:
+        res = self.database.users.find_and_modify(
+          {'_id': user},
+          {'$inc': {'swaggers.%s' % peer: 1}},
+          new = True)
+        if res['swaggers'][str(peer)] == 1: # New swagger.
+          self.notifier.notify_some(
+            notifier.NEW_SWAGGER,
+            message = {'user_id': res['_id']},
+            recipient_ids = {peer},
+          )
 
   @require_logged_in
   @api('/user/swaggers')
   def swaggers(self):
-    return self.success({"swaggers" : list(self.user["swaggers"].keys())})
+    user = self.user
+    with elle.log.trace("%s: get his swaggers" % user['email']):
+      return self.success({"swaggers" : list(user["swaggers"].keys())})
 
   @require_admin
   @api('/user/add_swagger', method = 'POST')
@@ -449,8 +484,9 @@ class Mixin:
     user2 -- the other user.
     admin_token -- the admin token.
     """
-    self._increase_swag(user1, user2,)
-    return self.success()
+    with elle.log.trace("%s: increase swag" % admin_token):
+      self._increase_swag(user1, user2,)
+      return self.success()
 
   @api('/user/remove_swagger', method = 'POST')
   @require_logged_in
@@ -460,12 +496,14 @@ class Mixin:
 
     _id -- the id of the user to remove.
     """
-    swagez = self.database.users.find_and_modify(
-      {'_id': self.user['_id']},
-      {'$pull': {'swaggers': _id}},
-      True #upsert
-    )
-    return self.success()
+    user = self.user
+    with elle.log.trace("%s: remove swagger %s" % (user['_id'], _id)):
+      swagez = self.database.users.find_and_modify(
+        {'_id': user['_id']},
+        {'$pull': {'swaggers': _id}},
+        True #upsert
+      )
+      return self.success()
 
   def _notify_swaggers(self,
                        notification_id,
@@ -720,68 +758,83 @@ class Mixin:
     user_id -- the device owner id
     status -- the new device status
     """
-    assert isinstance(user_id, bson.ObjectId)
-    assert isinstance(device_id, uuid.UUID)
-    user = self.database.users.find_one({"_id": user_id})
-    assert user is not None
-    device = self.device(id = str(device_id), owner = user_id)
-    assert str(device_id) in user['devices']
+    with elle.log.trace("%s: %sconnected on device %s" %
+                        (user_id, not status and "dis" or "", device_id)):
+      assert isinstance(user_id, bson.ObjectId)
+      assert isinstance(device_id, uuid.UUID)
+      user = self.database.users.find_one({"_id": user_id})
+      assert user is not None
+      device = self.device(id = str(device_id), owner = user_id)
+      assert str(device_id) in user['devices']
 
-    connected_before = self._is_connected(user_id)
-    # Add / remove device from db
-    update_action = status and '$addToSet' or '$pull'
+      connected_before = self._is_connected(user_id)
+      elle.log.debug("%s: was%s connected before" %
+                     (user_id, not connected_before and "n't" or ""))
+      # Add / remove device from db
+      update_action = status and '$addToSet' or '$pull'
 
-    self.database.users.update(
-      {'_id': user_id},
-      {update_action: {'connected_devices': str(device_id)}},
-      multi = False,
-    )
-    user = self.database.users.find_one({"_id": user_id}, fields = ['connected_devices'])
+      action = {update_action: {'connected_devices': str(device_id)}}
 
-    # Disconnect only user with an empty list of connected device.
-    self.database.users.update(
+      elle.log.debug("%s: action: %s" % (user_id, action))
+
+      self.database.users.update(
         {'_id': user_id},
-        {"$set": {"connected": bool(user["connected_devices"])}},
+        action,
         multi = False,
-    )
+      )
+      user = self.database.users.find_one({"_id": user_id}, fields = ['connected_devices'])
 
-    # XXX:
-    # This should not be in user.py, but it's the only place
-    # we know the device has been disconnected.
-    if status is False and connected_before is True:
-      transactions = self.database.transactions.find(
-        {
-          "nodes.%s" % str(device_id): {"$exists": True}
-        }
+      elle.log.debug("%s: connected devices: %s" %
+                     (user['_id'], user['connected_devices']))
+
+      # Disconnect only user with an empty list of connected device.
+      self.database.users.update(
+          {'_id': user_id},
+          {"$set": {"connected": bool(user["connected_devices"])}},
+          multi = False,
       )
 
-      for transaction in transactions:
-        self.database.transactions.update(
-          {"_id": transaction},
-          {"$set": {"nodes.%s" % str(device_id): None}},
-          multi = False
+      # XXX:
+      # This should not be in user.py, but it's the only place
+      # we know the device has been disconnected.
+      if status is False and connected_before is True:
+        with elle.log.trace("%s: disconnect nodes" % user_id):
+          transactions = self.database.transactions.find(
+            {
+              "nodes.%s" % str(device_id): {"$exists": True}
+            },
+            fields = ['_id', 'sender_id', 'recipient_id'],
           )
 
-        self.notifier.notify_some(
-          notifier.PEER_CONNECTION_UPDATE,
-          device_ids = list(transaction['nodes'].keys()),
-          message = {
-            "transaction_id": str(transaction['_id']),
-            "devices": list(transaction['nodes'].keys()),
-            "status": False
-          }
-        )
+          with elle.log.debug("%s: concerned transactions: %s"):
+            for transaction in transactions:
+              elle.log.debug("%s" % transaction)
+              self.database.transactions.update(
+                {"_id": transaction},
+                {"$set": {"nodes.%s" % str(device_id): None}},
+                multi = False
+              )
 
-    self._notify_swaggers(
-      notifier.USER_STATUS,
-      {
-        'status': self._is_connected(user_id),
-        'device_id': str(device_id),
-        'device_status': status,
-      },
-      user_id = user_id,
-    )
-    return self.success()
+              self.notifier.notify_some(
+                notifier.PEER_CONNECTION_UPDATE,
+                recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+                message = {
+                  "transaction_id": str(transaction['_id']),
+                  "devices": list(transaction['nodes'].keys()),
+                  "status": False
+                }
+              )
+
+      self._notify_swaggers(
+        notifier.USER_STATUS,
+        {
+          'status': self._is_connected(user_id),
+          'device_id': str(device_id),
+          'device_status': status,
+        },
+        user_id = user_id,
+      )
+      return self.success()
 
   ## ----- ##
   ## Debug ##

@@ -3,17 +3,21 @@
 import socket
 import json
 
+import bson
 import re
 import os
 import sys
 import time
 
+import elle.log
 from infinit.oracles.notification import notifications
 
 from .plugins.jsongo import jsonify
 
 for name, value in notifications.items():
   globals()[name.upper()] = value
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Notifier'
 
 class Notifier:
   def __init__(self, database):
@@ -36,54 +40,80 @@ class Notifier:
     device_ids        -- Devices to send the notification to.
     message           -- The payload.
     """
-    # Check that we either have a list of recipients or devices
-    assert (recipient_ids is not None) or (device_ids is not None)
-    assert message is not None
+    with elle.log.trace("notification(%s): %s to %s" % (notification_type, message, recipient_ids)):
+      # Check that we either have a list of recipients or devices
+      assert (recipient_ids is not None) or (device_ids is not None)
+      assert message is not None
 
-    message['notification_type'] = notification_type
-    message['timestamp'] = time.time() #timestamp in s.
+      message['notification_type'] = notification_type
+      message['timestamp'] = time.time() #timestamp in s.
 
-    devices_trophonius = dict()
-    if recipient_ids is not None:
-      assert isinstance(recipient_ids, set)
-      critera = {'owner': {'$in': list(recipient_ids)}}
-    else:
-      assert isinstance(device_ids, set)
-      critera = {'id': {'$in': [str(device_id) for device_id in device_ids]}}
-    # Only the connected ones.
-    critera['trophonius'] = {"$ne": None}
+      elle.log.debug("message to be sent: %s" % message)
 
-    for device in self.database.devices.find(
-      critera,
-      fields = ['id', 'trophonius'],
-    ):
-      devices_trophonius[device['id']] = device['trophonius']
+      devices_trophonius = dict()
 
-    trophonius = dict((record['_id'], record)
-                      for record in self.database.trophonius.find(
-      {
-        "_id":
+      class Target:
+        def __init__(self, owner, trophonius):
+          assert isinstance(owner, bson.ObjectId)
+          self.owner = owner
+          self.trophonius = trophonius
+
+        def __str__(self):
+          return "Target: %s on trophonius %s" % (self.owner, self.trophonius)
+
+        def __repr__(self):
+          return "Target: %s on trophonius %s" % (self.owner, self.trophonius)
+
+      if recipient_ids is not None:
+        assert isinstance(recipient_ids, set)
+        critera = {'owner': {'$in': list(recipient_ids)}}
+      else:
+        assert isinstance(device_ids, set)
+        critera = {'id': {'$in': [str(device_id) for device_id in device_ids]}}
+      # Only the connected ones.
+      critera['trophonius'] = {"$ne": None}
+
+      elle.log.debug("targets critera: %s" % critera)
+
+      for device in self.database.devices.find(
+        critera,
+        fields = ['id', 'owner', 'trophonius'],
+      ):
+        devices_trophonius[device['id']] = Target(device['owner'], device['trophonius'])
+
+      elle.log.debug("targets: %s" % devices_trophonius)
+
+      trophonius = dict((record['_id'], record)
+                        for record in self.database.trophonius.find(
         {
-          "$in": list(set(devices_trophonius.values()))
-        }
-      }
-    ))
+          "_id":
+          {
+            "$in": list(set(map(lambda x: x.trophonius, devices_trophonius.values())))
+          }
+        },
+        fields = ['ip', 'port', '_id']
+      ))
 
-    notification = {'notification': jsonify(message)}
-    # Freezing slow.
-    for device in devices_trophonius.keys():
-      s = socket.socket(socket.AF_INET,
-                        socket.SOCK_STREAM)
-      tropho = trophonius.get(devices_trophonius[device])
-      if tropho is None:
-        print("unknown trophonius %s" % (devices_trophonius[device]))
-        continue
-      notification["device_id"] = str(device)
-      try:
-        s = socket.create_connection(address = (tropho['ip'], tropho['port']),
-                                     timeout = 4)
-        s.send(bytes(json.dumps(notification) + '\n', 'utf-8'))
-      except Exception as e:
-        print("unable to contact %s: %s" % (tropho['_id'], e))
-      finally:
-        s.close()
+      elle.log.debug("trophonius to contact: %s" % trophonius)
+
+      notification = {'notification': jsonify(message)}
+      # Freezing slow.
+      for device in devices_trophonius.keys():
+        s = socket.socket(socket.AF_INET,
+                          socket.SOCK_STREAM)
+        target = devices_trophonius[device]
+        tropho = trophonius.get(target.trophonius)
+        if tropho is None:
+          elle.log.err("unknown trophonius %s" % target.trophonius)
+          continue
+        notification["device_id"] = str(device)
+        notification["user_id"] = str(target.owner)
+        elle.log.debug("notification to be sent: %s" % notification)
+        try:
+          s = socket.create_connection(address = (tropho['ip'], tropho['port']),
+                                       timeout = 4)
+          s.send(bytes(json.dumps(notification) + '\n', 'utf-8'))
+        except Exception as e:
+          elle.log.err("unable to contact %s: %s" % (tropho['_id'], e))
+        finally:
+          s.close()

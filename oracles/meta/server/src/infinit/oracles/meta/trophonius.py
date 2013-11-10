@@ -1,11 +1,14 @@
 # -*- encoding: utf-8 -*-
 
+import elle.log
 import bson
 import uuid
 import time
 
 from . import conf, error, regexp
 from .utils import api, require_admin, require_logged_in
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Trophonius'
 
 class Mixin:
 
@@ -32,9 +35,9 @@ class Mixin:
     )
 
     if res['updatedExisting']:
-      print("ping from trophonius %s" % uid)
+      elle.log.dump("ping from trophonius: %s" % uid)
     else:
-      print("aggregate trophonius %s" % uid)
+      elle.log.log("register trophonius %s" % uid)
     return self.success()
 
   @api('/trophonius/<uid>', method = 'DELETE')
@@ -42,13 +45,14 @@ class Mixin:
                         uid: uuid.UUID):
     """Unregister a trophonius.
     """
-    print("delete trophonius %s" % uid)
-    assert isinstance(uid, uuid.UUID)
-    self.database.devices.update({'trophonius': str(uid)},
-                                 {'$set': {'trophonius': None}},
-                                 multi = True)
-    res = self.database.trophonius.remove({"_id": str(uid)})
-    return self.success()
+    with elle.log.log("unregister trophonius %s" % uid):
+      assert isinstance(uid, uuid.UUID)
+      elle.log.debug("trophonius %s: unregister all users" % uuid)
+      self.database.devices.update({'trophonius': str(uid)},
+                                   {'$set': {'trophonius': None}},
+                                   multi = True)
+      res = self.database.trophonius.remove({"_id": str(uid)})
+      return self.success()
 
   @require_logged_in
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'PUT')
@@ -56,39 +60,39 @@ class Mixin:
                                uid: uuid.UUID,
                                id: bson.ObjectId,
                                device: uuid.UUID):
-    print("register user (%s)'s device (%s) to trophonius %s" %
-          (id, device, uid))
-    assert isinstance(uid, uuid.UUID)
-    assert isinstance(device, uuid.UUID)
-    self.database.devices.update(
-      {
-        'id': str(device),
-        'owner': id,
-      },
-      {'$set': {'trophonius': str(uid)}}
-    )
-    self.set_connection_status(id, device, True)
-    return self.success()
+    with elle.log.trace("trophonius %s: register user (%s)'s device (%s)" %
+                        (uid, id, device)):
+      assert isinstance(uid, uuid.UUID)
+      assert isinstance(device, uuid.UUID)
+      self.database.devices.update(
+        {
+          'id': str(device),
+          'owner': id,
+        },
+        {'$set': {'trophonius': str(uid)}}
+      )
+      self.set_connection_status(id, device, True)
+      return self.success()
 
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'DELETE')
   def trophonius_unregister_user(self,
                                  uid: uuid.UUID,
                                  id: bson.ObjectId,
                                  device: uuid.UUID):
-    print("unregister user (%s)'s device (%s) from trophonius %s" %
-          (id, device, uid))
-    assert isinstance(uid, uuid.UUID)
-    assert isinstance(device, uuid.UUID)
-    self.database.devices.update(
-      {
-        'id': str(device),
-        'owner': id,
-        'trophonius': str(uid),
-      },
-      {'$set': {'trophonius': None}}
-    )
-    self.set_connection_status(id, device, False)
-    return self.success()
+    with elle.log.trace("trophonius %s: unregister user (%s)'s device (%s)" %
+                        (uid, id, device)):
+      assert isinstance(uid, uuid.UUID)
+      assert isinstance(device, uuid.UUID)
+      self.database.devices.update(
+        {
+          'id': str(device),
+          'owner': id,
+          'trophonius': str(uid),
+        },
+        {'$set': {'trophonius': None}}
+      )
+      self.set_connection_status(id, device, False)
+      return self.success()
 
   # XXX: Debuggin purpose.
   @api('/trophonius/message/user/<user>', method = 'POST')

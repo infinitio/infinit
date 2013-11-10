@@ -7,6 +7,8 @@ import uuid
 from . import conf, error, regexp
 from .utils import api, require_logged_in
 
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Device'
+
 # We use UUID for typechecking but they are all cast into str represnetation.
 # The reason is because the (py)mongo store them as BinData, making them
 # impossible to search from mongo shell.

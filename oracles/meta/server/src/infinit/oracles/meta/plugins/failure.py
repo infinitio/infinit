@@ -1,3 +1,7 @@
+import elle.log
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.plugin.Failure'
+
 class Plugin(object):
 
   '''Bottle plugin to intercept Failure exceptions.'''
@@ -7,6 +11,7 @@ class Plugin(object):
 
   @classmethod
   def fail(self, *args, **kwargs):
+    elle.log.err("failure %s:%s" % (args, kwargs))
     raise Plugin.__Failure(*args, **kwargs)
 
   class __Failure(Exception):

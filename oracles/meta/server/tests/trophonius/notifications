@@ -70,6 +70,7 @@ with Meta() as meta:
 
     alice.post('trophonius/message/user/%s' % bob1.id, {'message': 'hello'})
 
+
     t1.expected_notifications[str(bob2.device_id)] = {
       'notification_type': 208,
       'message': 'hello',

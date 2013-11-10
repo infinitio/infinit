@@ -94,8 +94,9 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
+    # Cancel all the current transactions.
     for transaction_id in self.database.transactions.find(
-        {
+      {
           "$or": [
             {"sender_id": user['_id']},
             {"recipient_id": user['_id']}
@@ -105,7 +106,7 @@ class Mixin:
       try:
         self._transaction_update(transaction_id, transaction.CANCELED, user)
       except error.Error as e:
-        print(*e.args)
+        elle.log.warn("%s" % e.args)
         continue
         # self.fail(error.UNKNOWN)
     # Remove all the devices from the user because they are based on his old
@@ -143,9 +144,9 @@ class Mixin:
       old_notifications = [],
       accounts = [
         {'type': 'email', 'id': user['email']}
-        ],
+      ],
       remaining_invitations = user['remaining_invitations'],
-      )
+    )
     return self.success({'user_id': str(user_id)})
 
   @api('/lost-password', method = 'POST')
