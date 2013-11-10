@@ -30,6 +30,7 @@ namespace infinit
         {
           elle::IOStreamClear clearer(socket);
           json_spirit::write(value, socket);
+          socket << "\n";
           socket.flush();
         }
 
