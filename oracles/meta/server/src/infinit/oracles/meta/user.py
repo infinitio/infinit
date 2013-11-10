@@ -9,6 +9,7 @@ from .utils import api, require_logged_in, require_admin, hash_pasword
 from . import error, notifier, regexp, invitation, conf
 
 import os
+import string
 import time
 import unicodedata
 
@@ -37,13 +38,13 @@ class Mixin:
                         fullname,
                         enlarge = True):
     assert isinstance(fullname, str)
-    # handle = ''
-    # for c in unicodedata.normalize('NFKD', fullname).encode('ascii', 'ignore'):
-    #   if (c >= 'a'and c <= 'z') or (c >= 'A' and c <= 'Z') or c in '-_.':
-    #     handle += c
-    #   elif c in ' \t\r\n':
-    #     handle += '.'
-    handle = fullname.strip()
+    allowed_characters = string.ascii_letters + string.digits
+    allowed_characters += '-_.'
+    normalized_name = unicodedata.normalize('NFKD', fullname.strip().replace(' ', '.'))
+    handle = ''
+    for c in normalized_name:
+      if c in allowed_characters:
+        handle += c
 
     if not enlarge:
       return handle
