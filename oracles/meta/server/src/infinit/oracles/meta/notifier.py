@@ -79,7 +79,7 @@ class Notifier:
         critera,
         fields = ['id', 'owner', 'trophonius'],
       ):
-        devices_trophonius[device['id']] = Target(device['owner'], device['trophonius'])
+        devices_trophonius[(device['id'], device['owner'])] = device['trophonius']
 
       elle.log.debug("targets: %s" % devices_trophonius)
 
@@ -88,7 +88,7 @@ class Notifier:
         {
           "_id":
           {
-            "$in": list(set(map(lambda x: x.trophonius, devices_trophonius.values())))
+            "$in": list(set(devices_trophonius.values()))
           }
         },
         fields = ['ip', 'port', '_id']
@@ -98,16 +98,16 @@ class Notifier:
 
       notification = {'notification': jsonify(message)}
       # Freezing slow.
-      for device in devices_trophonius.keys():
+      for device, owner in devices_trophonius.keys():
         s = socket.socket(socket.AF_INET,
                           socket.SOCK_STREAM)
-        target = devices_trophonius[device]
-        tropho = trophonius.get(target.trophonius)
+        trophonius_to_contact = devices_trophonius[(device, owner)]
+        tropho = trophonius.get(trophonius_to_contact)
         if tropho is None:
-          elle.log.err("unknown trophonius %s" % target.trophonius)
+          elle.log.err("unknown trophonius %s" % trophonius_to_contact)
           continue
         notification["device_id"] = str(device)
-        notification["user_id"] = str(target.owner)
+        notification["user_id"] = str(owner)
         elle.log.debug("notification to be sent: %s" % notification)
         try:
           s = socket.create_connection(address = (tropho['ip'], tropho['port']),
