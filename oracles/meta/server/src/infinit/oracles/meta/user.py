@@ -806,7 +806,7 @@ class Mixin:
             fields = ['_id', 'sender_id', 'recipient_id'],
           )
 
-          with elle.log.debug("%s: concerned transactions: %s"):
+          with elle.log.debug("%s: concerned transactions:" % user_id):
             for transaction in transactions:
               elle.log.debug("%s" % transaction)
               self.database.transactions.update(
