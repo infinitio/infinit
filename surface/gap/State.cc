@@ -319,6 +319,15 @@ namespace surface
           identity_infos.close();
         }
 
+        auto device = this->meta().device(device_uuid);
+        this->_device.reset(new Device{device.id, device.name});
+        std::string passport_path =
+          common::infinit::passport_path(this->me().id);
+        this->_passport.reset(new papier::Passport());
+        if (this->_passport->Restore(device.passport) == elle::Status::Error)
+          throw Exception(gap_wrong_passport, "Cannot load the passport");
+        this->_passport->store(elle::io::Path(passport_path));
+
         this->_trophonius.connect(
           this->me().id, this->device().id, this->_meta.session_id());
 
@@ -464,7 +473,6 @@ namespace surface
             }
             this->_avatar_to_fetch.clear();
             this->_avatars.clear();
-
           }
 
           ELLE_DEBUG("clear transactions")
@@ -784,7 +792,6 @@ namespace surface
           return out << "Kicked Out";
         case NotificationType_AvatarAvailable:
           return out << "Avatar Available";
-
       }
 
       return out;

@@ -306,14 +306,14 @@ namespace infinit
         create_device(std::string const& name) const;
 
         UpdateDeviceResponse
-        update_device(std::string const& _id,
+        update_device(boost::uuids::uuid const& device_uuid,
                       std::string const& name) const;
 
         DeviceResponse
-        device(std::string const& _id) const;
+        device(boost::uuids::uuid const& device_uuid) const;
 
         DeleteDeviceResponse
-        delete_device(std::string const& _id) const;
+        delete_device(boost::uuids::uuid const& device_uuid) const;
 
         InviteUserResponse
         invite_user(std::string const& email) const;
@@ -380,7 +380,7 @@ namespace infinit
         EndpointNodeResponse
         device_endpoints(std::string const& transaction_id,
                          std::string const& self_device_id,
-                         std::string const& peer_device_id) const;
+                         std::string const& device_id) const;
 
         FallbackResponse
         fallback(std::string const& _id) const;

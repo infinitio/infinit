@@ -270,18 +270,6 @@ extern "C"
                                  state.register_(fullname, email, password, activation_code);
                                  return gap_ok;
                                });
-
-    if (ret.status() == gap_ok && device_name != nullptr)
-    {
-      ret = run<gap_Status>(state,
-                            "device",
-                            [&] (surface::gap::State& state) -> gap_Status
-                            {
-                              state.device();
-                              return gap_ok;
-                            });
-
-    }
     return ret;
   }
 
@@ -345,7 +333,7 @@ extern "C"
                            "set device name",
                            [&] (surface::gap::State& state) -> gap_Status
                            {
-                             // state.update_device(name);
+                             state.update_device(name);
                              return gap_ok;
                            });
   }

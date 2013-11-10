@@ -411,11 +411,13 @@ namespace infinit
       }
 
       UpdateDeviceResponse
-      Client::update_device(std::string const& _id,
+      Client::update_device(boost::uuids::uuid const& device_uuid,
                             std::string const& name) const
       {
+        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+
         json::Dictionary request{std::map<std::string, std::string>{
-            {"id", _id},
+            {"id", struuid},
             {"name", name},
         }};
 
@@ -424,18 +426,22 @@ namespace infinit
       }
 
       DeviceResponse
-      Client::device(std::string const& _id) const
+      Client::device(boost::uuids::uuid const& device_uuid) const
       {
+        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+
         return this->_request<DeviceResponse>(
-          sprintf("/device/%s/view", _id), Method::GET);
+          sprintf("/device/%s/view", struuid), Method::GET);
       }
 
       DeleteDeviceResponse
-      Client::delete_device(std::string const& _id) const
+      Client::delete_device(boost::uuids::uuid const& device_uuid) const
       {
+        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+
         json::Dictionary request{std::map<std::string, std::string>{
-            {"_id", _id},
-              }};
+            {"id", struuid},
+         }};
 
         return this->_request<DeleteDeviceResponse>(
           "/device/delete", Method::POST, request);
@@ -625,7 +631,7 @@ namespace infinit
       }
 
       EndpointNodeResponse
-      Client::device_endpoints(std::string const& network_id,
+      Client::device_endpoints(std::string const& transaction_id,
                                std::string const& self_device_id,
                                std::string const& device_id) const
       {
@@ -637,7 +643,7 @@ namespace infinit
         };
 
         return this->_request<EndpointNodeResponse>(
-          sprintf("/transaction/%s/endpoints", network_id),
+          sprintf("/transaction/%s/endpoints", transaction_id),
           Method::POST, request);
       }
 
@@ -675,9 +681,11 @@ namespace infinit
 
         auto status = request.status();
         if (status != reactor::http::StatusCode::OK)
+        {
           throw elle::http::Exception(
             static_cast<elle::http::ResponseCode>(status),
             elle::sprintf("error %s while POSTing avatar", status));
+        }
       }
 
       reactor::http::Request
@@ -707,9 +715,13 @@ namespace infinit
 
         auto status = request.status();
         if (status != reactor::http::StatusCode::OK)
+        {
+          ELLE_ERR("%s: error while posting: %s (%s)",
+                   *this, status, request.response().string());
           throw elle::http::Exception(
             static_cast<elle::http::ResponseCode>(status),
             elle::sprintf("error %s while posting on %s", status, url));
+        }
         return request;
       }
 
