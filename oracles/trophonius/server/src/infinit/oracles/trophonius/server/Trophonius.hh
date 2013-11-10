@@ -79,7 +79,8 @@ namespace infinit
           ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, ping_period);
 
           User&
-          user(boost::uuids::uuid const& device);
+          user(std::string const& user_id,
+               boost::uuids::uuid const& device);
 
         /*----------.
         | Printable |

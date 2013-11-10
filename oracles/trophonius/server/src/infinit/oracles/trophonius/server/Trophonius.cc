@@ -172,18 +172,20 @@ namespace infinit
         }
 
         User&
-        Trophonius::user(boost::uuids::uuid const& device)
+        Trophonius::user(std::string const& user_id,
+                         boost::uuids::uuid const& device)
         {
           auto client = std::find_if(
             this->_clients.begin(),
             this->_clients.end(),
-            [&device] (Client* client)
+            [&device,&user_id] (Client* client)
             {
               if (dynamic_cast<User*>(client) == nullptr)
                 return false;
 
               User const* user = static_cast<User const*>(client);
-              return user->device_id() == device;
+              return (user->device_id() == device) &&
+                     (user->user_id() == user_id);
             });
 
           if (client == this->_clients.end())

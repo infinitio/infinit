@@ -47,7 +47,7 @@ namespace infinit
           ELLE_ATTRIBUTE_R(reactor::Barrier, authentified);
           ELLE_ATTRIBUTE(meta::Admin, meta);
           ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id);
-          ELLE_ATTRIBUTE(std::string, user_id);
+          ELLE_ATTRIBUTE_R(std::string, user_id);
           ELLE_ATTRIBUTE(std::string, session_id);
 
         private:

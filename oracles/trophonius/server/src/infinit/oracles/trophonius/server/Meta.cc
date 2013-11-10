@@ -40,16 +40,21 @@ namespace infinit
           {
             auto const& json = read_json(*this->_socket);
 
-            static auto mandatory_fields = {"notification", "device_id"};
+            static auto mandatory_fields =
+              {"notification", "device_id", "user_id"};
 
             for (auto const& field: mandatory_fields)
               if (json.find(field) == json.end())
                 throw ProtocolError(
                   elle::sprintf("mandatory field %s missing", field));
             auto const& device = json.find("device_id")->second;
+            auto const& user_id = json.find("user_id")->second;
+            if (user_id.type() != json_spirit::Value::STRING_TYPE)
+              throw ProtocolError("user id is not a string");
             if (device.type() != json_spirit::Value::STRING_TYPE)
               throw ProtocolError("device id is not a string");
             User& user = this->trophonius().user(
+              user_id.getString(),
               boost::uuids::string_generator()(device.getString()));
             user.notify(json_spirit::Value(json.find("notification")->second));
           }
