@@ -39,8 +39,25 @@ def configure(protocol,
 
   library = drake.cxx.DynLib('lib/apertus-server',
                              apertus_sources +
-                             [reactor_lib, protocol_lib],
+                             [reactor_lib, protocol_lib, meta_client_lib],
                              cxx_toolkit, local_cxx_config)
-
   rule_apertus_build = drake.Rule('build')
   rule_apertus_build << library
+
+  #check
+  test_cxx_config = drake.cxx.Config(local_cxx_config)
+  test_cxx_config += boost.config_test()
+  test_cxx_config += boost.config_system()
+  test_cxx_config.lib_path_runtime('../lib')
+
+  test_sources = drake.nodes('tests/infinit/oracles/apertus/apertus.cc')
+
+  test_exe = drake.cxx.Executable('tests/apertus',
+                                  test_sources +
+                                  [library, protocol_lib, reactor_lib],
+                                  cxx_toolkit,
+                                  test_cxx_config)
+  test = drake.Runner(exe = test_exe)
+
+  rule_apertus_check = drake.Rule('check')
+  rule_apertus_check << test.status
