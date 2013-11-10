@@ -26,6 +26,9 @@ namespace oracles
       void
       run();
 
+      std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&
+      get_clients();
+
     private:
       void
       _connect(reactor::network::TCPSocket* client1,
@@ -35,7 +38,7 @@ namespace oracles
       reactor::Scheduler& _sched;
 
     private:
-      infinit::oracles::meta::Admin _meta;
+      infinit::oracles::meta::Admin* _meta;
       const boost::uuids::uuid _uuid;
 
     private:
