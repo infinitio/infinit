@@ -278,10 +278,9 @@ namespace surface
       bool
       has_device() const;
 
-      /// Create or update the local device.
+      /// Update the local device name.
       void
-      update_device(std::string const& name,
-                    bool force_create = false) const;
+      update_device(std::string const& name) const;
 
       // Could be factorized.
       /*------.

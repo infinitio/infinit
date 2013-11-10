@@ -463,9 +463,12 @@ namespace infinit
             // Wait for the ping signal, or ping_period at most.
             this->_ping_signal.wait(this->_ping_period);
 
-            ELLE_DEBUG("%s: ping thread: waiting to be connected", *this);
-            reactor::Scheduler::scheduler()->current()->wait(this->_connected);
-            ELLE_DEBUG("%s: ping thread: connected", *this);
+            if (!this->_connected.opened())
+            {
+              ELLE_DEBUG("%s: ping thread: waiting to be connected", *this);
+              reactor::Scheduler::scheduler()->current()->wait(this->_connected);
+              ELLE_DEBUG("%s: ping thread: connected", *this);
+            }
 
             auto socket = this->_socket;
             try
@@ -490,9 +493,13 @@ namespace infinit
           ELLE_TRACE_SCOPE("start pong thread");
           while (true)
           {
-            ELLE_DEBUG("%s: pong thread: waiting to be connected", *this);
-            reactor::Scheduler::scheduler()->current()->wait(this->_connected);
-            ELLE_DEBUG("%s: pong thread: connected", *this);
+            if (!this->_connected.opened())
+            {
+              ELLE_DEBUG("%s: pong thread: waiting to be connected", *this);
+              reactor::Scheduler::scheduler()->current()->wait(this->_connected);
+              ELLE_DEBUG("%s: pong thread: connected", *this);
+            }
+
             if (!this->_pong_signal.wait(this->_ping_timeout))
             {
               ELLE_WARN("%s: didn't receive ping from tropho in %s",
