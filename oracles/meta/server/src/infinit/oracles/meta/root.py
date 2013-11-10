@@ -52,7 +52,6 @@ class Mixin:
     # Ghostify user.
     ghost = self.registerUser(**ghost)
 
-    from meta.invitation import invite_user
     invitation.invite_user(user['email'], database = self.database)
 
     return self.success({'ghost': str(user['_id'])})
@@ -145,7 +144,6 @@ class Mixin:
       accounts = [
         {'type': 'email', 'id': user['email']}
       ],
-      remaining_invitations = user['remaining_invitations'],
     )
     return self.success({'user_id': str(user_id)})
 

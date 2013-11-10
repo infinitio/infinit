@@ -25,7 +25,7 @@ with Meta() as meta:
 
   # Login the same user but on web.
   web_client0 = Client(meta)
-  res = web_client0.post('web_login', user)
+  res = web_client0.post('web-login', user)
   assert res['success']
   res = web_client0.get('user/self')
   assert res['success']
@@ -33,7 +33,7 @@ with Meta() as meta:
 
   # Login the same user but on web twice.
   web_client1 = Client(meta)
-  res = web_client1.post('web_login', user)
+  res = web_client1.post('web-login', user)
   assert res['success']
   res = web_client1.get('user/self')
   assert res['success']

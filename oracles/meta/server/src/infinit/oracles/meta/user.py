@@ -6,7 +6,7 @@ import uuid
 import elle.log
 
 from .utils import api, require_logged_in, require_admin, hash_pasword
-from . import error, notifier, regexp, invitation, conf
+from . import error, notifier, regexp, conf, invitation
 
 import os
 import string
@@ -117,7 +117,7 @@ class Mixin:
         }
     )
 
-  @api('/web_login', method = 'POST')
+  @api('/web-login', method = 'POST')
   def web_login(self,
                 email,
                 password):
@@ -183,7 +183,7 @@ class Mixin:
                email,
                password,
                fullname,
-               activation_code):
+               activation_code = None):
     """Register a new user.
 
     email -- the account email.
@@ -192,10 +192,15 @@ class Mixin:
     activation_code -- the activation code.
     """
     _validators = [
-      ('email', regexp.EmailValidator),
-      ('fullname', regexp.HandleValidator),
-      ('password', regexp.PasswordValidator),
+      (email, regexp.EmailValidator),
+      (fullname, regexp.HandleValidator),
+      (password, regexp.PasswordValidator),
     ]
+
+    for arg, validator in _validators:
+      res = validator(arg)
+      if res != 0:
+        return self.fail(res)
 
     with elle.log.trace("registeration: %s as %s" % (email, fullname)):
       if self.user is not None:
@@ -209,37 +214,14 @@ class Mixin:
           'register_status': 'ok',
         }):
         return self.fail(error.EMAIL_ALREADY_REGISTRED)
-      elif activation_code.startswith('@'):
-        activation_code = activation_code.upper()
-        activation = self.database.activations.find_one(
-          {
-            'code': activation_code,
-          })
-        if not activation or activation['number'] <= 0:
-          return self.fail(error.ACTIVATION_CODE_DOESNT_EXIST)
-        ghost_email = email
-        source = activation_code
-      elif activation_code != 'no_activation_code':
-        invit = self.database.invitations.find_one(
-          {
-            'code': activation_code,
-            'status': 'pending',
-          })
-        if not invit:
-          return self.fail(error.ACTIVATION_CODE_DOESNT_EXIST)
-        ghost_email = invit['email']
-        source = invit['source']
-        invitation.move_from_invited_to_userbase(ghost_email, email)
-      else:
-        ghost_email = email
 
       ghost = self.database.users.find_one(
         {
-          'accounts': [{ 'type': 'email', 'id': ghost_email}],
+          'accounts': [{ 'type': 'email', 'id': email}],
           'register_status': 'ghost',
         })
 
-      if ghost:
+      if ghost is not None:
         id = ghost['_id']
       else:
         id = self.database.users.save({})
@@ -274,24 +256,13 @@ class Mixin:
         accounts = [
           {'type':'email', 'id': email}
         ],
-        remaining_invitations = 3, #XXX
         status = False,
         created_at = time.time(),
       )
 
-      assert user_id == id
+      self.invitation.subscribe(email)
 
-      if activation_code.startswith('@'):
-        self.database.activations.update(
-          {"_id": activation["_id"]},
-          {
-            '$inc': {'number': -1},
-            '$push': {'registered': email},
-          }
-        )
-      elif activation_code != 'no_activation_code':
-        invit['status'] = 'activated'
-        self.database.invitations.save(invit)
+      assert user_id == id
 
       self._notify_swaggers(
         notifier.NEW_SWAGGER,
@@ -593,17 +564,17 @@ class Mixin:
         field = 'handle',
         )
     other = self.database.users.find_one({'lw_handle': lw_handle})
-    if other and other['_id'] != user['_id']:
+    if other is not None and other['_id'] != user['_id']:
       return self.fail(
         error.HANDLE_ALREADY_REGISTRED,
         field = 'handle',
         )
     update = {
-      'handle': handle,
-      'lw_handle': lw_handle,
-      'fullname': fullname,
+      '$set': {'handle': handle, 'lw_handle': lw_handle, 'fullname': fullname}
     }
-    self.database.users.update({'_id': user['_id']}, update)
+    self.database.users.find_and_modify(
+      {'_id': user['_id']},
+      update)
     return self.success()
 
   @require_admin

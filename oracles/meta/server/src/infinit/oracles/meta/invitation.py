@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from . import conf, mail
+import decorator
 
 def _generate_code(email):
   import hashlib
@@ -19,25 +20,38 @@ ALPHA_LIST = 'd8d5225ac7'
 INVITED_LIST = '385e50ea2c'
 USERBASE_LIST = 'cf5bcab5b1'
 
-def move_from_invited_to_userbase(ghost_mail, new_mail):
-  from mailsnake import MailSnake
-  ms = MailSnake(conf.MAILCHIMP_APIKEY)
-  #try:
-  #  ms.listUnsubscribe(id = ALPHA_LIST, email_address = ghost_mail)
-  #except:
-  #  print("Couldn't unsubscribe", ghost_mail, "from ALPHA:")
+class Invitation:
 
-  try:
-    ms.listUnsubscribe(id = INVITED_LIST, email_address = ghost_mail)
-  except:
-    print("Couldn't unsubscribe", ghost_mail, "from INVITED")
+  def __init__(self,
+               active = True):
+    self.__active = active
+    from mailsnake import MailSnake
+    self.ms = MailSnake(conf.MAILCHIMP_APIKEY)
 
-  try:
-    ms.listSubscribe(id = USERBASE_LIST,
-                     email_address = new_mail,
-                     double_optin = False)
-  except:
-    print("Couldn't subscribe", new_mail, "to USERBASE")
+  def is_active(method):
+    def wrapper(wrapped, self, *a, **ka):
+      if not self.__active:
+        print("invitation was ignored because inviter is inactive")
+        return # Return an empty func.
+      return wrapped(self, *a, **ka)
+    return decorator.decorator(wrapper, method)
+
+  @is_active
+  def move_from_invited_to_userbase(self, ghost_mail, new_mail):
+    try:
+      self.ms.listUnsubscribe(id = INVITED_LIST, email_address = ghost_mail)
+    except:
+      print("Couldn't unsubscribe", ghost_mail, "from INVITED")
+    self.subscribe(new_mail)
+
+  @is_active
+  def subscribe(self, email):
+    try:
+      ms.listSubscribe(id = USERBASE_LIST,
+                       email_address = mail,
+                       double_optin = False)
+    except:
+      print("Couldn't subscribe", mail, "to USERBASE")
 
 def invite_user(email,
                 mailer,

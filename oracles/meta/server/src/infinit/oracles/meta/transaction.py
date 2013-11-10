@@ -145,7 +145,7 @@ class Mixin:
         invitee_email = recipient['email']
 
       if new_user:
-        meta.invitation.invite_user(
+        invitation.invite_user(
           invitee_email,
           mailer = self.mailer,
           source = user['_id'],

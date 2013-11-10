@@ -19,7 +19,7 @@ from . import error
 
 from .utils import api, hash_pasword, require_logged_in
 
-from . import user, transaction, device, root, trophonius, apertus
+from . import user, transaction, device, root, trophonius, apertus, invitation
 from . import notifier
 from . import mail
 
@@ -59,6 +59,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
     self.notifier = notifier.Notifier(self.__database)
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
+    self.invitation = invitation.Invitation(active = enable_emails)
     self.trophonius_expiration_time = trophonius_expiration_time
 
   def __set_constraints(self):
