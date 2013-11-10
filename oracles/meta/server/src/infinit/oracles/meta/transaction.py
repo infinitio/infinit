@@ -248,17 +248,18 @@ class Mixin:
                               offset = offset)
 
   def on_accept(self, transaction, device_id, device_name):
-    if device_id is None or device_name is None:
-      self.bad_request()
-    device_id = uuid.UUID(device_id)
-    if str(device_id) not in self.user['devices']:
-      raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
+    with elle.log.trace("accept transaction as %s" % device_id):
+      if device_id is None or device_name is None:
+        self.bad_request()
+      device_id = uuid.UUID(device_id)
+      if str(device_id) not in self.user['devices']:
+        raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
 
-    transaction.update({
-      'recipient_fullname': self.user['fullname'],
-      'recipient_device_name' : device_name,
-      'recipient_device_id': str(device_id),
-    })
+      transaction.update({
+        'recipient_fullname': self.user['fullname'],
+        'recipient_device_name' : device_name,
+        'recipient_device_id': str(device_id),
+      })
 
   @require_logged_in
   @api('/transaction/update', method = 'POST')
@@ -287,58 +288,63 @@ class Mixin:
                           device_id = None,
                           device_name = None,
                           user = None):
-    if user is None:
-      user = self.user
-    if user is None:
-      self.fail(error.UNKNOWN_USER)
-    transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
-    is_sender = self.is_sender(transaction, user['_id'])
-
-    if status not in transaction_status.transitions[transaction['status']][is_sender]:
-      raise error.Error(
-        error.TRANSACTION_OPERATION_NOT_PERMITTED,
-        "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
-      )
-
-    if transaction['status'] == status:
-      raise error.Error(
-        error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
-        "Cannont change status from %s to %s (same status)." % (transaction['status'], status))
-
-    if transaction['status'] in transaction_status.final:
-      raise error.Error(
-        error.TRANSACTION_ALREADY_FINALIZED,
-        "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
+    with elle.log.log("update transaction %s: %s" %
+                      (transaction_id, status)):
+      if user is None:
+        user = self.user
+      if user is None:
+        self.fail(error.UNKNOWN_USER)
+      transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
+      elle.log.debug("transaction: %s" % transaction)
+      is_sender = self.is_sender(transaction, user['_id'])
+      elle.log.debug("%s" % is_sender and "sender" or "recipient")
+      if status not in transaction_status.transitions[transaction['status']][is_sender]:
+        raise error.Error(
+          error.TRANSACTION_OPERATION_NOT_PERMITTED,
+          "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
         )
 
-    from functools import partial
+      if transaction['status'] == status:
+        raise error.Error(
+          error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
+          "Cannont change status from %s to %s (same status)." % (transaction['status'], status))
 
-    callbacks = {
-      transaction_status.INITIALIZED: None,
-      transaction_status.ACCEPTED: partial(self.on_accept,
-                                           transaction = transaction,
-                                           device_id = device_id,
-                                           device_name = device_name),
-      transaction_status.FINISHED: None,
-      transaction_status.CANCELED: None,
-      transaction_status.FAILED: None,
-      transaction_status.REJECTED: None
-    }
+      if transaction['status'] in transaction_status.final:
+        raise error.Error(
+          error.TRANSACTION_ALREADY_FINALIZED,
+          "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
+          )
 
-    cb = callbacks[status]
-    if cb is not None:
-      cb()
+      from functools import partial
 
-    transaction['status'] = status
-    transaction['mtime'] = time.time()
-    self.database.transactions.save(transaction)
+      callbacks = {
+        transaction_status.INITIALIZED: None,
+        transaction_status.ACCEPTED: partial(self.on_accept,
+                                             transaction = transaction,
+                                             device_id = device_id,
+                                             device_name = device_name),
+        transaction_status.FINISHED: None,
+        transaction_status.CANCELED: None,
+        transaction_status.FAILED: None,
+        transaction_status.REJECTED: None
+      }
 
-    self.notifier.notify_some(
-      notifier.TRANSACTION,
-      recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
-      message = transaction,
-    )
-    return transaction_id
+      cb = callbacks[status]
+      if cb is not None:
+        cb()
+
+      transaction['status'] = status
+      transaction['mtime'] = time.time()
+      self.database.transactions.save(transaction)
+
+      elle.log.debug("transaction updated")
+
+      self.notifier.notify_some(
+        notifier.TRANSACTION,
+        recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+        message = transaction,
+      )
+      return transaction_id
 
   @require_logged_in
   @api('/transaction/search')
