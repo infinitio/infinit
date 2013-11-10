@@ -68,8 +68,7 @@ with Meta() as meta:
     t1.register(bob1)
     t1.register(bob2)
 
-    alice.post('trophonius/message/user/%s' % bob1.id, {'message': 'hello'})
-
+    alice.post('trophonius/message/user/%s' % bob1.id, {'body': {'message': 'hello'}})
 
     t1.expected_notifications[str(bob2.device_id)] = {
       'notification_type': 208,

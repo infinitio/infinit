@@ -98,10 +98,11 @@ class Mixin:
   @api('/trophonius/message/user/<user>', method = 'POST')
   def trophonius_message_user(self,
                               user: bson.ObjectId,
-                              message):
-    self.notifier.notify_some(notification_type = 208,
+                              body):
+    type = body.get('notification_type', 208)
+    self.notifier.notify_some(notification_type = type,
                               recipient_ids = {user},
-                              message = {"message": message})
+                              message = body)
     return self.success()
 
   @api('/trophonius/message/device/<device>', method = 'POST')
