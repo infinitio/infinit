@@ -33,7 +33,7 @@ with Meta() as meta:
   res = meta.get('user/self')
   assert res['success']
   assert res['fullname'] == 'jean-louis'
-  assert res['handle'] == 'gossbo du 39'
+  assert res['handle'] == 'gossbo.du.39'
 
   assert _self['fullname'] == fullname
   res = meta.post('user/edit', {'fullname': 'jean-louis',
