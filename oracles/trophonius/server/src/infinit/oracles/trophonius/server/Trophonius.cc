@@ -28,6 +28,7 @@ namespace infinit
           int port,
           std::string const& meta_host,
           int meta_port,
+          int notifications_port,
           boost::posix_time::time_duration const& user_ping_period,
           boost::posix_time::time_duration const& ping_period):
           Waitable("trophonius"),
@@ -90,7 +91,7 @@ namespace infinit
 
           try
           {
-            this->_notifications.listen();
+            this->_notifications.listen(notifications_port);
             ELLE_LOG("%s: listen for meta on port %s",
                      *this, this->notification_port());
           }

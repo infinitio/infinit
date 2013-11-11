@@ -38,8 +38,9 @@ namespace infinit
           Trophonius(int port,
                      std::string const& meta_host,
                      int meta_port,
-                     boost::posix_time::time_duration const& user_ping_period,
-                     boost::posix_time::time_duration const& ping_period = boost::posix_time::seconds(5));
+                     int notifications_port = 0,
+                     boost::posix_time::time_duration const& user_ping_period = 30_sec,
+                     boost::posix_time::time_duration const& ping_period = 5_sec);
 
           ~Trophonius();
           void

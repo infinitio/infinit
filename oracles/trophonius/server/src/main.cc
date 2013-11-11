@@ -30,6 +30,8 @@ parse_options(int argc, char** argv)
     ("port,p", value<int>(), "specify the port to listen on")
     ("meta,m", value<std::string>(),
      "specify the meta host[:port] to connect to")
+    ("notifications-port,n", value<int>(),
+     "specify the port to listen on for notifications from meta")
     ("syslog,s", "send logs to the system logger")
     ("version,v", "display version information and exit")
     ;
@@ -97,10 +99,13 @@ int main(int argc, char** argv)
       throw std::runtime_error("meta host is empty");
 
     int port = 0;
+    int notifications_port = 0;
     int ping = 30;
 
     if (options.count("port"))
       port = options["port"].as<int>();
+    if (options.count("notifications-port"))
+      notifications_port = options["notifications-port"].as<int>();
     if (options.count("ping-period"))
       ping = options["ping-period"].as<int>();
 
@@ -113,7 +118,11 @@ int main(int argc, char** argv)
       {
         trophonius.reset(
           new Trophonius(
-            port, meta_host, meta_port, boost::posix_time::seconds(ping)));
+            port,
+            meta_host,
+            meta_port,
+            notifications_port,
+            boost::posix_time::seconds(ping)));
 
         // Wait for trophonius to be asked to finish.
         main.wait(*trophonius);
