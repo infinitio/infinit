@@ -34,6 +34,11 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
                enable_emails = True,
                trophonius_expiration_time = 300 # in sec
                ):
+    import os
+    system_logger = os.getenv("META_LOG_SYSTEM")
+    if system_logger is not None:
+      elle.log.set_logger(elle.log.SysLogger(system_logger))
+
     super().__init__()
     db_args = {}
     if mongo_host is not None:
