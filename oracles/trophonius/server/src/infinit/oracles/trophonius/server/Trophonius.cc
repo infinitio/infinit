@@ -78,6 +78,7 @@ namespace infinit
           try
           {
             this->_server.listen(this->_port);
+            this->_port = this->_server.port();
             ELLE_LOG("%s: listen for users on port %s", *this, this->port());
           }
           catch (...)
