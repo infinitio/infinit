@@ -202,9 +202,9 @@ namespace infinit
             while (true)
             {
               this->_authentified.wait();
+              reactor::sleep(this->trophonius().ping_period());
               ELLE_DEBUG("%s: send ping", *this);
               this->_socket->write(ping_msg);
-              reactor::sleep(this->trophonius().ping_period());
             }
           }
           catch (reactor::network::Exception const& e)
