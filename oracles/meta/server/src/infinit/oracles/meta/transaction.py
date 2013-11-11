@@ -513,13 +513,14 @@ class Mixin:
     peer_node = transaction['nodes'][peer_key]
 
     for addr_kind in ['locals', 'externals', 'fallback']:
-        for a in peer_node[addr_kind]:
-            if a and a["ip"] and a["port"]:
-                addrs[addr_kind].append(
-                    (a["ip"], str(a["port"])))
+      for a in peer_node[addr_kind]:
+        if a and a["ip"] and a["port"]:
+          addrs[addr_kind].append(
+            (a["ip"], str(a["port"])))
 
     res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
     res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
-    res['fallback'] = []
+    # XXX: Remove when apertus is ready.
+    res['fallback'] = ["88.190.48.55:9899"]
 
     return self.success(res)
