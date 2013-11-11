@@ -104,6 +104,12 @@ namespace infinit
             while (true)
             {
               auto json = read_json(*this->_socket);
+              ELLE_DUMP(
+                "%s: receive packet: %s",
+                *this,
+                elle::Lazy<std::string>(
+                  std::bind(&pretty_print_json, std::ref(json))));
+
               if (json.find("notification_type") != json.end())
               {
                 ELLE_DEBUG("%s: receive ping", *this);
