@@ -325,9 +325,10 @@ namespace infinit
       Client::search_users(std::string const& text, int count, int offset) const
       {
         json::Dictionary request;
+        request["text"] = text;
         request["limit"] = count;
         request["offset"] = offset;
-        return this->_request<UsersResponse>(elle::sprintf("/user/search/%s", text), Method::POST, request);
+        return this->_request<UsersResponse>("/user/search", Method::POST, request);
       }
 
       UserResponse
