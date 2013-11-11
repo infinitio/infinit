@@ -88,6 +88,7 @@ namespace infinit
         void
         User::notify(json_spirit::Value const& notification)
         {
+          this->_authentified.wait();
           ELLE_TRACE(
             "%s: send notification: %s",
               *this,
