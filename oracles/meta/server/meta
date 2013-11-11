@@ -6,5 +6,10 @@ import sys
 
 import bottle
 import infinit.oracles.meta
+import elle.log
+
+if os.getenv("META_LOG_SYSTEM"):
+  elle.log.set_logger(elle.log.SysLogger("meta"))
+
 bottle.run(app = infinit.oracles.meta.Meta(),
            host = '127.0.0.1')
