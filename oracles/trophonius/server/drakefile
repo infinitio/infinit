@@ -5,6 +5,7 @@ import sys
 build = None
 install = None
 check = None
+tests = None
 
 def configure(elle,
               reactor,
@@ -16,7 +17,8 @@ def configure(elle,
               cxx_toolkit = None,
               cxx_config = None):
 
-  global build, install, check
+  # Rules
+  global build, check, install, tests
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
@@ -101,7 +103,32 @@ def configure(elle,
     build << drake.touch('lib/python/infinit/__init__.py')
     build << drake.touch('lib/python/infinit/oracles/__init__.py')
 
+  ## ----- ##
+  ## Tests ##
+  ## ----- ##
+
+  check = drake.TestSuite('check')
+  tests = drake.Rule('tests')
+
+  cxx_config_tests = drake.cxx.Config(local_cxx_config)
+  cxx_config_tests.lib_path_runtime('../lib')
+  cxx_config_tests += boost.config_test()
+  for name in ['trophonius']:
+    test = drake.cxx.Executable(
+      'tests/%s' % name,
+      drake.nodes('tests/%s.cc' % name) + [lib,
+                                           elle_lib,
+                                           reactor_lib],
+      cxx_toolkit,
+      cxx_config_tests)
+    tests << test
+    runner = drake.Runner(exe = test)
+    check << runner.status
+
+
+  ## ------- ##
+  ## Install ##
+  ## ------- ##
+
   install = drake.Rule('install')
   install << drake.install(trophonius, prefix)
-
-  check = drake.Rule('check')
