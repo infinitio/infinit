@@ -15,7 +15,7 @@
 #include <infinit/oracles/trophonius/server/exceptions.hh>
 #include <infinit/oracles/trophonius/server/utils.hh>
 
-ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.Meta")
+ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.User")
 
 namespace infinit
 {
