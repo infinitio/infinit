@@ -20,6 +20,7 @@ namespace frete
   `-------------*/
 
   Frete::Frete(infinit::protocol::ChanneledStream& channels,
+               std::string const& password,
                boost::filesystem::path const& snapshot_destination):
     _rpc(channels),
     _rpc_count("count", this->_rpc),
@@ -30,7 +31,8 @@ namespace frete
     _rpc_set_progress("progress", this->_rpc),
     _progress_changed("progress changed signal"),
     _snapshot_destination(snapshot_destination),
-    _transfer_snapshot{}
+    _transfer_snapshot{},
+    _key(infinit::cryptography::cipher::Algorithm::aes256, password)
   {
     this->_rpc_count = std::bind(&Self::_count,
                                 this);
@@ -286,7 +288,8 @@ namespace frete
           throw elle::Exception("output is invalid");
 
         // Get the buffer from the rpc.
-        elle::Buffer buffer{std::move(this->_rpc_read(index, tr.progress(), n))};
+        elle::Buffer buffer{this->read(index, tr.progress(), n)};
+
 
         ELLE_ASSERT_LT(index, snapshot.transfers().size());
         ELLE_DEBUG("%s: %s (size: %s)", index, fullpath, boost::filesystem::file_size(fullpath));
@@ -382,7 +385,7 @@ namespace frete
   elle::Buffer
   Frete::read(FileID f, Offset start, Size size)
   {
-    return this->_rpc_read(f, start, size);
+    return this->_key.decrypt<elle::Buffer>(this->_rpc_read(f, start, size));
   }
 
   /*-----.
@@ -441,7 +444,7 @@ namespace frete
     return this->_transfer_snapshot->transfers().at(file_id).path();
   }
 
-  elle::Buffer
+  infinit::cryptography::Code
   Frete::_read(FileID file_id,
                Offset offset,
                Size const size)
@@ -488,7 +491,7 @@ namespace frete
     if (!file.eof() && file.fail() || file.bad())
       throw elle::Exception("unable to read");
 
-    return buffer;
+    return this->_key.encrypt(buffer);
   }
 
   void

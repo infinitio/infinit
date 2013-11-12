@@ -302,6 +302,7 @@ namespace surface
 
         this->_frete.reset(
           new frete::Frete(*this->_channels,
+                           this->transaction_id(),
                            common::infinit::frete_snapshot_path(
                              this->data()->recipient_id,
                              this->data()->id)));
