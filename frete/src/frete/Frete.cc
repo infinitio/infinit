@@ -290,7 +290,6 @@ namespace frete
         // Get the buffer from the rpc.
         elle::Buffer buffer{this->read(index, tr.progress(), n)};
 
-
         ELLE_ASSERT_LT(index, snapshot.transfers().size());
         ELLE_DEBUG("%s: %s (size: %s)", index, fullpath, boost::filesystem::file_size(fullpath));
         ELLE_ASSERT_EQ(boost::filesystem::file_size(fullpath),
@@ -625,10 +624,10 @@ namespace frete
 
     ELLE_TRACE("increment progress for file %s by %s", index, increment);
 
-    ELLE_DEBUG("old progress was %s", this->_transfers.at(index).progress());
+    ELLE_DUMP("old progress was %s", this->_transfers.at(index).progress());
     this->_transfers.at(index)._increment_progress(increment);
     ELLE_DEBUG("new progress is %s", this->_transfers.at(index).progress());
-    ELLE_DEBUG("old total progress was %s", this->progress());
+    ELLE_DUMP("old total progress was %s", this->progress());
     this->_progress += increment;
     ELLE_DEBUG("new total progress is %s", this->progress());
   }
