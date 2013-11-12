@@ -114,6 +114,10 @@ Environment
 -----------
 %(env)s
 
+---------
+More
+---------
+%(more)s
 """.strip()
 
 EXISTING_BACKTRACE_SUBJECT = """Crash Report (%(client_os)s)""".strip()

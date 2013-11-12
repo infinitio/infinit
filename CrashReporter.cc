@@ -348,7 +348,7 @@ namespace elle
 
       std::stringstream json_stream;
       request.repr(json_stream);
-      std::string url = elle::sprintf("http://%s:%d/debug/existing-report",
+      std::string url = elle::sprintf("http://%s:%d/debug/report",
                                       host,
                                       port);
       try

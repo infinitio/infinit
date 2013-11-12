@@ -181,7 +181,7 @@ class Mixin:
 
     return self.success()
 
-  @api('/debug/user-report', method = 'POST')
+  @api('/debug/report', method = 'POST')
   def user_report(self,
                   user_name = 'Unknown',
                   client_os = 'Unknown',
@@ -190,6 +190,7 @@ class Mixin:
                   version = 'Unknown version',
                   email = 'crash@infinit.io',
                   send = False,
+                  more = '',
                   file = ''):
     """
     Store the existing crash into database and send a mail if set.
@@ -204,6 +205,7 @@ class Mixin:
           "user_name": user_name,
           "env":  '\n'.join(env),
           "message": message,
+          "more": more,
         },
         attached = file
       )
