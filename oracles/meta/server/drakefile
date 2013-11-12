@@ -128,7 +128,6 @@ def configure(elle,
     'trophonius/notifications',
     'users/favorite-unfavorite',
     'users/get_avatar',
-    'users/invite_as_admin',
     'users/invite_as_user',
     'users/login-failure',
     'users/login-logout',
@@ -145,6 +144,7 @@ def configure(elle,
     'web/edit',
     'web/login',
     'web/register',
+    'web/invitation',
     ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))

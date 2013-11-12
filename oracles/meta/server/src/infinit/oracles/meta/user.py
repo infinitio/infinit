@@ -577,35 +577,6 @@ class Mixin:
       update)
     return self.success()
 
-  @require_admin
-  @api('/user/admin_invite', method = 'POST')
-  def admin_invite(self,
-                   email,
-                   force = False,
-                   dont_send_email = False,
-                   admin_token = None):
-    """Invite a user to infinit.
-    This function is reserved for admins.
-
-    email -- the email of the user to invite.
-    admin_token -- the admin token.
-    """
-    email = email.strip()
-    send_mail = not dont_send_email
-    if self.database.invitations.find_one({'email': email}):
-      if not force:
-        return self.fail(error.UNKNOWN, "Already invited!")
-      else:
-        self.database.invitations.remove({'email': email})
-    invitation.invite_user(
-      email = email,
-      send_mail = send_mail,
-      mailer = self.mailer,
-      source = 'infinit',
-      database = self.database
-    )
-    return self.success()
-
   @require_logged_in
   @api('/user/invite', method = 'POST')
   def invite(self, email):
@@ -617,15 +588,16 @@ class Mixin:
     """
     if regexp.EmailValidator(email) != 0:
       return self.fail(error.EMAIL_NOT_VALID)
-    user = self.database.users.find_one({"email": email})
-    if user is not None:
+    if self.database.users.find_one({"email": email}) is not None:
       self.fail(error.USER_ALREADY_INVITED)
+    user = self.user
     invitation.invite_user(
       email = email,
       send_mail = True,
       mailer = self.mailer,
-      source = self.user['email'],
-      database = self.database
+      source = user['email'],
+      database = self.database,
+      sendername = user['fullname'],
     )
     return self.success()
 
@@ -634,12 +606,12 @@ class Mixin:
   def invited(self):
     """Return the list of users invited.
     """
-    return self.success({'user': self.database.invitations.find(
+    return self.success({'user': list(map(lambda u: u['email'], self.database.invitations.find(
         {
           'source': self.user['email'],
         },
-        fields = ['email']
-    )})
+        fields = {'email': True, '_id': False}
+    )))})
 
   @require_logged_in
   @api('/user/self')

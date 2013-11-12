@@ -12,7 +12,7 @@ def _generate_code(email):
 
 
 XXX_MAILCHIMP_SUCKS_TEMPLATE_SUBJECTS = {
-  'invitation-beta': 'Welcome to the Infinit beta',
+  'invitation-beta': '%(sendername)% would like to invite you to the Infinit',
   'send-file': '%(sendername)s wants to share %(filename)s with you',
 }
 
