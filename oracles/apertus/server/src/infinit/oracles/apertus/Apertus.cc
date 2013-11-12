@@ -59,7 +59,10 @@ namespace oracles
           _clients[tid] = client;
         // Second client, establishing connection.
         else
+        {
           this->_connect(client, _clients[tid]);
+          _clients.erase(tid);
+        }
       }
     }
 
