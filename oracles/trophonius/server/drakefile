@@ -37,7 +37,7 @@ def configure(elle,
   if enable_python:
     python3 = drake.cxx.find_library(
       token = 'pyconfig.h',
-      prefix = prefix,
+      prefix = python3,
       include_dir = 'include/python3.2')
 
   elle_lib = drake.copy(elle.lib_dynamic, 'lib',
