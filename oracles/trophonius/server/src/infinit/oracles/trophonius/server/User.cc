@@ -173,9 +173,12 @@ namespace infinit
         {
           ELLE_TRACE_SCOPE("%s: connect with user %s and device %s",
                            *this, this->_user_id, this->_device_id);
+          this->trophonius().users().insert(this);
+          this->trophonius().users_pending().erase(this);
           auto res = this->_meta.connect(this->trophonius().uuid(),
                                          this->_user_id,
                                          this->_device_id);
+
 
           if (!res.success())
             throw AuthenticationError(elle::sprintf("%s", res.error_details));

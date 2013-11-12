@@ -4,6 +4,11 @@
 # include <unordered_set>
 
 # include <boost/date_time/posix_time/posix_time.hpp>
+# include <boost/multi_index_container.hpp>
+# include <boost/multi_index/composite_key.hpp>
+# include <boost/multi_index/mem_fun.hpp>
+# include <boost/multi_index/identity.hpp>
+# include <boost/multi_index/hashed_index.hpp>
 # include <boost/uuid/uuid.hpp>
 
 # include <elle/attribute.hh>
@@ -14,6 +19,7 @@
 # include <reactor/waitable.hh>
 
 # include <infinit/oracles/trophonius/server/fwd.hh>
+# include <infinit/oracles/trophonius/server/User.hh>
 # include <infinit/oracles/meta/Admin.hh>
 
 namespace infinit
@@ -24,11 +30,14 @@ namespace infinit
     {
       namespace server
       {
+        namespace bmi = boost::multi_index;
+
         class UnknownClient:
           public elle::Exception
         {
         public:
-          UnknownClient(boost::uuids::uuid const& device_id);
+          UnknownClient(std::string const& user_id,
+                        boost::uuids::uuid const& device_id);
         };
 
         class Trophonius:
@@ -78,8 +87,28 @@ namespace infinit
           User&
           user(std::string const& user_id,
                boost::uuids::uuid const& device);
-          typedef std::unordered_set<User*> Users;
-          ELLE_ATTRIBUTE(Users, users);
+          // struct hash_user_device
+          //   : public std::unary_function<User*, std::size_t>
+          // {
+          //   std::size_t operator()(User* user) const;
+          // };
+          typedef boost::multi_index_container<
+            User*,
+            bmi::indexed_by<
+              bmi::hashed_unique<bmi::identity<User*> >,
+              bmi::hashed_unique<
+                bmi::composite_key<
+                  User*,
+                  bmi::const_mem_fun<User, std::string const&, &User::user_id>,
+                  bmi::const_mem_fun<User, boost::uuids::uuid const&, &User::device_id>
+                >
+              >
+            >
+          > Users;
+          // typedef std::unordered_set<User*> Users;
+          ELLE_ATTRIBUTE_RX(Users, users);
+          typedef std::unordered_set<User*> PendingUsers;
+          ELLE_ATTRIBUTE_RX(PendingUsers, users_pending);
           typedef std::unordered_set<Meta*> Metas;
           ELLE_ATTRIBUTE(Metas, metas);
           ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, ping_period);

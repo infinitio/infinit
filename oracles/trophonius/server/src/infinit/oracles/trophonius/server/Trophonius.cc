@@ -1,11 +1,13 @@
+#include <boost/functional/hash.hpp>
+
 #include <elle/log.hh>
 
 #include <reactor/scheduler.hh>
 #include <reactor/exception.hh>
 
 #include <infinit/oracles/trophonius/server/Meta.hh>
-#include <infinit/oracles/trophonius/server/Trophonius.hh>
 #include <infinit/oracles/trophonius/server/User.hh>
+#include <infinit/oracles/trophonius/server/Trophonius.hh>
 
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -20,8 +22,10 @@ namespace infinit
     {
       namespace server
       {
-        UnknownClient::UnknownClient(boost::uuids::uuid const& device_id):
-          elle::Exception(elle::sprintf("Unknown client: %s", device_id))
+        UnknownClient::UnknownClient(std::string const& user_id,
+                                     boost::uuids::uuid const& device_id):
+          elle::Exception(elle::sprintf("Unknown client: %s:%s",
+                                        user_id, device_id))
         {}
 
         Trophonius::Trophonius(
@@ -132,6 +136,16 @@ namespace infinit
             client->terminate();
             delete client;
           }
+          while (!this->_users_pending.empty())
+          {
+            // Remove the client from the set first or it will try to clean
+            // itself up.
+            auto it = this->_users_pending.begin();
+            auto client = *it;
+            this->_users_pending.erase(it);
+            client->terminate();
+            delete client;
+          }
           while (!this->_metas.empty())
           {
             // Remove the client from the set first or it will try to clean
@@ -179,7 +193,8 @@ namespace infinit
           {
             std::unique_ptr<reactor::network::TCPSocket> socket(
               this->_server.accept());
-            this->_users.emplace(new User(*this, std::move(socket)));
+            auto user = new User(*this, std::move(socket));
+            this->_users_pending.insert(user);
           }
         }
 
@@ -187,24 +202,12 @@ namespace infinit
         Trophonius::user(std::string const& user_id,
                          boost::uuids::uuid const& device)
         {
-          auto client = std::find_if(
-            this->_users.begin(),
-            this->_users.end(),
-            [&device,&user_id] (Client* client)
-            {
-              if (dynamic_cast<User*>(client) == nullptr)
-                return false;
-
-              User const* user = static_cast<User const*>(client);
-              return (user->device_id() == device) &&
-                     (user->user_id() == user_id);
-            });
-
-          if (client == this->_users.end())
-            throw UnknownClient(device);
-
-          ELLE_ASSERT(dynamic_cast<User*>(*client) != nullptr);
-          return *static_cast<User*>(*client);
+          auto& index = this->_users.get<1>();
+          boost::tuple<std::string, boost::uuids::uuid> key(user_id, device);
+          auto it = index.find(key);
+          if (it == index.end())
+            throw UnknownClient(user_id, device);
+          return **it;
         }
 
         void
@@ -222,12 +225,21 @@ namespace infinit
         | Clients |
         `--------*/
 
+        // std::size_t
+        // Trophonius::hash_user_device::operator()(User* user) const
+        // {
+        //   auto key = std::make_pair(user->user_id(), user->device_id());
+        //   boost::hash<decltype(key)> hasher;
+        //   return hasher(key);
+        // }
+
         void
         Trophonius::client_remove(Client& c)
         {
           // Remove the client from the set first to ensure other cleanup do
           // not duplicate this.
-          if (this->_users.erase(static_cast<User*>(&c)))
+          if (this->_users.erase(static_cast<User*>(&c)) ||
+              this->_users_pending.erase(static_cast<User*>(&c)))
           {
             // Terminate all handlers for the clients. We are most likely
             // invoked by one of those handler, so they must take care of not

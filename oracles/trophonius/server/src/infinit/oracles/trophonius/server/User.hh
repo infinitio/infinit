@@ -3,6 +3,8 @@
 
 # include <json_spirit/value.h>
 
+# include <reactor/Barrier.hh>
+
 # include <infinit/oracles/trophonius/server/Client.hh>
 
 namespace infinit
@@ -46,7 +48,7 @@ namespace infinit
           void
           _handle() override;
 
-          ELLE_ATTRIBUTE_R(reactor::Barrier, authentified);
+          ELLE_ATTRIBUTE_RX(reactor::Barrier, authentified);
           ELLE_ATTRIBUTE(meta::Admin, meta);
           ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id);
           ELLE_ATTRIBUTE_R(std::string, user_id);
