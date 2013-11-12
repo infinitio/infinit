@@ -11,7 +11,7 @@
 #include <protocol/Serializer.hh>
 #include <protocol/ChanneledStream.hh>
 
-#include <frete/Frete.hh>
+# include <frete/Frete.hh>
 
 # include <elle/log.hh>
 # include <elle/finally.hh>
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(connection)
       std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
       infinit::protocol::Serializer serializer(sched, *socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, snap);
+      frete::Frete frete(channels, "suce", snap);
       frete.add(empty);
       frete.add(content);
       frete.add(dir);
@@ -228,7 +228,7 @@ BOOST_AUTO_TEST_CASE(connection)
       reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
       infinit::protocol::Serializer serializer(sched, socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, snap);
+      frete::Frete frete(channels, "suce", snap);
       BOOST_CHECK_EQUAL(frete.count(), 4);
       {
         BOOST_CHECK_EQUAL(frete.path(0), "empty");
@@ -348,7 +348,7 @@ BOOST_AUTO_TEST_CASE(one_function_get)
       std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
       infinit::protocol::Serializer serializer(sched, *socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, snap);
+      frete::Frete frete(channels, "suce", snap);
       frete.add(empty);
       frete.add(content);
       frete.add(dir); // Will add subdir.
@@ -366,7 +366,7 @@ BOOST_AUTO_TEST_CASE(one_function_get)
       reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
       infinit::protocol::Serializer serializer(sched, socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, snap);
+      frete::Frete frete(channels, "suce", snap);
       BOOST_CHECK_EQUAL(frete.count(), 5);
       {
         frete.get(dest);
@@ -479,7 +479,7 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
           std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
           infinit::protocol::Serializer serializer(sched, *socket);
           infinit::protocol::ChanneledStream channels(sched, serializer);
-          frete::Frete frete(channels, snap);
+          frete::Frete frete(channels, "suce", snap);
 
           elle::SafeFinally progress([&]
                                      {
@@ -554,7 +554,7 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
           reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
           infinit::protocol::Serializer serializer(sched, socket);
           infinit::protocol::ChanneledStream channels(sched, serializer);
-          frete::Frete frete(channels, snap);
+          frete::Frete frete(channels, "suce", snap);
 
           elle::SafeFinally progress([&]
                                      {
@@ -697,7 +697,7 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
           std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
           infinit::protocol::Serializer serializer(sched, *socket);
           infinit::protocol::ChanneledStream channels(sched, serializer);
-          frete::Frete frete(channels, snap);
+          frete::Frete frete(channels, "suce", snap);
 
           frete.add(file);
           frete.add(empty);
@@ -766,7 +766,7 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
           reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
           infinit::protocol::Serializer serializer(sched, socket);
           infinit::protocol::ChanneledStream channels(sched, serializer);
-          frete::Frete frete(channels, snap);
+          frete::Frete frete(channels, "suce", snap);
 
           elle::SafeFinally progress([&]
                                      {
