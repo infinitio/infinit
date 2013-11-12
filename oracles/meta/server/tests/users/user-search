@@ -7,8 +7,8 @@ with Meta() as meta:
   bob = User(meta, 'bob@provider.com')
   charles = User(meta, 'charles@provider.com')
   alice.login();
-  res = alice.post('user/search/al')
+  res = alice.post('user/search', {'test': 'al'})
   assert res['users'] == [alice.id]
-  res = alice.post('user/search/dick')
+  res = alice.post('user/search', {'test': 'dick'})
   assert res['users'] == []
   alice.logout()
