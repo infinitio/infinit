@@ -64,13 +64,6 @@ BOOST_AUTO_TEST_CASE(exchange)
     const char* msg1 = "firt_message";
     elle::ConstWeakBuffer msg_buffer1(msg1, 13);
     sock.write(msg_buffer1);
-
-    sched.current()->yield();
-    sched.current()->yield();
-    sched.current()->yield();
-    sched.current()->yield();
-    sched.current()->yield();
-    sched.current()->yield();
   };
 
   auto client2 = [&] (reactor::Thread* serv)
@@ -88,12 +81,12 @@ BOOST_AUTO_TEST_CASE(exchange)
 
     sched.current()->yield();
 
-    auto& haha = ap->get_clients();
-
     char content[13];
     reactor::network::Buffer tmp(content, 13);
     sock.read(tmp);
 
+    auto& haha = ap->get_clients();
+    BOOST_CHECK(haha.find(std::string(tid)) == haha.end());
     BOOST_CHECK_EQUAL(std::string(content), std::string("firt_message"));
 
     serv->terminate_now();
