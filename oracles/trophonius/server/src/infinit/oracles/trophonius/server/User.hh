@@ -31,6 +31,8 @@ namespace infinit
           virtual
           void
           _terminate() override;
+        private:
+          ELLE_ATTRIBUTE_R(bool, registered);
 
         /*--------------.
         | Notifications |

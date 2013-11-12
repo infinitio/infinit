@@ -28,6 +28,7 @@ namespace infinit
         User::User(Trophonius& trophonius,
                    std::unique_ptr<reactor::network::TCPSocket>&& socket):
           Client(trophonius, std::move(socket)),
+          _registered(false),
           _authentified(),
           _meta(this->trophonius().meta().host(),
                 this->trophonius().meta().port()),
@@ -55,6 +56,8 @@ namespace infinit
         void
         User::_unregister()
         {
+          if (!this->_registered)
+            return;
           try
           {
             auto res = this->_meta.disconnect(
@@ -177,6 +180,7 @@ namespace infinit
           if (!res.success())
             throw AuthenticationError(elle::sprintf("%s", res.error_details));
 
+          this->_registered = true;
           std::map<std::string, json_spirit::Value> response;
           response["notification_type"] = json_spirit::Value(-666);
           response["response_code"] = json_spirit::Value(200);
