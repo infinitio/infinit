@@ -123,8 +123,8 @@ def configure(elle,
       cxx_config_tests)
     tests << test
     runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status
-
 
   ## ------- ##
   ## Install ##
