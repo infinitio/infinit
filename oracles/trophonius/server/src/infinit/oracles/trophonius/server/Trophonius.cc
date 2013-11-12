@@ -122,13 +122,23 @@ namespace infinit
           this->_meta_accepter.terminate_now();
           this->_meta_pinger->terminate_now();
 
-          while (!this->_clients.empty())
+          while (!this->_users.empty())
           {
             // Remove the client from the set first or it will try to clean
             // itself up.
-            auto it = this->_clients.begin();
+            auto it = this->_users.begin();
             auto client = *it;
-            this->_clients.erase(it);
+            this->_users.erase(it);
+            client->terminate();
+            delete client;
+          }
+          while (!this->_metas.empty())
+          {
+            // Remove the client from the set first or it will try to clean
+            // itself up.
+            auto it = this->_metas.begin();
+            auto client = *it;
+            this->_metas.erase(it);
             client->terminate();
             delete client;
           }
@@ -169,7 +179,7 @@ namespace infinit
           {
             std::unique_ptr<reactor::network::TCPSocket> socket(
               this->_server.accept());
-            this->_clients.emplace(new User(*this, std::move(socket)));
+            this->_users.emplace(new User(*this, std::move(socket)));
           }
         }
 
@@ -178,8 +188,8 @@ namespace infinit
                          boost::uuids::uuid const& device)
         {
           auto client = std::find_if(
-            this->_clients.begin(),
-            this->_clients.end(),
+            this->_users.begin(),
+            this->_users.end(),
             [&device,&user_id] (Client* client)
             {
               if (dynamic_cast<User*>(client) == nullptr)
@@ -190,7 +200,7 @@ namespace infinit
                      (user->user_id() == user_id);
             });
 
-          if (client == this->_clients.end())
+          if (client == this->_users.end())
             throw UnknownClient(device);
 
           ELLE_ASSERT(dynamic_cast<User*>(*client) != nullptr);
@@ -204,7 +214,7 @@ namespace infinit
           {
             std::unique_ptr<reactor::network::TCPSocket> socket(
               this->_notifications.accept());
-            this->_clients.emplace(new Meta(*this, std::move(socket)));
+            this->_metas.emplace(new Meta(*this, std::move(socket)));
           }
         }
 
@@ -217,17 +227,24 @@ namespace infinit
         {
           // Remove the client from the set first to ensure other cleanup do
           // not duplicate this.
-          if (this->_clients.erase(&c))
+          if (this->_users.erase(static_cast<User*>(&c)))
           {
             // Terminate all handlers for the clients. We are most likely
             // invoked by one of those handler, so they must take care of not
             // commiting suicide.
             c.terminate();
             // Unregister the client from meta.
-            c.unregister();
+            static_cast<User&>(c).unregister();
             // Delete the client later since we are probably since inside one of
             // its handlers and it would cause premature destruction of this
             // thread.
+            reactor::run_later(
+              elle::sprintf("remove client %s", c),
+              [&c] {delete &c;});
+          }
+          else if (this->_metas.erase(static_cast<Meta*>(&c)))
+          {
+            c.terminate();
             reactor::run_later(
               elle::sprintf("remove client %s", c),
               [&c] {delete &c;});

@@ -11,7 +11,7 @@ def configure(elle,
               reactor,
               meta_client,
               boost,
-              enable_python = True,
+              enable_python_bindings = True,
               python3 = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
@@ -34,7 +34,7 @@ def configure(elle,
   local_cxx_config.add_system_include_path('json-spirit/include')
 
   # Python
-  if enable_python:
+  if enable_python_bindings:
     python3 = drake.cxx.find_library(
       token = 'pyconfig.h',
       prefix = python3,
@@ -87,7 +87,7 @@ def configure(elle,
   build = drake.Rule('build')
   build << trophonius
 
-  if enable_python:
+  if enable_python_bindings:
     python_sources = drake.nodes(
       'src/infinit/oracles/trophonius/server/python.cc',
     )
