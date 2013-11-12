@@ -81,12 +81,17 @@ namespace oracles
         char* buff = new char[buff_size];
         reactor::network::Buffer recv(buff, buff_size);
 
-        while (true)
+        try
         {
-          uint32_t size = cl1->read_some(recv);
-          elle::ConstWeakBuffer send(buff, size);
-          cl2->write(send);
+          while (true)
+          {
+            uint32_t size = cl1->read_some(recv);
+            elle::ConstWeakBuffer send(buff, size);
+            cl2->write(send);
+          }
         }
+        catch (std::runtime_error const&)
+        {}
 
         delete[] buff;
       };
