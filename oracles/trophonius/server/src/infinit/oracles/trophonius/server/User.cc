@@ -294,7 +294,9 @@ namespace infinit
         {
           stream << "User(" << this->_socket->peer();
           if (this->device_id() != boost::uuids::nil_uuid())
-            stream << " on device " << this->device_id() << ")";
+            stream << " " << this->user_id()
+                   << " on device " << this->device_id();
+          stream << ")";
         }
       }
     }
