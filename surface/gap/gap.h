@@ -449,10 +449,6 @@ extern "C" {
   char const*
   gap_get_output_dir(gap_State* state);
 
-  void
-  gap_send_file_crash_report(char const* module,
-                             char const* filename);
-
   /// Send user report
   gap_Status
   gap_send_user_report(char const* _user_name,
@@ -467,10 +463,6 @@ extern "C" {
                            char const* _state_log,
                            char const* _os_description,
                            char const* _additional_info);
-
-  gap_Status
-  gap_gather_crash_reports(char const* user_id,
-                           char const* network_id);
 
   // Generated file.
   #include <surface/gap/gen_metrics.h>
