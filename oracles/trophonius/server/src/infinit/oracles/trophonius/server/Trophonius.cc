@@ -68,7 +68,8 @@ namespace infinit
               ping_period
               )
             ),
-          _ping_period(user_ping_period)
+          _ping_period(user_ping_period),
+          _remove_lock()
         {
           elle::SafeFinally kill_accepters{
             [&]
@@ -157,6 +158,10 @@ namespace infinit
             delete client;
           }
 
+          // Make sure a client is not being removed the individual way in
+          // Trophonius::client_remove.
+          reactor::Lock(this->_remove_lock.write());
+
           try
           {
             this->_meta.unregister_trophonius(this->_uuid);
@@ -236,6 +241,8 @@ namespace infinit
         void
         Trophonius::client_remove(Client& c)
         {
+          reactor::Lock lock(this->_remove_lock);
+
           // Remove the client from the set first to ensure other cleanup do
           // not duplicate this.
           if (this->_users.erase(static_cast<User*>(&c)) ||

@@ -15,6 +15,7 @@
 
 # include <reactor/Barrier.hh>
 # include <reactor/network/tcp-server.hh>
+# include <reactor/rw-mutex.hh>
 # include <reactor/thread.hh>
 # include <reactor/waitable.hh>
 
@@ -112,6 +113,7 @@ namespace infinit
           typedef std::unordered_set<Meta*> Metas;
           ELLE_ATTRIBUTE(Metas, metas);
           ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, ping_period);
+          ELLE_ATTRIBUTE(reactor::RWMutex, remove_lock);
 
         /*----------.
         | Printable |
