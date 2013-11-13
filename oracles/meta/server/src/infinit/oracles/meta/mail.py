@@ -62,39 +62,49 @@ class Mailer():
 
   @is_active
   def send(self,
-           email,
+           to,
            subject,
            content,
-           from_="Infinit <no-reply@infinit.io>",
-           reply_to=None,
-           encoding='utf8',
-           attached=None):
-    mail = MIMEMultipart()
-    mail['Subject'] = Header(subject, encoding)
-    mail['From'] = Header(from_, encoding)
-    # Got troubles with Header for recipient.
-    mail['To'] = email #formataddr(("", email))
-    mail.attach(MIMEText(content, _charset=encoding))
-    if reply_to is not None:
-      mail['Reply-To'] = "Infinit <{}>".format(reply_to)
+           fr = "Infinit <no-reply@infinit.io>",
+           attached = None):
+    from email.header import Header
+    from email.mime.text import MIMEText
+    from email.utils import parseaddr, formataddr
+    from email.mime.multipart import MIMEMultipart
+    sender_name, sender_addr = parseaddr(fr)
+    fr = Header()
+    fr.append(sender_name, 'utf-8')
+    fr.append(' <%s>' % sender_addr)
+
+    recipient_name, recipient_addr = parseaddr(to)
+    to = Header()
+    to.append(recipient_name, 'utf-8')
+    to.append(' <%s>' % recipient_addr)
+
+    msg = MIMEMultipart()
+    msg['Subject'] = Header(subject, 'utf-8')
+    msg['From'] = fr
+    msg['To'] = to
+
+    content = MIMEText(content, _charset = 'utf-8')
+    msg.attach(content)
 
     if attached:
       file = MIMEBase('application', 'octet-stream')
       file.set_payload(attached)
       file.add_header('Content-Disposition', 'attachment; filename="logs.tar.bz"')
       file.add_header('Content-Transfer-Encoding', 'base64')
-      mail.attach(file)
+      msg.attach(file)
 
-    smtp_server = smtplib.SMTP(conf.MANDRILL_SMTP_HOST, conf.MANDRILL_SMTP_PORT)
-    try:
-      smtp_server.login(conf.MANDRILL_USERNAME, conf.MANDRILL_PASSWORD)
-      smtp_server.sendmail(mail['From'], [mail['To']], mail.as_string())
-    finally:
-      smtp_server.quit()
+    import smtplib
+    s = smtplib.SMTP('localhost')
+    s.sendmail(sender_addr, [recipient_addr], msg.as_string())
+    s.quit()
 
-USER_REPORT_SUBJECT = """User Report (%(client_os)s)""".strip()
-USER_REPORT_CONTENT = """
+report_templates = dict()
 
+report_templates['user'] = {'subject': 'User Report (%(client_os)s)'.strip(),
+                            'content': """
 User file and .infinit directory in attached file.
 
 OS: %(client_os)s
@@ -117,11 +127,10 @@ Environment
 More
 ---------
 %(more)s
-""".strip()
+""".strip()}
 
-EXISTING_BACKTRACE_SUBJECT = """Crash Report (%(client_os)s)""".strip()
-EXISTING_BACKTRACE_CONTENT = """
-
+report_templates['backtrace'] = {'subject': 'Crash Report (%(client_os)s)'.strip(),
+                                 'content': """
 Backtrace and state log attached.
 
 OS: %(client_os)s
@@ -139,35 +148,4 @@ Environment
 Additional Information
 ----------------------
 %(more)s
-""".strip()
-
-
-BACKTRACE_SUBJECT = """Crash report: %(signal)s in %(module)s - %(user)s""".strip()
-BACKTRACE_CONTENT = """
-%(user)s
-
----------
-VERSION
----------
-%(version)s
-
----------
-BACKTRACE
----------
-%(bt)s
-
----------
-ENV
----------
-%(env)s
-
----------
-SPEC
----------
-%(spec)s
-
----------
-More
----------
-%(more)s
-""".strip()
+""".strip()}

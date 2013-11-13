@@ -181,8 +181,9 @@ class Mixin:
 
     return self.success()
 
-  @api('/debug/report', method = 'POST')
+  @api('/debug/report/<type>', method = 'POST')
   def user_report(self,
+                  type: str,
                   user_name = 'Unknown',
                   client_os = 'Unknown',
                   message = [],
@@ -196,20 +197,23 @@ class Mixin:
     Store the existing crash into database and send a mail if set.
     """
     if send:
+      template = mail.report_templates.get(type, None)
+      if template is None:
+        self.fail(error.UNKNOWN)
       self.mailer.send(
-        email,
-        subject = mail.USER_REPORT_SUBJECT % {"client_os": client_os,},
-        content = mail.USER_REPORT_CONTENT % {
+        to = email,
+        subject = template['subject'] % {"client_os": client_os,},
+        content = template['content'] % {
           "client_os": client_os,
           "version": version,
           "user_name": user_name,
-          "env":  '\n'.join(env),
+          "env": '\n'.join(env),
           "message": message,
           "more": more,
         },
         attached = file
       )
-      return self.success()
+    return self.success()
 
   @require_admin
   @api('/genocide', method = 'POST')
