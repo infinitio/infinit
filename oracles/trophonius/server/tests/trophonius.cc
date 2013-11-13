@@ -5,6 +5,8 @@
 #include <elle/utility/Move.hh>
 
 #include <reactor/Scope.hh>
+#include <reactor/network/buffer.hh>
+#include <reactor/network/exception.hh>
 #include <reactor/scheduler.hh>
 
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
@@ -96,7 +98,11 @@ public:
   _response_failure(reactor::network::TCPSocket& socket)
   {
     this->response(socket,
-                   std::string("{\"success\": false }"));
+                   std::string("{"
+                               "  \"success\": false,"
+                               "  \"error_code\": 0,"
+                               "  \"error_details\": \"fuck you.\""
+                               "}"));
   }
 
   void
@@ -228,6 +234,25 @@ operator << (std::ostream& s, Meta const& meta)
   return s;
 }
 
+static
+void
+authentify(reactor::network::TCPSocket& socket)
+{
+  static std::string const auth =
+    "{"
+    "  \"device_id\": \"00000000-0000-0000-0000-000000000000\","
+    "  \"session_id\": \"00000000-0000-0000-0000-000000000000\","
+    "  \"user_id\": \"00000000-0000-0000-0000-000000000000\""
+    "}\n";
+  socket.write(auth);
+}
+
+/*--------------------.
+| register_unregister |
+`--------------------*/
+
+// Test registering and unregistering a trophonius from meta.
+
 ELLE_TEST_SCHEDULED(register_unregister)
 {
   Meta meta;
@@ -244,6 +269,12 @@ ELLE_TEST_SCHEDULED(register_unregister)
   }
   BOOST_CHECK_EQUAL(meta.trophoniuses().size(), 0);
 }
+
+/*------------------.
+| no_authentication |
+`------------------*/
+
+// Check what happens if a client disconnects without authenticating.
 
 ELLE_TEST_SCHEDULED(no_authentication)
 {
@@ -265,6 +296,50 @@ ELLE_TEST_SCHEDULED(no_authentication)
     reactor::yield();
 }
 
+
+/*-----------------------.
+| authentication_failure |
+`-----------------------*/
+
+// Check authentication failure disconnects the user.
+
+class MetaAuthenticationFailure:
+  public Meta
+{
+  virtual
+  void
+  _register(reactor::network::TCPSocket& socket,
+            std::string const& id,
+            std::string const& user,
+            std::string const& device)
+  {
+    ELLE_LOG_SCOPE("%s: reject user %s:%s on %s", *this, user, device, id);
+    this->_response_failure(socket);
+  }
+};
+
+ELLE_TEST_SCHEDULED(authentication_failure)
+{
+  MetaAuthenticationFailure meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    "localhost",
+    meta.port(),
+    8080, // XXX: hardcoded port
+    60_sec,
+    300_sec);
+  reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
+  authentify(socket);
+  // Check we get a notification refusal.
+  {
+    auto json = read_json(socket);
+    BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
+    BOOST_CHECK_EQUAL(json["response_code"].getInt(), 403);
+  }
+  char c;
+  BOOST_CHECK_THROW(socket.read(reactor::network::Buffer(&c, 1)),
+                    reactor::network::ConnectionClosed);
+}
 
 /*------------------.
 | wait_authentified |
@@ -299,17 +374,12 @@ ELLE_TEST_SCHEDULED(wait_authentified)
     60_sec,
     300_sec);
   reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
-  static std::string const auth =
-    "{"
-    "  \"device_id\": \"00000000-0000-0000-0000-000000000000\","
-    "  \"session_id\": \"00000000-0000-0000-0000-000000000000\","
-    "  \"user_id\": \"00000000-0000-0000-0000-000000000000\""
-    "}\n";
-  socket.write(auth);
+  authentify(socket);
   // Check the first response is the login acceptation.
   {
     auto json = read_json(socket);
     BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
+    BOOST_CHECK_EQUAL(json["response_code"].getInt(), 200);
   }
   // Check we receive the notification after.
   {
@@ -342,7 +412,7 @@ class MetaNotificationAuthenticationFailed:
 };
 
 // Send a notification to a non authenticated user.
-ELLE_TEST_SCHEDULED(notification_no_authentication)
+ELLE_TEST_SCHEDULED(notification_authentication_failed)
 {
   MetaNotificationAuthenticationFailed meta;
   infinit::oracles::trophonius::server::Trophonius trophonius(
@@ -364,7 +434,8 @@ ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(no_authentication), 0, 3);
+  suite.add(BOOST_TEST_CASE(authentication_failure), 0, 3);
   suite.add(BOOST_TEST_CASE(register_unregister), 0, 3);
   suite.add(BOOST_TEST_CASE(wait_authentified), 0, 3);
-  suite.add(BOOST_TEST_CASE(notification_no_authentication), 0, 3);
+  suite.add(BOOST_TEST_CASE(notification_authentication_failed), 0, 3);
 }
