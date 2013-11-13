@@ -86,6 +86,20 @@ public:
   }
 
   void
+  _response_success(reactor::network::TCPSocket& socket)
+  {
+    this->response(socket,
+                   std::string("{\"success\": true }"));
+  }
+
+  void
+  _response_failure(reactor::network::TCPSocket& socket)
+  {
+    this->response(socket,
+                   std::string("{\"success\": false }"));
+  }
+
+  void
   _serve(std::unique_ptr<reactor::network::TCPSocket> socket)
   {
     auto peer = socket->peer();
@@ -123,8 +137,6 @@ public:
           this->_register(*socket, id, user, device);
         else if (method == "DELETE")
           this->_unregister(*socket, id, user, device);
-        this->response(*socket,
-                       std::string("{\"success\": true }"));
         return;
       }
     }
@@ -162,6 +174,7 @@ public:
     auto& trophonius = this->trophonius(id);
     BOOST_CHECK(trophonius.find(c) == trophonius.end());
     trophonius.insert(c);
+    this->_response_success(socket);
   }
 
   virtual
@@ -176,6 +189,7 @@ public:
     auto& trophonius = this->trophonius(id);
     BOOST_CHECK(trophonius.find(c) != trophonius.end());
     trophonius.erase(c);
+    this->_response_success(socket);
   }
 
   void
@@ -251,6 +265,14 @@ ELLE_TEST_SCHEDULED(no_authentication)
     reactor::yield();
 }
 
+
+/*------------------.
+| wait_authentified |
+`------------------*/
+
+/// Check notification send immediately are delayed until the user has received
+/// login confirmation.
+
 class MetaGonzales:
   public Meta
 {
@@ -296,10 +318,53 @@ ELLE_TEST_SCHEDULED(wait_authentified)
   }
 }
 
+/*-----------------------------------.
+| notification_authentication_failed |
+`-----------------------------------*/
+
+// Check what happens if a notification is sent to a user that will be kicked
+// for authentication failure.
+
+class MetaNotificationAuthenticationFailed:
+  public Meta
+{
+  virtual
+  void
+  _register(reactor::network::TCPSocket& socket,
+            std::string const& id,
+            std::string const& user,
+            std::string const& device)
+  {
+    ELLE_LOG_SCOPE("%s: reject user %s:%s on %s", *this, user, device, id);
+    this->_send_notification(42, user, device);
+    this->_response_failure(socket);
+  }
+};
+
+// Send a notification to a non authenticated user.
+ELLE_TEST_SCHEDULED(notification_no_authentication)
+{
+  MetaNotificationAuthenticationFailed meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    "localhost",
+    meta.port(),
+    8080, // XXX: hardcoded port
+    60_sec,
+    300_sec);
+  reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
+  // Check the first response is the login acceptation.
+  {
+    auto json = read_json(socket);
+    BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
+  }
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(no_authentication));
-  suite.add(BOOST_TEST_CASE(register_unregister));
-  suite.add(BOOST_TEST_CASE(wait_authentified));
+  suite.add(BOOST_TEST_CASE(no_authentication), 0, 3);
+  suite.add(BOOST_TEST_CASE(register_unregister), 0, 3);
+  suite.add(BOOST_TEST_CASE(wait_authentified), 0, 3);
+  suite.add(BOOST_TEST_CASE(notification_no_authentication), 0, 3);
 }
