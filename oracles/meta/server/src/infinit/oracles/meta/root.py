@@ -2,12 +2,15 @@
 
 import time
 
+import elle.log
 from . import conf, mail, error, notifier
 from .utils import api, require_admin, hash_pasword
 import infinit.oracles.meta.version
 
 LOST_PASSWORD_TEMPLATE_ID = 'lost-password'
 RESET_PASSWORD_VALIDITY = 2 * 3600 # 2 hours
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Root'
 
 class Mixin:
 
@@ -76,15 +79,17 @@ class Mixin:
 
     hash -- the reset password token.
     """
-    try:
-      usr = self.__user_from_hash(hash)
-    except error.Error as e:
-      self.fail(*e.args)
-    return self.success(
-      {
-        'email': usr['email'],
-      }
-    )
+    with elle.log.trace('reseted account %s' % hash):
+      try:
+        user = self.__user_from_hash(hash)
+        elle.log.debug('found user %s' % user['email'])
+      except error.Error as e:
+        self.fail(*e.args)
+      return self.success(
+        {
+          'email': user['email'],
+        }
+      )
 
   @api('/reset-accounts/<hash>', method = 'POST')
   def reset_account(self, hash, password):
@@ -171,11 +176,11 @@ class Mixin:
       })
 
     user = self.database.users.find_one({'email': email}, fields = ['reset_password_hash'])
-    self.mailer.send_via_mailchimp(
-      email,
-      LOST_PASSWORD_TEMPLATE_ID,
-      '[Infinit] Reset your password',
-      reply_to = 'support@infinit.io',
+    self.mailer.templated_send(
+      to = email,
+      template_id = LOST_PASSWORD_TEMPLATE_ID,
+      subject = '[Infinit] Reset your password',
+      reply_to = 'Infinit <support@infinit.io>',
       reset_password_hash = user['reset_password_hash'],
     )
 
@@ -196,24 +201,26 @@ class Mixin:
     """
     Store the existing crash into database and send a mail if set.
     """
-    if send:
-      template = mail.report_templates.get(type, None)
-      if template is None:
-        self.fail(error.UNKNOWN)
-      self.mailer.send(
-        to = email,
-        subject = template['subject'] % {"client_os": client_os,},
-        content = template['content'] % {
-          "client_os": client_os,
-          "version": version,
-          "user_name": user_name,
-          "env": '\n'.join(env),
-          "message": message,
-          "more": more,
-        },
-        attached = file
-      )
-    return self.success()
+    with elle.log.trace('user report: %s to %s' % (user_name, email)):
+      if send:
+        elle.log.trace('to be sent: %s' % type)
+        template = mail.report_templates.get(type, None)
+        if template is None:
+          self.fail(error.UNKNOWN)
+        self.mailer.send(
+          to = email,
+          subject = template['subject'] % {"client_os": client_os},
+          content = template['content'] % {
+            "client_os": client_os,
+            "version": version,
+            "user_name": user_name,
+            "env": '\n'.join(env),
+            "message": message,
+            "more": more,
+          },
+          attached = ('log.tar.gz', file),
+        )
+      return self.success()
 
   @require_admin
   @api('/genocide', method = 'POST')

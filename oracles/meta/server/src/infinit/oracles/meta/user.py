@@ -38,23 +38,28 @@ class Mixin:
                         fullname,
                         enlarge = True):
     assert isinstance(fullname, str)
-    allowed_characters = string.ascii_letters + string.digits
-    allowed_characters += '_'
-    normalized_name = unicodedata.normalize('NFKD', fullname.strip().replace(' ', '_'))
-    handle = ''
-    for c in normalized_name:
-      if c in allowed_characters:
-        handle += c
+    with elle.log.trace("generate handle from fullname %s" % fullname):
+      allowed_characters = string.ascii_letters + string.digits
+      allowed_characters += '_'
+      normalized_name = unicodedata.normalize('NFKD', fullname.strip().replace(' ', '_'))
+      handle = ''
+      for c in normalized_name:
+        if c in allowed_characters:
+          handle += c
 
-    if not enlarge:
+      elle.log.debug("clean handle: %s" % handle)
+
+      if len(handle) > 30:
+        handle = handle[:30]
+
+      if not enlarge:
+        return handle
+
+      if len(handle) < 5:
+        handle += self.generate_dummy()
+        elle.log.debug("enlarged handle: %s" % handle)
+
       return handle
-
-    if len(handle) < 5:
-      handle += self.generate_dummy()
-
-    if len(handle) > 30:
-      handle = handle[:30]
-    return handle
 
   def generate_handle(self,
                       fullname):
@@ -196,14 +201,16 @@ class Mixin:
     """
     _validators = [
       (email, regexp.EmailValidator),
-      (fullname, regexp.HandleValidator),
       (password, regexp.PasswordValidator),
+      (fullname, regexp.FullnameValidator),
     ]
 
     for arg, validator in _validators:
       res = validator(arg)
       if res != 0:
         return self.fail(res)
+
+    fullname  = fullname.strip()
 
     with elle.log.trace("registeration: %s as %s" % (email, fullname)):
       if self.user is not None:
@@ -229,56 +236,60 @@ class Mixin:
       else:
         id = self.database.users.save({})
 
+      elle.log.trace('id: %s' % id)
+
       import papier
-      identity, public_key = papier.generate_identity(
-        str(id),
-        email,
-        password,
-        conf.INFINIT_AUTHORITY_PATH,
-        conf.INFINIT_AUTHORITY_PASSWORD
+      with elle.log.trace('generate identity'):
+        identity, public_key = papier.generate_identity(
+          str(id),
+          email,
+          password,
+          conf.INFINIT_AUTHORITY_PATH,
+          conf.INFINIT_AUTHORITY_PASSWORD
+          )
+
+        handle = self.unique_handle(fullname)
+
+        user_id = self._register(
+          _id = id,
+          register_status = 'ok',
+          email = email,
+          fullname = fullname,
+          password = hash_pasword(password),
+          identity = identity,
+          public_key = public_key,
+          handle = handle,
+          lw_handle = handle.lower(),
+          swaggers = ghost and ghost['swaggers'] or {},
+          networks = ghost and ghost['networks'] or [],
+          devices = [],
+          connected_devices = [],
+          notifications = ghost and ghost['notifications'] or [],
+          old_notifications = [],
+          accounts = [
+            {'type':'email', 'id': email}
+          ],
+          status = False,
+          created_at = time.time(),
         )
 
-      handle = self.unique_handle(fullname)
+        with elle.log.trace("add user to the mailing list"):
+          self.invitation.subscribe(email)
 
-      user_id = self._register(
-        _id = id,
-        register_status = 'ok',
-        email = email,
-        fullname = fullname,
-        password = hash_pasword(password),
-        identity = identity,
-        public_key = public_key,
-        handle = handle,
-        lw_handle = handle.lower(),
-        swaggers = ghost and ghost['swaggers'] or {},
-        networks = ghost and ghost['networks'] or [],
-        devices = [],
-        connected_devices = [],
-        notifications = ghost and ghost['notifications'] or [],
-        old_notifications = [],
-        accounts = [
-          {'type':'email', 'id': email}
-        ],
-        status = False,
-        created_at = time.time(),
-      )
+        assert user_id == id
 
-      self.invitation.subscribe(email)
+        self._notify_swaggers(
+          notifier.NEW_SWAGGER,
+          {
+            'user_id' : str(user_id),
+          },
+          user_id = user_id,
+        )
 
-      assert user_id == id
-
-      self._notify_swaggers(
-        notifier.NEW_SWAGGER,
-        {
-          'user_id' : str(user_id),
-        },
-        user_id = user_id,
-      )
-
-      return self.success({
-        'registered_user_id': user_id,
-        'invitation_source': source or '',
-      })
+        return self.success({
+          'registered_user_id': user_id,
+          'invitation_source': source or '',
+        })
 
   @api('/user/<id>/connected')
   def is_connected(self, id: bson.ObjectId):
@@ -589,20 +600,21 @@ class Mixin:
     email -- the email of the user to invite.
     admin_token -- the admin token.
     """
-    if regexp.EmailValidator(email) != 0:
-      return self.fail(error.EMAIL_NOT_VALID)
-    if self.database.users.find_one({"email": email}) is not None:
-      self.fail(error.USER_ALREADY_INVITED)
     user = self.user
-    invitation.invite_user(
-      email = email,
-      send_mail = True,
-      mailer = self.mailer,
-      source = user['email'],
-      database = self.database,
-      sendername = user['fullname'],
-    )
-    return self.success()
+    with elle.log.trace("%s: invite %s" % (user['email'], email)):
+      if regexp.EmailValidator(email) != 0:
+        return self.fail(error.EMAIL_NOT_VALID)
+      if self.database.users.find_one({"email": email}) is not None:
+        self.fail(error.USER_ALREADY_INVITED)
+      invitation.invite_user(
+        email = email,
+        send_mail = True,
+        mailer = self.mailer,
+        source = (user['fullname'], user['email']),
+        database = self.database,
+        sendername = user['fullname'],
+      )
+      return self.success()
 
   @require_logged_in
   @api('/user/invited')

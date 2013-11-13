@@ -7,6 +7,7 @@ Email = re.compile(
     r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE)  # domain
 
 Handle = re.compile(r'^[a-zA-Z0-9_]{3,30}$')
+Fullname = re.compile(r'^.{3,50}$')
 Password = re.compile(r'^.{64}$')
 DeviceName = re.compile(r'^.{1,64}$')
 ID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
@@ -34,6 +35,7 @@ class Validator:
 EmailValidator = Validator(Email, error.EMAIL_NOT_VALID)
 PasswordValidator = Validator(Password, error.PASSWORD_NOT_VALID)
 HandleValidator = Validator(Handle, error.HANDLE_NOT_VALID)
+FullnameValidator = Validator(Fullname, error.FULLNAME_NOT_VALID)
 DeviceIDValidator = Validator(DeviceID, error.DEVICE_NOT_VALID)
 NonEmptyValidator = Validator(NotNull, error.FIELD_IS_EMPTY)
 FilenameValidator = Validator(NotNull, error.FILE_NAME_EMPTY)

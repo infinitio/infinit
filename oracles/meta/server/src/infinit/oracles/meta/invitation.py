@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+import elle.log
 from . import conf, mail
 import decorator
 
@@ -10,10 +11,12 @@ def _generate_code(email):
   hash_.update(email.encode('utf8') + str(time.time()).encode('utf8'))
   return hash_.hexdigest()
 
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Invitation'
 
 XXX_MAILCHIMP_SUCKS_TEMPLATE_SUBJECTS = {
-  'invitation-beta': '%(sendername)% would like to invite you to the Infinit',
+  'invitation-beta': '%(sendername)s would like to invite you to Infinit',
   'send-file': '%(sendername)s wants to share %(filename)s with you',
+  'send-invitation-no-file': '%(sendername)s wants to use Infinit with you',
 }
 
 ALPHA_LIST = 'd8d5225ac7'
@@ -56,24 +59,28 @@ class Invitation:
 def invite_user(email,
                 mailer,
                 send_email = True,
-                source = 'infinit',
-                mail_template = 'invitation-beta',
+                source = 'Infinit <no-reply@infinit.io>',
+                mail_template = 'send-invitation-no-file',
                 database = None,
                 **kw):
-  assert database is not None
-  code = _generate_code(email)
-  database.invitations.insert({
-    'email': email,
-    'status': 'pending',
-    'code': code,
-    'source': source,
-  })
-  subject = XXX_MAILCHIMP_SUCKS_TEMPLATE_SUBJECTS[mail_template] % kw
-  if send_email:
-    mailer.send_via_mailchimp(
-      email,
-      mail_template,
-      subject,
-      #  accesscode=code,
-      **kw
+  with elle.log.trace('invite user %s' % email):
+    assert database is not None
+    code = _generate_code(email)
+    database.invitations.insert({
+      'email': email,
+      'status': 'pending',
+      'code': code,
+      'source': source[1],
+    })
+    subject = XXX_MAILCHIMP_SUCKS_TEMPLATE_SUBJECTS[mail_template] % kw
+    elle.log.debug('subject: %s' % subject)
+    if send_email:
+      mailer.templated_send(
+        to = email,
+        template_id = mail_template,
+        subject = subject,
+        fr = "%s <%s>" % source,
+        reply_to = source,
+        #  accesscode=code,
+        **kw
       )
