@@ -29,12 +29,21 @@ namespace infinit
                    std::unique_ptr<reactor::network::TCPSocket>&& socket):
           Client(trophonius, std::move(socket)),
           _registered(false),
+          // Notifications
+          _notifications(),
+          _notification_available(),
+          _notifications_thread(*reactor::Scheduler::scheduler(),
+                                elle::sprintf("%s notifications", *this),
+                                std::bind(&User::_handle_notifications,
+                                          std::ref(*this))),
+          // Server
           _authentified(),
           _meta(this->trophonius().meta().host(),
                 this->trophonius().meta().port()),
           _device_id(boost::uuids::nil_uuid()),
           _user_id(),
           _session_id(),
+          // Ping pong
           _ping_thread(*reactor::Scheduler::scheduler(),
                        elle::sprintf("%s ping", *this),
                        std::bind(&User::_ping, std::ref(*this))),
@@ -83,22 +92,55 @@ namespace infinit
         void
         User::_terminate()
         {
+          this->_notifications_thread.terminate_now(false);
           this->_ping_thread.terminate_now(false);
           this->_pong_thread.terminate_now(false);
           Super::_terminate();
         }
 
+        /*--------------.
+        | Notifications |
+        `--------------*/
+
         void
         User::notify(json_spirit::Value const& notification)
         {
-          this->_authentified.wait();
-          ELLE_TRACE(
-            "%s: send notification: %s",
-              *this,
-              elle::Lazy<std::string>(
-              std::bind(&pretty_print_json, std::ref(notification))));
-          write_json(*this->_socket, notification);
+          this->_notifications.push(std::move(notification));
+          this->_notification_available.signal();
         }
+
+        void
+        User::_handle_notifications()
+        {
+          this->_authentified.wait();
+          RemoveWard ward(*this);
+          try
+          {
+            while (true)
+            {
+              while (!this->_notifications.empty())
+              {
+                auto notification = std::move(this->_notifications.front());
+                this->_notifications.pop();
+                ELLE_TRACE(
+                  "%s: send notification: %s",
+                  *this,
+                  elle::Lazy<std::string>(
+                    std::bind(&pretty_print_json, std::ref(notification))));
+                write_json(*this->_socket, notification);
+              }
+              this->_notification_available.wait();
+            }
+          }
+          catch (reactor::network::Exception const& e)
+          {
+            ELLE_WARN("%s: network error: %s", *this, e.what());
+          }
+        }
+
+        /*-------.
+        | Server |
+        `-------*/
 
         void
         User::_handle()

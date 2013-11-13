@@ -373,18 +373,20 @@ ELLE_TEST_SCHEDULED(wait_authentified)
     8080, // XXX: hardcoded port
     60_sec,
     300_sec);
-  reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
-  authentify(socket);
-  // Check the first response is the login acceptation.
   {
-    auto json = read_json(socket);
-    BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
-    BOOST_CHECK_EQUAL(json["response_code"].getInt(), 200);
-  }
-  // Check we receive the notification after.
-  {
-    auto json = read_json(socket);
-    BOOST_CHECK_EQUAL(json["notification_type"].getInt(), 42);
+    reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
+    authentify(socket);
+    // Check the first response is the login acceptation.
+    {
+      auto json = read_json(socket);
+      BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
+      BOOST_CHECK_EQUAL(json["response_code"].getInt(), 200);
+    }
+    // Check we receive the notification after.
+    {
+      auto json = read_json(socket);
+      BOOST_CHECK_EQUAL(json["notification_type"].getInt(), 42);
+    }
   }
 }
 
@@ -423,10 +425,12 @@ ELLE_TEST_SCHEDULED(notification_authentication_failed)
     60_sec,
     300_sec);
   reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
-  // Check the first response is the login acceptation.
+  authentify(socket);
+  // Check the first response is the login refusal.
   {
     auto json = read_json(socket);
     BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
+    BOOST_CHECK_EQUAL(json["response_code"].getInt(), 403);
   }
 }
 

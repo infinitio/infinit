@@ -1,9 +1,12 @@
 #ifndef INFINIT_ORACLES_TROPHONIUS_SERVER_USER_HH
 # define INFINIT_ORACLES_TROPHONIUS_SERVER_USER_HH
 
+# include <queue>
+
 # include <json_spirit/value.h>
 
 # include <reactor/Barrier.hh>
+# include <reactor/signal.hh>
 
 # include <infinit/oracles/trophonius/server/Client.hh>
 
@@ -42,7 +45,16 @@ namespace infinit
         public:
           void
           notify(json_spirit::Value const& notification);
+        private:
+          void
+          _handle_notifications();
+          ELLE_ATTRIBUTE(std::queue<json_spirit::Value>, notifications);
+          ELLE_ATTRIBUTE(reactor::Signal, notification_available);
+          ELLE_ATTRIBUTE(reactor::Thread, notifications_thread);
 
+        /*-------.
+        | Server |
+        `-------*/
         protected:
           virtual
           void
