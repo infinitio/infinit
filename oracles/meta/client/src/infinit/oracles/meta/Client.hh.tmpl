@@ -50,9 +50,10 @@ namespace infinit
         }
       };
 
-      struct Exception
+      class Exception
         : public elle::Exception
       {
+      public:
         Error const err;
         Exception(Error const& error, std::string const& message = "");
 
