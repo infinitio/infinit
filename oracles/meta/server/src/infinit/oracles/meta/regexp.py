@@ -6,7 +6,7 @@ Email = re.compile(
     r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"' # quoted-string
     r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE)  # domain
 
-Handle = re.compile(r'^.{3,50}$')
+Handle = re.compile(r'^[a-zA-Z0-9_]{3,30}$')
 Password = re.compile(r'^.{64}$')
 DeviceName = re.compile(r'^.{1,64}$')
 ID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
