@@ -164,7 +164,7 @@ class Meta:
                     {
                       'email': email,
                       'password': password,
-                      'fullname': fullname or email,
+                      'fullname': fullname or email.split('@')[0],
                       'activation_code': activation_code,
                     })
     assert res['success']

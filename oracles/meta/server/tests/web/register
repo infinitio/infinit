@@ -31,4 +31,4 @@ with Meta() as meta:
 
   res = meta.post("user/register", query)
   assert not res['success']
-  assert res['error_code'] == error.HANDLE_NOT_VALID[0]
+  assert res['error_code'] == error.FULLNAME_NOT_VALID[0]

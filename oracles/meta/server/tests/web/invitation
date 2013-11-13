@@ -8,28 +8,14 @@ class MailService():
   def __init__(self, response):
     self.response = response
 
-  def send_via_mailchimp(self,
-                         mail,
-                         template_id,
-                         subject,
-                         from_="Infinit <no-reply@infinit.io>",
-                         reply_to=None,
-                         encoding='utf8',
-                         **kw):
-    assert response['email'] == mail
-    assert template_id == 'invitation-beta'
+  def templated_send(self, **kw):
+    assert response['email'] == kw['to']
+    assert kw['template_id'] == 'send-invitation-no-file'
 
-  def send(self,
-           email,
-           subject,
-           content,
-           from_="Infinit <no-reply@infinit.io>",
-           reply_to=None,
-           encoding='utf8',
-           attached=None):
-    self.response['email'] = email
-    self.response['subject'] = subject
-    self.response['content'] = content
+  def send(self, **kw):
+    self.response['email'] = kw['to']
+    self.response['subject'] = kw['subject']
+    self.response['content'] = kw['content']
 
 with Meta() as meta:
   email = 'foobar@infinit.io'
@@ -56,4 +42,5 @@ with Meta() as meta:
 
   res = meta.get('user/invited')
   assert res['success']
+  print(res)
   assert res['user'] == [response['email']]
