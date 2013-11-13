@@ -4,6 +4,10 @@ import sys
 
 library = None
 
+build = None
+check = None
+install = None
+
 def configure(protocol,
               reactor,
               meta_client,
@@ -13,6 +17,7 @@ def configure(protocol,
               cxx_config = None):
 
   global library
+  global build, check, install
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
@@ -41,8 +46,8 @@ def configure(protocol,
                              apertus_sources +
                              [reactor_lib, protocol_lib, meta_client_lib],
                              cxx_toolkit, local_cxx_config)
-  rule_apertus_build = drake.Rule('build')
-  rule_apertus_build << library
+  build = drake.Rule('build')
+  build << library
 
   #check
   test_cxx_config = drake.cxx.Config(local_cxx_config)
@@ -59,5 +64,17 @@ def configure(protocol,
                                   test_cxx_config)
   test = drake.Runner(exe = test_exe)
 
-  rule_apertus_check = drake.Rule('check')
-  rule_apertus_check << test.status
+  check = drake.Rule('check')
+  check << test.status
+
+  # executable
+  exe_cxx_config = drake.cxx.Config(local_cxx_config)
+  exe_cxx_config.lib_path_runtime('../lib')
+
+  exe_sources = drake.nodes('src/infinit/oracles/apertus/main.cc')
+
+  exe = drake.cxx.Executable('bin/apertus-server', exe_sources + [library],
+                             cxx_toolkit, exe_cxx_config)
+
+  install = drake.Rule('install')
+  install << exe

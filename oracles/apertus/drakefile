@@ -2,7 +2,12 @@ import drake
 import drake.cxx
 import sys
 
-apertus_server = None
+client = None
+server = None
+
+build = None
+check = None
+install = None
 
 def configure(reactor,
               protocol,
@@ -12,9 +17,12 @@ def configure(reactor,
               cxx_toolkit = None,
               cxx_config = None):
 
+  global client, server
+  global build, check, install
+
   cxx_config = drake.cxx.Config(cxx_config)
 
-  server = drake.include('server/',
+  server = drake.include('server',
                          protocol = protocol,
                          reactor = reactor,
                          meta_client = meta_client,
@@ -23,5 +31,6 @@ def configure(reactor,
                          cxx_toolkit = cxx_toolkit,
                          cxx_config = cxx_config)
 
-  global apertus_server
-  apertus_server = server.library
+  for name in ('build', 'check', 'install'):
+    globals()[name] = drake.Rule(name)
+    globals()[name] << getattr(server, name)

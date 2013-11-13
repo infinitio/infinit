@@ -90,7 +90,7 @@ def configure(elle,
                           cxx_config = cxx_config)
 
   for name in ('build', 'check', 'install'):
-    for oracle in [meta, trophonius]:
+    for oracle in [meta, trophonius, apertus]:
       globals()[name] << getattr(oracle, name)
   build << lib
   build << python_built
