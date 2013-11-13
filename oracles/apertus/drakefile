@@ -9,7 +9,8 @@ build = None
 check = None
 install = None
 
-def configure(reactor,
+def configure(elle,
+              reactor,
               protocol,
               meta_client,
               boost = None,
@@ -23,6 +24,7 @@ def configure(reactor,
   cxx_config = drake.cxx.Config(cxx_config)
 
   server = drake.include('server',
+                         elle = elle,
                          protocol = protocol,
                          reactor = reactor,
                          meta_client = meta_client,

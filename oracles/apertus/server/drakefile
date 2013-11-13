@@ -8,7 +8,8 @@ build = None
 check = None
 install = None
 
-def configure(protocol,
+def configure(elle,
+              protocol,
               reactor,
               meta_client,
               boost = None,
@@ -27,6 +28,9 @@ def configure(protocol,
 
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
                            reactor.lib_dynamic.name().dirname())
+
+  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
+                        elle.lib_dynamic.name().dirname())
 
   meta_client_lib = drake.copy(meta_client.lib, 'lib', strip_prefix = True)
 
@@ -69,11 +73,14 @@ def configure(protocol,
 
   # executable
   exe_cxx_config = drake.cxx.Config(local_cxx_config)
+  exe_cxx_config += boost.config_system()
+  exe_cxx_config += boost.config_program()
   exe_cxx_config.lib_path_runtime('../lib')
 
-  exe_sources = drake.nodes('src/infinit/oracles/apertus/main.cc')
+  exe_sources = drake.nodes('src/main.cc')
 
-  exe = drake.cxx.Executable('bin/apertus-server', exe_sources + [library],
+  exe = drake.cxx.Executable('bin/apertus-server',
+                             exe_sources + [library, reactor_lib, elle_lib],
                              cxx_toolkit, exe_cxx_config)
 
   install = drake.Rule('install')
