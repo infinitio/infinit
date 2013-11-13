@@ -40,8 +40,7 @@ namespace oracles
       reactor::network::TCPServer serv(_sched);
       serv.listen(_port);
 
-      reactor::network::TCPSocket* client = nullptr;
-      while ((client = serv.accept()) != nullptr)
+      auto handle = [&] (reactor::network::TCPSocket* client)
       {
         // Retrieve TID size.
         char size;
@@ -63,7 +62,11 @@ namespace oracles
           this->_connect(client, _clients[tid]);
           _clients.erase(tid);
         }
-      }
+      };
+
+      reactor::network::TCPSocket* client = nullptr;
+      while ((client = serv.accept()) != nullptr)
+        new reactor::Thread(_sched, "handler", std::bind(handle, client));
     }
 
     std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&

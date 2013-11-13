@@ -2,6 +2,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <reactor/duration.hh>
 #include <infinit/oracles/apertus/Apertus.hh>
 
 BOOST_AUTO_TEST_CASE(basic)
@@ -21,7 +22,7 @@ BOOST_AUTO_TEST_CASE(basic)
     elle::ConstWeakBuffer tidbuffer(tid, tidsize);
     sock.write(tidbuffer);
 
-    sched.current()->yield();
+    reactor::sleep(1_sec);
 
     auto& haha = ap->get_clients();
     BOOST_CHECK(haha.find(std::string(tid)) != haha.end());
@@ -55,7 +56,7 @@ BOOST_AUTO_TEST_CASE(exchange)
     elle::ConstWeakBuffer tidbuffer(tid, tidsize);
     sock.write(tidbuffer);
 
-    sched.current()->yield();
+    reactor::sleep(1_sec);
 
     auto& haha = ap->get_clients();
     BOOST_CHECK(haha.find(std::string(tid)) != haha.end());
@@ -68,7 +69,7 @@ BOOST_AUTO_TEST_CASE(exchange)
 
   auto client2 = [&] (reactor::Thread* serv)
   {
-    sched.current()->yield();
+    reactor::sleep(1_sec);
     reactor::network::TCPSocket sock("127.0.0.1", 6566);
 
     char tidsize = 6;
@@ -79,7 +80,7 @@ BOOST_AUTO_TEST_CASE(exchange)
     elle::ConstWeakBuffer tidbuffer(tid, tidsize);
     sock.write(tidbuffer);
 
-    sched.current()->yield();
+    reactor::sleep(1_sec);
 
     char content[13];
     reactor::network::Buffer tmp(content, 13);
