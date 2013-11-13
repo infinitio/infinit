@@ -190,6 +190,20 @@ public:
     ELLE_TRACE("%s: send response to %s: %s", *this, socket.peer(), answer);
     socket.write(elle::ConstWeakBuffer(answer));
   }
+
+  void
+  _send_notification(int type, std::string user, std::string device)
+  {
+    json_spirit::Object response;
+    response["user_id"] = boost::lexical_cast<std::string>(user);
+    response["device_id"] = boost::lexical_cast<std::string>(device);
+    json_spirit::Object notification;
+    notification["notification_type"] = 42;
+    response["notification"] = notification;
+    // XXX: hardcoded port
+    reactor::network::TCPSocket notify("127.0.0.1", 8080);
+    write_json(notify, response);
+  }
 };
 
 static
@@ -248,15 +262,7 @@ class MetaGonzales:
             std::string const& device)
   {
     Meta::_register(socket, id, user, device);
-    json_spirit::Object response;
-    response["user_id"] = boost::lexical_cast<std::string>(user);
-    response["device_id"] = boost::lexical_cast<std::string>(device);
-    json_spirit::Object notification;
-    notification["notification_type"] = 42;
-    response["notification"] = notification;
-    // XXX: hardcoded port
-    reactor::network::TCPSocket notify("127.0.0.1", 8080);
-    write_json(notify, response);
+    this->_send_notification(42, user, device);
   }
 };
 
