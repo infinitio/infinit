@@ -8,6 +8,7 @@
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/thread.hh>
 
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 #include <infinit/oracles/trophonius/server/utils.hh>
@@ -221,7 +222,7 @@ public:
   }
 
   void
-  _send_notification(int type, std::string user, std::string device)
+  send_notification(int type, std::string user, std::string device)
   {
     try
     {
@@ -229,7 +230,7 @@ public:
       response["user_id"] = boost::lexical_cast<std::string>(user);
       response["device_id"] = boost::lexical_cast<std::string>(device);
       json_spirit::Object notification;
-      notification["notification_type"] = 42;
+      notification["notification_type"] = type;
       response["notification"] = notification;
       // XXX: hardcoded trophonius
       auto port = this->_trophoniuses.begin()->second.first;
@@ -258,15 +259,36 @@ operator << (std::ostream& s, Meta const& meta)
 
 static
 void
-authentify(reactor::network::TCPSocket& socket)
+authentify(reactor::network::TCPSocket& socket,
+           int user = 0,
+           int device = 0)
 {
-  static std::string const auth =
-    "{"
-    "  \"device_id\": \"00000000-0000-0000-0000-000000000000\","
-    "  \"session_id\": \"00000000-0000-0000-0000-000000000000\","
-    "  \"user_id\": \"00000000-0000-0000-0000-000000000000\""
-    "}\n";
+  std::string const auth =
+    elle::sprintf(
+      "{"
+      "  \"user_id\":    \"00000000-0000-0000-0000-00000000000%s\","
+      "  \"device_id\":  \"00000000-0000-0000-0000-00000000000%s\","
+      "  \"session_id\": \"00000000-0000-0000-0000-000000000000\""
+      "}\n", user, device);
   socket.write(auth);
+}
+
+static
+void
+check_authentication_success(reactor::network::TCPSocket& socket)
+{
+  auto json = read_json(socket);
+  BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
+  BOOST_CHECK_EQUAL(json["response_code"].getInt(), 200);
+}
+
+static
+void
+check_authentication_failure(reactor::network::TCPSocket& socket)
+{
+  auto json = read_json(socket);
+  BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
+  BOOST_CHECK_EQUAL(json["response_code"].getInt(), 403);
 }
 
 /*--------------------.
@@ -292,6 +314,69 @@ ELLE_TEST_SCHEDULED(register_unregister)
     ELLE_LOG("unregister trophonius");
   }
   BOOST_CHECK_EQUAL(meta.trophoniuses().size(), 0);
+}
+
+/*--------------.
+| notifications |
+`--------------*/
+
+// Check notifications are routed correctly.
+
+ELLE_TEST_SCHEDULED(notifications)
+{
+  Meta meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    "localhost",
+    meta.port(),
+    8080, // XXX: hardcoded port
+    60_sec,
+    300_sec);
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    auto client = [&] (int user, int device, reactor::Barrier& b)
+    {
+      reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
+      authentify(socket, user, device);
+      check_authentication_success(socket);
+      b.open();
+      auto notif = read_json(socket);
+      BOOST_CHECK_EQUAL(notif["notification_type"].getInt(),
+                        user * 10 + device);
+    };
+    reactor::Barrier b00;
+    scope.run_background("client 1:1", std::bind(client, 1, 1, std::ref(b00)));
+    reactor::Barrier b01;
+    scope.run_background("client 1:2", std::bind(client, 1, 2, std::ref(b01)));
+    reactor::Barrier b10;
+    scope.run_background("client 2:1", std::bind(client, 2, 1, std::ref(b10)));
+    reactor::Barrier b11;
+    scope.run_background("client 2:2", std::bind(client, 2, 2, std::ref(b11)));
+    reactor::wait(reactor::Waitables({&b00, &b01, &b10, &b11}));
+    try
+    {
+      meta.send_notification(11,
+                             "00000000-0000-0000-0000-000000000001",
+                             "00000000-0000-0000-0000-000000000001");
+      meta.send_notification(12,
+                             "00000000-0000-0000-0000-000000000001",
+                             "00000000-0000-0000-0000-000000000002");
+      meta.send_notification(21,
+                             "00000000-0000-0000-0000-000000000002",
+                             "00000000-0000-0000-0000-000000000001");
+      meta.send_notification(22,
+                             "00000000-0000-0000-0000-000000000002",
+                             "00000000-0000-0000-0000-000000000002");
+    }
+    catch (...)
+    {
+      std::cerr << "----------------------------------------------------------------------------------------------------" << elle::exception_string() << std::endl;
+      throw;
+    }
+    std::cerr << "lol" << std::endl;
+    reactor::wait(scope);
+    std::cerr << "ByE" << std::endl;
+  };
 }
 
 /*------------------.
@@ -355,11 +440,7 @@ ELLE_TEST_SCHEDULED(authentication_failure)
   reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
   authentify(socket);
   // Check we get a notification refusal.
-  {
-    auto json = read_json(socket);
-    BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
-    BOOST_CHECK_EQUAL(json["response_code"].getInt(), 403);
-  }
+  check_authentication_failure(socket);
   char c;
   BOOST_CHECK_THROW(socket.read(reactor::network::Buffer(&c, 1)),
                     reactor::network::ConnectionClosed);
@@ -388,7 +469,7 @@ class MetaGonzales:
     BOOST_CHECK(trophonius.find(c) == trophonius.end());
     trophonius.insert(c);
     ELLE_LOG("%s: send notification before login confirmation", *this)
-      this->_send_notification(42, user, device);
+      this->send_notification(42, user, device);
     ELLE_LOG("%s: send login confirmation", *this)
       this->_response_success(socket);
   }
@@ -408,11 +489,7 @@ ELLE_TEST_SCHEDULED(wait_authentified)
     reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
     authentify(socket);
     // Check the first response is the login acceptation.
-    {
-      auto json = read_json(socket);
-      BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
-      BOOST_CHECK_EQUAL(json["response_code"].getInt(), 200);
-    }
+    check_authentication_success(socket);
     // Check we receive the notification after.
     {
       auto json = read_json(socket);
@@ -439,7 +516,7 @@ class MetaNotificationAuthenticationFailed:
             std::string const& device)
   {
     ELLE_LOG_SCOPE("%s: reject user %s:%s on %s", *this, user, device, id);
-    this->_send_notification(42, user, device);
+    this->send_notification(42, user, device);
     this->_response_failure(socket);
   }
 };
@@ -458,19 +535,16 @@ ELLE_TEST_SCHEDULED(notification_authentication_failed)
   reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
   authentify(socket);
   // Check the first response is the login refusal.
-  {
-    auto json = read_json(socket);
-    BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
-    BOOST_CHECK_EQUAL(json["response_code"].getInt(), 403);
-  }
+  check_authentication_failure(socket);
 }
 
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
+  suite.add(BOOST_TEST_CASE(register_unregister), 0, 3);
+  suite.add(BOOST_TEST_CASE(notifications), 0, 3);
   suite.add(BOOST_TEST_CASE(no_authentication), 0, 3);
   suite.add(BOOST_TEST_CASE(authentication_failure), 0, 3);
-  suite.add(BOOST_TEST_CASE(register_unregister), 0, 3);
   suite.add(BOOST_TEST_CASE(wait_authentified), 0, 3);
   suite.add(BOOST_TEST_CASE(notification_authentication_failed), 0, 3);
 }
