@@ -138,7 +138,33 @@ namespace infinit
                     elle::sprintf("ids must be strings: %s",
                                   pretty_print_json(json)));
                 }
-                this->_connect();
+                ELLE_TRACE_SCOPE("%s: connect with user %s and device %s",
+                                 *this, this->_user_id, this->_device_id);
+                this->trophonius().users().insert(this);
+                this->trophonius().users_pending().erase(this);
+                meta::Response res;
+                try
+                {
+                  res = this->_meta.connect(this->trophonius().uuid(),
+                                            this->_user_id,
+                                            this->_device_id);
+                }
+                catch (infinit::oracles::meta::Exception const& e)
+                {
+                  // FIXME: the meta client exception is bullshit.
+                  if (e.err == infinit::oracles::meta::Error::unknown)
+                    throw;
+                  else
+                    throw AuthenticationError(e.what());
+                }
+                ELLE_TRACE("%s: authentified", *this);
+                this->_registered = true;
+                std::map<std::string, json_spirit::Value> response;
+                response["notification_type"] = json_spirit::Value(-666);
+                response["response_code"] = json_spirit::Value(200);
+                response["response_details"] = json_spirit::Value(res.error_details);
+                write_json(*this->_socket, response);
+                this->_authentified.open();
                 continue;
               }
               throw ProtocolError(
@@ -153,6 +179,11 @@ namespace infinit
           catch (AuthenticationError const& e)
           {
             ELLE_WARN("%s: authentication error: %s", *this, e.what());
+            std::map<std::string, json_spirit::Value> response;
+            response["notification_type"] = json_spirit::Value(-666);
+            response["response_code"] = json_spirit::Value(403);
+            response["response_details"] = json_spirit::Value(e.what());
+            write_json(*this->_socket, response);
           }
           catch (reactor::network::Exception const& e)
           {
@@ -166,33 +197,6 @@ namespace infinit
           {
             ELLE_WARN("%s: unknown error: %s", *this, elle::exception_string());
           }
-        }
-
-        void
-        User::_connect()
-        {
-          ELLE_TRACE_SCOPE("%s: connect with user %s and device %s",
-                           *this, this->_user_id, this->_device_id);
-          this->trophonius().users().insert(this);
-          this->trophonius().users_pending().erase(this);
-          auto res = this->_meta.connect(this->trophonius().uuid(),
-                                         this->_user_id,
-                                         this->_device_id);
-
-
-          if (!res.success())
-            throw AuthenticationError(elle::sprintf("%s", res.error_details));
-
-          this->_registered = true;
-          std::map<std::string, json_spirit::Value> response;
-          response["notification_type"] = json_spirit::Value(-666);
-          response["response_code"] = json_spirit::Value(200);
-          response["response_details"] = json_spirit::Value(res.error_details);
-
-          write_json(*this->_socket, response);
-          ELLE_TRACE("%s: authentified", *this);
-
-          this->_authentified.open();
         }
 
         void

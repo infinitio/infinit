@@ -54,10 +54,6 @@ namespace infinit
           ELLE_ATTRIBUTE_R(std::string, user_id);
           ELLE_ATTRIBUTE(std::string, session_id);
 
-        private:
-          void
-          _connect();
-
         /*----------.
         | Ping pong |
         `----------*/
