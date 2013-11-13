@@ -296,7 +296,9 @@ namespace elle
                                           host,
                                           port);
           reactor::http::Request::Configuration conf{
-            reactor::DurationOpt(300_sec)};
+            reactor::DurationOpt(300_sec),
+            reactor::http::Version(reactor::http::Version::v10)};
+
           try
           {
             reactor::http::Request request(
