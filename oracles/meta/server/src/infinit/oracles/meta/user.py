@@ -39,8 +39,8 @@ class Mixin:
                         enlarge = True):
     assert isinstance(fullname, str)
     allowed_characters = string.ascii_letters + string.digits
-    allowed_characters += '-_.'
-    normalized_name = unicodedata.normalize('NFKD', fullname.strip().replace(' ', '.'))
+    allowed_characters += '_'
+    normalized_name = unicodedata.normalize('NFKD', fullname.strip().replace(' ', '_'))
     handle = ''
     for c in normalized_name:
       if c in allowed_characters:
@@ -51,6 +51,9 @@ class Mixin:
 
     if len(handle) < 5:
       handle += self.generate_dummy()
+
+    if len(handle) > 30:
+      handle = handle[:30]
     return handle
 
   def generate_handle(self,
