@@ -87,7 +87,7 @@ namespace elle
     };
 
     /// Function for sending existing crash reports
-    bool
+    void
     existing_report(std::string const& host,
                     uint16_t port,
                     std::string const& user_name = "",
@@ -95,26 +95,15 @@ namespace elle
                     std::string const& info = "",
                     std::string const& file = "");
 
-    /// Function for sending existing user reports
-    bool
+    /// Function for sending user reports
+    void
     user_report(std::string const& host,
                 uint16_t port,
                 std::string const& user_name = "",
                 std::string const& os_description = "",
                 std::string const& message = "",
                 std::string const& file = "");
-
-    /// Function for sending current crash
-    bool
-    report(std::string const& host,
-           uint16_t port,
-           std::string const& module,
-           std::string const& signal = "",
-           elle::Backtrace const& b = elle::Backtrace::current(),
-           std::string const& info = "",
-           std::string const& file = "");
-  }
-
+  };
 }
 
 #endif
