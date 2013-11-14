@@ -112,7 +112,7 @@ class Mixin:
                                  status = transaction_status.CANCELED,
                                  user = user)
       except error.Error as e:
-        elle.log.warn("%s" % e.args)
+        elle.log.warn("%s" % (e.args,))
         continue
         # self.fail(error.UNKNOWN)
 
