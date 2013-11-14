@@ -1,5 +1,5 @@
 #include <surface/gap/State.hh>
-
+#include <surface/gap/Exception.hh>
 #include <reactor/scheduler.hh>
 
 #include <stdexcept>
@@ -26,6 +26,8 @@ namespace surface
       Exception{gap_unknown_user, elle::sprintf("unknown swagger %s", id)}
     {}
 
+    Notification::Type State::AvatarAvailableNotification::type =
+      NotificationType_AvatarAvailable;
     Notification::Type State::UserStatusNotification::type =
       NotificationType_UserStatusUpdate;
     Notification::Type State::NewSwaggerNotification::type =
@@ -38,6 +40,10 @@ namespace surface
     {}
 
     State::NewSwaggerNotification::NewSwaggerNotification(uint32_t id):
+      id(id)
+    {}
+
+    State::AvatarAvailableNotification::AvatarAvailableNotification(uint32_t id):
       id(id)
     {}
 
@@ -241,13 +247,13 @@ namespace surface
           for (auto const& device: res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr = new plasma::trophonius::UserStatusNotification{};
+            auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
             notif_ptr->status = user.status();
             notif_ptr->device_id = device;
             notif_ptr->device_status = true;
 
-            std::unique_ptr<plasma::trophonius::UserStatusNotification>
+            std::unique_ptr<infinit::oracles::trophonius::UserStatusNotification>
               notif(notif_ptr);
 
             this->handle_notification(std::move(notif));
@@ -257,13 +263,13 @@ namespace surface
           for (auto const& device: res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr = new plasma::trophonius::UserStatusNotification{};
+            auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
             notif_ptr->status = user.status();
             notif_ptr->device_id = device;
             notif_ptr->device_status = false;
 
-            std::unique_ptr<plasma::trophonius::UserStatusNotification>
+            std::unique_ptr<infinit::oracles::trophonius::UserStatusNotification>
               notif(notif_ptr);
 
             this->handle_notification(std::move(notif));
@@ -284,11 +290,39 @@ namespace surface
 
       State::UserIndexes result;
       auto res = this->meta().search_users(text);
-      for (auto const& user_id : res.users)
+      for (auto const& user_id: res.users)
       {
         result.emplace(this->_user_indexes.at(this->user(user_id).id));
       }
       return result;
+    }
+
+    elle::ConstWeakBuffer
+    State::user_icon(std::string const& user_id) const
+    {
+      auto id = this->_user_indexes.at(this->user(user_id).id);
+
+      if (this->_avatars.find(id) != this->_avatars.end())
+      {
+        if (this->_avatar_to_fetch.find(user_id) != this->_avatar_to_fetch.end())
+        {
+          ELLE_WARN("%s: remove %s avatar from fetching: already fetched",
+                    *this, user_id);
+          this->_avatar_to_fetch.erase(user_id);
+        }
+        return this->_avatars[id];
+      }
+
+      if (this->_avatar_to_fetch.find(user_id) != this->_avatar_to_fetch.end())
+      {
+        ELLE_DEBUG("avatar is being fetched");
+        throw Exception(gap_data_not_fetched_yet,
+                        "avatar is not available yet");
+      }
+
+      this->_avatar_to_fetch.insert(user_id);
+      this->_avatar_fetching_barrier.open();
+      throw Exception(gap_data_not_fetched_yet, "avatar is not available yet");
     }
 
     bool
@@ -307,14 +341,6 @@ namespace surface
                  user_id, device_id, (status ? "up" : "down"));
 
       return status;
-    }
-
-    elle::Buffer
-    State::icon(uint32_t id)
-    {
-      ELLE_TRACE_METHOD(id);
-
-      return this->meta().user_icon(this->user(id).id);
     }
 
     std::string
@@ -368,7 +394,7 @@ namespace surface
 
     void
     State::_on_new_swagger(
-      plasma::trophonius::NewSwaggerNotification const& notif)
+      infinit::oracles::trophonius::NewSwaggerNotification const& notif)
     {
       ELLE_TRACE_SCOPE("%s: new swagger notification %s", *this, notif);
       uint32_t id = this->_user_indexes.at(this->user_sync(notif.user_id).id);
@@ -381,7 +407,7 @@ namespace surface
 
     void
     State::_on_swagger_status_update(
-      plasma::trophonius::UserStatusNotification const& notif)
+      infinit::oracles::trophonius::UserStatusNotification const& notif)
     {
       ELLE_TRACE_SCOPE("%s: user status notification %s", *this, notif);
 

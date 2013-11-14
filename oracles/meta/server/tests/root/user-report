@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+count = 1
+
+class MailService():
+
+  def __init__(self, response):
+    self.response = response
+
+  def templated_send(self, **kw):
+    pass
+
+  def send(self, **kw):
+    self.response['email'] =   kw['to']
+    self.response['subject'] = kw['subject']
+    self.response['content'] = kw['content']
+
+with Meta() as meta:
+  res = dict()
+  mailer = MailService(res)
+  meta.mailer = mailer
+
+  meta.post(
+    'debug/report/user',
+    {
+      'send': True,
+    })
+
+  assert res['email'] == 'crash@infinit.io'
+  res.clear()
+
+  meta.post(
+    'debug/report/user',
+    {
+      'send': True,
+      'client_os': 'Kanard',
+    })
+
+  assert 'Kanard' in res['subject']
+  assert 'Kanard' in res['content']
+
+  res.clear()
+
+  meta.post(
+    'debug/report/user',
+    {
+      'send': True,
+      'client_os': 'Kanard',
+      'message': 'Duck are rapists',
+    })
+
+  assert 'Kanard' in res['subject']
+  assert 'Duck are rapists' in res['content']

@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, HTTPException
+
+# Get a valid session ID.
+sid = None
+with Meta() as meta:
+  client = User(meta, 'dave.null@infinit.io')
+  client.login()
+  assert 'session-id' in client.cookie
+  sid = client.cookie['session-id'].value
+
+# Reuse check
+with Meta() as meta:
+  client = User(meta, 'dave.null@infinit.io')
+  client.login()
+  client.cookie['session-id'] = sid
+  try:
+    client.get('user/self')
+  except HTTPException as e:
+    assert e.status == 403
+  else:
+    raise Exception('self should have raised')

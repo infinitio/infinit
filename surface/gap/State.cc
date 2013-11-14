@@ -24,6 +24,11 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/string_generator.hpp>
+#include <boost/uuid/nil_generator.hpp>
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <fstream>
 
@@ -125,7 +130,7 @@ namespace surface
                  std::string const& apertus_host,
                  uint16_t apertus_port):
       _logger_intializer{},
-      _meta{meta_host, meta_port, true},
+      _meta{meta_host, meta_port},
       _trophonius{trophonius_host, trophonius_port, [this] (bool status)
         {
           this->on_connection_changed(status);
@@ -147,44 +152,6 @@ namespace surface
       this->_infinit_transaction_reporter.start();
       this->_infinit_user_reporter.start();
       this->_mixpanel_reporter.start();
-
-      std::string token_path = elle::os::getenv("INFINIT_TOKEN_FILE", "");
-
-      if (!token_path.empty() && elle::os::path::exists(token_path))
-      {
-        std::string const token_genkey = [&] () -> std::string
-        {
-          ELLE_DEBUG("read generation token from %s", token_path);
-          std::ifstream token_file{token_path};
-
-          std::string _token_genkey;
-          std::getline(token_file, _token_genkey);
-          return _token_genkey;
-        }();
-
-        ELLE_TRACE_SCOPE("loading token generating key: %s", token_genkey);
-        this->_meta.generate_token(token_genkey);
-        this->_me.reset(new Self{this->meta().self()});
-
-        std::ofstream identity_infos{
-          common::infinit::identity_path(this->me().id)};
-
-        if (!identity_infos.good())
-        {
-          ELLE_ERR("Cannot open identity file");
-        }
-
-        identity_infos << this->meta().token() << "\n"
-                       << this->me().identity << "\n"
-                       << this->me().email << "\n"
-                       << this->me().id << "\n"
-        ;
-        if (!identity_infos.good())
-        {
-          ELLE_ERR("Cannot write identity file");
-        }
-        identity_infos.close();
-      }
 
       {
         using metrics::services::Google;
@@ -227,10 +194,10 @@ namespace surface
       ELLE_TRACE("%s: destroying members", *this);
     }
 
-    plasma::meta::Client const&
+    infinit::oracles::meta::Client const&
     State::meta(bool authentication_required) const
     {
-      if (authentication_required && this->_meta.token().empty())
+      if (authentication_required && !this->_meta.logged_in())
         throw Exception{gap_not_logged_in, "you must be logged in"};
 
       return this->_meta;
@@ -252,11 +219,8 @@ namespace surface
       reactor::Lock l(this->_login_mutex);
 
       if (this->logged_in())
-        throw Exception(
-          gap_already_logged_in,
-          elle::sprintf("already logged in as %s", this->meta().email()));
+        throw Exception(gap_already_logged_in, "already logged in");
 
-      this->_meta.token("");
       this->_cleanup();
 
       std::string lower_email = email;
@@ -276,14 +240,34 @@ namespace surface
           });
       }};
 
-      auto res = this->_meta.login(lower_email, password);
+      boost::uuids::uuid device_uuid = boost::uuids::nil_generator()();
+      if (boost::filesystem::exists(common::infinit::device_id_path()))
+      {
+        ELLE_TRACE("%s: get device uuid from file", *this);
+        std::ifstream file(common::infinit::device_id_path());
+        std::string struuid;
+        file >> struuid;
+        device_uuid = boost::uuids::string_generator()(struuid);
+      }
+      else
+      {
+        ELLE_TRACE("%s: create device uuid", *this);
+        device_uuid = boost::uuids::random_generator()();
+        std::ofstream file(common::infinit::device_id_path());
+        file << device_uuid << std::endl;
+      }
+
+      ELLE_DEBUG("%s: device uuid %s", *this, device_uuid);
+
+      auto res = this->_meta.login(lower_email, password, device_uuid);
+
       login_failed.abort();
 
       elle::With<elle::Finally>([&] { this->_meta.logout(); })
         << [&] (elle::Finally& finally_logout)
       {
+        ELLE_LOG("Logged in as %s", email);
 
-        ELLE_LOG("Logged in as %s token = %s", email, res.token);
         this->_reporter[res.id].store(
           "user.login",
           {{MKey::session, "start"}, {MKey::status, "succeed"}});
@@ -305,44 +289,47 @@ namespace surface
 
         std::string identity_clear;
 
-        papier::Identity identity;
+        this->_identity.reset(new papier::Identity());
 
         // Decrypt the identity.
-        if (identity.Restore(res.identity)    == elle::Status::Error ||
-            identity.Decrypt(password)        == elle::Status::Error ||
-            identity.Clear()                  == elle::Status::Error ||
-            identity.Save(identity_clear)     == elle::Status::Error)
+        if (this->_identity->Restore(res.identity)    == elle::Status::Error ||
+            this->_identity->Decrypt(password)        == elle::Status::Error ||
+            this->_identity->Clear()                  == elle::Status::Error ||
+            this->_identity->Save(identity_clear)     == elle::Status::Error)
           throw Exception(gap_internal_error,
                           "Couldn't decrypt the identity file !");
 
         // Store the identity
         {
-          if (identity.Restore(identity_clear)  == elle::Status::Error)
+          if (this->_identity->Restore(identity_clear) == elle::Status::Error)
             throw Exception(gap_internal_error,
                             "Cannot save the identity file.");
 
-          identity.store();
-
-          // user.dic
-          lune::Dictionary dictionary;
-
-          dictionary.store(this->me().id);
+          this->_identity->store();
         }
 
         std::ofstream identity_infos{common::infinit::identity_path(res.id)};
 
         if (identity_infos.good())
         {
-          identity_infos << res.token << "\n"
-                         << res.identity << "\n"
+          identity_infos << res.identity << "\n"
                          << res.email << "\n"
                          << res.id << "\n"
-            ;
+          ;
           identity_infos.close();
         }
 
+        auto device = this->meta().device(device_uuid);
+        this->_device.reset(new Device{device.id, device.name});
+        std::string passport_path =
+          common::infinit::passport_path(this->me().id);
+        this->_passport.reset(new papier::Passport());
+        if (this->_passport->Restore(device.passport) == elle::Status::Error)
+          throw Exception(gap_wrong_passport, "Cannot load the passport");
+        this->_passport->store(elle::io::Path(passport_path));
+
         this->_trophonius.connect(
-          this->me().id, this->_meta.token(), this->device().id);
+          this->me().id, this->device().id, this->_meta.session_id());
 
         this->_polling_thread.reset(
           new reactor::Thread{
@@ -370,6 +357,41 @@ namespace surface
                   ELLE_TRACE("%s: notification pulled", *this);
                 }
               }});
+
+        this->_avatar_fetcher_thread.reset(
+          new reactor::Thread{
+            scheduler,
+            "avatar fetched",
+            [&]
+            {
+              while (true)
+              {
+                this->_avatar_fetching_barrier.wait();
+
+                ELLE_ASSERT(!this->_avatar_to_fetch.empty());
+                auto user_id = *this->_avatar_to_fetch.begin();
+                auto id = this->_user_indexes.at(this->user(user_id).id);
+                try
+                {
+                  this->_avatars.insert(
+                    std::make_pair(id,
+                                   this->_meta.icon(user_id)));
+                  this->_avatar_to_fetch.erase(user_id);
+                  this->enqueue(AvatarAvailableNotification(id));
+                }
+                catch (elle::Exception const& e)
+                {
+                  ELLE_ERR("%s: unable to fetch %s avatar: %s", *this, user_id,
+                           e.what());
+                  // The UI will ask for the avatar again if it needs it, so
+                  // remove the request from the queue if there's a problem.
+                  this->_avatar_to_fetch.erase(user_id);
+                }
+
+                if (this->_avatar_to_fetch.empty())
+                  this->_avatar_fetching_barrier.close();
+              }
+            }});
 
         this->user(this->me().id);
         this->_transactions_init();
@@ -417,7 +439,7 @@ namespace surface
           {
             ELLE_WARN("logout failed, ignore exception: %s",
                       elle::exception_string());
-            this->_meta.token("");
+            this->_meta.logged_in(false);
           }
           ELLE_TRACE("%s: logged out", *this);
         });
@@ -443,6 +465,16 @@ namespace surface
             this->_user_indexes.clear();
             this->_swagger_indexes.clear();
             this->_users.clear();
+
+            this->_avatar_fetching_barrier.close();
+            if (this->_avatar_fetcher_thread != nullptr)
+            {
+              ELLE_DEBUG("stop avatar_fetching");
+              this->_avatar_fetcher_thread->terminate_now();
+              this->_avatar_fetcher_thread.reset();
+            }
+            this->_avatar_to_fetch.clear();
+            this->_avatars.clear();
           }
 
           ELLE_DEBUG("clear transactions")
@@ -555,14 +587,6 @@ namespace surface
       this->login(lower_email, password);
     }
 
-    std::string const&
-    State::token_generation_key() const
-    {
-      ELLE_TRACE_SCOPE("%s: generate token", *this);
-
-      return this->me().token_generation_key;
-    }
-
     Self const&
     State::me() const
     {
@@ -576,6 +600,29 @@ namespace surface
       }
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
+    }
+
+    void
+    State::set_avatar(boost::filesystem::path const& image_path)
+    {
+      if (!boost::filesystem::exists(image_path))
+        throw Exception(gap_error,
+                        elle::sprintf("file not found at %s", image_path));
+
+      std::ifstream stream{image_path.string()};
+      std::istream_iterator<char> eos;
+      std::istream_iterator<char> iit(stream);   // stdin iterator
+
+      elle::Buffer output;
+      std::copy(iit, eos, output.begin());
+
+      this->set_avatar(output);
+    }
+
+    void
+    State::set_avatar(elle::Buffer const& avatar)
+    {
+      this->meta().icon(this->me().id, avatar);
     }
 
     std::string
@@ -626,7 +673,7 @@ namespace surface
           }
           catch (elle::Exception const&)
           {
-            ELLE_WARN("%s: failed at resynching (%s)... retrying...",
+            ELLE_WARN("%s: failed at resynching (%s). Retrying...",
                       *this, elle::exception_string());
             reactor::sleep(1_sec);
           }
@@ -639,47 +686,47 @@ namespace surface
 
     void
     State::handle_notification(
-      std::unique_ptr<plasma::trophonius::Notification>&& notif)
+      std::unique_ptr<infinit::oracles::trophonius::Notification>&& notif)
     {
       ELLE_TRACE_SCOPE("%s: new notification %s", *this, *notif);
       switch(notif->notification_type)
       {
-        case plasma::trophonius::NotificationType::user_status:
+        case infinit::oracles::trophonius::NotificationType::user_status:
           ELLE_ASSERT(
-            dynamic_cast<plasma::trophonius::UserStatusNotification const*>(
+            dynamic_cast<infinit::oracles::trophonius::UserStatusNotification const*>(
               notif.get()) != nullptr);
           this->_on_swagger_status_update(
-            *static_cast<plasma::trophonius::UserStatusNotification const*>(
+            *static_cast<infinit::oracles::trophonius::UserStatusNotification const*>(
               notif.release()));
           break;
-        case plasma::trophonius::NotificationType::transaction:
+        case infinit::oracles::trophonius::NotificationType::transaction:
           ELLE_ASSERT(
-            dynamic_cast<plasma::Transaction const*>(notif.get()) != nullptr);
+            dynamic_cast<infinit::oracles::trophonius::TransactionNotification const*>(notif.get()) != nullptr);
           this->_on_transaction_update(
-            *static_cast<plasma::trophonius::TransactionNotification const*>(notif.release()));
+            *static_cast<infinit::oracles::trophonius::TransactionNotification const*>(notif.release()));
           break;
-        case plasma::trophonius::NotificationType::new_swagger:
+        case infinit::oracles::trophonius::NotificationType::new_swagger:
           ELLE_ASSERT(
-            dynamic_cast<plasma::trophonius::NewSwaggerNotification const*>(
+            dynamic_cast<infinit::oracles::trophonius::NewSwaggerNotification const*>(
               notif.get()) != nullptr);
           this->_on_new_swagger(
-            *static_cast<plasma::trophonius::NewSwaggerNotification const*>(
+            *static_cast<infinit::oracles::trophonius::NewSwaggerNotification const*>(
               notif.release()));
           break;
-        case plasma::trophonius::NotificationType::peer_connection_update:
+        case infinit::oracles::trophonius::NotificationType::peer_connection_update:
           ELLE_ASSERT(
-            dynamic_cast<plasma::trophonius::PeerConnectionUpdateNotification const*>(
+            dynamic_cast<infinit::oracles::trophonius::PeerConnectionUpdateNotification const*>(
               notif.get()) != nullptr);
           this->_on_peer_connection_update(
-            *static_cast<plasma::trophonius::PeerConnectionUpdateNotification const*>(
+            *static_cast<infinit::oracles::trophonius::PeerConnectionUpdateNotification const*>(
               notif.release()));
           break;
-        case plasma::trophonius::NotificationType::none:
-        case plasma::trophonius::NotificationType::network_update:
-        case plasma::trophonius::NotificationType::message:
-        case plasma::trophonius::NotificationType::ping:
-        case plasma::trophonius::NotificationType::connection_enabled:
-        case plasma::trophonius::NotificationType::suicide:
+        case infinit::oracles::trophonius::NotificationType::none:
+        case infinit::oracles::trophonius::NotificationType::network_update:
+        case infinit::oracles::trophonius::NotificationType::message:
+        case infinit::oracles::trophonius::NotificationType::ping:
+        case infinit::oracles::trophonius::NotificationType::connection_enabled:
+        case infinit::oracles::trophonius::NotificationType::suicide:
           break;
       }
     };
@@ -745,6 +792,8 @@ namespace surface
           return out << "ConnectionStatus";
         case NotificationType_KickedOut:
           return out << "Kicked Out";
+        case NotificationType_AvatarAvailable:
+          return out << "Avatar Available";
       }
 
       return out;

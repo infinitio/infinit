@@ -230,6 +230,12 @@ namespace station
       socket->clear();
       throw NetworkError(e);
     }
+    catch (...)
+    {
+      // Likewise.
+      socket->clear();
+      throw;
+    }
   }
 
   /*----------.

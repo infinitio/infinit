@@ -113,13 +113,6 @@ extern "C" {
   /// Logout from meta.
   gap_Status gap_logout(gap_State* state);
 
-  /// Get the current token, if any.
-  gap_Status
-  gap_token(gap_State* state, char** token);
-
-  gap_Status
-  gap_generation_key(gap_State* state, char** token);
-
   /// @brief Register to meta.
   ///
   /// If the device name is not NULL, it will also create
@@ -152,6 +145,11 @@ extern "C" {
   gap_Status
   gap_user_status_callback(gap_State* state,
                            gap_user_status_callback_t cb);
+
+  typedef void (*gap_avatar_available_callback_t)(uint32_t id);
+  gap_Status
+  gap_avatar_available_callback(gap_State* state,
+                                gap_avatar_available_callback_t cb);
 
   // Own connection status changed.
   typedef void (*gap_connection_callback_t)(gap_UserStatus const);
@@ -268,11 +266,6 @@ extern "C" {
                                  char const* name);
 
   /// - Self ------------------------------------------------------------------
-
-  /// Get current user token.
-  char const*
-  gap_user_token(gap_State* state);
-
   /// Get current user email.
   char const*
   gap_self_email(gap_State* state);
@@ -287,6 +280,12 @@ extern "C" {
 
   uint32_t*
   gap_self_favorites(gap_State* state);
+
+  /// Publish avatar to meta.
+  gap_Status
+  gap_update_avatar(gap_State* state,
+                    void const* data,
+                    size_t size);
 
   /// - User ------------------------------------------------------------------
 
@@ -304,19 +303,6 @@ extern "C" {
   gap_user_realid(gap_State* state,
                   uint32_t id);
 
-  /// @brief Retrieve user icon from a user_id
-  /// @note data with be freed with gap_user_icon_free when the call is
-  /// successfull.
-  gap_Status
-  gap_user_icon(gap_State* state,
-                uint32_t user_id,
-                void** data,
-                size_t* size);
-
-  /// Free a previously allocated user icon.
-  void
-  gap_user_icon_free(void* data);
-
   /// Return the uri to the avatar.
   char const*
   gap_user_avatar_url(gap_State* state,
@@ -325,6 +311,13 @@ extern "C" {
   /// Free the avatar url.
   void
   gap_free_user_avatar_url(char const* str);
+
+  /// Get user icon data.
+  gap_Status
+  gap_avatar(gap_State* state,
+             uint32_t user_id,
+             void** data,
+             size_t* size);
 
   /// Retrieve user with its email.
   uint32_t
@@ -456,10 +449,6 @@ extern "C" {
   char const*
   gap_get_output_dir(gap_State* state);
 
-  void
-  gap_send_file_crash_report(char const* module,
-                             char const* filename);
-
   /// Send user report
   gap_Status
   gap_send_user_report(char const* _user_name,
@@ -474,10 +463,6 @@ extern "C" {
                            char const* _state_log,
                            char const* _os_description,
                            char const* _additional_info);
-
-  gap_Status
-  gap_gather_crash_reports(char const* user_id,
-                           char const* network_id);
 
   // Generated file.
   #include <surface/gap/gen_metrics.h>

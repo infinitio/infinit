@@ -12,8 +12,9 @@
 
 # include <common/common.hh>
 
-# include <plasma/meta/Client.hh>
-# include <plasma/trophonius/Client.hh>
+# include <infinit/oracles/Transaction.hh>
+# include <infinit/oracles/meta/Client.hh>
+# include <infinit/oracles/trophonius/Client.hh>
 
 # include <papier/Passport.hh>
 # include <papier/Identity.hh>
@@ -60,10 +61,10 @@ namespace surface
       /*--------.
       | Servers |
       `--------*/
-      ELLE_ATTRIBUTE(plasma::meta::Client, meta);
-      ELLE_ATTRIBUTE_R(plasma::trophonius::Client, trophonius);
+      ELLE_ATTRIBUTE(infinit::oracles::meta::Client, meta);
+      ELLE_ATTRIBUTE_R(infinit::oracles::trophonius::Client, trophonius);
 
-      plasma::meta::Client const&
+      infinit::oracles::meta::Client const&
       meta(bool authentication_required = true) const;
 
       /*----------.
@@ -140,7 +141,7 @@ namespace surface
       bool
       logged_in() const
       {
-        return !this->_meta.token().empty();
+        return this->_meta.logged_in();
       }
 
       //- Login & register -----------------------------------------------------
@@ -148,6 +149,12 @@ namespace surface
 
       Self const&
       me() const;
+
+      void
+      set_avatar(boost::filesystem::path const& image_path);
+
+      void
+      set_avatar(elle::Buffer const& avatar);
 
       ELLE_ATTRIBUTE(reactor::Mutex, login_mutex);
     public:
@@ -174,9 +181,6 @@ namespace surface
 
       std::string
       user_directory();
-
-      std::string const&
-      token_generation_key() const;
 
       ELLE_ATTRIBUTE_Rw(std::string, output_dir);
     private:
@@ -241,7 +245,7 @@ namespace surface
 
       void
       handle_notification(
-        std::unique_ptr<plasma::trophonius::Notification>&& notification);
+        std::unique_ptr<infinit::oracles::trophonius::Notification>&& notification);
 
       // For lisibility purpose, papiers, user, network and transaction methods
       // are located in specific files in _detail.
@@ -274,10 +278,9 @@ namespace surface
       bool
       has_device() const;
 
-      /// Create or update the local device.
+      /// Update the local device name.
       void
-      update_device(std::string const& name,
-                    bool force_create = false) const;
+      update_device(std::string const& name) const;
 
       // Could be factorized.
       /*------.
@@ -323,18 +326,38 @@ namespace surface
         uint32_t id;
       };
 
+      class AvatarAvailableNotification:
+        public Notification
+      {
+      public:
+        static Notification::Type type;
+
+        AvatarAvailableNotification(uint32_t id);
+
+        uint32_t id;
+      };
+
     public:
-      typedef plasma::meta::User User;
+
+      typedef infinit::oracles::meta::User User;
       typedef std::pair<const uint32_t, User> UserPair;
       typedef std::unordered_map<uint32_t, User> UserMap;
       typedef std::unordered_set<User> Users;
       typedef std::map<std::string, uint32_t> UserIndexMap;
       typedef std::unordered_set<uint32_t> UserIndexes;
+      typedef std::unordered_map<uint32_t, elle::Buffer> UserAvatars;
+      typedef std::unordered_set<std::string> AvatarToFetch;
 
       ELLE_ATTRIBUTE_RP(UserMap, users, mutable);
       ELLE_ATTRIBUTE_RP(UserIndexMap, user_indexes, mutable);
       ELLE_ATTRIBUTE_RP(UserIndexes, swagger_indexes, mutable);
       ELLE_ATTRIBUTE(reactor::Mutex, swagger_mutex);
+      ELLE_ATTRIBUTE_RP(UserAvatars, avatars, mutable);
+      ELLE_ATTRIBUTE_RP(AvatarToFetch, avatar_to_fetch, mutable);
+
+      ELLE_ATTRIBUTE_P(std::unique_ptr<reactor::Thread>, avatar_fetcher_thread,
+                       mutable);
+      ELLE_ATTRIBUTE_P(reactor::Barrier, avatar_fetching_barrier, mutable);
 
     public:
       void
@@ -362,15 +385,15 @@ namespace surface
       void
       _user_resync();
 
+      elle::ConstWeakBuffer
+      user_icon(std::string const& user_id) const;
+
       UserIndexes
       user_search(std::string const& text) const;
 
       bool
       device_status(std::string const& user_id,
                     std::string const& device_id) const;
-
-      elle::Buffer
-      icon(uint32_t id);
 
       std::string
       invite(std::string const& email);
@@ -389,10 +412,10 @@ namespace surface
       swaggers_dirty();
 
       void
-      _on_new_swagger(plasma::trophonius::NewSwaggerNotification const& notif);
+      _on_new_swagger(infinit::oracles::trophonius::NewSwaggerNotification const& notif);
 
       void
-      _on_swagger_status_update(plasma::trophonius::UserStatusNotification const& notif);
+      _on_swagger_status_update(infinit::oracles::trophonius::UserStatusNotification const& notif);
 
       /*---------.
       | Networks |
@@ -453,7 +476,7 @@ namespace surface
 
     //   void
     //   on_network_update_notification(
-    //     plasma::trophonius::NetworkUpdateNotification const& notif);
+    //     infinit::oracles::trophonius::NetworkUpdateNotification const& notif);
 
       // /*-------------.
       // | Transactions |
@@ -492,11 +515,11 @@ namespace surface
       _transactions_clear();
 
       void
-      _on_transaction_update(plasma::Transaction const& notif);
+      _on_transaction_update(infinit::oracles::Transaction const& notif);
 
       void
       _on_peer_connection_update(
-        plasma::trophonius::PeerConnectionUpdateNotification const& notif);
+        infinit::oracles::trophonius::PeerConnectionUpdateNotification const& notif);
 
       /*----------.
       | Printable |

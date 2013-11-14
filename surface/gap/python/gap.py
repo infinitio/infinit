@@ -29,8 +29,6 @@ class _State:
             'set_device_name',
 
             'logout',
-            'token',
-            'generation_key',
 
             # Users.
             'search_users',
@@ -133,6 +131,8 @@ class _State:
         return self.__call('_id');
 
 class State(_State):
+
+
     def __init__(self, *args, **kwargs):
         self.__args = args
         self.__kwargs = kwargs

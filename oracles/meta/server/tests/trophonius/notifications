@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from uuid import uuid4
+import socket
+from random import random
+import copy
+import json
+
+class Trophonius:
+  class Accepter:
+
+    def __init__(self, trophonius):
+      self.index = 0
+      self.trophonius = trophonius
+      self.port = 1000 + int(random() * 64535)
+      self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      self.socket.bind(("localhost", self.port))
+      self.socket.listen(1)
+
+    def poll(self):
+      expected = self.trophonius.expected_notifications
+      client = self.socket.accept()
+      client = client[0]
+      representation = str(client.recv(65535), 'utf-8')
+      representation = representation[:-1] # remove \n
+      d = json.loads(representation)
+      d['notification'].pop('timestamp')
+      assert expected[d['device_id']] == d['notification']
+      self.socket.listen(1)
+
+  def __init__(self, meta):
+    self.meta = meta
+    self.uuid = uuid4()
+    self.meta_accepter = Trophonius.Accepter(self)
+    self.client_accepter = Trophonius.Accepter(self)
+    self.expected_notifications = dict()
+
+  def __enter__(self):
+    self.meta.put('trophonius/%s' % str(self.uuid), body = {'port': self.meta_accepter.port})
+    return self
+
+  def __exit__(self, type, value, traceback):
+    self.meta.delete('trophonius/%s' % str(self.uuid))
+
+  def register(self, user):
+    user.put('trophonius/%s/users/%s/%s' % (str(self.uuid), user.id, user.device_id))
+
+with Meta() as meta:
+  with Trophonius(meta) as t1:
+
+    global expected_notifications
+
+    email = 'bob@infinit.io'
+    fullname = 'bob'
+
+    bob1 = User(meta, email = email, fullname = fullname)
+    bob1.login()
+
+    bob2 = copy.copy(bob1)
+    bob2.device_id = uuid4()
+    bob2.login()
+
+    alice = User(meta, email = 'alice@infinit.io', fullname = fullname)
+    alice.login()
+
+    t1.register(alice)
+    t1.register(bob1)
+    t1.register(bob2)
+
+    alice.post('trophonius/message/user/%s' % bob1.id, {'body': {'message': 'hello'}})
+
+    t1.expected_notifications[str(bob2.device_id)] = {
+      'notification_type': 208,
+      'message': 'hello',
+    }
+    t1.expected_notifications[str(bob1.device_id)] = {
+      'notification_type': 208,
+      'message': 'hello',
+    }
+
+    t1.meta_accepter.poll()
+    t1.meta_accepter.poll()

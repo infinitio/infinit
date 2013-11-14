@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from bson import ObjectId
+from functools import reduce
+from pprint import pprint
+
+from infinit.oracles.transaction import statuses
+from infinit.oracles.meta.transaction_status import CREATED as C
+from infinit.oracles.meta.transaction_status import INITIALIZED as I
+from infinit.oracles.meta.transaction_status import ACCEPTED as A
+from infinit.oracles.meta.transaction_status import FINISHED as F
+from infinit.oracles.meta.transaction_status import REJECTED as R
+from infinit.oracles.meta.transaction_status import CANCELED as CA
+from infinit.oracles.meta.transaction_status import FAILED as FA
+
+from infinit.oracles.meta import error
+
+# Same.
+def S(source, transaction, state):
+  res = source.post('transaction/update', {"transaction_id": transaction,
+                                           "status": state,
+                                           "device_id": str(source.device_id),
+                                           "device_name": source.device_name})
+  assert not res['success']
+  assert res['error_code'] in [error.TRANSACTION_ALREADY_HAS_THIS_STATUS[0]]
+
+# Not allowed
+def E(source, transaction, state):
+  res = source.post('transaction/update', {"transaction_id": transaction,
+                                           "status": state,
+                                           "device_id": str(source.device_id),
+                                           "device_name": source.device_name})
+  assert not res['success']
+  assert res['error_code'] in [error.TRANSACTION_ALREADY_FINALIZED[0], error.TRANSACTION_OPERATION_NOT_PERMITTED[0]]
+
+def O(source, transaction, state):
+  res = source.post('transaction/update', {"transaction_id": transaction,
+                                           "status": state,
+                                           "device_id": str(source.device_id),
+                                           "device_name": source.device_name})
+  assert res['success']
+
+sender_transitions = dict()
+recipient_transitions = dict()
+
+STATUS = [C, I, A, F, R, CA, FA]
+
+for i in STATUS:
+  sender_transitions[i] = [None] * len(statuses)
+  recipient_transitions[i] = [None] * len(statuses)
+
+# Sender.
+#  C  I  A  F  R  CA FA
+# [E, O, E, E, E, S, S]) # C
+# [E, S, E, E, E, S, S]) # I
+# [E, E, E, E, E, S, S]) # A
+# [E, O, E, E, E, S, S]) # F
+# [E, E, E, E, E, S, S]) # R
+# [E, E, E, E, E, S, S]) # CA
+# [E, E, E, E, E, S, S]) # FA
+
+s = sender_transitions
+
+s[C][C]  = E; s[C][I]  = O; s[C][A]  = E; s[C][F]  = E; s[C][R]  = E; s[C][CA]  = O; s[C][FA]  = O;
+s[I][C]  = E; s[I][I]  = E; s[I][A]  = E; s[I][F]  = E; s[I][R]  = E; s[I][CA]  = O; s[I][FA]  = O;
+s[A][C]  = E; s[A][I]  = E; s[A][A]  = E; s[A][F]  = E; s[A][R]  = E; s[A][CA]  = O; s[A][FA]  = O;
+s[F][C]  = E; s[F][I]  = E; s[F][A]  = E; s[F][F]  = E; s[F][R]  = E; s[F][CA]  = E; s[F][FA]  = E;
+s[R][C]  = E; s[R][I]  = E; s[R][A]  = E; s[R][F]  = E; s[R][R]  = E; s[R][CA]  = E; s[R][FA]  = E;
+s[CA][C] = E; s[CA][I] = E; s[CA][A] = E; s[CA][F] = E; s[CA][R] = E; s[CA][CA] = S; s[CA][FA] = E;
+s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] = E; s[FA][FA] = S;
+
+# Recipient
+#  C  I  A  F  R  CA FA
+# ) # C
+# [E, E, O, E, O, O, O]) # I
+# [E, E, S, O, E, O, O]) # A
+# [E, E, E, S, E, S, S]) # F
+# [E, E, E, E, S, S, S]) # R
+# [E, E, E, S, S, S, S]) # CA
+# [E, E, E, S, S, S, S]) # FA
+
+r = recipient_transitions
+r[C][C]  = E; r[C][I]  = E; r[C][A]  = E; r[C][F]  = E; r[C][R]  = E; r[C][CA]  = E; r[C][FA]  = E;
+r[I][C]  = E; r[I][I]  = E; r[I][A]  = O; r[I][F]  = E; r[I][R]  = O; r[I][CA]  = O; r[I][FA]  = O;
+r[A][C]  = E; r[A][I]  = E; r[A][A]  = S; r[A][F]  = O; r[A][R]  = E; r[A][CA]  = O; r[A][FA]  = O;
+r[F][C]  = E; r[F][I]  = E; r[F][A]  = E; r[F][F]  = S; r[F][R]  = E; r[F][CA]  = E; r[F][FA]  = E;
+r[R][C]  = E; r[R][I]  = E; r[R][A]  = E; r[R][F]  = E; r[R][R]  = S; r[R][CA]  = E; r[R][FA]  = E;
+r[CA][C] = E; r[CA][I] = E; r[CA][A] = E; r[CA][F] = E; r[CA][R] = E; r[CA][CA] = S; r[CA][FA] = E;
+r[FA][C] = E; r[FA][I] = E; r[FA][A] = E; r[FA][F] = E; r[FA][R] = E; r[FA][CA] = E; r[FA][FA] = S;
+
+def find_path(state):
+  assert state < len(statuses)
+  for current_state in STATUS:
+    if sender_transitions[current_state][state] == O:
+      return find_path(current_state) + [(True, current_state, state)]
+    if recipient_transitions[current_state][state] == O:
+      return find_path(current_state) + [(False, current_state, state)]
+  return []
+
+def transaction(sender, recipient, state):
+  _, tr = sender.sendfile(recipient.id)
+  transaction_id = tr['created_transaction_id']
+  paths = find_path(state)
+  for path in paths:
+    source = path[0] and sender or recipient
+    res = source.post('transaction/update', {"transaction_id": transaction_id,
+                                             "status": path[2],
+                                             "device_id": str(source.device_id),
+                                             "device_name": source.device_name})
+    assert res['success']
+  return tr['created_transaction_id']
+
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  bob = User(meta, "bob@infinit.io")
+
+  bob.login()
+  alice.login()
+
+  for current_state in STATUS:
+    for expected_state in STATUS:
+      tr = transaction(bob, alice, current_state)
+      assert sender_transitions[current_state][expected_state] is not None
+      sender_transitions[current_state][expected_state](bob, tr, expected_state)
+
+  for current_state in STATUS:
+    for expected_state in STATUS:
+      tr = transaction(bob, alice, current_state)
+      assert recipient_transitions[current_state][expected_state] is not None
+      recipient_transitions[current_state][expected_state](alice, tr, expected_state)

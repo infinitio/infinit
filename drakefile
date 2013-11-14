@@ -2,10 +2,14 @@ import drake
 import drake.cxx
 import drake.cxx.boost
 import drake.git
+import drake.templating
 
 import os
 import sys
 import platform
+
+with open(str(drake.path_source('elle/drake-utils.py')), 'r') as f:
+  exec(f.read(), globals(), globals())
 
 def configure(cxx_toolkit = None,
               cxx_config = None,
@@ -45,8 +49,9 @@ def configure(cxx_toolkit = None,
     cxx_config.enable_optimization(2)
 
   if not build_type in build_types.keys():
-    raise Exception("build type {} is unknown. Candidates are {}.".format(
-        build_type, ", ".join("{}".format(t) for t in build_types.keys())))
+    raise Exception(
+      'build type %s is unknown, candidates are: %s' %
+      (build_type, ', '.join(str(t) for t in build_types)))
 
   for define in build_types[build_type]:
     if isinstance(define, str):
@@ -75,34 +80,21 @@ def configure(cxx_toolkit = None,
 
   # Version
   git = drake.git.Git()
+  class CxxVersionGenerator(VersionGenerator):
+    def _prologue(self):
+      yield '#ifndef INFINIT_VERSION_HH'
+      yield '# define INFINIT_VERSION_HH'
+    def _epilogue(self):
+      yield '#endif'
+    def _variable(self, name, value):
+      if name == 'version':
+        name = 'INFINIT_VERSION'
+      else:
+        name = 'INFINIT_VERSION_%s' % name.upper()
+      value = repr(value).replace("'", '"')
+      return '# define %s %s' % (name, value)
   version = drake.node('version.hh')
-
-  class VersionGenerator(drake.Builder):
-
-    def __init__(self, git, output):
-      drake.Builder.__init__(self, [git], [output])
-      self.__git = git
-      self.__output = output
-
-    def execute(self):
-      self.output('Generate %s' % self.__output.path())
-      version = git.version()
-      major, minor, subminor = map(int, version.split('-')[0].split('.'))
-      defines = {
-        'INFINIT_VERSION_MAJOR': major,
-        'INFINIT_VERSION_MINOR': minor,
-        'INFINIT_VERSION_SUBMINOR': subminor,
-        'INFINIT_VERSION': version,
-      }
-      with open(str(self.__output.path()), 'w') as f:
-        print('#ifndef INFINIT_VERSION_HH', file = f)
-        print('# define INFINIT_VERSION_HH', file = f)
-        for name, value in defines.items():
-          print('# define %s %s' % (name, repr(value).replace("'", '"')), file = f)
-        print('#endif', file = f)
-      return True
-
-  VersionGenerator(git, version)
+  CxxVersionGenerator(version, git = git)
 
   architecture = platform.architecture()[0]
   if architecture == "32bit":
@@ -119,15 +111,17 @@ def configure(cxx_toolkit = None,
   # Python
   python_enabled = cxx_toolkit.os != drake.os.windows
   if python_enabled:
-    python2 = drake.cxx.find_library('pyconfig.h', prefix = python2,
-                                     include_dir = ['include',
-                                                    'include/python2.7',
-                                                    'include/python2.7m'])
-    python3 = drake.cxx.find_library('pyconfig.h', prefix = python3,
-                                     include_dir = ['include',
-                                                    'include/python3.2',
-                                                    'include/python3.2m',
-                                                    'include/python3.3m'])
+    python2 = drake.cxx.find_library(
+      'pyconfig.h', prefix = python2,
+      include_dir = ['include',
+                     'include/python2.7',
+                     'include/python2.7m'])
+    python3 = drake.cxx.find_library(
+      'pyconfig.h', prefix = python3,
+      include_dir = ['include',
+                     'include/python3.2',
+                     'include/python3.2m',
+                     'include/python3.3m'])
 
   # Elle
   elle = drake.include('elle',
@@ -172,7 +166,8 @@ def configure(cxx_toolkit = None,
 
   # Fuse
   if enable_horizon:
-    cxx_config.define('_FILE_OFFSET_BITS', 64) # FIXME: only needed for horizon
+    # FIXME: only needed for horizon
+    cxx_config.define('_FILE_OFFSET_BITS', 64)
     cxx_config.define('INFINIT_HORIZON')
   cxx_config.define('BOOST_PP_VARIADICS')
 
@@ -427,47 +422,6 @@ def configure(cxx_toolkit = None,
     metrics_cxx_config
   )
 
-  ## ------ ##
-  ## Plasma ##
-  ## ------ ##
-  plasma_sources = drake.nodes(
-    'plasma/meta/Client.cc',
-    'plasma/meta/Client.hh',
-    'plasma/meta/Client.hxx',
-    'plasma/trophonius/Client.cc',
-    'plasma/trophonius/Client.hh',
-    'plasma/plasma.hh',
-    'plasma/plasma.hxx',
-    'plasma/plasma.cc',
-    )
-
-  plasma_cxx_config = drake.cxx.Config(cxx_config_libs)
-  plasma_lib = Library(
-    'lib/plasma',
-    plasma_sources + curly_libs + [reactor_lib, elle_lib],
-    cxx_toolkit,
-    plasma_cxx_config
-  )
-
-  rule_plasma = drake.Rule('plasma')
-  rule_plasma << plasma_lib
-
-  if python_enabled:
-    plasma_python_cxx_config = drake.cxx.Config(cxx_config)
-    plasma_python_sources = plasma_sources + [
-      drake.node('plasma/python.cc'),
-      drake.node('plasma/trophonius/python.cc'),
-      drake.node('plasma/meta/python.cc'),
-    ]
-    plasma_python_cxx_config += python3
-    plasma_python_cxx_config += boost.config_python()
-    plasma_python_cxx_config.lib_path_runtime('..')
-    plasma_python_lib = drake.cxx.Module(
-      'lib/python/plasma',
-      plasma_python_sources + [plasma_lib],
-      cxx_toolkit, plasma_python_cxx_config)
-    rule_plasma << plasma_python_lib
-
   # Papier
   papier_sources = drake.nodes(
     'papier/Authority.cc',
@@ -500,6 +454,18 @@ def configure(cxx_toolkit = None,
     papier_cxx_config
   )
 
+  if python_enabled:
+    papier_python_cxx_config = drake.cxx.Config(cxx_config)
+    papier_python_sources = drake.nodes('papier/python.cc')
+    papier_python_cxx_config += python3
+    papier_python_cxx_config += boost.config_python()
+    papier_python_cxx_config.lib_path_runtime('..')
+    papier_python_lib = drake.cxx.Module(
+      'lib/python/papier',
+      papier_python_sources + [papier_lib],
+      cxx_toolkit,
+      papier_python_cxx_config)
+
   # Agent
   agent_sources = drake.nodes(
     'agent/Agent.hh',
@@ -507,6 +473,7 @@ def configure(cxx_toolkit = None,
     'common/common.cc',
     'common/common.hh',
     )
+
   agent_cxx_config = drake.cxx.Config(cxx_config_libs)
   agent_lib = Library(
     'lib/agent',
@@ -536,7 +503,8 @@ def configure(cxx_toolkit = None,
 
   station_lib = Library(
     'lib/station',
-    station_sources + [papier_lib, cryptography_lib, reactor_lib, elle_lib],
+    station_sources + [papier_lib, cryptography_lib,
+                       reactor_lib, elle_lib],
     cxx_toolkit,
     station_cxx_config
   )
@@ -729,11 +697,12 @@ def configure(cxx_toolkit = None,
 # XXX
 #  hole_tests_root = drake.Path('hole/tests')
 #  for test in ['slug']:
-#    drake.cxx.Executable(hole_tests_root / test,
-#                         drake.nodes(hole_tests_root / ('%s.cc' % test)) +
-#                         [reactor.lib_dynamic, elle.lib_dynamic, cryptography_lib,
-#                          hole_lib, nucleus_lib, protocol_lib],
-#                         cxx_toolkit, cxx_config + boost.config_test())
+#    drake.cxx.Executable(
+#      hole_tests_root / test,
+#      drake.nodes(hole_tests_root / ('%s.cc' % test)) +
+#      [reactor.lib_dynamic, elle.lib_dynamic, cryptography_lib,
+#       hole_lib, nucleus_lib, protocol_lib],
+#      cxx_toolkit, cxx_config + boost.config_test())
 
   # Etoile
   etoile_sources = drake.nodes(
@@ -926,8 +895,6 @@ def configure(cxx_toolkit = None,
   ## ----- ##
 
   build = drake.Rule('build')
-  if python_enabled:
-    build << plasma_python_lib
 
   ## -------- ##
   ## Programs ##
@@ -942,7 +909,6 @@ def configure(cxx_toolkit = None,
     infinit_lib,
     lune_lib,
     nucleus_lib,
-    plasma_lib,
     cryptography_lib,
     protocol_lib,
     reactor_lib,
@@ -986,56 +952,76 @@ def configure(cxx_toolkit = None,
   # 8hole
   hole_cxx_config = drake.cxx.Config(cxx_config)
   hole_cxx_config.lib('fuse')
-  hole_bin = drake.cxx.Executable('bin/8hole',
-                                  drake.nodes('hole/_hole.cc') + infinit_libs,
-                                  cxx_toolkit, hole_cxx_config)
+  hole_bin = drake.cxx.Executable(
+    'bin/8hole',
+    drake.nodes('hole/_hole.cc') + infinit_libs,
+    cxx_toolkit, hole_cxx_config)
   # build << hole_bin
 
-  # Trophonius
+  ## ------- ##
+  ## Oracles ##
+  ## ------- ##
 
-  tropho_sources = drake.nodes(
-    'plasma/trophonius/Client.cc',
-    'plasma/trophonius/Client.hh',
-    )
-  tropho_lib = drake.cxx.DynLib(
-    'lib/trophonius',
-    tropho_sources,
-    cxx_toolkit, cxx_config)
+  oracles = drake.include(
+    'oracles',
+    elle = elle.elle,
+    reactor = elle.reactor,
+    papier_python = papier_python_lib,
+    boost = boost,
+    python3 = python3,
+    enable_python_bindings = False,
+    prefix = prefix,
+    cxx_toolkit = cxx_toolkit,
+    cxx_config = cxx_config,)
+
+  trophonius_client_lib = drake.copy(
+    oracles.trophonius.client.lib, 'lib',
+    oracles.trophonius.client.lib.name().dirname())
+  meta_client_lib = drake.copy(
+    oracles.meta.client.lib, 'lib',
+    oracles.meta.client.lib.name().dirname())
+
+  # oracles_enabled = cxx_toolkit.os != drake.os.windows
 
   ## GAP:
-  gap_sources = drake.nodes(
-    'surface/gap/Exception.hh',
-    'surface/gap/Transaction.hh',
-    'surface/gap/Transaction.cc',
-    'surface/gap/Transaction.hxx',
-    'surface/gap/gap.cc',
-    'surface/gap/gap.h',
-    'surface/gap/gap_bridge.hh',
-    'surface/gap/enums.hh',
-    'surface/gap/TransferMachine.cc',
-    'surface/gap/TransferMachine.hh',
-    'surface/gap/TransferMachine.hxx',
-    'surface/gap/SendMachine.cc',
-    'surface/gap/SendMachine.hh',
-    'surface/gap/ReceiveMachine.cc',
-    'surface/gap/ReceiveMachine.hh',
-    'surface/gap/metrics.hh',
-    'surface/gap/State.cc',
-    'surface/gap/State.hh',
-    'surface/gap/status.hh',
-    'surface/gap/Transaction.hh',
-    'surface/gap/Device.hh',
-    'surface/gap/Self.hh',
-    'surface/gap/Rounds.cc',
-    'surface/gap/Rounds.hh',
-    'surface/gap/_detail/Papiers.cc',
-    'surface/gap/_detail/Network.cc',
-    'surface/gap/_detail/Transaction.cc',
-    'surface/gap/_detail/User.cc',
-    # Get rid of common asap.
-    'common/common.hh',
-    'common/common.cc',
+  templating_context = drake.templating.Context(
+    sources = oracles.meta.server.python,
+    pythonpath = ('oracles/meta/server/lib/python',), # XXX
   )
+  with templating_context:
+    gap_sources = drake.nodes(
+      'surface/gap/Exception.hh',
+      'surface/gap/Transaction.hh',
+      'surface/gap/Transaction.cc',
+      'surface/gap/Transaction.hxx',
+      'surface/gap/gap.cc',
+      'surface/gap/gap.h',
+      'surface/gap/gap_bridge.hh',
+      'surface/gap/enums.hh.tmpl',
+      'surface/gap/TransferMachine.cc',
+      'surface/gap/TransferMachine.hh',
+      'surface/gap/TransferMachine.hxx',
+      'surface/gap/SendMachine.cc',
+      'surface/gap/SendMachine.hh',
+      'surface/gap/ReceiveMachine.cc',
+      'surface/gap/ReceiveMachine.hh',
+      'surface/gap/metrics.hh',
+      'surface/gap/State.cc',
+      'surface/gap/State.hh',
+      'surface/gap/status.hh.tmpl',
+      'surface/gap/Transaction.hh',
+      'surface/gap/Device.hh',
+      'surface/gap/Self.hh',
+      'surface/gap/Rounds.cc',
+      'surface/gap/Rounds.hh',
+      'surface/gap/_detail/Papiers.cc',
+      'surface/gap/_detail/Network.cc',
+      'surface/gap/_detail/Transaction.cc',
+      'surface/gap/_detail/User.cc',
+      # Get rid of common asap.
+      'common/common.hh',
+      'common/common.cc',
+    )
 
   # GAP
   gap_generator = drake.node('surface/gap/metrics_generator.py')
@@ -1063,8 +1049,12 @@ def configure(cxx_toolkit = None,
     python_exe = cxx_toolkit.os is drake.os.windows and 'python' or 'python3',
   ).generated
 
-  gap_cxx_config_libs = drake.cxx.Config(cxx_config_libs)
-  gap_cxx_config_libs.lib_path_runtime('../../lib/_gap')
+  gap_cxx_config = drake.cxx.Config(cxx_config_libs)
+  gap_cxx_config.add_local_include_path('oracles/src')
+  gap_cxx_config.add_local_include_path('oracles/meta/client/src')
+  gap_cxx_config.add_local_include_path('oracles/trophonius/client/src')
+
+  gap_cxx_config_libs = drake.cxx.Config(gap_cxx_config)
   gap_cxx_config_libs += boost.config_filesystem(
     static = (cxx_toolkit.os is drake.os.macos and True or None))
   gap_cxx_config_libs += boost.config_system()
@@ -1077,7 +1067,6 @@ def configure(cxx_toolkit = None,
     'lib/gap',
     gap_sources + [
       elle_lib,
-      plasma_lib,
       reactor_lib,
       lune_lib,
       papier_lib,
@@ -1087,12 +1076,13 @@ def configure(cxx_toolkit = None,
       crash_lib,
       hole_lib,
       curly_lib,
-      elle.curly.library_sched,
       elle.curly.library_asio,
       elle.reactor.library_coroutine,
       nucleus_lib,
       protocol_lib,
       cryptography_lib,
+      trophonius_client_lib,
+      meta_client_lib,
     ],
     cxx_toolkit,
     gap_cxx_config_libs
@@ -1102,19 +1092,19 @@ def configure(cxx_toolkit = None,
 
   # GAP python
   if python_enabled:
-    gap_python_cxx_config = cxx_config + python3
+    gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
+    gap_python_cxx_config += python3
     gap_python_cxx_config += boost.config_python()
     gap_python_cxx_config.lib_path_runtime('..')
-    gap_python_sources = drake.nodes(
-      'surface/gap/python/pygap.cc',
+    with templating_context:
+      gap_python_sources = drake.nodes(
+        'surface/gap/python/pygap.cc.tmpl',
       )
+
     gap_python_lib = drake.cxx.Module(
       'lib/python/_gap',
       gap_python_sources + [
         gap_lib,
-        tropho_lib,
-        plasma_lib,
-        protocol_lib
       ] + infinit_libs,
       cxx_toolkit,
       gap_python_cxx_config
@@ -1142,6 +1132,11 @@ def configure(cxx_toolkit = None,
 
   # Satellites
 
+  gap_satellites_bin = drake.cxx.Config(infinit_bin_config)
+  gap_satellites_bin.add_local_include_path('oracles/src')
+  gap_satellites_bin.add_local_include_path('oracles/meta/client/src')
+  gap_satellites_bin.add_local_include_path('oracles/trophonius/client/src')
+
   def satellite(name, dependencies):
     fmt = (name, name.capitalize())
     sources = [
@@ -1157,7 +1152,7 @@ def configure(cxx_toolkit = None,
       'bin/8%s' % name,
       # XXX: not every satellite needs GAP.
       list(sources) + list(dependencies) + [crash_lib],
-      cxx_toolkit, infinit_bin_config)
+      cxx_toolkit, gap_satellites_bin)
     build << bin
 
   for name, dependencies in [
@@ -1221,153 +1216,10 @@ def configure(cxx_toolkit = None,
                           cxx_toolkit = cxx_toolkit,
                           cxx_config = cxx_config)
 
-  oracles_enabled = cxx_toolkit.os != drake.os.windows
-  if oracles_enabled:
-    oracles = drake.Rule('oracle')
-
-    oracle_sources = drake.nodes(
-      'oracle/disciples/erginus-server',
-      'oracle/disciples/longinus-server',
-      'oracle/disciples/meta-server',
-      'oracle/disciples/admin-console',
-      'oracle/disciples/apertus-server',
-      'oracle/disciples/services',
-      )
-
-    oracle_source_copy = drake.copy(oracle_sources,
-                                    'bin',
-                                    'oracle/disciples')
-    oracle_lib = drake.nodes(
-      'oracle/disciples/longinus/application.py',
-      'oracle/disciples/longinus/__init__.py',
-      'oracle/disciples/longinus/longinus.py',
-      )
-
-    # PYTHONPATH for oracle and functional tests.
-    pythonpath = [
-      drake.path_source('tests/functional/lib'),
-      drake.path_build('lib/python'),
-    ]
-    env = {
-      'PYTHONPATH': ':'.join(map(str, pythonpath)),
-      'PATH': os.environ['PATH']
-    }
-
-    # Oracle/metalib
-    if python_enabled:
-      metalib_config = cxx_config_libs + python2
-      metalib_config.lib_path_runtime('..')
-      metalib_sources = drake.nodes(
-        'oracle/disciples/metalib/identity.cc',
-        'oracle/disciples/metalib/identity.hh',
-        'oracle/disciples/metalib/metalib.cc',
-        'oracle/disciples/metalib/metalib.hh',
-        'oracle/disciples/metalib/network.cc',
-        'oracle/disciples/metalib/network.hh',
-        'oracle/disciples/metalib/passport.cc',
-        'oracle/disciples/metalib/passport.hh',
-        # XXX
-        'common/common.cc',
-        'common/common.hh',
-        )
-      metalib_libs = [
-        nucleus_lib,
-        papier_lib,
-        cryptography_lib,
-        elle_lib,
-      ]
-      metalib_lib = drake.cxx.Module('lib/python/metalib',
-                                     metalib_sources + metalib_libs,
-                                     cxx_toolkit, metalib_config)
-
-      oracles << metalib_lib
-
-    def oracle(name):
-      root = drake.Path('oracle/disciples/%s' % name)
-      rule = drake.Rule('oracle/%s/build' % name)
-      oracle_sources = drake.nodes(*git.ls_files(root / 'src' / name))
-      server = drake.node('oracle/disciples/%s-server' % name)
-      rule << drake.copy(oracle_sources,
-                         'lib/python', root / 'src')
-      rule << drake.copy(server, 'bin', 'oracle/disciples')
-
-      rule_check = drake.TestSuite('oracle/%s/check' % name)
-      for test in git.ls_files(root / 'tests'):
-        test = drake.node(test)
-        if not test.path().executable:
-          continue
-        runner = drake.Runner(test, env = env)
-        # Manually build the oracles beforehand
-        runner.add_src(drake.Rule('oracle/apertus/build'))
-        runner.add_src(drake.Rule('oracle/meta/build'))
-        runner.add_src(drake.Rule('oracle/pythia/build'))
-        runner.add_src(drake.Rule('oracle/trophonius/build'))
-        runner.add_src(drake.Rule('oracle/walrus/build'))
-        runner.add_src(metalib_lib)
-        runner.reporting = drake.Runner.Reporting.on_failure
-        rule_check << runner.status
-      oracles << rule
-      check << rule_check
-      return rule, rule_check
-
-
-    rule_trophonius, rule_trophonius_check = oracle('trophonius')
-    rule_apertus, rule_apertus_check = oracle('apertus')
-    rule_meta, rule_meta_check = oracle('meta')
-    rule_walrus, rule_walrus_check = oracle('walrus')
-    authority = drake.node('oracle/infinit.auth')
-    rule_meta << drake.copy(authority, 'oracle/meta', 'oracle')
-
-    oracle_lib_copy = drake.copy(oracle_lib,
-                                 'lib/python',
-                                 'oracle/disciples')
-    pythia = drake.Rule('oracle/pythia/build')
-    pythia_sources = drake.nodes(
-      'oracle/disciples/pythia/admin.py',
-      'oracle/disciples/pythia/client.py',
-      'oracle/disciples/pythia/constants.py',
-      'oracle/disciples/pythia/__init__.py',
-      )
-    pythia << drake.copy(pythia_sources,
-                         'lib/python',
-                         'oracle/disciples')
-    oracle_lib_copy.append(pythia)
-
-
-    # heartbeat_config = drake.cxx.Config(cxx_config)
-    # heartbeat_config += boost.config_program()
-    # heartbeat_config.lib('udt')
-    # heartbeat_config.lib_path_runtime('../lib')
-    # heartbeat_config.add_local_include_path('oracle/disciples/')
-    # heartbeat_config.add_local_include_path('.')
-    # heartbeat_config.lib('reactor')
-    # heartbeat_config.lib('elle')
-
-    # heartbeat_sources = drake.nodes(
-    #   'oracle/disciples/heartbeat/heartbeat.cc',
-    #   'satellites/satellite.cc',
-    #   'satellites/satellite.hh',
-    #   'common/common.cc',
-    #   'common/common.hh',
-    #   'CrashReporter.cc',
-    #   'CrashReporter.hh',
-    #   )
-
-    # heartbeat = drake.cxx.Executable('bin/heartbeat-server',
-    #     heartbeat_sources + [reactor_lib, elle_lib, curly_lib] + udt_libs,
-    #     cxx_toolkit, heartbeat_config)
-
-    # oracles << heartbeat
-
-    oracles << oracle_source_copy
-    oracles << oracle_lib_copy
-
-    build << oracles
-
   # Install
   install = drake.Rule('install')
-  install << drake.copy(infinit_bin, prefix)
-  install << drake.copy(infinit_libs, prefix)
+  install << drake.install(infinit_bin, prefix)
+  install << drake.install(infinit_libs, prefix)
 
   # Tests
   tests_cxx_config = drake.cxx.Config(cxx_config)
@@ -1390,13 +1242,13 @@ def configure(cxx_toolkit = None,
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
     #('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
-    (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
-    (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
+    # (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
+    # (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
     (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib, curly_lib]),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib, frete_lib, station_lib, crash_lib]),
-    ('tests/unit/surface/gap/gap_metrics.cc', infinit_libs + [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, frete_lib, station_lib, metrics_lib, crash_lib]),
+#    ('tests/unit/surface/gap/gap_metrics.cc', infinit_libs + [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, frete_lib, station_lib, metrics_lib, crash_lib]),
     ('tests/unit/surface/gap/gap_state_destruction.cc', [gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib]),
-    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), infinit_libs + [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib, crash_lib]),
+#    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), infinit_libs + [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib, crash_lib]),
     #('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     #('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + infinit_libs),
     ('tests/unit/hole/slug.cc', infinit_libs),

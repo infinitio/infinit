@@ -1,0 +1,89 @@
+import drake
+import drake.templating
+
+meta = None
+trophonius = None
+
+build = None
+check = None
+install = None
+
+def configure(elle,
+              reactor,
+              papier_python,
+              boost = None,
+              python3 = None,
+              enable_python_bindings = True,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  global meta, trophonius
+  global build, check, install
+
+  for name in ('build', 'check', 'install'):
+    globals()[name] = drake.Rule(name)
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
+
+  local_cxx_config = drake.cxx.Config(cxx_config)
+  local_cxx_config += elle.config
+  local_cxx_config += reactor.config
+  local_cxx_config.add_local_include_path('src')
+
+  python = drake.nodes(
+    'src/infinit/__init__.py',
+    'src/infinit/oracles/__init__.py',
+    'src/infinit/oracles/transaction.py',
+    'src/infinit/oracles/notification.py',
+  )
+  python_built = drake.copy(python, 'lib/python', 'src')
+
+  with drake.templating.Context(sources = python_built,
+                                pythonpath = ('lib/python',)):
+    sources = drake.nodes(
+      'src/infinit/oracles/Transaction.cc.tmpl',
+      'src/infinit/oracles/Transaction.hh.tmpl',
+      'src/infinit/oracles/Transaction.hxx',
+    )
+
+  elle_lib = drake.copy(elle.lib_dynamic, 'lib', strip_prefix = True)
+
+  lib_cxx_config = drake.cxx.Config(local_cxx_config)
+  lib_cxx_config.lib_path_runtime('.')
+  lib = drake.cxx.DynLib('lib/transaction',
+                         sources + [elle_lib],
+                         cxx_toolkit,
+                         lib_cxx_config)
+
+  meta = drake.include('meta',
+                       elle = elle,
+                       reactor = reactor,
+                       papier_python = papier_python,
+                       python_common = python_built,
+                       transaction_lib = lib,
+                       python3 = python3,
+                       boost = boost,
+                       prefix = prefix,
+                       cxx_toolkit = cxx_toolkit,
+                       cxx_config = local_cxx_config)
+
+  trophonius = drake.include('trophonius',
+                             elle = elle,
+                             reactor = reactor,
+                             python_common = python_built,
+                             boost = boost,
+                             python3 = python3,
+                             enable_python_bindings = enable_python_bindings,
+                             transaction_lib = lib,
+                             prefix = prefix,
+                             meta_client = meta.client,
+                             cxx_toolkit = cxx_toolkit,
+                             cxx_config = local_cxx_config)
+
+  for name in ('build', 'check', 'install'):
+    for oracle in [meta, trophonius]:
+      globals()[name] << getattr(oracle, name)
+  build << lib
+  build << python_built

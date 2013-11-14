@@ -1,0 +1,165 @@
+import drake
+import sys
+
+build = None
+check = None
+install = None
+python = None
+
+with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
+  exec(f.read(), globals(), globals())
+
+def configure(elle,
+              python_common,
+              papier_python,
+              prefix = drake.Path('/usr/local'),
+              python_version = None):
+
+  global build, check, install
+  global python
+
+  if python_version is None:
+    python_version = drake.Version(*sys.version_info[0:2])
+
+  prefix = drake.Path(prefix)
+
+  ## ------- ##
+  ## Version ##
+  ## ------- ##
+
+  git = drake.git.Git()
+  class PythonVersionGenerator(VersionGenerator):
+    def _variable(self, name, value):
+      return '%s = %s' % (name, repr(value))
+  version = drake.node('lib/python/infinit/oracles/meta/version.py')
+  PythonVersionGenerator(version, git = git)
+
+  ## ------- ##
+  ## Sources ##
+  ## ------- ##
+
+  sources = drake.nodes(
+    # Those ones comes from the common python package.
+    #'src/infinit/__init__.py',
+    #'src/infinit/oracles/__init__.py',
+    'src/infinit/oracles/meta/__init__.py',
+    'src/infinit/oracles/meta/plugins/__init__.py',
+    'src/infinit/oracles/meta/plugins/failure.py',
+    'src/infinit/oracles/meta/plugins/jsongo.py',
+    'src/infinit/oracles/meta/plugins/session.py',
+    'src/infinit/oracles/meta/apertus.py',
+    'src/infinit/oracles/meta/conf.py',
+    'src/infinit/oracles/meta/device.py',
+    'src/infinit/oracles/meta/error.py',
+    'src/infinit/oracles/meta/invitation.py',
+    'src/infinit/oracles/meta/mail.py',
+    'src/infinit/oracles/meta/notifier.py',
+    'src/infinit/oracles/meta/regexp.py',
+    'src/infinit/oracles/meta/root.py',
+    'src/infinit/oracles/meta/user.py',
+    'src/infinit/oracles/meta/transaction.py',
+    'src/infinit/oracles/meta/transaction_status.py',
+    'src/infinit/oracles/meta/trophonius.py',
+    'src/infinit/oracles/meta/utils.py',
+    'src/infinit/oracles/meta/wsgi.py',
+    'src/infinit/oracles/meta/place_holder_avatar.png',
+    'src/infinit/oracles/meta/infinit.auth',
+  )
+
+  ## ----- ##
+  ## Build ##
+  ## ----- ##
+
+  build = drake.Rule('build')
+  build_python_path = drake.Path('lib/python')
+
+  elle_python = drake.copy(elle.python, '.', '../../../elle/elle')
+  papier_python = drake.copy(papier_python, build_python_path,
+                             strip_prefix = True)
+  build << papier_python
+  python = [version]
+  sources_built = drake.copy(sources, build_python_path, 'src')
+  for source in sources_built:
+    source.dependencies_add(elle_python)
+    source.dependency_add(papier_python)
+  python += sources_built
+  bottle = drake.nodes('../../bottle/bottle.py')
+  python += drake.copy(bottle, build_python_path,
+                            '../../bottle')
+  python += drake.copy(python_common, '.', '../..')
+  build << python
+  build_binary = drake.copy(drake.node('meta'), 'bin')
+  build << build_binary
+
+  ## ------- ##
+  ## Install ##
+  ## ------- ##
+
+  install_python_path = \
+    prefix / ('lib/python%s/site-packages' % python_version)
+  install = drake.Rule('install')
+  install << drake.install(python + [papier_python], prefix)
+  install << drake.install(build_binary, prefix)
+
+  ## ----- ##
+  ## Check ##
+  ## ----- ##
+
+  check = drake.TestSuite('check')
+
+  for name in (
+    'apertus/connection',
+    'apertus/transactions',
+    'bad-session',
+    'devices/creation',
+    'devices/deletion',
+    'devices/search',
+    'devices/update',
+    'root/genocide',
+    'root/lost-password',
+    'root/user-report',
+    'routes',
+    'status',
+    'transactions/transaction',
+    'transactions/connect-device',
+    'transactions/transaction_search',
+    'transactions/transaction_update',
+    'trophonius/connection',
+    'trophonius/notifications',
+    'users/favorite-unfavorite',
+    'users/get_avatar',
+    'users/invite_as_user',
+    'users/login-failure',
+    'users/login-logout',
+    'users/login-success',
+    'users/login-with-existing-device',
+    'users/same-device',
+    'users/register',
+    'users/session-cleanup',
+    'users/sessions',
+    'users/set_avatar',
+    'users/swaggers',
+    'users/user-search',
+    'users/web-session',
+    'web/edit',
+    'web/login',
+    'web/register',
+    'web/invitation',
+    ):
+    test = drake.node('tests/%s' % name)
+    test.dependency_add(drake.node('tests/utils.py'))
+    for source in python:
+      test.dependency_add(source)
+
+    import os
+    pythonpath = [
+      drake.path_source('tests'),
+      drake.path_build('lib/python'),
+    ]
+    env = {
+      'PYTHONPATH': ':'.join(map(str, pythonpath)),
+      'PATH': os.environ['PATH']
+    }
+
+    runner = drake.Runner(test, env = env)
+    check << runner.status

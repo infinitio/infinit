@@ -3,6 +3,8 @@
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
 
+#include <infinit/oracles/meta/Client.hh>
+
 #include <common/common.hh>
 
 #include <lune/Lune.hh>
@@ -18,8 +20,6 @@
 #include <CrashReporter.hh>
 
 #include <reactor/scheduler.hh>
-
-#include <plasma/meta/Client.hh>
 
 #include <boost/filesystem.hpp>
 #include <boost/range/join.hpp>
@@ -256,54 +256,6 @@ extern "C"
   }
 
   gap_Status
-  gap_token(gap_State* state,
-            char** usertoken)
-  {
-    auto ret = run<std::string>(
-      state,
-      "token",
-      [&] (surface::gap::State& state) -> std::string
-      {
-        return state.meta().token();
-      });
-
-    if (ret.status() != gap_ok)
-      return ret;
-
-    char* new_token = strdup(ret.value().c_str());
-    if (new_token != nullptr)
-    {
-      *usertoken = new_token;
-    }
-
-    return ret;
-  }
-
-  gap_Status
-  gap_generation_key(gap_State* state,
-                     char** usertoken)
-  {
-    auto ret = run<std::string>(
-      state,
-      "token",
-      [&] (surface::gap::State& state) -> std::string
-      {
-        return state.token_generation_key();
-      });
-
-    if (ret.status() != gap_ok)
-      return ret;
-
-    char* new_token = strdup(ret.value().c_str());
-    if (new_token != nullptr)
-    {
-      *usertoken = new_token;
-    }
-
-    return ret;
-  }
-
-  gap_Status
   gap_register(gap_State* state,
                char const* fullname,
                char const* email,
@@ -318,18 +270,6 @@ extern "C"
                                  state.register_(fullname, email, password, activation_code);
                                  return gap_ok;
                                });
-
-    if (ret.status() == gap_ok && device_name != nullptr)
-    {
-      ret = run<gap_Status>(state,
-                            "device",
-                            [&] (surface::gap::State& state) -> gap_Status
-                            {
-                              state.device();
-                              return gap_ok;
-                            });
-
-    }
     return ret;
   }
 
@@ -351,7 +291,7 @@ extern "C"
       else
         ret = gap_internal_error;
     }
-    catch (plasma::meta::Exception const& err)
+    catch (oracles::meta::Exception const& err)
     {
       ELLE_ERR("poll error: %s", err.what());
       ret = (gap_Status) err.err;
@@ -393,24 +333,12 @@ extern "C"
                            "set device name",
                            [&] (surface::gap::State& state) -> gap_Status
                            {
-                             // state.update_device(name);
+                             state.update_device(name);
                              return gap_ok;
                            });
   }
 
   /// - Self ----------------------------------------------------------------
-  char const*
-  gap_user_token(gap_State* state)
-  {
-    return run<char const*>(state,
-                            "self token",
-                            [&] (surface::gap::State& state) -> char const*
-                            {
-                              auto token = state.meta().token();
-                              return token.c_str();
-                            });
-  }
-
   char const*
   gap_self_email(gap_State* state)
   {
@@ -468,6 +396,26 @@ extern "C"
       return nullptr;
 
     return vector_to_pointer(ret.value());
+  }
+
+  /// Publish avatar to meta.
+  gap_Status
+  gap_update_avatar(gap_State* state,
+                    void const* data,
+                    size_t size)
+  {
+    assert(data != nullptr);
+
+    elle::Buffer picture(data, size);
+
+    return run<gap_Status>(
+      state,
+      "update avatar",
+      [&] (surface::gap::State& state)
+      {
+        state.set_avatar(picture);
+        return gap_ok;
+      });
   }
 
   /// - User ----------------------------------------------------------------
@@ -531,34 +479,6 @@ extern "C"
                             });
   }
 
-
-  gap_Status
-  gap_user_icon(gap_State* state,
-                uint32_t id,
-                void** data,
-                size_t* size)
-  {
-    assert(id != surface::gap::null_id);
-    *data = nullptr;
-    *size = 0;
-    return run<gap_Status>(state,
-                           "user icon",
-                            [&] (surface::gap::State& state) -> gap_Status
-                            {
-                              auto pair = state.icon(id).release();
-                              *data = pair.first.release();
-                              *size = pair.second;
-                              return gap_ok;
-                            });
-   return gap_ok;
-  }
-
-  void
-  gap_user_icon_free(void* data)
-  {
-    free(data);
-  }
-
   char const*
   gap_user_avatar_url(gap_State* state,
                       uint32_t user_id)
@@ -587,6 +507,28 @@ extern "C"
   gap_free_user_avatar_url(char const* str)
   {
     free((void*) str);
+  }
+
+  gap_Status
+  gap_avatar(gap_State* state,
+             uint32_t user_id,
+             void** data,
+             size_t* size)
+  {
+    assert(user_id != surface::gap::null_id);
+
+    return run<gap_Status>(
+      state,
+      "user avatar url",
+      [&] (surface::gap::State& state) -> gap_Status
+      {
+        auto res = state.user_icon(state.user(user_id).id);
+
+        *data = (void*) res.contents();
+        *size = res.size();
+
+        return gap_ok;
+      });
   }
 
   uint32_t
@@ -788,6 +730,27 @@ extern "C"
       [&] (surface::gap::State& state) -> gap_Status
       {
         state.attach_callback<surface::gap::State::UserStatusNotification>(cpp_cb);
+        return gap_ok;
+      });
+  }
+
+  gap_Status
+  gap_avatar_available_callback(gap_State* state,
+                                gap_avatar_available_callback_t cb)
+  {
+    auto cpp_cb = [cb] (
+      surface::gap::State::AvatarAvailableNotification const& notif)
+    {
+      cb(notif.id);
+    };
+
+    return run<gap_Status>(
+      state,
+      "avatar available callback",
+      [&] (surface::gap::State& state) -> gap_Status
+      {
+        state.attach_callback<surface::gap::State::AvatarAvailableNotification>(
+          cpp_cb);
         return gap_ok;
       });
   }
@@ -1225,47 +1188,6 @@ extern "C"
     return ret.value().c_str();
   }
 
-  static
-  std::string
-  read_file(std::string const& filename)
-  {
-    std::stringstream file_content;
-
-    file_content <<  ">>> " << filename << std::endl;
-
-    std::ifstream f(filename);
-    std::string line;
-    while (f.good() && !std::getline(f, line).eof())
-      file_content << line << std::endl;
-    file_content << "<<< " << filename << std::endl;
-    return file_content.str();
-  }
-
-  void
-  gap_send_file_crash_report(char const* module,
-                             char const* filename)
-  {
-    try
-    {
-      std::string file_content;
-      if (filename != nullptr)
-        file_content = read_file(filename);
-      else
-        file_content = "<<< No file was specified!";
-
-      elle::crash::report(common::meta::host(),
-                          common::meta::port(),
-                          (module != nullptr ? module : "(nil)"),
-                          "Crash",
-                          elle::Backtrace::current(),
-                          file_content);
-    }
-    catch (...)
-    {
-      ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
-    }
-  }
-
   gap_Status
   gap_send_user_report(char const* _user_name,
                        char const* _message,
@@ -1316,11 +1238,11 @@ extern "C"
         ELLE_WARN("no file to send");
       }
       elle::crash::user_report(common::meta::host(),   // meta host
-                               common::meta::port(), // meta port
-                               user_name,            // user name
-                               os_description,       // OS description
-                               user_message,         // user message
-                               b64);                 // file
+                               common::meta::port(),   // meta port
+                               user_name,              // user name
+                               os_description,         // OS description
+                               user_message,           // user message
+                               b64);                   // file
     }
     catch (...)
     {
@@ -1391,81 +1313,6 @@ extern "C"
     {
       ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
       return gap_api_error;
-    }
-#endif
-    return gap_ok;
-  }
-
-  gap_Status
-  gap_gather_crash_reports(char const* _user_id,
-                           char const* _network_id)
-  {
-#ifndef INFINIT_WINDOWS
-    try
-    {
-      namespace fs = boost::filesystem;
-      std::string const user_id{_user_id,
-                                _user_id + strlen(_user_id)};
-      std::string const network_id{_network_id,
-                                   _network_id + strlen(_network_id)};
-
-      std::string const user_dir = common::infinit::user_directory(user_id);
-      std::string const network_dir =
-        common::infinit::network_directory(user_id, network_id);
-
-      fs::directory_iterator ndir;
-      fs::directory_iterator udir;
-      try
-      {
-        udir = fs::directory_iterator{user_dir};
-        ndir = fs::directory_iterator{network_dir};
-      }
-      catch (fs::filesystem_error const& e)
-      {
-        return gap_Status::gap_file_not_found;
-      }
-
-      boost::iterator_range<fs::directory_iterator> user_range{
-        udir, fs::directory_iterator{}};
-      boost::iterator_range<fs::directory_iterator> network_range{
-        ndir, fs::directory_iterator{}};
-
-      std::vector<fs::path> logs;
-      for (auto const& dir_ent: boost::join(user_range, network_range))
-      {
-        auto const& path = dir_ent.path();
-
-        if (path.extension() == ".log")
-          logs.push_back(path);
-
-      }
-      std::string filename = elle::sprintf("/tmp/infinit-%s-%s",
-                                           user_id, network_id);
-      std::list<std::string> args{"cjf", filename};
-      for (auto const& log: logs)
-        args.push_back(log.string());
-
-      elle::system::Process tar{"tar", args};
-      tar.wait();
-#if defined(INFINIT_LINUX)
-      std::string b64 = elle::system::check_output("base64", "-w0", filename);
-#else
-      std::string b64 = elle::system::check_output("base64", filename);
-#endif
-
-      auto title = elle::sprintf("Crash: Logs file for user: %s, network: %s",
-                                 user_id, network_id);
-      elle::crash::report(common::meta::host(),
-                          common::meta::port(),
-                          "Logs", title,
-                          elle::Backtrace::current(),
-                          "Logs attached",
-                          b64);
-    }
-    catch (...)
-    {
-      ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
-      return gap_error;
     }
 #endif
     return gap_ok;

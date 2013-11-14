@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+
+from utils import HTTPException, Meta, User
+
+with Meta() as meta:
+  alice = User(meta, 'alice@provider.com')
+  bob = User(meta, 'bob@provider.com')
+  charles = User(meta, 'charles@provider.com')
+  alice.login();
+  res = alice.post('user/search', {'text': 'al'})
+  assert res['users'] == [alice.id]
+  res = alice.post('user/search', {'text': 'dick'})
+  assert res['users'] == []
+  alice.logout()

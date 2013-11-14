@@ -311,6 +311,13 @@ namespace common
         networks_directory(user_id), network_id + ".log");
     }
 
+    /// Returns the path of the file containing the computer device uuid.
+    std::string
+    device_id_path()
+    {
+      return path::join(home(), "device.uuid");
+    }
+
     std::string
     portal_path(std::string const& user_id,
                 std::string const& network_id)
@@ -642,8 +649,9 @@ namespace common
         "infinit",
         elle::os::getenv("INFINIT_METRICS_HOST",
                          COMMON_METRICS_HOST),
-        std::stoi(elle::os::getenv("INFINIT_METRICS_PORT",
-                                   std::to_string(COMMON_METRICS_PORT))),
+        uint16_t(
+          std::stoi(elle::os::getenv("INFINIT_METRICS_PORT",
+                                     std::to_string(COMMON_METRICS_PORT)))),
         path::join(common::infinit::home(), "im.id"),
         elle::os::getenv("INFINIT_METRICS_INFINIT_TID",
                          COMMON_METRICS_INFINIT_TID),

@@ -129,11 +129,11 @@ namespace surface
 
       // History.
       {
-        static std::vector<plasma::TransactionStatus> final{
-          plasma::TransactionStatus::rejected,
-            plasma::TransactionStatus::finished,
-            plasma::TransactionStatus::canceled,
-            plasma::TransactionStatus::failed};
+        static std::vector<infinit::oracles::Transaction::Status> final{
+          infinit::oracles::Transaction::Status::rejected,
+            infinit::oracles::Transaction::Status::finished,
+            infinit::oracles::Transaction::Status::canceled,
+            infinit::oracles::Transaction::Status::failed};
 
         std::list<std::string> transactions_ids{
           std::move(this->meta().transactions(final, true, 100).transactions)};
@@ -158,7 +158,7 @@ namespace surface
             continue;
           }
 
-          plasma::Transaction transaction{this->meta().transaction(id)};
+          infinit::oracles::Transaction transaction{this->meta().transaction(id)};
 
           this->user(transaction.sender_id);
           this->user(transaction.recipient_id);
@@ -184,7 +184,7 @@ namespace surface
     }
 
     void
-    State::_on_transaction_update(plasma::Transaction const& notif)
+    State::_on_transaction_update(infinit::oracles::Transaction const& notif)
     {
       ELLE_TRACE_SCOPE("%s: transaction notification", *this);
 
@@ -204,11 +204,13 @@ namespace surface
 
       if (it == std::end(this->_transactions))
       {
+        ELLE_TRACE("%s: notification received for unknown transaction: %s",
+                   *this, notif.id);
         for (auto const& tr: this->transactions())
         {
           ELLE_DEBUG("-- %s: %s", tr.first, tr.second);
         }
-        plasma::Transaction data = notif;
+        infinit::oracles::Transaction data = notif;
         auto id = generate_id();
         this->_transactions.emplace(
           std::piecewise_construct,
@@ -223,7 +225,7 @@ namespace surface
 
     void
     State::_on_peer_connection_update(
-      plasma::trophonius::PeerConnectionUpdateNotification const& notif)
+      infinit::oracles::trophonius::PeerConnectionUpdateNotification const& notif)
     {
       ELLE_TRACE_SCOPE("%s: peer connection notification", *this);
 

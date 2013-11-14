@@ -36,7 +36,7 @@ namespace surface
 
       virtual
       void
-      transaction_status_update(plasma::TransactionStatus status) override;
+      transaction_status_update(infinit::oracles::Transaction::Status status) override;
 
     public:
       void

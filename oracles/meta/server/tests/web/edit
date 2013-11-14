@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from infinit.oracles.meta import error
+
+with Meta() as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+
+  query = {
+    'email': email,
+    'password': 'o' * 64,
+    'fullname': fullname
+  }
+
+
+
+  res = meta.post('user/register', query)
+  assert res['success']
+
+  query.pop('fullname')
+  res = meta.post('web-login', query)
+  assert res['success']
+
+  _self = meta.get('user/self')
+  assert _self['success']
+
+  assert _self['fullname'] == fullname
+  res = meta.post('user/edit', {'fullname': 'jean-louis',
+                                'handle': 'gossbo du 39'})
+  assert res['success']
+
+  res = meta.get('user/self')
+  assert res['success']
+  assert res['fullname'] == 'jean-louis'
+  assert res['handle'] == 'gossbo_du_39'
+
+  assert _self['fullname'] == fullname
+  res = meta.post('user/edit', {'fullname': 'jean-louis',
+                                'handle': 'gb'})
+  assert not res['success']
+  assert res['error_code'] == error.OPERATION_NOT_PERMITTED[0]
+
+  res = meta.post('logout')
+  assert res['success']
+
+  query2 = {
+    'email': '0' + email,
+    'password': 'o' * 64,
+    'fullname': fullname
+  }
+
+  # Create a user to 'lock' an handle.
+  user2 = meta.post('user/register', query2)
+  assert user2['success']
+  query2.pop("fullname")
+  res = meta.post('web-login', query2)
+  assert res['success']
+  user2['handle'] = meta.get('user/self')['handle']
+  meta.post('logout')
+  assert res['success']
+
+  res = meta.post('web-login', query)
+  assert res['success']
+
+  res = meta.post('user/edit', {'fullname': 'jean-louis',
+                                'handle': user2['handle']})
+  assert not res['success']
+  assert res['error_code'] == error.HANDLE_ALREADY_REGISTRED[0]

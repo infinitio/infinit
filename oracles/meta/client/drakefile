@@ -1,0 +1,110 @@
+import drake
+import drake.cxx
+import drake.cxx.boost
+
+build = None
+check = None
+install = None
+config = None
+lib = None
+
+def configure(elle,
+              reactor,
+              transaction_lib,
+              server_python,
+              boost = None,
+              python3 = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  global build, check, install, config, lib
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
+
+  local_cxx_config = drake.cxx.Config(cxx_config)
+  local_cxx_config += elle.config
+  local_cxx_config += reactor.config
+  local_cxx_config.add_local_include_path('src')
+
+  build = drake.Rule('build')
+  install = drake.Rule('install')
+
+  template_context = drake.templating.Context(
+    sources = server_python,
+    pythonpath = ('../server/lib/python',))
+
+  ## ------- ##
+  ## Library ##
+  ## ------- ##
+
+  with template_context:
+    sources = drake.nodes(
+      'src/infinit/oracles/meta/Client.cc.tmpl',
+      'src/infinit/oracles/meta/Client.hh.tmpl',
+      'src/infinit/oracles/meta/Client.hxx',
+      'src/infinit/oracles/meta/Admin.cc',
+      'src/infinit/oracles/meta/Admin.hh',
+    )
+
+  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
+                        strip_prefix = True)
+  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+                           strip_prefix = True)
+  transaction_lib = drake.copy(transaction_lib, 'lib',
+                               strip_prefix = True)
+
+  lib_cxx_config = drake.cxx.Config(local_cxx_config)
+  lib_cxx_config.lib_path_runtime('../lib')
+  lib = drake.cxx.DynLib('lib/metaclient',
+                         sources + [reactor_lib, elle_lib, transaction_lib],
+                         cxx_toolkit,
+                         lib_cxx_config)
+
+  config = lib_cxx_config
+
+  build << lib
+
+  ## ------ ##
+  ## Python ##
+  ## ------ ##
+
+  if python3 is not None:
+    with template_context:
+      python_sources = drake.nodes(
+        'src/infinit/oracles/meta/python.cc.tmpl',
+      )
+
+    meta_python_cxx_config = drake.cxx.Config(local_cxx_config)
+    meta_python_cxx_config += python3
+    meta_python_cxx_config += boost.config_python()
+    meta_python_cxx_config.lib_path_runtime('..')
+    meta_python = drake.cxx.Module(
+      'lib/python/infinit/oracles/meta/client',
+      python_sources + [lib],
+      cxx_toolkit,
+      meta_python_cxx_config)
+    build << meta_python
+
+  ## ----- ##
+  ## Check ##
+  ## ----- ##
+
+  check = drake.TestSuite('check')
+
+  test_sources = drake.nodes(
+    'tests/meta_client.cc',
+  )
+
+  tests_cxx_config = drake.cxx.Config(local_cxx_config)
+  tests_cxx_config += boost.config_test()
+  tests_cxx_config.lib_path_runtime('../lib')
+
+  test_bin = drake.cxx.Executable('tests/meta_client',
+                                  test_sources + [lib, reactor_lib, elle_lib],
+                                  cxx_toolkit,
+                                  tests_cxx_config)
+
+  runner = drake.Runner(test_bin)
+  check << runner.status

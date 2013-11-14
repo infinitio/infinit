@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+from utils import Meta, Client
+from uuid import uuid4
+
+with Meta() as meta:
+  password = meta.create_user('foo@bar.baz')
+  user = {
+    'email': 'foo@bar.baz',
+    'password': password,
+    'device_id': str(uuid4()),
+  }
+
+  # Login a client.
+  client = Client(meta)
+  assert meta.database.sessions.count() == 0
+  res = client.post('login', user)
+  assert res['success']
+  res = client.get('user/self')
+  assert res['success']
+  assert meta.database.sessions.count() == 1
+
+  # Login another client and check the previosu session is dropped.
+  client = Client(meta)
+  res = client.post('login', user)
+  assert res['success']
+  res = client.get('user/self')
+  assert res['success']
+  print(meta.database.sessions.count())
+  assert meta.database.sessions.count() == 1
+
+  # Login again and check the session wasn't dropped.
+  res = client.post('login', user)
+  assert res['success']
+  res = client.get('user/self')
+  assert res['success']
+  assert meta.database.sessions.count() == 1
+
+  # Logout and check the session is dropped.
+  res = client.post('logout')
+  assert res['success']
+  assert meta.database.sessions.count() == 0

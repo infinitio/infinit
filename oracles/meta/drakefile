@@ -1,0 +1,47 @@
+import drake
+import drake.cxx
+import drake.cxx.boost
+
+client = None
+server = None
+
+build = None
+check = None
+install = None
+
+def configure(elle,
+              reactor,
+              papier_python,
+              python_common,
+              transaction_lib,
+              boost = None,
+              python3 = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  global client, server
+  global build, check, install
+
+  server = drake.include('server',
+                         elle = elle,
+                         python_common = python_common,
+                         papier_python = papier_python,
+                         prefix = prefix,
+                         python_version = 3)
+
+  client = drake.include('client',
+                         elle = elle,
+                         reactor = reactor,
+                         python3 = python3,
+                         transaction_lib = transaction_lib,
+                         server_python = server.python,
+                         boost = boost,
+                         prefix = prefix,
+                         cxx_toolkit = cxx_toolkit,
+                         cxx_config = cxx_config)
+
+  for name in ('build', 'check', 'install'):
+    globals()[name] = drake.Rule(name)
+    globals()[name] << getattr(client, name)
+    globals()[name] << getattr(server, name)

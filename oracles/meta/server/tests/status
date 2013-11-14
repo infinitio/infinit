@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+
+from utils import Meta
+
+with Meta() as meta:
+  assert meta.get('status') == {"status": "ok", "success": True}

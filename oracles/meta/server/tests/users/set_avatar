@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+import os
+
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  bob = User(meta, 'bob@infinit.io')
+
+  alice.login()
+  assert alice.avatar == bob.avatar
+  with open('%s/avatar.jpg' % os.path.dirname(__file__), 'rb') as f:
+    alice.post('user/avatar', body = f.read())
+  assert alice.avatar != bob.avatar

@@ -1,0 +1,22 @@
+#!/usr/bin/python3
+
+from utils import Meta, Client, User
+
+with Meta() as meta:
+  u1 = User(meta, 'jeanlouis@infinit.io')
+  u2 = User(meta, 'pascal@infinit.io')
+
+  res = meta.post('user/add_swagger',
+                  {'user1': u1.id,
+                   'user2': u2.id,
+                   'admin_token': 'admintoken'})
+  assert res['success']
+
+  u1.login()
+  u2.login()
+
+  assert len(u1.swaggers) == 1
+  assert len(u2.swaggers) == 1
+
+  assert u1.id in u2.swaggers
+  assert u2.id in u1.swaggers

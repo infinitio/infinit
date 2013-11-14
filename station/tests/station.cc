@@ -222,10 +222,10 @@ BOOST_AUTO_TEST_CASE(double_connection)
       BOOST_CHECK(!station2.host_available());
       char buf[4];
       buf[3] = 0;
-      host1->socket().write("one");
+      host1->socket().write(elle::ConstWeakBuffer("one"));
       host2->socket().read(reactor::network::Buffer(buf, 3));
       BOOST_CHECK_EQUAL(buf, "one");
-      host2->socket().write("two");
+      host2->socket().write(elle::ConstWeakBuffer("two"));
       host1->socket().read(reactor::network::Buffer(buf, 3));
       BOOST_CHECK_EQUAL(buf, "two");
     });

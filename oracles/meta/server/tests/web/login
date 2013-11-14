@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from infinit.oracles.meta import error
+
+with Meta() as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+
+  query = {
+    'email': email,
+    'password': 'o' * 64,
+    'fullname': 'jeanlouis',
+  }
+
+  res = meta.post("user/register", query)
+  assert res['success']
+
+  query.pop('fullname')
+  res = meta.post("web-login", query)
+  assert res['success']
+
+  query['password'] = 'i' * 64
+  res = meta.post("web-login", query)
+  assert not res['success']
+  assert res['error_code'] == error.EMAIL_PASSWORD_DONT_MATCH[0]
