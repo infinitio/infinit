@@ -87,15 +87,28 @@ int main(int argc, char** argv)
 
     reactor::Scheduler sched;
 
+    std::unique_ptr<oracles::apertus::Apertus> ap;
+
     reactor::Thread main(sched, "main", [&]
       {
-        oracles::apertus::Apertus ap(
-          sched,
-          meta_host,
-          meta_port,
-          "0.0.0.0",
-          port);
-        ap.run();
+        ap.reset(new oracles::apertus::Apertus(
+          sched, meta_host, meta_port, "0.0.0.0", port));
+
+        ap->reg();
+
+        main.wait(*ap);
+        ap.reset();
+      });
+
+    sched.signal_handle(
+      SIGINT,
+      [&]
+      {
+        if (ap)
+        {
+          ap->unreg();
+          ap->stop();
+        }
       });
 
     sched.run();

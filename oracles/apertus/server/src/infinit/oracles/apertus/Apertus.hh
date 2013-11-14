@@ -4,6 +4,9 @@
 # include <string>
 
 # include <boost/uuid/uuid.hpp>
+# include <boost/uuid/random_generator.hpp>
+
+# include <reactor/waitable.hh>
 
 # include <reactor/network/buffer.hh>
 # include <reactor/network/tcp-server.hh>
@@ -15,7 +18,8 @@ namespace oracles
 {
   namespace apertus
   {
-    class Apertus
+    class Apertus :
+      public reactor::Waitable
     {
     public:
       Apertus(reactor::Scheduler& sched,
@@ -24,7 +28,13 @@ namespace oracles
       ~Apertus();
 
       void
-      run();
+      reg();
+
+      void
+      unreg();
+
+      void
+      stop();
 
       std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&
       get_clients();
@@ -34,8 +44,12 @@ namespace oracles
       _connect(reactor::network::TCPSocket* client1,
                reactor::network::TCPSocket* client2);
 
+      void
+      _run();
+
     private:
       reactor::Scheduler& _sched;
+      reactor::Thread _accepter;
 
     private:
       infinit::oracles::meta::Admin* _meta;

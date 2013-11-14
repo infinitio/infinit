@@ -8,34 +8,44 @@ namespace oracles
     Apertus::Apertus(reactor::Scheduler& sched,
                      std::string mhost, int mport,
                      std::string host, int port):
+      Waitable("apertus"),
       _sched(sched),
+      _accepter(sched,
+                "apertus_accepter",
+                std::bind(&Apertus::_run, std::ref(*this))),
       _meta(nullptr),
-      _uuid(),
+      _uuid(boost::uuids::random_generator()()),
       _host(host),
       _port(port)
     {
-      // Allow the server not to connect to meta if using meta port 0.
-      // Useful for tests purposes.
       if (mport != 0)
-      {
         _meta = new infinit::oracles::meta::Admin(mhost, mport);
-        _meta->register_apertus(_uuid, port);
-      }
     }
 
     Apertus::~Apertus()
     {
-      // Allow the server not to connect to meta if using meta port 0.
-      // Useful for tests purposes.
+      _accepter.terminate_now();
+
       if (_meta != nullptr)
-      {
-        _meta->unregister_apertus(_uuid);
         delete _meta;
-      }
     }
 
     void
-    Apertus::run()
+    Apertus::reg()
+    {
+      if (_meta != nullptr)
+        _meta->register_apertus(_uuid, _port);
+    }
+
+    void
+    Apertus::unreg()
+    {
+      if (_meta != nullptr)
+        _meta->unregister_apertus(_uuid);
+    }
+
+    void
+    Apertus::_run()
     {
       reactor::network::TCPServer serv(_sched);
       serv.listen(_port);
@@ -67,6 +77,12 @@ namespace oracles
       reactor::network::TCPSocket* client = nullptr;
       while ((client = serv.accept()) != nullptr)
         new reactor::Thread(_sched, "handler", std::bind(handle, client));
+    }
+
+    void
+    Apertus::stop()
+    {
+      this->_signal();
     }
 
     std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&
