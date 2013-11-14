@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+import bottle
 import time
 
 import elle.log
@@ -189,6 +190,8 @@ class Mixin:
 
     return self.success()
 
+  # XXX: Accept 15M body as JSON
+  bottle.Request.MEMFILE_MAX = 15 * 1024 * 1024
   @api('/debug/report/<type>', method = 'POST')
   def user_report(self,
                   type: str,
