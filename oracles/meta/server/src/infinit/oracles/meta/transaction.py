@@ -293,7 +293,7 @@ class Mixin:
       if user is None:
         user = self.user
       if user is None:
-        self.fail(error.UNKNOWN_USER)
+        raise error.Error(error.UNKNOWN_USER)
       transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
       elle.log.debug("transaction: %s" % transaction)
       is_sender = self.is_sender(transaction, user['_id'])

@@ -3,7 +3,7 @@
 import time
 
 import elle.log
-from . import conf, mail, error, notifier
+from . import conf, mail, error, notifier, transaction_status
 from .utils import api, require_admin, hash_pasword
 import infinit.oracles.meta.version
 
@@ -99,20 +99,23 @@ class Mixin:
       self.fail(*e.args)
 
     # Cancel all the current transactions.
-    for transaction_id in self.database.transactions.find(
+    for transaction in self.database.transactions.find(
       {
           "$or": [
             {"sender_id": user['_id']},
             {"recipient_id": user['_id']}
           ]
-        },
-        fields = ['_id']):
+      },
+      fields = ['_id']):
       try:
-        self._transaction_update(transaction_id, transaction.CANCELED, user)
+        self._transaction_update(str(transaction['_id']),
+                                 status = transaction_status.CANCELED,
+                                 user = user)
       except error.Error as e:
         elle.log.warn("%s" % e.args)
         continue
         # self.fail(error.UNKNOWN)
+
     # Remove all the devices from the user because they are based on his old
     # public key.
     # XXX: All the sessions must be cleaned too.
