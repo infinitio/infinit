@@ -8,7 +8,7 @@ import unicodedata
 
 import elle.log
 from .utils import api, require_logged_in
-from . import regexp, error, transaction_status, notifier
+from . import regexp, error, transaction_status, notifier, invitation
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
@@ -80,10 +80,11 @@ class Mixin:
       # XXX: search email in each accounts.
       recipient = self.database.users.find_one({'email': id_or_email})
       # if the user doesn't exist, create a ghost and invite.
+
       if not recipient:
         new_user = True
-        recipient = self._register(
-          _id = recipient_id,
+        recipient_id = self._register(
+          _id = self.database.users.save({}),
           email = invitee_email,
           fullname = invitee_email[0:invitee_email.index('@')],
           register_status = 'ghost',
@@ -91,15 +92,17 @@ class Mixin:
           networks = [],
           swaggers = {},
           accounts=[{'type':'email', 'id':invitee_email}]
-          )
+        )
+        recipient = self.database.users.find_one(recipient_id)
     else:
       try:
         recipient_id = bson.ObjectId(id_or_email)
       except Exception as e:
         return self.fail(error.USER_ID_NOT_VALID)
       recipient = self.database.users.find_one(recipient_id)
-      if recipient is None:
-        return self.fail(error.USER_ID_NOT_VALID)
+
+    if recipient is None:
+      return self.fail(error.USER_ID_NOT_VALID)
 
     _id = user['_id']
 
@@ -148,12 +151,10 @@ class Mixin:
         invitation.invite_user(
           invitee_email,
           mailer = self.mailer,
-          source = user['_id'],
           mail_template = 'send-file',
-          reply_to = user['email'],
+          source = (user['fullname'], user['email']),
           filename = files[0],
           sendername = user['fullname'],
-          user_id = str(user['_id']),
           database = self.database
         )
 
