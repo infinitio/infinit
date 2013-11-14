@@ -1,10 +1,12 @@
 #include <infinit/oracles/trophonius/server/Client.hh>
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 
 #include <elle/Exception.hh>
 #include <elle/log.hh>
+#include <elle/log/SysLogger.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -26,8 +28,11 @@ parse_options(int argc, char** argv)
     ("ping-period,i", value<int>(),
      "specify the ping period in seconds (default 30)")
     ("port,p", value<int>(), "specify the port to listen on")
-    ("meta_host,m", value<std::string>(), "specify the meta host to connect to")
-    ("meta_port,d", value<int>(), "specify the meta port to connect to")
+    ("meta,m", value<std::string>(),
+     "specify the meta host[:port] to connect to")
+    ("notifications-port,n", value<int>(),
+     "specify the port to listen on for notifications from meta")
+    ("syslog,s", "send logs to the system logger")
     ("version,v", "display version information and exit")
     ;
   variables_map vm;
@@ -55,6 +60,11 @@ parse_options(int argc, char** argv)
     std::cout << "Trophonius " INFINIT_VERSION << std::endl;
     exit(0); // FIXME
   }
+  if (vm.count("syslog"))
+  {
+    elle::log::logger(std::unique_ptr<elle::log::Logger>(
+                        new elle::log::SysLogger("trophonius")));
+  }
   return vm;
 }
 
@@ -62,6 +72,43 @@ int main(int argc, char** argv)
 {
   try
   {
+    auto options = parse_options(argc, argv);
+
+    if (!options.count("meta"))
+      throw std::runtime_error("meta argument is mandatory");
+
+    std::string meta_host = "";
+    int meta_port = 80;
+
+    {
+      std::string meta = options["meta"].as<std::string>();
+      std::vector<std::string> result;
+      boost::split(result, meta, boost::is_any_of(":"));
+      if (result.size() > 2)
+        throw std::runtime_error("meta must be <host>(:<port>)");
+      else if (result.size() == 2)
+      {
+        meta_port = std::stoi(result[1]);
+        meta_host = result[0];
+      }
+      else
+        meta_host = meta;
+    }
+
+    if (meta_host.empty())
+      throw std::runtime_error("meta host is empty");
+
+    int port = 0;
+    int notifications_port = 0;
+    int ping = 30;
+
+    if (options.count("port"))
+      port = options["port"].as<int>();
+    if (options.count("notifications-port"))
+      notifications_port = options["notifications-port"].as<int>();
+    if (options.count("ping-period"))
+      ping = options["ping-period"].as<int>();
+
     reactor::Scheduler s;
     std::unique_ptr<Trophonius> trophonius;
 
@@ -69,31 +116,16 @@ int main(int argc, char** argv)
       s, "main",
       [&]
       {
-        auto options = parse_options(argc, argv);
-
-        if (!options.count("meta_host"))
-          throw std::runtime_error("meta_host argument is mandatory");
-        if (!options.count("meta_port"))
-          throw std::runtime_error("meta_port argument is mandatory");
-
-        std::string meta_host = options["meta_host"].as<std::string>();
-        int meta_port = options["meta_port"].as<int>();
-
-        int port = 0;
-        int ping = 30;
-
-        if (options.count("port"))
-          port = options["port"].as<int>();
-        if (options.count("ping-period"))
-          ping = options["ping-period"].as<int>();
-
         trophonius.reset(
           new Trophonius(
-            port, meta_host, meta_port, boost::posix_time::seconds(ping)));
+            port,
+            meta_host,
+            meta_port,
+            notifications_port,
+            boost::posix_time::seconds(ping)));
 
         // Wait for trophonius to be asked to finish.
         main.wait(*trophonius);
-
         trophonius.reset();
       });
 

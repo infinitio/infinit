@@ -1,8 +1,12 @@
+#include <boost/functional/hash.hpp>
+
 #include <elle/log.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/exception.hh>
 
-#include <infinit/oracles/trophonius/server/Client.hh>
+#include <infinit/oracles/trophonius/server/Meta.hh>
+#include <infinit/oracles/trophonius/server/User.hh>
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 
 #include <boost/uuid/random_generator.hpp>
@@ -18,17 +22,22 @@ namespace infinit
     {
       namespace server
       {
-        UnknownClient::UnknownClient(boost::uuids::uuid const& device_id):
-          elle::Exception(elle::sprintf("Unknown client: %s", device_id))
+        UnknownClient::UnknownClient(std::string const& user_id,
+                                     boost::uuids::uuid const& device_id):
+          elle::Exception(elle::sprintf("Unknown client: %s:%s",
+                                        user_id, device_id))
         {}
 
         Trophonius::Trophonius(
           int port,
           std::string const& meta_host,
           int meta_port,
+          int notifications_port,
+          boost::posix_time::time_duration const& user_ping_period,
           boost::posix_time::time_duration const& ping_period):
           Waitable("trophonius"),
           _server(),
+          _port(port),
           _notifications(),
           _accepter(
             *reactor::Scheduler::scheduler(),
@@ -40,13 +49,34 @@ namespace infinit
             std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
           _uuid(boost::uuids::random_generator()()),
           _meta(meta_host, meta_port),
-          _ping_period(ping_period)
+          _meta_pinger(
+            reactor::Scheduler::scheduler()->every(
+              [&]
+              {
+                this->_ready.wait();
+                try
+                {
+                  this->_meta.register_trophonius(
+                    this->_uuid, this->notification_port());
+                }
+                catch (elle::Exception const& e)
+                {
+                  ELLE_ERR("%s: unable to ping: %s", *this, e.what());
+                }
+              },
+              "pinger",
+              ping_period
+              )
+            ),
+          _ping_period(user_ping_period),
+          _remove_lock()
         {
           elle::SafeFinally kill_accepters{
             [&]
             {
               this->_accepter.terminate_now();
               this->_meta_accepter.terminate_now();
+              this->_meta_pinger->terminate_now();
               this->_signal();
             }
           };
@@ -54,7 +84,8 @@ namespace infinit
           try
           {
             this->_server.listen(this->_port);
-            ELLE_LOG("%s: listen on port %s (users)", *this, this->port());
+            this->_port = this->_server.port();
+            ELLE_LOG("%s: listen for users on port %s", *this, this->port());
           }
           catch (...)
           {
@@ -65,8 +96,8 @@ namespace infinit
 
           try
           {
-            this->_notifications.listen();
-            ELLE_LOG("%s: listen notification: %s",
+            this->_notifications.listen(notifications_port);
+            ELLE_LOG("%s: listen for meta on port %s",
                      *this, this->notification_port());
           }
           catch (...)
@@ -76,17 +107,10 @@ namespace infinit
             throw;
           }
 
-          try
-          {
+          ELLE_LOG("%s: register to meta", *this)
             this->_meta.register_trophonius(
               this->_uuid, this->notification_port());
-          }
-          catch (...)
-          {
-            ELLE_ERR("%s: unable to register to meta: %s",
-                     *this, elle::exception_string());
-            throw;
-          }
+          this->_ready.open();
 
           kill_accepters.abort();
         }
@@ -99,13 +123,49 @@ namespace infinit
 
         Trophonius::~Trophonius()
         {
-          ELLE_LOG("%s: terminate", *this);
           this->_accepter.terminate_now();
           this->_meta_accepter.terminate_now();
+          this->_meta_pinger->terminate_now();
+
+          while (!this->_users.empty())
+          {
+            // Remove the client from the set first or it will try to clean
+            // itself up.
+            auto it = this->_users.begin();
+            auto client = *it;
+            this->_users.erase(it);
+            client->terminate();
+            delete client;
+          }
+          while (!this->_users_pending.empty())
+          {
+            // Remove the client from the set first or it will try to clean
+            // itself up.
+            auto it = this->_users_pending.begin();
+            auto client = *it;
+            this->_users_pending.erase(it);
+            client->terminate();
+            delete client;
+          }
+          while (!this->_metas.empty())
+          {
+            // Remove the client from the set first or it will try to clean
+            // itself up.
+            auto it = this->_metas.begin();
+            auto client = *it;
+            this->_metas.erase(it);
+            client->terminate();
+            delete client;
+          }
+
+          // Make sure a client is not being removed the individual way in
+          // Trophonius::client_remove.
+          reactor::Lock(this->_remove_lock.write());
 
           try
           {
             this->_meta.unregister_trophonius(this->_uuid);
+            ELLE_LOG("%s: unregistered from meta", *this);
           }
           catch (...)
           {
@@ -138,30 +198,21 @@ namespace infinit
           {
             std::unique_ptr<reactor::network::TCPSocket> socket(
               this->_server.accept());
-            this->_clients.emplace(new User(*this, std::move(socket)));
+            auto user = new User(*this, std::move(socket));
+            this->_users_pending.insert(user);
           }
         }
 
         User&
-        Trophonius::user(boost::uuids::uuid const& device)
+        Trophonius::user(std::string const& user_id,
+                         boost::uuids::uuid const& device)
         {
-          auto client = std::find_if(
-            this->_clients.begin(),
-            this->_clients.end(),
-            [&device] (Client* client)
-            {
-              if (dynamic_cast<User*>(client) == nullptr)
-                return false;
-
-              User const* user = static_cast<User const*>(client);
-              return user->device_id() == device;
-            });
-
-          if (client == this->_clients.end())
-            throw UnknownClient(device);
-
-          ELLE_ASSERT(dynamic_cast<User*>(*client) != nullptr);
-          return *static_cast<User*>(*client);
+          auto& index = this->_users.get<1>();
+          boost::tuple<std::string, boost::uuids::uuid> key(user_id, device);
+          auto it = index.find(key);
+          if (it == index.end())
+            throw UnknownClient(user_id, device);
+          return **it;
         }
 
         void
@@ -171,23 +222,52 @@ namespace infinit
           {
             std::unique_ptr<reactor::network::TCPSocket> socket(
               this->_notifications.accept());
-            this->_clients.emplace(new Meta(*this, std::move(socket)));
+            this->_metas.emplace(new Meta(*this, std::move(socket)));
           }
         }
 
         /*--------.
         | Clients |
         `--------*/
+
+        // std::size_t
+        // Trophonius::hash_user_device::operator()(User* user) const
+        // {
+        //   auto key = std::make_pair(user->user_id(), user->device_id());
+        //   boost::hash<decltype(key)> hasher;
+        //   return hasher(key);
+        // }
+
         void
         Trophonius::client_remove(Client& c)
         {
-          if (this->_clients.erase(&c))
+          reactor::Lock lock(this->_remove_lock);
+
+          // Remove the client from the set first to ensure other cleanup do
+          // not duplicate this.
+          if (this->_users.erase(static_cast<User*>(&c)) ||
+              this->_users_pending.erase(static_cast<User*>(&c)))
+          {
+            // Terminate all handlers for the clients. We are most likely
+            // invoked by one of those handler, so they must take care of not
+            // commiting suicide.
+            c.terminate();
+            // Unregister the client from meta.
+            static_cast<User&>(c).unregister();
+            // Delete the client later since we are probably since inside one of
+            // its handlers and it would cause premature destruction of this
+            // thread.
             reactor::run_later(
               elle::sprintf("remove client %s", c),
-              [&c]
-              {
-                delete &c;
-              });
+              [&c] {delete &c;});
+          }
+          else if (this->_metas.erase(static_cast<Meta*>(&c)))
+          {
+            c.terminate();
+            reactor::run_later(
+              elle::sprintf("remove client %s", c),
+              [&c] {delete &c;});
+          }
         }
 
         /*----------.

@@ -7,14 +7,16 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include <curly/curly.hh>
 #include <elle/format/json.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/getenv.hh>
 #include <elle/os/path.hh>
 #include <elle/system/platform.hh>
+
+#include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
+
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("elle.CrashReporter");
@@ -248,14 +250,11 @@ namespace elle
     void
     Handler::operator() (int sig)
     {
-      elle::crash::report
-        (this->_host, this->_port, this->_name, elle::signal::strsignal(sig));
-
       if (this->_quit)
         ::exit(sig);
     }
 
-    bool
+    void
     user_report(std::string const& host,
                 uint16_t port,
                 std::string const& user_name,
@@ -263,58 +262,68 @@ namespace elle
                 std::string const& message,
                 std::string const& file)
     {
-      ELLE_TRACE("User report");
+      ELLE_TRACE("user report");
 
-      elle::format::json::Array env_arr{};
+      reactor::Scheduler sched;
+      reactor::Thread thread(sched, "user report upload", [&]
+        {
 
-      for (auto const& pair: elle::os::environ())
-        if (boost::starts_with(pair.first, "ELLE_") or
-            boost::starts_with(pair.first, "INFINIT_"))
-          env_arr.push_back(pair.first + " = " + pair.second);
+          elle::format::json::Array env_arr{};
 
-      elle::format::json::Dictionary request;
+          for (auto const& pair: elle::os::environ())
+          if (boost::starts_with(pair.first, "ELLE_") ||
+              boost::starts_with(pair.first, "INFINIT_"))
+          {
+            env_arr.push_back(pair.first + " = " + pair.second);
+          }
 
-      request["user_name"] = user_name;
-      request["client_os"] = os_description;
-      request["message"] = message;
-      request["env"] = env_arr;
-      request["version"] = INFINIT_VERSION;
-      request["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
-      request["file"] = file;
+          elle::format::json::Dictionary json_dict;
+
+          json_dict["user_name"] = user_name;
+          json_dict["client_os"] = os_description;
+          json_dict["message"] = message;
+          json_dict["env"] = env_arr;
+          json_dict["version"] = INFINIT_VERSION;
+          json_dict["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
+          json_dict["file"] = file;
 #ifdef INFINIT_PRODUCTION_BUILD
-      request["send"] = true;
+          json_dict["send"] = true;
 #else
-      request["send"] = !request["email"].as<std::string>().empty();
+          json_dict["send"] = !json_dict["email"].as<std::string>().empty();
 #endif
 
-      std::stringstream json_stream;
-      request.repr(json_stream);
-      std::string url = elle::sprintf("http://%s:%d/debug/user-report",
-                                      host,
-                                      port);
-      try
-        {
-          // We have to tricks because web.py doesn't handle chunked POST.
-          auto post_config = curly::make_post();
-          post_config.url(url);
-          post_config.option(CURLOPT_POSTFIELDSIZE, json_stream.str().size());
-          post_config.input(json_stream);
-          post_config.user_agent("InfinitDesktop");
-          post_config.headers({
-            {"Content-type", "application/json"},
-            {"Expect", ""}
-          });
-          curly::request r(std::move(post_config));
-          return true;
-        }
-      catch (...)
-        {
-          ELLE_WARN("Unable to put on %s: '%s'", url, json_stream.str());
-          return false;
-        }
+          std::string url = elle::sprintf("http://%s:%s/debug/report/user",
+                                          host,
+                                          port);
+          reactor::http::Request::Configuration conf{
+            reactor::DurationOpt(300_sec),
+            reactor::http::Version(reactor::http::Version::v10)};
+
+          try
+          {
+            reactor::http::Request request(
+              url,
+              reactor::http::Method::POST,
+              "application/json",
+              conf);
+            json_dict.repr(request);
+            request.wait();
+            if (request.status() != reactor::http::StatusCode::OK)
+            {
+              ELLE_ERR("error while posting report to %s: (%s) %s",
+                       url, request.status(), request.response().string());
+            }
+          }
+          catch (...)
+          {
+            ELLE_ERR("unable to post report to %s", url);
+          }
+        });
+
+    sched.run();
     }
 
-    bool
+    void
     existing_report(std::string const& host,
                     uint16_t port,
                     std::string const& user_name,
@@ -322,117 +331,61 @@ namespace elle
                     std::string const& info,
                     std::string const& file)
     {
-      ELLE_TRACE("Report old crash");
-
-      elle::format::json::Array env_arr{};
-
-      for (auto const& pair: elle::os::environ())
-        if (boost::starts_with(pair.first, "ELLE_") or
-            boost::starts_with(pair.first, "INFINIT_"))
-          env_arr.push_back(pair.first + " = " + pair.second);
-
-      elle::format::json::Dictionary request;
-
-      request["user_name"] = user_name;
-      request["client_os"] = os_description;
-      request["more"] = info;
-      request["env"] = env_arr;
-      request["version"] = INFINIT_VERSION;
-      request["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
-      request["file"] = file;
-#ifdef INFINIT_PRODUCTION_BUILD
-      request["send"] = true;
-#else
-      request["send"] = !request["email"].as<std::string>().empty();
-#endif
-
-      std::stringstream json_stream;
-      request.repr(json_stream);
-      std::string url = elle::sprintf("http://%s:%d/debug/existing-report",
-                                      host,
-                                      port);
-      try
+      ELLE_TRACE("report last crash");
+      reactor::Scheduler sched;
+      reactor::Thread thread(sched, "user report upload", [&]
         {
-          // We have to tricks because web.py doesn't handle chunked POST.
-          auto post_config = curly::make_post();
-          post_config.url(url);
-          post_config.option(CURLOPT_POSTFIELDSIZE, json_stream.str().size());
-          post_config.input(json_stream);
-          post_config.user_agent("InfinitDesktop");
-          post_config.headers({
-            {"Content-type", "application/json"},
-            {"Expect", ""}
-          });
-          curly::request r(std::move(post_config));
-          return true;
-        }
-      catch (...)
-        {
-          ELLE_WARN("Unable to put on %s: '%s'", url, json_stream.str());
-          return false;
-        }
-    }
 
-    bool
-    report(std::string const& host,
-           uint16_t port,
-           std::string const& module,
-           std::string const& signal,
-           elle::Backtrace const& bt,
-           std::string const& info,
-           std::string const& file)
-    {
-      ELLE_TRACE("Report crash");
+          elle::format::json::Array env_arr{};
 
-      elle::format::json::Array bt_arr{}, env_arr{};
-      for (auto const& t: bt)
-        bt_arr.push_back(static_cast<std::string>(t));
+          for (auto const& pair: elle::os::environ())
+            if (boost::starts_with(pair.first, "ELLE_") ||
+              boost::starts_with(pair.first, "INFINIT_"))
+            {
+              env_arr.push_back(pair.first + " = " + pair.second);
+            }
 
-      for (auto const& pair: elle::os::environ())
-        if (boost::starts_with(pair.first, "ELLE_") or
-            boost::starts_with(pair.first, "INFINIT_"))
-          env_arr.push_back(pair.first + " = " + pair.second);
+          elle::format::json::Dictionary json_dict;
 
-      elle::format::json::Dictionary request;
-
-      request["module"] = module;
-      request["signal"] = signal;
-      request["backtrace"] = bt_arr;
-      request["env"] = env_arr;
-      request["version"] = INFINIT_VERSION;
-
-      request["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
-#ifdef INFINIT_PRODUCTION_BUILD
-      request["send"] = true;
-#else
-      request["send"] = !request["email"].as<std::string>().empty();
-#endif
-      request["more"] = info;
-      request["file"] = file;
-
-      std::stringstream json_stream;
-      request.repr(json_stream);
-      std::string url = elle::sprintf("http://%s:%d/debug/report", host, port);
-      try
-        {
-          // We have to tricks because web.py doesn't handle chunked POST.
-          auto post_config = curly::make_post();
-          post_config.url(url);
-          post_config.option(CURLOPT_POSTFIELDSIZE, json_stream.str().size());
-          post_config.input(json_stream);
-          post_config.user_agent("InfinitDesktop");
-          post_config.headers({
-            {"Content-type", "application/json"},
-            {"Expect", ""}
-          });
-          curly::request r(std::move(post_config));
-          return true;
-        }
-      catch (...)
-        {
-          ELLE_WARN("Unable to put on %s: '%s'", url, json_stream.str());
-          return false;
-        }
+          json_dict["user_name"] = user_name;
+          json_dict["client_os"] = os_description;
+          json_dict["more"] = info;
+          json_dict["env"] = env_arr;
+          json_dict["version"] = INFINIT_VERSION;
+          json_dict["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
+          json_dict["file"] = file;
+          #ifdef INFINIT_PRODUCTION_BUILD
+          json_dict["send"] = true;
+          #else
+          json_dict["send"] = !json_dict["email"].as<std::string>().empty();
+          #endif
+          std::string url = elle::sprintf("http://%s:%d/debug/report/backtrace",
+                                          host,
+                                          port);
+          reactor::http::Request::Configuration conf{
+            reactor::DurationOpt(300_sec),
+            reactor::http::Version(reactor::http::Version::v10)};
+          try
+          {
+            reactor::http::Request request(
+            url,
+            reactor::http::Method::POST,
+            "application/json",
+            conf);
+            json_dict.repr(request);
+            request.wait();
+            if (request.status() != reactor::http::StatusCode::OK)
+            {
+              ELLE_ERR("error while posting report to %s: (%s) %s",
+              url, request.status(), request.response().string());
+            }
+          }
+          catch (...)
+          {
+            ELLE_ERR("unable to post report to %s", url);
+          }
+        });
+      sched.run();
     }
   } // End of crash.
 } // End of elle.

@@ -1,0 +1,35 @@
+README:
+Building Infinit backend on OS X
+
+--------------------
+0. Deployment Target
+--------------------
+Setting the MACOSX_DEPLOYMENT_TARGET environment variable ensures that the built
+binaries will run on older versions of OS X (at least using the system compiler).
+
+--------------------
+1. Install homebrew
+--------------------
+http://brew.sh
+
+-----------------
+2. Install Python
+-----------------
+Python 2.7: brew install python2
+Python 3.2: brew install python32
+
+----------------
+3. Install Boost
+----------------
+brew edit boost
+
+Add the following to where the bjam file is made to ensure boost links with
+Python 3.2:
+file.write "using python : 3.2 : /usr/local/Frameworks/Python.framework/Versions/3.2/bin/python3 : /usr/local/Frameworks/Python.framework/Versions/3.2/include/python3.2m : /usr/local/Frameworks/Python.framework/Versions/3.2/lib ;\n"
+
+MACOSX_DEPLOYMENT_TARGET=10.7 brew install --build-from-source --verbose --debut --with-c++11 boost
+
+----------------
+4. Build Infinit
+----------------
+./drake.clang //build

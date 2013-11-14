@@ -100,7 +100,7 @@ class Mixin:
       )
     return self.success({'fallback': fallback})
 
-  @api('/apertus/fallbacks')
-  def apertus_fallbacks(self):
+  @api('/apertus')
+  def registered_apertus(self):
     apertus = self.database.apertus.find(fields = ['ip', 'port'])
     return self.success({'apertus': ["%s:%s" % (s['ip'], s['port']) for s in apertus]})

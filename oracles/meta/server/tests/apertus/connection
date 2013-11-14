@@ -26,7 +26,7 @@ with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
   bob = User(meta, "bob@infinit.io")
 
-  assert len(meta.get('apertus/fallbacks')['apertus']) == 0
+  assert len(meta.get('apertus')['apertus']) == 0
 
   with Apertus(meta) as apertus:
-    assert len(meta.get('apertus/fallbacks')['apertus']) == 1
+    assert len(meta.get('apertus')['apertus']) == 1

@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from infinit.oracles.meta import error
+
+class MailService():
+
+  def __init__(self, response):
+    self.response = response
+
+  def templated_send(self, **kw):
+    assert response['email'] == kw['to']
+    assert kw['template_id'] == 'send-invitation-no-file'
+
+  def send(self, **kw):
+    self.response['email'] = kw['to']
+    self.response['subject'] = kw['subject']
+    self.response['content'] = kw['content']
+
+with Meta() as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+
+  response = {"email": "alice@infinit.io"}
+  meta.mailer = MailService(response)
+
+  query = {
+    'email': email,
+    'password': 'o' * 64,
+    'fullname': fullname
+  }
+
+  res = meta.post('user/register', query)
+  assert res['success']
+
+  query.pop('fullname')
+  res = meta.post('web-login', query)
+  assert res['success']
+
+  res = meta.post('user/invite', {"email": response['email']})
+  assert res['success']
+
+  res = meta.get('user/invited')
+  assert res['success']
+  print(res)
+  assert res['user'] == [response['email']]

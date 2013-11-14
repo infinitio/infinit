@@ -481,4 +481,7 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("transaction_is_directory", &gap_transaction_is_directory);
   py::def("transaction_status", &gap_transaction_status);
   py::def("transaction_message", &gap_transaction_message);
+
+  py::def("send_user_report", &gap_send_user_report);
+  py::def("send_last_crash_logs", &gap_send_last_crash_logs);
 }

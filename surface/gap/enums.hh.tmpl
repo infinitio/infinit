@@ -30,6 +30,7 @@ extern "C"
     NotificationType_NewSwagger,
     NotificationType_ConnectionStatus,
     NotificationType_KickedOut,
+    NotificationType_AvatarAvailable,
   } NotificationType;
 
   typedef enum
@@ -44,6 +45,7 @@ extern "C"
     gap_file_not_found = -7,
     gap_api_error = -10,
     gap_peer_to_peer_error = -11,
+    gap_data_not_fetched_yet = -12,
     <%! from infinit.oracles.meta.error import errors %>
     %for name, (code, comment) in errors.items():
       gap_${name} = ${code},

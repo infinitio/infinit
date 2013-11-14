@@ -115,9 +115,6 @@ namespace infinit
         debuginfo << ss.str();
       }
 #endif
-      elle::crash::report(common::meta::host(), common::meta::port(),
-                          name, elle::system::strsignal(signum),
-                          elle::Backtrace::current(), ss.str());
     }
     return retval;
   }
@@ -151,8 +148,6 @@ namespace infinit
     {
      ELLE_ERR("%s: fatal error: %s", name, e.what());
       std::cerr << name << ": fatal error: " << e.what() << std::endl;
-      elle::crash::report(common::meta::host(), common::meta::port(),
-                          name, e.what());
       return EXIT_FAILURE;
     }
   }
@@ -198,16 +193,12 @@ namespace infinit
       {
         ELLE_ERR("%s: fatal error: %s", name, e);
         std::cerr << name << ": fatal error: " << e << std::endl;
-        elle::crash::report(common::meta::host(),common::meta::port(),
-                            name, e.what());
         exit(EXIT_FAILURE);
       }
       catch (std::runtime_error const& e)
       {
         ELLE_ERR("%s: fatal error: %s", name, e.what());
         std::cerr << name << ": fatal error: " << e.what() << std::endl;
-        elle::crash::report(common::meta::host(),common::meta::port(),
-                            name, e.what());
         exit(EXIT_FAILURE);
       }
     }

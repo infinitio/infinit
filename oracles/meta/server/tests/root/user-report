@@ -9,27 +9,13 @@ class MailService():
   def __init__(self, response):
     self.response = response
 
-  def send_via_mailchimp(self,
-                         mail,
-                         template_id,
-                         subject,
-                         from_="Infinit <no-reply@infinit.io>",
-                         reply_to=None,
-                         encoding='utf8',
-                         **kw):
+  def templated_send(self, **kw):
     pass
 
-  def send(self,
-           email,
-           subject,
-           content,
-           from_="Infinit <no-reply@infinit.io>",
-           reply_to=None,
-           encoding='utf8',
-           attached=None):
-    self.response['email'] = email
-    self.response['subject'] = subject
-    self.response['content'] = content
+  def send(self, **kw):
+    self.response['email'] =   kw['to']
+    self.response['subject'] = kw['subject']
+    self.response['content'] = kw['content']
 
 with Meta() as meta:
   res = dict()
@@ -37,7 +23,7 @@ with Meta() as meta:
   meta.mailer = mailer
 
   meta.post(
-    'debug/user-report',
+    'debug/report/user',
     {
       'send': True,
     })
@@ -46,7 +32,7 @@ with Meta() as meta:
   res.clear()
 
   meta.post(
-    'debug/user-report',
+    'debug/report/user',
     {
       'send': True,
       'client_os': 'Kanard',
@@ -58,7 +44,7 @@ with Meta() as meta:
   res.clear()
 
   meta.post(
-    'debug/user-report',
+    'debug/report/user',
     {
       'send': True,
       'client_os': 'Kanard',

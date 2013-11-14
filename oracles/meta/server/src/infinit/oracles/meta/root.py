@@ -2,12 +2,15 @@
 
 import time
 
+import elle.log
 from . import conf, mail, error, notifier
 from .utils import api, require_admin, hash_pasword
 import infinit.oracles.meta.version
 
 LOST_PASSWORD_TEMPLATE_ID = 'lost-password'
 RESET_PASSWORD_VALIDITY = 2 * 3600 # 2 hours
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Root'
 
 class Mixin:
 
@@ -52,7 +55,6 @@ class Mixin:
     # Ghostify user.
     ghost = self.registerUser(**ghost)
 
-    from meta.invitation import invite_user
     invitation.invite_user(user['email'], database = self.database)
 
     return self.success({'ghost': str(user['_id'])})
@@ -77,15 +79,17 @@ class Mixin:
 
     hash -- the reset password token.
     """
-    try:
-      usr = self.__user_from_hash(hash)
-    except error.Error as e:
-      self.fail(*e.args)
-    return self.success(
-      {
-        'email': usr['email'],
-      }
-    )
+    with elle.log.trace('reseted account %s' % hash):
+      try:
+        user = self.__user_from_hash(hash)
+        elle.log.debug('found user %s' % user['email'])
+      except error.Error as e:
+        self.fail(*e.args)
+      return self.success(
+        {
+          'email': user['email'],
+        }
+      )
 
   @api('/reset-accounts/<hash>', method = 'POST')
   def reset_account(self, hash, password):
@@ -94,8 +98,9 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
+    # Cancel all the current transactions.
     for transaction_id in self.database.transactions.find(
-        {
+      {
           "$or": [
             {"sender_id": user['_id']},
             {"recipient_id": user['_id']}
@@ -105,9 +110,15 @@ class Mixin:
       try:
         self._transaction_update(transaction_id, transaction.CANCELED, user)
       except error.Error as e:
-        print(*e.args)
+        elle.log.warn("%s" % e.args)
         continue
         # self.fail(error.UNKNOWN)
+    # Remove all the devices from the user because they are based on his old
+    # public key.
+    # XXX: All the sessions must be cleaned too.
+    # XXX: Must be handle by the client.
+    self.database.devices.remove({"owner": user['_id']},
+                                 multi = True)
 
     import papier
     identity, public_key = papier.generate_identity(
@@ -137,9 +148,8 @@ class Mixin:
       old_notifications = [],
       accounts = [
         {'type': 'email', 'id': user['email']}
-        ],
-      remaining_invitations = user['remaining_invitations'],
-      )
+      ],
+    )
     return self.success({'user_id': str(user_id)})
 
   @api('/lost-password', method = 'POST')
@@ -166,18 +176,19 @@ class Mixin:
       })
 
     user = self.database.users.find_one({'email': email}, fields = ['reset_password_hash'])
-    self.mailer.send_via_mailchimp(
-      email,
-      LOST_PASSWORD_TEMPLATE_ID,
-      '[Infinit] Reset your password',
-      reply_to = 'support@infinit.io',
+    self.mailer.templated_send(
+      to = email,
+      template_id = LOST_PASSWORD_TEMPLATE_ID,
+      subject = '[Infinit] Reset your password',
+      reply_to = 'Infinit <support@infinit.io>',
       reset_password_hash = user['reset_password_hash'],
     )
 
     return self.success()
 
-  @api('/debug/user-report', method = 'POST')
+  @api('/debug/report/<type>', method = 'POST')
   def user_report(self,
+                  type: str,
                   user_name = 'Unknown',
                   client_os = 'Unknown',
                   message = [],
@@ -185,23 +196,30 @@ class Mixin:
                   version = 'Unknown version',
                   email = 'crash@infinit.io',
                   send = False,
+                  more = '',
                   file = ''):
     """
     Store the existing crash into database and send a mail if set.
     """
-    if send:
-      self.mailer.send(
-        email,
-        subject = mail.USER_REPORT_SUBJECT % {"client_os": client_os,},
-        content = mail.USER_REPORT_CONTENT % {
-          "client_os": client_os,
-          "version": version,
-          "user_name": user_name,
-          "env":  '\n'.join(env),
-          "message": message,
-        },
-        attached = file
-      )
+    with elle.log.trace('user report: %s to %s' % (user_name, email)):
+      if send:
+        elle.log.trace('to be sent: %s' % type)
+        template = mail.report_templates.get(type, None)
+        if template is None:
+          self.fail(error.UNKNOWN)
+        self.mailer.send(
+          to = email,
+          subject = template['subject'] % {"client_os": client_os},
+          content = template['content'] % {
+            "client_os": client_os,
+            "version": version,
+            "user_name": user_name,
+            "env": '\n'.join(env),
+            "message": message,
+            "more": more,
+          },
+          attached = ('log.tar.gz', file),
+        )
       return self.success()
 
   @require_admin
@@ -216,3 +234,17 @@ class Mixin:
                               message = {},
                               recipient_ids = targets)
     return self.success({'victims': list(targets)})
+
+  @require_admin
+  @api('/cron', method = 'POST')
+  def cron(self, admin_token):
+    """
+    Do cron jobs as:
+    - clean old trophonius instances.
+    """
+    # Trophonius.
+    res = self.database.trophonius.remove(
+      {"$or": [{"time": {"$lt": time.time() - self.trophonius_expiration_time}},
+               {"time": {"$exists": False}}]},
+      multi = True)
+    return self.success(res)

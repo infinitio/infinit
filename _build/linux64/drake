@@ -22,11 +22,11 @@ boost = drake.cxx.boost.Boost(
     prefix = os.getenv('BOOST_PREFIX', '/usr')
 )
 
-drake.run(
-    '../..',
+with drake.Drake('../..') as d:
+  d.run(
     cxx_toolkit,
     cxx_config,
     enable_horizon = False,
     build_type = "Development",
     boost = boost,
-)
+  )

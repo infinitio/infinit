@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from infinit.oracles.meta import error
+
+with Meta() as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+
+  query = {
+    'email': email,
+    'password': 'o' * 64,
+    'fullname': 'jeanlouis',
+  }
+
+  res = meta.post("user/register", query)
+  assert res['success']
+
+  res = meta.post("user/register", query)
+  assert not res['success']
+  assert res['error_code'] == error.EMAIL_ALREADY_REGISTRED[0]
+
+  query['email'] = 'heab'
+
+  res = meta.post("user/register", query)
+  assert not res['success']
+  assert res['error_code'] == error.EMAIL_NOT_VALID[0]
+
+  query['email'] = 'bob@infinit.io'
+  query['fullname'] = 'j'
+
+  res = meta.post("user/register", query)
+  assert not res['success']
+  assert res['error_code'] == error.FULLNAME_NOT_VALID[0]

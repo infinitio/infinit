@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, HTTPException
+from uuid import uuid4
+import copy
+
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  bob = User(meta, 'bob@infinit.io')
+
+  device_id = uuid4()
+
+  # Both share the same device.
+  alice.device_id = device_id
+  bob.device_id = device_id
+
+  alice.login()
+  bob.login()
+
+  assert alice.logged_in
+  assert bob.logged_in
+
+  alice.logout()
+
+  assert not alice.logged_in
+  assert bob.logged_in
+
+  bob.logout()
+
+  assert not alice.logged_in
+  assert not bob.logged_in
+
+  alice.login()
+
+  assert alice.logged_in
+  assert not bob.logged_in
+
+  bob.login()
+
+  assert alice.logged_in
+  assert bob.logged_in

@@ -1,15 +1,19 @@
 # -*- encoding: utf-8 -*-
 
+
 import bson
 import re
 import time
 import unicodedata
 
+import elle.log
 from .utils import api, require_logged_in
 from . import regexp, error, transaction_status, notifier
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
 class Mixin:
 
@@ -60,6 +64,7 @@ class Mixin:
     Errors:
     Using an id that doesn't exist.
     """
+    user = self.user
     id_or_email = id_or_email.strip()
 
     # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
@@ -96,11 +101,11 @@ class Mixin:
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
 
-    _id = self.user['_id']
+    _id = user['_id']
 
     transaction = {
       'sender_id': _id,
-      'sender_fullname': self.user['fullname'],
+      'sender_fullname': user['fullname'],
       'sender_device_id': device_id, # bson.ObjectId(device_id),
 
       'recipient_id': recipient['_id'],
@@ -122,9 +127,9 @@ class Mixin:
       'status': transaction_status.CREATED,
       'fallback': None,
       'strings': ' '.join([
-            self.user['fullname'],
-            self.user['handle'],
-            self.user['email'],
+            user['fullname'],
+            user['handle'],
+            user['email'],
             recipient['fullname'],
             recipient.get('handle', ""),
             recipient['email'],
@@ -140,23 +145,23 @@ class Mixin:
         invitee_email = recipient['email']
 
       if new_user:
-        meta.invitation.invite_user(
+        invitation.invite_user(
           invitee_email,
           mailer = self.mailer,
-          source = self.user['_id'],
+          source = user['_id'],
           mail_template = 'send-file',
-          reply_to = self.user['email'],
+          reply_to = user['email'],
           filename = files[0],
-          sendername = self.user['fullname'],
-          user_id = str(self.user['_id']),
+          sendername = user['fullname'],
+          user_id = str(user['_id']),
           database = self.database
         )
 
-    self._increase_swag(self.user['_id'], recipient['_id'])
+    self._increase_swag(user['_id'], recipient['_id'])
 
     return self.success({
         'created_transaction_id': transaction_id,
-        'remaining_invitations': self.user.get('remaining_invitations', 0),
+        'remaining_invitations': user.get('remaining_invitations', 0),
         })
 
   def _transactions(self,
@@ -217,11 +222,11 @@ class Mixin:
   @require_logged_in
   @api('/transactions')
   def transcations_get(self,
-              filter = transaction_status.final + [transaction_status.CREATED],
-              type = False,
-              peer_id = None,
-              count = 100,
-              offset = 0):
+                       filter = transaction_status.final + [transaction_status.CREATED],
+                       type = False,
+                       peer_id = None,
+                       count = 100,
+                       offset = 0):
     return self._transactions(filter = filter,
                               type = type,
                               peer_id = peer_id,
@@ -243,17 +248,18 @@ class Mixin:
                               offset = offset)
 
   def on_accept(self, transaction, device_id, device_name):
-    if device_id is None or device_name is None:
-      self.bad_request()
-    device_id = uuid.UUID(device_id)
-    if str(device_id) not in self.user['devices']:
-      raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
+    with elle.log.trace("accept transaction as %s" % device_id):
+      if device_id is None or device_name is None:
+        self.bad_request()
+      device_id = uuid.UUID(device_id)
+      if str(device_id) not in self.user['devices']:
+        raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
 
-    transaction.update({
-      'recipient_fullname': self.user['fullname'],
-      'recipient_device_name' : device_name,
-      'recipient_device_id': str(device_id),
-    })
+      transaction.update({
+        'recipient_fullname': self.user['fullname'],
+        'recipient_device_name' : device_name,
+        'recipient_device_id': str(device_id),
+      })
 
   @require_logged_in
   @api('/transaction/update', method = 'POST')
@@ -282,58 +288,63 @@ class Mixin:
                           device_id = None,
                           device_name = None,
                           user = None):
-    if user is None:
-      user = self.user
-    if user is None:
-      self.fail(error.UNKNOWN_USER)
-    transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
-    is_sender = self.is_sender(transaction, user['_id'])
-
-    if status not in transaction_status.transitions[transaction['status']][is_sender]:
-      raise error.Error(
-        error.TRANSACTION_OPERATION_NOT_PERMITTED,
-        "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
-      )
-
-    if transaction['status'] == status:
-      raise error.Error(
-        error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
-        "Cannont change status from %s to %s (same status)." % (transaction['status'], status))
-
-    if transaction['status'] in transaction_status.final:
-      raise error.Error(
-        error.TRANSACTION_ALREADY_FINALIZED,
-        "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
+    with elle.log.log("update transaction %s: %s" %
+                      (transaction_id, status)):
+      if user is None:
+        user = self.user
+      if user is None:
+        self.fail(error.UNKNOWN_USER)
+      transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
+      elle.log.debug("transaction: %s" % transaction)
+      is_sender = self.is_sender(transaction, user['_id'])
+      elle.log.debug("%s" % is_sender and "sender" or "recipient")
+      if status not in transaction_status.transitions[transaction['status']][is_sender]:
+        raise error.Error(
+          error.TRANSACTION_OPERATION_NOT_PERMITTED,
+          "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
         )
 
-    from functools import partial
+      if transaction['status'] == status:
+        raise error.Error(
+          error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
+          "Cannont change status from %s to %s (same status)." % (transaction['status'], status))
 
-    callbacks = {
-      transaction_status.INITIALIZED: None,
-      transaction_status.ACCEPTED: partial(self.on_accept,
-                                           transaction = transaction,
-                                           device_id = device_id,
-                                           device_name = device_name),
-      transaction_status.FINISHED: None,
-      transaction_status.CANCELED: None,
-      transaction_status.FAILED: None,
-      transaction_status.REJECTED: None
-    }
+      if transaction['status'] in transaction_status.final:
+        raise error.Error(
+          error.TRANSACTION_ALREADY_FINALIZED,
+          "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
+          )
 
-    cb = callbacks[status]
-    if cb is not None:
-      cb()
+      from functools import partial
 
-    transaction['status'] = status
-    transaction['mtime'] = time.time()
-    self.database.transactions.save(transaction)
+      callbacks = {
+        transaction_status.INITIALIZED: None,
+        transaction_status.ACCEPTED: partial(self.on_accept,
+                                             transaction = transaction,
+                                             device_id = device_id,
+                                             device_name = device_name),
+        transaction_status.FINISHED: None,
+        transaction_status.CANCELED: None,
+        transaction_status.FAILED: None,
+        transaction_status.REJECTED: None
+      }
 
-    self.notifier.notify_some(
-      notifier.TRANSACTION,
-      recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
-      message = transaction,
-    )
-    return transaction_id
+      cb = callbacks[status]
+      if cb is not None:
+        cb()
+
+      transaction['status'] = status
+      transaction['mtime'] = time.time()
+      self.database.transactions.save(transaction)
+
+      elle.log.debug("transaction updated")
+
+      self.notifier.notify_some(
+        notifier.TRANSACTION,
+        recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+        message = transaction,
+      )
+      return transaction_id
 
   @require_logged_in
   @api('/transaction/search')
@@ -367,10 +378,29 @@ class Mixin:
           )
         })
 
-  def user_key(self, user_id, device_id):
+  def __user_key(self, user_id, device_id):
     assert isinstance(user_id, bson.ObjectId)
     assert isinstance(device_id, uuid.UUID)
     return "%s-%s" % (str(user_id), str(device_id))
+
+  def find_nodes(self, user_id, device_id):
+      assert isinstance(user_id, bson.ObjectId)
+      assert isinstance(device_id, uuid.UUID)
+      return self.database.transactions.find(
+        {
+          "nodes.%s" % self.__user_key(user_id, device_id): {"$exists": True}
+        })
+
+  def update_node(self, transaction_id, user_id, device_id, node):
+    with elle.log.trace("transaction %s: update node for device %s: %s" %
+                         (transaction_id, device_id, node)):
+      assert isinstance(transaction_id, bson.ObjectId)
+      return self.database.transactions.find_and_modify(
+        {"_id": transaction_id},
+        {"$set": {"nodes.%s" % self.__user_key(user_id, device_id): node}},
+        multi = False,
+        new = True,
+        )
 
   @require_logged_in
   @api('/transaction/connect_device', method = "POST")
@@ -424,20 +454,19 @@ class Mixin:
 
     node['fallback'] = []
 
-    transaction = self.database.transactions.find_and_modify(
-      {"_id": _id},
-      {"$set": {"nodes.%s" % self.user_key(user['_id'], device_id): node}},
-      multi = False,
-      new = True,
-    )
-    print("device %s connected to transaction %s as %s" % (device_id, _id, node))
+    transaction = self.update_node(transaction_id = transaction['_id'],
+                                   user_id = user['_id'],
+                                   device_id = device_id,
+                                   node = node)
+
+    elle.log.trace("device %s connected to transaction %s as %s" % (device_id, _id, node))
 
     if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
       devices_ids = {uuid.UUID(transaction['sender_device_id']),
                      uuid.UUID(transaction['recipient_device_id'])}
       self.notifier.notify_some(
         notifier.PEER_CONNECTION_UPDATE,
-        device_ids = devices_ids,
+        recipient_ids = {transaction[k] for k in ['sender_id', 'recipient_id']},
         message = {
           "transaction_id": str(_id),
           "devices": list(map(str, devices_ids)),
@@ -466,11 +495,11 @@ class Mixin:
 
     # XXX: Ugly.
     if is_sender:
-      self_key = self.user_key(transaction['sender_id'], self_device_id)
-      peer_key = self.user_key(transaction['recipient_id'], device_id)
+      self_key = self.__user_key(transaction['sender_id'], self_device_id)
+      peer_key = self.__user_key(transaction['recipient_id'], device_id)
     else:
-      self_key = self.user_key(transaction['recipient_id'], self_device_id)
-      peer_key = self.user_key(transaction['sender_id'], device_id)
+      self_key = self.__user_key(transaction['recipient_id'], self_device_id)
+      peer_key = self.__user_key(transaction['sender_id'], device_id)
 
     if (not self_key in transaction['nodes'].keys()) or (not transaction['nodes'][self_key]):
       return self.fail(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
@@ -484,13 +513,14 @@ class Mixin:
     peer_node = transaction['nodes'][peer_key]
 
     for addr_kind in ['locals', 'externals', 'fallback']:
-        for a in peer_node[addr_kind]:
-            if a and a["ip"] and a["port"]:
-                addrs[addr_kind].append(
-                    (a["ip"], str(a["port"])))
+      for a in peer_node[addr_kind]:
+        if a and a["ip"] and a["port"]:
+          addrs[addr_kind].append(
+            (a["ip"], str(a["port"])))
 
     res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
     res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
-    res['fallback'] = []
+    # XXX: Remove when apertus is ready.
+    res['fallback'] = ["88.190.48.55:9899"]
 
     return self.success(res)

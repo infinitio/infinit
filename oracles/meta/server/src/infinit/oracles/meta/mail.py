@@ -4,11 +4,15 @@ import decorator
 
 from . import conf
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
+import elle.log
 from email.header import Header
-from email.utils import formataddr
+from email.mime.text import MIMEText
+from email.utils import parseaddr, formataddr
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Mailer'
+
 #from email.utils import parseaddr, formataddr
 import smtplib
 import json
@@ -26,76 +30,119 @@ class Mailer():
   def is_active(method):
     def wrapper(wrapped, self, *a, **ka):
       if not self.__active:
-        print("email was ignored because mailer is inactive")
+        elle.log.warn("email was ignored because mailer is inactive")
         return # Return an empty func.
       return wrapped(self, *a, **ka)
     return decorator.decorator(wrapper, method)
 
   @is_active
-  def send_via_mailchimp(self,
-                         mail,
-                         template_id,
-                         subject,
-                         from_="Infinit <no-reply@infinit.io>",
-                         reply_to=None,
-                         encoding='utf8',
-                         **kw):
-    msg = MIMEMultipart('alternative', _charset=encoding)
-    msg['Subject'] = Header(subject, encoding)
-    msg['From'] = Header(from_, encoding)
-    # Got troubles with Header for recipient.
-    msg['To'] = mail #formataddr(("", mail))
-    msg['X-MC-Template'] = Header(template_id, encoding)
-    msg['X-MC-MergeVars'] = Header(json.dumps(kw), encoding)
-    if reply_to is not None:
-      msg['Reply-To'] = "Infinit <{}>".format(reply_to)
-
-    smtp_server = smtplib.SMTP(conf.MANDRILL_SMTP_HOST, conf.MANDRILL_SMTP_PORT)
-    try:
-      smtp_server.login(conf.MANDRILL_USERNAME, conf.MANDRILL_PASSWORD)
-      #
-      # smtp_server.sendmail(msg['From'], [msg['To']], msg.as_string())
-    except:
-      from traceback import print_exc
-      print_exc()
-    finally:
-      smtp_server.quit()
+  def templated_send(self,
+                     to,
+                     template_id,
+                     subject,
+                     fr = "Infinit <no-reply@infinit.io>",
+                     reply_to = None,
+                     encoding = 'utf8',
+                     attached = None,
+                     **kw):
+    with elle.log.trace('templated send: %s to %s' % (template_id, to)):
+      msg = self.__build_request(to = to,
+                                 fr = fr,
+                                 subject = subject,
+                                 encoding = encoding,
+                                 reply_to = reply_to,
+                                 attached = attached)
+      template = Header()
+      template.append(template_id, encoding)
+      msg['X-MC-Template'] = template
+      mergevars = Header()
+      mergevars.append(json.dumps(kw), encoding)
+      msg['X-MC-MergeVars'] = mergevars
+      self.__send(msg)
 
   @is_active
   def send(self,
-           email,
+           to,
            subject,
            content,
-           from_="Infinit <no-reply@infinit.io>",
-           reply_to=None,
-           encoding='utf8',
-           attached=None):
-    mail = MIMEMultipart()
-    mail['Subject'] = Header(subject, encoding)
-    mail['From'] = Header(from_, encoding)
-    # Got troubles with Header for recipient.
-    mail['To'] = email #formataddr(("", email))
-    mail.attach(MIMEText(content, _charset=encoding))
-    if reply_to is not None:
-      mail['Reply-To'] = "Infinit <{}>".format(reply_to)
+           fr = "Infinit <no-reply@infinit.io>",
+           encoding = 'utf-8',
+           reply_to = None,
+           attached = None):
+    with elle.log.trace('send: %s to %s' % (fr, to)):
+      msg = self.__build_request(to = to,
+                                 fr = fr,
+                                 subject = subject,
+                                 encoding = encoding,
+                                 reply_to = reply_to,
+                                 attached = attached)
+      content = MIMEText(content, _charset = encoding)
+      msg.attach(content)
+      self.__send(msg)
 
-    if attached:
-      file = MIMEBase('application', 'octet-stream')
-      file.set_payload(attached)
-      file.add_header('Content-Disposition', 'attachment; filename="logs.tar.bz"')
-      file.add_header('Content-Transfer-Encoding', 'base64')
-      mail.attach(file)
+  def __send(self, msg):
+    with elle.log.trace('contact mandril smtp server'):
+      smtp_server = smtplib.SMTP(conf.MANDRILL_SMTP_HOST, conf.MANDRILL_SMTP_PORT)
+      try:
+        with elle.log.debug('log to smtp'):
+          smtp_server.login(conf.MANDRILL_USERNAME, conf.MANDRILL_PASSWORD)
+          elle.log.debug('send mail')
+          smtp_server.sendmail(str(msg['From']), [str(msg['To'])], msg.as_string())
+          elle.log.debug('successfully sent')
+      except Exception as e:
+        elle.log.warn("unable to send mail: %s" % e)
+        import sys
+        import traceback
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        print(repr(traceback.extract_tb(exc_traceback)))
+      finally:
+        elle.log.debug('close connection with smtp server')
+        smtp_server.quit()
 
-    smtp_server = smtplib.SMTP(conf.MANDRILL_SMTP_HOST, conf.MANDRILL_SMTP_PORT)
-    try:
-      smtp_server.login(conf.MANDRILL_USERNAME, conf.MANDRILL_PASSWORD)
-      smtp_server.sendmail(mail['From'], [mail['To']], mail.as_string())
-    finally:
-      smtp_server.quit()
+  def __build_request(self,
+                      to,
+                      fr,
+                      subject,
+                      attached = None,
+                      encoding = 'utf-8',
+                      reply_to = None):
+    with elle.log.trace('build request'):
+      elle.log.debug('sender: %s' % fr)
+      sender_name, sender_addr = parseaddr(fr)
+      fr = Header()
+      fr.append(sender_name, encoding)
+      fr.append(' <%s>' % sender_addr)
+      elle.log.debug('recipient: %s' % to)
+      recipient_name, recipient_addr = parseaddr(to)
+      to = Header()
+      to.append(recipient_name, encoding)
+      to.append(' <%s>' % recipient_addr)
+      msg = MIMEMultipart('alternative', _charset=encoding)
+      msg['Subject'] = Header(subject, encoding)
+      msg['From'] = fr
+      msg['To'] = to
+      if attached is not None:
+        filename, filecontent = attached
+        with elle.log.debug('has attachement: %s' % filename):
+          elle.log.dump('attachement content: %s' % filecontent)
+          file = MIMEBase('application', 'octet-stream')
+          file.set_payload(filecontent)
+          file.add_header('Content-Disposition', 'attachment; filename=%s' % filename)
+          file.add_header('Content-Transfer-Encoding', 'base64')
+          msg.attach(file)
+      if reply_to is not None:
+        elle.log.debug('has reply to: %s' % reply_to)
+        rto_name, rto_addr = parseaddr(reply_to)
+        rto = Header()
+        rto.append(rto_name, encoding)
+        rto.append(' <%s>' % rto_addr)
+        msg['Reply-To'] = rto
+      return msg
 
-USER_REPORT_SUBJECT = """User Report (%(client_os)s)""".strip()
-USER_REPORT_CONTENT = """
+report_templates = dict()
 
+report_templates['user'] = {'subject': 'User Report (%(client_os)s)'.strip(),
+                            'content': """
 User file and .infinit directory in attached file.
 
 OS: %(client_os)s
@@ -114,11 +161,14 @@ Environment
 -----------
 %(env)s
 
-""".strip()
+---------
+More
+---------
+%(more)s
+""".strip()}
 
-EXISTING_BACKTRACE_SUBJECT = """Crash Report (%(client_os)s)""".strip()
-EXISTING_BACKTRACE_CONTENT = """
-
+report_templates['backtrace'] = {'subject': 'Crash Report (%(client_os)s)'.strip(),
+                                 'content': """
 Backtrace and state log attached.
 
 OS: %(client_os)s
@@ -136,35 +186,4 @@ Environment
 Additional Information
 ----------------------
 %(more)s
-""".strip()
-
-
-BACKTRACE_SUBJECT = """Crash report: %(signal)s in %(module)s - %(user)s""".strip()
-BACKTRACE_CONTENT = """
-%(user)s
-
----------
-VERSION
----------
-%(version)s
-
----------
-BACKTRACE
----------
-%(bt)s
-
----------
-ENV
----------
-%(env)s
-
----------
-SPEC
----------
-%(spec)s
-
----------
-More
----------
-%(more)s
-""".strip()
+""".strip()}

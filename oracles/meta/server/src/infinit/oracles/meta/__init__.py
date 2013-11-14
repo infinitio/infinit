@@ -1,8 +1,13 @@
 #!/usr/bin/python3
 
+# Load this FIRST to ensure we load our own openssl. Otherwise the
+# system one will be loaded through hashlib, by bottle for instance.
+import papier
+
 import bottle
 import elle.log
 import inspect
+import papier
 import pymongo
 import re
 
@@ -14,7 +19,7 @@ from . import error
 
 from .utils import api, hash_pasword, require_logged_in
 
-from . import user, transaction, device, root, trophonius, apertus
+from . import user, transaction, device, root, trophonius, apertus, invitation
 from . import notifier
 from . import mail
 
@@ -26,7 +31,14 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
   def __init__(self,
                mongo_host = None,
                mongo_port = None,
-               enable_emails = True):
+               enable_emails = True,
+               trophonius_expiration_time = 300 # in sec
+               ):
+    import os
+    system_logger = os.getenv("META_LOG_SYSTEM")
+    if system_logger is not None:
+      elle.log.set_logger(elle.log.SysLogger(system_logger))
+
     super().__init__()
     db_args = {}
     if mongo_host is not None:
@@ -52,6 +64,8 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
     self.notifier = notifier.Notifier(self.__database)
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
+    self.invitation = invitation.Invitation(active = enable_emails)
+    self.trophonius_expiration_time = trophonius_expiration_time
 
   def __set_constraints(self):
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)], unique = True)

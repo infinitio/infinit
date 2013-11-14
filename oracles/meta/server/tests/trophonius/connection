@@ -10,41 +10,10 @@ with Meta() as meta:
   alice.login()
 
   tropho = uuid4()
-
   assert not bob.connected
 
+  assert len(meta.get('trophonius')['trophonius']) == 0
   meta.put('trophonius/%s' % tropho, {"port": 23456})
-
-  # meta.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
-  #
-  # assert bob.connected
-  # assert bob.connected_on_device
-  #
-  # device = bob.device
-  # assert device['success']
-  # assert device['trophonius'] == str(tropho)
-  #
-  # meta.delete('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
-  #
-  # assert not bob.connected
-  # assert not bob.connected_on_device
-  #
-  # device = bob.device
-  # assert device['success']
-  # assert device['trophonius'] == None
-
-  # XXX: This function requiere to be logged in.
-  # meta.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, bob.device_id))
-
-
-  # assert bob.connected
-  # assert bob.connected_on_device
-
+  assert len(meta.get('trophonius')['trophonius']) == 1
   meta.delete('trophonius/%s' % tropho)
-
-  # assert not bob.connected
-  # assert not bob.connected_on_device
-  #
-  # device = bob.device
-  # assert device['success']
-  # assert device['trophonius'] == None
+  assert len(meta.get('trophonius')['trophonius']) == 0

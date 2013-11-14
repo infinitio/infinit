@@ -969,7 +969,8 @@ def configure(cxx_toolkit = None,
     protocol = elle.protocol,
     papier_python = papier_python_lib,
     boost = boost,
-    python3 = python_enabled and python3 or None,
+    python3 = python3,
+    enable_python_bindings = False,
     prefix = prefix,
     cxx_toolkit = cxx_toolkit,
     cxx_config = cxx_config,)
@@ -1218,8 +1219,8 @@ def configure(cxx_toolkit = None,
 
   # Install
   install = drake.Rule('install')
-  install << drake.copy(infinit_bin, prefix)
-  install << drake.copy(infinit_libs, prefix)
+  install << drake.install(infinit_bin, prefix)
+  install << drake.install(infinit_libs, prefix)
 
   # Tests
   tests_cxx_config = drake.cxx.Config(cxx_config)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import Meta, User
-
+import bson
 from infinit.oracles.notification import notifications
 
 class Notifier():
@@ -16,8 +16,10 @@ class Notifier():
                   device_ids = None,
                   message = None):
     if notification_type == notifications['peer_connection_update']:
+      recipients = set(map(bson.ObjectId, [self.sender.id, self.recipient.id]))
       devices = {self.sender.device_id, self.recipient.device_id}
-      assert device_ids == devices
+      print(recipients, recipient_ids)
+      assert recipient_ids == recipients
       assert message['transaction_id'] == self.transaction_id
       assert len(message['devices']) == 2
       assert set(message['devices']) == set(map(str, devices))

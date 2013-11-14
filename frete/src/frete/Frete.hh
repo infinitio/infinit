@@ -16,6 +16,10 @@
 # include <protocol/Serializer.hh>
 # include <protocol/RPC.hh>
 
+# include <cryptography/Code.hh>
+# include <cryptography/SecretKey.hh>
+# include <cryptography/cipher.hh>
+
 namespace frete
 {
   class Frete:
@@ -36,6 +40,7 @@ namespace frete
   `-------------*/
   public:
     Frete(infinit::protocol::ChanneledStream& channels,
+          std::string const& passphrase,
           boost::filesystem::path const& snapshot_destination);
     ~Frete();
 
@@ -98,7 +103,7 @@ namespace frete
     _file_size(FileID f);
     std::string
     _path(FileID f);
-    elle::Buffer
+    infinit::cryptography::Code
     _read(FileID f, Offset start, Size size);
     void
     _set_progress(uint64_t progress);
@@ -117,7 +122,7 @@ namespace frete
     RPC::RemoteProcedure<uint64_t, FileID> _rpc_file_size;
     RPC::RemoteProcedure<std::string,
                          FileID> _rpc_path;
-    RPC::RemoteProcedure<elle::Buffer,
+    RPC::RemoteProcedure<infinit::cryptography::Code,
                          FileID,
                          Offset,
                          Size> _rpc_read;
@@ -301,6 +306,7 @@ namespace frete
     trim(boost::filesystem::path const& item,
          boost::filesystem::path const& root);
 
+    ELLE_ATTRIBUTE(infinit::cryptography::SecretKey, key);
   };
 }
 

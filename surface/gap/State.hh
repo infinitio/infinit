@@ -150,6 +150,12 @@ namespace surface
       Self const&
       me() const;
 
+      void
+      set_avatar(boost::filesystem::path const& image_path);
+
+      void
+      set_avatar(elle::Buffer const& avatar);
+
       ELLE_ATTRIBUTE(reactor::Mutex, login_mutex);
     public:
       /// Login to meta.
@@ -272,10 +278,9 @@ namespace surface
       bool
       has_device() const;
 
-      /// Create or update the local device.
+      /// Update the local device name.
       void
-      update_device(std::string const& name,
-                    bool force_create = false) const;
+      update_device(std::string const& name) const;
 
       // Could be factorized.
       /*------.
@@ -321,18 +326,38 @@ namespace surface
         uint32_t id;
       };
 
+      class AvatarAvailableNotification:
+        public Notification
+      {
+      public:
+        static Notification::Type type;
+
+        AvatarAvailableNotification(uint32_t id);
+
+        uint32_t id;
+      };
+
     public:
+
       typedef infinit::oracles::meta::User User;
       typedef std::pair<const uint32_t, User> UserPair;
       typedef std::unordered_map<uint32_t, User> UserMap;
       typedef std::unordered_set<User> Users;
       typedef std::map<std::string, uint32_t> UserIndexMap;
       typedef std::unordered_set<uint32_t> UserIndexes;
+      typedef std::unordered_map<uint32_t, elle::Buffer> UserAvatars;
+      typedef std::unordered_set<std::string> AvatarToFetch;
 
       ELLE_ATTRIBUTE_RP(UserMap, users, mutable);
       ELLE_ATTRIBUTE_RP(UserIndexMap, user_indexes, mutable);
       ELLE_ATTRIBUTE_RP(UserIndexes, swagger_indexes, mutable);
       ELLE_ATTRIBUTE(reactor::Mutex, swagger_mutex);
+      ELLE_ATTRIBUTE_RP(UserAvatars, avatars, mutable);
+      ELLE_ATTRIBUTE_RP(AvatarToFetch, avatar_to_fetch, mutable);
+
+      ELLE_ATTRIBUTE_P(std::unique_ptr<reactor::Thread>, avatar_fetcher_thread,
+                       mutable);
+      ELLE_ATTRIBUTE_P(reactor::Barrier, avatar_fetching_barrier, mutable);
 
     public:
       void
@@ -359,6 +384,9 @@ namespace surface
 
       void
       _user_resync();
+
+      elle::ConstWeakBuffer
+      user_icon(std::string const& user_id) const;
 
       UserIndexes
       user_search(std::string const& text) const;

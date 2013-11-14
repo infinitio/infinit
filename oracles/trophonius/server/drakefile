@@ -5,28 +5,40 @@ import sys
 build = None
 install = None
 check = None
+tests = None
 
 def configure(elle,
               reactor,
               meta_client,
               boost,
+              enable_python_bindings = True,
+              python3 = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None):
 
-  global build, install, check
+  # Rules
+  global build, check, install, tests
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
   local_cxx_config = drake.cxx.Config(cxx_config)
   local_cxx_config += boost.config_program()
+  local_cxx_config += boost.config_system()
   local_cxx_config += elle.config
   local_cxx_config += reactor.config
   local_cxx_config += meta_client.config
   local_cxx_config.add_local_include_path('src')
   local_cxx_config.lib_path_runtime('.')
-  local_cxx_config.lib('jsoncpp')
+  local_cxx_config.add_system_include_path('json-spirit/include')
+
+  # Python
+  if enable_python_bindings:
+    python3 = drake.cxx.find_library(
+      token = 'pyconfig.h',
+      prefix = python3,
+      include_dir = 'include/python3.2')
 
   elle_lib = drake.copy(elle.lib_dynamic, 'lib',
                         strip_prefix = True)
@@ -38,9 +50,20 @@ def configure(elle,
   sources = drake.nodes(
     'src/infinit/oracles/trophonius/server/Client.cc',
     'src/infinit/oracles/trophonius/server/Client.hh',
+    'src/infinit/oracles/trophonius/server/Meta.cc',
+    'src/infinit/oracles/trophonius/server/Meta.hh',
+    'src/infinit/oracles/trophonius/server/User.cc',
+    'src/infinit/oracles/trophonius/server/User.hh',
     'src/infinit/oracles/trophonius/server/Trophonius.cc',
     'src/infinit/oracles/trophonius/server/Trophonius.hh',
     'src/infinit/oracles/trophonius/server/fwd.hh',
+    'src/infinit/oracles/trophonius/server/exceptions.cc',
+    'src/infinit/oracles/trophonius/server/exceptions.hh',
+    'src/infinit/oracles/trophonius/server/utils.cc',
+    'src/infinit/oracles/trophonius/server/utils.hh',
+    'json-spirit/src/reader.cpp',
+    'json-spirit/src/value.cpp',
+    'json-spirit/src/writer.cpp',
   )
 
   lib = drake.cxx.DynLib('lib/trophonius',
@@ -55,13 +78,57 @@ def configure(elle,
     'src/main.cc',
   )
 
-  trophonius = drake.cxx.Executable('bin/trophonius',
-                                    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib],
-                                    cxx_toolkit,
-                                    exe_cxx_config)
-  build = drake.Rule('build')
-  install = drake.Rule('install')
+  trophonius = drake.cxx.Executable(
+    'bin/trophonius',
+    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib],
+    cxx_toolkit,
+    exe_cxx_config)
 
+  build = drake.Rule('build')
   build << trophonius
 
-  check = drake.Rule('check')
+  if enable_python_bindings:
+    python_sources = drake.nodes(
+      'src/infinit/oracles/trophonius/server/python.cc',
+    )
+    python_cxx_config = drake.cxx.Config(local_cxx_config)
+    python_cxx_config.lib_path_runtime('../../..')
+    python_cxx_config += python3
+    python_cxx_config += boost.config_python()
+    python_lib = drake.cxx.Module(
+      'lib/python/infinit/oracles/trophonius',
+      python_sources + [lib],
+      cxx_toolkit, python_cxx_config)
+    build << python_lib
+    build << drake.touch('lib/python/infinit/__init__.py')
+    build << drake.touch('lib/python/infinit/oracles/__init__.py')
+
+  ## ----- ##
+  ## Tests ##
+  ## ----- ##
+
+  check = drake.TestSuite('check')
+  tests = drake.Rule('tests')
+
+  cxx_config_tests = drake.cxx.Config(local_cxx_config)
+  cxx_config_tests.lib_path_runtime('../lib')
+  cxx_config_tests += boost.config_test()
+  for name in ['trophonius']:
+    test = drake.cxx.Executable(
+      'tests/%s' % name,
+      drake.nodes('tests/%s.cc' % name) + [lib,
+                                           elle_lib,
+                                           reactor_lib],
+      cxx_toolkit,
+      cxx_config_tests)
+    tests << test
+    runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
+    check << runner.status
+
+  ## ------- ##
+  ## Install ##
+  ## ------- ##
+
+  install = drake.Rule('install')
+  install << drake.install(trophonius, prefix)

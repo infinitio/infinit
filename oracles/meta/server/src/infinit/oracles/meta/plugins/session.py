@@ -1,5 +1,8 @@
+import elle.log
 import bottle
 import copy
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.plugin.Session'
 
 class Plugin(object):
 
@@ -15,11 +18,13 @@ class Plugin(object):
     self.__collection = collection
 
   def remove(self, query):
-    assert len(query)
-    sid = bottle.request.session_id
-    if sid is not None:
-      query.update({'_id': {'$ne': sid}})
-    self.__database.sessions.remove(query)
+    with elle.log.trace("remove session for %s" % query):
+      assert len(query)
+      sid = bottle.request.session_id
+      if sid is not None:
+        query.update({'_id': {'$ne': sid}})
+      res = self.__database.sessions.remove(query)
+      elle.log.debug("res: %s" % res)
 
   def apply(self, callback, route):
     def wrapper(*args, **kwargs):

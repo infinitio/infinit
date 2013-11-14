@@ -181,6 +181,11 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::ConnectDeviceResponse, ar, res)
   (void) res;
 }
 
+SERIALIZE_RESPONSE(infinit::oracles::meta::FallbackResponse, ar, res)
+{
+  ar & named("fallback", res.fallback);
+}
+
 namespace infinit
 {
   namespace oracles
@@ -228,7 +233,6 @@ namespace infinit
         _user_agent{"MetaClient/" INFINIT_VERSION},
         _logged_in{false}
       {
-        ELLE_LOG("%s: creating a meta client", this);
         //ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       }
 
@@ -321,9 +325,10 @@ namespace infinit
       Client::search_users(std::string const& text, int count, int offset) const
       {
         json::Dictionary request;
+        request["text"] = text;
         request["limit"] = count;
         request["offset"] = offset;
-        return this->_request<UsersResponse>(elle::sprintf("/user/search/%s", text), Method::POST, request);
+        return this->_request<UsersResponse>("/user/search", Method::POST, request);
       }
 
       UserResponse
@@ -407,11 +412,13 @@ namespace infinit
       }
 
       UpdateDeviceResponse
-      Client::update_device(std::string const& _id,
+      Client::update_device(boost::uuids::uuid const& device_uuid,
                             std::string const& name) const
       {
+        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+
         json::Dictionary request{std::map<std::string, std::string>{
-            {"id", _id},
+            {"id", struuid},
             {"name", name},
         }};
 
@@ -420,18 +427,22 @@ namespace infinit
       }
 
       DeviceResponse
-      Client::device(std::string const& _id) const
+      Client::device(boost::uuids::uuid const& device_uuid) const
       {
+        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+
         return this->_request<DeviceResponse>(
-          sprintf("/device/%s/view", _id), Method::GET);
+          sprintf("/device/%s/view", struuid), Method::GET);
       }
 
       DeleteDeviceResponse
-      Client::delete_device(std::string const& _id) const
+      Client::delete_device(boost::uuids::uuid const& device_uuid) const
       {
+        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+
         json::Dictionary request{std::map<std::string, std::string>{
-            {"_id", _id},
-              }};
+            {"id", struuid},
+         }};
 
         return this->_request<DeleteDeviceResponse>(
           "/device/delete", Method::POST, request);
@@ -621,7 +632,7 @@ namespace infinit
       }
 
       EndpointNodeResponse
-      Client::device_endpoints(std::string const& network_id,
+      Client::device_endpoints(std::string const& transaction_id,
                                std::string const& self_device_id,
                                std::string const& device_id) const
       {
@@ -633,8 +644,86 @@ namespace infinit
         };
 
         return this->_request<EndpointNodeResponse>(
-          sprintf("/transaction/%s/endpoints", network_id),
+          sprintf("/transaction/%s/endpoints", transaction_id),
           Method::POST, request);
+      }
+
+      FallbackResponse
+      Client::fallback(std::string const& _id) const
+      {
+        return this->_request<FallbackResponse>(
+          elle::sprintf("/apertus/fallback/%s", _id), Method::GET);
+      }
+
+      elle::Buffer
+      Client::icon(std::string const& user_id) const
+      {
+        auto request = this->_build_request(
+          elle::sprintf("/user/%s/avatar", user_id),
+          Method::GET,
+          *(elle::format::json::Object*)(nullptr));
+
+        return request.response();
+      }
+
+      void
+      Client::icon(std::string const& user_id,
+                   elle::ConstWeakBuffer const& icon) const
+      {
+        reactor::http::Request request =
+          this->_client.request(
+            elle::sprintf("%s/user/avatar", this->_root_url),
+            reactor::http::Method::POST,
+            "application/octet-stream",
+            this->_default_configuration);
+
+        request.write((char const*) icon.contents(), icon.size());
+        request.finalize();
+
+        auto status = request.status();
+        if (status != reactor::http::StatusCode::OK)
+        {
+          throw elle::http::Exception(
+            static_cast<elle::http::ResponseCode>(status),
+            elle::sprintf("error %s while POSTing avatar", status));
+        }
+      }
+
+      reactor::http::Request
+      Client::_build_request(std::string const& url,
+                             reactor::http::Method method,
+                             elle::format::json::Object const& body) const
+      {
+        ELLE_LOG_COMPONENT("oracles.meta.client");
+        ELLE_TRACE_SCOPE("%s: %s on %s", *this, method, url);
+
+        reactor::http::Request request = &body ?
+          this->_client.request(
+            this->_root_url + url,
+            method,
+            "application/json",
+            this->_default_configuration) :
+          this->_client.request(
+            this->_root_url + url,
+            method,
+            this->_default_configuration);
+
+        if (&body)
+        {
+          request << body.repr();
+          request.finalize();
+        }
+
+        auto status = request.status();
+        if (status != reactor::http::StatusCode::OK)
+        {
+          ELLE_ERR("%s: error while posting: %s (%s)",
+                   *this, status, request.response().string());
+          throw elle::http::Exception(
+            static_cast<elle::http::ResponseCode>(status),
+            elle::sprintf("error %s while posting on %s", status, url));
+        }
+        return request;
       }
 
       //- Properties ------------------------------------------------------------

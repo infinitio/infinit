@@ -319,6 +319,15 @@ namespace surface
           identity_infos.close();
         }
 
+        auto device = this->meta().device(device_uuid);
+        this->_device.reset(new Device{device.id, device.name});
+        std::string passport_path =
+          common::infinit::passport_path(this->me().id);
+        this->_passport.reset(new papier::Passport());
+        if (this->_passport->Restore(device.passport) == elle::Status::Error)
+          throw Exception(gap_wrong_passport, "Cannot load the passport");
+        this->_passport->store(elle::io::Path(passport_path));
+
         this->_trophonius.connect(
           this->me().id, this->device().id, this->_meta.session_id());
 
@@ -348,6 +357,41 @@ namespace surface
                   ELLE_TRACE("%s: notification pulled", *this);
                 }
               }});
+
+        this->_avatar_fetcher_thread.reset(
+          new reactor::Thread{
+            scheduler,
+            "avatar fetched",
+            [&]
+            {
+              while (true)
+              {
+                this->_avatar_fetching_barrier.wait();
+
+                ELLE_ASSERT(!this->_avatar_to_fetch.empty());
+                auto user_id = *this->_avatar_to_fetch.begin();
+                auto id = this->_user_indexes.at(this->user(user_id).id);
+                try
+                {
+                  this->_avatars.insert(
+                    std::make_pair(id,
+                                   this->_meta.icon(user_id)));
+                  this->_avatar_to_fetch.erase(user_id);
+                  this->enqueue(AvatarAvailableNotification(id));
+                }
+                catch (elle::Exception const& e)
+                {
+                  ELLE_ERR("%s: unable to fetch %s avatar: %s", *this, user_id,
+                           e.what());
+                  // The UI will ask for the avatar again if it needs it, so
+                  // remove the request from the queue if there's a problem.
+                  this->_avatar_to_fetch.erase(user_id);
+                }
+
+                if (this->_avatar_to_fetch.empty())
+                  this->_avatar_fetching_barrier.close();
+              }
+            }});
 
         this->user(this->me().id);
         this->_transactions_init();
@@ -421,6 +465,16 @@ namespace surface
             this->_user_indexes.clear();
             this->_swagger_indexes.clear();
             this->_users.clear();
+
+            this->_avatar_fetching_barrier.close();
+            if (this->_avatar_fetcher_thread != nullptr)
+            {
+              ELLE_DEBUG("stop avatar_fetching");
+              this->_avatar_fetcher_thread->terminate_now();
+              this->_avatar_fetcher_thread.reset();
+            }
+            this->_avatar_to_fetch.clear();
+            this->_avatars.clear();
           }
 
           ELLE_DEBUG("clear transactions")
@@ -548,6 +602,29 @@ namespace surface
       return *this->_me;
     }
 
+    void
+    State::set_avatar(boost::filesystem::path const& image_path)
+    {
+      if (!boost::filesystem::exists(image_path))
+        throw Exception(gap_error,
+                        elle::sprintf("file not found at %s", image_path));
+
+      std::ifstream stream{image_path.string()};
+      std::istream_iterator<char> eos;
+      std::istream_iterator<char> iit(stream);   // stdin iterator
+
+      elle::Buffer output;
+      std::copy(iit, eos, output.begin());
+
+      this->set_avatar(output);
+    }
+
+    void
+    State::set_avatar(elle::Buffer const& avatar)
+    {
+      this->meta().icon(this->me().id, avatar);
+    }
+
     std::string
     State::user_directory()
     {
@@ -596,7 +673,7 @@ namespace surface
           }
           catch (elle::Exception const&)
           {
-            ELLE_WARN("%s: failed at resynching (%s)... retrying...",
+            ELLE_WARN("%s: failed at resynching (%s). Retrying...",
                       *this, elle::exception_string());
             reactor::sleep(1_sec);
           }
@@ -715,6 +792,8 @@ namespace surface
           return out << "ConnectionStatus";
         case NotificationType_KickedOut:
           return out << "Kicked Out";
+        case NotificationType_AvatarAvailable:
+          return out << "Avatar Available";
       }
 
       return out;
