@@ -28,6 +28,14 @@ namespace infinit
         User::User(Trophonius& trophonius,
                    std::unique_ptr<reactor::network::TCPSocket>&& socket):
           Client(trophonius, std::move(socket)),
+          // Session
+          _device_id(boost::uuids::nil_uuid()),
+          _user_id(),
+          _session_id(),
+          // Meta
+          _meta(this->trophonius().meta().host(),
+                this->trophonius().meta().port()),
+          _authentified(),
           _registered(false),
           // Notifications
           _notifications(),
@@ -36,13 +44,6 @@ namespace infinit
                                 elle::sprintf("%s notifications", *this),
                                 std::bind(&User::_handle_notifications,
                                           std::ref(*this))),
-          // Server
-          _authentified(),
-          _meta(this->trophonius().meta().host(),
-                this->trophonius().meta().port()),
-          _device_id(boost::uuids::nil_uuid()),
-          _user_id(),
-          _session_id(),
           // Ping pong
           _ping_thread(*reactor::Scheduler::scheduler(),
                        elle::sprintf("%s ping", *this),

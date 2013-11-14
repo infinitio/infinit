@@ -127,6 +127,20 @@ public:
         std::string id = chunks[2];
         if (chunks.size() == 3)
         {
+          std::cerr << socket->read_until("\r\n\r\n").string() << std::endl;
+          // std::cerr << "read" << std::endl;
+          // char wor;
+          // *socket >> word;
+          // std::cerr << "all done" << std::endl;
+          // std::cerr << word << std::endl;
+          // char data[15];
+          // socket->read(reactor::network::Buffer(data, 14));
+          // data[14] = 0;
+          // std::cerr << data << std::endl;
+          std::cerr << "read" << std::endl;
+          auto json = read_json(*socket);
+          std::cerr << "/read" << std::endl;
+          std::cerr << "J'ai ca: " << pretty_print_json(json) << std::endl;
           if (method == "PUT")
             this->_register(*socket, id);
           else if (method == "DELETE")
