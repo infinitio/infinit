@@ -80,7 +80,7 @@ def invite_user(email,
         template_id = mail_template,
         subject = subject,
         fr = "%s <%s>" % source,
-        reply_to = source,
+        reply_to = "%s <%s>" % source,
         #  accesscode=code,
         **kw
       )
