@@ -61,6 +61,7 @@ namespace oracles
 
     private:
       std::map<oracle::hermes::TID, reactor::network::TCPSocket*> _clients;
+      std::vector<std::unique_ptr<reactor::Thread>> _workers;
     };
   }
 }
