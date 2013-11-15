@@ -538,6 +538,42 @@ ELLE_TEST_SCHEDULED(notification_authentication_failed)
   check_authentication_failure(socket);
 }
 
+
+/*-------------.
+| ping_timeout |
+`-------------*/
+
+ELLE_TEST_SCHEDULED(ping_timeout)
+{
+  auto ping = 100_ms;
+  Meta meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    "localhost",
+    meta.port(),
+    0,
+    ping,
+    300_sec);
+  static auto const uuid  = "00000000-0000-0000-0000-000000000001";
+  static auto const id = std::make_pair(uuid, uuid);
+  auto& t = meta.trophonius(trophonius);
+  BOOST_CHECK(t.find(id) == t.end());
+  reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
+  authentify(socket, 1, 1);
+  check_authentication_success(socket);
+  BOOST_CHECK(t.find(id) != t.end());
+  reactor::sleep(ping * 3);
+  // Read two pings
+  for (int i = 0; i < 2; ++i)
+  {
+    auto response = read_json(socket);
+    BOOST_CHECK_EQUAL(response["notification_type"].getInt(), 208);
+  }
+  // Chek we were disconnected.
+  BOOST_CHECK_THROW(read_json(socket), reactor::network::ConnectionClosed);
+  BOOST_CHECK(t.find(id) == t.end());
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -547,4 +583,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(authentication_failure), 0, 3);
   suite.add(BOOST_TEST_CASE(wait_authentified), 0, 3);
   suite.add(BOOST_TEST_CASE(notification_authentication_failed), 0, 3);
+  suite.add(BOOST_TEST_CASE(ping_timeout), 0, 3);
 }
