@@ -25,7 +25,12 @@ class Mixin:
 
   @api('/status')
   def status(self):
-    return self.success({"status" : "ok"})
+    return self.success({"status" : True})
+    # return self.success(
+    #   {
+    #     "status" : False,
+    #     "message" : "<p>Infinit is under maintainance</p>",
+    #   })
 
   @api('/ghostify', method = 'POST')
   @require_admin
