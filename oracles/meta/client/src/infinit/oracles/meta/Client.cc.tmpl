@@ -710,7 +710,7 @@ namespace infinit
 
         if (&body)
         {
-          request << body.repr();
+          request << body.repr() << "\n";
           request.finalize();
         }
 
