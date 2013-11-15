@@ -50,33 +50,38 @@ namespace oracles
       reactor::network::TCPServer serv(_sched);
       serv.listen(_port);
 
-      auto handle = [&] (reactor::network::TCPSocket* client)
+      this->reg();
+
+      elle::With<elle::Finally>([this] { this->unreg(); }) << [&]
       {
-        // Retrieve TID size.
-        char size;
-        reactor::network::Buffer tmp(&size, 1);
-        client->read(tmp);
-
-        // Retrieve TID of the client.
-        char tid_array[size];
-        reactor::network::Buffer tid_buffer(tid_array, size);
-        client->read(tid_buffer);
-        oracle::hermes::TID tid = std::string(tid_array);
-
-        // First client to connect with this TID, it must wait.
-        if (_clients.find(tid) == _clients.end())
-          _clients[tid] = client;
-        // Second client, establishing connection.
-        else
+        auto handle = [&] (reactor::network::TCPSocket* client)
         {
-          this->_connect(client, _clients[tid]);
-          _clients.erase(tid);
-        }
-      };
+          // Retrieve TID size.
+          char size;
+          reactor::network::Buffer tmp(&size, 1);
+          client->read(tmp);
 
-      reactor::network::TCPSocket* client = nullptr;
-      while ((client = serv.accept()) != nullptr)
-        new reactor::Thread(_sched, "handler", std::bind(handle, client));
+          // Retrieve TID of the client.
+          char tid_array[size];
+          reactor::network::Buffer tid_buffer(tid_array, size);
+          client->read(tid_buffer);
+          oracle::hermes::TID tid = std::string(tid_array);
+
+          // First client to connect with this TID, it must wait.
+          if (_clients.find(tid) == _clients.end())
+            _clients[tid] = client;
+          // Second client, establishing connection.
+          else
+          {
+            this->_connect(client, _clients[tid]);
+            _clients.erase(tid);
+          }
+        };
+
+        reactor::network::TCPSocket* client = nullptr;
+        while ((client = serv.accept()) != nullptr)
+          new reactor::Thread(_sched, "handler", std::bind(handle, client));
+      };
     }
 
     void

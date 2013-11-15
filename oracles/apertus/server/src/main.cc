@@ -6,8 +6,6 @@
 #include <reactor/scheduler.hh>
 #include <version.hh>
 
-
-
 static
 boost::program_options::variables_map
 parse_options(int argc, char** argv)
@@ -94,8 +92,6 @@ int main(int argc, char** argv)
         ap.reset(new oracles::apertus::Apertus(
           sched, meta_host, meta_port, "0.0.0.0", port));
 
-        ap->reg();
-
         main.wait(*ap);
         ap.reset();
       });
@@ -105,10 +101,7 @@ int main(int argc, char** argv)
       [&]
       {
         if (ap)
-        {
-          ap->unreg();
           ap->stop();
-        }
       });
 
     sched.run();
