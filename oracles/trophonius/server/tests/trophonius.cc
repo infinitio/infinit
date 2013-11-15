@@ -47,13 +47,13 @@ public:
     return elle::sprintf("http://127.0.0.1:%s/%s", this->port(), path);
   }
 
-  ELLE_ATTRIBUTE(reactor::network::TCPServer, server);
-  ELLE_ATTRIBUTE_R(int, port);
-  ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter);
   typedef std::pair<std::string, std::string> Client;
   typedef std::unordered_set<Client, boost::hash<Client>> Clients;
   typedef std::pair<int, Clients> Trophonius;
   typedef std::unordered_map<std::string, Trophonius> Trophoniuses;
+  ELLE_ATTRIBUTE(reactor::network::TCPServer, server);
+  ELLE_ATTRIBUTE_R(int, port);
+  ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter);
   ELLE_ATTRIBUTE_R(Trophoniuses, trophoniuses);
 
   Clients&
@@ -148,7 +148,7 @@ public:
         std::string user = chunks[4];
         std::string device = chunks[5];
         if (method == "PUT")
-          this->_register(*socket, id, user, device);
+          this->_register_user(*socket, id, user, device);
         else if (method == "DELETE")
           this->_unregister(*socket, id, user, device);
         return;
@@ -179,7 +179,7 @@ public:
 
   virtual
   void
-  _register(reactor::network::TCPSocket& socket,
+  _register_user(reactor::network::TCPSocket& socket,
             std::string const& id,
             std::string const& user,
             std::string const& device)
@@ -223,16 +223,28 @@ public:
   void
   _send_notification(int type, std::string user, std::string device)
   {
-    json_spirit::Object response;
-    response["user_id"] = boost::lexical_cast<std::string>(user);
-    response["device_id"] = boost::lexical_cast<std::string>(device);
-    json_spirit::Object notification;
-    notification["notification_type"] = 42;
-    response["notification"] = notification;
-    // XXX: hardcoded trophonius
-    auto port = this->_trophoniuses.begin()->first;
-    reactor::network::TCPSocket notify("127.0.0.1", port);
-    write_json(notify, response);
+    try
+    {
+      json_spirit::Object response;
+      response["user_id"] = boost::lexical_cast<std::string>(user);
+      response["device_id"] = boost::lexical_cast<std::string>(device);
+      json_spirit::Object notification;
+      notification["notification_type"] = 42;
+      response["notification"] = notification;
+      // XXX: hardcoded trophonius
+      auto port = this->_trophoniuses.begin()->second.first;
+      ELLE_LOG("%s: send notification: %s", *this, pretty_print_json(response))
+      {
+        reactor::network::TCPSocket notify("127.0.0.1", port);
+        write_json(notify, response);
+      }
+    }
+    catch (...)
+    {
+      ELLE_ERR("%s: error while sending notification: %s",
+               *this, elle::exception_string());
+      throw;
+    }
   }
 };
 
@@ -320,7 +332,7 @@ class MetaAuthenticationFailure:
 {
   virtual
   void
-  _register(reactor::network::TCPSocket& socket,
+  _register_user(reactor::network::TCPSocket& socket,
             std::string const& id,
             std::string const& user,
             std::string const& device)
@@ -365,13 +377,20 @@ class MetaGonzales:
 {
   virtual
   void
-  _register(reactor::network::TCPSocket& socket,
+  _register_user(reactor::network::TCPSocket& socket,
             std::string const& id,
             std::string const& user,
-            std::string const& device)
+            std::string const& device) override
   {
-    Meta::_register(socket, id, user, device);
-    this->_send_notification(42, user, device);
+    ELLE_LOG_SCOPE("%s: register user %s:%s on %s", *this, user, device, id);
+    Client c(user, device);
+    auto& trophonius = this->trophonius(id);
+    BOOST_CHECK(trophonius.find(c) == trophonius.end());
+    trophonius.insert(c);
+    ELLE_LOG("%s: send notification before login confirmation", *this)
+      this->_send_notification(42, user, device);
+    ELLE_LOG("%s: send login confirmation", *this)
+      this->_response_success(socket);
   }
 };
 
@@ -414,7 +433,7 @@ class MetaNotificationAuthenticationFailed:
 {
   virtual
   void
-  _register(reactor::network::TCPSocket& socket,
+  _register_user(reactor::network::TCPSocket& socket,
             std::string const& id,
             std::string const& user,
             std::string const& device)
