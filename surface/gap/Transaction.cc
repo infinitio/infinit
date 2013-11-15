@@ -4,6 +4,7 @@
 #include <surface/gap/TransferMachine.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/SendMachine.hh>
+#include <surface/gap/Exception.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.Transaction");
 
