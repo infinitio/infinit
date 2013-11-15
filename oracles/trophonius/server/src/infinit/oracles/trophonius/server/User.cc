@@ -185,6 +185,23 @@ namespace infinit
                 }
                 ELLE_TRACE_SCOPE("%s: connect with user %s and device %s",
                                  *this, this->_user_id, this->_device_id);
+                // Remove potential stray previous client.
+                // XXX: this removes the previous client even if the fails at
+                // login.
+                {
+                  auto& users = this->trophonius().users().get<1>();
+                  auto it = users.find(
+                    boost::make_tuple(this->_user_id, this->_device_id));
+                  if (it != users.end())
+                  {
+                    auto previous = *it;
+                    ELLE_LOG("%s: remove previous instance %s",
+                             *this, *previous);
+                    users.erase(it);
+                    previous->terminate();
+                    delete previous;
+                  }
+                }
                 this->trophonius().users().insert(this);
                 this->trophonius().users_pending().erase(this);
                 meta::Response res;

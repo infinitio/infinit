@@ -40,6 +40,7 @@ public:
   ~Meta()
   {
     this->_accepter->terminate_now();
+    ELLE_LOG("%s: finalize", *this);
   }
 
   std::string
@@ -188,7 +189,6 @@ public:
     ELLE_LOG_SCOPE("%s: register user %s:%s on %s", *this, user, device, id);
     Client c(user, device);
     auto& trophonius = this->trophonius(id);
-    BOOST_CHECK(trophonius.find(c) == trophonius.end());
     trophonius.insert(c);
     this->_response_success(socket);
   }
@@ -271,6 +271,23 @@ authentify(reactor::network::TCPSocket& socket,
       "  \"session_id\": \"00000000-0000-0000-0000-000000000000\""
       "}\n", user, device);
   socket.write(auth);
+}
+
+static
+int
+read_notification(reactor::network::TCPSocket& socket)
+{
+  auto response = read_json(socket);
+  auto it = response.find("notification_type");
+  BOOST_CHECK(it != response.end());
+  return it->second.getInt();
+}
+
+static
+void
+read_ping(reactor::network::TCPSocket& socket)
+{
+  BOOST_CHECK_EQUAL(read_notification(socket), 208);
 }
 
 static
@@ -370,12 +387,10 @@ ELLE_TEST_SCHEDULED(notifications)
     }
     catch (...)
     {
-      std::cerr << "----------------------------------------------------------------------------------------------------" << elle::exception_string() << std::endl;
+      ELLE_ERR("error sending notification: %s", elle::exception_string());
       throw;
     }
-    std::cerr << "lol" << std::endl;
     reactor::wait(scope);
-    std::cerr << "ByE" << std::endl;
   };
 }
 
@@ -565,12 +580,57 @@ ELLE_TEST_SCHEDULED(ping_timeout)
   reactor::sleep(ping * 3);
   // Read two pings
   for (int i = 0; i < 2; ++i)
-  {
-    auto response = read_json(socket);
-    BOOST_CHECK_EQUAL(response["notification_type"].getInt(), 208);
-  }
+    read_ping(socket);
   // Chek we were disconnected.
   BOOST_CHECK_THROW(read_json(socket), reactor::network::ConnectionClosed);
+  BOOST_CHECK(t.find(id) == t.end());
+}
+
+/*--------.
+| replace |
+`--------*/
+
+// Send a notification to a non authenticated user.
+ELLE_TEST_SCHEDULED(replace)
+{
+  Meta meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    "localhost",
+    meta.port(),
+    0,
+    30_sec,
+    300_sec);
+  static auto const uuid  = "00000000-0000-0000-0000-000000000001";
+  static auto const id = std::make_pair(uuid, uuid);
+  auto& t = meta.trophonius(trophonius);
+  BOOST_CHECK(t.find(id) == t.end());
+  {
+    ELLE_LOG("connect the first client");
+    reactor::network::TCPSocket socket1("127.0.0.1", trophonius.port());
+    authentify(socket1, 1, 1);
+    check_authentication_success(socket1);
+    BOOST_CHECK(t.find(id) != t.end());
+    meta.send_notification(1,
+                           "00000000-0000-0000-0000-000000000001",
+                           "00000000-0000-0000-0000-000000000001");
+    ELLE_LOG("read notification from the first client")
+      BOOST_CHECK_EQUAL(read_notification(socket1), 1);
+    ELLE_LOG("connect a replacement client");
+    reactor::network::TCPSocket socket2("127.0.0.1", trophonius.port());
+    authentify(socket2, 1, 1);
+    check_authentication_success(socket2);
+    BOOST_CHECK(t.find(id) != t.end());
+    meta.send_notification(2,
+                           "00000000-0000-0000-0000-000000000001",
+                           "00000000-0000-0000-0000-000000000001");
+    // Check the first socket was disconnected.
+    ELLE_LOG("check the old client is disconnected")
+      BOOST_CHECK_THROW(read_json(socket1), reactor::network::ConnectionClosed);
+    ELLE_LOG("read notification from the new client")
+      BOOST_CHECK_EQUAL(read_notification(socket2), 2);
+  }
+  reactor::sleep(100_ms); // XXX: wait for tropho to disconnect it.
   BOOST_CHECK(t.find(id) == t.end());
 }
 
@@ -584,4 +644,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(wait_authentified), 0, 3);
   suite.add(BOOST_TEST_CASE(notification_authentication_failed), 0, 3);
   suite.add(BOOST_TEST_CASE(ping_timeout), 0, 3);
+  suite.add(BOOST_TEST_CASE(replace), 0, 3);
 }
