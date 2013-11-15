@@ -106,6 +106,9 @@ namespace infinit
         void
         User::notify(json_spirit::Value const& notification)
         {
+          elle::Lazy<std::string> json(
+            std::bind(&pretty_print_json, std::ref(notification)));
+          ELLE_DEBUG("%s: push notification: %s", *this, json);
           this->_notifications.push(std::move(notification));
           this->_notification_available.signal();
         }
@@ -117,18 +120,17 @@ namespace infinit
           RemoveWard ward(*this);
           try
           {
+            ELLE_DEBUG_SCOPE("%s: start handling notifications", *this);
             while (true)
             {
               while (!this->_notifications.empty())
               {
                 auto notification = std::move(this->_notifications.front());
                 this->_notifications.pop();
-                ELLE_TRACE(
-                  "%s: send notification: %s",
-                  *this,
-                  elle::Lazy<std::string>(
-                    std::bind(&pretty_print_json, std::ref(notification))));
-                write_json(*this->_socket, notification);
+                elle::Lazy<std::string> json(
+                  std::bind(&pretty_print_json, std::ref(notification)));
+                ELLE_TRACE("%s: send notification: %s", *this, json)
+                  write_json(*this->_socket, notification);
               }
               this->_notification_available.wait();
             }
