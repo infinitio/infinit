@@ -52,14 +52,15 @@ public:
   ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter);
   typedef std::pair<std::string, std::string> Client;
   typedef std::unordered_set<Client, boost::hash<Client>> Clients;
-  typedef std::unordered_map<std::string, Clients> Trophoniuses;
+  typedef std::pair<int, Clients> Trophonius;
+  typedef std::unordered_map<std::string, Trophonius> Trophoniuses;
   ELLE_ATTRIBUTE_R(Trophoniuses, trophoniuses);
 
   Clients&
   trophonius(std::string const& id)
   {
     BOOST_CHECK(this->_trophoniuses.find(id) != this->_trophoniuses.end());
-    return this->_trophoniuses.find(id)->second;
+    return this->_trophoniuses.find(id)->second.second;
   }
 
   Clients&
@@ -117,6 +118,9 @@ public:
                               boost::algorithm::is_any_of(" "));
       std::string method = words[0];
       std::string path = words[1];
+      // Read remaining headers.
+      ELLE_DEBUG("%s: read remaining headers", *this)
+        socket->read_until("\r\n\r\n");
       {
         std::vector<std::string> chunks;
         boost::algorithm::split(chunks, path,
@@ -127,22 +131,12 @@ public:
         std::string id = chunks[2];
         if (chunks.size() == 3)
         {
-          std::cerr << socket->read_until("\r\n\r\n").string() << std::endl;
-          // std::cerr << "read" << std::endl;
-          // char wor;
-          // *socket >> word;
-          // std::cerr << "all done" << std::endl;
-          // std::cerr << word << std::endl;
-          // char data[15];
-          // socket->read(reactor::network::Buffer(data, 14));
-          // data[14] = 0;
-          // std::cerr << data << std::endl;
-          std::cerr << "read" << std::endl;
-          auto json = read_json(*socket);
-          std::cerr << "/read" << std::endl;
-          std::cerr << "J'ai ca: " << pretty_print_json(json) << std::endl;
           if (method == "PUT")
-            this->_register(*socket, id);
+          {
+            auto json = read_json(*socket);
+            BOOST_CHECK(json.find("port") != json.end());
+            this->_register(*socket, id, json.find("port")->second.getInt());
+          }
           else if (method == "DELETE")
             this->_unregister(*socket, id);
           this->response(*socket,
@@ -165,11 +159,12 @@ public:
   virtual
   void
   _register(reactor::network::TCPSocket& socket,
-            std::string const& id)
+            std::string const& id,
+            int port)
   {
-    ELLE_LOG_SCOPE("%s: register trophonius %s", *this, id);
+    ELLE_LOG_SCOPE("%s: register trophonius %s on port %s", *this, id, port);
     BOOST_CHECK(this->_trophoniuses.find(id) == this->_trophoniuses.end());
-    this->_trophoniuses.insert(std::make_pair(id, Clients()));
+    this->_trophoniuses.insert(std::make_pair(id, Trophonius(port, Clients())));
   }
 
   virtual
@@ -234,8 +229,9 @@ public:
     json_spirit::Object notification;
     notification["notification_type"] = 42;
     response["notification"] = notification;
-    // XXX: hardcoded port
-    reactor::network::TCPSocket notify("127.0.0.1", 8080);
+    // XXX: hardcoded trophonius
+    auto port = this->_trophoniuses.begin()->first;
+    reactor::network::TCPSocket notify("127.0.0.1", port);
     write_json(notify, response);
   }
 };
@@ -272,6 +268,7 @@ ELLE_TEST_SCHEDULED(register_unregister)
   Meta meta;
   BOOST_CHECK_EQUAL(meta.trophoniuses().size(), 0);
   {
+    ELLE_LOG("register trophonius");
     infinit::oracles::trophonius::server::Trophonius trophonius(
       0,
       "localhost",
@@ -280,6 +277,7 @@ ELLE_TEST_SCHEDULED(register_unregister)
       60_sec,
       300_sec);
     BOOST_CHECK_EQUAL(meta.trophoniuses().size(), 1);
+    ELLE_LOG("unregister trophonius");
   }
   BOOST_CHECK_EQUAL(meta.trophoniuses().size(), 0);
 }
@@ -339,7 +337,7 @@ ELLE_TEST_SCHEDULED(authentication_failure)
     0,
     "localhost",
     meta.port(),
-    8080, // XXX: hardcoded port
+    0,
     60_sec,
     300_sec);
   reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
@@ -384,7 +382,7 @@ ELLE_TEST_SCHEDULED(wait_authentified)
     0,
     "localhost",
     meta.port(),
-    8080, // XXX: hardcoded port
+    0,
     60_sec,
     300_sec);
   {
@@ -435,7 +433,7 @@ ELLE_TEST_SCHEDULED(notification_authentication_failed)
     0,
     "localhost",
     meta.port(),
-    8080, // XXX: hardcoded port
+    0,
     60_sec,
     300_sec);
   reactor::network::TCPSocket socket("127.0.0.1", trophonius.port());
