@@ -25,11 +25,13 @@ class Mixin:
 
   @api('/stats')
   def transfer_stats(self):
-    size = 0
-    for tr in self.database.transactions.find({"status": transaction_status.FINISHED},
-                                              {"total_size": 1, "_id": 0}):
-      size = size + tr['total_size']
-    return self.success({"total_bytes": size})
+    res = self.database.transactions.aggregate([
+      {'$match': {'status': transaction_status.FINISHED}},
+      {'$group': {'_id': 'result',
+                  'total_size': {'$sum': '$total_size'}}},
+      ])
+    return self.success(
+      {'total_bytes': res['result'][0]['total_size']})
 
   @api('/status')
   def status(self):
