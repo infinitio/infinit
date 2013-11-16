@@ -707,7 +707,7 @@ namespace surface
       ELLE_DEBUG("%s: interfaces published", *this);
     }
 
-    std::unique_ptr<station::Host>
+    std::unique_ptr<reactor::network::TCPSocket>
     TransferMachine::_connect()
     {
       auto const& transaction = *this->data();
@@ -732,11 +732,16 @@ namespace surface
       rounds.emplace_back(new AddressRound("local",
                                            std::move(endpoints.locals)));
 
-      if (!endpoints.fallback.empty())
       {
+        ELLE_DEBUG("%s: get fallback from meta", *this);
+        std::string fallback =
+          this->state().meta().fallback(this->data()->id).fallback;
+
+        ELLE_DEBUG("%s: connect to apertus %s", *this, fallback);
         std::vector<std::string> splited;
-        boost::split(
-          splited, *std::begin(endpoints.fallback), boost::is_any_of(":"));
+        boost::algorithm::split(splited,
+                                fallback,
+                                boost::is_any_of(":"));
 
         std::string host = splited[0];
         int port = std::stoi(splited[1]);
@@ -753,12 +758,12 @@ namespace surface
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         reactor::Barrier found;
-        std::unique_ptr<station::Host> host;
+        std::unique_ptr<reactor::network::TCPSocket> host;
         scope.run_background("wait_accepted",
                              [&] ()
                              {
                                this->station().host_available().wait();
-                               host = this->station().accept();
+                               host = this->station().accept()->release();
                                found.open();
                                ELLE_WARN("%s: host found via 'accept'", *this);
                              });
@@ -801,7 +806,7 @@ namespace surface
 
         ELLE_ASSERT(host != nullptr);
 
-        return host;
+        return std::move(host);
       };
 
       throw Exception(gap_api_error, "no round succeed");

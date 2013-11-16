@@ -401,7 +401,7 @@ namespace surface
         ELLE_DEBUG("create serializer");
         this->_serializer.reset(
           new infinit::protocol::Serializer(sched,
-                                            this->_host->socket()));
+                                            *this->_host));
         ELLE_DEBUG("create channels");
         this->_channels.reset(
           new infinit::protocol::ChanneledStream(sched, *this->_serializer));

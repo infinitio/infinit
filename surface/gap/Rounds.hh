@@ -8,6 +8,8 @@
 
 # include <reactor/fwd.hh>
 
+# include <reactor/network/fwd.hh>
+
 # include <elle/Printable.hh>
 # include <elle/attribute.hh>
 
@@ -27,7 +29,7 @@ namespace surface
         ~Round();
 
         virtual
-        std::unique_ptr<station::Host>
+        std::unique_ptr<reactor::network::TCPSocket>
         connect(station::Station& station) = 0;
 
         /*----------.
@@ -57,7 +59,7 @@ namespace surface
         AddressRound(std::string const& name,
                      std::vector<std::string>&& enpoints);
 
-        std::unique_ptr<station::Host>
+        std::unique_ptr<reactor::network::TCPSocket>
         connect(station::Station& station) override;
 
         /*----------.
@@ -81,7 +83,7 @@ namespace surface
                       int port,
                       std::string const& uid);
 
-        std::unique_ptr<station::Host>
+        std::unique_ptr<reactor::network::TCPSocket>
         connect(station::Station& station) override;
 
       private:
