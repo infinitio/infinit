@@ -1,7 +1,9 @@
-#ifndef ORACLES_APERTUS_APERTUS
-# define ORACLES_APERTUS_APERTUS
+#ifndef INFINIT_ORACLES_APERTUS_APERTUS
+# define INFINIT_ORACLES_APERTUS_APERTUS
 
 # include <string>
+# include <map>
+# include <unordered_map>
 
 # include <boost/uuid/uuid.hpp>
 # include <boost/uuid/random_generator.hpp>
@@ -11,58 +13,84 @@
 # include <reactor/network/buffer.hh>
 # include <reactor/network/tcp-server.hh>
 # include <reactor/network/tcp-socket.hh>
+# include <reactor/operation.hh>
 # include <infinit/oracles/meta/Admin.hh>
 # include <infinit/oracles/hermes/Clerk.hh>
 
-namespace oracles
+# include <infinit/oracles/apertus/fwd.hh>
+
+namespace infinit
 {
-  namespace apertus
+  namespace oracles
   {
-    class Apertus :
-      public reactor::Waitable
+    namespace apertus
     {
-    public:
-      Apertus(reactor::Scheduler& sched,
-              std::string mhost, int mport,
-              std::string host = "0.0.0.0", int port = 6565);
-      ~Apertus();
+      class Apertus :
+        public reactor::Waitable
+      {
+      public:
+        Apertus(std::string mhost,
+                int mport,
+                std::string host = "0.0.0.0",
+                int port = 6565);
+        ~Apertus();
 
-      void
-      reg();
+      private:
+        void
+        _register();
 
-      void
-      unreg();
+        void
+        _unregister();
 
-      void
-      stop();
+      public:
+        void
+        stop();
 
-      std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&
-      get_clients();
+        std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&
+        get_clients();
 
-    private:
-      void
-      _connect(reactor::network::TCPSocket* client1,
-               reactor::network::TCPSocket* client2);
+      private:
+        void
+        _connect(oracle::hermes::TID tid,
+                 std::unique_ptr<reactor::network::TCPSocket> client1,
+                 std::unique_ptr<reactor::network::TCPSocket> client2);
 
-      void
-      _run();
+        void
+        _run();
 
-    private:
-      reactor::Scheduler& _sched;
-      reactor::Thread _accepter;
+      private:
+        reactor::Thread _accepter;
 
-    private:
-      infinit::oracles::meta::Admin* _meta;
-      const boost::uuids::uuid _uuid;
+      private:
+        ELLE_ATTRIBUTE(infinit::oracles::meta::Admin, meta);
+        const boost::uuids::uuid _uuid;
+        typedef std::unordered_set<std::unique_ptr<Accepter>> Accepters;
+        ELLE_ATTRIBUTE(Accepters, accepters);
 
-    private:
-      const std::string _host;
-      const int _port;
+        friend Accepter;
+        friend Transfer;
 
-    private:
-      std::map<oracle::hermes::TID, reactor::network::TCPSocket*> _clients;
-    };
+        void
+        _transfer_remove(Transfer const& transfer);
+
+        void
+        _accepter_remove(Accepter const& transfer);
+
+        typedef std::unordered_map<oracle::hermes::TID, std::unique_ptr<Transfer>> Workers;
+        ELLE_ATTRIBUTE(Workers, workers);
+
+      private:
+        const std::string _host;
+        const int _port;
+
+      private:
+        typedef std::map<oracle::hermes::TID, reactor::network::TCPSocket*> Clients;
+        ELLE_ATTRIBUTE_R(Clients, clients);
+
+      private:
+      };
+    }
   }
 }
 
-#endif // !ORACLES_APERTUS_APERTUS
+#endif // INFINIT_ORACLES_APERTUS_APERTUS

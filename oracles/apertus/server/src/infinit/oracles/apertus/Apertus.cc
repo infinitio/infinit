@@ -1,134 +1,181 @@
 #include <infinit/oracles/apertus/Apertus.hh>
-//TODO: unique_ptr autoptr
+#include <reactor/exception.hh>
+#include <reactor/network/exception.hh>
+#include <elle/Exception.hh>
+#include <elle/log.hh>
+#include <tuple>
+#include <infinit/oracles/apertus/Accepter.hh>
+#include <infinit/oracles/apertus/Transfer.hh>
+#include <algorithm>
 
-namespace oracles
+ELLE_LOG_COMPONENT("infinit.oracles.apertus.Apertus");
+
+namespace infinit
 {
-  namespace apertus
+  namespace oracles
   {
-    Apertus::Apertus(reactor::Scheduler& sched,
-                     std::string mhost, int mport,
-                     std::string host, int port):
-      Waitable("apertus"),
-      _sched(sched),
-      _accepter(sched,
-                "apertus_accepter",
-                std::bind(&Apertus::_run, std::ref(*this))),
-      _meta(nullptr),
-      _uuid(boost::uuids::random_generator()()),
-      _host(host),
-      _port(port)
+    namespace apertus
     {
-      if (mport != 0)
-        _meta = new infinit::oracles::meta::Admin(mhost, mport);
-    }
-
-    Apertus::~Apertus()
-    {
-      _accepter.terminate_now();
-
-      if (_meta != nullptr)
-        delete _meta;
-    }
-
-    void
-    Apertus::reg()
-    {
-      if (_meta != nullptr)
-        _meta->register_apertus(_uuid, _port);
-    }
-
-    void
-    Apertus::unreg()
-    {
-      if (_meta != nullptr)
-        _meta->unregister_apertus(_uuid);
-    }
-
-    void
-    Apertus::_run()
-    {
-      reactor::network::TCPServer serv(_sched);
-      serv.listen(_port);
-
-      this->reg();
-
-      elle::With<elle::Finally>([this] { this->unreg(); }) << [&]
+      Apertus::Apertus(std::string mhost, int mport,
+                       std::string host, int port):
+        Waitable("apertus"),
+        _accepter(*reactor::Scheduler::scheduler(),
+                  "apertus_accepter",
+                  std::bind(&Apertus::_run, std::ref(*this))),
+        _meta(mhost, mport),
+        _uuid(boost::uuids::random_generator()()),
+        _host(host),
+        _port(port)
       {
-        auto handle = [&] (reactor::network::TCPSocket* client)
-        {
-          // Retrieve TID size.
-          char size;
-          reactor::network::Buffer tmp(&size, 1);
-          client->read(tmp);
+        ELLE_LOG("Apertus");
+      }
 
-          // Retrieve TID of the client.
-          char tid_array[size];
-          reactor::network::Buffer tid_buffer(tid_array, size);
-          client->read(tid_buffer);
-          oracle::hermes::TID tid = std::string(tid_array);
-
-          // First client to connect with this TID, it must wait.
-          if (_clients.find(tid) == _clients.end())
-            _clients[tid] = client;
-          // Second client, establishing connection.
-          else
-          {
-            this->_connect(client, _clients[tid]);
-            _clients.erase(tid);
-          }
-        };
-
-        reactor::network::TCPSocket* client = nullptr;
-        while ((client = serv.accept()) != nullptr)
-          new reactor::Thread(_sched, "handler", std::bind(handle, client));
-      };
-    }
-
-    void
-    Apertus::stop()
-    {
-      this->_signal();
-    }
-
-    std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&
-    Apertus::get_clients()
-    {
-      return _clients;
-    }
-
-    void
-    Apertus::_connect(reactor::network::TCPSocket* client1,
-                      reactor::network::TCPSocket* client2)
-    {
-      static const uint32_t buff_size = 1024 * 1024 * 16;
-
-      auto continuous_read = [&] (reactor::network::TCPSocket* cl1,
-                                  reactor::network::TCPSocket* cl2)
+      Apertus::~Apertus()
       {
-        char* buff = new char[buff_size];
-        reactor::network::Buffer recv(buff, buff_size);
+        ELLE_LOG("~Apertus");
+        this->_accepter.terminate_now();
 
-        try
+        for (auto const& client: this->_clients)
         {
-          while (true)
+          ELLE_TRACE("%s: kick pending users for transfer %s", *this, client.first);
+          delete client.second;
+          this->_clients.erase(client.first);
+        }
+
+        for (auto const& accepter: this->_accepters)
+        {
+          ELLE_TRACE("%s: kick running accepter %s", *this, accepter)
+            this->_accepter_remove(*accepter);
+        }
+
+        while (!this->_workers.empty())
+        {
+          ELLE_TRACE_SCOPE("%s: kick running transfer", *this);
+
+          auto const& worker = *this->_workers.begin();
+          ELLE_DEBUG("%s", worker.first)
           {
-            uint32_t size = cl1->read_some(recv);
-            elle::ConstWeakBuffer send(buff, size);
-            cl2->write(send);
+            if (worker.second == nullptr)
+              ELLE_WARN("???");
+            else
+            {
+              ELLE_DEBUG("%s: to remove: %s", *this, worker.first)
+                this->_transfer_remove(*worker.second);
+            }
           }
         }
-        catch (std::runtime_error const&)
-        {}
 
-        delete[] buff;
-      };
+      }
 
-      new reactor::Thread(_sched, "left_to_right", std::bind(continuous_read,
-                                                             client1,
-                                                             client2));
-      new reactor::Thread(_sched, "right_to_left", std::bind(continuous_read,
-                                                             client2,
-                                                             client1));
+      void
+      Apertus::_register()
+      {
+        this->_meta.register_apertus(this->_uuid, this->_port);
+      }
+
+      void
+      Apertus::_unregister()
+      {
+        this->_meta.unregister_apertus(this->_uuid);
+      }
+
+      void
+      Apertus::_run()
+      {
+        reactor::network::TCPServer serv(*reactor::Scheduler::scheduler());
+        serv.listen(_port);
+
+        this->_register();
+
+        elle::With<elle::Finally>([this] { this->_unregister(); }) << [&]
+        {
+          std::unique_ptr<reactor::network::TCPSocket> client{nullptr};
+          while (true)
+          {
+            ELLE_TRACE("%s: waiting for new client", *this);
+            ELLE_ASSERT(client == nullptr);
+            client.reset(serv.accept());
+
+            this->_accepters.emplace(new Accepter(*this, std::move(client)));
+          }
+        };
+      }
+
+      void
+      Apertus::stop()
+      {
+        this->_signal();
+      }
+
+      std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&
+      Apertus::get_clients()
+      {
+        return _clients;
+      }
+
+      void
+      Apertus::_connect(oracle::hermes::TID tid,
+                        std::unique_ptr<reactor::network::TCPSocket> client1,
+                        std::unique_ptr<reactor::network::TCPSocket> client2)
+      {
+        if (this->_workers.find(tid) != this->_workers.end())
+          this->_workers.erase(tid);
+
+        ELLE_ASSERT(client1 != nullptr);
+        ELLE_ASSERT(client2 != nullptr);
+
+        this->_workers[tid] =
+          std::move(std::unique_ptr<Transfer>(
+            new Transfer(*this, tid, std::move(client1), std::move(client2))));
+      }
+
+      void
+      Apertus::_transfer_remove(Transfer const& transfer)
+      {
+        // ELLE_ASSERT_CONTAINS(this->_workers, transfer.tid());
+        ELLE_ASSERT(this->_workers[transfer.tid()] != nullptr);
+
+        ELLE_DEBUG("%s: remove %s", *this, transfer.tid());
+        Transfer* worker = this->_workers[transfer.tid()].release();
+        ELLE_DEBUG("%s: released %s", *this, worker->tid());
+        this->_workers.erase(transfer.tid());
+        ELLE_DEBUG("%s: erased %s", *this, worker->tid());
+
+        reactor::run_later(
+          elle::sprintf("remove transfer %s", *worker),
+          [worker]
+          {
+            ELLE_DEBUG("foo: %s", worker->tid());
+            delete worker;
+            ELLE_DEBUG("bar: %s", worker->tid());
+          });
+      }
+
+      void
+      Apertus::_accepter_remove(Accepter const& accepter)
+      {
+        reactor::run_later(
+          elle::sprintf("remove accepter %s", accepter),
+          [this, &accepter]
+          {
+            ELLE_WARN("deleted 0");
+
+            // ELLE_ASSERT_CONTAINS(this->_accepters, &accepter);
+            Accepters::iterator it =
+              std::find_if(this->_accepters.begin(),
+                           this->_accepters.end(),
+                           [&accepter] (std::unique_ptr<Accepter> const& item)
+                           {
+                             return item.get() == &accepter;
+                           });
+            ELLE_ASSERT(it != this->_accepters.end());
+
+            ELLE_DEBUG("foo");
+            this->_accepters.erase(it);
+            ELLE_DEBUG("bar");
+          });
+      }
+
     }
   }
 }

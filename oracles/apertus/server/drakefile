@@ -37,6 +37,11 @@ def configure(elle,
   apertus_sources = drake.nodes(
     'src/infinit/oracles/apertus/Apertus.cc',
     'src/infinit/oracles/apertus/Apertus.hh',
+    'src/infinit/oracles/apertus/Accepter.cc',
+    'src/infinit/oracles/apertus/Accepter.hh',
+    'src/infinit/oracles/apertus/Transfer.cc',
+    'src/infinit/oracles/apertus/Transfer.hh',
+    'src/infinit/oracles/apertus/fwd.hh',
   )
 
   local_cxx_config = drake.cxx.Config(cxx_config)
@@ -83,5 +88,6 @@ def configure(elle,
                              exe_sources + [library, reactor_lib, elle_lib],
                              cxx_toolkit, exe_cxx_config)
 
+  build << exe
   install = drake.Rule('install')
   install << exe
