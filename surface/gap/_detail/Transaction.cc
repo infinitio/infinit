@@ -1,5 +1,6 @@
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
+#include <surface/gap/Exception.hh>
 
 #include <boost/filesystem.hpp>
 
@@ -32,9 +33,9 @@ namespace surface
       std::string const& id):
       Exception{
       gap_transaction_doesnt_exist, elle::sprintf("unknown transaction %s", id)}
-   {
-     ELLE_ERR("transaction %s not found", id);
-   }
+    {
+      ELLE_ERR("transaction %s not found", id);
+    }
 
     uint32_t
     State::send_files(std::string const& peer_id,
@@ -55,7 +56,6 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: pull transactions", *this);
 
       ELLE_ASSERT(this->_transactions.empty());
-
       {
         std::string snapshots_path =
           common::infinit::transaction_snapshots_directory(this->me().id);

@@ -59,10 +59,11 @@ class Invitation:
 def invite_user(email,
                 mailer,
                 send_email = True,
-                source = 'Infinit <no-reply@infinit.io>',
+                source = ('Infinit', 'no-reply@infinit.io'),
                 mail_template = 'send-invitation-no-file',
                 database = None,
                 **kw):
+  assert isinstance(source, tuple)
   with elle.log.trace('invite user %s' % email):
     assert database is not None
     code = _generate_code(email)
@@ -79,8 +80,7 @@ def invite_user(email,
         to = email,
         template_id = mail_template,
         subject = subject,
-        fr = "%s <%s>" % source,
-        reply_to = source,
+        reply_to = "%s <%s>" % source,
         #  accesscode=code,
         **kw
       )

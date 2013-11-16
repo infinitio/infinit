@@ -28,6 +28,14 @@ namespace infinit
         User::User(Trophonius& trophonius,
                    std::unique_ptr<reactor::network::TCPSocket>&& socket):
           Client(trophonius, std::move(socket)),
+          // Session
+          _device_id(boost::uuids::nil_uuid()),
+          _user_id(),
+          _session_id(),
+          // Meta
+          _meta(this->trophonius().meta().host(),
+                this->trophonius().meta().port()),
+          _authentified(),
           _registered(false),
           // Notifications
           _notifications(),
@@ -36,13 +44,6 @@ namespace infinit
                                 elle::sprintf("%s notifications", *this),
                                 std::bind(&User::_handle_notifications,
                                           std::ref(*this))),
-          // Server
-          _authentified(),
-          _meta(this->trophonius().meta().host(),
-                this->trophonius().meta().port()),
-          _device_id(boost::uuids::nil_uuid()),
-          _user_id(),
-          _session_id(),
           // Ping pong
           _ping_thread(*reactor::Scheduler::scheduler(),
                        elle::sprintf("%s ping", *this),
@@ -105,6 +106,9 @@ namespace infinit
         void
         User::notify(json_spirit::Value const& notification)
         {
+          elle::Lazy<std::string> json(
+            std::bind(&pretty_print_json, std::ref(notification)));
+          ELLE_DEBUG("%s: push notification: %s", *this, json);
           this->_notifications.push(std::move(notification));
           this->_notification_available.signal();
         }
@@ -116,18 +120,17 @@ namespace infinit
           RemoveWard ward(*this);
           try
           {
+            ELLE_DEBUG_SCOPE("%s: start handling notifications", *this);
             while (true)
             {
               while (!this->_notifications.empty())
               {
                 auto notification = std::move(this->_notifications.front());
                 this->_notifications.pop();
-                ELLE_TRACE(
-                  "%s: send notification: %s",
-                  *this,
-                  elle::Lazy<std::string>(
-                    std::bind(&pretty_print_json, std::ref(notification))));
-                write_json(*this->_socket, notification);
+                elle::Lazy<std::string> json(
+                  std::bind(&pretty_print_json, std::ref(notification)));
+                ELLE_TRACE("%s: send notification: %s", *this, json)
+                  write_json(*this->_socket, notification);
               }
               this->_notification_available.wait();
             }
@@ -182,6 +185,23 @@ namespace infinit
                 }
                 ELLE_TRACE_SCOPE("%s: connect with user %s and device %s",
                                  *this, this->_user_id, this->_device_id);
+                // Remove potential stray previous client.
+                // XXX: this removes the previous client even if the fails at
+                // login.
+                {
+                  auto& users = this->trophonius().users().get<1>();
+                  auto it = users.find(
+                    boost::make_tuple(this->_user_id, this->_device_id));
+                  if (it != users.end())
+                  {
+                    auto previous = *it;
+                    ELLE_LOG("%s: remove previous instance %s",
+                             *this, *previous);
+                    users.erase(it);
+                    previous->terminate();
+                    delete previous;
+                  }
+                }
                 this->trophonius().users().insert(this);
                 this->trophonius().users_pending().erase(this);
                 meta::Response res;
