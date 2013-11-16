@@ -15,6 +15,12 @@
 
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.test")
 
+#ifdef VALGRIND
+# include <valgrind/valgrind.h>
+#else
+# define RUNNING_ON_VALGRIND 0
+#endif
+
 using infinit::oracles::trophonius::server::pretty_print_json;
 using infinit::oracles::trophonius::server::read_json;
 using infinit::oracles::trophonius::server::write_json;
@@ -636,13 +642,14 @@ ELLE_TEST_SCHEDULED(replace)
 
 ELLE_TEST_SUITE()
 {
+  auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(register_unregister), 0, 3);
-  suite.add(BOOST_TEST_CASE(notifications), 0, 3);
-  suite.add(BOOST_TEST_CASE(no_authentication), 0, 3);
-  suite.add(BOOST_TEST_CASE(authentication_failure), 0, 3);
-  suite.add(BOOST_TEST_CASE(wait_authentified), 0, 3);
-  suite.add(BOOST_TEST_CASE(notification_authentication_failed), 0, 3);
-  suite.add(BOOST_TEST_CASE(ping_timeout), 0, 3);
-  suite.add(BOOST_TEST_CASE(replace), 0, 3);
+  suite.add(BOOST_TEST_CASE(register_unregister), 0, timeout);
+  suite.add(BOOST_TEST_CASE(notifications), 0, timeout);
+  suite.add(BOOST_TEST_CASE(no_authentication), 0, timeout);
+  suite.add(BOOST_TEST_CASE(authentication_failure), 0, timeout);
+  suite.add(BOOST_TEST_CASE(wait_authentified), 0, timeout);
+  suite.add(BOOST_TEST_CASE(notification_authentication_failed), 0, timeout);
+  suite.add(BOOST_TEST_CASE(ping_timeout), 0, timeout);
+  suite.add(BOOST_TEST_CASE(replace), 0, timeout);
 }

@@ -16,7 +16,8 @@ def configure(elle,
               enable_python_bindings = True,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
-              cxx_config = None):
+              cxx_config = None,
+              valgrind = None):
 
   global meta, trophonius
   global build, check, install
@@ -80,7 +81,9 @@ def configure(elle,
                              prefix = prefix,
                              meta_client = meta.client,
                              cxx_toolkit = cxx_toolkit,
-                             cxx_config = local_cxx_config)
+                             cxx_config = local_cxx_config,
+                             valgrind = valgrind,
+  )
 
   for name in ('build', 'check', 'install'):
     for oracle in [meta, trophonius]:
