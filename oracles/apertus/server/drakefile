@@ -84,10 +84,11 @@ def configure(elle,
 
   exe_sources = drake.nodes('src/main.cc')
 
-  exe = drake.cxx.Executable('bin/apertus-server',
-                             exe_sources + [library, reactor_lib, elle_lib],
-                             cxx_toolkit, exe_cxx_config)
+  apertus = drake.cxx.Executable(
+    'bin/apertus',
+    exe_sources + [library, reactor_lib, elle_lib],
+    cxx_toolkit, exe_cxx_config)
 
-  build << exe
+  build << apertus
   install = drake.Rule('install')
-  install << exe
+  install << drake.install(apertus, prefix)
