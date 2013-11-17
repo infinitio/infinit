@@ -42,6 +42,7 @@ with Meta() as meta:
 
     bobfb = bob.get('apertus/fallback/%s' % transaction_id)
     assert bobfb['success']
+    print(alicefb, bobfb)
     assert alicefb['fallback'] == bobfb['fallback']
 
   with Apertus(meta) as apertus2:
@@ -49,6 +50,9 @@ with Meta() as meta:
     bobfb = bob.get('apertus/fallback/%s' % transaction_id)
     assert bobfb['success']
     assert alicefb['fallback'] != bobfb['fallback']
+
+    alicefb = bob.get('apertus/fallback/%s' % transaction_id)
+    assert alicefb['fallback'] == bobfb['fallback']
 
   bob.logout()
   alice.logout()
