@@ -1,10 +1,14 @@
-#include <infinit/oracles/apertus/Apertus.hh>
-
 #include <boost/program_options.hpp>
 
 #include <elle/Exception.hh>
+#include <elle/log/SysLogger.hh>
+#include <elle/log.hh>
+
 #include <reactor/scheduler.hh>
+
+#include <infinit/oracles/apertus/Apertus.hh>
 #include <version.hh>
+
 
 static
 boost::program_options::variables_map
@@ -44,6 +48,11 @@ parse_options(int argc, char** argv)
   {
     std::cout << "Apertus " INFINIT_VERSION << std::endl;
     exit(0); // FIXME
+  }
+  if (vm.count("syslog"))
+  {
+    elle::log::logger(std::unique_ptr<elle::log::Logger>(
+                        new elle::log::SysLogger("apertus")));
   }
   return vm;
 }
