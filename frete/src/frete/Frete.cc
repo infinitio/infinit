@@ -9,6 +9,8 @@
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 
+#include <reactor/network/socket.hh>
+
 #include <frete/Frete.hh>
 
 ELLE_LOG_COMPONENT("frete.Frete");
@@ -220,7 +222,7 @@ namespace frete
       this->_transfer_snapshot.reset(new TransferSnapshot(count, total_size));
     }
 
-    static std::streamsize const n = 512 * 1024;
+    static std::streamsize const n = reactor::network::Socket::buffer_size;
 
     auto& snapshot = *this->_transfer_snapshot;
 
