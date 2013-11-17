@@ -50,7 +50,7 @@ namespace infinit
                      int meta_port,
                      int notifications_port = 0,
                      boost::posix_time::time_duration const& user_ping_period = 30_sec,
-                     boost::posix_time::time_duration const& ping_period = 5_sec);
+                     boost::posix_time::time_duration const& meta_ping_period = 60_sec);
 
           ~Trophonius();
           void

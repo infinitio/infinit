@@ -1,9 +1,10 @@
 # -*- encoding: utf-8 -*-
 
+import bottle
 import time
 
 import elle.log
-from . import conf, mail, error, notifier
+from . import conf, mail, error, notifier, transaction_status
 from .utils import api, require_admin, hash_pasword
 import infinit.oracles.meta.version
 
@@ -22,9 +23,24 @@ class Mixin:
         # 'fallbacks': str(self.__application__.fallback),
     })
 
+  @api('/stats')
+  def transfer_stats(self):
+    res = self.database.transactions.aggregate([
+      {'$match': {'status': transaction_status.FINISHED}},
+      {'$group': {'_id': 'result',
+                  'total_size': {'$sum': '$total_size'}}},
+      ])
+    return self.success(
+      {'total_bytes': res['result'][0]['total_size']})
+
   @api('/status')
   def status(self):
-    return self.success({"status" : "ok"})
+    return self.success({"status" : True})
+    # return self.success(
+    #   {
+    #     "status" : False,
+    #     "message" : "<p>Infinit is under maintainance</p>",
+    #   })
 
   @api('/ghostify', method = 'POST')
   @require_admin
@@ -99,20 +115,23 @@ class Mixin:
       self.fail(*e.args)
 
     # Cancel all the current transactions.
-    for transaction_id in self.database.transactions.find(
+    for transaction in self.database.transactions.find(
       {
           "$or": [
             {"sender_id": user['_id']},
             {"recipient_id": user['_id']}
           ]
-        },
-        fields = ['_id']):
+      },
+      fields = ['_id']):
       try:
-        self._transaction_update(transaction_id, transaction.CANCELED, user)
+        self._transaction_update(str(transaction['_id']),
+                                 status = transaction_status.CANCELED,
+                                 user = user)
       except error.Error as e:
-        elle.log.warn("%s" % e.args)
+        elle.log.warn("%s" % (e.args,))
         continue
         # self.fail(error.UNKNOWN)
+
     # Remove all the devices from the user because they are based on his old
     # public key.
     # XXX: All the sessions must be cleaned too.
@@ -186,6 +205,8 @@ class Mixin:
 
     return self.success()
 
+  # XXX: Accept 15M body as JSON
+  bottle.Request.MEMFILE_MAX = 15 * 1024 * 1024
   @api('/debug/report/<type>', method = 'POST')
   def user_report(self,
                   type: str,

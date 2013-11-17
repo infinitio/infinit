@@ -21,22 +21,42 @@ namespace infinit
         class User:
           public Client
         {
+        /*------.
+        | Types |
+        `------*/
         public:
           typedef Client Super;
 
+        /*-------------.
+        | Construction |
+        `-------------*/
         public:
           User(Trophonius& trophonius,
                std::unique_ptr<reactor::network::TCPSocket>&& socket);
           ~User();
+        protected:
+          virtual
+          void
+          _terminate() override;
 
+        /*--------.
+        | Session |
+        `--------*/
+        public:
+          ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id);
+          ELLE_ATTRIBUTE_R(std::string, user_id);
+          ELLE_ATTRIBUTE(std::string, session_id);
+
+        /*-----.
+        | Meta |
+        `-----*/
         protected:
           virtual
           void
           _unregister() override;
-          virtual
-          void
-          _terminate() override;
         private:
+          ELLE_ATTRIBUTE(meta::Admin, meta);
+          ELLE_ATTRIBUTE_RX(reactor::Barrier, authentified);
           ELLE_ATTRIBUTE_R(bool, registered);
 
         /*--------------.
@@ -59,12 +79,6 @@ namespace infinit
           virtual
           void
           _handle() override;
-
-          ELLE_ATTRIBUTE_RX(reactor::Barrier, authentified);
-          ELLE_ATTRIBUTE(meta::Admin, meta);
-          ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id);
-          ELLE_ATTRIBUTE_R(std::string, user_id);
-          ELLE_ATTRIBUTE(std::string, session_id);
 
         /*----------.
         | Ping pong |
