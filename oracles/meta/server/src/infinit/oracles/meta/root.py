@@ -23,6 +23,16 @@ class Mixin:
         # 'fallbacks': str(self.__application__.fallback),
     })
 
+  @api('/stats')
+  def transfer_stats(self):
+    res = self.database.transactions.aggregate([
+      {'$match': {'status': transaction_status.FINISHED}},
+      {'$group': {'_id': 'result',
+                  'total_size': {'$sum': '$total_size'}}},
+      ])
+    return self.success(
+      {'total_bytes': res['result'][0]['total_size']})
+
   @api('/status')
   def status(self):
     return self.success({"status" : True})

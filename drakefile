@@ -972,7 +972,9 @@ def configure(cxx_toolkit = None,
     enable_python_bindings = False,
     prefix = prefix,
     cxx_toolkit = cxx_toolkit,
-    cxx_config = cxx_config,)
+    cxx_config = cxx_config,
+    valgrind = valgrind,
+  )
 
   trophonius_client_lib = drake.copy(
     oracles.trophonius.client.lib, 'lib',

@@ -18,7 +18,8 @@ def configure(elle,
               enable_python_bindings = True,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
-              cxx_config = None):
+              cxx_config = None,
+              valgrind = None):
 
   global client, server
   global build, check, install
@@ -32,7 +33,9 @@ def configure(elle,
                          enable_python_bindings = enable_python_bindings,
                          prefix = prefix,
                          cxx_toolkit = cxx_toolkit,
-                         cxx_config = cxx_config)
+                         cxx_config = cxx_config,
+                         valgrind = valgrind,
+  )
 
   client = drake.include('client',
                          elle = elle,
