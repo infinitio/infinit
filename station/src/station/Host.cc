@@ -20,7 +20,15 @@ namespace station
   reactor::network::TCPSocket&
   Host::socket()
   {
-    return *this->_socket;
+    if (this->_socket)
+      return *this->_socket;
+    throw elle::Exception("socket already released");
+  }
+
+  std::unique_ptr<reactor::network::TCPSocket>
+  Host::release()
+  {
+    return std::move(this->_socket);
   }
 
   void

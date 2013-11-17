@@ -26,6 +26,10 @@ namespace station
     ELLE_ATTRIBUTE_R(papier::Passport, passport);
     ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::TCPSocket>, socket);
 
+  public:
+    std::unique_ptr<reactor::network::TCPSocket>
+    release();
+
     /*----------.
     | Printable |
     `----------*/
