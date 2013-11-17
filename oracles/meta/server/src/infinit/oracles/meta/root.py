@@ -31,7 +31,7 @@ class Mixin:
                   'total_size': {'$sum': '$total_size'}}},
       ])
     return self.success(
-      {'total_bytes': res['result'][0]['total_size']})
+      {'total_size': res['result'][0]['total_size']})
 
   @api('/status')
   def status(self):
