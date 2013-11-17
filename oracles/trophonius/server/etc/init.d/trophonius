@@ -1,0 +1,106 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          trophonius
+# Required-Start:    $syslog $time $named
+# Required-Stop:     $syslog $time $named
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Trophonius notification server.
+### END INIT INFO
+
+. /etc/trophonius.conf
+DAEMON="$TROPHONIUS"
+PIDFILE=/var/run/trophonius.pid
+ARGUMENTS="--meta ${META} --port ${PORT} --syslog"
+
+. /lib/lsb/init-functions
+
+command()
+{
+    echo "$DAEMON" $ARGUMENTS
+}
+
+start()
+{
+    # Enable core dumps
+    ulimit -c 300000
+    if status
+    then
+        log_success_msg "Trophonius already started"
+        return 0
+    fi
+    log_daemon_msg "Starting trophonius" "trophonius"
+    start-stop-daemon                           \
+        --start                                 \
+        --exec "$DAEMON"                        \
+        --pidfile "$PIDFILE" --make-pidfile     \
+        --user "$USER"                          \
+        --chdir ${TMPDIR:-/tmp}                 \
+        --background                            \
+        -- ${ARGUMENTS}
+    ret=$?
+    for i in $(seq 30); do
+        test $ret -ne 0 && break
+        sleep 0.1
+        status
+        ret=$?
+    done
+    log_end_msg $ret
+}
+
+stop()
+{
+    log_daemon_msg "Stopping trophonius" "trophonius"
+    start-stop-daemon                           \
+        --stop                                  \
+        --signal INT                            \
+        --exec "$DAEMON"                        \
+        --retry 5                               \
+        --pidfile "$PIDFILE"
+    ret=$?
+    log_end_msg $ret
+    if test $ret -eq 0; then
+        rm "$PIDFILE"
+    fi
+}
+
+status()
+{
+    if start-stop-daemon                        \
+        --status                                \
+        --exec "$DAEMON"                        \
+        --pidfile "$PIDFILE"
+    then
+        return 0
+    else
+        if test -e "$PIDFILE"
+        then
+            log_success_msg "Remove stray PID file"
+            rm "$PIDFILE"
+        fi
+        return 1
+    fi
+}
+
+case "$1" in
+  start)
+        start || exit $?
+        ;;
+  stop)
+        stop || exit $?
+        ;;
+  force-reload|restart)
+        stop || exit $?
+        start || exit $?
+        ;;
+  status)
+        status || exit $?
+        ;;
+  command)
+        command || exit $?
+        ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|force-reload|status}"
+    exit 1
+    ;;
+esac
