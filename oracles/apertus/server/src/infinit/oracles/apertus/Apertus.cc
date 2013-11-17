@@ -90,7 +90,8 @@ namespace infinit
       Apertus::_run()
       {
         reactor::network::TCPServer serv(*reactor::Scheduler::scheduler());
-        serv.listen(_port);
+        serv.listen(this->_port);
+        this->_port = serv.port();
 
         this->_register();
 

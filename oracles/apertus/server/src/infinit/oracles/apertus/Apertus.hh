@@ -80,7 +80,7 @@ namespace infinit
 
       private:
         const std::string _host;
-        const int _port;
+        int _port;
 
       private:
         typedef std::map<oracle::hermes::TID, reactor::network::TCPSocket*> Clients;
