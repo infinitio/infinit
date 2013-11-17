@@ -1,23 +1,25 @@
 #ifndef INFINIT_ORACLES_APERTUS_APERTUS
 # define INFINIT_ORACLES_APERTUS_APERTUS
 
-# include <string>
-# include <map>
-# include <unordered_map>
-
-# include <boost/uuid/uuid.hpp>
-# include <boost/uuid/random_generator.hpp>
-
-# include <reactor/waitable.hh>
+# include <infinit/oracles/apertus/fwd.hh>
+# include <infinit/oracles/hermes/Clerk.hh>
+# include <infinit/oracles/meta/Admin.hh>
 
 # include <reactor/network/buffer.hh>
 # include <reactor/network/tcp-server.hh>
 # include <reactor/network/tcp-socket.hh>
 # include <reactor/operation.hh>
-# include <infinit/oracles/meta/Admin.hh>
-# include <infinit/oracles/hermes/Clerk.hh>
+# include <reactor/waitable.hh>
 
-# include <infinit/oracles/apertus/fwd.hh>
+# include <elle/Printable.hh>
+
+# include <boost/uuid/random_generator.hpp>
+# include <boost/uuid/uuid.hpp>
+
+# include <map>
+# include <string>
+# include <unordered_map>
+
 
 namespace infinit
 {
@@ -25,8 +27,8 @@ namespace infinit
   {
     namespace apertus
     {
-      class Apertus :
-        public reactor::Waitable
+      class Apertus:
+        public reactor::Waitable // Make it also printable.
       {
       public:
         Apertus(std::string mhost,
@@ -46,9 +48,6 @@ namespace infinit
         void
         stop();
 
-        std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&
-        get_clients();
-
       private:
         void
         _connect(oracle::hermes::TID tid,
@@ -63,8 +62,8 @@ namespace infinit
 
       private:
         ELLE_ATTRIBUTE(infinit::oracles::meta::Admin, meta);
-        const boost::uuids::uuid _uuid;
-        typedef std::unordered_set<std::unique_ptr<Accepter>> Accepters;
+        ELLE_ATTRIBUTE(boost::uuids::uuid, uuid);
+        typedef std::unordered_set<Accepter*> Accepters;
         ELLE_ATTRIBUTE(Accepters, accepters);
 
         friend Accepter;
@@ -87,7 +86,12 @@ namespace infinit
         typedef std::map<oracle::hermes::TID, reactor::network::TCPSocket*> Clients;
         ELLE_ATTRIBUTE_R(Clients, clients);
 
-      private:
+        /*----------.
+        | Printable |
+        `----------*/
+        virtual
+        void
+        print(std::ostream& stream) const;
       };
     }
   }

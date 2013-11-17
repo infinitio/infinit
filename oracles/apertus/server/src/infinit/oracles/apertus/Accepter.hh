@@ -7,6 +7,7 @@
 # include <reactor/thread.hh>
 
 # include <elle/attribute.hh>
+# include <elle/Printable.hh>
 
 # include <memory>
 namespace infinit
@@ -15,13 +16,15 @@ namespace infinit
   {
     namespace apertus
     {
-      class Accepter
+      class Accepter:
+        public elle::Printable
       {
         typedef std::unique_ptr<reactor::network::TCPSocket> Socket;
       public:
         Accepter(Apertus& apertus,
                  Socket&& client);
 
+        virtual
         ~Accepter();
 
       private:
@@ -31,6 +34,12 @@ namespace infinit
         ELLE_ATTRIBUTE(Apertus&, apertus);
         ELLE_ATTRIBUTE(Socket, client);
         ELLE_ATTRIBUTE(reactor::Thread, accepter);
+
+        /*----------.
+        | Printable |
+        `----------*/
+        void
+        print(std::ostream& stream) const;
       };
     }
   }

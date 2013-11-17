@@ -4,8 +4,9 @@
 
 #include <reactor/network/tcp-socket.hh>
 #include <reactor/scheduler.hh>
-#include <elle/log.hh>
+
 #include <elle/finally.hh>
+#include <elle/log.hh>
 
 ELLE_LOG_COMPONENT("infinit.oracles.apertus.Transfer");
 
@@ -27,12 +28,12 @@ namespace infinit
                  elle::sprintf("forward: %s", this->_tid),
                  [this] { this->_run(); })
       {
-        ELLE_LOG("%s: Creation", *this);
+        ELLE_TRACE_SCOPE("%s: creation", *this);
       }
 
       Transfer::~Transfer()
       {
-        ELLE_LOG("~Transfer");
+        ELLE_TRACE_SCOPE("%s: destruction", *this);
         this->_forward.terminate_now(false);
         this->_left.reset();
         this->_right.reset();
@@ -71,7 +72,7 @@ namespace infinit
         elle::SafeFinally pop(
           [this]
           {
-            ELLE_TRACE("pop");
+            ELLE_TRACE("%s: pop my self from apertus", *this);
             this->_apertus._transfer_remove(*this);
           });
 
@@ -99,6 +100,12 @@ namespace infinit
             scope.wait();
           };
         }
+        catch (reactor::Terminate const&)
+        {
+          // If a termination his explicitly asked, the responsability of
+          // deleting the object is given to the caller of the termination.
+          pop.abort();
+        }
         catch (reactor::network::ConnectionClosed const&)
         {
           ELLE_LOG("%s: connection closed by peer", *this);
@@ -115,7 +122,8 @@ namespace infinit
       void
       Transfer::print(std::ostream& stream) const
       {
-        stream << "Transfer: " << this->_tid;
+        stream << "Transfer: " << this->_tid << " "
+               << this->_left.get() << " - " << this->_right.get();
       }
 
     }

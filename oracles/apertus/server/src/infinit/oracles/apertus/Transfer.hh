@@ -2,11 +2,14 @@
 # define INFINIT_ORACLES_APERTUS_TRANSFER_HH
 
 # include <infinit/oracles/apertus/Apertus.hh>
-# include <memory>
+
 # include <reactor/network/fwd.hh>
 # include <reactor/thread.hh>
-# include <elle/attribute.hh>
+
 # include <elle/Printable.hh>
+# include <elle/attribute.hh>
+
+# include <memory>
 
 namespace infinit
 {
@@ -28,6 +31,7 @@ namespace infinit
         Transfer(Transfer const&) = delete;
         Transfer(Transfer&&) = delete;
 
+      private:
         void
         _run();
 

@@ -1,12 +1,18 @@
 #include <infinit/oracles/apertus/Apertus.hh>
-#include <reactor/exception.hh>
-#include <reactor/network/exception.hh>
-#include <elle/Exception.hh>
-#include <elle/log.hh>
-#include <tuple>
+
 #include <infinit/oracles/apertus/Accepter.hh>
 #include <infinit/oracles/apertus/Transfer.hh>
+
+#include <reactor/exception.hh>
+#include <reactor/network/exception.hh>
+
+#include <elle/Exception.hh>
+#include <elle/log.hh>
+
+#include <boost/uuid/uuid_io.hpp>
+
 #include <algorithm>
+#include <tuple>
 
 ELLE_LOG_COMPONENT("infinit.oracles.apertus.Apertus");
 
@@ -42,8 +48,10 @@ namespace infinit
           this->_clients.erase(client.first);
         }
 
-        for (auto const& accepter: this->_accepters)
+        while (!this->_accepters.empty())
         {
+          ELLE_DEBUG("%s: remaining accepters: %s", *this, this->_accepters.size());
+          Accepter* accepter = *this->_accepters.begin();
           ELLE_TRACE("%s: kick running accepter %s", *this, accepter)
             this->_accepter_remove(*accepter);
         }
@@ -53,18 +61,17 @@ namespace infinit
           ELLE_TRACE_SCOPE("%s: kick running transfer", *this);
 
           auto const& worker = *this->_workers.begin();
-          ELLE_DEBUG("%s", worker.first)
+          ELLE_DEBUG("%s: transfer %s", *this, worker.first)
           {
-            if (worker.second == nullptr)
-              ELLE_WARN("???");
-            else
-            {
-              ELLE_DEBUG("%s: to remove: %s", *this, worker.first)
-                this->_transfer_remove(*worker.second);
-            }
+            ELLE_ASSERT(worker.second != nullptr);
+            ELLE_DEBUG("%s: to remove: %s", *this, worker.first)
+              this->_transfer_remove(*worker.second);
           }
         }
 
+        ELLE_ASSERT(this->_workers.empty());
+        ELLE_ASSERT(this->_accepters.empty());
+        ELLE_ASSERT(this->_clients.empty());
       }
 
       void
@@ -107,12 +114,6 @@ namespace infinit
         this->_signal();
       }
 
-      std::map<oracle::hermes::TID, reactor::network::TCPSocket*>&
-      Apertus::get_clients()
-      {
-        return _clients;
-      }
-
       void
       Apertus::_connect(oracle::hermes::TID tid,
                         std::unique_ptr<reactor::network::TCPSocket> client1,
@@ -135,47 +136,55 @@ namespace infinit
         // ELLE_ASSERT_CONTAINS(this->_workers, transfer.tid());
         ELLE_ASSERT(this->_workers[transfer.tid()] != nullptr);
 
-        ELLE_DEBUG("%s: remove %s", *this, transfer.tid());
+        ELLE_DEBUG("remove %s", transfer.tid());
         Transfer* worker = this->_workers[transfer.tid()].release();
-        ELLE_DEBUG("%s: released %s", *this, worker->tid());
+        ELLE_DEBUG("released %s", worker->tid());
         this->_workers.erase(transfer.tid());
-        ELLE_DEBUG("%s: erased %s", *this, worker->tid());
+        ELLE_DEBUG("erased %s", worker->tid());
 
         reactor::run_later(
-          elle::sprintf("remove transfer %s", *worker),
+          elle::sprintf("delete transfer %s", *worker),
           [worker]
           {
-            ELLE_DEBUG("foo: %s", worker->tid());
+            ELLE_DEBUG("about to delete transfer: %s", *worker);
             delete worker;
-            ELLE_DEBUG("bar: %s", worker->tid());
           });
       }
 
       void
       Apertus::_accepter_remove(Accepter const& accepter)
       {
+        ELLE_TRACE_SCOPE("%s: remove accepter %s", *this, accepter);
+        Accepter* accepter_ptr = const_cast<Accepter*>(&accepter);
+
+        ELLE_DEBUG("accepter address: %s", accepter_ptr);
+        // ELLE_ASSERT(this->_accepters
+        // ELLE_ASSERT_CONTAINS(this->_accepters, &accepter);
+        ELLE_ASSERT(accepter_ptr != nullptr);
+
+        ELLE_DEBUG("erase accepter");
+        size_t removed = this->_accepters.erase(accepter_ptr);
+        ELLE_ASSERT_EQ(removed, 1);
+
+        ELLE_DEBUG("run later: delete accepter %s", accepter_ptr);
         reactor::run_later(
-          elle::sprintf("remove accepter %s", accepter),
-          [this, &accepter]
+          elle::sprintf("delete accepter %s", *accepter_ptr),
+          [accepter_ptr]
           {
-            ELLE_WARN("deleted 0");
-
-            // ELLE_ASSERT_CONTAINS(this->_accepters, &accepter);
-            Accepters::iterator it =
-              std::find_if(this->_accepters.begin(),
-                           this->_accepters.end(),
-                           [&accepter] (std::unique_ptr<Accepter> const& item)
-                           {
-                             return item.get() == &accepter;
-                           });
-            ELLE_ASSERT(it != this->_accepters.end());
-
-            ELLE_DEBUG("foo");
-            this->_accepters.erase(it);
-            ELLE_DEBUG("bar");
+            ELLE_DEBUG("about to delete accepter: %s", *accepter_ptr);
+            delete accepter_ptr;
+            //accepter_ptr = nullptr;
           });
       }
 
+      /*----------.
+      | Printable |
+      `----------*/
+      void
+      Apertus::print(std::ostream& stream) const
+      {
+        stream << "Apertus(" << this->_uuid << ")";
+      }
     }
   }
 }
