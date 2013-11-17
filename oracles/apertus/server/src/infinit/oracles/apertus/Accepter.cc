@@ -52,7 +52,7 @@ namespace infinit
         try
         {
           // Retrieve TID size.
-          char size;
+          unsigned char size;
           reactor::network::Buffer tmp(&size, 1);
           ELLE_TRACE("%s: reading for the size of the identifier", *this)
             this->_client->read(tmp);

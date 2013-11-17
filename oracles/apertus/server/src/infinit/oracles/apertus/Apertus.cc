@@ -164,7 +164,7 @@ namespace infinit
 
         ELLE_DEBUG("erase accepter");
         size_t removed = this->_accepters.erase(accepter_ptr);
-        ELLE_ASSERT_EQ(removed, 1);
+        ELLE_ASSERT_EQ(removed, 1u);
 
         ELLE_DEBUG("run later: delete accepter %s", accepter_ptr);
         reactor::run_later(
