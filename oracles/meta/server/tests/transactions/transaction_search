@@ -75,3 +75,5 @@ with Meta() as meta:
     x.extend(y)
     return x
   assert set(res['transactions']) == set(reduce(concat_list, transaction_ids.values()))
+
+  assert not bob.get('transaction/%s/view' % bob.id)['success']

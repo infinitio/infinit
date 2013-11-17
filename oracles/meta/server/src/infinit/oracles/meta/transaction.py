@@ -36,7 +36,11 @@ class Mixin:
   @api('/transaction/<id>/view')
   def transaction_view(self, id: bson.ObjectId):
     assert isinstance(id, bson.ObjectId)
-    return self.success(self.transaction(id, self.user['_id']))
+    try:
+      transaction = self.transaction(id, self.user['_id'])
+      return self.success(transaction)
+    except error.Error as e:
+      return self.fail(*e.args)
 
   @require_logged_in
   @api('/transaction/create', method = 'POST')
@@ -277,7 +281,7 @@ class Mixin:
                                                 device_name,
                                                 self.user)
     except error.Error as e:
-      self.fail(*e.args)
+      return self.fail(*e.args)
 
     return self.success({
       'updated_transaction_id': transaction_id,
