@@ -1,0 +1,38 @@
+import drake
+import drake.cxx
+import sys
+
+client = None
+server = None
+
+build = None
+check = None
+install = None
+
+def configure(elle,
+              reactor,
+              protocol,
+              meta_client,
+              boost = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  global client, server
+  global build, check, install
+
+  cxx_config = drake.cxx.Config(cxx_config)
+
+  server = drake.include('server',
+                         elle = elle,
+                         protocol = protocol,
+                         reactor = reactor,
+                         meta_client = meta_client,
+                         boost = boost,
+                         prefix = prefix,
+                         cxx_toolkit = cxx_toolkit,
+                         cxx_config = cxx_config)
+
+  for name in ('build', 'check', 'install'):
+    globals()[name] = drake.Rule(name)
+    globals()[name] << getattr(server, name)

@@ -86,7 +86,7 @@ namespace surface
       ELLE_TRACE("creating AddressRound(%s, %s)", name, this->_endpoints);
     }
 
-    std::unique_ptr<station::Host>
+    std::unique_ptr<reactor::network::TCPSocket>
     AddressRound::connect(station::Station& station)
     {
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
@@ -105,7 +105,9 @@ namespace surface
         }
 
         found.wait(10_sec);
-        return std::move(host);
+        if (host)
+          return std::move(host->release());
+        return std::unique_ptr<reactor::network::TCPSocket>();
       };
     }
 
@@ -121,50 +123,24 @@ namespace surface
       ELLE_TRACE("creating FallbackRound(%s, %s, %s, %s)", name, host, port, uid);
     }
 
-    std::unique_ptr<station::Host>
+    std::unique_ptr<reactor::network::TCPSocket>
     FallbackRound::connect(station::Station& station)
     {
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
       auto& sched = *reactor::Scheduler::scheduler();
-      ELLE_LOG("%s: contact master Apertus: %s:%s",
-               *this, this->_host, this->_port);
-      reactor::network::TCPSocket sock{sched, this->_host, this->_port};
-      elle::format::json::Dictionary dict;
+      ELLE_TRACE("%s: contact apertus: %s:%s",
+                 *this, this->_host, this->_port);
 
-      dict["_id"] = this->_uid;
-      dict["request"] = "add_link";
-      ELLE_DEBUG("%s: request to apertus: %s", *this, dict.repr());
+      std::unique_ptr<reactor::network::TCPSocket> sock(
+        new reactor::network::TCPSocket(
+          sched, this->_host, this->_port));
 
-      sock.write(elle::ConstWeakBuffer(dict.repr() + "\n"));
+      ELLE_LOG("%i: %s", this->_uid.size(), this->_uid);
+      sock->write(elle::ConstWeakBuffer(elle::sprintf("%c",(char) this->_uid.size())));
+      sock->write(elle::ConstWeakBuffer(elle::sprintf("%s", this->_uid)));
 
-      std::string data(512, '\0');
-      size_t bytes = sock.read_some(reactor::network::Buffer(data));
-      data.resize(bytes);
-      std::stringstream ss;
-      ss << data;
-      dict = elle::format::json::parse(ss)->as_dictionary();
-      std::string address = dict["endpoint"].as_string();
-      ELLE_TRACE("%s: got slave apertus: %s", *this, address);
-      this->_endpoints = {address};
-
-      return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-      {
-        std::unique_ptr<station::Host> host;
-        reactor::Barrier found;
-        for (std::string const& endpoint: this->_endpoints)
-        {
-          scope.run_background(
-            elle::sprintf("connect_try(%s)", endpoint),
-            [&]
-            {
-              host = _connect(station, endpoint);
-              found.open();
-            });
-        }
-
-        found.wait();
-        return host;
-      };
+      return std::move(sock);
     }
   }
 }

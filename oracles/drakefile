@@ -10,6 +10,7 @@ install = None
 
 def configure(elle,
               reactor,
+              protocol,
               papier_python,
               boost = None,
               python3 = None,
@@ -85,8 +86,18 @@ def configure(elle,
                              valgrind = valgrind,
   )
 
+  apertus = drake.include('apertus',
+                          elle = elle,
+                          reactor = reactor,
+                          protocol = protocol,
+                          meta_client = meta.client,
+                          boost = boost,
+                          prefix = prefix,
+                          cxx_toolkit = cxx_toolkit,
+                          cxx_config = cxx_config)
+
   for name in ('build', 'check', 'install'):
-    for oracle in [meta, trophonius]:
+    for oracle in [meta, trophonius, apertus]:
       globals()[name] << getattr(oracle, name)
   build << lib
   build << python_built

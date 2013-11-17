@@ -1,0 +1,93 @@
+import drake
+import drake.cxx
+import sys
+
+library = None
+
+build = None
+check = None
+install = None
+
+def configure(elle,
+              protocol,
+              reactor,
+              meta_client,
+              boost = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None):
+
+  global library
+  global build, check, install
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
+
+  protocol_lib = drake.copy(protocol.lib_dynamic, 'lib',
+                            protocol.lib_dynamic.name().dirname())
+
+  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+                           reactor.lib_dynamic.name().dirname())
+
+  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
+                        elle.lib_dynamic.name().dirname())
+
+  meta_client_lib = drake.copy(meta_client.lib, 'lib', strip_prefix = True)
+
+  apertus_sources = drake.nodes(
+    'src/infinit/oracles/apertus/Apertus.cc',
+    'src/infinit/oracles/apertus/Apertus.hh',
+    'src/infinit/oracles/apertus/Accepter.cc',
+    'src/infinit/oracles/apertus/Accepter.hh',
+    'src/infinit/oracles/apertus/Transfer.cc',
+    'src/infinit/oracles/apertus/Transfer.hh',
+    'src/infinit/oracles/apertus/fwd.hh',
+  )
+
+  local_cxx_config = drake.cxx.Config(cxx_config)
+  local_cxx_config.lib_path_runtime('.')
+  local_cxx_config += boost.config()
+  local_cxx_config += meta_client.config
+  local_cxx_config.add_local_include_path('src/')
+  local_cxx_config.add_local_include_path('../../hermes/server/src/')
+
+  library = drake.cxx.DynLib('lib/apertus-server',
+                             apertus_sources +
+                             [reactor_lib, protocol_lib, meta_client_lib],
+                             cxx_toolkit, local_cxx_config)
+  build = drake.Rule('build')
+  build << library
+
+  #check
+  test_cxx_config = drake.cxx.Config(local_cxx_config)
+  test_cxx_config += boost.config_test()
+  test_cxx_config += boost.config_system()
+  test_cxx_config.lib_path_runtime('../lib')
+
+  test_sources = drake.nodes('tests/infinit/oracles/apertus/apertus.cc')
+
+  test_exe = drake.cxx.Executable('tests/apertus',
+                                  test_sources +
+                                  [library, protocol_lib, reactor_lib],
+                                  cxx_toolkit,
+                                  test_cxx_config)
+  test = drake.Runner(exe = test_exe)
+
+  check = drake.Rule('check')
+  check << test.status
+
+  # executable
+  exe_cxx_config = drake.cxx.Config(local_cxx_config)
+  exe_cxx_config += boost.config_system()
+  exe_cxx_config += boost.config_program()
+  exe_cxx_config.lib_path_runtime('../lib')
+
+  exe_sources = drake.nodes('src/main.cc')
+
+  exe = drake.cxx.Executable('bin/apertus-server',
+                             exe_sources + [library, reactor_lib, elle_lib],
+                             cxx_toolkit, exe_cxx_config)
+
+  build << exe
+  install = drake.Rule('install')
+  install << exe
