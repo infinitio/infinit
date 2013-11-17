@@ -3,4 +3,4 @@
 from utils import Meta
 
 with Meta() as meta:
-  assert meta.get('status') == {"status": "ok", "success": True}
+  assert meta.get('status') == {"status": True, "success": True}
