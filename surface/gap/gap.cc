@@ -13,6 +13,7 @@
 #include <elle/elle.hh>
 #include <elle/finally.hh>
 #include <elle/HttpClient.hh>
+#include <elle/format/base64.hh>
 #ifndef INFINIT_WINDOWS
 # include <elle/system/Process.hh>
 #endif
@@ -24,9 +25,11 @@
 #include <boost/filesystem.hpp>
 #include <boost/range/join.hpp>
 
+#include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <fstream>
+#include <iterator>
 #include <string.h>
 #include <unordered_set>
 
@@ -1188,6 +1191,27 @@ extern "C"
     return ret.value().c_str();
   }
 
+  static
+  std::string
+  to_base64(boost::filesystem::path const& archive_path,
+            std::list<std::string> const& args)
+  {
+    elle::system::Process tar{"tar", args};
+    tar.wait();
+
+    std::stringstream base64;
+
+    {
+      elle::format::base64::Stream encoder(base64);
+      std::ifstream archive(archive_path.string());
+
+      std::copy(std::istreambuf_iterator<char>(archive),
+                std::istreambuf_iterator<char>(),
+                std::ostreambuf_iterator<char>(encoder));
+    }
+    return base64.str();
+  }
+
   gap_Status
   gap_send_user_report(char const* _user_name,
                        char const* _message,
@@ -1197,52 +1221,32 @@ extern "C"
 #ifndef INFINIT_WINDOWS
     try
     {
+      boost::filesystem::path destination{"/tmp/infinit-report-user"};
       boost::filesystem::path user_file_path(_file);
       boost::filesystem::path infinit_home_path(common::infinit::home());
 
-      std::string const report_archive = "/tmp/infinit-report-archive";
+      std::list<std::string> args{"cjf", destination.string()};
+      for (auto path: {user_file_path, infinit_home_path})
+      {
+        if (boost::filesystem::exists(path))
+        {
+          args.push_back("-C");
+          args.push_back(path.parent_path().string());
+          args.push_back(path.filename().string());
+        }
+      }
+
       std::string const user_name{_user_name};
       std::string const os_description{_os_description};
       std::string const user_message{_message};
 
-      std::list<std::string> args{"cjf", report_archive};
-      if (boost::filesystem::exists(user_file_path))
-      {
-        args.push_back("-C");
-        args.push_back(user_file_path.parent_path().string());
-        args.push_back(user_file_path.filename().string());
-      }
-      if (boost::filesystem::exists(infinit_home_path))
-      {
-        args.push_back("-C");
-        args.push_back(infinit_home_path.parent_path().string());
-        args.push_back(infinit_home_path.filename().string());
-      }
-
-      std::string b64 = "";
-
-      if (args.size() > 3)
-      {
-        elle::system::Process tar{"tar", args};
-        tar.wait();
-#if defined(INFINIT_LINUX)
-        b64 = elle::system::check_output("base64",
-                                         "-w0",
-                                         report_archive);
-#else
-        b64 = elle::system::check_output("base64", report_archive);
-#endif
-      }
-      else
-      {
-        ELLE_WARN("no file to send");
-      }
-      elle::crash::user_report(common::meta::host(),   // meta host
-                               common::meta::port(),   // meta port
-                               user_name,              // user name
-                               os_description,         // OS description
-                               user_message,           // user message
-                               b64);                   // file
+      elle::crash::user_report(common::meta::host(),        // meta host
+                               common::meta::port(),        // meta port
+                               user_name,                   // user name
+                               os_description,              // OS description
+                               user_message,                // user message
+                               to_base64(destination, args) // file
+        );
     }
     catch (...)
     {
@@ -1252,7 +1256,6 @@ extern "C"
 #endif
     return gap_ok;
   }
-
 
   gap_Status
   gap_send_last_crash_logs(char const* _user_name,
@@ -1264,50 +1267,34 @@ extern "C"
 #ifndef INFINIT_WINDOWS
     try
     {
+      boost::filesystem::path destination{"/tmp/infinit-crash-archive"};
+
       boost::filesystem::path crash_report_path(_crash_report);
       boost::filesystem::path state_log_path(_state_log);
 
-      std::string const crash_archive = "/tmp/infinit-crash-archive";
+      std::list<std::string> args{"cjf", destination.string()};
+
+      for (auto path: {crash_report_path, state_log_path})
+      {
+        if (boost::filesystem::exists(crash_report_path))
+        {
+          args.push_back("-C");
+          args.push_back(path.parent_path().string());
+          args.push_back(path.filename().string());
+        }
+      }
+
       std::string const user_name{_user_name};
       std::string const os_description{_os_description};
       std::string const additional_info{_additional_info};
 
-      std::list<std::string> args{"cjf", crash_archive};
-      if (boost::filesystem::exists(crash_report_path))
-      {
-        args.push_back("-C");
-        args.push_back(crash_report_path.parent_path().string());
-        args.push_back(crash_report_path.filename().string());
-      }
-      if (boost::filesystem::exists(state_log_path))
-      {
-        args.push_back("-C");
-        args.push_back(state_log_path.parent_path().string());
-        args.push_back(state_log_path.filename().string());
-      }
-
-      if (args.size() > 3)
-      {
-        elle::system::Process tar{"tar", args};
-        tar.wait();
-#if defined(INFINIT_LINUX)
-        std::string b64 = elle::system::check_output("base64",
-                                                     "-w0",
-                                                     crash_archive);
-#else
-        std::string b64 = elle::system::check_output("base64", crash_archive);
-#endif
-        elle::crash::existing_report(common::meta::host(), // meta host
-                                     common::meta::port(), // meta port
-                                     user_name,            // user name
-                                     os_description,       // OS description
-                                     additional_info,      // additional info
-                                     b64);                 // file
-      }
-      else
-      {
-        ELLE_WARN("no logs to send");
-      }
+      elle::crash::existing_report(common::meta::host(),        // meta host.
+                                   common::meta::port(),        // meta port.
+                                   user_name,                   // user name.
+                                   os_description,              // OS description.
+                                   additional_info,             // additional info.
+                                   to_base64(destination, args) // file.
+        );
     }
     catch (...)
     {
