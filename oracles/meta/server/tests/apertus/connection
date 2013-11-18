@@ -11,12 +11,11 @@ class Apertus:
     self.meta = meta
     self.uuid = uuid4()
 
-  def read(self):
-    res = self.socket.recvfrom(65565)
-    print(res)
+  def register_or_ping(self):
+    self.meta.put('apertus/%s' % str(self.uuid), body = {"port": self.port})
 
   def __enter__(self):
-    self.meta.put('apertus/%s' % str(self.uuid), body = {"port": self.port})
+    self.register_or_ping()
     return self
 
   def __exit__(self, type, value, traceback):
@@ -30,3 +29,9 @@ with Meta() as meta:
 
   with Apertus(meta) as apertus:
     assert len(meta.get('apertus')['apertus']) == 1
+
+    apertus.register_or_ping()
+
+    assert len(meta.get('apertus')['apertus']) == 1
+
+  assert len(meta.get('apertus')['apertus']) == 0

@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from uuid import uuid4
+from random import random
+import pymongo
+
+class Apertus:
+  def __init__(self, meta):
+    self.port = 1000 + int(random() * 64535)
+    self.meta = meta
+    self.uuid = uuid4()
+
+  def register_or_ping(self):
+    self.meta.put('apertus/%s' % str(self.uuid), body = {"port": self.port})
+
+  def __enter__(self):
+    self.register_or_ping()
+    return self
+
+  def __exit__(self, type, value, traceback):
+    self.meta.delete('apertus/%s' % str(self.uuid))
+
+  def update_bandwidth(self, bandwidth, count):
+    self.meta.post('apertus/%s/bandwidth' % str(self.uuid), {'bandwidth': bandwidth,
+                                                             'number_of_transfer': count})
+
+with Meta() as meta:
+  assert len(meta.get('apertus')['apertus']) == 0
+
+  with Apertus(meta) as apertus0, Apertus(meta) as apertus1:
+    assert len(meta.get('apertus')['apertus']) == 2
+
+    bandwith = 910002199
+    apertus0.update_bandwidth(bandwith, 1)
+
+    assert meta.database.apertus.find({"load": {"$ne": None}}).count() == 1
+
+    apertus1.update_bandwidth(bandwith * 2, 2)
+
+    assert meta.database.apertus.find({"load": {"$ne": None}}).count() == 2
+
+    best = meta.database.apertus.find_one({"load": {"$ne": None}},
+                                          sort = [("load", pymongo.ASCENDING)])
+    assert best['_id'] == str(apertus0.uuid)
+
+    apertus0.register_or_ping()
+    apertus1.register_or_ping()
+
+    assert meta.database.apertus.find({"load": {"$ne": None}}).count() == 2
+
+    best = meta.database.apertus.find_one({"load": {"$ne": None}},
+                                          sort = [("load", pymongo.ASCENDING)])
+    assert best['_id'] == str(apertus0.uuid)

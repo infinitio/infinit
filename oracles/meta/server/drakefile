@@ -110,6 +110,7 @@ def configure(elle,
 
   for name in (
     'apertus/connection',
+    'apertus/load',
     'apertus/transactions',
     'bad-session',
     'devices/creation',

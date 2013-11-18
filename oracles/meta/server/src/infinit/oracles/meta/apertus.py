@@ -27,17 +27,19 @@ class Mixin:
         '_id': str(uid),
       },
       {
-        '_id': str(uid),
+        '$set': {
         'ip': self.remote_ip,
         'port': port,
         'time': time.time(),
+
+        }
       },
       upsert = True,
     )
     if res['updatedExisting']:
-      elle.log.dump("ping from trophonius: %s" % uid)
+      elle.log.dump("ping from apertus: %s" % uid)
     else:
-      elle.log.log("register trophonius %s" % uid)
+      elle.log.log("register apertus %s" % uid)
     return self.success()
 
   @api('/apertus/<uid>', method = 'DELETE')
@@ -45,12 +47,34 @@ class Mixin:
                      uid: uuid.UUID):
     """Unregister a apertus.
     """
-    with elle.log.log("unregister trophonius %s" % uid):
+    with elle.log.log("unregister apertus %s" % uid):
       assert isinstance(uid, uuid.UUID)
       self.database.transactions.update({'fallback': str(uid)},
                                         {'$set': {'fallback': None}},
                                         multi = True)
       res = self.database.apertus.remove({"_id": str(uid)})
+      return self.success()
+
+  @api('/apertus/<uid>/bandwidth', method = 'POST')
+  def apertus_update_bandwidth(self,
+                               uid: uuid.UUID,
+                               bandwidth,
+                               number_of_transfer
+                               ):
+    """Update current bandwidth.
+    """
+    with elle.log.trace("update bandwidth %s" % uid):
+      assert isinstance(uid, uuid.UUID)
+      res = self.database.apertus.find_and_modify(
+        {
+          '_id': str(uid),
+        },
+        {
+          '$set': {
+            'load': bandwidth,
+            'number_of_transfer': number_of_transfer,
+          }
+        })
       return self.success()
 
   def choose_apertus(self, transaction_id):
@@ -128,7 +152,7 @@ class Mixin:
       return self.success({'apertus': result})
 
   @api('/apertus/<uid>', method = 'GET')
-  def apertus_put(self,
+  def apertus_get(self,
                   uid: uuid.UUID):
     db = self.database
     apertus = db.apertus.find_one({'_id': str(uid)},
