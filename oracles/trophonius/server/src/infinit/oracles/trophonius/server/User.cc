@@ -103,11 +103,19 @@ namespace infinit
         | Notifications |
         `--------------*/
 
+        class LazyJson:
+          public elle::Lazy<std::string>
+        {
+        public:
+          LazyJson(json_spirit::Value const& json):
+            Lazy(std::bind(&pretty_print_json, std::ref(json)))
+          {}
+        };
+
         void
         User::notify(json_spirit::Value const& notification)
         {
-          elle::Lazy<std::string> json(
-            std::bind(&pretty_print_json, std::ref(notification)));
+          LazyJson json(notification);
           ELLE_DEBUG("%s: push notification: %s", *this, json);
           this->_notifications.push(std::move(notification));
           this->_notification_available.signal();
@@ -127,8 +135,7 @@ namespace infinit
               {
                 auto notification = std::move(this->_notifications.front());
                 this->_notifications.pop();
-                elle::Lazy<std::string> json(
-                  std::bind(&pretty_print_json, std::ref(notification)));
+                LazyJson json(notification);
                 ELLE_TRACE("%s: send notification: %s", *this, json)
                   write_json(*this->_socket, notification);
               }
@@ -153,12 +160,7 @@ namespace infinit
             while (true)
             {
               auto json = read_json(*this->_socket);
-              ELLE_DUMP(
-                "%s: receive packet: %s",
-                *this,
-                elle::Lazy<std::string>(
-                  std::bind(&pretty_print_json, std::ref(json))));
-
+              ELLE_DUMP("%s: receive packet: %s", *this, LazyJson(json));
               if (json.find("notification_type") != json.end())
               {
                 ELLE_DEBUG("%s: receive ping", *this);
