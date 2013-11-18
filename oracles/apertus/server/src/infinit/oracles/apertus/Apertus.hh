@@ -34,7 +34,8 @@ namespace infinit
         Apertus(std::string mhost,
                 int mport,
                 std::string host = "0.0.0.0",
-                int port = 6565);
+                int port = 6565,
+                std::time_t tick_rate = 10);
         ~Apertus();
 
       private:
@@ -92,6 +93,21 @@ namespace infinit
         virtual
         void
         print(std::ostream& stream) const;
+
+        /*-----------.
+        | Monitoring |
+        `-----------*/
+      public:
+        void
+        refresh_bandwidth(uint32_t data);
+
+        uint32_t
+        get_bandwidth();
+
+      private:
+        ELLE_ATTRIBUTE(std::time_t, tick_rate);
+        ELLE_ATTRIBUTE(std::time_t, last_tick);
+        ELLE_ATTRIBUTE(uint32_t, bandwidth);
       };
     }
   }

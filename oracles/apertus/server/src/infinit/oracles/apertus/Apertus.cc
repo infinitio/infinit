@@ -23,7 +23,8 @@ namespace infinit
     namespace apertus
     {
       Apertus::Apertus(std::string mhost, int mport,
-                       std::string host, int port):
+                       std::string host, int port,
+                       std::time_t tick_rate):
         Waitable("apertus"),
         _accepter(*reactor::Scheduler::scheduler(),
                   "apertus_accepter",
@@ -31,7 +32,10 @@ namespace infinit
         _meta(mhost, mport),
         _uuid(boost::uuids::random_generator()()),
         _host(host),
-        _port(port)
+        _port(port),
+        _tick_rate(tick_rate),
+        _last_tick(std::time(0)),
+        _bandwidth(0)
       {
         ELLE_LOG("Apertus");
       }
@@ -185,6 +189,34 @@ namespace infinit
       Apertus::print(std::ostream& stream) const
       {
         stream << "Apertus(" << this->_uuid << ")";
+      }
+
+      /*-----------.
+      | Monitoring |
+      `-----------*/
+      void
+      Apertus::refresh_bandwidth(uint32_t data)
+      {
+        static uint32_t tmpbd = 0;
+        std::time_t now = std::time(0);
+
+        if (now >= (_tick_rate + _last_tick))
+        {
+          ELLE_TRACE("%s: bandwidth is currently estimated at %sB/s",
+            *this, tmpbd / _tick_rate);
+
+          _bandwidth = tmpbd / _tick_rate;
+          tmpbd = data;
+          _last_tick = now;
+        }
+        else
+          tmpbd += data;
+      }
+
+      uint32_t
+      Apertus::get_bandwidth()
+      {
+        return _bandwidth;
       }
     }
   }

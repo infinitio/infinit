@@ -16,11 +16,11 @@ namespace infinit
   {
     namespace apertus
     {
-      Transfer::Transfer(Apertus& apertus,
+      Transfer::Transfer(Apertus& owner,
                          oracle::hermes::TID tid,
                          Socket&& left,
                          Socket&& right):
-        _apertus(apertus),
+        _apertus(owner),
         _tid(tid),
         _left(std::move(left)),
         _right(std::move(right)),
@@ -60,6 +60,10 @@ namespace infinit
             ELLE_ASSERT(rhs != nullptr);
             rhs->write(send);
             ELLE_DEBUG("%s: data written", this->_tid);
+
+            _apertus.refresh_bandwidth(size);
+            ELLE_DEBUG("%s: data amount of %u sent to apertus owner",
+              this->_tid, size);
           }
         }
 
@@ -125,7 +129,6 @@ namespace infinit
         stream << "Transfer: " << this->_tid << " "
                << this->_left.get() << " - " << this->_right.get();
       }
-
     }
   }
 }
