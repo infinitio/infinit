@@ -115,7 +115,25 @@ class Mixin:
 
       return self.success({'fallback': fallback})
 
+  apertus_fields = ['ip', 'port']
+
   @api('/apertus')
   def registered_apertus(self):
-    apertus = self.database.apertus.find(fields = ['ip', 'port'])
-    return self.success({'apertus': ["%s:%s" % (s['ip'], s['port']) for s in apertus]})
+    result = {}
+    db = self.database
+    for apertus in db.apertus.find(fields = self.apertus_fields):
+      _id = apertus['_id']
+      del apertus['_id']
+      result[_id] = apertus
+      return self.success({'apertus': result})
+
+  @api('/apertus/<uid>', method = 'GET')
+  def apertus_put(self,
+                  uid: uuid.UUID):
+    db = self.database
+    apertus = db.apertus.find_one({'_id': str(uid)},
+                                  fields = self.apertus_fields)
+    if apertus is None:
+      self.not_found()
+    del apertus['_id']
+    return apertus
