@@ -45,12 +45,14 @@ namespace infinit
           public reactor::Waitable
         {
         public:
-          Trophonius(int port,
-                     std::string const& meta_host,
-                     int meta_port,
-                     int notifications_port = 0,
-                     boost::posix_time::time_duration const& user_ping_period = 30_sec,
-                     boost::posix_time::time_duration const& meta_ping_period = 60_sec);
+          Trophonius(
+            int port,
+            std::string const& meta_host,
+            int meta_port,
+            int notifications_port = 0,
+            boost::posix_time::time_duration const& user_ping_period = 30_sec,
+            boost::posix_time::time_duration const& meta_ping_period = 60_sec,
+            bool meta_fatal = true);
 
           ~Trophonius();
           void
@@ -74,6 +76,7 @@ namespace infinit
           int
           notification_port() const;
           ELLE_ATTRIBUTE(reactor::Thread, accepter);
+          ELLE_ATTRIBUTE(bool, meta_fatal);
           ELLE_ATTRIBUTE(reactor::Thread, meta_accepter);
           ELLE_ATTRIBUTE_R(boost::uuids::uuid, uuid);
           ELLE_ATTRIBUTE_R(meta::Admin, meta);

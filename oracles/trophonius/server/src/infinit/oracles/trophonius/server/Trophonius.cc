@@ -34,7 +34,8 @@ namespace infinit
           int meta_port,
           int notifications_port,
           boost::posix_time::time_duration const& user_ping_period,
-          boost::posix_time::time_duration const& meta_ping_period):
+          boost::posix_time::time_duration const& meta_ping_period,
+          bool meta_fatal):
           Waitable("trophonius"),
           _server(),
           _port(port),
@@ -43,6 +44,7 @@ namespace infinit
             *reactor::Scheduler::scheduler(),
             elle::sprintf("%s accepter", *this),
             std::bind(&Trophonius::_serve, std::ref(*this))),
+          _meta_fatal(meta_fatal),
           _meta_accepter(
             *reactor::Scheduler::scheduler(),
             elle::sprintf("%s meta accepter", *this),
@@ -108,8 +110,18 @@ namespace infinit
           }
 
           ELLE_LOG("%s: register to meta", *this)
-            this->_meta.register_trophonius(
-              this->_uuid, this->notification_port());
+            try
+            {
+              this->_meta.register_trophonius(
+                this->_uuid, this->notification_port());
+            }
+            catch (...)
+            {
+              if (this->_meta_fatal)
+                throw;
+              ELLE_WARN("%s: couldn't register to meta: %s",
+                        *this, elle::exception_string());
+            }
           this->_ready.open();
 
           kill_accepters.abort();
@@ -169,9 +181,10 @@ namespace infinit
           }
           catch (...)
           {
-            ELLE_ERR("%s: unable to unregister from meta: %s",
-                     *this, elle::exception_string());
-            throw;
+            ELLE_WARN("%s: unable to unregister from meta: %s",
+                      *this, elle::exception_string());
+            if (this->_meta_fatal)
+              throw;
           }
         }
 

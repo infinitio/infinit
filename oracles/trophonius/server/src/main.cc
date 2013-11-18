@@ -30,6 +30,8 @@ parse_options(int argc, char** argv)
     ("port,p", value<int>(), "specify the port to listen on")
     ("meta,m", value<std::string>(),
      "specify the meta host[:port] to connect to")
+    ("ignore-meta",
+     "make meta registration errors non fatal")
     ("notifications-port,n", value<int>(),
      "specify the port to listen on for notifications from meta")
     ("syslog,s", "send logs to the system logger")
@@ -73,13 +75,12 @@ int main(int argc, char** argv)
   try
   {
     auto options = parse_options(argc, argv);
-
-    if (!options.count("meta"))
-      throw std::runtime_error("meta argument is mandatory");
-
+    bool meta_fatal = true;
     std::string meta_host = "";
     int meta_port = 80;
-
+    if (!options.count("meta"))
+      throw std::runtime_error("meta argument is mandatory");
+    else
     {
       std::string meta = options["meta"].as<std::string>();
       std::vector<std::string> result;
@@ -93,25 +94,22 @@ int main(int argc, char** argv)
       }
       else
         meta_host = meta;
+      if (meta_host.empty())
+        throw std::runtime_error("meta host is empty");
     }
-
-    if (meta_host.empty())
-      throw std::runtime_error("meta host is empty");
-
+    if (options.count("ignore-meta"))
+      meta_fatal = false;
     int port = 0;
     int notifications_port = 0;
     int ping = 30;
-
     if (options.count("port"))
       port = options["port"].as<int>();
     if (options.count("notifications-port"))
       notifications_port = options["notifications-port"].as<int>();
     if (options.count("ping-period"))
       ping = options["ping-period"].as<int>();
-
     reactor::Scheduler s;
     std::unique_ptr<Trophonius> trophonius;
-
     reactor::Thread main(
       s, "main",
       [&]
@@ -122,13 +120,13 @@ int main(int argc, char** argv)
             meta_host,
             meta_port,
             notifications_port,
-            boost::posix_time::seconds(ping)));
-
+            boost::posix_time::seconds(ping),
+            boost::posix_time::seconds(60),
+            meta_fatal));
         // Wait for trophonius to be asked to finish.
         main.wait(*trophonius);
         trophonius.reset();
       });
-
     s.signal_handle(
       SIGINT,
       [&s, &trophonius]
@@ -136,7 +134,6 @@ int main(int argc, char** argv)
         if (trophonius)
           trophonius->stop();
       });
-
     s.run();
   }
   catch (std::exception const& e)
