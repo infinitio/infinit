@@ -231,9 +231,17 @@ namespace infinit
                 this->_authentified.open();
                 continue;
               }
-              throw ProtocolError(
-                elle::sprintf("unrecognized json message: %s",
-                              pretty_print_json(json)));
+              else if (json.find("poke") != json.end())
+              {
+                ELLE_DEBUG_SCOPE("%s: handle poke", *this);
+                auto poke = json["poke"];
+                ELLE_DUMP("%s: poke: %s", *this, LazyJson(poke));
+                write_json(*this->_socket, poke);
+              }
+              else
+                throw ProtocolError(
+                  elle::sprintf("unrecognized json message: %s",
+                                pretty_print_json(json)));
             }
           }
           catch (ProtocolError const& e)
