@@ -239,7 +239,7 @@ class Mixin:
             "message": message,
             "more": more,
           },
-          attached = ('log.tar.gz', file),
+          attached = ('log.tar.bz', file),
         )
       return self.success()
 

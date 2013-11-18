@@ -123,13 +123,14 @@ class Mailer():
       msg['To'] = to
       if attached is not None:
         filename, filecontent = attached
+        elle.log.debug("attachement size: %s" % len(filecontent))
         with elle.log.debug('has attachement: %s' % filename):
           elle.log.dump('attachement content: %s' % filecontent)
-          file = MIMEBase('application', 'octet-stream')
-          file.set_payload(filecontent)
-          file.add_header('Content-Disposition', 'attachment; filename=%s' % filename)
-          file.add_header('Content-Transfer-Encoding', 'base64')
-          msg.attach(file)
+          attachement = MIMEBase('application', 'octet-stream')
+          attachement.set_payload(filecontent)
+          attachement.add_header('Content-Disposition', 'attachment; filename="%s"' % filename)
+          attachement.add_header('Content-Transfer-Encoding', 'base64')
+          msg.attach(attachement)
       if reply_to is not None:
         elle.log.debug('has reply to: %s' % reply_to)
         rto_name, rto_addr = parseaddr(reply_to)
