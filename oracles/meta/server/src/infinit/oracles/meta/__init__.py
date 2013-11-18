@@ -19,14 +19,14 @@ from . import error
 
 from .utils import api, hash_pasword, require_logged_in
 
-from . import user, transaction, device, root, trophonius, apertus, invitation
+from . import user, transaction, device, root, trophonius, apertus, invitation, period
 from . import notifier
 from . import mail
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
 class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
-           device.Mixin, trophonius.Mixin, apertus.Mixin):
+           device.Mixin, trophonius.Mixin, apertus.Mixin, period.Mixin):
 
   def __init__(self,
                mongo_host = None,
