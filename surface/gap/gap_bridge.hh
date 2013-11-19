@@ -4,6 +4,7 @@
 #include <surface/gap/State.hh>
 
 #include <reactor/network/exception.hh>
+#include <reactor/http/exceptions.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/thread.hh>
 
@@ -275,6 +276,11 @@ run(gap_State* state,
     ret = err.code;
   }
   catch (reactor::network::Exception const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_network_error;
+  }
+  catch (reactor::http::RequestError const&)
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = gap_network_error;
