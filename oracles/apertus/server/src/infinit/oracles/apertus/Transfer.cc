@@ -61,7 +61,7 @@ namespace infinit
             rhs->write(send);
             ELLE_DEBUG("%s: data written", this->_tid);
 
-            _apertus.refresh_bandwidth(size);
+            _apertus.add_to_bandwidth(size);
             ELLE_DEBUG("%s: data amount of %u sent to apertus owner",
               this->_tid, size);
           }

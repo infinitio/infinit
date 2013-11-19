@@ -9,8 +9,6 @@
 # include <elle/Printable.hh>
 # include <elle/attribute.hh>
 
-# include <queue>
-# include <ctime>
 # include <memory>
 
 namespace infinit

@@ -13,6 +13,7 @@
 
 # include <elle/Printable.hh>
 
+# include <boost/date_time/posix_time/posix_time.hpp>
 # include <boost/uuid/random_generator.hpp>
 # include <boost/uuid/uuid.hpp>
 
@@ -35,7 +36,7 @@ namespace infinit
                 int mport,
                 std::string host = "0.0.0.0",
                 int port = 6565,
-                std::time_t tick_rate = 10);
+                long tick_rate = 10);
         ~Apertus();
 
       private:
@@ -99,11 +100,16 @@ namespace infinit
         `-----------*/
       public:
         void
-        refresh_bandwidth(uint32_t data);
+        add_to_bandwidth(uint32_t data);
 
       private:
-        ELLE_ATTRIBUTE(std::time_t, tick_rate);
-        ELLE_ATTRIBUTE(std::time_t, last_tick);
+        void
+        _run_monitor();
+
+      private:
+        ELLE_ATTRIBUTE(uint32_t, bandwidth);
+        ELLE_ATTRIBUTE(long, tick_rate);
+        ELLE_ATTRIBUTE(reactor::Thread, monitor);
       };
     }
   }

@@ -15,7 +15,6 @@
 #include <tuple>
 
 ELLE_LOG_COMPONENT("infinit.oracles.apertus.Apertus");
-
 namespace infinit
 {
   namespace oracles
@@ -24,7 +23,7 @@ namespace infinit
     {
       Apertus::Apertus(std::string mhost, int mport,
                        std::string host, int port,
-                       std::time_t tick_rate):
+                       long tick_rate):
         Waitable("apertus"),
         _accepter(*reactor::Scheduler::scheduler(),
                   "apertus_accepter",
@@ -33,8 +32,11 @@ namespace infinit
         _uuid(boost::uuids::random_generator()()),
         _host(host),
         _port(port),
+        _bandwidth(0),
         _tick_rate(tick_rate),
-        _last_tick(std::time(0))
+        _monitor(*reactor::Scheduler::scheduler(),
+                 "apertus_monitor",
+                 std::bind(&Apertus::_run_monitor, std::ref(*this)))
       {
         ELLE_LOG("Apertus");
       }
@@ -42,6 +44,7 @@ namespace infinit
       Apertus::~Apertus()
       {
         ELLE_LOG("~Apertus");
+        this->_monitor.terminate_now();
         this->_accepter.terminate_now();
 
         for (auto const& client: this->_clients)
@@ -81,7 +84,6 @@ namespace infinit
       Apertus::_register()
       {
         this->_meta.register_apertus(this->_uuid, this->_port);
-        this->_meta.apertus_update_bandwidth(_uuid, 0, _workers.size());
       }
 
       void
@@ -195,22 +197,25 @@ namespace infinit
       | Monitoring |
       `-----------*/
       void
-      Apertus::refresh_bandwidth(uint32_t data)
+      Apertus::add_to_bandwidth(uint32_t data)
       {
-        static uint32_t tmpbd = 0;
-        std::time_t now = std::time(0);
+        _bandwidth += data;
+      }
 
-        if (now >= (_tick_rate + _last_tick))
+      void
+      Apertus::_run_monitor()
+      {
+        while (true)
         {
-          ELLE_TRACE("%s: bandwidth is currently estimated at %sB/s",
-            *this, tmpbd / _tick_rate);
+          reactor::sleep(boost::posix_time::seconds{_tick_rate});
 
-          this->_meta.apertus_update_bandwidth(_uuid, tmpbd, _workers.size());
-          tmpbd = data;
-          _last_tick = now;
+          uint32_t bdwps = _bandwidth / _tick_rate;
+          ELLE_TRACE("%s: bandwidth is currently estimated at %sB/s",
+            *this, bdwps);
+          this->_meta.apertus_update_bandwidth(_uuid, bdwps, _workers.size());
+
+          _bandwidth = 0;
         }
-        else
-          tmpbd += data;
       }
     }
   }
