@@ -81,6 +81,7 @@ namespace infinit
       Apertus::_register()
       {
         this->_meta.register_apertus(this->_uuid, this->_port);
+        this->_meta.apertus_update_bandwidth(_uuid, 0, _workers.size());
       }
 
       void
