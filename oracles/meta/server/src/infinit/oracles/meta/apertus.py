@@ -149,7 +149,7 @@ class Mixin:
       _id = apertus['_id']
       del apertus['_id']
       result[_id] = apertus
-      return self.success({'apertus': result})
+    return self.success({'apertus': result})
 
   @api('/apertus/<uid>', method = 'GET')
   def apertus_get(self,
