@@ -11,13 +11,21 @@ class Apertus:
     self.meta = meta
     self.uuid = uuid4()
 
+  def register_or_ping(self):
+    self.meta.put('apertus/%s' % str(self.uuid), body = {"port": self.port})
+
   def read(self):
     res = self.socket.recvfrom(65565)
     print(res)
 
   def __enter__(self):
-    self.meta.put('apertus/%s' % str(self.uuid), body = {"port": self.port})
+    self.register_or_ping()
+    self.update_bandwidth(0, 0)
     return self
+
+  def update_bandwidth(self, bandwidth, count):
+    self.meta.post('apertus/%s/bandwidth' % str(self.uuid), {'bandwidth': bandwidth,
+                                                             'number_of_transfers': count})
 
   def __exit__(self, type, value, traceback):
     self.meta.delete('apertus/%s' % str(self.uuid))
@@ -37,6 +45,8 @@ with Meta() as meta:
   assert not res['success']
 
   with Apertus(meta) as apertus, Apertus(meta) as apertus2:
+    assert meta.database.apertus.find().count() == 2
+
     alicefb = alice.get('apertus/fallback/%s' % transaction_id)
     assert alicefb['success']
 
