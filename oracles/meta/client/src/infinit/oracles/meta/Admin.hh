@@ -45,6 +45,11 @@ namespace infinit
         Response
         unregister_apertus(boost::uuids::uuid const& uid);
 
+        Response
+        update_bandwidth(boost::uuids::uuid const& uid,
+                         uint32_t bandwidth,
+                         uint32_t number_of_transfers);
+
         AddSwaggerResponse
         add_swaggers(std::string const& user1, std::string const& user2) const;
 

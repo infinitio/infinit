@@ -108,6 +108,21 @@ namespace infinit
       }
 
       Response
+      Admin::update_bandwidth(boost::uuids::uuid const& uid,
+                              uint32_t bandwidth,
+                              uint32_t number_of_transfers)
+      {
+        json::Dictionary request;
+        request["bandwidth"] = bandwidth;
+        request["number_of_transfers"] = number_of_transfers;
+
+        return this->_request<Response>(
+          sprintf("/apertus/%s/bandwidth",
+                  boost::lexical_cast<std::string>(uid)),
+          Method::POST, request);
+      }
+
+      Response
       Admin::genocide() const
       {
         json::Dictionary request;
