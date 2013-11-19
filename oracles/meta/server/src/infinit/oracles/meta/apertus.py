@@ -2,7 +2,6 @@
 
 import bson
 import uuid
-import random
 import time
 from . import conf, error, regexp
 from .utils import api, require_admin, require_logged_in
@@ -78,12 +77,17 @@ class Mixin:
       return self.success()
 
   def choose_apertus(self):
-    apertus = self.database.apertus.find(fields = ['ip', 'port'])
+    apertus = self.database.apertus.find(
+        {
+          "ip": { "$ne": None },
+          "port": { "$ne": None },
+          "load": { "$ne": None },
+        }
+      )
     if apertus.count() == 0:
       return self.fail(error.NO_APERTUS)
-    index = random.randint(0, apertus.count() - 1)
-    fallback = apertus[index]
-    elle.log.debug('selected fallback: %s' % fallback)
+    apertus = apertus.sort({"load": 1})[0]
+    klle.log.debug('selected fallback: %s' % fallback)
     return '%s:%s' % (fallback['ip'], fallback['port'])
 
   @api('/apertus/fallback/<id>')
