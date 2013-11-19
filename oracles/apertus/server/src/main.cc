@@ -21,6 +21,7 @@ parse_options(int argc, char** argv)
     ("port,p", value<int>(), "specify the port to listen on")
     ("meta,m", value<std::string>(),
      "specify the meta host[:port] to connect to")
+    ("tick,t", value<long>(), "specify the rate at which to announce the load to meta")
     ("syslog,s", "send logs to the system logger")
     ("version,v", "display version information and exit")
     ;
@@ -88,9 +89,12 @@ int main(int argc, char** argv)
     }
 
     int port = 0;
+    long tick = 10;
 
     if (options.count("port"))
       port = options["port"].as<int>();
+    if (options.count("tick"))
+      tick = options["tick"].as<long>();
 
     reactor::Scheduler sched;
 
@@ -103,7 +107,8 @@ int main(int argc, char** argv)
             meta_host,
             meta_port,
             "0.0.0.0",
-            port));
+            port,
+            tick));
 
         main.wait(*apertus);
         apertus.reset();
