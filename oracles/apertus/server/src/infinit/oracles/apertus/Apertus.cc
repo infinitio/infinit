@@ -34,8 +34,7 @@ namespace infinit
         _host(host),
         _port(port),
         _tick_rate(tick_rate),
-        _last_tick(std::time(0)),
-        _bandwidth(0)
+        _last_tick(std::time(0))
       {
         ELLE_LOG("Apertus");
       }
@@ -205,18 +204,12 @@ namespace infinit
           ELLE_TRACE("%s: bandwidth is currently estimated at %sB/s",
             *this, tmpbd / _tick_rate);
 
-          _bandwidth = tmpbd / _tick_rate;
+          this->_meta.apertus_update_bandwidth(_uuid, tmpbd, _workers.size());
           tmpbd = data;
           _last_tick = now;
         }
         else
           tmpbd += data;
-      }
-
-      uint32_t
-      Apertus::get_bandwidth()
-      {
-        return _bandwidth;
       }
     }
   }

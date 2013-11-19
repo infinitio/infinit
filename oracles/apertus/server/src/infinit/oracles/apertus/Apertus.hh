@@ -101,13 +101,9 @@ namespace infinit
         void
         refresh_bandwidth(uint32_t data);
 
-        uint32_t
-        get_bandwidth();
-
       private:
         ELLE_ATTRIBUTE(std::time_t, tick_rate);
         ELLE_ATTRIBUTE(std::time_t, last_tick);
-        ELLE_ATTRIBUTE(uint32_t, bandwidth);
       };
     }
   }
