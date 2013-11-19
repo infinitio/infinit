@@ -77,8 +77,14 @@ class Mixin:
         })
       return self.success()
 
-  def choose_apertus(self, transaction_id):
-    pass
+  def choose_apertus(self):
+    apertus = self.database.apertus.find(fields = ['ip', 'port'])
+    if apertus.count() == 0:
+      return self.fail(error.NO_APERTUS)
+    index = random.randint(0, apertus.count() - 1)
+    fallback = apertus[index]
+    elle.log.debug('selected fallback: %s' % fallback)
+    return '%s:%s' % (fallback['ip'], fallback['port'])
 
   @api('/apertus/fallback/<id>')
   @require_logged_in
@@ -88,55 +94,20 @@ class Mixin:
     """
     with elle.log.trace("get fallback for transaction %s" % id):
       user = self.user
-
-      transaction = self.transaction(id, user['_id'])
-
-      if transaction.get('fallback') is None:
-        elle.log.debug('choosing a random apertus')
-        apertus = self.database.apertus.find(fields = ['ip', 'port'])
-        if apertus.count() == 0:
-          return self.fail(error.NO_APERTUS)
-        index = random.randint(0, apertus.count() - 1)
-        fallback = apertus[index]
-        elle.log.debug('selected fallback: %s' % fallback)
-        fallback = '%s:%s' % (fallback['ip'], fallback['port'])
-        _transaction = self.database.transactions.find_and_modify(
-          {
-            '_id': id,
-            'fallback': None,
-          },
-          {
-            '$set': {'fallback': fallback},
-          },
-          new = True,
-        )
-        if _transaction is None: # Race condition.
-          elle.log.warn('transaction has been modified before')
-          _transaction = self.database.transactions.find_and_modify(
-            {
-              '_id': id,
-              'fallback': fallback,
-            },
-            {
-              '$set': {'fallback': None},
-            },
-            new = False,
-          )
-          fallback = _transaction['fallback']
-      else:
-        fallback = transaction['fallback']
-        elle.log.debug('got fallback from transaction: %s' % fallback)
-        _transaction = self.database.transactions.find_and_modify(
-          {
-            '_id': id,
-            'fallback': fallback,
-          },
-          {
-            '$set': {'fallback': None},
-          },
-          new = True,
-        )
-
+      fallback = self.choose_apertus()
+      transaction = self.database.transactions.find_and_modify(
+        {
+          '_id': id,
+          'fallback': None,
+        },
+        {
+          '$set': {'fallback': fallback},
+        },
+        new = True,
+      )
+      if transaction is None:
+        fallback = self.database.transactions.find_and_modify({'_id': id}, {'$set': {'fallback': None}}, new = False, fields = ['fallback'])['fallback']
+      assert fallback is not None
       return self.success({'fallback': fallback})
 
   apertus_fields = ['ip', 'port']
