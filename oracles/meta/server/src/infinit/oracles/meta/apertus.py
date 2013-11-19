@@ -6,6 +6,7 @@ import time
 from . import conf, error, regexp
 from .utils import api, require_admin, require_logged_in
 import elle.log
+import pymongo
 
 # XXX: Make it generic with trophonius.
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Apertus'
@@ -86,8 +87,9 @@ class Mixin:
       )
     if apertus.count() == 0:
       return self.fail(error.NO_APERTUS)
-    apertus = apertus.sort({"load": 1})[0]
-    klle.log.debug('selected fallback: %s' % fallback)
+    apertus = apertus.sort([("load", 1)])
+    fallback = apertus[0]
+    elle.log.debug('selected fallback: %s' % fallback)
     return '%s:%s' % (fallback['ip'], fallback['port'])
 
   @api('/apertus/fallback/<id>')
