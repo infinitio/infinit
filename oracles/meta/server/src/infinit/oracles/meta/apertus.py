@@ -59,7 +59,7 @@ class Mixin:
   def apertus_update_bandwidth(self,
                                uid: uuid.UUID,
                                bandwidth,
-                               number_of_transfer
+                               number_of_transfers
                                ):
     """Update current bandwidth.
     """
@@ -72,7 +72,7 @@ class Mixin:
         {
           '$set': {
             'load': bandwidth,
-            'number_of_transfer': number_of_transfer,
+            'number_of_transfers': number_of_transfers,
           }
         })
       return self.success()

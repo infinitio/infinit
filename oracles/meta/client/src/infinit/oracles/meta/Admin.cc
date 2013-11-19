@@ -108,9 +108,9 @@ namespace infinit
       }
 
       Response
-      Admin::update_bandwidth(boost::uuids::uuid const& uid,
-                              uint32_t bandwidth,
-                              uint32_t number_of_transfers)
+      Admin::apertus_update_bandwidth(boost::uuids::uuid const& uid,
+                                      uint32_t bandwidth,
+                                      uint32_t number_of_transfers)
       {
         json::Dictionary request;
         request["bandwidth"] = bandwidth;

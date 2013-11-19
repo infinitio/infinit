@@ -23,7 +23,7 @@ class Apertus:
 
   def update_bandwidth(self, bandwidth, count):
     self.meta.post('apertus/%s/bandwidth' % str(self.uuid), {'bandwidth': bandwidth,
-                                                             'number_of_transfer': count})
+                                                             'number_of_transfers': count})
 
 with Meta() as meta:
   assert len(meta.get('apertus')['apertus']) == 0
