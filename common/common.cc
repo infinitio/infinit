@@ -1,4 +1,10 @@
-#include "common.hh"
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <stdexcept>
+#include <unordered_map>
+
+#include <boost/preprocessor/cat.hpp>
 
 #include <elle/assert.hh>
 #include <elle/os/getenv.hh>
@@ -7,13 +13,8 @@
 #include <elle/system/platform.hh>
 #include <elle/system/home_directory.hh>
 
-#include <boost/preprocessor/cat.hpp>
-
-#include <stdexcept>
-#include <unordered_map>
-
-#include <sys/types.h>
-#include <unistd.h>
+#include <common/common.hh>
+#include <version.hh>
 
 // XXX Metrics are always targetting the sandboxes.
 #define COMMON_METRICS_INVESTORS_GOOGLE_TID "UA-31957100-3"
@@ -40,13 +41,17 @@
 #define COMMON_METRICS_MIXPANEL_TRANSACTION_TID \
     ""
 
+#define COMMON_DEFAULT_API                          \
+  BOOST_PP_STRINGIZE(INFINIT_VERSION_MINOR) "."     \
+  BOOST_PP_STRINGIZE(INFINIT_VERSION_MAJOR)         \
+  ".api.production.infinit.io"
 #define COMMON_DEFAULT_INFINIT_HOME ".infinit"
 #define COMMON_DEFAULT_META_PROTOCOL "http"
-#define COMMON_DEFAULT_META_HOST "v2.meta.api.development.infinit.io"
+#define COMMON_DEFAULT_META_HOST "meta." COMMON_DEFAULT_API
 #define COMMON_DEFAULT_META_PORT 80
 #define COMMON_DEFAULT_TROPHONIUS_PROTOCOL "http"
-#define COMMON_DEFAULT_TROPHONIUS_HOST "v2.trophonius.api.development.infinit.io"
-#define COMMON_DEFAULT_TROPHONIUS_PORT 23456
+#define COMMON_DEFAULT_TROPHONIUS_HOST "trophonius." COMMON_DEFAULT_API
+#define COMMON_DEFAULT_TROPHONIUS_PORT 80
 #define COMMON_DEFAULT_RESOURCES_ROOT_URL "http://download.development.infinit.io"
 #define COMMON_DEFAULT_LONGINUS_HOST "v2.longinus.api.development.infinit.io"
 #define COMMON_DEFAULT_LONGINUS_PORT 9999
@@ -59,13 +64,17 @@
 #define COMMON_DEFAULT_METRICS_HOST "v2.metrics.api.development.infinit.io"
 #define COMMON_DEFAULT_METRICS_PORT 80
 
+#define COMMON_PRODUCTION_API                       \
+  BOOST_PP_STRINGIZE(INFINIT_VERSION_MINOR) "."     \
+  BOOST_PP_STRINGIZE(INFINIT_VERSION_MAJOR)         \
+  ".api.production.infinit.io"
 #define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
 #define COMMON_PRODUCTION_META_PROTOCOL "http"
-#define COMMON_PRODUCTION_META_HOST "v2.meta.api.production.infinit.io"
+#define COMMON_PRODUCTION_META_HOST "meta." COMMON_PRODUCTION_API
 #define COMMON_PRODUCTION_META_PORT 80
 #define COMMON_PRODUCTION_TROPHONIUS_PROTOCOL "http"
-#define COMMON_PRODUCTION_TROPHONIUS_HOST "v2.trophonius.api.production.infinit.io"
-#define COMMON_PRODUCTION_TROPHONIUS_PORT 23456
+#define COMMON_PRODUCTION_TROPHONIUS_HOST "trophonius." COMMON_PRODUCTION_API
+#define COMMON_PRODUCTION_TROPHONIUS_PORT 80
 #define COMMON_PRODUCTION_RESOURCES_ROOT_URL "http://download.production.infinit.io"
 #define COMMON_PRODUCTION_LONGINUS_HOST "v2.longinus.api.production.infinit.io"
 #define COMMON_PRODUCTION_LONGINUS_PORT 9999

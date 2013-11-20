@@ -28,10 +28,10 @@ class Mixin:
     res = self.database.transactions.aggregate([
       {'$match': {'status': transaction_status.FINISHED}},
       {'$group': {'_id': 'result',
-                  'total_size': {'$sum': '$total_size'}}},
-      ])
-    return self.success(
-      {'total_size': res['result'][0]['total_size']})
+                  'total_size': {'$sum': '$total_size'},
+                  'total_transfers': {'$sum': 1},}},
+    ])
+    return self.success(res['result'][0])
 
   @api('/status')
   def status(self):
