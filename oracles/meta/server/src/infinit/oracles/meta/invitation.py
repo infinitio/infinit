@@ -43,18 +43,20 @@ class Invitation:
   def move_from_invited_to_userbase(self, ghost_mail, new_mail):
     try:
       self.ms.listUnsubscribe(id = INVITED_LIST, email_address = ghost_mail)
+      elle.log.trace("%s: unsubscribed from INVITED: %s" % (ghost_mail, INVITED_LIST))
     except:
-      print("Couldn't unsubscribe", ghost_mail, "from INVITED")
+      elle.log.warn("Couldn't unsubscribe %s from INVITED: %s" % (ghost_mail, INVITED_LIST))
     self.subscribe(new_mail)
 
   @is_active
   def subscribe(self, email):
     try:
-      ms.listSubscribe(id = USERBASE_LIST,
-                       email_address = mail,
-                       double_optin = False)
+      self.ms.listSubscribe(id = USERBASE_LIST,
+                            email_address = email,
+                            double_optin = False)
+      elle.log.trace("%s added to USERBASE_LIST: %s" % (email, USERBASE_LIST))
     except:
-      print("Couldn't subscribe", mail, "to USERBASE")
+      elle.log.warn("Couldn't subscribe %s to USERBASE" % email)
 
 def invite_user(email,
                 mailer,
