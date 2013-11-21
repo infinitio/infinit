@@ -239,8 +239,10 @@ class Mixin:
         template = mail.report_templates.get(type, None)
         if template is None:
           self.fail(error.UNKNOWN)
+        user_email = '@' in user_name and user_name or None
         self.mailer.send(
           to = email,
+          reply_to = user_email,
           subject = template['subject'] % {"client_os": client_os},
           content = template['content'] % {
             "client_os": client_os,
