@@ -225,7 +225,7 @@ namespace frete
       this->_transfer_snapshot.reset(new TransferSnapshot(count, total_size));
     }
 
-    static std::streamsize const n = reactor::network::Socket::buffer_size;
+    static std::streamsize const chunk_size = 1 << 18;
 
     auto& snapshot = *this->_transfer_snapshot;
 
@@ -293,7 +293,7 @@ namespace frete
           throw elle::Exception("output is invalid");
 
         // Get the buffer from the rpc.
-        elle::Buffer buffer{this->read(index, tr.progress(), n)};
+        elle::Buffer buffer{this->read(index, tr.progress(), chunk_size)};
 
         ELLE_ASSERT_LT(index, snapshot.transfers().size());
         ELLE_DEBUG("%s: %s (size: %s)", index, fullpath, boost::filesystem::file_size(fullpath));
@@ -322,7 +322,7 @@ namespace frete
         ELLE_ASSERT_EQ(boost::filesystem::file_size(fullpath),
                        snapshot.transfers()[index].progress());
 
-        if (buffer.size() < unsigned(n))
+        if (buffer.size() < unsigned(chunk_size))
         {
           output.close();
           ELLE_TRACE("finished %s: %s", index, snapshot);
