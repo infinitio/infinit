@@ -31,7 +31,18 @@ class Mixin:
                   'total_size': {'$sum': '$total_size'},
                   'total_transfers': {'$sum': 1},}},
     ])
-    return self.success(res['result'][0])
+    res = res['result']
+    if not len(res):
+      return self.success({
+        'total_size': 0,
+        'total_transfers': 0,
+        'total_created': 0,
+      })
+    else:
+      res = res[0]
+      del res['_id']
+      res['total_created'] = self.database.transactions.count()
+      return self.success(res)
 
   @api('/status')
   def status(self):
