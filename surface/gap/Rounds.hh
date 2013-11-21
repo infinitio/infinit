@@ -4,6 +4,8 @@
 # include <vector>
 # include <string>
 
+# include <infinit/oracles/meta/Client.hh> //XXX: Update fwd.hh.
+
 # include <station/fwd.hh>
 
 # include <reactor/fwd.hh>
@@ -79,16 +81,14 @@ namespace surface
       {
       public:
         FallbackRound(std::string const& name,
-                      std::string const& host,
-                      int port,
+                      infinit::oracles::meta::Client const& meta,
                       std::string const& uid);
 
         std::unique_ptr<reactor::network::TCPSocket>
         connect(station::Station& station) override;
 
       private:
-        ELLE_ATTRIBUTE(std::string, host);
-        ELLE_ATTRIBUTE(int, port);
+        ELLE_ATTRIBUTE(infinit::oracles::meta::Client const&, meta);
         ELLE_ATTRIBUTE(std::string , uid);
 
         /*----------.

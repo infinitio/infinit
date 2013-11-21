@@ -1,5 +1,7 @@
 #include <surface/gap/Rounds.hh>
 
+# include <infinit/oracles/meta/Client.hh>
+
 #include <station/Station.hh>
 #include <station/Host.hh>
 #include <station/AlreadyConnected.hh>
@@ -112,15 +114,13 @@ namespace surface
     }
 
     FallbackRound::FallbackRound(std::string const& name,
-                                 std::string const& host,
-                                 int port,
+                                 oracles::meta::Client const& meta,
                                  std::string const& uid):
       Round(name),
-      _host{host},
-      _port{port},
+      _meta(meta),
       _uid{uid}
     {
-      ELLE_TRACE("creating FallbackRound(%s, %s, %s, %s)", name, host, port, uid);
+      ELLE_TRACE("creating FallbackRound(%s, %s)", name, uid);
     }
 
     std::unique_ptr<reactor::network::TCPSocket>
@@ -128,13 +128,22 @@ namespace surface
     {
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
+      ELLE_DEBUG("%s: get fallback from meta", *this);
+      std::string fallback =
+        this->_meta.fallback(this->_uid).fallback;
+
+      ELLE_DEBUG("%s: connect to apertus %s", *this, fallback);
+      std::vector<std::string> splited;
+      boost::algorithm::split(splited, fallback, boost::is_any_of(":"));
+
+      std::string host = splited[0];
+      int port = std::stoi(splited[1]);
+
       auto& sched = *reactor::Scheduler::scheduler();
-      ELLE_TRACE("%s: contact apertus: %s:%s",
-                 *this, this->_host, this->_port);
+      ELLE_TRACE("%s: contact apertus: %s:%s", *this, host, port);
 
       std::unique_ptr<reactor::network::TCPSocket> sock(
-        new reactor::network::TCPSocket(
-          sched, this->_host, this->_port));
+        new reactor::network::TCPSocket(sched, host, port));
 
       ELLE_LOG("%i: %s", this->_uid.size(), this->_uid);
       sock->write(elle::ConstWeakBuffer(elle::sprintf("%c",(char) this->_uid.size())));

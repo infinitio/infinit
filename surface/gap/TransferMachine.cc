@@ -733,21 +733,8 @@ namespace surface
                                            std::move(endpoints.locals)));
 
       {
-        ELLE_DEBUG("%s: get fallback from meta", *this);
-        std::string fallback =
-          this->state().meta().fallback(this->data()->id).fallback;
-
-        ELLE_DEBUG("%s: connect to apertus %s", *this, fallback);
-        std::vector<std::string> splited;
-        boost::algorithm::split(splited,
-                                fallback,
-                                boost::is_any_of(":"));
-
-        std::string host = splited[0];
-        int port = std::stoi(splited[1]);
         rounds.emplace_back(new FallbackRound("fallback",
-                                              host,
-                                              port,
+                                              this->state().meta(),
                                               this->data()->id));
       }
 
