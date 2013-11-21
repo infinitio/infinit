@@ -102,7 +102,8 @@ namespace surface
             [&]
             {
               host = _connect(station, endpoint);
-              found.open();
+              if (host != nullptr)
+                found.open();
             });
         }
 
