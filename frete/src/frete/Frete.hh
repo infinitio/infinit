@@ -87,6 +87,9 @@ namespace frete
     /// Notify the sender of the progress of the transaction.
     void
     set_progress(uint64_t progress);
+    /// The remote Infinit version.
+    elle::Version
+    version() const;
 
     ELLE_ATTRIBUTE_R(reactor::Barrier, finished);
 

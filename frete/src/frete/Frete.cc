@@ -392,6 +392,21 @@ namespace frete
     return this->_key.decrypt<elle::Buffer>(this->_rpc_read(f, start, size));
   }
 
+  elle::Version
+  Frete::version()
+  {
+    try
+    {
+      return this->_rpc_version();
+    }
+    catch (infinit::protocol::RPCError&)
+    {
+      // Before version 0.8.2, the version RPC did not exist. 0.7 is the oldest
+      // public version.
+      return elle::Version(0, 7);
+    }
+  }
+
   /*-----.
   | RPCs |
   `-----*/
