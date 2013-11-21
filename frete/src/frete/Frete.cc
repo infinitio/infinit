@@ -12,6 +12,7 @@
 #include <reactor/network/socket.hh>
 
 #include <frete/Frete.hh>
+#include <version.hh>
 
 ELLE_LOG_COMPONENT("frete.Frete");
 
@@ -31,6 +32,7 @@ namespace frete
     _rpc_path("path", this->_rpc),
     _rpc_read("read", this->_rpc),
     _rpc_set_progress("progress", this->_rpc),
+    _rpc_version("version", this->_rpc),
     _progress_changed("progress changed signal"),
     _snapshot_destination(snapshot_destination),
     _transfer_snapshot{},
@@ -54,6 +56,7 @@ namespace frete
     this->_rpc_set_progress = std::bind(&Self::_set_progress,
                                         this,
                                         std::placeholders::_1);
+    this->_rpc_version = std::bind(&Self::_version, this);
 
     ELLE_DEBUG("%s: looking for snapshot at %s",
                *this, this->_snapshot_destination);
@@ -222,7 +225,7 @@ namespace frete
       this->_transfer_snapshot.reset(new TransferSnapshot(count, total_size));
     }
 
-    static std::streamsize const n = reactor::network::Socket::buffer_size;
+    static std::streamsize const chunk_size = 1 << 18;
 
     auto& snapshot = *this->_transfer_snapshot;
 
@@ -290,7 +293,7 @@ namespace frete
           throw elle::Exception("output is invalid");
 
         // Get the buffer from the rpc.
-        elle::Buffer buffer{this->read(index, tr.progress(), n)};
+        elle::Buffer buffer{this->read(index, tr.progress(), chunk_size)};
 
         ELLE_ASSERT_LT(index, snapshot.transfers().size());
         ELLE_DEBUG("%s: %s (size: %s)", index, fullpath, boost::filesystem::file_size(fullpath));
@@ -319,7 +322,7 @@ namespace frete
         ELLE_ASSERT_EQ(boost::filesystem::file_size(fullpath),
                        snapshot.transfers()[index].progress());
 
-        if (buffer.size() < unsigned(n))
+        if (buffer.size() < unsigned(chunk_size))
         {
           output.close();
           ELLE_TRACE("finished %s: %s", index, snapshot);
@@ -500,9 +503,14 @@ namespace frete
   {
     ELLE_ASSERT(this->_transfer_snapshot != nullptr);
     ELLE_ASSERT(this->_transfer_snapshot->sender());
-
     this->_transfer_snapshot->progress(progress);
     this->_progress_changed.signal();
+  }
+
+  elle::Version
+  Frete::_version() const
+  {
+    return elle::Version(INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
   }
 
   void

@@ -8,9 +8,10 @@
 
 # include <boost/filesystem.hpp>
 
-# include <elle/serialize/BinaryArchive.hh>
 # include <elle/Buffer.hh>
+# include <elle/Version.hh>
 # include <elle/container/map.hh>
+# include <elle/serialize/BinaryArchive.hh>
 
 # include <protocol/ChanneledStream.hh>
 # include <protocol/Serializer.hh>
@@ -107,6 +108,8 @@ namespace frete
     _read(FileID f, Offset start, Size size);
     void
     _set_progress(uint64_t progress);
+    elle::Version
+    _version() const;
 
     // Sender.
     typedef std::pair<boost::filesystem::path, boost::filesystem::path> Path;
@@ -128,6 +131,7 @@ namespace frete
                          Size> _rpc_read;
     RPC::RemoteProcedure<void,
                          uint64_t> _rpc_set_progress;
+    RPC::RemoteProcedure<elle::Version> _rpc_version;
 
     ELLE_ATTRIBUTE_RX(reactor::Signal, progress_changed);
   public:
