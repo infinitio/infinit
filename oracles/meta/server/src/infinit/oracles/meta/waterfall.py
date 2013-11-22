@@ -101,6 +101,12 @@ class Mixin:
     # /Table
     yield '</table>\n'
 
+    # Legend
+    yield '<table><tr>'
+    for status in statuses.values():
+      yield '<td style="background:%x">%s</td>' % (status[1], status[0])
+    yield '</table></tr>'
+
   @api('/waterfall')
   def waterfall(self):
     return self.__waterfall()
