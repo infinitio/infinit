@@ -337,7 +337,6 @@ namespace frete
              std::string const& name_policy)
   {
     auto peer_version = this->version();
-    ELLE_ERR(">> %s <<", peer_version);
     if (peer_version < elle::Version(0, 8, 3))
     {
       // XXX: Create better exception.
