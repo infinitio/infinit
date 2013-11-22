@@ -53,7 +53,7 @@ namespace frete
       _key(infinit::cryptography::SecretKey::generate(
              infinit::cryptography::cipher::Algorithm::aes256, 2048)),
       _peer_K(peer_K),
-      _code(this->_peer_K.encrypt(this->_key))
+      _encrypted_key(this->_peer_K.encrypt(this->_key))
     {}
 
     infinit::cryptography::SecretKey const&
@@ -63,14 +63,14 @@ namespace frete
     }
 
     infinit::cryptography::Code const&
-    code() const
+    encrypted_key() const
     {
-      return this->_code;
+      return this->_encrypted_key;
     }
 
     ELLE_ATTRIBUTE(infinit::cryptography::SecretKey, key);
     ELLE_ATTRIBUTE_R(infinit::cryptography::PublicKey, peer_K);
-    ELLE_ATTRIBUTE(infinit::cryptography::Code, code);
+    ELLE_ATTRIBUTE(infinit::cryptography::Code, encrypted_key);
   };
 
   struct RecipientImpl:
@@ -79,34 +79,36 @@ namespace frete
     RecipientImpl(infinit::cryptography::PrivateKey k,
                   std::string const& password):
       Impl(password),
-      _k(k)
+      _k(k),
+      _encrypted_key(nullptr),
+      _key(nullptr)
     {}
 
     infinit::cryptography::SecretKey const&
     key() const override
     {
-      ELLE_ASSERT(this->_code != nullptr);
+      ELLE_ASSERT(this->_encrypted_key != nullptr);
       if (!this->_key)
         this->_key.reset(
           new infinit::cryptography::SecretKey(
-            this->_k.decrypt<infinit::cryptography::SecretKey>(*this->_code)));
+            this->_k.decrypt<infinit::cryptography::SecretKey>(*this->_encrypted_key)));
       return *this->_key;
     }
 
     void
-    code(infinit::cryptography::Code const& code)
+    encrypted_key(infinit::cryptography::Code const& code)
     {
-      this->_code.reset(new infinit::cryptography::Code(code));
+      this->_encrypted_key.reset(new infinit::cryptography::Code(code));
     }
 
     bool
-    has_code()
+    has_encrypted_key()
     {
-      return this->_code != nullptr;
+      return this->_encrypted_key != nullptr;
     }
 
     ELLE_ATTRIBUTE(infinit::cryptography::PrivateKey, k);
-    ELLE_ATTRIBUTE(std::unique_ptr<infinit::cryptography::Code>, code);
+    ELLE_ATTRIBUTE(std::unique_ptr<infinit::cryptography::Code>, encrypted_key);
     ELLE_ATTRIBUTE_P(std::unique_ptr<infinit::cryptography::SecretKey>, key, mutable);
   };
 
@@ -335,6 +337,7 @@ namespace frete
              std::string const& name_policy)
   {
     auto peer_version = this->version();
+    ELLE_ERR(">> %s <<", peer_version);
     if (peer_version < elle::Version(0, 8, 3))
     {
       // XXX: Create better exception.
@@ -709,17 +712,18 @@ namespace frete
   Frete::_key_code() const
   {
     ELLE_ASSERT(dynamic_cast<SenderImpl*>(this->_impl.get()));
-    return static_cast<SenderImpl*>(this->_impl.get())->code();
+    return static_cast<SenderImpl*>(this->_impl.get())->encrypted_key();
   }
 
   infinit::cryptography::SecretKey const&
   Frete::key()
   {
     ELLE_ASSERT(dynamic_cast<RecipientImpl*>(this->_impl.get()));
-    if (!static_cast<RecipientImpl*>(this->_impl.get())->has_code())
+    if (!static_cast<RecipientImpl*>(this->_impl.get())->has_encrypted_key())
     {
       ELLE_TRACE("%s: fetch key code from sender", *this);
-      static_cast<RecipientImpl*>(this->_impl.get())->code(this->_rpc_key_code());
+      static_cast<RecipientImpl*>(this->_impl.get())->encrypted_key(
+        this->_rpc_key_code());
     }
 
     return static_cast<RecipientImpl*>(this->_impl.get())->key();
