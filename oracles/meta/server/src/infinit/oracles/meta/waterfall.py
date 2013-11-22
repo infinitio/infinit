@@ -38,6 +38,7 @@ class Mixin:
     res = list(self.database.transactions.aggregate([
       # Keep only recent transaction
       {'$match': match},
+      {'$sort': {'ctime': -1}},
       # Count days
       {'$project': {
         'ctime': {'$divide': [{'$subtract': ['$ctime', start_ts]}, 60 * 60 * 24]},
