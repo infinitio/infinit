@@ -40,10 +40,28 @@ namespace frete
   | Construction |
   `-------------*/
   public:
+    // Recipient.
     Frete(infinit::protocol::ChanneledStream& channels,
-          std::string const& passphrase,
+          std::string const& password, // Retro compatibility.
+          infinit::cryptography::PrivateKey self_k,
           boost::filesystem::path const& snapshot_destination);
+
+    // Sender.
+    Frete(infinit::protocol::ChanneledStream& channels,
+          std::string const& password, // Retro compatibility.
+          infinit::cryptography::PublicKey peer_K,
+          boost::filesystem::path const& snapshot_destination);
+
+  private:
+    Frete(infinit::protocol::ChanneledStream& channels,
+          boost::filesystem::path const& snapshot_destination,
+          bool);
+
+  public:
     ~Frete();
+
+    struct Impl;
+    ELLE_ATTRIBUTE(std::unique_ptr<Impl>, impl);
 
   /*----.
   | Run |
@@ -63,6 +81,7 @@ namespace frete
         boost::filesystem::path const& path);
     void
     get(boost::filesystem::path const& output,
+        bool strong_encryption = true,
         std::string const& name_policy = " (%s)");
 
     /*-------------.
@@ -84,12 +103,17 @@ namespace frete
     /// A chunk of a remote file.
     elle::Buffer
     read(FileID f, Offset start, Size size);
+    elle::Buffer
+    encrypted_read(FileID f, Offset start, Size size);
     /// Notify the sender of the progress of the transaction.
     void
     set_progress(uint64_t progress);
     /// The remote Infinit version.
     elle::Version
-    version() const;
+    version();
+    /// Get the key of the transfer.
+    infinit::cryptography::SecretKey const&
+    key();
 
     ELLE_ATTRIBUTE_R(reactor::Barrier, finished);
 
@@ -107,12 +131,20 @@ namespace frete
     _file_size(FileID f);
     std::string
     _path(FileID f);
+    elle::Buffer
+    __read(FileID file_id,
+           Offset offset,
+           Size const size);
     infinit::cryptography::Code
     _read(FileID f, Offset start, Size size);
+    infinit::cryptography::Code
+    _encrypted_read(FileID f, Offset start, Size size);
     void
     _set_progress(uint64_t progress);
     elle::Version
     _version() const;
+    infinit::cryptography::Code const&
+    _key_code() const;
 
     // Sender.
     typedef std::pair<boost::filesystem::path, boost::filesystem::path> Path;
@@ -135,6 +167,15 @@ namespace frete
     RPC::RemoteProcedure<void,
                          uint64_t> _rpc_set_progress;
     RPC::RemoteProcedure<elle::Version> _rpc_version;
+    RPC::RemoteProcedure<infinit::cryptography::Code> _rpc_key_code;
+    RPC::RemoteProcedure<infinit::cryptography::Code,
+                         FileID,
+                         Offset,
+                         Size> _rpc_encrypted_read;
+
+  private:
+    void
+    _save_snapshot() const;
 
     ELLE_ATTRIBUTE_RX(reactor::Signal, progress_changed);
   public:
@@ -206,7 +247,6 @@ namespace frete
         // XXX: Serialization require a default constructor when serializing
         // pairs...
         TransferInfo() = default;
-
 
         ELLE_SERIALIZE_CONSTRUCT(TransferInfo)
         {}
@@ -312,8 +352,6 @@ namespace frete
     boost::filesystem::path
     trim(boost::filesystem::path const& item,
          boost::filesystem::path const& root);
-
-    ELLE_ATTRIBUTE(infinit::cryptography::SecretKey, key);
   };
 }
 
