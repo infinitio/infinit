@@ -85,7 +85,7 @@ namespace frete
     infinit::cryptography::SecretKey const&
     key() const override
     {
-      ELLE_ASSERT(this->_code != false);
+      ELLE_ASSERT(this->_code != nullptr);
       if (!this->_key)
         this->_key.reset(
           new infinit::cryptography::SecretKey(
