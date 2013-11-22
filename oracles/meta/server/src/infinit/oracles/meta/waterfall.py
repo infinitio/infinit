@@ -52,18 +52,19 @@ class Mixin:
       # Regroup by days
       {'$group': {
         '_id': {'$subtract': ['$ctime', {'$mod': ['$ctime', 1]}]},
+        'count': {'$sum': 1},
         'transactions': {'$push': '$transaction'},
       }},
       #
       {'$sort': {'_id': 1}},
     ])['result'])
     # Table
-    yield '<table border="1">\n'
+    yield '<table>\n'
     # Header
     yield '  <tr>\n'
     for day in res:
       date = (start + datetime.timedelta(day['_id']))
-      yield '    <td>%s</td>\n' % date
+      yield '    <th>%s (%s)</th>\n' % (date, day['count'])
     yield '  </tr>\n'
     # Days
     def combine(days):
