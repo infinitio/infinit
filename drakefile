@@ -544,7 +544,7 @@ def configure(cxx_toolkit = None,
   frete_cxx_config = drake.cxx.Config(cxx_config_libs)
   frete_lib = Library(
     'lib/frete',
-    frete_sources + [protocol_lib, reactor_lib, elle_lib],
+    frete_sources + [protocol_lib, reactor_lib, elle_lib, cryptography_lib],
     cxx_toolkit,
     frete_cxx_config
   )
@@ -566,6 +566,7 @@ def configure(cxx_toolkit = None,
         protocol_lib,
         reactor_lib,
         elle_lib,
+        cryptography_lib,
       ],
       cxx_toolkit, frete_cxx_config_tests)
     frete_tests << test

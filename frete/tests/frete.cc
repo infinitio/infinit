@@ -8,6 +8,8 @@
 #include <reactor/network/tcp-server.hh>
 #include <reactor/scheduler.hh>
 
+#include <cryptography/KeyPair.hh>
+
 #include <protocol/Serializer.hh>
 #include <protocol/ChanneledStream.hh>
 
@@ -155,6 +157,8 @@ BOOST_AUTO_TEST_CASE(trim)
 
 BOOST_AUTO_TEST_CASE(connection)
 {
+  auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
+    infinit::cryptography::Cryptosystem::rsa, 2048);
   reactor::Scheduler sched;
 
   int port = 0;
@@ -207,7 +211,7 @@ BOOST_AUTO_TEST_CASE(connection)
       std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
       infinit::protocol::Serializer serializer(sched, *socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, "suce", snap);
+      frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
       frete.add(empty);
       frete.add(content);
       frete.add(dir);
@@ -228,7 +232,7 @@ BOOST_AUTO_TEST_CASE(connection)
       reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
       infinit::protocol::Serializer serializer(sched, socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, "suce", snap);
+      frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
       BOOST_CHECK_EQUAL(frete.count(), 4);
       {
         BOOST_CHECK_EQUAL(frete.path(0), "empty");
@@ -280,6 +284,8 @@ BOOST_AUTO_TEST_CASE(connection)
 
 BOOST_AUTO_TEST_CASE(one_function_get)
 {
+  auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
+    infinit::cryptography::Cryptosystem::rsa, 2048);
   reactor::Scheduler sched;
 
   int port = 0;
@@ -348,7 +354,7 @@ BOOST_AUTO_TEST_CASE(one_function_get)
       std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
       infinit::protocol::Serializer serializer(sched, *socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, "suce", snap);
+      frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
       frete.add(empty);
       frete.add(content);
       frete.add(dir); // Will add subdir.
@@ -366,7 +372,7 @@ BOOST_AUTO_TEST_CASE(one_function_get)
       reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
       infinit::protocol::Serializer serializer(sched, socket);
       infinit::protocol::ChanneledStream channels(sched, serializer);
-      frete::Frete frete(channels, "suce", snap);
+      frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
       BOOST_CHECK_EQUAL(frete.count(), 5);
       {
         frete.get(dest);
@@ -406,6 +412,8 @@ BOOST_AUTO_TEST_CASE(one_function_get)
 
 BOOST_AUTO_TEST_CASE(recipient_disconnection)
 {
+  auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
+    infinit::cryptography::Cryptosystem::rsa, 2048);
   reactor::Scheduler sched;
 
   int port = 0;
@@ -479,7 +487,7 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
           std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
           infinit::protocol::Serializer serializer(sched, *socket);
           infinit::protocol::ChanneledStream channels(sched, serializer);
-          frete::Frete frete(channels, "suce", snap);
+          frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
 
           elle::SafeFinally progress([&]
                                      {
@@ -554,7 +562,7 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
           reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
           infinit::protocol::Serializer serializer(sched, socket);
           infinit::protocol::ChanneledStream channels(sched, serializer);
-          frete::Frete frete(channels, "suce", snap);
+          frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
 
           elle::SafeFinally progress([&]
                                      {
@@ -625,6 +633,9 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
 
 BOOST_AUTO_TEST_CASE(sender_disconnection)
 {
+  auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
+    infinit::cryptography::Cryptosystem::rsa, 2048);
+
   reactor::Scheduler sched;
 
   int port = 0;
@@ -697,7 +708,7 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
           std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
           infinit::protocol::Serializer serializer(sched, *socket);
           infinit::protocol::ChanneledStream channels(sched, serializer);
-          frete::Frete frete(channels, "suce", snap);
+          frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
 
           frete.add(file);
           frete.add(empty);
@@ -766,7 +777,7 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
           reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
           infinit::protocol::Serializer serializer(sched, socket);
           infinit::protocol::ChanneledStream channels(sched, serializer);
-          frete::Frete frete(channels, "suce", snap);
+          frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
 
           elle::SafeFinally progress([&]
                                      {
