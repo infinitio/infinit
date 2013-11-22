@@ -65,5 +65,14 @@ namespace surface
       ELLE_ASSERT(this->_passport != nullptr);
       return *this->_passport;
     }
+
+    /// Get the local identity of the logged user.
+    papier::Identity const&
+    State::identity() const
+    {
+      ELLE_ASSERT(this->_identity != nullptr);
+      return *this->_identity;
+    }
+
   }
 }
