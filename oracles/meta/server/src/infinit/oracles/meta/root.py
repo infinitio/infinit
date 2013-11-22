@@ -275,10 +275,16 @@ class Mixin:
     """
     Do cron jobs as:
     - clean old trophonius instances.
+    - clean old apertus instances.
     """
     # Trophonius.
     res = self.database.trophonius.remove(
       {"$or": [{"time": {"$lt": time.time() - self.trophonius_expiration_time}},
+               {"time": {"$exists": False}}]},
+      multi = True)
+    # Apertus.
+    res = self.database.apertus.remove(
+      {"$or": [{"time": {"$lt": time.time() - self.apertus_expiration_time}},
                {"time": {"$exists": False}}]},
       multi = True)
     return self.success(res)

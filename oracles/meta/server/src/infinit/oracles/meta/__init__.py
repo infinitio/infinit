@@ -32,7 +32,8 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
                mongo_host = None,
                mongo_port = None,
                enable_emails = True,
-               trophonius_expiration_time = 300 # in sec
+               trophonius_expiration_time = 300, # in sec
+               apertus_expiration_time = 300 # in sec
                ):
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
@@ -66,6 +67,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
     self.mailer = mail.Mailer(active = enable_emails)
     self.invitation = invitation.Invitation(active = enable_emails)
     self.trophonius_expiration_time = trophonius_expiration_time
+    self.apertus_expiration_time = apertus_expiration_time
 
   def __set_constraints(self):
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)], unique = True)
