@@ -9,6 +9,10 @@
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 
+#include <cryptography/SecretKey.hh>
+#include <cryptography/PrivateKey.hh>
+#include <cryptography/Code.hh>
+
 #include <reactor/network/socket.hh>
 
 #include <frete/Frete.hh>
@@ -22,9 +26,94 @@ namespace frete
   | Construction |
   `-------------*/
 
+  struct Frete::Impl
+  {
+    // Retrocompatibility with < 0.8.3.
+    Impl(std::string const& password):
+      _old_key(infinit::cryptography::cipher::Algorithm::aes256, password)
+    {}
+
+    virtual
+    ~Impl() = default;
+
+    virtual
+    infinit::cryptography::SecretKey const&
+    key() const = 0;
+
+    ELLE_ATTRIBUTE_R(infinit::cryptography::SecretKey, old_key);
+  };
+
+  struct SenderImpl:
+    public Frete::Impl
+  {
+  public:
+    SenderImpl(infinit::cryptography::PublicKey const& peer_K,
+               std::string const& password):
+      Impl(password),
+      _key(infinit::cryptography::SecretKey::generate(
+             infinit::cryptography::cipher::Algorithm::aes256, 2048)),
+      _peer_K(peer_K),
+      _code(this->_peer_K.encrypt(this->_key))
+    {}
+
+    infinit::cryptography::SecretKey const&
+    key() const override
+    {
+      return this->_key;
+    }
+
+    infinit::cryptography::Code const&
+    code() const
+    {
+      return this->_code;
+    }
+
+    ELLE_ATTRIBUTE(infinit::cryptography::SecretKey, key);
+    ELLE_ATTRIBUTE_R(infinit::cryptography::PublicKey, peer_K);
+    ELLE_ATTRIBUTE(infinit::cryptography::Code, code);
+  };
+
+  struct RecipientImpl:
+    public Frete::Impl
+  {
+    RecipientImpl(infinit::cryptography::PrivateKey k,
+                  std::string const& password):
+      Impl(password),
+      _k(k)
+    {}
+
+    infinit::cryptography::SecretKey const&
+    key() const override
+    {
+      ELLE_ASSERT(this->_code != false);
+      if (!this->_key)
+        this->_key.reset(
+          new infinit::cryptography::SecretKey(
+            this->_k.decrypt<infinit::cryptography::SecretKey>(*this->_code)));
+      return *this->_key;
+    }
+
+    void
+    code(infinit::cryptography::Code const& code)
+    {
+      this->_code.reset(new infinit::cryptography::Code(code));
+    }
+
+    bool
+    has_code()
+    {
+      return this->_code != nullptr;
+    }
+
+    ELLE_ATTRIBUTE(infinit::cryptography::PrivateKey, k);
+    ELLE_ATTRIBUTE(std::unique_ptr<infinit::cryptography::Code>, code);
+    ELLE_ATTRIBUTE_P(std::unique_ptr<infinit::cryptography::SecretKey>, key, mutable);
+  };
+
   Frete::Frete(infinit::protocol::ChanneledStream& channels,
-               std::string const& password,
-               boost::filesystem::path const& snapshot_destination):
+               boost::filesystem::path const& snapshot_destination,
+               bool):
+    _impl(nullptr),
     _rpc(channels),
     _rpc_count("count", this->_rpc),
     _rpc_full_size("full_size", this->_rpc),
@@ -33,10 +122,11 @@ namespace frete
     _rpc_read("read", this->_rpc),
     _rpc_set_progress("progress", this->_rpc),
     _rpc_version("version", this->_rpc),
+    _rpc_key_code("key_code", this->_rpc),
+    _rpc_encrypted_read("encrypted_read", this->_rpc),
     _progress_changed("progress changed signal"),
     _snapshot_destination(snapshot_destination),
-    _transfer_snapshot{},
-    _key(infinit::cryptography::cipher::Algorithm::aes256, password)
+    _transfer_snapshot{}
   {
     this->_rpc_count = std::bind(&Self::_count,
                                 this);
@@ -56,7 +146,15 @@ namespace frete
     this->_rpc_set_progress = std::bind(&Self::_set_progress,
                                         this,
                                         std::placeholders::_1);
+
     this->_rpc_version = std::bind(&Self::_version, this);
+    this->_rpc_key_code = std::bind(&Self::_key_code,
+                                    this);
+    this->_rpc_encrypted_read = std::bind(&Self::_encrypted_read,
+                                          this,
+                                          std::placeholders::_1,
+                                          std::placeholders::_2,
+                                          std::placeholders::_3);
 
     ELLE_DEBUG("%s: looking for snapshot at %s",
                *this, this->_snapshot_destination);
@@ -88,6 +186,36 @@ namespace frete
         ELLE_ERR("%s: snap shot was invalid: %s", *this, elle::exception_string());
       }
     }
+  }
+
+  // Frete::Frete(infinit::protocol::ChanneledStream& channels,
+  //              std::string const& password, // Retro compatibility.
+  //              boost::filesystem::path const& snapshot_destination):
+  //   Frete(channels, snapshot_destination, false)
+  // {
+  //   ELLE_ASSERT(this->_impl == nullptr);
+  //   this->_impl.reset(new ReceiveImpl(password));
+  // }
+
+  // Sender.
+  Frete::Frete(infinit::protocol::ChanneledStream& channels,
+               std::string const& password, // Retro compatibility.
+               infinit::cryptography::PublicKey peer_K,
+               boost::filesystem::path const& snapshot_destination):
+    Frete(channels, snapshot_destination, false)
+  {
+    ELLE_ASSERT(this->_impl == nullptr);
+    this->_impl.reset(new SenderImpl(peer_K, password));
+  }
+
+  Frete::Frete(infinit::protocol::ChanneledStream& channels,
+               std::string const& password, // Retro compatibility.
+               infinit::cryptography::PrivateKey self_k,
+               boost::filesystem::path const& snapshot_destination):
+    Frete(channels, snapshot_destination, false)
+  {
+    ELLE_ASSERT(this->_impl == nullptr);
+    this->_impl.reset(new RecipientImpl(self_k, password));
   }
 
   Frete::~Frete()
@@ -203,8 +331,19 @@ namespace frete
 
   void
   Frete::get(boost::filesystem::path const& output_path,
+             bool strong_encryption,
              std::string const& name_policy)
   {
+    // XXX: Find a better way.
+    auto peer_version = this->version();
+    if (peer_version < elle::Version(0, 9))
+    {
+      // XXX: Create better exception.
+      if (strong_encryption)
+        ELLE_WARN("peer version doesn't support strong encryption");
+      strong_encryption = false;
+    }
+
     uint64_t count = this->_rpc_count();
 
     // total_size can be 0 if all files are empty.
@@ -293,12 +432,33 @@ namespace frete
           throw elle::Exception("output is invalid");
 
         // Get the buffer from the rpc.
-        elle::Buffer buffer{this->read(index, tr.progress(), chunk_size)};
+        elle::Buffer buffer{strong_encryption ?
+            this->encrypted_read(index, tr.progress(), chunk_size) :
+            this->read(index, tr.progress(), chunk_size)};
 
         ELLE_ASSERT_LT(index, snapshot.transfers().size());
-        ELLE_DEBUG("%s: %s (size: %s)", index, fullpath, boost::filesystem::file_size(fullpath));
-        ELLE_ASSERT_EQ(boost::filesystem::file_size(fullpath),
-                       snapshot.transfers()[index].progress());
+        ELLE_DUMP("%s: %s (size: %s)", index, fullpath, boost::filesystem::file_size(fullpath));
+
+        {
+          boost::system::error_code ec;
+          auto size = boost::filesystem::file_size(fullpath, ec);
+
+          if (ec)
+          {
+            ELLE_ERR("destination file deleted");
+            throw elle::Exception("destination file deleted");
+          }
+
+          if (size != snapshot.transfers()[index].progress())
+          {
+            ELLE_ERR(
+              "%s: expected file size %s and real file size %s are different",
+              *this,
+              snapshot.transfers()[index].progress(),
+              boost::filesystem::file_size(fullpath));
+            throw elle::Exception("destination file corrupted");
+          }
+        }
 
         ELLE_DUMP("content: %s (%sB)", buffer, buffer.size());
 
@@ -318,7 +478,8 @@ namespace frete
           // this->_rpc_set_progress(this->_transfer_snapshot->progress());
         }
 
-        ELLE_DEBUG("%s: %s (size: %s)", index, fullpath, boost::filesystem::file_size(fullpath));
+        ELLE_DEBUG("%s: %s (size: %s)",
+                   index, fullpath, boost::filesystem::file_size(fullpath));
         ELLE_ASSERT_EQ(boost::filesystem::file_size(fullpath),
                        snapshot.transfers()[index].progress());
 
@@ -358,6 +519,14 @@ namespace frete
            (float) this->_transfer_snapshot->total_size();
   }
 
+  void
+  Frete::_save_snapshot() const
+  {
+    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
+    elle::serialize::to_file(this->_snapshot_destination.string()) <<
+      *this->_transfer_snapshot;
+  }
+
   /*-------------.
   | Remote calls |
   `-------------*/
@@ -389,7 +558,15 @@ namespace frete
   elle::Buffer
   Frete::read(FileID f, Offset start, Size size)
   {
-    return this->_key.decrypt<elle::Buffer>(this->_rpc_read(f, start, size));
+    return this->_impl->old_key().decrypt<elle::Buffer>(
+      this->_rpc_read(f, start, size));
+  }
+
+  elle::Buffer
+  Frete::encrypted_read(FileID f, Offset start, Size size)
+  {
+    return this->_impl->key().decrypt<elle::Buffer>(
+      this->_rpc_encrypted_read(f, start, size));
   }
 
   elle::Version
@@ -403,6 +580,7 @@ namespace frete
     {
       // Before version 0.8.2, the version RPC did not exist. 0.7 is the oldest
       // public version.
+      ELLE_WARN("%s: old version", *this);
       return elle::Version(0, 7);
     }
   }
@@ -463,8 +641,8 @@ namespace frete
     return this->_transfer_snapshot->transfers().at(file_id).path();
   }
 
-  infinit::cryptography::Code
-  Frete::_read(FileID file_id,
+  elle::Buffer
+  Frete::__read(FileID file_id,
                Offset offset,
                Size const size)
   {
@@ -510,7 +688,43 @@ namespace frete
     if (!file.eof() && file.fail() || file.bad())
       throw elle::Exception("unable to read");
 
-    return this->_key.encrypt(buffer);
+    return buffer;
+  }
+
+  infinit::cryptography::Code
+  Frete::_read(FileID file_id,
+               Offset offset,
+               Size const size)
+  {
+    return this->_impl->old_key().encrypt(this->__read(file_id, offset, size));
+  }
+
+  infinit::cryptography::Code
+  Frete::_encrypted_read(FileID file_id,
+                         Offset offset,
+                         Size const size)
+  {
+    return this->_impl->key().encrypt(this->__read(file_id, offset, size));
+  }
+
+  infinit::cryptography::Code const&
+  Frete::_key_code() const
+  {
+    ELLE_ASSERT(dynamic_cast<SenderImpl*>(this->_impl.get()));
+    return static_cast<SenderImpl*>(this->_impl.get())->code();
+  }
+
+  infinit::cryptography::SecretKey const&
+  Frete::key()
+  {
+    ELLE_ASSERT(dynamic_cast<RecipientImpl*>(this->_impl.get()));
+    if (!static_cast<RecipientImpl*>(this->_impl.get())->has_code())
+    {
+      ELLE_TRACE("%s: fetch key code from sender");
+      static_cast<RecipientImpl*>(this->_impl.get())->code(this->_rpc_key_code());
+    }
+
+    return static_cast<RecipientImpl*>(this->_impl.get())->key();
   }
 
   void

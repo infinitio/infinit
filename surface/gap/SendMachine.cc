@@ -406,9 +406,12 @@ namespace surface
         this->_channels.reset(
           new infinit::protocol::ChanneledStream(sched, *this->_serializer));
 
+        infinit::cryptography::PublicKey peer_K;
+        peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
         this->_frete.reset(
           new frete::Frete(*this->_channels,
                            this->transaction_id(),
+                           peer_K,
                            common::infinit::frete_snapshot_path(
                              this->data()->sender_id,
                              this->data()->id)));
