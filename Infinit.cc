@@ -14,7 +14,8 @@
 /// this constant contains the version of the current Infinit software.
 ///
 const elle::Version Infinit::version(INFINIT_VERSION_MAJOR,
-                                     INFINIT_VERSION_MINOR);
+                                     INFINIT_VERSION_MINOR,
+                                     INFINIT_VERSION_SUBMINOR);
 
 ///
 /// this constant contains the copyright string.

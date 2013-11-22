@@ -334,9 +334,8 @@ namespace frete
              bool strong_encryption,
              std::string const& name_policy)
   {
-    // XXX: Find a better way.
     auto peer_version = this->version();
-    if (peer_version < elle::Version(0, 9))
+    if (peer_version < elle::Version(0, 8, 3))
     {
       // XXX: Create better exception.
       if (strong_encryption)
@@ -580,8 +579,7 @@ namespace frete
     {
       // Before version 0.8.2, the version RPC did not exist. 0.7 is the oldest
       // public version.
-      ELLE_WARN("%s: old version", *this);
-      return elle::Version(0, 7);
+      return elle::Version(0, 7, 0);
     }
   }
 
@@ -739,7 +737,9 @@ namespace frete
   elle::Version
   Frete::_version() const
   {
-    return elle::Version(INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR);
+    return elle::Version(INFINIT_VERSION_MAJOR,
+                         INFINIT_VERSION_MINOR,
+                         INFINIT_VERSION_SUBMINOR);
   }
 
   void
