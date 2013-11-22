@@ -210,12 +210,12 @@ class Mixin:
       if res != 0:
         return self.fail(res)
 
-    fullname  = fullname.strip()
+    fullname = fullname.strip()
 
     with elle.log.trace("registeration: %s as %s" % (email, fullname)):
       if self.user is not None:
         return self.fail(error.ALREADY_LOGGED_IN)
-      email = email.lower()
+      email = email.strip().lower()
 
       source = None
       if self.database.users.find_one(
