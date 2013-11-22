@@ -65,7 +65,7 @@ s = sender_transitions
 s[C][C]  = E; s[C][I]  = O; s[C][A]  = E; s[C][F]  = E; s[C][R]  = E; s[C][CA]  = O; s[C][FA]  = O;
 s[I][C]  = E; s[I][I]  = E; s[I][A]  = E; s[I][F]  = E; s[I][R]  = E; s[I][CA]  = O; s[I][FA]  = O;
 s[A][C]  = E; s[A][I]  = E; s[A][A]  = E; s[A][F]  = E; s[A][R]  = E; s[A][CA]  = O; s[A][FA]  = O;
-s[F][C]  = E; s[F][I]  = E; s[F][A]  = E; s[F][F]  = E; s[F][R]  = E; s[F][CA]  = E; s[F][FA]  = E;
+s[F][C]  = E; s[F][I]  = E; s[F][A]  = E; s[F][F]  = S; s[F][R]  = E; s[F][CA]  = E; s[F][FA]  = E;
 s[R][C]  = E; s[R][I]  = E; s[R][A]  = E; s[R][F]  = E; s[R][R]  = E; s[R][CA]  = E; s[R][FA]  = E;
 s[CA][C] = E; s[CA][I] = E; s[CA][A] = E; s[CA][F] = E; s[CA][R] = E; s[CA][CA] = S; s[CA][FA] = E;
 s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] = E; s[FA][FA] = S;
