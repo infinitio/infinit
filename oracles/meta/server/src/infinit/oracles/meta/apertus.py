@@ -116,7 +116,7 @@ class Mixin:
       assert fallback is not None
       return self.success({'fallback': fallback})
 
-  apertus_fields = ['ip', 'port']
+  apertus_fields = ['ip', 'port', 'load', 'number_of_transfers']
 
   @api('/apertus')
   def registered_apertus(self):
