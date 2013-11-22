@@ -564,7 +564,7 @@ namespace frete
   elle::Buffer
   Frete::encrypted_read(FileID f, Offset start, Size size)
   {
-    return this->_impl->key().decrypt<elle::Buffer>(
+    return this->key().decrypt<elle::Buffer>(
       this->_rpc_encrypted_read(f, start, size));
   }
 
@@ -718,7 +718,7 @@ namespace frete
     ELLE_ASSERT(dynamic_cast<RecipientImpl*>(this->_impl.get()));
     if (!static_cast<RecipientImpl*>(this->_impl.get())->has_code())
     {
-      ELLE_TRACE("%s: fetch key code from sender");
+      ELLE_TRACE("%s: fetch key code from sender", *this);
       static_cast<RecipientImpl*>(this->_impl.get())->code(this->_rpc_key_code());
     }
 
