@@ -69,6 +69,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
 
   def __set_constraints(self):
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)], unique = True)
+    self.__database.transactions.ensure_index('ctime')
 
   def __register(self, method):
     rule = method.__route__
