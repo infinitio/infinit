@@ -5,8 +5,10 @@
 
 #include <reactor/exception.hh>
 #include <reactor/network/exception.hh>
+#include <reactor/http/exceptions.hh>
 
 #include <elle/Exception.hh>
+#include <elle/HttpClient.hh> // XXX: Remove that. Only for exception.
 #include <elle/log.hh>
 
 #include <boost/uuid/uuid_io.hpp>
@@ -212,7 +214,21 @@ namespace infinit
           uint32_t bdwps = _bandwidth / _tick_rate;
           ELLE_TRACE("%s: bandwidth is currently estimated at %sB/s",
             *this, bdwps);
-          this->_meta.apertus_update_bandwidth(_uuid, bdwps, _workers.size());
+
+          try
+          {
+            this->_meta.apertus_update_bandwidth(_uuid, bdwps, _workers.size());
+          }
+          catch (reactor::http::RequestError const&)
+          {
+            ELLE_WARN("%s: unable to update bandwidth on meta: %s",
+                      *this, elle::exception_string());
+          }
+          catch (elle::http::Exception const&)
+          {
+            ELLE_WARN("%s: unable to update bandwidth on meta: %s",
+                      *this, elle::exception_string());
+          }
 
           _bandwidth = 0;
         }
