@@ -369,22 +369,19 @@ class Mixin:
     # XXX: self.user in the log.
     with elle.log.trace("%s: search %s (limit: %s, offset: %s)" %
                         (self.user['_id'], text, limit, offset)):
-      # While not sure it's an email or a fullname, search in both.
-      users = []
-      if not '@' in text:
-        users = [str(u['_id']) for u in self.database.users.find(
-            {
-              '$or' :
-              [
-                {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
-                {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
-              ],
-              'register_status':'ok',
-            },
-            fields = ["_id"],
-            limit = limit,
-            skip = offset,
-            )]
+      users = [str(u['_id']) for u in self.database.users.find(
+          {
+            '$or' :
+            [
+              {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
+              {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
+            ],
+            'register_status':'ok',
+          },
+          fields = ["_id"],
+          limit = limit,
+          skip = offset,
+        )]
       return self.success({'users': users})
 
   def extract_user_fields(self, user):
