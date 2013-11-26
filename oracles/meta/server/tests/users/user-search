@@ -13,7 +13,6 @@ with Meta() as meta:
   assert res['users'] == []
   alice.logout()
 
-
 with Meta() as meta:
   alices = []
   number_of_alices = 8
@@ -40,6 +39,14 @@ with Meta() as meta:
 
   res = bob.post('user/search', {'text': 'al', 'limit': 10})
   assert len(res['users']) == number_of_alices
-
-  print(res)
   assert res['users'][:3] == [alices[3].id, alices[5].id, alices[1].id]
+
+with Meta() as meta:
+  bob = User(meta, email = 'bob@infinit.com', fullname = 'jean @ bob')
+
+  bob.login()
+  res = bob.post('user/search', {'text': 'jean @', 'limit': 10})
+  assert res['success']
+  assert len(res['users']) == 1
+
+  bob.login()
