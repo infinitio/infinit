@@ -12,3 +12,34 @@ with Meta() as meta:
   res = alice.post('user/search', {'text': 'dick'})
   assert res['users'] == []
   alice.logout()
+
+
+with Meta() as meta:
+  alices = []
+  number_of_alices = 8
+  for i in range(0, number_of_alices):
+    alices.append(User(meta, 'alice%s@infinit.com' % i))
+  bob = User(meta, 'bob@infinit.com')
+
+  bob.login()
+
+  res = bob.post('user/search', {'text': 'al', 'limit': 10})
+  assert len(res['users']) == number_of_alices
+
+  bob.sendfile(alices[3].email)
+  bob.sendfile(alices[3].email)
+  bob.sendfile(alices[3].email)
+  bob.sendfile(alices[5].email)
+  bob.sendfile(alices[5].email)
+  bob.sendfile(alices[1].email)
+
+  # Current swag amounts:
+  # alice3 : 3
+  # alice5 : 2.
+  # alice1 : 1.
+
+  res = bob.post('user/search', {'text': 'al', 'limit': 10})
+  assert len(res['users']) == number_of_alices
+
+  print(res)
+  assert res['users'][:3] == [alices[3].id, alices[5].id, alices[1].id]

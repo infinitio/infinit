@@ -8,6 +8,7 @@ import elle.log
 from .utils import api, require_logged_in, require_admin, hash_pasword
 from . import error, notifier, regexp, conf, invitation
 
+from pymongo import DESCENDING
 import os
 import string
 import time
@@ -381,7 +382,7 @@ class Mixin:
           fields = ["_id"],
           limit = limit,
           skip = offset,
-        )]
+        ).sort("swaggers.%s" % str(self.user['_id']), DESCENDING)]
       return self.success({'users': users})
 
   def extract_user_fields(self, user):
@@ -784,7 +785,6 @@ class Mixin:
         },
         user_id = user_id,
       )
-      return self.success()
 
   ## ----- ##
   ## Debug ##
