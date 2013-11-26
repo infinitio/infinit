@@ -271,7 +271,9 @@ class User(Client):
 
   def sendfile(self,
                recipient_id,
-               files = ['a file with strange encoding: é.file', 'another file with no extension'],
+               files = ['50% off books.pdf',
+                        'a file with strange encoding: é.file',
+                        'another file with no extension'],
                total_size = 2164062,
                message = 'no message',
                is_directory = False,
