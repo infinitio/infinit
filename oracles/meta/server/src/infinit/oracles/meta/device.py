@@ -44,8 +44,11 @@ class Mixin:
     """Return one user device.
     """
     assert isinstance(id, uuid.UUID)
-    return self.success(self.device(id = str(id),
-                                    owner = self.user['_id']))
+    try:
+      return self.success(self.device(id = str(id),
+                                      owner = self.user['_id']))
+    except error.Error as e:
+      self.fail(*e.args)
 
   def _create_device(self,
                      owner,
@@ -140,7 +143,10 @@ class Mixin:
     user = self.user
     assert user is not None
     query = {'id': str(id), 'owner': user['_id']}
-    device = self.device(**query)
+    try:
+      device = self.device(**query)
+    except error.Error as e:
+      self.fail(*e.args)
     if not str(id) in user['devices']:
       self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
       self.database.device.update(query, {"$set": {"name": name}})
@@ -160,7 +166,11 @@ class Mixin:
     user = self.user
     assert user is not None
     query = {'id': str(id), 'owner': user['_id']}
-    device = self.device(**query)
+    try:
+      device = self.device(**query)
+    except error.Error as e:
+      return self.fail(*e.args)
+
     if not str(id) in user.get('devices', []):
       self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
     self.database.devices.remove(query)

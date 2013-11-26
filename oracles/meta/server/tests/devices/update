@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 from utils import Meta, User
-
+from infinit.oracles.meta import error
+import uuid
 
 with Meta() as meta:
   email = 'bob@infinit.io'
@@ -23,3 +24,8 @@ with Meta() as meta:
   assert res['name'] == "barfoo"
   assert res['id'] == foobar['id']
   assert res['passport'] == foobar['passport']
+
+  res = bob.post('device/update', {'id': str(uuid.uuid4()),
+                                   'name': "barfoo"})
+
+  assert res['error_code'] == error.DEVICE_NOT_FOUND[0]

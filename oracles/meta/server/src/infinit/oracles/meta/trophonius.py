@@ -71,7 +71,12 @@ class Mixin:
         },
         {'$set': {'trophonius': str(uid)}}
       )
-      self.set_connection_status(id, device, True)
+      try:
+        self.set_connection_status(user_id = id,
+                                   device_id = device,
+                                   status = False)
+      except error.Error as e:
+        return self.fail(*e.args)
       return self.success()
 
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'DELETE')
@@ -91,7 +96,12 @@ class Mixin:
         },
         {'$set': {'trophonius': None}}
       )
-      self.set_connection_status(id, device, False)
+      try:
+        self.set_connection_status(user_id = id,
+                                   device_id = device,
+                                   status = False)
+      except error.Error as e:
+        return self.fail(*e.args)
       return self.success()
 
   # XXX: Debuggin purpose.

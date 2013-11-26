@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 from utils import Meta, User
-
+from infinit.oracles.meta import error
+import uuid
 
 with Meta() as meta:
   email = 'bob@infinit.io'
@@ -24,6 +25,17 @@ with Meta() as meta:
   foobar = bob.get('device/%s/view' % device_id)
   assert foobar['success']
 
+  alice = User(meta, email = 'alice@infinit.io')
+  alice.login()
+
+  res = alice.get('device/%s/view' % device_id)
+  print(res)
+  assert res['error_code'] == error.DEVICE_NOT_FOUND[0]
+
+  res = alice.post('device/delete', {'id': device_id})
+  print(res)
+  assert res['error_code'] == error.DEVICE_NOT_FOUND[0]
+
   res = bob.post('device/delete', {'id': foobar['id']})
   assert res['success']
   assert res['id'] == device_id
@@ -31,8 +43,5 @@ with Meta() as meta:
   devices = bob.get('devices')['devices']
   assert len(devices) == 1
 
-  try:
-    bob.get('device/%s/view' % device_id)
-    raise Exception('device shouldn\'t be gettable')
-  except Exception as e:
-    pass
+  res = bob.get('device/%s/view' % device_id)
+  assert res['error_code'] == error.DEVICE_NOT_FOUND[0]

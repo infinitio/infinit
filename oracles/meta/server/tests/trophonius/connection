@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 from utils import Meta, User
+from infinit.oracles.meta import error
 from uuid import uuid4
+
 
 with Meta() as meta:
   bob = User(meta, 'bob@infinit.io')
@@ -17,3 +19,15 @@ with Meta() as meta:
   assert len(meta.get('trophonius')['trophonius']) == 1
   meta.delete('trophonius/%s' % tropho)
   assert len(meta.get('trophonius')['trophonius']) == 0
+
+  meta.put('trophonius/%s' % tropho, {"port": 23456})
+
+  res = bob.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(bob.device_id)))
+  assert res['success']
+
+  res = bob.delete('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(bob.device_id)))
+  assert res['success']
+
+  res = bob.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(uuid4())))
+  assert not res['success']
+  assert res['error_code'] == error.DEVICE_NOT_FOUND[0]
