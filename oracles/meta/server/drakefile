@@ -160,10 +160,11 @@ def configure(elle,
       drake.path_source('tests'),
       drake.path_build('lib/python'),
     ]
-    env = {
+    env = os.environ
+    env.update({
       'PYTHONPATH': ':'.join(map(str, pythonpath)),
       'PATH': os.environ['PATH']
-    }
+    })
 
     runner = drake.Runner(test, env = env)
     check << runner.status
