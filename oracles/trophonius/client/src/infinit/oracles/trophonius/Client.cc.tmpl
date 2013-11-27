@@ -473,7 +473,7 @@ namespace infinit
             auto socket = this->_socket;
             try
             {
-              ELLE_DEBUG_SCOPE("send ping to %s", socket->remote_locus());
+              ELLE_DEBUG_SCOPE("send ping to %s", socket->peer());
               socket->write(elle::ConstWeakBuffer(ping_msg));
             }
             catch (elle::Exception const&)
