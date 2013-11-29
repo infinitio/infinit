@@ -332,6 +332,15 @@ namespace infinit
       }
 
       UserResponse
+      Client::user_from_handle(std::string const& handle) const
+      {
+        if (handle.size() == 0)
+          throw elle::Exception("No handle");
+        return this->_request<UserResponse>(
+          sprintf("/user/from_handle/%s/view", handle), Method::GET);
+      }
+
+      UserResponse
       Client::user(std::string const& id) const
       {
         if (id.size() == 0)
