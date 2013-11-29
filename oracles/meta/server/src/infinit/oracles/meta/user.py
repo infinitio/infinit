@@ -410,6 +410,18 @@ class Mixin:
     else:
       return self.success(self.extract_user_fields(user))
 
+  @require_logged_in
+  @api('/user/from_handle/<handle>/view')
+  def view_from_handle(self, handle):
+    """Get user information from handle
+    """
+    with elle.log.trace("search user from handle: %s", handle):
+      user = self.user_by_handle(handle, ensure_existence = False)
+      if user is None:
+        return self.fail(error.UNKNOWN_USER)
+      else:
+        return self.success(self.extract_user_fields(user))
+
 #  @require_logged_in
   @api('/user/from_public_key')
   def view_from_publick_key(self, public_key):
