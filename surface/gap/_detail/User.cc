@@ -168,6 +168,23 @@ namespace surface
     }
 
     State::User const&
+    State::user_from_handle(std::string const& handle) const
+    {
+      ELLE_TRACE_SCOPE("%s: user from handle %s", *this, handle);
+      try
+      {
+        return this->user([this, handle] (State::UserPair const& pair)
+                          {
+                            return pair.second.handle == handle;
+                          });
+      }
+      catch (State::UserNotFoundException const&)
+      {
+        return this->user_sync(this->meta().user_from_handle(handle));
+      }
+    }
+
+    State::User const&
     State::user_from_public_key(std::string const& public_key) const
     {
       ELLE_TRACE_SCOPE("%s: user from public key %s", *this, public_key);
