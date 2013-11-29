@@ -549,6 +549,21 @@ extern "C"
       });
   }
 
+  uint32_t
+  gap_user_by_handle(gap_State* state,
+                     char const* handle)
+  {
+    assert(handle != nullptr);
+    return run<uint32_t>(
+      state,
+      "user by handle",
+      [&] (surface::gap::State& state) -> uint32_t
+      {
+        auto user = state.user_from_handle(handle);
+        return state.user_indexes().at(user.id);
+      });
+  }
+
   uint32_t*
   gap_search_users(gap_State* state,
                    char const* text)

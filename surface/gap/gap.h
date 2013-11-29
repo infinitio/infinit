@@ -324,6 +324,11 @@ extern "C" {
   gap_user_by_email(gap_State* state,
                     char const* email);
 
+  /// Retrieve user with their handle.
+  uint32_t
+  gap_user_by_handle(gap_State* state,
+                     char const* handle);
+
   // The user directory
   char const*
   gap_user_directory(gap_State* state, char const** directory);
