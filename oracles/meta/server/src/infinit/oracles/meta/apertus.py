@@ -73,6 +73,7 @@ class Mixin:
           '$set': {
             'load': bandwidth,
             'number_of_transfers': number_of_transfers,
+            'time': time.time(),
           }
         })
       return self.success()
