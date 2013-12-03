@@ -74,7 +74,7 @@ class Mixin:
       try:
         self.set_connection_status(user_id = id,
                                    device_id = device,
-                                   status = True)
+                                   status = False)
       except error.Error as e:
         return self.fail(*e.args)
       return self.success()
