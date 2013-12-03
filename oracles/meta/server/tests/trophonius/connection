@@ -25,8 +25,17 @@ with Meta() as meta:
   res = bob.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(bob.device_id)))
   assert res['success']
 
+  res = bob.get('user/self')
+  assert res['success']
+  assert len(res['connected_devices']) == 1
+  assert str(bob.device_id) in res['connected_devices']
+
   res = bob.delete('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(bob.device_id)))
   assert res['success']
+
+  res = bob.get('user/self')
+  assert res['success']
+  assert len(res['connected_devices']) == 0
 
   res = bob.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(uuid4())))
   assert not res['success']
