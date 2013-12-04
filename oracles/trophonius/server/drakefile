@@ -9,6 +9,8 @@ tests = None
 
 def configure(elle,
               reactor,
+              json_spirit_lib,
+              json_spirit_config,
               meta_client,
               boost,
               enable_python_bindings = True,
@@ -32,7 +34,6 @@ def configure(elle,
   local_cxx_config += meta_client.config
   local_cxx_config.add_local_include_path('src')
   local_cxx_config.lib_path_runtime('.')
-  local_cxx_config.add_system_include_path('json-spirit/include')
 
   # Python
   if enable_python_bindings:
@@ -41,12 +42,10 @@ def configure(elle,
       prefix = python3,
       include_dir = 'include/python3.2')
 
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
-                        strip_prefix = True)
-  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
-                           strip_prefix = True)
-  meta_client_lib = drake.copy(meta_client.lib, 'lib',
-                               strip_prefix = True)
+  elle_lib = drake.copy(elle.lib_dynamic, 'lib', strip_prefix = True)
+  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib', strip_prefix = True)
+  meta_client_lib = drake.copy(meta_client.lib, 'lib', strip_prefix = True)
+  json_spirit_lib = drake.copy(json_spirit_lib, 'lib', strip_prefix = True)
 
   sources = drake.nodes(
     'src/infinit/oracles/trophonius/server/Client.cc',
@@ -62,15 +61,12 @@ def configure(elle,
     'src/infinit/oracles/trophonius/server/exceptions.hh',
     'src/infinit/oracles/trophonius/server/utils.cc',
     'src/infinit/oracles/trophonius/server/utils.hh',
-    'json-spirit/src/reader.cpp',
-    'json-spirit/src/value.cpp',
-    'json-spirit/src/writer.cpp',
   )
 
   lib = drake.cxx.DynLib('lib/trophonius',
-                         sources + [elle_lib, reactor_lib, meta_client_lib],
+                         sources + [elle_lib, reactor_lib, meta_client_lib, json_spirit_lib],
                          cxx_toolkit,
-                         local_cxx_config)
+                         local_cxx_config + json_spirit_config)
 
   exe_cxx_config = drake.cxx.Config(local_cxx_config)
   exe_cxx_config.lib_path_runtime('../lib')
@@ -81,9 +77,9 @@ def configure(elle,
 
   trophonius = drake.cxx.Executable(
     'bin/trophonius',
-    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib],
+    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib, json_spirit_lib],
     cxx_toolkit,
-    exe_cxx_config)
+    exe_cxx_config + json_spirit_config)
 
   build = drake.Rule('build')
   build << trophonius
@@ -121,7 +117,8 @@ def configure(elle,
       'tests/%s' % name,
       drake.nodes('tests/%s.cc' % name) + [lib,
                                            elle_lib,
-                                           reactor_lib],
+                                           reactor_lib,
+                                           json_spirit_lib],
       cxx_toolkit,
       cxx_config_tests)
     tests << test
