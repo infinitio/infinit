@@ -293,47 +293,49 @@ ELLE_TEST_SCHEDULED(wait_for_transfers)
     reactor::wait(meta.apertus_registered());
     BOOST_CHECK_EQUAL(meta.apertuses().size(), 1);
 
+    BOOST_CHECK_EQUAL(apertus->workers().size(), 0);
+
     std::string passphrase(32, 'o');
-
-    BOOST_CHECK_EQUAL(apertus->accepters().size(), 0);
     reactor::network::TCPSocket socket1("127.0.0.1", apertus->port());
-    reactor::yield();
-    reactor::yield();
-    BOOST_CHECK_EQUAL(apertus->accepters().size(), 1);
     socket1.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
-    reactor::yield();
-    reactor::yield();
 
-    BOOST_CHECK_EQUAL(apertus->accepters().size(), 0);
     reactor::network::TCPSocket socket2("127.0.0.1", apertus->port());
-    reactor::yield();
-    reactor::yield();
-    BOOST_CHECK_EQUAL(apertus->accepters().size(), 1);
     socket2.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
-    reactor::yield();
-    reactor::yield();
 
     reactor::wait(meta.apertus_bandwidth_updated());
     BOOST_CHECK_EQUAL(meta.bandwidth_update_count(), 1);
+    BOOST_CHECK_EQUAL(apertus->workers().size(), 1);
 
-    apertus->stop();
-
-    reactor::wait(meta.apertus_unregistered());
-
-    reactor::sleep(tick_rate * 2);
-
-    BOOST_CHECK_EQUAL(meta.bandwidth_update_count(), 1);
-
-    socket1.close();
-    socket2.close();
+    elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+    {
+      scope.run_background("check unregistered", [&]
+      {
+        reactor::wait(meta.apertus_unregistered());
+        reactor::sleep(tick_rate * 2);
+        BOOST_CHECK_EQUAL(meta.bandwidth_update_count(), 1);
+        static std::string const some_stuff("some stuffs\n");
+        socket1.write(some_stuff);
+        BOOST_CHECK_EQUAL(socket2.read_until(some_stuff), some_stuff);
+        socket1.close();
+        socket2.close();
+      });
+      scope.run_background("stop", [&]
+      {
+        BOOST_CHECK_EQUAL(apertus->workers().size(), 1);
+        apertus->stop();
+        BOOST_CHECK_EQUAL(apertus->workers().size(), 0);
+      });
+      scope.wait();
+    };
   }
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
 }
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 15 : 5;
+  auto timeout = RUNNING_ON_VALGRIND ? 20 : 5;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  // suite.add(BOOST_TEST_CASE(register_unregister), 0, timeout);
-  // suite.add(BOOST_TEST_CASE(no_update_after_stop), 0, timeout);
+  suite.add(BOOST_TEST_CASE(register_unregister), 0, timeout);
+  suite.add(BOOST_TEST_CASE(no_update_after_stop), 0, timeout);
   suite.add(BOOST_TEST_CASE(wait_for_transfers), 0, timeout);
 }
