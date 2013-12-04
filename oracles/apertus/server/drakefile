@@ -11,6 +11,8 @@ install = None
 def configure(elle,
               protocol,
               reactor,
+              json_spirit_lib,
+              json_spirit_config,
               meta_client,
               boost = None,
               prefix = drake.Path('/usr/local'),
@@ -34,6 +36,8 @@ def configure(elle,
 
   meta_client_lib = drake.copy(meta_client.lib, 'lib', strip_prefix = True)
 
+  json_spirit_lib = drake.copy(json_spirit_lib, 'lib', strip_prefix = True)
+
   apertus_sources = drake.nodes(
     'src/infinit/oracles/apertus/Apertus.cc',
     'src/infinit/oracles/apertus/Apertus.hh',
@@ -54,7 +58,7 @@ def configure(elle,
   library = drake.cxx.DynLib('lib/apertus-server',
                              apertus_sources +
                              [reactor_lib, protocol_lib, meta_client_lib],
-                             cxx_toolkit, local_cxx_config)
+                             cxx_toolkit, local_cxx_config, json_spirit_config)
   build = drake.Rule('build')
   build << library
 
@@ -62,13 +66,18 @@ def configure(elle,
   test_cxx_config = drake.cxx.Config(local_cxx_config)
   test_cxx_config += boost.config_test()
   test_cxx_config += boost.config_system()
+  test_cxx_config += json_spirit_config
   test_cxx_config.lib_path_runtime('../lib')
 
-  test_sources = drake.nodes('tests/infinit/oracles/apertus/apertus.cc')
+  test_sources = drake.nodes(
+   'tests/apertus.cc',
+   'src/infinit/oracles/apertus/utils/utils.cc',
+   'src/infinit/oracles/apertus/utils/utils.hh',
+  )
 
   test_exe = drake.cxx.Executable('tests/apertus',
                                   test_sources +
-                                  [library, protocol_lib, reactor_lib],
+                                  [library, protocol_lib, reactor_lib, json_spirit_lib],
                                   cxx_toolkit,
                                   test_cxx_config)
   test = drake.Runner(exe = test_exe)
