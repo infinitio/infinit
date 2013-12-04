@@ -89,12 +89,12 @@ int main(int argc, char** argv)
     }
 
     int port = 0;
-    long tick = 10;
+    auto tick = 10_sec;
 
     if (options.count("port"))
       port = options["port"].as<int>();
     if (options.count("tick"))
-      tick = options["tick"].as<long>();
+      tick = boost::posix_time::seconds(options["tick"].as<long>());
 
     reactor::Scheduler sched;
 
@@ -110,7 +110,7 @@ int main(int argc, char** argv)
             port,
             tick));
 
-        main.wait(*apertus);
+        reactor::wait(*apertus);
         apertus.reset();
       });
 
