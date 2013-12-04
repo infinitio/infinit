@@ -84,7 +84,7 @@ namespace infinit
         _accepter_remove(Accepter const& transfer);
 
         typedef std::unordered_map<oracle::hermes::TID, std::unique_ptr<Transfer>> Workers;
-        ELLE_ATTRIBUTE(Workers, workers);
+        ELLE_ATTRIBUTE_R(Workers, workers);
 
       private:
         const std::string _host;
