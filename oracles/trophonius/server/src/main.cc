@@ -124,7 +124,7 @@ int main(int argc, char** argv)
             boost::posix_time::seconds(60),
             meta_fatal));
         // Wait for trophonius to be asked to finish.
-        main.wait(*trophonius);
+        reactor::wait(*trophonius);
         trophonius.reset();
       });
     s.signal_handle(
