@@ -25,7 +25,7 @@ namespace infinit
     {
       Apertus::Apertus(std::string mhost, int mport,
                        std::string host, int port,
-                       long tick_rate):
+                       boost::posix_time::time_duration const& tick_rate):
         Waitable("apertus"),
         _accepter(*reactor::Scheduler::scheduler(),
                   "apertus_accepter",
@@ -209,9 +209,9 @@ namespace infinit
       {
         while (true)
         {
-          reactor::sleep(boost::posix_time::seconds{_tick_rate});
+          reactor::sleep(_tick_rate);
 
-          uint32_t bdwps = _bandwidth / _tick_rate;
+          uint32_t bdwps = _bandwidth / _tick_rate.total_seconds();
           ELLE_TRACE("%s: bandwidth is currently estimated at %sB/s",
             *this, bdwps);
 

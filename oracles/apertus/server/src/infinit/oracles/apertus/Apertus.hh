@@ -36,7 +36,7 @@ namespace infinit
                 int mport,
                 std::string host = "0.0.0.0",
                 int port = 6565,
-                long tick_rate = 10);
+                boost::posix_time::time_duration const& tick_rate = 10_sec);
         ~Apertus();
 
       private:
@@ -108,7 +108,7 @@ namespace infinit
 
       private:
         ELLE_ATTRIBUTE(uint32_t, bandwidth);
-        ELLE_ATTRIBUTE(long, tick_rate);
+        ELLE_ATTRIBUTE(boost::posix_time::time_duration, tick_rate);
         ELLE_ATTRIBUTE(reactor::Thread, monitor);
       };
     }
