@@ -108,6 +108,7 @@ def configure(elle,
   tests = drake.Rule('tests')
 
   cxx_config_tests = drake.cxx.Config(local_cxx_config)
+  cxx_config_tests += drake.cxx.Config(json_spirit_config)
   cxx_config_tests.lib_path_runtime('../lib')
   cxx_config_tests += boost.config_test()
   if valgrind is not None:
