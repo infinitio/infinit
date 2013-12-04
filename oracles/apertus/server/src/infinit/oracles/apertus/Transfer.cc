@@ -20,6 +20,7 @@ namespace infinit
                          oracle::hermes::TID tid,
                          Socket&& left,
                          Socket&& right):
+        Waitable(elle::sprintf("transfer %s", tid)),
         _apertus(owner),
         _tid(tid),
         _left(std::move(left)),
@@ -78,6 +79,7 @@ namespace infinit
           {
             ELLE_TRACE("%s: pop my self from apertus", *this);
             this->_apertus._transfer_remove(*this);
+            this->_signal();
           });
 
         ELLE_ASSERT(this->_left != nullptr);
