@@ -5,6 +5,7 @@
 
 # include <reactor/network/fwd.hh>
 # include <reactor/thread.hh>
+# include <reactor/waitable.hh>
 
 # include <elle/Printable.hh>
 # include <elle/attribute.hh>
@@ -18,7 +19,7 @@ namespace infinit
     namespace apertus
     {
       class Transfer:
-        public elle::Printable
+        public reactor::Waitable
       {
         typedef std::unique_ptr<reactor::network::TCPSocket> Socket;
       public:
