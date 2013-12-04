@@ -27,6 +27,7 @@ namespace infinit
                        std::string host, int port,
                        boost::posix_time::time_duration const& tick_rate):
         Waitable("apertus"),
+        _unregistered(false),
         _accepter(*reactor::Scheduler::scheduler(),
                   "apertus_accepter",
                   std::bind(&Apertus::_run, std::ref(*this))),
@@ -49,20 +50,7 @@ namespace infinit
         this->_monitor.terminate_now();
         this->_accepter.terminate_now();
 
-        for (auto const& client: this->_clients)
-        {
-          ELLE_TRACE("%s: kick pending users for transfer %s", *this, client.first);
-          delete client.second;
-          this->_clients.erase(client.first);
-        }
-
-        while (!this->_accepters.empty())
-        {
-          ELLE_DEBUG("%s: remaining accepters: %s", *this, this->_accepters.size());
-          Accepter* accepter = *this->_accepters.begin();
-          ELLE_TRACE("%s: kick running accepter %s", *this, accepter)
-            this->_accepter_remove(*accepter);
-        }
+        this->_remove_clients_and_accepters();
 
         while (!this->_workers.empty())
         {
@@ -83,6 +71,26 @@ namespace infinit
       }
 
       void
+      Apertus::_remove_clients_and_accepters()
+      {
+        ELLE_LOG("%s: removing clients and accepters", *this);
+        for (auto const& client: this->_clients)
+        {
+          ELLE_TRACE("%s: kick pending users for transfer %s", *this, client.first);
+          delete client.second;
+          this->_clients.erase(client.first);
+        }
+
+        while (!this->_accepters.empty())
+        {
+          ELLE_DEBUG("%s: remaining accepters: %s", *this, this->_accepters.size());
+          Accepter* accepter = *this->_accepters.begin();
+          ELLE_TRACE("%s: kick running accepter %s", *this, accepter)
+            this->_accepter_remove(*accepter);
+        }
+      }
+
+      void
       Apertus::_register()
       {
         this->_meta.register_apertus(this->_uuid, this->_port);
@@ -91,7 +99,17 @@ namespace infinit
       void
       Apertus::_unregister()
       {
-        this->_meta.unregister_apertus(this->_uuid);
+        if (!_unregistered)
+        {
+          _unregistered = true;
+          this->_meta.unregister_apertus(this->_uuid);
+        }
+        else
+        {
+          ELLE_DEBUG(
+            "%s: already unregistered, will not unregister apertus again",
+            *this);
+        }
       }
 
       void
@@ -111,6 +129,7 @@ namespace infinit
             ELLE_TRACE("%s: waiting for new client", *this);
             ELLE_ASSERT(client == nullptr);
             client.reset(serv.accept());
+            ELLE_DEBUG("%s: socket opened", *this);
 
             this->_accepters.emplace(new Accepter(*this, std::move(client)));
           }
@@ -120,6 +139,22 @@ namespace infinit
       void
       Apertus::stop()
       {
+        ELLE_TRACE_SCOPE("%s: stop ordered", *this);
+        this->_accepter.terminate_now();
+        this->_monitor.terminate_now();
+        this->_unregister();
+
+        this->_remove_clients_and_accepters();
+
+        reactor::Waitables currently_working;
+        for (auto const& worker: this->_workers)
+        {
+          ELLE_DEBUG("%s: add worker to wait list: %s", *this, *worker.second);
+          currently_working << worker.second.get();
+        }
+        ELLE_TRACE("%s: waiting for workers to finish", *this);
+        reactor::wait(currently_working);
+        ELLE_TRACE("%s: done waiting for workers", *this);
         this->_signal();
       }
 
