@@ -41,10 +41,15 @@ namespace infinit
 
       private:
         void
+        _remove_clients_and_accepters();
+
+        void
         _register();
 
         void
         _unregister();
+
+        ELLE_ATTRIBUTE(bool, unregistered);
 
       public:
         void
@@ -66,7 +71,8 @@ namespace infinit
         ELLE_ATTRIBUTE(infinit::oracles::meta::Admin, meta);
         ELLE_ATTRIBUTE(boost::uuids::uuid, uuid);
         typedef std::unordered_set<Accepter*> Accepters;
-        ELLE_ATTRIBUTE(Accepters, accepters);
+        ELLE_ATTRIBUTE_R(Accepters, accepters);
+        ELLE_ATTRIBUTE(bool, stop_ordered);
 
         friend Accepter;
         friend Transfer;
@@ -82,7 +88,7 @@ namespace infinit
 
       private:
         const std::string _host;
-        int _port;
+        ELLE_ATTRIBUTE_R(int, port);
 
       private:
         typedef std::map<oracle::hermes::TID, reactor::network::TCPSocket*> Clients;
