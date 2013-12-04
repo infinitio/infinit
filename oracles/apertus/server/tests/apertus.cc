@@ -268,6 +268,51 @@ ELLE_TEST_SCHEDULED(no_update_after_stop)
   }
 }
 
+/*----------------.
+| simple_transfer |
+`----------------*/
+
+// Check that two clients can transfer data.
+
+ELLE_TEST_SCHEDULED(simple_transfer)
+{
+  Meta meta;
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
+  {
+    auto tick_rate = 1_sec;
+    std::unique_ptr<infinit::oracles::apertus::Apertus> apertus;
+    apertus.reset(
+      new infinit::oracles::apertus::Apertus(
+        "localhost",
+        meta.port(),
+        "localhost",
+        0,
+        tick_rate));
+
+    reactor::wait(meta.apertus_registered());
+    BOOST_CHECK_EQUAL(meta.apertuses().size(), 1);
+
+    BOOST_CHECK_EQUAL(apertus->workers().size(), 0);
+
+    std::string passphrase(32, 'b');
+    reactor::network::TCPSocket socket1("127.0.0.1", apertus->port());
+    socket1.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
+
+    reactor::network::TCPSocket socket2("127.0.0.1", apertus->port());
+    socket2.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
+
+    reactor::wait(meta.apertus_bandwidth_updated());
+    BOOST_CHECK_EQUAL(meta.bandwidth_update_count(), 1);
+    BOOST_CHECK_EQUAL(apertus->workers().size(), 1);
+
+    static std::string const some_stuff = std::string(1024 * 1024, 'a') +
+      std::string("\n");
+    socket1.write(some_stuff);
+    BOOST_CHECK_EQUAL(socket2.read_until(some_stuff), some_stuff);
+  }
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
+}
+
 /*-------------------.
 | wait_for_transfers |
 `-------------------*/
@@ -337,5 +382,6 @@ ELLE_TEST_SUITE()
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(register_unregister), 0, timeout);
   suite.add(BOOST_TEST_CASE(no_update_after_stop), 0, timeout);
+  suite.add(BOOST_TEST_CASE(simple_transfer), 0, timeout);
   suite.add(BOOST_TEST_CASE(wait_for_transfers), 0, timeout);
 }
