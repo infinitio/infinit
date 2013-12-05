@@ -113,7 +113,8 @@ namespace infinit
         User::notify(elle::json::Object const& notification)
         {
           LazyJson json(notification);
-          ELLE_DEBUG("%s: push notification: %s", *this, json);
+          ELLE_DEBUG("%s: push notification: %s", *this,
+                     pretty_print_json(notification));
           this->_notifications.push(std::move(notification));
           this->_notification_available.signal();
         }
