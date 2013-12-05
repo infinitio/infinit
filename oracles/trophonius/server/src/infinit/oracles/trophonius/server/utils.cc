@@ -29,7 +29,7 @@ namespace infinit
                    json_spirit::Value const& value)
         {
           elle::IOStreamClear clearer(socket);
-          json_spirit::write(value, socket);
+          json_spirit::write(value, socket, json_spirit::raw_utf8);
           socket << "\n";
           socket.flush();
         }
@@ -37,7 +37,8 @@ namespace infinit
         std::string
         pretty_print_json(json_spirit::Value const& value)
         {
-          return json_spirit::write(value, json_spirit::pretty_print);
+          return json_spirit::write(value, json_spirit::pretty_print |
+                                           json_spirit::raw_utf8);
         }
       }
     }

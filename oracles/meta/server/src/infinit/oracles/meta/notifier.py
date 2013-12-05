@@ -112,7 +112,8 @@ class Notifier:
         try:
           s = socket.create_connection(address = (tropho['ip'], tropho['port']),
                                        timeout = 4)
-          s.send(bytes(json.dumps(notification) + '\n', 'utf-8'))
+          s.send(bytes(json.dumps(notification, ensure_ascii = False) + '\n',
+                       'utf-8'))
         except Exception as e:
           elle.log.err("unable to contact %s: %s" % (tropho['_id'], e))
         finally:
