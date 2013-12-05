@@ -18,4 +18,4 @@
 	url = https://github.com/infinitdotio/mongobox.git
 [submodule "oracles/json-spirit"]
 	path = oracles/json-spirit
-	url = git://gitorious.org/json-spirit/json-spirit.git:oracles/json-spirit
+	url = https://github.com/sirikata/json-spirit.git
