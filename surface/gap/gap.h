@@ -107,28 +107,31 @@ extern "C" {
   gap_meta_down_message(gap_State*);
 
   /// Login to meta.
-  gap_Status gap_login(gap_State* state,
-                       char const* email,
-                       char const* hash_password);
+  gap_Status
+  gap_login(gap_State* state,
+            char const* email,
+            char const* hash_password);
 
   /// Check is user is already logged.
   gap_Bool
   gap_logged_in(gap_State* state);
 
   /// Logout from meta.
-  gap_Status gap_logout(gap_State* state);
+  gap_Status
+  gap_logout(gap_State* state);
 
   /// @brief Register to meta.
   ///
   /// If the device name is not NULL, it will also create
   /// the local device with specified name. The password hash is obtained via
   /// gap_hash_password() function.
-  gap_Status gap_register(gap_State* state,
-                          char const* fullname,
-                          char const* email,
-                          char const* hash_password,
-                          char const* device_name,
-                          char const* activation_code);
+  gap_Status
+  gap_register(gap_State* state,
+               char const* fullname,
+               char const* email,
+               char const* hash_password,
+               char const* device_name,
+               char const* activation_code);
 
   //- Swaggers ----------------------------------------------------------------
 
@@ -165,7 +168,7 @@ extern "C" {
 
 
   // Kicked out callback.
-  // Triggered when your
+  // Triggered when your credentials are no longer valid.
   typedef void (*gap_kicked_out_callback_t)();
 
   gap_Status

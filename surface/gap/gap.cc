@@ -816,7 +816,7 @@ extern "C"
 
     return run<gap_Status>(
       state,
-      "connection status callback",
+      "kicked out callback",
       [&] (surface::gap::State& state) -> gap_Status
       {
         state.attach_callback<surface::gap::State::KickedOut>(cpp_cb);
