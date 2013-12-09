@@ -38,7 +38,7 @@ namespace infinit
         {
           try
           {
-            boost::any const& json_read = elle::json::read(*this->_socket);
+            auto const& json_read = elle::json::read(*this->_socket);
             auto const& json = boost::any_cast<elle::json::Object>(json_read);
 
             static std::vector<std::string> mandatory_fields(
