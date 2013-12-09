@@ -101,6 +101,11 @@ extern "C" {
   /// Free a previously allocated hash.
   void gap_hash_free(char* h);
 
+  /// Fetch Meta message.
+  /// In some cases when Meta is down, it will have an associated message.
+  char const*
+  gap_meta_down_message(gap_State*);
+
   /// Login to meta.
   gap_Status gap_login(gap_State* state,
                        char const* email,
@@ -166,6 +171,14 @@ extern "C" {
   gap_Status
   gap_kicked_out_callback(gap_State* state,
                           gap_kicked_out_callback_t cb);
+
+  /// Trophonius unavailable callback.
+  /// Triggered when you can connect to Meta but not to Trophonius.
+  typedef void (*gap_trophonius_unavailable_callback_t)();
+
+  gap_Status
+  gap_trophonius_unavailable_callback(gap_State* state,
+                                      gap_trophonius_unavailable_callback_t cb);
 
   /// New transaction callback.
   typedef void (*gap_transaction_callback_t)(uint32_t id,

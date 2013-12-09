@@ -219,6 +219,18 @@ extern "C"
     ::free(h);
   }
 
+  char const*
+  gap_meta_down_message(gap_State* _state)
+  {
+    return run<char const*>(_state,
+                            "meta down message",
+                            [&] (surface::gap::State& state) -> char const*
+                            {
+                              auto meta_message = state.meta_message();
+                              return meta_message.c_str();
+                            });
+  }
+
   gap_Status
   gap_login(gap_State* _state,
             char const* email,
@@ -808,6 +820,25 @@ extern "C"
       [&] (surface::gap::State& state) -> gap_Status
       {
         state.attach_callback<surface::gap::State::KickedOut>(cpp_cb);
+        return gap_ok;
+      });
+  }
+
+  gap_Status
+  gap_trophonius_unavailable_callback(gap_State* state,
+                                      gap_trophonius_unavailable_callback_t cb)
+  {
+    auto cpp_cb = [cb] (surface::gap::State::TrophoniusUnavailable const&)
+      {
+        cb();
+      };
+
+    return run<gap_Status>(
+      state,
+      "trophonius unavaiable callback",
+      [&] (surface::gap::State& state) -> gap_Status
+      {
+        state.attach_callback<surface::gap::State::TrophoniusUnavailable>(cpp_cb);
         return gap_ok;
       });
   }
