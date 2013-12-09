@@ -62,10 +62,19 @@ namespace surface
       | Servers |
       `--------*/
       ELLE_ATTRIBUTE(infinit::oracles::meta::Client, meta);
+      ELLE_ATTRIBUTE_R(std::string, meta_message);
+      ELLE_ATTRIBUTE(int, meta_check_count);
       ELLE_ATTRIBUTE_R(infinit::oracles::trophonius::Client, trophonius);
 
       infinit::oracles::meta::Client const&
       meta(bool authentication_required = true) const;
+
+    private:
+      bool
+      _meta_server_check();
+
+      bool
+      _trophonius_server_check();
 
       /*----------.
       | Reporters |
@@ -126,6 +135,14 @@ namespace surface
       public:
         static Notification::Type type;
         KickedOut() = default;
+      };
+
+      class TrophoniusUnavailable:
+        public Notification
+      {
+      public:
+        static Notification::Type type;
+        TrophoniusUnavailable() = default;
       };
 
     public:
@@ -242,6 +259,9 @@ namespace surface
 
       void
       on_connection_changed(bool connection_status);
+
+      void
+      on_reconnection_failed();
 
       void
       handle_notification(
