@@ -45,7 +45,9 @@ def configure(elle,
                          boost = boost,
                          prefix = prefix,
                          cxx_toolkit = cxx_toolkit,
-                         cxx_config = cxx_config)
+                         cxx_config = cxx_config,
+                         valgrind = valgrind,
+  )
 
   for name in ('build', 'check', 'install'):
     globals()[name] = drake.Rule(name)

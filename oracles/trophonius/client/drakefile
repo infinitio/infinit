@@ -16,7 +16,8 @@ def configure(elle,
               python3 = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
-              cxx_config = None):
+              cxx_config = None,
+              valgrind = None):
 
   global build, check, install, config, lib
 
@@ -83,7 +84,26 @@ def configure(elle,
     build << trophonius_python
 
   ## ----- ##
-  ## Check ##
+  ## Tests ##
   ## ----- ##
 
   check = drake.TestSuite('check')
+  tests = drake.Rule('tests')
+
+  cxx_config_tests = drake.cxx.Config(local_cxx_config)
+  cxx_config_tests.lib_path_runtime('../lib')
+  cxx_config_tests += boost.config_test()
+  if valgrind is not None:
+    cxx_config_tests.define('VALGRIND')
+  for name in ['trophonius']:
+    test = drake.cxx.Executable(
+      'tests/%s' % name,
+      drake.nodes('tests/%s.cc' % name) + [lib,
+                                           elle_lib,
+                                           reactor_lib],
+      cxx_toolkit,
+      cxx_config_tests)
+    tests << test
+    runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
+    check << runner.status
