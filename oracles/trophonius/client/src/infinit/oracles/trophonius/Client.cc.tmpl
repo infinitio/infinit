@@ -11,7 +11,7 @@
 #include <elle/format/json/Object.hh>
 #include <elle/format/json/Array.hh>
 #include <elle/json/exceptions.hh>
-#include <elle/json/utils.hh>
+#include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/print.hh>
@@ -294,7 +294,9 @@ namespace infinit
             {
               reactor::wait(this->_poke_sent_signal);
               ELLE_DEBUG("%s: get poke reply", *this);
-              auto poke_reply = elle::json::read_json(*this->_socket);
+              auto poke_reply_read = elle::json::read(*this->_socket);
+              auto poke_reply =
+                boost::any_cast<elle::json::Object>(poke_reply_read);
               if (poke_reply.find("poke") != poke_reply.end())
               {
                 std::string reply_msg =
@@ -321,7 +323,7 @@ namespace infinit
             scope.run_background("send poke", [&]
             {
               ELLE_DEBUG("%s: send poke message: %s", *this, poke_msg)
-              elle::json::write_json(*this->_socket, poke_obj);
+              elle::json::write(*this->_socket, poke_obj);
               this->_poke_sent_signal.signal();
             });
             scope.wait(poke_timeout);
