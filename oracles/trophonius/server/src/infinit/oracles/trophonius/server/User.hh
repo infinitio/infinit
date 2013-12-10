@@ -3,7 +3,7 @@
 
 # include <queue>
 
-# include <elle/json/utils.hh>
+# include <elle/json/json.hh>
 
 # include <reactor/Barrier.hh>
 # include <reactor/signal.hh>
