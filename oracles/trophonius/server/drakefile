@@ -133,3 +133,15 @@ def configure(elle,
 
   install = drake.Rule('install')
   install << drake.install(trophonius, prefix)
+
+  server_certificate = drake.Node('etc/server-cert.pem')
+  install << drake.install(server_certificate,
+                           '/usr/etc/trophonius', strip_prefix = True)
+
+  server_private_key = drake.Node('etc/server-key.pem')
+  install << drake.install(server_private_key,
+                           '/usr/etc/trophonius', strip_prefix = True)
+
+  diffie_hellman_file = drake.Node('etc/dh1024.pem')
+  install << drake.install(diffie_hellman_file,
+                           '/usr/etc/trophonius', strip_prefix = True)
