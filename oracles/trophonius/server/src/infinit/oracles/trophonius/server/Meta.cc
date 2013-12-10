@@ -1,6 +1,6 @@
 #include <boost/uuid/string_generator.hpp>
 
-#include <elle/json/utils.hh>
+#include <elle/json/json.hh>
 #include <elle/log.hh>
 
 #include <reactor/network/exception.hh>
@@ -38,7 +38,8 @@ namespace infinit
         {
           try
           {
-            auto const& json = elle::json::read_json(*this->_socket);
+            boost::any const& json_read = elle::json::read(*this->_socket);
+            auto const& json = boost::any_cast<elle::json::Object>(json_read);
 
             static std::vector<std::string> mandatory_fields(
               {"notification", "device_id", "user_id"}
