@@ -22,7 +22,6 @@
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 
-#include <reactor/Barrier.hh>
 #include <reactor/exception.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
@@ -30,7 +29,6 @@
 #include <reactor/network/tcp-socket.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/Scope.hh>
-#include <reactor/signal.hh>
 #include <reactor/thread.hh>
 
 #include <infinit/oracles/trophonius/Client.hh>
@@ -251,6 +249,7 @@ namespace infinit
             this->_connect_callback_thread->terminate_now();
         }
 
+        reactor::Signal _poke_completed;
         reactor::Signal _poke_sent_signal;
         bool
         _poke()
@@ -285,7 +284,7 @@ namespace infinit
           elle::json::Object poke_obj;
           poke_obj["poke"] = poke_msg;
 
-          reactor::Duration poke_timeout = 5_sec;
+          reactor::Duration poke_timeout = 4_sec;
 
           return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
           {
@@ -329,6 +328,7 @@ namespace infinit
             scope.wait(poke_timeout);
             if (result == false)
               this->_socket->close();
+            _poke_completed.signal();
             return result;
           };
         }
@@ -752,6 +752,18 @@ namespace infinit
           ELLE_ASSERT(connect_callback != nullptr);
         }
 
+      reactor::Barrier const&
+      Client::connected() const
+      {
+        return this->_impl->_connected;
+      }
+
+      reactor::Barrier&
+      Client::connected()
+      {
+        return this->_impl->_connected;
+      }
+
       void
       Client::ping_period(boost::posix_time::time_duration const& value)
       {
@@ -765,6 +777,18 @@ namespace infinit
       Client::ping_period() const
       {
         return this->_impl->_ping_period;
+      }
+
+      reactor::Signal const&
+      Client::poked() const
+      {
+        return this->_impl->_poke_completed;
+      }
+
+      reactor::Signal&
+      Client::poked()
+      {
+        return this->_impl->_poke_completed;
       }
 
       Client::~Client()

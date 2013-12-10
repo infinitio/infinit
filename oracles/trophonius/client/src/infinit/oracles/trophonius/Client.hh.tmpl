@@ -8,6 +8,9 @@
 
 # include <elle/format/json.hh>
 
+# include <reactor/Barrier.hh>
+# include <reactor/signal.hh>
+
 # include <functional>
 # include <queue>
 
@@ -164,7 +167,9 @@ namespace infinit
 
         int
         reconnected() const;
+        ELLE_ATTRIBUTE_rx(reactor::Barrier, connected);
         ELLE_ATTRIBUTE_rw(boost::posix_time::time_duration, ping_period);
+        ELLE_ATTRIBUTE_rx(reactor::Signal, poked);
 
           /*----------.
           | Printable |
