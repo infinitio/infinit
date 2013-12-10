@@ -1,6 +1,6 @@
 #include <boost/uuid/uuid_io.hpp>
 
-#include <elle/json/utils.hh>
+#include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
@@ -12,8 +12,6 @@
 #include <reactor/thread.hh>
 
 #include <infinit/oracles/apertus/Apertus.hh>
-
-using elle::json::read_json;
 
 ELLE_LOG_COMPONENT("infinit.oracles.apertus.server.test")
 
@@ -102,7 +100,8 @@ public:
         std::string id = chunks[2];
         if (method == "PUT")
         {
-          auto json = read_json(*socket);
+          auto json_read = elle::json::read(*socket);
+          auto json = boost::any_cast<elle::json::Object>(json_read);
           BOOST_CHECK(json.find("port") != json.end());
           auto port = json.find("port")->second;
           this->_register(*socket, id, boost::any_cast<int>(port));
@@ -113,7 +112,8 @@ public:
         }
         else if (method == "POST")
         {
-          auto json = read_json(*socket);
+          auto json_read = elle::json::read(*socket);
+          auto json = boost::any_cast<elle::json::Object>(json_read);
           BOOST_CHECK(json.find("bandwidth") != json.end());
           BOOST_CHECK(json.find("number_of_transfers") != json.end());
           auto bandwidth = json.find("bandwidth")->second;
