@@ -791,15 +791,10 @@ namespace surface
     void
     State::on_reconnection_failed()
     {
-      if (!this->_meta_server_check())
-        return;
-
-      if (!this->_trophonius_server_check())
+      if (this->_meta_server_check)
       {
         ELLE_ERR("%s: able to connect to Meta but not Trophonius", *this);
-        this->logout();
         this->enqueue(TrophoniusUnavailable());
-        this->enqueue(ConnectionStatus(false));
       }
     }
 
