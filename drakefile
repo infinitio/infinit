@@ -13,11 +13,10 @@ with open(str(drake.path_source('elle/drake-utils.py')), 'r') as f:
 
 def configure(cxx_toolkit = None,
               cxx_config = None,
-              enable_horizon = True,
+              enable_horizon = False,
               optimization = True,
               prefix = '/usr',
               boost = None,
-              python2 = None,
               python3 = None,
               build_type = "Development",
               enable_debug = True,
@@ -111,11 +110,6 @@ def configure(cxx_toolkit = None,
   # Python
   python_enabled = cxx_toolkit.os != drake.os.windows
   if python_enabled:
-    python2 = drake.cxx.find_library(
-      'pyconfig.h', prefix = python2,
-      include_dir = ['include',
-                     'include/python2.7',
-                     'include/python2.7m'])
     python3 = drake.cxx.find_library(
       'pyconfig.h', prefix = python3,
       include_dir = ['include',
@@ -905,9 +899,6 @@ def configure(cxx_toolkit = None,
     elle_lib,
     metrics_lib,
   ]
-
-  if enable_horizon:
-    infinit_libs.append(horizon_slib)
 
   # 8infinit
   infinit_bin_config = drake.cxx.Config(cxx_config)
