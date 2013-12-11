@@ -791,7 +791,7 @@ namespace surface
     void
     State::on_reconnection_failed()
     {
-      if (this->_meta_server_check)
+      if (this->_meta_server_check())
       {
         ELLE_ERR("%s: able to connect to Meta but not Trophonius", *this);
         this->enqueue(TrophoniusUnavailable());
