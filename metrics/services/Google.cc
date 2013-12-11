@@ -134,7 +134,6 @@ namespace metrics
 
       std::stringstream body;
       static std::ofstream null{"/dev/null"};
-      body << request.body_string();
 
       auto url = elle::sprintf("http://%s:%d%s",
                                this->info().host,
@@ -146,7 +145,7 @@ namespace metrics
                                reactor::http::Method::GET,
                                "application/x-www-form-urlencoded",
                                cfg);
-      r << body;
+      r << request.body_string();
       reactor::wait(r);
     }
 
