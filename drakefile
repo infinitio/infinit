@@ -900,6 +900,9 @@ def configure(cxx_toolkit = None,
     metrics_lib,
   ]
 
+  if enable_horizon:
+    infinit_libs.append(horizon_slib)
+
   # 8infinit
   infinit_bin_config = drake.cxx.Config(cxx_config)
   infinit_bin_config += boost.config_thread()
