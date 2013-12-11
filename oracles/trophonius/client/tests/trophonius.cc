@@ -221,6 +221,7 @@ ELLE_TEST_SCHEDULED(poke)
 {
   PokeTrophonius tropho;
   {
+    reactor::Duration poke_timeout = 200_ms;
     using namespace infinit::oracles::trophonius;
     std::unique_ptr<Client> client;
     for (int round = 0; round < tropho.total_rounds; round++)
@@ -237,19 +238,19 @@ ELLE_TEST_SCHEDULED(poke)
       if (round == 0) // Normal case.
       {
         ELLE_LOG("normal case");
-        BOOST_CHECK_EQUAL(client->poke(), true);
+        BOOST_CHECK_EQUAL(client->poke(poke_timeout), true);
         tropho.poked().signal();
       }
       else if (round == 1) // Connection refused.
       {
         ELLE_LOG("connection refused");
-        BOOST_CHECK_EQUAL(client->poke(), false);
+        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
         tropho.poked().signal();
       }
       else if (round == 2) // No reply.
       {
         ELLE_LOG("no reply");
-        BOOST_CHECK_EQUAL(client->poke(), false);
+        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
         tropho.poked().signal();
       }
       else if (round == 3) // Unable to resolve.
@@ -261,19 +262,19 @@ ELLE_TEST_SCHEDULED(poke)
           [] (bool) {}, // connect callback
           [] (void) {})  // reconnection failed callback
         );
-        BOOST_CHECK_EQUAL(client->poke(), false);
+        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
         tropho.poked().signal();
       }
       else if (round == 4) // Wrong JSON reply.
       {
         ELLE_LOG("wrong json reply");
-        BOOST_CHECK_EQUAL(client->poke(), false);
+        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
         tropho.poked().signal();
       }
       else if (round == 5) // HTML response
       {
         ELLE_LOG("wrong json reply");
-        BOOST_CHECK_EQUAL(client->poke(), false);
+        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
         tropho.poked().signal();
       }
     }
@@ -465,9 +466,9 @@ ELLE_TEST_SCHEDULED(ping)
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 15 : 5;
+  auto timeout = RUNNING_ON_VALGRIND ? 15 : 4;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(poke), 0, 6 * timeout);
+  suite.add(BOOST_TEST_CASE(poke), 0, timeout);
   suite.add(BOOST_TEST_CASE(notification), 0, timeout);
   suite.add(BOOST_TEST_CASE(ping), 0, timeout);
 }
