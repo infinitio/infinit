@@ -21,18 +21,6 @@
 
 #define COMMON_METRICS_GOOGLE_TID "UA-31957100-5"
 
-#define COMMON_METRICS_KISSMETRICS_TID \
-   "0a79eca82697f0f7f0e6d5183daf8f1ebb81b39e"
-
-#define COMMON_METRICS_KISSMETRICS_USER_TID \
-   "63c77a385e9bf07550da9135b721963ac24d9e12"
-
-#define COMMON_METRICS_KISSMETRICS_NETWORK_TID \
-   "86b2aa67570c82874a96e73af61027496c8fb9e0"
-
-#define COMMON_METRICS_KISSMETRICS_TRANSACTION_TID \
-    "d953090a46a854e355d69335ae30c375498a05b6"
-
 #define COMMON_METRICS_INFINIT_TID \
     ""
 
@@ -583,51 +571,6 @@ namespace common
                          COMMON_METRICS_GOOGLE_TID),
       };
       return google;
-    }
-
-    ::metrics::Service::Info const&
-    kissmetrics_info(::metrics::Kind const kind)
-    {
-      static ::metrics::Service::Info const all = {
-        "kissmetrics",
-        "trk.kissmetrics.com",
-        80,
-        path::join(common::infinit::home(), "km.id"),
-        elle::os::getenv("INFINIT_METRICS_KISSMETRICS_TID",
-                         COMMON_METRICS_KISSMETRICS_TID),
-      };
-      static ::metrics::Service::Info const user = {
-        "kissmetrics",
-        "trk.kissmetrics.com",
-        80,
-        path::join(common::infinit::home(), "km.id"),
-        elle::os::getenv("INFINIT_METRICS_KISSMETRICS_USER_TID",
-                         COMMON_METRICS_KISSMETRICS_USER_TID),
-      };
-      static ::metrics::Service::Info const network = {
-        "kissmetrics",
-        "trk.kissmetrics.com",
-        80,
-        path::join(common::infinit::home(), "km.id"),
-        elle::os::getenv("INFINIT_METRICS_KISSMETRICS_NETWORK_TID",
-                         COMMON_METRICS_KISSMETRICS_NETWORK_TID),
-      };
-      static ::metrics::Service::Info const transaction = {
-        "kissmetrics",
-        "trk.kissmetrics.com",
-        80,
-        path::join(common::infinit::home(), "km.id"),
-        elle::os::getenv("INFINIT_METRICS_KISSMETRICS_TRANSACTION_TID",
-                         COMMON_METRICS_KISSMETRICS_TRANSACTION_TID),
-      };
-      switch (kind)
-      {
-        case ::metrics::Kind::all: return all;
-        case ::metrics::Kind::user: return user;
-        case ::metrics::Kind::network: return network;
-        case ::metrics::Kind::transaction: return transaction;
-      }
-      elle::unreachable();
     }
 
     ::metrics::Service::Info const&
