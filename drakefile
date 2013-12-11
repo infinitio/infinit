@@ -138,9 +138,6 @@ def configure(cxx_toolkit = None,
   elle_lib = copy_lib(elle.elle.library)
   cryptography_lib = copy_lib(elle.cryptography.library)
   reactor_lib = copy_lib(elle.reactor.library)
-  curly_lib = copy_lib(elle.curly.library)
-  curly_asio_lib = copy_lib(elle.curly.library_asio)
-  curly_sched_lib = copy_lib(elle.curly.library_sched)
   protocol_lib = copy_lib(elle.protocol.library)
 
   cxx_config += elle.config
@@ -157,12 +154,6 @@ def configure(cxx_toolkit = None,
     drake.cxx.Config.Warnings.Error
   cxx_config.warnings.delete_non_virtual_dtor = \
     drake.cxx.Config.Warnings.Error
-
-  curly_libs = [
-    curly_lib,
-    curly_asio_lib,
-    curly_sched_lib,
-  ]
 
   # Fuse
   if enable_horizon:
@@ -407,8 +398,6 @@ def configure(cxx_toolkit = None,
     'metrics/Service.hh',
     'metrics/services/Google.cc',
     'metrics/services/Google.hh',
-    'metrics/services/KISSmetrics.cc',
-    'metrics/services/KISSmetrics.hh',
     'metrics/services/Infinit.cc',
     'metrics/services/Infinit.hh',
     'metrics/services/Mixpanel.cc',
@@ -417,7 +406,7 @@ def configure(cxx_toolkit = None,
   metrics_cxx_config = drake.cxx.Config(cxx_config_libs)
   metrics_lib = Library(
     'lib/metrics',
-    metrics_sources + curly_libs + [elle_lib, cryptography_lib],
+    metrics_sources + [elle_lib, cryptography_lib],
     cxx_toolkit,
     metrics_cxx_config
   )
@@ -581,7 +570,7 @@ def configure(cxx_toolkit = None,
   crash_cxx_config = drake.cxx.Config(cxx_config_libs)
   crash_lib = Library(
     'lib/crash',
-    crash_sources + curly_libs + [elle_lib, reactor_lib],
+    crash_sources + [elle_lib, reactor_lib],
     cxx_toolkit,
     crash_cxx_config
   )
@@ -916,7 +905,6 @@ def configure(cxx_toolkit = None,
     elle_lib,
     metrics_lib,
   ]
-  infinit_libs += curly_libs
 
   if enable_horizon:
     infinit_libs.append(horizon_slib)
@@ -1079,8 +1067,6 @@ def configure(cxx_toolkit = None,
       metrics_lib,
       crash_lib,
       # hole_lib,
-      curly_lib,
-      elle.curly.library_asio,
       elle.reactor.library_coroutine,
       nucleus_lib,
       protocol_lib,
@@ -1246,13 +1232,13 @@ def configure(cxx_toolkit = None,
     ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
     ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
     #('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
-    # (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
-    # (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, curly_lib, curly_sched_lib, reactor_lib]),
-    (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib, curly_lib]),
+    # (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, reactor_lib]),
+    # (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, reactor_lib]),
+    (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib]),
     ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib, frete_lib, station_lib, crash_lib]),
 #    ('tests/unit/surface/gap/gap_metrics.cc', infinit_libs + [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, frete_lib, station_lib, metrics_lib, crash_lib]),
     ('tests/unit/surface/gap/gap_state_destruction.cc', [gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib]),
-#    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), infinit_libs + [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, curly_lib, crash_lib]),
+#    (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), infinit_libs + [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, crash_lib]),
     #('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
     #('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + infinit_libs),
     ('tests/unit/hole/slug.cc', infinit_libs),

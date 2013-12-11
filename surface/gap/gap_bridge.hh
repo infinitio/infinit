@@ -8,8 +8,6 @@
 #include <reactor/scheduler.hh>
 #include <reactor/thread.hh>
 
-#include <curly/exceptions.hh>
-
 #include <elle/attribute.hh>
 #include <elle/HttpClient.hh>
 #include <elle/log.hh>
@@ -281,11 +279,6 @@ run(gap_State* state,
     ret = gap_network_error;
   }
   catch (reactor::http::RequestError const&)
-  {
-    ELLE_ERR("%s: error: %s", name, elle::exception_string());
-    ret = gap_network_error;
-  }
-  catch (curly::RequestError const&)
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = gap_network_error;

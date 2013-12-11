@@ -4,11 +4,12 @@
 
 #include <elle/format/hexadecimal.hh>
 
+#include <reactor/scheduler.hh>
+#include <reactor/http/Request.hh>
+
 #include <cryptography/Digest.hh>
 #include <cryptography/Plain.hh>
 #include <cryptography/oneway.hh>
-
-#include <curly/curly.hh>
 
 #include <metrics/Reporter.hh>
 #include <metrics/services/Google.hh>
@@ -99,7 +100,11 @@ namespace metrics
     Google::_send(TimeMetricPair metric)
     {
       ELLE_TRACE("sending metric %s", metric);
-
+      // We developed our own HTTP client (GOOD TIMES!), then when we finally
+      // heard reason and used Curl the HTTP client code was kept here to create
+      // the request, then re-printed out in a curl request to be
+      // performed. Twice the code, twice the fun ! I sometimes wish I was a
+      // fishman alone at sea with nothing but the sound of waves to bother me.
       elle::Request request = this->_server->request("GET", "/collect");
       request
         .content_type("application/x-www-form-urlencoded")
@@ -130,24 +135,19 @@ namespace metrics
       std::stringstream body;
       static std::ofstream null{"/dev/null"};
       body << request.body_string();
-      auto rc = curly::make_get();
 
-      rc.option(CURLOPT_DEBUGFUNCTION, &Service::_curl_debug_callback);
-      rc.option(CURLOPT_DEBUGDATA, this);
-      rc.option(CURLOPT_TIMEOUT, 15);
-      rc.user_agent(metrics::Reporter::user_agent);
-      rc.url(elle::sprintf("http://%s:%d%s",
-                           this->info().host,
-                           this->info().port,
-                           request.url()));
-      rc.input(body);
-      rc.output(null);
-      rc.headers({
-        {"Content-Type", "application/x-www-form-urlencoded"},
-        {"Content-Length", elle::sprintf("%s", body.str().size())},
-        {"Expect", ""},
-      });
-      curly::request r(std::move(rc));
+      auto url = elle::sprintf("http://%s:%d%s",
+                               this->info().host,
+                               this->info().port,
+                               request.url());
+      reactor::http::Request::Configuration cfg(15_sec);
+      cfg.header_add("User-Agent", metrics::Reporter::user_agent);
+      reactor::http::Request r(url,
+                               reactor::http::Method::GET,
+                               "application/x-www-form-urlencoded",
+                               cfg);
+      r << body;
+      reactor::wait(r);
     }
 
     std::string

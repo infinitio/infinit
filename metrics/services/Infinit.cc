@@ -1,16 +1,14 @@
-#include <metrics/services/Infinit.hh>
-
 #include <chrono>
-
-#include <curly/curly.hh>
+#include <fstream>
 
 #include <elle/format/base64.hh>
 #include <elle/format/json/Dictionary.hh>
 
-#include <fstream>
+#include <reactor/scheduler.hh>
+#include <reactor/http/Request.hh>
 
 #include <metrics/Reporter.hh>
-
+#include <metrics/services/Infinit.hh>
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("metrics.services.Infinit");
@@ -132,24 +130,17 @@ namespace metrics
       std::stringstream input;
       json_metric.repr(input);
 
-      auto rc = curly::make_post();
-      rc.option(CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-      rc.option(CURLOPT_POSTFIELDSIZE, input.str().size());
-      rc.option(CURLOPT_DEBUGFUNCTION, &Service::_curl_debug_callback);
-      rc.option(CURLOPT_DEBUGDATA, this);
-      rc.option(CURLOPT_TIMEOUT, 15);
-      rc.user_agent(metrics::Reporter::user_agent);
-      rc.headers({
-        {"Content-Type", "application/json"}
-      });
-      rc.url(elle::sprintf("http://%s:%d%s",
-                           this->info().host,
-                           this->info().port,
-                           url_resource));
-      rc.input(input);
-      rc.output(null);
-
-      curly::request r(std::move(rc));
+      auto url = elle::sprintf("http://%s:%d%s",
+                               this->info().host,
+                               this->info().port,
+                               url_resource);
+      reactor::http::Request::Configuration cfg(15_sec);
+      cfg.header_add("User-Agent", metrics::Reporter::user_agent);
+      reactor::http::Request r(url,
+                               reactor::http::Method::POST,
+                               "application/json",
+                               cfg);
+      reactor::wait(r);
     }
 
     std::string

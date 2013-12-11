@@ -1,13 +1,13 @@
-#include "Mixpanel.hh"
-
-#include <curly/curly.hh>
+#include <fstream>
 
 #include <elle/format/base64.hh>
 #include <elle/format/json/Dictionary.hh>
 
-#include <fstream>
+#include <reactor/scheduler.hh>
+#include <reactor/http/Request.hh>
 
 #include <metrics/Reporter.hh>
+#include <metrics/services/Mixpanel.hh>
 
 ELLE_LOG_COMPONENT("metrics.services.Mixpanel");
 
@@ -138,19 +138,16 @@ namespace metrics
         .user_agent(metrics::Reporter::user_agent)
         .parameter("data", b64_metric.str());
 
-      static std::ofstream null{"/dev/null"};
-      auto rc = curly::make_get();
-
-      rc.option(CURLOPT_DEBUGFUNCTION, &Service::_curl_debug_callback);
-      rc.option(CURLOPT_DEBUGDATA, this);
-      rc.option(CURLOPT_TIMEOUT, 15);
-      rc.user_agent(metrics::Reporter::user_agent);
-      rc.url(elle::sprintf("http://%s:%d%s",
-                           this->info().host,
-                           this->info().port,
-                           request.url()));
-      rc.output(null);
-      curly::request r(std::move(rc));
+      auto url = elle::sprintf("http://%s:%d%s",
+                               this->info().host,
+                               this->info().port,
+                               request.url());
+      reactor::http::Request::Configuration cfg(15_sec);
+      cfg.header_add("User-Agent", metrics::Reporter::user_agent);
+      reactor::http::Request r(url,
+                               reactor::http::Method::GET,
+                               cfg);
+      reactor::wait(r);
     }
 
     std::string

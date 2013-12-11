@@ -7,7 +7,6 @@
 
 # include <elle/attribute.hh>
 # include <elle/HttpClient.hh>
-# include <curly/curly.hh>
 
 # include <string>
 # include <memory>
@@ -56,14 +55,6 @@ namespace metrics
     std::unique_ptr<elle::HTTPClient> _server;
     /// Timestamp of the last metric sent.
     elle::utility::Time _last_sent;
-
-    static
-    int
-    _curl_debug_callback(CURL* handle,
-                        curl_infotype type,
-                        char* what,
-                        size_t what_size,
-                        void* userptr);
 
   public:
     /// Construct a service with a primary key and its info.
