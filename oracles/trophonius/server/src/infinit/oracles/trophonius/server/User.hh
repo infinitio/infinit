@@ -3,7 +3,7 @@
 
 # include <queue>
 
-# include <json_spirit/value.h>
+# include <elle/json/json.hh>
 
 # include <reactor/Barrier.hh>
 # include <reactor/signal.hh>
@@ -64,11 +64,11 @@ namespace infinit
         `--------------*/
         public:
           void
-          notify(json_spirit::Value const& notification);
+          notify(elle::json::Object const& notification);
         private:
           void
           _handle_notifications();
-          ELLE_ATTRIBUTE(std::queue<json_spirit::Value>, notifications);
+          ELLE_ATTRIBUTE(std::queue<elle::json::Object>, notifications);
           ELLE_ATTRIBUTE(reactor::Signal, notification_available);
           ELLE_ATTRIBUTE(reactor::Thread, notifications_thread);
 

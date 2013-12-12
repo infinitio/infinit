@@ -101,29 +101,37 @@ extern "C" {
   /// Free a previously allocated hash.
   void gap_hash_free(char* h);
 
+  /// Fetch Meta message.
+  /// In some cases when Meta is down, it will have an associated message.
+  char const*
+  gap_meta_down_message(gap_State*);
+
   /// Login to meta.
-  gap_Status gap_login(gap_State* state,
-                       char const* email,
-                       char const* hash_password);
+  gap_Status
+  gap_login(gap_State* state,
+            char const* email,
+            char const* hash_password);
 
   /// Check is user is already logged.
   gap_Bool
   gap_logged_in(gap_State* state);
 
   /// Logout from meta.
-  gap_Status gap_logout(gap_State* state);
+  gap_Status
+  gap_logout(gap_State* state);
 
   /// @brief Register to meta.
   ///
   /// If the device name is not NULL, it will also create
   /// the local device with specified name. The password hash is obtained via
   /// gap_hash_password() function.
-  gap_Status gap_register(gap_State* state,
-                          char const* fullname,
-                          char const* email,
-                          char const* hash_password,
-                          char const* device_name,
-                          char const* activation_code);
+  gap_Status
+  gap_register(gap_State* state,
+               char const* fullname,
+               char const* email,
+               char const* hash_password,
+               char const* device_name,
+               char const* activation_code);
 
   //- Swaggers ----------------------------------------------------------------
 
@@ -160,12 +168,20 @@ extern "C" {
 
 
   // Kicked out callback.
-  // Triggered when your
+  // Triggered when your credentials are no longer valid.
   typedef void (*gap_kicked_out_callback_t)();
 
   gap_Status
   gap_kicked_out_callback(gap_State* state,
                           gap_kicked_out_callback_t cb);
+
+  /// Trophonius unavailable callback.
+  /// Triggered when you can connect to Meta but not to Trophonius.
+  typedef void (*gap_trophonius_unavailable_callback_t)();
+
+  gap_Status
+  gap_trophonius_unavailable_callback(gap_State* state,
+                                      gap_trophonius_unavailable_callback_t cb);
 
   /// New transaction callback.
   typedef void (*gap_transaction_callback_t)(uint32_t id,

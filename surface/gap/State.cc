@@ -1,39 +1,37 @@
-#include "State.hh"
-#include <metrics/Kind.hh>
+#include <fstream>
 
-#include <surface/gap/TransferMachine.hh>
-#include <surface/gap/SendMachine.hh>
-#include <surface/gap/ReceiveMachine.hh>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/uuid/nil_generator.hpp>
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/string_generator.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
-#include <common/common.hh>
-
-#include <papier/Identity.hh>
-#include <lune/Dictionary.hh>
+#include <openssl/sha.h>
 
 #include <elle/format/gzip.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
-#include <elle/os/path.hh>
 #include <elle/os/getenv.hh>
+#include <elle/os/path.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
-#include <surface/gap/metrics.hh>
+#include <reactor/http/exceptions.hh>
+
+#include <common/common.hh>
+
+#include <lune/Dictionary.hh>
+#include <metrics/Kind.hh>
 #include <metrics/services/Google.hh>
 #include <metrics/services/Infinit.hh>
 #include <metrics/services/Mixpanel.hh>
-
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/string_generator.hpp>
-#include <boost/uuid/nil_generator.hpp>
-#include <boost/uuid/random_generator.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
-#include <fstream>
-
-#include <openssl/sha.h>
-
+#include <papier/Identity.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/metrics.hh>
+#include <surface/gap/ReceiveMachine.hh>
+#include <surface/gap/SendMachine.hh>
+#include <surface/gap/TransferMachine.hh>
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
@@ -120,6 +118,9 @@ namespace surface
 
     Notification::Type State::KickedOut::type = NotificationType_KickedOut;
 
+    Notification::Type State::TrophoniusUnavailable::type =
+      NotificationType_TrophoniusUnavailable;
+
     /*-------------------------.
     | Construction/Destruction |
     `-------------------------*/
@@ -131,10 +132,19 @@ namespace surface
                  uint16_t apertus_port):
       _logger_intializer{},
       _meta{meta_host, meta_port},
-      _trophonius{trophonius_host, trophonius_port, [this] (bool status)
-        {
-          this->on_connection_changed(status);
-      }},
+      _meta_message{""},
+      _trophonius{
+        trophonius_host,
+        trophonius_port,
+        [this] (bool status)
+          {
+            this->on_connection_changed(status);
+          },
+        [this] (void)
+          {
+            this->on_reconnection_failed();
+          }
+      },
       _reporter{common::metrics::fallback_path()},
       _google_reporter{common::metrics::google_fallback_path()},
       _infinit_transaction_reporter{common::metrics::infinit_metrics_fallback_path()},
@@ -203,6 +213,93 @@ namespace surface
       return this->_meta;
     }
 
+    /*---------------------------.
+    | Server Connection Checking |
+    `---------------------------*/
+    bool
+    State::_meta_server_check(reactor::Duration timeout)
+    {
+      ELLE_TRACE_SCOPE("%s: fetching Meta status", *this);
+      bool result = false;
+      return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      {
+        scope.run_background("meta status check", [&]
+        {
+          try
+          {
+            auto meta_response = this->_meta.server_status();
+            if (meta_response.status)
+            {
+              ELLE_LOG("%s: Meta is reachable", *this);
+              result = true;
+            }
+            else
+            {
+              this->_meta_message = meta_response.message;
+              ELLE_WARN("%s: Meta down with message: %s",
+                        *this,
+                        this->_meta_message);
+              result = false;
+            }
+          }
+          catch (reactor::http::RequestError const& e)
+          {
+            ELLE_WARN("%s: unable to contact Meta: %s",
+                     *this,
+                     e.what());
+            result = false;
+          }
+          catch (elle::http::Exception const& e)
+          {
+            ELLE_WARN("%s: unable to contact Meta: %s",
+                     *this,
+                     e.what());
+            result = false;
+          }
+          catch (reactor::network::Exception const& e)
+          {
+            ELLE_WARN("%s: unable to contact Meta: %s",
+                     *this,
+                     e.what());
+            result = false;
+          }
+          catch (elle::Exception const& e)
+          {
+            ELLE_WARN("%s: error while checking meta connectivity: %s",
+                     *this,
+                     e.what());
+            result = false;
+            throw;
+          }
+        });
+        scope.wait(timeout);
+        return result;
+      };
+    }
+
+    bool
+    State::_meta_server_check()
+    {
+      return this->_meta_server_check(3_sec);
+    }
+
+    bool
+    State::_trophonius_server_check()
+    {
+      ELLE_TRACE("%s: check trophonius availablity", *this);
+      if (this->_trophonius.poke())
+      {
+        ELLE_LOG("%s: successfully poked Trophonius", *this);
+        return true;
+      }
+      else
+      {
+        ELLE_ERR("%s: Trophonius poke failed", *this);
+        return false;
+      }
+    }
+
+
     /*----------------------.
     | Login/Logout/Register |
     `----------------------*/
@@ -218,10 +315,33 @@ namespace surface
 
       reactor::Lock l(this->_login_mutex);
 
+      // Ensure we don't have an old Meta message
+      this->_meta_message.clear();
+
       if (this->logged_in())
         throw Exception(gap_already_logged_in, "already logged in");
 
       this->_cleanup();
+
+      if (!this->_meta_server_check())
+      {
+        if (this->_meta_message.empty())
+        {
+          throw Exception(gap_meta_unreachable,
+                          "Unable to contact Meta");
+        }
+        else
+        {
+          throw Exception(gap_meta_down_with_message,
+                          elle::sprintf("Meta down with message: %s",
+                                        this->_meta_message));
+        }
+      }
+      if (!this->_trophonius_server_check())
+      {
+        throw Exception(gap_trophonius_unreachable,
+                        "Unable to contact Trophonius");
+      }
 
       std::string lower_email = email;
 
@@ -346,11 +466,12 @@ namespace surface
                   catch (elle::Exception const&)
                   {
                     ELLE_ERR("%s: an error occured in trophonius, login is " \
-                             "requiered: %s", *this, elle::exception_string());
+                             "required: %s", *this, elle::exception_string());
                     // Loging out flush the message queue, which means that
                     // KickedOut will be the next event polled.
                     this->logout();
                     this->enqueue(KickedOut());
+                    this->enqueue(ConnectionStatus(false));
                     return;
                   }
 
@@ -685,6 +806,16 @@ namespace surface
     }
 
     void
+    State::on_reconnection_failed()
+    {
+      if (this->_meta_server_check())
+      {
+        ELLE_ERR("%s: able to connect to Meta but not Trophonius", *this);
+        this->enqueue(TrophoniusUnavailable());
+      }
+    }
+
+    void
     State::handle_notification(
       std::unique_ptr<infinit::oracles::trophonius::Notification>&& notif)
     {
@@ -794,6 +925,8 @@ namespace surface
           return out << "Kicked Out";
         case NotificationType_AvatarAvailable:
           return out << "Avatar Available";
+        case NotificationType_TrophoniusUnavailable:
+          return out << "Trophonius Unavailable";
       }
 
       return out;

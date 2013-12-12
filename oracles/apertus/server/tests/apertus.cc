@@ -1,5 +1,6 @@
 #include <boost/uuid/uuid_io.hpp>
 
+#include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
@@ -12,8 +13,6 @@
 
 #include <infinit/oracles/apertus/Apertus.hh>
 
-#include <infinit/oracles/apertus/utils/utils.hh>
-
 ELLE_LOG_COMPONENT("infinit.oracles.apertus.server.test")
 
 #ifdef VALGRIND
@@ -21,10 +20,6 @@ ELLE_LOG_COMPONENT("infinit.oracles.apertus.server.test")
 #else
 # define RUNNING_ON_VALGRIND 0
 #endif
-
-using infinit::oracles::apertus::server::pretty_print_json;
-using infinit::oracles::apertus::server::read_json;
-using infinit::oracles::apertus::server::write_json;
 
 class Meta
 {
@@ -105,9 +100,11 @@ public:
         std::string id = chunks[2];
         if (method == "PUT")
         {
-          auto json = read_json(*socket);
+          auto json_read = elle::json::read(*socket);
+          auto json = boost::any_cast<elle::json::Object>(json_read);
           BOOST_CHECK(json.find("port") != json.end());
-          this->_register(*socket, id, json.find("port")->second.getInt());
+          auto port = json.find("port")->second;
+          this->_register(*socket, id, boost::any_cast<int>(port));
         }
         else if (method == "DELETE")
         {
@@ -115,12 +112,15 @@ public:
         }
         else if (method == "POST")
         {
-          auto json = read_json(*socket);
+          auto json_read = elle::json::read(*socket);
+          auto json = boost::any_cast<elle::json::Object>(json_read);
           BOOST_CHECK(json.find("bandwidth") != json.end());
           BOOST_CHECK(json.find("number_of_transfers") != json.end());
+          auto bandwidth = json.find("bandwidth")->second;
+          auto number_of_transfers = json.find("number_of_transfers")->second;
           this->_update_bandwidth(*socket, id,
-            json.find("bandwidth")->second.getInt(),
-            json.find("number_of_transfers")->second.getInt());
+            boost::any_cast<int>(bandwidth),
+            boost::any_cast<int>(number_of_transfers));
         }
         this->response(*socket,
                        std::string("{\"success\": true }"));

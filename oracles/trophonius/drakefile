@@ -10,8 +10,6 @@ install = None
 
 def configure(elle,
               reactor,
-              json_spirit_lib,
-              json_spirit_config,
               python_common,
               meta_client,
               transaction_lib,
@@ -29,8 +27,6 @@ def configure(elle,
   server = drake.include('server',
                          elle = elle,
                          reactor = reactor,
-                         json_spirit_lib = json_spirit_lib,
-                         json_spirit_config = json_spirit_config,
                          meta_client = meta_client,
                          boost = boost,
                          python3 = python3,
@@ -49,7 +45,9 @@ def configure(elle,
                          boost = boost,
                          prefix = prefix,
                          cxx_toolkit = cxx_toolkit,
-                         cxx_config = cxx_config)
+                         cxx_config = cxx_config,
+                         valgrind = valgrind,
+  )
 
   for name in ('build', 'check', 'install'):
     globals()[name] = drake.Rule(name)

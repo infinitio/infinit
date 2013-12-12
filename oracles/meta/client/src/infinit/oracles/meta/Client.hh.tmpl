@@ -203,6 +203,12 @@ namespace infinit
         std::string fallback;
       };
 
+      struct ServerStatusResponse: Response
+      {
+        bool status;
+        std::string message;
+      };
+
       typedef elle::ConstWeakBuffer UserIcon;
 
       class Client: public elle::Printable
@@ -390,6 +396,10 @@ namespace infinit
         fallback(std::string const& _id) const;
 
       public:
+        ServerStatusResponse
+        server_status() const;
+
+      public:
         elle::Buffer
         icon(std::string const& user_id) const;
 
@@ -397,7 +407,7 @@ namespace infinit
         icon(std::string const& user_id,
              elle::ConstWeakBuffer const& icon) const;
 
-        /*----------.
+          /*----------.
           | Printable |
           `----------*/
       public:

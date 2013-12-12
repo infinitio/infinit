@@ -2,8 +2,6 @@
 #include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-#include <json_spirit/value.h>
-
 #include <elle/Lazy.hh>
 #include <elle/log.hh>
 
@@ -13,7 +11,6 @@
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 #include <infinit/oracles/trophonius/server/User.hh>
 #include <infinit/oracles/trophonius/server/exceptions.hh>
-#include <infinit/oracles/trophonius/server/utils.hh>
 
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.User")
 
@@ -107,17 +104,17 @@ namespace infinit
           public elle::Lazy<std::string>
         {
         public:
-          LazyJson(json_spirit::Value const& json):
-            Lazy(std::bind(&pretty_print_json, std::ref(json)))
+          LazyJson(boost::any const& object):
+            Lazy(std::bind(&elle::json::pretty_print, std::ref(object)))
           {}
         };
 
         void
-        User::notify(json_spirit::Value const& notification)
+        User::notify(elle::json::Object const& notification)
         {
           LazyJson json(notification);
           ELLE_DEBUG("%s: push notification: %s", *this,
-                     pretty_print_json(notification));
+                     elle::json::pretty_print(notification));
           this->_notifications.push(std::move(notification));
           this->_notification_available.signal();
         }
@@ -136,9 +133,12 @@ namespace infinit
               {
                 auto notification = std::move(this->_notifications.front());
                 this->_notifications.pop();
-                LazyJson json(notification);
+                // Construct any object so that json object isn't destroyed
+                // before being printed.
+                boost::any any(notification);
+                LazyJson json(any);
                 ELLE_TRACE("%s: send notification: %s", *this, json)
-                  write_json(*this->_socket, notification);
+                  elle::json::write(*this->_socket, notification);
               }
               this->_notification_available.wait();
             }
@@ -160,7 +160,8 @@ namespace infinit
           {
             while (true)
             {
-              auto json = read_json(*this->_socket);
+              auto json_read = elle::json::read(*this->_socket);
+              auto json = boost::any_cast<elle::json::Object>(json_read);
               ELLE_DUMP("%s: receive packet: %s", *this, LazyJson(json));
               if (json.find("notification_type") != json.end())
               {
@@ -174,17 +175,18 @@ namespace infinit
               {
                 try
                 {
-                  this->_user_id = json["user_id"].getString();
+                  this->_user_id = boost::any_cast<std::string>(json["user_id"]);
                   this->_device_id =
                     boost::uuids::string_generator()(
-                      json["device_id"].getString());
-                  this->_meta.session_id(json["session_id"].getString());
+                      boost::any_cast<std::string>(json["device_id"]));
+                  this->_meta.session_id(
+                    boost::any_cast<std::string>(json["session_id"]));
                 }
                 catch (std::runtime_error const& e)
                 {
                   throw ProtocolError(
                     elle::sprintf("ids must be strings: %s",
-                                  pretty_print_json(json)));
+                                  elle::json::pretty_print(json)));
                 }
                 ELLE_TRACE_SCOPE("%s: connect with user %s and device %s",
                                  *this, this->_user_id, this->_device_id);
@@ -224,11 +226,11 @@ namespace infinit
                 }
                 ELLE_TRACE("%s: authentified", *this);
                 this->_registered = true;
-                std::map<std::string, json_spirit::Value> response;
-                response["notification_type"] = json_spirit::Value(-666);
-                response["response_code"] = json_spirit::Value(200);
-                response["response_details"] = json_spirit::Value(res.error_details);
-                write_json(*this->_socket, response);
+                elle::json::Object response;
+                response["notification_type"] = int(-666);
+                response["response_code"] = int(200);
+                response["response_details"] = std::string(res.error_details);
+                elle::json::write(*this->_socket, response);
                 this->_authentified.open();
                 continue;
               }
@@ -236,13 +238,15 @@ namespace infinit
               {
                 ELLE_DEBUG_SCOPE("%s: handle poke", *this);
                 auto poke = json["poke"];
-                ELLE_DUMP("%s: poke: %s", *this, LazyJson(poke));
-                write_json(*this->_socket, poke);
+                ELLE_DUMP("%s: poke: %s",
+                          *this,
+                          boost::any_cast<std::string>(poke));
+                elle::json::write(*this->_socket, json);
               }
               else
                 throw ProtocolError(
                   elle::sprintf("unrecognized json message: %s",
-                                pretty_print_json(json)));
+                                elle::json::pretty_print(json)));
             }
           }
           catch (ProtocolError const& e)
@@ -252,11 +256,11 @@ namespace infinit
           catch (AuthenticationError const& e)
           {
             ELLE_WARN("%s: authentication error: %s", *this, e.what());
-            std::map<std::string, json_spirit::Value> response;
-            response["notification_type"] = json_spirit::Value(-666);
-            response["response_code"] = json_spirit::Value(403);
-            response["response_details"] = json_spirit::Value(e.what());
-            write_json(*this->_socket, response);
+            elle::json::Object response;
+            response["notification_type"] = int(-666);
+            response["response_code"] = int(403);
+            response["response_details"] = std::string(e.what());
+            elle::json::write(*this->_socket, response);
           }
           catch (reactor::network::Exception const& e)
           {
@@ -281,7 +285,9 @@ namespace infinit
             {
               this->_authentified.close();
             });
-          static std::string const ping_msg("{\"notification_type\": 208}\n");
+          static elle::json::Object const ping_msg(
+            {{std::string("notification_type"), int(208)}}
+          );
           try
           {
             while (true)
@@ -289,7 +295,7 @@ namespace infinit
               this->_authentified.wait();
               reactor::sleep(this->trophonius().ping_period());
               ELLE_DEBUG("%s: send ping", *this);
-              this->_socket->write(ping_msg);
+              elle::json::write(*this->_socket, ping_msg);
             }
           }
           catch (reactor::network::Exception const& e)

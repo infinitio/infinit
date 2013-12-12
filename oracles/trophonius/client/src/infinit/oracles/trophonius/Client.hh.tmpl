@@ -8,6 +8,9 @@
 
 # include <elle/format/json.hh>
 
+# include <reactor/Barrier.hh>
+# include <reactor/signal.hh>
+
 # include <functional>
 # include <queue>
 
@@ -133,6 +136,7 @@ namespace infinit
       {
       public:
         typedef std::function<void (bool)> ConnectCallback;
+        typedef std::function<void (void)> ReconnectPokeFailedCallback;
       private:
         struct Impl;
         std::unique_ptr<Impl> _impl;
@@ -140,11 +144,18 @@ namespace infinit
       public:
         Client(std::string const& server,
                uint16_t port,
-               ConnectCallback connect_callback);
+               ConnectCallback connect_callback,
+               ReconnectPokeFailedCallback reconnect_failed_callback);
 
         ~Client();
 
       public:
+        bool
+        poke() const;
+
+        bool
+        poke(reactor::Duration timeout) const;
+
         bool
         connect(std::string const& _id,
                 std::string const& session_id,
@@ -159,9 +170,11 @@ namespace infinit
 
         int
         reconnected() const;
+        ELLE_ATTRIBUTE_rx(reactor::Barrier, connected);
         ELLE_ATTRIBUTE_rw(boost::posix_time::time_duration, ping_period);
+        ELLE_ATTRIBUTE_rx(reactor::Signal, poked);
 
-        /*----------.
+          /*----------.
           | Printable |
           `----------*/
       public:

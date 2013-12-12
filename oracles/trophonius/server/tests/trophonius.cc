@@ -1,17 +1,17 @@
 #include <boost/uuid/uuid_io.hpp>
 
+#include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
-#include <reactor/Scope.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/Scope.hh>
 #include <reactor/thread.hh>
 
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
-#include <infinit/oracles/trophonius/server/utils.hh>
 
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.test")
 
@@ -20,10 +20,6 @@ ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.test")
 #else
 # define RUNNING_ON_VALGRIND 0
 #endif
-
-using infinit::oracles::trophonius::server::pretty_print_json;
-using infinit::oracles::trophonius::server::read_json;
-using infinit::oracles::trophonius::server::write_json;
 
 class Meta
 {
@@ -141,9 +137,11 @@ public:
         {
           if (method == "PUT")
           {
-            auto json = read_json(*socket);
+            auto json_read = elle::json::read(*socket);
+            auto json = boost::any_cast<elle::json::Object>(json_read);
             BOOST_CHECK(json.find("port") != json.end());
-            this->_register(*socket, id, json.find("port")->second.getInt());
+            auto port = boost::any_cast<int>(json.find("port")->second);
+            this->_register(*socket, id, port);
           }
           else if (method == "DELETE")
             this->_unregister(*socket, id);
@@ -232,18 +230,20 @@ public:
   {
     try
     {
-      json_spirit::Object response;
+      elle::json::Object response;
       response["user_id"] = boost::lexical_cast<std::string>(user);
       response["device_id"] = boost::lexical_cast<std::string>(device);
-      json_spirit::Object notification;
+      elle::json::Object notification;
       notification["notification_type"] = type;
       response["notification"] = notification;
       // XXX: hardcoded trophonius
       auto port = this->_trophoniuses.begin()->second.first;
-      ELLE_LOG("%s: send notification: %s", *this, pretty_print_json(response))
+      ELLE_LOG("%s: send notification: %s",
+               *this,
+               elle::json::pretty_print(response));
       {
         reactor::network::TCPSocket notify("127.0.0.1", port);
-        write_json(notify, response);
+        elle::json::write(notify, response);
       }
     }
     catch (...)
@@ -283,10 +283,11 @@ static
 int
 read_notification(reactor::network::TCPSocket& socket)
 {
-  auto response = read_json(socket);
+  auto response_read = elle::json::read(socket);
+  auto response = boost::any_cast<elle::json::Object>(response_read);
   auto it = response.find("notification_type");
   BOOST_CHECK(it != response.end());
-  return it->second.getInt();
+  return boost::any_cast<int>(it->second);
 }
 
 static
@@ -300,18 +301,24 @@ static
 void
 check_authentication_success(reactor::network::TCPSocket& socket)
 {
-  auto json = read_json(socket);
-  BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
-  BOOST_CHECK_EQUAL(json["response_code"].getInt(), 200);
+  auto json_read = elle::json::read(socket);
+  auto json = boost::any_cast<elle::json::Object>(json_read);
+  auto notification_type = json["notification_type"];
+  BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), -666);
+  auto response_code = json["response_code"];
+  BOOST_CHECK_EQUAL(boost::any_cast<int>(response_code), 200);
 }
 
 static
 void
 check_authentication_failure(reactor::network::TCPSocket& socket)
 {
-  auto json = read_json(socket);
-  BOOST_CHECK_EQUAL(json["notification_type"].getInt(), -666);
-  BOOST_CHECK_EQUAL(json["response_code"].getInt(), 403);
+  auto json_read = elle::json::read(socket);
+  auto json = boost::any_cast<elle::json::Object>(json_read);
+  auto notification_type = json["notification_type"];
+  BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), -666);
+  auto response_code = json["response_code"];
+  BOOST_CHECK_EQUAL(boost::any_cast<int>(response_code), 403);
 }
 
 /*--------------------.
@@ -363,8 +370,10 @@ ELLE_TEST_SCHEDULED(notifications)
       authentify(socket, user, device);
       check_authentication_success(socket);
       b.open();
-      auto notif = read_json(socket);
-      BOOST_CHECK_EQUAL(notif["notification_type"].getInt(),
+      auto notif_read = elle::json::read(socket);
+      auto notif = boost::any_cast<elle::json::Object>(notif_read);
+      auto notification_type = notif["notification_type"];
+      BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type),
                         user * 10 + device);
     };
     reactor::Barrier b00;
@@ -513,8 +522,10 @@ ELLE_TEST_SCHEDULED(wait_authentified)
     check_authentication_success(socket);
     // Check we receive the notification after.
     {
-      auto json = read_json(socket);
-      BOOST_CHECK_EQUAL(json["notification_type"].getInt(), 42);
+      auto json_read = elle::json::read(socket);
+      auto json = boost::any_cast<elle::json::Object>(json_read);
+      auto notification_type = json["notification_type"];
+      BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), 42);
     }
   }
 }
@@ -588,7 +599,7 @@ ELLE_TEST_SCHEDULED(ping_timeout)
   for (int i = 0; i < 2; ++i)
     read_ping(socket);
   // Chek we were disconnected.
-  BOOST_CHECK_THROW(read_json(socket), reactor::network::ConnectionClosed);
+  BOOST_CHECK_THROW(elle::json::read(socket), reactor::network::ConnectionClosed);
   BOOST_CHECK(t.find(id) == t.end());
 }
 
@@ -632,7 +643,8 @@ ELLE_TEST_SCHEDULED(replace)
                            "00000000-0000-0000-0000-000000000001");
     // Check the first socket was disconnected.
     ELLE_LOG("check the old client is disconnected")
-      BOOST_CHECK_THROW(read_json(socket1), reactor::network::ConnectionClosed);
+      BOOST_CHECK_THROW(elle::json::read(socket1),
+                        reactor::network::ConnectionClosed);
     ELLE_LOG("read notification from the new client")
       BOOST_CHECK_EQUAL(read_notification(socket2), 2);
   }

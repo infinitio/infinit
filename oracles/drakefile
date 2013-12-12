@@ -59,18 +59,6 @@ def configure(elle,
                          cxx_toolkit,
                          lib_cxx_config)
 
-  json_spirit_config = drake.cxx.Config()
-  json_spirit_config.add_system_include_path('json-spirit/include')
-
-  json_spirit_sources = drake.nodes('json-spirit/src/reader.cpp',
-                                    'json-spirit/src/value.cpp',
-                                    'json-spirit/src/writer.cpp')
-
-  json_spirit_lib = drake.cxx.DynLib('lib/json_spirit',
-                                     json_spirit_sources,
-                                     cxx_toolkit,
-                                     local_cxx_config + json_spirit_config)
-
   meta = drake.include('meta',
                        elle = elle,
                        reactor = reactor,
@@ -86,8 +74,6 @@ def configure(elle,
   trophonius = drake.include('trophonius',
                              elle = elle,
                              reactor = reactor,
-                             json_spirit_lib = json_spirit_lib,
-                             json_spirit_config = json_spirit_config,
                              python_common = python_built,
                              boost = boost,
                              python3 = python3,
@@ -103,8 +89,6 @@ def configure(elle,
   apertus = drake.include('apertus',
                           elle = elle,
                           reactor = reactor,
-                          json_spirit_lib = json_spirit_lib,
-                          json_spirit_config = json_spirit_config,
                           protocol = protocol,
                           meta_client = meta.client,
                           boost = boost,

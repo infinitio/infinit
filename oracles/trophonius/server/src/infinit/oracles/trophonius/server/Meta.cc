@@ -1,5 +1,6 @@
 #include <boost/uuid/string_generator.hpp>
 
+#include <elle/json/json.hh>
 #include <elle/log.hh>
 
 #include <reactor/network/exception.hh>
@@ -8,7 +9,6 @@
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 #include <infinit/oracles/trophonius/server/User.hh>
 #include <infinit/oracles/trophonius/server/exceptions.hh>
-#include <infinit/oracles/trophonius/server/utils.hh>
 
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.Meta")
 
@@ -38,25 +38,31 @@ namespace infinit
         {
           try
           {
-            auto const& json = read_json(*this->_socket);
+            auto const& json_read = elle::json::read(*this->_socket);
+            auto const& json = boost::any_cast<elle::json::Object>(json_read);
 
-            static auto mandatory_fields =
-              {"notification", "device_id", "user_id"};
+            static std::vector<std::string> mandatory_fields(
+              {"notification", "device_id", "user_id"}
+            );
 
             for (auto const& field: mandatory_fields)
               if (json.find(field) == json.end())
                 throw ProtocolError(
                   elle::sprintf("mandatory field %s missing", field));
             auto const& device = json.find("device_id")->second;
-            auto const& user_id = json.find("user_id")->second;
-            if (user_id.type() != json_spirit::Value::STRING_TYPE)
-              throw ProtocolError("user id is not a string");
-            if (device.type() != json_spirit::Value::STRING_TYPE)
+            if (device.type() != typeid(std::string))
               throw ProtocolError("device id is not a string");
+            auto const& user_id = json.find("user_id")->second;
+            if (user_id.type() != typeid(std::string))
+              throw ProtocolError("user id is not a string");
             User& user = this->trophonius().user(
-              user_id.getString(),
-              boost::uuids::string_generator()(device.getString()));
-            user.notify(json_spirit::Value(json.find("notification")->second));
+              boost::any_cast<std::string>(user_id),
+              boost::uuids::string_generator()(
+                boost::any_cast<std::string>(device)));
+            auto notification = json.find("notification")->second;
+            if (notification.type() != typeid(elle::json::Object))
+              throw ProtocolError("notification is not a dictionary");
+            user.notify(boost::any_cast<elle::json::Object>(notification));
           }
           catch (ProtocolError const& e)
           {
