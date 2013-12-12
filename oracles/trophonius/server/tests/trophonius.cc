@@ -595,11 +595,23 @@ ELLE_TEST_SCHEDULED(ping_timeout)
   check_authentication_success(socket);
   BOOST_CHECK(t.find(id) != t.end());
   reactor::sleep(ping * 3);
-  // Read two pings
-  for (int i = 0; i < 2; ++i)
-    read_ping(socket);
-  // Chek we were disconnected.
-  BOOST_CHECK_THROW(elle::json::read(socket), reactor::network::ConnectionClosed);
+  // Read some pings until the conncetion is closed. The number of pings will
+  // be determined by timing but will be three or four.
+  bool connection_closed = false;
+  for (int i = 0; i < 4; i++)
+  {
+    try
+    {
+      read_ping(socket);
+    }
+    catch (reactor::network::ConnectionClosed const& exception)
+    {
+      connection_closed = true;
+      break;
+    }
+  }
+  // Check we were disconnected.
+  BOOST_CHECK(connection_closed);
   BOOST_CHECK(t.find(id) == t.end());
 }
 
