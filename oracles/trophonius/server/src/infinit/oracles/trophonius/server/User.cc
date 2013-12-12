@@ -133,7 +133,10 @@ namespace infinit
               {
                 auto notification = std::move(this->_notifications.front());
                 this->_notifications.pop();
-                LazyJson json(notification);
+                // Construct any object so that json object isn't destroyed
+                // before being printed.
+                boost::any any(notification);
+                LazyJson json(any);
                 ELLE_TRACE("%s: send notification: %s", *this, json)
                   elle::json::write(*this->_socket, notification);
               }
