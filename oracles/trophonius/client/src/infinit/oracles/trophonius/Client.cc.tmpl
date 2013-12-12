@@ -524,34 +524,36 @@ namespace infinit
               }
               else // timed out or we got the wrong response
               {
-                ELLE_ERR("%s: wrong response or timeout on reconnection", *this);
+                ELLE_WARN("%s: wrong response or timeout on reconnection",
+                          *this);
                 this->reconnect_failed_callback();
               }
             }
             catch (reactor::network::ResolutionError const& e)
             {
-              ELLE_WARN("%s: no connection to network for reconnection, will retry: %s",
+              ELLE_WARN("%s: no connection to network for reconnection: %s",
                         *this,
                         e.what());
             }
             catch (reactor::network::Exception const& e)
             {
-              ELLE_ERR("%s: network error on reconnection: %s",
+              ELLE_WARN("%s: network error on reconnection: %s",
                         *this,
                         e.what());
             }
             catch (elle::json::ParserError const& e)
             {
-              ELLE_ERR("%s: JSON parsing error during reconnect: %s",
+              ELLE_WARN("%s: JSON parsing error during reconnect: %s",
                        *this,
                        e.what());
             }
             catch (elle::Exception const&)
             {
               ELLE_ERR("%s: unable to reconnect to trophonius: %s",
-                        *this, elle::exception_string());
+                        *this,
+                        elle::exception_string());
             }
-            ELLE_ERR("%s: failed to reconnect to trophonius", *this);
+            ELLE_LOG("%s: will try to reconnect in 20 seconds", *this);
             this->reconnect_failed_callback();
             reactor::Scheduler::scheduler()->current()->sleep(20_sec);
           }
