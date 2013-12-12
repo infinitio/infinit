@@ -1,1 +1,11 @@
-../elle/farm/build
+#!/usr/bin/env python3
+
+import os
+import subprocess
+import sys
+
+arch, osyst, compiler = os.environ['BUILDFARM_NAME'].split('-')
+os.chdir('%s' % os.environ['DIR_BUILD'])
+if subprocess.call(['python3', 'drake', '-j', '3',
+                    '//gap/build', '//oracles/build']) != 0:
+  exit(1)
