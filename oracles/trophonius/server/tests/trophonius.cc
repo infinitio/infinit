@@ -359,7 +359,7 @@ ELLE_TEST_SCHEDULED(notifications)
     0,
     "localhost",
     meta.port(),
-    8080, // XXX: hardcoded port
+    0,
     60_sec,
     300_sec);
   elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
