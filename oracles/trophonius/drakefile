@@ -52,3 +52,4 @@ def configure(elle,
   for name in ('build', 'check', 'install'):
     globals()[name] = drake.Rule(name)
     globals()[name] << getattr(server, name)
+    globals()[name] << getattr(client, name)
