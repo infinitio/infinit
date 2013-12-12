@@ -835,7 +835,7 @@ extern "C"
 
     return run<gap_Status>(
       state,
-      "trophonius unavaiable callback",
+      "trophonius unavailable callback",
       [&] (surface::gap::State& state) -> gap_Status
       {
         state.attach_callback<surface::gap::State::TrophoniusUnavailable>(cpp_cb);
