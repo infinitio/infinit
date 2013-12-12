@@ -63,13 +63,15 @@ namespace surface
       `--------*/
       ELLE_ATTRIBUTE(infinit::oracles::meta::Client, meta);
       ELLE_ATTRIBUTE_R(std::string, meta_message);
-      ELLE_ATTRIBUTE(int, meta_check_count);
       ELLE_ATTRIBUTE_R(infinit::oracles::trophonius::Client, trophonius);
 
       infinit::oracles::meta::Client const&
       meta(bool authentication_required = true) const;
 
     private:
+      bool
+      _meta_server_check(reactor::Duration);
+
       bool
       _meta_server_check();
 

@@ -135,7 +135,6 @@ namespace surface
       _logger_intializer{},
       _meta{meta_host, meta_port},
       _meta_message{""},
-      _meta_check_count{0},
       _trophonius{
         trophonius_host,
         trophonius_port,
@@ -220,50 +219,70 @@ namespace surface
     | Server Connection Checking |
     `---------------------------*/
     bool
+    State::_meta_server_check(reactor::Duration timeout)
+    {
+      ELLE_TRACE_SCOPE("%s: fetching Meta status", *this);
+      bool result = false;
+      return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      {
+        scope.run_background("meta status check", [&]
+        {
+          try
+          {
+            auto meta_response = this->_meta.server_status();
+            if (meta_response.status)
+            {
+              ELLE_LOG("%s: Meta is reachable", *this);
+              result = true;
+            }
+            else
+            {
+              this->_meta_message = meta_response.message;
+              ELLE_WARN("%s: Meta down with message: %s",
+                        *this,
+                        this->_meta_message);
+              result = false;
+            }
+          }
+          catch (reactor::http::RequestError const& e)
+          {
+            ELLE_WARN("%s: unable to contact Meta: %s",
+                     *this,
+                     e.what());
+            result = false;
+          }
+          catch (elle::http::Exception const& e)
+          {
+            ELLE_WARN("%s: unable to contact Meta: %s",
+                     *this,
+                     e.what());
+            result = false;
+          }
+          catch (reactor::network::Exception const& e)
+          {
+            ELLE_WARN("%s: unable to contact Meta: %s",
+                     *this,
+                     e.what());
+            result = false;
+          }
+          catch (elle::Exception const& e)
+          {
+            ELLE_WARN("%s: error while checking meta connectivity: %s",
+                     *this,
+                     e.what());
+            result = false;
+            throw;
+          }
+        });
+        scope.wait(timeout);
+        return result;
+      };
+    }
+
+    bool
     State::_meta_server_check()
     {
-      ELLE_TRACE("%s: fetching Meta status", *this);
-      try
-      {
-        auto res = this->_meta.server_status();
-        if (res.status)
-        {
-          ELLE_LOG("%s: Meta is reachable", *this);
-          return true;
-        }
-        else
-        {
-          this->_meta_message = res.message;
-          ELLE_WARN("%s: Meta down with message: %s",
-                    *this,
-                    this->_meta_message);
-          return false;
-        }
-      }
-      catch (elle::http::Exception const& e)
-      {
-        auto cooldown = 15_sec;
-        if (++this->_meta_check_count >= 3)
-        {
-          ELLE_ERR("%s: unable to contact Meta: %s",
-                   *this,
-                   e.what());
-          return false;
-        }
-        ELLE_WARN("%s: unable to fetch Meta status will try again in %s seconds",
-                  *this,
-                  cooldown.total_seconds());
-        reactor::sleep(cooldown);
-        this->_meta_server_check();
-      }
-      catch (elle::Exception const& e)
-      {
-        ELLE_ERR("%s: error while checking meta connectivity: %s",
-                 *this,
-                 e.what());
-        throw;
-      }
-      return false;
+      return this->_meta_server_check(3_sec);
     }
 
     bool
