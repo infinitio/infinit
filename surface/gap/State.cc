@@ -1,39 +1,37 @@
-#include "State.hh"
-#include <metrics/Kind.hh>
+#include <fstream>
 
-#include <surface/gap/TransferMachine.hh>
-#include <surface/gap/SendMachine.hh>
-#include <surface/gap/ReceiveMachine.hh>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/uuid/nil_generator.hpp>
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/string_generator.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
-#include <common/common.hh>
-
-#include <papier/Identity.hh>
-#include <lune/Dictionary.hh>
+#include <openssl/sha.h>
 
 #include <elle/format/gzip.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
-#include <elle/os/path.hh>
 #include <elle/os/getenv.hh>
+#include <elle/os/path.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
-#include <surface/gap/metrics.hh>
+#include <reactor/http/exceptions.hh>
+
+#include <common/common.hh>
+
+#include <lune/Dictionary.hh>
+#include <metrics/Kind.hh>
 #include <metrics/services/Google.hh>
 #include <metrics/services/Infinit.hh>
 #include <metrics/services/Mixpanel.hh>
-
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/string_generator.hpp>
-#include <boost/uuid/nil_generator.hpp>
-#include <boost/uuid/random_generator.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
-#include <fstream>
-
-#include <openssl/sha.h>
-
+#include <papier/Identity.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/metrics.hh>
+#include <surface/gap/ReceiveMachine.hh>
+#include <surface/gap/SendMachine.hh>
+#include <surface/gap/TransferMachine.hh>
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
@@ -468,7 +466,7 @@ namespace surface
                   catch (elle::Exception const&)
                   {
                     ELLE_ERR("%s: an error occured in trophonius, login is " \
-                             "requiered: %s", *this, elle::exception_string());
+                             "required: %s", *this, elle::exception_string());
                     // Loging out flush the message queue, which means that
                     // KickedOut will be the next event polled.
                     this->logout();
