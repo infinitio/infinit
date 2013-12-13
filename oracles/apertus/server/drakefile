@@ -70,7 +70,10 @@ def configure(elle,
 
   test_exe = drake.cxx.Executable('tests/apertus',
                                   test_sources +
-                                  [library, protocol_lib, reactor_lib],
+                                  [library,
+                                   protocol_lib,
+                                   reactor_lib,
+                                   elle_lib],
                                   cxx_toolkit,
                                   test_cxx_config)
   test = drake.Runner(exe = test_exe)
