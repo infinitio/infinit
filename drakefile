@@ -25,7 +25,7 @@ def configure(cxx_toolkit = None,
   # Rules
   install = drake.Rule('install')
 
-  prefix = drake.Path(prefix)
+  prefix = drake.Path(os.path.abspath(prefix))
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
