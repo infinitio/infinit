@@ -22,6 +22,9 @@ def configure(cxx_toolkit = None,
               enable_debug = True,
               valgrind = None):
 
+  # Rules
+  install = drake.Rule('install')
+
   prefix = drake.Path(prefix)
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
@@ -1013,7 +1016,9 @@ def configure(cxx_toolkit = None,
   gap_build = drake.Rule('gap/build')
   gap_tests = drake.Rule('gap/tests')
   gap_check = drake.TestSuite('gap/check')
+  gap_install = drake.TestSuite('gap/install')
   build << gap_build
+  install << gap_install
 
   gap_generator = drake.node('surface/gap/metrics_generator.py')
   class GAPGenerator(drake.Builder):
@@ -1126,6 +1131,11 @@ def configure(cxx_toolkit = None,
   gap_satellites_bin.add_local_include_path('oracles/meta/client/src')
   gap_satellites_bin.add_local_include_path('oracles/trophonius/client/src')
 
+  gap_install << drake.install(gap_lib, prefix / 'lib',
+                               strip_prefix = True)
+  gap_install << drake.install(gap_python_lib, prefix / 'lib/python',
+                               strip_prefix = True)
+
   def satellite(name, dependencies):
     fmt = (name, name.capitalize())
     sources = [
@@ -1206,7 +1216,6 @@ def configure(cxx_toolkit = None,
                           cxx_config = cxx_config)
 
   # Install
-  install = drake.Rule('install')
   install << drake.install(infinit_bin, prefix)
   install << drake.install(infinit_libs, prefix)
 

@@ -56,7 +56,7 @@ def configure(elle,
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('../lib')
-  lib = drake.cxx.DynLib('lib/trophonius',
+  lib = drake.cxx.DynLib('lib/trophonius-client',
                          sources + [reactor_lib, elle_lib, transaction_lib],
                          cxx_toolkit,
                          lib_cxx_config)
