@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import infinit.oracles.meta.server
+
 import http.cookies
 import os
 import pymongo
@@ -15,7 +17,7 @@ import json
 import mongobox
 
 import bottle
-import infinit.oracles.meta
+
 from uuid import uuid4, UUID
 
 class HTTPException(Exception):
@@ -103,7 +105,7 @@ class Meta:
     self.__database = client.meta
     def run():
       try:
-        self.__meta = infinit.oracles.meta.Meta(
+        self.__meta = infinit.oracles.meta.server.Meta(
           mongo_port = self.__mongo.port,
           enable_emails = self.__enalbe_emails)
         self.__meta.catchall = False
