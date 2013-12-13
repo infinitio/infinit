@@ -4,9 +4,9 @@ import os
 import subprocess
 import sys
 
-arch, osyst, compiler = os.environ['BUILDFARM_NAME'].split('-')
+import targets
+
 os.chdir(os.environ['DIR_BUILD'])
-if subprocess.call(['python3', 'drake',
-                    '//gap/install', '//oracles/install',
-                    '--prefix=../%s' % os.environ['DIR_INSTALL']]) != 0:
-  exit(1)
+subprocess.check_call(
+  ['python3', 'drake', '--prefix=../%s' % os.environ['DIR_INSTALL']]
+  + list(targets.targets('install')))

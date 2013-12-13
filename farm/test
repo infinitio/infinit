@@ -4,10 +4,8 @@ import os
 import subprocess
 import sys
 
-arch, osyst, compiler = os.environ['BUILDFARM_NAME'].split('-')
+import targets
+
 os.chdir(os.environ['DIR_BUILD'])
-if subprocess.call(['python3', 'drake',
-                    '//elle/check',
-                    '//oracles/check',
-                    '//gap/check']) != 0:
-  exit(1)
+subprocess.check_call(
+    ['python3', 'drake'] + list(targets.targets('check')))
