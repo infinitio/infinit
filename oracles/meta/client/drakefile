@@ -99,6 +99,7 @@ def configure(elle,
 
   tests_cxx_config = drake.cxx.Config(local_cxx_config)
   tests_cxx_config += boost.config_test()
+  tests_cxx_config += boost.config_system()
   tests_cxx_config.lib_path_runtime('../lib')
 
   test_bin = drake.cxx.Executable('tests/meta_client',
