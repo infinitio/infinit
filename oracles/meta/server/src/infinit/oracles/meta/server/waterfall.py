@@ -9,7 +9,7 @@ import time
 import pymongo
 
 import elle.log
-from infinit.oracles.meta.utils import api, require_logged_in
+from infinit.oracles.meta.server.utils import api, require_logged_in
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Waterfall'
 
