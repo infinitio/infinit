@@ -1011,6 +1011,8 @@ def configure(cxx_toolkit = None,
   ## --- ##
 
   gap_build = drake.Rule('gap/build')
+  gap_tests = drake.Rule('gap/tests')
+  gap_check = drake.TestSuite('gap/check')
   build << gap_build
 
   gap_generator = drake.node('surface/gap/metrics_generator.py')
