@@ -3,10 +3,6 @@
 
 # include <cstring>
 
-# include <boost/system/error_code.hpp>
-# include <boost/asio/signal_set.hpp>
-# include <boost/signals.hpp>
-
 # include <elle/Backtrace.hh>
 
 # include <reactor/fwd.hh>

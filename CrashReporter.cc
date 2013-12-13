@@ -1,11 +1,12 @@
-#include <CrashReporter.hh>
-
 #include <fstream>
 #include <map>
 #include <signal.h>
 
-#include <boost/asio/io_service.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/signal_set.hpp>
+#include <boost/signals.hpp>
+#include <boost/system/error_code.hpp>
 
 #include <elle/format/json.hh>
 #include <elle/log.hh>
@@ -17,6 +18,7 @@
 #include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
 
+#include <CrashReporter.hh>
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("elle.CrashReporter");
