@@ -440,6 +440,7 @@ def configure(cxx_toolkit = None,
     papier_cxx_config
   )
 
+  papier_python_lib = None
   if python_enabled:
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     papier_python_sources = drake.nodes('papier/python.cc')
@@ -1085,6 +1086,7 @@ def configure(cxx_toolkit = None,
   gap_build << gap_lib
 
   # GAP python
+  gap_python_lib = None
   if python_enabled:
     gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     gap_python_cxx_config += python3
@@ -1133,8 +1135,9 @@ def configure(cxx_toolkit = None,
 
   gap_install << drake.install(gap_lib, prefix / 'lib',
                                strip_prefix = True)
-  gap_install << drake.install(gap_python_lib, prefix / 'lib/python',
-                               strip_prefix = True)
+  if gap_python_lib is not None:
+    gap_install << drake.install(gap_python_lib, prefix / 'lib/python',
+                                 strip_prefix = True)
 
   def satellite(name, dependencies):
     fmt = (name, name.capitalize())
