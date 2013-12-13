@@ -93,6 +93,7 @@ def configure(elle,
   cxx_config_tests = drake.cxx.Config(local_cxx_config)
   cxx_config_tests.lib_path_runtime('../lib')
   cxx_config_tests += boost.config_test()
+  cxx_config_tests += boost.config_system()
   if valgrind is not None:
     cxx_config_tests.define('VALGRIND')
   for name in ['trophonius']:
