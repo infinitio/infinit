@@ -47,19 +47,25 @@ def configure(elle,
       'src/infinit/oracles/trophonius/fwd.hh',
     )
 
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
-                        elle.lib_dynamic.name().dirname())
-  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
-                           reactor.lib_dynamic.name().dirname())
-  transaction_lib = drake.copy(transaction_lib, 'lib',
-                               transaction_lib.name().dirname())
+  if cxx_toolkit.os is drake.os.windows:
+    Library = drake.cxx.StaticLib
+    elle_lib = elle.lib_static
+    reactor_lib = reactor.lib_static
+  else:
+    Library = drake.cxx.DynLib
+    elle_lib = drake.copy(elle.lib_dynamic, 'lib',
+                          strip_prefix = True)
+    reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+                             strip_prefix = True)
+    transaction_lib = drake.copy(transaction_lib, 'lib',
+                                 strip_prefix = True)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('../lib')
-  lib = drake.cxx.DynLib('lib/trophonius-client',
-                         sources + [reactor_lib, elle_lib, transaction_lib],
-                         cxx_toolkit,
-                         lib_cxx_config)
+  lib = Library('lib/trophonius-client',
+                sources + [reactor_lib, elle_lib, transaction_lib],
+                cxx_toolkit,
+                lib_cxx_config)
   config = lib_cxx_config
   build << lib
 

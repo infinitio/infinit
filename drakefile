@@ -67,9 +67,9 @@ def configure(cxx_toolkit = None,
   elif sys.platform == 'win32' or sys.platform == 'cygwin':
     platform_defines = ("INFINIT_WINDOWS",)
     cxx_config.define('INFINIT_WINDOWS')
-    cxx_config.lib('Shlwapi')
+    cxx_config.lib('shlwapi')
     cxx_config.lib('ws2_32')
-    cxx_config.lib('Gdi32')
+    cxx_config.lib('gdi32')
     cxx_config.lib('mswsock')
   elif sys.platform == 'darwin':
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
@@ -1058,26 +1058,25 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost.config_signals()
   gap_cxx_config_libs += boost.config_thread()
   if cxx_toolkit.os == drake.os.windows:
-    gap_cxx_config_libs.lib('Gdi32')
-    gap_cxx_config_libs.lib('Mswsock')
+    gap_cxx_config_libs.lib('shlwapi')
+    gap_cxx_config_libs.lib('ws2_32')
+    gap_cxx_config_libs.lib('gdi32')
+    gap_cxx_config_libs.lib('mswsock')
   gap_lib = drake.cxx.DynLib(
     'lib/gap',
     gap_sources + [
-      elle_lib,
-      reactor_lib,
-      lune_lib,
-      papier_lib,
-      station_lib,
-      frete_lib,
-      metrics_lib,
-      crash_lib,
-      # hole_lib,
-      elle.reactor.library_coroutine,
-      nucleus_lib,
-      protocol_lib,
-      cryptography_lib,
       trophonius_client_lib,
       meta_client_lib,
+      frete_lib,
+      station_lib,
+      metrics_lib,
+      crash_lib,
+      papier_lib,
+      nucleus_lib,
+      protocol_lib,
+      elle_lib,
+      reactor_lib,
+      cryptography_lib,
     ],
     cxx_toolkit,
     gap_cxx_config_libs

@@ -48,19 +48,26 @@ def configure(elle,
       'src/infinit/oracles/meta/Admin.hh',
     )
 
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
-                        strip_prefix = True)
-  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
-                           strip_prefix = True)
-  transaction_lib = drake.copy(transaction_lib, 'lib',
-                               strip_prefix = True)
+  if cxx_toolkit.os is drake.os.windows:
+    Library = drake.cxx.StaticLib
+    elle_lib = elle.lib_static
+    reactor_lib = reactor.lib_static
+  else:
+    Library = drake.cxx.DynLib
+    elle_lib = drake.copy(elle.lib_dynamic, 'lib',
+                          strip_prefix = True)
+    reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+                             strip_prefix = True)
+    transaction_lib = drake.copy(transaction_lib, 'lib',
+                                 strip_prefix = true)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('../lib')
-  lib = drake.cxx.DynLib('lib/metaclient',
-                         sources + [reactor_lib, elle_lib, transaction_lib],
-                         cxx_toolkit,
-                         lib_cxx_config)
+  lib = Library(
+    'lib/metaclient',
+    sources + [reactor_lib, elle_lib, transaction_lib],
+    cxx_toolkit,
+    lib_cxx_config)
 
   config = lib_cxx_config
 

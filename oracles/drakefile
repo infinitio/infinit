@@ -54,10 +54,15 @@ def configure(elle,
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('.')
-  lib = drake.cxx.DynLib('lib/transaction',
-                         sources + [elle_lib],
-                         cxx_toolkit,
-                         lib_cxx_config)
+  if cxx_toolkit.os is drake.os.windows:
+    Library = drake.cxx.StaticLib
+  else:
+    Library = drake.cxx.DynLib
+
+  lib = Library('lib/transaction',
+                sources + [elle_lib],
+                cxx_toolkit,
+                lib_cxx_config)
 
   meta = drake.include('meta',
                        elle = elle,
