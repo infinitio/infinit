@@ -59,7 +59,7 @@ def configure(elle,
     reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
                              strip_prefix = True)
     transaction_lib = drake.copy(transaction_lib, 'lib',
-                                 strip_prefix = true)
+                                 strip_prefix = True)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('../lib')
