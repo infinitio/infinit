@@ -7,8 +7,6 @@
 
 #include <common/common.hh>
 
-#include <lune/Lune.hh>
-
 #include <elle/log.hh>
 #include <elle/elle.hh>
 #include <elle/finally.hh>
@@ -80,28 +78,8 @@ extern "C"
 
   /// - gap ctor & dtor -----------------------------------------------------
 
-  static
-  bool
-  initialize_lune()
-  {
-    static bool initialized = false;
-    if (!initialized)
-    {
-      if (lune::Lune::Initialize() == elle::Status::Error)
-      {
-        ELLE_ERR("Cannot initialize root components");
-        return initialized;
-      }
-      initialized = true;
-    }
-    return initialized;
-  }
-
   gap_State* gap_new()
   {
-    if (!initialize_lune())
-      return nullptr;
-
     try
     {
       gap_State* state = new gap_State();
@@ -134,12 +112,6 @@ extern "C"
                                   char const* apertus_host,
                                   unsigned short apertus_port)
   {
-    if (!initialize_lune())
-      return nullptr;
-
-    if (!initialize_lune())
-      return nullptr;
-
     try
     {
       gap_State* state = new gap_State(meta_host,

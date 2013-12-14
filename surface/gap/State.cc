@@ -21,7 +21,6 @@
 
 #include <common/common.hh>
 
-#include <lune/Dictionary.hh>
 #include <metrics/Kind.hh>
 #include <metrics/services/Google.hh>
 #include <metrics/services/Infinit.hh>
