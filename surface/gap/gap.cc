@@ -1210,6 +1210,7 @@ extern "C"
     return ret.value().c_str();
   }
 
+#ifndef INFINIT_WINDOWS
   static
   std::string
   to_base64(boost::filesystem::path const& archive_path,
@@ -1230,6 +1231,7 @@ extern "C"
     }
     return base64.str();
   }
+#endif
 
   gap_Status
   gap_send_user_report(char const* _user_name,
