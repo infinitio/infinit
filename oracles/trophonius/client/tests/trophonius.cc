@@ -23,7 +23,7 @@ ELLE_LOG_COMPONENT("infinit.oracles.trophonius.client.test")
 # define RUNNING_ON_VALGRIND 0
 #endif
 
-typedef enum __NotificationCode
+enum class NotificationCode
 {
   NONE_NOTIFICATION = 0,
   USER_STATUS_NOTIFICATION = 8,
@@ -35,8 +35,7 @@ typedef enum __NotificationCode
   PING_NOTIFICATION = 208,
   CONNECTION_ENABLED_NOTIFICATION = -666,
   SUICIDE_NOTIFICATION = 666,
-}
-NotificationCode;
+};
 
 class Trophonius
 {
@@ -109,7 +108,8 @@ protected:
                      std::string const& message)
   {
     elle::json::Object notification;
-    notification["notification_type"] = int(MESSAGE_NOTIFICATION);
+    notification["notification_type"] =
+      int(NotificationCode::MESSAGE_NOTIFICATION);
     notification["sender_id"] = std::string("id");
     notification["message"] = message;
     ELLE_LOG("%s: write: %s",
@@ -129,7 +129,8 @@ protected:
   _login_response(reactor::network::TCPSocket& socket, bool success)
   {
     elle::json::Object login_response;
-    login_response["notification_type"] = int(CONNECTION_ENABLED_NOTIFICATION);
+    login_response["notification_type"] =
+      int(NotificationCode::CONNECTION_ENABLED_NOTIFICATION);
     login_response["response_code"] = success ? int(200) : int(500);
     login_response["response_details"] = std::string("nothing");
     ELLE_LOG("%s: login response: %s",
@@ -409,7 +410,7 @@ protected:
         while (true)
         {
           elle::json::Object msg;
-          msg["notification_type"] = int(PING_NOTIFICATION);
+          msg["notification_type"] = int(NotificationCode::PING_NOTIFICATION);
           ELLE_LOG("send ping");
           elle::json::write(socket, msg);
           reactor::sleep(this->_period);
