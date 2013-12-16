@@ -577,7 +577,7 @@ ELLE_TEST_SCHEDULED(no_ping)
     scope.wait(run_time);
     // Approximate test as we don't know how long a poke, connect, disconnect
     // cycle will take.
-    BOOST_CHECK(std::abs(client->reconnected() - (periods / 2)) < 3);
+    BOOST_CHECK_LT(std::abs(client->reconnected() - (periods / 2)), 3);
     scope.terminate_now();
   };
 }
