@@ -102,6 +102,30 @@ int main(int argc, char** argv)
         surface::gap::State state;
         uint32_t id = surface::gap::null_id;
 
+        state.attach_callback<surface::gap::State::ConnectionStatus>(
+          [&] (surface::gap::State::ConnectionStatus const& notif)
+          {
+            std::cerr << "ConnectionStatusNotification(" << notif.status
+                      << ")" << std::endl;
+          }
+        );
+
+        state.attach_callback<surface::gap::State::TrophoniusUnavailable>(
+          [&]
+          (surface::gap::State::TrophoniusUnavailable const& notif)
+          {
+            std::cerr << "TrophoniusUnavailable" << std::endl;
+          }
+        );
+
+        state.attach_callback<surface::gap::State::KickedOut>(
+          [&]
+          (surface::gap::State::KickedOut const& notif)
+          {
+            std::cerr << "KickedNotification" << std::endl;
+          }
+        );
+
         state.attach_callback<surface::gap::State::UserStatusNotification>(
           [&] (surface::gap::State::UserStatusNotification const& notif)
           {

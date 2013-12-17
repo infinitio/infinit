@@ -93,11 +93,35 @@ int main(int argc, char** argv)
       {
         surface::gap::State state;
 
+        state.attach_callback<surface::gap::State::ConnectionStatus>(
+          [&] (surface::gap::State::ConnectionStatus const& notif)
+          {
+            std::cerr << "ConnectionStatusNotification(" << notif.status
+                      << ")" << std::endl;
+          }
+        );
+
+        state.attach_callback<surface::gap::State::TrophoniusUnavailable>(
+          [&]
+          (surface::gap::State::TrophoniusUnavailable const& notif)
+          {
+            std::cerr << "TrophoniusUnavailable" << std::endl;
+          }
+        );
+
+        state.attach_callback<surface::gap::State::KickedOut>(
+          [&]
+          (surface::gap::State::KickedOut const& notif)
+          {
+            std::cerr << "KickedNotification" << std::endl;
+          }
+        );
+
         state.attach_callback<surface::gap::State::UserStatusNotification>(
           [&] (surface::gap::State::UserStatusNotification const& notif)
           {
             std::cerr << "UserStatusNotification(" << notif.id
-                      << ", status: " << notif.status << std::endl;
+                      << ", status: " << notif.status << ")" << std::endl;
 
           });
 
@@ -105,7 +129,7 @@ int main(int argc, char** argv)
           [&] (surface::gap::Transaction::Notification const& notif)
           {
             std::cerr << "TransactionNotification(" << notif.id
-                      << ", status: " << notif.status << std::endl;
+                      << ", status: " << notif.status << ")" << std::endl;
 
             auto& tr = state.transactions().at(notif.id);
 
