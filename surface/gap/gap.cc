@@ -634,12 +634,7 @@ extern "C"
                       favorites.end(),
                       id) == favorites.end())
           favorites.push_back(id);
-        state.infinit_user_reporter()[state.me().id].store(
-          "user favorite",
-          {
-            {MKey::who, id}
-          }
-        );
+        state.composite_reporter().user_favorite(id);
         return gap_ok;
       });
   }
@@ -662,12 +657,8 @@ extern "C"
                             id);
         if (it != favorites.end())
           favorites.erase(it);
-        state.infinit_user_reporter()[state.me().id].store(
-          "user unfavorite",
-          {
-            {MKey::who, id}
-          }
-        );
+
+        state.composite_reporter().user_unfavorite(id);
         return gap_ok;
       });
   }
@@ -1325,8 +1316,5 @@ extern "C"
 #endif
     return gap_ok;
   }
-
-  // Generated file.
-  #include <surface/gap/gen_metrics.hh>
 
 } // ! extern "C"

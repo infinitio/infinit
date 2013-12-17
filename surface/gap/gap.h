@@ -485,9 +485,6 @@ extern "C" {
                            char const* _os_description,
                            char const* _additional_info);
 
-  // Generated file.
-  #include <surface/gap/gen_metrics.h>
-
 # ifdef __cplusplus
 } // ! extern "C"
 # endif
