@@ -381,31 +381,20 @@ def configure(cxx_toolkit = None,
   ## Metrics ##
   ## ------- ##
 
-  metrics_sources = drake.nodes(
-    'metrics/Key.cc',
-    'metrics/Key.hh',
-    'metrics/Key.hxx',
-    'metrics/Kind.cc',
-    'metrics/Kind.hh',
-    'metrics/Metric.hh',
-    'metrics/Reporter.cc',
-    'metrics/Reporter.hh',
-    'metrics/Reporter.hxx',
-    'metrics/Service.cc',
-    'metrics/Service.hh',
-    'metrics/services/Google.cc',
-    'metrics/services/Google.hh',
-    'metrics/services/Infinit.cc',
-    'metrics/services/Infinit.hh',
-    'metrics/services/Mixpanel.cc',
-    'metrics/services/Mixpanel.hh',)
+  metrics = drake.include(
+    'metrics',
+    elle = elle.elle,
+    reactor = elle.reactor,
+    boost = boost,
+    prefix = prefix,
+    cxx_toolkit = cxx_toolkit,
+    cxx_config = cxx_config,
+    valgrind = valgrind,
+  )
 
-  metrics_cxx_config = drake.cxx.Config(cxx_config_libs)
-  metrics_lib = Library(
-    'lib/metrics',
-    metrics_sources + [elle_lib, cryptography_lib],
-    cxx_toolkit,
-    metrics_cxx_config
+  metrics_lib = drake.copy(
+    metrics.lib, 'lib',
+    metrics.lib.name().dirname()
   )
 
   # Papier
@@ -992,7 +981,6 @@ def configure(cxx_toolkit = None,
       'surface/gap/SendMachine.hh',
       'surface/gap/ReceiveMachine.cc',
       'surface/gap/ReceiveMachine.hh',
-      'surface/gap/metrics.hh',
       'surface/gap/State.cc',
       'surface/gap/State.hh',
       'surface/gap/status.hh.tmpl',
@@ -1021,32 +1009,33 @@ def configure(cxx_toolkit = None,
   build << gap_build
   install << gap_install
 
-  gap_generator = drake.node('surface/gap/metrics_generator.py')
-  class GAPGenerator(drake.Builder):
-    def __init__(self, script, path, python_exe = 'python3'):
-      self.__script = script
-      self.__path = path
-      self.__targets = drake.nodes('%s.hh' % path, '%s.h' % path)
-      self.__python_exe = python_exe
-      drake.Builder.__init__(self, [self.__script], self.__targets)
+  # gap_generator = drake.node('surface/gap/metrics_generator.py')
+  # class GAPGenerator(drake.Builder):
+  #   def __init__(self, script, path, python_exe = 'python3'):
+  #     self.__script = script
+  #     self.__path = path
+  #     self.__targets = drake.nodes('%s.hh' % path, '%s.h' % path)
+  #     self.__python_exe = python_exe
+  #     drake.Builder.__init__(self, [self.__script], self.__targets)
 
-    def execute(self):
-      return self.cmd(
-        'Generate %s' % ', '.join(map(str, self.__targets)),
-        [self.__python_exe, self.__script.path(), self.__path]
-      )
+  #   def execute(self):
+  #     return self.cmd(
+  #       'Generate %s' % ', '.join(map(str, self.__targets)),
+  #       [self.__python_exe, self.__script.path(), self.__path]
+  #     )
 
-    @property
-    def generated(self):
-      return self.__targets
+  #   @property
+  #   def generated(self):
+  #     return self.__targets
 
-  gap_sources += GAPGenerator(
-    gap_generator,
-    'surface/gap/gen_metrics',
-    python_exe = cxx_toolkit.os is drake.os.windows and 'python' or 'python3',
-  ).generated
+  # gap_sources += GAPGenerator(
+  #   gap_generator,
+  #   'surface/gap/gen_metrics',
+  #   python_exe = cxx_toolkit.os is drake.os.windows and 'python' or 'python3',
+  # ).generated
 
   gap_cxx_config = drake.cxx.Config(cxx_config_libs)
+  gap_cxx_config.add_local_include_path('metrics/src')
   gap_cxx_config.add_local_include_path('oracles/src')
   gap_cxx_config.add_local_include_path('oracles/meta/client/src')
   gap_cxx_config.add_local_include_path('oracles/trophonius/client/src')
@@ -1128,6 +1117,7 @@ def configure(cxx_toolkit = None,
   # Satellites
 
   gap_satellites_bin = drake.cxx.Config(infinit_bin_config)
+  gap_satellites_bin.add_local_include_path('metrics/src')
   gap_satellites_bin.add_local_include_path('oracles/src')
   gap_satellites_bin.add_local_include_path('oracles/meta/client/src')
   gap_satellites_bin.add_local_include_path('oracles/trophonius/client/src')
@@ -1154,7 +1144,7 @@ def configure(cxx_toolkit = None,
       # XXX: not every satellite needs GAP.
       list(sources) + list(dependencies) + [crash_lib],
       cxx_toolkit, gap_satellites_bin)
-    # build << bin
+    build << bin
 
   for name, dependencies in [
     # 'access',
@@ -1167,8 +1157,8 @@ def configure(cxx_toolkit = None,
     # 'transfer',
     # 'user',
     # 'dump',
-    ('recv', (gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib)),
-    ('send', (gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib)),
+    ('recv', (gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib, metrics_lib)),
+    ('send', (gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib, metrics_lib)),
     ]:
     satellite(name, dependencies)
 
