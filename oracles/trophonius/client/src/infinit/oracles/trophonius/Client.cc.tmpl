@@ -292,13 +292,41 @@ namespace infinit
               reactor::wait(this->_poke_sent_signal);
               ELLE_DEBUG("%s: get poke reply", *this);
               auto poke_reply_read = elle::json::read(*this->_socket);
-              auto poke_reply =
-                boost::any_cast<elle::json::Object>(poke_reply_read);
-              if (poke_reply.find("poke") != poke_reply.end())
+
+              // XXX: Newer servers reply with JSON of the form {poke: reply}
+              // while older ones reply with just the reply string. This check
+              // handles both cases. Remove when no longer needed.
+              if (poke_reply_read.type() == typeid(elle::json::Object))
               {
-                std::string reply_msg =
-                  boost::any_cast<std::string>(poke_reply["poke"]);
-                if (reply_msg == poke_msg)
+                auto poke_reply =
+                  boost::any_cast<elle::json::Object>(poke_reply_read);
+                if (poke_reply.find("poke") != poke_reply.end())
+                {
+                  std::string reply_msg =
+                    boost::any_cast<std::string>(poke_reply["poke"]);
+                  if (reply_msg == poke_msg)
+                  {
+                    ELLE_DEBUG("%s: got correct poke reply", *this);
+                    result = true;
+                  }
+                  else
+                  {
+                    ELLE_WARN("%s: got incorrect poke reply: %s",
+                              *this,
+                              reply_msg);
+                    result = false;
+                  }
+                }
+                else
+                {
+                  ELLE_WARN("%s: poke reply not found in json", *this);
+                  result = false;
+                }
+              }
+              else if (poke_reply_read.type() == typeid(std::string))
+              {
+                auto poke_reply = boost::any_cast<std::string>(poke_reply_read);
+                if (poke_reply == poke_msg)
                 {
                   ELLE_DEBUG("%s: got correct poke reply", *this);
                   result = true;
@@ -306,15 +334,15 @@ namespace infinit
                 else
                 {
                   ELLE_WARN("%s: got incorrect poke reply: %s",
-                            *this,
-                            reply_msg);
+                              *this,
+                              poke_reply);
                   result = false;
                 }
               }
               else
               {
-                ELLE_WARN("%s: poke reply not found in json", *this);
                 result = false;
+                ELLE_WARN("%s: unknown poke reply type", *this);
               }
             });
             scope.run_background("send poke", [&]
