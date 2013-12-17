@@ -5,7 +5,7 @@
 # include <string>
 
 # include <reactor/Barrier.hh>
-# include <reactor/Signal.hh>
+# include <reactor/signal.hh>
 # include <reactor/thread.hh>
 
 # include <infinit/oracles/Transaction.hh>
