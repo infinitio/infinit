@@ -15,7 +15,7 @@ from .plugins.jsongo import Plugin as JsongoPlugin
 from .plugins.failure import Plugin as FailurePlugin
 from .plugins.session import Plugin as SessionPlugin
 
-from . import error
+from infinit.oracles.meta import error
 
 from .utils import api, hash_pasword, require_logged_in
 
