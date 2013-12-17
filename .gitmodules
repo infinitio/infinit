@@ -10,3 +10,7 @@
 [submodule "oracles/mongobox"]
 	path = oracles/mongobox
 	url = https://github.com/infinitdotio/mongobox.git
+[submodule "surface/fist-resources"]
+	path = surface/fist-resources
+	url = git@git.infinit.io:fist-resources
+	branch = develop
