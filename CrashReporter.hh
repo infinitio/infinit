@@ -3,6 +3,8 @@
 
 # include <cstring>
 
+# include <boost/noncopyable.hpp>
+
 # include <elle/Backtrace.hh>
 
 # include <reactor/fwd.hh>
