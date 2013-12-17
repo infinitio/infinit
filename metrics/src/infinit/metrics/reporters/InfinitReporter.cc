@@ -24,7 +24,7 @@ namespace infinit
 #else
       std::string default_base_url = "v3.metrics.api.development.infinit.io";
 #endif // INFINIT_PRODUCTION_BUILD
-      _base_url = elle::os::getenv("INFINIT_METRICS_HOST",
+      this->_base_url = elle::os::getenv("INFINIT_METRICS_HOST",
                                    default_base_url);
       this->_port = boost::lexical_cast<int>(
         elle::os::getenv("INFINIT_METRICS_PORT", "80"));
