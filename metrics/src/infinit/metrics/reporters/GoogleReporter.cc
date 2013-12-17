@@ -169,6 +169,8 @@ namespace infinit
           return "cd1";
         case GoogleKey::tracking_id:
           return "tid";
+        default:
+          elle::unreachable();
       }
     }
 

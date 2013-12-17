@@ -183,6 +183,8 @@ namespace infinit
           return "version";
         case InfinitKey::who:
           return "who";
+        default:
+          elle::unreachable();
       }
     }
 
@@ -287,6 +289,8 @@ namespace infinit
           return "rejected";
         case infinit::oracles::Transaction::Status::started:
           return "started";
+        default:
+          elle::unreachable();
       }
     }
   }
