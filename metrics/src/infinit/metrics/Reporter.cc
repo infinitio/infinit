@@ -1,6 +1,7 @@
 #include <infinit/metrics/Reporter.hh>
 
 #include <elle/log.hh>
+#include <elle/os/getenv.hh>
 
 #include <reactor/scheduler.hh>
 #include <reactor/Scope.hh>
@@ -46,11 +47,11 @@ namespace infinit
       _metric_available("metric available"),
       _metric_queue()
     {
-#ifdef INFINIT_NO_METRICS
-      this->_no_metrics = true;
-#else
-      this->_no_metrics = false;
-#endif
+      bool in_env = elle::os::in_env("INFINIT_NO_METRICS");
+      if (in_env)
+        this->_no_metrics = true;
+      else
+        this->_no_metrics = false;
       ELLE_DEBUG("%s: creating metrics reporter (%s)", *this, this->name());
     }
 
