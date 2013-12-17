@@ -3,6 +3,7 @@
 #include <elle/format/hexadecimal.hh>
 #include <elle/os/getenv.hh>
 #include <elle/log.hh>
+#include <reactor/exception.hh>
 #include <reactor/http/exceptions.hh>
 #include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
@@ -251,8 +252,9 @@ namespace infinit
                     data[this->_key_str(GoogleKey::event)]),
                   e.what());
       }
-      catch (reactor::Terminate cons& e)
+      catch (reactor::Terminate const&)
       {
+        ELLE_ERR("%s: caught reactor terminate", *this);
         throw;
       }
       catch (...)
