@@ -86,7 +86,7 @@ namespace infinit
 
     /// Private attributes.
     private:
-      ELLE_ATTRIBUTE(std::vector<std::unique_ptr<Reporter::Reporter>>,
+      ELLE_ATTRIBUTE(std::vector<std::unique_ptr<Reporter>>,
                      reporters);
     };
   }
