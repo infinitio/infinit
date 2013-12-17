@@ -62,7 +62,7 @@ namespace infinit
     `--------------------*/
     void
     CompositeReporter::add_reporter(
-      std::unique_ptr<Reporter::Reporter>&& reporter)
+      std::unique_ptr<Reporter>&& reporter)
     {
       this->_reporters.emplace_back(std::move(reporter));
     }
