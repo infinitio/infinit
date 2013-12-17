@@ -4,9 +4,6 @@
 # include <stdint.h>
 # include <string>
 
-# include <metrics/Kind.hh>
-# include <metrics/Service.hh>
-
 namespace common
 {
 
@@ -195,37 +192,6 @@ namespace common
     manifest_url(char const* platform = nullptr,
                  unsigned int architecture = 0);
 
-  }
-
-  namespace metrics
-  {
-    ::metrics::Service::Info const&
-    google_info_investors();
-
-    ::metrics::Service::Info const&
-    google_info(::metrics::Kind const kind = ::metrics::Kind::all);
-
-    ::metrics::Service::Info const&
-    kissmetrics_info(::metrics::Kind const kind = ::metrics::Kind::all);
-
-    ::metrics::Service::Info const&
-    infinit_metrics_info(::metrics::Kind const kind = ::metrics::Kind::all);
-
-    ::metrics::Service::Info const&
-    mixpanel_info(::metrics::Kind const kind = ::metrics::Kind::all);
-
-    /// Path to the file storing fallbacked metrics.
-    std::string const&
-    google_fallback_path();
-
-    std::string const&
-    infinit_metrics_fallback_path();
-
-    std::string const&
-    mixpanel_fallback_path();
-
-    std::string const&
-    fallback_path();
   }
 
   namespace longinus

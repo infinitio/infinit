@@ -16,19 +16,6 @@
 #include <common/common.hh>
 #include <version.hh>
 
-// XXX Metrics are always targetting the sandboxes.
-#define COMMON_METRICS_INVESTORS_GOOGLE_TID "UA-31957100-3"
-
-#define COMMON_METRICS_GOOGLE_TID "UA-31957100-5"
-
-#define COMMON_METRICS_INFINIT_TID \
-    ""
-
-/// By default the token is empty to ensure that no metrics are sent.
-/// See metrics/services/Mixpanel.cc
-#define COMMON_METRICS_MIXPANEL_TRANSACTION_TID \
-    ""
-
 #define COMMON_DEFAULT_API                          \
   BOOST_PP_STRINGIZE(INFINIT_VERSION_MINOR) "."     \
   BOOST_PP_STRINGIZE(INFINIT_VERSION_MAJOR)         \
@@ -49,8 +36,6 @@
 #define COMMON_DEFAULT_STUN_PORT 3478
 #define COMMON_DEFAULT_APERTUS_HOST "v2.apertus.api.development.infinit.io"
 #define COMMON_DEFAULT_APERTUS_PORT 9899
-#define COMMON_DEFAULT_METRICS_HOST "v2.metrics.api.development.infinit.io"
-#define COMMON_DEFAULT_METRICS_PORT 80
 
 #define COMMON_PRODUCTION_API                       \
   BOOST_PP_STRINGIZE(INFINIT_VERSION_MINOR) "."     \
@@ -72,8 +57,6 @@
 #define COMMON_PRODUCTION_STUN_PORT 3478
 #define COMMON_PRODUCTION_APERTUS_HOST "apertus.api.production.infinit.io"
 #define COMMON_PRODUCTION_APERTUS_PORT 9899
-#define COMMON_PRODUCTION_METRICS_HOST "v2.metrics.api.production.infinit.io"
-#define COMMON_PRODUCTION_METRICS_PORT 80
 
 #ifdef INFINIT_PRODUCTION_BUILD
 # define VAR_PREFIX COMMON_PRODUCTION
@@ -128,12 +111,6 @@
 /**/
 # define COMMON_APERTUS_PORT \
   BOOST_PP_CAT(VAR_PREFIX, _APERTUS_PORT) \
-/**/
-# define COMMON_METRICS_HOST \
-  BOOST_PP_CAT(VAR_PREFIX, _METRICS_HOST) \
-/**/
-# define COMMON_METRICS_PORT \
-  BOOST_PP_CAT(VAR_PREFIX, _METRICS_PORT) \
 /**/
 
 namespace path = elle::os::path;
@@ -508,116 +485,6 @@ namespace common
       );
       return base_url + "/" + platform + architecture;
     }
-  }
-
-
-  namespace metrics
-  {
-    std::string const&
-    google_fallback_path()
-    {
-      static std::string const fb_path = path::join(
-        common::infinit::home(), "google_analytics.fallback");
-      return fb_path;
-    }
-
-    std::string const&
-    mixpanel_fallback_path()
-    {
-      static std::string const fb_path = path::join(
-        common::infinit::home(), "mixpanel_analytics.fallback");
-      return fb_path;
-    }
-
-    std::string const&
-    infinit_metrics_fallback_path()
-    {
-      static std::string const fb_path = path::join(
-        common::infinit::home(), "infinit_analytics.fallback");
-      return fb_path;
-    }
-
-    std::string const&
-    fallback_path()
-    {
-      static std::string const fb_path = path::join(
-        common::infinit::home(), "analytics.fallback");
-      return fb_path;
-    }
-
-    ::metrics::Service::Info const&
-    google_info_investors()
-    {
-      static ::metrics::Service::Info google = {
-        "google",
-        "www.google-analytics.com",
-        80,
-        path::join(common::infinit::home(), "ga.id"),
-        elle::os::getenv("INFINIT_METRICS_INVESTORS_GOOGLE_TID",
-                         COMMON_METRICS_INVESTORS_GOOGLE_TID),
-      };
-      return google;
-    }
-
-    ::metrics::Service::Info const&
-    google_info(::metrics::Kind const kind)
-    {
-      static ::metrics::Service::Info google = {
-        "google",
-        "www.google-analytics.com",
-        80,
-        path::join(common::infinit::home(), "ga.id"),
-        elle::os::getenv("INFINIT_METRICS_GOOGLE_TID",
-                         COMMON_METRICS_GOOGLE_TID),
-      };
-      return google;
-    }
-
-    ::metrics::Service::Info const&
-    mixpanel_info(::metrics::Kind const kind)
-    {
-      static ::metrics::Service::Info const transaction = {
-        "mixpanel",
-        "api.mixpanel.com",
-        80,
-        path::join(common::infinit::home(), "mp.id"),
-        elle::os::getenv("INFINIT_METRICS_MIXPANEL_TRANSACTION_TID",
-                         COMMON_METRICS_MIXPANEL_TRANSACTION_TID),
-      };
-      switch (kind)
-      {
-        case ::metrics::Kind::all: break;
-        case ::metrics::Kind::network: break;
-        case ::metrics::Kind::transaction: return transaction;
-        case ::metrics::Kind::user: break;
-      }
-      elle::unreachable();
-    }
-
-    ::metrics::Service::Info const&
-    infinit_metrics_info(::metrics::Kind const kind)
-    {
-      static ::metrics::Service::Info const all = {
-        "infinit",
-        elle::os::getenv("INFINIT_METRICS_HOST",
-                         COMMON_METRICS_HOST),
-        uint16_t(
-          std::stoi(elle::os::getenv("INFINIT_METRICS_PORT",
-                                     std::to_string(COMMON_METRICS_PORT)))),
-        path::join(common::infinit::home(), "im.id"),
-        elle::os::getenv("INFINIT_METRICS_INFINIT_TID",
-                         COMMON_METRICS_INFINIT_TID),
-      };
-      switch (kind)
-      {
-        case ::metrics::Kind::all: return all;
-        case ::metrics::Kind::network: break;
-        case ::metrics::Kind::transaction: return all;
-        case ::metrics::Kind::user: return all;
-      }
-      elle::unreachable();
-    }
-
   }
 
   namespace longinus
