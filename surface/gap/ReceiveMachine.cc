@@ -39,8 +39,8 @@ namespace surface
       this->_machine.transition_add(this->_accept_state,
                                       this->_transfer_core_state);
 
-    this->_machine.transition_add(this->_transfer_core_state,
-                                  this->_finish_state);
+      this->_machine.transition_add(this->_transfer_core_state,
+                                    this->_finish_state);
 
       // Reject way.
       this->_machine.transition_add(this->_wait_for_decision_state,
@@ -188,14 +188,9 @@ namespace surface
 
       if (!this->_accepted.opened())
       {
-        this->state().mixpanel_reporter()[this->transaction_id()].store(
-          "transaction.accepted");
-
-        this->state().infinit_transaction_reporter()[this->transaction_id()].store(
-          "transaction.accepted",
-          {
-            {MKey::metric_from, this->state().me().id}
-          });
+        this->state().composite_reporter().transaction_accepted(
+          this->transaction_id()
+        );
       }
 
       this->_accepted.open();
@@ -209,19 +204,11 @@ namespace surface
 
       if (!this->_rejected.opened())
       {
-        this->state().mixpanel_reporter()[this->transaction_id()].store(
-          "transaction.ended",
-          {
-            {MKey::who_ended, "recipient"},
-            {MKey::how_ended, "rejected"}
-          });
-
-        this->state().infinit_transaction_reporter()[this->transaction_id()].store(
-          "transaction.ended",
-          {
-            {MKey::metric_from, this->state().me().id},
-            {MKey::how_ended, "rejected"}
-          });
+        this->state().composite_reporter().transaction_ended(
+          this->transaction_id(),
+          infinit::oracles::Transaction::Status::rejected,
+          ""
+        );
       }
 
       this->_rejected.open();

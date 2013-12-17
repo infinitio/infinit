@@ -21,15 +21,14 @@
 
 #include <common/common.hh>
 
-#include <metrics/Kind.hh>
-#include <metrics/services/Google.hh>
-#include <metrics/services/Infinit.hh>
-#include <metrics/services/Mixpanel.hh>
 #include <papier/Identity.hh>
-#include <surface/gap/State.hh>
-#include <surface/gap/metrics.hh>
+
+#include <infinit/metrics/reporters/GoogleReporter.hh>
+#include <infinit/metrics/reporters/InfinitReporter.hh>
+
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/SendMachine.hh>
+#include <surface/gap/State.hh>
 #include <surface/gap/TransferMachine.hh>
 #include <version.hh>
 
@@ -65,45 +64,6 @@ namespace surface
             compressed)});
       }
       ELLE_LOG("Infinit Version: %s", INFINIT_VERSION);
-    }
-
-    namespace
-    {
-      template <metrics::Kind kind, typename Service>
-      struct MetricKindService:
-          public Service
-      {
-        template <typename... Args>
-        MetricKindService(Args&&... args):
-          Service{std::forward<Args>(args)...}
-        {}
-        static
-        std::string
-        _prefix()
-        {
-          switch (kind)
-          {
-          case metrics::Kind::all:
-            return "";
-          case metrics::Kind::user:
-            return "user";
-          case metrics::Kind::network:
-            return "network";
-          case metrics::Kind::transaction:
-            return "transaction";
-          }
-          elle::unreachable();
-        }
-
-        void
-        _send(metrics::TimeMetricPair metric) override
-        {
-          static const std::string prefix = _prefix();
-          if (prefix.empty() or
-              boost::starts_with(metric.second.at(MKey::tag), prefix))
-            Service::_send(std::move(metric));
-        }
-      };
     }
 
     /*--------------.
@@ -144,47 +104,24 @@ namespace surface
             this->on_reconnection_failed();
           }
       },
-      _reporter{common::metrics::fallback_path()},
-      _google_reporter{common::metrics::google_fallback_path()},
-      _infinit_transaction_reporter{common::metrics::infinit_metrics_fallback_path()},
-      _infinit_user_reporter{common::metrics::infinit_metrics_fallback_path()},
-      _mixpanel_reporter{common::metrics::mixpanel_fallback_path()},
+      _composite_reporter{},
       _me{nullptr},
       _output_dir{common::system::download_directory()},
       _device{nullptr}
     {
       ELLE_TRACE_SCOPE("%s: create state", *this);
 
-      // Start metrics after setting up the logger.
-      this->_reporter.start();
-      this->_google_reporter.start();
-      this->_infinit_transaction_reporter.start();
-      this->_infinit_user_reporter.start();
-      this->_mixpanel_reporter.start();
-
-      {
-        using metrics::services::Google;
-        using metrics::services::Infinit;
-        using metrics::services::Mixpanel;
-
-        this->_google_reporter.add_service_class<Google>(common::metrics::google_info_investors());
-
-        this->_reporter.add_service_class<Google>(common::metrics::google_info());
-
-        typedef MetricKindService<metrics::Kind::transaction, Infinit> IMTransaction;
-        this->_infinit_transaction_reporter.add_service_class<IMTransaction>(
-          common::metrics::infinit_metrics_info(metrics::Kind::transaction),
-          metrics::Kind::transaction);
-
-        typedef MetricKindService<metrics::Kind::user, Infinit> IMUser;
-        this->_infinit_user_reporter.add_service_class<IMUser>(
-          common::metrics::infinit_metrics_info(metrics::Kind::user),
-          metrics::Kind::user);
-
-        typedef MetricKindService<metrics::Kind::transaction, Mixpanel> MPTransaction;
-        this->_mixpanel_reporter.add_service_class<MPTransaction>(
-          common::metrics::mixpanel_info(metrics::Kind::transaction));
-      }
+      // Add metrics reporters to composite reporter
+      std::unique_ptr<infinit::metrics::Reporter> google_reporter(
+        new infinit::metrics::GoogleReporter(false));
+      std::unique_ptr<infinit::metrics::Reporter> infinit_reporter(
+        new infinit::metrics::InfinitReporter());
+      std::unique_ptr<infinit::metrics::Reporter> investor_reporter(
+        new infinit::metrics::GoogleReporter(true));
+      this->_composite_reporter.add_reporter(std::move(google_reporter));
+      this->_composite_reporter.add_reporter(std::move(infinit_reporter));
+      this->_composite_reporter.add_reporter(std::move(investor_reporter));
+      this->_composite_reporter.start();
     }
 
     State::~State()
@@ -194,6 +131,7 @@ namespace surface
       try
       {
         this->logout();
+        this->_composite_reporter.stop();
       }
       catch (std::runtime_error const&)
       {
@@ -343,20 +281,16 @@ namespace surface
       }
 
       std::string lower_email = email;
+      std::string fail_reason = "";
 
       std::transform(lower_email.begin(),
                      lower_email.end(),
                      lower_email.begin(),
                      ::tolower);
 
-      elle::SafeFinally login_failed{[this, lower_email] {
-        this->_reporter[lower_email].store("user.login.failed");
-        this->_google_reporter[lower_email].store("user.login.failed");
-        this->_infinit_user_reporter[lower_email].store(
-          "user.login",
-          {
-            {MKey::status, "failed"},
-          });
+      elle::SafeFinally login_failed{[this, lower_email, fail_reason] {
+        infinit::metrics::Reporter::metric_sender_id(lower_email);
+        this->_composite_reporter.user_login(false, fail_reason);
       }};
 
       boost::uuids::uuid device_uuid = boost::uuids::nil_generator()();
@@ -380,6 +314,8 @@ namespace surface
 
       auto res = this->_meta.login(lower_email, password, device_uuid);
 
+      fail_reason = res.error_details;
+
       login_failed.abort();
 
       elle::With<elle::Finally>([&] { this->_meta.logout(); })
@@ -387,19 +323,8 @@ namespace surface
       {
         ELLE_LOG("Logged in as %s", email);
 
-        this->_reporter[res.id].store(
-          "user.login",
-          {{MKey::session, "start"}, {MKey::status, "succeed"}});
-
-        this->_google_reporter[res.id].store(
-          "user.login",
-          {{MKey::session, "start"}, {MKey::status, "succeed"}});
-
-        this->_infinit_user_reporter[res.id].store(
-          "user.login",
-          {
-            {MKey::status, "succeed"},
-          });
+        infinit::metrics::Reporter::metric_sender_id(res.id);
+        this->_composite_reporter.user_login(true, "");
 
         ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
                  this->me().id,
@@ -545,15 +470,7 @@ namespace surface
 
             this->_meta.logout();
 
-            this->_reporter[id].store("user.logout");
-            this->_google_reporter[id].store(
-              "user.logout",
-              {{MKey::session, "end"}});
-            this->_infinit_user_reporter[id].store(
-              "user.logout",
-              {
-                {MKey::status, "succeed"},
-              });
+            this->_composite_reporter.user_logout(true, "");
           }
           catch (elle::Exception const&)
           {
@@ -677,32 +594,25 @@ namespace surface
       // Logout first, and ignore errors.
       try { this->logout(); } catch (std::exception const&) {}
 
-      elle::SafeFinally register_failed{[this, lower_email] {
-        this->_reporter[lower_email].store("user.register.failed");
-        this->_infinit_user_reporter[lower_email].store(
-          "user.register",
-          {
-            {MKey::status, "failed"},
-          });
+      std::string error_details = "";
+
+      elle::SafeFinally register_failed{[this, lower_email, error_details] {
+        infinit::metrics::Reporter::metric_sender_id(lower_email);
+        this->_composite_reporter.user_register(false, error_details);
       }};
 
       auto res = this->meta(false).register_(
         lower_email, fullname, password, activation_code);
+
+      error_details = res.error_details;
 
       register_failed.abort();
 
       ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
 
       elle::SafeFinally registered_metric{[this, res] {
-        this->_reporter[res.registered_user_id].store(
-          "user.register",
-          {{MKey::source, res.invitation_source}});
-        this->_infinit_user_reporter[res.registered_user_id].store(
-          "user.register",
-          {
-            {MKey::source, res.invitation_source},
-            {MKey::status, "succeed"},
-          });
+        infinit::metrics::Reporter::metric_sender_id(res.registered_user_id);
+        this->_composite_reporter.user_register(true, "");
       }};
       this->login(lower_email, password);
     }

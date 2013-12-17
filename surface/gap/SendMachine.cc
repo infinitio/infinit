@@ -325,8 +325,8 @@ namespace surface
         );
 
       // This is fake, we don't create peer to peer network.
-      this->state().google_reporter()[this->state().me().id].store(
-        "network.create.succeed");
+      // this->state().google_reporter()[this->state().me().id].store(
+      //   "network.create.succeed");
 
       ELLE_TRACE("created transaction: %s", this->transaction_id());
 
@@ -336,24 +336,14 @@ namespace surface
       this->peer_id(this->state().user(this->peer_id(), true).id);
       ELLE_TRACE("peer id: %s", this->peer_id());
 
-      this->state().mixpanel_reporter()[this->transaction_id()].store(
-        "transaction.created",
-        {
-          {MKey::sender, this->state().me().id},
-          {MKey::recipient, this->peer_id()},
-          {MKey::file_count, std::to_string(this->data()->files.size())},
-          {MKey::file_size, std::to_string(size)}
-        });
-
-      this->state().infinit_transaction_reporter()[this->transaction_id()].store(
-        "transaction.created",
-        {
-          {MKey::metric_from, this->state().me().id},
-          {MKey::sender, this->state().me().id},
-          {MKey::recipient, this->peer_id()},
-          {MKey::file_count, std::to_string(this->data()->files.size())},
-          {MKey::file_size, std::to_string(size)}
-        });
+      this->state().composite_reporter().transaction_created(
+        this->transaction_id(),
+        this->state().me().id,
+        this->peer_id(),
+        this->data()->files.size(),
+        size,
+        this->_message.length()
+      );
 
       this->state().meta().update_transaction(this->transaction_id(),
                                               TransactionStatus::initialized);

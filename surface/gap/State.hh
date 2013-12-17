@@ -1,37 +1,36 @@
 #ifndef  SURFACE_GAP_STATE_HH
 # define SURFACE_GAP_STATE_HH
 
-# include "Device.hh"
-# include "Exception.hh"
-# include "Self.hh"
-# include "gap.h"
-# include <surface/gap/Notification.hh>
-# include <surface/gap/Transaction.hh>
-# include <surface/gap/metrics.hh>
-# include <surface/gap/Transaction.hh>
+# include <exception>
+# include <map>
+# include <mutex>
+# include <string>
+# include <unordered_set>
+
+# include <elle/format/json/fwd.hh>
+# include <elle/Printable.hh>
+# include <elle/threading/Monitor.hh>
+
+# include <reactor/mutex.hh>
+# include <reactor/scheduler.hh>
+# include <reactor/thread.hh>
+
+# include <papier/Identity.hh>
+# include <papier/Passport.hh>
 
 # include <common/common.hh>
 
-# include <infinit/oracles/Transaction.hh>
+# include <infinit/metrics/CompositeReporter.hh>
 # include <infinit/oracles/meta/Client.hh>
+# include <infinit/oracles/Transaction.hh>
 # include <infinit/oracles/trophonius/Client.hh>
-
-# include <papier/Passport.hh>
-# include <papier/Identity.hh>
-
-# include <reactor/scheduler.hh>
-# include <reactor/thread.hh>
-# include <reactor/mutex.hh>
-
-# include <elle/format/json/fwd.hh>
-# include <elle/threading/Monitor.hh>
-# include <elle/Printable.hh>
-
-# include <map>
-# include <string>
-# include <exception>
-# include <unordered_set>
-# include <mutex>
+# include <surface/gap/Device.hh>
+# include <surface/gap/Exception.hh>
+# include <surface/gap/gap.h>
+# include <surface/gap/Notification.hh>
+# include <surface/gap/Self.hh>
+# include <surface/gap/Transaction.hh>
+# include <surface/gap/Transaction.hh>
 
 namespace surface
 {
@@ -81,41 +80,15 @@ namespace surface
       /*----------.
       | Reporters |
       `----------*/
-      ELLE_ATTRIBUTE_P(metrics::Reporter, reporter, mutable);
-      ELLE_ATTRIBUTE_P(metrics::Reporter, google_reporter, mutable);
-      ELLE_ATTRIBUTE_P(metrics::Reporter, infinit_transaction_reporter, mutable);
-      ELLE_ATTRIBUTE_P(metrics::Reporter, infinit_user_reporter, mutable);
-      ELLE_ATTRIBUTE_P(metrics::Reporter, mixpanel_reporter, mutable);
+      ELLE_ATTRIBUTE_P(infinit::metrics::CompositeReporter,
+                       composite_reporter,
+                       mutable);
 
     public:
-      metrics::Reporter&
-      reporter() const
+      infinit::metrics::Reporter&
+      composite_reporter() const
       {
-        return this->_reporter;
-      }
-
-      metrics::Reporter&
-      mixpanel_reporter() const
-      {
-        return this->_mixpanel_reporter;
-      }
-
-      metrics::Reporter&
-      google_reporter() const
-      {
-        return this->_google_reporter;
-      }
-
-      metrics::Reporter&
-      infinit_transaction_reporter() const
-      {
-        return this->_infinit_transaction_reporter;
-      }
-
-      metrics::Reporter&
-      infinit_user_reporter() const
-      {
-        return this->_infinit_user_reporter;
+        return this->_composite_reporter;
       }
 
       /*-------------.

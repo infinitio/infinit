@@ -6,7 +6,6 @@
 
 # include <infinit/oracles/Transaction.hh>
 
-# include <metrics/fwd.hh>
 # include <papier/fwd.hh>
 
 # include <frete/Frete.hh>
@@ -314,16 +313,6 @@ namespace surface
       virtual
       frete::Frete&
       frete() = 0;
-
-      /*--------.
-      | Metrics |
-      `--------*/
-    public:
-      metrics::Metric
-      network_metric() const;
-
-      metrics::Metric
-      transaction_metric() const;
 
       /*----------.
       | Printable |

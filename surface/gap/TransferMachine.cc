@@ -1,9 +1,18 @@
-#include <surface/gap/TransferMachine.hh>
-#include <surface/gap/Rounds.hh>
-#include <surface/gap/State.hh>
-#include <metrics/Metric.hh>
+#include <functional>
+#include <sstream>
+
+#include <elle/container/list.hh>
+#include <elle/network/Interface.hh>
+#include <elle/os/getenv.hh>
+#include <elle/printf.hh>
+#include <elle/serialize/insert.hh>
 
 #include <common/common.hh>
+
+#include <infinit/metrics/CompositeReporter.hh>
+#include <surface/gap/Rounds.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/TransferMachine.hh>
 
 #include <papier/Descriptor.hh>
 #include <papier/Authority.hh>
@@ -20,14 +29,6 @@
 #include <cryptography/oneway.hh>
 
 #include <protocol/exceptions.hh>
-
-#include <elle/container/list.hh>
-#include <elle/os/getenv.hh>
-#include <elle/network/Interface.hh>
-#include <elle/printf.hh>
-#include <elle/serialize/insert.hh>
-
-#include <functional>
 
 ELLE_LOG_COMPONENT("surface.gap.TransferMachine");
 
@@ -387,19 +388,11 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: machine finished", *this);
       if (!this->is_sender())
       {
-        this->state().mixpanel_reporter()[this->transaction_id()].store(
-        "transaction.ended",
-        {
-          {MKey::who_ended, "recipient"},
-          {MKey::how_ended, "finished"}
-        });
-
-        this->state().infinit_transaction_reporter()[this->transaction_id()].store(
-        "transaction.ended",
-        {
-          {MKey::metric_from, this->state().me().id},
-          {MKey::how_ended, "finished"}
-        });
+        this->state().composite_reporter().transaction_ended(
+          this->transaction_id(),
+          infinit::oracles::Transaction::Status::finished,
+          ""
+        );
       }
       this->current_state(State::Finished);
       this->_finalize(infinit::oracles::Transaction::Status::finished);
@@ -435,19 +428,11 @@ namespace surface
       else
         transaction_id = "unknown";
 
-      this->state().mixpanel_reporter()[transaction_id].store(
-        "transaction.ended",
-        {
-          {MKey::who_ended, this->is_sender() ? "sender" : "recipient"},
-          {MKey::how_ended, "failed"}
-        });
-
-      this->state().infinit_transaction_reporter()[transaction_id].store(
-        "transaction.ended",
-        {
-          {MKey::metric_from, this->state().me().id},
-          {MKey::how_ended, "failed"}
-        });
+      this->state().composite_reporter().transaction_ended(
+        transaction_id,
+        infinit::oracles::Transaction::Status::failed,
+        ""
+      );
 
       this->current_state(State::Failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
@@ -566,19 +551,11 @@ namespace surface
 
       if (!this->_canceled.opened())
       {
-        this->state().mixpanel_reporter()[this->transaction_id()].store(
-          "transaction.ended",
-          {
-            {MKey::who_ended, this->is_sender() ? "sender" : "recipient"},
-            {MKey::how_ended, "cancelled"}
-          });
-
-        this->state().infinit_transaction_reporter()[this->transaction_id()].store(
-          "transaction.ended",
-          {
-            {MKey::metric_from, this->state().me().id},
-            {MKey::how_ended, "cancelled"}
-          });
+        this->state().composite_reporter().transaction_ended(
+          this->transaction_id(),
+          infinit::oracles::Transaction::Status::canceled,
+          ""
+        );
       }
 
       this->_canceled.open();
@@ -766,19 +743,10 @@ namespace surface
               if (host)
               {
                 found.open();
-                this->state().mixpanel_reporter()[this->transaction_id()].store(
-                  "transaction.connected",
-                  {
-                    {MKey::who_connected, this->is_sender() ? "sender" : "recipient"},
-                    {MKey::connection_method, round->name()}
-                  });
-
-                this->state().infinit_transaction_reporter()[this->transaction_id()].store(
-                  "transaction.connected",
-                  {
-                    {MKey::metric_from, this->state().me().id},
-                    {MKey::connection_method, round->name()}
-                  });
+                this->state().composite_reporter().transaction_connected(
+                  this->transaction_id(),
+                  round->name()
+                );
 
                 ELLE_WARN("%s: host found via 'rounds'", *this);
                 break;
