@@ -1,0 +1,68 @@
+import drake
+import drake.templating
+
+metrics = None
+
+build = None
+check = None
+install = None
+
+def configure(elle,
+              reactor,
+              boost = None,
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None,
+              cxx_config = None,
+              valgrind = None):
+
+  global metrics
+  global build, check, install, lib
+
+  cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
+  cxx_config = cxx_config or drake.cxx.Config()
+
+  build = drake.Rule('build')
+
+  local_cxx_config = drake.cxx.Config(cxx_config)
+  local_cxx_config += elle.config
+  local_cxx_config += reactor.config
+  local_cxx_config.add_local_include_path('src')
+  local_cxx_config.add_local_include_path('../oracles/src');
+
+  build = drake.Rule('build')
+  install = drake.Rule('install')
+
+  ## ------- ##
+  ## Library ##
+  ## ------- ##
+
+  sources = drake.nodes(
+    'src/infinit/metrics/CompositeReporter.cc',
+    'src/infinit/metrics/CompositeReporter.hh',
+    'src/infinit/metrics/Reporter.cc',
+    'src/infinit/metrics/Reporter.hh',
+    'src/infinit/metrics/reporters/GoogleReporter.cc',
+    'src/infinit/metrics/reporters/GoogleReporter.hh',
+    'src/infinit/metrics/reporters/InfinitReporter.cc',
+    'src/infinit/metrics/reporters/InfinitReporter.hh',
+  )
+
+  if cxx_toolkit.os == drake.os.windows:
+    Library = drake.cxx.StaticLib
+  else:
+    Library = drake.cxx.DynLib
+
+  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
+                        elle.lib_dynamic.name().dirname())
+  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+                           reactor.lib_dynamic.name().dirname())
+
+  lib_cxx_config = drake.cxx.Config(local_cxx_config)
+  lib_cxx_config.lib_path_runtime('lib')
+  lib = Library('lib/metrics',
+                sources + [reactor_lib, elle_lib],
+                cxx_toolkit,
+                lib_cxx_config)
+
+  config = lib_cxx_config
+  build << lib
