@@ -402,29 +402,23 @@ def configure(cxx_toolkit = None,
     'papier/Authority.cc',
     'papier/Authority.hh',
     'papier/Authority.hxx',
-    'papier/Descriptor.cc',
-    'papier/Descriptor.hh',
-    'papier/Descriptor.hxx',
+    # 'papier/Descriptor.cc',
+    # 'papier/Descriptor.hh',
+    # 'papier/Descriptor.hxx',
     'papier/Identity.cc',
     'papier/Identity.hh',
     'papier/Identity.hxx',
     'papier/Passport.cc',
     'papier/Passport.hh',
     'papier/Passport.hxx',
-    'hole/Openness.cc',
-    'hole/Openness.hh',
-    'hole/Model.cc',
-    'hole/Model.hh',
-    'hole/Model.hxx',
-    'horizon/Policy.cc',
-    'horizon/Policy.hh',
-    'common/common.cc', # FIXME: papier must not use common.
   )
 
   papier_cxx_config = drake.cxx.Config(cxx_config_libs)
+  papier_cxx_config += boost.config_filesystem()
+  papier_cxx_config += boost.config_system()
   papier_lib = Library(
     'lib/papier',
-    papier_sources + [nucleus_lib, elle_lib, cryptography_lib],
+    papier_sources + [elle_lib, cryptography_lib],
     cxx_toolkit,
     papier_cxx_config
   )
@@ -502,7 +496,6 @@ def configure(cxx_toolkit = None,
         cryptography_lib,
         reactor_lib,
         elle_lib,
-        nucleus_lib,
       ],
       cxx_toolkit, station_cxx_config_tests)
     station_tests << test
@@ -1061,7 +1054,6 @@ def configure(cxx_toolkit = None,
       metrics_lib,
       crash_lib,
       papier_lib,
-      nucleus_lib,
       protocol_lib,
       elle_lib,
       reactor_lib,
@@ -1089,7 +1081,7 @@ def configure(cxx_toolkit = None,
       'lib/python/_gap',
       gap_python_sources + [
         gap_lib,
-      ] + infinit_libs,
+      ],
       cxx_toolkit,
       gap_python_cxx_config
     )
