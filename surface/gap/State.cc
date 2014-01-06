@@ -348,8 +348,11 @@ namespace surface
           if (this->_identity->Restore(identity_clear) == elle::Status::Error)
             throw Exception(gap_internal_error,
                             "Cannot save the identity file.");
-
-          this->_identity->store();
+          auto user_id = this->_identity->id();
+          elle::io::Path path(elle::os::path::join(
+                                common::infinit::user_directory(user_id),
+                                user_id + ".idy"));
+          this->_identity->store(path);
         }
 
         std::ofstream identity_infos{common::infinit::identity_path(res.id)};

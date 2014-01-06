@@ -61,7 +61,7 @@ namespace papier
 
   public:
     Identity();
-    Identity(std::string const& user_id);
+    Identity(elle::io::Path const& path);
     Identity(Identity const& other);
     ~Identity();
 
@@ -79,10 +79,6 @@ namespace papier
     elle::Status        Validate(papier::Authority const&) const;
 
   private:
-    /// XXX
-    static
-    std::string
-    _path(elle::String const& user);
 
     //
     // interfaces
@@ -90,23 +86,6 @@ namespace papier
   public:
     // dumpable
     elle::Status        Dump(const elle::Natural32 = 0) const;
-
-    // fileable
-    ELLE_CONCEPT_FILEABLE_METHODS();
-
-    void
-    load(elle::String const& user_id);
-
-    void
-    store() const;
-
-    static
-    void
-    erase(elle::String const& user_id);
-
-    static
-    elle::Boolean
-    exists(elle::String const& user_id);
 
     ELLE_SERIALIZE_FRIEND_FOR(Identity);
   };

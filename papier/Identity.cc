@@ -31,10 +31,10 @@ namespace papier
     code(nullptr)
   {}
 
-  Identity::Identity(std::string const& user_id):
+  Identity::Identity(elle::io::Path const& path):
     Identity()
   {
-    this->load(elle::io::Path{Identity::_path(user_id)});
+    this->load(path);
   }
 
   Identity::Identity(Identity const& other):
@@ -176,15 +176,6 @@ namespace papier
     return elle::Status::Ok;
   }
 
-  std::string
-  Identity::_path(elle::String const& user_id)
-  {
-    return path::join(
-      common::infinit::user_directory(user_id),
-      user_id + ".idy"
-    );
-  }
-
 //
 // ---------- dumpable --------------------------------------------------------
 //
@@ -229,34 +220,4 @@ namespace papier
 
     return elle::Status::Ok;
   }
-
-//
-// ---------- fileable --------------------------------------------------------
-//
-
-  void
-  Identity::load(elle::String const& user_id)
-  {
-    this->load(elle::io::Path{Identity::_path(user_id)});
-  }
-
-  void
-  Identity::store() const
-  {
-    ELLE_TRACE("store identity %s", *this);
-    this->store(elle::io::Path{Identity::_path(this->_id)});
-  }
-
-  void
-  Identity::erase(elle::String const& user_id)
-  {
-    boost::filesystem::remove(Identity::_path(user_id));
-  }
-
-  elle::Boolean
-  Identity::exists(elle::String const& user_id)
-  {
-    return (elle::os::path::exists(Identity::_path(user_id)));
-  }
-
 }
