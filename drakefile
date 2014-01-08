@@ -22,10 +22,20 @@ def configure(cxx_toolkit = None,
               enable_debug = True,
               valgrind = None):
 
-  # Rules
+  ## ----- ##
+  ## Rules ##
+  ## ----- ##
+
+  build = drake.Rule('build')
+  check = drake.TestSuite('check')
   install = drake.Rule('install')
+  tests = drake.Rule('tests')
 
   prefix = drake.Path(os.path.abspath(prefix))
+
+  ## ----------------- ##
+  ## C++ Configuration ##
+  ## ----------------- ##
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
@@ -80,7 +90,43 @@ def configure(cxx_toolkit = None,
 
   cxx_config.define("HAVE_SETXATTR")
 
-  # Version
+  # Warnings
+
+  cxx_config.warnings.parentheses = False
+  cxx_config.warnings.empty_body = False
+  # Clang/GCC disagree on std::hash struct versus class.
+  cxx_config.warnings.mismatched_tags = False
+  cxx_config.warnings.missing_declarations = \
+    drake.cxx.Config.Warnings.Error
+  cxx_config.warnings.return_type = \
+    drake.cxx.Config.Warnings.Error
+  cxx_config.warnings.delete_non_virtual_dtor = \
+    drake.cxx.Config.Warnings.Error
+
+  ## ----- ##
+  ## Boost ##
+  ## ----- ##
+
+  boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
+  cxx_config += boost.config()
+
+  ## -------------------- ##
+  ## Python configuration ##
+  ## -------------------- ##
+
+  python_enabled = cxx_toolkit.os != drake.os.windows
+  if python_enabled:
+    python3 = drake.cxx.find_library(
+      'pyconfig.h', prefix = python3,
+      include_dir = ['include',
+                     'include/python3.2',
+                     'include/python3.2m',
+                     'include/python3.3m'])
+
+  ## ------- ##
+  ## Version ##
+  ## ------- ##
+
   git = drake.git.Git()
   class CxxVersionGenerator(VersionGenerator):
     def _prologue(self):
@@ -106,21 +152,10 @@ def configure(cxx_toolkit = None,
   else:
     raise Exception("architecture %s not supported" % architecture)
 
-  # Boost
-  boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
-  cxx_config += boost.config()
+  ## ---- ##
+  ## Elle ##
+  ## ---- ##
 
-  # Python
-  python_enabled = cxx_toolkit.os != drake.os.windows
-  if python_enabled:
-    python3 = drake.cxx.find_library(
-      'pyconfig.h', prefix = python3,
-      include_dir = ['include',
-                     'include/python3.2',
-                     'include/python3.2m',
-                     'include/python3.3m'])
-
-  # Elle
   elle = drake.include('elle',
                        cxx_toolkit,
                        drake.cxx.Config(cxx_config),
@@ -140,242 +175,8 @@ def configure(cxx_toolkit = None,
   cxx_config += elle.config
   cxx_config.add_local_include_path('.')
 
-  # Warnings
-  cxx_config.warnings.parentheses = False
-  cxx_config.warnings.empty_body = False
-  # Clang/GCC disagree on std::hash struct versus class.
-  cxx_config.warnings.mismatched_tags = False
-  cxx_config.warnings.missing_declarations = \
-    drake.cxx.Config.Warnings.Error
-  cxx_config.warnings.return_type = \
-    drake.cxx.Config.Warnings.Error
-  cxx_config.warnings.delete_non_virtual_dtor = \
-    drake.cxx.Config.Warnings.Error
-
-  # Fuse
-  if enable_horizon:
-    # FIXME: only needed for horizon
-    cxx_config.define('_FILE_OFFSET_BITS', 64)
-    cxx_config.define('INFINIT_HORIZON')
-  cxx_config.define('BOOST_PP_VARIADICS')
-
   cxx_config_libs = drake.cxx.Config(cxx_config)
   cxx_config_libs.lib_path_runtime('.')
-
-  # Lune
-  lune_sources = drake.nodes(
-    'lune/Configuration.cc',
-    'lune/Configuration.hh',
-    'lune/Dictionary.cc',
-    'lune/Dictionary.hh',
-    'lune/Dictionary.hxx',
-    'lune/Lune.cc',
-    'lune/Lune.hh',
-    'lune/Map.hh',
-    'lune/Map.hxx',
-    'lune/Phrase.cc',
-    'lune/Phrase.hh',
-    'lune/Phrase.hxx',
-    'lune/Set.cc',
-    'lune/Set.hh',
-    'lune/Set.hxx',
-    'lune/fwd.hh',
-    'common/common.cc',
-    'common/common.hh',
-  )
-  lune_cxx_config = drake.cxx.Config(cxx_config_libs)
-  lune_lib = Library(
-    'lib/lune',
-    lune_sources + [elle_lib, cryptography_lib],
-    cxx_toolkit,
-    lune_cxx_config
-  )
-
-  # Nucleus
-  nucleus_sources = drake.nodes(
-    'nucleus/Derivable.hh',
-    'nucleus/Derivable.hxx',
-    'nucleus/Exception.hh',
-    'nucleus/Exception.cc',
-    'nucleus/all.hh',
-    'nucleus/factory.cc',
-    'nucleus/factory.hh',
-    'nucleus/fwd.hh',
-    'nucleus/neutron/Access.cc',
-    'nucleus/neutron/Access.hh',
-    'nucleus/neutron/Access.hxx',
-    'nucleus/neutron/Attributes.cc',
-    'nucleus/neutron/Attributes.hh',
-    'nucleus/neutron/Attributes.hxx',
-    'nucleus/neutron/Author.cc',
-    'nucleus/neutron/Author.hh',
-    'nucleus/neutron/Author.hxx',
-    'nucleus/neutron/Catalog.cc',
-    'nucleus/neutron/Catalog.hh',
-    'nucleus/neutron/Catalog.hxx',
-    'nucleus/neutron/Component.cc',
-    'nucleus/neutron/Component.hh',
-    'nucleus/neutron/Data.cc',
-    'nucleus/neutron/Data.hh',
-    'nucleus/neutron/Data.hxx',
-    'nucleus/neutron/Ensemble.cc',
-    'nucleus/neutron/Ensemble.hh',
-    'nucleus/neutron/Ensemble.hxx',
-    'nucleus/neutron/Entry.cc',
-    'nucleus/neutron/Entry.hh',
-    'nucleus/neutron/Entry.hxx',
-    'nucleus/neutron/Fellow.cc',
-    'nucleus/neutron/Fellow.hh',
-    'nucleus/neutron/Fellow.hxx',
-    'nucleus/neutron/Genre.cc',
-    'nucleus/neutron/Genre.hh',
-    'nucleus/neutron/Group.cc',
-    'nucleus/neutron/Group.hh',
-    'nucleus/neutron/Group.hxx',
-    'nucleus/neutron/Index.hh',
-    'nucleus/neutron/Object.cc',
-    'nucleus/neutron/Object.hh',
-    'nucleus/neutron/Object.hxx',
-    'nucleus/neutron/Offset.hh',
-    'nucleus/neutron/Permissions.cc',
-    'nucleus/neutron/Permissions.hh',
-    'nucleus/neutron/Range.hh',
-    'nucleus/neutron/Range.hxx',
-    'nucleus/neutron/Record.cc',
-    'nucleus/neutron/Record.hh',
-    'nucleus/neutron/Record.hxx',
-    'nucleus/neutron/Reference.cc',
-    'nucleus/neutron/Reference.hh',
-    'nucleus/neutron/Reference.hxx',
-    'nucleus/neutron/Size.hh',
-    'nucleus/neutron/Subject.cc',
-    'nucleus/neutron/Subject.hh',
-    'nucleus/neutron/Subject.hxx',
-    'nucleus/neutron/Token.cc',
-    'nucleus/neutron/Token.hh',
-    'nucleus/neutron/Token.hxx',
-    'nucleus/neutron/Trait.cc',
-    'nucleus/neutron/Trait.hh',
-    'nucleus/neutron/Trait.hxx',
-    'nucleus/neutron/User.hh',
-    'nucleus/neutron/all.hh',
-    'nucleus/neutron/fwd.hh',
-    'nucleus/nucleus.hh',
-    'nucleus/proton/Address.cc',
-    'nucleus/proton/Address.hh',
-    'nucleus/proton/Address.hxx',
-    'nucleus/proton/Ambit.hh',
-    'nucleus/proton/Ambit.hxx',
-    'nucleus/proton/Balancing.hh',
-    'nucleus/proton/Base.cc',
-    'nucleus/proton/Base.hh',
-    'nucleus/proton/Base.hxx',
-    'nucleus/proton/Block.cc',
-    'nucleus/proton/Block.hh',
-    'nucleus/proton/Block.hxx',
-    'nucleus/proton/Capacity.hh',
-    'nucleus/proton/Clef.cc',
-    'nucleus/proton/Clef.hh',
-    'nucleus/proton/Clef.hxx',
-    'nucleus/proton/ContentHashBlock.cc',
-    'nucleus/proton/ContentHashBlock.hh',
-    'nucleus/proton/ContentHashBlock.hxx',
-    'nucleus/proton/Contention.hh',
-    'nucleus/proton/Contents.cc',
-    'nucleus/proton/Contents.hh',
-    'nucleus/proton/Contents.hxx',
-    'nucleus/proton/Door.hh',
-    'nucleus/proton/Door.hxx',
-    'nucleus/proton/Egg.cc',
-    'nucleus/proton/Egg.hh',
-    'nucleus/proton/Extent.hh',
-    'nucleus/proton/Family.cc',
-    'nucleus/proton/Family.hh',
-    'nucleus/proton/Flags.cc',
-    'nucleus/proton/Flags.hh',
-    'nucleus/proton/Footprint.hh',
-    'nucleus/proton/Handle.cc',
-    'nucleus/proton/Handle.hh',
-    'nucleus/proton/Handle.hxx',
-    'nucleus/proton/Height.hh',
-    'nucleus/proton/History.cc',
-    'nucleus/proton/History.hh',
-    'nucleus/proton/History.hxx',
-    'nucleus/proton/ImmutableBlock.cc',
-    'nucleus/proton/ImmutableBlock.hh',
-    'nucleus/proton/ImmutableBlock.hxx',
-    'nucleus/proton/ImprintBlock.cc',
-    'nucleus/proton/ImprintBlock.hh',
-    'nucleus/proton/ImprintBlock.hxx',
-    'nucleus/proton/Inlet.hh',
-    'nucleus/proton/Inlet.hxx',
-    'nucleus/proton/Limits.cc',
-    'nucleus/proton/Limits.hh',
-    'nucleus/proton/Location.cc',
-    'nucleus/proton/Location.hh',
-    'nucleus/proton/Location.hxx',
-    'nucleus/proton/Mode.cc',
-    'nucleus/proton/Mode.hh',
-    'nucleus/proton/MutableBlock.cc',
-    'nucleus/proton/MutableBlock.hh',
-    'nucleus/proton/MutableBlock.hxx',
-    'nucleus/proton/Nature.cc',
-    'nucleus/proton/Nature.hh',
-    'nucleus/proton/Nest.cc',
-    'nucleus/proton/Nest.hh',
-    'nucleus/proton/Network.cc',
-    'nucleus/proton/Network.hh',
-    'nucleus/proton/Network.hxx',
-    'nucleus/proton/Node.cc',
-    'nucleus/proton/Node.hh',
-    'nucleus/proton/Node.hxx',
-    'nucleus/proton/Nodule.hh',
-    'nucleus/proton/Nodule.hxx',
-    'nucleus/proton/OwnerKeyBlock.cc',
-    'nucleus/proton/OwnerKeyBlock.hh',
-    'nucleus/proton/OwnerKeyBlock.hxx',
-    'nucleus/proton/Porcupine.hh',
-    'nucleus/proton/Porcupine.hxx',
-    'nucleus/proton/PublicKeyBlock.cc',
-    'nucleus/proton/PublicKeyBlock.hh',
-    'nucleus/proton/PublicKeyBlock.hxx',
-    'nucleus/proton/Quill.hh',
-    'nucleus/proton/Quill.hxx',
-    'nucleus/proton/Radix.cc',
-    'nucleus/proton/Radix.hh',
-    'nucleus/proton/Radix.hxx',
-    'nucleus/proton/Revision.cc',
-    'nucleus/proton/Revision.hh',
-    'nucleus/proton/Revision.hxx',
-    'nucleus/proton/Root.cc',
-    'nucleus/proton/Root.hh',
-    'nucleus/proton/Root.hxx',
-    'nucleus/proton/Seam.hh',
-    'nucleus/proton/Seam.hxx',
-    'nucleus/proton/Stamp.cc',
-    'nucleus/proton/Stamp.hh',
-    'nucleus/proton/Stamp.hxx',
-    'nucleus/proton/State.cc',
-    'nucleus/proton/State.hh',
-    'nucleus/proton/Statistics.cc',
-    'nucleus/proton/Statistics.hh',
-    'nucleus/proton/Strategy.cc',
-    'nucleus/proton/Strategy.hh',
-    'nucleus/proton/Tree.hh',
-    'nucleus/proton/Tree.hxx',
-    'nucleus/proton/Value.cc',
-    'nucleus/proton/Value.hh',
-    'nucleus/proton/Value.hxx',
-    'nucleus/proton/all.hh',
-    'nucleus/proton/fwd.hh',
-  )
-  nucleus_cxx_config = drake.cxx.Config(cxx_config_libs)
-  nucleus_lib = Library(
-    'lib/nucleus',
-    nucleus_sources + [elle_lib, cryptography_lib],
-    cxx_toolkit,
-    nucleus_cxx_config
-  )
 
   ## ------- ##
   ## Metrics ##
@@ -397,14 +198,14 @@ def configure(cxx_toolkit = None,
     metrics.lib.name().dirname()
   )
 
-  # Papier
+  ## ------ ##
+  ## Papier ##
+  ## ------ ##
+
   papier_sources = drake.nodes(
     'papier/Authority.cc',
     'papier/Authority.hh',
     'papier/Authority.hxx',
-    # 'papier/Descriptor.cc',
-    # 'papier/Descriptor.hh',
-    # 'papier/Descriptor.hxx',
     'papier/Identity.cc',
     'papier/Identity.hh',
     'papier/Identity.hxx',
@@ -436,23 +237,10 @@ def configure(cxx_toolkit = None,
       cxx_toolkit,
       papier_python_cxx_config)
 
-  # Agent
-  agent_sources = drake.nodes(
-    'agent/Agent.hh',
-    'agent/Agent.cc',
-    'common/common.cc',
-    'common/common.hh',
-    )
+  ## ------- ##
+  ## Station ##
+  ## ------- ##
 
-  agent_cxx_config = drake.cxx.Config(cxx_config_libs)
-  agent_lib = Library(
-    'lib/agent',
-    agent_sources + [elle_lib, papier_lib, nucleus_lib, lune_lib],
-    cxx_toolkit,
-    agent_cxx_config
-  )
-
-  # Station
   station_build = drake.Rule('station/build')
   station_sources = drake.nodes(
     'station/src/station/AlreadyConnected.cc',
@@ -502,7 +290,10 @@ def configure(cxx_toolkit = None,
     runner = drake.Runner(exe = test)
     station_check << runner.status
 
-  # Frete
+  ## ----- ##
+  ## Frete ##
+  ## ----- ##
+
   frete_build = drake.Rule('frete/build')
   frete_sources = drake.nodes(
     'frete/src/frete/Frete.hh',
@@ -542,7 +333,10 @@ def configure(cxx_toolkit = None,
     runner = drake.Runner(exe = test)
     frete_check << runner.status
 
-  # Crash
+  ## ----- ##
+  ## Crash ##
+  ## ----- ##
+
   crash_sources = drake.nodes(
     'CrashReporter.cc',
     'CrashReporter.hh'
@@ -555,374 +349,17 @@ def configure(cxx_toolkit = None,
     crash_cxx_config
   )
 
-  # Infinit
-  infinit_sources = drake.nodes(
-    # 'HoleFactory.cc',
-    #'heartbeat.cc',
-    #'heartbeat.hh',
-    'Infinit.cc',
-    'Program.cc',
-    'Program.hh',
-    'common/common.hh',
-    'common/common.cc',
-    ) + [version]
-  infinit_cxx_config = drake.cxx.Config(cxx_config_libs)
-  infinit_lib = Library(
-    'lib/infinit',
-    infinit_sources + [
-      lune_lib,
-      cryptography_lib,
-      elle_lib,
-      crash_lib,
-      metrics_lib,
-      reactor_lib
-    ],
-    cxx_toolkit,
-    infinit_cxx_config
-  )
-
-  # Hole
-  hole_sources = drake.nodes(
-    'hole/Exception.cc',
-    'hole/Exception.hh',
-    'hole/Hole.cc',
-    'hole/Hole.hh',
-    'hole/Label.cc',
-    'hole/Label.hh',
-    'hole/Label.hxx',
-    'hole/Openness.cc',
-    'hole/Openness.hh',
-    'hole/algorithms/assignment/Assignment.hh',
-    'hole/fwd.hh',
-    'hole/implementations/Implementations.hh',
-    # 'hole/implementations/cirkle/Cirkle.cc',
-    # 'hole/implementations/cirkle/Cirkle.hh',
-    # 'hole/implementations/cirkle/Cluster.cc',
-    # 'hole/implementations/cirkle/Cluster.hh',
-    # 'hole/implementations/cirkle/Cluster.hxx',
-    # 'hole/implementations/cirkle/Implementation.cc',
-    # 'hole/implementations/cirkle/Implementation.hh',
-    # 'hole/implementations/cirkle/Machine.cc',
-    # 'hole/implementations/cirkle/Machine.hh',
-    # 'hole/implementations/cirkle/Manifest.hh',
-    # 'hole/implementations/cirkle/Neighbour.cc',
-    # 'hole/implementations/cirkle/Neighbour.hh',
-    # 'hole/implementations/cirkle/Neighbourhood.cc',
-    # 'hole/implementations/cirkle/Neighbourhood.hh',
-    # 'hole/implementations/cirkle/RoutingTable.cc',
-    # 'hole/implementations/cirkle/RoutingTable.hh',
-    'hole/implementations/local/Implementation.cc',
-    'hole/implementations/local/Implementation.hh',
-    'hole/implementations/local/Local.cc',
-    'hole/implementations/local/Local.hh',
-    'hole/implementations/local/Machine.cc',
-    'hole/implementations/local/Machine.hh',
-    'hole/implementations/local/fwd.hh',
-    'hole/implementations/remote/Client.cc',
-    'hole/implementations/remote/Client.hh',
-    'hole/implementations/remote/Customer.cc',
-    'hole/implementations/remote/Customer.hh',
-    'hole/implementations/remote/Implementation.cc',
-    'hole/implementations/remote/Implementation.hh',
-    'hole/implementations/remote/Machine.cc',
-    'hole/implementations/remote/Machine.hh',
-    'hole/implementations/remote/Manifest.cc',
-    'hole/implementations/remote/Manifest.hh',
-    'hole/implementations/remote/Remote.cc',
-    'hole/implementations/remote/Remote.hh',
-    'hole/implementations/remote/Server.cc',
-    'hole/implementations/remote/Server.hh',
-    'hole/implementations/remote/fwd.hh',
-    'hole/implementations/slug/Host.cc',
-    'hole/implementations/slug/Host.hh',
-    'hole/implementations/slug/Slug.cc',
-    'hole/implementations/slug/Slug.hh',
-    'hole/implementations/slug/Manifest.cc',
-    'hole/implementations/slug/Manifest.hh',
-    'hole/implementations/slug/fwd.hh',
-    'hole/storage/Storage.cc',
-    'hole/storage/Storage.hh',
-    'hole/storage/Directory.cc',
-    'hole/storage/Directory.hh',
-    'hole/storage/Memory.cc',
-    'hole/storage/Memory.hh',
-    'common/common.hh',
-    'common/common.cc',
-    )
-  hole_cxx_config = drake.cxx.Config(cxx_config_libs)
-  hole_lib = Library(
-    'lib/hole',
-    hole_sources + [
-      elle_lib,
-      nucleus_lib,
-      cryptography_lib,
-      papier_lib,
-      lune_lib,
-      reactor_lib
-    ],
-    cxx_toolkit,
-    hole_cxx_config
-  )
-
-# XXX
-#  hole_tests_root = drake.Path('hole/tests')
-#  for test in ['slug']:
-#    drake.cxx.Executable(
-#      hole_tests_root / test,
-#      drake.nodes(hole_tests_root / ('%s.cc' % test)) +
-#      [reactor.lib_dynamic, elle.lib_dynamic, cryptography_lib,
-#       hole_lib, nucleus_lib, protocol_lib],
-#      cxx_toolkit, cxx_config + boost.config_test())
-
-  # Etoile
-  etoile_sources = drake.nodes(
-    'etoile/Etoile.cc',
-    'etoile/Etoile.hh',
-    'etoile/Exception.hh',
-    'etoile/Exception.cc',
-    'etoile/Manifest.cc',
-    'etoile/Manifest.hh',
-    'etoile/abstract/Group.cc',
-    'etoile/abstract/Group.hh',
-    'etoile/abstract/Group.hxx',
-    'etoile/abstract/Object.cc',
-    'etoile/abstract/Object.hh',
-    'etoile/abstract/Object.hxx',
-    'etoile/abstract/fwd.hh',
-    'etoile/automaton/Access.cc',
-    'etoile/automaton/Access.hh',
-    'etoile/automaton/Attributes.cc',
-    'etoile/automaton/Attributes.hh',
-    'etoile/automaton/Author.cc',
-    'etoile/automaton/Author.hh',
-    'etoile/automaton/Automaton.hh',
-    'etoile/automaton/Contents.hh',
-    'etoile/automaton/Contents.hxx',
-    'etoile/automaton/Directory.cc',
-    'etoile/automaton/Directory.hh',
-    'etoile/automaton/Ensemble.cc',
-    'etoile/automaton/Ensemble.hh',
-    'etoile/automaton/File.cc',
-    'etoile/automaton/File.hh',
-    'etoile/automaton/Group.cc',
-    'etoile/automaton/Group.hh',
-    'etoile/automaton/Link.cc',
-    'etoile/automaton/Link.hh',
-    'etoile/automaton/Object.cc',
-    'etoile/automaton/Object.hh',
-    'etoile/automaton/Rights.cc',
-    'etoile/automaton/Rights.hh',
-    'etoile/automaton/Rights.hxx',
-    'etoile/depot/Depot.cc',
-    'etoile/depot/Depot.hh',
-    'etoile/depot/Depot.hxx',
-    'etoile/fwd.hh',
-    'etoile/gear/Action.cc',
-    'etoile/gear/Action.hh',
-    'etoile/gear/Action.hxx',
-    'etoile/gear/Actor.cc',
-    'etoile/gear/Actor.hh',
-    'etoile/gear/Chronicle.hh',
-    'etoile/gear/Context.cc',
-    'etoile/gear/Context.hh',
-    'etoile/gear/Directory.cc',
-    'etoile/gear/Directory.hh',
-    'etoile/gear/File.cc',
-    'etoile/gear/File.hh',
-    'etoile/gear/Group.cc',
-    'etoile/gear/Group.hh',
-    'etoile/gear/Guard.cc',
-    'etoile/gear/Guard.hh',
-    'etoile/gear/Identifier.cc',
-    'etoile/gear/Identifier.hh',
-    'etoile/gear/Identifier.hxx',
-    'etoile/gear/Link.cc',
-    'etoile/gear/Link.hh',
-    'etoile/gear/Nature.hh',
-    'etoile/gear/Object.cc',
-    'etoile/gear/Object.hh',
-    'etoile/gear/Operation.hh',
-    'etoile/gear/Scope.cc',
-    'etoile/gear/Scope.hh',
-    'etoile/gear/Scope.hxx',
-    'etoile/gear/Transcript.cc',
-    'etoile/gear/Transcript.hh',
-    'etoile/gear/fwd.hh',
-    'etoile/journal/Journal.cc',
-    'etoile/journal/Journal.hh',
-    'etoile/nest/Nest.cc',
-    'etoile/nest/Nest.hh',
-    'etoile/nest/Pod.cc',
-    'etoile/nest/Pod.hh',
-    'etoile/nest/fwd.hh',
-    'etoile/path/Chemin.cc',
-    'etoile/path/Chemin.hh',
-    'etoile/path/Chemin.hxx',
-    'etoile/path/Length.hh',
-    'etoile/path/Path.cc',
-    'etoile/path/Path.hh',
-    'etoile/path/Route.cc',
-    'etoile/path/Route.hh',
-    'etoile/path/Route.hxx',
-    'etoile/path/Slice.hh',
-    'etoile/path/Venue.cc',
-    'etoile/path/Venue.hh',
-    'etoile/path/Venue.hxx',
-    'etoile/path/fwd.hh',
-    'etoile/shrub/Riffle.cc',
-    'etoile/shrub/Riffle.hh',
-    'etoile/shrub/Shrub.cc',
-    'etoile/shrub/Shrub.hh',
-    'etoile/wall/Access.cc',
-    'etoile/wall/Access.hh',
-    'etoile/wall/Attributes.cc',
-    'etoile/wall/Attributes.hh',
-    'etoile/wall/Directory.cc',
-    'etoile/wall/Directory.hh',
-    'etoile/wall/File.cc',
-    'etoile/wall/File.hh',
-    'etoile/wall/Group.cc',
-    'etoile/wall/Group.hh',
-    'etoile/wall/Link.cc',
-    'etoile/wall/Link.hh',
-    'etoile/wall/Object.cc',
-    'etoile/wall/Object.hh',
-    'etoile/wall/Object.hxx',
-    'etoile/wall/Path.cc',
-    'etoile/wall/Path.hh',
-    'etoile/wall/Wall.hh',
-    )
-  etoile_cxx_config = drake.cxx.Config(cxx_config_libs)
-  etoile_lib = Library(
-    'lib/etoile',
-    etoile_sources + [hole_lib],
-    cxx_toolkit,
-    etoile_cxx_config
-  )
-
-  # Horizon
-  if enable_horizon:
-    horizon_sources = drake.nodes(
-      'horizon/Crib.cc',
-      'horizon/Crib.hh',
-      # 'horizon/Crux.cc',
-      'horizon/Handle.cc',
-      'horizon/Handle.hh',
-      'horizon/Horizon.cc',
-      'horizon/Horizon.hh',
-      'horizon/operations.hh',
-      'horizon/Policy.cc',
-      'horizon/Policy.hh',
-      )
-    if cxx_toolkit.os == drake.os.linux:
-      horizon_sources += drake.nodes(
-        'horizon/linux/FUSE.cc',
-        'horizon/linux/FUSE.hh',
-        'horizon/linux/FUker.cc',
-        'horizon/linux/FUker.hh',
-        'horizon/linux/Linux.cc',
-        'horizon/linux/Linux.hh',
-        'horizon/linux/fwd.hh',
-        )
-    elif cxx_toolkit.os == drake.os.macos:
-      horizon_sources += drake.nodes(
-        'horizon/macosx/Crux.hh',
-        'horizon/macosx/Crux.cc',
-        'horizon/macosx/FUSE.hh',
-        'horizon/macosx/FUSE.cc',
-        'horizon/macosx/FUker.hh',
-        'horizon/macosx/FUker.cc',
-        'horizon/macosx/MacOSX.hh',
-        'horizon/macosx/MacOSX.cc',
-        'horizon/macosx/fwd.hh',
-        )
-    else:
-      raise Exception('cannot compile horizon: unsupported os')
-
-    horizon_lib = Library(
-      'lib/horizon',
-      horizon_sources,
-      cxx_toolkit,
-      cxx_config
-    )
-
   ## ----- ##
   ## Tests ##
   ## ----- ##
 
-  tests = drake.Rule('tests')
   tests << elle.rule_tests
 
   ## ----- ##
   ## Check ##
   ## ----- ##
 
-  check = drake.TestSuite('check')
   check << elle.rule_check
-
-  ## ----- ##
-  ## Build ##
-  ## ----- ##
-
-  build = drake.Rule('build')
-
-  ## -------- ##
-  ## Programs ##
-  ## -------- ##
-
-  infinit_libs = [
-    # asio_fs_lib,
-    agent_lib,
-    # etoile_lib,
-    # hole_lib,
-    papier_lib,
-    infinit_lib,
-    lune_lib,
-    nucleus_lib,
-    cryptography_lib,
-    protocol_lib,
-    reactor_lib,
-    elle_lib,
-    metrics_lib,
-  ]
-
-  # 8infinit
-  infinit_bin_config = drake.cxx.Config(cxx_config)
-  infinit_bin_config += boost.config_thread()
-  infinit_bin_config += boost.config_program()
-  infinit_bin_config += boost.config_system()
-  infinit_bin_config += boost.config_filesystem()
-  infinit_bin_config.lib_path_runtime('../lib')
-  if enable_horizon:
-    infinit_bin_config.lib('fuse')
-    infinit_bin_config.lib('pthread')
-
-  infinit_sources = drake.nodes(
-      '_infinit.cc',
-      'satellites/satellite.cc',
-      'satellites/satellite.hh'
-  )
-  infinit_bin = drake.cxx.Executable('bin/8infinit',
-                                     infinit_sources + infinit_libs,
-                                     cxx_toolkit, infinit_bin_config)
-  # build << infinit_bin
-
-  # GdbMacro
-  gdbmacro_files = drake.nodes(
-    'default/gdbmacro.py',
-    )
-  macro_copy = drake.copy(gdbmacro_files, 'bin', 'default')
-
-  build << macro_copy
-
-  # 8hole
-  hole_cxx_config = drake.cxx.Config(cxx_config)
-  hole_cxx_config.lib('fuse')
-  hole_bin = drake.cxx.Executable(
-    'bin/8hole',
-    drake.nodes('hole/_hole.cc') + infinit_libs,
-    cxx_toolkit, hole_cxx_config)
-  # build << hole_bin
 
   ## ------- ##
   ## Oracles ##
@@ -952,7 +389,10 @@ def configure(cxx_toolkit = None,
 
   # oracles_enabled = cxx_toolkit.os != drake.os.windows
 
-  ## GAP:
+  ## --- ##
+  ## GAP ##
+  ## --- ##
+
   templating_context = drake.templating.Context(
     sources = oracles.meta.server.python,
     pythonpath = ('oracles/meta/server/lib/python',), # XXX
@@ -991,41 +431,12 @@ def configure(cxx_toolkit = None,
       'common/common.cc',
     )
 
-  ## --- ##
-  ## GAP ##
-  ## --- ##
-
   gap_build = drake.Rule('gap/build')
   gap_tests = drake.Rule('gap/tests')
   gap_check = drake.TestSuite('gap/check')
   gap_install = drake.TestSuite('gap/install')
   build << gap_build
   install << gap_install
-
-  # gap_generator = drake.node('surface/gap/metrics_generator.py')
-  # class GAPGenerator(drake.Builder):
-  #   def __init__(self, script, path, python_exe = 'python3'):
-  #     self.__script = script
-  #     self.__path = path
-  #     self.__targets = drake.nodes('%s.hh' % path, '%s.h' % path)
-  #     self.__python_exe = python_exe
-  #     drake.Builder.__init__(self, [self.__script], self.__targets)
-
-  #   def execute(self):
-  #     return self.cmd(
-  #       'Generate %s' % ', '.join(map(str, self.__targets)),
-  #       [self.__python_exe, self.__script.path(), self.__path]
-  #     )
-
-  #   @property
-  #   def generated(self):
-  #     return self.__targets
-
-  # gap_sources += GAPGenerator(
-  #   gap_generator,
-  #   'surface/gap/gen_metrics',
-  #   python_exe = cxx_toolkit.os is drake.os.windows and 'python' or 'python3',
-  # ).generated
 
   gap_cxx_config = drake.cxx.Config(cxx_config_libs)
   gap_cxx_config.add_local_include_path('metrics/src')
@@ -1065,7 +476,10 @@ def configure(cxx_toolkit = None,
 
   gap_build << gap_lib
 
-  # GAP python
+  ## ---------- ##
+  ## GAP python ##
+  ## ---------- ##
+
   gap_python_lib = None
   if python_enabled:
     gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
@@ -1105,183 +519,3 @@ def configure(cxx_toolkit = None,
     gap_build << gap_python_lib
     gap_build << gap_python_pyfile_copy
     gap_build << infinit_cli_copy
-
-  # Satellites
-
-  gap_satellites_bin = drake.cxx.Config(infinit_bin_config)
-  gap_satellites_bin.add_local_include_path('metrics/src')
-  gap_satellites_bin.add_local_include_path('oracles/src')
-  gap_satellites_bin.add_local_include_path('oracles/meta/client/src')
-  gap_satellites_bin.add_local_include_path('oracles/trophonius/client/src')
-
-  gap_install << drake.install(gap_lib, prefix / 'lib',
-                               strip_prefix = True)
-  if gap_python_lib is not None:
-    gap_install << drake.install(gap_python_lib, prefix / 'lib/python',
-                                 strip_prefix = True)
-
-  def satellite(name, dependencies):
-    fmt = (name, name.capitalize())
-    sources = [
-      'satellites/%s/%s.cc' % fmt,
-      'satellites/%s/%s.hh' % fmt,
-      'satellites/%s/%s.hxx' % fmt,
-      'satellites/satellite.cc',
-      'satellites/satellite.hh',
-    ]
-    sources = filter(lambda p: drake.path_source(p).exists(), sources)
-    sources = map(drake.node, sources)
-    bin = drake.cxx.Executable(
-      'bin/8%s' % name,
-      # XXX: not every satellite needs GAP.
-      list(sources) + list(dependencies) + [crash_lib],
-      cxx_toolkit, gap_satellites_bin)
-    build << bin
-
-  for name, dependencies in [
-    # 'access',
-    # 'authority',
-    # 'group',
-    # 'network',
-    # 'passport',
-    # 'progress',
-    # 'send',
-    # 'transfer',
-    # 'user',
-    # 'dump',
-    ('recv', (gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib, metrics_lib)),
-    ('send', (gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib, metrics_lib)),
-    ]:
-    satellite(name, dependencies)
-
-  # infinit-agent
-  agent_sources = drake.nodes(
-    'satellites/agent/infinit-agent.py'
-    )
-  agent_copy = drake.copy(agent_sources, 'bin', 'satellites/agent')
-  # build << agent_copy
-
-  # 8search
-  search_sources = drake.nodes(
-    'satellites/search/8search.py',
-    )
-  search_copy = drake.copy(search_sources, 'bin', 'satellites/search')
-  # build << search_copy
-
-  # 8d00m
-  d00m_sources = drake.nodes(
-    'satellites/d00m/8d00m.py'
-    )
-  d00m_copy = drake.copy(d00m_sources, 'bin', 'satellites/d00m')
-  # build << d00m_copy
-
-  # 8sendto
-  sendto_sources = drake.nodes(
-    'satellites/sendto/8sendto.py',
-    )
-  sendto_copy = drake.copy(sendto_sources, 'bin', 'satellites/sendto')
-  # build << sendto_copy
-
-  # 8recvfrom
-  recvfrom_sources = drake.nodes(
-    'satellites/recvfrom/8recvfrom.py',
-    )
-  recvfrom_copy = drake.copy(recvfrom_sources, 'bin', 'satellites/recvfrom')
-  # build << recvfrom_copy
-
-  # Oracles
-
-  hermes = drake.include('oracles/hermes',
-                          protocol = elle.protocol,
-                          reactor = elle.reactor,
-                          boost = boost,
-                          prefix = prefix,
-                          cxx_toolkit = cxx_toolkit,
-                          cxx_config = cxx_config)
-
-  # Install
-  install << drake.install(infinit_bin, prefix)
-  install << drake.install(infinit_libs, prefix)
-
-  # Tests
-  tests_cxx_config = drake.cxx.Config(cxx_config)
-  tests_cxx_config.lib_path_runtime('../../../../lib')
-  tests_cxx_config.lib_path_runtime('../../../lib')
-  tests_cxx_config.lib_path_runtime('../../lib')
-  tests_cxx_config.lib_path_runtime('../lib')
-  tests_cxx_config += boost.config_test()
-  tests_cxx_config += boost.config_system()
-  tests_cxx_config += boost.config_filesystem()
-  tests_cxx_config.define("BOOST_TEST_DYN_LINK")
-  nucleus_test_libs = [cryptography_lib, elle_lib, nucleus_lib, reactor_lib]
-
-  tests_src_n_lib = [
-    # ('tests/testing_tests.cc', []),
-    # ('tests/unit/etoile/Etoile.cc', infinit_libs),
-    # ('tests/unit/etoile/Shrub.cc', infinit_libs),
-    # ('tests/unit/nucleus/neutron/nn_Group.cc', nucleus_test_libs),
-    # ('tests/unit/nucleus/neutron/nn_Object.cc', nucleus_test_libs),
-    # ('tests/unit/nucleus/neutron/nn_Record.cc', nucleus_test_libs),
-    # ('tests/unit/nucleus/proton/ImprintBlock.cc', nucleus_test_libs),
-    # ('tests/unit/nucleus/proton/Porcupine.cc', infinit_libs + [elle_lib, hole_lib]),
-    # (('tests/unit/plasma/trophonius/test.cc',),  [elle_lib, plasma_lib, reactor_lib]),
-    # (('tests/unit/plasma/meta/test.cc',),  [elle_lib, plasma_lib, reactor_lib]),
-    # (('tests/unit/CrashReporter.cc', 'CrashReporter.cc', 'CrashReporter.hh'), [elle_lib, reactor_lib]),
-    # ('tests/unit/surface/gap/gap.cc', infinit_libs + [elle_lib, metrics_lib, gap_lib, frete_lib, station_lib, crash_lib]),
-    # ('tests/unit/surface/gap/gap_metrics.cc', infinit_libs + [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, frete_lib, station_lib, metrics_lib, crash_lib]),
-    # ('tests/unit/surface/gap/gap_state_destruction.cc', [gap_lib, elle_lib, reactor_lib, lune_lib, crash_lib]),
-    # (('tests/unit/surface/gap/Metrics.cc', 'common/common.cc'), infinit_libs + [elle_lib, plasma_lib, metrics_lib, reactor_lib, cryptography_lib, crash_lib]),
-    # ('tests/unit/surface/gap/state_connect.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib]),
-    # ('tests/unit/surface/gap/state_ctor.cc', [elle_lib, lune_lib, plasma_lib, metrics_lib, gap_lib, metrics_lib] + infinit_libs),
-    # ('tests/unit/hole/slug.cc', infinit_libs),
-    # (('tests/unit/heartbeat.cc', 'heartbeat.cc', 'heartbeat.hh', 'common/common.cc'), [reactor_lib, elle_lib]),
-    # ('tests/unit/signal_handling.cc', infinit_libs + [crash_lib]),
-  ]
-
-  for test, deps in tests_src_n_lib:
-    if isinstance(test, str):
-      bin_name, ext = os.path.splitext(test)
-      sources = [test]
-    else:
-      first, *others = test
-      bin_name, ext = os.path.splitext(first)
-      sources = test
-    test_bin = drake.cxx.Executable(bin_name,
-                                    drake.nodes(*sources) + deps,
-                                    cxx_toolkit, tests_cxx_config)
-    tests << test_bin
-    runner = drake.Runner(test_bin)
-    runner.reporting = drake.Runner.Reporting.on_failure
-    check << runner.status
-
-  check_functional = drake.Rule('check/functional')
-  for test in ['servers/genocide',
-               'servers/pingpong-notifications.py',
-               'servers/online-offline',
-               'servers/swaggers.py',
-               'sharing/send-file/send-file.py',
-               'sharing/send-file/forwarder.py',
-               'sharing/send-file/invitation.py',
-               'sharing/send-file/sender-cancel.py',
-               'sharing/send-file/sender-early-cancel.py',
-               'sharing/send-file/recipient-early-cancel.py',
-               'sharing/send-file/recipient-cancel.py',
-             ]:
-    test = drake.node('tests/functional/%s' % test)
-    tests << test
-    pythonpath = [
-      drake.path_source('tests/functional/lib'),
-      drake.path_build('lib/python'),
-    ]
-    env = {
-      'PYTHONPATH': ':'.join(map(str, pythonpath)),
-      'PATH': os.environ['PATH']
-    }
-    runner = drake.Runner(test, env = env)
-    runner.reporting = drake.Runner.Reporting.on_failure
-    check_functional << runner.status
-
-  # build << drake.cxx.Executable("bin/pass",
-  #         drake.nodes('tests/unit/pass.cc', 'common/common.cc') + [reactor_lib,
-  #             elle_lib] + udt_libs,
-  #         cxx_toolkit, tests_cxx_config)

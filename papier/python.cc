@@ -1,4 +1,4 @@
-#include <wrappers/boost/python.hh>
+#include <boost/python.hpp>
 
 #include <papier/Authority.hh>
 #include <cryptography/PublicKey.hh>

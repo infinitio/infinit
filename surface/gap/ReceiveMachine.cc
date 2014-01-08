@@ -5,8 +5,6 @@
 
 #include <station/Station.hh>
 
-#include <nucleus/neutron/Subject.hh>
-
 #include <reactor/thread.hh>
 #include <reactor/exception.hh>
 

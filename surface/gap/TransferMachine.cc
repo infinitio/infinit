@@ -14,7 +14,6 @@
 #include <surface/gap/State.hh>
 #include <surface/gap/TransferMachine.hh>
 
-#include <papier/Descriptor.hh>
 #include <papier/Authority.hh>
 
 #include <frete/Frete.hh>

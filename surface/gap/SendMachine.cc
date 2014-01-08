@@ -5,11 +5,6 @@
 
 #include <station/Station.hh>
 
-#include <papier/Descriptor.hh>
-
-#include <nucleus/neutron/Object.hh>
-#include <nucleus/neutron/Subject.hh>
-
 #include <reactor/thread.hh>
 #include <reactor/exception.hh>
 
