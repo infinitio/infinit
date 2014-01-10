@@ -7,7 +7,7 @@
 
 # include <elle/attribute.hh>
 
-# include <reactor/network/tcp-socket.hh>
+# include <reactor/network/socket.hh>
 # include <reactor/thread.hh>
 
 # include <infinit/oracles/trophonius/server/fwd.hh>
@@ -26,7 +26,7 @@ namespace infinit
         {
         public:
           Client(Trophonius& trophonius,
-                 std::unique_ptr<reactor::network::TCPSocket>&& socket);
+                 std::unique_ptr<reactor::network::Socket>&& socket);
           virtual
           ~Client();
 
@@ -53,7 +53,7 @@ namespace infinit
 
           ELLE_ATTRIBUTE_R(Trophonius&, trophonius);
         protected:
-          std::unique_ptr<reactor::network::TCPSocket> _socket;
+          std::unique_ptr<reactor::network::Socket> _socket;
 
           ELLE_ATTRIBUTE(reactor::Thread, handle_thread);
 

@@ -9,6 +9,7 @@
 #include <infinit/oracles/trophonius/server/User.hh>
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 
+#include <boost/filesystem.hpp>
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
@@ -37,12 +38,13 @@ namespace infinit
           boost::posix_time::time_duration const& meta_ping_period,
           bool meta_fatal):
           Waitable("trophonius"),
-          _server(),
+          _certificate(nullptr),
+          _server(nullptr),
           _port(port),
           _notifications(),
           _accepter(
             *reactor::Scheduler::scheduler(),
-            elle::sprintf("%s accepter", *this),
+            elle::sprintf("%s user accepter", *this),
             std::bind(&Trophonius::_serve, std::ref(*this))),
           _meta_fatal(meta_fatal),
           _meta_accepter(
@@ -85,8 +87,16 @@ namespace infinit
 
           try
           {
-            this->_server.listen(this->_port);
-            this->_port = this->_server.port();
+            auto cert_root = boost::filesystem::path("/Users/chris/sandbox/infinit/oracles/trophonius/server/etc");
+            this->_certificate.reset(new reactor::network::SSLCertificate(
+             (cert_root / "server-cert.pem").string(),
+             (cert_root / "server-key.pem").string(),
+             (cert_root / "dh1024.pem").string()));
+            ELLE_DEBUG("%s: loaded SSL certificate", *this);
+            this->_server.reset(new reactor::network::SSLServer(
+              *this->_certificate));
+            this->_server->listen(this->_port);
+            this->_port = this->_server->port();
             ELLE_LOG("%s: listen for users on port %s", *this, this->port());
           }
           catch (...)
@@ -195,7 +205,7 @@ namespace infinit
         int
         Trophonius::port() const
         {
-          return this->_server.port();
+          return this->_server->port();
         }
 
         int
@@ -209,8 +219,8 @@ namespace infinit
         {
           while (true)
           {
-            std::unique_ptr<reactor::network::TCPSocket> socket(
-              this->_server.accept());
+            std::unique_ptr<reactor::network::SSLSocket> socket(
+              this->_server->accept());
             auto user = new User(*this, std::move(socket));
             this->_users_pending.insert(user);
           }

@@ -1,15 +1,17 @@
 #include <elle/cast.hh>
 #include <elle/json/json.hh>
 #include <elle/log.hh>
+#include <elle/os/getenv.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
+
+#include <boost/filesystem.hpp>
 
 #include <infinit/oracles/trophonius/Client.hh>
 
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
-#include <reactor/network/tcp-server.hh>
-#include <reactor/network/tcp-socket.hh>
+#include <reactor/network/ssl-server.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/signal.hh>
 #include <reactor/Scope.hh>
@@ -22,6 +24,14 @@ ELLE_LOG_COMPONENT("infinit.oracles.trophonius.client.test")
 #else
 # define RUNNING_ON_VALGRIND 0
 #endif
+
+// Local fingerprint in sha1.
+
+static const std::vector<unsigned char> fingerprint =
+{
+  0x66, 0x84, 0x68, 0xEB, 0xBE, 0x83, 0xA0, 0x5C, 0x6A, 0x32,
+  0xAD, 0xD2, 0x58, 0x62, 0x01, 0x31, 0x79, 0x96, 0x78, 0xB8
+};
 
 enum class NotificationCode
 {
@@ -40,51 +50,70 @@ enum class NotificationCode
 class Trophonius
 {
 public:
-  Trophonius():
-    _server(),
+    Trophonius():
+      Trophonius(true)
+    {}
+
+  Trophonius(bool start):
+    _certificate(nullptr),
+    _server(nullptr),
     _port(),
     _accepter()
   {
-    this->_server.listen(0);
-    this->_port = this->_server.port();
+    if (!start)
+    {
+      this->_port = 53;
+      return;
+    }
+
+    auto cert_root = boost::filesystem::path("/Users/chris/sandbox/infinit/oracles/trophonius/server/etc");
+    this->_certificate.reset(new reactor::network::SSLCertificate(
+      (cert_root / "server-cert.pem").string(),
+      (cert_root / "server-key.pem").string(),
+      (cert_root / "dh1024.pem").string()));
+    this->_server.reset(new reactor::network::SSLServer(*this->_certificate));
+    this->_server->listen(0);
+    this->_port = this->_server->port();
     ELLE_LOG("%s: listen on port %s", *this, this->_port);
-    this->_accepter.reset(
-      new reactor::Thread(*reactor::Scheduler::scheduler(),
-                          "accepter",
-                          std::bind(&Trophonius::_accept,
-                                    std::ref(*this))));
+    this->_accepter.reset(new reactor::Thread(
+      *reactor::Scheduler::scheduler(),
+      "accepter",
+      std::bind(&Trophonius::_handle_connection, std::ref(*this))));
   }
 
   ~Trophonius()
   {
-    this->_accepter->terminate_now();
+    if (this->_accepter)
+      this->_accepter->terminate_now();
     ELLE_LOG("%s: finalize", *this);
   }
 
   ELLE_ATTRIBUTE_RX(reactor::Signal, poked);
   ELLE_ATTRIBUTE_RX(reactor::Signal, client_connected);
 
-  ELLE_ATTRIBUTE(reactor::network::TCPServer, server);
+  ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLCertificate>,
+                 certificate);
+  ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLServer>, server);
   ELLE_ATTRIBUTE_R(int, port);
   ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter);
 
 protected:
-  reactor::network::TCPServer&
+  reactor::network::SSLServer&
   server()
   {
-    return this->_server;
+    return *this->_server;
   }
 
   virtual
   void
-  _accept()
+  _handle_connection()
   {
     try
     {
       while (true)
       {
-        std::unique_ptr<reactor::network::TCPSocket> socket(
-          this->_server.accept());
+        std::unique_ptr<reactor::network::SSLSocket> socket(
+          this->_server->accept());
         ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
         auto poke_read = elle::json::read(*socket);
         auto poke = boost::any_cast<elle::json::Object>(poke_read);
@@ -99,12 +128,8 @@ protected:
     }
   }
 
-  virtual
   void
-  _serve(reactor::network::TCPSocket& socket) = 0;
-
-  void
-  _send_notification(reactor::network::TCPSocket& socket,
+  _send_notification(reactor::network::SSLSocket& socket,
                      std::string const& message)
   {
     elle::json::Object notification;
@@ -120,13 +145,17 @@ protected:
 
   virtual
   void
-  _login_response(reactor::network::TCPSocket& socket)
+  _serve(reactor::network::SSLSocket& socket) = 0;
+
+  virtual
+  void
+  _login_response(reactor::network::SSLSocket& socket)
   {
     this->_login_response(socket, true);
   }
 
   void
-  _login_response(reactor::network::TCPSocket& socket, bool success)
+  _login_response(reactor::network::SSLSocket& socket, bool success)
   {
     elle::json::Object login_response;
     login_response["notification_type"] =
@@ -150,22 +179,26 @@ class PokeTrophonius:
   public Trophonius
 {
 public:
-  PokeTrophonius():
-    Trophonius(),
-    _round(0)
+  PokeTrophonius(int round):
+    PokeTrophonius(true, round)
   {}
 
-  static int const total_rounds = 6;
-  ELLE_ATTRIBUTE_RW(int, round);
+  PokeTrophonius(bool start, int round):
+    Trophonius(start),
+    _round(round)
+  {}
+
+  ELLE_ATTRIBUTE_R(int, round);
 
 protected:
   virtual
   void
-  _accept()
+  _handle_connection()
   {
+    ELLE_DEBUG("server in round: %s", this->_round);
     if (this->round() == 0) // Normal case.
     {
-      std::unique_ptr<reactor::network::TCPSocket> socket(
+      std::unique_ptr<reactor::network::SSLSocket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
@@ -174,27 +207,22 @@ protected:
       ELLE_LOG("%s replied to poke", *this);
       reactor::wait(this->poked());
     }
-    else if (this->round() == 1) // Connection refused.
+    else if (this->round() == 1) // No reply.
     {
-      // Do nothing.
-      reactor::wait(this->poked());
-    }
-    else if (this->round() == 2) // No reply.
-    {
-      std::unique_ptr<reactor::network::TCPSocket> socket(
+      std::unique_ptr<reactor::network::SSLSocket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
       reactor::wait(this->poked());
     }
-    else if (this->round() == 3) // Unable to resolve.
+    else if (this->round() == 2) // Unable to resolve.
     {
       // Do nothing.
       reactor::wait(this->poked());
     }
-    else if (this->round() == 4) // Wrong JSON reply.
+    else if (this->round() == 3) // Wrong JSON reply.
     {
-      std::unique_ptr<reactor::network::TCPSocket> socket(
+      std::unique_ptr<reactor::network::SSLSocket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
@@ -204,22 +232,28 @@ protected:
       ELLE_LOG("%s replied incorrect JSON to poke", *this);
       reactor::wait(this->poked());
     }
-    else if (this->round() == 5) // HTML reply.
+    else if (this->round() == 4) // HTML reply.
     {
-      std::unique_ptr<reactor::network::TCPSocket> socket(
+      std::unique_ptr<reactor::network::SSLSocket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
-      std::string rubbish("<h1>Some randome HTML</h1>\n<p>shouldn't break anything</p>");
+      std::string rubbish(
+        "<h1>Some random HTML</h1>\n<p>shouldn't break anything</p>");
       socket->write(rubbish);
       ELLE_LOG("%s replied HTML to poke", *this);
+      reactor::wait(this->poked());
+    }
+    else if (this->round() == 5) // Connection refused.
+    {
+      // Do nothing.
       reactor::wait(this->poked());
     }
   }
 
   virtual
   void
-  _serve(reactor::network::TCPSocket& socket)
+  _serve(reactor::network::SSLSocket& socket)
   {
     // Do nothing.
   }
@@ -228,64 +262,68 @@ protected:
 
 ELLE_TEST_SCHEDULED(poke)
 {
-  PokeTrophonius tropho;
+  using namespace infinit::oracles::trophonius;
+  std::unique_ptr<PokeTrophonius> tropho;
+  int total_rounds = 6;
+  reactor::Duration poke_timeout = 200_ms;
+  std::unique_ptr<Client> client;
+  for (int round = 0; round < total_rounds; round++)
   {
-    reactor::Duration poke_timeout = 200_ms;
-    using namespace infinit::oracles::trophonius;
-    std::unique_ptr<Client> client;
-    for (int round = 0; round < tropho.total_rounds; round++)
+    if (round == total_rounds - 1)
+      tropho.reset(new PokeTrophonius(false, round));
+    else
+      tropho.reset(new PokeTrophonius(round));
+
+    reactor::sleep(50_ms);
+
+    client.reset(new Client(
+      "127.0.0.1",
+      tropho->port(),
+      [] (bool) {}, // connect callback
+      [] (void) {})  // reconnection failed callback
+    );
+    ELLE_LOG("round: %s", round);
+    BOOST_CHECK_EQUAL(tropho->round(), round);
+    if (round == 0) // Normal case.
     {
+      ELLE_LOG("normal case");
+      BOOST_CHECK_EQUAL(client->poke(poke_timeout), true);
+      tropho->poked().signal();
+    }
+    else if (round == 1) // No reply.
+    {
+      ELLE_LOG("no reply");
+      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
+      tropho->poked().signal();
+    }
+    else if (round == 2) // Unable to resolve.
+    {
+      ELLE_LOG("unable to resolve");
       client.reset(new Client(
-        "127.0.0.1",
-        tropho.port(),
+        "does.not.exist",
+        tropho->port(),
         [] (bool) {}, // connect callback
         [] (void) {})  // reconnection failed callback
       );
-      ELLE_LOG("round: %s", round);
-      tropho.round(round);
-      BOOST_CHECK_EQUAL(tropho.round(), round);
-      if (round == 0) // Normal case.
-      {
-        ELLE_LOG("normal case");
-        BOOST_CHECK_EQUAL(client->poke(poke_timeout), true);
-        tropho.poked().signal();
-      }
-      else if (round == 1) // Connection refused.
-      {
-        ELLE_LOG("connection refused");
-        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-        tropho.poked().signal();
-      }
-      else if (round == 2) // No reply.
-      {
-        ELLE_LOG("no reply");
-        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-        tropho.poked().signal();
-      }
-      else if (round == 3) // Unable to resolve.
-      {
-        ELLE_LOG("unable to resolve");
-        client.reset(new Client(
-          "does.not.exist",
-          tropho.port(),
-          [] (bool) {}, // connect callback
-          [] (void) {})  // reconnection failed callback
-        );
-        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-        tropho.poked().signal();
-      }
-      else if (round == 4) // Wrong JSON reply.
-      {
-        ELLE_LOG("wrong json reply");
-        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-        tropho.poked().signal();
-      }
-      else if (round == 5) // HTML response
-      {
-        ELLE_LOG("wrong json reply");
-        BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-        tropho.poked().signal();
-      }
+      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
+      tropho->poked().signal();
+    }
+    else if (round == 3) // Wrong JSON reply.
+    {
+      ELLE_LOG("wrong json reply");
+      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
+      tropho->poked().signal();
+    }
+    else if (round == 4) // HTML response
+    {
+      ELLE_LOG("wrong json reply");
+      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
+      tropho->poked().signal();
+    }
+    else if (round == 5) // Connection refused.
+    {
+      ELLE_LOG("connection refused");
+      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
     }
   }
 }
@@ -303,7 +341,7 @@ class NotificationTrophonius:
 protected:
   virtual
   void
-  _serve(reactor::network::TCPSocket& socket)
+  _serve(reactor::network::SSLSocket& socket)
   {
     ELLE_LOG("serve notification test");
     reactor::wait(this->poked());
@@ -392,7 +430,7 @@ ELLE_ATTRIBUTE_R(int, ping_received);
 protected:
   virtual
   void
-  _serve(reactor::network::TCPSocket& socket)
+  _serve(reactor::network::SSLSocket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -500,7 +538,7 @@ public:
 protected:
   virtual
   void
-  _serve(reactor::network::TCPSocket& socket)
+  _serve(reactor::network::SSLSocket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -601,7 +639,7 @@ public:
 protected:
   virtual
   void
-  _serve(reactor::network::TCPSocket& socket)
+  _serve(reactor::network::SSLSocket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -738,7 +776,7 @@ class SilentTrophonius:
 protected:
   virtual
   void
-  _serve(reactor::network::TCPSocket& socket)
+  _serve(reactor::network::SSLSocket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -801,46 +839,35 @@ class ReconnectionFailTrophohius:
 {
 public:
   ReconnectionFailTrophohius():
-    Trophonius(),
-    _first_connection(true)
+    Trophonius()
   {}
 
 protected:
   virtual
   void
-  _accept()
+  _handle_connection()
   {
-    if (this->_first_connection)
+    try
     {
-      try
-      {
-        while (true)
-        {
-          std::unique_ptr<reactor::network::TCPSocket> socket(
-            this->server().accept());
-          ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
-          auto poke_read = elle::json::read(*socket);
-          auto poke = boost::any_cast<elle::json::Object>(poke_read);
-          elle::json::write(*socket, poke);
-          ELLE_LOG("%s replied to poke", *this);
-          this->_serve(*socket);
-        }
-      }
-      catch (reactor::network::ConnectionClosed const&)
-      {
-        ELLE_LOG("%s: ignore connection closed on killing accepter", *this);
-      }
+      ELLE_LOG("first connection to server");
+      std::unique_ptr<reactor::network::SSLSocket> socket(
+        this->server().accept());
+      ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
+      auto poke_read = elle::json::read(*socket);
+      auto poke = boost::any_cast<elle::json::Object>(poke_read);
+      elle::json::write(*socket, poke);
+      ELLE_LOG("%s replied to poke", *this);
+      this->_serve(*socket);
     }
-    else
+    catch (reactor::network::ConnectionClosed const&)
     {
-      // Wait forever to simulate nazi network.
-      reactor::Scheduler::scheduler()->current()->Waitable::wait();
+      ELLE_LOG("%s: ignore connection closed on killing accepter", *this);
     }
   }
 
   virtual
   void
-  _serve(reactor::network::TCPSocket& socket)
+  _serve(reactor::network::SSLSocket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -849,12 +876,7 @@ protected:
                *this,
                elle::json::pretty_print(connect_msg));
     this->_login_response(socket);
-    // Wait forever.
-    reactor::Scheduler::scheduler()->current()->Waitable::wait();
   }
-
-private:
-  ELLE_ATTRIBUTE(bool, first_connection);
 };
 
 ELLE_TEST_SCHEDULED(reconnection_failed_callback)
@@ -876,7 +898,8 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
         end_test.signal();
       })
     );
-    client->ping_period(100_ms);
+
+    client->ping_period(200_ms);
     scope.run_background("initial poke", [&]
     {
       BOOST_CHECK(client->poke());
@@ -904,11 +927,11 @@ ELLE_TEST_SUITE()
 {
   auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(poke), 0, timeout);
-  suite.add(BOOST_TEST_CASE(notification), 0, timeout);
-  suite.add(BOOST_TEST_CASE(ping), 0, 2 * timeout);
-  suite.add(BOOST_TEST_CASE(no_ping), 0, 2 * timeout);
-  suite.add(BOOST_TEST_CASE(reconnection), 0, 2 * timeout);
-  suite.add(BOOST_TEST_CASE(connection_callback_throws), 0, timeout);
+  // suite.add(BOOST_TEST_CASE(poke), 0, timeout);
+  // suite.add(BOOST_TEST_CASE(notification), 0, timeout);
+  // suite.add(BOOST_TEST_CASE(ping), 0, 2 * timeout);
+  // suite.add(BOOST_TEST_CASE(no_ping), 0, 2 * timeout);
+  // suite.add(BOOST_TEST_CASE(reconnection), 0, 2 * timeout);
+  // suite.add(BOOST_TEST_CASE(connection_callback_throws), 0, timeout);
   suite.add(BOOST_TEST_CASE(reconnection_failed_callback), 0, 2 * timeout);
 }

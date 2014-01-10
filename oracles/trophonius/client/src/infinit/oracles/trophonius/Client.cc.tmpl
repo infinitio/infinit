@@ -26,7 +26,7 @@
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
 #include <reactor/network/resolve.hh>
-#include <reactor/network/tcp-socket.hh>
+#include <reactor/network/fingerprinted-socket.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/Scope.hh>
 #include <reactor/thread.hh>
@@ -124,6 +124,14 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::MessageNotification,
   ar & named("message", value.message);
 }
 
+// Local fingerprint in sha1.
+
+static const std::vector<unsigned char> fingerprint =
+{
+  0x66, 0x84, 0x68, 0xEB, 0xBE, 0x83, 0xA0, 0x5C, 0x6A, 0x32,
+  0xAD, 0xD2, 0x58, 0x62, 0x01, 0x31, 0x79, 0x96, 0x78, 0xB8
+};
+
 namespace infinit
 {
   namespace oracles
@@ -187,7 +195,8 @@ namespace infinit
         public elle::Printable
       {
         int _reconnected;
-        std::shared_ptr<reactor::network::TCPSocket> _socket;
+        std::unique_ptr<reactor::network::SSLCertificate> _certificate;
+        std::shared_ptr<reactor::network::FingerprintedSocket> _socket;
         reactor::Barrier _connected;
         bool _synchronized;
         reactor::Barrier _pollable;
@@ -210,7 +219,7 @@ namespace infinit
              Client::ConnectCallback connect_callback,
              Client::ReconnectPokeFailedCallback reconnect_failed_callback):
           _reconnected{0},
-          _socket(),
+          _socket(nullptr),
           _connected(),
           _synchronized(false),
           _pollable(),
@@ -238,6 +247,7 @@ namespace infinit
                        [&] () { this->read_thread(); })
         {
           this->_buffer.capacity(1024);
+          this->_certificate.reset(new reactor::network::SSLCertificate());
         }
 
         ~Impl()
@@ -260,7 +270,6 @@ namespace infinit
           {
             ELLE_DEBUG("%s: close old socket", *this);
             this->_socket->close();
-            this->_socket.reset();
           }
 
           ELLE_DEBUG("%s: establishing connection", *this);
@@ -268,10 +277,12 @@ namespace infinit
             *reactor::Scheduler::scheduler(),
             this->server,
             boost::lexical_cast<std::string>(this->port));
-          auto socket = std::make_shared<reactor::network::TCPSocket>(
-            *reactor::Scheduler::scheduler(), endpoint);
+          this->_socket.reset(new reactor::network::FingerprintedSocket(
+            endpoint,
+            *this->_certificate,
+            fingerprint,
+            3_sec));
 
-          this->_socket = socket;
           ELLE_DEBUG("%s: socket connected", *this);
           // XXX: restore this by exposing the API in reactor's TCP socket.
           // _impl->socket.set_option(boost::asio::socket_base::keep_alive{true});

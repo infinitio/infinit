@@ -17,7 +17,7 @@ namespace infinit
       namespace server
       {
         Client::Client(Trophonius& trophonius,
-                       std::unique_ptr<reactor::network::TCPSocket>&& socket):
+                       std::unique_ptr<reactor::network::Socket>&& socket):
           _trophonius(trophonius),
           _socket(std::move(socket)),
           _handle_thread(*reactor::Scheduler::scheduler(),

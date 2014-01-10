@@ -14,6 +14,7 @@
 # include <elle/attribute.hh>
 
 # include <reactor/Barrier.hh>
+# include <reactor/network/ssl-server.hh>
 # include <reactor/network/tcp-server.hh>
 # include <reactor/rw-mutex.hh>
 # include <reactor/thread.hh>
@@ -68,7 +69,9 @@ namespace infinit
           void
           _serve_notifier();
 
-          ELLE_ATTRIBUTE(reactor::network::TCPServer, server);
+          ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLCertificate>,
+                         certificate);
+          ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLServer>, server);
           ELLE_ATTRIBUTE_r(int, port);
           ELLE_ATTRIBUTE(reactor::network::TCPServer, notifications);
           ELLE_ATTRIBUTE(reactor::Barrier, ready);

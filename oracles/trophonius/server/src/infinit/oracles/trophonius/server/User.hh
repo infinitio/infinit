@@ -6,6 +6,7 @@
 # include <elle/json/json.hh>
 
 # include <reactor/Barrier.hh>
+# include <reactor/network/ssl-socket.hh>
 # include <reactor/signal.hh>
 
 # include <infinit/oracles/trophonius/server/Client.hh>
@@ -32,7 +33,7 @@ namespace infinit
         `-------------*/
         public:
           User(Trophonius& trophonius,
-               std::unique_ptr<reactor::network::TCPSocket>&& socket);
+               std::unique_ptr<reactor::network::SSLSocket>&& socket);
           ~User();
         protected:
           virtual
