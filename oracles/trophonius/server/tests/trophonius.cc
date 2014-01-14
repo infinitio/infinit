@@ -375,11 +375,9 @@ ELLE_TEST_SCHEDULED(notifications)
   {
     auto client = [&] (int user, int device, reactor::Barrier& b)
     {
-      reactor::network::SSLCertificate certificate;
       reactor::network::FingerprintedSocket socket(
         "127.0.0.1",
         boost::lexical_cast<std::string>(trophonius.port()),
-        certificate,
         fingerprint);
       authentify(socket, user, device);
       check_authentication_success(socket);
@@ -444,7 +442,6 @@ ELLE_TEST_SCHEDULED(no_authentication)
     reactor::network::FingerprintedSocket socket(
       "127.0.0.1",
       boost::lexical_cast<std::string>(trophonius.port()),
-      certificate,
       fingerprint);
     BOOST_CHECK_EQUAL(meta.trophonius(trophonius).size(), 0);
   }
@@ -486,11 +483,9 @@ ELLE_TEST_SCHEDULED(authentication_failure)
     0,
     60_sec,
     300_sec);
-  reactor::network::SSLCertificate certificate;
   reactor::network::FingerprintedSocket socket(
     "127.0.0.1",
     boost::lexical_cast<std::string>(trophonius.port()),
-    certificate,
     fingerprint);
   authentify(socket);
   // Check we get a notification refusal.
@@ -540,11 +535,9 @@ ELLE_TEST_SCHEDULED(wait_authentified)
     60_sec,
     300_sec);
   {
-    reactor::network::SSLCertificate certificate;
     reactor::network::FingerprintedSocket socket(
       "127.0.0.1",
       boost::lexical_cast<std::string>(trophonius.port()),
-      certificate,
       fingerprint);
     authentify(socket);
     // Check the first response is the login acceptation.
@@ -593,11 +586,9 @@ ELLE_TEST_SCHEDULED(notification_authentication_failed)
     0,
     60_sec,
     300_sec);
-  reactor::network::SSLCertificate certificate;
   reactor::network::FingerprintedSocket socket(
     "127.0.0.1",
     boost::lexical_cast<std::string>(trophonius.port()),
-    certificate,
     fingerprint);
   authentify(socket);
   // Check the first response is the login refusal.
@@ -624,11 +615,9 @@ ELLE_TEST_SCHEDULED(ping_timeout)
   static auto const id = std::make_pair(uuid, uuid);
   auto& t = meta.trophonius(trophonius);
   BOOST_CHECK(t.find(id) == t.end());
-  reactor::network::SSLCertificate certificate;
   reactor::network::FingerprintedSocket socket(
     "127.0.0.1",
     boost::lexical_cast<std::string>(trophonius.port()),
-    certificate,
     fingerprint);
   authentify(socket, 1, 1);
   check_authentication_success(socket);
@@ -675,11 +664,9 @@ ELLE_TEST_SCHEDULED(replace)
   BOOST_CHECK(t.find(id) == t.end());
   {
     ELLE_LOG("connect the first client");
-    reactor::network::SSLCertificate certificate1;
     reactor::network::FingerprintedSocket socket1(
       "127.0.0.1",
       boost::lexical_cast<std::string>(trophonius.port()),
-      certificate1,
       fingerprint);
     authentify(socket1, 1, 1);
     check_authentication_success(socket1);
@@ -690,11 +677,9 @@ ELLE_TEST_SCHEDULED(replace)
     ELLE_LOG("read notification from the first client")
       BOOST_CHECK_EQUAL(read_notification(socket1), 1);
     ELLE_LOG("connect a replacement client");
-    reactor::network::SSLCertificate certificate2;
     reactor::network::FingerprintedSocket socket2(
       "127.0.0.1",
       boost::lexical_cast<std::string>(trophonius.port()),
-      certificate2,
       fingerprint);
     authentify(socket2, 1, 1);
     check_authentication_success(socket2);

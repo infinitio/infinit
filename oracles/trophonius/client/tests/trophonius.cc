@@ -71,7 +71,8 @@ public:
       (cert_root / "server-cert.pem").string(),
       (cert_root / "server-key.pem").string(),
       (cert_root / "dh1024.pem").string()));
-    this->_server.reset(new reactor::network::SSLServer(*this->_certificate));
+    this->_server.reset(new reactor::network::SSLServer(
+      std::move(this->_certificate)));
     this->_server->listen(0);
     this->_port = this->_server->port();
     ELLE_LOG("%s: listen on port %s", *this, this->_port);
@@ -927,11 +928,11 @@ ELLE_TEST_SUITE()
 {
   auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  // suite.add(BOOST_TEST_CASE(poke), 0, timeout);
-  // suite.add(BOOST_TEST_CASE(notification), 0, timeout);
-  // suite.add(BOOST_TEST_CASE(ping), 0, 2 * timeout);
-  // suite.add(BOOST_TEST_CASE(no_ping), 0, 2 * timeout);
-  // suite.add(BOOST_TEST_CASE(reconnection), 0, 2 * timeout);
-  // suite.add(BOOST_TEST_CASE(connection_callback_throws), 0, timeout);
+  suite.add(BOOST_TEST_CASE(poke), 0, timeout);
+  suite.add(BOOST_TEST_CASE(notification), 0, timeout);
+  suite.add(BOOST_TEST_CASE(ping), 0, 2 * timeout);
+  suite.add(BOOST_TEST_CASE(no_ping), 0, 2 * timeout);
+  suite.add(BOOST_TEST_CASE(reconnection), 0, 2 * timeout);
+  suite.add(BOOST_TEST_CASE(connection_callback_throws), 0, timeout);
   suite.add(BOOST_TEST_CASE(reconnection_failed_callback), 0, 2 * timeout);
 }
