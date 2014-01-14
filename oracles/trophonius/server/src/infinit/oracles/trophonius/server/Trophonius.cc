@@ -94,7 +94,7 @@ namespace infinit
              (cert_root / "dh1024.pem").string()));
             ELLE_DEBUG("%s: loaded SSL certificate", *this);
             this->_server.reset(new reactor::network::SSLServer(
-              *this->_certificate));
+              std::move(this->_certificate)));
             this->_server->listen(this->_port);
             this->_port = this->_server->port();
             ELLE_LOG("%s: listen for users on port %s", *this, this->port());
