@@ -195,7 +195,6 @@ namespace infinit
         public elle::Printable
       {
         int _reconnected;
-        std::unique_ptr<reactor::network::SSLCertificate> _certificate;
         std::shared_ptr<reactor::network::FingerprintedSocket> _socket;
         reactor::Barrier _connected;
         bool _synchronized;
@@ -247,7 +246,6 @@ namespace infinit
                        [&] () { this->read_thread(); })
         {
           this->_buffer.capacity(1024);
-          this->_certificate.reset(new reactor::network::SSLCertificate());
         }
 
         ~Impl()
@@ -279,7 +277,6 @@ namespace infinit
             boost::lexical_cast<std::string>(this->port));
           this->_socket.reset(new reactor::network::FingerprintedSocket(
             endpoint,
-            *this->_certificate,
             fingerprint,
             3_sec));
 
