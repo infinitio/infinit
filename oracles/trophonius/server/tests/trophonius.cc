@@ -22,12 +22,12 @@ ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.test")
 # define RUNNING_ON_VALGRIND 0
 #endif
 
-// Local fingerprint in sha1.
+// Local fingerprint as sha1.
 
 static const std::vector<unsigned char> fingerprint =
 {
-  0x66, 0x84, 0x68, 0xEB, 0xBE, 0x83, 0xA0, 0x5C, 0x6A, 0x32,
-  0xAD, 0xD2, 0x58, 0x62, 0x01, 0x31, 0x79, 0x96, 0x78, 0xB8
+  0xCB, 0xC5, 0x12, 0xBB, 0x86, 0x4D, 0x6B, 0x1C, 0xBC, 0x02,
+  0x3D, 0xD8, 0x44, 0x75, 0xC1, 0x8C, 0x6E, 0xfC, 0x3B, 0x65
 };
 
 class Meta
@@ -464,9 +464,9 @@ class MetaAuthenticationFailure:
   virtual
   void
   _register_user(reactor::network::TCPSocket& socket,
-            std::string const& id,
-            std::string const& user,
-            std::string const& device)
+                 std::string const& id,
+                 std::string const& user,
+                 std::string const& device)
   {
     ELLE_LOG_SCOPE("%s: reject user %s:%s on %s", *this, user, device, id);
     this->_response_failure(socket);
