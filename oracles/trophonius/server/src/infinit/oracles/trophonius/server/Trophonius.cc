@@ -267,7 +267,7 @@ namespace infinit
         {
           reactor::Lock lock(this->_remove_lock);
 
-          // Remove the client from the set first to ensure other cleanup do
+          // Remove the client from the set first to ensure other cleanup does
           // not duplicate this.
           if (this->_users.erase(static_cast<User*>(&c)) ||
               this->_users_pending.erase(static_cast<User*>(&c)))
