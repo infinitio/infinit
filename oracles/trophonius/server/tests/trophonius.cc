@@ -5,7 +5,7 @@
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
-#include <reactor/network/Fingerprinted-socket.hh>
+#include <reactor/network/fingerprinted-socket.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
 #include <reactor/scheduler.hh>
@@ -499,7 +499,7 @@ ELLE_TEST_SCHEDULED(authentication_failure)
 | wait_authentified |
 `------------------*/
 
-/// Check notification send immediately are delayed until the user has received
+/// Check notification sent immediately are delayed until the user has received
 /// login confirmation.
 
 class MetaGonzales:
@@ -508,9 +508,9 @@ class MetaGonzales:
   virtual
   void
   _register_user(reactor::network::TCPSocket& socket,
-            std::string const& id,
-            std::string const& user,
-            std::string const& device) override
+                 std::string const& id,
+                 std::string const& user,
+                 std::string const& device) override
   {
     ELLE_LOG_SCOPE("%s: register user %s:%s on %s", *this, user, device, id);
     Client c(user, device);
