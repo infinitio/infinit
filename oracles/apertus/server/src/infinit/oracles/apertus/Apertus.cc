@@ -123,12 +123,10 @@ namespace infinit
 
         elle::With<elle::Finally>([this] { this->_unregister(); }) << [&]
         {
-          std::unique_ptr<reactor::network::TCPSocket> client{nullptr};
           while (true)
           {
             ELLE_TRACE("%s: waiting for new client", *this);
-            ELLE_ASSERT(client == nullptr);
-            client.reset(serv.accept());
+            auto client = serv.accept();
             ELLE_DEBUG("%s: socket opened", *this);
 
             this->_accepters.emplace(new Accepter(*this, std::move(client)));
