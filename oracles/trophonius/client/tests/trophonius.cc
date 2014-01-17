@@ -59,7 +59,7 @@ public:
   {
     if (!start)
     {
-      this->_port = 53;
+      this->_port = 42;
       return;
     }
 
@@ -178,7 +178,9 @@ class PokeTrophonius:
 public:
   PokeTrophonius(int round):
     PokeTrophonius(true, round)
-  {}
+  {
+    ELLE_DEBUG("making trophonius for round %s", round);
+  }
 
   PokeTrophonius(bool start, int round):
     Trophonius(start),
@@ -204,7 +206,7 @@ protected:
       ELLE_LOG("%s replied to poke", *this);
       reactor::wait(this->poked());
     }
-    else if (this->round() == 1) // No reply.
+    else if (this->round() == 1) // No poke reply.
     {
       std::unique_ptr<reactor::network::SSLSocket> socket(
         this->server().accept());
@@ -288,9 +290,9 @@ ELLE_TEST_SCHEDULED(poke)
       BOOST_CHECK_EQUAL(client->poke(poke_timeout), true);
       tropho->poked().signal();
     }
-    else if (round == 1) // No reply.
+    else if (round == 1) // No poke reply.
     {
-      ELLE_LOG("no reply");
+      ELLE_LOG("no poke reply");
       BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
       tropho->poked().signal();
     }
@@ -466,7 +468,7 @@ protected:
           ELLE_LOG("got ping after %s: %s",
                    diff,
                    elle::json::pretty_print(ping));
-          BOOST_CHECK_LT(diff, this->_period * 11 / 10);
+          BOOST_CHECK_LT(diff, this->_period * 12 / 10);
           previous = now;
           ++this->_ping_received;;
         }
@@ -617,7 +619,7 @@ ELLE_TEST_SCHEDULED(no_ping)
     scope.wait(run_time);
     // Approximate test as we don't know how long a poke, connect, disconnect
     // cycle will take.
-    BOOST_CHECK_LT(std::abs(client->reconnected() - (periods / 2)), 4);
+    BOOST_CHECK_LT(std::abs(client->reconnected() - (periods / 2)), 5);
     scope.terminate_now();
   };
 }
