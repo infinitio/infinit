@@ -8,7 +8,6 @@ check = None
 tests = None
 
 def configure(elle,
-              reactor,
               meta_client,
               boost,
               enable_python_bindings = True,
@@ -27,8 +26,8 @@ def configure(elle,
   local_cxx_config = drake.cxx.Config(cxx_config)
   local_cxx_config += boost.config_program()
   local_cxx_config += boost.config_system()
-  local_cxx_config += elle.config
-  local_cxx_config += reactor.config
+  local_cxx_config += elle.elle.config
+  local_cxx_config += elle.reactor.config
   local_cxx_config += meta_client.config
   local_cxx_config.add_local_include_path('src')
   local_cxx_config.lib_path_runtime('.')
@@ -40,8 +39,8 @@ def configure(elle,
       prefix = python3,
       include_dir = 'include/python3.2')
 
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib', strip_prefix = True)
-  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib', strip_prefix = True)
+  elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib', strip_prefix = True)
+  reactor_lib = drake.copy(elle.reactor.lib_dynamic, 'lib', strip_prefix = True)
   meta_client_lib = drake.copy(meta_client.lib, 'lib', strip_prefix = True)
 
   sources = drake.nodes(
@@ -112,7 +111,9 @@ def configure(elle,
       'tests/%s' % name,
       drake.nodes('tests/%s.cc' % name) + [lib,
                                            elle_lib,
-                                           reactor_lib],
+                                           reactor_lib,
+                                           elle.openssl_lib_ssl,
+                                           elle.openssl_lib_crypto],
       cxx_toolkit,
       cxx_config_tests)
     tests << test

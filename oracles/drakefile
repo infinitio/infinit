@@ -9,8 +9,6 @@ check = None
 install = None
 
 def configure(elle,
-              reactor,
-              protocol,
               papier_python,
               boost = None,
               python3 = None,
@@ -30,8 +28,8 @@ def configure(elle,
   cxx_config = cxx_config or drake.cxx.Config()
 
   local_cxx_config = drake.cxx.Config(cxx_config)
-  local_cxx_config += elle.config
-  local_cxx_config += reactor.config
+  local_cxx_config += elle.elle.config
+  local_cxx_config += elle.reactor.config
   local_cxx_config.add_local_include_path('src')
 
   python = drake.nodes(
@@ -50,7 +48,7 @@ def configure(elle,
       'src/infinit/oracles/Transaction.hxx',
     )
 
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib', strip_prefix = True)
+  elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib', strip_prefix = True)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('.')
@@ -65,8 +63,8 @@ def configure(elle,
                 lib_cxx_config)
 
   meta = drake.include('meta',
-                       elle = elle,
-                       reactor = reactor,
+                       elle = elle.elle,
+                       reactor = elle.reactor,
                        papier_python = papier_python,
                        python_common = python_built,
                        transaction_lib = lib,
@@ -78,7 +76,6 @@ def configure(elle,
 
   trophonius = drake.include('trophonius',
                              elle = elle,
-                             reactor = reactor,
                              python_common = python_built,
                              boost = boost,
                              python3 = python3,
@@ -92,9 +89,9 @@ def configure(elle,
   )
 
   apertus = drake.include('apertus',
-                          elle = elle,
-                          reactor = reactor,
-                          protocol = protocol,
+                          elle = elle.elle,
+                          reactor = elle.reactor,
+                          protocol = elle.protocol,
                           meta_client = meta.client,
                           boost = boost,
                           prefix = prefix,
