@@ -1,8 +1,9 @@
-#include <fstream>
 #include <functional>
 #include <ios>
 #include <limits>
 #include <algorithm>
+
+#include <boost/filesystem/fstream.hpp>
 
 #include <elle/finally.hh>
 #include <elle/serialize/construct.hh>
@@ -419,7 +420,8 @@ namespace frete
 
       // Create subdir.
       boost::filesystem::create_directories(fullpath.parent_path());
-      std::ofstream output{fullpath.string(), std::ios_base::app};
+      boost::filesystem::ofstream output{fullpath,
+                                         std::ios::app | std::ios::binary};
 
       if (tr.complete())
       {
@@ -481,6 +483,7 @@ namespace frete
 
         ELLE_DEBUG("%s: %s (size: %s)",
                    index, fullpath, boost::filesystem::file_size(fullpath));
+
         ELLE_ASSERT_EQ(boost::filesystem::file_size(fullpath),
                        snapshot.transfers()[index].progress());
 
@@ -649,7 +652,7 @@ namespace frete
     ELLE_TRACE_FUNCTION(file_id, offset, size);
     ELLE_ASSERT_LT(file_id, this->_count());
     auto path = this->_local_path(file_id);
-    std::ifstream file(path.string());
+    boost::filesystem::ifstream file{path, std::ios::binary};
     static const std::size_t MAX_offset{
       std::numeric_limits<std::streamsize>::max()};
     static const size_t MAX_buffer{elle::Buffer::max_size};

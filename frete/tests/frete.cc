@@ -1,8 +1,7 @@
 #define BOOST_TEST_MODULE Frete
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
-
-#include <fstream>
+#include <boost/filesystem/fstream.hpp>
 
 #include <reactor/Barrier.hh>
 #include <reactor/network/tcp-server.hh>
@@ -54,8 +53,8 @@ compare_files(boost::filesystem::path const& p1,
     return false;
   }
 
-  std::ifstream file1{p1.native()};
-  std::ifstream file2{p2.native()};
+  boost::filesystem::ifstream file1{p1};
+  boost::filesystem::ifstream file2{p2};
 
   elle::Buffer file1content(boost::filesystem::file_size(p1));
   elle::Buffer file2content(boost::filesystem::file_size(p2));
@@ -97,7 +96,7 @@ BOOST_AUTO_TEST_CASE(eligible_names)
     for (size_t i = 0; i < count; ++i)
     {
       // Touch the file.
-      std::ofstream{frete::Frete::eligible_name(filename, pattern).native()};
+      boost::filesystem::ofstream{frete::Frete::eligible_name(filename, pattern)};
     }
 
     BOOST_CHECK(boost::filesystem::exists(filename));
@@ -177,23 +176,23 @@ BOOST_AUTO_TEST_CASE(connection)
   elle::SafeFinally rm_root( [&] () { clear_root(); } );
 
   boost::filesystem::path empty(root / "empty");
-  std::ofstream(empty.native());
+  boost::filesystem::ofstream{empty};
 
   boost::filesystem::path content(root / "content");
   {
-    std::ofstream f(content.native());
+    boost::filesystem::ofstream f(content);
     f << "content\n";
   }
 
   boost::filesystem::path dir(root / "dir");
   boost::filesystem::create_directory(dir);
   {
-    std::ofstream f((dir / "1").native());
+    boost::filesystem::ofstream f((dir / "1"));
     f << "1";
   }
   boost::filesystem::create_directory(dir);
   {
-    std::ofstream f((dir / "2").native());
+    boost::filesystem::ofstream f((dir / "2"));
     f << "2";
   }
 
@@ -249,11 +248,11 @@ BOOST_AUTO_TEST_CASE(connection)
       }
       {
         BOOST_CHECK_EQUAL(frete.path(1), "content");
-        BOOST_CHECK_EQUAL(frete.file_size(1), 8);
+        BOOST_CHECK_EQUAL(frete.file_size(1), 9);
         {
           auto buffer = frete.read(1, 0, 1024);
-          BOOST_CHECK_EQUAL(buffer.size(), 8);
-          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("content\n"));
+          BOOST_CHECK_EQUAL(buffer.size(), 9);
+          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("content\r\n"));
         }
         {
           auto buffer = frete.read(1, 2, 2);
@@ -261,9 +260,9 @@ BOOST_AUTO_TEST_CASE(connection)
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("nt"));
         }
         {
-          auto buffer = frete.read(1, 7, 2);
-          BOOST_CHECK_EQUAL(buffer.size(), 1);
-          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\n"));
+          auto buffer = frete.read(1, 7, 3);
+          BOOST_CHECK_EQUAL(buffer.size(), 2);
+          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\r\n"));
         }
       }
       {
@@ -305,38 +304,38 @@ BOOST_AUTO_TEST_CASE(one_function_get)
     clear_root();
 
   boost::filesystem::create_directory(root);
-  elle::SafeFinally rm_root( [&] () { clear_root(); } );
+  // elle::SafeFinally rm_root( [&] () { clear_root(); } );
 
   if (boost::filesystem::exists(dest))
     clear_dest();
 
   boost::filesystem::create_directory(dest);
-  elle::SafeFinally rm_dest( [&] () { clear_dest(); } );
+  // elle::SafeFinally rm_dest( [&] () { clear_dest(); } );
 
   boost::filesystem::path empty(root / "empty");
-  std::ofstream(empty.native());
+  boost::filesystem::ofstream{empty};
 
   boost::filesystem::path content(root / "content");
   {
-    std::ofstream f(content.native());
-    f << "content\n" << std::flush;
+    boost::filesystem::ofstream f(content);
+    f << std::string(52, 'b') << "\n" << "queue" << "\n" << std::flush;
   }
 
   boost::filesystem::path dir(root / "dir");
   boost::filesystem::create_directory(dir);
   {
-    std::ofstream f((dir / "1").native());
+    boost::filesystem::ofstream f((dir / "1"));
     f << "1" << std::flush;
   }
   boost::filesystem::create_directory(dir);
   {
-    std::ofstream f((dir / "2").native());
+    boost::filesystem::ofstream f((dir / "2"));
     f << "2" << std::flush;
   }
   boost::filesystem::path subdir(dir / "subdir");
   boost::filesystem::create_directory(subdir);
   {
-    std::ofstream f((subdir / "1").native());
+    boost::filesystem::ofstream f((subdir / "1"));
     f << "1" << std::flush;
   }
 
@@ -446,24 +445,24 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
 
   boost::filesystem::path file(root / "file");
   {
-    std::ofstream ofile(file.native());
+    boost::filesystem::ofstream ofile(file);
     ofile << std::string(block_count * block_size, 'b');
   }
   boost::filesystem::path empty(root / "empty");
   {
-    std::ofstream ofile(empty.native());
+    boost::filesystem::ofstream ofile(empty);
   }
   boost::filesystem::path folder = root / "folder";
   boost::filesystem::create_directories(folder);
 
   boost::filesystem::path empty2(folder / "empty");
   {
-    std::ofstream ofile(empty2.native());
+    boost::filesystem::ofstream ofile(empty2);
   }
 
   boost::filesystem::path file2(folder / "file");
   {
-    std::ofstream ofile(file2.native());
+    boost::filesystem::ofstream ofile(file2);
     ofile << std::string(block_count * block_size, 'b');
   }
 
@@ -668,24 +667,24 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
 
   boost::filesystem::path file(root / "file");
   {
-    std::ofstream ofile(file.native());
+    boost::filesystem::ofstream ofile(file);
     ofile << std::string(block_count * block_size, 'b');
   }
   boost::filesystem::path empty(root / "empty");
   {
-    std::ofstream ofile(empty.native());
+    boost::filesystem::ofstream ofile(empty);
   }
   boost::filesystem::path folder = root / "folder";
   boost::filesystem::create_directories(folder);
 
   boost::filesystem::path empty2(folder / "empty");
   {
-    std::ofstream ofile(empty2.native());
+    boost::filesystem::ofstream ofile(empty2);
   }
 
   boost::filesystem::path file2(folder / "file2");
   {
-    std::ofstream ofile(file2.native());
+    boost::filesystem::ofstream ofile(file2);
     ofile << std::string(block_count * block_size, 'b');
   }
 
