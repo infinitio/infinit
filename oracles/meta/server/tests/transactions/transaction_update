@@ -6,13 +6,13 @@ from functools import reduce
 from pprint import pprint
 
 from infinit.oracles.transaction import statuses
-from infinit.oracles.meta.transaction_status import CREATED as C
-from infinit.oracles.meta.transaction_status import INITIALIZED as I
-from infinit.oracles.meta.transaction_status import ACCEPTED as A
-from infinit.oracles.meta.transaction_status import FINISHED as F
-from infinit.oracles.meta.transaction_status import REJECTED as R
-from infinit.oracles.meta.transaction_status import CANCELED as CA
-from infinit.oracles.meta.transaction_status import FAILED as FA
+from infinit.oracles.meta.server.transaction_status import CREATED as C
+from infinit.oracles.meta.server.transaction_status import INITIALIZED as I
+from infinit.oracles.meta.server.transaction_status import ACCEPTED as A
+from infinit.oracles.meta.server.transaction_status import FINISHED as F
+from infinit.oracles.meta.server.transaction_status import REJECTED as R
+from infinit.oracles.meta.server.transaction_status import CANCELED as CA
+from infinit.oracles.meta.server.transaction_status import FAILED as FA
 
 from infinit.oracles.meta import error
 

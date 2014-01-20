@@ -4,7 +4,7 @@ from utils import Meta, User
 from bson import ObjectId
 from functools import reduce
 
-from infinit.oracles.meta import transaction_status
+from infinit.oracles.meta.server import transaction_status
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
