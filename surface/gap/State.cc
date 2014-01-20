@@ -206,7 +206,8 @@ namespace surface
                      *this,
                      e.what());
             result = false;
-            throw;
+            // XXX: We shouldn't be catching all exceptions but the old JSON
+            // parser throws elle::Exceptions.
           }
         });
         scope.wait(timeout);
