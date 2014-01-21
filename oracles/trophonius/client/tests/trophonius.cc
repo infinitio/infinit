@@ -317,7 +317,7 @@ ELLE_TEST_SCHEDULED(poke)
     }
     else if (round == 4) // HTML response
     {
-      ELLE_LOG("wrong json reply");
+      ELLE_LOG("HTML response");
       BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
       tropho->poked().signal();
     }
@@ -930,6 +930,87 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
   BOOST_CHECK(callback_called);
 }
 
+/*------------------------.
+| Close socket after poke |
+`------------------------*/
+
+// Test for the following bug: If connection is closed during _connect(), the
+// client would never reopen the socket but keep retrying to authenticate in
+// a loop.
+
+class SocketClosedTrophonius:
+  public Trophonius
+{
+public:
+  SocketClosedTrophonius():
+    Trophonius()
+  {}
+
+protected:
+  virtual
+  void
+  _handle_connection()
+  {
+    try
+    {
+      ELLE_LOG("first connection to server");
+      std::unique_ptr<reactor::network::SSLSocket> socket(
+        this->server().accept());
+      ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
+      auto poke_read = elle::json::read(*socket);
+      auto poke = boost::any_cast<elle::json::Object>(poke_read);
+      elle::json::write(*socket, poke);
+      ELLE_LOG("%s replied to poke", *this);
+      this->_serve(*socket);
+    }
+    catch (reactor::network::ConnectionClosed const&)
+    {
+      ELLE_LOG("%s: ignore connection closed on killing accepter", *this);
+    }
+  }
+
+  virtual
+  void
+  _serve(reactor::network::SSLSocket& socket)
+  {
+    reactor::wait(this->poked());
+    socket.close();
+    ELLE_LOG("socket closed");
+  }
+};
+
+ELLE_TEST_SCHEDULED(socket_close_after_poke)
+{
+  SocketClosedTrophonius tropho;
+  using namespace infinit::oracles::trophonius;
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    std::unique_ptr<Client> client;
+    client.reset(new Client(
+      "127.0.0.1",
+      tropho.port(),
+      [] (bool) {}, // connect callback
+      [] (void) {}, // reconnection failed callback
+      fingerprint)
+    );
+
+    client->ping_period(200_ms);
+    scope.run_background("initial poke", [&]
+    {
+      BOOST_CHECK(client->poke());
+      tropho.poked().signal();
+    });
+    scope.run_background("client", [&]
+    {
+      reactor::wait(tropho.poked());
+      ELLE_LOG("try to connect"); // should fail immediately
+      BOOST_CHECK(!client->connect("0", "0", "0"));
+    });
+    scope.wait();
+  };
+}
+
+
 ELLE_TEST_SUITE()
 {
   auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
@@ -941,6 +1022,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(reconnection), 0, 2 * timeout);
   suite.add(BOOST_TEST_CASE(connection_callback_throws), 0, timeout);
   suite.add(BOOST_TEST_CASE(reconnection_failed_callback), 0, 2 * timeout);
+  suite.add(BOOST_TEST_CASE(socket_close_after_poke), 0, timeout);
 }
 
 const std::vector<unsigned char> fingerprint =
