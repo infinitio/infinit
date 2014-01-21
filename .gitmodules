@@ -14,3 +14,7 @@
 	path = surface/fist-resources
 	url = git@git.infinit.io:fist-resources
 	branch = develop
+[submodule "fist-gui-qt"]
+	path = fist-gui-qt
+	url = git@git.infinit.io:fist-gui-qt.git
+	branch = develop

@@ -1,6 +1,7 @@
 import drake
 import drake.cxx
 import drake.cxx.boost
+import drake.cxx.qt
 import drake.git
 import drake.templating
 
@@ -20,6 +21,7 @@ def configure(cxx_toolkit = None,
               python3 = None,
               build_type = "Development",
               enable_debug = True,
+	      qt = None,
               valgrind = None):
 
   ## ----- ##
@@ -72,16 +74,16 @@ def configure(cxx_toolkit = None,
       cxx_config.define(define[0], define[1])
 
   platform_defines = ()
-  if sys.platform.startswith('linux'):
+  if cxx_toolkit.os == drake.os.linux:
     platform_defines = ("INFINIT_LINUX",)
-  elif sys.platform == 'win32' or sys.platform == 'cygwin':
+  elif cxx_toolkit.os == drake.os.windows:
     platform_defines = ("INFINIT_WINDOWS",)
     cxx_config.define('INFINIT_WINDOWS')
     cxx_config.lib('shlwapi')
     cxx_config.lib('ws2_32')
     cxx_config.lib('gdi32')
     cxx_config.lib('mswsock')
-  elif sys.platform == 'darwin':
+  elif cxx_toolkit.os == drake.os.macos:
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   else:
     raise Exception("platform %s not supported" % sys.platform)
@@ -517,3 +519,11 @@ def configure(cxx_toolkit = None,
     gap_build << gap_python_lib
     gap_build << gap_python_pyfile_copy
     gap_build << infinit_cli_copy
+
+  if qt is not None:
+    application = drake.include('fist-gui-qt',
+                                cxx_toolkit = cxx_toolkit,
+                                cxx_config = drake.cxx.Config(cxx_config),
+                                qt = qt,
+                                prefix = prefix,
+                                libraries = [gap_lib])
