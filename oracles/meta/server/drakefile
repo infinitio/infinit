@@ -105,6 +105,10 @@ def configure(elle,
     res += f(python, where / ('lib/python%s' % python_version),
              build_python_path)
     res.append(f(build_binary, where))
+    res.append(f(drake.node('config/meta'),
+                 where / 'etc/nginx/sites-available', 'config'))
+    res.append(f(drake.node('config/meta.xml'),
+                 where / 'etc/uwsgi/apps-available', 'config'))
     return res
 
   install = drake.Rule('install')
@@ -112,8 +116,13 @@ def configure(elle,
 
   package = install_nodes('debian/opt/infinit', f = drake.copy)
   git = drake.git.Git()
-  with drake.templating.Context(content = {'version': git.version()}):
+  with drake.templating.Context(content = {
+      'version': git.version(),
+      'version_major': git.version().split('.')[0],
+      'version_minor': git.version().split('.')[1],
+  }):
     drake.node('control.tmpl')
+    drake.node('config/meta.tmpl')
   package.append(drake.copy(drake.node('control'), 'debian/DEBIAN'))
 
   class DebianPackager(drake.Builder):

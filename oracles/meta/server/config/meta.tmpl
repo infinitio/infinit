@@ -1,0 +1,17 @@
+server
+{
+    listen      80;
+    server_name meta.${version_minor}.${version_major}.api.production.infinit.io;
+    access_log  /var/log/nginx/meta/access.log;
+    error_log   /var/log/nginx/meta/error.log;
+    client_max_body_size 15M;
+
+    location /
+    {
+        uwsgi_pass      unix:///run/uwsgi/app/meta/socket;
+        include         uwsgi_params;
+        uwsgi_param     UWSGI_SCHEME $scheme;
+        uwsgi_param     SERVER_SOFTWARE nginx/$nginx_version;
+
+    }
+}
