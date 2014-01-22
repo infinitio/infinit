@@ -12,14 +12,12 @@ with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
 def configure(elle,
               python_common,
               papier_python,
-              prefix = drake.Path('/usr/local'),
-              python_version = None):
+              prefix = drake.Path('/usr/local')):
 
   global build, check, install
   global python
 
-  if python_version is None:
-    python_version = drake.Version(*sys.version_info[0:2])
+  python_version = drake.Version(*sys.version_info[0:2])
 
   prefix = drake.Path(prefix)
 

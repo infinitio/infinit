@@ -27,8 +27,7 @@ def configure(elle,
                          elle = elle,
                          python_common = python_common,
                          papier_python = papier_python,
-                         prefix = prefix,
-                         python_version = 3)
+                         prefix = prefix)
 
   client = drake.include('client',
                          elle = elle,
