@@ -279,7 +279,6 @@ namespace infinit
 
           ELLE_DEBUG("%s: establishing connection", *this);
           auto endpoint = reactor::network::resolve_tcp(
-            *reactor::Scheduler::scheduler(),
             this->server,
             boost::lexical_cast<std::string>(this->port));
           if (this->_test_fingerprint.size() == 0)
