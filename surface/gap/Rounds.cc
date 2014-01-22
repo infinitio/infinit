@@ -140,11 +140,10 @@ namespace surface
       std::string host = splited[0];
       int port = std::stoi(splited[1]);
 
-      auto& sched = *reactor::Scheduler::scheduler();
       ELLE_TRACE("%s: contact apertus: %s:%s", *this, host, port);
 
       std::unique_ptr<reactor::network::TCPSocket> sock(
-        new reactor::network::TCPSocket(sched, host, port));
+        new reactor::network::TCPSocket(host, port));
 
       ELLE_LOG("%i: %s", this->_uid.size(), this->_uid);
       sock->write(elle::ConstWeakBuffer(elle::sprintf("%c",(char) this->_uid.size())));
