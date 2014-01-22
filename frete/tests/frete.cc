@@ -248,11 +248,11 @@ BOOST_AUTO_TEST_CASE(connection)
       }
       {
         BOOST_CHECK_EQUAL(frete.path(1), "content");
-        BOOST_CHECK_EQUAL(frete.file_size(1), 9);
+        BOOST_CHECK_EQUAL(frete.file_size(1), 8);
         {
           auto buffer = frete.read(1, 0, 1024);
-          BOOST_CHECK_EQUAL(buffer.size(), 9);
-          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("content\r\n"));
+          BOOST_CHECK_EQUAL(buffer.size(), 8);
+          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("content\n"));
         }
         {
           auto buffer = frete.read(1, 2, 2);
@@ -261,8 +261,8 @@ BOOST_AUTO_TEST_CASE(connection)
         }
         {
           auto buffer = frete.read(1, 7, 3);
-          BOOST_CHECK_EQUAL(buffer.size(), 2);
-          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\r\n"));
+          BOOST_CHECK_EQUAL(buffer.size(), 1);
+          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\n"));
         }
       }
       {
