@@ -1,4 +1,5 @@
 import drake
+import drake.templating
 import sys
 
 build = None
@@ -98,11 +99,62 @@ def configure(elle,
   ## Install ##
   ## ------- ##
 
-  install_python_path = \
-    prefix / ('lib/python%s/site-packages' % python_version)
+  def install_nodes(where, f = drake.install):
+    where = drake.Path(where)
+    res = []
+    res += f(python, where / ('lib/python%s' % python_version),
+             build_python_path)
+    res.append(f(build_binary, where))
+    return res
+
   install = drake.Rule('install')
-  install << drake.install(python, prefix)
-  install << drake.install(build_binary, prefix)
+  install << install_nodes(prefix)
+
+  package = install_nodes('debian', f = drake.copy)
+  git = drake.git.Git()
+  with drake.templating.Context(content = {'version': git.version()}):
+    drake.node('control.tmpl')
+  package.append(drake.copy(drake.node('control'), 'debian/DEBIAN'))
+
+  class DebianPackager(drake.Builder):
+
+    def __init__(self, sources, path, destination = '.'):
+      self.__destination = drake.Path(destination)
+      basename = 'fist-meta_%s_amd64.deb' % git.version()
+      self.__target = drake.node(self.__destination / basename)
+      self.__destination = drake.path_build(self.__destination)
+      self.__path = drake.path_build(path)
+      super().__init__(sources + [elle.dpkg_preload], [self.__target])
+
+    def execute(self):
+      os.chmod(str(self.__path / 'DEBIAN'), 0o755)
+      os.chmod(str(self.__path / 'DEBIAN/control'), 0o644)
+      return self.cmd('Package %s' % self.__target,
+                      self.command,
+                      env = {'LD_PRELOAD': str(drake.path_root() / elle.dpkg_preload.path())})
+
+    @property
+    def command(self):
+      chown = ['chown', '-R', 'root:root', self.__path]
+      chmod = ['chmod', '-R', 'a+rX', self.__path]
+      dpkg = ['dpkg-deb', '-b', self.__path, self.__destination]
+      import pipes
+      def escape(cmd):
+        return (pipes.quote(str(a)) for a in cmd)
+      return ['fakeroot', 'sh', '-e', '-c',
+              ' '.join(itertools.chain(escape(chown),
+                                       [';'],
+                                       escape(chmod),
+                                       [';'],
+                                       escape(dpkg)))]
+
+    @property
+    def package(self):
+      return self.__target
+
+  debian = drake.Rule('debian')
+  debian << DebianPackager(package, 'debian').package
+
 
   ## ----- ##
   ## Check ##
