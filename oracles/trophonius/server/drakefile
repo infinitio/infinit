@@ -71,7 +71,9 @@ def configure(elle,
 
   trophonius = drake.cxx.Executable(
     'bin/trophonius',
-    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib],
+    # FIXME: remove SSL if elle stop leaking it.
+    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib,
+                   elle.openssl_lib_ssl, elle.openssl_lib_crypto],
     cxx_toolkit,
     exe_cxx_config)
 
