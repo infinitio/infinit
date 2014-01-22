@@ -115,7 +115,7 @@ namespace infinit
       void
       Apertus::_run()
       {
-        reactor::network::TCPServer serv(*reactor::Scheduler::scheduler());
+        reactor::network::TCPServer serv{};
         serv.listen(this->_port);
         this->_port = serv.port();
 
