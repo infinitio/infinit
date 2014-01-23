@@ -13,7 +13,7 @@
 #include <elle/format/gzip.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
-#include <elle/os/getenv.hh>
+#include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
@@ -47,7 +47,7 @@ namespace surface
       std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
       if (!log_file.empty())
       {
-        if (elle::os::in_env("INFINIT_LOG_FILE_PID"))
+        if (elle::os::inenv("INFINIT_LOG_FILE_PID"))
         {
           log_file += ".";
           log_file += std::to_string(::getpid());

@@ -11,7 +11,6 @@
 #include <elle/format/json.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
-#include <elle/os/getenv.hh>
 #include <elle/os/path.hh>
 #include <elle/system/platform.hh>
 

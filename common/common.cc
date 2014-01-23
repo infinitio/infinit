@@ -7,11 +7,11 @@
 #include <boost/preprocessor/cat.hpp>
 
 #include <elle/assert.hh>
-#include <elle/os/getenv.hh>
+#include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/print.hh>
-#include <elle/system/platform.hh>
 #include <elle/system/home_directory.hh>
+#include <elle/system/platform.hh>
 
 #include <common/common.hh>
 #include <version.hh>

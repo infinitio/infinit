@@ -3,7 +3,7 @@
 
 #include <elle/container/list.hh>
 #include <elle/network/Interface.hh>
-#include <elle/os/getenv.hh>
+#include <elle/os/environ.hh>
 #include <elle/printf.hh>
 #include <elle/serialize/insert.hh>
 
