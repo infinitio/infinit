@@ -228,11 +228,14 @@ def configure(cxx_toolkit = None,
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     papier_python_sources = drake.nodes('papier/python.cc')
     papier_python_cxx_config += python3
-    papier_python_cxx_config += boost.config_python()
+    papier_python_cxx_config += boost.config_python(link = False)
     papier_python_cxx_config.lib_path_runtime('..')
     papier_python_lib = drake.cxx.Module(
       'lib/python/papier',
-      papier_python_sources + [papier_lib],
+      papier_python_sources + [
+        papier_lib,
+        drake.copy(boost.python_dynamic, 'lib', strip_prefix = True),
+      ],
       cxx_toolkit,
       papier_python_cxx_config)
 
