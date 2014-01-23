@@ -215,8 +215,7 @@ def configure(cxx_toolkit = None,
   )
 
   papier_cxx_config = drake.cxx.Config(cxx_config_libs)
-  papier_cxx_config += boost.config_filesystem()
-  papier_cxx_config += boost.config_system()
+
   papier_lib = Library(
     'lib/papier',
     papier_sources + [elle_lib, cryptography_lib],
