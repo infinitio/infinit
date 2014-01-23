@@ -49,7 +49,7 @@ def configure(elle,
   if cxx_toolkit.os is drake.os.windows:
     Library = drake.cxx.StaticLib
     elle_lib = elle.elle.lib_static
-    reactor_lib = reactor.lib_static
+    reactor_lib = elle.reactor.lib_static
   else:
     Library = drake.cxx.DynLib
     elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib',
