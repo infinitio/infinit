@@ -24,7 +24,7 @@ def configure(elle,
   cxx_config = cxx_config or drake.cxx.Config()
 
   local_cxx_config = drake.cxx.Config(cxx_config)
-  local_cxx_config += boost.config_program()
+  local_cxx_config += boost.config_program_options()
   local_cxx_config += boost.config_system()
   local_cxx_config += elle.elle.config
   local_cxx_config += elle.reactor.config
