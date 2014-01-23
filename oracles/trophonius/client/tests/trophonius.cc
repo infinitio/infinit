@@ -1,7 +1,6 @@
 #include <elle/cast.hh>
 #include <elle/json/json.hh>
 #include <elle/log.hh>
-#include <elle/os/getenv.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
