@@ -2,7 +2,7 @@
   <environment>META_LOG_SYSTEM=meta</environment>
   <environment>ELLE_LOG_LEVEL=infinit.oracles.meta.*:DEBUG</environment>
   <plugin>python3</plugin>
-  <pythonpath>/opt/infinit/lib/python3.2</pythonpath>
+  <pythonpath>/opt/infinit/meta/lib/python3.2</pythonpath>
   <module>infinit.oracles.meta.server.wsgi</module>
   <master/>
   <processes>4</processes>
