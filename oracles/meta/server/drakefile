@@ -122,8 +122,10 @@ def configure(elle,
       'version_minor': git.version().split('.')[1],
   }):
     drake.node('control.tmpl')
+    drake.node('postinst.tmpl')
     drake.node('config/meta.tmpl')
-  package.append(drake.copy(drake.node('control'), 'debian/DEBIAN'))
+  package += drake.copy(drake.nodes('control', 'postinst'),
+                        'debian/DEBIAN')
 
   class DebianPackager(drake.Builder):
 
@@ -138,6 +140,10 @@ def configure(elle,
     def execute(self):
       os.chmod(str(self.__path / 'DEBIAN'), 0o755)
       os.chmod(str(self.__path / 'DEBIAN/control'), 0o644)
+      try:
+        os.chmod(str(self.__path / 'DEBIAN/postinst'), 0o755)
+      except:
+        pass
       return self.cmd('Package %s' % self.__target,
                       self.command,
                       env = {'LD_PRELOAD': str(drake.path_root() / elle.dpkg_preload.path())})
