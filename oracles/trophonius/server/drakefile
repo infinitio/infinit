@@ -135,7 +135,7 @@ def configure(elle,
   install = drake.Rule('install')
   install << drake.install(trophonius, prefix)
 
-  package = [drake.copy(trophonius, 'debian/opt/infinit')]
+  package = [drake.copy(trophonius, 'debian/opt/infinit/trophonius')]
   git = drake.git.Git()
   with drake.templating.Context(content = {
       'version': git.version(),

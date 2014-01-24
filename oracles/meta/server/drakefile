@@ -115,7 +115,7 @@ def configure(elle,
   install = drake.Rule('install')
   install << install_nodes(prefix)
 
-  package = install_nodes('debian/opt/infinit', f = drake.copy)
+  package = install_nodes('debian/opt/infinit/meta', f = drake.copy)
   git = drake.git.Git()
   with drake.templating.Context(content = {
       'version': git.version(),
