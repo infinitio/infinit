@@ -39,6 +39,13 @@ def configure(elle,
       prefix = python3,
       include_dir = 'include/python3.2')
 
+  # SSL
+  # FIXME: remove as soon as ssl is not leaked by elle
+  ssl_libs = drake.copy((elle.openssl_lib_ssl,
+                         elle.openssl_lib_crypto),
+                        'lib', strip_prefix = True)
+
+
   elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib', strip_prefix = True)
   reactor_lib = drake.copy(elle.reactor.lib_dynamic, 'lib', strip_prefix = True)
   meta_client_lib = drake.copy(meta_client.lib, 'lib', strip_prefix = True)
@@ -72,8 +79,8 @@ def configure(elle,
   trophonius = drake.cxx.Executable(
     'bin/trophonius',
     # FIXME: remove SSL if elle stop leaking it.
-    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib,
-                   elle.openssl_lib_ssl, elle.openssl_lib_crypto],
+    exe_sources + [lib, elle_lib,
+                   reactor_lib, meta_client_lib] + ssl_libs,
     cxx_toolkit,
     exe_cxx_config)
 
@@ -113,9 +120,7 @@ def configure(elle,
       'tests/%s' % name,
       drake.nodes('tests/%s.cc' % name) + [lib,
                                            elle_lib,
-                                           reactor_lib,
-                                           elle.openssl_lib_ssl,
-                                           elle.openssl_lib_crypto],
+                                           reactor_lib] + ssl_libs,
       cxx_toolkit,
       cxx_config_tests)
     tests << test
