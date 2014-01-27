@@ -215,7 +215,7 @@ ELLE_TEST_SCHEDULED(connection)
       server.listen();
       port = server.port();
       listening.open();
-      std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
+      std::unique_ptr<reactor::network::Socket> socket(server.accept());
       infinit::protocol::Serializer serializer(
         *reactor::Scheduler::scheduler(), *socket);
       infinit::protocol::ChanneledStream channels(
@@ -357,7 +357,7 @@ ELLE_TEST_SCHEDULED(one_function_get)
       server.listen();
       port = server.port();
       listening.open();
-      std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
+      std::unique_ptr<reactor::network::Socket> socket(server.accept());
       infinit::protocol::Serializer serializer(*reactor::Scheduler::scheduler(),
                                                *socket);
       infinit::protocol::ChanneledStream channels(
@@ -490,7 +490,7 @@ ELLE_TEST_SCHEDULED(recipient_disconnection)
           port = server.port();
 
           listening.open();
-          std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
+          std::unique_ptr<reactor::network::Socket> socket(server.accept());
           infinit::protocol::Serializer serializer(
             *reactor::Scheduler::scheduler(), *socket);
           infinit::protocol::ChanneledStream channels(
@@ -702,7 +702,7 @@ ELLE_TEST_SCHEDULED(sender_disconnection)
           server.listen();
           port = server.port();
           listening.open();
-          std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
+          std::unique_ptr<reactor::network::Socket> socket(server.accept());
           infinit::protocol::Serializer serializer(
             *reactor::Scheduler::scheduler(), *socket);
           infinit::protocol::ChanneledStream channels(
