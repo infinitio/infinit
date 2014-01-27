@@ -15,7 +15,7 @@
 # include <reactor/fsm.hh>
 # include <reactor/mutex.hh>
 # include <reactor/network/Protocol.hh>
-# include <reactor/network/tcp-socket.hh>
+# include <reactor/network/socket.hh>
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
 # include <reactor/waitable.hh>
@@ -227,7 +227,7 @@ namespace surface
       void
       _publish_interfaces();
 
-      std::unique_ptr<reactor::network::TCPSocket>
+      std::unique_ptr<reactor::network::Socket>
       _connect();
 
       void
@@ -297,7 +297,7 @@ namespace surface
       station::Station&
       station();
 
-      std::unique_ptr<reactor::network::TCPSocket> _host;
+      std::unique_ptr<reactor::network::Socket> _host;
 
     public:
       virtual

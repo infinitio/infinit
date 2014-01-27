@@ -683,7 +683,7 @@ namespace surface
       ELLE_DEBUG("%s: interfaces published", *this);
     }
 
-    std::unique_ptr<reactor::network::TCPSocket>
+    std::unique_ptr<reactor::network::Socket>
     TransferMachine::_connect()
     {
       auto const& transaction = *this->data();
@@ -721,7 +721,7 @@ namespace surface
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         reactor::Barrier found;
-        std::unique_ptr<reactor::network::TCPSocket> host;
+        std::unique_ptr<reactor::network::Socket> host;
         scope.run_background("wait_accepted",
                              [&] ()
                              {
