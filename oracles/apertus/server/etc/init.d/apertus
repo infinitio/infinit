@@ -1,12 +1,4 @@
 #! /bin/sh
-### BEGIN INIT INFO
-# Provides:          apertus
-# Required-Start:    $syslog $time $named
-# Required-Stop:     $syslog $time $named
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: Apertus forwarding server.
-### END INIT INFO
 
 . /etc/apertus.conf
 DAEMON="$APERTUS"
