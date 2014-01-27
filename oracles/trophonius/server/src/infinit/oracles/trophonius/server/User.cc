@@ -23,7 +23,7 @@ namespace infinit
       namespace server
       {
         User::User(Trophonius& trophonius,
-                   std::unique_ptr<reactor::network::SSLSocket>&& socket):
+                   std::unique_ptr<reactor::network::Socket>&& socket):
           Client(trophonius, std::move(socket)),
           // Session
           _device_id(boost::uuids::nil_uuid()),
