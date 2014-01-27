@@ -79,7 +79,7 @@ namespace station
     _serve();
     ///
     std::unique_ptr<Host>
-    _negotiate(std::unique_ptr<reactor::network::TCPSocket> socket);
+    _negotiate(std::unique_ptr<reactor::network::Socket> socket);
     /// The TCP servers to receive connection.
     ELLE_ATTRIBUTE_R(reactor::network::TCPServer, server);
     /// The thread running this->_serve().

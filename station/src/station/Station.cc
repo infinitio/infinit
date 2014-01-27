@@ -89,7 +89,7 @@ namespace station
   {
     while (true)
     {
-      std::unique_ptr<reactor::network::TCPSocket> socket(
+      std::unique_ptr<reactor::network::Socket> socket(
         this->_server.accept());
       ELLE_TRACE_SCOPE("%s: accept connection from %s", *this, socket->peer());
       try
@@ -119,7 +119,7 @@ namespace station
   };
 
   std::unique_ptr<Host>
-  Station::_negotiate(std::unique_ptr<reactor::network::TCPSocket> socket)
+  Station::_negotiate(std::unique_ptr<reactor::network::Socket> socket)
   {
     try
     {

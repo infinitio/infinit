@@ -14,20 +14,20 @@ namespace station
   {
   public:
     ~Host();
-    reactor::network::TCPSocket&
+    reactor::network::Socket&
     socket();
 
   private:
     friend class Station;
     Host(Station& owner,
          papier::Passport const& passport,
-         std::unique_ptr<reactor::network::TCPSocket>&& socket);
+         std::unique_ptr<reactor::network::Socket>&& socket);
     ELLE_ATTRIBUTE(Station&, owner);
     ELLE_ATTRIBUTE_R(papier::Passport, passport);
-    ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::TCPSocket>, socket);
+    ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::Socket>, socket);
 
   public:
-    std::unique_ptr<reactor::network::TCPSocket>
+    std::unique_ptr<reactor::network::Socket>
     release();
 
     /*----------.
