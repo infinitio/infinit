@@ -27,7 +27,8 @@ parse_options(int argc, char** argv)
     ("help,h", "display this help and exit")
     ("ping-period,i", value<int>(),
      "specify the ping period in seconds (default 30)")
-    ("port,p", value<int>(), "specify the port to listen on")
+    ("port-ssl,pssl", value<int>(), "specify the SSL port to listen on")
+    ("port-tcp,ptcp", value<int>(), "specify the TCP port to listen on")
     ("meta,m", value<std::string>(),
      "specify the meta host[:port] to connect to")
     ("ignore-meta",
@@ -99,11 +100,14 @@ int main(int argc, char** argv)
     }
     if (options.count("ignore-meta"))
       meta_fatal = false;
-    int port = 0;
+    int port_ssl = 0;
+    int port_tcp = 0;
     int notifications_port = 0;
     int ping = 30;
-    if (options.count("port"))
-      port = options["port"].as<int>();
+    if (options.count("port-ssl"))
+      port_ssl = options["port-ssl"].as<int>();
+    if (options.count("port-tcp"))
+      port_tcp = options["port-tcp"].as<int>();
     if (options.count("notifications-port"))
       notifications_port = options["notifications-port"].as<int>();
     if (options.count("ping-period"))
@@ -116,7 +120,8 @@ int main(int argc, char** argv)
       {
         trophonius.reset(
           new Trophonius(
-            port,
+            port_ssl,
+            port_tcp,
             meta_host,
             meta_port,
             notifications_port,
