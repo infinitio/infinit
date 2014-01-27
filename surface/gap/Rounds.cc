@@ -10,7 +10,7 @@
 #include <reactor/Scope.hh>
 #include <reactor/exception.hh>
 #include <reactor/network/buffer.hh>
-#include <reactor/network/tcp-socket.hh>
+#include <reactor/network/socket.hh>
 #include <reactor/scheduler.hh>
 
 #include <elle/With.hh>
@@ -88,7 +88,7 @@ namespace surface
       ELLE_TRACE("creating AddressRound(%s, %s)", name, this->_endpoints);
     }
 
-    std::unique_ptr<reactor::network::TCPSocket>
+    std::unique_ptr<reactor::network::Socket>
     AddressRound::connect(station::Station& station)
     {
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
@@ -110,7 +110,7 @@ namespace surface
         found.wait(10_sec);
         if (host)
           return std::move(host->release());
-        return std::unique_ptr<reactor::network::TCPSocket>();
+        return std::unique_ptr<reactor::network::Socket>();
       };
     }
 
@@ -124,7 +124,7 @@ namespace surface
       ELLE_TRACE("creating FallbackRound(%s, %s)", name, uid);
     }
 
-    std::unique_ptr<reactor::network::TCPSocket>
+    std::unique_ptr<reactor::network::Socket>
     FallbackRound::connect(station::Station& station)
     {
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
@@ -149,7 +149,7 @@ namespace surface
       sock->write(elle::ConstWeakBuffer(elle::sprintf("%c",(char) this->_uid.size())));
       sock->write(elle::ConstWeakBuffer(elle::sprintf("%s", this->_uid)));
 
-      return std::move(sock);
+      return std::unique_ptr<reactor::network::Socket>(sock.release());
     }
   }
 }
