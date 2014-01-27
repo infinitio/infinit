@@ -5,10 +5,12 @@
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
-#include <reactor/Scope.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
+#include <reactor/network/tcp-server.hh>
+#include <reactor/network/tcp-socket.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/Scope.hh>
 #include <reactor/thread.hh>
 
 #include <infinit/oracles/apertus/Apertus.hh>
@@ -63,7 +65,7 @@ public:
     {
       while (true)
       {
-        std::unique_ptr<reactor::network::TCPSocket> socket(
+        std::unique_ptr<reactor::network::Socket> socket(
           this->_server.accept());
         ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
         auto name = elle::sprintf("request %s", socket->peer());
@@ -76,7 +78,7 @@ public:
   }
 
   void
-  _serve(std::unique_ptr<reactor::network::TCPSocket> socket)
+  _serve(std::unique_ptr<reactor::network::Socket> socket)
   {
     auto peer = socket->peer();
     {
@@ -131,7 +133,7 @@ public:
 
   virtual
   void
-  _register(reactor::network::TCPSocket& socket,
+  _register(reactor::network::Socket& socket,
             std::string const& id,
             int port)
   {
@@ -143,7 +145,7 @@ public:
 
   virtual
   void
-  _unregister(reactor::network::TCPSocket& socket,
+  _unregister(reactor::network::Socket& socket,
               std::string const& id)
   {
     ELLE_LOG_SCOPE("%s: unregister apertus %s", *this, id);
@@ -154,7 +156,7 @@ public:
 
   virtual
   void
-  _update_bandwidth(reactor::network::TCPSocket& socket,
+  _update_bandwidth(reactor::network::Socket& socket,
                     std::string const& id,
                     int bandwidth,
                     int number_of_transfers)
@@ -165,7 +167,7 @@ public:
   }
 
   void
-  response(reactor::network::TCPSocket& socket,
+  response(reactor::network::Socket& socket,
            elle::ConstWeakBuffer content)
   {
     std::string answer(
