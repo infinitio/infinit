@@ -110,6 +110,8 @@ def configure(elle,
                  where / 'etc/nginx/sites-available', 'config'))
     res.append(f(drake.node('config/meta.xml'),
                  where / 'etc/uwsgi/apps-available', 'config'))
+    res.append(f(drake.node('etc/rsyslog.d/meta.conf'),
+                 where))
     return res
 
   install = drake.Rule('install')
