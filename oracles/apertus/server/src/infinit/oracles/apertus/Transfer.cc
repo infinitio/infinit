@@ -2,7 +2,7 @@
 
 #include <infinit/oracles/apertus/Apertus.hh>
 
-#include <reactor/network/tcp-socket.hh>
+#include <reactor/network/socket.hh>
 #include <reactor/scheduler.hh>
 
 #include <elle/finally.hh>

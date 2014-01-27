@@ -6,8 +6,7 @@
 # include <infinit/oracles/meta/Admin.hh>
 
 # include <reactor/network/buffer.hh>
-# include <reactor/network/tcp-server.hh>
-# include <reactor/network/tcp-socket.hh>
+# include <reactor/network/socket.hh>
 # include <reactor/operation.hh>
 # include <reactor/waitable.hh>
 
@@ -58,8 +57,8 @@ namespace infinit
       private:
         void
         _connect(oracle::hermes::TID tid,
-                 std::unique_ptr<reactor::network::TCPSocket> client1,
-                 std::unique_ptr<reactor::network::TCPSocket> client2);
+                 std::unique_ptr<reactor::network::Socket> client1,
+                 std::unique_ptr<reactor::network::Socket> client2);
 
         void
         _run();
@@ -91,7 +90,7 @@ namespace infinit
         ELLE_ATTRIBUTE_R(int, port);
 
       private:
-        typedef std::map<oracle::hermes::TID, reactor::network::TCPSocket*> Clients;
+        typedef std::map<oracle::hermes::TID, reactor::network::Socket*> Clients;
         ELLE_ATTRIBUTE_R(Clients, clients);
 
         /*----------.

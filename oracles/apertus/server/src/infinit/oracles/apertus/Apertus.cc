@@ -4,8 +4,9 @@
 #include <infinit/oracles/apertus/Transfer.hh>
 
 #include <reactor/exception.hh>
-#include <reactor/network/exception.hh>
 #include <reactor/http/exceptions.hh>
+#include <reactor/network/exception.hh>
+#include <reactor/network/tcp-server.hh>
 
 #include <elle/Exception.hh>
 #include <elle/HttpClient.hh> // XXX: Remove that. Only for exception.
@@ -158,8 +159,8 @@ namespace infinit
 
       void
       Apertus::_connect(oracle::hermes::TID tid,
-                        std::unique_ptr<reactor::network::TCPSocket> client1,
-                        std::unique_ptr<reactor::network::TCPSocket> client2)
+                        std::unique_ptr<reactor::network::Socket> client1,
+                        std::unique_ptr<reactor::network::Socket> client2)
       {
         if (this->_workers.find(tid) != this->_workers.end())
           this->_workers.erase(tid);
