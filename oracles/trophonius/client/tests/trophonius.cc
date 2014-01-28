@@ -333,7 +333,7 @@ ELLE_TEST_SCHEDULED(poke)
 `-------------*/
 
 // Check that a client can receive a simple notification message and will
-// reconnectionn when the socket is closed.
+// reconnect when the socket is closed.
 
 class NotificationTrophonius:
   public Trophonius
