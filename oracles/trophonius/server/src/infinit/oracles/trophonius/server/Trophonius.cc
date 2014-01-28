@@ -4,6 +4,7 @@
 
 #include <reactor/scheduler.hh>
 #include <reactor/exception.hh>
+#include <reactor/network/exception.hh>
 
 #include <infinit/oracles/trophonius/server/Meta.hh>
 #include <infinit/oracles/trophonius/server/User.hh>
@@ -247,9 +248,16 @@ namespace infinit
         {
           while (true)
           {
-            std::unique_ptr<reactor::network::Socket> socket(server.accept());
-            auto user = new User(*this, std::move(socket));
-            this->_users_pending.insert(user);
+            try
+            {
+              std::unique_ptr<reactor::network::Socket> socket(server.accept());
+              auto user = new User(*this, std::move(socket));
+              this->_users_pending.insert(user);
+            }
+            catch (reactor::network::SSLHandshakeError const& e)
+            {
+              ELLE_TRACE("%s: refuse bad SSL handshake: %s", *this, e);
+            }
           }
         }
 

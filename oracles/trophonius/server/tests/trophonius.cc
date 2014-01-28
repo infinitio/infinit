@@ -709,6 +709,29 @@ ELLE_TEST_SCHEDULED(replace, (bool, ssl))
   BOOST_CHECK(t.find(id) == t.end());
 }
 
+/*------------------.
+| Bad SSL handshake |
+`------------------*/
+
+ELLE_TEST_SCHEDULED(bad_ssl_handshake)
+{
+  Meta meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    0,
+    "localhost",
+    meta.port(),
+    0,
+    30_sec,
+    30_sec);
+
+  reactor::network::TCPSocket socket(
+    "127.0.0.1",
+    boost::lexical_cast<std::string>(trophonius.port_ssl()));
+  socket.write(elle::ConstWeakBuffer("pwal\n"));
+  BOOST_CHECK_THROW(socket.get(), reactor::network::ConnectionClosed);
+}
+
 ELLE_TEST_SUITE()
 {
   auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
@@ -751,4 +774,6 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(replace_tcp), 0, timeout);
   auto replace_ssl = std::bind(replace, true);
   suite.add(BOOST_TEST_CASE(replace_ssl), 0, timeout);
+
+  suite.add(BOOST_TEST_CASE(bad_ssl_handshake), 0, timeout);
 }
