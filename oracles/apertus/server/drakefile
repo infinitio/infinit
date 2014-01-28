@@ -82,10 +82,19 @@ def configure(elle,
   check = drake.Rule('check')
   check << test.status
 
-  # executable
+  ## ---------- ##
+  ## Executable ##
+  ## ---------- ##
+
   exe_cxx_config = drake.cxx.Config(local_cxx_config)
-  exe_cxx_config += boost.config_system()
-  exe_cxx_config += boost.config_program_options()
+  exe_cxx_config += boost.config_system(link = False)
+  exe_cxx_config.library_add(
+    drake.copy(boost.system_dynamic,
+               'lib', strip_prefix = True))
+  exe_cxx_config += boost.config_program_options(link = False)
+  exe_cxx_config.library_add(
+    drake.copy(boost.program_options_dynamic,
+               'lib', strip_prefix = True))
   exe_cxx_config.lib_path_runtime('../lib')
 
   exe_sources = drake.nodes('src/main.cc')
