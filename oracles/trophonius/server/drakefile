@@ -24,14 +24,18 @@ def configure(elle,
   cxx_config = cxx_config or drake.cxx.Config()
 
   local_cxx_config = drake.cxx.Config(cxx_config)
-  local_cxx_config += boost.config_program_options(link = False)
-  local_cxx_config.library_add(
-    drake.copy(boost.program_options_dynamic,
-               'lib', strip_prefix = True))
-  local_cxx_config += boost.config_system(link = False)
-  local_cxx_config.library_add(
-    drake.copy(boost.system_dynamic,
-               'lib', strip_prefix = True))
+  if cxx_toolkit.os is drake.os.windows:
+    local_cxx_config += boost.config_program_options(static = True)
+    local_cxx_config += boost.config_system(static = True)
+  else:
+    local_cxx_config += boost.config_program_options(link = False)
+    local_cxx_config.library_add(
+      drake.copy(boost.program_options_dynamic,
+                 'lib', strip_prefix = True))
+    local_cxx_config += boost.config_system(link = False)
+    local_cxx_config.library_add(
+      drake.copy(boost.system_dynamic,
+                 'lib', strip_prefix = True))
   local_cxx_config += elle.elle.config
   local_cxx_config += elle.reactor.config
   local_cxx_config += meta_client.config
