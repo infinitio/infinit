@@ -40,7 +40,8 @@ namespace infinit
         // Make it generic.
         Response
         register_apertus(boost::uuids::uuid const& uid,
-                         uint16_t port);
+                         uint16_t port_ssl,
+                         uint16_t port_tcp);
 
         Response
         unregister_apertus(boost::uuids::uuid const& uid);
