@@ -18,7 +18,8 @@ parse_options(int argc, char** argv)
   options_description options("Allowed options");
   options.add_options()
     ("help,h", "display this help and exit")
-    ("port,p", value<int>(), "specify the port to listen on")
+    ("port-ssl,pssl", value<int>(), "specify the SSL port to listen on")
+    ("port-tcp,ptcp", value<int>(), "specify the TCP port to listen on")
     ("meta,m", value<std::string>(),
      "specify the meta host[:port] to connect to")
     ("tick,t", value<long>(), "specify the rate at which to announce the load to meta")
@@ -88,11 +89,14 @@ int main(int argc, char** argv)
         throw std::runtime_error("meta host is empty");
     }
 
-    int port = 0;
+    int port_ssl = 0;
+    int port_tcp = 0;
     auto tick = 10_sec;
 
-    if (options.count("port"))
-      port = options["port"].as<int>();
+    if (options.count("port-ssl"))
+      port_ssl = options["port-ssl"].as<int>();
+    if (options.count("port-tcp"))
+      port_tcp = options["port-tcp"].as<int>();
     if (options.count("tick"))
       tick = boost::posix_time::seconds(options["tick"].as<long>());
 
@@ -107,7 +111,8 @@ int main(int argc, char** argv)
             meta_host,
             meta_port,
             "0.0.0.0",
-            port,
+            port_ssl,
+            port_tcp,
             tick));
 
         reactor::wait(*apertus);

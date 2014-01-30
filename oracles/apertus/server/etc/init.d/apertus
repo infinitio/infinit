@@ -3,7 +3,7 @@
 . /etc/apertus.conf
 DAEMON="$APERTUS"
 PIDFILE=/var/run/apertus.pid
-ARGUMENTS="--meta ${META} --port ${PORT} --syslog"
+ARGUMENTS="--meta ${META} --port-tcp ${PORT_TCP} --port-ssl ${PORT_SSL} --syslog"
 
 . /lib/lsb/init-functions
 
