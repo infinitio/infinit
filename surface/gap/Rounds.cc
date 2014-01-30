@@ -10,7 +10,7 @@
 #include <reactor/Scope.hh>
 #include <reactor/exception.hh>
 #include <reactor/network/buffer.hh>
-#include <reactor/network/socket.hh>
+#include <reactor/network/fingerprinted-socket.hh>
 #include <reactor/scheduler.hh>
 
 #include <elle/With.hh>
@@ -22,6 +22,12 @@
 #include <boost/algorithm/string/classification.hpp>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.Rounds");
+
+static const std::vector<unsigned char> fingerprint =
+{
+  0x98, 0x55, 0xEF, 0x72, 0x1D, 0xFC, 0x1B, 0xF5, 0xEA, 0xF5,
+  0x35, 0xC5, 0xF9, 0x32, 0x85, 0x38, 0x38, 0x2C, 0xCA, 0x91
+};
 
 namespace surface
 {
@@ -130,20 +136,16 @@ namespace surface
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
       ELLE_DEBUG("%s: get fallback from meta", *this);
-      std::string fallback =
-        this->_meta.fallback(this->_uid).fallback;
+      auto fallback = this->_meta.fallback(this->_uid);
 
-      ELLE_DEBUG("%s: connect to apertus %s", *this, fallback);
-      std::vector<std::string> splited;
-      boost::algorithm::split(splited, fallback, boost::is_any_of(":"));
+      ELLE_TRACE("%s: connect to SSL apertus %s:%s",
+                 *this, fallback.fallback_host, fallback.fallback_port_ssl);
 
-      std::string host = splited[0];
-      int port = std::stoi(splited[1]);
-
-      ELLE_TRACE("%s: contact apertus: %s:%s", *this, host, port);
-
-      std::unique_ptr<reactor::network::TCPSocket> sock(
-        new reactor::network::TCPSocket(host, port));
+      std::unique_ptr<reactor::network::FingerprintedSocket> sock(
+        new reactor::network::FingerprintedSocket(
+          fallback.fallback_host,
+          boost::lexical_cast<std::string>(fallback.fallback_port_ssl),
+          fingerprint));
 
       ELLE_LOG("%i: %s", this->_uid.size(), this->_uid);
       sock->write(elle::ConstWeakBuffer(elle::sprintf("%c",(char) this->_uid.size())));
