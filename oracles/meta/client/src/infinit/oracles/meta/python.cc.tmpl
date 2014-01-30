@@ -251,7 +251,6 @@ void export_meta_client()
   py::class_<EndpointNodeResponse, py::bases<Response>>("EndpointNodeResponse")
     .def_readonly("externals", &EndpointNodeResponse::externals)
     .def_readonly("locals", &EndpointNodeResponse::locals)
-    .def_readonly("fallback", &EndpointNodeResponse::fallback)
   ;
 
   py::class_<AddSwaggerResponse>("AddSwaggerResponse")
