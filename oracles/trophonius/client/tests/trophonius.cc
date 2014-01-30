@@ -904,8 +904,9 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
       },
       fingerprint)
     );
+    client->poke_timeout(500_ms);
 
-    client->ping_period(200_ms);
+    client->ping_period(2_sec);
     scope.run_background("initial poke", [&]
     {
       BOOST_CHECK(client->poke());
@@ -916,8 +917,7 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
       reactor::wait(tropho.poked());
       ELLE_LOG("connect");
       client->connect("0", "0", "0");
-      // Wait forever.
-      reactor::Scheduler::scheduler()->current()->Waitable::wait();
+      reactor::sleep();
     });
     scope.wait();
   };

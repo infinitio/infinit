@@ -156,10 +156,10 @@ namespace infinit
 
       public:
         bool
-        poke() const;
-
-        bool
-        poke(reactor::Duration timeout) const;
+        poke(reactor::DurationOpt const& timeout =
+             reactor::DurationOpt()) const;
+        void
+        poke_timeout(reactor::Duration const& timeout);
 
         bool
         connect(std::string const& _id,
@@ -179,9 +179,9 @@ namespace infinit
         ELLE_ATTRIBUTE_rw(boost::posix_time::time_duration, ping_period);
         ELLE_ATTRIBUTE_rx(reactor::Signal, poked);
 
-          /*----------.
-          | Printable |
-          `----------*/
+      /*----------.
+      | Printable |
+      `----------*/
       public:
         virtual
         void
