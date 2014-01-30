@@ -89,7 +89,7 @@ def configure(elle,
   )
 
   apertus = drake.include('apertus',
-                          elle = elle.elle,
+                          elle = elle,
                           reactor = elle.reactor,
                           protocol = elle.protocol,
                           meta_client = meta.client,
