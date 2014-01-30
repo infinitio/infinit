@@ -701,18 +701,10 @@ namespace surface
         std::for_each(begin(endpoints.locals), end(endpoints.locals), print);
       ELLE_DEBUG("externals")
         std::for_each(begin(endpoints.externals), end(endpoints.externals), print);
-      ELLE_DEBUG("fallback")
-        std::for_each(begin(endpoints.fallback), end(endpoints.fallback), print);
 
       std::vector<std::unique_ptr<Round>> rounds;
       rounds.emplace_back(new AddressRound("local",
                                            std::move(endpoints.locals)));
-
-      {
-        rounds.emplace_back(new FallbackRound("fallback",
-                                              this->state().meta(),
-                                              this->data()->id));
-      }
 
       ELLE_TRACE("%s: selected rounds (%s):", *this, rounds.size())
         for (auto& r: rounds)
