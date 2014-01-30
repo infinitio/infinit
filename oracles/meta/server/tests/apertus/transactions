@@ -57,6 +57,7 @@ with Meta() as meta:
     bobfb = bob.get('apertus/fallback/%s' % transaction_id)
     assert bobfb['success']
     print(alicefb, bobfb)
+    assert alicefb['fallback'] == bobfb['fallback']
     assert alicefb['fallback_host'] == bobfb['fallback_host']
     assert alicefb['fallback_port_ssl'] == bobfb['fallback_port_ssl']
     assert alicefb['fallback_port_tcp'] == bobfb['fallback_port_tcp']
@@ -66,6 +67,7 @@ with Meta() as meta:
     bobfb = bob.get('apertus/fallback/%s' % transaction_id)
     assert bobfb['success']
     print(alicefb, bobfb)
+    assert (alicefb['fallback'] != bobfb['fallback'])
     assert (alicefb['fallback_port_ssl'] != bobfb['fallback_port_ssl'])
     assert (alicefb['fallback_port_tcp'] != bobfb['fallback_port_tcp'])
 
