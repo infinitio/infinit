@@ -143,6 +143,8 @@ class Mixin:
       assert fallback is not None
       return self.success(
         {
+          'fallback': '%s:%s' % (fallback['fallback_host'],
+                                 fallback['fallback_port_tcp']),
           'fallback_host': fallback['fallback_host'],
           'fallback_port_ssl': fallback['fallback_port_ssl'],
           'fallback_port_tcp': fallback['fallback_port_tcp'],
