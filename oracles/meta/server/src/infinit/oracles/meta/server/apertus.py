@@ -16,7 +16,8 @@ class Mixin:
   @api('/apertus/<uid>', method = 'PUT')
   def apertus_put(self,
                   uid: uuid.UUID,
-                  port):
+                  port_ssl,
+                  port_tcp):
     """Register a apertus.
     """
     assert isinstance(uid, uuid.UUID)
@@ -29,7 +30,8 @@ class Mixin:
       {
         '$set': {
         'ip': self.remote_ip,
-        'port': port,
+        'port_tcp': port_tcp,
+        'port_ssl': port_ssl,
         'time': time.time(),
 
         }
@@ -50,7 +52,9 @@ class Mixin:
     with elle.log.log("unregister apertus %s" % uid):
       assert isinstance(uid, uuid.UUID)
       self.database.transactions.update({'fallback': str(uid)},
-                                        {'$set': {'fallback': None}},
+                                        {'$set': {'fallback_host': None},
+                                         '$set': {'fallback_port_ssl': None},
+                                         '$set': {'fallback_port_tcp': None}},
                                         multi = True)
       res = self.database.apertus.remove({"_id": str(uid)})
       return self.success()
@@ -82,7 +86,8 @@ class Mixin:
     apertus = self.database.apertus.find(
         {
           "ip": { "$ne": None },
-          "port": { "$ne": None },
+          "port_tcp": { "$ne": None },
+          "port_ssl": { "$ne": None },
           "load": { "$ne": None },
         }
       )
@@ -91,7 +96,9 @@ class Mixin:
     apertus = apertus.sort([("load", 1)])
     fallback = apertus[0]
     elle.log.debug('selected fallback: %s' % fallback)
-    return '%s:%s' % (fallback['ip'], fallback['port'])
+    return {'fallback_host': fallback['ip'],
+            'fallback_port_ssl': fallback['port_ssl'],
+            'fallback_port_tcp': fallback['port_tcp']}
 
   @api('/apertus/fallback/<id>')
   @require_logged_in
@@ -105,17 +112,42 @@ class Mixin:
       transaction = self.database.transactions.find_and_modify(
         {
           '_id': id,
-          'fallback': None,
+          'fallback_host': None,
+          'fallback_port_ssl': None,
+          'fallback_port_tcp': None,
         },
         {
-          '$set': {'fallback': fallback},
+          '$set':
+          {
+            'fallback_host': fallback['fallback_host'],
+            'fallback_port_ssl': fallback['fallback_port_ssl'],
+            'fallback_port_tcp': fallback['fallback_port_tcp'],
+          }
         },
         new = True,
       )
       if transaction is None:
-        fallback = self.database.transactions.find_and_modify({'_id': id}, {'$set': {'fallback': None}}, new = False, fields = ['fallback'])['fallback']
+        fallback = self.database.transactions.find_and_modify(
+          {'_id': id},
+          {
+            '$set':
+            {
+              'fallback_host': None,
+              'fallback_port_ssl': None,
+              'fallback_port_tcp': None,
+            }
+          },
+          new = False,
+          fields = ['fallback_host', 'fallback_port_ssl', 'fallback_port_tcp']
+        )
       assert fallback is not None
-      return self.success({'fallback': fallback})
+      return self.success(
+        {
+          'fallback_host': fallback['fallback_host'],
+          'fallback_port_ssl': fallback['fallback_port_ssl'],
+          'fallback_port_tcp': fallback['fallback_port_tcp'],
+        }
+      )
 
   apertus_fields = ['ip', 'port', 'load', 'number_of_transfers']
 
