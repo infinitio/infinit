@@ -54,17 +54,15 @@ namespace infinit
           ELLE_ASSERT(lhs != nullptr);
           uint32_t size = lhs->read_some(recv);
           elle::ConstWeakBuffer send(buff, size);
-          ELLE_DEBUG("%s: data read", this->_tid);
+          ELLE_DEBUG("%s: read %s bytes from %s", this->_tid, size, *lhs);
           if (!send.empty())
           {
             ELLE_DUMP("%s", send);
             ELLE_ASSERT(rhs != nullptr);
             rhs->write(send);
-            ELLE_DEBUG("%s: data written", this->_tid);
+            ELLE_DEBUG("%s: write %s bytes to %s", this->_tid, size, *rhs);
 
-            _apertus.add_to_bandwidth(size);
-            ELLE_DEBUG("%s: data amount of %u sent to apertus owner",
-              this->_tid, size);
+            this->_apertus.add_to_bandwidth(size);
           }
         }
 
@@ -77,7 +75,7 @@ namespace infinit
         elle::SafeFinally pop(
           [this]
           {
-            ELLE_TRACE("%s: pop my self from apertus", *this);
+            ELLE_TRACE("%s: pop myself from apertus", *this);
             this->_apertus._transfer_remove(*this);
             this->_signal();
           });
