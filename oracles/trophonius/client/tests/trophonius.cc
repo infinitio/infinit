@@ -900,7 +900,7 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
       [&] (void)    // reconnection failed callback
       {
         callback_called = true;
-        end_test.signal();
+        reactor::Scheduler::scheduler()->terminate();
       },
       fingerprint)
     );
@@ -918,11 +918,6 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
       client->connect("0", "0", "0");
       // Wait forever.
       reactor::Scheduler::scheduler()->current()->Waitable::wait();
-    });
-    scope.run_background("end test", [&]
-    {
-      reactor::wait(end_test);
-      scope.terminate_now();
     });
     scope.wait();
   };
