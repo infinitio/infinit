@@ -7,15 +7,21 @@ import pymongo
 
 class Apertus:
   def __init__(self, meta):
-    self.port = 1000 + int(random() * 64535)
+    self.host = '127.0.0.1'
+    self.port_ssl = 1000 + int(random() * 64535)
+    self.port_tcp = self.port_ssl
+    while (self.port_tcp == self.port_ssl):
+      self.port_tcp = 1000 + int(random() * 64535)
     self.meta = meta
     self.uuid = uuid4()
 
   def register_or_ping(self):
-    self.meta.put('apertus/%s' % str(self.uuid), body = {"port": self.port})
+    self.meta.put('apertus/%s' % str(self.uuid),
+                  body = {"port_ssl": self.port_ssl, "port_tcp": self.port_tcp})
 
   def __str__(self):
-    return "127.0.0.1:" + str(self.port)
+    return "host: 127.0.0.1, port_ssl: %s, port_tcp: %s" % (self.port_ssl,
+                                                            self.port_tcp)
 
   def __enter__(self):
     self.register_or_ping()
@@ -59,8 +65,12 @@ with Meta() as meta:
     assert alicefb['success']
     bobfb = bob.get('apertus/fallback/%s' % transaction_id)
     assert bobfb['success']
-    assert bobfb['fallback'] == alicefb['fallback']
-    assert bobfb['fallback'] == str(ap1)
+    assert bobfb['fallback_host'] == alicefb['fallback_host']
+    assert bobfb['fallback_port_ssl'] == alicefb['fallback_port_ssl']
+    assert bobfb['fallback_port_tcp'] == alicefb['fallback_port_tcp']
+    assert bobfb['fallback_host'] == ap1.host
+    assert bobfb['fallback_port_ssl'] == ap1.port_ssl
+    assert bobfb['fallback_port_tcp'] == ap1.port_tcp
 
     ap1.update_bandwidth(bd1 * 3, 1)
 
@@ -77,7 +87,9 @@ with Meta() as meta:
     assert johfb['success']
     chuckfb = chuck.get('apertus/fallback/%s' % transaction_id2)
     assert chuckfb['success']
-    assert chuckfb['fallback'] == str(ap0)
+    assert chuckfb['fallback_host'] == ap0.host
+    assert chuckfb['fallback_port_ssl'] == ap0.port_ssl
+    assert chuckfb['fallback_port_tcp'] == ap0.port_tcp
 
     chuck.logout()
     joh.logout()
