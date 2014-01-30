@@ -173,7 +173,6 @@ namespace infinit
       {
         std::vector<std::string>      externals;
         std::vector<std::string>      locals;
-        std::vector<std::string>      fallback;
       };
 
       struct Device
@@ -200,7 +199,9 @@ namespace infinit
 
       struct FallbackResponse: Response
       {
-        std::string fallback;
+        std::string fallback_host;
+        int fallback_port_ssl;
+        int fallback_port_tcp;
       };
 
       struct ServerStatusResponse: Response

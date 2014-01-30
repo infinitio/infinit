@@ -169,7 +169,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::EndpointNodeResponse, ar, res)
 {
   ar & named("externals", res.externals);
   ar & named("locals", res.locals);
-  ar & named("fallback", res.fallback);
 }
 
 SERIALIZE_RESPONSE(infinit::oracles::meta::ConnectDeviceResponse, ar, res)
@@ -180,7 +179,9 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::ConnectDeviceResponse, ar, res)
 
 SERIALIZE_RESPONSE(infinit::oracles::meta::FallbackResponse, ar, res)
 {
-  ar & named("fallback", res.fallback);
+  ar & named("fallback_host", res.fallback_host);
+  ar & named("fallback_port_ssl", res.fallback_port_ssl);
+  ar & named("fallback_port_tcp", res.fallback_port_tcp);
 }
 
 /*--------------.
@@ -659,7 +660,7 @@ namespace infinit
           std::map<std::string, std::string>{
             {"self_device_id", self_device_id},
             {"device_id", device_id},
-              }
+          }
         };
 
         return this->_request<EndpointNodeResponse>(
