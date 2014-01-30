@@ -7,6 +7,8 @@
 
 # include <reactor/network/buffer.hh>
 # include <reactor/network/socket.hh>
+# include <reactor/network/ssl-server.hh>
+# include <reactor/network/tcp-server.hh>
 # include <reactor/operation.hh>
 # include <reactor/waitable.hh>
 
@@ -34,7 +36,8 @@ namespace infinit
         Apertus(std::string mhost,
                 int mport,
                 std::string host = "0.0.0.0",
-                int port = 6565,
+                int port_ssl = 6566,
+                int port_tcp = 6565,
                 boost::posix_time::time_duration const& tick_rate = 10_sec);
         ~Apertus();
 
@@ -61,10 +64,11 @@ namespace infinit
                  std::unique_ptr<reactor::network::Socket> client2);
 
         void
-        _run();
+        _serve(reactor::network::Server& server);
 
       private:
-        reactor::Thread _accepter;
+        ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter_ssl);
+        ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter_tcp);
 
       private:
         ELLE_ATTRIBUTE(infinit::oracles::meta::Admin, meta);
@@ -82,15 +86,24 @@ namespace infinit
         void
         _accepter_remove(Accepter const& transfer);
 
-        typedef std::unordered_map<oracle::hermes::TID, std::unique_ptr<Transfer>> Workers;
+        typedef std::unordered_map<
+          oracle::hermes::TID, std::unique_ptr<Transfer>> Workers;
         ELLE_ATTRIBUTE_R(Workers, workers);
 
       private:
         const std::string _host;
-        ELLE_ATTRIBUTE_R(int, port);
+        ELLE_ATTRIBUTE_R(int, port_ssl);
+        ELLE_ATTRIBUTE_R(int, port_tcp);
+        ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLCertificate>,
+                       certificate);
+        ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLServer>,
+                       server_ssl);
+        ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::TCPServer>,
+                       server_tcp);
 
       private:
-        typedef std::map<oracle::hermes::TID, reactor::network::Socket*> Clients;
+        typedef std::map<
+          oracle::hermes::TID, reactor::network::Socket*> Clients;
         ELLE_ATTRIBUTE_R(Clients, clients);
 
         /*----------.
