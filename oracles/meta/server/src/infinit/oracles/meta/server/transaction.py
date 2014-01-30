@@ -132,7 +132,9 @@ class Mixin:
       'ctime': time.time(),
       'mtime': time.time(),
       'status': transaction_status.CREATED,
-      'fallback': None,
+      'fallback_host': None,
+      'fallback_port_ssl': None,
+      'fallback_port_tcp': None,
       'strings': ' '.join([
             user['fullname'],
             user['handle'],
@@ -457,8 +459,6 @@ class Mixin:
     else:
       node['externals'] = []
 
-    node['fallback'] = []
-
     transaction = self.update_node(transaction_id = transaction['_id'],
                                    user_id = user['_id'],
                                    device_id = device_id,
@@ -514,10 +514,10 @@ class Mixin:
 
     res = dict();
 
-    addrs = {'locals': list(), 'externals': list(), 'fallback' : list()}
+    addrs = {'locals': list(), 'externals': list()}
     peer_node = transaction['nodes'][peer_key]
 
-    for addr_kind in ['locals', 'externals', 'fallback']:
+    for addr_kind in ['locals', 'externals']:
       for a in peer_node[addr_kind]:
         if a and a["ip"] and a["port"]:
           addrs[addr_kind].append(
