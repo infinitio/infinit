@@ -6,6 +6,7 @@
 # include <elle/json/json.hh>
 
 # include <reactor/Barrier.hh>
+# include <reactor/Channel.hh>
 # include <reactor/network/socket.hh>
 # include <reactor/signal.hh>
 
@@ -69,8 +70,7 @@ namespace infinit
         private:
           void
           _handle_notifications();
-          ELLE_ATTRIBUTE(std::queue<elle::json::Object>, notifications);
-          ELLE_ATTRIBUTE(reactor::Signal, notification_available);
+          ELLE_ATTRIBUTE(reactor::Channel<elle::json::Object>, notifications);
           ELLE_ATTRIBUTE(reactor::Thread, notifications_thread);
 
         /*-------.
