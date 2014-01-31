@@ -378,7 +378,6 @@ namespace infinit
               this->_poke_sent_signal.signal();
             });
             auto deadline = timeout ? timeout.get() : this->_poke_timeout;
-            std::cerr << "WAIT " << deadline << std::endl;
             scope.wait(deadline);
             if (result == false)
               this->_socket->close();
