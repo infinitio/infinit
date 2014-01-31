@@ -520,6 +520,8 @@ def configure(cxx_toolkit = None,
   )
   cli_build << cli_recv_bin
 
+  build << cli_build
+
   ## ---------- ##
   ## GAP python ##
   ## ---------- ##
