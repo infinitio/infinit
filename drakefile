@@ -492,10 +492,15 @@ def configure(cxx_toolkit = None,
   cli_cxx_config.add_local_include_path('oracles/trophonius/client/src')
   if cxx_toolkit.os is drake.os.windows:
     cli_cxx_config += boost.config_program_options(static = True)
+    cli_cxx_config += boost.config_system(static = True)
   else:
     cli_cxx_config += boost.config_program_options(link = False)
     cli_cxx_config.library_add(
       drake.copy(boost.program_options_dynamic,
+                 'lib', strip_prefix = True))
+    cli_cxx_config += boost.config_system(link = False)
+    cli_cxx_config.library_add(
+      drake.copy(boost.system_dynamic,
                  'lib', strip_prefix = True))
 
   cli_send_sources = drake.nodes(
@@ -503,7 +508,7 @@ def configure(cxx_toolkit = None,
   )
   cli_send_bin = drake.cxx.Executable(
     'bin/8send',
-    cli_send_sources + [gap_lib],
+    cli_send_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
     cxx_toolkit,
     cli_cxx_config
   )
@@ -514,7 +519,7 @@ def configure(cxx_toolkit = None,
   )
   cli_recv_bin = drake.cxx.Executable(
     'bin/8recv',
-    cli_recv_sources + [gap_lib],
+    cli_recv_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
     cxx_toolkit,
     cli_cxx_config
   )
