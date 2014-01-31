@@ -5,7 +5,6 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <boost/signals.hpp>
 #include <boost/system/error_code.hpp>
 
 #include <elle/format/json.hh>
