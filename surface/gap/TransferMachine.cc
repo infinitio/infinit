@@ -706,6 +706,10 @@ namespace surface
       rounds.emplace_back(new AddressRound("local",
                                            std::move(endpoints.locals)));
 
+      rounds.emplace_back(new FallbackRound("fallback",
+                                            this->state().meta(),
+                                            this->data()->id));
+
       ELLE_TRACE("%s: selected rounds (%s):", *this, rounds.size())
         for (auto& r: rounds)
           ELLE_TRACE("-- %s", *r);
