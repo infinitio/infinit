@@ -11,6 +11,8 @@
 
 # if defined(INFINIT_MACOSX) or defined(INFINIT_WINDOWS)
   typedef void(*sighandler_t)(int);
+# else
+#  include <signal.h>
 # endif
 
 namespace elle
