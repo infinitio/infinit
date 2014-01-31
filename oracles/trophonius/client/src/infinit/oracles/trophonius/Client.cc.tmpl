@@ -511,7 +511,7 @@ namespace infinit
           if (!this->_connected.opened())
           {
             ELLE_DEBUG_SCOPE("%s: already reconnected, wait", *this);
-            this->_connected.wait();
+            reactor::wait(this->_connected);
             return;
           }
 
@@ -625,7 +625,7 @@ namespace infinit
             if (!this->_connected.opened())
             {
               ELLE_DEBUG("%s: ping thread: waiting to be connected", *this);
-              reactor::Scheduler::scheduler()->current()->wait(this->_connected);
+              reactor::wait(this->_connected);
               ELLE_DEBUG("%s: ping thread: connected", *this);
             }
 
@@ -655,7 +655,7 @@ namespace infinit
             if (!this->_connected.opened())
             {
               ELLE_DEBUG("%s: pong thread: waiting to be connected", *this);
-              reactor::Scheduler::scheduler()->current()->wait(this->_connected);
+              reactor::wait(this->_connected);
               ELLE_DEBUG("%s: pong thread: connected", *this);
             }
 
@@ -718,11 +718,11 @@ namespace infinit
           ELLE_TRACE_SCOPE("start read thread");
           while (true)
           {
-            auto notif = std::unique_ptr<Notification>();
-
             ELLE_DEBUG("%s: read thread: waiting to be connected", *this);
-            reactor::Scheduler::scheduler()->current()->wait(this->_connected);
+            reactor::wait(this->_connected);
             ELLE_DEBUG("%s: read thread: connected", *this);
+
+            auto notif = std::unique_ptr<Notification>();
 
             try
             {
