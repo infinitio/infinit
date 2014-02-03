@@ -5,13 +5,11 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <boost/signals.hpp>
 #include <boost/system/error_code.hpp>
 
 #include <elle/format/json.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
-#include <elle/os/getenv.hh>
 #include <elle/os/path.hh>
 #include <elle/system/platform.hh>
 

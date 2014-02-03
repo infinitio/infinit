@@ -47,7 +47,8 @@ namespace infinit
         {
         public:
           Trophonius(
-            int port,
+            int port_ssl,
+            int port_tcp,
             std::string const& meta_host,
             int meta_port,
             int notifications_port = 0,
@@ -64,21 +65,26 @@ namespace infinit
         `-------*/
         private:
           void
-          _serve();
+          _serve(reactor::network::Server& server);
 
           void
           _serve_notifier();
 
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLCertificate>,
                          certificate);
-          ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLServer>, server);
-          ELLE_ATTRIBUTE_r(int, port);
+          ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLServer>,
+                         server_ssl);
+          ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::TCPServer>,
+                         server_tcp);
+          ELLE_ATTRIBUTE_r(int, port_ssl);
+          ELLE_ATTRIBUTE_r(int, port_tcp);
           ELLE_ATTRIBUTE(reactor::network::TCPServer, notifications);
           ELLE_ATTRIBUTE(reactor::Barrier, ready);
 
           int
           notification_port() const;
-          ELLE_ATTRIBUTE(reactor::Thread, accepter);
+          ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter_ssl);
+          ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter_tcp);
           ELLE_ATTRIBUTE(bool, meta_fatal);
           ELLE_ATTRIBUTE(reactor::Thread, meta_accepter);
           ELLE_ATTRIBUTE_R(boost::uuids::uuid, uuid);

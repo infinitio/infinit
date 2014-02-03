@@ -1,8 +1,8 @@
 #include <infinit/metrics/reporters/GoogleReporter.hh>
 
 #include <elle/format/hexadecimal.hh>
-#include <elle/os/getenv.hh>
 #include <elle/log.hh>
+#include <elle/os/environ.hh>
 #include <reactor/exception.hh>
 #include <reactor/http/exceptions.hh>
 #include <reactor/http/Request.hh>

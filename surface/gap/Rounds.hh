@@ -31,7 +31,7 @@ namespace surface
         ~Round();
 
         virtual
-        std::unique_ptr<reactor::network::TCPSocket>
+        std::unique_ptr<reactor::network::Socket>
         connect(station::Station& station) = 0;
 
         /*----------.
@@ -61,7 +61,7 @@ namespace surface
         AddressRound(std::string const& name,
                      std::vector<std::string>&& enpoints);
 
-        std::unique_ptr<reactor::network::TCPSocket>
+        std::unique_ptr<reactor::network::Socket>
         connect(station::Station& station) override;
 
         /*----------.
@@ -84,7 +84,7 @@ namespace surface
                       infinit::oracles::meta::Client const& meta,
                       std::string const& uid);
 
-        std::unique_ptr<reactor::network::TCPSocket>
+        std::unique_ptr<reactor::network::Socket>
         connect(station::Station& station) override;
 
       private:

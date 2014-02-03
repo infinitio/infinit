@@ -89,7 +89,7 @@ public:
     {
       while (true)
       {
-        std::unique_ptr<reactor::network::TCPSocket> socket(
+        std::unique_ptr<reactor::network::Socket> socket(
           this->_server.accept());
         ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
         auto name = elle::sprintf("request %s", socket->peer());
@@ -102,14 +102,14 @@ public:
   }
 
   void
-  _response_success(reactor::network::TCPSocket& socket)
+  _response_success(reactor::network::Socket& socket)
   {
     this->response(socket,
                    std::string("{\"success\": true }"));
   }
 
   void
-  _response_failure(reactor::network::TCPSocket& socket)
+  _response_failure(reactor::network::Socket& socket)
   {
     this->response(socket,
                    std::string("{"
@@ -120,7 +120,7 @@ public:
   }
 
   void
-  _serve(std::unique_ptr<reactor::network::TCPSocket> socket)
+  _serve(std::unique_ptr<reactor::network::Socket> socket)
   {
     auto peer = socket->peer();
     {
@@ -173,7 +173,7 @@ public:
 
   virtual
   void
-  _register(reactor::network::TCPSocket& socket,
+  _register(reactor::network::Socket& socket,
             std::string const& id,
             int port)
   {
@@ -184,8 +184,8 @@ public:
 
   virtual
   void
-  _unregister(reactor::network::TCPSocket& socket,
-            std::string const& id)
+  _unregister(reactor::network::Socket& socket,
+              std::string const& id)
   {
     ELLE_LOG_SCOPE("%s: unregister trophonius %s", *this, id);
     BOOST_CHECK(this->_trophoniuses.find(id) != this->_trophoniuses.end());
@@ -194,10 +194,10 @@ public:
 
   virtual
   void
-  _register_user(reactor::network::TCPSocket& socket,
-            std::string const& id,
-            std::string const& user,
-            std::string const& device)
+  _register_user(reactor::network::Socket& socket,
+                 std::string const& id,
+                 std::string const& user,
+                 std::string const& device)
   {
     ELLE_LOG_SCOPE("%s: register user %s:%s on %s", *this, user, device, id);
     Client c(user, device);
@@ -208,10 +208,10 @@ public:
 
   virtual
   void
-  _unregister(reactor::network::TCPSocket& socket,
-            std::string const& id,
-            std::string const& user,
-            std::string const& device)
+  _unregister(reactor::network::Socket& socket,
+              std::string const& id,
+              std::string const& user,
+              std::string const& device)
   {
     ELLE_LOG_SCOPE("%s: unregister user %s:%s on %s", *this, user, device, id);
     Client c(user, device);
@@ -222,7 +222,7 @@ public:
   }
 
   void
-  response(reactor::network::TCPSocket& socket,
+  response(reactor::network::Socket& socket,
            elle::ConstWeakBuffer content)
   {
     std::string answer(
@@ -274,7 +274,7 @@ operator << (std::ostream& s, Meta const& meta)
 
 static
 void
-authentify(reactor::network::SSLSocket& socket,
+authentify(reactor::network::Socket& socket,
            int user = 0,
            int device = 0)
 {
@@ -290,7 +290,7 @@ authentify(reactor::network::SSLSocket& socket,
 
 static
 int
-read_notification(reactor::network::SSLSocket& socket)
+read_notification(reactor::network::Socket& socket)
 {
   auto response_read = elle::json::read(socket);
   auto response = boost::any_cast<elle::json::Object>(response_read);
@@ -301,14 +301,14 @@ read_notification(reactor::network::SSLSocket& socket)
 
 static
 void
-read_ping(reactor::network::SSLSocket& socket)
+read_ping(reactor::network::Socket& socket)
 {
   BOOST_CHECK_EQUAL(read_notification(socket), 208);
 }
 
 static
 void
-check_authentication_success(reactor::network::SSLSocket& socket)
+check_authentication_success(reactor::network::Socket& socket)
 {
   auto json_read = elle::json::read(socket);
   auto json = boost::any_cast<elle::json::Object>(json_read);
@@ -320,7 +320,7 @@ check_authentication_success(reactor::network::SSLSocket& socket)
 
 static
 void
-check_authentication_failure(reactor::network::SSLSocket& socket)
+check_authentication_failure(reactor::network::Socket& socket)
 {
   auto json_read = elle::json::read(socket);
   auto json = boost::any_cast<elle::json::Object>(json_read);
@@ -328,6 +328,26 @@ check_authentication_failure(reactor::network::SSLSocket& socket)
   BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), -666);
   auto response_code = json["response_code"];
   BOOST_CHECK_EQUAL(boost::any_cast<int>(response_code), 403);
+}
+
+static
+std::unique_ptr<reactor::network::Socket>
+connect_socket(bool ssl,
+               infinit::oracles::trophonius::server::Trophonius& trophonius)
+{
+  if (ssl)
+  {
+    return elle::make_unique<reactor::network::FingerprintedSocket>(
+      "127.0.0.1",
+      boost::lexical_cast<std::string>(trophonius.port_ssl()),
+      fingerprint);
+  }
+  else
+  {
+    return elle::make_unique<reactor::network::TCPSocket>(
+      "127.0.0.1",
+      boost::lexical_cast<std::string>(trophonius.port_tcp()));
+  }
 }
 
 /*--------------------.
@@ -343,6 +363,7 @@ ELLE_TEST_SCHEDULED(register_unregister)
   {
     ELLE_LOG("register trophonius");
     infinit::oracles::trophonius::server::Trophonius trophonius(
+      0,
       0,
       "localhost",
       meta.port(),
@@ -361,10 +382,11 @@ ELLE_TEST_SCHEDULED(register_unregister)
 
 // Check notifications are routed correctly.
 
-ELLE_TEST_SCHEDULED(notifications)
+ELLE_TEST_SCHEDULED(notifications, (bool, ssl))
 {
   Meta meta;
   infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
     0,
     "localhost",
     meta.port(),
@@ -375,14 +397,12 @@ ELLE_TEST_SCHEDULED(notifications)
   {
     auto client = [&] (int user, int device, reactor::Barrier& b)
     {
-      reactor::network::FingerprintedSocket socket(
-        "127.0.0.1",
-        boost::lexical_cast<std::string>(trophonius.port()),
-        fingerprint);
-      authentify(socket, user, device);
-      check_authentication_success(socket);
+      std::unique_ptr<reactor::network::Socket> socket(
+        connect_socket(ssl, trophonius));
+      authentify(*socket, user, device);
+      check_authentication_success(*socket);
       b.open();
-      auto notif_read = elle::json::read(socket);
+      auto notif_read = elle::json::read(*socket);
       auto notif = boost::any_cast<elle::json::Object>(notif_read);
       auto notification_type = notif["notification_type"];
       BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type),
@@ -427,10 +447,11 @@ ELLE_TEST_SCHEDULED(notifications)
 
 // Check what happens if a client disconnects without authenticating.
 
-ELLE_TEST_SCHEDULED(no_authentication)
+ELLE_TEST_SCHEDULED(no_authentication, (bool, ssl))
 {
   Meta meta;
   infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
     0,
     "localhost",
     meta.port(),
@@ -438,11 +459,8 @@ ELLE_TEST_SCHEDULED(no_authentication)
     60_sec,
     10_sec);
   {
-    reactor::network::SSLCertificate certificate;
-    reactor::network::FingerprintedSocket socket(
-      "127.0.0.1",
-      boost::lexical_cast<std::string>(trophonius.port()),
-      fingerprint);
+    std::unique_ptr<reactor::network::Socket> socket(
+        connect_socket(ssl, trophonius));
     BOOST_CHECK_EQUAL(meta.trophonius(trophonius).size(), 0);
   }
   // Give Trophonius the opportunity to remove the unregister client (and it
@@ -463,7 +481,7 @@ class MetaAuthenticationFailure:
 {
   virtual
   void
-  _register_user(reactor::network::TCPSocket& socket,
+  _register_user(reactor::network::Socket& socket,
                  std::string const& id,
                  std::string const& user,
                  std::string const& device)
@@ -473,25 +491,24 @@ class MetaAuthenticationFailure:
   }
 };
 
-ELLE_TEST_SCHEDULED(authentication_failure)
+ELLE_TEST_SCHEDULED(authentication_failure, (bool, ssl))
 {
   MetaAuthenticationFailure meta;
   infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
     0,
     "localhost",
     meta.port(),
     0,
     60_sec,
     300_sec);
-  reactor::network::FingerprintedSocket socket(
-    "127.0.0.1",
-    boost::lexical_cast<std::string>(trophonius.port()),
-    fingerprint);
-  authentify(socket);
+  std::unique_ptr<reactor::network::Socket> socket(
+        connect_socket(ssl, trophonius));
+  authentify(*socket);
   // Check we get a notification refusal.
-  check_authentication_failure(socket);
+  check_authentication_failure(*socket);
   char c;
-  BOOST_CHECK_THROW(socket.read(reactor::network::Buffer(&c, 1)),
+  BOOST_CHECK_THROW(socket->read(reactor::network::Buffer(&c, 1)),
                     reactor::network::ConnectionClosed);
 }
 
@@ -507,7 +524,7 @@ class MetaGonzales:
 {
   virtual
   void
-  _register_user(reactor::network::TCPSocket& socket,
+  _register_user(reactor::network::Socket& socket,
                  std::string const& id,
                  std::string const& user,
                  std::string const& device) override
@@ -524,10 +541,11 @@ class MetaGonzales:
   }
 };
 
-ELLE_TEST_SCHEDULED(wait_authentified)
+ELLE_TEST_SCHEDULED(wait_authentified, (bool, ssl))
 {
   MetaGonzales meta;
   infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
     0,
     "localhost",
     meta.port(),
@@ -535,16 +553,14 @@ ELLE_TEST_SCHEDULED(wait_authentified)
     60_sec,
     300_sec);
   {
-    reactor::network::FingerprintedSocket socket(
-      "127.0.0.1",
-      boost::lexical_cast<std::string>(trophonius.port()),
-      fingerprint);
-    authentify(socket);
+    std::unique_ptr<reactor::network::Socket> socket(
+        connect_socket(ssl, trophonius));
+    authentify(*socket);
     // Check the first response is the login acceptation.
-    check_authentication_success(socket);
+    check_authentication_success(*socket);
     // Check we receive the notification after.
     {
-      auto json_read = elle::json::read(socket);
+      auto json_read = elle::json::read(*socket);
       auto json = boost::any_cast<elle::json::Object>(json_read);
       auto notification_type = json["notification_type"];
       BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), 42);
@@ -564,10 +580,10 @@ class MetaNotificationAuthenticationFailed:
 {
   virtual
   void
-  _register_user(reactor::network::TCPSocket& socket,
-            std::string const& id,
-            std::string const& user,
-            std::string const& device)
+  _register_user(reactor::network::Socket& socket,
+                 std::string const& id,
+                 std::string const& user,
+                 std::string const& device)
   {
     ELLE_LOG_SCOPE("%s: reject user %s:%s on %s", *this, user, device, id);
     this->send_notification(42, user, device);
@@ -576,23 +592,22 @@ class MetaNotificationAuthenticationFailed:
 };
 
 // Send a notification to a non authenticated user.
-ELLE_TEST_SCHEDULED(notification_authentication_failed)
+ELLE_TEST_SCHEDULED(notification_authentication_failed, (bool, ssl))
 {
   MetaNotificationAuthenticationFailed meta;
   infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
     0,
     "localhost",
     meta.port(),
     0,
     60_sec,
     300_sec);
-  reactor::network::FingerprintedSocket socket(
-    "127.0.0.1",
-    boost::lexical_cast<std::string>(trophonius.port()),
-    fingerprint);
-  authentify(socket);
+  std::unique_ptr<reactor::network::Socket> socket(
+        connect_socket(ssl, trophonius));
+  authentify(*socket);
   // Check the first response is the login refusal.
-  check_authentication_failure(socket);
+  check_authentication_failure(*socket);
 }
 
 
@@ -600,11 +615,12 @@ ELLE_TEST_SCHEDULED(notification_authentication_failed)
 | ping_timeout |
 `-------------*/
 
-ELLE_TEST_SCHEDULED(ping_timeout)
+ELLE_TEST_SCHEDULED(ping_timeout, (bool, ssl))
 {
   auto ping = 100_ms;
   Meta meta;
   infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
     0,
     "localhost",
     meta.port(),
@@ -615,12 +631,10 @@ ELLE_TEST_SCHEDULED(ping_timeout)
   static auto const id = std::make_pair(uuid, uuid);
   auto& t = meta.trophonius(trophonius);
   BOOST_CHECK(t.find(id) == t.end());
-  reactor::network::FingerprintedSocket socket(
-    "127.0.0.1",
-    boost::lexical_cast<std::string>(trophonius.port()),
-    fingerprint);
-  authentify(socket, 1, 1);
-  check_authentication_success(socket);
+  std::unique_ptr<reactor::network::Socket> socket(
+        connect_socket(ssl, trophonius));
+  authentify(*socket, 1, 1);
+  check_authentication_success(*socket);
   BOOST_CHECK(t.find(id) != t.end());
   reactor::sleep(ping * 3);
   // Read some pings until the conncetion is closed. The number of pings will
@@ -630,7 +644,7 @@ ELLE_TEST_SCHEDULED(ping_timeout)
   {
     try
     {
-      read_ping(socket);
+      read_ping(*socket);
     }
     catch (reactor::network::ConnectionClosed const& exception)
     {
@@ -648,10 +662,11 @@ ELLE_TEST_SCHEDULED(ping_timeout)
 `--------*/
 
 // Send a notification to a non authenticated user.
-ELLE_TEST_SCHEDULED(replace)
+ELLE_TEST_SCHEDULED(replace, (bool, ssl))
 {
   Meta meta;
   infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
     0,
     "localhost",
     meta.port(),
@@ -664,38 +679,57 @@ ELLE_TEST_SCHEDULED(replace)
   BOOST_CHECK(t.find(id) == t.end());
   {
     ELLE_LOG("connect the first client");
-    reactor::network::FingerprintedSocket socket1(
-      "127.0.0.1",
-      boost::lexical_cast<std::string>(trophonius.port()),
-      fingerprint);
-    authentify(socket1, 1, 1);
-    check_authentication_success(socket1);
+    std::unique_ptr<reactor::network::Socket> socket1(
+        connect_socket(ssl, trophonius));
+    authentify(*socket1, 1, 1);
+    check_authentication_success(*socket1);
     BOOST_CHECK(t.find(id) != t.end());
     meta.send_notification(1,
                            "00000000-0000-0000-0000-000000000001",
                            "00000000-0000-0000-0000-000000000001");
     ELLE_LOG("read notification from the first client")
-      BOOST_CHECK_EQUAL(read_notification(socket1), 1);
+      BOOST_CHECK_EQUAL(read_notification(*socket1), 1);
     ELLE_LOG("connect a replacement client");
-    reactor::network::FingerprintedSocket socket2(
-      "127.0.0.1",
-      boost::lexical_cast<std::string>(trophonius.port()),
-      fingerprint);
-    authentify(socket2, 1, 1);
-    check_authentication_success(socket2);
+    std::unique_ptr<reactor::network::Socket> socket2(
+        connect_socket(ssl, trophonius));
+    authentify(*socket2, 1, 1);
+    check_authentication_success(*socket2);
     BOOST_CHECK(t.find(id) != t.end());
     meta.send_notification(2,
                            "00000000-0000-0000-0000-000000000001",
                            "00000000-0000-0000-0000-000000000001");
     // Check the first socket was disconnected.
     ELLE_LOG("check the old client is disconnected")
-      BOOST_CHECK_THROW(elle::json::read(socket1),
+      BOOST_CHECK_THROW(elle::json::read(*socket1),
                         reactor::network::ConnectionClosed);
     ELLE_LOG("read notification from the new client")
-      BOOST_CHECK_EQUAL(read_notification(socket2), 2);
+      BOOST_CHECK_EQUAL(read_notification(*socket2), 2);
   }
   reactor::sleep(100_ms); // XXX: wait for tropho to disconnect it.
   BOOST_CHECK(t.find(id) == t.end());
+}
+
+/*------------------.
+| Bad SSL handshake |
+`------------------*/
+
+ELLE_TEST_SCHEDULED(bad_ssl_handshake)
+{
+  Meta meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    0,
+    "localhost",
+    meta.port(),
+    0,
+    30_sec,
+    30_sec);
+
+  reactor::network::TCPSocket socket(
+    "127.0.0.1",
+    boost::lexical_cast<std::string>(trophonius.port_ssl()));
+  socket.write(elle::ConstWeakBuffer("pwal\n"));
+  BOOST_CHECK_THROW(socket.get(), reactor::network::ConnectionClosed);
 }
 
 ELLE_TEST_SUITE()
@@ -703,11 +737,43 @@ ELLE_TEST_SUITE()
   auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(register_unregister), 0, timeout);
-  suite.add(BOOST_TEST_CASE(notifications), 0, timeout);
-  suite.add(BOOST_TEST_CASE(no_authentication), 0, timeout);
-  suite.add(BOOST_TEST_CASE(authentication_failure), 0, timeout);
-  suite.add(BOOST_TEST_CASE(wait_authentified), 0, timeout);
-  suite.add(BOOST_TEST_CASE(notification_authentication_failed), 0, timeout);
-  suite.add(BOOST_TEST_CASE(ping_timeout), 0, timeout);
-  suite.add(BOOST_TEST_CASE(replace), 0, timeout);
+
+  auto notifications_tcp = std::bind(notifications, false);
+  suite.add(BOOST_TEST_CASE(notifications_tcp), 0, timeout);
+  auto notifications_ssl = std::bind(notifications, true);
+  suite.add(BOOST_TEST_CASE(notifications_ssl), 0, timeout);
+
+  auto no_authentication_tcp = std::bind(no_authentication, false);
+  suite.add(BOOST_TEST_CASE(no_authentication_tcp), 0, timeout);
+  auto no_authentication_ssl = std::bind(no_authentication, true);
+  suite.add(BOOST_TEST_CASE(no_authentication_ssl), 0, timeout);
+
+  auto authentication_failure_tcp = std::bind(authentication_failure, false);
+  suite.add(BOOST_TEST_CASE(authentication_failure_tcp), 0, timeout);
+  auto authentication_failure_ssl = std::bind(authentication_failure, true);
+  suite.add(BOOST_TEST_CASE(authentication_failure_ssl), 0, timeout);
+
+  auto wait_authentified_tcp = std::bind(wait_authentified, false);
+  suite.add(BOOST_TEST_CASE(wait_authentified_tcp), 0, timeout);
+  auto wait_authentified_ssl = std::bind(wait_authentified, true);
+  suite.add(BOOST_TEST_CASE(wait_authentified_ssl), 0, timeout);
+
+  auto notification_authentication_failed_tcp =
+    std::bind(notification_authentication_failed, false);
+  suite.add(BOOST_TEST_CASE(notification_authentication_failed_tcp), 0, timeout);
+  auto notification_authentication_failed_ssl =
+    std::bind(notification_authentication_failed, true);
+  suite.add(BOOST_TEST_CASE(notification_authentication_failed_ssl), 0, timeout);
+
+  auto ping_timeout_tcp = std::bind(ping_timeout, false);
+  suite.add(BOOST_TEST_CASE(ping_timeout_tcp), 0, timeout);
+  auto ping_timeout_ssl = std::bind(ping_timeout, true);
+  suite.add(BOOST_TEST_CASE(ping_timeout_ssl), 0, timeout);
+
+  auto replace_tcp = std::bind(replace, false);
+  suite.add(BOOST_TEST_CASE(replace_tcp), 0, timeout);
+  auto replace_ssl = std::bind(replace, true);
+  suite.add(BOOST_TEST_CASE(replace_ssl), 0, timeout);
+
+  suite.add(BOOST_TEST_CASE(bad_ssl_handshake), 0, timeout);
 }

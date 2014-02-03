@@ -21,7 +21,7 @@ namespace infinit
       namespace server
       {
         Meta::Meta(Trophonius& trophonius,
-                   std::unique_ptr<reactor::network::TCPSocket>&& socket):
+                   std::unique_ptr<reactor::network::Socket>&& socket):
           Client(trophonius, std::move(socket))
         {
           ELLE_DEBUG("%s: connected", *this);

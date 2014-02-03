@@ -23,7 +23,7 @@ namespace infinit
       namespace server
       {
         User::User(Trophonius& trophonius,
-                   std::unique_ptr<reactor::network::SSLSocket>&& socket):
+                   std::unique_ptr<reactor::network::Socket>&& socket):
           Client(trophonius, std::move(socket)),
           // Session
           _device_id(boost::uuids::nil_uuid()),
@@ -36,7 +36,6 @@ namespace infinit
           _registered(false),
           // Notifications
           _notifications(),
-          _notification_available(),
           _notifications_thread(*reactor::Scheduler::scheduler(),
                                 elle::sprintf("%s notifications", *this),
                                 std::bind(&User::_handle_notifications,
@@ -115,8 +114,7 @@ namespace infinit
           LazyJson json(notification);
           ELLE_DEBUG("%s: push notification: %s", *this,
                      elle::json::pretty_print(notification));
-          this->_notifications.push(std::move(notification));
-          this->_notification_available.signal();
+          this->_notifications.put(std::move(notification));
         }
 
         void
@@ -129,18 +127,13 @@ namespace infinit
             ELLE_DEBUG_SCOPE("%s: start handling notifications", *this);
             while (true)
             {
-              while (!this->_notifications.empty())
-              {
-                auto notification = std::move(this->_notifications.front());
-                this->_notifications.pop();
-                // Construct any object so that json object isn't destroyed
-                // before being printed.
-                boost::any any(notification);
-                LazyJson json(any);
-                ELLE_TRACE("%s: send notification: %s", *this, json)
-                  elle::json::write(*this->_socket, notification);
-              }
-              this->_notification_available.wait();
+              auto notification = this->_notifications.get();
+              // Construct any object so that json object isn't destroyed
+              // before being printed.
+              boost::any any(notification);
+              LazyJson json(any);
+              ELLE_TRACE("%s: send notification: %s", *this, json)
+              elle::json::write(*this->_socket, notification);
             }
           }
           catch (reactor::network::Exception const& e)

@@ -30,7 +30,6 @@
 # include <surface/gap/Notification.hh>
 # include <surface/gap/Self.hh>
 # include <surface/gap/Transaction.hh>
-# include <surface/gap/Transaction.hh>
 
 namespace surface
 {

@@ -243,7 +243,8 @@ namespace infinit
                        [&] () { this->pong_thread(); }),
           _read_thread(*reactor::Scheduler::scheduler(),
                        elle::sprintf("%s read thread", *this),
-                       [&] () { this->read_thread(); })
+                       [&] () { this->read_thread(); }),
+          _poke_timeout(6_sec)
         {
           this->_buffer.capacity(1024);
         }
@@ -267,7 +268,7 @@ namespace infinit
         reactor::Signal _poke_completed;
         reactor::Signal _poke_sent_signal;
         bool
-        _poke(reactor::Duration timeout)
+        _poke(reactor::DurationOpt const& timeout = reactor::DurationOpt())
         {
           // Catch all exceptions in calling function
           ELLE_TRACE_SCOPE("%s: poke trophonius", *this);
@@ -279,7 +280,6 @@ namespace infinit
 
           ELLE_DEBUG("%s: establishing connection", *this);
           auto endpoint = reactor::network::resolve_tcp(
-            *reactor::Scheduler::scheduler(),
             this->server,
             boost::lexical_cast<std::string>(this->port));
           if (this->_test_fingerprint.size() == 0)
@@ -377,18 +377,13 @@ namespace infinit
               elle::json::write(*this->_socket, poke_obj);
               this->_poke_sent_signal.signal();
             });
-            scope.wait(timeout);
+            auto deadline = timeout ? timeout.get() : this->_poke_timeout;
+            scope.wait(deadline);
             if (result == false)
               this->_socket->close();
             _poke_completed.signal();
             return result;
           };
-        }
-
-        bool
-        _poke()
-        {
-          return this->_poke(6_sec);
         }
 
         void
@@ -516,7 +511,7 @@ namespace infinit
           if (!this->_connected.opened())
           {
             ELLE_DEBUG_SCOPE("%s: already reconnected, wait", *this);
-            this->_connected.wait();
+            reactor::wait(this->_connected);
             return;
           }
 
@@ -630,7 +625,7 @@ namespace infinit
             if (!this->_connected.opened())
             {
               ELLE_DEBUG("%s: ping thread: waiting to be connected", *this);
-              reactor::Scheduler::scheduler()->current()->wait(this->_connected);
+              reactor::wait(this->_connected);
               ELLE_DEBUG("%s: ping thread: connected", *this);
             }
 
@@ -660,7 +655,7 @@ namespace infinit
             if (!this->_connected.opened())
             {
               ELLE_DEBUG("%s: pong thread: waiting to be connected", *this);
-              reactor::Scheduler::scheduler()->current()->wait(this->_connected);
+              reactor::wait(this->_connected);
               ELLE_DEBUG("%s: pong thread: connected", *this);
             }
 
@@ -723,11 +718,11 @@ namespace infinit
           ELLE_TRACE_SCOPE("start read thread");
           while (true)
           {
-            auto notif = std::unique_ptr<Notification>();
-
             ELLE_DEBUG("%s: read thread: waiting to be connected", *this);
-            reactor::Scheduler::scheduler()->current()->wait(this->_connected);
+            reactor::wait(this->_connected);
             ELLE_DEBUG("%s: read thread: connected", *this);
+
+            auto notif = std::unique_ptr<Notification>();
 
             try
             {
@@ -786,16 +781,18 @@ namespace infinit
                  << this->user_id << ", "
                  << this->user_device_id << ")";
         }
+
+        ELLE_ATTRIBUTE_RW(reactor::Duration, poke_timeout);
       };
 
       Client::Client(std::string const& server,
                      uint16_t port,
                      ConnectCallback connect_callback,
                      ReconnectPokeFailedCallback reconnect_failed_callback):
-        _impl{new Impl{server, port,
+        _impl(new Impl(server, port,
                        connect_callback,
-                       reconnect_failed_callback}},
-                    _ping_period(default_ping_period)
+                       reconnect_failed_callback)),
+        _ping_period(default_ping_period)
       {
         ELLE_ASSERT(connect_callback != nullptr);
       }
@@ -859,31 +856,7 @@ namespace infinit
       }
 
       bool
-      Client::poke() const
-      {
-        try
-        {
-          return this->_impl->_poke();
-        }
-        catch (reactor::network::Exception const& e)
-        {
-          ELLE_ERR("%s: failure to poke trophonius: %s", *this, e.what());
-        }
-        catch (elle::json::ParserError const& e)
-        {
-          ELLE_ERR("%s: JSON parsing error: %s", *this, e.what());
-        }
-        catch (elle::Exception const& e)
-        {
-          ELLE_ERR("%s: error trying to poke trophonius: %s", *this, e.what());
-          throw;
-        }
-        this->_impl->_close_socket_on_exception();
-        return false;
-      }
-
-      bool
-      Client::poke(reactor::Duration timeout) const
+      Client::poke(reactor::DurationOpt const& timeout) const
       {
         try
         {
@@ -904,6 +877,12 @@ namespace infinit
         }
         this->_impl->_close_socket_on_exception();
         return false;
+      }
+
+      void
+      Client::poke_timeout(reactor::Duration const& timeout)
+      {
+        this->_impl->poke_timeout(timeout);
       }
 
       bool

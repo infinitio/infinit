@@ -1,7 +1,7 @@
 #include <infinit/oracles/apertus/Accepter.hh>
 #include <infinit/oracles/apertus/Apertus.hh>
 
-#include <reactor/network/tcp-socket.hh>
+#include <reactor/network/socket.hh>
 #include <reactor/network/exception.hh>
 #include <reactor/scheduler.hh>
 
@@ -17,7 +17,7 @@ namespace infinit
     namespace apertus
     {
       Accepter::Accepter(Apertus& apertus,
-                         std::unique_ptr<reactor::network::TCPSocket>&& client):
+                         std::unique_ptr<reactor::network::Socket>&& client):
         _apertus(apertus),
         _client(std::move(client)),
         _accepter(
@@ -43,7 +43,7 @@ namespace infinit
         elle::SafeFinally pop(
           [this]
           {
-            ELLE_TRACE("%s: pop my self from apertus", *this);
+            ELLE_TRACE("%s: pop myself from apertus", *this);
             this->_apertus._accepter_remove(*this);
           });
 
@@ -86,7 +86,7 @@ namespace infinit
               this->_apertus._connect(
                 tid,
                 std::move(this->_client),
-                std::move(std::unique_ptr<reactor::network::TCPSocket>(peer)));
+                std::move(std::unique_ptr<reactor::network::Socket>(peer)));
             }
           }
         }

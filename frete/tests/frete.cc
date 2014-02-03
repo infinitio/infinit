@@ -1,23 +1,31 @@
-#define BOOST_TEST_MODULE Frete
-#define BOOST_TEST_DYN_LINK
-#include <boost/test/unit_test.hpp>
 #include <boost/filesystem/fstream.hpp>
+
+#include <elle/test.hh>
 
 #include <reactor/Barrier.hh>
 #include <reactor/network/tcp-server.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/Scope.hh>
 
 #include <cryptography/KeyPair.hh>
 
-#include <protocol/Serializer.hh>
 #include <protocol/ChanneledStream.hh>
+#include <protocol/Serializer.hh>
 
-# include <frete/Frete.hh>
+#include <frete/Frete.hh>
 
-# include <elle/log.hh>
-# include <elle/finally.hh>
+#include <elle/finally.hh>
+#include <elle/log.hh>
+#include <elle/test.hh>
+
 
 ELLE_LOG_COMPONENT("test.frete");
+
+#ifdef VALGRIND
+# include <valgrind/valgrind.h>
+#else
+# define RUNNING_ON_VALGRIND 0
+#endif
 
 static
 bool
@@ -74,7 +82,7 @@ compare_files(boost::filesystem::path const& p1,
   return file1content == file2content;
 }
 
-BOOST_AUTO_TEST_CASE(eligible_names)
+ELLE_TEST_SCHEDULED(eligible_names)
 {
   boost::filesystem::path root("frete/tests/eligible_name");
   auto clear_root =
@@ -84,7 +92,11 @@ BOOST_AUTO_TEST_CASE(eligible_names)
     clear_root();
 
   boost::filesystem::create_directory(root);
-  elle::SafeFinally rm_root( [&] () { clear_root(); } );
+  elle::SafeFinally rm_root([&] ()
+    {
+      clear_root();
+    }
+  );
 
   auto filename = root / "dest.tar.bz";
 
@@ -96,7 +108,8 @@ BOOST_AUTO_TEST_CASE(eligible_names)
     for (size_t i = 0; i < count; ++i)
     {
       // Touch the file.
-      boost::filesystem::ofstream{frete::Frete::eligible_name(filename, pattern)};
+      boost::filesystem::ofstream{frete::Frete::eligible_name(filename,
+                                                              pattern)};
     }
 
     BOOST_CHECK(boost::filesystem::exists(filename));
@@ -105,15 +118,11 @@ BOOST_AUTO_TEST_CASE(eligible_names)
     for (size_t i = 2; i < max; ++i)
     {
       auto name = "frete/tests/eligible_name/dest" + pattern + ".tar.bz";
-      BOOST_CHECK(
-        boost::filesystem::exists(
-          elle::sprintf(name, i)));
+      BOOST_CHECK(boost::filesystem::exists(elle::sprintf(name, i)));
     }
 
     boost::filesystem::directory_iterator end;
-    for (auto it = boost::filesystem::directory_iterator(root);
-         it != end;
-         ++it)
+    for (auto it = boost::filesystem::directory_iterator(root); it != end; ++it)
     {
       ELLE_DEBUG("- %s", *it);
     }
@@ -124,7 +133,7 @@ BOOST_AUTO_TEST_CASE(eligible_names)
   }
 }
 
-BOOST_AUTO_TEST_CASE(trim)
+ELLE_TEST_SCHEDULED(trim)
 {
   boost::filesystem::path tmp{"/tmp"};
   boost::filesystem::path folder{"/tmp/folder"};
@@ -154,11 +163,10 @@ BOOST_AUTO_TEST_CASE(trim)
 
 }
 
-BOOST_AUTO_TEST_CASE(connection)
+ELLE_TEST_SCHEDULED(connection)
 {
   auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
     infinit::cryptography::Cryptosystem::rsa, 2048);
-  reactor::Scheduler sched;
 
   int port = 0;
 
@@ -196,41 +204,41 @@ BOOST_AUTO_TEST_CASE(connection)
     f << "2";
   }
 
-  reactor::Thread server(
-    sched, "server",
-    [&]
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("server", [&]
     {
       auto snap = root;
       snap += "server";
 
-      reactor::network::TCPServer server(sched);
+      reactor::network::TCPServer server{};
       server.listen();
       port = server.port();
       listening.open();
-      std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
-      infinit::protocol::Serializer serializer(sched, *socket);
-      infinit::protocol::ChanneledStream channels(sched, serializer);
+      std::unique_ptr<reactor::network::Socket> socket(server.accept());
+      infinit::protocol::Serializer serializer(
+        *reactor::Scheduler::scheduler(), *socket);
+      infinit::protocol::ChanneledStream channels(
+        *reactor::Scheduler::scheduler(), serializer);
       frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
       frete.add(empty);
       frete.add(content);
       frete.add(dir);
 
       frete.run();
-      while (true)
-        reactor::sleep(10_sec);
+      reactor::Scheduler::scheduler()->current()->Waitable::wait();
     });
-
-  reactor::Thread client(
-    sched, "client",
-    [&]
+    scope.run_background("client", [&]
     {
       auto snap = root;
       snap += "client";
 
-      listening.wait();
-      reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
-      infinit::protocol::Serializer serializer(sched, socket);
-      infinit::protocol::ChanneledStream channels(sched, serializer);
+      reactor::wait(listening);
+      reactor::network::TCPSocket socket("127.0.0.1", port);
+      infinit::protocol::Serializer serializer(*reactor::Scheduler::scheduler(),
+                                               socket);
+      infinit::protocol::ChanneledStream channels(
+        *reactor::Scheduler::scheduler(), serializer);
       frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
       BOOST_CHECK_EQUAL(frete.count(), 4);
       {
@@ -248,11 +256,11 @@ BOOST_AUTO_TEST_CASE(connection)
       }
       {
         BOOST_CHECK_EQUAL(frete.path(1), "content");
-        BOOST_CHECK_EQUAL(frete.file_size(1), 9);
+        BOOST_CHECK_EQUAL(frete.file_size(1), 8);
         {
           auto buffer = frete.read(1, 0, 1024);
-          BOOST_CHECK_EQUAL(buffer.size(), 9);
-          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("content\r\n"));
+          BOOST_CHECK_EQUAL(buffer.size(), 8);
+          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("content\n"));
         }
         {
           auto buffer = frete.read(1, 2, 2);
@@ -261,8 +269,8 @@ BOOST_AUTO_TEST_CASE(connection)
         }
         {
           auto buffer = frete.read(1, 7, 3);
-          BOOST_CHECK_EQUAL(buffer.size(), 2);
-          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\r\n"));
+          BOOST_CHECK_EQUAL(buffer.size(), 1);
+          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\n"));
         }
       }
       {
@@ -275,17 +283,16 @@ BOOST_AUTO_TEST_CASE(connection)
       }
       BOOST_CHECK_THROW(frete.path(4), std::runtime_error);
       BOOST_CHECK_THROW(frete.read(4, 0, 1), std::runtime_error);
-      server.terminate();
+      scope.terminate_now();
     });
-
-  sched.run();
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(one_function_get)
+ELLE_TEST_SCHEDULED(one_function_get)
 {
   auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
     infinit::cryptography::Cryptosystem::rsa, 2048);
-  reactor::Scheduler sched;
 
   int port = 0;
 
@@ -339,38 +346,39 @@ BOOST_AUTO_TEST_CASE(one_function_get)
     f << "1" << std::flush;
   }
 
-  reactor::Thread server(
-    sched, "server",
-    [&]
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("server", [&]
     {
       auto snap = root;
       snap += "transfer";
 
-      reactor::network::TCPServer server(sched);
+      reactor::network::TCPServer server{};
       server.listen();
       port = server.port();
       listening.open();
-      std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
-      infinit::protocol::Serializer serializer(sched, *socket);
-      infinit::protocol::ChanneledStream channels(sched, serializer);
+      std::unique_ptr<reactor::network::Socket> socket(server.accept());
+      infinit::protocol::Serializer serializer(*reactor::Scheduler::scheduler(),
+                                               *socket);
+      infinit::protocol::ChanneledStream channels(
+        *reactor::Scheduler::scheduler(), serializer);
       frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
       frete.add(empty);
       frete.add(content);
       frete.add(dir); // Will add subdir.
       frete.run();
     });
-
-  reactor::Thread client(
-    sched, "client",
-    [&]
+    scope.run_background("client", [&]
     {
       auto snap = dest;
       snap += "transfer";
 
-      listening.wait();
-      reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
-      infinit::protocol::Serializer serializer(sched, socket);
-      infinit::protocol::ChanneledStream channels(sched, serializer);
+      reactor::wait(listening);
+      reactor::network::TCPSocket socket("127.0.0.1", port);
+      infinit::protocol::Serializer serializer(*reactor::Scheduler::scheduler(),
+                                               socket);
+      infinit::protocol::ChanneledStream channels(
+        *reactor::Scheduler::scheduler(), serializer);
       frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
       BOOST_CHECK_EQUAL(frete.count(), 5);
       {
@@ -403,17 +411,16 @@ BOOST_AUTO_TEST_CASE(one_function_get)
       BOOST_CHECK(compare_files(dest / "dir" / "subdir" / "1",
                                 root / "dir" / "subdir" / "1"));
 
-      server.terminate();
+      scope.terminate_now();
     });
-
-  sched.run();
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(recipient_disconnection)
+ELLE_TEST_SCHEDULED(recipient_disconnection)
 {
   auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
     infinit::cryptography::Cryptosystem::rsa, 2048);
-  reactor::Scheduler sched;
 
   int port = 0;
 
@@ -466,11 +473,11 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
     ofile << std::string(block_count * block_size, 'b');
   }
 
-  reactor::Thread server(
-    sched, "server",
-    [&]
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("server", [&]
     {
-      reactor::network::TCPServer server(sched);
+      reactor::network::TCPServer server{};
 
       auto snap = root;
       snap /= ".transfer";
@@ -483,15 +490,17 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
           port = server.port();
 
           listening.open();
-          std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
-          infinit::protocol::Serializer serializer(sched, *socket);
-          infinit::protocol::ChanneledStream channels(sched, serializer);
+          std::unique_ptr<reactor::network::Socket> socket(server.accept());
+          infinit::protocol::Serializer serializer(
+            *reactor::Scheduler::scheduler(), *socket);
+          infinit::protocol::ChanneledStream channels(
+            *reactor::Scheduler::scheduler(), serializer);
           frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
 
           elle::SafeFinally progress([&]
-                                     {
-                                       ELLE_DEBUG("progress %s", frete.progress());
-                                     });
+          {
+            ELLE_DEBUG("progress %s", frete.progress());
+          });
 
           frete.add(file);
           // frete.add(empty);
@@ -518,13 +527,9 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
           ELLE_ERR("%s", elle::exception_string());
           throw;
         }
-
       }
     });
-
-  reactor::Thread client(
-    sched, "clients",
-    [&]
+    scope.run_background("client", [&]
     {
       auto snap = dest;
       snap /= ".transfer";
@@ -549,18 +554,18 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
         }
       };
 
-      elle::SafeFinally kill_server{ [&] { server.terminate(); } };
-
       while (true)
       {
-        listening.wait();
+        reactor::wait(listening);
 
         bool finished{false};
         try
         {
-          reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
-          infinit::protocol::Serializer serializer(sched, socket);
-          infinit::protocol::ChanneledStream channels(sched, serializer);
+          reactor::network::TCPSocket socket("127.0.0.1", port);
+          infinit::protocol::Serializer serializer(
+            *reactor::Scheduler::scheduler(), socket);
+          infinit::protocol::ChanneledStream channels(
+            *reactor::Scheduler::scheduler(), serializer);
           frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
 
           elle::SafeFinally progress([&]
@@ -570,43 +575,37 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
 
           elle::SafeFinally close_listening([&] { listening.close(); });
 
-          elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+          elle::With<reactor::Scope>() << [&] (reactor::Scope& inner_scope)
           {
-            scope.run_background(
-              "get",
-              [&]
+            inner_scope.run_background("get", [&]
+            {
+              try
               {
-                try
-                {
-                  frete.get(dest);
-                  finished = true;
-                  ELLE_DEBUG("%s", "transfer finished");
-                  frete.progress_changed().signal();
-                }
-                catch (reactor::Terminate const&)
-                {
-                  throw;
-                }
-                catch (elle::AssertError const&)
-                {
-                  ELLE_ERR("Assert");
-                  throw;
-                }
-                catch (...)
-                {
-                  ELLE_ERR("%s", elle::exception_string());
-                  throw;
-                }
-              });
-
-            scope.run_background(
-              "client run",
-              [&]
+                frete.get(dest);
+                finished = true;
+                ELLE_DEBUG("%s", "transfer finished");
+                frete.progress_changed().signal();
+              }
+              catch (reactor::Terminate const&)
               {
-                frete.run();
-              });
-
-            frete.progress_changed().wait();
+                throw;
+              }
+              catch (elle::AssertError const&)
+              {
+                ELLE_ERR("Assert");
+                throw;
+              }
+              catch (...)
+              {
+                ELLE_ERR("%s", elle::exception_string());
+                throw;
+              }
+            });
+            inner_scope.run_background("client run", [&]
+            {
+              frete.run();
+            });
+            reactor::wait(frete.progress_changed());
           };
         }
         catch (reactor::Terminate const&)
@@ -625,17 +624,16 @@ BOOST_AUTO_TEST_CASE(recipient_disconnection)
         if (finished)
           break;
       }
+      scope.terminate_now();
     });
-
-  sched.run();
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(sender_disconnection)
+ELLE_TEST_SCHEDULED(sender_disconnection)
 {
   auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
     infinit::cryptography::Cryptosystem::rsa, 2048);
-
-  reactor::Scheduler sched;
 
   int port = 0;
 
@@ -688,11 +686,11 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
     ofile << std::string(block_count * block_size, 'b');
   }
 
-  reactor::Thread server(
-    sched, "server",
-    [&]
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("server", [&]
     {
-      reactor::network::TCPServer server(sched);
+      reactor::network::TCPServer server{};
 
       auto snap = root;
       snap += "transfer";
@@ -704,9 +702,11 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
           server.listen();
           port = server.port();
           listening.open();
-          std::unique_ptr<reactor::network::TCPSocket> socket(server.accept());
-          infinit::protocol::Serializer serializer(sched, *socket);
-          infinit::protocol::ChanneledStream channels(sched, serializer);
+          std::unique_ptr<reactor::network::Socket> socket(server.accept());
+          infinit::protocol::Serializer serializer(
+            *reactor::Scheduler::scheduler(), *socket);
+          infinit::protocol::ChanneledStream channels(
+            *reactor::Scheduler::scheduler(), serializer);
           frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
 
           frete.add(file);
@@ -718,11 +718,14 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
                                        ELLE_WARN("sen: %s", frete.progress());
                                      });
 
-          elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+          elle::With<reactor::Scope>() << [&] (reactor::Scope& server_scope)
           {
-            scope.run_background("server run", [&] { frete.run(); frete.progress_changed().signal(); });
-
-            frete.progress_changed().wait();
+            server_scope.run_background("server run", [&]
+            {
+              frete.run();
+              frete.progress_changed().signal();
+            });
+            reactor::wait(frete.progress_changed());
             listening.close();
           };
         }
@@ -742,10 +745,7 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
         }
       }
     });
-
-  reactor::Thread client(
-    sched, "clients",
-    [&]
+    scope.run_background("client", [&]
     {
       auto snap = dest;
       snap += "transfer";
@@ -753,10 +753,8 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
       elle::SafeFinally compare{
         [&]
         {
-          BOOST_CHECK(compare_files(dest / "file",
-                                    root / "file"));
-          BOOST_CHECK(compare_files(dest / "empty",
-                                    root / "empty"));
+          BOOST_CHECK(compare_files(dest / "file", root / "file"));
+          BOOST_CHECK(compare_files(dest / "empty", root / "empty"));
           BOOST_CHECK(compare_files(dest / "folder" / "empty",
                                     root / "folder" / "empty"));
           BOOST_CHECK(compare_files(dest / "folder" / "file2",
@@ -764,47 +762,41 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
         }
       };
 
-      elle::SafeFinally kill_server{ [&] { server.terminate(); } };
-
       while (true)
       {
-        listening.wait();
+        reactor::wait(listening);
 
         bool finished{false};
         try
         {
-          reactor::network::TCPSocket socket(sched, "127.0.0.1", port);
-          infinit::protocol::Serializer serializer(sched, socket);
-          infinit::protocol::ChanneledStream channels(sched, serializer);
+          reactor::network::TCPSocket socket("127.0.0.1", port);
+          infinit::protocol::Serializer serializer(
+            *reactor::Scheduler::scheduler(), socket);
+          infinit::protocol::ChanneledStream channels(
+            *reactor::Scheduler::scheduler(), serializer);
           frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
 
           elle::SafeFinally progress([&]
-                                     {
-                                       ELLE_WARN("rec: %s", frete.progress());
-                                     });
+          {
+            ELLE_WARN("rec: %s", frete.progress());
+          });
 
           try
           {
-            elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+            elle::With<reactor::Scope>() << [&] (reactor::Scope& client_scope)
             {
-              scope.run_background(
-                "get",
-                [&]
-                {
-                  ELLE_ERR("start getting");
-                  frete.get(dest);
-                  if (frete.finished().opened())
-                    throw elle::Exception("finished");
-                });
-
-              scope.run_background(
-                "client run",
-                [&]
-                {
-                  frete.run();
-                });
-
-              scope.wait();
+              client_scope.run_background("get", [&]
+              {
+                ELLE_ERR("start getting");
+                frete.get(dest);
+                if (frete.finished().opened())
+                  throw elle::Exception("finished");
+              });
+              client_scope.run_background("client run", [&]
+              {
+                frete.run();
+              });
+              client_scope.wait();
             };
           }
           catch (reactor::Terminate const&)
@@ -812,8 +804,7 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
             throw;
           }
           catch (std::exception const&)
-          {
-          }
+          {}
 
           finished = frete.finished().opened();
         }
@@ -827,13 +818,25 @@ BOOST_AUTO_TEST_CASE(sender_disconnection)
           throw;
         }
         catch (std::exception const&)
-        {
-        }
+        {}
 
         if (finished)
           break;
       }
+      scope.terminate_now();
     });
+    scope.wait();
+  };
+}
 
-  sched.run();
+ELLE_TEST_SUITE()
+{
+  auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
+  auto& suite = boost::unit_test::framework::master_test_suite();
+  suite.add(BOOST_TEST_CASE(eligible_names), 0, timeout);
+  suite.add(BOOST_TEST_CASE(trim), 0, timeout);
+  suite.add(BOOST_TEST_CASE(connection), 0, timeout);
+  suite.add(BOOST_TEST_CASE(one_function_get), 0, timeout);
+  suite.add(BOOST_TEST_CASE(recipient_disconnection), 0, timeout);
+  suite.add(BOOST_TEST_CASE(sender_disconnection), 0, timeout);
 }

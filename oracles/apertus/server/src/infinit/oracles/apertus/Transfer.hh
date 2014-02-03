@@ -21,7 +21,7 @@ namespace infinit
       class Transfer:
         public reactor::Waitable
       {
-        typedef std::unique_ptr<reactor::network::TCPSocket> Socket;
+        typedef std::unique_ptr<reactor::network::Socket> Socket;
       public:
         Transfer(Apertus& owner,
                  oracle::hermes::TID tid,

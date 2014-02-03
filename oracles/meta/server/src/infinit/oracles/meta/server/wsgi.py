@@ -1,3 +1,3 @@
-import infinit.oracles.meta
+import infinit.oracles.meta.server
 
-application = infinit.oracles.meta.Meta()
+application = infinit.oracles.meta.server.Meta()

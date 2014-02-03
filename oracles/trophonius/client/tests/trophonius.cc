@@ -1,7 +1,6 @@
 #include <elle/cast.hh>
 #include <elle/json/json.hh>
 #include <elle/log.hh>
-#include <elle/os/getenv.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
@@ -109,7 +108,7 @@ protected:
     {
       while (true)
       {
-        std::unique_ptr<reactor::network::SSLSocket> socket(
+        std::unique_ptr<reactor::network::Socket> socket(
           this->_server->accept());
         ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
         auto poke_read = elle::json::read(*socket);
@@ -126,7 +125,7 @@ protected:
   }
 
   void
-  _send_notification(reactor::network::SSLSocket& socket,
+  _send_notification(reactor::network::Socket& socket,
                      std::string const& message)
   {
     elle::json::Object notification;
@@ -142,17 +141,17 @@ protected:
 
   virtual
   void
-  _serve(reactor::network::SSLSocket& socket) = 0;
+  _serve(reactor::network::Socket& socket) = 0;
 
   virtual
   void
-  _login_response(reactor::network::SSLSocket& socket)
+  _login_response(reactor::network::Socket& socket)
   {
     this->_login_response(socket, true);
   }
 
   void
-  _login_response(reactor::network::SSLSocket& socket, bool success)
+  _login_response(reactor::network::Socket& socket, bool success)
   {
     elle::json::Object login_response;
     login_response["notification_type"] =
@@ -197,7 +196,7 @@ protected:
     ELLE_DEBUG("server in round: %s", this->_round);
     if (this->round() == 0) // Normal case.
     {
-      std::unique_ptr<reactor::network::SSLSocket> socket(
+      std::unique_ptr<reactor::network::Socket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
@@ -208,7 +207,7 @@ protected:
     }
     else if (this->round() == 1) // No poke reply.
     {
-      std::unique_ptr<reactor::network::SSLSocket> socket(
+      std::unique_ptr<reactor::network::Socket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
@@ -221,7 +220,7 @@ protected:
     }
     else if (this->round() == 3) // Wrong JSON reply.
     {
-      std::unique_ptr<reactor::network::SSLSocket> socket(
+      std::unique_ptr<reactor::network::Socket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
@@ -233,7 +232,7 @@ protected:
     }
     else if (this->round() == 4) // HTML reply.
     {
-      std::unique_ptr<reactor::network::SSLSocket> socket(
+      std::unique_ptr<reactor::network::Socket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
@@ -252,7 +251,7 @@ protected:
 
   virtual
   void
-  _serve(reactor::network::SSLSocket& socket)
+  _serve(reactor::network::Socket& socket)
   {
     // Do nothing.
   }
@@ -334,7 +333,7 @@ ELLE_TEST_SCHEDULED(poke)
 `-------------*/
 
 // Check that a client can receive a simple notification message and will
-// reconnectionn when the socket is closed.
+// reconnect when the socket is closed.
 
 class NotificationTrophonius:
   public Trophonius
@@ -342,7 +341,7 @@ class NotificationTrophonius:
 protected:
   virtual
   void
-  _serve(reactor::network::SSLSocket& socket)
+  _serve(reactor::network::Socket& socket)
   {
     ELLE_LOG("serve notification test");
     reactor::wait(this->poked());
@@ -432,7 +431,7 @@ ELLE_ATTRIBUTE_R(int, ping_received);
 protected:
   virtual
   void
-  _serve(reactor::network::SSLSocket& socket)
+  _serve(reactor::network::Socket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -541,7 +540,7 @@ public:
 protected:
   virtual
   void
-  _serve(reactor::network::SSLSocket& socket)
+  _serve(reactor::network::Socket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -643,7 +642,7 @@ public:
 protected:
   virtual
   void
-  _serve(reactor::network::SSLSocket& socket)
+  _serve(reactor::network::Socket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -781,7 +780,7 @@ class SilentTrophonius:
 protected:
   virtual
   void
-  _serve(reactor::network::SSLSocket& socket)
+  _serve(reactor::network::Socket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -856,7 +855,7 @@ protected:
     try
     {
       ELLE_LOG("first connection to server");
-      std::unique_ptr<reactor::network::SSLSocket> socket(
+      std::unique_ptr<reactor::network::Socket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
@@ -873,7 +872,7 @@ protected:
 
   virtual
   void
-  _serve(reactor::network::SSLSocket& socket)
+  _serve(reactor::network::Socket& socket)
   {
     reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
@@ -901,12 +900,13 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
       [&] (void)    // reconnection failed callback
       {
         callback_called = true;
-        end_test.signal();
+        reactor::Scheduler::scheduler()->terminate();
       },
       fingerprint)
     );
+    client->poke_timeout(500_ms);
 
-    client->ping_period(200_ms);
+    client->ping_period(2_sec);
     scope.run_background("initial poke", [&]
     {
       BOOST_CHECK(client->poke());
@@ -917,13 +917,7 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
       reactor::wait(tropho.poked());
       ELLE_LOG("connect");
       client->connect("0", "0", "0");
-      // Wait forever.
-      reactor::Scheduler::scheduler()->current()->Waitable::wait();
-    });
-    scope.run_background("end test", [&]
-    {
-      reactor::wait(end_test);
-      scope.terminate_now();
+      reactor::sleep();
     });
     scope.wait();
   };
@@ -954,7 +948,7 @@ protected:
     try
     {
       ELLE_LOG("first connection to server");
-      std::unique_ptr<reactor::network::SSLSocket> socket(
+      std::unique_ptr<reactor::network::Socket> socket(
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
@@ -971,7 +965,7 @@ protected:
 
   virtual
   void
-  _serve(reactor::network::SSLSocket& socket)
+  _serve(reactor::network::Socket& socket)
   {
     reactor::wait(this->poked());
     socket.close();

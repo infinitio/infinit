@@ -7,11 +7,11 @@
 
 #include <surface/gap/State.hh>
 
-#include <lune/Lune.hh>
+#include <elle/os/environ.hh>
 #include <elle/os/path.hh>
-#include <elle/os/getenv.hh>
 #include <elle/print.hh>
 #include <elle/types.hh>
+#include <lune/Lune.hh>
 
 #include <thread>
 #include <cassert>

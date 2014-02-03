@@ -24,8 +24,18 @@ def configure(elle,
   cxx_config = cxx_config or drake.cxx.Config()
 
   local_cxx_config = drake.cxx.Config(cxx_config)
-  local_cxx_config += boost.config_program()
-  local_cxx_config += boost.config_system()
+  if cxx_toolkit.os is drake.os.windows:
+    local_cxx_config += boost.config_program_options(static = True)
+    local_cxx_config += boost.config_system(static = True)
+  else:
+    local_cxx_config += boost.config_program_options(link = False)
+    local_cxx_config.library_add(
+      drake.copy(boost.program_options_dynamic,
+                 'lib', strip_prefix = True))
+    local_cxx_config += boost.config_system(link = False)
+    local_cxx_config.library_add(
+      drake.copy(boost.system_dynamic,
+                 'lib', strip_prefix = True))
   local_cxx_config += elle.elle.config
   local_cxx_config += elle.reactor.config
   local_cxx_config += meta_client.config
@@ -38,6 +48,13 @@ def configure(elle,
       token = 'pyconfig.h',
       prefix = python3,
       include_dir = 'include/python3.2')
+
+  # SSL
+  # FIXME: remove as soon as ssl is not leaked by elle
+  ssl_libs = drake.copy((elle.openssl_lib_ssl,
+                         elle.openssl_lib_crypto),
+                        'lib', strip_prefix = True)
+
 
   elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib', strip_prefix = True)
   reactor_lib = drake.copy(elle.reactor.lib_dynamic, 'lib', strip_prefix = True)
@@ -71,7 +88,9 @@ def configure(elle,
 
   trophonius = drake.cxx.Executable(
     'bin/trophonius',
-    exe_sources + [lib, elle_lib, reactor_lib, meta_client_lib],
+    # FIXME: remove SSL if elle stop leaking it.
+    exe_sources + [lib, elle_lib,
+                   reactor_lib, meta_client_lib] + ssl_libs,
     cxx_toolkit,
     exe_cxx_config)
 
@@ -111,9 +130,7 @@ def configure(elle,
       'tests/%s' % name,
       drake.nodes('tests/%s.cc' % name) + [lib,
                                            elle_lib,
-                                           reactor_lib,
-                                           elle.openssl_lib_ssl,
-                                           elle.openssl_lib_crypto],
+                                           reactor_lib] + ssl_libs,
       cxx_toolkit,
       cxx_config_tests)
     tests << test
@@ -128,17 +145,25 @@ def configure(elle,
   install = drake.Rule('install')
   install << drake.install(trophonius, prefix)
 
-  server_certificate = drake.Node('etc/server-cert.pem')
-  install << drake.install(server_certificate,
-                           prefix / 'etc/trophonius',
-                           strip_prefix = True)
+  git = drake.git.Git()
+  with drake.templating.Context(content = {
+      'version': git.version(),
+      'version_major': git.version().split('.')[0],
+      'version_minor': git.version().split('.')[1],
+      'trophonius_path': '/opt/infinit/trophonius/bin/trophonius',
+  }):
+    drake.node('control.tmpl')
+    drake.node('etc/trophonius.conf.tmpl')
 
-  server_private_key = drake.Node('etc/server-key.pem')
-  install << drake.install(server_private_key,
-                           prefix / 'etc/trophonius',
-                           strip_prefix = True)
-
-  diffie_hellman_file = drake.Node('etc/dh1024.pem')
-  install << drake.install(diffie_hellman_file,
-                           prefix / 'etc/trophonius',
-                           strip_prefix = True)
+  package = [trophonius] + drake.nodes(
+    'etc/trophonius.conf',
+    'etc/init.d/trophonius',
+    'etc/rsyslog.d/trophonius.conf',
+  )
+  package = drake.copy(package, 'debian/opt/infinit/trophonius')
+  package += drake.copy(drake.nodes('control'),
+                        'debian/DEBIAN')
+  debian = drake.Rule('debian')
+  debian << drake.debian.Packager(
+    'fist-trophonius_%s_amd64.deb' % git.version(),
+    package, 'debian', preload = elle.elle.dpkg_preload).package

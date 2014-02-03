@@ -4,6 +4,7 @@
 
 #include <reactor/scheduler.hh>
 #include <reactor/exception.hh>
+#include <reactor/network/exception.hh>
 
 #include <infinit/oracles/trophonius/server/Meta.hh>
 #include <infinit/oracles/trophonius/server/User.hh>
@@ -34,7 +35,8 @@ namespace infinit
         {}
 
         Trophonius::Trophonius(
-          int port,
+          int port_ssl,
+          int port_tcp,
           std::string const& meta_host,
           int meta_port,
           int notifications_port,
@@ -43,13 +45,13 @@ namespace infinit
           bool meta_fatal):
           Waitable("trophonius"),
           _certificate(nullptr),
-          _server(nullptr),
-          _port(port),
+          _server_ssl(nullptr),
+          _server_tcp(nullptr),
+          _port_ssl(port_ssl),
+          _port_tcp(port_tcp),
           _notifications(),
-          _accepter(
-            *reactor::Scheduler::scheduler(),
-            elle::sprintf("%s user accepter", *this),
-            std::bind(&Trophonius::_serve, std::ref(*this))),
+          _accepter_ssl(nullptr),
+          _accepter_tcp(nullptr),
           _meta_fatal(meta_fatal),
           _meta_accepter(
             *reactor::Scheduler::scheduler(),
@@ -82,7 +84,8 @@ namespace infinit
           elle::SafeFinally kill_accepters{
             [&]
             {
-              this->_accepter.terminate_now();
+              this->_accepter_ssl->terminate_now();
+              this->_accepter_tcp->terminate_now();
               this->_meta_accepter.terminate_now();
               this->_meta_pinger->terminate_now();
               this->_signal();
@@ -94,16 +97,34 @@ namespace infinit
             this->_certificate.reset(new reactor::network::SSLCertificate(
              server_certificate, server_key, server_dh1024));
             ELLE_DEBUG("%s: loaded SSL certificate", *this);
-            this->_server.reset(new reactor::network::SSLServer(
+            this->_server_ssl.reset(new reactor::network::SSLServer(
               std::move(this->_certificate)));
-            this->_server->listen(this->_port);
-            this->_port = this->_server->port();
-            ELLE_LOG("%s: listen for users on port %s", *this, this->port());
+            this->_server_ssl->listen(this->_port_ssl);
+            this->_port_ssl = this->_server_ssl->port();
+            this->_accepter_ssl.reset(new reactor::Thread(
+              *reactor::Scheduler::scheduler(),
+              elle::sprintf("%s user SSL accepter", *this),
+              std::bind(&Trophonius::_serve,
+                        std::ref(*this),
+                        std::ref(*this->_server_ssl))));
+            ELLE_LOG("%s: listen for SSL users on port %s", *this,
+                     this->port_ssl());
+            this->_server_tcp.reset(new reactor::network::TCPServer{});
+            this->_server_tcp->listen(this->_port_tcp);
+            this->_port_tcp = this->_server_tcp->port();
+            this->_accepter_tcp.reset(new reactor::Thread(
+              *reactor::Scheduler::scheduler(),
+              elle::sprintf("%s user TCP accepter", *this),
+              std::bind(&Trophonius::_serve,
+                        std::ref(*this),
+                        std::ref(*this->_server_tcp))));
+            ELLE_LOG("%s: listen for TCP users on port %s", *this,
+                     this->port_tcp());
           }
           catch (...)
           {
-            ELLE_ERR("%s: unable to listen on port %s (users): %s",
-                     *this, this->_port, elle::exception_string());
+            ELLE_ERR("%s: unable to listen (users): %s",
+                     *this, elle::exception_string());
             throw;
           }
 
@@ -146,7 +167,8 @@ namespace infinit
 
         Trophonius::~Trophonius()
         {
-          this->_accepter.terminate_now();
+          this->_accepter_ssl->terminate_now();
+          this->_accepter_tcp->terminate_now();
           this->_meta_accepter.terminate_now();
           this->_meta_pinger->terminate_now();
 
@@ -204,9 +226,15 @@ namespace infinit
         `-------*/
 
         int
-        Trophonius::port() const
+        Trophonius::port_ssl() const
         {
-          return this->_server->port();
+          return this->_server_ssl->port();
+        }
+
+        int
+        Trophonius::port_tcp() const
+        {
+          return this->_server_tcp->port();
         }
 
         int
@@ -216,14 +244,20 @@ namespace infinit
         }
 
         void
-        Trophonius::_serve()
+        Trophonius::_serve(reactor::network::Server& server)
         {
           while (true)
           {
-            std::unique_ptr<reactor::network::SSLSocket> socket(
-              this->_server->accept());
-            auto user = new User(*this, std::move(socket));
-            this->_users_pending.insert(user);
+            try
+            {
+              std::unique_ptr<reactor::network::Socket> socket(server.accept());
+              auto user = new User(*this, std::move(socket));
+              this->_users_pending.insert(user);
+            }
+            catch (reactor::network::SSLHandshakeError const& e)
+            {
+              ELLE_TRACE("%s: refuse bad SSL handshake: %s", *this, e);
+            }
           }
         }
 
@@ -244,7 +278,7 @@ namespace infinit
         {
           while (true)
           {
-            std::unique_ptr<reactor::network::TCPSocket> socket(
+            std::unique_ptr<reactor::network::Socket> socket(
               this->_notifications.accept());
             this->_metas.emplace(new Meta(*this, std::move(socket)));
           }

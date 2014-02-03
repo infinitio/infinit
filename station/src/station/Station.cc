@@ -22,12 +22,12 @@ namespace station
                    papier::Passport const& passport):
     _authority(authority),
     _passport(passport),
-    _server(*reactor::Scheduler::scheduler()),
+    _server(),
     _server_thread(*reactor::Scheduler::scheduler(),
                    elle::sprintf("%s server thread", *this),
                    [this] { this->_serve(); })
   {
-    _server.listen();
+    this->_server.listen();
   }
 
   Station::~Station() noexcept(false)
@@ -58,8 +58,7 @@ namespace station
   Station::connect(std::string const& host, int port)
   {
     ELLE_TRACE_SCOPE("%s: connect to %s:%s", *this, host, port);
-    auto socket = elle::make_unique<reactor::network::TCPSocket>(
-      *reactor::Scheduler::scheduler(), host, port);
+    auto socket = elle::make_unique<reactor::network::TCPSocket>(host, port);
     return this->_negotiate(std::move(socket));
   }
 
@@ -90,7 +89,7 @@ namespace station
   {
     while (true)
     {
-      std::unique_ptr<reactor::network::TCPSocket> socket (
+      std::unique_ptr<reactor::network::Socket> socket(
         this->_server.accept());
       ELLE_TRACE_SCOPE("%s: accept connection from %s", *this, socket->peer());
       try
@@ -120,7 +119,7 @@ namespace station
   };
 
   std::unique_ptr<Host>
-  Station::_negotiate(std::unique_ptr<reactor::network::TCPSocket> socket)
+  Station::_negotiate(std::unique_ptr<reactor::network::Socket> socket)
   {
     try
     {

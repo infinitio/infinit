@@ -1,5 +1,6 @@
 import drake
 import drake.cxx
+import drake.debian
 import sys
 
 library = None
@@ -23,14 +24,20 @@ def configure(elle,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
+  # SSL
+  # FIXME: remove as soon as ssl is not leaked by elle
+  ssl_libs = drake.copy((elle.openssl_lib_ssl,
+                         elle.openssl_lib_crypto),
+                        'lib', strip_prefix = True)
+
   protocol_lib = drake.copy(protocol.lib_dynamic, 'lib',
                             protocol.lib_dynamic.name().dirname())
 
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
                            reactor.lib_dynamic.name().dirname())
 
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
-                        elle.lib_dynamic.name().dirname())
+  elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib',
+                        elle.elle.lib_dynamic.name().dirname())
 
   meta_client_lib = drake.copy(meta_client.lib, 'lib', strip_prefix = True)
 
@@ -73,7 +80,7 @@ def configure(elle,
                                   [library,
                                    protocol_lib,
                                    reactor_lib,
-                                   elle_lib],
+                                   elle_lib] + ssl_libs,
                                   cxx_toolkit,
                                   test_cxx_config)
   test = drake.Runner(exe = test_exe)
@@ -81,19 +88,60 @@ def configure(elle,
   check = drake.Rule('check')
   check << test.status
 
-  # executable
+  ## ---------- ##
+  ## Executable ##
+  ## ---------- ##
+
   exe_cxx_config = drake.cxx.Config(local_cxx_config)
-  exe_cxx_config += boost.config_system()
-  exe_cxx_config += boost.config_program()
+  if cxx_toolkit.os is drake.os.windows:
+    exe_cxx_config += boost.config_system(static = True)
+    exe_cxx_config += boost.config_program_options(static = True)
+  else:
+    exe_cxx_config += boost.config_system(link = False)
+    exe_cxx_config.library_add(
+      drake.copy(boost.system_dynamic,
+                 'lib', strip_prefix = True))
+    exe_cxx_config += boost.config_program_options(link = False)
+    exe_cxx_config.library_add(
+      drake.copy(boost.program_options_dynamic,
+                 'lib', strip_prefix = True))
   exe_cxx_config.lib_path_runtime('../lib')
 
   exe_sources = drake.nodes('src/main.cc')
 
   apertus = drake.cxx.Executable(
     'bin/apertus',
-    exe_sources + [library, reactor_lib, elle_lib],
+    exe_sources + [library, reactor_lib, elle_lib] + ssl_libs,
     cxx_toolkit, exe_cxx_config)
 
   build << apertus
+
+  ## ------- ##
+  ## Install ##
+  ## ------- ##
+
   install = drake.Rule('install')
   install << drake.install(apertus, prefix)
+
+  ## ------ ##
+  ## Debian ##
+  ## ------ ##
+
+  debian = drake.Rule('debian')
+  debian_path = drake.Path('debian/opt/infinit/apertus')
+  package = [drake.copy(apertus, debian_path)]
+  git = drake.git.Git()
+  with drake.templating.Context(content = {
+      'version': git.version(),
+      'version_major': git.version().split('.')[0],
+      'version_minor': git.version().split('.')[1],
+  }):
+    drake.node('control.tmpl')
+    drake.node('etc/apertus.conf.tmpl')
+  package += drake.copy(drake.nodes('control'), 'debian/DEBIAN')
+  package += drake.copy(drake.nodes('etc/apertus.conf',
+                                    'etc/init.d/apertus'),
+                        debian_path)
+  debian << drake.debian.Packager(
+    'fist-apertus_%s_amd64.deb' % git.version(),
+    package, 'debian', preload = elle.elle.dpkg_preload).package

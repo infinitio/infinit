@@ -16,7 +16,7 @@ namespace infinit
         {
         public:
           Meta(Trophonius& trophonius,
-               std::unique_ptr<reactor::network::TCPSocket>&& socket);
+               std::unique_ptr<reactor::network::Socket>&& socket);
           ~Meta();
 
           void

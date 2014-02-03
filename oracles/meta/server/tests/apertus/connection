@@ -7,12 +7,16 @@ from random import random
 
 class Apertus:
   def __init__(self, meta):
-    self.port = 1000 + int(random() * 64535)
+    self.port_ssl = 1000 + int(random() * 64535)
+    self.port_tcp = self.port_ssl
+    while (self.port_tcp == self.port_ssl):
+      self.port_tcp = 1000 + int(random() * 64535)
     self.meta = meta
     self.uuid = uuid4()
 
   def register_or_ping(self):
-    self.meta.put('apertus/%s' % str(self.uuid), body = {"port": self.port})
+    self.meta.put('apertus/%s' % str(self.uuid),
+                  body = {"port_ssl": self.port_ssl, "port_tcp": self.port_tcp})
 
   def __enter__(self):
     self.register_or_ping()

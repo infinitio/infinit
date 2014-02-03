@@ -3,7 +3,7 @@
 
 #include <elle/container/list.hh>
 #include <elle/network/Interface.hh>
-#include <elle/os/getenv.hh>
+#include <elle/os/environ.hh>
 #include <elle/printf.hh>
 #include <elle/serialize/insert.hh>
 
@@ -683,7 +683,7 @@ namespace surface
       ELLE_DEBUG("%s: interfaces published", *this);
     }
 
-    std::unique_ptr<reactor::network::TCPSocket>
+    std::unique_ptr<reactor::network::Socket>
     TransferMachine::_connect()
     {
       auto const& transaction = *this->data();
@@ -701,18 +701,14 @@ namespace surface
         std::for_each(begin(endpoints.locals), end(endpoints.locals), print);
       ELLE_DEBUG("externals")
         std::for_each(begin(endpoints.externals), end(endpoints.externals), print);
-      ELLE_DEBUG("fallback")
-        std::for_each(begin(endpoints.fallback), end(endpoints.fallback), print);
 
       std::vector<std::unique_ptr<Round>> rounds;
       rounds.emplace_back(new AddressRound("local",
                                            std::move(endpoints.locals)));
 
-      {
-        rounds.emplace_back(new FallbackRound("fallback",
-                                              this->state().meta(),
-                                              this->data()->id));
-      }
+      rounds.emplace_back(new FallbackRound("fallback",
+                                            this->state().meta(),
+                                            this->data()->id));
 
       ELLE_TRACE("%s: selected rounds (%s):", *this, rounds.size())
         for (auto& r: rounds)
@@ -721,7 +717,7 @@ namespace surface
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         reactor::Barrier found;
-        std::unique_ptr<reactor::network::TCPSocket> host;
+        std::unique_ptr<reactor::network::Socket> host;
         scope.run_background("wait_accepted",
                              [&] ()
                              {
@@ -747,7 +743,8 @@ namespace surface
                   round->name()
                 );
 
-                ELLE_WARN("%s: host found via 'rounds'", *this);
+                ELLE_WARN("%s: host found via round: %s",
+                          *this, round->name());
                 break;
               }
               else

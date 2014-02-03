@@ -5,7 +5,7 @@ namespace station
 {
   Host::Host(Station& owner,
              papier::Passport const& passport,
-             std::unique_ptr<reactor::network::TCPSocket>&& socket):
+             std::unique_ptr<reactor::network::Socket>&& socket):
     _owner(owner),
     _passport(passport),
     _socket(std::move(socket))
@@ -17,7 +17,7 @@ namespace station
     this->_owner._host_remove(*this);
   }
 
-  reactor::network::TCPSocket&
+  reactor::network::Socket&
   Host::socket()
   {
     if (this->_socket)
@@ -25,7 +25,7 @@ namespace station
     throw elle::Exception("socket already released");
   }
 
-  std::unique_ptr<reactor::network::TCPSocket>
+  std::unique_ptr<reactor::network::Socket>
   Host::release()
   {
     return std::move(this->_socket);

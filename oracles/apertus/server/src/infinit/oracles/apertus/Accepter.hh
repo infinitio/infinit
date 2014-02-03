@@ -19,7 +19,7 @@ namespace infinit
       class Accepter:
         public elle::Printable
       {
-        typedef std::unique_ptr<reactor::network::TCPSocket> Socket;
+        typedef std::unique_ptr<reactor::network::Socket> Socket;
       public:
         Accepter(Apertus& apertus,
                  Socket&& client);

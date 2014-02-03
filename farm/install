@@ -10,3 +10,12 @@ os.chdir(os.environ['DIR_BUILD'])
 subprocess.check_call(
   ['python3', 'drake', '--prefix=../%s' % os.environ['DIR_INSTALL']]
   + list(targets.targets('install')))
+
+# FIXME: use targets
+if targets.osyst.startswith('linux'):
+  subprocess.check_call(
+    ['python3', 'drake', '--prefix=../%s' % os.environ['DIR_INSTALL'],
+     '//oracles/meta/server/debian',
+     '//oracles/trophonius/server/debian',
+     '//oracles/apertus/server/debian',
+   ])
