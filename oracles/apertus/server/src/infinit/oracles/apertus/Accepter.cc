@@ -43,7 +43,7 @@ namespace infinit
         elle::SafeFinally pop(
           [this]
           {
-            ELLE_TRACE("%s: pop my self from apertus", *this);
+            ELLE_TRACE("%s: pop myself from apertus", *this);
             this->_apertus._accepter_remove(*this);
           });
 
