@@ -147,8 +147,10 @@ namespace surface
           boost::lexical_cast<std::string>(fallback.fallback_port_ssl),
           fingerprint));
 
-      ELLE_LOG("%i: %s", this->_uid.size(), this->_uid);
-      sock->write(elle::ConstWeakBuffer(elle::sprintf("%c",(char) this->_uid.size())));
+      ELLE_LOG("%s: transaction key %s (of length: %i)",
+               *this, this->_uid, this->_uid.size());
+      sock->write(elle::ConstWeakBuffer(
+        elle::sprintf("%c",(char) this->_uid.size())));
       sock->write(elle::ConstWeakBuffer(elle::sprintf("%s", this->_uid)));
 
       return std::unique_ptr<reactor::network::Socket>(sock.release());
