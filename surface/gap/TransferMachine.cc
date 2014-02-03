@@ -743,7 +743,8 @@ namespace surface
                   round->name()
                 );
 
-                ELLE_WARN("%s: host found via 'rounds'", *this);
+                ELLE_WARN("%s: host found via round: %s",
+                          *this, round->name());
                 break;
               }
               else
