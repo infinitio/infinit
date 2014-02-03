@@ -574,9 +574,13 @@ def configure(cxx_toolkit = None,
     gap_build << infinit_cli_copy
 
   if qt is not None:
+    if cxx_toolkit.os == drake.os.windows:
+      libraries = [gap_lib]
+    else:
+      libraries = [gap_lib, elle_lib]
     application = drake.include('fist-gui-qt',
                                 cxx_toolkit = cxx_toolkit,
                                 cxx_config = drake.cxx.Config(cxx_config),
                                 qt = qt,
                                 prefix = prefix,
-                                libraries = [gap_lib])
+                                libraries = libraries)
