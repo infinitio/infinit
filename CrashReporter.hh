@@ -57,35 +57,6 @@ namespace elle
 
   namespace crash
   {
-
-    class Handler
-    {
-    public:
-      Handler(std::string const& host,
-              int port,
-              std::string const& name,
-              bool quit);
-
-      Handler(std::string const& host,
-              int port,
-              std::string const& name,
-              bool quit,
-              int argc,
-              char** argv);
-
-      virtual ~Handler();
-
-      virtual
-      void
-      operator() (int sig);
-
-    private:
-      std::string _host;
-      uint16_t _port;
-      std::string _name;
-      bool _quit;
-    };
-
     /// Function for sending existing crash reports
     void
     existing_report(std::string const& host,

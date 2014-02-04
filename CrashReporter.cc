@@ -1,5 +1,4 @@
 #include <fstream>
-#include <map>
 #include <signal.h>
 
 #include <boost/algorithm/string/predicate.hpp>
@@ -7,7 +6,7 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/system/error_code.hpp>
 
-#include <elle/format/json.hh>
+#include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
@@ -215,43 +214,70 @@ namespace elle
 
   namespace crash
   {
-
-    Handler::Handler(std::string const& host,
-                     int port,
-                     std::string const& name,
-                     bool quit):
-                     _host(host),
-                     _port(port),
-                     _name{name},
-                     _quit{quit}
-    {}
-
-    Handler::Handler(std::string const& host,
-                     int port,
-                     std::string const& name,
-                     bool quit,
-                     int argc,
-                     char** argv):
-      Handler(host, port, name, quit)
-    {
-      for (int i = 1; i < argc; ++i)
-      {
-        if (argv[i] == NULL)
-          break;
-
-        this->_name += " ";
-        this->_name += argv[i];
-      }
-    }
-
-    Handler::~Handler()
-    {}
-
     void
-    Handler::operator() (int sig)
+    _send_report(std::string const& url,
+                 std::string const& user_name,
+                 std::string const& os_description,
+                 std::string const& message,
+                 std::string const& file)
     {
-      if (this->_quit)
-        ::exit(sig);
+      reactor::Scheduler sched;
+      reactor::Thread thread(sched, "upload report", [&]
+      {
+        std::vector<boost::any> env_arr;
+
+        for (auto const& pair: elle::os::environ())
+        {
+          if (boost::starts_with(pair.first, "ELLE_") ||
+              boost::starts_with(pair.first, "INFINIT_"))
+          {
+            std::string line =
+              elle::sprintf("%s = %s", pair.first, pair.second);
+            env_arr.push_back(line);
+          }
+        }
+
+        elle::json::Object json_dict;
+
+        json_dict["user_name"] = user_name;
+        json_dict["client_os"] = os_description;
+        if (!message.empty())
+          json_dict["message"] = message;
+        json_dict["env"] = env_arr;
+        json_dict["version"] = std::string(INFINIT_VERSION);
+        std::string crash_dest = elle::os::getenv("INFINIT_CRASH_DEST", "");
+        json_dict["email"] = crash_dest;
+        json_dict["file"] = file;
+#ifdef INFINIT_PRODUCTION_BUILD
+        json_dict["send"] = true;
+#else
+        json_dict["send"] = !crash_dest.empty();
+#endif
+        reactor::http::Request::Configuration conf{
+          reactor::DurationOpt(300_sec),
+          reactor::http::Version(reactor::http::Version::v10)};
+
+        try
+        {
+          reactor::http::Request request(
+            url,
+            reactor::http::Method::POST,
+            "application/json",
+            conf);
+          elle::json::write(request, json_dict);
+          request.wait();
+          if (request.status() != reactor::http::StatusCode::OK)
+          {
+            ELLE_ERR("error while posting report to %s: (%s) %s",
+                     url, request.status(), request.response().string());
+          }
+        }
+        catch (...)
+        {
+          ELLE_ERR("unable to post report to %s", url);
+        }
+      });
+      sched.run();
     }
 
     void
@@ -264,63 +290,10 @@ namespace elle
     {
       ELLE_TRACE("user report");
 
-      reactor::Scheduler sched;
-      reactor::Thread thread(sched, "user report upload", [&]
-        {
-
-          elle::format::json::Array env_arr{};
-
-          for (auto const& pair: elle::os::environ())
-          if (boost::starts_with(pair.first, "ELLE_") ||
-              boost::starts_with(pair.first, "INFINIT_"))
-          {
-            env_arr.push_back(pair.first + " = " + pair.second);
-          }
-
-          elle::format::json::Dictionary json_dict;
-
-          json_dict["user_name"] = user_name;
-          json_dict["client_os"] = os_description;
-          json_dict["message"] = message;
-          json_dict["env"] = env_arr;
-          json_dict["version"] = INFINIT_VERSION;
-          json_dict["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
-          json_dict["file"] = file;
-#ifdef INFINIT_PRODUCTION_BUILD
-          json_dict["send"] = true;
-#else
-          json_dict["send"] = !json_dict["email"].as<std::string>().empty();
-#endif
-
-          std::string url = elle::sprintf("http://%s:%s/debug/report/user",
-                                          host,
-                                          port);
-          reactor::http::Request::Configuration conf{
-            reactor::DurationOpt(300_sec),
-            reactor::http::Version(reactor::http::Version::v10)};
-
-          try
-          {
-            reactor::http::Request request(
-              url,
-              reactor::http::Method::POST,
-              "application/json",
-              conf);
-            json_dict.repr(request);
-            request.wait();
-            if (request.status() != reactor::http::StatusCode::OK)
-            {
-              ELLE_ERR("error while posting report to %s: (%s) %s",
-                       url, request.status(), request.response().string());
-            }
-          }
-          catch (...)
-          {
-            ELLE_ERR("unable to post report to %s", url);
-          }
-        });
-
-    sched.run();
+      std::string url = elle::sprintf("http://%s:%s/debug/report/user",
+                                      host,
+                                      port);
+      _send_report(url, user_name, os_description, message, file);
     }
 
     void
@@ -332,60 +305,10 @@ namespace elle
                     std::string const& file)
     {
       ELLE_TRACE("report last crash");
-      reactor::Scheduler sched;
-      reactor::Thread thread(sched, "user report upload", [&]
-        {
-
-          elle::format::json::Array env_arr{};
-
-          for (auto const& pair: elle::os::environ())
-            if (boost::starts_with(pair.first, "ELLE_") ||
-              boost::starts_with(pair.first, "INFINIT_"))
-            {
-              env_arr.push_back(pair.first + " = " + pair.second);
-            }
-
-          elle::format::json::Dictionary json_dict;
-
-          json_dict["user_name"] = user_name;
-          json_dict["client_os"] = os_description;
-          json_dict["more"] = info;
-          json_dict["env"] = env_arr;
-          json_dict["version"] = INFINIT_VERSION;
-          json_dict["email"] = elle::os::getenv("INFINIT_CRASH_DEST", "");
-          json_dict["file"] = file;
-          #ifdef INFINIT_PRODUCTION_BUILD
-          json_dict["send"] = true;
-          #else
-          json_dict["send"] = !json_dict["email"].as<std::string>().empty();
-          #endif
-          std::string url = elle::sprintf("http://%s:%d/debug/report/backtrace",
-                                          host,
-                                          port);
-          reactor::http::Request::Configuration conf{
-            reactor::DurationOpt(300_sec),
-            reactor::http::Version(reactor::http::Version::v10)};
-          try
-          {
-            reactor::http::Request request(
-            url,
-            reactor::http::Method::POST,
-            "application/json",
-            conf);
-            json_dict.repr(request);
-            request.wait();
-            if (request.status() != reactor::http::StatusCode::OK)
-            {
-              ELLE_ERR("error while posting report to %s: (%s) %s",
-              url, request.status(), request.response().string());
-            }
-          }
-          catch (...)
-          {
-            ELLE_ERR("unable to post report to %s", url);
-          }
-        });
-      sched.run();
+      std::string url = elle::sprintf("http://%s:%d/debug/report/backtrace",
+                                      host,
+                                      port);
+      _send_report(url, user_name, os_description, "", file);
     }
-  } // End of crash.
-} // End of elle.
+  }
+}
