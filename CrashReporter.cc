@@ -4,16 +4,23 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/signal_set.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/system/error_code.hpp>
 
 #include <elle/json/json.hh>
+#include <elle/format/base64.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/system/platform.hh>
+#ifndef INFINIT_WINDOWS
+# include <elle/system/Process.hh>
+#endif
 
 #include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
+
+#include <common/common.hh>
 
 #include <CrashReporter.hh>
 #include <version.hh>
@@ -214,6 +221,29 @@ namespace elle
 
   namespace crash
   {
+#ifndef INFINIT_WINDOWS
+  static
+  std::string
+  _to_base64(boost::filesystem::path const& archive_path,
+             std::list<std::string> const& args)
+  {
+    elle::system::Process tar{"tar", args};
+    tar.wait();
+
+    std::stringstream base64;
+
+    {
+      elle::format::base64::Stream encoder(base64);
+      std::ifstream archive(archive_path.string());
+
+      std::copy(std::istreambuf_iterator<char>(archive),
+                std::istreambuf_iterator<char>(),
+                std::ostreambuf_iterator<char>(encoder));
+    }
+    return base64.str();
+  }
+#endif
+
     void
     _send_report(std::string const& url,
                  std::string const& user_name,
@@ -221,42 +251,42 @@ namespace elle
                  std::string const& message,
                  std::string const& file)
     {
+      std::vector<boost::any> env_arr;
+
+      for (auto const& pair: elle::os::environ())
+      {
+        if (boost::starts_with(pair.first, "ELLE_") ||
+            boost::starts_with(pair.first, "INFINIT_"))
+        {
+          std::string line =
+            elle::sprintf("%s = %s", pair.first, pair.second);
+          env_arr.push_back(line);
+        }
+      }
+
+      elle::json::Object json_dict;
+
+      json_dict["user_name"] = user_name;
+      json_dict["client_os"] = os_description;
+      if (!message.empty())
+        json_dict["message"] = message;
+      json_dict["env"] = env_arr;
+      json_dict["version"] = std::string(INFINIT_VERSION);
+      std::string crash_dest = elle::os::getenv("INFINIT_CRASH_DEST", "");
+      json_dict["email"] = crash_dest;
+      json_dict["file"] = file;
+#ifdef INFINIT_PRODUCTION_BUILD
+      json_dict["send"] = true;
+#else
+      json_dict["send"] = !crash_dest.empty();
+#endif
+      reactor::http::Request::Configuration conf{
+        reactor::DurationOpt(300_sec),
+        reactor::http::Version(reactor::http::Version::v10)};
+
       reactor::Scheduler sched;
       reactor::Thread thread(sched, "upload report", [&]
       {
-        std::vector<boost::any> env_arr;
-
-        for (auto const& pair: elle::os::environ())
-        {
-          if (boost::starts_with(pair.first, "ELLE_") ||
-              boost::starts_with(pair.first, "INFINIT_"))
-          {
-            std::string line =
-              elle::sprintf("%s = %s", pair.first, pair.second);
-            env_arr.push_back(line);
-          }
-        }
-
-        elle::json::Object json_dict;
-
-        json_dict["user_name"] = user_name;
-        json_dict["client_os"] = os_description;
-        if (!message.empty())
-          json_dict["message"] = message;
-        json_dict["env"] = env_arr;
-        json_dict["version"] = std::string(INFINIT_VERSION);
-        std::string crash_dest = elle::os::getenv("INFINIT_CRASH_DEST", "");
-        json_dict["email"] = crash_dest;
-        json_dict["file"] = file;
-#ifdef INFINIT_PRODUCTION_BUILD
-        json_dict["send"] = true;
-#else
-        json_dict["send"] = !crash_dest.empty();
-#endif
-        reactor::http::Request::Configuration conf{
-          reactor::DurationOpt(300_sec),
-          reactor::http::Version(reactor::http::Version::v10)};
-
         try
         {
           reactor::http::Request request(
@@ -281,34 +311,73 @@ namespace elle
     }
 
     void
+    existing_report(std::string const& host,
+                    uint16_t port,
+                    std::vector<std::string> const& files,
+                    std::string const& user_name,
+                    std::string const& os_description,
+                    std::string const& info)
+    {
+#ifndef INFINIT_WINDOWS
+      ELLE_TRACE("report last crash");
+
+      boost::filesystem::path destination{"/tmp/infinit-crash-archive"};
+
+      std::list<std::string> args{"cjf", destination.string()};
+
+      for (auto path_str: files)
+      {
+        boost::filesystem::path path(path_str);
+        if (boost::filesystem::exists(path))
+        {
+          args.push_back("-C");
+          args.push_back(path.parent_path().string());
+          args.push_back(path.filename().string());
+        }
+      }
+
+      std::string url = elle::sprintf("http://%s:%d/debug/report/backtrace",
+                                      host,
+                                      port);
+
+      _send_report(url, user_name, os_description, "",
+                   _to_base64(destination, args));
+#endif
+    }
+
+    void
     user_report(std::string const& host,
                 uint16_t port,
                 std::string const& user_name,
                 std::string const& os_description,
                 std::string const& message,
-                std::string const& file)
+                std::string const& user_file)
     {
+#ifndef INFINIT_WINDOWS
       ELLE_TRACE("user report");
+
+      boost::filesystem::path destination{"/tmp/infinit-report-user"};
+      boost::filesystem::path user_file_path(user_file);
+      boost::filesystem::path infinit_home_path(common::infinit::home());
+
+      std::list<std::string> args{"cjf", destination.string()};
+      for (auto path: {user_file_path, infinit_home_path})
+      {
+        if (boost::filesystem::exists(path))
+        {
+          args.push_back("-C");
+          args.push_back(path.parent_path().string());
+          args.push_back(path.filename().string());
+        }
+      }
 
       std::string url = elle::sprintf("http://%s:%s/debug/report/user",
                                       host,
                                       port);
-      _send_report(url, user_name, os_description, message, file);
-    }
 
-    void
-    existing_report(std::string const& host,
-                    uint16_t port,
-                    std::string const& user_name,
-                    std::string const& os_description,
-                    std::string const& info,
-                    std::string const& file)
-    {
-      ELLE_TRACE("report last crash");
-      std::string url = elle::sprintf("http://%s:%d/debug/report/backtrace",
-                                      host,
-                                      port);
-      _send_report(url, user_name, os_description, "", file);
+      _send_report(url, user_name, os_description, message,
+                   _to_base64(destination, args));
+#endif
     }
   }
 }
