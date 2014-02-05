@@ -188,3 +188,25 @@ Additional Information
 ----------------------
 %(more)s
 """.strip()}
+
+report_templates['transaction'] = {'subject': 'Transfer Failed Report (%(client_os)s)'.strip(),
+                                   'content': """
+.infinit directory in attached file.
+
+OS: %(client_os)s
+
+Infinit Version: %(version)s
+
+User Name: %(user_name)s
+
+-----------
+Environment
+-----------
+%(env)s
+
+----------------------
+Additional Information
+----------------------
+%(more)s
+
+""".strip()}
