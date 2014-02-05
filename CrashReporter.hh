@@ -74,7 +74,7 @@ namespace elle
                 std::string const& os_description = "",
                 std::string const& message = "",
                 std::string const& user_file = "");
-  };
+  }
 }
 
 #endif

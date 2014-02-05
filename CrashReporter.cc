@@ -245,6 +245,7 @@ namespace elle
 #endif
 
     void
+    static
     _send_report(std::string const& url,
                  std::string const& user_name,
                  std::string const& os_description,
