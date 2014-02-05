@@ -221,29 +221,6 @@ namespace elle
 
   namespace crash
   {
-#ifndef INFINIT_WINDOWS
-  static
-  std::string
-  _to_base64(boost::filesystem::path const& archive_path,
-             std::list<std::string> const& args)
-  {
-    elle::system::Process tar{"tar", args};
-    tar.wait();
-
-    std::stringstream base64;
-
-    {
-      elle::format::base64::Stream encoder(base64);
-      std::ifstream archive(archive_path.string());
-
-      std::copy(std::istreambuf_iterator<char>(archive),
-                std::istreambuf_iterator<char>(),
-                std::ostreambuf_iterator<char>(encoder));
-    }
-    return base64.str();
-  }
-#endif
-
     void
     static
     _send_report(std::string const& url,
@@ -311,6 +288,29 @@ namespace elle
       sched.run();
     }
 
+#ifndef INFINIT_WINDOWS
+  static
+  std::string
+  _to_base64(boost::filesystem::path const& archive_path,
+             std::list<std::string> const& args)
+  {
+    elle::system::Process tar{"tar", args};
+    tar.wait();
+
+    std::stringstream base64;
+
+    {
+      elle::format::base64::Stream encoder(base64);
+      std::ifstream archive(archive_path.string());
+
+      std::copy(std::istreambuf_iterator<char>(archive),
+                std::istreambuf_iterator<char>(),
+                std::ostreambuf_iterator<char>(encoder));
+    }
+    return base64.str();
+  }
+#endif
+
     void
     existing_report(std::string const& host,
                     uint16_t port,
@@ -341,6 +341,34 @@ namespace elle
                                       host,
                                       port);
 
+      _send_report(url, user_name, os_description, "",
+                   _to_base64(destination, args));
+#endif
+    }
+
+    void
+    transfer_failed_report(std::string const& user_name)
+    {
+#ifndef INFINIT_WINDOWS
+      ELLE_TRACE("transaction failed report");
+
+      boost::filesystem::path destination{"/tmp/infinit-report-transaction"};
+      boost::filesystem::path infinit_home_path(common::infinit::home());
+
+      std::list<std::string> args{"cjf", destination.string()};
+      if (boost::filesystem::exists(infinit_home_path))
+      {
+        args.push_back("-C");
+        args.push_back(infinit_home_path.parent_path().string());
+        args.push_back(infinit_home_path.filename().string());
+      }
+
+      std::string os_description{common::system::platform()};
+      std::string host{common::meta::host()};
+      uint16_t port = common::meta::port();
+      std::string url = elle::sprintf("http://%s:%s/debug/report/transaction",
+                                      host,
+                                      port);
       _send_report(url, user_name, os_description, "",
                    _to_base64(destination, args));
 #endif

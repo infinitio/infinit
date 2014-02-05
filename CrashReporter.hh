@@ -57,7 +57,7 @@ namespace elle
 
   namespace crash
   {
-    /// Function for sending existing crash reports
+    /// Function for sending existing crash reports.
     void
     existing_report(std::string const& host,
                     uint16_t port,
@@ -66,7 +66,11 @@ namespace elle
                     std::string const& os_description = "",
                     std::string const& info = "");
 
-    /// Function for sending user reports
+    /// Function for sending a report when a transfer fails.
+    void
+    transfer_failed_report(std::string const& user_name = "");
+
+    /// Function for sending user reports.
     void
     user_report(std::string const& host,
                 uint16_t port,
@@ -74,6 +78,7 @@ namespace elle
                 std::string const& os_description = "",
                 std::string const& message = "",
                 std::string const& user_file = "");
+
   }
 }
 
