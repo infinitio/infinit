@@ -29,6 +29,8 @@
 
 #include <protocol/exceptions.hh>
 
+#include <CrashReporter.hh>
+
 ELLE_LOG_COMPONENT("surface.gap.TransferMachine");
 
 namespace surface
@@ -432,6 +434,9 @@ namespace surface
         infinit::oracles::Transaction::Status::failed,
         ""
       );
+
+      // Send report for failed transfer
+      elle::crash::transfer_failed_report(this->state().me().email);
 
       this->current_state(State::Failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
