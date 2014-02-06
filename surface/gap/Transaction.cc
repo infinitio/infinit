@@ -329,6 +329,8 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: update transaction data with %s", *this, data);
 
+      ELLE_DEBUG("%s , %s my device, %s recipient device, my id %s, recipient id %s", *this,
+      state.me().id, data.recipient_id , state.device().id , data.recipient_device_id);
       // If I'm the recipient but no the right device... Sand notification to GUI
       if (state.me().id == data.recipient_id && state.device().id != data.recipient_device_id)
       {

@@ -153,7 +153,7 @@ namespace surface
           {
             if (!it->second.final())
             {
-              it->second.on_transaction_update(this->meta().transaction(id));
+              it->second.on_transaction_update(*this, this->meta().transaction(id));
             }
             continue;
           }
@@ -219,7 +219,7 @@ namespace surface
       }
       else
       {
-        it->second.on_transaction_update(notif);
+        it->second.on_transaction_update(*this, notif);
       }
     }
 
