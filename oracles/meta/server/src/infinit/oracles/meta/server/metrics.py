@@ -90,3 +90,8 @@ class Mixin:
     return {
       'result': transactions,
     }
+
+  @api('/metrics/transactions.html')
+  def metrics_transactions_html(self):
+    tpl = self._Meta__mako.get_template('/metrics/transactions.html')
+    return tpl.render()

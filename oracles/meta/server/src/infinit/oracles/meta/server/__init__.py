@@ -7,6 +7,7 @@ import papier
 import bottle
 import elle.log
 import inspect
+import mako.lookup
 import papier
 import pymongo
 import re
@@ -81,6 +82,13 @@ class Meta(bottle.Bottle,
       self.__register(function)
     # Notifier.
     self.notifier = notifier.Notifier(self.__database)
+    # Templates
+    mako_path = '/'.join(__file__.split('/')[:-9])
+    mako_path = '%s/share/infinit/meta/server/templates' % mako_path
+    print(mako_path)
+    self.__mako = mako.lookup.TemplateLookup(
+      directories = [mako_path]
+    )
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
     self.invitation = invitation.Invitation(active = enable_emails)

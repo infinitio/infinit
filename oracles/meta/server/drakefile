@@ -70,6 +70,11 @@ def configure(elle,
     'src/infinit/oracles/meta/server/wsgi.py',
   )
 
+  templates = drake.nodes(
+    'templates/base.html',
+    'templates/metrics/transactions.html',
+  )
+
   ## ----- ##
   ## Build ##
   ## ----- ##
@@ -97,6 +102,7 @@ def configure(elle,
   build << python
   build_binary = drake.copy(drake.node('meta'), 'bin')
   build << build_binary
+  build << drake.copy(templates, 'share/infinit/meta/server')
 
   ## ------- ##
   ## Install ##
