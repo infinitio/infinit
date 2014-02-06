@@ -331,6 +331,13 @@ namespace surface
 
       ELLE_DEBUG("%s , %s my device, %s recipient device, my id %s, recipient id %s", *this,
       state.me().id, data.recipient_id , state.device().id , data.recipient_device_id);
+
+      if (this->_machine == nullptr)
+      {
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        return;
+      }
+
       // If I'm the recipient but no the right device... Sand notification to GUI
       if (state.me().id == data.recipient_id && state.device().id != data.recipient_device_id)
       {
@@ -353,12 +360,6 @@ namespace surface
             break;
          }
        }
-
-      if (this->_machine == nullptr)
-      {
-        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
-        return;
-      }
 
       if (this->_data->status == data.status)
       {
