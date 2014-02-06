@@ -334,7 +334,7 @@ namespace surface
       // If I'm the recipient but no the right device... Sand notification to GUI
       if (state.me().id == data.recipient_id && state.device().id != data.recipient_device_id)
       {
-        ELLE_DEBUG("%s, transaction doesnot concern your device, but maybe, there are something to do");
+        ELLE_DEBUG("%s, transaction doesnot concern your device, but maybe, there are something to do", *this);
         switch(this->_data->status)
         {
           case Data::Status::initialized:
