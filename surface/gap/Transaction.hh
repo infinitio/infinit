@@ -102,7 +102,8 @@ namespace surface
 
     public:
       void
-      on_transaction_update(Data const& data);
+      on_transaction_update(surface::gap::State const& state,
+                            Data const&  data);
 
       void
       on_peer_connection_update(
