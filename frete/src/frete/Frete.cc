@@ -481,7 +481,7 @@ namespace frete
         output.flush();
 
         if (!output.good())
-          elle::Exception("writting let the stream not in a good state");
+          elle::Exception("writing left the stream in a bad state");
 
         {
           snapshot.increment_progress(index, buffer.size());
