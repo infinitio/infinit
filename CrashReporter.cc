@@ -221,6 +221,7 @@ namespace elle
 
   namespace crash
   {
+#ifndef INFINIT_WINDOWS
     void
     static
     _send_report(std::string const& url,
@@ -253,11 +254,11 @@ namespace elle
       std::string crash_dest = elle::os::getenv("INFINIT_CRASH_DEST", "");
       json_dict["email"] = crash_dest;
       json_dict["file"] = file;
-#ifdef INFINIT_PRODUCTION_BUILD
+# ifdef INFINIT_PRODUCTION_BUILD
       json_dict["send"] = true;
-#else
+# else
       json_dict["send"] = !crash_dest.empty();
-#endif
+# endif
       reactor::http::Request::Configuration conf{
         reactor::DurationOpt(300_sec),
         reactor::http::Version(reactor::http::Version::v10)};
@@ -287,6 +288,7 @@ namespace elle
       });
       sched.run();
     }
+#endif
 
 #ifndef INFINIT_WINDOWS
   static
