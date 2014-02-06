@@ -1,8 +1,11 @@
 import bottle
 import bson
+import datetime
 import decorator
 import inspect
+import iso8601
 import uuid
+
 from . import error
 from . import conf
 import pymongo
@@ -25,7 +28,11 @@ class api:
         value = kwargs.get(arg, None)
         if arg is not None:
           try:
-            kwargs[arg] = annotation(value)
+            if annotation is datetime.datetime:
+              value = iso8601.parse_date(value)
+            else:
+              value = annotation(value)
+            kwargs[arg] = value
           except:
             m = '%r is not a valid %s' % (value, annotation.__name__)
             bottle.abort(400, m)

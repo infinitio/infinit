@@ -6,7 +6,6 @@ import bson
 import bson.json_util
 import calendar
 import datetime
-import iso8601
 import json
 import os
 import time
@@ -30,16 +29,15 @@ statuses = {
 class Mixin:
 
   @api('/metrics/transactions')
-  def metrics_transactions(self, start = None, end = None):
+  def metrics_transactions(self,
+                           start : datetime.datetime = None,
+                           end : datetime.datetime = None):
     if bottle.request.certificate != 'quentin.hocquet@infinit.io':
       self.forbiden()
     if start is None:
       start = datetime.date.today() - datetime.timedelta(7)
-    else:
-      start = iso8601.parse_date(start)
     match = {'$gte': calendar.timegm(start.timetuple())}
     if end is not None:
-      end = iso8601.parse_date(end)
       match['$lte'] = calendar.timegm(end.timetuple())
     match = {'ctime': match}
     transactions = self.database.transactions.aggregate([
