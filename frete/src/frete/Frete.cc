@@ -454,11 +454,22 @@ namespace frete
 
           if (size != snapshot.transfers()[index].progress())
           {
+            uintmax_t current_size;
+            try
+            {
+              current_size = boost::filesystem::file_size(fullpath);
+            }
+            catch (boost::filesystem::filesystem_error const& e)
+            {
+              ELLE_ERR("%s: expected size and actual size differ, "
+                       "unable to determine actual size: %s", *this, e);
+              throw elle::Exception("destination file corrupted");
+            }
             ELLE_ERR(
-              "%s: expected file size %s and real file size %s are different",
+              "%s: expected file size %s and actual file size %s are different",
               *this,
               snapshot.transfers()[index].progress(),
-              boost::filesystem::file_size(fullpath));
+              current_size);
             throw elle::Exception("destination file corrupted");
           }
         }
