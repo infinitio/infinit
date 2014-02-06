@@ -324,9 +324,33 @@ namespace surface
     }
 
     void
-    Transaction::on_transaction_update(Data const& data)
+    Transaction::on_transaction_update(surface::gap::State const& state,
+                                       Data const&                data)
     {
       ELLE_TRACE_SCOPE("%s: update transaction data with %s", *this, data);
+
+      // If I'm the recipient but no the right device... Sand notification to GUI
+      if (state.me().id == data.recipient_id && state.device().id != data.recipient_device_id)
+      {
+        ELLE_DEBUG("%s, transaction doesnot concern your device, but maybe, there are something to do");
+        switch(this->_data->status)
+        {
+          case Data::Status::initialized:
+            if (data.status == Data::Status::accepted)
+            {
+              ELLE_DEBUG("%s, accepted from somewhere else", *this);
+              state.enqueue(Notification(this->id(), gap_transaction_accepted_somewhere_else));
+            }
+           case Data::Status::accepted:
+             if (data.status == Data::Status::finished)
+             {
+               ELLE_DEBUG("%s, finished from somewhere else", *this);
+               state.enqueue(Notification(this->id(), gap_transaction_finished_somewhere_else));
+             }
+           default:
+            break;
+         }
+       }
 
       if (this->_machine == nullptr)
       {
@@ -352,6 +376,7 @@ namespace surface
         ELLE_WARN("%s: receive a status update (%s) that is lower than the "\
                   " current %s", *this, this->_data->status, data.status);
       }
+
 
       *(this->_data) = data;
 
