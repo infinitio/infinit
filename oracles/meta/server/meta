@@ -2,7 +2,11 @@
 # -*- python -*-
 
 import os
+import os.path
 import sys
+
+SELF = os.path.realpath(__file__)
+sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
 
 import bottle
 import infinit.oracles.meta.server
