@@ -14,6 +14,7 @@ import re
 from .plugins.jsongo import Plugin as JsongoPlugin
 from .plugins.failure import Plugin as FailurePlugin
 from .plugins.session import Plugin as SessionPlugin
+from .plugins.certification import Plugin as CertificationPlugin
 
 from infinit.oracles.meta import error
 
@@ -56,6 +57,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
     self.__sessions = SessionPlugin(self.__database, 'sessions')
     self.install(self.__sessions)
     self.install(JsongoPlugin())
+    self.install(CertificationPlugin())
     # Configuration.
     self.ignore_trailing_slash = True
     # Routing.
