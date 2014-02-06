@@ -329,32 +329,38 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: update transaction data with %s", *this, data);
 
-      ELLE_DEBUG("%s , %s my device, %s recipient device, my id %s, recipient id %s", *this,
-      state.me().id, data.recipient_id , state.device().id , data.recipient_device_id);
+      ELLE_DEBUG(
+        "%s, %s my device, %s recipient device, my id %s, recipient id %s",
+        *this, state.device().id , data.recipient_device_id, state.me().id,
+        data.recipient_id
+      );
 
       if (this->_machine == nullptr)
       {
-        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)",
+        *this);
         return;
       }
 
       // If I'm the recipient but no the right device... Sand notification to GUI
-      if (state.me().id == data.recipient_id && state.device().id != data.recipient_device_id)
+      if (state.me().id == data.recipient_id &&
+              state.device().id != data.recipient_device_id)
       {
-        ELLE_DEBUG("%s, transaction doesnot concern your device, but maybe, there are something to do", *this);
         switch(this->_data->status)
         {
           case Data::Status::initialized:
             if (data.status == Data::Status::accepted)
             {
               ELLE_DEBUG("%s, accepted from somewhere else", *this);
-              state.enqueue(Notification(this->id(), gap_transaction_accepted_somewhere_else));
+              state.enqueue(Notification(this->id(),
+              gap_transaction_accepted_somewhere_else));
             }
            case Data::Status::accepted:
              if (data.status == Data::Status::finished)
              {
                ELLE_DEBUG("%s, finished from somewhere else", *this);
-               state.enqueue(Notification(this->id(), gap_transaction_finished_somewhere_else));
+               state.enqueue(Notification(this->id(),
+               gap_transaction_finished_somewhere_else));
              }
            default:
             break;
