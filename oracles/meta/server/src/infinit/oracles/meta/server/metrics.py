@@ -32,8 +32,8 @@ class Mixin:
   def metrics_transactions(self,
                            start : datetime.datetime = None,
                            end : datetime.datetime = None):
-    if bottle.request.certificate != 'quentin.hocquet@infinit.io':
-      self.forbiden()
+    # if bottle.request.certificate != 'quentin.hocquet@infinit.io':
+    #   self.forbiden()
     if start is None:
       start = datetime.date.today() - datetime.timedelta(7)
     match = {'$gte': calendar.timegm(start.timetuple())}
