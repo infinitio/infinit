@@ -20,14 +20,30 @@ from infinit.oracles.meta import error
 
 from .utils import api, hash_pasword, require_logged_in
 
-from . import user, transaction, device, root, trophonius, apertus, invitation, waterfall
-from . import notifier
+from . import apertus
+from . import device
+from . import invitation
 from . import mail
+from . import metrics
+from . import notifier
+from . import root
+from . import transaction
+from . import trophonius
+from . import user
+from . import waterfall
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
-class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
-           device.Mixin, trophonius.Mixin, apertus.Mixin, waterfall.Mixin):
+class Meta(bottle.Bottle,
+           root.Mixin,
+           user.Mixin,
+           transaction.Mixin,
+           device.Mixin,
+           trophonius.Mixin,
+           apertus.Mixin,
+           waterfall.Mixin,
+           metrics.Mixin,
+         ):
 
   def __init__(self,
                mongo_host = None,
