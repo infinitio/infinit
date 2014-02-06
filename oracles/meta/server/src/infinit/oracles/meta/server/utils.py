@@ -26,7 +26,7 @@ class api:
     def annotation_mapper(self, *args, **kwargs):
       for arg, annotation in spec.annotations.items():
         value = kwargs.get(arg, None)
-        if arg is not None:
+        if arg is not None and value is not None:
           try:
             if annotation is datetime.datetime:
               value = iso8601.parse_date(value)
