@@ -143,7 +143,7 @@ class Meta(bottle.Bottle,
       for argument, default in arguments.items():
         if not default:
           bottle.abort(400, 'missing argument: %r' % argument)
-      return getattr(self, method.__name__)(*args, **kwargs)
+      return method(self, *args, **kwargs)
     # Add route.
     route = bottle.Route(app = self,
                          rule = rule,
