@@ -180,8 +180,8 @@ class Meta(bottle.Bottle,
   def forbiden(self):
     bottle.abort(403)
 
-  def not_found(self):
-    bottle.abort(404)
+  def not_found(self, message = None):
+    bottle.abort(404, message)
 
   def bad_request(self, text = None):
     bottle.abort(400, text)
