@@ -43,7 +43,7 @@ class Meta(bottle.Bottle,
            trophonius.Mixin,
            apertus.Mixin,
            waterfall.Mixin,
-           metrics.Mixin,
+           metrics.Metrics,
          ):
 
   def __init__(self,
@@ -57,7 +57,6 @@ class Meta(bottle.Bottle,
     system_logger = os.getenv("META_LOG_SYSTEM")
     if system_logger is not None:
       elle.log.set_logger(elle.log.SysLogger(system_logger))
-
     super().__init__()
     db_args = {}
     if mongo_host is not None:
@@ -94,6 +93,7 @@ class Meta(bottle.Bottle,
     self.invitation = invitation.Invitation(active = enable_emails)
     self.trophonius_expiration_time = trophonius_expiration_time
     self.apertus_expiration_time = apertus_expiration_time
+    metrics.Metrics.__init__(self)
 
   def __set_constraints(self):
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)], unique = True)
