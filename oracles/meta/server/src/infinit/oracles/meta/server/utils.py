@@ -40,9 +40,14 @@ class api:
     method.__route__ = self.__route
     method.__method__ = self.__method
     api.functions.append(method)
+    annotation_mapper.__api__ = None
+    annotation_mapper.__name__ = method.__name__
     return annotation_mapper
 
 def require_logged_in(method):
+  if hasattr(method, '__api__'):
+    raise Exception(
+      'require_logged_in for %r wraps the API' % method.__name__)
   def wrapper(wrapped, self, *args, **kwargs):
     if self.user is None:
       self.forbiden()
@@ -50,6 +55,9 @@ def require_logged_in(method):
   return decorator.decorator(wrapper, method)
 
 def require_admin(method):
+  if hasattr(method, '__api__'):
+    raise Exception(
+      'require_admin for %r wraps the API' % method.__name__)
   def wrapper(wrapped, self, *args, **kwargs):
     if 'admin_token' in kwargs and kwargs['admin_token'] == ADMIN_TOKEN:
       return wrapped(self, *args, **kwargs)

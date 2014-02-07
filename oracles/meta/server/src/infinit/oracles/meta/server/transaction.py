@@ -32,8 +32,8 @@ class Mixin:
         raise error.Error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
     return transaction
 
-  @require_logged_in
   @api('/transaction/<id>/view')
+  @require_logged_in
   def transaction_view(self, id: bson.ObjectId):
     assert isinstance(id, bson.ObjectId)
     try:
@@ -42,8 +42,8 @@ class Mixin:
     except error.Error as e:
       return self.fail(*e.args)
 
-  @require_logged_in
   @api('/transaction/create', method = 'POST')
+  @require_logged_in
   def transaction_create(self,
                          id_or_email,
                          files,
@@ -226,8 +226,8 @@ class Mixin:
       }
     )
 
-  @require_logged_in
   @api('/transactions')
+  @require_logged_in
   def transcations_get(self,
                        filter = transaction_status.final + [transaction_status.CREATED],
                        type = False,
@@ -240,8 +240,8 @@ class Mixin:
                               count = count,
                               offset = offset)
 
-  @require_logged_in
   @api('/transactions', method = 'POST')
+  @require_logged_in
   def transaction_post(self,
                        filter = transaction_status.final + [transaction_status.CREATED],
                        type = False,
@@ -268,8 +268,8 @@ class Mixin:
         'recipient_device_id': str(device_id),
       })
 
-  @require_logged_in
   @api('/transaction/update', method = 'POST')
+  @require_logged_in
   def transaction_update(self,
                          transaction_id,
                          status,
@@ -353,8 +353,8 @@ class Mixin:
       )
       return transaction_id
 
-  @require_logged_in
   @api('/transaction/search')
+  @require_logged_in
   def transaction_search(self, text, limit, offset):
     text = ascii_string(text)
     query = {
@@ -409,8 +409,8 @@ class Mixin:
         new = True,
         )
 
-  @require_logged_in
   @api('/transaction/connect_device', method = "POST")
+  @require_logged_in
   def connect_device(self,
                      _id: bson.ObjectId,
                      device_id: uuid.UUID, # Can be determined by session.
@@ -481,8 +481,8 @@ class Mixin:
 
     return self.success()
 
-  @require_logged_in
   @api('/transaction/<transaction_id>/endpoints', method = "POST")
+  @require_logged_in
   def endpoints(self,
                 transaction_id: bson.ObjectId,
                 device_id: uuid.UUID, # Can be determined by session.

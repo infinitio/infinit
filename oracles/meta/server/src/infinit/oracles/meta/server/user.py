@@ -155,8 +155,8 @@ class Mixin:
         }
       )
 
-  @require_logged_in
   @api('/logout', method = 'POST')
+  @require_logged_in
   def logout(self):
     user = self.user
     with elle.log.trace("%s: logout" % user['email']):
@@ -358,8 +358,9 @@ class Mixin:
   ## ------ ##
   ## Search ##
   ## ------ ##
-  @require_logged_in
+
   @api('/user/search', method = 'POST')
+  @require_logged_in
   def user_search(self, text, limit = 5, offset = 0):
     """Search the ids of the users with handle or fullname matching text.
 
@@ -410,8 +411,8 @@ class Mixin:
     else:
       return self.success(self.extract_user_fields(user))
 
-  @require_logged_in
   @api('/user/from_handle/<handle>/view')
+  @require_logged_in
   def view_from_handle(self, handle):
     """Get user information from handle
     """
@@ -422,7 +423,6 @@ class Mixin:
       else:
         return self.success(self.extract_user_fields(user))
 
-#  @require_logged_in
   @api('/user/from_public_key')
   def view_from_publick_key(self, public_key):
     with elle.log.trace("search user from pk: %s", public_key):
@@ -460,15 +460,15 @@ class Mixin:
             recipient_ids = {peer},
           )
 
-  @require_logged_in
   @api('/user/swaggers')
+  @require_logged_in
   def swaggers(self):
     user = self.user
     with elle.log.trace("%s: get his swaggers" % user['email']):
       return self.success({"swaggers" : list(user["swaggers"].keys())})
 
-  @require_admin
   @api('/user/add_swagger', method = 'POST')
+  @require_admin
   def add_swagger(self,
                   admin_token,
                   user1: bson.ObjectId,
@@ -530,8 +530,9 @@ class Mixin:
   ## ---------- ##
   ## Favortites ##
   ## ---------- ##
-  @require_logged_in
+
   @api('/user/favorite', method = 'POST')
+  @require_logged_in
   def favorite(self,
                user_id: bson.ObjectId):
     """Add a user to favorites
@@ -543,8 +544,8 @@ class Mixin:
     self.database.users.update(query, update)
     return self.success()
 
-  @require_logged_in
   @api('/user/unfavorite', method = 'POST')
+  @require_logged_in
   def unfavorite(self,
                  user_id: bson.ObjectId):
     """remove a user to favorites
@@ -559,8 +560,9 @@ class Mixin:
   ## ---- ##
   ## Edit ##
   ## ---- ##
-  @require_logged_in
+
   @api('/user/edit', method = 'POST')
+  @require_logged_in
   def edit(self,
            fullname,
            handle):
@@ -601,8 +603,8 @@ class Mixin:
       update)
     return self.success()
 
-  @require_logged_in
   @api('/user/invite', method = 'POST')
+  @require_logged_in
   def invite(self, email):
     """Invite a user to infinit.
     This function is reserved for admins.
@@ -626,8 +628,8 @@ class Mixin:
       )
       return self.success()
 
-  @require_logged_in
   @api('/user/invited')
+  @require_logged_in
   def invited(self):
     """Return the list of users invited.
     """
@@ -638,8 +640,8 @@ class Mixin:
         fields = {'email': True, '_id': False}
     )))})
 
-  @require_logged_in
   @api('/user/self')
+  @require_logged_in
   def user_self(self):
     """Return self data."""
     user = self.user
@@ -661,8 +663,8 @@ class Mixin:
       'created_at': user.get('created_at', 0),
     })
 
-  @require_logged_in
   @api('/user/minimum_self')
+  @require_logged_in
   def minimum_self(self):
     """Return minimum self data.
     """
@@ -673,8 +675,8 @@ class Mixin:
         'identity': user['identity'],
       })
 
-  @require_logged_in
   @api('/user/remaining_invitations')
+  @require_logged_in
   def invitations(self):
     """Return the number of invitations remainings.
     """
@@ -697,8 +699,8 @@ class Mixin:
       from bottle import static_file
       return static_file('place_holder_avatar.png', root = os.path.dirname(__file__), mimetype = 'image/png')
 
-  @require_logged_in
   @api('/user/avatar', method = 'POST')
+  @require_logged_in
   def set_avatar(self):
     from bottle import request
     from io import BytesIO
@@ -801,8 +803,9 @@ class Mixin:
   ## ----- ##
   ## Debug ##
   ## ----- ##
-  @require_logged_in
+
   @api('/debug', method = 'POST')
+  @require_logged_in
   def message(self,
               sender_id: bson.ObjectId,
               recipient_id: bson.ObjectId,
