@@ -81,12 +81,16 @@ class Meta(bottle.Bottle,
       self.__register(function)
     # Notifier.
     self.notifier = notifier.Notifier(self.__database)
+    # Share
+    share_path = '/'.join(__file__.split('/')[:-9])
+    share_path = '%s/share/infinit/meta/server/' % share_path
+    self.__share_path = share_path
+    # Resources
+    self.__resources_path = '%s/resources' % share_path
     # Templates
-    mako_path = '/'.join(__file__.split('/')[:-9])
-    mako_path = '%s/share/infinit/meta/server/templates' % mako_path
-    print(mako_path)
+    self.__mako_path = '%s/templates' % share_path
     self.__mako = mako.lookup.TemplateLookup(
-      directories = [mako_path]
+      directories = [self.__mako_path]
     )
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
@@ -112,7 +116,7 @@ class Meta(bottle.Bottle,
                      in itertools.zip_longest(
                        reversed(spec.args),
                        reversed([True] * len(defaults))))
-    for arg in re.findall('<(\\w*)>', rule):
+    for arg in re.findall('<(\\w*)(?::\\w*(?::\\w*)?)?>', rule):
       if arg in spec_args:
         del spec_args[arg]
       elif spec.varkw is None:
@@ -185,3 +189,19 @@ class Meta(bottle.Bottle,
 
   def bad_request(self, text = None):
     bottle.abort(400, text)
+
+  @api('/js/<filename:path>')
+  def static_javascript(self, filename):
+    return self.__static('js/%s' % filename)
+
+  @api('/css/<filename:path>')
+  def static_css(self, filename):
+    return self.__static('css/%s' % filename)
+
+  @api('/favicon.ico')
+  def static_css(self):
+    return self.__static('favicon.ico')
+
+  def __static(self, filename):
+    return bottle.static_file(
+      filename, root = self.__resources_path)

@@ -75,6 +75,17 @@ def configure(elle,
     'templates/metrics/transactions.html',
   )
 
+  resources = drake.nodes(
+    'resources/css/normalize.min.css',
+    'resources/css/main.less',
+    'resources/css/normalize.css',
+    'resources/css/main.css',
+    'resources/favicon.ico',
+    'resources/js/vendor/jquery-1.10.1.min.js',
+    'resources/js/vendor/modernizr-2.6.2.min.js',
+    'resources/js/main.js',
+  )
+
   ## ----- ##
   ## Build ##
   ## ----- ##
@@ -103,6 +114,7 @@ def configure(elle,
   build_binary = drake.copy(drake.node('meta'), 'bin')
   build << build_binary
   build << drake.copy(templates, 'share/infinit/meta/server')
+  build << drake.copy(resources, 'share/infinit/meta/server')
 
   ## ------- ##
   ## Install ##
