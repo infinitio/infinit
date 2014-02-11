@@ -73,6 +73,7 @@ def configure(elle,
   templates = drake.nodes(
     'templates/base.html',
     'templates/metrics/transactions.html',
+    'templates/metrics/waterfall.html',
   )
 
   resources = drake.nodes(

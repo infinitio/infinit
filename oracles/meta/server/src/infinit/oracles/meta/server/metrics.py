@@ -106,8 +106,18 @@ class Metrics:
     }
 
   @api('/metrics/transactions.html')
-  def metrics_transactions_html(self):
+  def metrics_transactions_html(self,
+                                start : datetime.datetime = None,
+                                end : datetime.datetime = None,
+                                group = None):
     tpl = self._Meta__mako.get_template('/metrics/transactions.html')
+    transactions = self.metrics_transactions(
+      start = start, end = end, group = group)['result']
+    return tpl.render(transactions = transactions)
+
+  @api('/metrics/waterfall.html')
+  def metrics_transactions_html(self):
+    tpl = self._Meta__mako.get_template('/metrics/waterfall.html')
     return tpl.render()
 
   @api('/metrics/transactions/groups', method = 'GET')

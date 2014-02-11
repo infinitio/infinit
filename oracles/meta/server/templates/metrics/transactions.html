@@ -1,5 +1,4 @@
-<%inherit file="/base.html"/>
+%for transaction in transactions:
+<h1><b>${transaction['sender']['fullname']}</b> to <marquee>${transaction['sender']['fullname']}</marquee></h1>
 
-<h1>Le waterfall</h1>
-
-tatatadz
+%endfor
