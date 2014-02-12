@@ -37,11 +37,11 @@ class api:
             m = '%r is not a valid %s' % (value, annotation.__name__)
             bottle.abort(400, m)
       return method(self, *args, **kwargs)
-    method.__route__ = self.__route
-    method.__method__ = self.__method
-    api.functions.append(method)
+    annotation_mapper.__route__ = self.__route
+    annotation_mapper.__method__ = self.__method
     annotation_mapper.__api__ = None
     annotation_mapper.__name__ = method.__name__
+    api.functions.append(annotation_mapper)
     return annotation_mapper
 
 def require_logged_in(method):
