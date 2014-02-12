@@ -23,6 +23,8 @@ statuses = {
   7: ("failed"),
 }
 
+statuses_back = dict((value, key) for key, value in statuses.items())
+
 class Metrics:
 
   def __init__(self):
@@ -33,7 +35,8 @@ class Metrics:
   def metrics_transactions(self,
                            start : datetime.datetime = None,
                            end : datetime.datetime = None,
-                           group = None):
+                           group = None,
+                           status = None):
     # if bottle.request.certificate != 'quentin.hocquet@infinit.io':
     #   self.forbiden()
     if start is None:
@@ -42,6 +45,11 @@ class Metrics:
     if end is not None:
       match['$lte'] = calendar.timegm(end.timetuple())
     match = {'ctime': match}
+    if status is not None:
+      status_i = statuses_back.get(status, None)
+      if status_i is None:
+        self.bad_request('invalid status: %s' % status)
+      match['status'] = status_i
     if group is not None:
       group = self.__database.groups.find_one({'name': group})
       if group is None:
