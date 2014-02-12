@@ -29,7 +29,8 @@ class api:
         if arg is not None and value is not None:
           try:
             if annotation is datetime.datetime:
-              value = iso8601.parse_date(value)
+              if not isinstance(value, datetime.datetime):
+                value = iso8601.parse_date(value)
             else:
               value = annotation(value)
             kwargs[arg] = value
