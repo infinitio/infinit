@@ -31,6 +31,9 @@ class Metrics:
     self.__database = self.database.waterfall
     self.__database.groups.ensure_index([("name", 1)], unique = True)
 
+  def __format_date(self, date):
+    return datetime.datetime.utcfromtimestamp(date).isoformat()
+
   @api('/metrics/transactions')
   def metrics_transactions(self,
                            start : datetime.datetime = None,
@@ -62,7 +65,7 @@ class Metrics:
             {'recipient_id': {'$in': group['members']}},
           ]}
         ]}
-    transactions = self.database.transactions.aggregate([
+    days = self.database.transactions.aggregate([
       # Keep only recent transaction
       {'$match': match},
       {'$sort': {'ctime': -1}},
@@ -77,25 +80,42 @@ class Metrics:
         'size': '$total_size',
         'files': '$files',
       }},
+      # Group by day
+      {'$group': {
+        '_id': '$date',
+        'count': {'$sum': 1},
+        'size': {'$sum': '$size'},
+        'transactions': {'$push': {
+          'time': '$time',
+          'date': '$date',
+          'sender_id': '$sender_id',
+          'recipient_id': '$recipient_id',
+          'status': '$status',
+          'size': '$size',
+          'files': '$files',
+        }},
+      }},
     ])['result']
-    transactions = list(transactions)
+    days = list(days)
+    print(days)
     ids = set()
     senders = {}
     recipients = {}
-    for transaction in transactions:
-      sender_id = transaction['sender_id']
-      recipient_id = transaction['recipient_id']
-      senders.setdefault(sender_id, []).append(transaction)
-      recipients.setdefault(recipient_id, []).append(transaction)
-      ids.add(sender_id)
-      ids.add(recipient_id)
-      del transaction['sender_id']
-      del transaction['recipient_id']
-      transaction['status'] = statuses[transaction['status']]
-      transaction['date'] = datetime.datetime.utcfromtimestamp(
-        transaction['date']).isoformat()
-      transaction['time'] = datetime.datetime.utcfromtimestamp(
-        transaction['time']).isoformat()
+    for day in days:
+      day['date'] = self.__format_date(day['_id'])
+      del day['_id']
+      for transaction in day['transactions']:
+        sender_id = transaction['sender_id']
+        recipient_id = transaction['recipient_id']
+        senders.setdefault(sender_id, []).append(transaction)
+        recipients.setdefault(recipient_id, []).append(transaction)
+        ids.add(sender_id)
+        ids.add(recipient_id)
+        del transaction['sender_id']
+        del transaction['recipient_id']
+        transaction['status'] = statuses[transaction['status']]
+        transaction['date'] = self.__format_date(transaction['date'])
+        transaction['time'] = self.__format_date(transaction['time'])
     for user in self.database.users.aggregate([
         {'$match': {'_id': {'$in': list(ids)}}},
         {'$project': {
@@ -109,8 +129,9 @@ class Metrics:
         transaction['sender'] = user
       for transaction in recipients.get(user['_id'], ()):
         transaction['recipient'] = user
+      del user['_id']
     return {
-      'result': transactions,
+      'result': days,
     }
 
   @api('/metrics/transactions.html')
