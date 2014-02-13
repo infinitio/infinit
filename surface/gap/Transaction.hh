@@ -5,7 +5,7 @@
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
 # include <surface/gap/Exception.hh>
-# include <surface/gap/TransferMachine.hh>
+# include <surface/gap/TransactionMachine.hh>
 
 
 # include <infinit/oracles/trophonius/Client.hh>
@@ -65,7 +65,7 @@ namespace surface
 
       Transaction(State const& state,
                   uint32_t id,
-                  TransferMachine::Snapshot data);
+                  TransactionMachine::Snapshot data);
 
       Transaction(Transaction&&) = default;
 
@@ -113,7 +113,7 @@ namespace surface
       `------------*/
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
-      ELLE_ATTRIBUTE(std::unique_ptr<TransferMachine>, machine);
+      ELLE_ATTRIBUTE(std::unique_ptr<TransactionMachine>, machine);
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_state_thread);
       ELLE_ATTRIBUTE_r(gap_TransactionStatus, last_status);
       /*--------.

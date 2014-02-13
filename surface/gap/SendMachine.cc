@@ -22,9 +22,9 @@ namespace surface
     using TransactionStatus = infinit::oracles::Transaction::Status;
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
-                             std::shared_ptr<TransferMachine::Data> data,
+                             std::shared_ptr<TransactionMachine::Data> data,
                              bool):
-      TransferMachine(state, id, std::move(data)),
+      TransactionMachine(state, id, std::move(data)),
       _create_transaction_state(
         this->_machine.state_make(
           "create transaction", std::bind(&SendMachine::_create_transaction, this))),
@@ -69,10 +69,10 @@ namespace surface
       // Cancel.
       this->_machine.transition_add(this->_create_transaction_state,
                                     this->_cancel_state,
-                                    reactor::Waitables{&this->_canceled}, true);
+                                    reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add(this->_wait_for_accept_state,
                                     this->_cancel_state,
-                                    reactor::Waitables{&this->_canceled}, true);
+                                    reactor::Waitables{&this->canceled()}, true);
       // Exception.
       this->_machine.transition_add_catch(
         this->_create_transaction_state, this->_fail_state);
@@ -93,7 +93,7 @@ namespace surface
 
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
-                             std::shared_ptr<TransferMachine::Data> data):
+                             std::shared_ptr<TransactionMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
       ELLE_WARN_SCOPE("%s: constructing machine for transaction data %s "
@@ -131,7 +131,7 @@ namespace surface
                              std::string const& recipient,
                              std::unordered_set<std::string>&& files,
                              std::string const& message,
-                             std::shared_ptr<TransferMachine::Data> data):
+                             std::shared_ptr<TransactionMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: send %s to %s", *this, files, recipient);
@@ -165,9 +165,9 @@ namespace surface
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::unordered_set<std::string> files,
-                             TransferMachine::State current_state,
+                             TransactionMachine::State current_state,
                              std::string const& message,
-                             std::shared_ptr<TransferMachine::Data> data):
+                             std::shared_ptr<TransactionMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
@@ -192,34 +192,34 @@ namespace surface
       this->_message = message;
       switch (current_state)
       {
-        case TransferMachine::State::NewTransaction:
+        case TransactionMachine::State::NewTransaction:
           elle::unreachable();
-        case TransferMachine::State::SenderCreateTransaction:
+        case TransactionMachine::State::SenderCreateTransaction:
           this->_run(this->_create_transaction_state);
           break;
-        case TransferMachine::State::SenderWaitForDecision:
+        case TransactionMachine::State::SenderWaitForDecision:
           this->_run(this->_wait_for_accept_state);
           break;
-        case TransferMachine::State::RecipientWaitForDecision:
-        case TransferMachine::State::RecipientAccepted:
+        case TransactionMachine::State::RecipientWaitForDecision:
+        case TransactionMachine::State::RecipientAccepted:
           elle::unreachable();
-        case TransferMachine::State::PublishInterfaces:
-        case TransferMachine::State::Connect:
-        case TransferMachine::State::PeerDisconnected:
-        case TransferMachine::State::PeerConnectionLost:
-        case TransferMachine::State::Transfer:
+        case TransactionMachine::State::PublishInterfaces:
+        case TransactionMachine::State::Connect:
+        case TransactionMachine::State::PeerDisconnected:
+        case TransactionMachine::State::PeerConnectionLost:
+        case TransactionMachine::State::Transfer:
           this->_run(this->_transfer_core_state);
           break;
-        case TransferMachine::State::Finished:
+        case TransactionMachine::State::Finished:
           this->_run(this->_finish_state);
           break;
-        case TransferMachine::State::Rejected:
+        case TransactionMachine::State::Rejected:
           this->_run(this->_reject_state);
           break;
-        case TransferMachine::State::Canceled:
+        case TransactionMachine::State::Canceled:
           this->_run(this->_cancel_state);
           break;
-        case TransferMachine::State::Failed:
+        case TransactionMachine::State::Failed:
           this->_run(this->_fail_state);
           break;
         default:
@@ -240,23 +240,23 @@ namespace surface
       {
         case TransactionStatus::accepted:
           ELLE_DEBUG("%s: open accepted barrier", *this)
-            this->_accepted.open();
+            this->accepted().open();
           break;
         case TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this)
-            this->_canceled.open();
+            this->canceled().open();
           break;
         case TransactionStatus::failed:
           ELLE_DEBUG("%s: open failed barrier", *this)
-            this->_failed.open();
+            this->failed().open();
           break;
         case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)
-            this->_finished.open();
+            this->finished().open();
           break;
         case TransactionStatus::rejected:
           ELLE_DEBUG("%s: open rejected barrier", *this)
-            this->_rejected.open();
+            this->rejected().open();
           break;
         case TransactionStatus::initialized:
           ELLE_DEBUG("%s: ignore status %s", *this, status);
@@ -272,7 +272,7 @@ namespace surface
     SendMachine::_create_transaction()
     {
       ELLE_TRACE_SCOPE("%s: create transaction", *this);
-      this->current_state(TransferMachine::State::SenderCreateTransaction);
+      this->current_state(TransactionMachine::State::SenderCreateTransaction);
 
       auto total_size =
         [] (std::unordered_set<std::string> const& files) -> uint64_t
@@ -348,7 +348,7 @@ namespace surface
     SendMachine::_wait_for_accept()
     {
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
-      this->current_state(TransferMachine::State::SenderWaitForDecision);
+      this->current_state(TransactionMachine::State::SenderWaitForDecision);
 
       // There are two ways to go to the next step:
       // - Checking local state, meaning that during the copy, we recieved an
@@ -367,14 +367,14 @@ namespace surface
           elle::sprintf("frete get %s", this->id()),
           [this] ()
           {
-            this->frete().run();
+            this->_frete->run();
           });
         scope.wait();
       };
     }
 
     frete::Frete&
-    SendMachine::frete()
+    SendMachine::frete(reactor::network::Socket& socket)
     {
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
@@ -385,8 +385,7 @@ namespace surface
 
         ELLE_DEBUG("create serializer");
         this->_serializer.reset(
-          new infinit::protocol::Serializer(sched,
-                                            *this->_host));
+          new infinit::protocol::Serializer(sched, socket));
         ELLE_DEBUG("create channels");
         this->_channels.reset(
           new infinit::protocol::ChanneledStream(sched, *this->_serializer));

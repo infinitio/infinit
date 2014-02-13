@@ -6,7 +6,7 @@
 # include <reactor/waitable.hh>
 # include <reactor/signal.hh>
 
-# include <surface/gap/TransferMachine.hh>
+# include <surface/gap/TransactionMachine.hh>
 
 # include <memory>
 # include <string>
@@ -17,20 +17,20 @@ namespace surface
   namespace gap
   {
     struct ReceiveMachine:
-      public TransferMachine
+      public TransactionMachine
     {
 
     public:
       // Construct from notification.
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
-                     std::shared_ptr<TransferMachine::Data> data);
+                     std::shared_ptr<TransactionMachine::Data> data);
 
       // Construct from snapshot (with current_state).
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
-                     TransferMachine::State const current_state,
-                     std::shared_ptr<TransferMachine::Data> data);
+                     TransactionMachine::State const current_state,
+                     std::shared_ptr<TransactionMachine::Data> data);
       virtual
       ~ReceiveMachine();
 
@@ -48,7 +48,7 @@ namespace surface
     private:
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
-                     std::shared_ptr<TransferMachine::Data> data,
+                     std::shared_ptr<TransactionMachine::Data> data,
                      bool);
 
     private:
@@ -81,7 +81,7 @@ namespace surface
 
     private:
       frete::Frete&
-      frete() override;
+      frete(reactor::network::Socket& socket) override;
 
     public:
       virtual

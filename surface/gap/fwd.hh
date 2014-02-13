@@ -5,13 +5,12 @@ namespace surface
 {
   namespace gap
   {
-    class TransferMachine;
-    class SendMachine;
     class ReceiveMachine;
-
+    class SendMachine;
     class State;
-
+    class TransactionMachine;
     class Transcaction;
+    class TransferMachine;
   }
 }
 

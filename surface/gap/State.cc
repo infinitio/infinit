@@ -29,7 +29,7 @@
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/SendMachine.hh>
 #include <surface/gap/State.hh>
-#include <surface/gap/TransferMachine.hh>
+#include <surface/gap/TransactionMachine.hh>
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");

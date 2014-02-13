@@ -19,9 +19,9 @@ namespace surface
     using TransactionStatus = infinit::oracles::Transaction::Status;
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
-                                   std::shared_ptr<TransferMachine::Data> data,
+                                   std::shared_ptr<TransactionMachine::Data> data,
                                    bool):
-      TransferMachine(state, id, std::move(data)),
+      TransactionMachine(state, id, std::move(data)),
       _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
@@ -43,13 +43,13 @@ namespace surface
       // Reject way.
       this->_machine.transition_add(this->_wait_for_decision_state,
                                     this->_reject_state,
-                                    reactor::Waitables{&this->_rejected});
+                                    reactor::Waitables{&this->rejected()});
 
       // Cancel.
-      this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(_accept_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(_reject_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(_transfer_core_state, _cancel_state, reactor::Waitables{&this->_canceled}, true);
+      this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
+      this->_machine.transition_add(_accept_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
+      this->_machine.transition_add(_reject_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
+      this->_machine.transition_add(_transfer_core_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
 
       // Exception.
       this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
@@ -60,8 +60,8 @@ namespace surface
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
-                                   TransferMachine::State const current_state,
-                                   std::shared_ptr<TransferMachine::Data> data):
+                                   TransactionMachine::State const current_state,
+                                   std::shared_ptr<TransactionMachine::Data> data):
       ReceiveMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
@@ -69,35 +69,35 @@ namespace surface
 
       switch (current_state)
       {
-        case TransferMachine::State::NewTransaction:
+        case TransactionMachine::State::NewTransaction:
           //
           break;
-        case TransferMachine::State::SenderCreateTransaction:
-        case TransferMachine::State::SenderWaitForDecision:
+        case TransactionMachine::State::SenderCreateTransaction:
+        case TransactionMachine::State::SenderWaitForDecision:
           elle::unreachable();
-        case TransferMachine::State::RecipientWaitForDecision:
+        case TransactionMachine::State::RecipientWaitForDecision:
           this->_run(this->_wait_for_decision_state);
           break;
-        case TransferMachine::State::RecipientAccepted:
+        case TransactionMachine::State::RecipientAccepted:
           this->_run(this->_accept_state);
           break;
-        case TransferMachine::State::PublishInterfaces:
-        case TransferMachine::State::Connect:
-        case TransferMachine::State::PeerDisconnected:
-        case TransferMachine::State::PeerConnectionLost:
-        case TransferMachine::State::Transfer:
+        case TransactionMachine::State::PublishInterfaces:
+        case TransactionMachine::State::Connect:
+        case TransactionMachine::State::PeerDisconnected:
+        case TransactionMachine::State::PeerConnectionLost:
+        case TransactionMachine::State::Transfer:
           this->_run(this->_transfer_core_state);
           break;
-        case TransferMachine::State::Finished:
+        case TransactionMachine::State::Finished:
           this->_run(this->_finish_state);
           break;
-        case TransferMachine::State::Rejected:
+        case TransactionMachine::State::Rejected:
           this->_run(this->_reject_state);
           break;
-        case TransferMachine::State::Canceled:
+        case TransactionMachine::State::Canceled:
           this->_run(this->_cancel_state);
           break;
-        case TransferMachine::State::Failed:
+        case TransactionMachine::State::Failed:
           this->_run(this->_fail_state);
           break;
         default:
@@ -107,7 +107,7 @@ namespace surface
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
-                                   std::shared_ptr<TransferMachine::Data> data):
+                                   std::shared_ptr<TransactionMachine::Data> data):
       ReceiveMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
@@ -156,15 +156,15 @@ namespace surface
       {
         case TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this)
-            this->_canceled.open();
+            this->canceled().open();
           break;
         case TransactionStatus::failed:
           ELLE_DEBUG("%s: open failed barrier", *this)
-            this->_failed.open();
+            this->failed().open();
           break;
         case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)
-            this->_finished.open();
+            this->finished().open();
           break;
         case TransactionStatus::accepted:
         case TransactionStatus::rejected:
@@ -200,7 +200,7 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: open rejected barrier %s", *this, this->transaction_id());
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
-      if (!this->_rejected.opened())
+      if (!this->rejected().opened())
       {
         this->state().composite_reporter().transaction_ended(
           this->transaction_id(),
@@ -209,21 +209,21 @@ namespace surface
         );
       }
 
-      this->_rejected.open();
+      this->rejected().open();
     }
 
     void
     ReceiveMachine::_wait_for_decision()
     {
       ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
-      this->current_state(TransferMachine::State::RecipientWaitForDecision);
+      this->current_state(TransactionMachine::State::RecipientWaitForDecision);
     }
 
     void
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
-      this->current_state(TransferMachine::State::RecipientAccepted);
+      this->current_state(TransactionMachine::State::RecipientAccepted);
 
       try
       {
@@ -254,14 +254,14 @@ namespace surface
           elle::sprintf("download %s", this->id()),
           [this] ()
           {
-            this->frete().get(boost::filesystem::path{this->state().output_dir()});
-            this->_finished.open();
+            this->_frete->get(boost::filesystem::path{this->state().output_dir()});
+            this->finished().open();
           });
         scope.run_background(
           elle::sprintf("frete get %s", this->id()),
           [this] ()
           {
-            this->frete().run();
+            this->_frete->run();
           });
 
         scope.wait();
@@ -269,7 +269,7 @@ namespace surface
     }
 
     frete::Frete&
-    ReceiveMachine::frete()
+    ReceiveMachine::frete(reactor::network::Socket& socket)
     {
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
@@ -279,8 +279,7 @@ namespace surface
 
         ELLE_DEBUG("create serializer");
         this->_serializer.reset(
-          new infinit::protocol::Serializer(sched,
-                                            *this->_host));
+          new infinit::protocol::Serializer(sched, socket));
         ELLE_DEBUG("create channels");
         this->_channels.reset(
           new infinit::protocol::ChanneledStream(sched, *this->_serializer));

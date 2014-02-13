@@ -74,11 +74,11 @@ namespace surface
               boost::filesystem::remove(snapshot_path);
             });
 
-          std::unique_ptr<TransferMachine::Snapshot> snapshot;
+          std::unique_ptr<TransactionMachine::Snapshot> snapshot;
           try
           {
             snapshot.reset(
-              new TransferMachine::Snapshot(
+              new TransactionMachine::Snapshot(
                 elle::serialize::from_file(snapshot_path)));
           }
           catch (std::exception const&)

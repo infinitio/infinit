@@ -1,7 +1,7 @@
 #include <surface/gap/Transaction.hh>
 #include <surface/gap/enums.hh>
 
-#include <surface/gap/TransferMachine.hh>
+#include <surface/gap/TransactionMachine.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/SendMachine.hh>
 #include <surface/gap/Exception.hh>
@@ -22,7 +22,7 @@ namespace surface
     static
     gap_TransactionStatus
     _transaction_status(Transaction::Data const& data,
-                        TransferMachine::State state)
+                        TransactionMachine::State state)
     {
       switch (data.status)
       {
@@ -37,35 +37,35 @@ namespace surface
         default:
           switch (state)
           {
-            case TransferMachine::State::NewTransaction:
-            case TransferMachine::State::SenderCreateTransaction:
+            case TransactionMachine::State::NewTransaction:
+            case TransactionMachine::State::SenderCreateTransaction:
               // The sender is pending creating the transaction.
               return gap_transaction_pending;
-            case TransferMachine::State::SenderWaitForDecision:
+            case TransactionMachine::State::SenderWaitForDecision:
               return gap_transaction_waiting_for_accept;
-            case TransferMachine::State::RecipientWaitForDecision:
+            case TransactionMachine::State::RecipientWaitForDecision:
               // The recipient is pending creating waiting for decision.
               return gap_transaction_waiting_for_accept;
-            case TransferMachine::State::RecipientAccepted:
+            case TransactionMachine::State::RecipientAccepted:
               return gap_transaction_accepted;
-            case TransferMachine::State::PublishInterfaces:
-            case TransferMachine::State::Connect:
-            case TransferMachine::State::PeerDisconnected:
-            case TransferMachine::State::PeerConnectionLost:
+            case TransactionMachine::State::PublishInterfaces:
+            case TransactionMachine::State::Connect:
+            case TransactionMachine::State::PeerDisconnected:
+            case TransactionMachine::State::PeerConnectionLost:
               return gap_transaction_preparing;
-            case TransferMachine::State::Transfer:
+            case TransactionMachine::State::Transfer:
               return gap_transaction_running;
-            case TransferMachine::State::Over:
+            case TransactionMachine::State::Over:
               return gap_transaction_cleaning;
-            case TransferMachine::State::Finished:
+            case TransactionMachine::State::Finished:
               return gap_transaction_finished;
-            case TransferMachine::State::Rejected:
+            case TransactionMachine::State::Rejected:
               return gap_transaction_rejected;
-            case TransferMachine::State::Canceled:
+            case TransactionMachine::State::Canceled:
               return gap_transaction_canceled;
-            case TransferMachine::State::Failed:
+            case TransactionMachine::State::Failed:
               return gap_transaction_failed;
-            case TransferMachine::State::None:
+            case TransactionMachine::State::None:
               return gap_transaction_none;
           }
       }
@@ -129,7 +129,7 @@ namespace surface
 
     Transaction::Transaction(State const& state,
                              uint32_t id,
-                             TransferMachine::Snapshot snapshot):
+                             TransactionMachine::Snapshot snapshot):
       _id(id),
       _data(new Data{std::move(snapshot.data)}),
       _machine(),
@@ -291,7 +291,7 @@ namespace surface
     Transaction::last_status() const
     {
       if (this->_last_status == gap_transaction_none)
-        return _transaction_status(*this->data(), TransferMachine::State::None);
+        return _transaction_status(*this->data(), TransactionMachine::State::None);
 
       return this->_last_status;
     }
