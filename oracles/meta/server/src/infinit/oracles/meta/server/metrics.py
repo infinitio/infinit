@@ -136,16 +136,17 @@ class Metrics:
   def metrics_transactions_html(self,
                                 start : datetime.datetime = None,
                                 end : datetime.datetime = None,
-                                group = None):
+                                group = None,
+                                status = None):
     tpl = self._Meta__mako.get_template('/metrics/transactions.html')
-    transactions = self.metrics_transactions(
-      start = start, end = end, group = group)['result']
-    return tpl.render(transactions = transactions)
+    transaction_days = self.metrics_transactions(
+      start = start, end = end, group = group, status = status)['result']
+    return tpl.render(transaction_days = transaction_days, http_host = bottle.request.environ['HTTP_HOST'])
 
   @api('/metrics/waterfall.html')
   def metrics_transactions_html(self):
     tpl = self._Meta__mako.get_template('/metrics/waterfall.html')
-    return tpl.render()
+    return tpl.render(root = '..', title = 'waterfall')
 
   @api('/metrics/transactions/groups', method = 'GET')
   def groups(self):

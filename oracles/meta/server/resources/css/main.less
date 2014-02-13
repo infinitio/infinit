@@ -73,11 +73,186 @@ textarea {
 @infinitred: #F25E5A;
 @infinitblack: #515149;
 
+@transactionbg: #f6f6f6;
+
 @montserrat: 'Montserrat', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
 @helvetica: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
 
+h1, h2, h3, h4, h5 { font-weight: 300; }
+
+body { font-family: @helvetica; color: @infinitblack; }
+
+header {
+  height: 25px; padding: 10px 0 17px 0;  background: white; z-index: 99; position: absolute; width: 100%; padding-top: 5px; display: block;
+  -webkit-box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); 
+  
+  .logo { float:left; margin-top: 0; height: 35px; padding-left: 10px; 
+    img { height: 35px; } 
+  }
+  
+  .menu { list-style-type: none; float: right; padding: 0; margin: 0; padding-top: 8px; padding-right: 10px;
+    li { float: left; margin-left: 10px;
+      a { 
+        font-size: 0.7em; font-family: @montserrat; text-transform: uppercase; color: @infinitblack; display: block; padding: 5px 7px;
+        text-decoration: none;
+        &:hover { color: @infinitred; }
+        &.current { color: lighten(@infinitblack, 35%); }
+        &.register { background: @infinitred; color: white; border-radius: 5px; padding: 5px 7px;}
+      }
+      
+      .avatar { width: 25px; height: 25px; border-radius: 25px; }
+    }
+  }
+}  
+
+.wrapper { margin: 0 auto; max-width: 960px; }
+
+#content { 
+  padding-top: 60px; margin: 0; 
+  
+  a { color: @infinitblue; text-decoration: none;
+    &:hover { color: darken(@infinitblue, 20%); }
+  }
+}
+
+footer { height: 100px; clear: both; }
 
 
+/* ==========================================================================
+   Waterfall
+   ========================================================================== */
+   
+body.waterfall {
+  
+  #content { 
+    h1 { margin: 0; }
+    
+    .transactions {
+      float: left; width: 75%; margin-top: 50px; 
+      &.loading { background: url('../images/loading.gif') no-repeat; min-height: 64px;}
+      
+      .totalsize { 
+        float: left; color: lighten(gray, 30%); padding: 3px 5px;  
+        font-family: @montserrat; font-size: 0.7em; width: 60px; display: block;
+        &.mega_file { color: lighten(gray, 10%); }
+        &.giga_file { color: darken(gray, 10%); }
+      }
+      
+      h2 { 
+        font-size: 1.3em; font-weight: 300; margin-top: 40px;
+        &:first-child { margin-top: 0; }
+        
+        a { font-weight: strong; }
+        span { font-family: @montserrat; color: lighten(gray, 15%); font-size: 0.6em; 
+          &.total_size { background: darken(white, 8%); padding: 2px 5px; }
+          &.total_count { }
+        }
+        
+      }
+      .transaction {
+        clear: both; min-height: 25px; padding: 5px 10px;  margin-right: 40px; background: white; 
+        margin-bottom: 3px; border-radius: 5px;
+        &:hover, &.extended { background: @transactionbg; cursor: pointer; }
+        &.extended { margin-bottom: 15px; }
+         
+        .summary {
+          img { float: left; height: 24px; width: 24px; border-radius: 24px; margin-right: 7px; }
+          h3 { float: left; margin: 0; font-size: 1em; 
+            a { color: @infinitblack; 
+              &:hover { color: @infinitblue; }
+            }
+          }
+          .arrow { float: left; display: block; margin: 0 10px; }
+          .status { 
+            float: left; font-size: 0.6em; font-family: @montserrat; text-transform: uppercase;
+            padding: 2px 5px; margin-left: 10px; margin-top: 3px;
+            
+            &.failed { background: #fd9a72; color: #AF5F45; border-bottom: 2px solid darken(#fd9a72, 15%);}
+            &.finished { background: #cdef6e; color: #6A9D5A; border-bottom: 2px solid darken(#cdef6e, 20%); }
+            &.accepted { background: #f0f18e; color: #A6A767; border-bottom: 2px solid darken(#f0f18e, 20%); }
+            &.created, &.initialized { background: #ededed; color: #9D9D9D; border-bottom: 2px solid darken(#ededed, 15%);}
+            &.rejected, &.canceled { background: #b7b7b7; color: #666363; border-bottom: 2px solid darken(#b7b7b7, 15%); }
+          }
+          .date { color: lighten(gray, 20%); float: right; font-size: 0.8em; display: none; padding-top: 5px; padding-right:5px;}
+          
+          .tooltip { display: none;
+            
+          }
+          
+        }
+        .details { display: none; font-size: 0.8em; padding-left: 75px;
+          clear: both; border-top: 1px solid darken(@transactionbg, 5%); margin-top: 32px; padding-bottom: 5px;
+          
+          p { margin: 0; padding: 0; }
+          p.files { padding: 10px 0 0px 0; color: lighten(gray, 20%);
+            strong { color: @infinitblack;} 
+          }
+          ul { margin: 0; padding-left: 17px; padding-top: 5px;}
+        }
+      }
+    }
+    
+    .sidebar { 
+      width: 230px; background: @transactionbg; border-radius: 5px; padding: 15px; font-size: 0.8em; z-index: 2;
+      position: fixed; left: 50%; margin-left: 215px; margin-top: 20px;
+      
+      label { text-transform: uppercase; font-family: @montserrat; margin: 10px; display: block; } 
+      .date, .status, .groups { margin-bottom: 20px; }
+      .date { margin-bottom: 20px;
+        #datepicker { 
+          padding: 8px 10px; font-size: 0.9em; border-radius: 3px; border: 1px solid lighten(gray, 20%); margin-left: 11px;
+          color: @infinitblack; font-family: @montserrat; width: 182px;
+        }
+      }
+      .status, .views {
+        li a {
+          &.active { color: @infinitblack; }
+        }
+      }
+      .groups {}
+    }
+  }
+}   
+
+.daterangepicker {
+  &.dropdown-menu {display: none;}
+  
+  .btn { 
+    display: inline-block; padding: 6px 12px; margin-bottom: 0; outline: none;
+    font-size: 14px; font-weight: normal; line-height: 1.428571429; text-align: center; white-space: nowrap; 
+    vertical-align: middle; cursor: pointer; border-radius: 4px; -webkit-user-select: none;
+  }
+  .applyBtn { background-color: #5cb85c; border: 1px solid #4cae4c; color: #fff;
+    &:hover { background-color: #47a447; border-color: #398439;}
+  }
+  .cancelBtn { color: #333; background-color: #fff; border: 1px solid #ccc;
+    &:hover { background-color: #ebebeb; border-color: #adadad; }
+  }
+}
+
+.qtip-bootstrap {
+  min-width: 320px;
+  
+  .qtip-content { padding: 0px; }
+  img { float: left; width: 85px; border-radius: 100px; margin-right: 15px; padding: 10px 0 0 10px;}
+  .infos { 
+    float: left;
+    h3 { margin: 0; margin-top: 20px; font-size: 1.4em; }
+    p { font-size: @helvetica; font-weight: 300;  margin: 0;
+      &.handle { margin-top: 10px; }
+    }
+  }
+  ul { clear: both; list-style-type: none; padding: 0; width: 100%;  
+    li { float: left; width: 50%; margin-top: 20px; border-top:1px solid lighten(gray, 30%); 
+      &:first-child {  }
+      
+      a { display: block; text-decoration: none; color: @infinitblack; display: block; width: 100%; background: darken(white, 5%);
+        text-align: center; font-size: 0.9em; padding: 8px 0 6px; border-top: 1px solid white; 
+        &:hover { background: darken(white, 8%); }
+      }
+    }
+  }
+}
 
 /* ==========================================================================
    Media Queries

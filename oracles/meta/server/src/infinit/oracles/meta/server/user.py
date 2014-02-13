@@ -688,6 +688,7 @@ class Mixin:
   @api('/user/<id>/avatar')
   def get_avatar(self,
                  id: bson.ObjectId):
+    print(id)
     user = self._user_by_id(id, ensure_existence = False)
     image = user and user.get('avatar')
     if image:

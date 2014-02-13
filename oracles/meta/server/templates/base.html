@@ -6,19 +6,42 @@
     <title>Le Waterfall</title>
     <meta name="description" content="le waterfall">
     <meta name="viewport" content="width=device-width">
+    <link rel="icon" href="/favicon.ico" />
+    
+    <link rel="stylesheet" href="${root}/css/normalize.min.css">
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
+    <link rel="stylesheet" href="http://cdn.jsdelivr.net/qtip2/2.2.0/jquery.qtip.min.css">
+    <link rel="stylesheet" type="text/css" href="${root}/css/daterangepicker-bs3.css" />
+    <link rel="stylesheet" href="${root}/css/main.css"> 
   
-    <link rel="stylesheet" href="css/normalize.min.css">
-    <link rel="stylesheet" href="css/main.css">
-  
-    <script src="js/vendor/modernizr-2.6.2.min.js"></script>
+    <script src="${root}/js/vendor/modernizr-2.6.2.min.js"></script> 
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+    <script type="text/javascript" src="${root}/js/vendor/moment.min.js"></script>
+    <script type="text/javascript" src="${root}/js/vendor/daterangepicker.js"></script>
+    <script type="text/javascript" src="http://cdn.jsdelivr.net/qtip2/2.2.0/jquery.qtip.min.js"></script>
+    <script type="text/javascript" src="http://imagesloaded.desandro.com/imagesloaded.pkgd.min.js"></script>
+    
+    <script src="${root}/js/main.js"></script>
   </head>
   
-  <body>
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
-    <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
   
-    <script src="js/main.js"></script>
+  <body class="${title}">
+  
+    <header>
+      <div class="wrapper">
+        <div class="logo"><a href="http://infinit.io"><img src="${root}/images/logo.png" /></a></div>
+        <ul class="menu">
+          <li><a href="/metrics/waterfall.html">Waterfall</a></li>
+          <li><a href="#">Metrics</a></li>
+        </ul>
+      </div>
+    </header>
     
-    ${self.body()}
+    <div id="content">
+      ${self.body()}
+    </div>
+    
+    <footer></footer>
+    
   </body>
 </html>

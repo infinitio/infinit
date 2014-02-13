@@ -197,6 +197,10 @@ class Meta(bottle.Bottle,
   @api('/css/<filename:path>')
   def static_css(self, filename):
     return self.__static('css/%s' % filename)
+  
+  @api('/images/<filename:path>')
+  def static_images(self, filename):
+    return self.__static('images/%s' % filename)
 
   @api('/favicon.ico')
   def static_css(self):

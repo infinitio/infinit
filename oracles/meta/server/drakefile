@@ -81,10 +81,16 @@ def configure(elle,
     'resources/css/main.less',
     'resources/css/normalize.css',
     'resources/css/main.css',
+    'resources/css/daterangepicker-bs3.css',
     'resources/favicon.ico',
     'resources/js/vendor/jquery-1.10.1.min.js',
     'resources/js/vendor/modernizr-2.6.2.min.js',
+    'resources/js/vendor/daterangepicker.js',
+    'resources/js/vendor/moment.min.js',
+    'resources/js/vendor/jquery.poshytip.min.js',
     'resources/js/main.js',
+    'resources/images/logo.png',
+    'resources/images/loading.gif',
   )
 
   ## ----- ##
