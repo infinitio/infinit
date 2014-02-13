@@ -128,7 +128,6 @@ class Metrics:
         transaction['sender'] = user
       for transaction in recipients.get(user['_id'], ()):
         transaction['recipient'] = user
-      del user['_id']
     return {
       'result': days,
     }
