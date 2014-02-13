@@ -97,7 +97,6 @@ class Metrics:
       }},
     ])['result']
     days = list(days)
-    print(days)
     ids = set()
     senders = {}
     recipients = {}
