@@ -121,8 +121,8 @@ class Metrics:
       day['date'] = self.__format_date(day['_id'])
       del day['_id']
       for transaction in day['transactions']:
-        yield transaction['sender_id'], transaction, 'sender_id'
-        yield transaction['recipient_id'], transaction, 'recipient_id'
+        yield transaction['sender_id'], transaction, 'sender'
+        yield transaction['recipient_id'], transaction, 'recipient'
         del transaction['sender_id']
         del transaction['recipient_id']
         transaction['status'] = statuses[transaction['status']]
