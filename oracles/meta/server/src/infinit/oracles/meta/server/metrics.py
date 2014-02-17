@@ -25,6 +25,20 @@ statuses = {
 
 statuses_back = dict((value, key) for key, value in statuses.items())
 
+def join(collection, foreign, joined, project = None):
+  related_ids = set()
+  store = {}
+  for element in collection:
+    for related_id, container, index in foreign(element):
+      related_ids.add(related_id)
+      store.setdefault(related_id, []).append((container, index))
+  pipeline = [{'$match': {'_id': {'$in': list(related_ids)}}}]
+  if project is not None:
+    pipeline.append({'$project': project})
+  for related in joined.aggregate(pipeline)['result']:
+    for container, index in store[related['_id']]:
+      container[index] = related
+
 class Metrics:
 
   def __init__(self):
@@ -97,37 +111,23 @@ class Metrics:
       }},
     ])['result']
     days = list(days)
-    ids = set()
-    senders = {}
-    recipients = {}
-    for day in days:
-      day['date'] = self.__format_date(day['_id'])
+    def foreign(day):
       del day['_id']
       for transaction in day['transactions']:
-        sender_id = transaction['sender_id']
-        recipient_id = transaction['recipient_id']
-        senders.setdefault(sender_id, []).append(transaction)
-        recipients.setdefault(recipient_id, []).append(transaction)
-        ids.add(sender_id)
-        ids.add(recipient_id)
+        yield transaction['sender_id'], transaction, 'sender_id'
+        yield transaction['recipient_id'], transaction, 'recipient_id'
         del transaction['sender_id']
         del transaction['recipient_id']
         transaction['status'] = statuses[transaction['status']]
         transaction['date'] = self.__format_date(transaction['date'])
         transaction['time'] = self.__format_date(transaction['time'])
-    for user in self.database.users.aggregate([
-        {'$match': {'_id': {'$in': list(ids)}}},
-        {'$project': {
-          'handle': '$handle',
-          'email': '$email',
-          'fullname': '$fullname',
-          'connected': '$connected',
-        }},
-    ])['result']:
-      for transaction in senders.get(user['_id'], ()):
-        transaction['sender'] = user
-      for transaction in recipients.get(user['_id'], ()):
-        transaction['recipient'] = user
+    join(days, foreign, self.database.users,
+         project = {
+            'handle': '$handle',
+            'email': '$email',
+            'fullname': '$fullname',
+            'connected': '$connected',
+          })
     return {
       'result': days,
     }
@@ -150,7 +150,17 @@ class Metrics:
 
   @api('/metrics/transactions/groups', method = 'GET')
   def groups(self):
-    groups = self.__database.groups.find()
+    groups = list(self.__database.groups.find())
+    def foreign(group):
+      for i, related_id in enumerate(group['members']):
+        yield related_id, group['members'], i
+    join(groups, foreign, self.database.users,
+         project = {
+            'handle': '$handle',
+            'email': '$email',
+            'fullname': '$fullname',
+            'connected': '$connected',
+          })
     return {
       'groups': list(groups),
       }
