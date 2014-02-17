@@ -118,6 +118,7 @@ class Metrics:
     ])['result']
     days = list(days)
     def foreign(day):
+      day['date'] = self.__format_date(day['_id'])
       del day['_id']
       for transaction in day['transactions']:
         yield transaction['sender_id'], transaction, 'sender_id'
