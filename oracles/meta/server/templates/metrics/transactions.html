@@ -79,7 +79,7 @@ def plural(word, c):
             <div class="summary">
               <div class="totalsize ${magnitude_order(transaction['size'])}">${size(transaction['size'])}</div>
               <img src="http://${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
-              <h3><a href="#user" title="${transaction['sender']['fullname']}">${transaction['sender']['fullname']}</a></h3> 
+              <h3><a class="show_tooltip" href="#user" title="${transaction['sender']['fullname']}">${transaction['sender']['fullname']}</a></h3> 
               <div class="tooltip">
                 <img src="http://${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
                 <div class="infos">
@@ -88,34 +88,39 @@ def plural(word, c):
                   <p>${transaction['sender']['email']}</p>
                 </div>
                 <ul>
-                  <li><a href="#group">Add To Group...</a></li>
-                  <li><a href="#solo">Show Transactions</a></li>
+                  <li><select class="add_group" rel="${transaction['sender']['_id']}">
+                    <option>Add To Group...</option>
+                  </select></li>
+                  <li><a href="#solo" rel="${transaction['sender']['_id']}" class="show_user">Show Transactions</a></li>
                 </ul>
               </div>
               
               <span class="arrow">&#8594;</span>
               
               <img src="http://${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
-              <h3><a href="#user">${transaction['recipient']['fullname']}</a></h3> 
+              <h3><a class="show_tooltip 
+                %if not 'handle' in transaction['recipient']:
+                  ghost
+                %endif
+                " href="#user">${transaction['recipient']['fullname']}</a></h3> 
               <div class="tooltip">
                 <img src="http://${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
                 <div class="infos">
                   <h3>${transaction['recipient']['fullname']}</h3>
                   <p class="handle">
-                    <%
-                    try: 
-                      transaction['recipient']['handle']
-                    except KeyError:
-                      print('Ghost')
-                    else:
-                      print(transaction['recipient']['handle'])
-                    %>
+                    %if 'handle' in transaction['recipient']:
+                      @${transaction['recipient']['handle']}
+                    %else:
+                      Ghost  
+                    %endif
                   </p>
                   <p>${transaction['recipient']['email']}</p>
                 </div>
                 <ul>
-                  <li><a href="#group">Add To Group...</a></li>
-                  <li><a href="#solo">Show Transactions</a></li>
+                  <li><select class="add_group" rel="${transaction['recipient']['_id']}">
+                    <option>Add To Group...</option>
+                  </select></li>
+                  <li><a href="#solo" rel="${transaction['recipient']['_id']}" class="show_user">Show Transactions</a></li>
                 </ul>
               </div>
               
@@ -144,5 +149,5 @@ def plural(word, c):
     %endfor
   
   %else:
-    No transactions.
+    <h2>No transactions.</h2>
   %endif

@@ -99,8 +99,6 @@ header {
         &.current { color: lighten(@infinitblack, 35%); }
         &.register { background: @infinitred; color: white; border-radius: 5px; padding: 5px 7px;}
       }
-      
-      .avatar { width: 25px; height: 25px; border-radius: 25px; }
     }
   }
 }  
@@ -113,9 +111,30 @@ header {
   a { color: @infinitblue; text-decoration: none;
     &:hover { color: darken(@infinitblue, 20%); }
   }
+  
+  .sidebar { 
+    width: 230px; background: @transactionbg; border-radius: 5px; padding: 15px; font-size: 0.8em; z-index: 2;
+    position: fixed; left: 50%; margin-left: 215px; margin-top: 15px;
+    label { text-transform: uppercase; font-family: @montserrat; margin: 10px; display: block; } 
+    
+    li a {
+      &.active { color: @infinitblack; }
+    }
+    
+    .search {
+      .search-results { }
+    }
+  }
 }
 
 footer { height: 100px; clear: both; }
+
+.avatar { width: 25px; height: 25px; border-radius: 25px; }
+
+input[type="text"] { 
+  padding: 8px 10px; font-size: 0.9em; border-radius: 3px; border: 1px solid lighten(gray, 20%); margin-left: 11px;
+  color: @infinitblack; font-family: @montserrat; width: 182px;
+}
 
 
 /* ==========================================================================
@@ -127,9 +146,22 @@ body.waterfall {
   #content { 
     h1 { margin: 0; }
     
+    .views { position: absolute; margin-left: 590px;
+      ul { list-style-type: none; 
+        li { float: left;
+          a { font-size: 1.5em; margin-left: 10px; vertical-align: middle;
+            &:nth-of-type(1) { margin-bottom: 5px; } 
+          }
+        }
+      }
+    }
+    
     .transactions {
-      float: left; width: 75%; margin-top: 50px; 
+      float: left; width: 75%; 
       &.loading { background: url('../images/loading.gif') no-repeat; min-height: 64px;}
+      &.by_day { 
+        h2 { margin-top: 10px; } 
+      }
       
       .totalsize { 
         float: left; color: lighten(gray, 30%); padding: 3px 5px;  
@@ -140,7 +172,7 @@ body.waterfall {
       
       h2 { 
         font-size: 1.3em; font-weight: 300; margin-top: 40px;
-        &:first-child { margin-top: 0; }
+        &:nth-of-type(1) { margin-top: 10px; } 
         
         a { font-weight: strong; }
         span { font-family: @montserrat; color: lighten(gray, 15%); font-size: 0.6em; 
@@ -160,6 +192,7 @@ body.waterfall {
           h3 { float: left; margin: 0; font-size: 1em; 
             a { color: @infinitblack; 
               &:hover { color: @infinitblue; }
+              &.ghost { opacity: 0.5;}
             }
           }
           .arrow { float: left; display: block; margin: 0 10px; }
@@ -193,27 +226,85 @@ body.waterfall {
     }
     
     .sidebar { 
-      width: 230px; background: @transactionbg; border-radius: 5px; padding: 15px; font-size: 0.8em; z-index: 2;
-      position: fixed; left: 50%; margin-left: 215px; margin-top: 20px;
-      
-      label { text-transform: uppercase; font-family: @montserrat; margin: 10px; display: block; } 
-      .date, .status, .groups { margin-bottom: 20px; }
-      .date { margin-bottom: 20px;
-        #datepicker { 
-          padding: 8px 10px; font-size: 0.9em; border-radius: 3px; border: 1px solid lighten(gray, 20%); margin-left: 11px;
-          color: @infinitblack; font-family: @montserrat; width: 182px;
+      .date, .status, .groups, .views { margin-bottom: 20px; }
+      .date { margin-bottom: 20px; }
+
+      .groups {
+        input { }
+        .group {  }
+        .rm_group { 
+          color: @infinitblack; padding: 0px 6px 2px 6px; background: lighten(gray, 40%); font-size: 0.8em;
+           display: inline-block; border-radius: 14px; margin-left: 5px;
+          &:hover { background: lighten(gray, 30%);  }
         }
       }
-      .status, .views {
-        li a {
-          &.active { color: @infinitblack; }
-        }
-      }
-      .groups {}
     }
   }
 }   
 
+
+/* ==========================================================================
+   Manage groups
+   ========================================================================== */
+
+body.groups {
+  #content {
+    .groups-content {
+      float: left; width: 75%; padding-top: 45px;
+      &.loading { background: url('../images/loading.gif') no-repeat; min-height: 64px;}
+      
+      #add_group input { margin-left: 0; width: 500px; }
+      
+      .groups-list { 
+            
+        h3 { margin: 0; margin: 20px 0 0 0; display: inline-block; }
+        .total_members { color: lighten(gray, 20%); }
+        .rm_group { display: inline-block;}
+        
+        ul { 
+          padding: 0; margin: 0; margin: 7px 0 0 20px; 
+          .tooltip { display: none; }
+          li { margin-bottom: 5px;
+            .avatar { margin-right: 10px; }
+          }
+        }
+      }
+    }
+  }
+}   
+
+
+
+
+// Tooltip
+.qtip-bootstrap {
+  min-width: 320px;
+  
+  .qtip-content { padding: 0px; }
+  img { float: left; width: 85px; height: 85px; border-radius: 85px; margin-right: 15px; padding: 10px 0 0 10px;}
+  .infos { 
+    float: left;
+    h3 { margin: 0; margin-top: 20px; font-size: 1.4em; }
+    p { font-size: @helvetica; font-weight: 300;  margin: 0;
+      &.handle { margin-top: 10px; }
+    }
+  }
+  ul { clear: both; list-style-type: none; padding: 0; width: 100%;  
+    li { 
+      float: left; width: 50%; border-top:1px solid lighten(gray, 30%); background: darken(white, 5%);
+      min-height: 35px; margin-top: 20px; 
+      
+      select { margin: 8px 0 0 17px; width: 130px; }
+      a { display: block; text-decoration: none; color: @infinitblack; display: block; width: 100%; background: darken(white, 5%);
+        text-align: center; font-size: 0.9em; padding: 8px 0 6px; border-top: 1px solid white; 
+        &:hover { background: darken(white, 8%); }
+      }
+    }
+  }
+}
+
+
+// Date picker
 .daterangepicker {
   &.dropdown-menu {display: none;}
   
@@ -229,30 +320,8 @@ body.waterfall {
     &:hover { background-color: #ebebeb; border-color: #adadad; }
   }
 }
-
-.qtip-bootstrap {
-  min-width: 320px;
-  
-  .qtip-content { padding: 0px; }
-  img { float: left; width: 85px; border-radius: 100px; margin-right: 15px; padding: 10px 0 0 10px;}
-  .infos { 
-    float: left;
-    h3 { margin: 0; margin-top: 20px; font-size: 1.4em; }
-    p { font-size: @helvetica; font-weight: 300;  margin: 0;
-      &.handle { margin-top: 10px; }
-    }
-  }
-  ul { clear: both; list-style-type: none; padding: 0; width: 100%;  
-    li { float: left; width: 50%; margin-top: 20px; border-top:1px solid lighten(gray, 30%); 
-      &:first-child {  }
-      
-      a { display: block; text-decoration: none; color: @infinitblack; display: block; width: 100%; background: darken(white, 5%);
-        text-align: center; font-size: 0.9em; padding: 8px 0 6px; border-top: 1px solid white; 
-        &:hover { background: darken(white, 8%); }
-      }
-    }
-  }
-}
+   
+   
 
 /* ==========================================================================
    Media Queries

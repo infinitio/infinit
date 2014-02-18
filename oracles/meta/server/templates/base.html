@@ -31,8 +31,17 @@
       <div class="wrapper">
         <div class="logo"><a href="http://infinit.io"><img src="${root}/images/logo.png" /></a></div>
         <ul class="menu">
-          <li><a href="/metrics/waterfall.html">Waterfall</a></li>
-          <li><a href="#">Metrics</a></li>
+          <li><a 
+          %if title == 'waterfall':
+           class="current"
+          %endif 
+          href="/metrics/waterfall.html">Waterfall</a></li>
+          <li><a 
+          %if title == 'groups':
+           class="current"
+          %endif 
+          href="/metrics/manage_groups.html">Groups</a></li>
+          <li><a href="#">Invitations</a></li>
         </ul>
       </div>
     </header>

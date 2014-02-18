@@ -169,7 +169,18 @@ class Metrics:
       return {
         'result': data,
       }
-
+  
+  @api('/metrics/groups.html')
+  def metrics_groups_html(self):
+    tpl = self._Meta__mako.get_template('/metrics/groups.html')
+    groups = self.groups()['groups']
+    return tpl.render(groups = groups, http_host = bottle.request.environ['HTTP_HOST'])
+  
+  @api('/metrics/manage_groups.html')
+  def metrics_groups_html(self):
+    tpl = self._Meta__mako.get_template('/metrics/manage_groups.html')
+    return tpl.render(root = '..', title = 'groups')
+  
   @api('/metrics/waterfall.html')
   def metrics_transactions_html(self):
     tpl = self._Meta__mako.get_template('/metrics/waterfall.html')
@@ -219,7 +230,7 @@ class Metrics:
   def user_fuzzy(self, user):
     res = None
     try:
-      i = bson.ObjectId(user),
+      i = bson.ObjectId(user)
       res = self._user_by_id(i, ensure_existence = False)
     except bson.errors.InvalidId:
       pass

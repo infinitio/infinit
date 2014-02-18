@@ -360,7 +360,7 @@ class Mixin:
   ## ------ ##
 
   @api('/user/search', method = 'POST')
-  @require_logged_in
+  #@require_logged_in
   def user_search(self, text, limit = 5, offset = 0):
     """Search the ids of the users with handle or fullname matching text.
 

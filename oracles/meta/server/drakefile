@@ -74,6 +74,8 @@ def configure(elle,
     'templates/base.html',
     'templates/metrics/transactions.html',
     'templates/metrics/waterfall.html',
+    'templates/metrics/manage_groups.html',
+    'templates/metrics/groups.html',
   )
 
   resources = drake.nodes(
@@ -89,6 +91,8 @@ def configure(elle,
     'resources/js/vendor/moment.min.js',
     'resources/js/vendor/jquery.poshytip.min.js',
     'resources/js/main.js',
+    'resources/js/waterfall.js',
+    'resources/js/groups.js',
     'resources/images/logo.png',
     'resources/images/loading.gif',
   )
