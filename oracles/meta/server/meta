@@ -12,5 +12,14 @@ import bottle
 import infinit.oracles.meta.server
 import elle.log
 
-bottle.run(app = infinit.oracles.meta.server.Meta(force_admin = True),
+import optparse
+usage = "usage: %prog [options]"
+parser = optparse.OptionParser(usage = usage)
+parser.add_option('--force-admin',
+                  action = 'store_true',
+                  help = 'run all requests in admin mode',
+                  default = False)
+options, args = parser.parse_args()
+
+bottle.run(app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin),
            host = '127.0.0.1')
