@@ -211,3 +211,11 @@ class Meta(bottle.Bottle,
   def __static(self, filename):
     return bottle.static_file(
       filename, root = self.__resources_path)
+
+  @property
+  def admin(self):
+    return bottle.request.certificate in [
+      'baptiste.fradin@infinit.io',
+      'gaetan.rochel@infinit.io',
+      'quentin.hocquet@infinit.io',
+    ]

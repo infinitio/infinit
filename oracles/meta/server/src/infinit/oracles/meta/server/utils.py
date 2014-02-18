@@ -71,11 +71,7 @@ def _require_admin(method):
     raise Exception(
       'require_admin for %r wraps the API' % method.__name__)
   def wrapper(wrapped, self, *args, **kwargs):
-    if bottle.request.certificate not in [
-        'baptiste.fradin@infinit.io',
-        'gaetan.rochel@infinit.io',
-        'quentin.hocquet@infinit.io',
-    ]:
+    if not self.admin:
       self.forbiden()
     return wrapped(self, *args, **kwargs)
   return decorator.decorator(wrapper, method)
