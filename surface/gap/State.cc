@@ -112,15 +112,9 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: create state", *this);
 
       // Add metrics reporters to composite reporter
-      std::unique_ptr<infinit::metrics::Reporter> google_reporter(
-        new infinit::metrics::GoogleReporter(false));
       std::unique_ptr<infinit::metrics::Reporter> infinit_reporter(
         new infinit::metrics::InfinitReporter());
-      std::unique_ptr<infinit::metrics::Reporter> investor_reporter(
-        new infinit::metrics::GoogleReporter(true));
-      this->_composite_reporter.add_reporter(std::move(google_reporter));
       this->_composite_reporter.add_reporter(std::move(infinit_reporter));
-      this->_composite_reporter.add_reporter(std::move(investor_reporter));
       this->_composite_reporter.start();
     }
 
