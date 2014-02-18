@@ -12,5 +12,5 @@ import bottle
 import infinit.oracles.meta.server
 import elle.log
 
-bottle.run(app = infinit.oracles.meta.server.Meta(),
+bottle.run(app = infinit.oracles.meta.server.Meta(force_admin = True),
            host = '127.0.0.1')

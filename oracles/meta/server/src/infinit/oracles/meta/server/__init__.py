@@ -51,12 +51,16 @@ class Meta(bottle.Bottle,
                mongo_port = None,
                enable_emails = True,
                trophonius_expiration_time = 300, # in sec
-               apertus_expiration_time = 300 # in sec
+               apertus_expiration_time = 300, # in sec
+               force_admin = False,
                ):
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
     if system_logger is not None:
       elle.log.set_logger(elle.log.SysLogger(system_logger))
+    self.__force_admin = force_admin
+    if self.__force_admin:
+      elle.log.warn('%s: running in force admin mode' % self)
     super().__init__()
     db_args = {}
     if mongo_host is not None:
@@ -214,7 +218,7 @@ class Meta(bottle.Bottle,
 
   @property
   def admin(self):
-    return bottle.request.certificate in [
+    return self.__force_admin or bottle.request.certificate in [
       'baptiste.fradin@infinit.io',
       'gaetan.rochel@infinit.io',
       'quentin.hocquet@infinit.io',
