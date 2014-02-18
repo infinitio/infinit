@@ -116,7 +116,7 @@ class Meta(bottle.Bottle,
                      in itertools.zip_longest(
                        reversed(spec.args),
                        reversed([True] * len(defaults))))
-    for arg in re.findall('<(\\w*)(?::\\w*(?::\\w*)?)?>', rule):
+    for arg in re.findall('<(\\w*)(?::\\w*(?::[^>]*)?)?>', rule):
       if arg in spec_args:
         del spec_args[arg]
       elif spec.varkw is None:
