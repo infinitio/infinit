@@ -19,7 +19,7 @@ from .plugins.certification import Plugin as CertificationPlugin
 
 from infinit.oracles.meta import error
 
-from .utils import api, hash_pasword, require_logged_in
+from .utils import api, hash_pasword, require_admin, require_logged_in
 
 from . import apertus
 from . import device
