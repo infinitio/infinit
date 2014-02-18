@@ -274,12 +274,30 @@ ELLE_TEST_SCHEDULED(connection)
         }
       }
       {
-        BOOST_CHECK_EQUAL(frete.path(2), "dir/2");
-        BOOST_CHECK_EQUAL(frete.file_size(2), 1);
-        BOOST_CHECK_EQUAL(frete.read(2, 0, 2), elle::ConstWeakBuffer("2"));
-        BOOST_CHECK_EQUAL(frete.path(3), "dir/1");
-        BOOST_CHECK_EQUAL(frete.file_size(3), 1);
-        BOOST_CHECK_EQUAL(frete.read(3, 0, 2), elle::ConstWeakBuffer("1"));
+        if (frete.path(2) == "dir/2")
+        {
+          BOOST_CHECK_EQUAL(frete.file_size(2), 1);
+          BOOST_CHECK_EQUAL(frete.read(2, 0, 2), elle::ConstWeakBuffer("2"));
+        }
+        else if (frete.path(2) == "dir/1")
+        {
+          BOOST_CHECK_EQUAL(frete.file_size(2), 1);
+          BOOST_CHECK_EQUAL(frete.read(2, 0, 2), elle::ConstWeakBuffer("1"));
+        }
+        else if (frete.path(3) == "dir/2")
+        {
+          BOOST_CHECK_EQUAL(frete.file_size(3), 1);
+          BOOST_CHECK_EQUAL(frete.read(3, 0, 2), elle::ConstWeakBuffer("2"));
+        }
+        else if (frete.path(3) == "dir/1")
+        {
+          BOOST_CHECK_EQUAL(frete.file_size(3), 1);
+          BOOST_CHECK_EQUAL(frete.read(3, 0, 2), elle::ConstWeakBuffer("1"));
+        }
+        else
+        {
+          BOOST_FAIL("recipient files incorrect");
+        }
       }
       BOOST_CHECK_THROW(frete.path(4), std::runtime_error);
       BOOST_CHECK_THROW(frete.read(4, 0, 1), std::runtime_error);
