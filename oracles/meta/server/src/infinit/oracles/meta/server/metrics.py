@@ -62,13 +62,12 @@ class Metrics:
   def __format_date(self, date):
     return datetime.datetime.utcfromtimestamp(date).isoformat()
 
-  @api('/metrics/transactions')
   def metrics_transactions(self,
-                           start : datetime.datetime = None,
-                           end : datetime.datetime = None,
-                           groups : json_value = [],
-                           users : json_value = [],
-                           status = None):
+                   start : datetime.datetime = None,
+                   end : datetime.datetime = None,
+                   groups = [],
+                   users = [],
+                   status = None):
     # if bottle.request.certificate != 'quentin.hocquet@infinit.io':
     #   self.forbiden()
     if start is None:
@@ -146,22 +145,30 @@ class Metrics:
             'fullname': '$fullname',
             'connected': '$connected',
           })
-    return {
-      'result': days,
-    }
+    return days
 
-  @api('/metrics/transactions.html')
-  def metrics_transactions_html(self,
-                                start : datetime.datetime = None,
-                                end : datetime.datetime = None,
-                                group = None,
-                                status = None):
-    tpl = self._Meta__mako.get_template('/metrics/transactions.html')
-    transaction_days = self.metrics_transactions(
-      start = start, end = end,
-      group = group, status = status)['result']
-    return tpl.render(transaction_days = transaction_days,
-                      http_host = bottle.request.environ['HTTP_HOST'])
+  @api('/metrics/transactions<html:re:(\\.html)?>')
+  def metrics_transactions_api(self,
+                               html,
+                               start : datetime.datetime = None,
+                               end : datetime.datetime = None,
+                               groups : json_value = [],
+                               users : json_value = [],
+                               status = None,):
+    data = self.metrics_transactions(start = start,
+                                     end = end,
+                                     groups = groups,
+                                     users = users,
+                                     status = status)
+    if html:
+      tpl = '/metrics/transactions.html'
+      tpl = self._Meta__mako.get_template(tpl)
+      host = bottle.request.environ['HTTP_HOST']
+      return tpl.render(transaction_days = data, http_host = host)
+    else:
+      return {
+        'result': data,
+      }
 
   @api('/metrics/waterfall.html')
   def metrics_transactions_html(self):
