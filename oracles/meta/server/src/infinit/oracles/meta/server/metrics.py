@@ -10,8 +10,9 @@ import pymongo
 import pymongo.errors
 
 import elle.log
-from infinit.oracles.meta.server.utils import api
 
+from infinit.oracles.meta.server.utils import api
+from infinit.oracles.meta.server.utils import _require_admin as require_admin
 from itertools import chain
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Metrics'
@@ -68,8 +69,6 @@ class Metrics:
                    groups = [],
                    users = [],
                    status = None):
-    # if bottle.request.certificate != 'quentin.hocquet@infinit.io':
-    #   self.forbiden()
     if start is None:
       start = datetime.date.today() - datetime.timedelta(7)
     match = {'$gte': calendar.timegm(start.timetuple())}
@@ -148,6 +147,7 @@ class Metrics:
     return days
 
   @api('/metrics/transactions<html:re:(\\.html)?>')
+  @require_admin
   def metrics_transactions_api(self,
                                html,
                                start : datetime.datetime = None,
@@ -169,24 +169,28 @@ class Metrics:
       return {
         'result': data,
       }
-  
+
   @api('/metrics/groups.html')
+  @require_admin
   def metrics_groups_html(self):
     tpl = self._Meta__mako.get_template('/metrics/groups.html')
     groups = self.groups()['groups']
     return tpl.render(groups = groups, http_host = bottle.request.environ['HTTP_HOST'])
-  
+
   @api('/metrics/manage_groups.html')
+  @require_admin
   def metrics_groups_html(self):
     tpl = self._Meta__mako.get_template('/metrics/manage_groups.html')
     return tpl.render(root = '..', title = 'groups')
-  
+
   @api('/metrics/waterfall.html')
+  @require_admin
   def metrics_transactions_html(self):
     tpl = self._Meta__mako.get_template('/metrics/waterfall.html')
     return tpl.render(root = '..', title = 'waterfall')
 
   @api('/metrics/transactions/groups', method = 'GET')
+  @require_admin
   def groups(self):
     groups = list(self.__database.groups.find())
     def foreign(group):
@@ -204,6 +208,7 @@ class Metrics:
       }
 
   @api('/metrics/transactions/groups/<name>', method = 'PUT')
+  @require_admin
   def group_add(self, name: utf8_string):
     try:
       self.__database.groups.insert(
@@ -215,12 +220,14 @@ class Metrics:
       pass
 
   @api('/metrics/transactions/groups/<name>', method = 'DELETE')
+  @require_admin
   def group_remove(self, name: utf8_string):
     res = self.__database.groups.remove({'name': name})
     if res['n'] == 0:
       self.not_found('group does not exist: %s' % name)
 
   @api('/metrics/transactions/groups/<name>', method = 'GET')
+  @require_admin
   def group(self, name: utf8_string):
     group = self.__database.groups.find_one({'name': name})
     if group is None:
@@ -244,6 +251,7 @@ class Metrics:
 
   @api('/metrics/transactions/groups/<group>/<user>',
        method = 'PUT')
+  @require_admin
   def group_member_add(self, group: utf8_string, user):
     user = self.user_fuzzy(user)
     res = self.__database.groups.find_and_modify(
@@ -255,6 +263,7 @@ class Metrics:
 
   @api('/metrics/transactions/groups/<group>/<user>',
        method = 'DELETE')
+  @require_admin
   def group_member_remove(self, group: utf8_string, user):
     user = self.user_fuzzy(user)
     res = self.__database.groups.find_and_modify(
