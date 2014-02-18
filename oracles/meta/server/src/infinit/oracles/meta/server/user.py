@@ -359,6 +359,49 @@ class Mixin:
   ## Search ##
   ## ------ ##
 
+  user_public_fields = {
+    'id': '$_id',
+    'public_key': '$public_key',
+    'fullname': '$fullname',
+    'handle': '$handle',
+    'connected_devices': '$connected_devices',
+    'status': '$status',
+    '_id': False,
+  }
+
+  @api('/users')
+  def users(self, search = None, limit : int = 5, skip : int = 0):
+    """Search the ids of the users with handle or fullname matching text.
+
+    search -- the query.
+    skip -- the number of user to skip in the result (optional).
+    limit -- the maximum number of match to return (optional).
+    """
+    with elle.log.trace('search %s (limit: %s, skip: %s)' % \
+                        (search, limit, skip)):
+      pipeline = []
+      match = {
+        'register_status':'ok',
+      }
+      if search is not None:
+        match['$or'] = [
+          {'fullname' : {'$regex' : search,  '$options': 'i'}},
+          {'handle' : {'$regex' : search, '$options': 'i'}},
+        ]
+      pipeline = [
+        {'$match': match},
+        {'$skip': skip},
+        {'$limit': limit},
+      ]
+      if self.user is not None:
+        pipeline.append({
+          '$sort': 'swaggers.%s' % str(self.user['_id'])
+        })
+      pipeline.append({
+        '$project': Mixin.user_public_fields,
+      })
+      return self.database.users.aggregate(pipeline)
+
   @api('/user/search', method = 'POST')
   #@require_logged_in
   def user_search(self, text, limit = 5, offset = 0):
