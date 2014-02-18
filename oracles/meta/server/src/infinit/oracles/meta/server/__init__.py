@@ -88,7 +88,6 @@ class Meta(bottle.Bottle,
     # Share
     share_path = os.path.realpath('/'.join(__file__.split('/')[:-7]))
     share_path = '%s/share/infinit/meta/server/' % share_path
-    print(share_path)
     self.__share_path = share_path
     # Resources
     self.__resources_path = '%s/resources' % share_path
