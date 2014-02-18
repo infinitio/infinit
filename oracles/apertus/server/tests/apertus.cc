@@ -116,7 +116,7 @@ public:
           auto port_ssl = json.find("port_ssl")->second;
           auto port_tcp = json.find("port_tcp")->second;
           this->_register(*socket, id,
-            boost::any_cast<int>(port_ssl), boost::any_cast<int>(port_tcp));
+            boost::any_cast<int64_t>(port_ssl), boost::any_cast<int64_t>(port_tcp));
         }
         else if (method == "DELETE")
         {
@@ -131,8 +131,8 @@ public:
           auto bandwidth = json.find("bandwidth")->second;
           auto number_of_transfers = json.find("number_of_transfers")->second;
           this->_update_bandwidth(*socket, id,
-            boost::any_cast<int>(bandwidth),
-            boost::any_cast<int>(number_of_transfers));
+            boost::any_cast<int64_t>(bandwidth),
+            boost::any_cast<int64_t>(number_of_transfers));
         }
         this->response(*socket,
                        std::string("{\"success\": true }"));
