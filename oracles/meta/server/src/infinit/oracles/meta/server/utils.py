@@ -63,7 +63,7 @@ def require_admin(method):
   def wrapper(wrapped, self, *args, **kwargs):
     if 'admin_token' in kwargs and kwargs['admin_token'] == ADMIN_TOKEN:
       return wrapped(self, *args, **kwargs)
-    self.not_found()
+    self.forbiden()
   return decorator.decorator(wrapper, method)
 
 def hash_pasword(password):
