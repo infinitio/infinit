@@ -1,17 +1,21 @@
-#define BOOST_TEST_MODULE Station
-#define BOOST_TEST_DYN_LINK
-#include <boost/test/unit_test.hpp>
+#include <elle/test.hh>
 
 #include <cryptography/KeyPair.hh>
 
-#include <reactor/Scope.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/Scope.hh>
 
 #include <station/AlreadyConnected.hh>
 #include <station/Host.hh>
 #include <station/InvalidPassport.hh>
 #include <station/Station.hh>
+
+#ifdef VALGRIND
+# include <valgrind/valgrind.h>
+#else
+# define RUNNING_ON_VALGRIND 0
+#endif
 
 infinit::cryptography::KeyPair authority_keys =
   infinit::cryptography::KeyPair::generate(
@@ -34,24 +38,24 @@ struct Credentials
   papier::Passport passport;
 };
 
-BOOST_AUTO_TEST_CASE(construction)
+ELLE_TEST_SCHEDULED(construction)
 {
-  reactor::Scheduler sched;
-
-  reactor::Thread t(sched, "main", []
-                    {
-                      Credentials c("host");
-                      station::Station station(authority, c.passport);
-                    });
-  sched.run();
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("main", [&]
+    {
+      Credentials c("host");
+      station::Station station(authority, c.passport);
+    });
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(connection)
+ELLE_TEST_SCHEDULED(connection)
 {
-  reactor::Scheduler sched;
-
-  reactor::Thread t(
-    sched, "main", []
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("main", [&]
     {
       Credentials c1("host1");
       station::Station station1(authority, c1.passport);
@@ -63,15 +67,15 @@ BOOST_AUTO_TEST_CASE(connection)
       auto host2 = station2.accept();
       BOOST_CHECK(!station2.host_available());
     });
-  sched.run();
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(connection_fails)
+ELLE_TEST_SCHEDULED(connection_fails)
 {
-  reactor::Scheduler sched;
-
-  reactor::Thread t(
-    sched, "main", []
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("main", [&]
     {
       Credentials c1("host1");
       station::Station station1(authority, c1.passport);
@@ -79,62 +83,55 @@ BOOST_AUTO_TEST_CASE(connection_fails)
       BOOST_CHECK_THROW(station1.connect("127.0.0.1", 4242),
                         std::runtime_error);
     });
-  sched.run();
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(connection_closed)
+ELLE_TEST_SCHEDULED(connection_closed)
 {
-  reactor::Scheduler sched;
+  auto s = elle::make_unique<reactor::network::TCPServer>();
+  s->listen();
+  Credentials c1("host1");
+  station::Station station1(authority, c1.passport);
 
-  reactor::Thread t(
-    sched, "main", []
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("connect", [&]
     {
-      reactor::network::TCPServer s(*reactor::Scheduler::scheduler());
-      s.listen();
-      Credentials c1("host1");
-      station::Station station1(authority, c1.passport);
-      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-      {
-        scope.run_background("connect", [&]
-                             {
-                               BOOST_CHECK_THROW(station1.connect("127.0.0.1", s.port()),
-                                                 std::runtime_error);
-                             });
-        scope.run_background("ignore", [&]
-                             {
-                               delete s.accept();
-                             });
-        scope.wait();
-      };
+      BOOST_CHECK_THROW(station1.connect("127.0.0.1", s->port()),
+                        std::runtime_error);
     });
-  sched.run();
+    scope.run_background("ignore", [&]
+    {
+      s.reset();
+    });
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(already_connected)
+ELLE_TEST_SCHEDULED(already_connected)
 {
-  reactor::Scheduler sched;
-
-  reactor::Thread t(
-    sched, "main", []
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("main", [&]
     {
       Credentials c1("host1");
       station::Station station1(authority, c1.passport);
       Credentials c2("host2");
       station::Station station2(authority, c2.passport);
       auto host = station1.connect("127.0.0.1", station2.port());
-      BOOST_CHECK_THROW(
-        station1.connect("127.0.0.1", station2.port()),
-        station::AlreadyConnected);
+      BOOST_CHECK_THROW(station1.connect("127.0.0.1", station2.port()),
+                        station::AlreadyConnected);
     });
-  sched.run();
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(reconnect)
+ELLE_TEST_SCHEDULED(reconnect)
 {
-  reactor::Scheduler sched;
-
-  reactor::Thread t(
-    sched, "main", []
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("main", [&]
     {
       Credentials c1("host1");
       station::Station station1(authority, c1.passport);
@@ -147,15 +144,15 @@ BOOST_AUTO_TEST_CASE(reconnect)
       host1 = station1.connect("127.0.0.1", station2.port());
       host2 = station2.accept();
     });
-  sched.run();
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(destruct_pending)
+ELLE_TEST_SCHEDULED(destruct_pending)
 {
-  reactor::Scheduler sched;
-
-  reactor::Thread t(
-    sched, "main", []
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("main", [&]
     {
       Credentials c1("host1");
       station::Station station1(authority, c1.passport);
@@ -164,87 +161,92 @@ BOOST_AUTO_TEST_CASE(destruct_pending)
       auto host = station1.connect("127.0.0.1", station2.port());
       // Destruct station2 while it has a host pending.
     });
-  sched.run();
+    scope.wait();
+  };
 }
 
-BOOST_AUTO_TEST_CASE(double_connection)
+ELLE_TEST_SCHEDULED(double_connection)
 {
-  reactor::Scheduler sched;
+  Credentials c1("host1");
+  station::Station station1(authority, c1.passport);
+  Credentials c2("host2");
+  station::Station station2(authority, c2.passport);
+  // FIXME: ipv4
+  std::unique_ptr<station::Host> host1;
+  std::unique_ptr<station::Host> host2;
+  int already = 0;
 
-  reactor::Thread t(
-    sched, "main", []
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("1 -> 2", [&]
     {
-      Credentials c1("host1");
-      station::Station station1(authority, c1.passport);
-      Credentials c2("host2");
-      station::Station station2(authority, c2.passport);
-      // FIXME: ipv4
-      std::unique_ptr<station::Host> host1;
-      std::unique_ptr<station::Host> host2;
-      int already = 0;
-      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      try
       {
-        scope.run_background(
-          "1 -> 2",
-          [&]
-          {
-            try
-            {
-              host1 = station1.connect("127.0.0.1", station2.port());
-            }
-            catch (station::AlreadyConnected const&)
-            {
-              ++already;
-            }
-          });
-        scope.run_background(
-          "2 -> 1",
-          [&]
-          {
-            try
-            {
-              host2 = station2.connect("127.0.0.1", station1.port());
-            }
-            catch (station::AlreadyConnected const&)
-            {
-              ++already;
-            }
-          });
-        scope.wait();
-      };
-
-      BOOST_CHECK_EQUAL(already, 1);
-      if (host1)
-        host2 = station2.accept();
-      else
-        host1 = station1.accept();
-      BOOST_CHECK(!station1.host_available());
-      BOOST_CHECK(!station2.host_available());
-      char buf[4];
-      buf[3] = 0;
-      host1->socket().write(elle::ConstWeakBuffer("one"));
-      host2->socket().read(reactor::network::Buffer(buf, 3));
-      BOOST_CHECK_EQUAL(buf, "one");
-      host2->socket().write(elle::ConstWeakBuffer("two"));
-      host1->socket().read(reactor::network::Buffer(buf, 3));
-      BOOST_CHECK_EQUAL(buf, "two");
+        host1 = station1.connect("127.0.0.1", station2.port());
+      }
+      catch (station::AlreadyConnected const&)
+      {
+        ++already;
+      }
     });
-  sched.run();
+    scope.run_background("2 -> 1", [&]
+    {
+      try
+      {
+        host2 = station2.connect("127.0.0.1", station1.port());
+      }
+      catch (station::AlreadyConnected const&)
+      {
+        ++already;
+      }
+    });
+    scope.wait();
+    BOOST_CHECK_EQUAL(already, 1);
+    if (host1)
+      host2 = station2.accept();
+    else
+      host1 = station1.accept();
+    BOOST_CHECK(!station1.host_available());
+    BOOST_CHECK(!station2.host_available());
+    char buf[4];
+    buf[3] = 0;
+    host1->socket().write(elle::ConstWeakBuffer("one"));
+    host2->socket().read(reactor::network::Buffer(buf, 3));
+    BOOST_CHECK_EQUAL(buf, "one");
+    host2->socket().write(elle::ConstWeakBuffer("two"));
+    host1->socket().read(reactor::network::Buffer(buf, 3));
+    BOOST_CHECK_EQUAL(buf, "two");
+  };
 }
 
-BOOST_AUTO_TEST_CASE(connection_close)
+ELLE_TEST_SCHEDULED(connection_close)
 {
-  reactor::Scheduler sched;
-
-  reactor::Thread t(
-    sched, "main", [&]
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("main", [&]
     {
       Credentials c1("host1");
       station::Station station1(authority, c1.passport);
       {
-        reactor::network::TCPSocket socket(sched, "127.0.0.1", station1.port());
+        reactor::network::TCPSocket socket("127.0.0.1", station1.port());
       }
       reactor::sleep(1_sec);
     });
-  sched.run();
+    scope.wait();
+  };
+}
+
+ELLE_TEST_SUITE()
+{
+  auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
+  auto& suite = boost::unit_test::framework::master_test_suite();
+  suite.add(BOOST_TEST_CASE(construction), 0, timeout);
+  suite.add(BOOST_TEST_CASE(connection), 0, timeout);
+  suite.add(BOOST_TEST_CASE(connection_fails), 0, timeout);
+  suite.add(BOOST_TEST_CASE(connection_closed), 0, timeout);
+  suite.add(BOOST_TEST_CASE(already_connected), 0, timeout);
+  suite.add(BOOST_TEST_CASE(reconnect), 0, timeout);
+  suite.add(BOOST_TEST_CASE(destruct_pending), 0, timeout);
+  suite.add(BOOST_TEST_CASE(double_connection), 0, timeout);
+  suite.add(BOOST_TEST_CASE(connection_close), 0, timeout);
 }
