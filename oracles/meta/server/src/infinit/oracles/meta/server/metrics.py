@@ -185,15 +185,15 @@ class Metrics:
 
   @api('/metrics/waterfall.html')
   @require_admin
-  def metrics_transactions_html(self):
+  def metrics_transactions_html(self, users : json_value = []):
     tpl = self._Meta__mako.get_template('/metrics/waterfall.html')
     return tpl.render(root = '..', title = 'waterfall')
   
   @api('/metrics/users.html')
   def user_search_html(self, search = None, limit : int = 5, skip : int = 0):
     tpl = self._Meta__mako.get_template('/metrics/user_search.html')
-    users = self.users(self, search = search, limit = limit, skip = skip)
-    return tpl.render(root = '..', title = 'user_search', users = users)
+    users = self.users(search = search, limit = limit, skip = skip)['result']
+    return tpl.render(root = '..', http_host = bottle.request.environ['HTTP_HOST'], title = 'user_search', users = users)
   
   @api('/metrics/transactions/groups', method = 'GET')
   @require_admin

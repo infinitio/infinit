@@ -122,7 +122,10 @@ header {
     }
     
     .search {
-      .search-results { }
+      #search-results { 
+        min-height: 50px;
+        h3 { margin: 0; font-size: 1em;} 
+      }
     }
   }
 }
@@ -130,6 +133,7 @@ header {
 footer { height: 100px; clear: both; }
 
 .avatar { width: 25px; height: 25px; border-radius: 25px; }
+.tooltip { display: none;}
 
 input[type="text"] { 
   padding: 8px 10px; font-size: 0.9em; border-radius: 3px; border: 1px solid lighten(gray, 20%); margin-left: 11px;

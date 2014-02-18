@@ -4,6 +4,17 @@ $(document).ready(function() {
   /* All pages
   /************************************************/
   
+  $.urlParam = function(name){
+    var results = new RegExp('[\\?&amp;]' + name + '=([^&amp;#]*)').exec(window.location.href);
+    return results[1] || 0;
+  }
+  
+  function getURLParameter(name) {
+    return decodeURI(
+        (RegExp(name + '=' + '(.+?)(&|$)').exec(location.search)||[,null])[1]
+    );
+  }
+  
   // Tooltips
   $(document).on("click", ".show_tooltip", function() {
      
@@ -67,13 +78,7 @@ $(document).ready(function() {
       url: '/metrics/users.html' + '?search=' + text
     })
     .done(function(data) { 
-      
-      var users = data.result;
-      Object.keys(groups).forEach(function(key) {
-        $('#search-results').append(
-          '<a href="#user" class="show_tooltip"></a>'
-        )
-      });
+      $('#search-results').html(data);
     })
     .error(function(data) {
       alert('Error searching user.');
@@ -107,6 +112,14 @@ $(document).ready(function() {
         end = moment();
       }
       
+      if (users) {
+        JSON.stringify(users)
+      } else if (getURLParameter('users')) {
+        users = getURLParameter('users');
+        start = moment().subtract('year', 1).startOf('day');
+        end = moment();
+      }
+                  
       url = '/metrics/transactions.html?';
       
       if (start)
@@ -116,7 +129,7 @@ $(document).ready(function() {
         url += '&status=' + status
       
       if (users)
-        url += '&users=' + JSON.stringify(users)
+        url += '&users=' + users
       
       if (groups)
         url += '&groups=' + JSON.stringify(groups)
@@ -393,6 +406,7 @@ $(document).ready(function() {
         alert('Error removing from group.');
       });
     });
+    
   }
   
 });

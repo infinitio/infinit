@@ -150,6 +150,13 @@ header .menu li a.register {
 #content .sidebar li a.active {
   color: #515149;
 }
+#content .sidebar .search #search-results {
+  min-height: 50px;
+}
+#content .sidebar .search #search-results h3 {
+  margin: 0;
+  font-size: 1em;
+}
 footer {
   height: 100px;
   clear: both;
@@ -158,6 +165,9 @@ footer {
   width: 25px;
   height: 25px;
   border-radius: 25px;
+}
+.tooltip {
+  display: none;
 }
 input[type="text"] {
   padding: 8px 10px;
