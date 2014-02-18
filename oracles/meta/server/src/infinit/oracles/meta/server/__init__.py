@@ -82,13 +82,15 @@ class Meta(bottle.Bottle,
     # Notifier.
     self.notifier = notifier.Notifier(self.__database)
     # Share
-    share_path = '/'.join(__file__.split('/')[:-9])
+    share_path = os.path.realpath('/'.join(__file__.split('/')[:-7]))
     share_path = '%s/share/infinit/meta/server/' % share_path
+    print(share_path)
     self.__share_path = share_path
     # Resources
     self.__resources_path = '%s/resources' % share_path
     # Templates
     self.__mako_path = '%s/templates' % share_path
+    print(self.__mako_path)
     self.__mako = mako.lookup.TemplateLookup(
       directories = [self.__mako_path]
     )
