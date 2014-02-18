@@ -12,6 +12,8 @@ import pymongo.errors
 import elle.log
 from infinit.oracles.meta.server.utils import api
 
+from itertools import chain
+
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Metrics'
 
 statuses = {
@@ -25,6 +27,11 @@ statuses = {
 }
 
 statuses_back = dict((value, key) for key, value in statuses.items())
+
+def develop(collections):
+  for collection in collections:
+    for element in collection:
+      yield element
 
 def utf8_string(s):
   return s.encode('latin-1').decode('utf-8')
@@ -59,7 +66,8 @@ class Metrics:
   def metrics_transactions(self,
                            start : datetime.datetime = None,
                            end : datetime.datetime = None,
-                           groups : json_value = None,
+                           groups : json_value = [],
+                           users : json_value = [],
                            status = None):
     # if bottle.request.certificate != 'quentin.hocquet@infinit.io':
     #   self.forbiden()
@@ -74,15 +82,18 @@ class Metrics:
       if status_i is None:
         self.bad_request('invalid status: %s' % status)
       match['status'] = status_i
-    if groups is not None:
-      groups = self.__database.groups.find({'name': {'$in': groups}})
-      members = sum((group['members'] for group in groups), [])
+    if any((groups, users)):
+      if groups:
+        groups = self.__database.groups.find({'name': {'$in': groups}})
+        groups = develop(group['members'] for group in groups)
+        groups = list(groups)
+      users = list(chain(groups, (bson.ObjectId(u) for u in users)))
       match = {
         '$and': [
           match,
           {'$or': [
-            {'sender_id': {'$in': members}},
-            {'recipient_id': {'$in': members}},
+            {'sender_id': {'$in': users}},
+            {'recipient_id': {'$in': users}},
           ]}
         ]}
     days = self.database.transactions.aggregate([
