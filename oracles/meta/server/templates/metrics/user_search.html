@@ -1,0 +1,14 @@
+
+%if users:
+  <ul>
+    %for user in users:
+      <li class="group" rel="${group['name']}">
+        <h3>${group['name']}</h3> <span class="total_members">(${len(group['members'])})</span> <a href="#rm_group" class="rm_group">x</a>
+      </li>
+    %endfor
+  </ul>
+
+%else:
+  No groups yet.
+
+%endif

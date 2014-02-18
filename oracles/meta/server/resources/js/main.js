@@ -63,11 +63,17 @@ $(document).ready(function() {
     var text = $('#search_user input').val();
     
     $.ajax({
-      type: 'POST',
-      url: '/user/search' + '?text=' + text
+      type: 'GET',
+      url: '/metrics/users.html' + '?search=' + text
     })
     .done(function(data) { 
-      $('#search-results').html(data);
+      
+      var users = data.result;
+      Object.keys(groups).forEach(function(key) {
+        $('#search-results').append(
+          '<a href="#user" class="show_tooltip"></a>'
+        )
+      });
     })
     .error(function(data) {
       alert('Error searching user.');
@@ -87,10 +93,10 @@ $(document).ready(function() {
     // load transactions
     function loadTransactions(start, end, status, users, groups) { 
       if (start == null && users == null) 
-        start = moment().subtract('days', 13).startOf('day');
+        start = moment().subtract('days', 1).startOf('day');
         
       if (end == null && users == null) 
-        end = moment().subtract('days', 13);
+        end = moment();
         
       if (start == end && users == null)
         end.add('days', 1);

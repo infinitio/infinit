@@ -78,10 +78,10 @@ def plural(word, c):
           
             <div class="summary">
               <div class="totalsize ${magnitude_order(transaction['size'])}">${size(transaction['size'])}</div>
-              <img src="http://${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
+              <img src="//${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
               <h3><a class="show_tooltip" href="#user" title="${transaction['sender']['fullname']}">${transaction['sender']['fullname']}</a></h3> 
               <div class="tooltip">
-                <img src="http://${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
+                <img src="//${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
                 <div class="infos">
                   <h3>${transaction['sender']['fullname']}</h3>
                   <p class="handle">@${transaction['sender']['handle']}</p>
@@ -97,14 +97,14 @@ def plural(word, c):
               
               <span class="arrow">&#8594;</span>
               
-              <img src="http://${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
+              <img src="//${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
               <h3><a class="show_tooltip 
                 %if not 'handle' in transaction['recipient']:
                   ghost
                 %endif
                 " href="#user">${transaction['recipient']['fullname']}</a></h3> 
               <div class="tooltip">
-                <img src="http://${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
+                <img src="//${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
                 <div class="infos">
                   <h3>${transaction['recipient']['fullname']}</h3>
                   <p class="handle">

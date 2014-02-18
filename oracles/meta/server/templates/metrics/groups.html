@@ -9,13 +9,13 @@
           <ul>
             %for user in group['members']:
               <li class="member">
-                <img src="http://${http_host}/user/${user['_id']}/avatar" class="avatar" />
+                <img src="//${http_host}/user/${user['_id']}/avatar" class="avatar" />
                 <a href="#show_user" rel="${user['_id']}" class="show_tooltip">${user['fullname']}</a>
                 <a href="#rm_from_group" class="rm_from_group">x</a>
               </li>
               
               <div class="tooltip">
-                <img src="http://${http_host}/user/${user['_id']}/avatar" class="avatar" />
+                <img src="//${http_host}/user/${user['_id']}/avatar" class="avatar" />
                 <div class="infos">
                   <h3>${user['fullname']}</h3>
                   <p class="handle">@${user['handle']}</p>

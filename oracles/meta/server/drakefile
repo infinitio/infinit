@@ -76,6 +76,7 @@ def configure(elle,
     'templates/metrics/waterfall.html',
     'templates/metrics/manage_groups.html',
     'templates/metrics/groups.html',
+    'templates/metrics/user_search.html',
   )
 
   resources = drake.nodes(

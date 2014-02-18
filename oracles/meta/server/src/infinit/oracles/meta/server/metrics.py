@@ -188,7 +188,13 @@ class Metrics:
   def metrics_transactions_html(self):
     tpl = self._Meta__mako.get_template('/metrics/waterfall.html')
     return tpl.render(root = '..', title = 'waterfall')
-
+  
+  @api('/metrics/users.html')
+  def user_search_html(self, search = None, limit : int = 5, skip : int = 0):
+    tpl = self._Meta__mako.get_template('/metrics/user_search.html')
+    users = self.users(self, search = search, limit = limit, skip = skip)
+    return tpl.render(root = '..', title = 'user_search', users = users)
+  
   @api('/metrics/transactions/groups', method = 'GET')
   @require_admin
   def groups(self):
