@@ -359,15 +359,20 @@ class Mixin:
   ## Search ##
   ## ------ ##
 
-  user_public_fields = {
-    'id': '$_id',
-    'public_key': '$public_key',
-    'fullname': '$fullname',
-    'handle': '$handle',
-    'connected_devices': '$connected_devices',
-    'status': '$status',
-    '_id': False,
-  }
+  @property
+  def user_public_fields(self):
+    res = {
+      'id': '$_id',
+      'public_key': '$public_key',
+      'fullname': '$fullname',
+      'handle': '$handle',
+      'connected_devices': '$connected_devices',
+      'status': '$status',
+      '_id': False,
+    }
+    if self.admin:
+      res['email'] = '$email'
+    return res
 
   @api('/users')
   def users(self, search = None, limit : int = 5, skip : int = 0):
@@ -398,7 +403,7 @@ class Mixin:
           '$sort': 'swaggers.%s' % str(self.user['_id'])
         })
       pipeline.append({
-        '$project': Mixin.user_public_fields,
+        '$project': self.user_public_fields,
       })
       return self.database.users.aggregate(pipeline)
 
