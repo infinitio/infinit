@@ -40,6 +40,7 @@ class api:
       return method(self, *args, **kwargs)
     annotation_mapper.__route__ = self.__route
     annotation_mapper.__method__ = self.__method
+    annotation_mapper.__underlying_method__ = method
     annotation_mapper.__api__ = None
     annotation_mapper.__name__ = method.__name__
     api.functions.append(annotation_mapper)

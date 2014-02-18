@@ -107,7 +107,7 @@ class Meta(bottle.Bottle,
     rule = method.__route__
     elle.log.debug('%s: register route %s' % (self, rule))
     # Introspect method.
-    spec = inspect.getfullargspec(method)
+    spec = inspect.getfullargspec(method.__underlying_method__)
     del spec.args[0] # remove self
     import itertools
     defaults = spec.defaults or []
@@ -197,7 +197,7 @@ class Meta(bottle.Bottle,
   @api('/css/<filename:path>')
   def static_css(self, filename):
     return self.__static('css/%s' % filename)
-  
+
   @api('/images/<filename:path>')
   def static_images(self, filename):
     return self.__static('images/%s' % filename)
