@@ -1,0 +1,42 @@
+
+%if groups:
+  <ul>
+    %for group in groups:
+      <li class="group" rel="${group['name']}">
+        <h3>${group['name']}</h3> <span class="total_members">(${len(group['members'])})</span> <a href="#rm_group" class="rm_group">x</a>
+      
+        %if len(group['members']) > 0:
+          <ul>
+            %for user in group['members']:
+              <li class="member">
+                <img src="//${http_host}/user/${user['_id']}/avatar" class="avatar" />
+                <a href="#show_user" rel="${user['_id']}" class="show_tooltip">${user['fullname']}</a>
+                <a href="#rm_from_group" class="rm_from_group">x</a>
+              </li>
+              
+              <div class="tooltip">
+                <img src="//${http_host}/user/${user['_id']}/avatar" class="avatar" />
+                <div class="infos">
+                  <h3>${user['fullname']}</h3>
+                  <p class="handle">@${user['handle']}</p>
+                  <p>${user['email']}</p>
+                  </div>
+                <ul>
+                  <li><select class="add_group" rel="${user['_id']}">
+                    <option>Add To Group...</option>
+                  </select></li>
+                  <li><a href="#solo" rel="${user}" class="show_user">Show Transactions</a></li>
+                </ul>
+              </div>  
+              
+            %endfor
+          </ul>
+        </li>
+      %endif
+    %endfor
+  </ul>
+
+%else:
+  No groups yet.
+
+%endif

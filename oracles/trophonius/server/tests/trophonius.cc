@@ -149,7 +149,7 @@ public:
             auto json_read = elle::json::read(*socket);
             auto json = boost::any_cast<elle::json::Object>(json_read);
             BOOST_CHECK(json.find("port") != json.end());
-            auto port = boost::any_cast<int>(json.find("port")->second);
+            auto port = boost::any_cast<int64_t>(json.find("port")->second);
             this->_register(*socket, id, port);
           }
           else if (method == "DELETE")
@@ -296,7 +296,7 @@ read_notification(reactor::network::Socket& socket)
   auto response = boost::any_cast<elle::json::Object>(response_read);
   auto it = response.find("notification_type");
   BOOST_CHECK(it != response.end());
-  return boost::any_cast<int>(it->second);
+  return boost::any_cast<int64_t>(it->second);
 }
 
 static
@@ -313,9 +313,9 @@ check_authentication_success(reactor::network::Socket& socket)
   auto json_read = elle::json::read(socket);
   auto json = boost::any_cast<elle::json::Object>(json_read);
   auto notification_type = json["notification_type"];
-  BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), -666);
+  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type), -666);
   auto response_code = json["response_code"];
-  BOOST_CHECK_EQUAL(boost::any_cast<int>(response_code), 200);
+  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(response_code), 200);
 }
 
 static
@@ -325,9 +325,9 @@ check_authentication_failure(reactor::network::Socket& socket)
   auto json_read = elle::json::read(socket);
   auto json = boost::any_cast<elle::json::Object>(json_read);
   auto notification_type = json["notification_type"];
-  BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), -666);
+  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type), -666);
   auto response_code = json["response_code"];
-  BOOST_CHECK_EQUAL(boost::any_cast<int>(response_code), 403);
+  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(response_code), 403);
 }
 
 static
@@ -405,7 +405,7 @@ ELLE_TEST_SCHEDULED(notifications, (bool, ssl))
       auto notif_read = elle::json::read(*socket);
       auto notif = boost::any_cast<elle::json::Object>(notif_read);
       auto notification_type = notif["notification_type"];
-      BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type),
+      BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type),
                         user * 10 + device);
     };
     reactor::Barrier b00;
@@ -563,7 +563,7 @@ ELLE_TEST_SCHEDULED(wait_authentified, (bool, ssl))
       auto json_read = elle::json::read(*socket);
       auto json = boost::any_cast<elle::json::Object>(json_read);
       auto notification_type = json["notification_type"];
-      BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), 42);
+      BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type), 42);
     }
   }
 }

@@ -40,6 +40,7 @@ class api:
       return method(self, *args, **kwargs)
     annotation_mapper.__route__ = self.__route
     annotation_mapper.__method__ = self.__method
+    annotation_mapper.__underlying_method__ = method
     annotation_mapper.__api__ = None
     annotation_mapper.__name__ = method.__name__
     api.functions.append(annotation_mapper)
@@ -62,7 +63,17 @@ def require_admin(method):
   def wrapper(wrapped, self, *args, **kwargs):
     if 'admin_token' in kwargs and kwargs['admin_token'] == ADMIN_TOKEN:
       return wrapped(self, *args, **kwargs)
-    self.not_found()
+    self.forbiden()
+  return decorator.decorator(wrapper, method)
+
+def _require_admin(method):
+  if hasattr(method, '__api__'):
+    raise Exception(
+      'require_admin for %r wraps the API' % method.__name__)
+  def wrapper(wrapped, self, *args, **kwargs):
+    if not self.admin:
+      self.forbiden()
+    return wrapped(self, *args, **kwargs)
   return decorator.decorator(wrapper, method)
 
 def hash_pasword(password):

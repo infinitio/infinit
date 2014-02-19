@@ -19,7 +19,7 @@ from .plugins.certification import Plugin as CertificationPlugin
 
 from infinit.oracles.meta import error
 
-from .utils import api, hash_pasword, require_logged_in
+from .utils import api, hash_pasword, require_admin, require_logged_in
 
 from . import apertus
 from . import device
@@ -51,12 +51,16 @@ class Meta(bottle.Bottle,
                mongo_port = None,
                enable_emails = True,
                trophonius_expiration_time = 300, # in sec
-               apertus_expiration_time = 300 # in sec
+               apertus_expiration_time = 300, # in sec
+               force_admin = False,
                ):
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
     if system_logger is not None:
       elle.log.set_logger(elle.log.SysLogger(system_logger))
+    self.__force_admin = force_admin
+    if self.__force_admin:
+      elle.log.warn('%s: running in force admin mode' % self)
     super().__init__()
     db_args = {}
     if mongo_host is not None:
@@ -82,13 +86,14 @@ class Meta(bottle.Bottle,
     # Notifier.
     self.notifier = notifier.Notifier(self.__database)
     # Share
-    share_path = '/'.join(__file__.split('/')[:-9])
+    share_path = os.path.realpath('/'.join(__file__.split('/')[:-7]))
     share_path = '%s/share/infinit/meta/server/' % share_path
     self.__share_path = share_path
     # Resources
     self.__resources_path = '%s/resources' % share_path
     # Templates
     self.__mako_path = '%s/templates' % share_path
+    print(self.__mako_path)
     self.__mako = mako.lookup.TemplateLookup(
       directories = [self.__mako_path]
     )
@@ -107,7 +112,7 @@ class Meta(bottle.Bottle,
     rule = method.__route__
     elle.log.debug('%s: register route %s' % (self, rule))
     # Introspect method.
-    spec = inspect.getfullargspec(method)
+    spec = inspect.getfullargspec(method.__underlying_method__)
     del spec.args[0] # remove self
     import itertools
     defaults = spec.defaults or []
@@ -116,7 +121,7 @@ class Meta(bottle.Bottle,
                      in itertools.zip_longest(
                        reversed(spec.args),
                        reversed([True] * len(defaults))))
-    for arg in re.findall('<(\\w*)(?::\\w*(?::\\w*)?)?>', rule):
+    for arg in re.findall('<(\\w*)(?::\\w*(?::[^>]*)?)?>', rule):
       if arg in spec_args:
         del spec_args[arg]
       elif spec.varkw is None:
@@ -197,7 +202,7 @@ class Meta(bottle.Bottle,
   @api('/css/<filename:path>')
   def static_css(self, filename):
     return self.__static('css/%s' % filename)
-  
+
   @api('/images/<filename:path>')
   def static_images(self, filename):
     return self.__static('images/%s' % filename)
@@ -209,3 +214,11 @@ class Meta(bottle.Bottle,
   def __static(self, filename):
     return bottle.static_file(
       filename, root = self.__resources_path)
+
+  @property
+  def admin(self):
+    return self.__force_admin or bottle.request.certificate in [
+      'baptiste.fradin@infinit.io',
+      'gaetan.rochel@infinit.io',
+      'quentin.hocquet@infinit.io',
+    ]

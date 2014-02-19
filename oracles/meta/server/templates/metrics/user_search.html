@@ -1,0 +1,29 @@
+
+%if users:
+  <ul>
+    %for user in users:
+      <li class="user">
+        <a href="#user" rel="${user['id']}" class="show_tooltip">${user['fullname']}</a>
+      </li>
+      
+      <div class="tooltip">
+        <img src="//${http_host}/user/${user['id']}/avatar" class="avatar" />
+        <div class="infos">
+          <h3>${user['fullname']}</h3>
+          <p class="handle">@${user['handle']}</p>
+          <p>${user['email']}</p>
+          </div>
+        <ul>
+          <li><select class="add_group" rel="${user['id']}">
+            <option>Add To Group...</option>
+          </select></li>
+          <li><a href='/metrics/waterfall.html?users=["${user['id']}"]' rel="${user['id']}" class="show_user">Show Transactions</a></li>
+        </ul>
+      </div>  
+    %endfor
+  </ul>
+
+%else:
+  No users.
+
+%endif

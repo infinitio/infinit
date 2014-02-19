@@ -2,6 +2,13 @@
 
 <div class="wrapper">
   
+  <div class="views">
+    <ul>
+      <li><a href="#" title="by_transaction" class="active">+</a></li>
+      <li><a href="#" title="by_day">&Xi;</a></li>
+    </ul>
+  </div>
+  
   <div class="transactions by_transaction">
   
   </div>
@@ -9,7 +16,7 @@
   <div class="sidebar"> 
     <div class="date">
       <label for="datepicker">Pick a date:</label>
-      <input id="datepicker" value="Today" />
+      <input type="text" id="datepicker" value="Today" />
     </div>
     
     <div class="status">
@@ -21,20 +28,13 @@
         <li><a href="#" title="rejected" class="rejected">Rejected transfers</a></li>
         <li><a href="#" title="canceled" class="canceled">Canceled transfers</a></li>
         <li><a href="#" title="finished" class="finished">Finished transfers</a></li>
-        <li><a href="#" class="active">All transfers</a></li>
+        <li><a href="#" class="all active">All transfers</a></li>
       </ul>
     </div>
     
-    <div class="views">
-      <label>Choose view:</label>
-      <ul>
-        <li><a href="#" title="by_transaction" class="active">By transaction</a></li>
-        <li><a href="#" title="by_day">By day</a></li>
-      </ul>
-    </div>
-    
-    <div class="status">
-      <label>Show groups:</label>
+    <div class="groups">
+      <label>Groups:</label>
+      <ul></ul>
     </div>
   </div>
 

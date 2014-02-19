@@ -5,11 +5,15 @@ import bottle
 import bson
 import calendar
 import datetime
+import json
 import pymongo
 import pymongo.errors
 
 import elle.log
+
 from infinit.oracles.meta.server.utils import api
+from infinit.oracles.meta.server.utils import _require_admin as require_admin
+from itertools import chain
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Metrics'
 
@@ -24,6 +28,17 @@ statuses = {
 }
 
 statuses_back = dict((value, key) for key, value in statuses.items())
+
+def develop(collections):
+  for collection in collections:
+    for element in collection:
+      yield element
+
+def utf8_string(s):
+  return s.encode('latin-1').decode('utf-8')
+
+def json_value(s):
+  return json.loads(utf8_string(s))
 
 def join(collection, foreign, joined, project = None):
   related_ids = set()
@@ -48,14 +63,12 @@ class Metrics:
   def __format_date(self, date):
     return datetime.datetime.utcfromtimestamp(date).isoformat()
 
-  @api('/metrics/transactions')
   def metrics_transactions(self,
-                           start : datetime.datetime = None,
-                           end : datetime.datetime = None,
-                           group = None,
-                           status = None):
-    # if bottle.request.certificate != 'quentin.hocquet@infinit.io':
-    #   self.forbiden()
+                   start : datetime.datetime = None,
+                   end : datetime.datetime = None,
+                   groups = [],
+                   users = [],
+                   status = None):
     if start is None:
       start = datetime.date.today() - datetime.timedelta(7)
     match = {'$gte': calendar.timegm(start.timetuple())}
@@ -67,16 +80,18 @@ class Metrics:
       if status_i is None:
         self.bad_request('invalid status: %s' % status)
       match['status'] = status_i
-    if group is not None:
-      group = self.__database.groups.find_one({'name': group})
-      if group is None:
-        self.not_found('group does not exist: %s' % group)
+    if any((groups, users)):
+      if groups:
+        groups = self.__database.groups.find({'name': {'$in': groups}})
+        groups = develop(group['members'] for group in groups)
+        groups = list(groups)
+      users = list(chain(groups, (bson.ObjectId(u) for u in users)))
       match = {
         '$and': [
           match,
           {'$or': [
-            {'sender_id': {'$in': group['members']}},
-            {'recipient_id': {'$in': group['members']}},
+            {'sender_id': {'$in': users}},
+            {'recipient_id': {'$in': users}},
           ]}
         ]}
     days = self.database.transactions.aggregate([
@@ -112,10 +127,11 @@ class Metrics:
     ])['result']
     days = list(days)
     def foreign(day):
+      day['date'] = self.__format_date(day['_id'])
       del day['_id']
       for transaction in day['transactions']:
-        yield transaction['sender_id'], transaction, 'sender_id'
-        yield transaction['recipient_id'], transaction, 'recipient_id'
+        yield transaction['sender_id'], transaction, 'sender'
+        yield transaction['recipient_id'], transaction, 'recipient'
         del transaction['sender_id']
         del transaction['recipient_id']
         transaction['status'] = statuses[transaction['status']]
@@ -128,27 +144,59 @@ class Metrics:
             'fullname': '$fullname',
             'connected': '$connected',
           })
-    return {
-      'result': days,
-    }
+    return days
 
-  @api('/metrics/transactions.html')
-  def metrics_transactions_html(self,
-                                start : datetime.datetime = None,
-                                end : datetime.datetime = None,
-                                group = None,
-                                status = None):
-    tpl = self._Meta__mako.get_template('/metrics/transactions.html')
-    transaction_days = self.metrics_transactions(
-      start = start, end = end, group = group, status = status)['result']
-    return tpl.render(transaction_days = transaction_days, http_host = bottle.request.environ['HTTP_HOST'])
+  @api('/metrics/transactions<html:re:(\\.html)?>')
+  @require_admin
+  def metrics_transactions_api(self,
+                               html,
+                               start : datetime.datetime = None,
+                               end : datetime.datetime = None,
+                               groups : json_value = [],
+                               users : json_value = [],
+                               status = None,):
+    data = self.metrics_transactions(start = start,
+                                     end = end,
+                                     groups = groups,
+                                     users = users,
+                                     status = status)
+    if html:
+      tpl = '/metrics/transactions.html'
+      tpl = self._Meta__mako.get_template(tpl)
+      host = bottle.request.environ['HTTP_HOST']
+      return tpl.render(transaction_days = data, http_host = host)
+    else:
+      return {
+        'result': data,
+      }
+
+  @api('/metrics/groups.html')
+  @require_admin
+  def metrics_groups_html(self):
+    tpl = self._Meta__mako.get_template('/metrics/groups.html')
+    groups = self.groups()['groups']
+    return tpl.render(groups = groups, http_host = bottle.request.environ['HTTP_HOST'])
+
+  @api('/metrics/manage_groups.html')
+  @require_admin
+  def metrics_groups_html(self):
+    tpl = self._Meta__mako.get_template('/metrics/manage_groups.html')
+    return tpl.render(root = '..', title = 'groups')
 
   @api('/metrics/waterfall.html')
-  def metrics_transactions_html(self):
+  @require_admin
+  def metrics_transactions_html(self, users : json_value = []):
     tpl = self._Meta__mako.get_template('/metrics/waterfall.html')
     return tpl.render(root = '..', title = 'waterfall')
-
+  
+  @api('/metrics/users.html')
+  def user_search_html(self, search = None, limit : int = 5, skip : int = 0):
+    tpl = self._Meta__mako.get_template('/metrics/user_search.html')
+    users = self.users(search = search, limit = limit, skip = skip)['result']
+    return tpl.render(root = '..', http_host = bottle.request.environ['HTTP_HOST'], title = 'user_search', users = users)
+  
   @api('/metrics/transactions/groups', method = 'GET')
+  @require_admin
   def groups(self):
     groups = list(self.__database.groups.find())
     def foreign(group):
@@ -166,7 +214,8 @@ class Metrics:
       }
 
   @api('/metrics/transactions/groups/<name>', method = 'PUT')
-  def group_add(self, name):
+  @require_admin
+  def group_add(self, name: utf8_string):
     try:
       self.__database.groups.insert(
         {
@@ -177,13 +226,15 @@ class Metrics:
       pass
 
   @api('/metrics/transactions/groups/<name>', method = 'DELETE')
-  def group_remove(self, name):
+  @require_admin
+  def group_remove(self, name: utf8_string):
     res = self.__database.groups.remove({'name': name})
     if res['n'] == 0:
       self.not_found('group does not exist: %s' % name)
 
   @api('/metrics/transactions/groups/<name>', method = 'GET')
-  def group(self, name):
+  @require_admin
+  def group(self, name: utf8_string):
     group = self.__database.groups.find_one({'name': name})
     if group is None:
       self.not_found('group does not exist: %s' % name)
@@ -192,7 +243,7 @@ class Metrics:
   def user_fuzzy(self, user):
     res = None
     try:
-      i = bson.ObjectId(user),
+      i = bson.ObjectId(user)
       res = self._user_by_id(i, ensure_existence = False)
     except bson.errors.InvalidId:
       pass
@@ -206,7 +257,8 @@ class Metrics:
 
   @api('/metrics/transactions/groups/<group>/<user>',
        method = 'PUT')
-  def group_member_add(self, group, user):
+  @require_admin
+  def group_member_add(self, group: utf8_string, user):
     user = self.user_fuzzy(user)
     res = self.__database.groups.find_and_modify(
       query = {'name': group},
@@ -217,7 +269,8 @@ class Metrics:
 
   @api('/metrics/transactions/groups/<group>/<user>',
        method = 'DELETE')
-  def group_member_remove(self, group, user):
+  @require_admin
+  def group_member_remove(self, group: utf8_string, user):
     user = self.user_fuzzy(user)
     res = self.__database.groups.find_and_modify(
       query = {'name': group},

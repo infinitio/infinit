@@ -109,6 +109,7 @@ public:
         std::string id = chunks[2];
         if (method == "PUT")
         {
+          ELLE_DUMP("%s: in PUT", *this);
           auto json_read = elle::json::read(*socket);
           auto json = boost::any_cast<elle::json::Object>(json_read);
           BOOST_CHECK(json.find("port_ssl") != json.end());
@@ -116,14 +117,17 @@ public:
           auto port_ssl = json.find("port_ssl")->second;
           auto port_tcp = json.find("port_tcp")->second;
           this->_register(*socket, id,
-            boost::any_cast<int>(port_ssl), boost::any_cast<int>(port_tcp));
+                          boost::any_cast<int64_t>(port_ssl),
+                          boost::any_cast<int64_t>(port_tcp));
         }
         else if (method == "DELETE")
         {
+          ELLE_DUMP("%s: in DELETE", *this);
           this->_unregister(*socket, id);
         }
         else if (method == "POST")
         {
+          ELLE_DUMP("%s: in POST", *this);
           auto json_read = elle::json::read(*socket);
           auto json = boost::any_cast<elle::json::Object>(json_read);
           BOOST_CHECK(json.find("bandwidth") != json.end());
@@ -131,11 +135,10 @@ public:
           auto bandwidth = json.find("bandwidth")->second;
           auto number_of_transfers = json.find("number_of_transfers")->second;
           this->_update_bandwidth(*socket, id,
-            boost::any_cast<int>(bandwidth),
-            boost::any_cast<int>(number_of_transfers));
+            boost::any_cast<int64_t>(bandwidth),
+            boost::any_cast<int64_t>(number_of_transfers));
         }
-        this->response(*socket,
-                       std::string("{\"success\": true }"));
+        this->response(*socket, std::string("{\"success\": true }"));
         return;
       }
     }
@@ -145,8 +148,8 @@ public:
   void
   _register(reactor::network::Socket& socket,
             std::string const& id,
-            int port_ssl,
-            int port_tcp)
+            int64_t port_ssl,
+            int64_t port_tcp)
   {
     ELLE_LOG_SCOPE("%s: register apertus %s on SSL port %s and TCP port %s",
                    *this, id, port_ssl, port_tcp);
@@ -170,8 +173,8 @@ public:
   void
   _update_bandwidth(reactor::network::Socket& socket,
                     std::string const& id,
-                    int bandwidth,
-                    int number_of_transfers)
+                    int64_t bandwidth,
+                    int64_t number_of_transfers)
   {
     ELLE_LOG_SCOPE("%s: update apertus bandwidth %s", *this, id);
     this->_bandwidth_update_count++;
@@ -204,16 +207,13 @@ ELLE_TEST_SCHEDULED(register_unregister)
   Meta meta;
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
-    std::unique_ptr<infinit::oracles::apertus::Apertus> apertus;
-
-    apertus.reset(
-      new infinit::oracles::apertus::Apertus(
-        "localhost",
-        meta.port(),
-        "localhost",
-        0,
-        0,
-        1000_sec));
+    infinit::oracles::apertus::Apertus apertus(
+      "localhost",
+      meta.port(),
+      "localhost",
+      0,
+      0,
+      1000_sec);
 
     reactor::wait(meta.apertus_registered());
     ELLE_LOG("registered apertus");
@@ -228,12 +228,12 @@ ELLE_TEST_SCHEDULED(register_unregister)
       });
       scope.run_background("stop", [&]
       {
-        apertus->stop();
+        apertus.stop();
       });
       scope.wait();
     };
-    BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   }
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
 }
 
 /*---------------------.
@@ -249,15 +249,13 @@ ELLE_TEST_SCHEDULED(no_update_after_stop)
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
     auto tick_rate = 1_sec;
-    std::unique_ptr<infinit::oracles::apertus::Apertus> apertus;
-    apertus.reset(
-      new infinit::oracles::apertus::Apertus(
-        "localhost",
-        meta.port(),
-        "localhost",
-        0,
-        0,
-        tick_rate));
+    infinit::oracles::apertus::Apertus apertus(
+      "localhost",
+      meta.port(),
+      "localhost",
+      0,
+      0,
+      tick_rate);
 
     reactor::wait(meta.apertus_registered());
     BOOST_CHECK_EQUAL(meta.apertuses().size(), 1);
@@ -273,7 +271,7 @@ ELLE_TEST_SCHEDULED(no_update_after_stop)
       });
       scope.run_background("stop", [&]
       {
-        apertus->stop();
+        apertus.stop();
       });
       scope.wait();
     };
@@ -296,37 +294,35 @@ ELLE_TEST_SCHEDULED(simple_transfer)
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
     auto tick_rate = 1_sec;
-    std::unique_ptr<infinit::oracles::apertus::Apertus> apertus;
-    apertus.reset(
-      new infinit::oracles::apertus::Apertus(
-        "localhost",
-        meta.port(),
-        "localhost",
-        0,
-        0,
-        tick_rate));
+    infinit::oracles::apertus::Apertus apertus(
+      "localhost",
+      meta.port(),
+      "localhost",
+      0,
+      0,
+      tick_rate);
 
     reactor::wait(meta.apertus_registered());
     BOOST_CHECK_EQUAL(meta.apertuses().size(), 1);
 
-    BOOST_CHECK_EQUAL(apertus->workers().size(), 0);
+    BOOST_CHECK_EQUAL(apertus.workers().size(), 0);
 
     std::string passphrase(32, 'b');
     reactor::network::FingerprintedSocket socket1(
       "127.0.0.1",
-      boost::lexical_cast<std::string>(apertus->port_ssl()),
+      boost::lexical_cast<std::string>(apertus.port_ssl()),
       fingerprint);
     socket1.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
 
     reactor::network::FingerprintedSocket socket2(
       "127.0.0.1",
-      boost::lexical_cast<std::string>(apertus->port_ssl()),
+      boost::lexical_cast<std::string>(apertus.port_ssl()),
       fingerprint);
     socket2.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
 
     reactor::wait(meta.apertus_bandwidth_updated());
     BOOST_CHECK_EQUAL(meta.bandwidth_update_count(), 1);
-    BOOST_CHECK_EQUAL(apertus->workers().size(), 1);
+    BOOST_CHECK_EQUAL(apertus.workers().size(), 1);
 
     static std::string const some_stuff = std::string(10, 'a') +
       std::string("\n");
@@ -348,36 +344,34 @@ ELLE_TEST_SCHEDULED(ssl_tcp_transfer)
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
     auto tick_rate = 1_sec;
-    std::unique_ptr<infinit::oracles::apertus::Apertus> apertus;
-    apertus.reset(
-      new infinit::oracles::apertus::Apertus(
-        "localhost",
-        meta.port(),
-        "localhost",
-        0,
-        0,
-        tick_rate));
+    infinit::oracles::apertus::Apertus apertus(
+      "localhost",
+      meta.port(),
+      "localhost",
+      0,
+      0,
+      tick_rate);
 
     reactor::wait(meta.apertus_registered());
     BOOST_CHECK_EQUAL(meta.apertuses().size(), 1);
 
-    BOOST_CHECK_EQUAL(apertus->workers().size(), 0);
+    BOOST_CHECK_EQUAL(apertus.workers().size(), 0);
 
     std::string passphrase(32, 'b');
     reactor::network::FingerprintedSocket socket1(
       "127.0.0.1",
-      boost::lexical_cast<std::string>(apertus->port_ssl()),
+      boost::lexical_cast<std::string>(apertus.port_ssl()),
       fingerprint);
     socket1.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
 
     reactor::network::TCPSocket socket2(
       "127.0.0.1",
-      boost::lexical_cast<std::string>(apertus->port_tcp()));
+      boost::lexical_cast<std::string>(apertus.port_tcp()));
     socket2.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
 
     reactor::wait(meta.apertus_bandwidth_updated());
     BOOST_CHECK_EQUAL(meta.bandwidth_update_count(), 1);
-    BOOST_CHECK_EQUAL(apertus->workers().size(), 1);
+    BOOST_CHECK_EQUAL(apertus.workers().size(), 1);
 
     static std::string const some_stuff = std::string(10, 'a') +
       std::string("\n");
@@ -400,37 +394,35 @@ ELLE_TEST_SCHEDULED(wait_for_transfers)
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
     auto tick_rate = 1_sec;
-    std::unique_ptr<infinit::oracles::apertus::Apertus> apertus;
-    apertus.reset(
-      new infinit::oracles::apertus::Apertus(
-        "localhost",
-        meta.port(),
-        "localhost",
-        0,
-        0,
-        tick_rate));
+    infinit::oracles::apertus::Apertus apertus(
+      "localhost",
+      meta.port(),
+      "localhost",
+      0,
+      0,
+      tick_rate);
 
     reactor::wait(meta.apertus_registered());
     BOOST_CHECK_EQUAL(meta.apertuses().size(), 1);
 
-    BOOST_CHECK_EQUAL(apertus->workers().size(), 0);
+    BOOST_CHECK_EQUAL(apertus.workers().size(), 0);
 
     std::string passphrase(32, 'o');
     reactor::network::FingerprintedSocket socket1(
       "127.0.0.1",
-      boost::lexical_cast<std::string>(apertus->port_ssl()),
+      boost::lexical_cast<std::string>(apertus.port_ssl()),
       fingerprint);
     socket1.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
 
     reactor::network::FingerprintedSocket socket2(
       "127.0.0.1",
-      boost::lexical_cast<std::string>(apertus->port_ssl()),
+      boost::lexical_cast<std::string>(apertus.port_ssl()),
       fingerprint);
     socket2.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
 
     reactor::wait(meta.apertus_bandwidth_updated());
     BOOST_CHECK_EQUAL(meta.bandwidth_update_count(), 1);
-    BOOST_CHECK_EQUAL(apertus->workers().size(), 1);
+    BOOST_CHECK_EQUAL(apertus.workers().size(), 1);
 
     elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
     {
@@ -447,9 +439,9 @@ ELLE_TEST_SCHEDULED(wait_for_transfers)
       });
       scope.run_background("stop", [&]
       {
-        BOOST_CHECK_EQUAL(apertus->workers().size(), 1);
-        apertus->stop();
-        BOOST_CHECK_EQUAL(apertus->workers().size(), 0);
+        BOOST_CHECK_EQUAL(apertus.workers().size(), 1);
+        apertus.stop();
+        BOOST_CHECK_EQUAL(apertus.workers().size(), 0);
       });
       scope.wait();
     };

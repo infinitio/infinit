@@ -5,7 +5,7 @@ import bson
 import uuid
 import elle.log
 
-from .utils import api, require_logged_in, require_admin, hash_pasword
+from .utils import api, require_logged_in, require_admin, hash_pasword, _require_admin
 from . import error, notifier, regexp, conf, invitation
 
 from pymongo import DESCENDING
@@ -213,7 +213,7 @@ class Mixin:
 
     fullname = fullname.strip()
 
-    with elle.log.trace("registeration: %s as %s" % (email, fullname)):
+    with elle.log.trace("registration: %s as %s" % (email, fullname)):
       if self.user is not None:
         return self.fail(error.ALREADY_LOGGED_IN)
       email = email.strip().lower()
@@ -359,8 +359,56 @@ class Mixin:
   ## Search ##
   ## ------ ##
 
+  @property
+  def user_public_fields(self):
+    res = {
+      'id': '$_id',
+      'public_key': '$public_key',
+      'fullname': '$fullname',
+      'handle': '$handle',
+      'connected_devices': '$connected_devices',
+      'status': '$status',
+      '_id': False,
+    }
+    if self.admin:
+      res['email'] = '$email'
+    return res
+
+  @api('/users')
+  def users(self, search = None, limit : int = 5, skip : int = 0):
+    """Search the ids of the users with handle or fullname matching text.
+
+    search -- the query.
+    skip -- the number of user to skip in the result (optional).
+    limit -- the maximum number of match to return (optional).
+    """
+    with elle.log.trace('search %s (limit: %s, skip: %s)' % \
+                        (search, limit, skip)):
+      pipeline = []
+      match = {
+        'register_status':'ok',
+      }
+      if search is not None:
+        match['$or'] = [
+          {'fullname' : {'$regex' : search,  '$options': 'i'}},
+          {'handle' : {'$regex' : search, '$options': 'i'}},
+        ]
+      pipeline = [
+        {'$match': match},
+        {'$skip': skip},
+        {'$limit': limit},
+      ]
+      if self.user is not None:
+        pipeline.append({
+          '$sort': 'swaggers.%s' % str(self.user['_id'])
+        })
+      pipeline.append({
+        '$project': self.user_public_fields,
+      })
+      return self.database.users.aggregate(pipeline)
+
   @api('/user/search', method = 'POST')
-  @require_logged_in
+  #@require_logged_in
   def user_search(self, text, limit = 5, offset = 0):
     """Search the ids of the users with handle or fullname matching text.
 
@@ -468,9 +516,8 @@ class Mixin:
       return self.success({"swaggers" : list(user["swaggers"].keys())})
 
   @api('/user/add_swagger', method = 'POST')
-  @require_admin
+  @_require_admin
   def add_swagger(self,
-                  admin_token,
                   user1: bson.ObjectId,
                   user2: bson.ObjectId):
     """Make user1 and user2 swaggers.
@@ -480,7 +527,7 @@ class Mixin:
     user2 -- the other user.
     admin_token -- the admin token.
     """
-    with elle.log.trace("%s: increase swag" % admin_token):
+    with elle.log.trace('%s: increase swag' % self):
       self._increase_swag(user1, user2,)
       return self.success()
 

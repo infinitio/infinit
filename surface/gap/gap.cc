@@ -880,7 +880,9 @@ extern "C"
       #_field_,                                                                \
       [&] (surface::gap::State& state) -> _type_                               \
       {                                                                        \
-        return _transform_(state.transactions().at(_id).data()->_field_);      \
+        auto res = _transform_(state.transactions().at(_id).data()->_field_);  \
+        ELLE_DUMP("fetch "#_field_ ": %s", res);                               \
+        return res;                                                            \
       });                                                                      \
       }                                                                        \
 /**/

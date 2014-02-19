@@ -15,8 +15,7 @@ http://brew.sh
 -----------------
 2. Install Python
 -----------------
-Python 2.7: brew install python2
-Python 3.2: brew install python32
+Python 3.3: brew install python3
 
 ----------------
 3. Install Boost
@@ -24,12 +23,12 @@ Python 3.2: brew install python32
 brew edit boost
 
 Add the following to where the bjam file is made to ensure boost links with
-Python 3.2:
-file.write "using python : 3.2 : /usr/local/Frameworks/Python.framework/Versions/3.2/bin/python3 : /usr/local/Frameworks/Python.framework/Versions/3.2/include/python3.2m : /usr/local/Frameworks/Python.framework/Versions/3.2/lib ;\n"
+Python 3.3:
+file.write "using python : 3.3 : /usr/local/Frameworks/Python.framework/Versions/3.3/bin/python3 : /usr/local/Frameworks/Python.framework/Versions/3.3/include/python3.3m : /usr/local/Frameworks/Python.framework/Versions/3.3/lib ;\n"
 
-MACOSX_DEPLOYMENT_TARGET=10.7 brew install --build-from-source --verbose --debut --with-c++11 boost
+MACOSX_DEPLOYMENT_TARGET=10.7 brew install --build-from-source --with-c++11 boost
 
 ----------------
 4. Build Infinit
 ----------------
-./drake.clang //build
+./drake //build
