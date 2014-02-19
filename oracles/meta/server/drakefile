@@ -137,6 +137,8 @@ def configure(elle,
     res = []
     res += f(python, where / ('lib/python%s' % python_version),
              build_python_path)
+    res += f(templates, where / 'share/infinit/meta/server')
+    res += f(resources, where / 'share/infinit/meta/server')
     res.append(f(build_binary, where))
     res.append(f(drake.node('config/meta'),
                  where / 'etc/nginx/sites-available', 'config'))
