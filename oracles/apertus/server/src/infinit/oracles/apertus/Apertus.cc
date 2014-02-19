@@ -48,45 +48,57 @@ namespace infinit
                  "apertus_monitor",
                  std::bind(&Apertus::_run_monitor, std::ref(*this)))
       {
-        ELLE_LOG("Apertus");
-        this->_certificate.reset(new reactor::network::SSLCertificate(
-          server_certificate, server_key, server_dh1024));
-        ELLE_DEBUG("%s: loaded SSL certificate", *this);
+        try
+        {
+          ELLE_LOG("Apertus");
+          this->_certificate.reset(new reactor::network::SSLCertificate(
+                                     server_certificate, server_key, server_dh1024));
+          ELLE_DEBUG("%s: loaded SSL certificate", *this);
 
-        this->_server_ssl.reset(new reactor::network::SSLServer(
-          std::move(this->_certificate)));
-        this->_server_ssl->listen(this->_port_ssl);
-        this->_port_ssl = this->_server_ssl->port();
-        ELLE_LOG("%s: SSL Apertus listening on %s:%s",
-                 *this, this->_host, this->_port_ssl);
-        this->_accepter_ssl.reset(new reactor::Thread(
-          *reactor::Scheduler::scheduler(),
-          "apertus_ssl_accepter",
-          std::bind(&Apertus::_serve,
-                    std::ref(*this),
-                    std::ref(*this->_server_ssl))));
+          this->_server_ssl.reset(new reactor::network::SSLServer(
+                                    std::move(this->_certificate)));
+          this->_server_ssl->listen(this->_port_ssl);
+          this->_port_ssl = this->_server_ssl->port();
+          ELLE_LOG("%s: SSL Apertus listening on %s:%s",
+                   *this, this->_host, this->_port_ssl);
+          this->_accepter_ssl.reset(new reactor::Thread(
+                                      *reactor::Scheduler::scheduler(),
+                                      "apertus_ssl_accepter",
+                                      std::bind(&Apertus::_serve,
+                                                std::ref(*this),
+                                                std::ref(*this->_server_ssl))));
 
-        this->_server_tcp.reset(new reactor::network::TCPServer());
-        this->_server_tcp->listen(this->_port_tcp);
-        this->_port_tcp = this->_server_tcp->port();
-        ELLE_LOG("%s: TCP Apertus listening on %s:%s",
-                 *this, this->_host, this->_port_tcp);
-        this->_accepter_tcp.reset(new reactor::Thread(
-          *reactor::Scheduler::scheduler(),
-          "apertus_tcp_accepter",
-          std::bind(&Apertus::_serve,
-                    std::ref(*this),
-                    std::ref(*this->_server_tcp))));
+          this->_server_tcp.reset(new reactor::network::TCPServer());
+          this->_server_tcp->listen(this->_port_tcp);
+          this->_port_tcp = this->_server_tcp->port();
+          ELLE_LOG("%s: TCP Apertus listening on %s:%s",
+                   *this, this->_host, this->_port_tcp);
+          this->_accepter_tcp.reset(new reactor::Thread(
+                                      *reactor::Scheduler::scheduler(),
+                                      "apertus_tcp_accepter",
+                                      std::bind(&Apertus::_serve,
+                                                std::ref(*this),
+                                                std::ref(*this->_server_tcp))));
 
-        this->_register();
+          this->_register();
+        }
+        catch (...)
+        {
+          this->_accepter_ssl->terminate_now();
+          this->_accepter_tcp->terminate_now();
+          this->_monitor.terminate_now();
+          throw;
+        }
       }
 
       Apertus::~Apertus()
       {
         ELLE_LOG("~Apertus");
         this->_monitor.terminate_now();
-        this->_accepter_ssl->terminate_now();
-        this->_accepter_tcp->terminate_now();
+        if (this->_accepter_ssl)
+          this->_accepter_ssl->terminate_now();
+        if (this->_accepter_tcp)
+          this->_accepter_tcp->terminate_now();
 
         this->_remove_clients_and_accepters();
 
