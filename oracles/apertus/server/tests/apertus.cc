@@ -109,6 +109,7 @@ public:
         std::string id = chunks[2];
         if (method == "PUT")
         {
+          ELLE_DUMP("%s: in PUT", *this);
           auto json_read = elle::json::read(*socket);
           auto json = boost::any_cast<elle::json::Object>(json_read);
           BOOST_CHECK(json.find("port_ssl") != json.end());
@@ -116,14 +117,17 @@ public:
           auto port_ssl = json.find("port_ssl")->second;
           auto port_tcp = json.find("port_tcp")->second;
           this->_register(*socket, id,
-            boost::any_cast<int64_t>(port_ssl), boost::any_cast<int64_t>(port_tcp));
+                          boost::any_cast<int64_t>(port_ssl),
+                          boost::any_cast<int64_t>(port_tcp));
         }
         else if (method == "DELETE")
         {
+          ELLE_DUMP("%s: in DELETE", *this);
           this->_unregister(*socket, id);
         }
         else if (method == "POST")
         {
+          ELLE_DUMP("%s: in POST", *this);
           auto json_read = elle::json::read(*socket);
           auto json = boost::any_cast<elle::json::Object>(json_read);
           BOOST_CHECK(json.find("bandwidth") != json.end());
@@ -134,8 +138,7 @@ public:
             boost::any_cast<int64_t>(bandwidth),
             boost::any_cast<int64_t>(number_of_transfers));
         }
-        this->response(*socket,
-                       std::string("{\"success\": true }"));
+        this->response(*socket, std::string("{\"success\": true }"));
         return;
       }
     }
@@ -145,8 +148,8 @@ public:
   void
   _register(reactor::network::Socket& socket,
             std::string const& id,
-            int port_ssl,
-            int port_tcp)
+            int64_t port_ssl,
+            int64_t port_tcp)
   {
     ELLE_LOG_SCOPE("%s: register apertus %s on SSL port %s and TCP port %s",
                    *this, id, port_ssl, port_tcp);
@@ -170,8 +173,8 @@ public:
   void
   _update_bandwidth(reactor::network::Socket& socket,
                     std::string const& id,
-                    int bandwidth,
-                    int number_of_transfers)
+                    int64_t bandwidth,
+                    int64_t number_of_transfers)
   {
     ELLE_LOG_SCOPE("%s: update apertus bandwidth %s", *this, id);
     this->_bandwidth_update_count++;
