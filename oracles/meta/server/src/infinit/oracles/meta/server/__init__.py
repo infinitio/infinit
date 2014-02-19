@@ -25,7 +25,6 @@ from . import apertus
 from . import device
 from . import invitation
 from . import mail
-from . import metrics
 from . import notifier
 from . import root
 from . import transaction
@@ -42,8 +41,7 @@ class Meta(bottle.Bottle,
            device.Mixin,
            trophonius.Mixin,
            apertus.Mixin,
-           waterfall.Mixin,
-           metrics.Metrics,
+           waterfall.Waterfall,
          ):
 
   def __init__(self,
@@ -102,7 +100,7 @@ class Meta(bottle.Bottle,
     self.invitation = invitation.Invitation(active = enable_emails)
     self.trophonius_expiration_time = trophonius_expiration_time
     self.apertus_expiration_time = apertus_expiration_time
-    metrics.Metrics.__init__(self)
+    waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)], unique = True)
