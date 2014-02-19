@@ -25,7 +25,7 @@
                   <li><select class="add_group" rel="${user['_id']}">
                     <option>Add To Group...</option>
                   </select></li>
-                  <li><a href="#solo" rel="${user}" class="show_user">Show Transactions</a></li>
+                  <li><a href='/waterfall?users=["${user['_id']}"]' rel="${user['_id']}" class="show_user">Show Transactions</a></li>
                 </ul>
               </div>  
               
