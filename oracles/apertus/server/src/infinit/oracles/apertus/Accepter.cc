@@ -65,7 +65,7 @@ namespace infinit
 
           ELLE_TRACE("%s: reading for the identifier", *this)
             this->_client->read(tid_buffer);
-          oracle::hermes::TID tid = std::string(tid_array);
+          Apertus::TID tid = std::string(tid_array);
           ELLE_DEBUG("%s: identifier: %s", *this, tid);
 
           // First client to connect with this TID, it must wait.

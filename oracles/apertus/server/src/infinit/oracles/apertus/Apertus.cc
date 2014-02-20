@@ -205,7 +205,7 @@ namespace infinit
       }
 
       void
-      Apertus::_connect(oracle::hermes::TID tid,
+      Apertus::_connect(TID tid,
                         std::unique_ptr<reactor::network::Socket> client1,
                         std::unique_ptr<reactor::network::Socket> client2)
       {

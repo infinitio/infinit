@@ -2,8 +2,10 @@
 
 #include <infinit/oracles/apertus/Apertus.hh>
 
+#include <reactor/network/exception.hh>
 #include <reactor/network/socket.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/Scope.hh>
 
 #include <elle/finally.hh>
 #include <elle/log.hh>
@@ -17,7 +19,7 @@ namespace infinit
     namespace apertus
     {
       Transfer::Transfer(Apertus& owner,
-                         oracle::hermes::TID tid,
+                         Apertus::TID tid,
                          Socket&& left,
                          Socket&& right):
         Waitable(elle::sprintf("transfer %s", tid)),
