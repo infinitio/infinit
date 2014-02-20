@@ -308,7 +308,7 @@ namespace surface
 
       // Change state to SenderCreateTransaction once we've calculated the file
       // size and have the file list.
-      this->current_state(TransferMachine::State::SenderCreateTransaction);
+      this->current_state(TransactionMachine::State::SenderCreateTransaction);
 
       ELLE_DEBUG("create transaction");
       this->transaction_id(
