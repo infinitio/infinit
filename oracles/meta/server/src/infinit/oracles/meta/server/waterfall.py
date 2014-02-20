@@ -5,116 +5,286 @@ import bottle
 import bson
 import calendar
 import datetime
-import time
+import json
 import pymongo
+import pymongo.errors
 
 import elle.log
-from infinit.oracles.meta.server.utils import api, require_logged_in
 
-ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Waterfall'
+from infinit.oracles.meta.server.utils import api
+from infinit.oracles.meta.server.utils import _require_admin as require_admin
+from itertools import chain
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Metrics'
 
 statuses = {
-  0: ("created", 0x8080FF),
-  1: ("initialized", 0x8080FF),
-  2: ("accepted", 0x80FFFF),
-  4: ("finished", 0x80FF90),
-  5: ("rejected", 0xFFFF80),
-  6: ("canceled", 0xFFFF80),
-  7: ("failed", 0xFF8080)
+  0: ("created"),
+  1: ("initialized"),
+  2: ("accepted"),
+  4: ("finished"),
+  5: ("rejected"),
+  6: ("canceled"),
+  7: ("failed"),
 }
 
-def user_to_json(user):
-  keys = ['_id', 'email']
-  return {k: user[k] for k in keys}
+statuses_back = dict((value, key) for key, value in statuses.items())
 
-class Mixin:
+def develop(collections):
+  for collection in collections:
+    for element in collection:
+      yield element
 
-  def __waterfall(self, filter = {}):
-    today = datetime.date.today()
-    start = today - datetime.timedelta(7)
-    start_ts = calendar.timegm(start.timetuple())
-    match = {'ctime': {'$gte': start_ts}}
-    match.update(filter)
-    res = list(self.database.transactions.aggregate([
+def utf8_string(s):
+  return s.encode('latin-1').decode('utf-8')
+
+def json_value(s):
+  return json.loads(utf8_string(s))
+
+def join(collection, foreign, joined, project = None):
+  related_ids = set()
+  store = {}
+  for element in collection:
+    for related_id, container, index in foreign(element):
+      related_ids.add(related_id)
+      store.setdefault(related_id, []).append((container, index))
+  pipeline = [{'$match': {'_id': {'$in': list(related_ids)}}}]
+  if project is not None:
+    pipeline.append({'$project': project})
+  for related in joined.aggregate(pipeline)['result']:
+    for container, index in store[related['_id']]:
+      container[index] = related
+
+class Waterfall:
+
+  def __init__(self):
+    self.__database = self.database.waterfall
+    self.__database.groups.ensure_index([("name", 1)], unique = True)
+
+  def __format_date(self, date):
+    return datetime.datetime.utcfromtimestamp(date).isoformat()
+
+  def waterfall_transactions(self,
+                             start : datetime.datetime = None,
+                             end : datetime.datetime = None,
+                             groups = [],
+                             users = [],
+                             status = None):
+    print('LOL')
+    if start is None:
+      start = datetime.date.today() - datetime.timedelta(7)
+    match = {'$gte': calendar.timegm(start.timetuple())}
+    if end is not None:
+      match['$lte'] = calendar.timegm(end.timetuple())
+    match = {'ctime': match}
+    if status is not None:
+      status_i = statuses_back.get(status, None)
+      if status_i is None:
+        self.bad_request('invalid status: %s' % status)
+      match['status'] = status_i
+    if any((groups, users)):
+      if groups:
+        groups = self.__database.groups.find({'name': {'$in': groups}})
+        groups = develop(group['members'] for group in groups)
+        groups = list(groups)
+      users = list(chain(groups, (bson.ObjectId(u) for u in users)))
+      match = {
+        '$and': [
+          match,
+          {'$or': [
+            {'sender_id': {'$in': users}},
+            {'recipient_id': {'$in': users}},
+          ]}
+        ]}
+    days = self.database.transactions.aggregate([
       # Keep only recent transaction
       {'$match': match},
       {'$sort': {'ctime': -1}},
       # Count days
       {'$project': {
-        'ctime': {'$divide': [{'$subtract': ['$ctime', start_ts]}, 60 * 60 * 24]},
-        'transaction': {
-          'sender': '$sender_fullname',
-          'recipient': '$recipient_fullname',
+        'time': '$ctime',
+        'date': {'$subtract':
+                 ['$ctime', {'$mod': ['$ctime', 60 * 60 * 24]}]},
+        'sender_id': '$sender_id',
+        'recipient_id': '$recipient_id',
+        'status': '$status',
+        'size': '$total_size',
+        'files': '$files',
+      }},
+      # Group by day
+      {'$group': {
+        '_id': '$date',
+        'count': {'$sum': 1},
+        'size': {'$sum': '$size'},
+        'transactions': {'$push': {
+          'time': '$time',
+          'date': '$date',
           'sender_id': '$sender_id',
           'recipient_id': '$recipient_id',
           'status': '$status',
-        }
+          'size': '$size',
+          'files': '$files',
+        }},
       }},
-      # Regroup by days
-      {'$group': {
-        '_id': {'$subtract': ['$ctime', {'$mod': ['$ctime', 1]}]},
-        'count': {'$sum': 1},
-        'transactions': {'$push': '$transaction'},
-      }},
-      #
-      {'$sort': {'_id': 1}},
-    ])['result'])
-    # Table
-    yield '<table>\n'
-    # Header
-    yield '  <tr>\n'
-    for day in res:
-      date = (start + datetime.timedelta(day['_id']))
-      yield '    <th>%s (%s)</th>\n' % (date, day['count'])
-    yield '  </tr>\n'
-    # Days
-    def combine(days):
-      def next_or_none(i):
-        try:
-          return next(i)
-        except StopIteration:
-          return None
-      iterators = [iter(day['transactions']) for day in days]
-      while True:
-        res = [next_or_none(i) for i in iterators]
-        if not any(res):
-          break
-        yield res
-    for line in combine(res):
-      yield '  <tr>\n'
-      for t in line:
-        if t is not None:
-          fmt = {
-            'color': statuses[t['status']][1],
-            'sender': t['sender'],
-            'recipient': t['recipient'],
-            'sender_id': t['sender_id'],
-            'recipient_id': t['recipient_id'],
-          }
-          yield '    <td style="background:%(color)x">\n' % fmt
-          yield '      <a href="/waterfall/users/%(sender_id)s">%(sender)s</a>\n' % fmt
-          yield '      to\n'
-          yield '      <a href="/waterfall/users/%(recipient_id)s">%(recipient)s</a>\n' % fmt
-          yield '    </td>\n' % fmt
-        else:
-          yield '    <td/>\n'
-      yield '  </tr>\n'
-    # /Table
-    yield '</table>\n'
+    ])['result']
+    days = list(days)
+    def foreign(day):
+      day['date'] = self.__format_date(day['_id'])
+      del day['_id']
+      for transaction in day['transactions']:
+        yield transaction['sender_id'], transaction, 'sender'
+        yield transaction['recipient_id'], transaction, 'recipient'
+        del transaction['sender_id']
+        del transaction['recipient_id']
+        transaction['status'] = statuses[transaction['status']]
+        transaction['date'] = self.__format_date(transaction['date'])
+        transaction['time'] = self.__format_date(transaction['time'])
+    join(days, foreign, self.database.users,
+         project = {
+            'handle': '$handle',
+            'email': '$email',
+            'fullname': '$fullname',
+            'connected': '$connected',
+          })
+    return days
 
-    # Legend
-    yield '<table><tr>'
-    for status in statuses.values():
-      yield '<td style="background:%x">%s</td>' % (status[1], status[0])
-    yield '</table></tr>'
+  @api('/waterfall/transactions<html:re:(\\.html)?>')
+  @require_admin
+  def waterfall_transactions_api(self,
+                                 html,
+                                 start : datetime.datetime = None,
+                                 end : datetime.datetime = None,
+                                 groups : json_value = [],
+                                 users : json_value = [],
+                                 status = None,):
+    print('PRELOL')
+    data = self.waterfall_transactions(start = start,
+                                       end = end,
+                                       groups = groups,
+                                       users = users,
+                                       status = status)
+    if html:
+      tpl = '/waterfall/transactions.html'
+      tpl = self._Meta__mako.get_template(tpl)
+      host = bottle.request.environ['HTTP_HOST']
+      return tpl.render(transaction_days = data, http_host = host)
+    else:
+      return {
+        'result': data,
+      }
+
+  @api('/waterfall/groups.html')
+  @require_admin
+  def waterfall_groups_html(self):
+    tpl = self._Meta__mako.get_template('/waterfall/groups.html')
+    groups = self.groups()['groups']
+    return tpl.render(groups = groups,
+                      http_host = bottle.request.environ['HTTP_HOST'])
+
+  @api('/waterfall/manage_groups.html')
+  @require_admin
+  def waterfall_manage_groups_html(self):
+    tpl = self._Meta__mako.get_template(
+      '/waterfall/manage_groups.html')
+    return tpl.render(root = '..', title = 'groups')
 
   @api('/waterfall')
-  def waterfall(self):
-    return self.__waterfall()
+  @require_admin
+  def waterfall_transactions_html(self, users : json_value = []):
+    tpl = self._Meta__mako.get_template('/waterfall/waterfall.html')
+    return tpl.render(root = '..', title = 'waterfall')
 
-  @api('/waterfall/users/<user>')
-  def waterfall_user(self, user):
-    return self.__waterfall({'$or': [
-      {'sender_id': bson.ObjectId(user)},
-      {'recipient_id': bson.ObjectId(user)},
-    ]})
+  @api('/waterfall/users.html')
+  def user_search_html(self,
+                       search = None,
+                       limit : int = 5,
+                       skip : int = 0):
+    tpl = self._Meta__mako.get_template('/waterfall/user_search.html')
+    users = self.users(search = search,
+                       limit = limit, skip = skip)['result']
+    return tpl.render(root = '..',
+                      http_host = bottle.request.environ['HTTP_HOST'],
+                      title = 'user_search', users = users)
+
+  @api('/waterfall/transactions/groups', method = 'GET')
+  @require_admin
+  def groups(self):
+    groups = list(self.__database.groups.find())
+    def foreign(group):
+      for i, related_id in enumerate(group['members']):
+        yield related_id, group['members'], i
+    join(groups, foreign, self.database.users,
+         project = {
+            'handle': '$handle',
+            'email': '$email',
+            'fullname': '$fullname',
+            'connected': '$connected',
+          })
+    return {
+      'groups': list(groups),
+      }
+
+  @api('/waterfall/transactions/groups/<name>', method = 'PUT')
+  @require_admin
+  def group_add(self, name: utf8_string):
+    try:
+      self.__database.groups.insert(
+        {
+          'name': name,
+          'members': [],
+        })
+    except pymongo.errors.DuplicateKeyError:
+      pass
+
+  @api('/waterfall/transactions/groups/<name>', method = 'DELETE')
+  @require_admin
+  def group_remove(self, name: utf8_string):
+    res = self.__database.groups.remove({'name': name})
+    if res['n'] == 0:
+      self.not_found('group does not exist: %s' % name)
+
+  @api('/waterfall/transactions/groups/<name>', method = 'GET')
+  @require_admin
+  def group(self, name: utf8_string):
+    group = self.__database.groups.find_one({'name': name})
+    if group is None:
+      self.not_found('group does not exist: %s' % name)
+    return group
+
+  def user_fuzzy(self, user):
+    res = None
+    try:
+      i = bson.ObjectId(user)
+      res = self._user_by_id(i, ensure_existence = False)
+    except bson.errors.InvalidId:
+      pass
+    if res is None:
+      res = self.user_by_email(user, ensure_existence = False)
+      if res is None:
+        res = self.user_by_handle(user, ensure_existence = False)
+        if res is None:
+          self.not_found('user does not exist: %s' % user)
+    return res
+
+  @api('/waterfall/transactions/groups/<group>/<user>',
+       method = 'PUT')
+  @require_admin
+  def group_member_add(self, group: utf8_string, user):
+    user = self.user_fuzzy(user)
+    res = self.__database.groups.find_and_modify(
+      query = {'name': group},
+      update = {'$addToSet': {'members': user['_id']}},
+    )
+    if res is None:
+      self.not_found('group does not exist: %s' % group)
+
+  @api('/waterfall/transactions/groups/<group>/<user>',
+       method = 'DELETE')
+  @require_admin
+  def group_member_remove(self, group: utf8_string, user):
+    user = self.user_fuzzy(user)
+    res = self.__database.groups.find_and_modify(
+      query = {'name': group},
+      update = {'$pull': {'members': user['_id']}},
+    )
+    if res is None:
+      self.not_found('group does not exist: %s' % group)

@@ -273,11 +273,11 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: create transaction", *this);
       auto total_size =
-        [] (std::unordered_set<std::string> const& files) -> uint64_t
+        [] (std::unordered_set<std::string> const& files) -> int64_t
         {
           ELLE_TRACE_FUNCTION(files);
 
-          uint64_t size = 0;
+          int64_t size = 0;
           {
             for (auto const& file: files)
             {
@@ -289,7 +289,7 @@ namespace surface
           return size;
         };
 
-      uint64_t size = total_size(this->_files);
+      int64_t size = total_size(this->_files);
       ELLE_DEBUG("%s: total file size: %s", *this, size);
       this->data()->total_size = size;
 

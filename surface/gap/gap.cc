@@ -103,18 +103,14 @@ extern "C"
   gap_State* gap_configurable_new(char const* meta_host,
                                   unsigned short meta_port,
                                   char const* trophonius_host,
-                                  unsigned short trophonius_port,
-                                  char const* apertus_host,
-                                  unsigned short apertus_port)
+                                  unsigned short trophonius_port)
   {
     try
     {
       gap_State* state = new gap_State(meta_host,
                                        meta_port,
                                        trophonius_host,
-                                       trophonius_port,
-                                       apertus_host,
-                                       apertus_port);
+                                       trophonius_port);
       return state;
     }
     catch (std::exception const& err)
@@ -914,8 +910,8 @@ extern "C"
   DEFINE_TRANSACTION_GETTER_STR(recipient_fullname)
   DEFINE_TRANSACTION_GETTER_STR(recipient_device_id)
   DEFINE_TRANSACTION_GETTER_STR(message)
-  DEFINE_TRANSACTION_GETTER(uint32_t, files_count, NO_TRANSFORM)
-  DEFINE_TRANSACTION_GETTER(uint64_t, total_size, NO_TRANSFORM)
+  DEFINE_TRANSACTION_GETTER(int64_t, files_count, NO_TRANSFORM)
+  DEFINE_TRANSACTION_GETTER(int64_t, total_size, NO_TRANSFORM)
   DEFINE_TRANSACTION_GETTER_DOUBLE(ctime)
   DEFINE_TRANSACTION_GETTER_DOUBLE(mtime)
   DEFINE_TRANSACTION_GETTER_BOOL(is_directory)

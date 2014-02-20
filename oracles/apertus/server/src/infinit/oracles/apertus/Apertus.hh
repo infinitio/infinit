@@ -2,7 +2,6 @@
 # define INFINIT_ORACLES_APERTUS_APERTUS
 
 # include <infinit/oracles/apertus/fwd.hh>
-# include <infinit/oracles/hermes/Clerk.hh>
 # include <infinit/oracles/meta/Admin.hh>
 
 # include <reactor/network/buffer.hh>
@@ -33,6 +32,9 @@ namespace infinit
         public reactor::Waitable // Make it also printable.
       {
       public:
+        typedef std::string TID;
+
+      public:
         Apertus(std::string mhost,
                 int mport,
                 std::string host = "0.0.0.0",
@@ -59,7 +61,7 @@ namespace infinit
 
       private:
         void
-        _connect(oracle::hermes::TID tid,
+        _connect(TID tid,
                  std::unique_ptr<reactor::network::Socket> client1,
                  std::unique_ptr<reactor::network::Socket> client2);
 
@@ -86,8 +88,7 @@ namespace infinit
         void
         _accepter_remove(Accepter const& transfer);
 
-        typedef std::unordered_map<
-          oracle::hermes::TID, std::unique_ptr<Transfer>> Workers;
+        typedef std::unordered_map<TID, std::unique_ptr<Transfer>> Workers;
         ELLE_ATTRIBUTE_R(Workers, workers);
 
       private:
@@ -102,8 +103,7 @@ namespace infinit
                        server_tcp);
 
       private:
-        typedef std::map<
-          oracle::hermes::TID, reactor::network::Socket*> Clients;
+        typedef std::map<TID, reactor::network::Socket*> Clients;
         ELLE_ATTRIBUTE_R(Clients, clients);
 
         /*----------.

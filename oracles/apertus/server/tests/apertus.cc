@@ -12,6 +12,7 @@
 #include <reactor/network/tcp-socket.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/Scope.hh>
+#include <reactor/signal.hh>
 #include <reactor/thread.hh>
 
 #include <infinit/oracles/apertus/Apertus.hh>

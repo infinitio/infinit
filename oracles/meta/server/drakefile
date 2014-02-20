@@ -51,7 +51,6 @@ def configure(elle,
     'src/infinit/oracles/meta/server/infinit.auth',
     'src/infinit/oracles/meta/server/invitation.py',
     'src/infinit/oracles/meta/server/mail.py',
-    'src/infinit/oracles/meta/server/metrics.py',
     'src/infinit/oracles/meta/server/notifier.py',
     'src/infinit/oracles/meta/server/place_holder_avatar.png',
     'src/infinit/oracles/meta/server/plugins/__init__.py',
@@ -72,11 +71,11 @@ def configure(elle,
 
   templates = drake.nodes(
     'templates/base.html',
-    'templates/metrics/transactions.html',
-    'templates/metrics/waterfall.html',
-    'templates/metrics/manage_groups.html',
-    'templates/metrics/groups.html',
-    'templates/metrics/user_search.html',
+    'templates/waterfall/transactions.html',
+    'templates/waterfall/waterfall.html',
+    'templates/waterfall/manage_groups.html',
+    'templates/waterfall/groups.html',
+    'templates/waterfall/user_search.html',
   )
 
   resources = drake.nodes(
@@ -91,9 +90,9 @@ def configure(elle,
     'resources/js/vendor/daterangepicker.js',
     'resources/js/vendor/moment.min.js',
     'resources/js/vendor/jquery.poshytip.min.js',
+    'resources/js/vendor/jquery.qtip.min.js',
+    'resources/js/vendor/imagesloaded.pkgd.min.js',
     'resources/js/main.js',
-    'resources/js/waterfall.js',
-    'resources/js/groups.js',
     'resources/images/logo.png',
     'resources/images/loading.gif',
   )
@@ -137,6 +136,8 @@ def configure(elle,
     res = []
     res += f(python, where / ('lib/python%s' % python_version),
              build_python_path)
+    res += f(templates, where / 'share/infinit/meta/server')
+    res += f(resources, where / 'share/infinit/meta/server')
     res.append(f(build_binary, where))
     res.append(f(drake.node('config/meta'),
                  where / 'etc/nginx/sites-available', 'config'))

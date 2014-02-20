@@ -32,8 +32,11 @@ namespace frete
   `------*/
   public:
     typedef uint32_t FileID;
-    typedef uint64_t Offset;
-    typedef uint64_t Size;
+    // All integers sent through Trophonius (i.e.: as JSON) are handled as 64bit
+    // integers. Best to keep them as such throughout the application.
+    typedef int64_t FileCount;
+    typedef int64_t FileOffset;
+    typedef int64_t FileSize;
     typedef Frete Self;
 
   /*-------------.
@@ -89,25 +92,25 @@ namespace frete
     `-------------*/
   public:
     /// The number of file in the remote filesystem.
-    uint64_t
+    FileCount
     count();
     /// The total size of a remote files.
-    uint64_t
+    FileSize
     full_size();
     /// The size of a remote file.
-    uint64_t
+    FileSize
     file_size(FileID f);
     /// The path of the \a f file.
     std::string
     path(FileID f);
     /// A chunk of a remote file.
     elle::Buffer
-    read(FileID f, Offset start, Size size);
+    read(FileID f, FileOffset start, FileSize size);
     elle::Buffer
-    encrypted_read(FileID f, Offset start, Size size);
+    encrypted_read(FileID f, FileOffset start, FileSize size);
     /// Notify the sender of the progress of the transaction.
     void
-    set_progress(uint64_t progress);
+    set_progress(FileSize progress);
     /// The remote Infinit version.
     elle::Version
     version();
@@ -123,24 +126,24 @@ namespace frete
   private:
     boost::filesystem::path
     _local_path(FileID file_id);
-    uint64_t
+    FileCount
     _count();
-    uint64_t
+    FileSize
     _full_size();
-    uint64_t
+    FileSize
     _file_size(FileID f);
     std::string
     _path(FileID f);
     elle::Buffer
     __read(FileID file_id,
-           Offset offset,
-           Size const size);
+           FileOffset offset,
+           FileSize const size);
     infinit::cryptography::Code
-    _read(FileID f, Offset start, Size size);
+    _read(FileID f, FileOffset start, FileSize size);
     infinit::cryptography::Code
-    _encrypted_read(FileID f, Offset start, Size size);
+    _encrypted_read(FileID f, FileOffset start, FileSize size);
     void
-    _set_progress(uint64_t progress);
+    _set_progress(FileSize progress);
     elle::Version
     _version() const;
     infinit::cryptography::Code const&
@@ -155,23 +158,23 @@ namespace frete
       elle::serialize::InputBinaryArchive,
       elle::serialize::OutputBinaryArchive> RPC;
     RPC _rpc;
-    RPC::RemoteProcedure<uint64_t> _rpc_count;
-    RPC::RemoteProcedure<uint64_t> _rpc_full_size;
-    RPC::RemoteProcedure<uint64_t, FileID> _rpc_file_size;
+    RPC::RemoteProcedure<FileCount> _rpc_count;
+    RPC::RemoteProcedure<FileSize> _rpc_full_size;
+    RPC::RemoteProcedure<FileSize, FileID> _rpc_file_size;
     RPC::RemoteProcedure<std::string,
                          FileID> _rpc_path;
     RPC::RemoteProcedure<infinit::cryptography::Code,
                          FileID,
-                         Offset,
-                         Size> _rpc_read;
+                         FileOffset,
+                         FileSize> _rpc_read;
     RPC::RemoteProcedure<void,
-                         uint64_t> _rpc_set_progress;
+                         FileSize> _rpc_set_progress;
     RPC::RemoteProcedure<elle::Version> _rpc_version;
     RPC::RemoteProcedure<infinit::cryptography::Code> _rpc_key_code;
     RPC::RemoteProcedure<infinit::cryptography::Code,
                          FileID,
-                         Offset,
-                         Size> _rpc_encrypted_read;
+                         FileOffset,
+                         FileSize> _rpc_encrypted_read;
 
   private:
     void
@@ -190,18 +193,18 @@ namespace frete
       public elle::Printable
     {
       // Recipient.
-      TransferSnapshot(uint64_t count,
-                       Size total_size);
+      TransferSnapshot(FileCount count,
+                       FileSize total_size);
 
       // Sender.
       TransferSnapshot();
 
       void
-      progress(Size const& progress);
+      progress(FileSize const& progress);
 
       void
       increment_progress(FileID index,
-                         Size increment);
+                         FileSize increment);
 
       void
       add(boost::filesystem::path const& root,
@@ -213,7 +216,7 @@ namespace frete
         TransferInfo(FileID file_id,
                      boost::filesystem::path const& root,
                      boost::filesystem::path const& path,
-                     Size file_size);
+                     FileSize file_size);
 
         virtual
         ~TransferInfo() = default;
@@ -224,7 +227,7 @@ namespace frete
         ELLE_ATTRIBUTE_R(std::string, path);
 
         ELLE_ATTRIBUTE_R(boost::filesystem::path, full_path);
-        ELLE_ATTRIBUTE_R(Size, file_size);
+        ELLE_ATTRIBUTE_R(FileSize, file_size);
 
         bool
         file_exists() const;
@@ -262,13 +265,13 @@ namespace frete
         TransferProgressInfo(FileID file_id,
                              boost::filesystem::path const& root,
                              boost::filesystem::path const& path,
-                             Size file_size);
+                             FileSize file_size);
 
-        ELLE_ATTRIBUTE_R(Size, progress);
+        ELLE_ATTRIBUTE_R(FileSize, progress);
 
       private:
         void
-        _increment_progress(Size increment);
+        _increment_progress(FileSize increment);
 
       public:
         bool
@@ -302,9 +305,9 @@ namespace frete
       ELLE_ATTRIBUTE_R(bool, sender);
       typedef std::unordered_map<FileID, TransferProgressInfo> TransferProgress;
       ELLE_ATTRIBUTE_X(TransferProgress, transfers);
-      ELLE_ATTRIBUTE_R(uint64_t, count);
-      ELLE_ATTRIBUTE_R(Size, total_size);
-      ELLE_ATTRIBUTE_R(Size, progress);
+      ELLE_ATTRIBUTE_R(FileCount, count);
+      ELLE_ATTRIBUTE_R(FileSize, total_size);
+      ELLE_ATTRIBUTE_R(FileSize, progress);
 
       bool
       operator ==(TransferSnapshot const& rh) const;

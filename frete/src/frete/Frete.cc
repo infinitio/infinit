@@ -346,7 +346,7 @@ namespace frete
       strong_encryption = false;
     }
 
-    uint64_t count = this->_rpc_count();
+    FileCount count = this->_rpc_count();
 
     // total_size can be 0 if all files are empty.
     auto total_size = this->_rpc_full_size();
@@ -546,19 +546,19 @@ namespace frete
   | Remote calls |
   `-------------*/
 
-  uint64_t
+  frete::Frete::FileCount
   Frete::count()
   {
     return this->_rpc_count();
   }
 
-  uint64_t
+  frete::Frete::FileSize
   Frete::full_size()
   {
     return this->_rpc_full_size();
   }
 
-  uint64_t
+  frete::Frete::FileSize
   Frete::file_size(FileID f)
   {
     return this->_rpc_file_size(f);
@@ -571,14 +571,14 @@ namespace frete
   }
 
   elle::Buffer
-  Frete::read(FileID f, Offset start, Size size)
+  Frete::read(FileID f, FileOffset start, FileSize size)
   {
     return this->_impl->old_key().decrypt<elle::Buffer>(
       this->_rpc_read(f, start, size));
   }
 
   elle::Buffer
-  Frete::encrypted_read(FileID f, Offset start, Size size)
+  Frete::encrypted_read(FileID f, FileOffset start, FileSize size)
   {
     return this->key().decrypt<elle::Buffer>(
       this->_rpc_encrypted_read(f, start, size));
@@ -614,7 +614,7 @@ namespace frete
     return this->_transfer_snapshot->transfers().at(file_id).full_path();
   }
 
-  uint64_t
+  frete::Frete::FileCount
   Frete::_count()
   {
     ELLE_DEBUG("%s: get file count", *this);
@@ -625,7 +625,7 @@ namespace frete
     return this->_transfer_snapshot->transfers().size();
   }
 
-  uint64_t
+  frete::Frete::FileSize
   Frete::_full_size()
   {
     ELLE_ASSERT(this->_transfer_snapshot != nullptr);
@@ -633,7 +633,7 @@ namespace frete
     return this->_transfer_snapshot->total_size();
   }
 
-  uint64_t
+  frete::Frete::FileSize
   Frete::_file_size(FileID file_id)
   {
     ELLE_ASSERT_LT(file_id, this->_count());
@@ -657,8 +657,8 @@ namespace frete
 
   elle::Buffer
   Frete::__read(FileID file_id,
-               Offset offset,
-               Size const size)
+                FileOffset offset,
+                FileSize const size)
   {
     ELLE_TRACE_FUNCTION(file_id, offset, size);
     ELLE_ASSERT_LT(file_id, this->_count());
@@ -707,16 +707,16 @@ namespace frete
 
   infinit::cryptography::Code
   Frete::_read(FileID file_id,
-               Offset offset,
-               Size const size)
+               FileOffset offset,
+               FileSize const size)
   {
     return this->_impl->old_key().encrypt(this->__read(file_id, offset, size));
   }
 
   infinit::cryptography::Code
   Frete::_encrypted_read(FileID file_id,
-                         Offset offset,
-                         Size const size)
+                         FileOffset offset,
+                         FileSize const size)
   {
     return this->_impl->key().encrypt(this->__read(file_id, offset, size));
   }
@@ -743,7 +743,7 @@ namespace frete
   }
 
   void
-  Frete::_set_progress(uint64_t progress)
+  Frete::_set_progress(FileSize progress)
   {
     ELLE_ASSERT(this->_transfer_snapshot != nullptr);
     ELLE_ASSERT(this->_transfer_snapshot->sender());
@@ -782,7 +782,7 @@ namespace frete
     FileID file_id,
     boost::filesystem::path const& root,
     boost::filesystem::path const& path,
-    Size file_size):
+    FileSize file_size):
     _file_id(file_id),
     _root(root.string()),
     _path(path.string()),
@@ -816,14 +816,14 @@ namespace frete
     FileID file_id,
     boost::filesystem::path const& root,
     boost::filesystem::path const& path,
-    Size file_size):
+    FileSize file_size):
     TransferInfo(file_id, root, path, file_size),
     _progress(0)
   {}
 
   void
   Frete::TransferSnapshot::TransferProgressInfo::_increment_progress(
-    Size increment)
+    FileSize increment)
   {
     this->_progress += increment;
   }
@@ -852,8 +852,8 @@ namespace frete
   }
 
   // Recipient.
-  Frete::TransferSnapshot::TransferSnapshot(uint64_t count,
-                                            Size total_size):
+  Frete::TransferSnapshot::TransferSnapshot(FileCount count,
+                                            FileSize total_size):
     _sender(false),
     _count(count),
     _total_size(total_size),
@@ -874,7 +874,7 @@ namespace frete
 
   void
   Frete::TransferSnapshot::increment_progress(FileID index,
-                                              Size increment)
+                                              FileSize increment)
   {
     ELLE_ASSERT_LT(index, this->_transfers.size());
 
@@ -920,7 +920,7 @@ namespace frete
   }
 
   void
-  Frete::TransferSnapshot::progress(Size const& progress)
+  Frete::TransferSnapshot::progress(FileSize const& progress)
   {
     ELLE_ASSERT(this->sender());
 
