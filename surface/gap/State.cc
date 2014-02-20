@@ -86,9 +86,7 @@ namespace surface
     State::State(std::string const& meta_host,
                  uint16_t meta_port,
                  std::string const& trophonius_host,
-                 uint16_t trophonius_port,
-                 std::string const& apertus_host,
-                 uint16_t apertus_port):
+                 uint16_t trophonius_port):
       _logger_intializer{},
       _meta{meta_host, meta_port},
       _meta_message{""},

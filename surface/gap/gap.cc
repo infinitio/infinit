@@ -103,18 +103,14 @@ extern "C"
   gap_State* gap_configurable_new(char const* meta_host,
                                   unsigned short meta_port,
                                   char const* trophonius_host,
-                                  unsigned short trophonius_port,
-                                  char const* apertus_host,
-                                  unsigned short apertus_port)
+                                  unsigned short trophonius_port)
   {
     try
     {
       gap_State* state = new gap_State(meta_host,
                                        meta_port,
                                        trophonius_host,
-                                       trophonius_port,
-                                       apertus_host,
-                                       apertus_port);
+                                       trophonius_port);
       return state;
     }
     catch (std::exception const& err)
