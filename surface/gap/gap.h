@@ -224,11 +224,11 @@ extern "C" {
   gap_transaction_files(gap_State* state,
                         uint32_t const transaction_id);
 
-  unsigned int
+  int64_t
   gap_transaction_files_count(gap_State*,
                               uint32_t);
 
-  uint64_t
+  int64_t
   gap_transaction_total_size(gap_State*,
                              uint32_t);
 
