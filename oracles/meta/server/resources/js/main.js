@@ -117,13 +117,17 @@ $(document).ready(function() {
 
       if (!users)
       {
-        users = getURLParameter('users')
+        users = getURLParameter('users');
         if (users)
         {
           users = getURLParameter('users');
           start = moment().subtract('year', 1).startOf('day');
           end = moment();
         }
+      } 
+      else 
+      {
+        users = JSON.stringify(users);  
       }
 
       url = '/waterfall/transactions.html?';
@@ -252,16 +256,15 @@ $(document).ready(function() {
         endDate: moment()
       },
       function(start, end) {
+        $('.transactions').empty().addClass('loading');
+        
         $('#datepicker').html(start.format('MMMM D, YYYY') + ' &#8594; ' + end.format('MMMM D, YYYY'));
         var groups = getSelectedGroups();
-
-        loadTransactions(start = start, end = end, status = '', user = null, groups = groups);
+        var status = getSelectedStatus();
+        
+        loadTransactions(start = start, end = end, status = status, user = null, groups = groups);
       }
     );
-
-    $('#datepicker').on('apply', function(ev, picker) {
-      $('.transactions').empty().addClass('loading');
-    });
 
 
     // Status filter

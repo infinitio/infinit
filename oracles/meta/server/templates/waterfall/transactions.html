@@ -35,7 +35,7 @@ def group_by(collection, criteria):
     yield index, __group_by_helper(index, i, criteria)
 
 def size(n, short = True):
-  if n == 0:
+  if n <= 0:
     return '0 B'
   else:
     import math
@@ -75,9 +75,9 @@ def plural(word, c):
         
         %for transaction in sorted(day['transactions'], key = lambda transaction: transaction['size'], reverse = True):
           <div class="transaction">
-          
+
             <div class="summary">
-              <div class="totalsize ${magnitude_order(transaction['size'])}">${size(transaction['size'])}</div>
+              <div class="totalsize ${magnitude_order(transaction['size'])}">${size(day['size'], False)}</div>
               <img src="//${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
               <h3><a class="show_tooltip" href="#user" title="${transaction['sender']['fullname']}">${transaction['sender']['fullname']}</a></h3> 
               <div class="tooltip">
