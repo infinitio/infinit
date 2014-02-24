@@ -34,9 +34,9 @@ namespace frete
     typedef uint32_t FileID;
     // All integers sent through Trophonius (i.e.: as JSON) are handled as 64bit
     // integers. Best to keep them as such throughout the application.
-    typedef int64_t FileCount;
-    typedef int64_t FileOffset;
-    typedef int64_t FileSize;
+    typedef uint64_t FileCount;
+    typedef uint64_t FileOffset;
+    typedef uint64_t FileSize;
     typedef Frete Self;
 
   /*-------------.

@@ -372,12 +372,12 @@ namespace frete
 
     ELLE_DEBUG("%s: transfer snapshot: %s", *this, snapshot);
 
-    auto last_index = snapshot.transfers().size();
+    FileCount last_index = snapshot.transfers().size();
     if (last_index > 0)
       --last_index;
 
     // If files are present in the snapshot, take the last one.
-    for (size_t index = last_index; index < count; ++index)
+    for (FileCount index = last_index; index < count; ++index)
     {
       ELLE_DEBUG("%s: index %s", *this, index);
 
@@ -444,7 +444,7 @@ namespace frete
 
         {
           boost::system::error_code ec;
-          auto size = boost::filesystem::file_size(fullpath, ec);
+          FileSize size = boost::filesystem::file_size(fullpath, ec);
 
           if (ec)
           {
@@ -664,7 +664,7 @@ namespace frete
     ELLE_ASSERT_LT(file_id, this->_count());
     auto path = this->_local_path(file_id);
     boost::filesystem::ifstream file{path, std::ios::binary};
-    static const std::size_t MAX_offset{
+    static const FileOffset MAX_offset{
       std::numeric_limits<std::streamsize>::max()};
     static const size_t MAX_buffer{elle::Buffer::max_size};
 
