@@ -95,17 +95,13 @@ class CloudBufferToken:
   # http://docs.aws.amazon.com/STS/latest/UsingSTS/sts-controlling-feduser-permissions.html
   def _make_policy(self):
     action_list = []
-    policy_id = ''
     if self.http_action == 'PUT':
       action_list.extend(['s3:PutObject'])
-      policy_id = 'sender_policy_%s' % self.transaction_id
     elif self.http_action == 'GET':
       action_list.extend(['s3:GetObject', 's3:ListBucket', 's3:DeleteObject'])
-      policy_id = 'recipient_policy_%s' % self.transaction_id
     elle.log.debug('%s: policy action list: %s' % (self, action_list))
     policy = {
       'Version': '2012-10-17',
-      'Id': policy_id,
       'Statement': [{
         'Effect': 'Allow',
         'Action': sorted(action_list),
