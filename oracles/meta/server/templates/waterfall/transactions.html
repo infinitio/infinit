@@ -77,7 +77,7 @@ def plural(word, c):
           <div class="transaction">
 
             <div class="summary">
-              <div class="totalsize ${magnitude_order(transaction['size'])}">${size(day['size'], False)}</div>
+              <div class="totalsize ${magnitude_order(transaction['size'])}">${size(transaction['size'], False)}</div>
               <img src="//${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
               <h3><a class="show_tooltip" href="#user" title="${transaction['sender']['fullname']}">${transaction['sender']['fullname']}</a></h3> 
               <div class="tooltip">
@@ -95,6 +95,7 @@ def plural(word, c):
                 </ul>
               </div>
               
+              <span class="emails">${transaction['sender']['email']} &#8594; ${transaction['recipient']['email']}</span>
               <span class="arrow">&#8594;</span>
               
               <img src="//${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
@@ -102,7 +103,9 @@ def plural(word, c):
                 %if not 'handle' in transaction['recipient']:
                   ghost
                 %endif
-                " href="#user">${transaction['recipient']['fullname']}</a></h3> 
+                " href="#user">${transaction['recipient']['fullname']}</a>
+              </h3>
+                
               <div class="tooltip">
                 <img src="//${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
                 <div class="infos">

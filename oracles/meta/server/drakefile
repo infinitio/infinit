@@ -97,6 +97,8 @@ def configure(elle,
     'resources/js/main.js',
     'resources/images/logo.png',
     'resources/images/loading.gif',
+    'resources/images/tick.png',
+    'resources/images/ticked.png',
   )
 
   ## ----- ##
