@@ -266,14 +266,15 @@ namespace surface
       {
         reactor::Barrier found;
         std::unique_ptr<reactor::network::Socket> host;
-        scope.run_background("wait_accepted",
-                             [&] ()
-                             {
-                               this->_owner.station().host_available().wait();
-                               host = this->_owner.station().accept()->release();
-                               found.open();
-                               ELLE_WARN("%s: host found via 'accept'", *this);
-                             });
+        scope.run_background(
+          "wait_accepted",
+          [&] ()
+          {
+            this->_owner.station().host_available().wait();
+            host = this->_owner.station().accept()->release();
+            found.open();
+            ELLE_TRACE("%s: peer connection accepted", *this);
+          });
         scope.run_background(
           "rounds",
           [&]
@@ -288,8 +289,8 @@ namespace surface
                   this->_owner.transaction_id(),
                   round->name()
                 );
-                ELLE_WARN("%s: host found via round: %s",
-                          *this, round->name());
+                ELLE_TRACE("%s: connected to peer in round %s",
+                           *this, round->name());
                 break;
               }
               else

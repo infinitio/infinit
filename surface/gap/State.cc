@@ -159,7 +159,7 @@ namespace surface
             auto meta_response = this->_meta.server_status();
             if (meta_response.status)
             {
-              ELLE_LOG("%s: Meta is reachable", *this);
+              ELLE_TRACE("%s: Meta is reachable", *this);
               result = true;
             }
             else
@@ -216,10 +216,10 @@ namespace surface
     bool
     State::_trophonius_server_check()
     {
-      ELLE_TRACE("%s: check trophonius availablity", *this);
+      ELLE_TRACE_SCOPE("%s: check trophonius availablity", *this);
       if (this->_trophonius.poke())
       {
-        ELLE_LOG("%s: successfully poked Trophonius", *this);
+        ELLE_TRACE("%s: successfully poked Trophonius", *this);
         return true;
       }
       else
@@ -314,15 +314,10 @@ namespace surface
       elle::With<elle::Finally>([&] { this->_meta.logout(); })
         << [&] (elle::Finally& finally_logout)
       {
-        ELLE_LOG("Logged in as %s", email);
+        ELLE_LOG("%s: logged in as %s", *this, email);
 
         infinit::metrics::Reporter::metric_sender_id(res.id);
         this->_composite_reporter.user_login(true, "");
-
-        ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
-                 this->me().id,
-                 this->me().fullname,
-                 this->me().email);
 
         std::string identity_clear;
 

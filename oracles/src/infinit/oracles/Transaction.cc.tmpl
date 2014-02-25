@@ -59,19 +59,9 @@ namespace infinit
     operator <<(std::ostream& out,
                 Transaction const& t)
     {
-      out
-        << "<Transaction(" << t.id
-        << ", ctime=" << t.ctime
-        << ", mtime=" << t.mtime
-        << ", files=" << elle::sprint(t.files)
-        << ", total_size=" << t.total_size
-        << ", status=" << t.status
-        << ") "
-        << "from " << t.sender_fullname << " (" << t.sender_id << ") "
-        << "on device " << t.sender_device_id << ", "
-        << "to " << t.recipient_fullname << " (" << t.recipient_id << ") "
-        << "on device " << t.recipient_device_id << '>';
-
+      out << "Transaction(" << t.id << ", " << t.status
+          << " from " << t.sender_fullname
+          << " to " << t.recipient_fullname << ")";
       return out;
     }
   }

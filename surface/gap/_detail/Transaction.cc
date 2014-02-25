@@ -43,37 +43,33 @@ namespace surface
                       std::string const& message)
     {
       auto id = generate_id();
-      this->_transactions.emplace(
-        std::piecewise_construct,
-        std::make_tuple(id),
-        std::forward_as_tuple(*this, id, peer_id, std::move(files), message));
+      ELLE_TRACE("%s: create send transaction", *this)
+        this->_transactions.emplace(
+          std::piecewise_construct,
+          std::make_tuple(id),
+          std::forward_as_tuple(*this, id, peer_id, std::move(files), message));
       return id;
     }
 
     void
     State::_transactions_init()
     {
-      ELLE_TRACE_SCOPE("%s: pull transactions", *this);
-
       ELLE_ASSERT(this->_transactions.empty());
+      ELLE_TRACE("%s: load transactions from snapshots", *this)
       {
         std::string snapshots_path =
           common::infinit::transaction_snapshots_directory(this->me().id);
         boost::filesystem::create_directories(snapshots_path);
-
         boost::filesystem::recursive_directory_iterator iterator(snapshots_path);
         boost::filesystem::recursive_directory_iterator end;
-
         for (; iterator != end; ++iterator)
         {
           auto snapshot_path = iterator->path().string().c_str();
           ELLE_TRACE("path %s", snapshot_path);
-
           elle::SafeFinally delete_snapshot([&snapshot_path]
             {
               boost::filesystem::remove(snapshot_path);
             });
-
           std::unique_ptr<TransactionMachine::Snapshot> snapshot;
           try
           {
@@ -87,16 +83,17 @@ namespace surface
                      *this, snapshot_path, elle::exception_string());
             continue;
           }
-
           try
           {
             this->user(snapshot->data.sender_id);
             this->user(snapshot->data.recipient_id);
             auto _id = generate_id();
-            this->_transactions.emplace(
-              std::piecewise_construct,
-              std::make_tuple(_id),
-              std::forward_as_tuple(*this, _id, std::move(*snapshot.release())));
+            ELLE_TRACE("%s: create transaction from snapshot", *this)
+              this->_transactions.emplace(
+                std::piecewise_construct,
+                std::make_tuple(_id),
+                std::forward_as_tuple(*this, _id,
+                                      std::move(*snapshot.release())));
           }
           catch (std::exception const&)
           {
@@ -105,29 +102,28 @@ namespace surface
             continue;
           }
         }
+        for (auto& transaction: this->_transactions)
+        {
+          ELLE_ASSERT(transaction.second.data() != nullptr);
+          this->_on_transaction_update(
+            std::move(this->meta().transaction(transaction.second.data()->id)));
+        }
       }
-
-      for (auto& transaction: this->_transactions)
-      {
-        ELLE_ASSERT(transaction.second.data() != nullptr);
-        this->_on_transaction_update(
-          std::move(this->meta().transaction(transaction.second.data()->id)));
-      }
-
-      this->_transaction_resync();
+      ELLE_TRACE("%s: load transactions from meta", *this)
+        this->_transaction_resync();
     }
 
     void
     State::_transaction_resync()
     {
-      ELLE_TRACE_SCOPE("%s: resync transactions", *this);
-
-      for (auto const& id: this->meta().transactions().transactions)
-      {
-        this->_on_transaction_update(std::move(this->meta().transaction(id)));
-      }
+      ELLE_TRACE("%s: resynchronize active transactions from meta", *this)
+        for (auto const& id: this->meta().transactions().transactions)
+        {
+          this->_on_transaction_update(std::move(this->meta().transaction(id)));
+        }
 
       // History.
+      ELLE_TRACE("%s: resynchronize transaction history from meta", *this)
       {
         static std::vector<infinit::oracles::Transaction::Status> final{
           infinit::oracles::Transaction::Status::rejected,
@@ -164,12 +160,13 @@ namespace surface
           this->user(transaction.recipient_id);
 
           auto _id = generate_id();
-
-          // true stands for history.
-          this->_transactions.emplace(
-            std::piecewise_construct,
-            std::make_tuple(_id),
-            std::forward_as_tuple(*this, _id, std::move(transaction), true));
+          ELLE_TRACE("%s: create history transaction from data: %s",
+                     *this, transaction)
+            this->_transactions.emplace(
+              std::piecewise_construct,
+              std::make_tuple(_id),
+              std::forward_as_tuple(*this, _id, std::move(transaction),
+                                    true /* history */));
         }
       }
     }
@@ -186,13 +183,11 @@ namespace surface
     void
     State::_on_transaction_update(infinit::oracles::Transaction const& notif)
     {
-      ELLE_TRACE_SCOPE("%s: transaction notification", *this);
-
+      ELLE_TRACE_SCOPE("%s: receive transaction notification: %s",
+                       *this, notif.id);
       this->user(notif.sender_id);
       this->user(notif.recipient_id);
-
       ELLE_ASSERT(!notif.id.empty());
-
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
@@ -201,15 +196,10 @@ namespace surface
           return (!pair.second.data()->id.empty()) &&
                  (pair.second.data()->id == notif.id);
         });
-
       if (it == std::end(this->_transactions))
       {
-        ELLE_TRACE("%s: notification received for unknown transaction: %s",
-                   *this, notif.id);
-        for (auto const& tr: this->transactions())
-        {
-          ELLE_DEBUG("-- %s: %s", tr.first, tr.second);
-        }
+        ELLE_TRACE_SCOPE("%s: create transaction from notification: %s",
+                         *this, notif);
         infinit::oracles::Transaction data = notif;
         auto id = generate_id();
         this->_transactions.emplace(
@@ -219,6 +209,7 @@ namespace surface
       }
       else
       {
+        ELLE_DEBUG_SCOPE("%s: update transaction %s", *this, notif.id);
         it->second.on_transaction_update(notif);
       }
     }

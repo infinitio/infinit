@@ -902,7 +902,6 @@ namespace infinit
           ELLE_ERR("%s: unable to authenticate with trophonius", *this);
           return false;
         }
-        ELLE_LOG("%s: connected to trophonius", *this);
         this->_impl->_synchronized = true;
         return true;
       }
