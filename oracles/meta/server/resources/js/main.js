@@ -267,11 +267,7 @@ $(document).ready(function() {
       },
       function(start, end) {
         $('.transactions').empty().addClass('loading');
-        if (start != end) {
-          $('#datepicker').html(start.format('MMMM D, YYYY') + ' &#8594; ' + end.format('MMMM D, YYYY'));
-        } else {
-          $('#datepicker').html(start.format('MMMM D, YYYY'));
-        }
+        $('#datepicker').html(start.format('MMMM D, YYYY') + ' &#8594; ' + end.format('MMMM D, YYYY'));
         var groups = getSelectedGroups();
         var status = getSelectedStatus();
         
