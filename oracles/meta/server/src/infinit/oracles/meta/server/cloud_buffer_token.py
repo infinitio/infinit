@@ -29,7 +29,7 @@ class CloudBufferToken:
 
   default_parameters = {
     'Action': 'GetFederationToken',
-    'DurationSeconds': str(60 * 60), # 36 hrs is AWS max
+    'DurationSeconds': str(8 * 60 * 60), # 36 hrs is AWS max
     'Version': '2011-06-15',
     'X-Amz-Algorithm': 'AWS4-HMAC-SHA256'
   }
@@ -105,7 +105,7 @@ class CloudBufferToken:
       'Statement': [{
         'Effect': 'Allow',
         'Action': sorted(action_list),
-        'Resource': 'arn:aws:s3:::cloud_buffer/%s/*' % (self.transaction_id)
+        'Resource': 'arn:aws:s3:::io.infinit.buffer.us0/%s/*' % (self.transaction_id)
       }]
     }
     elle.log.debug('%s: %s policy: %s' % (self, self.http_action, policy))
