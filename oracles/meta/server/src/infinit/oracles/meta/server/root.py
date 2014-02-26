@@ -191,8 +191,8 @@ class Mixin:
 
     email = email.lower()
     user = self.database.users.find_one({"email": email})
-    if not user:
-      return self.error(error_code = error.UNKNOWN_USER)
+    if not user or user['register_status'] == 'ghost':
+      return self.fail(error.UNKNOWN_USER)
     import time, hashlib
     hash = str(time.time()) + email
     hash = hash.encode('utf-8')
