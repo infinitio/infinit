@@ -666,6 +666,14 @@ namespace frete
   {
     ELLE_TRACE_FUNCTION(file_id, offset, size);
     ELLE_ASSERT_LT(file_id, this->_count());
+
+    auto& snapshot = *this->_transfer_snapshot;
+    if (offset != 0)
+      snapshot.set_progress(file_id, offset);
+    else if (file_id != 0)
+      snapshot.end_progress(file_id - 1);
+    this->_progress_changed.signal();
+
     auto path = this->_local_path(file_id);
     boost::filesystem::ifstream file{path, std::ios::binary};
     static const FileOffset MAX_offset{
@@ -728,6 +736,9 @@ namespace frete
   void
   Frete::_finish()
   {
+    auto& snapshot = *this->_transfer_snapshot;
+    snapshot.end_progress(this->_count() - 1);
+    this->_progress_changed.signal();
     this->_finished.open();
   }
 
@@ -755,10 +766,9 @@ namespace frete
   void
   Frete::_set_progress(FileSize progress)
   {
-    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
-    ELLE_ASSERT(this->_transfer_snapshot->sender());
-    this->_transfer_snapshot->progress(progress);
-    this->_progress_changed.signal();
+    // Progress is now handled locally. This information however can be
+    // interesting since this is the progress on the client side, excluding any
+    // cloud-buffered blocks.
   }
 
   elle::Version
@@ -838,6 +848,13 @@ namespace frete
     this->_progress += increment;
   }
 
+  void
+  Frete::TransferSnapshot::TransferProgressInfo::_set_progress(
+    FileSize progress)
+  {
+    this->_progress = progress;
+  }
+
   bool
   Frete::TransferSnapshot::TransferProgressInfo::complete() const
   {
@@ -896,6 +913,32 @@ namespace frete
     ELLE_DUMP("old total progress was %s", this->progress());
     this->_progress += increment;
     ELLE_DEBUG("new total progress is %s", this->progress());
+  }
+
+  void
+  Frete::TransferSnapshot::set_progress(FileID index,
+                                        FileSize progress)
+  {
+    ELLE_ASSERT_LT(index, this->_transfers.size());
+    ELLE_TRACE_SCOPE("%s: set progress for file %s to %s",
+                     *this, index, progress);
+    auto& transfer = this->_transfers.at(index);
+    auto old = transfer.progress();
+    transfer._set_progress(progress);
+    this->_progress += progress - old;
+  }
+
+  void
+  Frete::TransferSnapshot::end_progress(FileID index)
+  {
+    ELLE_ASSERT_LT(index, this->_transfers.size());
+    ELLE_TRACE_SCOPE("%s: end progress for file %s",
+                     *this, index);
+    auto& transfer = this->_transfers.at(index);
+    auto old = transfer.progress();
+    auto progress = transfer.file_size();
+    transfer._set_progress(progress);
+    this->_progress += progress - old;
   }
 
   void

@@ -213,6 +213,13 @@ namespace frete
                          FileSize increment);
 
       void
+      set_progress(FileID index,
+                   FileSize progress);
+
+      void
+      end_progress(FileID index);
+
+      void
       add(boost::filesystem::path const& root,
           boost::filesystem::path const& path);
 
@@ -278,6 +285,8 @@ namespace frete
       private:
         void
         _increment_progress(FileSize increment);
+        void
+        _set_progress(FileSize progress);
 
       public:
         bool
