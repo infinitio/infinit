@@ -94,7 +94,7 @@ namespace surface
       this->_fsm.transition_add(
         transfer_state,
         stopped_state,
-        reactor::Waitables{&this->_owner.frete(*this->_host).finished()}
+        [this]() { this->_frete->finished(); }
         )
         .action([this]
                 {
@@ -199,6 +199,18 @@ namespace surface
     TransferMachine::run()
     {
       this->_fsm.run();
+    }
+
+    /*-------.
+    | Status |
+    `-------*/
+
+    float
+    TransferMachine::progress() const
+    {
+      if (this->_frete == nullptr)
+        return 0.0f;
+      return this->_frete->progress();
     }
 
     /*-------.
@@ -320,7 +332,11 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: connecting peers", *this);
       this->_owner.current_state(TransactionMachine::State::Connect);
       this->_host = this->_connect();
-      this->_owner.frete(*this->_host); // Force lazy evaluation.
+      this->_serializer.reset(
+        new infinit::protocol::Serializer(*this->_host));
+      this->_channels.reset(
+        new infinit::protocol::ChanneledStream(*this->_serializer));
+      this->_frete = this->_owner.frete(*this->_channels);
       this->_peer_connected.signal();
     }
 
@@ -339,12 +355,12 @@ namespace surface
       elle::SafeFinally clear_freete{
         [this]
         {
-          this->_owner._frete.reset();
-          this->_owner._channels.reset();
-          this->_owner._serializer.reset();
+          this->_frete.reset();
+          this->_channels.reset();
+          this->_serializer.reset();
           this->_host.reset();
         }};
-      this->_owner._transfer_operation();
+      this->_owner._transfer_operation(*this->_frete);
       ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
     }
 

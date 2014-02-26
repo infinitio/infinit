@@ -357,7 +357,7 @@ namespace surface
     }
 
     void
-    SendMachine::_transfer_operation()
+    SendMachine::_transfer_operation(frete::Frete& frete)
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
 
@@ -365,49 +365,30 @@ namespace surface
       {
         scope.run_background(
           elle::sprintf("frete get %s", this->id()),
-          [this] ()
+          [&frete] ()
           {
-            this->_frete->run();
+            frete.run();
           });
         scope.wait();
       };
     }
 
-    frete::Frete&
-    SendMachine::frete(reactor::network::Socket& socket)
+    std::unique_ptr<frete::Frete>
+    SendMachine::frete(infinit::protocol::ChanneledStream& channels)
     {
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-      if (this->_frete == nullptr)
-      {
-        reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
-        ELLE_ASSERT(this->_frete == nullptr);
-
-        ELLE_DEBUG("create serializer");
-        this->_serializer.reset(
-          new infinit::protocol::Serializer(sched, socket));
-        ELLE_DEBUG("create channels");
-        this->_channels.reset(
-          new infinit::protocol::ChanneledStream(sched, *this->_serializer));
-
-        infinit::cryptography::PublicKey peer_K;
-        peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
-        this->_frete.reset(
-          new frete::Frete(*this->_channels,
-                           this->transaction_id(),
-                           peer_K,
-                           common::infinit::frete_snapshot_path(
-                             this->data()->sender_id,
-                             this->data()->id)));
-
-        ELLE_TRACE_SCOPE("%s: init frete", *this);
+      infinit::cryptography::PublicKey peer_K;
+      peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
+      auto frete = elle::make_unique<frete::Frete>(
+        channels,
+        this->transaction_id(),
+        peer_K,
+        common::infinit::frete_snapshot_path(
+          this->data()->sender_id,
+          this->data()->id));
+      ELLE_TRACE("%s: initialize frete", *this)
         for (std::string const& file: this->_files)
-          this->_frete->add(file);
-        ELLE_DEBUG("frete successfully initialized");
-      }
-
-      ELLE_ASSERT(this->_frete != nullptr);
-      return *this->_frete;
+          frete->add(file);
+      return frete;
     }
 
     /*----------.

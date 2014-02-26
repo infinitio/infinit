@@ -74,10 +74,10 @@ namespace surface
       _end_state(
         this->_machine.state_make(
           "end", std::bind(&TransactionMachine::_end, this))),
-      _finished("finished barrier"),
-      _rejected("rejected barrier"),
-      _canceled("canceled barrier"),
-      _failed("failed barrier"),
+      _finished("finished"),
+      _rejected("rejected"),
+      _canceled("canceled"),
+      _failed("failed"),
       _transfer_machine(*this),
       _state(state),
       _data(std::move(data))
@@ -513,10 +513,7 @@ namespace surface
     float
     TransactionMachine::progress() const
     {
-      if (this->_frete == nullptr)
-        return 0.0f;
-
-      return this->_frete->progress();
+      return this->_transfer_machine.progress();
     }
 
     /*----------.

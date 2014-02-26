@@ -59,7 +59,7 @@ namespace surface
       _accept();
 
       void
-      _transfer_operation() override;
+      _transfer_operation(frete::Frete& frete) override;
 
       void
       _fail();
@@ -80,8 +80,8 @@ namespace surface
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
 
     private:
-      frete::Frete&
-      frete(reactor::network::Socket& socket) override;
+      std::unique_ptr<frete::Frete>
+      frete(infinit::protocol::ChanneledStream& socket) override;
 
     public:
       virtual

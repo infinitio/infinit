@@ -59,7 +59,7 @@ namespace surface
       _wait_for_accept();
 
       void
-      _transfer_operation() override;
+      _transfer_operation(frete::Frete& frete) override;
 
       /*-----------------------.
       | Machine implementation |
@@ -87,8 +87,8 @@ namespace surface
       }
 
     private:
-      frete::Frete&
-      frete(reactor::network::Socket& socket) override;
+      std::unique_ptr<frete::Frete>
+      frete(infinit::protocol::ChanneledStream& channels);
 
     public:
       /*----------.

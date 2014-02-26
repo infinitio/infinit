@@ -244,7 +244,7 @@ namespace surface
     }
 
     void
-    ReceiveMachine::_transfer_operation()
+    ReceiveMachine::_transfer_operation(frete::Frete& frete)
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
 
@@ -252,49 +252,33 @@ namespace surface
       {
         scope.run_background(
           elle::sprintf("download %s", this->id()),
-          [this] ()
+          [&frete, this] ()
           {
-            this->_frete->get(boost::filesystem::path{this->state().output_dir()});
+            frete.get(boost::filesystem::path{this->state().output_dir()});
             this->finished().open();
           });
         scope.run_background(
           elle::sprintf("frete get %s", this->id()),
-          [this] ()
+          [&frete] ()
           {
-            this->_frete->run();
+            frete.run();
           });
 
         scope.wait();
       };
     }
 
-    frete::Frete&
-    ReceiveMachine::frete(reactor::network::Socket& socket)
+    std::unique_ptr<frete::Frete>
+    ReceiveMachine::frete(infinit::protocol::ChanneledStream& channels)
     {
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
 
-      if (this->_frete == nullptr)
-      {
-        reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
-
-        ELLE_DEBUG("create serializer");
-        this->_serializer.reset(
-          new infinit::protocol::Serializer(sched, socket));
-        ELLE_DEBUG("create channels");
-        this->_channels.reset(
-          new infinit::protocol::ChanneledStream(sched, *this->_serializer));
-
-        this->_frete.reset(
-          new frete::Frete(*this->_channels,
-                           this->transaction_id(),
-                           this->state().identity().pair().k(),
-                           common::infinit::frete_snapshot_path(
-                             this->data()->recipient_id,
-                             this->data()->id)));
-      }
-
-      ELLE_ASSERT(this->_frete != nullptr);
-      return *this->_frete;
+      return elle::make_unique<frete::Frete>(
+        channels,
+        this->transaction_id(),
+        this->state().identity().pair().k(),
+        common::infinit::frete_snapshot_path(
+          this->data()->recipient_id,
+          this->data()->id));
     }
 
     std::string

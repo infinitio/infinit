@@ -21,6 +21,11 @@ namespace surface
       TransferMachine(TransactionMachine& owner);
       ELLE_ATTRIBUTE(TransactionMachine&, owner);
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::Socket>, host);
+      ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::Serializer>,
+                     serializer);
+      ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::ChanneledStream>,
+                     channels);
+      ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
 
 
     /*--------.
@@ -39,6 +44,13 @@ namespace surface
       ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_online);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_offline);
       ELLE_ATTRIBUTE(reactor::Signal,  peer_connected);
+
+    /*-------.
+    | Status |
+    `-------*/
+    public:
+      float
+      progress() const;
 
     /*-------.
     | States |

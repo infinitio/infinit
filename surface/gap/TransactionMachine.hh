@@ -195,7 +195,7 @@ namespace surface
     protected:
       virtual
       void
-      _transfer_operation() = 0;
+      _transfer_operation(frete::Frete& frete) = 0;
 
     protected:
       // This state has to be protected to allow the children to start the
@@ -259,14 +259,9 @@ namespace surface
       type() const;
 
     protected:
-      std::unique_ptr<infinit::protocol::Serializer> _serializer;
-      std::unique_ptr<infinit::protocol::ChanneledStream> _channels;
-      std::unique_ptr<frete::Frete> _frete;
-
-    protected:
       virtual
-      frete::Frete&
-      frete(reactor::network::Socket& socket) = 0;
+      std::unique_ptr<frete::Frete>
+      frete(infinit::protocol::ChanneledStream& socket) = 0;
 
       /*----------.
       | Printable |
