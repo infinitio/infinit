@@ -81,6 +81,26 @@ namespace surface
                   ELLE_TRACE("%s: peer online: connection", *this);
                 });
 
+      // Finished.
+      this->_fsm.transition_add(
+        transfer_state,
+        stopped_state,
+        reactor::Waitables{&owner.finished()},
+        true)
+        .action([this]
+                {
+                  ELLE_LOG("%s: transfer finished", *this);
+                });
+      this->_fsm.transition_add(
+        transfer_state,
+        stopped_state,
+        reactor::Waitables{&this->_owner.frete(*this->_host).finished()}
+        )
+        .action([this]
+                {
+                  ELLE_LOG("%s: transfer finished", *this);
+                });
+
       // Start and stop transfering.
       this->_fsm.transition_add(
         connection_state,
@@ -116,17 +136,6 @@ namespace surface
         .action([this]
                 {
                   ELLE_TRACE("%s: peer disconnected from the frete", *this);
-                });
-
-      // Finished.
-      this->_fsm.transition_add(
-        transfer_state,
-        stopped_state,
-        reactor::Waitables{&owner.finished()},
-        true)
-        .action([this]
-                {
-                  ELLE_LOG("%s: transfer finished", *this);
                 });
 
       // Cancel.
