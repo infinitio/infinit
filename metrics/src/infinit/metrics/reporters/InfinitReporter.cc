@@ -245,7 +245,6 @@ namespace infinit
       }
       catch (reactor::Terminate const&)
       {
-        ELLE_ERR("%s: caught reactor terminate", *this);
         throw;
       }
       catch (...)
