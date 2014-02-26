@@ -117,8 +117,11 @@ namespace frete
     /// Get the key of the transfer.
     infinit::cryptography::SecretKey const&
     key();
+    /// Signal we're done
+    void
+    finish();
 
-    ELLE_ATTRIBUTE_R(reactor::Barrier, finished);
+    ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
 
   /*-----.
   | RPCs |
@@ -142,6 +145,8 @@ namespace frete
     _read(FileID f, FileOffset start, FileSize size);
     infinit::cryptography::Code
     _encrypted_read(FileID f, FileOffset start, FileSize size);
+    void
+    _finish();
     void
     _set_progress(FileSize progress);
     elle::Version
@@ -175,6 +180,7 @@ namespace frete
                          FileID,
                          FileOffset,
                          FileSize> _rpc_encrypted_read;
+    RPC::RemoteProcedure<void> _rpc_finish;
 
   private:
     void

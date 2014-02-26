@@ -127,6 +127,7 @@ namespace frete
     _rpc_version("version", this->_rpc),
     _rpc_key_code("key_code", this->_rpc),
     _rpc_encrypted_read("encrypted_read", this->_rpc),
+    _rpc_finish("finish", this->_rpc),
     _progress_changed("progress changed signal"),
     _snapshot_destination(snapshot_destination),
     _transfer_snapshot{}
@@ -158,6 +159,7 @@ namespace frete
                                           std::placeholders::_1,
                                           std::placeholders::_2,
                                           std::placeholders::_3);
+    this->_rpc_finish = std::bind(std::bind(&Self::_finish, this));
 
     ELLE_DEBUG("%s: looking for snapshot at %s",
                *this, this->_snapshot_destination);
@@ -486,7 +488,6 @@ namespace frete
         {
           snapshot.increment_progress(index, buffer.size());
           elle::serialize::to_file(this->_snapshot_destination.string()) << *this->_transfer_snapshot;
-
           this->_rpc_set_progress(this->_transfer_snapshot->progress());
           this->_progress_changed.signal();
           // this->_rpc_set_progress(this->_transfer_snapshot->progress());
@@ -494,7 +495,6 @@ namespace frete
 
         ELLE_DEBUG("%s: %s (size: %s)",
                    index, fullpath, boost::filesystem::file_size(fullpath));
-
         ELLE_ASSERT_EQ(boost::filesystem::file_size(fullpath),
                        snapshot.transfers()[index].progress());
 
@@ -506,10 +506,8 @@ namespace frete
         }
       }
     }
-
-    ELLE_LOG("open finished barrier");
     this->_finished.open();
-
+    this->finish();
     try
     {
       boost::filesystem::remove(this->_snapshot_destination);
@@ -582,6 +580,12 @@ namespace frete
   {
     return this->key().decrypt<elle::Buffer>(
       this->_rpc_encrypted_read(f, start, size));
+  }
+
+  void
+  Frete::finish()
+  {
+    this->_rpc_finish();
   }
 
   elle::Version
@@ -719,6 +723,12 @@ namespace frete
                          FileSize const size)
   {
     return this->_impl->key().encrypt(this->__read(file_id, offset, size));
+  }
+
+  void
+  Frete::_finish()
+  {
+    this->_finished.open();
   }
 
   infinit::cryptography::Code const&
