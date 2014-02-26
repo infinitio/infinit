@@ -168,6 +168,7 @@ $(document).ready(function() {
         Object.keys(groups).forEach(function(key) {
           $('.sidebar .groups ul').append('<li><a class="filter_group" href="#group">' + groups[key].name + '</a></li>');
         });
+        $('.sidebar .groups ul').append('<li><a class="filter_group all" href="#group">All</a></li>');
       })
       .error(function(data) {
         alert('Error getting group.');
@@ -193,6 +194,15 @@ $(document).ready(function() {
     function getSelectedGroups() {
       var groups = Array();
       $('.filter_group.active').each(function() {
+        groups.push($(this).text());
+      });
+
+      return groups;
+    }
+
+    function getAllGroups() {
+      var groups = Array();
+      $('.filter_group').each(function() {
         groups.push($(this).text());
       });
 
@@ -298,12 +308,25 @@ $(document).ready(function() {
 
     // Group filter
     $(document).on("click", ".sidebar .groups .filter_group", function() {
-      $(this).toggleClass('active');
+
+      // Select all groups
+      if ($(this).hasClass('all') && !$(this).hasClass('active')) {
+        $('.sidebar .groups .filter_group').removeClass('active');
+        var groups = getAllGroups(); 
+        $(this).toggleClass('active');     
+
+      // Select only checked groups
+      } else {
+        $(this).toggleClass('active');
+        $('.sidebar .groups .filter_group.all').removeClass('active');
+        var groups = getSelectedGroups();
+      }
+
+      
 
       var start = getCurrentStartDate();
       var end = getCurrentEndDate();
       var status = getSelectedStatus();
-      var groups = getSelectedGroups();
 
       loadTransactions(start = start, end = end, status = status, user = null, groups = groups);
     });

@@ -18,7 +18,13 @@
                 <img src="//${http_host}/user/${user['_id']}/avatar" class="avatar" />
                 <div class="infos">
                   <h3>${user['fullname']}</h3>
-                  <p class="handle">@${user['handle']}</p>
+                  <p class="handle">
+                    %if 'handle' in user:
+                      @${user['handle']}
+                    %else:
+                      Ghost  
+                    %endif
+                  </p>
                   <p>${user['email']}</p>
                   </div>
                 <ul>
