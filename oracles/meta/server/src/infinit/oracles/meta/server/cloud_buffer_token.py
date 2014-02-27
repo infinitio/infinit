@@ -94,19 +94,31 @@ class CloudBufferToken:
 
   # http://docs.aws.amazon.com/STS/latest/UsingSTS/sts-controlling-feduser-permissions.html
   def _make_policy(self):
-    action_list = []
+    object_actions = []
+    bucket_actions = None
     if self.http_action == 'PUT':
-      action_list.extend(['s3:PutObject'])
+      object_actions.extend(['s3:PutObject'])
     elif self.http_action == 'GET':
-      action_list.extend(['s3:GetObject', 's3:ListBucket', 's3:DeleteObject'])
-    elle.log.debug('%s: policy action list: %s' % (self, action_list))
+      object_actions.extend(['s3:GetObject', 's3:DeleteObject'])
+      bucket_actions = ['s3:ListBucket']
+
+    object_statement = {
+      'Effect': 'Allow',
+      'Action': object_actions,
+      'Resource': 'arn:aws:s3:::io.infinit.buffer.us0/%s/*' % (self.transaction_id)
+    }
+    if bucket_actions:
+      bucket_statement = {
+        'Effect': 'Allow',
+        'Action': bucket_actions,
+        'Resource': 'arn:aws:s3:::io.infinit.buffer.us0'
+      }
+    statements = [object_statement]
+    if bucket_statement:
+      statements.extend([bucket_statement])
     policy = {
       'Version': '2012-10-17',
-      'Statement': [{
-        'Effect': 'Allow',
-        'Action': sorted(action_list),
-        'Resource': 'arn:aws:s3:::io.infinit.buffer.us0/%s/*' % (self.transaction_id)
-      }]
+      'Statement': statements
     }
     elle.log.debug('%s: %s policy: %s' % (self, self.http_action, policy))
     return policy
