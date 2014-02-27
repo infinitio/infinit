@@ -107,6 +107,7 @@ class CloudBufferToken:
       'Action': object_actions,
       'Resource': 'arn:aws:s3:::io.infinit.buffer.us0/%s/*' % (self.transaction_id)
     }
+    bucket_statement = None
     if bucket_actions:
       bucket_statement = {
         'Effect': 'Allow',
