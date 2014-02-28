@@ -21,6 +21,8 @@
 # include <cryptography/SecretKey.hh>
 # include <cryptography/cipher.hh>
 
+# include <frete/fwd.hh>
+
 namespace frete
 {
   class Frete:
@@ -191,160 +193,6 @@ namespace frete
     float
     progress() const;
 
-    /*-----------------------.
-    | Progress serialization |
-    `-----------------------*/
-  public:
-    struct TransferSnapshot:
-      public elle::Printable
-    {
-      // Recipient.
-      TransferSnapshot(FileCount count,
-                       FileSize total_size);
-
-      // Sender.
-      TransferSnapshot();
-
-      void
-      progress(FileSize const& progress);
-
-      void
-      increment_progress(FileID index,
-                         FileSize increment);
-
-      void
-      set_progress(FileID index,
-                   FileSize progress);
-
-      void
-      end_progress(FileID index);
-
-      void
-      add(boost::filesystem::path const& root,
-          boost::filesystem::path const& path);
-
-      struct TransferInfo:
-        public elle::Printable
-      {
-        TransferInfo(FileID file_id,
-                     boost::filesystem::path const& root,
-                     boost::filesystem::path const& path,
-                     FileSize file_size);
-
-        virtual
-        ~TransferInfo() = default;
-
-        ELLE_ATTRIBUTE_R(FileID, file_id);
-
-        ELLE_ATTRIBUTE(std::string, root);
-        ELLE_ATTRIBUTE_R(std::string, path);
-
-        ELLE_ATTRIBUTE_R(boost::filesystem::path, full_path);
-        ELLE_ATTRIBUTE_R(FileSize, file_size);
-
-        bool
-        file_exists() const;
-
-        bool
-        operator ==(TransferInfo const& rh) const;
-
-        /*----------.
-        | Printable |
-        `----------*/
-      public:
-        virtual
-        void
-        print(std::ostream& stream) const;
-
-        /*--------------.
-        | Serialization |
-        `--------------*/
-
-        // XXX: Serialization require a default constructor when serializing
-        // pairs...
-        TransferInfo() = default;
-
-        ELLE_SERIALIZE_CONSTRUCT(TransferInfo)
-        {}
-
-        ELLE_SERIALIZE_FRIEND_FOR(TransferInfo);
-
-      };
-
-      struct TransferProgressInfo:
-        public TransferInfo
-      {
-      public:
-        TransferProgressInfo(FileID file_id,
-                             boost::filesystem::path const& root,
-                             boost::filesystem::path const& path,
-                             FileSize file_size);
-
-        ELLE_ATTRIBUTE_R(FileSize, progress);
-
-      private:
-        void
-        _increment_progress(FileSize increment);
-        void
-        _set_progress(FileSize progress);
-
-      public:
-        bool
-        complete() const;
-
-        bool
-        operator ==(TransferProgressInfo const& rh) const;
-
-        friend TransferSnapshot;
-
-        /*----------.
-        | Printable |
-        `----------*/
-      public:
-        virtual
-        void
-        print(std::ostream& stream) const;
-
-        /*--------------.
-        | Serialization |
-        `--------------*/
-
-        TransferProgressInfo() = default;
-
-        ELLE_SERIALIZE_CONSTRUCT(TransferProgressInfo, TransferInfo)
-        {}
-
-        ELLE_SERIALIZE_FRIEND_FOR(TransferProgressInfo);
-      };
-
-      ELLE_ATTRIBUTE_R(bool, sender);
-      typedef std::unordered_map<FileID, TransferProgressInfo> TransferProgress;
-      ELLE_ATTRIBUTE_X(TransferProgress, transfers);
-      ELLE_ATTRIBUTE_R(FileCount, count);
-      ELLE_ATTRIBUTE_R(FileSize, total_size);
-      ELLE_ATTRIBUTE_R(FileSize, progress);
-
-      bool
-      operator ==(TransferSnapshot const& rh) const;
-
-      /*----------.
-      | Printable |
-      `----------*/
-    public:
-      virtual
-      void
-      print(std::ostream& stream) const;
-
-      /*--------------.
-      | Serialization |
-      `--------------*/
-
-      ELLE_SERIALIZE_CONSTRUCT(TransferSnapshot)
-      {}
-
-      ELLE_SERIALIZE_FRIEND_FOR(TransferSnapshot);
-    };
-
   private:
     ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_destination);
     ELLE_ATTRIBUTE(std::unique_ptr<TransferSnapshot>, transfer_snapshot);
@@ -372,7 +220,5 @@ namespace frete
          boost::filesystem::path const& root);
   };
 }
-
-#include <frete/Frete.hxx>
 
 #endif

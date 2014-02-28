@@ -304,6 +304,9 @@ def configure(cxx_toolkit = None,
   frete_sources = drake.nodes(
     'frete/src/frete/Frete.hh',
     'frete/src/frete/Frete.cc',
+    'frete/src/frete/TransferSnapshot.hh',
+    'frete/src/frete/TransferSnapshot.cc',
+    'frete/src/frete/fwd.hh',
   )
   cxx_config.add_local_include_path('frete/src')
   cxx_config_libs.add_local_include_path('frete/src')
