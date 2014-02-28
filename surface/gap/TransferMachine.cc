@@ -27,7 +27,8 @@ namespace surface
       _fsm(),
       _peer_online("peer online"),
       _peer_offline("peer offline"),
-      _peer_connected("peer connected")
+      _peer_connected("peer connected"),
+      _finished(false)
     {
       /*-------.
       | States |
@@ -94,7 +95,7 @@ namespace surface
       this->_fsm.transition_add(
         transfer_state,
         stopped_state,
-        [this]() { this->_frete->finished(); }
+        [this]() { return this->_finished; }
         )
         .action([this]
                 {
@@ -355,6 +356,7 @@ namespace surface
       elle::SafeFinally clear_freete{
         [this]
         {
+          this->_finished = this->_frete->finished();
           this->_frete.reset();
           this->_channels.reset();
           this->_serializer.reset();

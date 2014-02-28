@@ -51,6 +51,7 @@ namespace surface
     public:
       float
       progress() const;
+      ELLE_ATTRIBUTE(bool, finished);
 
     /*-------.
     | States |
