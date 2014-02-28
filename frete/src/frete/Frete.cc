@@ -924,6 +924,8 @@ namespace frete
                      *this, index, progress);
     auto& transfer = this->_transfers.at(index);
     auto old = transfer.progress();
+    if (old >= progress)
+      return;
     transfer._set_progress(progress);
     this->_progress += progress - old;
   }
