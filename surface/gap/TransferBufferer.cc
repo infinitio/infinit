@@ -12,5 +12,12 @@ namespace surface
       infinit::oracles::Transaction& transaction):
       _transaction(transaction)
     {}
+
+    void
+    TransferBufferer::print(std::ostream& stream) const
+    {
+      stream << "TransferBufferer (transaction_id: " << this->transaction().id
+             << ")";
+    }
   }
 }
