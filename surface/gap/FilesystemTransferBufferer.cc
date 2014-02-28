@@ -25,7 +25,7 @@ namespace surface
 
     void
     FilesystemTransferBufferer::put(FileID file,
-                                    FileSize offset,
+                                    FileOffset offset,
                                     FileSize size,
                                     elle::ConstWeakBuffer const& b)
     {
@@ -40,17 +40,25 @@ namespace surface
 
     elle::Buffer
     FilesystemTransferBufferer::get(FileID file,
-                                    FileSize offset)
+                                    FileOffset offset)
     {
       return elle::Buffer();
     }
 
-    std::vector<std::pair<TransferBufferer::FileID,
-                          std::pair<TransferBufferer::FileSize,
-                                    TransferBufferer::FileSize>>>
+    TransferBufferer::List
     FilesystemTransferBufferer::list()
     {
       return std::vector<std::pair<FileID, std::pair<FileSize, FileSize>>>();
+    }
+
+    /*----------.
+    | Printable |
+    `----------*/
+    void
+    FilesystemTransferBufferer::print(std::ostream& stream) const
+    {
+      stream << "FilesystemTransferBufferer (transaction_id: "
+             << this->transaction().id << ")";
     }
   }
 }

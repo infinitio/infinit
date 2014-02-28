@@ -36,16 +36,24 @@ namespace surface
       virtual
       void
       put(FileID file,
-          FileSize offset,
+          FileOffset offset,
           FileSize size,
           elle::ConstWeakBuffer const& b) override;
       virtual
       elle::Buffer
       get(FileID file,
-          FileSize offset) override;
+          FileOffset offset) override;
       virtual
-      std::vector<std::pair<FileID, std::pair<FileSize, FileSize>>>
+      List
       list() override;
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& stream) const;
     };
   }
 }
